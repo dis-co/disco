@@ -35,9 +35,15 @@ module Api =
       Events: ConcurrentQueue<ClientEvent>
       Logger: ILogger
       InCommands: ISpread<StateMachine>
-      InServer: IDiffSpread<string>
-      InPort: IDiffSpread<uint16>
+      InServerIp: ISpread<string>
+      InServerPort: ISpread<int>
+      InClientId: ISpread<string>
+      InClientName: ISpread<string>
+      InClientIp: ISpread<string>
+      InClientPort: ISpread<int>
+      InPinGroups: ISpread<PinGroup>
       InDebug: ISpread<bool>
+      InReconnect: ISpread<bool>
       InUpdate: ISpread<bool>
       OutState: ISpread<State>
       OutCommands: ISpread<StateMachine>
@@ -54,9 +60,15 @@ module Api =
         Events = new ConcurrentQueue<ClientEvent>()
         Logger = null
         InCommands = null
-        InServer = null
-        InPort = null
+        InServerIp = null
+        InServerPort = null
+        InClientId = null
+        InClientName = null
+        InClientIp = null
+        InClientPort = null
+        InPinGroups = null
         InDebug = null
+        InReconnect = null
         InUpdate = null
         OutState = null
         OutConnected = null
@@ -93,33 +105,61 @@ module Api =
 
   let private startClient (state: PluginState) =
     let logobs = Logger.subscribe (string >> Util.debug state)
-    let me =
-      // let ip =
-      //   match Network.getIpAddress () with
-      //   | Some ip -> IpAddress.ofIPAddress ip
-      //   | None -> IPv4Address "127.0.0.1"
 
-      { Id = Id.Create ()
-        Name = "Vvvv GraphApi Client"
+    let myself =
+      let id =
+        match state.InClientId.[0] with
+        | null | "" -> Id.Create()
+        | str -> Id str
+
+      let ip =
+        match IpAddress.TryParse state.InClientIp.[0] with
+        | Right ip -> ip
+        | Left error ->
+          error
+          |> string
+          |> Util.error state
+          IPv4Address "127.0.0.1"
+
+      let name =
+        match state.InClientName.[0] with
+        | null | "" -> "VVVV Client"
+        | str -> str
+
+      let port =
+        try
+          uint16 state.InClientPort.[0]
+        with
+          | _ -> Constants.DEFAULT_API_CLIENT_PORT
+
+      { Id = id
+        Name = name
         Role = Role.Renderer
         Status = ServiceStatus.Starting
-        IpAddress = IPv4Address "192.168.2.125"
-        Port = 10001us }
+        IpAddress = ip
+        Port = port }
 
     let server : IrisServer =
-      // let ip =
-      //   match state.InServer.[0] with
-      //   | null ->  IPv4Address "127.0.0.1"
-      //   | ip -> IPv4Address ip
+      let ip =
+        match IpAddress.TryParse state.InServerIp.[0] with
+        | Right ip ->  ip
+        | Left error ->
+          error
+          |> string
+          |> Util.error state
+          IPv4Address "127.0.0.1"
 
-      { Id = Id.Create ()
-        Port = 10000us
-        Name = "iris.exe"
-        IpAddress = IPv4Address "192.168.2.108" }
+      let port =
+        try
+          uint16 state.InServerPort.[0]
+        with
+          | _ -> Constants.DEFAULT_API_PORT
+
+      { Port = port; IpAddress = ip }
 
     let result =
       either {
-        let! client = ApiClient.create server me
+        let! client = ApiClient.create server myself
         do! client.Start()
         return client
       }
@@ -166,6 +206,50 @@ module Api =
     state.OutCommands.AssignFrom cmds
     state
 
+  // ** mergeGraphState
+
+  let private mergeGraphState (plugstate: PluginState) =
+    let local =
+      Seq.fold
+        (fun m (grp: PinGroup) ->
+          if not (Util.isNullReference grp) then
+            Map.add grp.Id grp m
+          else m)
+        Map.empty
+        plugstate.InPinGroups
+
+    match plugstate.ApiClient.State with
+    | Right appstate ->
+      if local <> appstate.PinGroups then
+        let commands: StateMachine list =
+          Map.fold
+            (fun lst (id: Id) (lgrp: PinGroup) ->
+              match Map.tryFind id appstate.PinGroups with
+              | Some grp ->
+                if lgrp <> grp then
+                  (UpdatePinGroup lgrp) :: lst
+                else
+                  lst
+              | None -> (AddPinGroup lgrp) :: lst)
+            []
+            local
+        for cmd in commands do
+          cmd
+          |> sprintf "cmd in mergeGraphState: %A"
+          |> Util.debug plugstate
+          match plugstate.ApiClient.Append cmd with
+          | Right () -> ()
+          | Left error ->
+            error
+            |> string
+            |> Util.error plugstate
+      plugstate
+    | Left error ->
+      error
+      |> string
+      |> Util.error plugstate
+      plugstate
+
   // ** processInputs
 
   let private processInputs (state: PluginState) =
@@ -197,29 +281,19 @@ module Api =
       let mutable cmdUpdates = new ResizeArray<StateMachine>()
       while run do
         match state.Events.TryDequeue() with
-        | true, msg ->
-          newstate <-
-            match msg with
-            | ClientEvent.Registered ->
-              { newstate with Status = ServiceStatus.Running }
-              |> setStatus
-
-            | ClientEvent.UnRegistered ->
-              { newstate with Status = ServiceStatus.Stopped }
-              |> setStatus
-
-            | ClientEvent.Status status ->
-              { newstate with Status = status }
-              |> setStatus
-
-            | ClientEvent.Update cmd ->
-              stateUpdates <- stateUpdates + 1
-              cmdUpdates.Add cmd
-              state
-
-            | ClientEvent.Snapshot ->
-              stateUpdates <- stateUpdates + 1
-              state
+        | true, ClientEvent.Registered ->
+          newstate <- { newstate with Status = ServiceStatus.Running } |> setStatus
+        | true, ClientEvent.UnRegistered ->
+          newstate <- { newstate with Status = ServiceStatus.Stopped } |> setStatus
+        | true, ClientEvent.Status status ->
+          newstate <- { newstate with Status = status } |> setStatus
+        | true, ClientEvent.Update cmd ->
+          stateUpdates <- stateUpdates + 1
+          cmdUpdates.Add cmd
+          newstate <- state
+        | true, ClientEvent.Snapshot ->
+          stateUpdates <- stateUpdates + 1
+          newstate <- mergeGraphState state
         | false, _ -> run <- false
       if stateUpdates > 0 || cmdUpdates.Count > 0 then
         state.OutUpdate.[0] <- true
@@ -265,20 +339,44 @@ type ApiClientNode() =
   val mutable InCommands: ISpread<StateMachine>
 
   [<DefaultValue>]
-  [<Input("Server", IsSingle = true)>]
-  val mutable InServer: IDiffSpread<string>
+  [<Input("PinGroups")>]
+  val mutable InPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]
-  [<Input("Port", IsSingle = true)>]
-  val mutable InPort: IDiffSpread<uint16>
+  [<Input("Server IP", IsSingle = true)>]
+  val mutable InServerIp: ISpread<string>
+
+  [<DefaultValue>]
+  [<Input("Server Port", IsSingle = true)>]
+  val mutable InServerPort: ISpread<int>
+
+  [<DefaultValue>]
+  [<Input("Client Name", IsSingle = true)>]
+  val mutable InClientName: ISpread<string>
+
+  [<DefaultValue>]
+  [<Input("Client ID", IsSingle = true)>]
+  val mutable InClientId: ISpread<string>
+
+  [<DefaultValue>]
+  [<Input("Client IP", IsSingle = true)>]
+  val mutable InClientIp: ISpread<string>
+
+  [<DefaultValue>]
+  [<Input("Client Port", IsSingle = true)>]
+  val mutable InClientPort: ISpread<int>
 
   [<DefaultValue>]
   [<Input("Debug", IsSingle = true, DefaultValue = 0.0)>]
-  val mutable InDebug: IDiffSpread<bool>
+  val mutable InDebug: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Input("Reconnect", IsSingle = true, IsBang = true)>]
+  val mutable InReconnect: ISpread<bool>
 
   [<DefaultValue>]
   [<Input("Update", IsSingle = true, IsBang = true)>]
-  val mutable InUpdate: IDiffSpread<bool>
+  val mutable InUpdate: ISpread<bool>
 
   [<DefaultValue>]
   [<Output("Commands")>]
@@ -310,9 +408,15 @@ type ApiClientNode() =
           { Api.PluginState.Create() with
               Logger = self.Logger
               InCommands = self.InCommands
-              InServer = self.InServer
-              InPort = self.InPort
+              InServerIp = self.InServerIp
+              InServerPort = self.InServerPort
+              InClientId = self.InClientId
+              InClientName = self.InClientName
+              InClientIp = self.InClientIp
+              InClientPort = self.InClientPort
+              InPinGroups = self.InPinGroups
               InDebug = self.InDebug
+              InReconnect = self.InReconnect
               InUpdate = self.InUpdate
               OutState = self.OutState
               OutCommands = self.OutCommands

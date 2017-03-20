@@ -18,9 +18,7 @@ open Iris.Serialization
 // |___|_|  |_|___/____/ \___|_|    \_/ \___|_|
 
 type IrisServer =
-  { Id: Id
-    Port: Port
-    Name: string
+  { Port: Port
     IpAddress: IpAddress }
 
 // * ClientEvent
