@@ -423,9 +423,9 @@ module ApiClient =
         |> Error.asClientError (tag "requestUpdate")
         |> Either.fail
 
-  // ** maybeDisgroup
+  // ** maybeDispatch
 
-  let private maybeDisgroup (data: ClientStateData) (sm: StateMachine) =
+  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
     match sm with
     | UpdateSlices _ -> data.Store.Dispatch sm
     | _ -> ()
@@ -438,7 +438,7 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDisgroup data sm
+      maybeDispatch data sm
       match requestUpdate data.Socket sm with
       | Right () ->
         Reply.Ok
