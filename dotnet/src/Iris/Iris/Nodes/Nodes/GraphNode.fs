@@ -41,7 +41,8 @@ module Graph =
   // ** PluginState
 
   type PluginState =
-    { Frame: uint64
+    { Id: Id
+      Frame: uint64
       Initialized: bool
       Update: bool ref
       Pins: Dictionary<Id,PinGroup>
@@ -52,7 +53,6 @@ module Graph =
       V1Host: IPluginHost
       V2Host: IHDEHost
       InDebug: ISpread<bool>
-      InClientId: ISpread<string>
       OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
       OutNodeMappings: ISpread<NodeMapping>
@@ -60,7 +60,8 @@ module Graph =
       Disposables: Dictionary<Id,IDisposable> }
 
     static member Create () =
-      { Frame = 0UL
+      { Id = Id.Create()
+        Frame = 0UL
         Initialized = false
         Update = ref false
         Pins = new Dictionary<Id,PinGroup>()
@@ -71,7 +72,6 @@ module Graph =
         V1Host = null
         V2Host = null
         InDebug = null
-        InClientId = null
         OutPinGroups = null
         OutCommands = null
         OutUpdate = null
@@ -583,7 +583,9 @@ module Graph =
         |> Msg.PinVecSizeChange
         |> state.Events.Enqueue
       | Left error ->
-        error |> string |> Util.error state
+        error
+        |> string
+        |> Logger.err state.Id "registerHandlers"
 
     let vecsizeHandler = new EventHandler(vecsizeUpdate)
     let columnsHandler = new EventHandler(vecsizeUpdate)
@@ -722,7 +724,7 @@ module Graph =
         | Left error ->
           error
           |> string
-          |> Util.debug state
+          |> Logger.err state.Id "parseSeqWith"
           lst)
       []
       pins
@@ -913,7 +915,7 @@ module Graph =
       let group: PinGroup =
         { Id = pin.PinGroup
           Name = node.GetNodePath(true)
-          Client = Id state.InClientId.[0]
+          Client = state.Id
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
       state.Commands.Add (AddPin pin)
@@ -1069,9 +1071,10 @@ module Graph =
     match parseINode2 state node with
     | Right [] -> ()
     | Right pins -> List.iter (Msg.PinAdded >> state.Events.Enqueue) pins
-    | Left error -> error |> string |> Util.error state
-
-  // ** onNodeUnExposed
+    | Left error ->
+      error
+      |> string
+      |> Logger.err state.Id "onNodeExposed"
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
@@ -1202,7 +1205,10 @@ module Graph =
           if not (isNull node) then
             match parseINode2 state node with
             | Right []     -> ()
-            | Left error   -> error |> string |> Util.error state
+            | Left error   ->
+              error
+              |> string
+              |> Logger.err state.Id "processing"
             | Right parsed ->
               List.iter
                 (fun (pin,parsed) ->
@@ -1281,18 +1287,29 @@ type GraphNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
-        let state' =
+        let id =
+          try
+            match self.InClientId.[0] with
+              | null | "" -> Id.Create()
+              | str -> Id str
+          with
+            | exn ->
+              let id' = Id.Create()
+              Logger.err id' "Graph.initialize" exn.Message
+              Logger.err id' "Graph.initialize" exn.StackTrace
+              id'
+
+        state <-
           { Graph.PluginState.Create() with
+              Id = id
               V1Host = self.V1Host
               V2Host = self.V2Host
               Logger = self.Logger
               InDebug = self.InDebug
-              InClientId = self.InClientId
               OutUpdate = self.OutUpdate
               OutCommands = self.OutCommands
               OutNodeMappings = self.OutNodeMappings
               OutPinGroups = self.OutPinGroups }
-        state <- state'
         initialized <- true
 
       state <- Graph.evaluate state spreadMax

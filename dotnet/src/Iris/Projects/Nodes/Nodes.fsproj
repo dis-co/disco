@@ -269,6 +269,9 @@
     <Compile Include="../../Iris/Nodes/Nodes/GraphNode.fs">
       <Link>GraphNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/LoggingNode.fs">
+      <Link>LoggingNode.fs</Link>
+    </Compile>
     <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>

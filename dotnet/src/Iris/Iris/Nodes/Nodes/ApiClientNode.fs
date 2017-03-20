@@ -28,7 +28,8 @@ module Api =
   // ** PluginState
 
   type PluginState =
-    { Frame: uint64
+    { Id: Id
+      Frame: uint64
       Initialized: bool
       Status: ServiceStatus
       ApiClient: IApiClient
@@ -53,7 +54,8 @@ module Api =
       Disposables: IDisposable list }
 
     static member Create () =
-      { Frame = 0UL
+      { Id = Id.Create()
+        Frame = 0UL
         Initialized = false
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
@@ -104,21 +106,14 @@ module Api =
   // ** startClient
 
   let private startClient (state: PluginState) =
-    let logobs = Logger.subscribe (string >> Util.debug state)
-
     let myself =
-      let id =
-        match state.InClientId.[0] with
-        | null | "" -> Id.Create()
-        | str -> Id str
-
       let ip =
         match IpAddress.TryParse state.InClientIp.[0] with
         | Right ip -> ip
         | Left error ->
           error
           |> string
-          |> Util.error state
+          |> Logger.err state.Id "startClient"
           IPv4Address "127.0.0.1"
 
       let name =
@@ -132,7 +127,7 @@ module Api =
         with
           | _ -> Constants.DEFAULT_API_CLIENT_PORT
 
-      { Id = id
+      { Id = state.Id
         Name = name
         Role = Role.Renderer
         Status = ServiceStatus.Starting
@@ -146,7 +141,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Util.error state
+          |> Logger.err state.Id "startClient"
           IPv4Address "127.0.0.1"
 
       let port =
@@ -167,14 +162,16 @@ module Api =
     match result with
     | Right client ->
       let apiobs = client.Subscribe(enqueueEvent state)
-      Util.debug state "successfully started ApiClient"
+      Logger.info state.Id "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Running
           ApiClient = client
-          Disposables = [ apiobs; logobs ] }
+          Disposables = [ apiobs ] }
     | Left error ->
-      Util.debug state (sprintf "Error starting ApiClient: %A" error)
+      error
+      |> string
+      |> Logger.err state.Id "startClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -192,17 +189,19 @@ module Api =
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Util.debug state "updateState"
+    Logger.debug state.Id "updateState" "updating state output pins with new state"
     match state.ApiClient.State with
     | Right data ->
       state.OutState.[0] <- data
       state
     | Left error ->
-      string error |> Util.error state
+      error
+      |> string
+      |> Logger.err state.Id "updateState"
       { state with Status = ServiceStatus.Failed error }
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
-    Util.debug state "updateCommand"
+    Logger.debug state.Id "updateCommands" "update command output pins"
     state.OutCommands.AssignFrom cmds
     state
 
@@ -235,19 +234,19 @@ module Api =
             local
         for cmd in commands do
           cmd
-          |> sprintf "cmd in mergeGraphState: %A"
-          |> Util.debug plugstate
+          |> sprintf "cmd: %A"
+          |> Logger.debug plugstate.Id "mergeGraphState"
           match plugstate.ApiClient.Append cmd with
           | Right () -> ()
           | Left error ->
             error
             |> string
-            |> Util.error plugstate
+            |> Logger.err plugstate.Id "mergeGraphState"
       plugstate
     | Left error ->
       error
       |> string
-      |> Util.error plugstate
+      |> Logger.err plugstate.Id "mergeGraphState"
       plugstate
 
   // ** processInputs
@@ -262,11 +261,11 @@ module Api =
             cmd
             |> string
             |> sprintf "%s successfully appended in cluster"
-            |> Util.debug state
+            |> Logger.debug state.Id "processInputs"
           | Left error ->
             error
             |> string
-            |> Util.error state
+            |> Logger.err state.Id "processInputs"
       state
     else
       state
@@ -404,8 +403,21 @@ type ApiClientNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
-        let state' =
+        let id =
+          try
+            match self.InClientId.[0] with
+              | null | "" -> Id.Create()
+              | str -> Id str
+          with
+            | exn ->
+              let id' = Id.Create()
+              Logger.err id' "ApiClient.initialize" exn.Message
+              Logger.err id' "ApiClient.initialize" exn.StackTrace
+              id'
+
+        state <-
           { Api.PluginState.Create() with
+              Id = id
               Logger = self.Logger
               InCommands = self.InCommands
               InServerIp = self.InServerIp
@@ -423,7 +435,6 @@ type ApiClientNode() =
               OutConnected = self.OutConnected
               OutStatus = self.OutStatus
               OutUpdate = self.OutUpdate }
-        state <- state'
         initialized <- true
 
       state <- Api.evaluate state spreadMax

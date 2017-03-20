@@ -372,10 +372,7 @@ module ApiClient =
 
   let private handlePing (state: ClientState) =
     match state with
-    | Loaded data ->
-      "Ping reuqest received"
-      |> Logger.debug data.Client.Id (tag "handlePing")
-      Loaded { data with Elapsed = 0u }
+    | Loaded data -> Loaded { data with Elapsed = 0u }
     | idle -> idle
 
   // ** handleSetState
@@ -401,6 +398,7 @@ module ApiClient =
 
   let private requestUpdate (socket: Req) (sm: StateMachine) =
     try
+      Logger.debug (Id "Client") "requestUpdate" (sprintf " sm: %A" sm)
       let result : Either<IrisError,ApiResponse> =
         ServerApiRequest.Update sm
         |> Binary.encode
