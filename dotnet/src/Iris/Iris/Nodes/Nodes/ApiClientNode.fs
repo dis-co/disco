@@ -308,6 +308,7 @@ module Api =
 
   let private processor (state: PluginState) =
     state
+    |> processInputs
     |> processMsgs
     |> updateFrame
 
