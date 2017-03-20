@@ -19,16 +19,18 @@ open Iris.Serialization
 
 open SharpYaml.Serialization
 
-type PinGroupYaml(id, name, pins) as self =
+type PinGroupYaml(id, name, client, pins) as self =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
+  [<DefaultValue>] val mutable Client : string
   [<DefaultValue>] val mutable Pins : PinYaml array
 
-  new () = new PinGroupYaml(null, null, null)
+  new () = new PinGroupYaml(null, null, null, null)
 
   do
     self.Id <- id
     self.Name <- name
+    self.Client <- client
     self.Pins <- pins
 
 #endif
@@ -40,9 +42,10 @@ type PinGroupYaml(id, name, pins) as self =
 // |_|   \__,_|\__\___|_| |_|
 
 type PinGroup =
-  { Id   : Id
-    Name : Name
-    Pins : Map<Id,Pin> }
+  { Id: Id
+    Name: Name
+    Client: Id
+    Pins: Map<Id,Pin> }
 
   //  _   _           ____  _
   // | | | | __ _ ___|  _ \(_)_ __
@@ -143,6 +146,7 @@ type PinGroup =
     let yaml = new PinGroupYaml()
     yaml.Id <- string self.Id
     yaml.Name <- self.Name
+    yaml.Client <- string self.Client
     yaml.Pins <- self.Pins
                    |> Map.toArray
                    |> Array.map (snd >> Yaml.toYaml)
@@ -167,6 +171,7 @@ type PinGroup =
 
       return { Id = Id yml.Id
                Name = yml.Name
+               Client = Id yml.Client
                Pins = pins }
     }
 
@@ -214,12 +219,14 @@ type PinGroup =
 
       return { Id = Id fb.Id
                Name = fb.Name
+               Client = Id fb.Client
                Pins = pins }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
       |> Map.toArray
@@ -229,6 +236,7 @@ type PinGroup =
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
     PinGroupFB.AddName(builder, name)
+    PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 

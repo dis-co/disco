@@ -57,7 +57,10 @@ module SerializationTests =
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "PinGroup 3"; Pins = pins }
+    { Id = Id.Create()
+      Name = "PinGroup 3"
+      Client = Id.Create()
+      Pins = pins }
 
   let mkCueList _ : CueList =
     { Id = Id.Create(); Name = "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }

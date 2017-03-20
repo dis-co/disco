@@ -130,6 +130,7 @@ module TestData =
 
     { Id = Id.Create()
       Name = rndstr()
+      Client = Id.Create()
       Pins = pins }
 
   let mkPinGroups () : Iris.Core.PinGroup array =

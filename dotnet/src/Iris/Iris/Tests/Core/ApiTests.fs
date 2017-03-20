@@ -57,9 +57,7 @@ module ApiTests =
         do! server.SetState state
 
         let srvr : IrisServer =
-          { Id = Id.Create()
-            Name = "cool"
-            Port = mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -120,9 +118,7 @@ module ApiTests =
         do! server.SetState state
 
         let srvr : IrisServer =
-          { Id = Id.Create()
-            Name = "cool"
-            Port = mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -202,9 +198,7 @@ module ApiTests =
         do! server.SetState state
 
         let srvr : IrisServer =
-          { Id = Id.Create()
-            Name = "cool"
-            Port = mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =

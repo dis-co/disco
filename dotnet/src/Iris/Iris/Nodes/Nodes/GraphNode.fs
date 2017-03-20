@@ -51,8 +51,8 @@ module Graph =
       Logger: ILogger
       V1Host: IPluginHost
       V2Host: IHDEHost
-      InCommands: IDiffSpread<StateMachine>
       InDebug: ISpread<bool>
+      InClientId: ISpread<string>
       OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
       OutNodeMappings: ISpread<NodeMapping>
@@ -70,8 +70,8 @@ module Graph =
         Logger = null
         V1Host = null
         V2Host = null
-        InCommands = null
         InDebug = null
+        InClientId = null
         OutPinGroups = null
         OutCommands = null
         OutUpdate = null
@@ -913,6 +913,7 @@ module Graph =
       let group: PinGroup =
         { Id = pin.PinGroup
           Name = node.GetNodePath(true)
+          Client = Id state.InClientId.[0]
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
       state.Commands.Add (AddPin pin)
@@ -1251,6 +1252,10 @@ type GraphNode() =
   val mutable Logger: ILogger
 
   [<DefaultValue>]
+  [<Input("Client ID", IsSingle = true)>]
+  val mutable InClientId: ISpread<string>
+
+  [<DefaultValue>]
   [<Input("Debug", IsSingle = true, DefaultValue = 0.0)>]
   val mutable InDebug: IDiffSpread<bool>
 
@@ -1282,6 +1287,7 @@ type GraphNode() =
               V2Host = self.V2Host
               Logger = self.Logger
               InDebug = self.InDebug
+              InClientId = self.InClientId
               OutUpdate = self.OutUpdate
               OutCommands = self.OutCommands
               OutNodeMappings = self.OutNodeMappings
