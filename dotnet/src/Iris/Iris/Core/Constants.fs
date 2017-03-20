@@ -79,6 +79,9 @@ module Constants =
   let DEFAULT_API_PORT = 5000us
 
   [<Literal>]
+  let DEFAULT_API_CLIENT_PORT = 10000us
+
+  [<Literal>]
   let DEFAULT_RAFT_PORT = 6000us
 
   [<Literal>]
