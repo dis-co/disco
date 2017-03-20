@@ -32,7 +32,7 @@ zeroconf:
 	${BUILD} BuildDebugZeroconf
 
 client:
-	${BUILD} BuildMockClient
+	${BUILD} BuildDebugMockClient
 
 run.client:
 	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe"

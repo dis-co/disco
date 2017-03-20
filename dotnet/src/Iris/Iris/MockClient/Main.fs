@@ -272,11 +272,11 @@ Usage:
         |> Some
 
       | File name ->
-        Pin.FileName(Id name,name,patchid, [| |], "", [| "" |])
+        Pin.FileName(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | Dir name ->
-        Pin.Directory(Id name,name,patchid, [| |], "", [| "" |])
+        Pin.Directory(Id name,name,patchid, [| |], [| "" |])
         |> Some
 
       | Url name ->
@@ -636,12 +636,12 @@ Usage:
     let parser = ArgumentParser.Create<CliOptions>(helpTextMessage = help)
     let parsed = parser.Parse args
 
+    let id = Id.Create()
+
     let result =
       either {
         let server =
-          { Id = Id.Create()
-            Name = "<empty>"
-            Port =
+          { Port =
               if parsed.Contains <@ Port @>
               then parsed.GetResult <@ Port @>
               else Constants.DEFAULT_API_PORT
@@ -674,6 +674,7 @@ Usage:
       let patch : PinGroup =
         { Id = patchid
           Name = "MockClient Patch"
+          Client = id
           Pins = Map.empty }
 
       let loaded =
