@@ -135,3 +135,12 @@ module Constants =
 
   [<Literal>]
   let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Iris"
+
+  //  _____            _                                      _
+  // | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_
+  // |  _| | '_ \ \ / / | '__/ _ \| '_ \| '_ ` _ \ / _ \ '_ \| __|
+  // | |___| | | \ V /| | | | (_) | | | | | | | | |  __/ | | | |_
+  // |_____|_| |_|\_/ |_|_|  \___/|_| |_|_| |_| |_|\___|_| |_|\__|
+
+  [<Literal>]
+  let IRIS_CLIENT_ID_ENV_VAR = "IRIS_CLIENT_ID"
