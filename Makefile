@@ -50,7 +50,7 @@ frontend.fsproj:
 	${BUILD} BuildFrontendFsProj
 
 frontend:
-	${BUILD} BuildDebugFrontend
+	${BUILD} BuildFrontend
 
 web.tests.watch:
 	${BUILD} WatchWebTests

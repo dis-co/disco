@@ -502,10 +502,14 @@ type Pin =
       | EnumPin   data -> EnumSlices(data.Id,data.Values)
       | ColorPin  data -> ColorSlices(data.Id,data.Values)
 
+  #if !FABLE_COMPILER
+
   // ** ToSpread
 
   member pin.ToSpread() =
     pin.Values.ToSpread()
+
+  #endif
 
   // ** SetSlice
 
@@ -2609,6 +2613,8 @@ and Slices =
     | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (uint32 i, el) |> f) arr
     | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (uint32 i, el) |> f) arr
 
+  #if !FABLE_COMPILER
+
   // ** ToSpread
 
   member self.ToSpread() =
@@ -2681,6 +2687,8 @@ and Slices =
           sb.Append '|' |> ignore)
         arr
     string sb
+
+  #endif
 
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___
