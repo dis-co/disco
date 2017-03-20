@@ -41,8 +41,7 @@ module Graph =
   // ** PluginState
 
   type PluginState =
-    { Id: Id
-      Frame: uint64
+    { Frame: uint64
       Initialized: bool
       Update: bool ref
       Pins: Dictionary<Id,PinGroup>
@@ -52,7 +51,7 @@ module Graph =
       Logger: ILogger
       V1Host: IPluginHost
       V2Host: IHDEHost
-      InDebug: ISpread<bool>
+      InClientId: ISpread<Id>
       OutPinGroups: ISpread<PinGroup>
       OutCommands: ISpread<StateMachine>
       OutNodeMappings: ISpread<NodeMapping>
@@ -60,8 +59,7 @@ module Graph =
       Disposables: Dictionary<Id,IDisposable> }
 
     static member Create () =
-      { Id = Id.Create()
-        Frame = 0UL
+      { Frame = 0UL
         Initialized = false
         Update = ref false
         Pins = new Dictionary<Id,PinGroup>()
@@ -71,7 +69,7 @@ module Graph =
         Logger = null
         V1Host = null
         V2Host = null
-        InDebug = null
+        InClientId = null
         OutPinGroups = null
         OutCommands = null
         OutUpdate = null
@@ -263,13 +261,15 @@ module Graph =
   let private parseName (pin: IPin2) =
     either {
       let! np = findPin Settings.DESCRIPTIVE_NAME_PIN pin.ParentNode.Pins
-      return np.[0]
+      return if isNull np.[0] then "" else np.[0]
     }
 
   // ** parseTags
 
   let private parseTags (str: string) =
-     str.Split [| ',' |]
+    match str with
+    | null | "" -> [| |]
+    | _ -> str.Split [| ',' |]
 
   // ** parsePinGroupId
 
@@ -585,7 +585,7 @@ module Graph =
       | Left error ->
         error
         |> string
-        |> Logger.err state.Id "registerHandlers"
+        |> Logger.err state.InClientId.[0] "registerHandlers"
 
     let vecsizeHandler = new EventHandler(vecsizeUpdate)
     let columnsHandler = new EventHandler(vecsizeUpdate)
@@ -593,7 +593,7 @@ module Graph =
     let pagesHandler = new EventHandler(vecsizeUpdate)
 
     let nameHandler = new EventHandler(fun _ _ ->
-      (group, id, np.[0])
+      (group, id, if isNull np.[0] then "" else np.[0])
       |> Msg.PinNameChange
       |> state.Events.Enqueue)
 
@@ -724,7 +724,7 @@ module Graph =
         | Left error ->
           error
           |> string
-          |> Logger.err state.Id "parseSeqWith"
+          |> Logger.err state.InClientId.[0] "parseSeqWith"
           lst)
       []
       pins
@@ -915,7 +915,7 @@ module Graph =
       let group: PinGroup =
         { Id = pin.PinGroup
           Name = node.GetNodePath(true)
-          Client = state.Id
+          Client = state.InClientId.[0]
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
       state.Commands.Add (AddPin pin)
@@ -1074,7 +1074,7 @@ module Graph =
     | Left error ->
       error
       |> string
-      |> Logger.err state.Id "onNodeExposed"
+      |> Logger.err state.InClientId.[0] "onNodeExposed"
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
@@ -1208,7 +1208,7 @@ module Graph =
             | Left error   ->
               error
               |> string
-              |> Logger.err state.Id "processing"
+              |> Logger.err state.InClientId.[0] "processing"
             | Right parsed ->
               List.iter
                 (fun (pin,parsed) ->
@@ -1259,11 +1259,7 @@ type GraphNode() =
 
   [<DefaultValue>]
   [<Input("Client ID", IsSingle = true)>]
-  val mutable InClientId: ISpread<string>
-
-  [<DefaultValue>]
-  [<Input("Debug", IsSingle = true, DefaultValue = 0.0)>]
-  val mutable InDebug: IDiffSpread<bool>
+  val mutable InClientId: ISpread<Id>
 
   [<DefaultValue>]
   [<Output("Commands")>]
@@ -1287,25 +1283,12 @@ type GraphNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
-        let id =
-          try
-            match self.InClientId.[0] with
-              | null | "" -> Id.Create()
-              | str -> Id str
-          with
-            | exn ->
-              let id' = Id.Create()
-              Logger.err id' "Graph.initialize" exn.Message
-              Logger.err id' "Graph.initialize" exn.StackTrace
-              id'
-
         state <-
           { Graph.PluginState.Create() with
-              Id = id
               V1Host = self.V1Host
               V2Host = self.V2Host
               Logger = self.Logger
-              InDebug = self.InDebug
+              InClientId = self.InClientId
               OutUpdate = self.OutUpdate
               OutCommands = self.OutCommands
               OutNodeMappings = self.OutNodeMappings

@@ -28,8 +28,7 @@ module Api =
   // ** PluginState
 
   type PluginState =
-    { Id: Id
-      Frame: uint64
+    { Frame: uint64
       Initialized: bool
       Status: ServiceStatus
       ApiClient: IApiClient
@@ -38,12 +37,11 @@ module Api =
       InCommands: ISpread<StateMachine>
       InServerIp: ISpread<string>
       InServerPort: ISpread<int>
-      InClientId: ISpread<string>
+      InClientId: ISpread<Id>
       InClientName: ISpread<string>
       InClientIp: ISpread<string>
       InClientPort: ISpread<int>
       InPinGroups: ISpread<PinGroup>
-      InDebug: ISpread<bool>
       InReconnect: ISpread<bool>
       InUpdate: ISpread<bool>
       OutState: ISpread<State>
@@ -54,8 +52,7 @@ module Api =
       Disposables: IDisposable list }
 
     static member Create () =
-      { Id = Id.Create()
-        Frame = 0UL
+      { Frame = 0UL
         Initialized = false
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
@@ -69,7 +66,6 @@ module Api =
         InClientIp = null
         InClientPort = null
         InPinGroups = null
-        InDebug = null
         InReconnect = null
         InUpdate = null
         OutState = null
@@ -113,7 +109,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.Id "startClient"
+          |> Logger.err state.InClientId.[0] "startClient"
           IPv4Address "127.0.0.1"
 
       let name =
@@ -127,7 +123,7 @@ module Api =
         with
           | _ -> Constants.DEFAULT_API_CLIENT_PORT
 
-      { Id = state.Id
+      { Id = state.InClientId.[0]
         Name = name
         Role = Role.Renderer
         Status = ServiceStatus.Starting
@@ -141,7 +137,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.Id "startClient"
+          |> Logger.err state.InClientId.[0] "startClient"
           IPv4Address "127.0.0.1"
 
       let port =
@@ -162,7 +158,7 @@ module Api =
     match result with
     | Right client ->
       let apiobs = client.Subscribe(enqueueEvent state)
-      Logger.info state.Id "startClient" "successfully started ApiClient"
+      Logger.info state.InClientId.[0] "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Running
@@ -171,7 +167,7 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.Id "startClient"
+      |> Logger.err state.InClientId.[0] "startClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -189,7 +185,7 @@ module Api =
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Logger.debug state.Id "updateState" "updating state output pins with new state"
+    Logger.debug state.InClientId.[0] "updateState" "updating state output pins with new state"
     match state.ApiClient.State with
     | Right data ->
       state.OutState.[0] <- data
@@ -197,11 +193,11 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.Id "updateState"
+      |> Logger.err state.InClientId.[0] "updateState"
       { state with Status = ServiceStatus.Failed error }
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
-    Logger.debug state.Id "updateCommands" "update command output pins"
+    Logger.debug state.InClientId.[0] "updateCommands" "update command output pins"
     state.OutCommands.AssignFrom cmds
     state
 
@@ -233,20 +229,17 @@ module Api =
             []
             local
         for cmd in commands do
-          cmd
-          |> sprintf "cmd: %A"
-          |> Logger.debug plugstate.Id "mergeGraphState"
           match plugstate.ApiClient.Append cmd with
           | Right () -> ()
           | Left error ->
             error
             |> string
-            |> Logger.err plugstate.Id "mergeGraphState"
+            |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
       plugstate
     | Left error ->
       error
       |> string
-      |> Logger.err plugstate.Id "mergeGraphState"
+      |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
       plugstate
 
   // ** processInputs
@@ -261,11 +254,11 @@ module Api =
             cmd
             |> string
             |> sprintf "%s successfully appended in cluster"
-            |> Logger.debug state.Id "processInputs"
+            |> Logger.debug state.InClientId.[0] "processInputs"
           | Left error ->
             error
             |> string
-            |> Logger.err state.Id "processInputs"
+            |> Logger.err state.InClientId.[0] "processInputs"
       state
     else
       state
@@ -355,7 +348,7 @@ type ApiClientNode() =
 
   [<DefaultValue>]
   [<Input("Client ID", IsSingle = true)>]
-  val mutable InClientId: ISpread<string>
+  val mutable InClientId: ISpread<Id>
 
   [<DefaultValue>]
   [<Input("Client IP", IsSingle = true)>]
@@ -364,10 +357,6 @@ type ApiClientNode() =
   [<DefaultValue>]
   [<Input("Client Port", IsSingle = true)>]
   val mutable InClientPort: ISpread<int>
-
-  [<DefaultValue>]
-  [<Input("Debug", IsSingle = true, DefaultValue = 0.0)>]
-  val mutable InDebug: ISpread<bool>
 
   [<DefaultValue>]
   [<Input("Reconnect", IsSingle = true, IsBang = true)>]
@@ -403,21 +392,8 @@ type ApiClientNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if not initialized then
-        let id =
-          try
-            match self.InClientId.[0] with
-              | null | "" -> Id.Create()
-              | str -> Id str
-          with
-            | exn ->
-              let id' = Id.Create()
-              Logger.err id' "ApiClient.initialize" exn.Message
-              Logger.err id' "ApiClient.initialize" exn.StackTrace
-              id'
-
         state <-
           { Api.PluginState.Create() with
-              Id = id
               Logger = self.Logger
               InCommands = self.InCommands
               InServerIp = self.InServerIp
@@ -427,7 +403,6 @@ type ApiClientNode() =
               InClientIp = self.InClientIp
               InClientPort = self.InClientPort
               InPinGroups = self.InPinGroups
-              InDebug = self.InDebug
               InReconnect = self.InReconnect
               InUpdate = self.InUpdate
               OutState = self.OutState

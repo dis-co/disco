@@ -272,6 +272,9 @@
     <Compile Include="../../Iris/Nodes/Nodes/LoggingNode.fs">
       <Link>LoggingNode.fs</Link>
     </Compile>
+    <Compile Include="../../Iris/Nodes/Nodes/ClientIdNode.fs">
+      <Link>ClientIdNode.fs</Link>
+    </Compile>
     <!-- END NODES -->
   </ItemGroup>
   <PropertyGroup>

@@ -398,7 +398,6 @@ module ApiClient =
 
   let private requestUpdate (socket: Req) (sm: StateMachine) =
     try
-      Logger.debug (Id "Client") "requestUpdate" (sprintf " sm: %A" sm)
       let result : Either<IrisError,ApiResponse> =
         ServerApiRequest.Update sm
         |> Binary.encode
@@ -417,7 +416,7 @@ module ApiClient =
         |> Either.fail
     with
       | exn ->
-        exn.Message
+        (sprintf "Exception: %s\n%s" exn.Message exn.StackTrace)
         |> Error.asClientError (tag "requestUpdate")
         |> Either.fail
 
