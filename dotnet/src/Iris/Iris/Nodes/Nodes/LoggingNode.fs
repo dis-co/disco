@@ -22,8 +22,29 @@ open FSharp.Reflection
 
 type private sa = string array
 
+module Logging =
+
+  [<Literal>]
+  let ENUM_NAME = "Iris.Core.LogLevel"
+
 [<PluginInfo(Name="Logger", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type LoggingNode() =
+
+  [<DefaultValue>]
+  [<Input("Client ID", IsSingle = true)>]
+  val mutable InId: ISpread<Id>
+
+  [<DefaultValue>]
+  [<Input("Log", IsSingle = true)>]
+  val mutable InLog: ISpread<string>
+
+  [<DefaultValue>]
+  [<Input("Level", IsSingle = true, EnumName = Logging.ENUM_NAME)>]
+  val mutable InLevel: ISpread<EnumEntry>
+
+  [<DefaultValue>]
+  [<Input("Update", IsSingle = true, IsBang = true)>]
+  val mutable InUpdate: ISpread<bool>
 
   [<DefaultValue>]
   [<Output("Call Site")>]
@@ -45,11 +66,23 @@ type LoggingNode() =
   let mutable obs = Unchecked.defaultof<IDisposable>
   let logs = new ConcurrentQueue<LogEvent>();
 
+  do
+    let cases =
+      FSharpType.GetUnionCases(typeof<LogLevel>)
+      |> Array.map (fun case -> case.Name)
+
+    EnumManager.UpdateEnum(Logging.ENUM_NAME, cases.[0], cases);
+
   interface IPluginEvaluate with
     member self.Evaluate (_: int) : unit =
       if not initialized then
         obs <- Logger.subscribe logs.Enqueue
         initialized <- true
+
+      if self.InUpdate.[0] && not (Util.isNullReference self.InId.[0]) then
+        match LogLevel.TryParse self.InLevel.[0].Name with
+        | Right level -> Logger.log level self.InId.[0] "Log" self.InLog.[0]
+        | _ -> ()
 
       if logs.IsEmpty then
         self.OutCallSite.SliceCount <- 1
