@@ -198,8 +198,8 @@ module Api =
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
     Logger.debug state.InClientId.[0] "updateCommands" "update command output pins"
+    state.OutCommands.SliceCount <- (Array.length cmds)
     state.OutCommands.AssignFrom cmds
-    state
 
   // ** mergeGraphState
 
@@ -287,11 +287,13 @@ module Api =
           stateUpdates <- stateUpdates + 1
           newstate <- mergeGraphState state
         | false, _ -> run <- false
+
+      cmdUpdates.ToArray()
+      |> updateCommands newstate
+
       if stateUpdates > 0 || cmdUpdates.Count > 0 then
         state.OutUpdate.[0] <- true
-        cmdUpdates.ToArray()
-        |> updateCommands newstate
-        |> updateState
+        updateState state
       else
         state.OutUpdate.[0] <- false
         newstate
