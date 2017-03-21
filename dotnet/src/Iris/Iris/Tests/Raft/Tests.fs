@@ -124,7 +124,10 @@ module RaftTests =
         server_increment_lastApplied_when_lastApplied_lt_commitidx
 
         server_periodic_elapses_election_timeout
-        server_periodic_should_trigger_snapshotting
+
+        // FIXME: auto-snapshotting is currently disabled
+        // server_periodic_should_trigger_snapshotting
+
         server_periodic_executes_all_cfg_changes
 
         server_should_apply_each_log_when_receiving_a_snapshot
