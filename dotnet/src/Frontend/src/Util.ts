@@ -46,3 +46,9 @@ export function touchesElement(el: HTMLElement, x: number, y: number) {
   }
   return false;
 }
+
+export function findParentTag(el: HTMLElement, tagName: string): HTMLElement {
+  var parent = el.parentElement;
+  return parent.tagName.toUpperCase() === tagName.toUpperCase()
+    ? parent : findParentTag(parent, tagName);
+}

@@ -2,7 +2,7 @@
 
 ### Introduction
 
-In this quick start guide, we'll demonstratet how to start a 2-node
+In this quick start guide, we'll demonstrate how to start a 2-node
 cluster on a single machine. This setup is of course somewhat
 contrived, but serves to demonstrate the workflow.
 

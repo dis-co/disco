@@ -35,43 +35,59 @@ type SharedWorker<'data>(url: string) =
 // | |   | | |/ _ \ '_ \| __|
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
-type [<Pojo; NoComparison>] StateInfo =
-  { context: ClientContext; session: Session; state: State }
 
-and ClientContext private (worker: SharedWorker<string>) =
+type [<Pojo; NoComparison>] StateInfo =
+  { session: Session; state: State }
+
+and ClientContext private () =
   let mutable session : Id option = None
+  let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
 
-  static member Start() = promise {
+  static let mutable singleton: ClientContext option = None
+
+  static member Singleton =
+    match singleton with
+    | Some singleton -> singleton
+    | None ->
+      let client = new ClientContext()
+      singleton <- Some client
+      client
+
+  member self.Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
-    let client = new ClientContext(me)
     me.OnError <- fun e -> printfn "%A" e.Message
-    me.Port.OnMessage <- client.MsgHandler
-    do! client.ConnectWithWebSocket()
-    return client
+    me.Port.OnMessage <- self.MsgHandler
+    worker <- Some me
+    do! self.ConnectWithWebSocket()
   }
 
-  member __.ConnectWithWebSocket() =
+  member self.ConnectWithWebSocket() =
     (Commands.GetWebSocketAddress, [])
     ||> Fetch.postRecord Constants.WEP_API_COMMAND
     |> Promise.bind (fun res -> res.text())
     |> Promise.map (fun address ->
         ClientMessage.Connect address
-        |> toJson |> worker.Port.PostMessage)
+        |> toJson |> self.Worker.Port.PostMessage)
 
   member self.Session =
     match session with
-    | Some token -> token
+    | Some session -> session
+    | None -> failwith "Client not initialized"
+
+  member self.Worker: SharedWorker<string> =
+    match worker with
+    | Some worker -> worker
     | None -> failwith "Client not initialized"
 
   member self.Trigger(msg: ClientMessage<StateMachine>) =
-    worker.Port.PostMessage(toJson msg)
+    self.Worker.Port.PostMessage(toJson msg)
 
   member self.Post(ev: StateMachine) =
     printfn "Will send message %A" ev
     ClientMessage.Event(self.Session, ev)
     |> toJson
-    |> worker.Port.PostMessage
+    |> self.Worker.Port.PostMessage
 
   member self.MsgHandler (msg : MessageEvent<string>) : unit =
     let data = ofJson<ClientMessage<State>> msg.Data
@@ -128,5 +144,5 @@ and ClientContext private (worker: SharedWorker<string>) =
     member self.Dispose() =
       ClientMessage.Close(self.Session)
       |> toJson
-      |> worker.Port.PostMessage
+      |> self.Worker.Port.PostMessage
 

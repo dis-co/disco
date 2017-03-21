@@ -1,0 +1,135 @@
+.ui-icon-close, .ui-icon-copy {
+  cursor: pointer;
+}
+
+.iris-highlight-blue {
+  border: 2px solid blue;
+}
+
+.iris-dropdown {
+  display: inline-block;
+  font-size: 1.3em;
+  user-select: none;
+  cursor: pointer;
+
+  .iris-dropdown-options {
+    position: absolute;
+    z-index: 100;
+    background: white;
+    border: 1px solid gray;
+    margin: 0;
+    padding: 0;
+
+    li {
+      list-style: none;
+      margin-left: 0;
+      padding: 10px;
+
+      &:hover {
+        background-color: lightgray;
+        /*cursor: text;*/
+        transition: 0.1s;
+      }
+    }
+  }
+}
+
+.iris-widget {
+  height: 100%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+
+  .iris-draggable-handle {
+    cursor: move;
+    margin: 0;
+    padding: 10px;
+    background: @iris-grey;
+    display: flex;
+
+    // Expand the first child to push
+    // the icons to the side
+    & > :first-child {
+      flex: 1;
+    }
+  }
+
+  & > :nth-child(2) {
+    overflow-x: auto;
+    flex: 1;
+  }
+
+}
+
+.iris-pingroup {
+  margin: 5px;
+  & > p {
+    margin-left: 10px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    border-bottom: 1px solid black;
+  }
+}
+
+// FLEX --------------------
+.iris-flex-1 {
+  flex: 1
+}
+
+.iris-flex-2 {
+  flex: 2
+}
+
+.iris-flex-3 {
+  flex: 3
+}
+
+.iris-flex-4 {
+  flex: 4
+}
+// -------------------------
+
+// .iris-tooltip {
+//   height: 100px;
+//   background-color: #EBEBEB;
+//   position: absolute;
+//   bottom: 35px;
+//   right: 10px;
+//   padding: 10px;
+//   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+//   display: none;
+//   transition: 0.8s;
+//   z-index: 100000000;
+// }
+
+// .shadow {
+//   height: 20px;
+//   width: 13px;
+//   background-color: #fff;
+//   position: absolute;
+//   right: 0;
+//   top: 0;
+//   // background: url(shadow.png)
+// }
+
+// .horiz-shadow {
+//   height: 7px;
+//   width: 100%;;
+//   background-color: #F0F;
+//   position: absolute;
+//   bottom: 0px;
+//   // background: url(horiz-shadow.png)
+// }
+
+// .scroller {
+//   width: 4px;
+//   height: 60%;
+//   background: #555;
+//   margin: 25px auto 30px auto;
+//   transition: 0.1s;
+//   opacity: 0;
+// }
+
+// .scroller:hover {
+//   opacity: 1;
+// }

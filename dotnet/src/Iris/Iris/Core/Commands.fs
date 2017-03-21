@@ -11,10 +11,10 @@ open Iris.Core.Discovery
 type CreateProjectOptions =
   { name: string
   ; ipAddress: string
-  ; gitPort: uint16
   ; apiPort: uint16
+  ; raftPort: uint16
   ; webSocketPort: uint16 
-  ; raftPort: uint16 }
+  ; gitPort: uint16 }
 
 type Command =
   | Shutdown

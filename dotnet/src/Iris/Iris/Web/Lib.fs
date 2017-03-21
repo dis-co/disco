@@ -44,10 +44,6 @@ type [<Pojo>] TreeNode =
 // VALUES ----------------------------------------------------
 let EMPTY = Constants.EMPTY
 
-// Leaving a global reference to the ClientContext for simplicity,
-// we can think later of a better pattern
-let mutable Context = Unchecked.defaultof<ClientContext>
-
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
@@ -88,7 +84,7 @@ let removeMember(info: StateInfo, memId: Id) =
   match Map.tryFind memId info.state.Project.Config.Cluster.Members with
   | Some mem ->
     RemoveMember mem
-    |> info.context.Post
+    |> ClientContext.Singleton.Post
   | None ->
     printfn "Couldn't find mem with Id %O" memId
 
@@ -96,7 +92,7 @@ let createMemberInfo() =
   let m = Id.Create() |> Member.create
   string m.Id, m.HostName, string m.IpAddr, string m.Port, string m.WsPort, string m.GitPort, string m.ApiPort
 
-let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
+let addMember(id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
   try
     { Member.create (Id id) with
         HostName = host
@@ -106,7 +102,7 @@ let addMember(info: StateInfo, id, host, ip, port: string, wsPort: string, gitPo
         GitPort = uint16 gitPort
         ApiPort = uint16 apiPort }
     |> AddMember
-    |> info.context.Post
+    |> ClientContext.Singleton.Post
   with
   | exn -> printfn "Couldn't create mem: %s" exn.Message
 
@@ -142,17 +138,17 @@ let shutdown() =
 let unloadProject() =
   UnloadProject |> postCommandAndForget
 
-let loadProject(info: StateInfo, project, username, password) =
+let loadProject(project, username, password) =
   LoadProject(project, username, password)
-  |> postCommand () (fun _ -> info.context.ConnectWithWebSocket() |> ignore)
+  |> postCommand () (fun _ -> ClientContext.Singleton.ConnectWithWebSocket() |> ignore)
 
-let createProject(_info: StateInfo, projectName: string, ipAddress, gitPort, webSocketPort, apiPort, raftPort) =
-  { name = projectName
-  ; ipAddress = ipAddress
-  ; gitPort = gitPort
-  ; webSocketPort = webSocketPort
-  ; apiPort = apiPort
-  ; raftPort = raftPort }
+let createProject(info: obj) =
+  { name          = !!info?name
+  ; ipAddress     = !!info?ipAddress
+  ; apiPort       = !!info?apiPort
+  ; raftPort      = !!info?raftPort
+  ; webSocketPort = !!info?webSocketPort
+  ; gitPort       = !!info?gitPort }
   |> CreateProject
   |> postCommandAndForget
 
@@ -196,15 +192,15 @@ let project2tree (p: IrisProject) =
   |] |> node "Project"
 
 let startContext f =
-  ClientContext.Start()
-  |> Promise.map (fun context ->
-    Context <- context
+  let context = ClientContext.Singleton
+  context.Start()
+  |> Promise.map (fun () ->
     context.OnMessage
     |> Observable.add (function
       | ClientMessage.Render state ->
         match Map.tryFind context.Session state.Sessions with
         | Some session ->
-          f { context = context; session = session; state = state }
+          f { session = session; state = state }
         | None -> ()
       | _ -> ())
   )
@@ -236,9 +232,9 @@ let updatePin(pin: Pin, rowIndex, newValue: obj) =
   let pin =
     match pin with
     | StringPin pin -> StringPin { pin with Values = updateArray rowIndex newValue pin.Values }
-    | NumberPin pin -> failwith "TO BE IMPLEMENTED"
-    | BoolPin   pin -> failwith "TO BE IMPLEMENTED"
-    | BytePin   pin -> failwith "TO BE IMPLEMENTED" 
-    | EnumPin   pin -> failwith "TO BE IMPLEMENTED" 
-    | ColorPin  pin -> failwith "TO BE IMPLEMENTED"
-  Context.Post(UpdatePin pin)
+    | NumberPin _pin -> failwith "TO BE IMPLEMENTED"
+    | BoolPin   _pin -> failwith "TO BE IMPLEMENTED"
+    | BytePin   _pin -> failwith "TO BE IMPLEMENTED" 
+    | EnumPin   _pin -> failwith "TO BE IMPLEMENTED" 
+    | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
+  ClientContext.Singleton.Post(UpdatePin pin)

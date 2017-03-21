@@ -1,4 +1,4 @@
-# Instructions
+# Instructions to run the test package
 
 - Run `createproject.cmd [IP_ADDRESS]` to create a project, replacing `[IP_ADDRESS]` with your machine IP address (e.g. `192.168.8.11`). The project will be named "iris_sample" and will be placed in the default project folder (C:\Iris). You only need to do this step once.
 
