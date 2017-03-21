@@ -1704,9 +1704,8 @@ module Raft =
           do! updateLog snapshot |> modify
           match snapshot.Data with
           | Some entry -> cbs.PersistSnapshot entry
-          | _          ->
-            do! error "maybeSnapshot" "Prepared snapshot was empty. Doing nothing."
-        | _ -> do! error "maybeSnapshot" "No snapshot was created. Doing nothing."
+          | None -> ()
+        | _ -> ()
     }
 
   ///////////////////////////////////////////////
@@ -2209,5 +2208,5 @@ module Raft =
       if lai < coi then
         do! applyEntries ()
 
-      do! maybeSnapshot ()
+      // do! maybeSnapshot ()
     }
