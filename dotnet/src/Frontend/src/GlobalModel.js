@@ -5,7 +5,7 @@ export default class GlobalModel {
   constructor() {
     Iris.startContext(info => {
       if (this.logSubscription == null) {
-        this.logSubscription = Iris.subscribeToLogs(info.context, log => {
+        this.logSubscription = Iris.subscribeToLogs(log => {
           this.addLog(log);
         })
       }

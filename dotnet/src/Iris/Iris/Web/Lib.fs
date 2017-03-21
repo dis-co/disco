@@ -75,8 +75,8 @@ let notify(msg: string) =
         | _ -> ())
   | _ -> ()
 
-let subscribeToLogs(ctx: ClientContext, f:ClientLog->unit): IDisposable =
-    ctx.OnMessage.Subscribe (function
+let subscribeToLogs(f:ClientLog->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
       | ClientMessage.ClientLog log -> f log
       | _ -> ())
 
