@@ -37,6 +37,9 @@ client:
 run.client:
 	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe"
 
+run.service:
+	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/Iris/iris.exe start --project=${PROJECT}"
+
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
