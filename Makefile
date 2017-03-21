@@ -35,7 +35,10 @@ client:
 	${BUILD} BuildDebugMockClient
 
 run.client:
-	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe"
+	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
+
+run.frontend:
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR)/src/Frontend && npm run start"
 
 run.service:
 	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/Iris/iris.exe start --project=${PROJECT}"
