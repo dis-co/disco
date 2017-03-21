@@ -18,7 +18,7 @@ open Iris.Nodes
 // |_| \_\__,_|_|  \__|\____\___/|_| |_|_| |_|\__, |
 //                                            |___/
 
-[<PluginInfo(Name="RaftConfig", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="RaftConfig", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type RaftConfigNode() =
 
   [<Import();DefaultValue>]

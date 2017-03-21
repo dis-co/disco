@@ -39,7 +39,7 @@ type Behavior =
 
   static member TryParse (str: string) =
     match String.toLower str with
-    | "simple"    -> Right Simple
+    | "string" | "simple" -> Right Simple
     | "multiline" -> Right MultiLine
     | "filename"  -> Right FileName
     | "directory" -> Right Directory
@@ -141,7 +141,7 @@ type ConnectionDirection =
         |> Error.asParseError "ConnectionDirection.TryParse"
         |> Either.fail
 
-  member direction.ToOffset(builder: FlatBufferBuilder) =
+  member direction.ToOffset(_: FlatBufferBuilder) =
     match direction with
     | Input -> ConnectionDirectionFB.InputFB
     | Output -> ConnectionDirectionFB.OutputFB
@@ -362,6 +362,18 @@ type Pin =
       | EnumPin     data -> data.Name
       | ColorPin    data -> data.Name
 
+  // ** Direction
+
+  member self.Direction
+    with get () =
+      match self with
+      | StringPin   data -> data.Direction
+      | NumberPin   data -> data.Direction
+      | BoolPin     data -> data.Direction
+      | BytePin     data -> data.Direction
+      | EnumPin     data -> data.Direction
+      | ColorPin    data -> data.Direction
+
   // ** PinGroup
 
   member self.PinGroup
@@ -386,6 +398,52 @@ type Pin =
       | EnumPin     _ -> "EnumPin"
       | ColorPin    _ -> "ColorPin"
 
+  // ** GetTags
+
+  member self.GetTags
+    with get () =
+      match self with
+      | StringPin data -> data.Tags
+      | NumberPin data -> data.Tags
+      | BoolPin   data -> data.Tags
+      | BytePin   data -> data.Tags
+      | EnumPin   data -> data.Tags
+      | ColorPin  data -> data.Tags
+
+  // ** VecSize
+
+  member self.VecSize
+    with get () =
+      match self with
+      | StringPin data -> data.VecSize
+      | NumberPin data -> data.VecSize
+      | BoolPin   data -> data.VecSize
+      | BytePin   data -> data.VecSize
+      | EnumPin   data -> data.VecSize
+      | ColorPin  data -> data.VecSize
+
+  // ** SetVecSize
+
+  member self.SetVecSize vecSize =
+    match self with
+    | StringPin   data -> StringPin   { data with VecSize = vecSize }
+    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
+    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
+    | BytePin     data -> BytePin     { data with VecSize = vecSize }
+    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
+    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
+
+  // ** SetDirection
+
+  member self.SetDirection direction =
+    match self with
+    | StringPin   data -> StringPin   { data with Direction = direction }
+    | NumberPin   data -> NumberPin   { data with Direction = direction }
+    | BoolPin     data -> BoolPin     { data with Direction = direction }
+    | BytePin     data -> BytePin     { data with Direction = direction }
+    | EnumPin     data -> EnumPin     { data with Direction = direction }
+    | ColorPin    data -> ColorPin    { data with Direction = direction }
+
   // ** SetName
 
   member self.SetName name =
@@ -396,6 +454,17 @@ type Pin =
     | BytePin     data -> BytePin     { data with Name = name }
     | EnumPin     data -> EnumPin     { data with Name = name }
     | ColorPin    data -> ColorPin    { data with Name = name }
+
+  // ** SetTags
+
+  member self.SetTags tags =
+    match self with
+    | StringPin   data -> StringPin   { data with Tags = tags }
+    | NumberPin   data -> NumberPin   { data with Tags = tags }
+    | BoolPin     data -> BoolPin     { data with Tags = tags }
+    | BytePin     data -> BytePin     { data with Tags = tags }
+    | EnumPin     data -> EnumPin     { data with Tags = tags }
+    | ColorPin    data -> ColorPin    { data with Tags = tags }
 
   // ** Slices
 
@@ -420,6 +489,27 @@ type Pin =
       | BytePin   data -> data.Labels
       | EnumPin   data -> data.Labels
       | ColorPin  data -> data.Labels
+
+  // ** Values
+
+  member pin.Values
+    with get () =
+      match pin with
+      | StringPin data -> StringSlices(data.Id,data.Values)
+      | NumberPin data -> NumberSlices(data.Id,data.Values)
+      | BoolPin   data -> BoolSlices(data.Id,data.Values)
+      | BytePin   data -> ByteSlices(data.Id,data.Values)
+      | EnumPin   data -> EnumSlices(data.Id,data.Values)
+      | ColorPin  data -> ColorSlices(data.Id,data.Values)
+
+  #if !FABLE_COMPILER
+
+  // ** ToSpread
+
+  member pin.ToSpread() =
+    pin.Values.ToSpread()
+
+  #endif
 
   // ** SetSlice
 
@@ -588,7 +678,7 @@ type Pin =
 
   // ** static FileName
 
-  static member FileName(id, name, group, tags, filemask, values) =
+  static member FileName(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
                 PinGroup   = group
@@ -602,7 +692,7 @@ type Pin =
 
   // ** static Directory
 
-  static member Directory(id, name, group, tags, filemask, values) =
+  static member Directory(id, name, group, tags, values) =
     StringPin { Id         = id
                 Name       = name
                 PinGroup   = group
@@ -2522,6 +2612,83 @@ and Slices =
     | ByteSlices     (_,arr) -> Array.mapi (fun i el -> ByteSlice   (uint32 i, el) |> f) arr
     | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (uint32 i, el) |> f) arr
     | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (uint32 i, el) |> f) arr
+
+  #if !FABLE_COMPILER
+
+  // ** ToSpread
+
+  member self.ToSpread() =
+    let sb = new StringBuilder()
+    match self with
+    | StringSlices(_,arr) ->
+      Array.iteri
+        (fun i (str: string) ->
+          let escape =
+            if isNull str then false
+            else str.IndexOf ' ' > -1
+          let value =
+            if isNull str || str.IndexOf '|' = -1 then
+              str
+            else
+              str.Replace("|","||")
+          if i > 0  then sb.Append ',' |> ignore
+          if escape then sb.Append '|' |> ignore
+          sb.Append value |> ignore
+          if escape then sb.Append '|' |> ignore)
+        arr
+    | NumberSlices(_,arr) ->
+      Array.iteri
+        (fun i (num: double) ->
+          if i > 0 then sb.Append ',' |> ignore
+          num |> string |> sb.Append |> ignore)
+        arr
+    | BoolSlices(_,arr) ->
+      Array.iteri
+        (fun i (value: bool) ->
+          if i > 0 then sb.Append ',' |> ignore
+          match value with
+          | true  -> "1" |> string |> sb.Append |> ignore
+          | false -> "0" |> string |> sb.Append |> ignore)
+        arr
+    | ByteSlices(_,arr) ->
+      Array.iteri
+        (fun i (value: Binary.Buffer) ->
+          if i > 0 then sb.Append ',' |> ignore
+          sb.Append '|' |> ignore
+          value |> String.encodeBase64 |> sb.Append |> ignore
+          sb.Append '|' |> ignore)
+        arr
+    | EnumSlices(_,arr) ->
+      Array.iteri
+        (fun i (prop: Property) ->
+          let escape = prop.Value.IndexOf ' ' > -1
+          if i > 0  then sb.Append ',' |> ignore
+          if escape then sb.Append '|' |> ignore
+          prop.Value |> sb.Append |> ignore
+          if escape then sb.Append '|' |> ignore)
+        arr
+    | ColorSlices(_,arr) ->
+      Array.iteri
+        (fun i (color: ColorSpace) ->
+          if i > 0 then sb.Append ',' |> ignore
+          sb.Append '|' |> ignore
+          let rgba =
+            match color with
+            | RGBA rgba -> rgba
+            | HSLA hsla -> hsla.ToRGBA()
+          sb.Append(float rgba.Red / 255.0)
+            .Append(',')
+            .Append(float rgba.Green / 255.0)
+            .Append(',')
+            .Append(float rgba.Blue / 255.0)
+            .Append(',')
+            .Append(float rgba.Alpha / 255.0)
+          |> ignore
+          sb.Append '|' |> ignore)
+        arr
+    string sb
+
+  #endif
 
   //  _   _      _
   // | | | | ___| |_ __   ___ _ __ ___

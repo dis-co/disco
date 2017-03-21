@@ -18,7 +18,7 @@ open Iris.Nodes
 //   |_| |_|_| |_| |_|_|_| |_|\__, |
 //                            |___/
 
-[<PluginInfo(Name="TimingConfig", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="TimingConfig", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type TimingConfigNode() =
 
   [<Import();DefaultValue>]

@@ -17,7 +17,7 @@ open Iris.Nodes
 //  / ___ \ |_| | (_| | | (_) |
 // /_/   \_\__,_|\__,_|_|\___/
 
-[<PluginInfo(Name="AudioConfig", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="AudioConfig", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type AudioConfigNode() =
 
   [<Import();DefaultValue>]

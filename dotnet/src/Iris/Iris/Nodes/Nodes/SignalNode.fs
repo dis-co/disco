@@ -18,7 +18,7 @@ open Iris.Nodes
 // |____/|_|\__, |_| |_|\__,_|_|
 //          |___/
 
-[<PluginInfo(Name="Signal", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Signal", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type SignalNode() =
 
   [<Import();DefaultValue>]

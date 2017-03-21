@@ -35,8 +35,8 @@ module SerializationTests =
     ;  Pin.Toggle    (mk(), "Toggle",    mk(), mktags (), [| true  |])
     ;  Pin.String    (mk(), "string",    mk(), mktags (), [| "one" |])
     ;  Pin.MultiLine (mk(), "multiline", mk(), mktags (), [| "two" |])
-    ;  Pin.FileName  (mk(), "filename",  mk(), mktags (), "haha", [| "three" |])
-    ;  Pin.Directory (mk(), "directory", mk(), mktags (), "hmmm", [| "four"  |])
+    ;  Pin.FileName  (mk(), "filename",  mk(), mktags (), [| "three" |])
+    ;  Pin.Directory (mk(), "directory", mk(), mktags (), [| "four"  |])
     ;  Pin.Url       (mk(), "url",       mk(), mktags (), [| "five" |])
     ;  Pin.IP        (mk(), "ip",        mk(), mktags (), [| "six"  |])
     ;  Pin.Number    (mk(), "number",    mk(), mktags (), [| double 3.0 |])
@@ -57,7 +57,10 @@ module SerializationTests =
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create(); Name = "PinGroup 3"; Pins = pins }
+    { Id = Id.Create()
+      Name = "PinGroup 3"
+      Client = Id.Create()
+      Pins = pins }
 
   let mkCueList _ : CueList =
     { Id = Id.Create(); Name = "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }

@@ -18,7 +18,7 @@ open Iris.Nodes
 // |_| \_\___|\__, |_|\___/|_| |_|_|  |_|\__,_| .__/
 //            |___/                           |_|
 
-[<PluginInfo(Name="RegionMap", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="RegionMap", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type RegionMapNode() =
 
   [<Import();DefaultValue>]

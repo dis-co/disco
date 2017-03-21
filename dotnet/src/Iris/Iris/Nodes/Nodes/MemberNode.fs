@@ -17,7 +17,7 @@ open Iris.Nodes
 // | |  | |  __/ | | | | | |_) |  __/ |
 // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
-[<PluginInfo(Name="Member", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Member", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type MemberNode() =
 
   [<Import();DefaultValue>]

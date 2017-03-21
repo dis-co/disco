@@ -679,6 +679,7 @@ let CueFB : CueFBConstructor = failwith "JS only"
 type PinGroupFB =
   abstract Id: string
   abstract Name: string
+  abstract Client: string
   abstract PinsLength: int
   abstract Pins: int -> PinFB
 
@@ -687,6 +688,7 @@ type PinGroupFBConstructor =
   abstract StartPinGroupFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddClient: builder: FlatBufferBuilder * client: Offset<string> -> unit
   abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
   abstract EndPinGroupFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsPinGroupFB: buffer: ByteBuffer -> PinGroupFB

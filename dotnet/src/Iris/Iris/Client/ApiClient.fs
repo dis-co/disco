@@ -372,10 +372,7 @@ module ApiClient =
 
   let private handlePing (state: ClientState) =
     match state with
-    | Loaded data ->
-      "Ping reuqest received"
-      |> Logger.debug data.Client.Id (tag "handlePing")
-      Loaded { data with Elapsed = 0u }
+    | Loaded data -> Loaded { data with Elapsed = 0u }
     | idle -> idle
 
   // ** handleSetState
@@ -419,13 +416,13 @@ module ApiClient =
         |> Either.fail
     with
       | exn ->
-        exn.Message
+        (sprintf "Exception: %s\n%s" exn.Message exn.StackTrace)
         |> Error.asClientError (tag "requestUpdate")
         |> Either.fail
 
-  // ** maybeDisgroup
+  // ** maybeDispatch
 
-  let private maybeDisgroup (data: ClientStateData) (sm: StateMachine) =
+  let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
     match sm with
     | UpdateSlices _ -> data.Store.Dispatch sm
     | _ -> ()
@@ -438,7 +435,7 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDisgroup data sm
+      maybeDispatch data sm
       match requestUpdate data.Socket sm with
       | Right () ->
         Reply.Ok
@@ -714,6 +711,17 @@ module ApiClient =
 
               member self.RemovePin(pin: Pin) =
                 match postCommand agent (fun chan -> Msg.Request(chan, RemovePin pin)) with
+                | Right Reply.Ok -> Either.succeed ()
+                | Right other ->
+                  sprintf "Unexpected Reply from ApiAgent: %A" other
+                  |> Error.asClientError (tag "RemovePin")
+                  |> Either.fail
+                | Left error ->
+                  error
+                  |> Either.fail
+
+              member self.Append(cmd: StateMachine) =
+                match postCommand agent (fun chan -> Msg.Request(chan, cmd)) with
                 | Right Reply.Ok -> Either.succeed ()
                 | Right other ->
                   sprintf "Unexpected Reply from ApiAgent: %A" other

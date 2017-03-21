@@ -307,6 +307,9 @@
     <Compile Include="..\..\Iris\Tests\Raft\ServerTests.fs">
       <Link>ServerTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\PinTests.fs">
+      <Link>PinTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\ApiTests.fs">
       <Link>ApiTests.fs</Link>
     </Compile>

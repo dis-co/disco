@@ -17,7 +17,7 @@ open Iris.Nodes
 //  ___) |  __/\__ \__ \ | (_) | | | |
 // |____/ \___||___/___/_|\___/|_| |_|
 
-[<PluginInfo(Name="Session", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Session", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type SessionNode() =
 
   [<Import();DefaultValue>]

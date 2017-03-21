@@ -258,6 +258,7 @@ table PinFB {
 table PinGroupFB {
       Id:   string;
       Name: string;
+      Client: string;
       Pins: [PinFB];
 }
 

@@ -17,7 +17,7 @@ open Iris.Nodes
 // |  __/ (_| | || (__| | | |
 // |_|   \__,_|\__\___|_| |_|
 
-[<PluginInfo(Name="PinGroup", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="PinGroup", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type PinGroupNode() =
 
   [<Import();DefaultValue>]

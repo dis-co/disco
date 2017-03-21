@@ -18,7 +18,7 @@ open Iris.Nodes
 // |_| |_|\___/|___/\__|\____|_|  \___/ \__,_| .__/
 //                                           |_|
 
-[<PluginInfo(Name="HostGroup", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="HostGroup", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type HostGroupNode() =
 
   [<Import();DefaultValue>]

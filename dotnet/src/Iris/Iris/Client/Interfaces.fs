@@ -18,9 +18,7 @@ open Iris.Serialization
 // |___|_|  |_|___/____/ \___|_|    \_/ \___|_|
 
 type IrisServer =
-  { Id: Id
-    Port: Port
-    Name: string
+  { Port: Port
     IpAddress: IpAddress }
 
 // * ClientEvent
@@ -67,3 +65,4 @@ type IApiClient =
   abstract UpdatePin: Pin -> Either<IrisError,unit>
   abstract UpdateSlices: Slices -> Either<IrisError,unit>
   abstract RemovePin: Pin -> Either<IrisError,unit>
+  abstract Append: StateMachine -> Either<IrisError,unit>

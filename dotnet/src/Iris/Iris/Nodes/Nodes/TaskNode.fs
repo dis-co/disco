@@ -17,7 +17,7 @@ open Iris.Nodes
 //   | | (_| \__ \   <
 //   |_|\__,_|___/_|\_\
 
-[<PluginInfo(Name="Task", Category="Iris", AutoEvaluate=true)>]
+[<PluginInfo(Name="Task", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type TaskNode() =
 
   [<Import();DefaultValue>]

@@ -15,6 +15,7 @@ module StoreTests =
     let group : PinGroup =
       { Id   = Id "0xb4d1d34"
       ; Name = "group-1"
+      ; Client = Id.Create()
       ; Pins = Map.empty
       }
 

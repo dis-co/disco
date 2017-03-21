@@ -422,7 +422,7 @@ module Raft =
           None
 
         member self.RetrieveSnapshot () =
-          printfn "PrepareSnapshot"
+          printfn "RetrieveSnapshot"
           None
 
         member self.PersistSnapshot log =
