@@ -224,17 +224,17 @@ let pinToKeyValuePairs (pin: Pin) =
   | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels  
   | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels  
 
-let updatePin(pin: Pin, rowIndex, newValue: obj) =
+let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
     let newArray = Array.copy ar
     newArray.[i] <- unbox v
     newArray
-  let pin =
-    match pin with
-    | StringPin pin -> StringPin { pin with Values = updateArray rowIndex newValue pin.Values }
-    | NumberPin _pin -> failwith "TO BE IMPLEMENTED"
-    | BoolPin   _pin -> failwith "TO BE IMPLEMENTED"
-    | BytePin   _pin -> failwith "TO BE IMPLEMENTED" 
-    | EnumPin   _pin -> failwith "TO BE IMPLEMENTED" 
-    | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  ClientContext.Singleton.Post(UpdatePin pin)
+  match pin with
+  | StringPin pin ->
+    StringSlices(pin.Id, updateArray rowIndex newValue pin.Values)
+  | NumberPin _pin -> failwith "TO BE IMPLEMENTED"
+  | BoolPin   _pin -> failwith "TO BE IMPLEMENTED"
+  | BytePin   _pin -> failwith "TO BE IMPLEMENTED" 
+  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED" 
+  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
+  |> UpdateSlices |> ClientContext.Singleton.Post
