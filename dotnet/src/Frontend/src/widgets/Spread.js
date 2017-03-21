@@ -115,6 +115,6 @@ export default class Spread {
 
   update(rowIndex, newValue) {
     debugger;
-    Iris.updatePin(this.pin, rowIndex, newValue);
+    Iris.updateSlices(this.pin, rowIndex, newValue);
   }
 }
