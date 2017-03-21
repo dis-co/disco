@@ -4,6 +4,7 @@ open System
 open System.ComponentModel.Composition
 open VVVV.PluginInterfaces.V1
 open VVVV.PluginInterfaces.V2
+open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Utils.VColor
 open VVVV.Utils.VMath
 open VVVV.Core.Logging
@@ -44,15 +45,15 @@ type PinWriteNode() =
         for mapping in self.InNodeMappings do
           for cmd in self.InCommands do
             match cmd with
+            | UpdatePin pin ->
+              if pin.Id = mapping.PinId then
+                match mapping.Pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN with
+                | null -> ()
+                | ipin -> ipin.[0] <- pin.Name
+                mapping.Pin.Spread <- pin.Slices.ToSpread()
             | UpdateSlices slices ->
               if slices.Id = mapping.PinId then
-                let spread = slices.ToSpread()
-                let id =
-                  sprintf "%s/%s"
-                    (mapping.Pin.ParentNode.GetNodePath(false))
-                    mapping.Pin.Name
-                self.Logger.Log(LogType.Debug, sprintf "pin: %s values: %A" id spread)
-                mapping.Pin.Spread <-spread
+                mapping.Pin.Spread <- slices.ToSpread()
             | _ -> ()
 
 
