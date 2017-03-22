@@ -2009,7 +2009,7 @@ module Config =
 
   // ** setActiveSite
 
-  let setActiveSite (config: IrisConfig) (id: Id) =
+  let setActiveSite (id: Id) (config: IrisConfig) =
     { config with ActiveSite = Some id }
 
   // ** getActiveSite
@@ -2032,6 +2032,24 @@ module Config =
 
   let selfMember (options: IrisConfig) =
     findMember options options.MachineId
+
+  // ** addSite
+
+  let addSite (site: ClusterConfig) (config: IrisConfig) =
+    match Array.tryFind (fun site' -> site'.Id = site.Id) config.Sites with
+    | Some _ -> config
+    | None ->
+      let len = Array.length config.Sites
+      let copy = Array.zeroCreate (len + 1)
+      Array.iteri (fun i site -> copy.[i] <- site) config.Sites
+      copy.[len] <- site
+      { config with Sites = copy }
+
+  // ** removeSite
+
+  let removeSite (id: Id) (config: IrisConfig) =
+    let sites = Array.filter (fun site -> site.Id <> id) config.Sites
+    { config with Sites = sites }
 
   // ** addMember
 

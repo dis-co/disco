@@ -36,9 +36,15 @@ module IrisServiceTests =
         let machine = { MachineConfig.create() with WorkSpace = Path.GetDirectoryName path }
         let mem = Member.create machine.MachineId
 
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem.Id,mem) |] }
+
         let cfg =
           Config.create "leader" machine
-          |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
           |> Config.setLogLevel (LogLevel.Debug)
 
         let name = Path.GetFileName path

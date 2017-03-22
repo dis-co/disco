@@ -40,14 +40,21 @@ module RaftIntegrationTests =
           |> Member.create
           |> Member.setPort 8001us
 
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
           |> Config.setLogLevel (LogLevel.Debug)
 
         let! leader = RaftServer.create ()
@@ -77,9 +84,15 @@ module RaftIntegrationTests =
           |> Member.create
           |> Member.setPort port
 
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem.Id, mem) |] }
+
         let leadercfg =
           Config.create "leader" machine
-          |> Config.addMember mem
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
 
         use! leader = RaftServer.create ()
         do! leader.Load leadercfg
@@ -121,14 +134,22 @@ module RaftIntegrationTests =
           |> Member.create
           |> Member.setPort 8001us
 
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
+
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create ()

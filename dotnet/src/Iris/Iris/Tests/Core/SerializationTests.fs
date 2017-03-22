@@ -264,11 +264,17 @@ module SerializationTests =
           Id.Create()
           |> Member.create
 
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (self.Id,self)
+                                       (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
+
         let config =
           Config.create "default" machine
-          |> Config.addMember self
-          |> Config.addMember mem1
-          |> Config.addMember mem2
+          |> Config.addSite site
+          |> Config.setActiveSite site.Id
 
         let term = 666u
 
