@@ -22,9 +22,9 @@ let getWsAddress (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> "0"
     | Right cfg ->
-        match Map.tryFind cfg.MachineId cfg.Cluster.Members with
-        | Some mem -> sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
-        | None -> "0"
+        match Config.findMember cfg cfg.MachineId with
+        | Right mem -> sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
+        | Left _ -> "0"
     |> Either.succeed
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =

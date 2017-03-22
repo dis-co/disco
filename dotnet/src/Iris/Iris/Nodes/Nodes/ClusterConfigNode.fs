@@ -32,6 +32,10 @@ type ClusterConfigNode() =
   val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
+  [<Output("Id")>]
+  val mutable OutId: ISpread<string>
+
+  [<DefaultValue>]
   [<Output("Name")>]
   val mutable OutName: ISpread<string>
 

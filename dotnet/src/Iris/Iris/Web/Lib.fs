@@ -34,7 +34,7 @@ type GenericObservable<'T>() =
 
 [<NoComparison>]
 type DragEvent = {
-  ``type``: string; value: obj; x: int; y: int; 
+  ``type``: string; value: obj; x: int; y: int;
 }
 
 type [<Pojo>] TreeNode =
@@ -81,12 +81,12 @@ let subscribeToLogs(f:ClientLog->unit): IDisposable =
       | _ -> ())
 
 let removeMember(info: StateInfo, memId: Id) =
-  match Map.tryFind memId info.state.Project.Config.Cluster.Members with
-  | Some mem ->
+  match Config.findMember info.state.Project.Config memId with
+  | Right mem ->
     RemoveMember mem
     |> ClientContext.Singleton.Post
-  | None ->
-    printfn "Couldn't find mem with Id %O" memId
+  | Left error ->
+    printfn "%O" error
 
 let createMemberInfo() =
   let m = Id.Create() |> Member.create
@@ -176,7 +176,8 @@ let project2tree (p: IrisProject) =
     ;  obj2tree "Vvvv" c.Vvvv
     ;  obj2tree "Raft" c.Raft
     ;  obj2tree "Timing" c.Timing
-    ;  obj2tree "Cluster" c.Cluster
+    ;  leaf ("ActiveSite" + string c.ActiveSite)
+    ;  arr2tree "Sites" (Array.map box c.Sites)
     ;  arr2tree "ViewPorts" (Array.map box c.ViewPorts)
     ;  arr2tree "Displays" (Array.map box c.Displays)
     ;  arr2tree "Tasks" (Array.map box c.Tasks)
@@ -220,9 +221,9 @@ let pinToKeyValuePairs (pin: Pin) =
   | NumberPin pin -> Array.map box pin.Values |> zip pin.Labels
   | BoolPin   pin -> Array.map box pin.Values |> zip pin.Labels
   // TODO: Apply transformations to the value of this pins?
-  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels  
-  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels  
-  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels  
+  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels
+  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels
+  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
 
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
