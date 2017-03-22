@@ -2051,6 +2051,25 @@ module Config =
     let sites = Array.filter (fun site -> site.Id <> id) config.Sites
     { config with Sites = sites }
 
+  // ** siteByMember
+
+  let siteByMember (memid: Id) (config: IrisConfig) =
+    Array.fold
+      (fun (m: ClusterConfig option) site ->
+        match m with
+        | Some _ -> m
+        | None ->
+          if Map.containsKey memid site.Members then
+            Some site
+          else None)
+      None
+      config.Sites
+
+  // ** findSite
+
+  let findSite (id: Id) (config: IrisConfig) =
+    Array.tryFind (fun site -> site.Id = id) config.Sites
+
   // ** addMember
 
   let addMember (mem: RaftMember) (config: IrisConfig) =
