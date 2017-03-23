@@ -40,7 +40,6 @@ module Raft =
   type private Reply =
     | Ok
     | Entry          of EntryResponse
-    | Response       of RaftResponse
     | State          of RaftAppContext
     | Status         of ServiceStatus
     | IsCommitted    of bool
@@ -48,6 +47,17 @@ module Raft =
   // ** ReplyChan
 
   type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+
+  // type private ReplyChan = BlockingCollection<Either<IrisError,Reply>>
+  //
+  // IDEA:
+  //
+  // What if the reply channel was actually just a BlockingCollection? It could be just passed
+  // around as a regular value.
+  //
+  // But then, we could also make it so the real blocking parts (waitForCommit) could just be
+  // re-scheduled messages that copy over the chan to the internal check message also do work!
+  // Hmmm..
 
   // ** Msg
 
@@ -170,6 +180,10 @@ module Raft =
   // ** postCommand
 
   let inline private postCommand (arbiter: StateArbiter) (cb: ReplyChan -> Msg) =
+    // use queue = new ReplyChan(1)
+    // arbiter.Post(cb queue)
+    // queue.Take()
+
     async {
       let! result = arbiter.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
       match result with
@@ -232,59 +246,6 @@ module Raft =
         Thread.Sleep delta
 
     !ok
-
-  // ** requestHandler
-
-  let private requestHandler (mem: RaftMember) (arbiter: StateArbiter) (data: byte array) =
-    let handleRequest request =
-      either {
-        let! message = Binary.decode<IrisError,RaftRequest> request
-        let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
-
-        match reply with
-        | Reply.Response response ->       // the base case: the response is ready
-          return response
-
-        | Reply.Entry entry ->
-          let! committed = waitForCommit arbiter entry
-
-          match message, committed with
-          | AppendEntry _, true ->
-            return AppendEntryResponse entry
-
-          | HandShake _, true ->
-            return Welcome mem
-
-          | HandWaive _, true ->
-            return Arrivederci
-
-          | HandWaive _, false | HandShake _, false | AppendEntry _, false ->
-            return!
-              "Response Timeout"
-              |> Error.asRaftError (tag "requestHandler")
-              |> Either.fail
-
-          | other ->
-            return!
-              sprintf "Unexpected reply StateArbiter:  %A" other
-              |> Error.asRaftError (tag "requestHandler")
-              |> Either.fail
-
-        | other ->
-          return!
-            sprintf "Unexpected reply StateArbiter:  %A" other
-            |> Error.asRaftError (tag "requestHandler")
-            |> Either.fail
-      }
-
-    match handleRequest data with
-    | Right response ->
-      response
-      |> Binary.encode
-    | Left error ->
-      error
-      |> ErrorResponse
-      |> Binary.encode
 
   //   ____      _ _ _                _
   //  / ___|__ _| | | |__   __ _  ___| | _____
@@ -627,93 +588,62 @@ module Raft =
 
   // ** processAppendEntries
 
-  let private processAppendEntries (state: RaftAppContext)
-                                   (sender: Id)
-                                   (ae: AppendEntries)
-                                   (channel: ReplyChan) =
+  let private processAppendEntries (state: RaftAppContext) (sender: Id) (ae: AppendEntries) =
     let result =
       Raft.receiveAppendEntries (Some sender) ae
       |> runRaft state.Raft state.Callbacks
 
     match result with
     | Right (response, newstate) ->
-      AppendEntriesResponse(state.Raft.Member.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      let response = AppendEntriesResponse(state.Raft.Member.Id, response)
+      let newstate = updateRaft state newstate
+      (response, newstate)
 
     | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      let response = ErrorResponse err
+      let newstate = updateRaft state newstate
+      (response, newstate)
 
   // ** processAppendEntry
 
-  let private processAppendEntry (state: RaftAppContext)
-                                 (cmd: StateMachine)
-                                 (chan: ReplyChan) =
+  let private processAppendEntry (state: RaftAppContext) (cmd: StateMachine) =
     if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
       match appendCommand state cmd with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-      | Left (err, newstate) ->
-        err
-        |> Either.fail
-        |> chan.Reply
-        newstate
+      | Right (entry, newstate) -> (AppendEntryResponse entry, newstate)
+      | Left (err, newstate)    -> (ErrorResponse err, newstate)
     else
       match Raft.getLeader state.Raft with // redirect to known ledader or fail
-      | Some mem ->
-        Redirect mem
-        |> Reply.Response
-        |> Either.succeed
-        |> chan.Reply
-        state
+      | Some mem -> (Redirect mem, state)
       | None ->
-        "Not leader and no known leader."
-        |> Error.asRaftError (tag "processAppendEntry")
-        |> Either.fail
-        |> chan.Reply
-        state
+        let response =
+          "Not leader and no known leader."
+          |> Error.asRaftError (tag "processAppendEntry")
+          |> ErrorResponse
+        (response, state)
 
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftAppContext)
-                                 (sender: Id)
-                                 (vr: VoteRequest)
-                                 (channel: ReplyChan) =
+  let private processVoteRequest (state: RaftAppContext) (sender: Id) (vr: VoteRequest) =
     let result =
       Raft.receiveVoteRequest sender vr
       |> runRaft state.Raft state.Callbacks
 
     match result with
     | Right (response, newstate) ->
-      RequestVoteResponse(state.Raft.Member.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      let response = RequestVoteResponse(state.Raft.Member.Id, response)
+      let newstate = updateRaft state newstate
+      (response, newstate)
 
     | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      let response = ErrorResponse err
+      let newstate = updateRaft state newstate
+      (response, newstate)
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftAppContext)
-                                     (sender: Id)
-                                     (snapshot: InstallSnapshot)
-                                     (channel: ReplyChan) =
+  let private processInstallSnapshot (state: RaftAppContext) (mem: Id) (snapshot: InstallSnapshot) =
+
     "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
     |> Logger.err state.Raft.Member.Id (tag "processInstallSnapshot")
 
@@ -725,11 +655,8 @@ module Raft =
                               | Some idx -> idx
                               | _        -> 0u }
 
-    InstallSnapshotResponse(state.Raft.Member.Id, ar)
-    |> Reply.Response
-    |> Either.succeed
-    |> channel.Reply
-    state
+    let response = InstallSnapshotResponse(state.Raft.Member.Id, ar)
+    (response, state)
 
   // ** doRedirect
 
@@ -741,23 +668,15 @@ module Raft =
   /// - state: RaftServerState
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftAppContext) (channel: ReplyChan) =
+  let private doRedirect (state: RaftAppContext) =
     match Raft.getLeader state.Raft with
-    | Some mem ->
-      Redirect mem
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
-
+    | Some mem -> (Redirect mem, state)
     | None ->
-      "No known leader"
-      |> Error.asRaftError (tag "doRedirect")
-      |> ErrorResponse
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
+      let response =
+        "No known leader"
+        |> Error.asRaftError (tag "doRedirect")
+        |> ErrorResponse
+      (response, state)
 
   // ** processHandshake
 
@@ -771,70 +690,34 @@ module Raft =
   /// - appState: current TVar<RaftServerState>
   ///
   /// Returns: RaftResponse
-  let private processHandshake (state: RaftAppContext)
-                               (mem: RaftMember)
-                               (channel: ReplyChan) =
+  let private processHandshake (state: RaftAppContext) (mem: RaftMember) =
     if Raft.isLeader state.Raft then
       match addMembers state [| mem |] with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
+      | Right (entry, newstate) -> AppendEntryResponse entry, newstate
+      | Left (err, newstate)    -> ErrorResponse err, newstate
     else
-      doRedirect state channel
+      doRedirect state
 
   // ** processHandwaive
 
-  let private processHandwaive (state: RaftAppContext)
-                               (mem: RaftMember)
-                               (channel: ReplyChan) =
+  let private processHandwaive (state: RaftAppContext) (mem: RaftMember) =
     if Raft.isLeader state.Raft then
       match removeMember state mem.Id with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
+      | Right (entry, newstate) -> AppendEntryResponse entry, newstate
+      | Left (err, newstate)    -> ErrorResponse err, newstate
     else
-      doRedirect state channel
+      doRedirect state
 
   // ** processAppendEntriesResponse
 
-  let private processAppendEntriesResponse (state: RaftAppContext)
-                                           (sender: Id)
-                                           (ar: AppendResponse)
-                                           (channel: ReplyChan) =
+  let private processAppendEntriesResponse (state: RaftAppContext) (mem: Id) (ar: AppendResponse) =
     let result =
-      Raft.receiveAppendEntriesResponse sender ar
+      Raft.receiveAppendEntriesResponse mem ar
       |> runRaft state.Raft state.Callbacks
 
     match result with
-    | Right (_, newstate) ->
-      Reply.Ok
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
-
-    | Left (err, newstate) ->
-      err
-      |> Either.fail
-      |> channel.Reply
-      updateRaft state newstate
+    | Right (_, newstate)  -> updateRaft state newstate
+    | Left (err, newstate) -> err, updateRaft state newstate
 
   // ** processVoteResponse
 
@@ -1407,17 +1290,17 @@ module Raft =
       "No config loaded"
       |> Error.asRaftError (tag "handleRequest")
       |> Either.fail
-      |> chan.Reply
+      |> chan.Add
       state
 
     | Loaded data ->
       match req with
-      | AppendEntries (id, ae)   -> processAppendEntries   data id ae chan
-      | AppendEntry  sm          -> processAppendEntry     data sm    chan
-      | RequestVote (id, vr)     -> processVoteRequest     data id vr chan
-      | InstallSnapshot (id, is) -> processInstallSnapshot data id is chan
-      | HandShake mem            -> processHandshake       data mem   chan
-      | HandWaive mem            -> processHandwaive       data mem   chan
+      | AppendEntries (id, ae)   -> processAppendEntries   data id ae
+      | AppendEntry  sm          -> processAppendEntry     data sm
+      | RequestVote (id, vr)     -> processVoteRequest     data id vr
+      | InstallSnapshot (id, is) -> processInstallSnapshot data id is
+      | HandShake mem            -> processHandshake       data mem
+      | HandWaive mem            -> processHandwaive       data mem
       |> Loaded
 
   // ** handlePeriodic
@@ -1540,15 +1423,14 @@ module Raft =
     either {
       let! request = Binary.decode<IrisError,RaftRequest> raw.Body
 
-      match request with
-      | AppendEntries (id, ae)   -> processAppendEntries   data id ae
-      | AppendEntry  sm          -> processAppendEntry     data sm
-      | RequestVote (id, vr)     -> processVoteRequest     data id vr
-      | InstallSnapshot (id, is) -> processInstallSnapshot data id is
-      | HandShake mem            -> processHandshake       data mem
-      | HandWaive mem            -> processHandwaive       data mem
-
-      let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
+      let response, newstate =
+        match request with
+        | AppendEntries (id, ae)   -> processAppendEntries   data id ae
+        | AppendEntry  sm          -> processAppendEntry     data sm
+        | RequestVote (id, vr)     -> processVoteRequest     data id vr
+        | InstallSnapshot (id, is) -> processInstallSnapshot data id is
+        | HandShake mem            -> processHandshake       data mem
+        | HandWaive mem            -> processHandwaive       data mem
 
       match reply with
       | Reply.Response response ->       // the base case: the response is ready
