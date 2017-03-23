@@ -32,7 +32,7 @@ module Raft =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,Req>
+  type private Connections = ConcurrentDictionary<Id,IClient>
 
   // ** Reply
 
@@ -61,6 +61,7 @@ module Raft =
     | Status         of chan:ReplyChan
     | Periodic
     | ForceElection
+    | RawRequest     of request:RawRequest
     | AddCmd         of chan:ReplyChan * sm:StateMachine
     | Request        of chan:ReplyChan * req:RaftRequest
     | Response       of chan:ReplyChan * resp:RaftResponse
@@ -73,6 +74,7 @@ module Raft =
       | Load       (_,config)    -> sprintf "Load:  %A" config
       | Unload             _     -> sprintf "Unload"
       | Join       (_,ip,port)   -> sprintf "Join: %s %d" (string ip) port
+      | RawRequest    request    -> sprintf "RawRequest with bytes: %d" (Array.length request.Body)
       | Leave               _    -> "Leave"
       | Get                 _    -> "Get"
       | Status              _    -> "Status"
@@ -81,7 +83,7 @@ module Raft =
       | AddCmd         (_,sm)    -> sprintf "AddCmd:  %A" sm
       | Request        (_,req)   -> sprintf "Request:  %A" req
       | Response       (_,resp)  -> sprintf "Response:  %A" resp
-      | AddMember      (_,mem)  -> sprintf "AddMember:  %A" mem
+      | AddMember      (_,mem)   -> sprintf "AddMember:  %A" mem
       | RmMember       (_,id)    -> sprintf "RmMember:  %A" id
       | IsCommitted    (_,entry) -> sprintf "IsCommitted:  %A" entry
 
@@ -292,7 +294,7 @@ module Raft =
 
   // ** getConnection
 
-  let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) : Req =
+  let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) =
     match connections.TryGetValue peer.Id with
     | true, connection -> connection
     | _ ->
@@ -1169,11 +1171,11 @@ module Raft =
 
       let! raftstate = Persistence.getRaft config
 
-      let addr = raftstate.Member |> memUri
-      let server = new Rep(raftstate.Member.Id, addr, requestHandler raftstate.Member agent)
+      try
+        let addr = raftstate.Member |> memUri
+        let server = Broker.create 5 addr ("inproc://raft-backend-" + string raftstate.Member.Id)
+        let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
 
-      match server.Start() with
-      | Right _ ->
         let callbacks =
           mkCallbacks
             raftstate.Member.Id
@@ -1198,20 +1200,21 @@ module Raft =
                      Raft        = newstate
                      Callbacks   = callbacks
                      Options     = config
-                     Periodic    = periodic
                      Server      = server
+                     Disposables = [ periodic; srvobs ]
                      Connections = connections }
-
         | Left (err, _) ->
           dispose server
           connections |> Seq.iter (fun (KeyValue(_,connection)) ->
             dispose connection)
           dispose periodic
           return! Either.fail err
-
-      | Left error ->
-        dispose server
-        return! Either.fail error
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asRaftError "load"
+            |> Either.fail
     }
 
   // ** handleLoad
@@ -1531,6 +1534,70 @@ module Raft =
         |> chan.Reply
         state
 
+  // ** processRequest
+
+  let private processRequest (data: RaftAppContext) (raw: RawRequest) =
+    either {
+      let! request = Binary.decode<IrisError,RaftRequest> raw.Body
+
+      match request with
+      | AppendEntries (id, ae)   -> processAppendEntries   data id ae
+      | AppendEntry  sm          -> processAppendEntry     data sm
+      | RequestVote (id, vr)     -> processVoteRequest     data id vr
+      | InstallSnapshot (id, is) -> processInstallSnapshot data id is
+      | HandShake mem            -> processHandshake       data mem
+      | HandWaive mem            -> processHandwaive       data mem
+
+      let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
+
+      match reply with
+      | Reply.Response response ->       // the base case: the response is ready
+        return response
+
+      | Reply.Entry entry ->
+        let! committed = waitForCommit arbiter entry
+
+        match message, committed with
+        | AppendEntry _, true ->
+          return AppendEntryResponse entry
+
+        | HandShake _, true ->
+          return Welcome mem
+
+        | HandWaive _, true ->
+          return Arrivederci
+
+        | HandWaive _, false | HandShake _, false | AppendEntry _, false ->
+          return!
+            "Response Timeout"
+            |> Error.asRaftError (tag "requestHandler")
+            |> Either.fail
+
+        | other ->
+          return!
+            sprintf "Unexpected reply StateArbiter:  %A" other
+            |> Error.asRaftError (tag "requestHandler")
+            |> Either.fail
+
+      | other ->
+        return!
+          sprintf "Unexpected reply StateArbiter:  %A" other
+          |> Error.asRaftError (tag "requestHandler")
+          |> Either.fail
+    }
+
+  // ** handleRawRequest
+
+  let private handleRawRequest (state: RaftServerState) (raw: RawRequest) =
+    match processRequest data raw with
+    | Right response ->
+      response
+      |> Binary.encode
+    | Left error ->
+      error
+      |> ErrorResponse
+      |> Binary.encode
+
   // ** loop
 
   let private loop (subs: Subscriptions) (inbox: StateArbiter) =
@@ -1551,9 +1618,10 @@ module Raft =
           | Msg.Request (chan, req)    -> handleRequest       state chan req
           | Msg.Response (chan, resp)  -> handleResponse      state chan resp
           | Msg.Get chan               -> handleGet           state chan
-          | Msg.AddMember (chan, mem)   -> handleAddMember       state chan mem
-          | Msg.RmMember (chan, id)      -> handleRemoveMember    state chan id
+          | Msg.AddMember  (chan, mem) -> handleAddMember     state chan mem
+          | Msg.RmMember    (chan, id) -> handleRemoveMember  state chan id
           | Msg.IsCommitted (chan,ety) -> handleIsCommitted   state chan ety
+          | Msg.RawRequest   request   -> handleRawRequest    state request
 
         do! act newstate
       }

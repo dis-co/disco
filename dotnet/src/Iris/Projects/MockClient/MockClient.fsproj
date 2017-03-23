@@ -206,9 +206,6 @@
     <Compile Include="..\..\Iris\Service\RaftRequest.fs">
       <Link>RaftRequest.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\RaftAppState.fs">
-      <Link>RaftAppState.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Service\Zmq.fs">
       <Link>Zmq.fs</Link>
     </Compile>

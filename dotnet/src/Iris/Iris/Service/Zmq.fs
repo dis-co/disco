@@ -41,10 +41,9 @@ module ZmqUtils =
   ///
   /// Returns: fszmq.Socket
   let mkReqSocket (mem: RaftMember) =
-    let addr = memUri mem
-    let socket = new Req(mem.Id, addr, Constants.REQ_TIMEOUT)
-    socket.Start()
-    socket
+    mem
+    |> memUri
+    |> Client.create
 
   // ** getSocket
 
@@ -90,11 +89,11 @@ module ZmqUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: Req) : Either<IrisError,RaftResponse> =
+  let rawRequest (request: RaftRequest) (client: IClient) : Either<IrisError,RaftResponse> =
     request
     |> Binary.encode
     |> client.Request
-    |> Either.bind Binary.decode<IrisError,RaftResponse>
+    |> Binary.decode<IrisError,RaftResponse>
 
   // ** performRequest
 
@@ -109,7 +108,7 @@ module ZmqUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (client: Req) (request: RaftRequest) =
+  let performRequest (client: IClient) (request: RaftRequest) =
     either {
       try
         let! response = rawRequest request client
