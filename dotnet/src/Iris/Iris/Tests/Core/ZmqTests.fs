@@ -74,6 +74,84 @@ module ZmqIntegrationTests =
       }
       |> noError
 
+  let test_broker_request_handling =
+    testCase "broker request handling" <| fun _ ->
+      either {
+        let rand = new System.Random()
+
+        let num = 5
+        let frontend = "inproc://frontend"
+        let backend = "inproc://backend"
+        use broker = Broker.create num frontend backend
+
+        let loop (inbox: MailboxProcessor<RawRequest>) =
+          let rec impl () = async {
+              let! request = inbox.Receive()
+
+              // add the requesting clients id to the random number so can later on
+              // check that each client has gotten the answer to its own question
+              let response = BitConverter.ToInt64(request.Body,0) + request.From
+
+              response
+              |> BitConverter.GetBytes
+              |> RawResponse.fromRequest request
+              |> broker.Respond
+              return! impl ()
+            }
+          impl ()
+
+        let mbp = MailboxProcessor.Start(loop)
+        use obs = broker.Subscribe mbp.Post
+
+        let clients =
+          [| for n in 0 .. num - 1 do
+               yield Client.create frontend |]
+
+        let mkRequest (client: IClient) =
+          async {
+            let request = rand.Next() |> int64
+
+            let response =
+              request
+              |> BitConverter.GetBytes
+              |> client.Request
+              |> fun ba -> BitConverter.ToInt64(ba, 0)
+
+            return (client.Id, request, response)
+          }
+
+        let now = DateTime.Now
+
+        // prove that we can correlate the random request number with a client
+        // by adding the clients id to the random number
+        let result =
+          [| for i in 0 .. 50 do
+              yield [| for client in clients do
+                         yield mkRequest client |] |]
+          |> Array.map (Async.Parallel >> Async.RunSynchronously)
+          |> Array.fold
+            (fun m batch ->
+              if m then
+                Array.fold
+                  (fun m' (id,request,response) ->
+                    if m'
+                    then (request + id) = response
+                    else m')
+                  true
+                  batch
+              else m)
+            true
+
+        let total = DateTime.Now
+
+        // printfn "took %fms" ((total - now).TotalMilliseconds)
+
+        Array.iter dispose clients
+
+        expect "Should be consitent" true id result
+      }
+      |> noError
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -83,4 +161,5 @@ module ZmqIntegrationTests =
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
       test_proper_cleanup_of_request_sockets
+      test_broker_request_handling
     ]
