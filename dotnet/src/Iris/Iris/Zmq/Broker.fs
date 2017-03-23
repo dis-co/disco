@@ -101,8 +101,10 @@ module internal Utils =
 module Client =
   open Utils
 
+  let rand = new System.Random()
+
   type private LocalThreadState(frontend: string) as self =
-    let id: Id = Id.next()
+    let id: Id = int64 (rand.Next())
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Started: bool
