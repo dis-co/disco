@@ -516,7 +516,7 @@ and RaftValueYaml() =
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 and RaftValue =
-  { Member              : RaftMember
+  { Member            : RaftMember
   ; State             : RaftState
   ; CurrentTerm       : Term
   ; CurrentLeader     : MemberId option

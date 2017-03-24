@@ -93,7 +93,7 @@ module ZmqUtils =
     request
     |> Binary.encode
     |> client.Request
-    |> Binary.decode<IrisError,RaftResponse>
+    |> Either.bind Binary.decode<IrisError,RaftResponse>
 
   // ** performRequest
 

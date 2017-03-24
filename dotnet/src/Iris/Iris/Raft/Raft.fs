@@ -187,7 +187,7 @@ module Raft =
   // |_|   |_|  |_| \_/ \__,_|\__\___| //
   ///////////////////////////////////////
 
-  let private _rand = new System.Random()
+  let private rand = new System.Random()
 
   //////////////////////////////////////
   //   ____                _          //
@@ -2132,7 +2132,7 @@ module Raft =
       do! setLeaderM None
       do! setStateM Candidate
 
-      let elapsed = uint32(_rand.Next(15, int state.ElectionTimeout))
+      let elapsed = uint32(rand.Next(15, int state.ElectionTimeout))
       do! debug "becomeCandidate" <| sprintf "setting timeoutElapsed to %d" elapsed
       do! setTimeoutElapsedM elapsed
 

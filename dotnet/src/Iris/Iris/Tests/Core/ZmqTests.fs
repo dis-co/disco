@@ -82,7 +82,7 @@ module ZmqIntegrationTests =
         let num = 5
         let frontend = "inproc://frontend"
         let backend = "inproc://backend"
-        use broker = Broker.create num frontend backend
+        use! broker = Broker.create num frontend backend
 
         let loop (inbox: MailboxProcessor<RawRequest>) =
           let rec impl () = async {
@@ -115,7 +115,8 @@ module ZmqIntegrationTests =
               request
               |> BitConverter.GetBytes
               |> client.Request
-              |> fun ba -> BitConverter.ToInt64(ba, 0)
+              |> Either.map (fun ba -> BitConverter.ToInt64(ba, 0))
+              |> Either.get
 
             return (client.Id, request, response)
           }
