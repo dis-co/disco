@@ -39,6 +39,8 @@ type IClient =
   inherit IDisposable
   abstract Id: Id
   abstract Request: byte array -> Either<IrisError,byte array>
+  abstract Running: bool
+  abstract Restart: unit -> unit
 
 type private IWorker =
   inherit IDisposable
@@ -157,6 +159,17 @@ module Client =
           |> Either.fail
           |> fun error -> self.Response <- error
 
+    member self.Reset() =
+      if not self.Disposed then
+        dispose self
+
+      self.Run <- true
+      self.Started <- false
+      self.Disposed <- false
+      self.Initialized <- false
+      self.Request <- [| |]
+      self.Response <- Right [| |]
+
     interface IDisposable with
       member self.Dispose() =
         tryDispose self.Socket
@@ -207,7 +220,7 @@ module Client =
 
   let create (frontend: string) =
     let state = new LocalThreadState(frontend = frontend)
-    let thread = new Thread(new ThreadStart(worker state))
+    let mutable thread = new Thread(new ThreadStart(worker state))
     thread.Name <- sprintf "Client %d" state.Id
     thread.Start()
 
@@ -228,6 +241,18 @@ module Client =
               state.Requester.Set() |> ignore
               state.Responder.WaitOne() |> ignore
               state.Response
+
+        member self.Running
+          with get () =
+            state.Initialized && state.Run && state.Started
+
+        member self.Restart () =
+          self.Dispose()
+          state.Reset()
+          thread <- new Thread(new ThreadStart(worker state))
+          thread.Name <- sprintf "Client %d" state.Id
+          thread.Start()
+          state.Starter.WaitOne() |> ignore
 
         member self.Id
           with get () = state.Id

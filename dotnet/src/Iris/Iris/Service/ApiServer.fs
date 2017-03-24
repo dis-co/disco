@@ -41,7 +41,7 @@ module ApiServer =
   [<NoComparison;NoEquality>]
   type private Client =
     { Meta: IrisClient
-      Socket: Req
+      Socket: IClient
       Timer: IDisposable }
 
     interface IDisposable with
@@ -55,7 +55,7 @@ module ApiServer =
   type private ServerStateData =
     { Status: ServiceStatus
       Store: Store
-      Server: Rep
+      Server: IBroker
       Publisher: Pub
       Subscriber: Sub
       Clients: Map<Id,Client> }
@@ -190,7 +190,7 @@ module ApiServer =
 
   // ** pingTimer
 
-  let private pingTimer (socket: Req) (agent: ApiAgent) =
+  let private pingTimer (socket: IClient) (agent: ApiAgent) =
     let cts = new CancellationTokenSource()
 
     let rec loop () =
@@ -208,17 +208,14 @@ module ApiServer =
 
         match response with
         | Right Pong ->
-//          string socket.Id
-//          |> sprintf "ping request to %s successful"
-//          |> Logger.debug socket.Id (tag "pingTimer")
           (socket.Id, ServiceStatus.Running)
           |> Msg.SetClientStatus
           |> agent.Post
         | Left error ->
           string error
-          |> sprintf "error during 
+          |> sprintf "error during
            to %s: %s" (string socket.Id)
-          |> Logger.debug socket.Id (tag "pingTimer")
+          |> Logger.debug socket.Id (tag "pingTimer") //
           (socket.Id, ServiceStatus.Failed error)
           |> Msg.SetClientStatus
           |> agent.Post
@@ -287,14 +284,9 @@ module ApiServer =
   // ** start
 
   let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (id: Id) =
-    let srvAddr = formatTCPUri mem.IpAddr (int mem.ApiPort)
-    let server = new Rep(mem.Id, srvAddr, requestHandler agent)
-
-    let pubSubAddr =
-      formatEPGMUri
-        mem.IpAddr
-        (IPv4Address Constants.MCAST_ADDRESS)
-        Constants.MCAST_PORT
+    let frontend = formatTCPUri mem.IpAddr (int mem.ApiPort)
+    let backend = "inproc://api-backend-" + string mem.Id
+    let pubSubAddr = formatEPGMUri mem.IpAddr (IPv4Address Constants.MCAST_ADDRESS) Constants.MCAST_PORT
 
     let publisher = new Pub(mem.Id, pubSubAddr, string id)
     let subscriber = new Sub(mem.Id, pubSubAddr, string id)
@@ -302,18 +294,26 @@ module ApiServer =
     subscriber.Subscribe(processSubscriptionEvent agent)
     |> ignore                            // gets cleaned up during Dispose
 
-    match server.Start(), publisher.Start(), subscriber.Start() with
-    | Right (), Right (), Right () ->
-      chan.Reply(Right Reply.Ok)
-      Loaded { Status = ServiceStatus.Running
-               Store = new Store(State.Empty)
-               Publisher = publisher
-               Subscriber = subscriber
-               Clients = Map.empty
-               Server = server }
-    | Left error, _, _ | _, Left error, _ | _, _, Left error ->
+    match Broker.create 5 frontend backend with
+    | Right server ->
+      match publisher.Start(), subscriber.Start() with
+      | Right (), Right () ->
+        chan.Reply(Right Reply.Ok)
+        Loaded { Status = ServiceStatus.Running
+                 Store = new Store(State.Empty)
+                 Publisher = publisher
+                 Subscriber = subscriber
+                 Clients = Map.empty
+                 Server = server }
+      | Left error, _ | _, Left error ->
+        dispose server
+        dispose publisher
+        dispose subscriber
+        chan.Reply(Left error)
+        Idle
+
+    | Left error ->
       chan.Reply(Left error)
-      dispose server
       Idle
 
   // ** handleStart
@@ -356,8 +356,7 @@ module ApiServer =
 
       // construct a new client value
       let addr = formatTCPUri meta.IpAddress (int meta.Port)
-      let socket = new Req(meta.Id, addr, Constants.REQ_TIMEOUT)
-      socket.Start()
+      let socket = Client.create addr
 
       let client =
         { Meta = meta
