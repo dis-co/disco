@@ -23,7 +23,7 @@
     <OutputPath>..\..\bin\Debug\Iris</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <StartArguments>create --project=wonderful --bind=192.168.8.11 --api=5000 --raft=6000 --ws=8000 --git=9000</StartArguments>
+    <StartArguments>start --project=iris_sample --api=5000 --raft=6000 --ws=8000 --git=9000</StartArguments>
     <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">

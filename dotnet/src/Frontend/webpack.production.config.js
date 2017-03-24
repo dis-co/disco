@@ -3,12 +3,20 @@ var webpack = require('webpack');
 
 module.exports = {
   entry: [
-    path.resolve(__dirname, './src/index.js'),
+    path.join(__dirname, './src/index.js'),
   ],
 
   output: {
     filename: 'bundle.js',
-    path: path.resolve(__dirname, 'js'),
+    path: path.join(__dirname, 'js'),
+  },
+
+  externals: {
+    jquery: 'jQuery'
+  },
+
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx']
   },
 
   module: {

@@ -2676,13 +2676,14 @@ and Slices =
             match color with
             | RGBA rgba -> rgba
             | HSLA hsla -> hsla.ToRGBA()
-          sb.Append(float rgba.Red / 255.0)
+          // Add F# string conversion which is culture invariant
+          sb.Append(float rgba.Red / 255.0 |> string)
             .Append(',')
-            .Append(float rgba.Green / 255.0)
+            .Append(float rgba.Green / 255.0 |> string)
             .Append(',')
-            .Append(float rgba.Blue / 255.0)
+            .Append(float rgba.Blue / 255.0 |> string)
             .Append(',')
-            .Append(float rgba.Alpha / 255.0)
+            .Append(float rgba.Alpha / 255.0 |> string)
           |> ignore
           sb.Append '|' |> ignore)
         arr
