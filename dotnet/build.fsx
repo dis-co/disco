@@ -296,11 +296,11 @@ Target "CopyAssets"
   (fun _ ->
     [ "CHANGELOG.md"
     // ; userScripts @@ "runiris.sh"
-    ; userScripts @@ "createproject.cmd" 
-    ; userScripts @@ "runiris.cmd" 
-    ; userScripts @@ "mockclient.cmd" 
+    ; userScripts @@ "createproject.cmd"
+    ; userScripts @@ "runiris.cmd"
+    ; userScripts @@ "mockclient.cmd"
     ] |> List.iter (CopyFile "bin/")
-    FileUtils.cp (docsDir @@ "04_test_package.md") "bin/README.md"
+    FileUtils.cp (docsDir @@ "md/04_test_package.md") "bin/README.md"
     // Frontend
     SilentCopyDir "bin/Frontend/img" (baseDir @@ "../Frontend/img") withoutNodeModules
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
