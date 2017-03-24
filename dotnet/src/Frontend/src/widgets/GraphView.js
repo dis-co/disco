@@ -53,32 +53,37 @@ class View extends Component {
   }
 
   componentDidMount() {
-    this.props.global.subscribeToEvent("drag", ev => {
-      if (this.el != null && ev.origin !== this.props.id) {
-        if (touchesElement(this.el, ev.x, ev.y)) {
-          switch (ev.type) {
-            case "move":
-              this.el.classList.add("iris-highlight-blue");
-              return;
-            case "stop":
-              ev.removeModelFromOrigin();
-              this.props.model.elements.push(ev.model);
-              this.forceUpdate();
-          }
-        }
-        this.el.classList.remove("iris-highlight-blue")
-      }
-    });
+    this.disposables = [];
 
-    this.disposable =
-      this.props.global.subscribe("pinGroups", () => {
+    this.disposables.push(
+      this.props.global.subscribeToEvent("drag", ev => {
+        if (this.el != null && ev.origin !== this.props.id) {
+          if (touchesElement(this.el, ev.x, ev.y)) {
+            switch (ev.type) {
+              case "move":
+                this.el.classList.add("iris-highlight-blue");
+                return;
+              case "stop":
+                ev.removeModelFromOrigin();
+                this.props.model.elements.push(ev.model);
+                this.forceUpdate();
+            }
+          }
+          this.el.classList.remove("iris-highlight-blue")
+        }
+      })
+    );
+
+    this.disposables.push(
+      this.props.global.subscribe(["pinGroups", "useRightClick"], () => {
         this.forceUpdate();
-      });
+      })
+    );
   }
 
   componentWillUnmount() {
-    if (this.disposable) {
-      this.disposable.dispose();
+    if (Array.isArray(this.disposables)) {
+      this.disposables.forEach(x => x.dispose());
     }
   }  
 
@@ -94,7 +99,10 @@ class View extends Component {
               return (
                 <div key={i}
                   ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-                  <View model={model} onDragStart={() => this.startDragging(model, i)} />
+                  <View
+                    model={model}
+                    global={this.props.global}
+                    onDragStart={() => this.startDragging(model, i)} />
                 </div>
               )})}
           </div>

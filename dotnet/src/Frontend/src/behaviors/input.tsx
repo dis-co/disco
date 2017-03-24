@@ -1,28 +1,37 @@
 import * as React from "react"
 import * as $ from "jquery"
+import { xand } from "../Util"
 
 const ESCAPE_KEY = 27;
 const ENTER_KEY = 13;
 const RIGHT_BUTTON = 2;
+const DECIMAL_DIGITS = 2;
 
 interface InputState {
     editIndex: number,
     editText: string
 }
 
-type GenerateFn = (props: {}) => JSX.Element
+type GenerateFn = (formattedValue: any, props: {}) => JSX.Element
 type UpdateFn = (index: number, value: any) => void
 
-function startDragging(index: number, value: number, update: UpdateFn) {
-    console.log("drag start")
+function startDragging(posY: number, index: number, value: number, update: UpdateFn) {
+    console.log("drag start", index, posY)
     $(document)
+        .on("contextmenu.drag", e => {
+            e.preventDefault();
+        })
         .on("mousemove.drag", e => {
-            value += e.offsetY;
-            update(index, value);
+            var diff = posY - e.clientY;
+            // console.log("Mouse Y diff: ", diff);
+            value += diff;
+            posY = e.clientY;
+            if (diff !== 0)
+                update(index, value);
         })
         .on("mouseup.drag", e => {
-            console.log("drag stop")
-            $(document).off("mousemove.drag mouseup.drag");
+            console.log("drag stop", e.clientY)
+            $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
         })
 }
 
@@ -37,12 +46,13 @@ function handleKeyDown(index: number, keyCode: number, value: string, update: Up
 }
 
 export function addInputView(
-        index: number, value: any,
+        index: number, value: any, useRightClick: boolean,
         parent: React.Component<{},InputState>,
         update: UpdateFn, generate: GenerateFn) {
     if (parent.state.editIndex === index) {
         return (<input
             key={index}
+            ref={el => el != null ? el.focus() : void 0}
             value={parent.state.editText}
             onBlur={ev => parent.setState({editIndex: -1})}
             onChange={ev => parent.setState({editText: ev.target.value})}
@@ -58,33 +68,46 @@ export function addInputView(
           />)
     }
     else {
-        let props = { key: index };
+        let props: any = { key: index }, formattedValue = value;
         switch (typeof value) {
             case "number":
-                Object.assign(props, {
-                    onDoubleClick: () => parent.setState({ editIndex: index, editText: String(value) }),
-                    onMouseDown: (ev: React.MouseEvent<HTMLElement>) => {
-                        // if (ev.button === RIGHT_BUTTON)
-                            startDragging(index, value, update);
+                formattedValue = value.toFixed(DECIMAL_DIGITS);
+                props.onDoubleClick = () =>
+                    parent.setState({ editIndex: index, editText: String(value) });
+                props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
+                    if (xand(ev.button === RIGHT_BUTTON, useRightClick))
+                        startDragging(ev.clientY, index, value, update);
+                }
+                if (useRightClick) {
+                    props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+                        ev.preventDefault();
                     }
-                })
+                }
                 break;
             case "boolean":
-                Object.assign(props, {
-                    onContextMenu: (ev: React.MouseEvent<HTMLElement>) => {
+                formattedValue = value.toString();
+                if (useRightClick) {
+                    props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
                         ev.preventDefault();
                         update(index, !value);
                     }
-                })
+                }
+                else {
+                    props.onClick = (ev: React.MouseEvent<HTMLElement>) => {
+                        if (ev.button !== RIGHT_BUTTON)
+                            update(index, !value);
+                    }
+                }
                 break;
             case "string":
             default:
+                formattedValue = String(value);
                 Object.assign(props, {
                     onDoubleClick: () => parent.setState({ editIndex: index, editText: String(value) })
                 })
                 break;
         }
 
-        return generate(props);
+        return generate(formattedValue, props);
     }
 }

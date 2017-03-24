@@ -15,6 +15,10 @@ module.exports = {
     jquery: 'jQuery'
   },
 
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx']
+  },
+
   module: {
     rules: [
       {

@@ -40,13 +40,14 @@ class View extends React.Component {
     return viewRows;
   }
 
-  renderRowValues(model) {
+  renderRowValues(model, useRightClick) {
     var viewRows = [];
     viewRows.push(<span key={-1}>{`${model.rows[0][1]} (${model.rows.length})`}</span>)
     model.rows.forEach((kv,i) =>
       viewRows.push(
-        addInputView(i, kv[1], this, (i,v) => model.update(i,v),
-          props => <span {...props}>{String(kv[1])}</span>
+        addInputView(i, kv[1], useRightClick, this,
+          (i,v) => model.update(i,v),
+          (value, props) => <span {...props}>{value}</span>
         )
       )
     );
@@ -63,7 +64,7 @@ class View extends React.Component {
           {this.renderRowLabels(model)}
         </div>
         <div className="iris-spread-child iris-flex-2" style={{ height: height}}>
-          {this.renderRowValues(model)}
+          {this.renderRowValues(model, this.props.global.state.useRightClick)}
         </div>
         <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
           <img src="/img/more.png" height="7px"

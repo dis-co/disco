@@ -428,17 +428,25 @@ module Iris =
   let private onMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
     withState state <| fun data ->
       match cmd with
-      | AddSession session ->
-        data.SocketServer.BuildSession id session
-        |> Either.map AddSession
-      | cmd -> Either.succeed cmd
-      |> Either.bind (appendCmd data)
-      |> function
-        | Right _ -> ()
-        | Left error ->
-          error
-          |> string
-          |> Logger.err data.MemberId (tag "onMessage")
+      // If its something that appeared via the fast-lane, dispatch it on the Store and via the
+      // WebSockets right away. Evertything else needs to be logged via raft.
+      | UpdateSlices _ | CallCue _ ->
+        data.ApiServer.Update cmd
+        data.Store.Dispatch cmd
+        broadcastMsg data cmd
+      | cmd ->
+        match cmd with
+        | AddSession session ->
+          data.SocketServer.BuildSession id session
+          |> Either.map AddSession
+        | cmd -> Either.succeed cmd
+        |> Either.bind (appendCmd data)
+        |> function
+          | Right _ -> ()
+          | Left error ->
+            error
+            |> string
+            |> Logger.err data.MemberId (tag "onMessage")
 
   // ** handleSocketEvent
 

@@ -52,3 +52,11 @@ export function findParentTag(el: HTMLElement, tagName: string): HTMLElement {
   return parent.tagName.toUpperCase() === tagName.toUpperCase()
     ? parent : findParentTag(parent, tagName);
 }
+
+export function xand(a: boolean, b: boolean) {
+  return a === b;
+}
+
+export function xor(a: boolean, b: boolean) {
+  return a !== b;
+}
