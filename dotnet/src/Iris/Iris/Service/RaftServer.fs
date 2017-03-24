@@ -39,10 +39,9 @@ module Raft =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply =
     | Ok
-    | Entry          of EntryResponse
-    | State          of RaftAppContext
-    | Status         of ServiceStatus
-    | IsCommitted    of bool
+    | Entry  of EntryResponse
+    | State  of RaftAppContext
+    | Status of ServiceStatus
 
   // ** ReplyChan
 
@@ -73,30 +72,26 @@ module Raft =
     | ForceElection
     | RawRequest     of request:RawRequest
     | AddCmd         of chan:ReplyChan * sm:StateMachine
-    // | Request        of chan:ReplyChan * req:RaftRequest
-    // | Response       of chan:ReplyChan * resp:RaftResponse
     | AddMember      of chan:ReplyChan * mem:RaftMember
     | RmMember       of chan:ReplyChan * id:Id
-    | IsCommitted    of chan:ReplyChan * entry:EntryResponse
+    | IsCommitted    of started:DateTime * entry:EntryResponse * chan:ReplyChan
     | ReqCommitted   of started:DateTime * entry:EntryResponse * response:RawResponse
 
     override self.ToString() =
       match self with
-      | Load       (_,config)    -> sprintf "Load:  %A" config
-      | Unload             _     -> sprintf "Unload"
-      | Join       (_,ip,port)   -> sprintf "Join: %s %d" (string ip) port
-      | RawRequest    request    -> sprintf "RawRequest with bytes: %d" (Array.length request.Body)
-      | Leave               _    -> "Leave"
-      | Get                 _    -> "Get"
-      | Status              _    -> "Status"
-      | Periodic                 -> "Periodic"
-      | ForceElection            -> "ForceElection"
-      | AddCmd         (_,sm)    -> sprintf "AddCmd:  %A" sm
-      // | Request        (_,req)   -> sprintf "Request:  %A" req
-      // | Response       (_,resp)  -> sprintf "Response:  %A" resp
-      | AddMember      (_,mem)   -> sprintf "AddMember:  %A" mem
-      | RmMember       (_,id)    -> sprintf "RmMember:  %A" id
-      | IsCommitted    (_,entry) -> sprintf "IsCommitted:  %A" entry
+      | Load       (_,config)     -> sprintf "Load:  %A" config
+      | Unload             _      -> sprintf "Unload"
+      | Join       (_,ip,port)    -> sprintf "Join: %s %d" (string ip) port
+      | RawRequest    request     -> sprintf "RawRequest with bytes: %d" (Array.length request.Body)
+      | Leave         _           -> "Leave"
+      | Get           _           -> "Get"
+      | Status        _           -> "Status"
+      | Periodic                  -> "Periodic"
+      | ForceElection             -> "ForceElection"
+      | AddCmd        (_,sm)      -> sprintf "AddCmd:  %A" sm
+      | AddMember     (_,mem)     -> sprintf "AddMember:  %A" mem
+      | RmMember      (_,id)      -> sprintf "RmMember:  %A" id
+      | IsCommitted   (_,_,entry) -> sprintf "IsCommitted:  %A" entry
       | ReqCommitted  (_,_,entry) -> sprintf "ReqCommitted:  %A" entry
 
   // ** Subscriptions
@@ -182,10 +177,6 @@ module Raft =
   // ** postCommand
 
   let inline private postCommand (arbiter: StateArbiter) (cb: ReplyChan -> Msg) =
-    // use queue = new ReplyChan(1)
-    // arbiter.Post(cb queue)
-    // queue.Take()
-
     async {
       let! result = arbiter.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
       match result with
@@ -197,58 +188,6 @@ module Raft =
           |> Either.fail
     }
     |> Async.RunSynchronously
-
-  //  ____
-  // / ___|  ___ _ ____   _____ _ __
-  // \___ \ / _ \ '__\ \ / / _ \ '__|
-  //  ___) |  __/ |   \ V /  __/ |
-  //.|____/.\___|_|....\_/.\___|_|............................................................
-
-  // ** waitForCommit
-
-  /// ## waitForCommit
-  ///
-  /// Block execution until an entry has successfully been committed in the cluster.
-  ///
-  /// ### Signature:
-  /// - appended: EntryResponse returned by receiveEntry
-  /// - state: RaftServerState transactional state variable
-  ///
-  /// Returns: bool
-
-  // let private waitForCommit (arbiter: StateArbiter) (appended: EntryResponse) =
-  //   let timeout = 200                   // ms!
-  //   let delta = 2                       // ms!
-
-  //   let ok = ref (Right true)
-  //   let run = ref true
-  //   let iterations = ref 0
-
-  //   // wait for the entry to be committed by everybody
-  //   while !run && !iterations < timeout do
-  //     let response = postCommand arbiter (fun chan -> Msg.IsCommitted(chan,appended))
-
-  //     match response with
-  //     | Right (Reply.IsCommitted result) ->
-  //       ok := Right result
-
-  //     | Right reply ->
-  //       let error = RaftError(tag "waitForCommit", sprintf "Unxpeced reply:  %A" reply)
-  //       ok := Left error
-  //       run := false
-
-  //     | Left error ->
-  //       ok  := Left error
-  //       run := false
-
-  //     match !ok with
-  //     | Right true | Left _ -> run := false
-  //     | _ ->
-  //       printfn " %A not yet committed" (string appended.Id)
-  //       iterations := !iterations + delta
-  //       Thread.Sleep delta
-
-  //   !ok
 
   //   ____      _ _ _                _
   //  / ___|__ _| | | |__   __ _  ___| | _____
@@ -1348,7 +1287,7 @@ module Raft =
 
   // ** handleAddCmd
 
-  let private handleAddCmd (state: RaftServerState) (chan: ReplyChan) (cmd: StateMachine) =
+  let private handleAddCmd (state: RaftServerState) (chan: ReplyChan) (cmd: StateMachine) (arbiter: StateArbiter) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1360,18 +1299,17 @@ module Raft =
     | Loaded data ->
       match appendCommand data cmd with
       | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-        |> Loaded
+        (DateTime.Now, entry, chan)
+        |> Msg.IsCommitted
+        |> arbiter.Post
+        Loaded newstate
 
       | Left (err, newstate) ->
         err
         |> Either.fail
         |> chan.Reply
-        newstate
-        |> Loaded
+        Loaded newstate
+
 
   // // ** handleResponse
 
@@ -1446,7 +1384,7 @@ module Raft =
 
   // ** handleAddMember
 
-  let private handleAddMember (state: RaftServerState) (chan: ReplyChan) (mem: RaftMember) =
+  let private handleAddMember (state: RaftServerState) (chan: ReplyChan) (mem: RaftMember) (arbiter: StateArbiter) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1458,11 +1396,10 @@ module Raft =
     | Loaded data ->
       match addMembers data [| mem |] with
       | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-        |> Loaded
+        (DateTime.Now, entry, chan)
+        |> Msg.IsCommitted
+        |> arbiter.Post
+        Loaded newstate
 
       | Left (err, newstate) ->
         err
@@ -1473,7 +1410,7 @@ module Raft =
 
   // ** handleRemoveMember
 
-  let private handleRemoveMember (state: RaftServerState) (chan: ReplyChan) (id: Id) =
+  let private handleRemoveMember (state: RaftServerState) (chan: ReplyChan) (id: Id) (arbiter: StateArbiter) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1485,22 +1422,20 @@ module Raft =
     | Loaded data ->
       match removeMember data id with
       | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-        |> Loaded
+        (DateTime.Now, entry, chan)
+        |> Msg.IsCommitted
+        |> arbiter.Post
+        Loaded newstate
 
       | Left (err, newstate) ->
         err
         |> Either.fail
         |> chan.Reply
-        newstate
-        |> Loaded
+        Loaded newstate
 
   // ** handleIsCommitted
 
-  let private handleIsCommitted (state: RaftServerState) (chan: ReplyChan) (entry: EntryResponse) =
+  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (chan: ReplyChan) (arbiter: StateArbiter) =
     match state with
     | Idle ->
       "No config loaded"
@@ -1514,19 +1449,57 @@ module Raft =
         Raft.responseCommitted entry
         |> runRaft data.Raft data.Callbacks
 
-      match result with
-      | Right (committed, _) ->
-        committed
-        |> Reply.IsCommitted
-        |> Either.succeed
-        |> chan.Reply
-        state
+      let delta = DateTime.Now - ts
 
-      | Left  (err, _) ->
+      match result with
+      | Right (true, newstate) ->        // the entry was committed, hence we reply to the caller
+        async {
+          entry
+          |> Reply.Entry
+          |> Either.succeed
+          |> chan.Reply
+
+          delta.TotalMilliseconds
+          |> sprintf "Completed request in %fms"
+          |> Logger.debug data.Raft.Member.Id "handleIsCommitted"
+        } |> Async.Start
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Right (false, newstate) ->       // the entry was not yet committed
+        if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
+          async {                       // the maximum timout has been crossed, hence the request
+            "Command timed out"          // failed miserably
+            |> Error.asRaftError "handleIsCommitted"
+            |> Either.fail
+            |> chan.Reply
+
+            delta.TotalMilliseconds
+            |> sprintf "Command append failed after %fms"
+            |> Logger.err data.Raft.Member.Id "handleIsCommitted"
+          } |> Async.Start
+        else
+          async {                       // now we re-queue the message to check again in 1ms
+            do! Async.Sleep(1)
+            (ts, entry, chan)
+            |> Msg.IsCommitted
+            |> arbiter.Post
+          } |> Async.Start
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Left (err, newstate) ->          // encountered an error during check. request failed
         err
         |> Either.fail
         |> chan.Reply
-        state
+
+        newstate
+        |> updateRaft data
+        |> Loaded
 
   // ** processRequest
 
@@ -1643,15 +1616,13 @@ module Raft =
           | Msg.Leave chan             -> handleLeave         state chan
           | Msg.Periodic               -> handlePeriodic      state
           | Msg.ForceElection          -> handleForceElection state
-          | Msg.AddCmd (chan, cmd)     -> handleAddCmd        state chan cmd
-          // | Msg.Request (chan, req)    -> handleRequest       state chan req
-          // | Msg.Response (chan, resp)  -> handleResponse      state chan resp
+          | Msg.AddCmd (chan, cmd)     -> handleAddCmd        state chan cmd inbox
           | Msg.Get chan               -> handleGet           state chan
-          | Msg.AddMember  (chan, mem) -> handleAddMember     state chan mem
-          | Msg.RmMember    (chan, id) -> handleRemoveMember  state chan id
-          | Msg.IsCommitted (chan,ety) -> handleIsCommitted   state chan ety
-          | Msg.RawRequest   request   -> handleRawRequest    state request inbox
-          | Msg.ReqCommitted (t,e,r)   -> handleReqCommitted  state t e r inbox
+          | Msg.AddMember  (chan, mem) -> handleAddMember     state chan mem inbox
+          | Msg.RmMember    (chan, id) -> handleRemoveMember  state chan id  inbox
+          | Msg.IsCommitted (t,e,c)    -> handleIsCommitted   state t e c    inbox
+          | Msg.RawRequest   request   -> handleRawRequest    state request  inbox
+          | Msg.ReqCommitted (t,e,r)   -> handleReqCommitted  state t e r    inbox
 
         do! act newstate
       }
@@ -1677,26 +1648,12 @@ module Raft =
                      (cmd: StateMachine) :
                      Either<IrisError, EntryResponse> =
     match postCommand agent (fun chan -> Msg.AddCmd(chan,cmd)) with
-    | Right (Reply.Entry entry) ->
-      match waitForCommit agent entry with
-      | Right true -> Either.succeed entry
-
-      | Right false ->
-        "Response Timeout"
-        |> Error.asRaftError (tag "addCmd")
-        |> Either.fail
-
-      | Left error ->
-        error
-        |> Either.fail
-
+    | Right (Reply.Entry entry) -> Either.succeed entry
     | Right other ->
       sprintf "Received garbage reply from agent:  %A" other
       |> Error.asRaftError (tag "addCmd")
       |> Either.fail
-
-    | Left error ->
-      Either.fail error
+    | Left error -> Either.fail error
 
   // ** getStatus
 
@@ -1846,9 +1803,11 @@ module Raft =
               member self.LeaveCluster () =
                 withOk (fun chan -> Msg.Leave chan) agent
 
-              member self.AddMember mem = addMember agent mem
+              member self.AddMember mem =
+                addMember agent mem
 
-              member self.RmMember id = rmMember agent id
+              member self.RmMember id =
+                rmMember agent id
 
               member self.State
                 with get () = getState agent
