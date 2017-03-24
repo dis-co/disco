@@ -42,17 +42,34 @@ export default class App extends Component {
   }
 
   render() {
+    var global = this.global;
     return (
       <div id="app">
         <ModalDialog ref={el => modal = (el || modal)} />        
         <header id="app-header">
           <h1>Iris</h1>
-          <DropdownMenu options={{
-            "Create project": () => showModal(CreateProject),
-            "Load project": () => showModal(LoadProject),
-            "Unload project": () => Iris.unloadProject(),
-            "Shutdown": () => Iris.shutdown(),
-          }} />
+          <DropdownMenu options={[
+            {
+              label: () => "Create project",
+              action: () => showModal(CreateProject),
+            },
+            {
+              label: () => "Load project",
+              action: () => showModal(LoadProject),
+            },
+            {
+              label: () => "Unload project",
+              action: () => Iris.unloadProject(),
+            },
+            {
+              label: () => "Shutdown",
+              action: () => Iris.shutdown(),
+            },
+            {
+              label: () => "Use right click: " + global.state.useRightClick,
+              action: () => global.useRightClick(!global.state.useRightClick),
+            }            
+          ]} />
         </header>
         <div id="app-content">
           <div id="ui-layout-container">

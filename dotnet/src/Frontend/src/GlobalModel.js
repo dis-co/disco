@@ -16,20 +16,32 @@ export default class GlobalModel {
     this.eventSubscribers = new Map();
     this.state = {
       tabs: new Map(),
-      widgets: new Map()
+      widgets: new Map(),
+      useRightClick: false
     };
   }
 
-  subscribe(key, subscriber) {
-    let id = counter++, subscribers = this.subscribers;
-    if (!subscribers.has(key)) {
-      subscribers.set(key, new Map());
+  subscribe(keys, subscriber) {
+    let subscribers = this.subscribers, disposables = [];
+    if (typeof keys === "string") {
+      keys = [keys];
     }
-    subscribers.get(key).set(id, subscriber);
-    // `subscribers` must be captured so the closure below works
+    for (let key of keys) {
+      let id = counter++;
+      if (!subscribers.has(key)) {
+        subscribers.set(key, new Map());
+      }
+      subscribers.get(key).set(id, subscriber);
+      disposables.push({
+        // `subscribers` must be captured so the closure below works
+        dispose() {
+          subscribers.get(key).delete(id);
+        }
+      })
+    }
     return {
       dispose() {
-        subscribers.get(key).delete(id);
+        disposables.forEach(x => x.dispose());
       }
     }
   }
@@ -57,6 +69,10 @@ export default class GlobalModel {
   __setState(key, value) {
     this.state[key] = value;
     this.__notify(key, value);
+  }
+
+  useRightClick(value) {
+    this.__setState("useRightClick", value);
   }
 
   addWidget(id, widget) {

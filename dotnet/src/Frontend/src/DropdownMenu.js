@@ -10,14 +10,13 @@ export default class DropdownMenu extends React.Component {
     if (!this.state.open) {
       return null;
     }
-    var options = Object.keys(this.props.options);
     return (
       <ul className="iris-dropdown-options">
-        {options.map((option, k) =>
+        {this.props.options.map((option, k) =>
           <li key={k} onClick={ev=> {
-            this.props.options[option]();
+            option.action();
             this.toggle(false);
-          }}>{option}</li>
+          }}>{option.label()}</li>
         )}
       </ul>
     )

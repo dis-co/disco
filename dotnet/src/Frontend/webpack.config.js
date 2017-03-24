@@ -14,14 +14,22 @@ module.exports = {
     // bundle the client for hot reloading
     // only- means to only hot reload for successful updates
 
-    path.resolve(__dirname, './src/index.js'),
+    path.join(__dirname, './src/index.js'),
     // the entry point of our app
   ],
 
   output: {
     filename: 'bundle.js', // the output bundle
-    path: path.resolve(__dirname, 'js'),
+    path: path.join(__dirname, 'js'),
     publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
+  },
+
+  externals: {
+    jquery: 'jQuery'
+  },
+
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.json']
   },
 
   devtool: 'inline-source-map',
