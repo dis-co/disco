@@ -687,8 +687,13 @@ Target "GenerateDocs" DoNothing
 //       |_|
 
 Target "UploadArtifact" (fun () ->
-  if AppVeyorEnvironment.RepoBranch = "master" then
-    let fn = "Iris-latest.zip"
+  if AppVeyorEnvironment.RepoBranch = "master" || AppVeyorEnvironment.RepoTag then
+    let fn =
+      if AppVeyorEnvironment.RepoTag then
+        let fn' = sprintf "Iris-%s.zip" AppVeyorEnvironment.RepoTagName
+        MoveFile fn' "Iris-latest.zip"
+        fn
+      else "Iris-latest.zip"
     let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
     let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
     let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
