@@ -274,6 +274,81 @@ Target "AssemblyInfo" (fun _ ->
         | Fsproj -> CreateFSharpAssemblyInfo (createPath "fs") attributes
         | Csproj -> CreateCSharpAssemblyInfo (createPath "cs") attributes))
 
+//  __  __             _  __           _
+// |  \/  | __ _ _ __ (_)/ _| ___  ___| |_
+// | |\/| |/ _` | '_ \| | |_ / _ \/ __| __|
+// | |  | | (_| | | | | |  _|  __/\__ \ |_
+// |_|  |_|\__,_|_| |_|_|_|  \___||___/\__|
+
+let buildFile = baseDir @@ "Iris/Core/Build.fs"
+let buildFileTmpl = @"
+namespace Iris.Core
+
+module Build =
+
+  [<Literal>]
+  let VERSION = ""{0}""
+
+  [<Literal>]
+  let BUILD_ID = ""{1}""
+
+  [<Literal>]
+  let BUILD_NUMBER = ""{2}""
+
+  [<Literal>]
+  let BUILD_VERSION = ""{3}""
+
+  [<Literal>]
+  let BUILD_TIME_UTC = ""{4}""
+
+  [<Literal>]
+  let COMMIT = ""{5}""
+
+  [<Literal>]
+  let BRANCH = ""{6}""
+"
+
+let manifestFile = __SOURCE_DIRECTORY__ @@ "bin/MANIFEST"
+let manifestTmpl = @"
+Iris Version: {0}
+Build Id: {1}
+Build Number: {2}
+Build Version: {3}
+Build Time (UTC): {4}
+Commit: {5}
+Branch: {6}
+"
+
+Target "GenerateBuildFile" (
+  fun () ->
+    match Environment.GetEnvironmentVariable "APPVEYOR" with
+    | "True" ->
+      let buildId = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_ID"
+      let buildNo = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_NUMBER"
+      let buildVs = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_VERSION"
+      let commit = Environment.GetEnvironmentVariable "APPVEYOR_REPO_COMMIT"
+      let branch = Environment.GetEnvironmentVariable "APPVEYOR_REPO_BRANCH"
+      let time = DateTime.Now.ToUniversalTime().ToString()
+      String.Format(buildFileTmpl,
+        release.AssemblyVersion,
+        buildId,
+        buildNo,
+        buildVs,
+        time,
+        commit,
+        branch)
+      |> fun src -> File.WriteAllText(buildFile, src)
+      String.Format(manifestTmpl,
+        release.AssemblyVersion,
+        buildId,
+        buildNo,
+        buildVs,
+        time,
+        commit,
+        branch)
+      |> fun src -> File.WriteAllText(manifestFile, src)
+    | _ -> ())
+
 //   ____
 //  / ___|___  _ __  _   _
 // | |   / _ \| '_ \| | | |
@@ -657,6 +732,9 @@ Target "Release" DoNothing
 // ==> "GenerateSerialization"
 
 // Serialization
+
+"GenerateBuildFile"
+==> "GenerateSerialization"
 
 "GenerateSerialization"
 ==> "BuildWebTests"

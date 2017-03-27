@@ -49,6 +49,9 @@
     <Compile Include="..\..\AssemblyInfo\Web.TestsInfo.fs">
       <Link>Web.TestsInfo.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Build.fs">
+      <Link>Build.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\FlatBuffers.fs">
       <Link>FlatBuffers.fs</Link>
     </Compile>

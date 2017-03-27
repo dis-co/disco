@@ -77,6 +77,9 @@
     <Compile Include="..\..\AssemblyInfo\TestsInfo.fs">
       <Link>TestsInfo.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Build.fs">
+      <Link>Build.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Constants.fs">
       <Link>Constants.fs</Link>
     </Compile>
