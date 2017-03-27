@@ -694,7 +694,6 @@ Target "UploadArtifact" (fun () ->
         Rename fn' "Iris-latest.zip"
         fn'
       else "Iris-latest.zip"
-    printfn "filename: %A" fn
     let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
     let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
     let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
