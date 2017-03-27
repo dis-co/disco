@@ -691,7 +691,7 @@ Target "UploadArtifact" (fun () ->
     let fn =
       if AppVeyorEnvironment.RepoTag then
         let fn' = sprintf "Iris-%s.zip" AppVeyorEnvironment.RepoTagName
-        RenameFile fn' "Iris-latest.zip"
+        Rename fn' "Iris-latest.zip"
         fn'
       else "Iris-latest.zip"
     printfn "filename: %A" fn
