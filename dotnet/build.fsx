@@ -609,10 +609,7 @@ Target "GenerateDocs" DoNothing
 //       |_|
 
 Target "UploadArtifact" (fun () ->
-  let user = "iris-bot"
-  let pw = "GJR593498rkrjt"
   let fn = "Iris-latest.zip"
-  let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads/"
   let args = sprintf "-s \
                       -X POST \
                       -u iris-bot:GJR593498rkrjt \
@@ -711,9 +708,7 @@ Target "Release" DoNothing
 ==> "CopyAssets"
 ==> "CopyDocs"
 ==> "CreateArchive"
-
-"CreateArchive"
-==> "Release"
+==> "UploadArtifact"
 
 "UploadArtifact"
 ==> "Release"
