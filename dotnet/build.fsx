@@ -692,7 +692,7 @@ Target "UploadArtifact" (fun () ->
       if AppVeyorEnvironment.RepoTag then
         let fn' = sprintf "Iris-%s.zip" AppVeyorEnvironment.RepoTagName
         MoveFile fn' "Iris-latest.zip"
-        fn
+        fn'
       else "Iris-latest.zip"
     let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
     let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
