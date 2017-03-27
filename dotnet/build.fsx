@@ -12,6 +12,7 @@ open Fake.Paket
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
 open Fake.UserInputHelper
+open Fake.AppVeyor
 open System
 open System.IO
 open System.Diagnostics
@@ -331,21 +332,27 @@ Target "GenerateBuildFile" (
       let time = DateTime.Now.ToUniversalTime().ToString()
       String.Format(buildFileTmpl,
         release.AssemblyVersion,
-        buildId,
-        buildNo,
-        buildVs,
+        AppVeyorEnvironment.BuildId,
+        AppVeyorEnvironment.BuildNumber,
+        AppVeyorEnvironment.BuildVersion,
         time,
-        commit,
-        branch)
+        AppVeyorEnvironment.RepoCommit,
+        AppVeyorEnvironment.RepoBranch)
       |> fun src -> File.WriteAllText(buildFile, src)
+    | _ -> ())
+
+Target "GenerateManifest" (
+  fun () ->
+    match Environment.GetEnvironmentVariable "APPVEYOR" with
+    | "True" ->
       String.Format(manifestTmpl,
         release.AssemblyVersion,
-        buildId,
-        buildNo,
-        buildVs,
+        AppVeyorEnvironment.BuildId,
+        AppVeyorEnvironment.BuildNumber,
+        AppVeyorEnvironment.BuildVersion,
         time,
-        commit,
-        branch)
+        AppVeyorEnvironment.RepoCommit,
+        AppVeyorEnvironment.RepoBranch)
       |> fun src -> File.WriteAllText(manifestFile, src)
     | _ -> ())
 
@@ -785,6 +792,7 @@ Target "Release" DoNothing
 "CopyBinaries"
 ==> "CopyAssets"
 ==> "CopyDocs"
+==> "GenerateManifest"
 ==> "CreateArchive"
 ==> "UploadArtifact"
 
