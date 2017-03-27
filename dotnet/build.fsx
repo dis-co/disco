@@ -338,9 +338,9 @@ Target "GenerateBuildFile" (
 
 Target "GenerateManifest" (
   fun () ->
-      let time = DateTime.Now.ToUniversalTime().ToString()
     match Environment.GetEnvironmentVariable "APPVEYOR" with
     | "True" ->
+      let time = DateTime.Now.ToUniversalTime().ToString()
       String.Format(manifestTmpl,
         release.AssemblyVersion,
         AppVeyorEnvironment.BuildId,
