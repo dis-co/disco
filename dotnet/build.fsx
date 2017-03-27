@@ -324,11 +324,6 @@ Target "GenerateBuildFile" (
   fun () ->
     match Environment.GetEnvironmentVariable "APPVEYOR" with
     | "True" ->
-      let buildId = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_ID"
-      let buildNo = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_NUMBER"
-      let buildVs = Environment.GetEnvironmentVariable "APPVEYOR_BUILD_VERSION"
-      let commit = Environment.GetEnvironmentVariable "APPVEYOR_REPO_COMMIT"
-      let branch = Environment.GetEnvironmentVariable "APPVEYOR_REPO_BRANCH"
       let time = DateTime.Now.ToUniversalTime().ToString()
       String.Format(buildFileTmpl,
         release.AssemblyVersion,
@@ -343,6 +338,7 @@ Target "GenerateBuildFile" (
 
 Target "GenerateManifest" (
   fun () ->
+      let time = DateTime.Now.ToUniversalTime().ToString()
     match Environment.GetEnvironmentVariable "APPVEYOR" with
     | "True" ->
       String.Format(manifestTmpl,
