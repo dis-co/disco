@@ -12,6 +12,7 @@ open Fake.Paket
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
 open Fake.UserInputHelper
+open Fake.AppVeyor
 open System
 open System.IO
 open System.Diagnostics
@@ -273,6 +274,83 @@ Target "AssemblyInfo" (fun _ ->
         match projFileName with
         | Fsproj -> CreateFSharpAssemblyInfo (createPath "fs") attributes
         | Csproj -> CreateCSharpAssemblyInfo (createPath "cs") attributes))
+
+//  __  __             _  __           _
+// |  \/  | __ _ _ __ (_)/ _| ___  ___| |_
+// | |\/| |/ _` | '_ \| | |_ / _ \/ __| __|
+// | |  | | (_| | | | | |  _|  __/\__ \ |_
+// |_|  |_|\__,_|_| |_|_|_|  \___||___/\__|
+
+let buildFile = baseDir @@ "Iris/Core/Build.fs"
+let buildFileTmpl = @"
+namespace Iris.Core
+
+module Build =
+
+  [<Literal>]
+  let VERSION = ""{0}""
+
+  [<Literal>]
+  let BUILD_ID = ""{1}""
+
+  [<Literal>]
+  let BUILD_NUMBER = ""{2}""
+
+  [<Literal>]
+  let BUILD_VERSION = ""{3}""
+
+  [<Literal>]
+  let BUILD_TIME_UTC = ""{4}""
+
+  [<Literal>]
+  let COMMIT = ""{5}""
+
+  [<Literal>]
+  let BRANCH = ""{6}""
+"
+
+let manifestFile = __SOURCE_DIRECTORY__ @@ "bin/MANIFEST"
+let manifestTmpl = @"
+Iris Version: {0}
+Build Id: {1}
+Build Number: {2}
+Build Version: {3}
+Build Time (UTC): {4}
+Commit: {5}
+Branch: {6}
+"
+
+Target "GenerateBuildFile" (
+  fun () ->
+    match Environment.GetEnvironmentVariable "APPVEYOR" with
+    | "True" ->
+      let time = DateTime.Now.ToUniversalTime().ToString()
+      String.Format(buildFileTmpl,
+        release.AssemblyVersion,
+        AppVeyorEnvironment.BuildId,
+        AppVeyorEnvironment.BuildNumber,
+        AppVeyorEnvironment.BuildVersion,
+        time,
+        AppVeyorEnvironment.RepoCommit,
+        AppVeyorEnvironment.RepoBranch)
+      |> fun src -> File.WriteAllText(buildFile, src)
+    | _ -> ())
+
+Target "GenerateManifest" (
+  fun () ->
+    match Environment.GetEnvironmentVariable "APPVEYOR" with
+    | "True" ->
+      let time = DateTime.Now.ToUniversalTime().ToString()
+      String.Format(manifestTmpl,
+        release.AssemblyVersion,
+        AppVeyorEnvironment.BuildId,
+        AppVeyorEnvironment.BuildNumber,
+        AppVeyorEnvironment.BuildVersion,
+        time,
+        AppVeyorEnvironment.RepoCommit,
+        AppVeyorEnvironment.RepoBranch)
+      |> fun src -> File.WriteAllText(manifestFile, src)
+    | _ -> ())
 
 //   ____
 //  / ___|___  _ __  _   _
@@ -601,6 +679,23 @@ Target "KeepRunning" (fun _ ->
 
 Target "GenerateDocs" DoNothing
 
+//  _   _       _                 _
+// | | | |_ __ | | ___   __ _  __| |
+// | | | | '_ \| |/ _ \ / _` |/ _` |
+// | |_| | |_) | | (_) | (_| | (_| |
+//  \___/| .__/|_|\___/ \__,_|\__,_|
+//       |_|
+
+Target "UploadArtifact" (fun () ->
+  let fn = "Iris-latest.zip"
+  let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
+  let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
+  let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
+  let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
+  let args = String.Format(tpl, user, pw, url, fn)
+  runExec "curl" args __SOURCE_DIRECTORY__ false
+)
+
 //  ____       _                 ____             _
 // |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
 // | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
@@ -640,6 +735,9 @@ Target "Release" DoNothing
 // ==> "GenerateSerialization"
 
 // Serialization
+
+"GenerateBuildFile"
+==> "GenerateSerialization"
 
 "GenerateSerialization"
 ==> "BuildWebTests"
@@ -690,6 +788,7 @@ Target "Release" DoNothing
 "CopyBinaries"
 ==> "CopyAssets"
 ==> "CopyDocs"
+==> "GenerateManifest"
 ==> "CreateArchive"
 
 "CreateArchive"
