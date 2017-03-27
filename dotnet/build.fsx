@@ -601,6 +601,26 @@ Target "KeepRunning" (fun _ ->
 
 Target "GenerateDocs" DoNothing
 
+//  _   _       _                 _
+// | | | |_ __ | | ___   __ _  __| |
+// | | | | '_ \| |/ _ \ / _` |/ _` |
+// | |_| | |_) | | (_) | (_| | (_| |
+//  \___/| .__/|_|\___/ \__,_|\__,_|
+//       |_|
+
+Target "UploadArtifact" (fun () ->
+  let user = "iris-bot"
+  let pw = "GJR593498rkrjt"
+  let fn = "Iris-latest.zip"
+  let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads/"
+  let args = sprintf "-s \
+                      -X POST \
+                      -u iris-bot:GJR593498rkrjt \
+                      https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads \
+                      -F files=@%s" fn
+  runExec "curl" args __SOURCE_DIRECTORY__ false
+)
+
 //  ____       _                 ____             _
 // |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
 // | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
@@ -693,6 +713,9 @@ Target "Release" DoNothing
 ==> "CreateArchive"
 
 "CreateArchive"
+==> "Release"
+
+"UploadArtifact"
 ==> "Release"
 
 "BuildDebugService"
