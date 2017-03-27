@@ -688,11 +688,11 @@ Target "GenerateDocs" DoNothing
 
 Target "UploadArtifact" (fun () ->
   let fn = "Iris-latest.zip"
-  let args = sprintf "-s \
-                      -X POST \
-                      -u iris-bot:GJR593498rkrjt \
-                      https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads \
-                      -F files=@%s" fn
+  let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
+  let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
+  let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
+  let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
+  let args = String.Format(tpl, user, pw, url, fn)
   runExec "curl" args __SOURCE_DIRECTORY__ false
 )
 
@@ -790,9 +790,8 @@ Target "Release" DoNothing
 ==> "CopyDocs"
 ==> "GenerateManifest"
 ==> "CreateArchive"
-==> "UploadArtifact"
 
-"UploadArtifact"
+"CreateArchive"
 ==> "Release"
 
 "BuildDebugService"
