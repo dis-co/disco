@@ -687,13 +687,14 @@ Target "GenerateDocs" DoNothing
 //       |_|
 
 Target "UploadArtifact" (fun () ->
-  let fn = "Iris-latest.zip"
-  let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
-  let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
-  let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
-  let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
-  let args = String.Format(tpl, user, pw, url, fn)
-  runExec "curl" args __SOURCE_DIRECTORY__ false
+  if AppVeyorEnvironment.RepoBranch = "master" then
+    let fn = "Iris-latest.zip"
+    let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
+    let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
+    let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
+    let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
+    let args = String.Format(tpl, user, pw, url, fn)
+    runExec "curl" args __SOURCE_DIRECTORY__ false
 )
 
 //  ____       _                 ____             _
