@@ -22,6 +22,6 @@ type Command =
   | ListProjects
   | GetWebSocketAddress
   | CreateProject of CreateProjectOptions
-  | LoadProject of projectName:string * userName:string * password:string
+  | LoadProject of projectName:string * userName:string * password:string * site:ClusterConfig option
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

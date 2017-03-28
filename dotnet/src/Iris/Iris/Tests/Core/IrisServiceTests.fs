@@ -43,8 +43,7 @@ module IrisServiceTests =
 
         let cfg =
           Config.create "leader" machine
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let name = Path.GetFileName path

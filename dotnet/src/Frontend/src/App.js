@@ -12,11 +12,23 @@ import DropdownMenu from './DropdownMenu'
 import ModalDialog from './modals/ModalDialog'
 import CreateProject from './modals/CreateProject'
 import LoadProject from './modals/LoadProject'
+import SimpleModal from './modals/Simple'
 
 let modal = null;
 
 export function showModal(content, onSubmit) {
   modal.setState({ content, onSubmit });
+}
+
+export function askModal(title, text, buttons) {
+  buttons = buttons || [["Yes", true], ["No", false]];
+  return new Promise((resolve, reject) => {
+    modal.setState({
+      content: SimpleModal,
+      props: { title, text, buttons },
+      onSubmit: resolve
+    })
+  });
 }
 
 export default class App extends Component {

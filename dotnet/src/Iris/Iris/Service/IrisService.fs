@@ -178,7 +178,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * projectName:string * userName:string * password:string
+    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:ClusterConfig option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -855,7 +855,7 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: string)
+                          (projectName: string, userName: string, password: string, site: ClusterConfig option)
                           (subscriptions: Subscriptions) =
     let isValidPassword (user: User) (password: string) =
       let password = Crypto.hashPassword password user.Salt
@@ -880,6 +880,13 @@ module Iris =
             match oldState with
             | Idle idleData -> idleData
             | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+
+          let state =
+            match site with
+            | Some site ->
+              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+              { state with Project = { state.Project with Config = cfg }}
+            | None -> state
 
           // FIXME: load the actual state from disk
           let! mem = Config.selfMember state.Project.Config
@@ -960,12 +967,12 @@ module Iris =
 
   let private handleLoad (state: IrisState)
                          (chan: ReplyChan)
-                         (projectName: string, userName: string, password: string)
+                         (projectName, userName, password, site)
                          (config: IrisMachine)
                          (post: CommandAgent)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config (projectName, userName, password) subscriptions with
+    match loadProject state config (projectName, userName, password, site) subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -1153,7 +1160,8 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config post subs inbox
+          | Msg.Load (chan,pname,uname,pass,site) ->
+            handleLoad state chan (pname,uname,pass,site) config post subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -1220,8 +1228,8 @@ module Iris =
               |> Error.asOther (tag "Status")
               |> Either.fail
 
-        member self.LoadProject(name:string, username:string, password:string) =
-          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
+        member self.LoadProject(name, username, password, site) =
+          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, site)) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->

@@ -144,3 +144,16 @@ module Constants =
 
   [<Literal>]
   let IRIS_CLIENT_ID_ENV_VAR = "IRIS_CLIENT_ID"
+
+
+  module ErrorMessages =
+    [<Literal>]
+    let PROJECT_NO_ACTIVE_CONFIG = "No active cluster configuration"
+
+    [<Literal>]
+    let PROJECT_MISSING_CLUSTER = "Missing active cluster configuration"
+
+    [<Literal>]
+    let PROJECT_MISSING_MEMBER = "Missing member"
+
+    

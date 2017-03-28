@@ -47,14 +47,12 @@ module RaftIntegrationTests =
                                        (mem2.Id, mem2) |] }
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let! leader = RaftServer.create ()
@@ -91,8 +89,7 @@ module RaftIntegrationTests =
 
         let leadercfg =
           Config.create "leader" machine
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
 
         use! leader = RaftServer.create ()
         do! leader.Load leadercfg
@@ -142,14 +139,12 @@ module RaftIntegrationTests =
 
         let leadercfg =
           Config.create "leader" machine1
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
           Config.create "follower" machine2
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create ()

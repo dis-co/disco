@@ -114,23 +114,36 @@ let alert msg (_: Exception) =
 let (&>) fst v =
   fun x -> fst x; v
 
-let postCommand defValue success (cmd: Command) =
+let private postCommandPrivate (cmd: Command) =
   GlobalFetch.fetch(
     RequestInfo.Url Constants.WEP_API_COMMAND,
     !![ RequestProperties.Method HttpMethod.POST
         RequestProperties.Headers [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
+
+let postCommand onSuccess onFail (cmd: Command) =
+  postCommandPrivate cmd
   |> Promise.bind (fun res ->
     if not res.Ok
-    then res.text() |> Promise.map (fun msg -> notify msg; defValue)
-    else res.text() |> Promise.map success)
+    then res.text() |> Promise.map onFail
+    else res.text() |> Promise.map onSuccess)
+
+let postCommandAndBind onSuccess onFail (cmd: Command) =
+  postCommandPrivate cmd
+  |> Promise.bind (fun res ->
+    if not res.Ok
+    then res.text() |> Promise.bind onFail
+    else res.text() |> Promise.bind onSuccess)
+
+let postCommandWithErrorNotifier defValue onSuccess cmd =
+  postCommand onSuccess (fun msg -> notify msg; defValue) cmd
 
 let postCommandAndForget cmd =
-  postCommand () ignore cmd
+  postCommand ignore notify cmd
 
 let listProjects() =
   ListProjects
-  |> postCommand [||] (String.split [|','|])
+  |> postCommandWithErrorNotifier [||] (String.split [|','|])
 
 let shutdown() =
   Shutdown |> postCommandAndForget
@@ -138,9 +151,22 @@ let shutdown() =
 let unloadProject() =
   UnloadProject |> postCommandAndForget
 
-let loadProject(project, username, password) =
-  LoadProject(project, username, password)
-  |> postCommand () (fun _ -> ClientContext.Singleton.ConnectWithWebSocket() |> ignore)
+let rec loadProject(project, username, password, site) =
+  LoadProject(project, username, password, site)
+  |> postCommandAndBind
+    (fun _ -> ClientContext.Singleton.ConnectWithWebSocket())
+    (fun msg ->
+      if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
+        || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
+        || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
+      then
+        // Get project sites and machine config
+        // Ask user to create or select a new config
+        // Try loading the project again with the site config
+        let site: ClusterConfig option =
+          failwith "TODO: Select or create another config, and add member if necessary"
+        loadProject(project, username, password, site)
+      else notify msg |> Promise.lift)
 
 let createProject(info: obj) =
   { name          = !!info?name

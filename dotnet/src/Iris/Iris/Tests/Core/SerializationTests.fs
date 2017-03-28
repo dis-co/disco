@@ -273,8 +273,7 @@ module SerializationTests =
 
         let config =
           Config.create "default" machine
-          |> Config.addSite site
-          |> Config.setActiveSite site.Id
+          |> Config.addSiteAndSetActive site
 
         let term = 666u
 

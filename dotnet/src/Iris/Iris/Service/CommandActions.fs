@@ -136,8 +136,8 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | ListProjects -> listProjects cfg
         | GetWebSocketAddress -> getWsAddress iris
         | CreateProject opts -> createProject cfg opts
-        | LoadProject(projectName, userName, password) ->
-          iris.LoadProject(projectName, userName, password)
+        | LoadProject(projectName, userName, password, site) ->
+          iris.LoadProject(projectName, userName, password, site)
           |> Either.map (fun _ -> "Loaded project " + projectName)
       replyChannel.Reply res
       do! loop()

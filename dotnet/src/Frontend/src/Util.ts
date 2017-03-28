@@ -60,3 +60,7 @@ export function xand(a: boolean, b: boolean) {
 export function xor(a: boolean, b: boolean) {
   return a !== b;
 }
+
+export function askModal(title: string, text: string) {
+  
+}

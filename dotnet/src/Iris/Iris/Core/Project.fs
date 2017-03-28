@@ -1977,15 +1977,15 @@ module Config =
         match Map.tryFind id cluster.Members with
         | Some mem -> Either.succeed mem
         | _ ->
-          sprintf "Missing Node: %s" (string id)
+          ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
           |> Error.asProjectError "Config.findMember"
           |> Either.fail
       | _ ->
-        sprintf "Active cluster configuration not found: %s" (string active)
+        ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.findMember"
         |> Either.fail
     | None ->
-      "No active configuration"
+      ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.findMember"
       |> Either.fail
 
@@ -1997,20 +1997,23 @@ module Config =
       match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
       | Some site -> site.Members |> Either.succeed
       | None ->
-        active
-        |> string
-        |> sprintf "Active site not found in config: %s"
+        ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.getMembers"
         |> Either.fail
     | None ->
-      "No site is currently active"
+      ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.getMembers"
       |> Either.fail
 
   // ** setActiveSite
 
   let setActiveSite (id: Id) (config: IrisConfig) =
-    { config with ActiveSite = Some id }
+    if config.Sites |> Array.exists (fun x -> x.Id = id)
+    then Right { config with ActiveSite = Some id }
+    else
+        ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
+        |> Error.asProjectError "Config.setActiveSite"
+        |> Either.fail
 
   // ** getActiveSite
 
@@ -2035,7 +2038,7 @@ module Config =
 
   // ** addSite
 
-  let addSite (site: ClusterConfig) (config: IrisConfig) =
+  let private addSitePrivate (site: ClusterConfig) setActive (config: IrisConfig) =
     match Array.tryFind (fun site' -> site'.Id = site.Id) config.Sites with
     | Some _ -> config
     | None ->
@@ -2043,7 +2046,15 @@ module Config =
       let copy = Array.zeroCreate (len + 1)
       Array.iteri (fun i site -> copy.[i] <- site) config.Sites
       copy.[len] <- site
-      { config with Sites = copy }
+      if setActive
+      then { config with ActiveSite = Some site.Id; Sites = copy }
+      else { config with Sites = copy }
+
+  let addSite (site: ClusterConfig) (config: IrisConfig) =
+    addSitePrivate site false config
+
+  let addSiteAndSetActive (site: ClusterConfig) (config: IrisConfig) =
+    addSitePrivate site false config
 
   // ** removeSite
 
