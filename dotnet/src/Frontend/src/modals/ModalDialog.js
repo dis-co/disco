@@ -25,7 +25,7 @@ export default class ModalDialog extends React.Component {
               this.state.onSubmit(values);
             }
           },
-          ...(this.state.props || {})
+          ...this.state.props
         });
     }
   }

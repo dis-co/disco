@@ -3,6 +3,7 @@ import css2 from "react-grid-layout/css/styles.css"
 
 import values from "./values"
 import GlobalModel from "./GlobalModel"
+import * as util from "./Util"
 
 import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
@@ -11,13 +12,15 @@ import Workspace from './Workspace'
 import DropdownMenu from './DropdownMenu'
 import ModalDialog from './modals/ModalDialog'
 import CreateProject from './modals/CreateProject'
-import LoadProject from './modals/LoadProject'
 import SimpleModal from './modals/Simple'
 
 let modal = null;
 
-export function showModal(content, onSubmit) {
-  modal.setState({ content, onSubmit });
+export function showModal(content, props) {
+  props = props != null ? props : {}; 
+  return new Promise(resolve =>
+    modal.setState({ content, props, onSubmit: resolve })
+  );
 }
 
 export function askModal(title, text, buttons) {
@@ -67,7 +70,7 @@ export default class App extends Component {
             },
             {
               label: () => "Load project",
-              action: () => showModal(LoadProject),
+              action: () => util.loadProject(),
             },
             {
               label: () => "Unload project",

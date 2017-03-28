@@ -1,3 +1,9 @@
+import { showModal } from "./App"
+import LoadProject from './modals/LoadProject'
+import ProjectConfig from './modals/ProjectConfig'
+
+declare var Iris: any;
+
 export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   let ar = [];
   if (iterable != null) {
@@ -61,6 +67,33 @@ export function xor(a: boolean, b: boolean) {
   return a !== b;
 }
 
-export function askModal(title: string, text: string) {
-  
+interface ProjectInfo { name: string, username: string, password: string }
+
+export function loadProject() {
+  let cachedInfo: ProjectInfo = null;
+  showModal(LoadProject)
+    .then((info: ProjectInfo) => {
+      cachedInfo = info;
+      Iris.loadProject(info.name, info.username, info.password)
+    })
+    .then((err: any) =>
+      err != null
+      // Get project sites and machine config
+      ? Iris.getProjectConfig(cachedInfo.name)
+      : null
+    )
+    .then((cfg: any) =>
+      cfg != null
+      // Ask user to create or select a new config
+      ? showModal(ProjectConfig, cfg)
+      : null
+    )
+    .then((site: any) => {
+      if (site != null) {
+        // TODO: Add machine to cluster if missing
+        // Try loading the project again with the site config
+        return Iris.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
+      }
+      return null;
+    });
 }

@@ -151,22 +151,23 @@ let shutdown() =
 let unloadProject() =
   UnloadProject |> postCommandAndForget
 
+let nullify _: 'a = null
+  
 let rec loadProject(project, username, password, site) =
   LoadProject(project, username, password, site)
-  |> postCommandAndBind
-    (fun _ -> ClientContext.Singleton.ConnectWithWebSocket())
-    (fun msg ->
+  |> postCommandPrivate
+  |> Promise.bind (fun res ->
+    if res.Ok
+    then ClientContext.Singleton.ConnectWithWebSocket() |> Promise.map nullify
+    else res.text() |> Promise.map (fun msg ->    
       if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
         || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
         || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
-      then
-        // Get project sites and machine config
-        // Ask user to create or select a new config
-        // Try loading the project again with the site config
-        let site: ClusterConfig option =
-          failwith "TODO: Select or create another config, and add member if necessary"
-        loadProject(project, username, password, site)
-      else notify msg |> Promise.lift)
+      then msg
+      // We cannot deal with the error, just notify it
+      else notify msg |> nullify
+    )
+  )
 
 let createProject(info: obj) =
   { name          = !!info?name
