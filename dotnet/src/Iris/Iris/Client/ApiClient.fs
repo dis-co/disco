@@ -51,14 +51,14 @@ module ApiClient =
   type private ClientStateData =
     { Client: IrisClient
       Elapsed: uint32
-      Server: Rep
-      Socket: Req
+      Server: IBroker
+      Socket: IClient
       Store:  Store
-      Timer:  IDisposable }
+      Disposables: IDisposable list }
 
     interface IDisposable with
       member self.Dispose() =
-        dispose self.Timer
+        List.iter dispose self.Disposables
         dispose self.Server
         dispose self.Socket
 
@@ -93,14 +93,16 @@ module ApiClient =
   type private Msg =
     | Ping
     | CheckStatus
-    | Start     of chan:ReplyChan
-    | GetStatus of chan:ReplyChan
-    | SetStatus of status:ServiceStatus
-    | Dispose   of chan:ReplyChan
-    | GetState  of chan:ReplyChan
-    | SetState  of state:State
-    | Update    of sm:StateMachine
-    | Request   of chan:ReplyChan * sm:StateMachine
+    | Start         of chan:ReplyChan
+    | GetStatus     of chan:ReplyChan
+    | SetStatus     of status:ServiceStatus
+    | Dispose       of chan:ReplyChan
+    | AsyncDispose
+    | GetState      of chan:ReplyChan
+    | SetState      of state:State
+    | Update        of sm:StateMachine
+    | Request       of chan:ReplyChan * sm:StateMachine
+    | ServerRequest of req:RawRequest
 
   // ** ApiAgent
 
@@ -148,27 +150,6 @@ module ApiClient =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
 
-  // ** requestHandler
-
-  let private requestHandler (agent: ApiAgent) (raw: byte array) =
-    match Binary.decode raw with
-    | Right ClientApiRequest.Ping ->
-      agent.Post(Msg.Ping)
-      ApiResponse.Pong
-      |> Binary.encode
-    | Right (ClientApiRequest.Snapshot state) ->
-      agent.Post(Msg.SetState state)
-      ApiResponse.OK
-      |> Binary.encode
-    | Right (ClientApiRequest.Update sm) ->
-      agent.Post(Msg.Update sm)
-      ApiResponse.OK
-      |> Binary.encode
-    | Left error ->
-      string error
-      |> ApiError.MalformedRequest
-      |> ApiResponse.NOK
-      |> Binary.encode
 
   // ** requestRegister
 
@@ -225,6 +206,7 @@ module ApiClient =
                     (client: IrisClient)
                     (subs: Subscriptions)
                     (agent: ApiAgent) =
+    let backendAddr = "inproc://api-client-" + string client.Id
     let clientAddr = formatTCPUri client.IpAddress (int client.Port)
     let srvAddr = formatTCPUri server.IpAddress (int server.Port)
 
@@ -234,43 +216,62 @@ module ApiClient =
     sprintf "Connecting to server on %s" srvAddr
     |> Logger.debug client.Id (tag "start")
 
-    let server = new Rep(client.Id, clientAddr, requestHandler agent)
-    let socket = new Req(client.Id, srvAddr, Constants.REQ_TIMEOUT)
-    socket.Start()
+    let socket = Client.create client.Id srvAddr
 
-    match server.Start() with
-    | Right () ->
+    match Broker.create client.Id 3 clientAddr backendAddr with
+    | Right server ->
+      let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
+      let timer = pingTimer agent
       let data =
-        { Client = client
-          Timer = pingTimer agent
-          Elapsed = 0u
-          Store = new Store(State.Empty)
+        { Elapsed = 0u
+          Client = client
           Socket = socket
-          Server = server }
+          Server = server
+          Store = new Store(State.Empty)
+          Disposables = [ timer; disposable ] }
 
-      match requestRegister data with
-      | Right () ->
-        sprintf "Registration with %s successful" srvAddr
-        |> Logger.debug client.Id (tag "start")
+      async {
+        match requestRegister data with
+        | Right () ->
+          srvAddr
+          |> sprintf "Registration with %s successful"
+          |> Logger.debug client.Id (tag "start")
 
-        chan.Reply(Right Reply.Ok)
-        notify subs ClientEvent.Registered
-        Loaded data
-      | Left error ->
-        sprintf "Registration with %s encountered error: %s" srvAddr (string error)
-        |> Logger.debug client.Id (tag "start")
+          Reply.Ok
+          |> Either.succeed
+          |>  chan.Reply
 
-        dispose data
-        chan.Reply(Left error)
-        Idle
+          notify subs ClientEvent.Registered
+
+        | Left error ->
+          error
+          |> string
+          |> sprintf "Registration with %s encountered error: %s" srvAddr
+          |> Logger.debug client.Id (tag "start")
+
+          Msg.AsyncDispose
+          |> agent.Post
+
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
+
+      Loaded data
 
     | Left error ->
-      sprintf "Error starting sockets: %s" (string error)
-      |> Logger.debug client.Id (tag "start")
+      async {
+        error
+        |> string
+        |> sprintf "Error starting sockets: %s"
+        |> Logger.debug client.Id (tag "start")
 
-      chan.Reply(Left error)
-      dispose server
-      dispose socket
+        error
+        |> Either.fail
+        |> chan.Reply
+
+        dispose socket
+      } |> Async.Start
       Idle
 
   // ** handleStart
@@ -283,7 +284,9 @@ module ApiClient =
                           (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      dispose data
+      async {
+        dispose data
+      } |> Async.Start
       start chan server client subs agent
     | Idle ->
       start chan server client subs agent
@@ -291,16 +294,39 @@ module ApiClient =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    match state with
-    | Loaded data ->
-      match requestUnRegister data with
-      | Left error ->
-        string error
-        |> Logger.err data.Client.Id (tag "handleDispose")
+    async {
+      match state with
+      | Loaded data ->
+        match requestUnRegister data with
+        | Left error ->
+          string error
+          |> Logger.err data.Client.Id (tag "handleDispose")
+        | _ -> ()
       | _ -> ()
-    | _ -> ()
-    dispose state
-    chan.Reply(Right Reply.Ok)
+
+      dispose state
+
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+    } |> Async.Start
+    Idle
+
+  // ** handleAsyncDispose
+
+  let private handleAsyncDispose (state: ClientState) =
+    async {
+      match state with
+      | Loaded data ->
+        match requestUnRegister data with
+        | Left error ->
+          string error
+          |> Logger.err data.Client.Id (tag "handleAsyncDispose")
+        | _ -> ()
+      | _ -> ()
+
+      dispose state
+    } |> Async.Start
     Idle
 
   // ** handleGetState
@@ -308,13 +334,20 @@ module ApiClient =
   let private handleGetState (chan: ReplyChan) (state: ClientState) =
     match state with
     | Loaded data ->
-      chan.Reply(Right (Reply.State data.Store.State))
+      async {
+        data.Store.State
+        |> Reply.State
+        |> Either.succeed
+        |> chan.Reply
+      } |> Async.Start
       state
     | Idle ->
-      "Not loaded"
-      |> Error.asClientError (tag "handleGetState")
-      |> Either.fail
-      |> chan.Reply
+      async {
+        "Not loaded"
+        |> Error.asClientError (tag "handleGetState")
+        |> Either.fail
+        |> chan.Reply
+      } |> Async.Start
       Idle
 
   // ** handleGetStatus
@@ -347,7 +380,7 @@ module ApiClient =
         | x when x > TIMEOUT ->
           let status =
             "Server ping timed out"
-            |> Error.asClientError (tag "handlePing")
+            |> Error.asClientError (tag "handleCheckStatus")
             |> ServiceStatus.Failed
           notify subs (ClientEvent.Status status)
           Loaded { data with
@@ -380,7 +413,9 @@ module ApiClient =
   let private handleSetState (state: ClientState) (subs: Subscriptions) (newstate: State) =
     match state with
     | Loaded data ->
-      notify subs ClientEvent.Snapshot
+      async {
+        notify subs ClientEvent.Snapshot
+      } |> Async.Start
       Loaded { data with Store = new Store(newstate) }
     | Idle -> state
 
@@ -389,14 +424,16 @@ module ApiClient =
   let private handleUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
     match state with
     | Loaded data ->
-      data.Store.Dispatch sm
-      notify subs (ClientEvent.Update sm)
+      async {
+        data.Store.Dispatch sm
+        notify subs (ClientEvent.Update sm)
+      } |> Async.Start
       state
     | Idle -> state
 
   // ** requestUpdate
 
-  let private requestUpdate (socket: Req) (sm: StateMachine) =
+  let private requestUpdate (socket: IClient) (sm: StateMachine) =
     try
       let result : Either<IrisError,ApiResponse> =
         ServerApiRequest.Update sm
@@ -435,25 +472,75 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDispatch data sm
-      match requestUpdate data.Socket sm with
-      | Right () ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        ServiceStatus.Failed error
-        |> Msg.SetStatus
-        |> agent.Post
-        error
-        |> Either.fail
-        |> chan.Reply
+      async {
+        maybeDispatch data sm
+        match requestUpdate data.Socket sm with
+        | Right () ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          ServiceStatus.Failed error
+          |> Msg.SetStatus
+          |> agent.Post
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
       state
     | Idle ->
-      "Not running"
-      |> Error.asClientError (tag "handleRequest")
-      |> Either.fail
-      |> chan.Reply
+      async {
+        "Not running"
+        |> Error.asClientError (tag "handleRequest")
+        |> Either.fail
+        |> chan.Reply
+      } |> Async.Start
+      state
+
+  // ** handleServerRequest
+
+  let private handleServerRequest (state: ClientState) (req: RawRequest) (agent: ApiAgent) =
+    match state with
+    | Idle -> state
+    | Loaded data ->
+      match req.Body |> Binary.decode with
+      | Right ClientApiRequest.Ping ->
+        printfn "got an ping from server"
+        async {
+          agent.Post(Msg.Ping)
+          ApiResponse.Pong
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Right (ClientApiRequest.Snapshot snapshot) ->
+        printfn "got an snapshot from server"
+        async {
+          agent.Post(Msg.SetState snapshot)
+          ApiResponse.OK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Right (ClientApiRequest.Update sm) ->
+        printfn "got an update from server"
+        async {
+          agent.Post(Msg.Update sm)
+          ApiResponse.OK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Left error ->
+        printfn "got an error from server: %A" error
+        async {
+          string error
+          |> ApiError.MalformedRequest
+          |> ApiResponse.NOK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
       state
 
   // ** loop
@@ -472,6 +559,7 @@ module ApiClient =
           | Msg.Start chan        -> handleStart chan state server client subs inbox
           | Msg.GetState chan     -> handleGetState chan state
           | Msg.SetState newstate -> handleSetState state subs newstate
+          | Msg.AsyncDispose      -> handleAsyncDispose state
           | Msg.Dispose chan      -> handleDispose chan state
           | Msg.GetStatus chan    -> handleGetStatus chan state
           | Msg.SetStatus status  -> handleSetStatus state subs status
@@ -479,6 +567,7 @@ module ApiClient =
           | Msg.Ping              -> handlePing state
           | Msg.Update sm         -> handleUpdate state subs sm
           | Msg.Request(chan, sm) -> handleRequest chan state sm inbox
+          | Msg.ServerRequest req -> handleServerRequest state req inbox
 
         return! act newstate
       }

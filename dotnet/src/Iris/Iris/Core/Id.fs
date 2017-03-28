@@ -114,13 +114,8 @@ type Id =
   ///
   /// Returns: Guid
   static member Create() =
-    let sanitize (str: string) =
-      Regex.Replace(str, "[\+|\/|\=]","").ToLower()
-
-    let guid = System.Guid.NewGuid()
-    guid.ToByteArray()
-    |> System.Convert.ToBase64String
-    |> sanitize
+    System.Guid.NewGuid()
+    |> string
     |> Id
 
 #endif

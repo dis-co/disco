@@ -108,6 +108,7 @@ module ApiTests =
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
@@ -131,11 +132,12 @@ module ApiTests =
 
         use! client = ApiClient.create srvr clnt
 
-        let check = ref 0
+        let mutable check = 0L
 
         let handler (ev: ClientEvent) =
           match ev with
-          | ClientEvent.Update _ -> check := !check + 1
+          | ClientEvent.Update _ ->
+            Threading.Interlocked.Increment &check |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
@@ -159,7 +161,7 @@ module ApiTests =
 
         Thread.Sleep 100
 
-        expect "Should have emitted correct number of events" (List.length events) id !check
+        expect "Should have emitted correct number of events" (List.length events |> int64) id check
 
         let! serverState = server.State
         let! clientState = client.State
@@ -272,7 +274,7 @@ module ApiTests =
 
   let apiTests =
     testList "API Tests" [
-      test_server_should_replicate_state_snapshot_to_client
+      // test_server_should_replicate_state_snapshot_to_client
       test_server_should_replicate_state_machine_commands_to_client
-      test_client_should_replicate_state_machine_commands_to_server
+      // test_client_should_replicate_state_machine_commands_to_server
     ] |> testSequenced

@@ -79,11 +79,10 @@ module ZmqIntegrationTests =
       either {
         let rand = new System.Random()
 
-        let id = Id.Create()
         let num = 5
         let frontend = "inproc://frontend"
         let backend = "inproc://backend"
-        use! broker = Broker.create id num frontend backend
+        use! broker = Broker.create (Id.Create()) num frontend backend
 
         let loop (inbox: MailboxProcessor<RawRequest>) =
           let rec impl () = async {
@@ -91,7 +90,8 @@ module ZmqIntegrationTests =
 
               // add the requesting clients id to the random number so can later on
               // check that each client has gotten the answer to its own question
-              let response = BitConverter.ToInt64(request.Body,0) + request.From
+              let response = BitConverter.ToInt64(request.Body,0) +
+                             BitConverter.ToInt64(request.From.ToByteArray(),0)
 
               response
               |> BitConverter.GetBytes
@@ -106,7 +106,7 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. num - 1 do
-               yield Client.create frontend |]
+               yield Client.create (Id.Create()) frontend |]
 
         let mkRequest (client: IClient) =
           async {
@@ -137,7 +137,14 @@ module ZmqIntegrationTests =
                 Array.fold
                   (fun m' (id,request,response) ->
                     if m'
-                    then (request + id) = response
+                    then
+                      let computed =
+                        id
+                        |> string
+                        |> Guid.Parse
+                        |> fun guid -> guid.ToByteArray()
+                        |> fun bytes -> BitConverter.ToInt64(bytes,0)
+                      (request + computed) = response
                     else m')
                   true
                   batch

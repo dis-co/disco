@@ -58,10 +58,12 @@ module ApiServer =
       Server: IBroker
       Publisher: Pub
       Subscriber: Sub
-      Clients: Map<Id,Client> }
+      Clients: Map<Id,Client>
+      Disposables: IDisposable list }
 
     interface IDisposable with
       member data.Dispose() =
+        List.iter dispose data.Disposables
         dispose data.Publisher
         dispose data.Subscriber
         dispose data.Server
@@ -100,8 +102,8 @@ module ApiServer =
     | Dispose         of chan:ReplyChan
     | GetClients      of chan:ReplyChan
     | SetStatus       of status:ServiceStatus
-    | AddClient       of chan:ReplyChan * client:IrisClient
-    | RemoveClient    of chan:ReplyChan * client:IrisClient
+    | AddClient       of client:IrisClient
+    | RemoveClient    of client:IrisClient
     | SetClientStatus of id:Id          * status:ServiceStatus
     | SetState        of chan:ReplyChan * state:State
     | GetState        of chan:ReplyChan
@@ -109,6 +111,7 @@ module ApiServer =
     | LocalUpdate     of sm:StateMachine
     | RemoteUpdate    of sm:StateMachine
     | ClientUpdate    of sm:StateMachine
+    | RawRequest      of req:RawRequest
 
   // ** ApiAgent
 
@@ -229,44 +232,6 @@ module ApiServer =
         member self.Dispose () =
           cts.Cancel() }
 
-  // ** requestHandler
-
-  let private requestHandler (agent: ApiAgent) (raw: byte array) =
-    match Binary.decode raw with
-    | Right (Register client) ->
-      match postCommand agent (fun chan -> Msg.AddClient(chan, client)) with
-      | Right Reply.Ok -> Binary.encode OK
-      | Right _ ->
-        "Received wrong Reply type from ApiAgent"
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-      | Left error ->
-        string error
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-    | Right (UnRegister client) ->
-      match postCommand agent (fun chan -> Msg.RemoveClient(chan, client)) with
-      | Right Reply.Ok -> Binary.encode OK
-      | Right _ ->
-        "Received wrong Reply type from ApiAgent"
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-      | Left error ->
-        string error
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-    | Right (Update sm) ->
-      agent.Post(Msg.ClientUpdate sm)
-      Binary.encode OK
-    | Left error ->
-      string error
-      |> ApiError.Internal
-      |> NOK
-      |> Binary.encode
 
   // ** processSubscriptionEvent
 
@@ -296,6 +261,7 @@ module ApiServer =
 
     match Broker.create mem.Id 5 frontend backend with
     | Right server ->
+      let disposable = server.Subscribe (Msg.RawRequest >> agent.Post)
       match publisher.Start(), subscriber.Start() with
       | Right (), Right () ->
         chan.Reply(Right Reply.Ok)
@@ -304,7 +270,8 @@ module ApiServer =
                  Publisher = publisher
                  Subscriber = subscriber
                  Clients = Map.empty
-                 Server = server }
+                 Server = server
+                 Disposables = [ disposable ] }
       | Left error, _ | _, Left error ->
         dispose server
         dispose publisher
@@ -325,7 +292,9 @@ module ApiServer =
                           (projectId: Id) =
     match state with
     | Loaded data ->
-      dispose data
+      async {
+        dispose data
+      } |> Async.Start
       start chan agent mem projectId
     | Idle ->
       start chan agent mem projectId
@@ -333,25 +302,28 @@ module ApiServer =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ServerState) =
-    dispose state
-    chan.Reply(Right Reply.Ok)
+    async {
+      dispose state
+      chan.Reply(Right Reply.Ok)
+    } |> Async.Start
     Idle
 
   // ** handleAddClient
 
-  let private handleAddClient (chan: ReplyChan)
-                              (state: ServerState)
+  let private handleAddClient (state: ServerState)
                               (subs: Subscriptions)
                               (meta: IrisClient)
                               (agent: ApiAgent) =
     match state with
+    | Idle -> state
     | Loaded data ->
-
       // first, dispose of the previous client
       match Map.tryFind meta.Id data.Clients with
       | Some client ->
-        dispose client
-        notify subs (ApiEvent.UnRegister client.Meta)
+        async {
+          dispose client
+          notify subs (ApiEvent.UnRegister client.Meta)
+        } |> Async.Start
       | None -> ()
 
       // construct a new client value
@@ -363,35 +335,31 @@ module ApiServer =
           Socket = socket
           Timer = pingTimer socket agent }
 
-      agent.Post(Msg.InstallSnapshot meta.Id)
+      async {
+        meta.Id |> Msg.InstallSnapshot |> agent.Post
+        notify subs (ApiEvent.Register meta)
+      } |> Async.Start
 
-      chan.Reply(Right Reply.Ok)
-      notify subs (ApiEvent.Register meta)
       Loaded { data with Clients = Map.add meta.Id client data.Clients }
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      Idle
 
   // ** handleRemoveClient
 
-  let private handleRemoveClient (chan: ReplyChan)
-                                 (state: ServerState)
+  let private handleRemoveClient (state: ServerState)
                                  (subs: Subscriptions)
                                  (peer: IrisClient) =
     match state with
+    | Idle -> state
     | Loaded data ->
       match Map.tryFind peer.Id data.Clients with
       | Some client ->
-        dispose client
-        chan.Reply(Right Reply.Ok)
-        notify subs (ApiEvent.UnRegister peer)
+        async {
+          dispose client
+          peer
+          |> ApiEvent.UnRegister
+          |> notify subs
+        } |> Async.Start
         Loaded { data with Clients = Map.remove peer.Id data.Clients }
-      | _ ->
-        chan.Reply(Right Reply.Ok)
-        state
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      state
+      | _ -> state
 
   // ** updateClient
 
@@ -457,17 +425,21 @@ module ApiServer =
   let private handleGetClients (chan: ReplyChan) (state: ServerState) =
     match state with
     | Loaded data ->
-      data.Clients
-      |> Map.map (fun _ v -> v.Meta)
-      |> Reply.Clients
-      |> Either.succeed
-      |> chan.Reply
+      async {
+        data.Clients
+        |> Map.map (fun _ v -> v.Meta)
+        |> Reply.Clients
+        |> Either.succeed
+        |> chan.Reply
+      } |> Async.Start
       state
     | Idle ->
-      "ClientApi not running"
-      |> Error.asClientError (tag "handleGetClients")
-      |> Either.fail
-      |> chan.Reply
+      async {
+        "ClientApi not running"
+        |> Error.asClientError (tag "handleGetClients")
+        |> Either.fail
+        |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleSetStatus
@@ -477,7 +449,9 @@ module ApiServer =
                               (status: ServiceStatus) =
     match state with
     | Loaded data ->
-      notify subs (ApiEvent.ServiceStatus status)
+      async {
+        notify subs (ApiEvent.ServiceStatus status)
+      } |> Async.Start
       Loaded { data with Status = status }
     | idle -> idle
 
@@ -512,8 +486,10 @@ module ApiServer =
                              (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      Map.iter (fun id _ -> agent.Post(Msg.InstallSnapshot id)) data.Clients
-      chan.Reply (Right Reply.Ok)
+      async {
+        Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) data.Clients
+        chan.Reply (Right Reply.Ok)
+      } |> Async.Start
       Loaded { data with Store = new Store(newstate) }
     | Idle ->
       chan.Reply (Right Reply.Ok)
@@ -524,11 +500,13 @@ module ApiServer =
   let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      match Map.tryFind id data.Clients with
-      | Some client ->
-        requestInstallSnapshot data client agent
-        state
-      | None -> state
+      async {
+        match Map.tryFind id data.Clients with
+        | Some client ->
+          requestInstallSnapshot data client agent
+        | None -> ()
+      } |> Async.Start
+      state
     | Idle -> state
 
   // ** handleGetState
@@ -536,16 +514,20 @@ module ApiServer =
   let private handleGetState (chan: ReplyChan) (state: ServerState) =
     match state with
     | Loaded data ->
-      data.Store.State
-      |> Reply.State
-      |> Either.succeed
-      |> chan.Reply
+      async {
+        data.Store.State
+        |> Reply.State
+        |> Either.succeed
+        |> chan.Reply
+      } |> Async.Start
       state
     | _ ->
-      "Not Loaded"
-      |> Error.asClientError (tag "handleGetState")
-      |> Either.fail
-      |> chan.Reply
+      async {
+        "Not Loaded"
+        |> Error.asClientError (tag "handleGetState")
+        |> Either.fail
+        |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleClientUpdate
@@ -556,9 +538,11 @@ module ApiServer =
                                  (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDispatch data sm
-      maybePublish data sm agent
-      notify subs (ApiEvent.Update sm)
+      async {
+        maybeDispatch data sm
+        maybePublish data sm agent
+        notify subs (ApiEvent.Update sm)
+      } |> Async.Start
       state
     | Idle ->
       state
@@ -571,9 +555,11 @@ module ApiServer =
                                  (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      maybeDispatch data sm
-      updateClients data sm agent
-      notify subs (ApiEvent.Update sm)
+      async {
+        maybeDispatch data sm
+        updateClients data sm agent
+        notify subs (ApiEvent.Update sm)
+      } |> Async.Start
       state
     | Idle ->
       state
@@ -585,11 +571,62 @@ module ApiServer =
                                 (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      data.Store.Dispatch sm
-      maybePublish data sm agent
-      updateClients data sm agent
+      async {
+        data.Store.Dispatch sm
+        maybePublish data sm agent
+        updateClients data sm agent
+      } |> Async.Start
       state
     | Idle -> state
+
+  // ** handleRawRequest
+
+  let private handleRawRequest (state: ServerState) (req: RawRequest) (agent: ApiAgent) =
+    match state with
+    | Idle -> state
+    | Loaded data ->
+      match req.Body |> Binary.decode with
+      | Right (Register client) ->
+        async {
+          client
+          |> Msg.AddClient
+          |> agent.Post
+          OK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Right (UnRegister client) ->
+        async {
+          client
+          |> Msg.RemoveClient
+          |> agent.Post
+          OK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Right (Update sm) ->
+        async {
+          sm
+          |> Msg.ClientUpdate
+          |> agent.Post
+          OK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      | Left error ->
+        async {
+          string error
+          |> ApiError.Internal
+          |> NOK
+          |> Binary.encode
+          |> RawResponse.fromRequest req
+          |> data.Server.Respond
+        } |> Async.Start
+      state
+
 
   // ** loop
 
@@ -602,8 +639,8 @@ module ApiServer =
           match msg with
           | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
           | Msg.Dispose chan                -> handleDispose chan state
-          | Msg.AddClient(chan,client)      -> handleAddClient chan state subs client inbox
-          | Msg.RemoveClient(chan,client)   -> handleRemoveClient chan state subs client
+          | Msg.AddClient(client)           -> handleAddClient state subs client inbox
+          | Msg.RemoveClient(client)        -> handleRemoveClient state subs client
           | Msg.GetClients(chan)            -> handleGetClients chan state
           | Msg.SetStatus(status)           -> handleSetStatus state subs status
           | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
@@ -613,6 +650,7 @@ module ApiServer =
           | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
           | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
           | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
+          | Msg.RawRequest(req)             -> handleRawRequest state req inbox
 
         return! act newstate
       }
