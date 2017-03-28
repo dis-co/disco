@@ -79,10 +79,11 @@ module ZmqIntegrationTests =
       either {
         let rand = new System.Random()
 
+        let id = Id.Create()
         let num = 5
         let frontend = "inproc://frontend"
         let backend = "inproc://backend"
-        use! broker = Broker.create num frontend backend
+        use! broker = Broker.create id num frontend backend
 
         let loop (inbox: MailboxProcessor<RawRequest>) =
           let rec impl () = async {

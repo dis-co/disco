@@ -294,7 +294,7 @@ module ApiServer =
     subscriber.Subscribe(processSubscriptionEvent agent)
     |> ignore                            // gets cleaned up during Dispose
 
-    match Broker.create 5 frontend backend with
+    match Broker.create mem.Id 5 frontend backend with
     | Right server ->
       match publisher.Start(), subscriber.Start() with
       | Right (), Right () ->
@@ -356,7 +356,7 @@ module ApiServer =
 
       // construct a new client value
       let addr = formatTCPUri meta.IpAddress (int meta.Port)
-      let socket = Client.create addr
+      let socket = Client.create meta.Id addr
 
       let client =
         { Meta = meta

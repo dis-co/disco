@@ -1107,7 +1107,7 @@ module Raft =
       try
         let frontend = raftstate.Member |> memUri
         let backend = "inproc://raft-backend-" + string raftstate.Member.Id
-        let! server = Broker.create 5 frontend backend
+        let! server = Broker.create raftstate.Member.Id 5 frontend backend
         let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
 
         let callbacks =

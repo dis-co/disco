@@ -9,29 +9,29 @@ open System.Collections.Concurrent
 open Iris.Core
 open ZeroMQ
 
-type private Id = int64
-
-module private Id =
-  let mutable private id: Id = 0L
-  let next () = Interlocked.Increment &id
+[<RequireQualifiedAccess>]
+module private RequestCount =
+  let mutable private id = 0L
+  let increment () = Interlocked.Increment &id |> ignore
+  let current () = id
 
 type RawRequest =
-  { From: Id
-    Via: Id
+  { From: Guid
+    Via: Guid
     Body: byte array }
 
   override self.ToString() =
-    sprintf "[Request] from %d via: %d bytes: %d"
+    sprintf "[Request] from %O via: %O bytes: %d"
       self.From
       self.Via
       (Array.length self.Body)
 
 type RawResponse =
-  { Via: Id
+  { Via: Guid
     Body: byte array }
 
   override self.ToString() =
-    sprintf "[Response] via: %d bytes: %d"
+    sprintf "[Response] via: %O bytes: %d"
       self.Via
       (Array.length self.Body)
 
@@ -44,7 +44,7 @@ type IClient =
 
 type private IWorker =
   inherit IDisposable
-  abstract Id: Id
+  abstract Id: Guid
   abstract Respond: RawResponse -> unit
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
 
@@ -66,8 +66,7 @@ module RawResponse =
 
 module internal Utils =
 
-  [<Literal>]
-  let internal READY = -1L
+  let internal READY = match Guid.Empty with | guid -> guid.ToByteArray()
 
   type internal Subscriptions = ConcurrentDictionary<int,IObserver<RawRequest>>
 
@@ -105,8 +104,8 @@ module Client =
 
   let rand = new System.Random()
 
-  type private LocalThreadState(frontend: string) as self =
-    let id: Id = int64 (rand.Next())
+  type private LocalThreadState(id: Id, frontend: string) as self =
+    let clid = string id |> Guid.Parse
 
     [<DefaultValue>] val mutable Run: bool
     [<DefaultValue>] val mutable Started: bool
@@ -136,15 +135,12 @@ module Client =
     member self.Id
       with get () = id
 
-    member self.LogId
-      with get () = Iris.Core.Id ("Client-" + string id)
-
     member self.Start() =
       try
         self.Context <- new ZContext()
         self.Socket <- new ZSocket(ZSocketType.REQ)
         self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 50.0
-        self.Socket.Identity <- BitConverter.GetBytes id
+        self.Socket.Identity <- clid.ToByteArray()
         self.Socket.Connect(frontend)
         self.Initialized <- true
         self.Started     <- true
@@ -218,10 +214,10 @@ module Client =
     dispose state
     state.Stopper.Set() |> ignore
 
-  let create (frontend: string) =
-    let state = new LocalThreadState(frontend = frontend)
+  let create (id: Id) (frontend: string) =
+    let state = new LocalThreadState(id = id, frontend = frontend)
     let mutable thread = new Thread(new ThreadStart(worker state))
-    thread.Name <- sprintf "Client %d" state.Id
+    thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
     let locker = new Object()
@@ -250,7 +246,7 @@ module Client =
           self.Dispose()
           state.Reset()
           thread <- new Thread(new ThreadStart(worker state))
-          thread.Name <- sprintf "Client %d" state.Id
+          thread.Name <- sprintf "Client %O" state.Id
           thread.Start()
           state.Starter.WaitOne() |> ignore
 
@@ -274,7 +270,9 @@ module private Worker =
   open Utils
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (id: Id, address: string) as self =
+  type private LocalThreadState (address: string) as self =
+    let id = Guid.NewGuid()
+
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
     [<DefaultValue>] val mutable Started: bool
@@ -308,7 +306,7 @@ module private Worker =
       try
         self.Context <- new ZContext()
         self.Socket <- new ZSocket(ZSocketType.REQ)
-        self.Socket.Identity <- BitConverter.GetBytes(id)
+        self.Socket.Identity <- id.ToByteArray()
         self.Socket.SetOption(ZSocketOption.RCVTIMEO, 500) |> ignore
         self.Socket.Connect(address)
 
@@ -335,7 +333,7 @@ module private Worker =
       with get () = id
 
     member self.LogId
-      with get () = Iris.Core.Id ("Worker-" + string id)
+      with get () = string id |> Id
 
     interface IDisposable with
       member self.Dispose() =
@@ -359,10 +357,10 @@ module private Worker =
       let result = state.Socket.ReceiveMessage(&request, &error)
 
       if result then
-        let clientId = request.[0].ReadInt64()
+        let clientId = request.[0].Read()
         let body = request.[2].Read()
 
-        { From = clientId
+        { From = Guid clientId
           Via = state.Id
           Body = body }
         |> notify state.Subscriptions
@@ -377,7 +375,7 @@ module private Worker =
         use reply = new ZMessage()
         reply.Add(new ZFrame(clientId));
         reply.Add(new ZFrame());
-        reply.Add(new ZFrame(response.Via));
+        reply.Add(new ZFrame(response.Via.ToByteArray()));
         reply.Add(new ZFrame(response.Body));
 
         state.Socket.Send(reply)
@@ -399,12 +397,12 @@ module private Worker =
     state.Stopper.Set() |> ignore
     dispose state.Stopper
 
-  let create (id: Id) (backend: string)=
-    let state = new LocalThreadState(id, address = backend)
+  let create (backend: string)=
+    let state = new LocalThreadState(address = backend)
     let listener = createListener state.Subscriptions
 
     let thread = new Thread(new ThreadStart(worker state))
-    thread.Name <- string state.LogId
+    thread.Name <- string state.Id
     thread.Start()
 
     state.Starter.WaitOne() |> ignore
@@ -444,7 +442,7 @@ module private Worker =
 module Broker =
   open Utils
 
-  type private Workers = ConcurrentDictionary<Id,IWorker>
+  type private Workers = ConcurrentDictionary<Guid,IWorker>
 
   type private ResponseActor = MailboxProcessor<RawResponse>
 
@@ -461,7 +459,7 @@ module Broker =
             | exn ->
               agent.Post response       // re-cue the response
         | _ ->
-          sprintf "no worker found for %d" response.Via
+          sprintf "no worker found for %O" response.Via
           |> Logger.err (Iris.Core.Id "Broker") "ResponseActor"
         return! impl ()
       }
@@ -469,6 +467,7 @@ module Broker =
 
   [<NoComparison;NoEquality>]
   type private LocalThreadState (num: int, frontend: string, backend: string) as self =
+
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
     [<DefaultValue>] val mutable Started: bool
@@ -504,7 +503,7 @@ module Broker =
         self.Backend.Bind(backend)
 
         for n in 0 .. (num - 1) do
-          match Worker.create (int64 n) backend with
+          match Worker.create backend with
           | Right worker ->
             notify self.Subscriptions
             |> worker.Subscribe
@@ -554,7 +553,7 @@ module Broker =
 
     Logger.debug state.LogId "IBroker.initialize" "startup done"
 
-    let busy = new ResizeArray<Id>()
+    let busy = new ResizeArray<Guid>()
     let mutable incoming = Unchecked.defaultof<ZMessage>
     let mutable error = Unchecked.defaultof<ZError>
     let poll = ZPollItem.CreateReceiver()
@@ -563,13 +562,13 @@ module Broker =
       let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
 
       if state.Backend.PollIn(poll, &incoming, &error, timespan) then
-        let workerId = incoming.[0].ReadInt64()
-        let clientId = incoming.[2].ReadInt64()
+        let workerId = incoming.[0].Read()
+        let clientId = incoming.[2].Read()
 
-        busy.Add(workerId)
+        workerId |> Guid |> busy.Add
 
         if clientId <> READY then
-          let from = incoming.[4].ReadInt64()
+          let from = incoming.[4].Read()
           let reply = incoming.[5].Read()
 
           // Tracer.trace "Broker.Backend.Poll" reply <| fun _ ->
@@ -587,12 +586,13 @@ module Broker =
 
       if busy.Count > 0 then
         if state.Frontend.PollIn(poll, &incoming, &error, timespan) then
-          let clientId = incoming.[0].ReadInt64()
+          let clientId = incoming.[0].Read()
           let request = incoming.[2].Read()
+          let workerId = busy.[0]
 
           // Tracer.trace "Broker.Frontend.Poll" request <| fun _ ->
           use outgoing = new ZMessage()
-          outgoing.Add(new ZFrame(busy.[0])) // worker ID
+          outgoing.Add(new ZFrame(workerId.ToByteArray())) // worker ID
           outgoing.Add(new ZFrame())
           outgoing.Add(new ZFrame(clientId))
           outgoing.Add(new ZFrame())
@@ -604,7 +604,7 @@ module Broker =
     dispose state
     state.Stopper.Set() |> ignore
 
-  let create (num: int) (frontend: string) (backend: string) =
+  let create (id: Id) (num: int) (frontend: string) (backend: string) =
     let state = new LocalThreadState(num = num, frontend = frontend, backend = backend)
     let listener = createListener state.Subscriptions
     let cts = new CancellationTokenSource()
