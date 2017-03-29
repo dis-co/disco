@@ -505,7 +505,6 @@ module ApiClient =
     | Loaded data ->
       match req.Body |> Binary.decode with
       | Right ClientApiRequest.Ping ->
-        printfn "got an ping from server"
         async {
           agent.Post(Msg.Ping)
           ApiResponse.Pong
@@ -514,7 +513,6 @@ module ApiClient =
           |> data.Server.Respond
         } |> Async.Start
       | Right (ClientApiRequest.Snapshot snapshot) ->
-        printfn "got an snapshot from server"
         async {
           agent.Post(Msg.SetState snapshot)
           ApiResponse.OK
@@ -523,7 +521,6 @@ module ApiClient =
           |> data.Server.Respond
         } |> Async.Start
       | Right (ClientApiRequest.Update sm) ->
-        printfn "got an update from server"
         async {
           agent.Post(Msg.Update sm)
           ApiResponse.OK
@@ -532,7 +529,6 @@ module ApiClient =
           |> data.Server.Respond
         } |> Async.Start
       | Left error ->
-        printfn "got an error from server: %A" error
         async {
           string error
           |> ApiError.MalformedRequest

@@ -99,4 +99,4 @@ module IrisServiceTests =
   let irisServiceTests =
     testList "IrisService Tests" [
       test_ensure_gitserver_restart_on_premature_exit
-    ]
+    ] |> testSequenced

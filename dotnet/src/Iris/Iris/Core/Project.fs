@@ -1754,6 +1754,8 @@ Project:
       Either.succeed config
     with
       | exn ->
+        printfn "exn: %s" exn.Message
+        printfn "exn: %s" exn.StackTrace
         exn.Message
         |> Error.asParseError "ProjectYaml.parse"
         |> Either.fail

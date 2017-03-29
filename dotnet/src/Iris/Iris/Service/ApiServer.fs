@@ -365,6 +365,9 @@ module ApiServer =
 
   let private updateClient (sm: StateMachine) (client: Client) =
     async {
+      if not client.Socket.Running then
+        client.Socket.Restart()
+
       let result : Either<IrisError,ApiResponse> =
         sm
         |> ClientApiRequest.Update
@@ -538,11 +541,9 @@ module ApiServer =
                                  (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      async {
-        maybeDispatch data sm
-        maybePublish data sm agent
-        notify subs (ApiEvent.Update sm)
-      } |> Async.Start
+      maybeDispatch data sm
+      maybePublish data sm agent
+      notify subs (ApiEvent.Update sm)
       state
     | Idle ->
       state
@@ -555,11 +556,9 @@ module ApiServer =
                                  (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      async {
-        maybeDispatch data sm
-        updateClients data sm agent
-        notify subs (ApiEvent.Update sm)
-      } |> Async.Start
+      maybeDispatch data sm             // we need to send these request synchronously
+      updateClients data sm agent       // in order to preserve ordering of the messages
+      notify subs (ApiEvent.Update sm)
       state
     | Idle ->
       state
@@ -571,11 +570,9 @@ module ApiServer =
                                 (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      async {
-        data.Store.Dispatch sm
-        maybePublish data sm agent
-        updateClients data sm agent
-      } |> Async.Start
+      data.Store.Dispatch sm            // we need to send these request synchronously
+      maybePublish data sm agent        // in order to preserve ordering of the messages
+      updateClients data sm agent
       state
     | Idle -> state
 

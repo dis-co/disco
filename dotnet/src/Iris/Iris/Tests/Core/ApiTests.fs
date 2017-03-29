@@ -108,7 +108,6 @@ module ApiTests =
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
@@ -274,7 +273,7 @@ module ApiTests =
 
   let apiTests =
     testList "API Tests" [
-      // test_server_should_replicate_state_snapshot_to_client
+      test_server_should_replicate_state_snapshot_to_client
       test_server_should_replicate_state_machine_commands_to_client
-      // test_client_should_replicate_state_machine_commands_to_server
+      test_client_should_replicate_state_machine_commands_to_server
     ] |> testSequenced

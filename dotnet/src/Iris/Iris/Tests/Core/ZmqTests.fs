@@ -157,7 +157,7 @@ module ZmqIntegrationTests =
 
         Array.iter dispose clients
 
-        expect "Should be consitent" true id result
+        expect "Should be consistent" true id result
       }
       |> noError
 
@@ -171,4 +171,4 @@ module ZmqIntegrationTests =
     testList "Zmq Integration Tests" [
       test_proper_cleanup_of_request_sockets
       test_broker_request_handling
-    ]
+    ] |> testSequenced
