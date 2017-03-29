@@ -6,19 +6,19 @@ open Iris.Tests
 
 let all =
   testList "All tests" [
-      pinTests
-      assetTests
-      stateTests
+      // pinTests
+      // assetTests
+      // stateTests
       irisServiceTests
-      raftTests
-      configTests
-      zmqIntegrationTests
-      raftIntegrationTests
-      serializationTests
-      projectTests
-      storeTests
-      gitTests
-      apiTests
+      // raftTests
+      // configTests
+      // zmqIntegrationTests
+      // raftIntegrationTests
+      // serializationTests
+      // projectTests
+      // storeTests
+      // gitTests
+      // apiTests
     ]
 
 [<EntryPoint>]

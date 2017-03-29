@@ -142,6 +142,28 @@ module Iris =
         dispose self.RaftServer
         dispose self.SocketServer
 
+  // ** IrisState
+
+  /// ## IrisState
+  ///
+  /// Encodes the presence or absence of a loaded project. Implements IDisposable for
+  /// convenience. This is the type our inner loop function is fed with.
+  ///
+  /// ### Constructors:
+  /// - Idle: no IrisProject is currently loaded (implies ServiceStatus.Stopped)
+  /// - Loaded: IrisStateData for loaded IrisProject
+  ///
+  [<NoComparison;NoEquality>]
+  type private IrisState =
+    | Idle of IrisIdleStateData
+    | Loaded of IrisIdleStateData * IrisLoadedStateData
+
+    interface IDisposable with
+      member self.Dispose() =
+        match self with
+        | Idle data -> dispose data
+        | Loaded (data1,data2) -> dispose data1; dispose data2
+
   // ** Reply
 
   /// ## Reply
@@ -172,21 +194,23 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git         of GitEvent
-    | Socket      of SocketEvent
-    | Raft        of RaftEvent
-    | Api         of ApiEvent
-    | Log         of LogEvent
-    | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * projectName:string * userName:string * password:string
-    | SetConfig   of ReplyChan * IrisConfig
-    | AddMember   of ReplyChan * RaftMember
-    | RmMember    of ReplyChan * Id
-    | Join        of ReplyChan * IpAddress  * uint16
-    | Leave       of ReplyChan
-    | Config      of ReplyChan
-    | Unload      of ReplyChan
-    | State       of ReplyChan
+    | Git           of GitEvent
+    | Socket        of SocketEvent
+    | Raft          of RaftEvent
+    | Api           of ApiEvent
+    | Log           of LogEvent
+    | Discovery     of Discovery.DiscoveryEvent
+    | Load          of chan:ReplyChan * projectName:string * userName:string * password:string
+    | Start         of chan:ReplyChan
+    | SetConfig     of chan:ReplyChan * config:IrisConfig
+    | AddMember     of chan:ReplyChan * mem:RaftMember
+    | RmMember      of chan:ReplyChan * id:Id
+    | Join          of chan:ReplyChan * ip:IpAddress  * port:uint16
+    | Leave         of chan:ReplyChan
+    | Config        of chan:ReplyChan
+    | Unload        of chan:ReplyChan
+    | State         of chan:ReplyChan
+    | SetAgentState of state:IrisState
     | ForceElection
     | Periodic
 
@@ -212,28 +236,6 @@ module Iris =
           |> Either.fail
     }
     |> Async.RunSynchronously
-
-  // ** IrisState
-
-  /// ## IrisState
-  ///
-  /// Encodes the presence or absence of a loaded project. Implements IDisposable for
-  /// convenience. This is the type our inner loop function is fed with.
-  ///
-  /// ### Constructors:
-  /// - Idle: no IrisProject is currently loaded (implies ServiceStatus.Stopped)
-  /// - Loaded: IrisStateData for loaded IrisProject
-  ///
-  [<NoComparison;NoEquality>]
-  type private IrisState =
-    | Idle of IrisIdleStateData
-    | Loaded of IrisIdleStateData * IrisLoadedStateData
-
-    interface IDisposable with
-      member self.Dispose() =
-        match self with
-        | Idle data -> dispose data
-        | Loaded (data1,data2) -> dispose data1; dispose data2
 
   /// ## withLoaded
   ///
@@ -275,10 +277,12 @@ module Iris =
   ///
   /// Returns: unit
   let private notLoaded (chan: ReplyChan) () =
-    "No project loaded"
-    |> Error.asProjectError (tag "notLoaded")
-    |> Either.fail
-    |> chan.Reply
+    async {
+      "No project loaded"
+      |> Error.asProjectError (tag "notLoaded")
+      |> Either.fail
+      |> chan.Reply
+    } |> Async.Start
 
   // ** withDefaultReply
 
@@ -835,7 +839,7 @@ module Iris =
         state
 
       | Exited _ ->
-        sprintf "Git daemon exited. Attempting to restart."
+        "Git daemon exited. Attempting to restart."
         |> Logger.debug data.MemberId (tag "handleGitEvent")
         let newData = restartGitServer data agent
         Loaded (idleData, newData)
@@ -961,40 +965,61 @@ module Iris =
                          (chan: ReplyChan)
                          (projectName: string, userName: string, password: string)
                          (config: IrisMachine)
-                         (post: CommandAgent)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
     match loadProject state config (projectName, userName, password) subscriptions with
     | Right nextstate ->
-      match start nextstate inbox with
-      | Right finalstate ->
-        // notify
-        ServiceStatus.Running
-        |> Status
-        |> triggerOnNext subscriptions
-        // reply
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-        finalstate
-      | Left error ->
-        // notify
-        ServiceStatus.Failed error
-        |> Status
-        |> triggerOnNext subscriptions
-        // reply
-        error
-        |> Either.fail
-        |> chan.Reply
-        resetLoaded nextstate
+      chan
+      |> Msg.Start
+      |> inbox.Post
+      nextstate
     | Left error ->
       ServiceStatus.Failed error
       |> Status
       |> triggerWithLoaded state
+
       error
       |> Either.fail
       |> chan.Reply
-      resetLoaded state
+
+      state
+      |> resetLoaded
+
+  let private handleStart (state: IrisState)
+                          (chan: ReplyChan)
+                          (subscriptions: Subscriptions)
+                          (inbox: IrisAgent)=
+    match start state inbox with
+    | Right finalstate ->
+      // notify
+      ServiceStatus.Running
+      |> Status
+      |> triggerOnNext subscriptions
+
+      // reply
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+
+      finalstate
+      |> Msg.SetAgentState
+      |> inbox.Post
+
+      finalstate
+
+    | Left error ->
+      // notify
+      ServiceStatus.Failed error
+      |> Status
+      |> triggerOnNext subscriptions
+
+      // reply
+      error
+      |> Either.fail
+      |> chan.Reply
+
+      state
+      |> resetLoaded
 
   //  _
   // | |    ___   __ _
@@ -1007,128 +1032,153 @@ module Iris =
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
     withState state <| fun data ->
-      broadcastMsg data (LogMsg log)
+      async {
+        broadcastMsg data (LogMsg log)
+      } |> Async.Start
     state
 
   // ** handleUnload
 
-  let private handleUnload (state: IrisState) (chan: ReplyChan) =
-    triggerWithLoaded state (Status ServiceStatus.Stopped)
-    let idleData =
-      match state with
-      | Idle idleData -> idleData
-      | Loaded (idleData, loadedData) -> dispose loadedData; idleData
-    Reply.Ok
-    |> Either.succeed
-    |> chan.Reply
-    Idle idleData
+  let private handleUnload (state: IrisState) (chan: ReplyChan) (agent: IrisAgent) =
+    async {
+      triggerWithLoaded state (Status ServiceStatus.Stopped)
+      let idleData =
+        match state with
+        | Idle idleData -> idleData
+        | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+
+      idleData
+      |> Idle
+      |> Msg.SetAgentState
+      |> agent.Post
+
+      Reply.Ok
+      |> Either.succeed
+      |> chan.Reply
+    } |> Async.Start
+    state
 
   // ** handleConfig
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      data.Store.State.Project.Config
-      |> Reply.Config
-      |> Either.succeed
-      |> chan.Reply
+      async {
+        data.Store.State.Project.Config
+        |> Reply.Config
+        |> Either.succeed
+        |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleSetConfig
 
   let private handleSetConfig (state: IrisState) (chan: ReplyChan) (config: IrisConfig) =
     withDefaultReply state chan <| fun data ->
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
+      async {
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
 
-      Project.updateConfig config data.Store.State.Project
-      |> UpdateProject
-      |> data.Store.Dispatch
-
+        Project.updateConfig config data.Store.State.Project
+        |> UpdateProject
+        |> data.Store.Dispatch
+      } |> Async.Start
       state
 
   // ** handleForceElection
 
   let private handleForceElection (state: IrisState) =
     withoutReply state <| fun data ->
-      match data.RaftServer.ForceElection () with
-      | Left error ->
-        error
-        |> string
-        |> Logger.err data.MemberId (tag "handleForceElection")
-      | other -> ignore other
+      async {
+        match data.RaftServer.ForceElection () with
+        | Left error ->
+          error
+          |> string
+          |> Logger.err data.MemberId (tag "handleForceElection")
+        | other -> ignore other
+      } |> Async.Start
       state
 
   // ** handlePeriodic
 
   let private handlePeriodic (state: IrisState) =
     withoutReply state <| fun data ->
-      match data.RaftServer.Periodic() with
-      | Left error ->
-        error
-        |> string
-        |> Logger.err data.MemberId (tag "handlePeriodic")
-      | other -> ignore other
+      async {
+        match data.RaftServer.Periodic() with
+        | Left error ->
+          error
+          |> string
+          |> Logger.err data.MemberId (tag "handlePeriodic")
+        | other -> ignore other
+      } |> Async.Start
       state
 
   // ** handleJoin
 
   let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.JoinCluster ip port with
-      | Right () ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
-        |> Either.fail
-        |> chan.Reply
+      async {
+        match data.RaftServer.JoinCluster ip port with
+        | Right () ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleLeave
 
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.LeaveCluster () with
-      | Right () ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
-        |> Either.fail
-        |> chan.Reply
+      async {
+        match data.RaftServer.LeaveCluster () with
+        | Right () ->
+          Reply.Ok
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleAddMember
 
   let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.AddMember mem with
-      | Right entry ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
-        |> Either.fail
-        |> chan.Reply
+      async {
+        match data.RaftServer.AddMember mem with
+        | Right entry ->
+          Reply.Entry entry
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleRmMember
 
   let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
-      match data.RaftServer.RmMember id  with
-      | Right entry ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-      | Left error ->
-        error
-        |> Either.fail
-        |> chan.Reply
+      async {
+        match data.RaftServer.RmMember id  with
+        | Right entry ->
+          Reply.Entry entry
+          |> Either.succeed
+          |> chan.Reply
+        | Left error ->
+          error
+          |> Either.fail
+          |> chan.Reply
+      } |> Async.Start
       state
 
   // ** handleState
@@ -1152,8 +1202,9 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config post subs inbox
-          | Msg.Unload chan          -> handleUnload        state chan
+          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config subs inbox
+          | Msg.Start chan           -> handleStart         state chan subs inbox
+          | Msg.Unload chan          -> handleUnload        state chan inbox
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
           | Msg.Git    ev            -> handleGitEvent      state inbox ev
@@ -1166,9 +1217,10 @@ module Iris =
           | Msg.Periodic             -> handlePeriodic      state
           | Msg.Join (chan,ip,port)  -> handleJoin          state chan  ip port
           | Msg.Leave  chan          -> handleLeave         state chan
-          | Msg.AddMember (chan,mem)  -> handleAddMember       state chan  mem
-          | Msg.RmMember (chan,id)     -> handleRmMember        state chan  id
+          | Msg.AddMember (chan,mem) -> handleAddMember     state chan  mem
+          | Msg.RmMember (chan,id)   -> handleRmMember      state chan  id
           | Msg.State chan           -> handleState         state chan
+          | Msg.SetAgentState state' -> state'
         return! act newstate
       }
 
