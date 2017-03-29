@@ -188,12 +188,6 @@
     <Compile Include="..\..\Iris\Zmq\Sub.fs">
       <Link>Sub.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\Rep.fs">
-      <Link>Rep.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\Req.fs">
-      <Link>Req.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Zmq\Broker.fs">
       <Link>Broker.fs</Link>
     </Compile>

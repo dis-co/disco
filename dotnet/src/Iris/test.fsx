@@ -39,8 +39,6 @@
    "Iris/Core/Config.fs"
    "Iris/Core/Project.fs"
    "Iris/Core/Uri.fs"
-   "Iris/Zmq/Rep.fs"
-   "Iris/Zmq/Req.fs"
    "Iris/Client/Interfaces.fs"
    "Iris/Client/ApiRequest.fs"
    "Iris/Client/Client.fs"

@@ -377,12 +377,14 @@ module Git =
       |> chan.Reply
       state
     | Running data ->
-      for subscription in subscriptions do
-        subscription.OnNext (Exited 0)
-      dispose data
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
+      async {
+        for subscription in subscriptions do
+          subscription.OnNext (Exited 0)
+        dispose data
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+      } |> Async.Start
       Idle
 
   // ** loop

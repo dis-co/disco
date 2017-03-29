@@ -471,13 +471,13 @@ module ProjectTests =
   [<Tests>]
   let projectTests =
     testList "Load/Save tests" [
-        // dirtyTest
-        // relpathTest
-        // loadSaveTest
+        dirtyTest
+        relpathTest
+        loadSaveTest
         testCustomizedCfg
-        // saveInitsGit
-        // savesMultipleCommits
-        // upToDatePath
-        // saveAsset
-        // createDefaultUser
+        saveInitsGit
+        savesMultipleCommits
+        upToDatePath
+        saveAsset
+        createDefaultUser
       ] |> testSequenced

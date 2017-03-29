@@ -26,7 +26,7 @@ module ZmqUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: Req) (req: RaftRequest) : Either<IrisError,RaftResponse> =
+  let request (sock: IClient) (req: RaftRequest) : Either<IrisError,RaftResponse> =
     req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
   // ** mkReqSocket
@@ -56,7 +56,7 @@ module ZmqUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Req option
-  let getSocket (mem: RaftMember) (connections: Map<Id,Req>) : Req option =
+  let getSocket (mem: RaftMember) (connections: Map<Id,IClient>) : IClient option =
     Map.tryFind mem.Id connections
 
   // ** disposeSocket
@@ -70,7 +70,7 @@ module ZmqUtils =
   /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
-  let disposeSocket (mem: RaftMember) (connections: Map<Id,Req>) =
+  let disposeSocket (mem: RaftMember) (connections: Map<Id,IClient>) =
     match Map.tryFind mem.Id connections with
     | Some client ->
       dispose client

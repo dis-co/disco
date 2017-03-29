@@ -81,7 +81,7 @@ module Iris =
   [<NoComparison;NoEquality>]
   type private Leader =
     { Member: RaftMember
-      Socket: Req }
+      Socket: IClient }
 
     interface IDisposable with
       member self.Dispose() =
@@ -580,9 +580,8 @@ module Iris =
 
   let private mkLeader (self: Id) (leader: RaftMember) =
     let addr = memUri leader
-    let req = new Req(self, addr, Constants.REQ_TIMEOUT)
-    req.Start()
-    { Member = leader; Socket = req }
+    let socket = Client.create self addr // Constants.REQ_TIMEOUT)
+    { Member = leader; Socket = socket }
 
   // ** onStateChanged
 
