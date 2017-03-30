@@ -9,6 +9,8 @@ open Iris.Core
 open Iris.Client
 open Iris.Zmq
 open Iris.Serialization
+open Hopac
+open Hopac.Infixes
 
 // * ApiClient module
 
@@ -206,6 +208,7 @@ module ApiClient =
                     (client: IrisClient)
                     (subs: Subscriptions)
                     (agent: ApiAgent) =
+
     let backendAddr = Constants.API_CLIENT_PREFIX + string client.Id
     let clientAddr = formatTCPUri client.IpAddress (int client.Port)
     let srvAddr = formatTCPUri server.IpAddress (int server.Port)
@@ -230,7 +233,7 @@ module ApiClient =
           Store = new Store(State.Empty)
           Disposables = [ timer; disposable ] }
 
-      async {
+      job {
         match requestRegister data with
         | Right () ->
           srvAddr
@@ -255,12 +258,12 @@ module ApiClient =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Async.Start
+      } |> Hopac.run
 
       Loaded data
 
     | Left error ->
-      async {
+      job {
         error
         |> string
         |> sprintf "Error starting sockets: %s"
@@ -271,7 +274,7 @@ module ApiClient =
         |> chan.Reply
 
         dispose socket
-      } |> Async.Start
+      } |> Hopac.run
       Idle
 
   // ** handleStart
@@ -284,9 +287,9 @@ module ApiClient =
                           (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      async {
+      job {
         dispose data
-      } |> Async.Start
+      } |> Hopac.run
       start chan server client subs agent
     | Idle ->
       start chan server client subs agent
@@ -294,7 +297,7 @@ module ApiClient =
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    async {
+    job {
       match state with
       | Loaded data ->
         match requestUnRegister data with
@@ -309,13 +312,13 @@ module ApiClient =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-    } |> Async.Start
+    } |> Hopac.run
     Idle
 
   // ** handleAsyncDispose
 
   let private handleAsyncDispose (state: ClientState) =
-    async {
+    job {
       match state with
       | Loaded data ->
         match requestUnRegister data with
@@ -326,7 +329,7 @@ module ApiClient =
       | _ -> ()
 
       dispose state
-    } |> Async.Start
+    } |> Hopac.run
     Idle
 
   // ** handleGetState
@@ -334,20 +337,20 @@ module ApiClient =
   let private handleGetState (chan: ReplyChan) (state: ClientState) =
     match state with
     | Loaded data ->
-      async {
+      job {
         data.Store.State
         |> Reply.State
         |> Either.succeed
         |> chan.Reply
-      } |> Async.Start
+      } |> Hopac.run
       state
     | Idle ->
-      async {
+      job {
         "Not loaded"
         |> Error.asClientError (tag "handleGetState")
         |> Either.fail
         |> chan.Reply
-      } |> Async.Start
+      } |> Hopac.run
       Idle
 
   // ** handleGetStatus
@@ -413,9 +416,9 @@ module ApiClient =
   let private handleSetState (state: ClientState) (subs: Subscriptions) (newstate: State) =
     match state with
     | Loaded data ->
-      async {
+      job {
         notify subs ClientEvent.Snapshot
-      } |> Async.Start
+      } |> Hopac.run
       Loaded { data with Store = new Store(newstate) }
     | Idle -> state
 
@@ -424,10 +427,10 @@ module ApiClient =
   let private handleUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
     match state with
     | Loaded data ->
-      async {
+      job {
         data.Store.Dispatch sm
         notify subs (ClientEvent.Update sm)
-      } |> Async.Start
+      } |> Hopac.run
       state
     | Idle -> state
 
@@ -472,7 +475,7 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      async {
+      job {
         maybeDispatch data sm
         match requestUpdate data.Socket sm with
         | Right () ->
@@ -486,15 +489,15 @@ module ApiClient =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Async.Start
+      } |> Hopac.run
       state
     | Idle ->
-      async {
+      job {
         "Not running"
         |> Error.asClientError (tag "handleRequest")
         |> Either.fail
         |> chan.Reply
-      } |> Async.Start
+      } |> Hopac.run
       state
 
   // ** handleServerRequest
@@ -505,38 +508,38 @@ module ApiClient =
     | Loaded data ->
       match req.Body |> Binary.decode with
       | Right ClientApiRequest.Ping ->
-        async {
+        job {
           agent.Post(Msg.Ping)
           ApiResponse.Pong
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Async.Start
+        } |> Hopac.run
       | Right (ClientApiRequest.Snapshot snapshot) ->
-        async {
+        job {
           agent.Post(Msg.SetState snapshot)
           ApiResponse.OK
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Async.Start
+        } |> Hopac.run
       | Right (ClientApiRequest.Update sm) ->
-        async {
+        job {
           agent.Post(Msg.Update sm)
           ApiResponse.OK
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Async.Start
+        } |> Hopac.run
       | Left error ->
-        async {
+        job {
           string error
           |> ApiError.MalformedRequest
           |> ApiResponse.NOK
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Async.Start
+        } |> Hopac.run
       state
 
   // ** loop
