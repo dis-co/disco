@@ -467,12 +467,24 @@ module ApiClient =
     | Loaded data ->
       asynchronously <| fun _ ->
         maybeDispatch data sm
+        match sm with
+        | AddPin _        -> printfn "[client] requesting command AddPin"
+        | AddCue _        -> printfn "[client] requesting command AddCue"
+        | AddCueList _    -> printfn "[client] requesting command AddCueList"
+        | UpdatePin _     -> printfn "[client] requesting command UpdatePin"
+        | UpdateCue _     -> printfn "[client] requesting command UpdateCue"
+        | UpdateCueList _ -> printfn "[client] requesting command UpdateCueList"
+        | RemovePin _     -> printfn "[client] requesting command RemovePin"
+        | RemoveCue _     -> printfn "[client] requesting command RemoveCue"
+        | RemoveCueList _ -> printfn "[client] requesting command RemoveCueList"
         match requestUpdate data.Socket sm with
         | Right () ->
+          printfn "[client] request OK"
           Reply.Ok
           |> Either.succeed
           |> chan.Reply
         | Left error ->
+          printfn "[client] request FAILED: %A" error
           ServiceStatus.Failed error
           |> Msg.SetStatus
           |> agent.Post
@@ -496,7 +508,9 @@ module ApiClient =
     | Loaded data ->
       match req.Body |> Binary.decode with
       | Right ClientApiRequest.Ping ->
+        printfn "scheduling response job"
         asynchronously <| fun _ ->
+          printfn "responding"
           agent.Post(Msg.Ping)
           ApiResponse.Pong
           |> Binary.encode

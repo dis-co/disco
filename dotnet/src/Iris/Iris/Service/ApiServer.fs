@@ -202,7 +202,10 @@ module ApiServer =
       async {
         do! Async.Sleep(timeout)
 
+        printfn "sending ping"
+
         if not socket.Running then
+          printfn "hu, restart?"
           socket.Restart()
 
         let response : Either<IrisError,ApiResponse> =
@@ -210,6 +213,8 @@ module ApiServer =
           |> Binary.encode
           |> socket.Request
           |> Either.bind Binary.decode
+
+        printfn "ping response: %A" response
 
         match response with
         | Right Pong ->
@@ -573,6 +578,7 @@ module ApiServer =
     match state with
     | Idle -> state
     | Loaded data ->
+      printfn "[server] got a new request"
       match req.Body |> Binary.decode with
       | Right (Register client) ->
         asynchronously <| fun _ ->
@@ -593,14 +599,27 @@ module ApiServer =
           |> RawResponse.fromRequest req
           |> data.Server.Respond
       | Right (Update sm) ->
+        match sm with
+        | AddPin _        -> printfn "[server] got command AddPin"
+        | AddCue _        -> printfn "[server] got command AddCue"
+        | AddCueList _    -> printfn "[server] got command AddCueList"
+        | UpdatePin _     -> printfn "[server] got command UpdatePin"
+        | UpdateCue _     -> printfn "[server] got command UpdateCue"
+        | UpdateCueList _ -> printfn "[server] got command UpdateCueList"
+        | RemovePin _     -> printfn "[server] got command RemovePin"
+        | RemoveCue _     -> printfn "[server] got command RemoveCue"
+        | RemoveCueList _ -> printfn "[server] got command RemoveCueList"
         asynchronously <| fun _ ->
-          sm
-          |> Msg.ClientUpdate
-          |> agent.Post
+          printfn "[server] responding to request"
           OK
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
+          printfn "[server] posting ClientUpdate"
+          sm
+          |> Msg.ClientUpdate
+          |> agent.Post
+          printfn "done"
       | Left error ->
         asynchronously <| fun _ ->
           string error
