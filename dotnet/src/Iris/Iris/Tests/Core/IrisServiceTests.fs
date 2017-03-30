@@ -68,54 +68,54 @@ module IrisServiceTests =
             | _ -> ())
           |> service.Subscribe
 
-        let start = DateTime.Now
+        // let start = DateTime.Now
 
         do! service.LoadProject(name, "admin", "Nsynk")
 
-        let int1 = DateTime.Now
+        // let int1 = DateTime.Now
 
         let! gitserver = service.GitServer
 
-        let int2 = DateTime.Now
+        // let int2 = DateTime.Now
 
         let! pid = gitserver.Pid
 
-        let int3 = DateTime.Now
+        // let int3 = DateTime.Now
 
         expect "Git should be running" true Process.isRunning pid
         expect "Should have emitted one Started event" 1 id !signal
 
         Process.kill pid
 
-        let int4 = DateTime.Now
+        // let int4 = DateTime.Now
 
         expect "Git should be running" false Process.isRunning pid
 
-        let int5 = DateTime.Now
+        // let int5 = DateTime.Now
 
         Thread.Sleep 100
-        let int6 = DateTime.Now
+        // let int6 = DateTime.Now
 
         let! gitserver = service.GitServer
         let! newpid = gitserver.Pid
 
-        let int7 = DateTime.Now
+        // let int7 = DateTime.Now
 
         expect "Should be a different pid" false ((=) pid) newpid
         expect "Git should be running" true Process.isRunning newpid
         expect "Should have emitted another Started event" 2 id !signal
 
-        let p tag (dt1: DateTime) (dt2: DateTime) =
-          (dt2 - dt1).TotalMilliseconds
-          |> printfn "%s took %f" tag
+        // let p tag (dt1: DateTime) (dt2: DateTime) =
+        //   (dt2 - dt1).TotalMilliseconds
+        //   |> printfn "%s took %f" tag
 
-        p "start -> int1" start int1
-        p "int1 -> int2" int1 int2
-        p "int2 -> int3" int2 int3
-        p "int3 -> int4" int3 int4
-        p "int4 -> int5" int4 int5
-        p "int5 -> int6" int5 int6
-        p "int6 -> int7" int6 int7
+        // p "start -> int1" start int1
+        // p "int1 -> int2" int1 int2
+        // p "int2 -> int3" int2 int3
+        // p "int3 -> int4" int3 int4
+        // p "int4 -> int5" int4 int5
+        // p "int5 -> int6" int5 int6
+        // p "int6 -> int7" int6 int7
       }
       |> noError
 

@@ -4,6 +4,9 @@ BUILD=cd $(VVVV_BASEDIR) && ./build.sh
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
+MONO_THREADS_PER_CPU := 100
+export MONO_THREADS_PER_CPU
+
 #              _   _
 #  _ __   __ _| |_(_)_   _____
 # | '_ \ / _` | __| \ \ / / _ \
@@ -11,7 +14,7 @@ CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunTests"
+	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
 
 service:
 	${BUILD} BuildDebugService
