@@ -258,7 +258,7 @@ module ApiClient =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.run
+      } |> Hopac.start
 
       Loaded data
 
@@ -274,7 +274,7 @@ module ApiClient =
         |> chan.Reply
 
         dispose socket
-      } |> Hopac.run
+      } |> Hopac.start
       Idle
 
   // ** handleStart
@@ -289,7 +289,7 @@ module ApiClient =
     | Loaded data ->
       job {
         dispose data
-      } |> Hopac.run
+      } |> Hopac.start
       start chan server client subs agent
     | Idle ->
       start chan server client subs agent
@@ -312,7 +312,7 @@ module ApiClient =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-    } |> Hopac.run
+    } |> Hopac.start
     Idle
 
   // ** handleAsyncDispose
@@ -329,7 +329,7 @@ module ApiClient =
       | _ -> ()
 
       dispose state
-    } |> Hopac.run
+    } |> Hopac.start
     Idle
 
   // ** handleGetState
@@ -342,7 +342,7 @@ module ApiClient =
         |> Reply.State
         |> Either.succeed
         |> chan.Reply
-      } |> Hopac.run
+      } |> Hopac.start
       state
     | Idle ->
       job {
@@ -350,7 +350,7 @@ module ApiClient =
         |> Error.asClientError (tag "handleGetState")
         |> Either.fail
         |> chan.Reply
-      } |> Hopac.run
+      } |> Hopac.start
       Idle
 
   // ** handleGetStatus
@@ -418,7 +418,7 @@ module ApiClient =
     | Loaded data ->
       job {
         notify subs ClientEvent.Snapshot
-      } |> Hopac.run
+      } |> Hopac.start
       Loaded { data with Store = new Store(newstate) }
     | Idle -> state
 
@@ -430,7 +430,7 @@ module ApiClient =
       job {
         data.Store.Dispatch sm
         notify subs (ClientEvent.Update sm)
-      } |> Hopac.run
+      } |> Hopac.start
       state
     | Idle -> state
 
@@ -489,7 +489,7 @@ module ApiClient =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.run
+      } |> Hopac.start
       state
     | Idle ->
       job {
@@ -497,7 +497,7 @@ module ApiClient =
         |> Error.asClientError (tag "handleRequest")
         |> Either.fail
         |> chan.Reply
-      } |> Hopac.run
+      } |> Hopac.start
       state
 
   // ** handleServerRequest
@@ -514,7 +514,7 @@ module ApiClient =
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Hopac.run
+        } |> Hopac.start
       | Right (ClientApiRequest.Snapshot snapshot) ->
         job {
           agent.Post(Msg.SetState snapshot)
@@ -522,7 +522,7 @@ module ApiClient =
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Hopac.run
+        } |> Hopac.start
       | Right (ClientApiRequest.Update sm) ->
         job {
           agent.Post(Msg.Update sm)
@@ -530,7 +530,7 @@ module ApiClient =
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Hopac.run
+        } |> Hopac.start
       | Left error ->
         job {
           string error
@@ -539,7 +539,7 @@ module ApiClient =
           |> Binary.encode
           |> RawResponse.fromRequest req
           |> data.Server.Respond
-        } |> Hopac.run
+        } |> Hopac.start
       state
 
   // ** loop
