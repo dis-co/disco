@@ -32,7 +32,7 @@ module ZmqIntegrationTests =
         let rand = new System.Random()
 
         let num = 5
-        let frontend = "inproc://frontend"
+        let frontend = "tcp://127.0.0.1:5555"
         let backend = "inproc://backend"
         use! broker = Broker.create (Id.Create()) num frontend backend
 

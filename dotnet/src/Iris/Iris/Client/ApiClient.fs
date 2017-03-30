@@ -151,16 +151,16 @@ module ApiClient =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
 
-
   // ** requestRegister
 
   let private requestRegister (data: ClientStateData) =
     let response =
-      data.Client
-      |> ServerApiRequest.Register
-      |> Binary.encode
-      |> data.Socket.Request
-      |> Either.bind Binary.decode
+      Tracing.trace "ApiClient.requestRegister" <| fun () ->
+        data.Client
+        |> ServerApiRequest.Register
+        |> Binary.encode
+        |> data.Socket.Request
+        |> Either.bind Binary.decode
 
     match response with
     | Right OK -> Either.succeed ()
@@ -180,11 +180,12 @@ module ApiClient =
 
   let private requestUnRegister (data: ClientStateData) =
     let response =
-      data.Client
-      |> ServerApiRequest.UnRegister
-      |> Binary.encode
-      |> data.Socket.Request
-      |> Either.bind Binary.decode
+      Tracing.trace "ApiClient.requestUnRegister" <| fun () ->
+        data.Client
+        |> ServerApiRequest.UnRegister
+        |> Binary.encode
+        |> data.Socket.Request
+        |> Either.bind Binary.decode
 
     match response with
     | Right OK -> Either.succeed ()
@@ -208,72 +209,75 @@ module ApiClient =
                     (subs: Subscriptions)
                     (agent: ApiAgent) =
 
-    let backendAddr = Constants.API_CLIENT_PREFIX + string client.Id
-    let clientAddr = formatTCPUri client.IpAddress (int client.Port)
-    let srvAddr = formatTCPUri server.IpAddress (int server.Port)
+    Tracing.trace "ApiClient.start" <| fun () ->
+      let backendAddr = Constants.API_CLIENT_PREFIX + string client.Id
+      let clientAddr = formatTCPUri client.IpAddress (int client.Port)
+      let srvAddr = formatTCPUri server.IpAddress (int server.Port)
 
-    sprintf "Starting server on %s" clientAddr
-    |> Logger.debug client.Id (tag "start")
+      sprintf "Starting server on %s" clientAddr
+      |> Logger.debug client.Id (tag "start")
 
-    sprintf "Connecting to server on %s" srvAddr
-    |> Logger.debug client.Id (tag "start")
+      sprintf "Connecting to server on %s" srvAddr
+      |> Logger.debug client.Id (tag "start")
 
-    let socket = Client.create client.Id srvAddr
+      let socket = Client.create client.Id srvAddr
 
-    match Broker.create client.Id 3 clientAddr backendAddr with
-    | Right server ->
-      let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
-      let timer = pingTimer agent
-      let data =
-        { Elapsed = 0u
-          Client = client
-          Socket = socket
-          Server = server
-          Store = new Store(State.Empty)
-          Disposables = [ timer; disposable ] }
+      match Broker.create client.Id 3 clientAddr backendAddr with
+      | Right server ->
+        let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
+        let timer = pingTimer agent
+        let data =
+          { Elapsed = 0u
+            Client = client
+            Socket = socket
+            Server = server
+            Store = new Store(State.Empty)
+            Disposables = [ timer; disposable ] }
 
-      asynchronously <| fun _ ->
-        match requestRegister data with
-        | Right () ->
-          srvAddr
-          |> sprintf "Registration with %s successful"
-          |> Logger.debug client.Id (tag "start")
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.start.requestRegister" <| fun () ->
+            match requestRegister data with
+            | Right () ->
+              srvAddr
+              |> sprintf "Registration with %s successful"
+              |> Logger.debug client.Id (tag "start")
 
-          Reply.Ok
-          |> Either.succeed
-          |>  chan.Reply
+              Reply.Ok
+              |> Either.succeed
+              |>  chan.Reply
 
-          notify subs ClientEvent.Registered
+              notify subs ClientEvent.Registered
 
-        | Left error ->
-          error
-          |> string
-          |> sprintf "Registration with %s encountered error: %s" srvAddr
-          |> Logger.debug client.Id (tag "start")
+            | Left error ->
+              error
+              |> string
+              |> sprintf "Registration with %s encountered error: %s" srvAddr
+              |> Logger.debug client.Id (tag "start")
 
-          Msg.AsyncDispose
-          |> agent.Post
+              Msg.AsyncDispose
+              |> agent.Post
 
-          error
-          |> Either.fail
-          |> chan.Reply
+              error
+              |> Either.fail
+              |> chan.Reply
 
-      Loaded data
+        Loaded data
 
-    | Left error ->
-      asynchronously <| fun _ ->
-        error
-        |> string
-        |> sprintf "Error starting sockets: %s"
-        |> Logger.debug client.Id (tag "start")
+      | Left error ->
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.start.error handler" <| fun () ->
+            error
+            |> string
+            |> sprintf "Error starting sockets: %s"
+            |> Logger.debug client.Id (tag "start")
 
-        error
-        |> Either.fail
-        |> chan.Reply
+            error
+            |> Either.fail
+            |> chan.Reply
 
-        dispose socket
+            dispose socket
 
-      Idle
+        Idle
 
   // ** handleStart
 
@@ -283,17 +287,18 @@ module ApiClient =
                           (client: IrisClient)
                           (subs: Subscriptions)
                           (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      asynchronously <| fun _ -> dispose data
-      start chan server client subs agent
-    | Idle ->
-      start chan server client subs agent
+    Tracing.trace "ApiClient.handleStart" <| fun () ->
+      match state with
+      | Loaded data ->
+        asynchronously <| fun _ -> dispose data
+        start chan server client subs agent
+      | Idle ->
+        start chan server client subs agent
 
   // ** handleDispose
 
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
-    asynchronously <| fun _ ->
+    Tracing.trace "ApiClient.handleDispose" <| fun () ->
       match state with
       | Loaded data ->
         match requestUnRegister data with
@@ -308,154 +313,167 @@ module ApiClient =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-    Idle
+      Idle
 
   // ** handleAsyncDispose
 
   let private handleAsyncDispose (state: ClientState) =
-    asynchronously <| fun _ ->
-      match state with
-      | Loaded data ->
-        match requestUnRegister data with
-        | Left error ->
-          string error
-          |> Logger.err data.Client.Id (tag "handleAsyncDispose")
-        | _ -> ()
-      | _ -> ()
+    Tracing.trace "ApiClient.handleAsyncDispose" <| fun () ->
+      asynchronously <| fun _ ->
+        Tracing.trace "ApiClient.handleAsyncDispose.asynchronously" <| fun () ->
+          match state with
+          | Loaded data ->
+            match requestUnRegister data with
+            | Left error ->
+              string error
+              |> Logger.err data.Client.Id (tag "handleAsyncDispose")
+            | _ -> ()
+          | _ -> ()
 
-      dispose state
+          dispose state
     Idle
 
   // ** handleGetState
 
   let private handleGetState (chan: ReplyChan) (state: ClientState) =
-    match state with
-    | Loaded data ->
-      asynchronously <| fun _ ->
-        data.Store.State
-        |> Reply.State
-        |> Either.succeed
-        |> chan.Reply
-      state
-    | Idle ->
-      asynchronously <| fun _ ->
-        "Not loaded"
-        |> Error.asClientError (tag "handleGetState")
-        |> Either.fail
-        |> chan.Reply
-      Idle
+    Tracing.trace "ApiClient.handleGetState" <| fun () ->
+      match state with
+      | Loaded data ->
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.handleGetState.reply" <| fun () ->
+            data.Store.State
+            |> Reply.State
+            |> Either.succeed
+            |> chan.Reply
+        state
+      | Idle ->
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.handleGetState.error" <| fun () ->
+            "Not loaded"
+            |> Error.asClientError (tag "handleGetState")
+            |> Either.fail
+            |> chan.Reply
+        Idle
 
   // ** handleGetStatus
 
   let private handleGetStatus (chan: ReplyChan) (state: ClientState) =
-    match state with
-    | Loaded data ->
-      chan.Reply(Right (Reply.Status data.Client.Status))
-      state
-    | Idle ->
-      chan.Reply(Right (Reply.Status ServiceStatus.Stopped))
-      state
+    Tracing.trace "ApiClient.handleGetStatus" <| fun () ->
+      match state with
+      | Loaded data ->
+        chan.Reply(Right (Reply.Status data.Client.Status))
+        state
+      | Idle ->
+        chan.Reply(Right (Reply.Status ServiceStatus.Stopped))
+        state
 
   // ** handleSetStatus
 
   let private handleSetStatus (state: ClientState) (subs: Subscriptions) (status: ServiceStatus) =
-    match state with
-    | Loaded data ->
-      notify subs (ClientEvent.Status status)
-      Loaded { data with Client = { data.Client with Status = status } }
-    | Idle -> Idle
+    Tracing.trace "ApiClient.handleSetStatus" <| fun () ->
+      match state with
+      | Loaded data ->
+        notify subs (ClientEvent.Status status)
+        Loaded { data with Client = { data.Client with Status = status } }
+      | Idle -> Idle
 
   // ** handleCheckStatus
 
   let private handleCheckStatus (state: ClientState) (subs: Subscriptions) =
-    match state with
-    | Loaded data ->
-      if not (Service.hasFailed data.Client.Status) then
-        match data.Elapsed with
-        | x when x > TIMEOUT ->
-          let status =
-            "Server ping timed out"
-            |> Error.asClientError (tag "handleCheckStatus")
-            |> ServiceStatus.Failed
-          notify subs (ClientEvent.Status status)
-          Loaded { data with
-                    Client = { data.Client with Status = status}
-                    Elapsed = data.Elapsed + FREQ }
-        | _ ->
-          let status =
-            match data.Client.Status with
-            | ServiceStatus.Running -> data.Client.Status
-            | _ ->
-              let newstatus = ServiceStatus.Running
-              notify subs (ClientEvent.Status newstatus)
-              newstatus
-          Loaded { data with
-                    Client = { data.Client with Status = status }
-                    Elapsed = data.Elapsed + FREQ }
-      else
-        state
-    | idle -> idle
+    Tracing.trace "ApiClient.handleCheckStatus" <| fun () ->
+      match state with
+      | Loaded data ->
+        if not (Service.hasFailed data.Client.Status) then
+          match data.Elapsed with
+          | x when x > TIMEOUT ->
+            let status =
+              "Server ping timed out"
+              |> Error.asClientError (tag "handleCheckStatus")
+              |> ServiceStatus.Failed
+            notify subs (ClientEvent.Status status)
+            Loaded { data with
+                      Client = { data.Client with Status = status}
+                      Elapsed = data.Elapsed + FREQ }
+          | _ ->
+            let status =
+              match data.Client.Status with
+              | ServiceStatus.Running -> data.Client.Status
+              | _ ->
+                let newstatus = ServiceStatus.Running
+                notify subs (ClientEvent.Status newstatus)
+                newstatus
+            Loaded { data with
+                      Client = { data.Client with Status = status }
+                      Elapsed = data.Elapsed + FREQ }
+        else
+          state
+      | idle -> idle
 
   // ** handlePing
 
   let private handlePing (state: ClientState) =
-    match state with
-    | Loaded data -> Loaded { data with Elapsed = 0u }
-    | idle -> idle
+    Tracing.trace "ApiClient.handlePing" <| fun () ->
+      match state with
+      | Loaded data -> Loaded { data with Elapsed = 0u }
+      | idle -> idle
 
   // ** handleSetState
 
   let private handleSetState (state: ClientState) (subs: Subscriptions) (newstate: State) =
-    match state with
-    | Loaded data ->
-      asynchronously <| fun _ ->
-        notify subs ClientEvent.Snapshot
-      Loaded { data with Store = new Store(newstate) }
-    | Idle -> state
+    Tracing.trace "ApiClient.handleSetState" <| fun () ->
+      match state with
+      | Loaded data ->
+        asynchronously <| fun _ ->
+          notify subs ClientEvent.Snapshot
+        Loaded { data with Store = new Store(newstate) }
+      | Idle -> state
 
   // ** handleUpdate
 
   let private handleUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
-    match state with
-    | Loaded data ->
-      asynchronously <| fun _ ->
-        data.Store.Dispatch sm
-        notify subs (ClientEvent.Update sm)
-      state
-    | Idle -> state
+    Tracing.trace "ApiClient.handleUpdate" <| fun () ->
+      match state with
+      | Loaded data ->
+        asynchronously <| fun _ ->
+          data.Store.Dispatch sm
+          notify subs (ClientEvent.Update sm)
+        state
+      | Idle -> state
 
   // ** requestUpdate
 
   let private requestUpdate (socket: IClient) (sm: StateMachine) =
-    try
-      let result : Either<IrisError,ApiResponse> =
-        ServerApiRequest.Update sm
-        |> Binary.encode
-        |> socket.Request
-        |> Either.bind Binary.decode
+    Tracing.trace "ApiClient.requestUpdate" <| fun () ->
+      try
+        let result : Either<IrisError,ApiResponse> =
+          ServerApiRequest.Update sm
+          |> Binary.encode
+          |> socket.Request
+          |> Either.bind Binary.decode
 
-      match result with
-      | Right ApiResponse.OK ->
-        Either.succeed ()
-      | Right other ->
-        sprintf "Unexpected reply from Server: %A" other
-        |> Error.asClientError (tag "requestUpdate")
-        |> Either.fail
-      | Left error ->
-        error
-        |> Either.fail
-    with
-      | exn ->
-        (sprintf "Exception: %s\n%s" exn.Message exn.StackTrace)
-        |> Error.asClientError (tag "requestUpdate")
-        |> Either.fail
+        match result with
+        | Right ApiResponse.OK ->
+          Either.succeed ()
+        | Right other ->
+          sprintf "Unexpected reply from Server: %A" other
+          |> Error.asClientError (tag "requestUpdate")
+          |> Either.fail
+        | Left error ->
+          error
+          |> Either.fail
+      with
+        | exn ->
+          (sprintf "Exception: %s\n%s" exn.Message exn.StackTrace)
+          |> Error.asClientError (tag "requestUpdate")
+          |> Either.fail
 
   // ** maybeDispatch
 
   let private maybeDispatch (data: ClientStateData) (sm: StateMachine) =
-    match sm with
-    | UpdateSlices _ -> data.Store.Dispatch sm
-    | _ -> ()
+    Tracing.trace "ApiClient.maybeDispatch" <| fun () ->
+      match sm with
+      | UpdateSlices _ -> data.Store.Dispatch sm
+      | _ -> ()
 
   // ** handleRequest
 
@@ -463,82 +481,85 @@ module ApiClient =
                             (state: ClientState)
                             (sm: StateMachine)
                             (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      asynchronously <| fun _ ->
-        maybeDispatch data sm
-        match sm with
-        | AddPin _        -> printfn "[client] requesting command AddPin"
-        | AddCue _        -> printfn "[client] requesting command AddCue"
-        | AddCueList _    -> printfn "[client] requesting command AddCueList"
-        | UpdatePin _     -> printfn "[client] requesting command UpdatePin"
-        | UpdateCue _     -> printfn "[client] requesting command UpdateCue"
-        | UpdateCueList _ -> printfn "[client] requesting command UpdateCueList"
-        | RemovePin _     -> printfn "[client] requesting command RemovePin"
-        | RemoveCue _     -> printfn "[client] requesting command RemoveCue"
-        | RemoveCueList _ -> printfn "[client] requesting command RemoveCueList"
-        match requestUpdate data.Socket sm with
-        | Right () ->
-          printfn "[client] request OK"
-          Reply.Ok
-          |> Either.succeed
-          |> chan.Reply
-        | Left error ->
-          printfn "[client] request FAILED: %A" error
-          ServiceStatus.Failed error
-          |> Msg.SetStatus
-          |> agent.Post
-          error
+    Tracing.trace "ApiClient.handleRequest" <| fun () ->
+      match state with
+      | Loaded data ->
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.handleRequest.asynchronously" <| fun () ->
+            maybeDispatch data sm
+            match sm with
+            | AddPin _        -> printfn "[client] requesting command AddPin"
+            | AddCue _        -> printfn "[client] requesting command AddCue"
+            | AddCueList _    -> printfn "[client] requesting command AddCueList"
+            | UpdatePin _     -> printfn "[client] requesting command UpdatePin"
+            | UpdateCue _     -> printfn "[client] requesting command UpdateCue"
+            | UpdateCueList _ -> printfn "[client] requesting command UpdateCueList"
+            | RemovePin _     -> printfn "[client] requesting command RemovePin"
+            | RemoveCue _     -> printfn "[client] requesting command RemoveCue"
+            | RemoveCueList _ -> printfn "[client] requesting command RemoveCueList"
+            match requestUpdate data.Socket sm with
+            | Right () ->
+              printfn "[client] request OK"
+              Reply.Ok
+              |> Either.succeed
+              |> chan.Reply
+            | Left error ->
+              printfn "[client] request FAILED: %A" error
+              ServiceStatus.Failed error
+              |> Msg.SetStatus
+              |> agent.Post
+              error
+              |> Either.fail
+              |> chan.Reply
+        state
+      | Idle ->
+        asynchronously <| fun _ ->
+          "Not running"
+          |> Error.asClientError (tag "handleRequest")
           |> Either.fail
           |> chan.Reply
-      state
-    | Idle ->
-      asynchronously <| fun _ ->
-        "Not running"
-        |> Error.asClientError (tag "handleRequest")
-        |> Either.fail
-        |> chan.Reply
-      state
+        state
 
   // ** handleServerRequest
 
   let private handleServerRequest (state: ClientState) (req: RawRequest) (agent: ApiAgent) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
-      match req.Body |> Binary.decode with
-      | Right ClientApiRequest.Ping ->
-        printfn "scheduling response job"
-        asynchronously <| fun _ ->
-          printfn "responding"
-          agent.Post(Msg.Ping)
-          ApiResponse.Pong
-          |> Binary.encode
-          |> RawResponse.fromRequest req
-          |> data.Server.Respond
-      | Right (ClientApiRequest.Snapshot snapshot) ->
-        asynchronously <| fun _ ->
-          agent.Post(Msg.SetState snapshot)
-          ApiResponse.OK
-          |> Binary.encode
-          |> RawResponse.fromRequest req
-          |> data.Server.Respond
-      | Right (ClientApiRequest.Update sm) ->
-        asynchronously <| fun _ ->
-          agent.Post(Msg.Update sm)
-          ApiResponse.OK
-          |> Binary.encode
-          |> RawResponse.fromRequest req
-          |> data.Server.Respond
-      | Left error ->
-        asynchronously <| fun _ ->
-          string error
-          |> ApiError.MalformedRequest
-          |> ApiResponse.NOK
-          |> Binary.encode
-          |> RawResponse.fromRequest req
-          |> data.Server.Respond
-      state
+    Tracing.trace "ApiClient.handleServerRequest" <| fun () ->
+      match state with
+      | Idle -> state
+      | Loaded data ->
+        match req.Body |> Binary.decode with
+        | Right ClientApiRequest.Ping ->
+          printfn "scheduling response job"
+          asynchronously <| fun _ ->
+            printfn "responding"
+            agent.Post(Msg.Ping)
+            ApiResponse.Pong
+            |> Binary.encode
+            |> RawResponse.fromRequest req
+            |> data.Server.Respond
+        | Right (ClientApiRequest.Snapshot snapshot) ->
+          asynchronously <| fun _ ->
+            agent.Post(Msg.SetState snapshot)
+            ApiResponse.OK
+            |> Binary.encode
+            |> RawResponse.fromRequest req
+            |> data.Server.Respond
+        | Right (ClientApiRequest.Update sm) ->
+          asynchronously <| fun _ ->
+            agent.Post(Msg.Update sm)
+            ApiResponse.OK
+            |> Binary.encode
+            |> RawResponse.fromRequest req
+            |> data.Server.Respond
+        | Left error ->
+          asynchronously <| fun _ ->
+            string error
+            |> ApiError.MalformedRequest
+            |> ApiResponse.NOK
+            |> Binary.encode
+            |> RawResponse.fromRequest req
+            |> data.Server.Respond
+        state
 
   // ** loop
 
@@ -603,34 +624,37 @@ module ApiClient =
         return
           { new IApiClient with
               member self.Start () =
-                match postCommand agent (fun chan -> Msg.Start chan) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "Start")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
-              member self.State
-                with get () =
-                  match postCommand agent (fun chan -> Msg.GetState(chan)) with
-                  | Right (Reply.State state) -> Either.succeed state
+                Tracing.trace "ApiClient.Start()" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Start chan) with
+                  | Right (Reply.Ok) -> Either.succeed ()
                   | Right other ->
                     sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "State")
+                    |> Error.asClientError (tag "Start")
                     |> Either.fail
                   | Left error ->
                     error
                     |> Either.fail
 
+              member self.State
+                with get () =
+                  Tracing.trace "ApiClient.State" <| fun () ->
+                    match postCommand agent (fun chan -> Msg.GetState(chan)) with
+                    | Right (Reply.State state) -> Either.succeed state
+                    | Right other ->
+                      sprintf "Unexpected Reply from ApiAgent: %A" other
+                      |> Error.asClientError (tag "State")
+                      |> Either.fail
+                    | Left error ->
+                      error
+                      |> Either.fail
+
               member self.Status
                 with get () =
-                  match postCommand agent (fun chan -> Msg.GetStatus chan) with
-                  | Right (Reply.Status status) -> status
-                  | Right _ -> ServiceStatus.Stopped
-                  | Left error -> ServiceStatus.Failed error
+                  Tracing.trace "ApiClient.Status" <| fun () ->
+                    match postCommand agent (fun chan -> Msg.GetStatus chan) with
+                    | Right (Reply.Status status) -> status
+                    | Right _ -> ServiceStatus.Stopped
+                    | Left error -> ServiceStatus.Failed error
 
               member self.Subscribe (callback: ClientEvent -> unit) =
                 { new IObserver<ClientEvent> with
@@ -646,37 +670,40 @@ module ApiClient =
               //  \____\__,_|\___|
 
               member self.AddCue (cue: Cue) =
-                match postCommand agent (fun chan -> Msg.Request(chan, AddCue cue)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "AddCue")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.AddCue" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, AddCue cue)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "AddCue")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.UpdateCue (cue: Cue) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdateCue cue)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdateCue")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.UpdateCue" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, UpdateCue cue)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdateCue")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.RemoveCue (cue: Cue) =
-                match postCommand agent (fun chan -> Msg.Request(chan, RemoveCue cue)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemoveCue")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.RemoveCue" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, RemoveCue cue)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "RemoveCue")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               //  ____       _       _
               // |  _ \ __ _| |_ ___| |__
@@ -685,37 +712,40 @@ module ApiClient =
               // |_|   \__,_|\__\___|_| |_|
 
               member self.AddPinGroup (group: PinGroup) =
-                match postCommand agent (fun chan -> Msg.Request(chan, AddPinGroup group)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "AddPinGroup")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.AddPinGroup" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, AddPinGroup group)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "AddPinGroup")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.UpdatePinGroup (group: PinGroup) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePinGroup group)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdatePinGroup")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.UpdatePinGroup" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, UpdatePinGroup group)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdatePinGroup")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.RemovePinGroup (group: PinGroup) =
-                match postCommand agent (fun chan -> Msg.Request(chan, RemovePinGroup group)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemovePinGroup")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.RemovePinGroup" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, RemovePinGroup group)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "RemovePinGroup")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               //   ____           _     _     _
               //  / ___|   _  ___| |   (_)___| |_
@@ -724,37 +754,40 @@ module ApiClient =
               //  \____\__,_|\___|_____|_|___/\__|
 
               member self.AddCueList (cuelist: CueList) =
-                match postCommand agent (fun chan -> Msg.Request(chan, AddCueList cuelist)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "AddCueList")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.AddCueList" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, AddCueList cuelist)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "AddCueList")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.UpdateCueList (cuelist: CueList) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdateCueList cuelist)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdateCueList")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.UpdateCueList" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, UpdateCueList cuelist)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdateCueList")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.RemoveCueList (cuelist: CueList) =
-                match postCommand agent (fun chan -> Msg.Request(chan, RemoveCueList cuelist)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemoveCueList")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.RemoveCueList" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, RemoveCueList cuelist)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "RemoveCueList")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               //  ____  _
               // |  _ \(_)_ __
@@ -763,59 +796,64 @@ module ApiClient =
               // |_|   |_|_| |_|
 
               member self.AddPin(pin: Pin) =
-                match postCommand agent (fun chan -> Msg.Request(chan, AddPin pin)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "AddPin")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.AddPin" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, AddPin pin)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "AddPin")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.UpdatePin(pin: Pin) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdatePin pin)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdatePin")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.UpdatePin" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, UpdatePin pin)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdatePin")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.UpdateSlices(slices: Slices) =
-                match postCommand agent (fun chan -> Msg.Request(chan, UpdateSlices slices)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "UpdatePin")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.UpdateSlices" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, UpdateSlices slices)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "UpdatePin")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.RemovePin(pin: Pin) =
-                match postCommand agent (fun chan -> Msg.Request(chan, RemovePin pin)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemovePin")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.RemovePin" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, RemovePin pin)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "RemovePin")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.Append(cmd: StateMachine) =
-                match postCommand agent (fun chan -> Msg.Request(chan, cmd)) with
-                | Right Reply.Ok -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "RemovePin")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "ApiClient.Append" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Request(chan, cmd)) with
+                  | Right Reply.Ok -> Either.succeed ()
+                  | Right other ->
+                    sprintf "Unexpected Reply from ApiAgent: %A" other
+                    |> Error.asClientError (tag "RemovePin")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               //  ____  _
               // |  _ \(_)___ _ __   ___  ___  ___

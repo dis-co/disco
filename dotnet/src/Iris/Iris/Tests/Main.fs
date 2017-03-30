@@ -13,17 +13,19 @@ let all =
       // irisServiceTests
       // raftTests
       // configTests
-      // zmqIntegrationTests
+      zmqIntegrationTests
       // raftIntegrationTests
       // serializationTests
       // projectTests
       // storeTests
       // gitTests
-      apiTests
+      // apiTests
     ]
 
 [<EntryPoint>]
 let main _ =
+  Tracing.enable()
+
   Thread.CurrentThread.GetApartmentState()
   |> printfn "threading model: %A"
   ThreadPool.GetMinThreads()

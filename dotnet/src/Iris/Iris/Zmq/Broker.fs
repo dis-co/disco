@@ -192,27 +192,28 @@ module Client =
     while spin state do
       state.Requester.WaitOne() |> ignore
 
-      if spin state then
-        try
-          use msg = new ZMessage()
-          msg.Add(new ZFrame(state.Request))
-          state.Socket.Send(msg)
+      Tracing.trace "IClient.Request" <| fun () ->
+        if spin state then
+          try
+            use msg = new ZMessage()
+            msg.Add(new ZFrame(state.Request))
+            state.Socket.Send(msg)
 
-          use reply = state.Socket.ReceiveMessage()
-          // let worker = reply.[0].ReadInt64()
-          let body = reply.[1].Read()
+            use reply = state.Socket.ReceiveMessage()
+            // let worker = reply.[0].ReadInt64()
+            let body = reply.[1].Read()
 
-          state.Response <- Right body
-          state.Responder.Set() |> ignore
-        with
-          | exn ->
-            let error =
-              exn.Message + exn.StackTrace
-              |> Error.asSocketError "IClient.worker"
-            state.Response <- Left error
-            state.Run <- false
-            state.Started <- false
+            state.Response <- Right body
             state.Responder.Set() |> ignore
+          with
+            | exn ->
+              let error =
+                exn.Message + exn.StackTrace
+                |> Error.asSocketError "IClient.worker"
+              state.Response <- Left error
+              state.Run <- false
+              state.Started <- false
+              state.Responder.Set() |> ignore
 
     dispose state
     state.Stopper.Set() |> ignore
@@ -359,29 +360,30 @@ module private Worker =
       let result = state.Socket.ReceiveMessage(&request, &error)
 
       if result then
-        let clientId = request.[0].Read()
-        let body = request.[2].Read()
+        Tracing.trace "IWorker.Request" <| fun () ->
+          let clientId = request.[0].Read()
+          let body = request.[2].Read()
 
-        { From = Guid clientId
-          Via = state.Id
-          Body = body }
-        |> notify state.Subscriptions
+          { From = Guid clientId
+            Via = state.Id
+            Body = body }
+          |> notify state.Subscriptions
 
-        let mutable response = Unchecked.defaultof<RawResponse>
+          let mutable response = Unchecked.defaultof<RawResponse>
 
-        // Tracer.trace "Worker.Thread.TryPop" body <| fun _ ->
-        //   // BLOCK UNTIL RESPONSE IS SET
-        while not (state.Responder.TryPop(&response)) do
-          Thread.Sleep(TimeSpan.FromTicks 1L)
+          // Tracer.trace "Worker.Thread.TryPop" body <| fun _ ->
+          //   // BLOCK UNTIL RESPONSE IS SET
+          while not (state.Responder.TryPop(&response)) do
+            Thread.Sleep(TimeSpan.FromTicks 1L)
 
-        use reply = new ZMessage()
-        reply.Add(new ZFrame(clientId));
-        reply.Add(new ZFrame());
-        reply.Add(new ZFrame(response.Via));
-        reply.Add(new ZFrame(response.Body));
+          use reply = new ZMessage()
+          reply.Add(new ZFrame(clientId));
+          reply.Add(new ZFrame());
+          reply.Add(new ZFrame(response.Via));
+          reply.Add(new ZFrame(response.Body));
 
-        state.Socket.Send(reply)
-        |> ignore
+          state.Socket.Send(reply)
+          |> ignore
       else
         match error with
         | err when err = ZError.EAGAIN -> ()
@@ -395,6 +397,7 @@ module private Worker =
           |> Logger.err state.LogId "Worker.Thread.worker"
           state.Run <- false
 
+    printfn "worker stopping"
     dispose state
     state.Stopper.Set() |> ignore
     dispose state.Stopper
@@ -504,7 +507,11 @@ module Broker =
         self.Frontend.Bind(frontend)
         self.Backend.Bind(backend)
 
+        printfn "broker frontend: %s" frontend
+        printfn "broker backend: %s" backend
+
         for n in 1 .. num do
+          printfn "worker backend address: %s" backend
           match Worker.create (uint16 n) backend with
           | Right worker ->
             notify self.Subscriptions
@@ -561,7 +568,7 @@ module Broker =
     let poll = ZPollItem.CreateReceiver()
 
     while spin state do
-      let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
+      let timespan = Nullable(TimeSpan.FromMilliseconds(0.1))
 
       if state.Backend.PollIn(poll, &incoming, &error, timespan) then
         let workerId = incoming.[0].ReadUInt16()
@@ -573,14 +580,13 @@ module Broker =
           let from = incoming.[4].Read()
           let reply = incoming.[5].Read()
 
-          // Tracer.trace "Broker.Backend.Poll" reply <| fun _ ->
-          use outgoing = new ZMessage()
-          outgoing.Add(new ZFrame(clientId))
-          outgoing.Add(new ZFrame())
-          outgoing.Add(new ZFrame(from))
-          outgoing.Add(new ZFrame(reply))
-
-          state.Frontend.Send(outgoing)
+          Tracing.trace "Broker Reply To Frontend" <| fun _ ->
+            use outgoing = new ZMessage()
+            outgoing.Add(new ZFrame(clientId))
+            outgoing.Add(new ZFrame())
+            outgoing.Add(new ZFrame(from))
+            outgoing.Add(new ZFrame(reply))
+            state.Frontend.Send(outgoing)
         else
           workerId
           |> sprintf "registered worker %A"
@@ -592,15 +598,15 @@ module Broker =
           let request = incoming.[2].Read()
           let workerId = busy.[0]
 
-          // Tracer.trace "Broker.Frontend.Poll" request <| fun _ ->
-          use outgoing = new ZMessage()
-          outgoing.Add(new ZFrame(workerId)) // worker ID
-          outgoing.Add(new ZFrame())
-          outgoing.Add(new ZFrame(clientId))
-          outgoing.Add(new ZFrame())
-          outgoing.Add(new ZFrame(request))
+          Tracing.trace "Broker Forward To Backend" <| fun _ ->
+            use outgoing = new ZMessage()
+            outgoing.Add(new ZFrame(workerId)) // worker ID
+            outgoing.Add(new ZFrame())
+            outgoing.Add(new ZFrame(clientId))
+            outgoing.Add(new ZFrame())
+            outgoing.Add(new ZFrame(request))
+            state.Backend.Send(outgoing)
 
-          state.Backend.Send(outgoing)
           busy.RemoveAt(0)
 
     dispose state
