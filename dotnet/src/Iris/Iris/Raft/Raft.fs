@@ -3,6 +3,8 @@ namespace Iris.Raft
 open System
 open FSharpx.Functional
 open Iris.Core
+open Hopac
+open Hopac.Infixes
 
 [<AutoOpen>]
 module RaftMonad =
@@ -141,7 +143,7 @@ module Raft =
   let sendAppendEntriesM (mem: RaftMember) (request: AppendEntries) =
     get >>= fun state ->
       read >>= fun cbs ->
-        async {
+        job {
           let msg =
             sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
               (string mem.Id)
@@ -1184,7 +1186,7 @@ module Raft =
           let! entry = getEntryAtM (Member.getNextIndex mem)
           if Option.isSome entry then
             let! request = sendAppendEntry mem
-            return Async.RunSynchronously(request)
+            return Hopac.run request
           else
             return None
         | _ ->
@@ -1281,8 +1283,9 @@ module Raft =
         let responses =
           !requests
           |> Array.map snd
-          |> Async.Parallel
-          |> Async.RunSynchronously
+          |> Job.conCollect
+          |> Hopac.run
+          |> fun arr -> arr.ToArray()
           |> Array.zip (Array.map fst !requests)
 
         for (mem, response) in responses do
@@ -1315,7 +1318,7 @@ module Raft =
   let sendInstallSnapshot mem =
     get >>= fun state ->
       read >>= fun cbs ->
-        async {
+        job {
           match cbs.RetrieveSnapshot () with
             | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
               let is =
@@ -1403,8 +1406,9 @@ module Raft =
 
         let results =
           Array.map snd !requests
-          |> Async.Parallel
-          |> Async.RunSynchronously
+          |> Job.conCollect
+          |> Hopac.run
+          |> fun arr -> arr.ToArray()
           |> Array.zip (Array.map fst !requests)
 
         for (mem, response) in results do
@@ -1913,7 +1917,7 @@ module Raft =
   let sendVoteRequest (mem : RaftMember) =
     get >>= fun state ->
       read >>= fun cbs ->
-        async {
+        job {
           if mem.State = Running || mem.State = Failed then
             let vote =
               { Term         = state.CurrentTerm
@@ -1955,8 +1959,9 @@ module Raft =
           let responses =
             !requests
             |> Array.map snd
-            |> Async.Parallel
-            |> Async.RunSynchronously
+            |> Job.conCollect
+            |> Hopac.run
+            |> fun arr -> arr.ToArray()
             |> Array.zip (Array.map fst !requests)
 
           for (mem, response) in responses do
