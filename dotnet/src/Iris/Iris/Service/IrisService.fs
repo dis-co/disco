@@ -279,12 +279,11 @@ module Iris =
   ///
   /// Returns: unit
   let private notLoaded (chan: ReplyChan) () =
-    job {
+    asynchronously <| fun _ ->
       "No project loaded"
       |> Error.asProjectError (tag "notLoaded")
       |> Either.fail
       |> chan.Reply
-    } |> Hopac.start
 
   // ** withDefaultReply
 
@@ -1034,15 +1033,14 @@ module Iris =
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
     withState state <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         broadcastMsg data (LogMsg log)
-      } |> Hopac.start
     state
 
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) (agent: IrisAgent) =
-    job {
+    asynchronously <| fun _ ->
       triggerWithLoaded state (Status ServiceStatus.Stopped)
       let idleData =
         match state with
@@ -1057,26 +1055,24 @@ module Iris =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-    } |> Hopac.start
     state
 
   // ** handleConfig
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         data.Store.State.Project.Config
         |> Reply.Config
         |> Either.succeed
         |> chan.Reply
-      } |> Hopac.start
       state
 
   // ** handleSetConfig
 
   let private handleSetConfig (state: IrisState) (chan: ReplyChan) (config: IrisConfig) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         Reply.Ok
         |> Either.succeed
         |> chan.Reply
@@ -1084,42 +1080,39 @@ module Iris =
         Project.updateConfig config data.Store.State.Project
         |> UpdateProject
         |> data.Store.Dispatch
-      } |> Hopac.start
       state
 
   // ** handleForceElection
 
   let private handleForceElection (state: IrisState) =
     withoutReply state <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.ForceElection () with
         | Left error ->
           error
           |> string
           |> Logger.err data.MemberId (tag "handleForceElection")
         | other -> ignore other
-      } |> Hopac.start
       state
 
   // ** handlePeriodic
 
   let private handlePeriodic (state: IrisState) =
     withoutReply state <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.Periodic() with
         | Left error ->
           error
           |> string
           |> Logger.err data.MemberId (tag "handlePeriodic")
         | other -> ignore other
-      } |> Hopac.start
       state
 
   // ** handleJoin
 
   let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.JoinCluster ip port with
         | Right () ->
           Reply.Ok
@@ -1129,14 +1122,13 @@ module Iris =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.start
       state
 
   // ** handleLeave
 
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.LeaveCluster () with
         | Right () ->
           Reply.Ok
@@ -1146,14 +1138,13 @@ module Iris =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.start
       state
 
   // ** handleAddMember
 
   let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.AddMember mem with
         | Right entry ->
           Reply.Entry entry
@@ -1163,14 +1154,13 @@ module Iris =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.start
       state
 
   // ** handleRmMember
 
   let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
-      job {
+      asynchronously <| fun _ ->
         match data.RaftServer.RmMember id  with
         | Right entry ->
           Reply.Entry entry
@@ -1180,7 +1170,6 @@ module Iris =
           error
           |> Either.fail
           |> chan.Reply
-      } |> Hopac.start
       state
 
   // ** handleState

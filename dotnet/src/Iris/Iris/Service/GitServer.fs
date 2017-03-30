@@ -379,14 +379,13 @@ module Git =
       |> chan.Reply
       state
     | Running data ->
-      job {
+      asynchronously <| fun _ ->
         for subscription in subscriptions do
           subscription.OnNext (Exited 0)
         dispose data
         Reply.Ok
         |> Either.succeed
         |> chan.Reply
-      } |> Hopac.start
       Idle
 
   // ** loop

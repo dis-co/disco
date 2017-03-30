@@ -539,23 +539,21 @@ module Raft =
 
     match result with
     | Right (response, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         (state.Raft.Member.Id, response)
         |> AppendEntriesResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
 
     | Left (err, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         err
         |> ErrorResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
 
   // ** processAppendEntry
@@ -564,7 +562,7 @@ module Raft =
     if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
       match appendCommand state cmd with
       | Right (entry, newstate) ->       // command was appended, now queue a message and the later
-        job {
+        asynchronously <| fun _ ->
           let response =                  // response to check its committed status, eventually
             entry                         // timing out or responding to the server
             |> AppendEntryResponse
@@ -573,37 +571,33 @@ module Raft =
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> arbiter.Post
-        } |> Hopac.start
         newstate
       | Left (err, newstate) ->          // Request was unsuccessful, respond immeditately
-        job {
+        asynchronously <| fun _ ->
           err
           |> ErrorResponse
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> state.Server.Respond
-        } |> Hopac.start
         newstate
     else
       match Raft.getLeader state.Raft with // redirect to known leader or fail
       | Some mem ->
-        job {
+        asynchronously <| fun _ ->
           mem
           |> Redirect
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> state.Server.Respond
-        } |> Hopac.start
         state
       | None ->
-        job {
+        asynchronously <| fun _ ->
           "Not leader and no known leader."
           |> Error.asRaftError (tag "processAppendEntry")
           |> ErrorResponse
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> state.Server.Respond
-        } |> Hopac.start
         state
 
   // ** processVoteRequest
@@ -615,23 +609,21 @@ module Raft =
 
     match result with
     | Right (response, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         (state.Raft.Member.Id, response)
         |> RequestVoteResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
 
     | Left (err, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         err
         |> ErrorResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
 
   // ** processInstallSnapshot
@@ -643,22 +635,20 @@ module Raft =
 
     match result with
     | Right (response, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         (state.Raft.Member.Id, response)
         |> InstallSnapshotResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
     | Left (error, newstate) ->
-      job {
+      asynchronously <| fun _ ->
         error
         |> ErrorResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       updateRaft state newstate
 
   // ** doRedirect
@@ -674,23 +664,21 @@ module Raft =
   let private doRedirect (state: RaftAppContext) (raw: RawRequest) =
     match Raft.getLeader state.Raft with
     | Some mem ->
-      job {
+      asynchronously <| fun _ ->
         mem
         |> Redirect
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       state
     | None ->
-      job {
+      asynchronously <| fun _ ->
         "No known leader"
         |> Error.asRaftError (tag "doRedirect")
         |> ErrorResponse
         |> Binary.encode
         |> RawResponse.fromRequest raw
         |> state.Server.Respond
-      } |> Hopac.start
       state
 
   // ** processHandshake
@@ -709,7 +697,7 @@ module Raft =
     if Raft.isLeader state.Raft then
       match addMembers state [| mem |] with
       | Right (entry, newstate) ->
-        job {
+        asynchronously <| fun _ ->
           let response =                  // response to check its committed status, eventually
             mem
             |> Welcome
@@ -718,16 +706,14 @@ module Raft =
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> arbiter.Post
-        } |> Hopac.start
         newstate
       | Left (err, newstate) ->
-        job {
+        asynchronously <| fun _ ->
           err
           |> ErrorResponse
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> state.Server.Respond
-        } |> Hopac.start
         newstate
     else
       doRedirect state raw
@@ -738,7 +724,7 @@ module Raft =
     if Raft.isLeader state.Raft then
       match removeMember state mem.Id with
       | Right (entry, newstate) ->
-        job {
+        asynchronously <| fun _ ->
           let response =                  // response to check its committed status, eventually
             Arrivederci
             |> Binary.encode
@@ -746,16 +732,14 @@ module Raft =
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> arbiter.Post
-        } |> Hopac.start
         newstate
       | Left (err, newstate) ->
-        job {
+        asynchronously <| fun _ ->
           err
           |> ErrorResponse
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> state.Server.Respond
-        } |> Hopac.start
         newstate
     else
       doRedirect state raw
@@ -1456,7 +1440,7 @@ module Raft =
 
       match result with
       | Right (true, newstate) ->        // the entry was committed, hence we reply to the caller
-        job {
+        asynchronously <| fun _ ->
           entry
           |> Reply.Entry
           |> Either.succeed
@@ -1465,7 +1449,6 @@ module Raft =
           delta.TotalMilliseconds
           |> sprintf "Completed request in %fms"
           |> Logger.debug data.Raft.Member.Id "handleIsCommitted"
-        } |> Hopac.start
 
         newstate
         |> updateRaft data
@@ -1473,7 +1456,7 @@ module Raft =
 
       | Right (false, newstate) ->       // the entry was not yet committed
         if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
-          job {                       // the maximum timout has been crossed, hence the request
+          asynchronously <| fun _ ->                        // the maximum timout has been crossed, hence the request
             "Command timed out"          // failed miserably
             |> Error.asRaftError "handleIsCommitted"
             |> Either.fail
@@ -1482,9 +1465,8 @@ module Raft =
             delta.TotalMilliseconds
             |> sprintf "Command append failed after %fms"
             |> Logger.err data.Raft.Member.Id "handleIsCommitted"
-          } |> Hopac.start
         else
-          job {                       // now we re-queue the message to check again in 1ms
+          job {                        // now we re-queue the message to check again in 1ms
             do! timeOutMillis 1000
             (ts, entry, chan)
             |> Msg.IsCommitted
@@ -1530,13 +1512,12 @@ module Raft =
       match processRequest data raw arbiter with
       | Right newdata -> Loaded newdata
       | Left error ->
-        job {
+        asynchronously <| fun _ ->
           error
           |> ErrorResponse
           |> Binary.encode
           |> RawResponse.fromRequest raw
           |> data.Server.Respond
-        } |> Hopac.start
         state
     | Idle -> state
 
@@ -1553,19 +1534,18 @@ module Raft =
 
       match result with
       | Right (true, newstate) ->
-        job {
+        asynchronously <| fun _ ->
           data.Server.Respond raw
           delta
           |> fun delta -> delta.TotalMilliseconds
           |> sprintf "Entry took %fms to commit"
           |> Logger.debug data.Raft.Member.Id "handleReqCommitted"
-        } |> Hopac.start
         updateRaft data newstate
         |> Loaded
 
       | Right (false, newstate) ->
         if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
-          job {
+          asynchronously <| fun _ ->
             let body =
               "AppendEntry timed out"
               |> Error.asRaftError "handleReqCommitted"
@@ -1578,12 +1558,11 @@ module Raft =
             |> fun delta -> delta.TotalMilliseconds
             |> sprintf "AppendEntry timed out: %f"
             |> Logger.debug data.Raft.Member.Id "handleReqCommitted"
-          } |> Hopac.start
           updateRaft data newstate
           |> Loaded
         else
           job {
-            do! Async.Sleep(1)
+            do! timeOutMillis 1
             (ts, entry, raw)
             |> Msg.ReqCommitted
             |> arbiter.Post
@@ -1591,14 +1570,9 @@ module Raft =
           updateRaft data newstate
           |> Loaded
       | Left (err, newstate) ->
-        job {
-          let body =
-            err
-            |> ErrorResponse
-            |> Binary.encode
-          { raw with Body = body }
+        asynchronously <| fun _ ->
+          { raw with Body = err |> ErrorResponse |> Binary.encode }
           |> data.Server.Respond
-        } |> Hopac.start
         updateRaft data newstate
         |> Loaded
     | Idle -> state

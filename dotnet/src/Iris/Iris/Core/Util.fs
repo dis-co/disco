@@ -20,6 +20,7 @@ open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
 open System.Runtime.CompilerServices
+open Hopac
 
 #endif
 
@@ -1418,3 +1419,11 @@ module Functional =
   let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
 
 #endif
+
+// * Async
+
+[<AutoOpen>]
+module Async =
+
+  let asynchronously (f: unit -> unit) =
+    job { f() } |> Hopac.start
