@@ -11,6 +11,8 @@ open Iris.Service
 open FSharpx.Functional
 open Fleck
 open Iris.Service.Interfaces
+open Hopac
+open Hopac.Infixes
 
 // * WebSockets
 
@@ -105,7 +107,7 @@ module WebSockets =
   let private broadcast (connections: Connections)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
-    let sendAsync (id: Id) = async {
+    let sendAsync (id: Id) = job {
         let result = send connections id msg
         return result
       }
@@ -113,8 +115,9 @@ module WebSockets =
     let result : IrisError list =
       connections.Keys
       |> Seq.map sendAsync
-      |> Async.Parallel
-      |> Async.RunSynchronously
+      |> Job.conCollect
+      |> Hopac.run
+      |> fun arr -> arr.ToArray()
       |> Array.fold
         (fun lst (result: Either<IrisError,unit>) ->
           match result with
