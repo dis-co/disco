@@ -206,7 +206,7 @@ module ApiClient =
                     (client: IrisClient)
                     (subs: Subscriptions)
                     (agent: ApiAgent) =
-    let backendAddr = "inproc://api-client-" + string client.Id
+    let backendAddr = Constants.API_CLIENT_PREFIX + string client.Id
     let clientAddr = formatTCPUri client.IpAddress (int client.Port)
     let srvAddr = formatTCPUri server.IpAddress (int server.Port)
 
