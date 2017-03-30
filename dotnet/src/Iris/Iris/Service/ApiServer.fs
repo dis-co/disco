@@ -366,7 +366,7 @@ module ApiServer =
   // ** updateClient
 
   let private updateClient (sm: StateMachine) (client: Client) =
-    async {
+    job {
       if not client.Socket.Running then
         client.Socket.Restart()
 
@@ -395,8 +395,9 @@ module ApiServer =
     data.Clients
     |> Map.toArray
     |> Array.map (snd >> updateClient sm)
-    |> Async.Parallel
-    |> Async.RunSynchronously
+    |> Job.conCollect
+    |> Hopac.run
+    |> fun arr -> arr.ToArray()
     |> Array.iter
       (fun result ->
         match result with
