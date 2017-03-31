@@ -234,12 +234,12 @@ module Api =
           | Left error ->
             error
             |> string
-            |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
+            |> Logger.err "mergeGraphState"
       plugstate
     | Left error ->
       error
       |> string
-      |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
+      |> Logger.err "mergeGraphState"
       plugstate
 
   // ** processInputs

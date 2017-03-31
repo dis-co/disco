@@ -585,7 +585,7 @@ module Graph =
       | Left error ->
         error
         |> string
-        |> Logger.err state.InClientId.[0] "registerHandlers"
+        |> Logger.err "registerHandlers"
 
     let vecsizeHandler = new EventHandler(vecsizeUpdate)
     let columnsHandler = new EventHandler(vecsizeUpdate)
@@ -724,7 +724,7 @@ module Graph =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "parseSeqWith"
+          |> Logger.err "parseSeqWith"
           lst)
       []
       pins
