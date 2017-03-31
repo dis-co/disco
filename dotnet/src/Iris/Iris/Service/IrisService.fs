@@ -855,7 +855,7 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: string, site: ClusterConfig option)
+                          (projectName: string, userName: string, password: string, site: string option)
                           (subscriptions: Subscriptions) =
     let isValidPassword (user: User) (password: string) =
       let password = Crypto.hashPassword password user.Salt
@@ -876,18 +876,34 @@ module Iris =
           | Idle idleData -> idleData
           | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
-        let state =
+        let! state =
           match site with
           | Some site ->
             let site =
               state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Id = site.Id)
-              |> function Some s -> s | None -> failwith "TODO: Create new site"
+              |> Array.tryFind (fun s -> s.Name = site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
             
-            // TODO: Add current machine if necessary
-            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-            { state with Project = { state.Project with Config = cfg }}
-          | None -> state
+            // Add current machine if necessary
+            let site =
+              let mid = machine.MachineId
+              if Map.containsKey mid site.Members
+              then Right site
+              else
+                // Another cluster must cointain the self member, search for it
+                state.Project.Config.Sites
+                |> Seq.collect (fun site -> site.Members)
+                |> Seq.tryFind (fun kvp -> kvp.Key = mid)
+                |> function
+                  | Some kvp -> Right { site with Members = Map.add mid kvp.Value site.Members }
+                  | None -> Error.asProjectError "" "" |> Left
+
+            match site with
+            | Right site ->
+              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+              Right { state with Project = { state.Project with Config = cfg }}
+            | Left err -> Left err
+          | None -> Right state
 
         // FIXME: load the actual state from disk
         let! mem = Config.selfMember state.Project.Config
