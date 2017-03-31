@@ -1422,6 +1422,8 @@ module Functional =
 
 // * Async
 
+#if !FABLE_COMPILER
+
 [<AutoOpen>]
 module Async =
 
@@ -1429,3 +1431,5 @@ module Async =
     job { f() } |> Hopac.start
     // async { f() } |> Async.Start
     //f()
+
+#endif
