@@ -557,7 +557,7 @@ module Broker =
     let poll = ZPollItem.CreateReceiver()
 
     while spin state do
-      let timespan = Nullable(TimeSpan.FromMilliseconds(0.1))
+      let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
 
       if state.Backend.PollIn(poll, &incoming, &error, timespan) then
         let workerId = incoming.[0].ReadUInt16()
