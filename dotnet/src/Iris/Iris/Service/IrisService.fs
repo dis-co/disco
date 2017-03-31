@@ -337,19 +337,24 @@ module Iris =
   // ** broadcastMsg
 
   let private broadcastMsg (state: IrisLoadedStateData) (cmd: StateMachine) =
-    state.SocketServer.Broadcast cmd
-    |> ignore
+    Tracing.trace "IrisService.broadcastMsg" <| fun () ->
+      cmd
+      |> state.SocketServer.Broadcast
+      |> ignore
 
   // ** sendMsg
 
   let private sendMsg (state: IrisLoadedStateData) (id: Id) (cmd: StateMachine) =
-    state.SocketServer.Send id cmd
-    |> ignore
+    Tracing.trace "IrisService.sendMsg" <| fun () ->
+      cmd
+      |> state.SocketServer.Send id
+      |> ignore
 
   // ** appendCmd
 
   let private appendCmd (state: IrisLoadedStateData) (cmd: StateMachine) =
-    state.RaftServer.Append(cmd)
+    Tracing.trace "IrisService.appendCmd" <| fun () ->
+      state.RaftServer.Append(cmd)
 
   // ** onOpen
 
@@ -659,130 +664,138 @@ module Iris =
       | Left error ->
         Either.fail error
 
-    impl leader 0
+    Tracing.trace "IrisService.requestAppend" <| fun () ->
+      impl leader 0
 
   // ** forwardCommand
 
   let private forwardCommand (data: IrisLoadedStateData) (sm: StateMachine) =
-    match data.Leader with
-    | Some leader ->
-      match requestAppend data.MemberId leader sm with
-      | Right newleader ->
-        { data with Leader = Some newleader }
-      | Left error ->
-        dispose leader
-        { data with Leader = None }
-    | None ->
-      match data.RaftServer.Leader with
-      | Right (Some mem) ->
-        let leader = mkLeader data.MemberId mem
+    Tracing.trace "IrisService.forwardCommand" <| fun () ->
+      match data.Leader with
+      | Some leader ->
         match requestAppend data.MemberId leader sm with
         | Right newleader ->
           { data with Leader = Some newleader }
         | Left error ->
           dispose leader
           { data with Leader = None }
-      | Right None ->
-        "Could not start re-direct socket: No Known Leader"
-        |> Logger.debug (tag "onStateChanged")
-        data
-      | Left error ->
-        string error
-        |> Logger.err (tag "onStateChanged")
-        data
+      | None ->
+        match data.RaftServer.Leader with
+        | Right (Some mem) ->
+          let leader = mkLeader data.MemberId mem
+          match requestAppend data.MemberId leader sm with
+          | Right newleader ->
+            { data with Leader = Some newleader }
+          | Left error ->
+            dispose leader
+            { data with Leader = None }
+        | Right None ->
+          "Could not start re-direct socket: No Known Leader"
+          |> Logger.debug (tag "onStateChanged")
+          data
+        | Left error ->
+          string error
+          |> Logger.err (tag "onStateChanged")
+          data
 
   // ** handleRaftEvent
 
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
-    match ev with
-    | ApplyLog sm             -> onApplyLog       state sm
-    | MemberAdded mem         -> onMemberAdded    state mem
-    | MemberRemoved mem       -> onMemberRemoved  state mem
-    | MemberUpdated mem       -> onMemberUpdated  state mem
-    | Configured mems         -> onConfigured     state mems
-    | CreateSnapshot _        -> onCreateSnapshot state
-    | StateChanged (ost, nst) -> onStateChanged   state ost nst
+    Tracing.trace "IrisService.handleRaftEvent" <| fun () ->
+      match ev with
+      | ApplyLog sm             -> onApplyLog       state sm
+      | MemberAdded mem         -> onMemberAdded    state mem
+      | MemberRemoved mem       -> onMemberRemoved  state mem
+      | MemberUpdated mem       -> onMemberUpdated  state mem
+      | Configured mems         -> onConfigured     state mems
+      | CreateSnapshot _        -> onCreateSnapshot state
+      | StateChanged (ost, nst) -> onStateChanged   state ost nst
 
   // ** handleApiEvent
 
   let private handleApiEvent (state: IrisState) (ev: ApiEvent) =
     withoutReply state <| fun data ->
-      match ev with
-      | ApiEvent.Update sm ->
-        // ApiEvents:
-        // If its something that appeared via the fast-lane, dispatch it on the Store and via the
-        // WebSockets right away. Evertything else needs to be logged via raft.
-        match sm with
-        | UpdateSlices _ | CallCue _ ->
-          data.Store.Dispatch sm
-          data.SocketServer.Broadcast sm
-          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-          |> ignore
-          state
-        | other ->
-          if data.RaftServer.IsLeader then
-            data.RaftServer.Append other
+      Tracing.trace "IrisService.handleApiEvent" <| fun () ->
+        match ev with
+        | ApiEvent.Update sm ->
+          // ApiEvents:
+          // If its something that appeared via the fast-lane, dispatch it on the Store and via the
+          // WebSockets right away. Evertything else needs to be logged via raft.
+          match sm with
+          | UpdateSlices _ | CallCue _ ->
+            data.Store.Dispatch sm
+            data.SocketServer.Broadcast sm
             |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
             |> ignore
             state
-          else
-            forwardCommand data other
-            |> updateLoaded state
-      | ApiEvent.Register client ->
-        data.RaftServer.Append (AddClient client)
-        |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-        |> ignore
-        state
-      | ApiEvent.UnRegister client ->
-        data.RaftServer.Append (RemoveClient client)
-        |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-        |> ignore
-        state
-      | _ -> // Status events
-        triggerOnNext data.Subscriptions (IrisEvent.Api ev)
-        state
+          | other ->
+            if data.RaftServer.IsLeader then
+              data.RaftServer.Append other
+              |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
+              |> ignore
+              state
+            else
+              forwardCommand data other
+              |> updateLoaded state
+        | ApiEvent.Register client ->
+          data.RaftServer.Append (AddClient client)
+          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
+          |> ignore
+          state
+        | ApiEvent.UnRegister client ->
+          data.RaftServer.Append (RemoveClient client)
+          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
+          |> ignore
+          state
+        | _ -> // Status events
+          triggerOnNext data.Subscriptions (IrisEvent.Api ev)
+          state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
     let appendCommand data cmd =
       match appendCmd data cmd with
       | Right _ -> ()
       | Left error  ->
-        error |> string |> Logger.err (tag "handleDiscoveryEvent")
+        error
+        |> string
+        |> Logger.err (tag "handleDiscoveryEvent")
+
     withoutReply state <| fun data ->
-      match ev with
-      | Discovery.Appeared service ->
-        AddResolvedService service |> appendCommand data
-      | Discovery.Updated  service ->
-        UpdateResolvedService service |> appendCommand data
-      | Discovery.Vanished service ->
-        RemoveResolvedService service |> appendCommand data
-      | _ -> ()
-      state
+      Tracing.trace "IrisService.handleDiscoveryEvent" <| fun () ->
+        match ev with
+        | Discovery.Appeared service ->
+          AddResolvedService service |> appendCommand data
+        | Discovery.Updated  service ->
+          UpdateResolvedService service |> appendCommand data
+        | Discovery.Vanished service ->
+          RemoveResolvedService service |> appendCommand data
+        | _ -> ()
+        state
 
   // ** forwardLogEvents
 
   let private forwardLogEvents (agent: IrisAgent) (log: LogEvent) =
-    agent.Post(Msg.Log log)
+    log |> Msg.Log |> agent.Post
 
   // ** forwardRaftEvents
 
   let private forwardRaftEvents (agent: IrisAgent) (ev: RaftEvent) =
-    agent.Post(Msg.Raft ev)
+    ev |> Msg.Raft |> agent.Post
 
   // ** forwardGitEvents
 
   let private forwardGitEvents (agent: IrisAgent) (ev: GitEvent) =
-    agent.Post(Msg.Git ev)
+    ev |> Msg.Git |> agent.Post
 
   // ** forwardSocketEvents
 
   let private forwardSocketEvents (agent: IrisAgent) (ev: SocketEvent) =
-    agent.Post(Msg.Socket ev)
+    ev |> Msg.Socket |> agent.Post
 
   // ** forwardApiEvents
 
   let private forwardApiEvents (agent: IrisAgent) (ev: ApiEvent) =
-    agent.Post(Msg.Api ev)
+    ev |> Msg.Api |> agent.Post
 
   //   ____ _ _
   //  / ___(_) |_
@@ -793,62 +806,65 @@ module Iris =
   // ** restartGitServer
 
   let private restartGitServer (data: IrisLoadedStateData) (agent: IrisAgent) =
-    data.Disposables
-    |> Map.tryFind GIT_SERVER
-    |> Option.map dispose
-    |> ignore
+    Tracing.trace "IrisService.restartGitServer" <| fun () ->
+      data.Disposables
+      |> Map.tryFind GIT_SERVER
+      |> Option.map dispose
+      |> ignore
 
-    dispose data.GitServer
+      dispose data.GitServer
 
-    let result =
-      either {
-        let! mem = data.RaftServer.Member
-        let! gitserver = GitServer.create mem data.Store.State.Project.Path
-        let disposable =
-          forwardGitEvents agent
-          |> gitserver.Subscribe
-        match gitserver.Start() with
-        | Right () ->
-          return { data with
-                     GitServer = gitserver
-                     Disposables = Map.add GIT_SERVER disposable data.Disposables }
-        | Left error ->
-          dispose disposable
-          dispose gitserver
-          return! Either.fail error
-      }
+      let result =
+        either {
+          let! mem = data.RaftServer.Member
+          let! gitserver = GitServer.create mem data.Store.State.Project.Path
+          let disposable =
+            forwardGitEvents agent
+            |> gitserver.Subscribe
+          match gitserver.Start() with
+          | Right () ->
+            return { data with
+                      GitServer = gitserver
+                      Disposables = Map.add GIT_SERVER disposable data.Disposables }
+          | Left error ->
+            dispose disposable
+            dispose gitserver
+            return! Either.fail error
+        }
 
-    match result with
-    | Right newdata -> newdata
-    | Left error ->
-      error
-      |> string
-      |> Logger.err (tag "restartGitServer")
-      data
+      match result with
+      | Right newdata -> newdata
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "restartGitServer")
+        data
 
   // ** handleGitEvent
 
   let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
-    match state with
-    | Idle _ -> state
-    | Loaded (idleData, data) ->
-      triggerOnNext data.Subscriptions (IrisEvent.Git ev)
-      match ev with
-      | Started pid ->
-        sprintf "Git daemon started with PID: %d" pid
-        |> Logger.debug (tag "handleGitEvent")
-        state
+    Tracing.trace "IrisService.handleGitEvent" <| fun () ->
+      match state with
+      | Idle _ -> state
+      | Loaded (idleData, data) ->
+        triggerOnNext data.Subscriptions (IrisEvent.Git ev)
+        match ev with
+        | Started pid ->
+          sprintf "Git daemon started with PID: %d" pid
+          |> Logger.debug (tag "handleGitEvent")
+          state
 
-      | Exited _ ->
-        "Git daemon exited. Attempting to restart."
-        |> Logger.debug (tag "handleGitEvent")
-        let newData = restartGitServer data agent
-        Loaded (idleData, newData)
+        | Exited _ ->
+          "Git daemon exited. Attempting to restart."
+          |> Logger.debug (tag "handleGitEvent")
+          let newData = restartGitServer data agent
+          Loaded (idleData, newData)
 
-      | Pull (_, addr, port) ->
-        sprintf "Client %s:%d pulled updates from me" addr port
-        |> Logger.debug (tag "handleGitEvent")
-        state
+        | Pull (_, addr, port) ->
+          sprintf "Client %s:%d pulled updates from me" addr port
+          |> Logger.debug (tag "handleGitEvent")
+          state
+
   //  _                    _
   // | |    ___   __ _  __| |
   // | |   / _ \ / _` |/ _` |
@@ -861,105 +877,105 @@ module Iris =
                           (machine: IrisMachine)
                           (projectName: string, userName: string, password: string)
                           (subscriptions: Subscriptions) =
-    let isValidPassword (user: User) (password: string) =
-      let password = Crypto.hashPassword password user.Salt
-      password = user.Password
 
-    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
-    if File.Exists path |> not then
-      sprintf "Project Not Found: %s" projectName
-      |> Error.asProjectError (tag "loadProject")
-      |> Either.fail
-    else
-      either {
-        let! (state: State) = Asset.loadWithMachine path machine
+    Tracing.trace "IrisService.loadProject" <| fun () ->
+      let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
 
-        let user =
-          state.Users
-          |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+      if File.Exists path |> not then
+        sprintf "Project Not Found: %s" projectName
+        |> Error.asProjectError (tag "loadProject")
+        |> Either.fail
+      else
+        either {
+          let! (state: State) = Asset.loadWithMachine path machine
 
-        match user with
-        | Some user when isValidPassword user password ->
-          let idleData =
-            match oldState with
-            | Idle idleData -> idleData
-            | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+          let user =
+            state.Users
+            |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
 
-          // FIXME: load the actual state from disk
-          let! mem = Config.selfMember state.Project.Config
+          match user with
+          | Some user when User.passwordValid user password ->
+            let idleData =
+              match oldState with
+              | Idle idleData -> idleData
+              | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
-          let! raftserver = RaftServer.create ()
-          let! wsserver   = SocketServer.create mem
-          let! apiserver  = ApiServer.create mem state.Project.Id
-          let! gitserver  = GitServer.create mem path
+            // FIXME: load the actual state from disk
+            let! mem = Config.selfMember state.Project.Config
 
-          // Try to put discovered services into the state
-          let state =
-            match idleData.DiscoveryService.Services with
-            | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
-            | Left err ->
-              err
-              |> string
-              |> Logger.err (tag "loadProject.getDiscoveredServices")
-              state
+            let! raftserver = RaftServer.create ()
+            let! wsserver   = SocketServer.create mem
+            let! apiserver  = ApiServer.create mem state.Project.Id
+            let! gitserver  = GitServer.create mem path
 
-          let loadedData =
-            { MemberId      = mem.Id
-              Leader        = None
-              Status        = ServiceStatus.Starting
-              Store         = new Store(state)
-              ApiServer     = apiserver
-              GitServer     = gitserver
-              RaftServer    = raftserver
-              SocketServer  = wsserver
-              Subscriptions = subscriptions
-              Disposables   = Map.empty }
+            // Try to put discovered services into the state
+            let state =
+              match idleData.DiscoveryService.Services with
+              | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+              | Left err ->
+                err
+                |> string
+                |> Logger.err (tag "loadProject.getDiscoveredServices")
+                state
 
-          return Loaded(idleData, loadedData)
-        | _ ->
-          return!
-            "Login rejected"
-            |> Error.asProjectError (tag "loadProject")
-            |> Either.fail
-      }
+            let loadedData =
+              { MemberId      = mem.Id
+                Leader        = None
+                Status        = ServiceStatus.Starting
+                Store         = new Store(state)
+                ApiServer     = apiserver
+                GitServer     = gitserver
+                RaftServer    = raftserver
+                SocketServer  = wsserver
+                Subscriptions = subscriptions
+                Disposables   = Map.empty }
+
+            return Loaded(idleData, loadedData)
+          | _ ->
+            return!
+              "Login rejected"
+              |> Error.asProjectError (tag "loadProject")
+              |> Either.fail
+        }
 
   // ** start
 
   let private start (state: IrisState) (agent: IrisAgent) =
-    match state with
-    | Idle _ -> Right state
-    | Loaded(idleData, data) ->
-      let disposables =
-        [ (LOG_HANDLER, forwardLogEvents    agent |> Logger.subscribe)
-          (RAFT_SERVER, forwardRaftEvents   agent |> data.RaftServer.Subscribe)
-          (WS_SERVER,   forwardSocketEvents agent |> data.SocketServer.Subscribe)
-          (API_SERVER,  forwardApiEvents    agent |> data.ApiServer.Subscribe)
-          (GIT_SERVER,  forwardGitEvents    agent |> data.GitServer.Subscribe) ]
-        |> Map.ofList
+    Tracing.trace "IrisService.start" <| fun () ->
+      match state with
+      | Idle _ -> Right state
+      | Loaded(idleData, data) ->
+        let disposables =
+          [ (LOG_HANDLER, forwardLogEvents    agent |> Logger.subscribe)
+            (RAFT_SERVER, forwardRaftEvents   agent |> data.RaftServer.Subscribe)
+            (WS_SERVER,   forwardSocketEvents agent |> data.SocketServer.Subscribe)
+            (API_SERVER,  forwardApiEvents    agent |> data.ApiServer.Subscribe)
+            (GIT_SERVER,  forwardGitEvents    agent |> data.GitServer.Subscribe) ]
+          |> Map.ofList
 
-      let result =
-        either {
-          do! data.RaftServer.Load(data.Store.State.Project.Config)
-          do! data.ApiServer.Start()
-          do! data.SocketServer.Start()
-          do! data.GitServer.Start()
-        }
+        let result =
+          either {
+            do! data.RaftServer.Load(data.Store.State.Project.Config)
+            do! data.ApiServer.Start()
+            do! data.SocketServer.Start()
+            do! data.GitServer.Start()
+          }
 
-      match result with
-      | Right _ ->
-        let loadedData =
-          { data with
-                  Status = ServiceStatus.Running
-                  Disposables = disposables }
-        Loaded(idleData, loadedData)
-        |> Either.succeed
-      | Left error ->
-        disposeAll disposables
-        dispose data.SocketServer
-        dispose data.ApiServer
-        dispose data.RaftServer
-        dispose data.GitServer
-        Either.fail error
+        match result with
+        | Right _ ->
+          let loadedData =
+            { data with
+                    Status = ServiceStatus.Running
+                    Disposables = disposables }
+          Loaded(idleData, loadedData)
+          |> Either.succeed
+        | Left error ->
+          disposeAll disposables
+          dispose data.SocketServer
+          dispose data.ApiServer
+          dispose data.RaftServer
+          dispose data.GitServer
+          Either.fail error
 
 
   // ** handleLoad
@@ -970,59 +986,61 @@ module Iris =
                          (config: IrisMachine)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config (projectName, userName, password) subscriptions with
-    | Right nextstate ->
-      chan
-      |> Msg.Start
-      |> inbox.Post
-      nextstate
-    | Left error ->
-      ServiceStatus.Failed error
-      |> Status
-      |> triggerWithLoaded state
+    Tracing.trace "IrisService.handleLoad" <| fun () ->
+      match loadProject state config (projectName, userName, password) subscriptions with
+      | Right nextstate ->
+        chan
+        |> Msg.Start
+        |> inbox.Post
+        nextstate
+      | Left error ->
+        ServiceStatus.Failed error
+        |> Status
+        |> triggerWithLoaded state
 
-      error
-      |> Either.fail
-      |> chan.Reply
+        error
+        |> Either.fail
+        |> chan.Reply
 
-      state
-      |> resetLoaded
+        state
+        |> resetLoaded
 
   let private handleStart (state: IrisState)
                           (chan: ReplyChan)
                           (subscriptions: Subscriptions)
                           (inbox: IrisAgent)=
-    match start state inbox with
-    | Right finalstate ->
-      // notify
-      ServiceStatus.Running
-      |> Status
-      |> triggerOnNext subscriptions
+    Tracing.trace "IrisService.handleStart" <| fun () ->
+      match start state inbox with
+      | Right finalstate ->
+        // notify
+        ServiceStatus.Running
+        |> Status
+        |> triggerOnNext subscriptions
 
-      // reply
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
+        // reply
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
 
-      finalstate
-      |> Msg.SetAgentState
-      |> inbox.Post
+        finalstate
+        |> Msg.SetAgentState
+        |> inbox.Post
 
-      finalstate
+        finalstate
 
-    | Left error ->
-      // notify
-      ServiceStatus.Failed error
-      |> Status
-      |> triggerOnNext subscriptions
+      | Left error ->
+        // notify
+        ServiceStatus.Failed error
+        |> Status
+        |> triggerOnNext subscriptions
 
-      // reply
-      error
-      |> Either.fail
-      |> chan.Reply
+        // reply
+        error
+        |> Either.fail
+        |> chan.Reply
 
-      state
-      |> resetLoaded
+        state
+        |> resetLoaded
 
   //  _
   // | |    ___   __ _
@@ -1034,20 +1052,24 @@ module Iris =
   // ** handleLogEvent
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
-    withState state <| fun data ->
-      asynchronously <| fun _ ->
-        broadcastMsg data (LogMsg log)
-    state
+    Tracing.trace "IrisService.handleLogEvent" <| fun () ->
+      withState state <| fun data ->
+        log
+        |> LogMsg
+        |> broadcastMsg data
+      state
 
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) (agent: IrisAgent) =
-    asynchronously <| fun _ ->
+    Tracing.trace "IrisService.handleUnload" <| fun () ->
       triggerWithLoaded state (Status ServiceStatus.Stopped)
       let idleData =
         match state with
         | Idle idleData -> idleData
-        | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+        | Loaded (idleData, loadedData) ->
+          dispose loadedData
+          idleData
 
       idleData
       |> Idle
@@ -1057,73 +1079,74 @@ module Iris =
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
-    state
+
+      state
 
   // ** handleConfig
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
-    withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
+    Tracing.trace "IrisService.handleConfig" <| fun () ->
+      withDefaultReply state chan <| fun data ->
         data.Store.State.Project.Config
         |> Reply.Config
         |> Either.succeed
         |> chan.Reply
-      state
+        state
 
   // ** handleSetConfig
 
   let private handleSetConfig (state: IrisState) (chan: ReplyChan) (config: IrisConfig) =
-    withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-
+    Tracing.trace "IrisService.handleSetConfig" <| fun () ->
+      withDefaultReply state chan <| fun data ->
         Project.updateConfig config data.Store.State.Project
         |> UpdateProject
         |> data.Store.Dispatch
-      state
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
+        state
 
   // ** handleForceElection
 
   let private handleForceElection (state: IrisState) =
-    withoutReply state <| fun data ->
-      asynchronously <| fun _ ->
+    Tracing.trace "IrisService.handleForceElection" <| fun () ->
+      withoutReply state <| fun data ->
         match data.RaftServer.ForceElection () with
         | Left error ->
           error
           |> string
           |> Logger.err (tag "handleForceElection")
         | other -> ignore other
-      state
+        state
 
   // ** handlePeriodic
 
   let private handlePeriodic (state: IrisState) =
-    withoutReply state <| fun data ->
-      asynchronously <| fun _ ->
+    Tracing.trace "IrisService.handlePeriodic" <| fun () ->
+      withoutReply state <| fun data ->
         match data.RaftServer.Periodic() with
         | Left error ->
           error
           |> string
           |> Logger.err (tag "handlePeriodic")
         | other -> ignore other
-      state
+        state
 
   // ** handleJoin
 
   let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        match data.RaftServer.JoinCluster ip port with
-        | Right () ->
-          Reply.Ok
-          |> Either.succeed
-          |> chan.Reply
-        | Left error ->
-          error
-          |> Either.fail
-          |> chan.Reply
+        Tracing.trace "IrisService.handleJoin" <| fun () ->
+          match data.RaftServer.JoinCluster ip port with
+          | Right () ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
+          | Left error ->
+            error
+            |> Either.fail
+            |> chan.Reply
       state
 
   // ** handleLeave
@@ -1131,15 +1154,16 @@ module Iris =
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        match data.RaftServer.LeaveCluster () with
-        | Right () ->
-          Reply.Ok
-          |> Either.succeed
-          |> chan.Reply
-        | Left error ->
-          error
-          |> Either.fail
-          |> chan.Reply
+        Tracing.trace "IrisService.handleLeave" <| fun () ->
+          match data.RaftServer.LeaveCluster () with
+          | Right () ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
+          | Left error ->
+            error
+            |> Either.fail
+            |> chan.Reply
       state
 
   // ** handleAddMember
@@ -1147,15 +1171,16 @@ module Iris =
   let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        match data.RaftServer.AddMember mem with
-        | Right entry ->
-          Reply.Entry entry
-          |> Either.succeed
-          |> chan.Reply
-        | Left error ->
-          error
-          |> Either.fail
-          |> chan.Reply
+        Tracing.trace "IrisService.handleAddMember" <| fun () ->
+          match data.RaftServer.AddMember mem with
+          | Right entry ->
+            Reply.Entry entry
+            |> Either.succeed
+            |> chan.Reply
+          | Left error ->
+            error
+            |> Either.fail
+            |> chan.Reply
       state
 
   // ** handleRmMember
@@ -1163,25 +1188,27 @@ module Iris =
   let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        match data.RaftServer.RmMember id  with
-        | Right entry ->
-          Reply.Entry entry
-          |> Either.succeed
-          |> chan.Reply
-        | Left error ->
-          error
-          |> Either.fail
-          |> chan.Reply
+        Tracing.trace "IrisService.handleRmMember" <| fun () ->
+          match data.RaftServer.RmMember id  with
+          | Right entry ->
+            Reply.Entry entry
+            |> Either.succeed
+            |> chan.Reply
+          | Left error ->
+            error
+            |> Either.fail
+            |> chan.Reply
       state
 
   // ** handleState
 
   let private handleState (state: IrisState) (chan: ReplyChan) =
-    withDefaultReply state chan <| fun data ->
-      Reply.State data
-      |> Either.succeed
-      |> chan.Reply
-      state
+    Tracing.trace "IrisService.handleState" <| fun () ->
+      withDefaultReply state chan <| fun data ->
+        Reply.State data
+        |> Either.succeed
+        |> chan.Reply
+        state
 
   // ** loop
 
@@ -1237,127 +1264,141 @@ module Iris =
       { new IIrisServer with
         member self.Config
           with get () =
-            match postCommand agent "Config" (fun chan -> Msg.Config chan) with
-            | Right (Reply.Config config) -> Right config
+            Tracing.trace "IrisService.Config" <| fun () ->
+              match postCommand agent "Config" (fun chan -> Msg.Config chan) with
+              | Right (Reply.Config config) -> Right config
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "Config")
+                |> Either.fail
+
+        member self.SetConfig (config: IrisConfig) =
+          Tracing.trace "IrisService.SetConfig()" <| fun () ->
+            match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
+            | Right Reply.Ok -> Right ()
             | Left error -> Left error
             | Right other ->
               sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "Config")
+              |> Error.asOther (tag "SetConfig")
               |> Either.fail
-
-        member self.SetConfig (config: IrisConfig) =
-          match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
-          | Right Reply.Ok -> Right ()
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "SetConfig")
-            |> Either.fail
 
         member self.Status
           with get () =
-            match postCommand agent "Status" (fun chan -> Msg.State chan) with
-            | Right (Reply.State state) -> Right state.Status
+            Tracing.trace "IrisService.Status" <| fun () ->
+              match postCommand agent "Status" (fun chan -> Msg.State chan) with
+              | Right (Reply.State state) -> Right state.Status
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "Status")
+                |> Either.fail
+
+        member self.LoadProject(name:string, username:string, password:string) =
+          Tracing.trace "IrisService.LoadProject" <| fun () ->
+            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
+            | Right Reply.Ok -> Right ()
             | Left error -> Left error
             | Right other ->
               sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "Status")
+              |> Error.asOther (tag "Load")
               |> Either.fail
 
-        member self.LoadProject(name:string, username:string, password:string) =
-          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
-          | Right Reply.Ok -> Right ()
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "Load")
-            |> Either.fail
-
         member self.UnloadProject() =
-          match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
-          | Right Reply.Ok ->
-            // Notify subscriptor of the change of state
-            triggerOnNext subscriptions (Status ServiceStatus.Running)
-            Right ()
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "Unload")
-            |> Either.fail
+          Tracing.trace "IrisService.UnloadProject" <| fun () ->
+            match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
+            | Right Reply.Ok ->
+              // Notify subscriptor of the change of state
+              triggerOnNext subscriptions (Status ServiceStatus.Running)
+              Right ()
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "Unload")
+              |> Either.fail
 
         member self.ForceElection () =
-          agent.Post(Msg.ForceElection)
-          |> Either.succeed
+          Tracing.trace "IrisService.ForceElection" <| fun () ->
+            agent.Post(Msg.ForceElection)
+            |> Either.succeed
 
         member self.Periodic () =
-          agent.Post(Msg.Periodic)
-          |> Either.succeed
+          Tracing.trace "IrisService.Periodic" <| fun () ->
+            agent.Post(Msg.Periodic)
+            |> Either.succeed
 
         member self.LeaveCluster () =
-          match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
-          | Right Reply.Ok -> Right ()
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "LeaveCluster")
-            |> Either.fail
+          Tracing.trace "IrisService.LeaveCluster" <| fun () ->
+            match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
+            | Right Reply.Ok -> Right ()
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "LeaveCluster")
+              |> Either.fail
 
         member self.JoinCluster ip port =
-          match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
-          | Right Reply.Ok -> Right ()
-          | Left error  -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "JoinCluster")
-            |> Either.fail
+          Tracing.trace "IrisService.JoinCluster" <| fun () ->
+            match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
+            | Right Reply.Ok -> Right ()
+            | Left error  -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "JoinCluster")
+              |> Either.fail
 
         member self.AddMember mem =
-          match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
-          | Right (Reply.Entry entry) -> Right entry
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "AddMember")
-            |> Either.fail
+          Tracing.trace "IrisService.AddMember" <| fun () ->
+            match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
+            | Right (Reply.Entry entry) -> Right entry
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "AddMember")
+              |> Either.fail
 
         member self.RmMember id =
-          match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
-          | Right (Reply.Entry entry) -> Right entry
-          | Left error -> Left error
-          | Right other ->
-            sprintf "Unexpected response from IrisAgent: %A" other
-            |> Error.asOther (tag "RmMember")
-            |> Either.fail
+          Tracing.trace "IrisService.RmMember" <| fun () ->
+            match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
+            | Right (Reply.Entry entry) -> Right entry
+            | Left error -> Left error
+            | Right other ->
+              sprintf "Unexpected response from IrisAgent: %A" other
+              |> Error.asOther (tag "RmMember")
+              |> Either.fail
 
         member self.GitServer
           with get () =
-            match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
-            | Right (Reply.State state) -> Right state.GitServer
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "GitServer")
-              |> Either.fail
+            Tracing.trace "IrisService.GitServer" <| fun () ->
+              match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
+              | Right (Reply.State state) -> Right state.GitServer
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "GitServer")
+                |> Either.fail
 
         member self.RaftServer
           with get () =
-            match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
-            | Right (Reply.State state) -> Right state.RaftServer
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "RaftServer")
-              |> Either.fail
+            Tracing.trace "IrisService.RaftServer" <| fun () ->
+              match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
+              | Right (Reply.State state) -> Right state.RaftServer
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "RaftServer")
+                |> Either.fail
 
         member self.SocketServer
           with get () =
-            match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
-            | Right (Reply.State state) -> Right state.SocketServer
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "SocketServer")
-              |> Either.fail
+            Tracing.trace "IrisService.SocketServer" <| fun () ->
+              match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
+              | Right (Reply.State state) -> Right state.SocketServer
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "SocketServer")
+                |> Either.fail
 
         member self.Subscribe(callback: IrisEvent -> unit) =
           { new IObserver<IrisEvent> with
@@ -1367,10 +1408,11 @@ module Iris =
           |> listener.Subscribe
 
         member self.Dispose() =
-          triggerOnNext subscriptions (Status ServiceStatus.Stopping)
-          postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
-          |> ignore
-          dispose agent
+          Tracing.trace "IrisService.Dispose" <| fun () ->
+            triggerOnNext subscriptions (Status ServiceStatus.Stopping)
+            postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
+            |> ignore
+            dispose agent
       }
 
 

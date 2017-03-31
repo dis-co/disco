@@ -27,13 +27,6 @@ let main _ =
   Id.Create ()
   |> Logger.initialize
 
-  // Tracing.enable()
-  // use lobs = Logger.subscribe Logger.stdout
-              // (fun log ->
-              //   match log.LogLevel with
-              //   | Trace -> log |> string |> printfn "%s"
-              //   | _ -> ())
-
   Thread.CurrentThread.GetApartmentState()
   |> printfn "threading model: %A"
 

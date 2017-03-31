@@ -6,7 +6,7 @@ module Tracing =
   let mutable private on = false
 
   let enable() = on <- true
-  let disable() = on <- true
+  let disable() = on <- false
 
   let trace (tag: string) (f: unit -> 'b) =
     #if !FABLE_COMPILER
@@ -15,7 +15,7 @@ module Tracing =
       stop.Start()
       let result = f()
       stop.Stop()
-      Logger.trace tag ("took " + string stop.ElapsedMilliseconds + "ms")
+      printfn "%s took %dms" tag stop.ElapsedMilliseconds
       result
     else f()
     #else

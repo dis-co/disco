@@ -347,3 +347,11 @@ type User =
     }
 
   #endif
+
+
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module User =
+
+    let passwordValid (user: User) (password: string) =
+      let password = Crypto.hashPassword password user.Salt
+      password = user.Password

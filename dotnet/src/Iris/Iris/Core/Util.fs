@@ -1429,7 +1429,5 @@ module Async =
 
   let asynchronously (f: unit -> unit) =
     job { f() } |> Hopac.start
-    // async { f() } |> Async.Start
-    //f()
 
 #endif
