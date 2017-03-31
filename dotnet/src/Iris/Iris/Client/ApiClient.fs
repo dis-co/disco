@@ -210,22 +210,21 @@ module ApiClient =
                     (agent: ApiAgent) =
 
     Tracing.trace "ApiClient.start" <| fun () ->
-      let backendAddr = Constants.API_CLIENT_PREFIX + string client.Id
+      let backendAddr = "inproc://apiclient"
       let clientAddr = formatTCPUri client.IpAddress (int client.Port)
       let srvAddr = formatTCPUri server.IpAddress (int server.Port)
 
       sprintf "Starting server on %s" clientAddr
-      |> Logger.debug client.Id (tag "start")
-
-      sprintf "Connecting to server on %s" srvAddr
-      |> Logger.debug client.Id (tag "start")
+      |> Logger.debug (tag "start")
 
       let socket = Client.create client.Id srvAddr
 
       match Broker.create client.Id 3 clientAddr backendAddr with
       | Right server ->
         let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
+
         let timer = pingTimer agent
+
         let data =
           { Elapsed = 0u
             Client = client
@@ -236,11 +235,15 @@ module ApiClient =
 
         asynchronously <| fun _ ->
           Tracing.trace "ApiClient.start.requestRegister" <| fun () ->
+
+            sprintf "Connecting to server on %s" srvAddr
+            |> Logger.debug (tag "start")
+
             match requestRegister data with
             | Right () ->
               srvAddr
               |> sprintf "Registration with %s successful"
-              |> Logger.debug client.Id (tag "start")
+              |> Logger.debug (tag "start")
 
               Reply.Ok
               |> Either.succeed
@@ -252,7 +255,7 @@ module ApiClient =
               error
               |> string
               |> sprintf "Registration with %s encountered error: %s" srvAddr
-              |> Logger.debug client.Id (tag "start")
+              |> Logger.debug (tag "start")
 
               Msg.AsyncDispose
               |> agent.Post
@@ -269,7 +272,7 @@ module ApiClient =
             error
             |> string
             |> sprintf "Error starting sockets: %s"
-            |> Logger.debug client.Id (tag "start")
+            |> Logger.debug (tag "start")
 
             error
             |> Either.fail
@@ -304,7 +307,7 @@ module ApiClient =
         match requestUnRegister data with
         | Left error ->
           string error
-          |> Logger.err data.Client.Id (tag "handleDispose")
+          |> Logger.err (tag "handleDispose")
         | _ -> ()
       | _ -> ()
 
@@ -326,7 +329,7 @@ module ApiClient =
             match requestUnRegister data with
             | Left error ->
               string error
-              |> Logger.err data.Client.Id (tag "handleAsyncDispose")
+              |> Logger.err (tag "handleAsyncDispose")
             | _ -> ()
           | _ -> ()
 

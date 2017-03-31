@@ -397,7 +397,7 @@ module Iris =
         | Left error  ->
           error
           |> string
-          |> Logger.err data.MemberId (tag "onClose")
+          |> Logger.err (tag "onClose")
       | _ -> ()
 
   // ** onError
@@ -413,11 +413,11 @@ module Iris =
         match appendCmd data (RemoveSession session) with
         | Right _ ->
           err.Message
-          |> Logger.debug data.MemberId (tag "onError")
+          |> Logger.debug (tag "onError")
         | Left error ->
           error
           |> string
-          |> Logger.err data.MemberId (tag "onError")
+          |> Logger.err (tag "onError")
       | _ -> ()
 
 
@@ -451,7 +451,7 @@ module Iris =
           | Left error ->
             error
             |> string
-            |> Logger.err data.MemberId (tag "onMessage")
+            |> Logger.err (tag "onMessage")
 
   // ** handleSocketEvent
 
@@ -482,7 +482,7 @@ module Iris =
         mems
         |> Array.map (Member.getId >> string)
         |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-        |> Logger.debug memid (tag "onConfigured")
+        |> Logger.debug (tag "onConfigured")
       }
       |> konst state
 
@@ -552,11 +552,11 @@ module Iris =
         match persistEntry data.Store.State sm with
         | Right commit ->
           sprintf "Persisted command in commit: %s" commit.Sha
-          |> Logger.debug data.MemberId (tag "onApplyLog")
+          |> Logger.debug (tag "onApplyLog")
           state
         | Left error ->
           sprintf "Error persisting command: %A" error
-          |> Logger.err data.MemberId (tag "onApplyLog")
+          |> Logger.err (tag "onApplyLog")
           state
       else
         match data.RaftServer.State with
@@ -573,12 +573,12 @@ module Iris =
             | Left error ->
               error
               |> string
-              |> Logger.err data.MemberId (tag "onApplyLog")
+              |> Logger.err (tag "onApplyLog")
           | None -> ()
         | Left error ->
           error
           |> string
-          |> Logger.err data.MemberId (tag "onApplyLog")
+          |> Logger.err (tag "onApplyLog")
         state
 
   // ** mkLeader
@@ -595,7 +595,7 @@ module Iris =
                              (newstate: RaftState) =
     withoutReply state <| fun data ->
       sprintf "Raft state changed from %A to %A" oldstate newstate
-      |> Logger.debug data.MemberId (tag "onStateChanged")
+      |> Logger.debug (tag "onStateChanged")
       // create redirect socket
       match oldstate, newstate with
       | _, Follower ->
@@ -606,11 +606,11 @@ module Iris =
           |> updateLoaded state
         | Right None ->
           "Could not start re-direct socket: no leader"
-          |> Logger.debug data.MemberId (tag "onStateChanged")
+          |> Logger.debug (tag "onStateChanged")
           state
         | Left error ->
           string error
-          |> Logger.err data.MemberId (tag "onStateChanged")
+          |> Logger.err (tag "onStateChanged")
           state
       | _, Leader ->
         Option.iter dispose data.Leader
@@ -623,7 +623,7 @@ module Iris =
   let private onCreateSnapshot (state: IrisState) =
     withState state <| fun data ->
       "CreateSnapshot requested"
-      |> Logger.debug data.MemberId (tag "onCreateSnapshot")
+      |> Logger.debug (tag "onCreateSnapshot")
     state
 
   // ** requestAppend
@@ -684,11 +684,11 @@ module Iris =
           { data with Leader = None }
       | Right None ->
         "Could not start re-direct socket: No Known Leader"
-        |> Logger.debug data.MemberId (tag "onStateChanged")
+        |> Logger.debug (tag "onStateChanged")
         data
       | Left error ->
         string error
-        |> Logger.err data.MemberId (tag "onStateChanged")
+        |> Logger.err (tag "onStateChanged")
         data
 
   // ** handleRaftEvent
@@ -716,13 +716,13 @@ module Iris =
         | UpdateSlices _ | CallCue _ ->
           data.Store.Dispatch sm
           data.SocketServer.Broadcast sm
-          |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
           |> ignore
           state
         | other ->
           if data.RaftServer.IsLeader then
             data.RaftServer.Append other
-            |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+            |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
             |> ignore
             state
           else
@@ -730,12 +730,12 @@ module Iris =
             |> updateLoaded state
       | ApiEvent.Register client ->
         data.RaftServer.Append (AddClient client)
-        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+        |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
         |> ignore
         state
       | ApiEvent.UnRegister client ->
         data.RaftServer.Append (RemoveClient client)
-        |> Either.mapError (string >> Logger.err data.MemberId (tag "handleApiEvent"))
+        |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
         |> ignore
         state
       | _ -> // Status events
@@ -747,7 +747,7 @@ module Iris =
       match appendCmd data cmd with
       | Right _ -> ()
       | Left error  ->
-        error |> string |> Logger.err data.MemberId (tag "handleDiscoveryEvent")
+        error |> string |> Logger.err (tag "handleDiscoveryEvent")
     withoutReply state <| fun data ->
       match ev with
       | Discovery.Appeared service ->
@@ -823,7 +823,7 @@ module Iris =
     | Left error ->
       error
       |> string
-      |> Logger.err data.MemberId (tag "restartGitServer")
+      |> Logger.err (tag "restartGitServer")
       data
 
   // ** handleGitEvent
@@ -836,18 +836,18 @@ module Iris =
       match ev with
       | Started pid ->
         sprintf "Git daemon started with PID: %d" pid
-        |> Logger.debug data.MemberId (tag "handleGitEvent")
+        |> Logger.debug (tag "handleGitEvent")
         state
 
       | Exited _ ->
         "Git daemon exited. Attempting to restart."
-        |> Logger.debug data.MemberId (tag "handleGitEvent")
+        |> Logger.debug (tag "handleGitEvent")
         let newData = restartGitServer data agent
         Loaded (idleData, newData)
 
       | Pull (_, addr, port) ->
         sprintf "Client %s:%d pulled updates from me" addr port
-        |> Logger.debug data.MemberId (tag "handleGitEvent")
+        |> Logger.debug (tag "handleGitEvent")
         state
   //  _                    _
   // | |    ___   __ _  __| |
@@ -898,20 +898,22 @@ module Iris =
             match idleData.DiscoveryService.Services with
             | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
             | Left err ->
-              string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
+              err
+              |> string
+              |> Logger.err (tag "loadProject.getDiscoveredServices")
               state
 
           let loadedData =
             { MemberId      = mem.Id
-            ; Leader        = None
-            ; Status        = ServiceStatus.Starting
-            ; Store         = new Store(state)
-            ; ApiServer     = apiserver
-            ; GitServer     = gitserver
-            ; RaftServer    = raftserver
-            ; SocketServer  = wsserver
-            ; Subscriptions = subscriptions
-            ; Disposables   = Map.empty }
+              Leader        = None
+              Status        = ServiceStatus.Starting
+              Store         = new Store(state)
+              ApiServer     = apiserver
+              GitServer     = gitserver
+              RaftServer    = raftserver
+              SocketServer  = wsserver
+              Subscriptions = subscriptions
+              Disposables   = Map.empty }
 
           return Loaded(idleData, loadedData)
         | _ ->
@@ -1091,7 +1093,7 @@ module Iris =
         | Left error ->
           error
           |> string
-          |> Logger.err data.MemberId (tag "handleForceElection")
+          |> Logger.err (tag "handleForceElection")
         | other -> ignore other
       state
 
@@ -1104,7 +1106,7 @@ module Iris =
         | Left error ->
           error
           |> string
-          |> Logger.err data.MemberId (tag "handlePeriodic")
+          |> Logger.err (tag "handlePeriodic")
         | other -> ignore other
       state
 
@@ -1384,7 +1386,7 @@ module Iris =
       | Left error ->
         error
         |> string
-        |> Logger.err config.MachineId (tag "startDiscoveryService")
+        |> Logger.err (tag "startDiscoveryService")
       { DiscoveryService = discovery }
       |> Idle
 

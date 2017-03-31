@@ -199,14 +199,14 @@ module Raft =
 
   // ** getConnection
 
-  let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) =
+  let private getConnection (connections: Connections) (peer: RaftMember) =
     match connections.TryGetValue peer.Id with
     | true, connection -> connection
     | _ ->
       let connection = mkReqSocket peer
       while not (connections.TryAdd(peer.Id, connection)) do
         "Unable to add connection. Retrying."
-        |> Logger.err self (tag "getConnection")
+        |> Logger.err (tag "getConnection")
         Thread.Sleep 1
       connection
 
@@ -219,7 +219,7 @@ module Raft =
                               VoteResponse option =
 
     let request = RequestVote(self, request)
-    let client = getConnection self connections peer
+    let client = getConnection connections peer
     let result = performRequest client request
 
     match result with
@@ -227,7 +227,7 @@ module Raft =
     | Right other ->
       other
       |> sprintf "Unexpected Response:  %A"
-      |> Logger.err self (tag "sendRequestVote")
+      |> Logger.err (tag "sendRequestVote")
       None
 
     | Left error ->
@@ -235,7 +235,7 @@ module Raft =
       connections.TryRemove peer.Id |> ignore
       memUri peer
       |> sprintf "Encountered error %A in request to  %A" error
-      |> Logger.err self (tag "sendRequestVote")
+      |> Logger.err (tag "sendRequestVote")
       None
 
   // ** sendAppendEntries
@@ -246,7 +246,7 @@ module Raft =
                                 (request: AppendEntries) =
 
     let request = AppendEntries(self, request)
-    let client = getConnection self connections peer
+    let client = getConnection connections peer
     let result = performRequest client request
 
     match result with
@@ -254,12 +254,12 @@ module Raft =
     | Right response ->
       response
       |> sprintf "Unexpected Response:   %A"
-      |> Logger.err self (tag "sendAppendEntries")
+      |> Logger.err (tag "sendAppendEntries")
       None
     | Left error ->
       memUri peer
       |> sprintf "SendAppendEntries: received error  %A in request to  %A" error
-      |> Logger.err self (tag "sendAppendEntries")
+      |> Logger.err (tag "sendAppendEntries")
       None
 
   // ** sendInstallSnapshot
@@ -268,7 +268,7 @@ module Raft =
                                   (connections: Connections)
                                   (peer: RaftMember)
                                   (is: InstallSnapshot) =
-    let client = getConnection self connections peer
+    let client = getConnection connections peer
     let request = InstallSnapshot(self, is)
     let result = performRequest client request
 
@@ -277,12 +277,12 @@ module Raft =
     | Right response ->
       response
       |> sprintf "Unexpected Response:  %A"
-      |> Logger.err self (tag "sendInstallSnapshot")
+      |> Logger.err (tag "sendInstallSnapshot")
       None
     | Left error ->
       memUri peer
       |> sprintf "SendInstallSnapshot: received error  %A in request to  %A" error
-      |> Logger.err self (tag "sendInstallSnapshot")
+      |> Logger.err (tag "sendInstallSnapshot")
       None
 
   // ** prepareSnapshot
@@ -301,7 +301,7 @@ module Raft =
   //       |> Log.fromEntries
   //       |> Some
   //     | _ ->
-  //       Logger.err memid tag "Unable to create snapshot. No data handler specified."
+  //       Logger.err tag "Unable to create snapshot. No data handler specified."
   //       None
 
   let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
@@ -370,7 +370,7 @@ module Raft =
   //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
-  //       "PersistVote reset VotedFor" |> Logger.debug memid tag
+  //       "PersistVote reset VotedFor" |> Logger.debug tag
   //     with
 
   //       | exn -> handleException "PersistTerm" exn
@@ -386,7 +386,7 @@ module Raft =
   //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
-  //       sprintf "PersistTerm term:  %A" term |> Logger.debug memid tag
+  //       sprintf "PersistTerm term:  %A" term |> Logger.debug tag
   //     with
 
   //       | exn -> handleException "PersistTerm" exn
@@ -398,7 +398,7 @@ module Raft =
           printfn "DeleteLog"
 
         member self.LogMsg mem callsite level msg =
-          Logger.log level mem.Id callsite msg
+          Logger.log level callsite msg
 
         }
 
@@ -438,7 +438,7 @@ module Raft =
 
   let private onConfigDone (state: RaftAppContext) =
     "appending entry to exit joint-consensus into regular configuration"
-    |> Logger.debug state.Raft.Member.Id (tag "onConfigDone")
+    |> Logger.debug (tag "onConfigDone")
 
     state.Raft.Peers
     |> Map.toArray
@@ -465,7 +465,7 @@ module Raft =
       |> appendEntry state
     else
       "Unable to add new member. Not leader."
-      |> Logger.err state.Raft.Member.Id (tag "addMembers")
+      |> Logger.err (tag "addMembers")
       (RaftError(tag "addMembers", "Not Leader"), state)
       |> Either.fail
 
@@ -474,7 +474,7 @@ module Raft =
   let private addNewMember (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
     sprintf "attempting to add mem with
           %A  %A:%d" (string id) (string ip) port
-    |> Logger.debug state.Raft.Member.Id (tag "addNewMember")
+    |> Logger.debug (tag "addNewMember")
 
     [| { Member.create id with
           IpAddr = ip
@@ -495,7 +495,7 @@ module Raft =
   /// Returns: RaftResponse
   let private removeMembers (state: RaftAppContext) (mems: RaftMember array) =
     "appending entry to enter joint-consensus"
-    |> Logger.debug state.Raft.Member.Id (tag "removeMembers")
+    |> Logger.debug (tag "removeMembers")
 
     mems
     |> Array.map ConfigChange.MemberRemoved
@@ -508,7 +508,7 @@ module Raft =
     if Raft.isLeader state.Raft then
       string id
       |> sprintf "attempting to remove members with id %A"
-      |> Logger.debug state.Raft.Member.Id (tag "removeMember")
+      |> Logger.debug (tag "removeMember")
 
       let potentialChange =
         state.Raft
@@ -519,13 +519,13 @@ module Raft =
       | Some mem -> removeMembers state [| mem |]
       | None ->
         sprintf "Unable to remove member. Not found:  %A" (string id)
-        |> Logger.err state.Raft.Member.Id (tag "removeMember")
+        |> Logger.err (tag "removeMember")
 
         (RaftError(tag "removeMember", sprintf "Missing Member: %A" id), state)
         |> Either.fail
     else
       "Unable to remove mem. Not leader."
-      |> Logger.err state.Raft.Member.Id (tag "removeMember")
+      |> Logger.err (tag "removeMember")
 
       (RaftError(tag "removeMember","Not Leader"), state)
       |> Either.fail
@@ -785,7 +785,7 @@ module Raft =
   //                                     (ar: AppendResponse)
   //                                     (channel: ReplyChan) =
   //   "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-  //   |> Logger.err state.Raft.Member.Id (tag "processSnapshotResponse")
+  //   |> Logger.err (tag "processSnapshotResponse")
 
   //   Reply.Ok
   //   |> Either.succeed
@@ -798,7 +798,7 @@ module Raft =
   //                             (leader: RaftMember)
   //                             (channel: ReplyChan) =
   //   "FIX REDIRECT RESPONSE PROCESSING"
-  //   |> Logger.err state.Raft.Member.Id (tag "processRedirect")
+  //   |> Logger.err (tag "processRedirect")
 
   //   Reply.Ok
   //   |> Either.succeed
@@ -812,7 +812,7 @@ module Raft =
   //                            (channel: ReplyChan) =
 
   //   "FIX WELCOME RESPONSE PROCESSING"
-  //   |> Logger.err state.Raft.Member.Id (tag "processWelcome")
+  //   |> Logger.err (tag "processWelcome")
 
   //   Reply.Ok
   //   |> Either.succeed
@@ -825,7 +825,7 @@ module Raft =
   //                                (channel: ReplyChan) =
 
   //   "FIX ARRIVEDERCI RESPONSE PROCESSING"
-  //   |> Logger.err state.Raft.Member.Id (tag "processArrivederci")
+  //   |> Logger.err (tag "processArrivederci")
 
   //   Reply.Ok
   //   |> Either.succeed
@@ -840,7 +840,7 @@ module Raft =
 
   //   error
   //   |> sprintf "received error response:  %A"
-  //   |> Logger.err state.Raft.Member.Id (tag "processErrorResponse")
+  //   |> Logger.err (tag "processErrorResponse")
 
   //   Reply.Ok
   //   |> Either.succeed
@@ -856,40 +856,40 @@ module Raft =
           use client = mkReqSocket peer
 
           sprintf "Retry: %d" retry
-          |> Logger.debug state.Raft.Member.Id "tryJoin"
+          |> Logger.debug "tryJoin"
 
           let request = HandShake(state.Raft.Member)
           let! result = rawRequest request client
 
           sprintf "Result:  %A" result
-          |> Logger.debug state.Raft.Member.Id "tryJoin"
+          |> Logger.debug "tryJoin"
 
           match result with
           | Welcome mem ->
             sprintf "Received Welcome from  %A" mem.Id
-            |> Logger.debug state.Raft.Member.Id "tryJoin"
+            |> Logger.debug "tryJoin"
             return mem
 
           | Redirect next ->
             sprintf "Got redirected to  %A" (memUri next)
-            |> Logger.info state.Raft.Member.Id "tryJoin"
+            |> Logger.info "tryJoin"
             return! _tryJoin (retry + 1) next
 
           | ErrorResponse err ->
             sprintf "Unexpected error occurred.  %A" err
-            |> Logger.err state.Raft.Member.Id "tryJoin"
+            |> Logger.err "tryJoin"
             return! Either.fail err
 
           | resp ->
             sprintf "Unexpected response.  %A" resp
-            |> Logger.err state.Raft.Member.Id "tryJoin"
+            |> Logger.err "tryJoin"
             return!
               "Unexpected response"
               |> Error.asRaftError (tag "tryJoin")
               |> Either.fail
         else
           "Too many unsuccesful connection attempts."
-          |> Logger.err state.Raft.Member.Id "tryJoin"
+          |> Logger.err "tryJoin"
           return!
             "Too many unsuccesful connection attempts."
             |> Error.asRaftError (tag "tryJoin")
@@ -906,21 +906,21 @@ module Raft =
   let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
     raft {
       "requesting to join"
-      |> Logger.debug state.Raft.Member.Id (tag "tryJoinCluster")
+      |> Logger.debug (tag "tryJoinCluster")
 
       let leader = tryJoin state ip port
 
       match leader with
       | Right leader ->
         sprintf "Reached leader:  %A Adding to mems." leader.Id
-        |> Logger.info state.Raft.Member.Id (tag "tryJoinCluster")
+        |> Logger.info (tag "tryJoinCluster")
 
         do! Raft.addMemberM leader
         do! Raft.becomeFollower ()
 
       | Left err ->
         sprintf "Joining cluster failed.  %A" err
-        |> Logger.err state.Raft.Member.Id (tag "tryJoinCluster")
+        |> Logger.err (tag "tryJoinCluster")
 
     }
     |> runRaft state.Raft state.Callbacks
@@ -994,16 +994,16 @@ module Raft =
       | Right true  ->
         // FIXME: this might need more consequences than this
         "Successfully left cluster."
-        |> Logger.info state.Raft.Member.Id (tag "tryLeaveCluster")
+        |> Logger.info (tag "tryLeaveCluster")
 
       | Right false ->
         "Could not leave cluster."
-        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
+        |> Logger.err (tag "tryLeaveCluster")
 
       | Left err ->
         err
         |> sprintf "Could not leave cluster.  %A"
-        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
+        |> Logger.err (tag "tryLeaveCluster")
 
       do! Raft.becomeFollower ()
 
@@ -1105,7 +1105,7 @@ module Raft =
         Map.iter
           (fun _ (peer: RaftMember) ->
             if peer.Id <> raftstate.Member.Id then
-              getConnection raftstate.Member.Id connections peer
+              getConnection connections peer
               |> ignore)
           raftstate.Peers
 
@@ -1266,7 +1266,7 @@ module Raft =
       | Left (err, newstate) ->
         err
         |> sprintf "Unable to force an election:  %A"
-        |> Logger.err newstate.Member.Id (tag "handleForceElection")
+        |> Logger.err (tag "handleForceElection")
 
         newstate
         |> updateRaft data
@@ -1448,7 +1448,7 @@ module Raft =
 
           delta.TotalMilliseconds
           |> sprintf "Completed request in %fms"
-          |> Logger.debug data.Raft.Member.Id "handleIsCommitted"
+          |> Logger.debug "handleIsCommitted"
 
         newstate
         |> updateRaft data
@@ -1464,7 +1464,7 @@ module Raft =
 
             delta.TotalMilliseconds
             |> sprintf "Command append failed after %fms"
-            |> Logger.err data.Raft.Member.Id "handleIsCommitted"
+            |> Logger.err "handleIsCommitted"
         else
           job {                        // now we re-queue the message to check again in 1ms
             do! timeOutMillis 1000
@@ -1539,7 +1539,7 @@ module Raft =
           delta
           |> fun delta -> delta.TotalMilliseconds
           |> sprintf "Entry took %fms to commit"
-          |> Logger.debug data.Raft.Member.Id "handleReqCommitted"
+          |> Logger.debug "handleReqCommitted"
         updateRaft data newstate
         |> Loaded
 
@@ -1557,7 +1557,7 @@ module Raft =
             delta
             |> fun delta -> delta.TotalMilliseconds
             |> sprintf "AppendEntry timed out: %f"
-            |> Logger.debug data.Raft.Member.Id "handleReqCommitted"
+            |> Logger.debug "handleReqCommitted"
           updateRaft data newstate
           |> Loaded
         else

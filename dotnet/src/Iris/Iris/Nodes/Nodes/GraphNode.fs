@@ -1074,7 +1074,7 @@ module Graph =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "onNodeExposed"
+      |> Logger.err "onNodeExposed"
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
@@ -1208,7 +1208,7 @@ module Graph =
             | Left error   ->
               error
               |> string
-              |> Logger.err state.InClientId.[0] "processing"
+              |> Logger.err "processing"
             | Right parsed ->
               List.iter
                 (fun (pin,parsed) ->

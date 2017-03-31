@@ -81,7 +81,7 @@ type LoggingNode() =
 
       if self.InUpdate.[0] && not (Util.isNullReference self.InId.[0]) then
         match LogLevel.TryParse self.InLevel.[0].Name with
-        | Right level -> Logger.log level self.InId.[0] "Log" self.InLog.[0]
+        | Right level -> Logger.log "Log" self.InLog.[0]
         | _ -> ()
 
       if logs.IsEmpty then

@@ -56,6 +56,8 @@ module ApiTests =
         do! server.Start()
         do! server.SetState state
 
+        Thread.Sleep(8000)
+
         let srvr : IrisServer =
           { Port = mem.ApiPort
             IpAddress = mem.IpAddr }

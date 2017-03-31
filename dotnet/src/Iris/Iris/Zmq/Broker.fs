@@ -350,7 +350,7 @@ module private Worker =
   let private worker (state: LocalThreadState) () =
     state.Start()
 
-    Logger.debug state.LogId "Worker.initialize" "startup done"
+    Logger.debug "Worker.initialize" "startup done"
 
     let mutable error = Unchecked.defaultof<ZError>
 
@@ -389,12 +389,12 @@ module private Worker =
         | err when err = ZError.EAGAIN -> ()
         | err when err = ZError.ETERM ->
           "context was terminated, shutting down"
-          |> Logger.err state.LogId "Worker.Thread.worker"
+          |> Logger.err "Worker.Thread.worker"
           state.Run <- false
         | other ->
           other
           |> sprintf "error in worker: %O"
-          |> Logger.err state.LogId "Worker.Thread.worker"
+          |> Logger.err "Worker.Thread.worker"
           state.Run <- false
 
     printfn "worker stopping"
@@ -465,7 +465,7 @@ module Broker =
               agent.Post response       // re-cue the response
         | _ ->
           sprintf "no worker found for %O" response.Via
-          |> Logger.err (Iris.Core.Id "Broker") "ResponseActor"
+          |> Logger.err "ResponseActor"
         return! impl ()
       }
     impl ()
@@ -523,7 +523,7 @@ module Broker =
           | Left error ->
             error
             |> sprintf "unable to create worker: %O"
-            |> Logger.err self.LogId "IBroker.Start"
+            |> Logger.err "IBroker.Start"
 
         self.Initialized <- true
         self.Started <- true
@@ -534,9 +534,6 @@ module Broker =
           |> Either.fail
           |> fun error -> self.Error <- error
           dispose self
-
-    member self.LogId
-      with get () = Iris.Core.Id "Broker"
 
     interface IDisposable with
       member self.Dispose() =
@@ -560,7 +557,7 @@ module Broker =
     state.Start()
     state.Starter.Set() |> ignore
 
-    Logger.debug state.LogId "IBroker.initialize" "startup done"
+    Logger.debug "IBroker.initialize" "startup done"
 
     let busy = new ResizeArray<WorkerId>()
     let mutable incoming = Unchecked.defaultof<ZMessage>
@@ -590,7 +587,7 @@ module Broker =
         else
           workerId
           |> sprintf "registered worker %A"
-          |> Logger.debug state.LogId "IBroker.Thread"
+          |> Logger.debug "IBroker.Thread"
 
       if busy.Count > 0 then
         if state.Frontend.PollIn(poll, &incoming, &error, timespan) then

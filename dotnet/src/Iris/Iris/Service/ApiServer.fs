@@ -217,7 +217,7 @@ module ApiServer =
             string error
             |> sprintf "error during
             to %s: %s" (string socket.Id)
-            |> Logger.debug socket.Id (tag "pingTimer") //
+            |> Logger.debug (tag "pingTimer") //
             (socket.Id, ServiceStatus.Failed error)
             |> Msg.SetClientStatus
             |> agent.Post
@@ -246,13 +246,13 @@ module ApiServer =
 
   // ** start
 
-  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (id: Id) =
+  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (project: Id) =
     let frontend = formatTCPUri mem.IpAddr (int mem.ApiPort)
-    let backend = Constants.API_BACKEND_PREFIX + string mem.Id
+    let backend = "inproc://apiserver"
     let pubSubAddr = formatEPGMUri mem.IpAddr (IPv4Address Constants.MCAST_ADDRESS) Constants.MCAST_PORT
 
-    let publisher = new Pub(mem.Id, pubSubAddr, string id)
-    let subscriber = new Sub(mem.Id, pubSubAddr, string id)
+    let publisher = new Pub(pubSubAddr, string project)
+    let subscriber = new Sub(pubSubAddr, string project)
 
     subscriber.Subscribe(processSubscriptionEvent agent)
     |> ignore                            // gets cleaned up during Dispose
@@ -276,7 +276,9 @@ module ApiServer =
         Idle
 
     | Left error ->
-      chan.Reply(Left error)
+      error
+      |> Either.fail
+      |> chan.Reply
       Idle
 
   // ** handleStart

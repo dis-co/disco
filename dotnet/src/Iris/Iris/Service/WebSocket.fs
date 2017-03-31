@@ -151,7 +151,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "New connection opened: %s"
-      |> Logger.info id (tag "onNewSocket")
+      |> Logger.info (tag "onNewSocket")
 
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
@@ -161,7 +161,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "Connection closed: %s"
-      |> Logger.info id (tag "onNewSocket")
+      |> Logger.info (tag "onNewSocket")
 
     socket.OnBinary <- fun bytes ->
       let sid = getConnectionId socket
@@ -171,7 +171,7 @@ module WebSockets =
         err
         |> string
         |> sprintf "Could not decode message: %s"
-        |> Logger.err id (tag "onNewSocket")
+        |> Logger.err (tag "onNewSocket")
 
     socket.OnError <- fun exn ->
       let sid = getConnectionId socket
@@ -181,7 +181,7 @@ module WebSockets =
       sid
       |> string
       |> sprintf "Error %A on websocket: %s" exn.Message
-      |> Logger.err id (tag "onNewSocket")
+      |> Logger.err (tag "onNewSocket")
 
   // ** loop
 
@@ -252,13 +252,13 @@ module WebSockets =
                 try
                   uri
                   |> sprintf "Starting WebSocketServer on: %s"
-                  |> Logger.debug mem.Id (tag "Start")
+                  |> Logger.debug (tag "Start")
 
                   agent.Start()
                   server.Start(new Action<IWebSocketConnection>(handler))
 
                   "WebSocketServer successfully started"
-                  |> Logger.debug mem.Id (tag "Start")
+                  |> Logger.debug (tag "Start")
                   |> Either.succeed
                 with
                   | exn ->

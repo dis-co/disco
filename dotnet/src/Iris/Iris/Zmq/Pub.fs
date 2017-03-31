@@ -17,7 +17,7 @@ open Iris.Core
 /// - addr: Address to connect to
 ///
 /// Returns: instance of Pub
-type Pub (id: Id, addr: string, prefix: string) =
+type Pub (addr: string, prefix: string) =
 
   let tag = sprintf "Pub.%s"
 
@@ -46,13 +46,13 @@ type Pub (id: Id, addr: string, prefix: string) =
     if isNull sock then                                       // if not yet present
       try
         "initializing context and socket"
-        |> Logger.debug id (tag "workder")
+        |> Logger.debug (tag "workder")
 
         ctx <- new ZContext()
         sock <- new ZSocket(ctx, ZSocketType.PUB)                // initialise the socket
 
         sprintf "connecting to %A" addr
-        |> Logger.debug id (tag "worker")
+        |> Logger.debug (tag "worker")
 
         setOption sock ZSocketOption.RATE 100000
         sock.Bind(addr)                                         // connect to server
@@ -65,13 +65,13 @@ type Pub (id: Id, addr: string, prefix: string) =
           starter.Set() |> ignore
 
     "entering publish loop"
-    |> Logger.debug id (tag "worker")
+    |> Logger.debug (tag "worker")
 
     while run do
       try
         // wait for the signal that a new request is ready *or* that shutdown is reuqested
         "waiting for a publish"
-        |> Logger.debug id (tag "worker")
+        |> Logger.debug (tag "worker")
         requester.WaitOne() |> ignore
 
         // `run` is usually true, but shutdown first sets this to false to exit the loop
@@ -88,7 +88,7 @@ type Pub (id: Id, addr: string, prefix: string) =
         | e ->
           e.Message
           |> sprintf "exception: %s"
-          |> Logger.err id (tag "worker")
+          |> Logger.err (tag "worker")
 
           // save exception to be rethrown on the callers thread
           exn <- Some e
@@ -98,7 +98,7 @@ type Pub (id: Id, addr: string, prefix: string) =
           responder.Set() |> ignore
 
     "exited loop. disposing."
-    |> Logger.debug id (tag "worker")
+    |> Logger.debug (tag "worker")
 
     sock.SetOption(ZSocketOption.LINGER, 0) |> ignore  // set linger to 0 to close socket quickly
     sock.Close()                                      // close the socket
@@ -109,7 +109,7 @@ type Pub (id: Id, addr: string, prefix: string) =
     stopper.Set() |> ignore                            // signal that everything was cleaned up now
 
     "thread-local shutdown done"
-    |> Logger.debug id (tag "worker")
+    |> Logger.debug (tag "worker")
 
   // ** Constructor
 
@@ -119,11 +119,6 @@ type Pub (id: Id, addr: string, prefix: string) =
     stopper   <- new AutoResetEvent(false)
     requester <- new AutoResetEvent(false)
     responder <- new AutoResetEvent(false)
-
-  // ** Id
-
-  member self.Id
-    with get () = id
 
   // ** Start
 
@@ -150,7 +145,7 @@ type Pub (id: Id, addr: string, prefix: string) =
   member self.Stop() =
     if started && not disposed then
       "stopping stocket thread"
-      |> Logger.debug id (tag "Stop")
+      |> Logger.debug (tag "Stop")
 
       run <- false                                  // stop the loop from iterating
       requester.Set() |> ignore                     // signal requester one more time to exit loop
@@ -158,16 +153,16 @@ type Pub (id: Id, addr: string, prefix: string) =
       thread.Join()
 
       "socket shutdown complete"
-      |> Logger.debug id (tag "Stop")
+      |> Logger.debug (tag "Stop")
     else
       "refusing to stop. wrong state"
-      |> Logger.err id (tag "Stop")
+      |> Logger.err (tag "Stop")
 
   // ** Restart
 
   member self.Restart() =
     "restarting socket"
-    |> Logger.debug id (tag "Restart")
+    |> Logger.debug (tag "Restart")
 
     self.Stop()                                    // stop, if not stopped yet
     disposed <- false                               // disposed reset to default
@@ -178,7 +173,7 @@ type Pub (id: Id, addr: string, prefix: string) =
 
   member self.Publish(req: byte array) : Either<IrisError,unit> =
     if started && not disposed then        // synchronously request the square of `req-`
-      Logger.debug id (tag "Publish") "publishing message"
+      Logger.debug (tag "Publish") "publishing message"
 
       lock lokk <| fun _ ->                 // lock while executing transaction
         request <- req                   // first set the requets
@@ -187,7 +182,7 @@ type Pub (id: Id, addr: string, prefix: string) =
         match exn with                  // handle exception raised on thread
         | Some e ->                      // re-raise it on callers thread
           e.Message
-          |> Logger.err id (tag "Publish")
+          |> Logger.err (tag "Publish")
 
           e.Message
           |> sprintf "Exception thrown on socket thread: %s"
@@ -195,18 +190,18 @@ type Pub (id: Id, addr: string, prefix: string) =
           |> Either.fail
         | _  ->
           "publish successful"
-          |> Logger.debug id (tag "Publish")
+          |> Logger.debug (tag "Publish")
           Either.succeed ()             // return the response
     elif disposed then                  // disposed sockets need to be re-initialized
       "refusing request. already disposed"
-      |> Logger.err id (tag "Publish")
+      |> Logger.err (tag "Publish")
 
       "Socket disposed"
       |> Error.asSocketError (tag "Publish")
       |> Either.fail
     else
       "refusing request. socket has not been started"
-      |> Logger.err id (tag "Publish")
+      |> Logger.err (tag "Publish")
 
       "Socket not started"
       |> Error.asSocketError (tag "Publish")

@@ -109,7 +109,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "startClient"
+          |> Logger.err "startClient"
           IPv4Address "127.0.0.1"
 
       let name =
@@ -137,7 +137,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "startClient"
+          |> Logger.err "startClient"
           IPv4Address "127.0.0.1"
 
       let port =
@@ -158,7 +158,7 @@ module Api =
     match result with
     | Right client ->
       let apiobs = client.Subscribe(enqueueEvent state)
-      Logger.info state.InClientId.[0] "startClient" "successfully started ApiClient"
+      Logger.info "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Running
@@ -167,7 +167,7 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "startClient"
+      |> Logger.err "startClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -185,7 +185,7 @@ module Api =
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Logger.debug state.InClientId.[0] "updateState" "updating state output pins with new state"
+    Logger.debug "updateState" "updating state output pins with new state"
     match state.ApiClient.State with
     | Right data ->
       state.OutState.[0] <- data
@@ -193,11 +193,11 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "updateState"
+      |> Logger.err "updateState"
       { state with Status = ServiceStatus.Failed error }
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
-    Logger.debug state.InClientId.[0] "updateCommands" "update command output pins"
+    Logger.debug "updateCommands" "update command output pins"
     state.OutCommands.SliceCount <- (Array.length cmds)
     state.OutCommands.AssignFrom cmds
 
@@ -254,11 +254,11 @@ module Api =
             cmd
             |> string
             |> sprintf "%s successfully appended in cluster"
-            |> Logger.debug state.InClientId.[0] "processInputs"
+            |> Logger.debug "processInputs"
           | Left error ->
             error
             |> string
-            |> Logger.err state.InClientId.[0] "processInputs"
+            |> Logger.err "processInputs"
       state
     else
       state

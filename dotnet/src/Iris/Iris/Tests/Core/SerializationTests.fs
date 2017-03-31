@@ -567,7 +567,7 @@ module SerializationTests =
         ; RemoveMember  <| Member.create (Id.Create())
         ; DataSnapshot  <| state
         ; Command AppCommand.Undo
-        ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
+        ; LogMsg(Logger.create Debug "bla" "oohhhh")
         ; SetLogLevel Warn
         ]
         |> List.iter

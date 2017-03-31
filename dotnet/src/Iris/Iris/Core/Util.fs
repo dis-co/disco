@@ -1426,6 +1426,6 @@ module Functional =
 module Async =
 
   let asynchronously (f: unit -> unit) =
-    //job { f() } |> Hopac.start
-    //async { f() } |> Async.Start
-    f()
+    job { f() } |> Hopac.start
+    // async { f() } |> Async.Start
+    //f()

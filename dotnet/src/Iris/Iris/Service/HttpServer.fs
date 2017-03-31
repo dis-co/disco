@@ -111,9 +111,9 @@ module Http =
         return
           match res with
           | Left err ->
-            Error.toMessage err |> Actions.respond ctx HTTP_500.status 
+            Error.toMessage err |> Actions.respond ctx HTTP_500.status
           | Right msg ->
-            msg |> Actions.respond ctx HTTP_200.status 
+            msg |> Actions.respond ctx HTTP_200.status
       }
     choose [
       Filters.GET >=>
@@ -122,7 +122,7 @@ module Http =
           Files.browseHome ])
       Filters.POST >=>
         (choose [
-          Filters.path Constants.WEP_API_COMMAND >=> postCommand          
+          Filters.path Constants.WEP_API_COMMAND >=> postCommand
         ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
@@ -136,7 +136,7 @@ module Http =
         let logger =
           let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
           { new Logger with
-              member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> = 
+              member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> =
                 match level with
                 | Suave.Logging.LogLevel.Verbose -> ()
                 | level ->
@@ -148,13 +148,13 @@ module Http =
                       if m.Groups.Count = 3
                       then System.String.Format("{0:" + m.Groups.[2].Value + "}", value)
                       else string value)
-                    |> Logger.debug config.MachineId (tag "logger")
+                    |> Logger.debug (tag "logger")
                   | Gauge _ -> ()
                 async.Return ()
-              member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> = 
+              member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> =
 //                failwith "Not implemented yet"
                 async.Return ()
-              member x.name: string [] = 
+              member x.name: string [] =
                 [|"iris"|] }
 
         let machine = MachineConfig.get()
@@ -162,7 +162,7 @@ module Http =
         let port = Sockets.Port.Parse (string machine.WebPort)
 
         sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %s" addr port basePath
-        |> Logger.info config.MachineId (tag "mkConfig")
+        |> Logger.info (tag "mkConfig")
 
         return
           { defaultConfig with
