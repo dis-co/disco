@@ -484,84 +484,82 @@ module ApiClient =
                             (state: ClientState)
                             (sm: StateMachine)
                             (agent: ApiAgent) =
-    Tracing.trace "ApiClient.handleRequest" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          Tracing.trace "ApiClient.handleRequest.asynchronously" <| fun () ->
-            maybeDispatch data sm
-            match sm with
-            | AddPin _        -> printfn "[client] requesting command AddPin"
-            | AddCue _        -> printfn "[client] requesting command AddCue"
-            | AddCueList _    -> printfn "[client] requesting command AddCueList"
-            | UpdatePin _     -> printfn "[client] requesting command UpdatePin"
-            | UpdateCue _     -> printfn "[client] requesting command UpdateCue"
-            | UpdateCueList _ -> printfn "[client] requesting command UpdateCueList"
-            | RemovePin _     -> printfn "[client] requesting command RemovePin"
-            | RemoveCue _     -> printfn "[client] requesting command RemoveCue"
-            | RemoveCueList _ -> printfn "[client] requesting command RemoveCueList"
-            match requestUpdate data.Socket sm with
-            | Right () ->
-              printfn "[client] request OK"
-              Reply.Ok
-              |> Either.succeed
-              |> chan.Reply
-            | Left error ->
-              printfn "[client] request FAILED: %A" error
-              ServiceStatus.Failed error
-              |> Msg.SetStatus
-              |> agent.Post
-              error
-              |> Either.fail
-              |> chan.Reply
-        state
-      | Idle ->
-        asynchronously <| fun _ ->
-          "Not running"
-          |> Error.asClientError (tag "handleRequest")
-          |> Either.fail
-          |> chan.Reply
-        state
+    match state with
+    | Loaded data ->
+      asynchronously <| fun _ ->
+        Tracing.trace "ApiClient.handleRequest" <| fun () ->
+          maybeDispatch data sm
+          match requestUpdate data.Socket sm with
+          | Right () ->
+            Reply.Ok
+            |> Either.succeed
+            |> chan.Reply
+
+          | Left error ->
+            error
+            |> ServiceStatus.Failed
+            |> Msg.SetStatus
+            |> agent.Post
+
+            error
+            |> Either.fail
+            |> chan.Reply
+      state
+    | Idle ->
+      asynchronously <| fun _ ->
+        "Not running"
+        |> Error.asClientError (tag "handleRequest")
+        |> Either.fail
+        |> chan.Reply
+      state
 
   // ** handleServerRequest
 
   let private handleServerRequest (state: ClientState) (req: RawRequest) (agent: ApiAgent) =
-    Tracing.trace "ApiClient.handleServerRequest" <| fun () ->
       match state with
       | Idle -> state
       | Loaded data ->
-        match req.Body |> Binary.decode with
-        | Right ClientApiRequest.Ping ->
-          printfn "scheduling response job"
-          asynchronously <| fun _ ->
-            printfn "responding"
-            agent.Post(Msg.Ping)
-            ApiResponse.Pong
-            |> Binary.encode
-            |> RawResponse.fromRequest req
-            |> data.Server.Respond
-        | Right (ClientApiRequest.Snapshot snapshot) ->
-          asynchronously <| fun _ ->
-            agent.Post(Msg.SetState snapshot)
-            ApiResponse.OK
-            |> Binary.encode
-            |> RawResponse.fromRequest req
-            |> data.Server.Respond
-        | Right (ClientApiRequest.Update sm) ->
-          asynchronously <| fun _ ->
-            agent.Post(Msg.Update sm)
-            ApiResponse.OK
-            |> Binary.encode
-            |> RawResponse.fromRequest req
-            |> data.Server.Respond
-        | Left error ->
-          asynchronously <| fun _ ->
-            string error
-            |> ApiError.MalformedRequest
-            |> ApiResponse.NOK
-            |> Binary.encode
-            |> RawResponse.fromRequest req
-            |> data.Server.Respond
+        asynchronously <| fun _ ->
+          Tracing.trace "ApiClient.handleServerRequest" <| fun () ->
+            match req.Body |> Binary.decode with
+            | Right ClientApiRequest.Ping ->
+              Msg.Ping
+              |> agent.Post
+
+              ApiResponse.Pong
+              |> Binary.encode
+              |> RawResponse.fromRequest req
+              |> data.Server.Respond
+
+            | Right (ClientApiRequest.Snapshot snapshot) ->
+              snapshot
+              |> Msg.SetState
+              |> agent.Post
+
+              ApiResponse.OK
+              |> Binary.encode
+              |> RawResponse.fromRequest req
+              |> data.Server.Respond
+
+            | Right (ClientApiRequest.Update sm) ->
+              sm
+              |> Msg.Update
+              |> agent.Post
+
+              ApiResponse.OK
+              |> Binary.encode
+              |> RawResponse.fromRequest req
+              |> data.Server.Respond
+
+            | Left error ->
+              error
+              |> string
+              |> ApiError.MalformedRequest
+              |> ApiResponse.NOK
+              |> Binary.encode
+              |> RawResponse.fromRequest req
+              |> data.Server.Respond
+
         state
 
   // ** loop

@@ -56,8 +56,6 @@ module ApiTests =
         do! server.Start()
         do! server.SetState state
 
-        Thread.Sleep(8000)
-
         let srvr : IrisServer =
           { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
@@ -221,27 +219,17 @@ module ApiTests =
         do! server.SetState state
         do! client.Start()
 
-        printfn "started"
-
         Thread.Sleep 100
-
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
         let cuelist = mkCueList()
 
-        printfn "adding pin"
         do! client.AddPin pin
-
-        printfn "adding cue"
         do! client.AddCue cue
-
-        printfn "adding cuelist"
         do! client.AddCueList cuelist
 
         Thread.Sleep 100
-
-        printfn "checking state stuff"
 
         let! serverState = server.State
         let! clientState = client.State
@@ -254,22 +242,16 @@ module ApiTests =
         expect "Server should have one cuelist" 1 len serverState.CueLists
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
-        printfn "updating stuff"
-
         do! client.UpdatePin (pin.SetSlice (BoolSlice(0u, false)))
         do! client.UpdateCue { cue with Pins = [| mkPin() |] }
         do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
         Thread.Sleep 100
 
-        printfn "checking state equality"
-
         let! serverState = server.State
         let! clientState = client.State
 
         expect "Should be equal" serverState id clientState
-
-        printfn "removing stuff"
 
         do! client.RemovePin pin
         do! client.RemoveCue cue
@@ -301,6 +283,6 @@ module ApiTests =
   let apiTests =
     testList "API Tests" [
       test_server_should_replicate_state_snapshot_to_client
-      // test_server_should_replicate_state_machine_commands_to_client
-      // test_client_should_replicate_state_machine_commands_to_server
+      test_server_should_replicate_state_machine_commands_to_client
+      test_client_should_replicate_state_machine_commands_to_server
     ] |> testSequenced

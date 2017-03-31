@@ -335,9 +335,6 @@ module private Worker =
     member self.Id
       with get () = id
 
-    member self.LogId
-      with get () = string id |> Id
-
     interface IDisposable with
       member self.Dispose() =
         tryDispose self.Socket
@@ -397,7 +394,6 @@ module private Worker =
           |> Logger.err "Worker.Thread.worker"
           state.Run <- false
 
-    printfn "worker stopping"
     dispose state
     state.Stopper.Set() |> ignore
     dispose state.Stopper
@@ -507,11 +503,7 @@ module Broker =
         self.Frontend.Bind(frontend)
         self.Backend.Bind(backend)
 
-        printfn "broker frontend: %s" frontend
-        printfn "broker backend: %s" backend
-
         for n in 1 .. num do
-          printfn "worker backend address: %s" backend
           match Worker.create (uint16 n) backend with
           | Right worker ->
             notify self.Subscriptions
@@ -559,7 +551,7 @@ module Broker =
 
     Logger.debug "IBroker.initialize" "startup done"
 
-    let busy = new ResizeArray<WorkerId>()
+    let available = new ResizeArray<WorkerId>()
     let mutable incoming = Unchecked.defaultof<ZMessage>
     let mutable error = Unchecked.defaultof<ZError>
     let poll = ZPollItem.CreateReceiver()
@@ -571,7 +563,7 @@ module Broker =
         let workerId = incoming.[0].ReadUInt16()
         let clientId = incoming.[2].Read()
 
-        busy.Add(workerId)
+        available.Add(workerId)
 
         if clientId <> READY then
           let from = incoming.[4].Read()
@@ -589,11 +581,11 @@ module Broker =
           |> sprintf "registered worker %A"
           |> Logger.debug "IBroker.Thread"
 
-      if busy.Count > 0 then
+      if available.Count > 0 then
         if state.Frontend.PollIn(poll, &incoming, &error, timespan) then
           let clientId = incoming.[0].Read()
           let request = incoming.[2].Read()
-          let workerId = busy.[0]
+          let workerId = available.[0]
 
           Tracing.trace "Broker Forward To Backend" <| fun _ ->
             use outgoing = new ZMessage()
@@ -604,7 +596,7 @@ module Broker =
             outgoing.Add(new ZFrame(request))
             state.Backend.Send(outgoing)
 
-          busy.RemoveAt(0)
+          available.RemoveAt(0)
 
     dispose state
     state.Stopper.Set() |> ignore
