@@ -29,7 +29,7 @@ module IrisServiceTests =
   let test_ensure_gitserver_restart_on_premature_exit =
     testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
-        let lobs = Logger.subscribe (printfn "%O")
+        use lobs = Logger.subscribe (printfn "%O")
 
         Tracing.enable()
 
@@ -95,6 +95,8 @@ module IrisServiceTests =
         expect "Should be a different pid" false ((=) pid) newpid
         expect "Git should be running" true Process.isRunning newpid
         expect "Should have emitted another Started event" 2 id !signal
+
+        Tracing.disable()
       }
       |> noError
 
