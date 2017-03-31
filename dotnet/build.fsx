@@ -492,8 +492,7 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   buildDebug "Serialization.csproj" ()
-   buildRelease "Serialization.csproj" ())
+   buildDebug "Serialization.csproj" ())
 
 //  _____                               __
 // |__  /___ _ __ ___   ___ ___  _ __  / _|

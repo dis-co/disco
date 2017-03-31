@@ -861,68 +861,69 @@ module Iris =
       let password = Crypto.hashPassword password user.Salt
       password = user.Password
 
-    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
-    if File.Exists path |> not then
-      sprintf "Project Not Found: %s" projectName
-      |> Error.asProjectError (tag "loadProject")
-      |> Either.fail
-    else
-      either {
-        let! (state: State) = Asset.loadWithMachine path machine
+    either {
+      let! path = Project.checkPath machine projectName
+      let! (state: State) = Asset.loadWithMachine path machine
 
-        let user =
-          state.Users
-          |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+      let user =
+        state.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
 
-        match user with
-        | Some user when isValidPassword user password ->
-          let idleData =
-            match oldState with
-            | Idle idleData -> idleData
-            | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+      match user with
+      | Some user when isValidPassword user password ->
+        let idleData =
+          match oldState with
+          | Idle idleData -> idleData
+          | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
-          let state =
-            match site with
-            | Some site ->
-              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-              { state with Project = { state.Project with Config = cfg }}
-            | None -> state
+        let state =
+          match site with
+          | Some site ->
+            let site =
+              state.Project.Config.Sites
+              |> Array.tryFind (fun s -> s.Id = site.Id)
+              |> function Some s -> s | None -> failwith "TODO: Create new site"
+            
+            // TODO: Add current machine if necessary
+            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+            { state with Project = { state.Project with Config = cfg }}
+          | None -> state
 
-          // FIXME: load the actual state from disk
-          let! mem = Config.selfMember state.Project.Config
+        // FIXME: load the actual state from disk
+        let! mem = Config.selfMember state.Project.Config
 
-          let! raftserver = RaftServer.create ()
-          let! wsserver   = SocketServer.create mem
-          let! apiserver  = ApiServer.create mem state.Project.Id
-          let! gitserver  = GitServer.create mem path
+        let! raftserver = RaftServer.create ()
+        let! wsserver   = SocketServer.create mem
+        let! apiserver  = ApiServer.create mem state.Project.Id
+        let! gitserver  = GitServer.create mem path
 
-          // Try to put discovered services into the state
-          let state =
-            match idleData.DiscoveryService.Services with
-            | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
-            | Left err ->
-              string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
-              state
+        // Try to put discovered services into the state
+        let state =
+          match idleData.DiscoveryService.Services with
+          | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+          | Left err ->
+            string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
+            state
 
-          let loadedData =
-            { MemberId      = mem.Id
-            ; Leader        = None
-            ; Status        = ServiceStatus.Starting
-            ; Store         = new Store(state)
-            ; ApiServer     = apiserver
-            ; GitServer     = gitserver
-            ; RaftServer    = raftserver
-            ; SocketServer  = wsserver
-            ; Subscriptions = subscriptions
-            ; Disposables   = Map.empty }
+        let loadedData =
+          { MemberId      = mem.Id
+          ; Leader        = None
+          ; Status        = ServiceStatus.Starting
+          ; Store         = new Store(state)
+          ; ApiServer     = apiserver
+          ; GitServer     = gitserver
+          ; RaftServer    = raftserver
+          ; SocketServer  = wsserver
+          ; Subscriptions = subscriptions
+          ; Disposables   = Map.empty }
 
-          return Loaded(idleData, loadedData)
-        | _ ->
-          return!
-            "Login rejected"
-            |> Error.asProjectError (tag "loadProject")
-            |> Either.fail
-      }
+        return Loaded(idleData, loadedData)
+      | _ ->
+        return!
+          "Login rejected"
+          |> Error.asProjectError (tag "loadProject")
+          |> Either.fail
+    }
 
   // ** start
 

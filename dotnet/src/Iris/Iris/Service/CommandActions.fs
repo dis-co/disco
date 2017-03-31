@@ -109,6 +109,14 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
+let getProjectSites machine projectName username password =
+  either {
+    let! path = Project.checkPath machine projectName
+    let! (state: State) = Asset.loadWithMachine path machine
+    // TODO: Check username and password?
+    return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
+  }
+
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
@@ -136,9 +144,12 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | ListProjects -> listProjects cfg
         | GetWebSocketAddress -> getWsAddress iris
         | CreateProject opts -> createProject cfg opts
-        | LoadProject(projectName, userName, password, site) ->
-          iris.LoadProject(projectName, userName, password, site)
+        | LoadProject(projectName, username, password, site) ->
+          iris.LoadProject(projectName, username, password, site)
           |> Either.map (fun _ -> "Loaded project " + projectName)
+        | GetProjectSites(projectName, username, password) ->
+          getProjectSites cfg projectName username password
+          
       replyChannel.Reply res
       do! loop()
     }

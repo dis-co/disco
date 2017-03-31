@@ -169,6 +169,10 @@ let rec loadProject(project, username, password, site) =
     )
   )
 
+let getProjectSites(project, username, password) =
+  GetProjectSites(project, username, password)
+  |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
+
 let createProject(info: obj) =
   { name          = !!info?name
   ; ipAddress     = !!info?ipAddress

@@ -2039,20 +2039,19 @@ module Config =
   // ** addSite
 
   let private addSitePrivate (site: ClusterConfig) setActive (config: IrisConfig) =
-    match Array.tryFind (fun site' -> site'.Id = site.Id) config.Sites with
-    | Some _ -> config
-    | None ->
-      let len = Array.length config.Sites
-      let copy = Array.zeroCreate (len + 1)
-      Array.iteri (fun i site -> copy.[i] <- site) config.Sites
-      copy.[len] <- site
-      if setActive
-      then { config with ActiveSite = Some site.Id; Sites = copy }
-      else { config with Sites = copy }
+    let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
+    let copy = Array.zeroCreate (config.Sites.Length + (if Option.isSome i then 0 else 1))
+    Array.iteri (fun i site -> copy.[i] <- site) config.Sites
+    copy.[match i with Some i -> i | None -> config.Sites.Length] <- site
+    if setActive
+    then { config with ActiveSite = Some site.Id; Sites = copy }
+    else { config with Sites = copy }
 
+  /// Adds or replaces a site with same Id
   let addSite (site: ClusterConfig) (config: IrisConfig) =
     addSitePrivate site false config
 
+  /// Adds or replaces a site with same Id and sets it as the active site
   let addSiteAndSetActive (site: ClusterConfig) (config: IrisConfig) =
     addSitePrivate site false config
 
@@ -2449,6 +2448,15 @@ module Project =
   // | |_) / _` | __| '_ \/ __|
   // |  __/ (_| | |_| | | \__ \
   // |_|   \__,_|\__|_| |_|___/
+
+  let checkPath (machine: IrisMachine) projectName =
+    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
+    if File.Exists path |> not then
+      sprintf "Project Not Found: %s" projectName
+      |> Error.asProjectError "Project.checkPath"
+      |> Either.fail
+    else
+      Either.succeed path
 
   // ** filePath
 

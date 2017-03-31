@@ -79,21 +79,19 @@ export function loadProject() {
     .then((err: any) =>
       err != null
       // Get project sites and machine config
-      ? Iris.getProjectConfig(cachedInfo.name)
+      ? Iris.getProjectSites(cachedInfo.name)
       : null
     )
-    .then((cfg: any) =>
-      cfg != null
+    .then((sites: any) =>
+      sites != null
       // Ask user to create or select a new config
-      ? showModal(ProjectConfig, cfg)
+      ? showModal(ProjectConfig, { sites })
       : null
     )
-    .then((site: any) => {
-      if (site != null) {
-        // TODO: Add machine to cluster if missing
-        // Try loading the project again with the site config
-        return Iris.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
-      }
-      return null;
-    });
+    .then((site: any) =>
+      site != null
+      // Try loading the project again with the site config
+      ? Iris.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
+      : null
+    );
 }
