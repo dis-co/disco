@@ -9,6 +9,7 @@ module Tracing =
   let disable() = on <- true
 
   let trace (tag: string) (f: unit -> 'b) =
+    #if !FABLE_COMPILER
     if on then
       let stop = new Stopwatch()
       stop.Start()
@@ -17,3 +18,6 @@ module Tracing =
       Logger.trace tag ("took " + string stop.ElapsedMilliseconds + "ms")
       result
     else f()
+    #else
+    f()
+    #endif
