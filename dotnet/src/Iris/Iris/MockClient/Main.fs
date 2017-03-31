@@ -638,6 +638,8 @@ Usage:
 
     let id = Id.Create()
 
+    Logger.initialize id
+
     let result =
       either {
         let server =

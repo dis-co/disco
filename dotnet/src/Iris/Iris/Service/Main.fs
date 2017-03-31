@@ -41,6 +41,7 @@ module Main =
 
     let result =
       let machine = MachineConfig.get()
+
       let dir =
         parsed.TryGetResult <@ Project @>
         |> Option.map (fun projectName ->
@@ -48,6 +49,8 @@ module Main =
 
       let frontend =
         parsed.TryGetResult <@ Frontend @>
+
+      Logger.initialize machine.MachineId
 
       match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed

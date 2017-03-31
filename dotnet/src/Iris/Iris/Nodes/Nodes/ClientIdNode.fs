@@ -44,5 +44,7 @@ type ClientIdNode() =
             | _ -> Id.Create()
         else Id self.InIdStr.[0]
 
+      Logger.initialize id
+
       self.OutId.[0] <- id
       self.OutIdStr.[0] <- string id
