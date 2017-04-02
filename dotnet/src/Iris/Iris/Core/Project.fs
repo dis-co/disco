@@ -2449,6 +2449,8 @@ module Project =
   // |  __/ (_| | |_| | | \__ \
   // |_|   \__,_|\__|_| |_|___/
 
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   let checkPath (machine: IrisMachine) projectName =
     let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
     if File.Exists path |> not then
@@ -2457,6 +2459,8 @@ module Project =
       |> Either.fail
     else
       Either.succeed path
+
+  #endif
 
   // ** filePath
 

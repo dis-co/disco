@@ -145,7 +145,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | GetWebSocketAddress -> getWsAddress iris
         | CreateProject opts -> createProject cfg opts
         | LoadProject(projectName, username, password, site) ->
-          iris.LoadProject(projectName, username, password, site)
+          iris.LoadProject(projectName, username, password, ?site=site)
           |> Either.map (fun _ -> "Loaded project " + projectName)
         | GetProjectSites(projectName, username, password) ->
           getProjectSites cfg projectName username password

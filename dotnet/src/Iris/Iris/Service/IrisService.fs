@@ -178,7 +178,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:ClusterConfig option
+    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
