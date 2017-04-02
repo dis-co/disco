@@ -352,7 +352,7 @@ type ClusterConfig =
   static member Default
     with get () =
       { Id      = Id.Create()
-        Name    = Constants.EMPTY
+        Name    = Constants.DEFAULT
         Members = Map.empty
         Groups  = [| |] }
 
@@ -2041,7 +2041,7 @@ module Config =
   let private addSitePrivate (site: ClusterConfig) setActive (config: IrisConfig) =
     let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
     let copy = Array.zeroCreate (config.Sites.Length + (if Option.isSome i then 0 else 1))
-    Array.iteri (fun i site -> copy.[i] <- site) config.Sites
+    Array.iteri (fun i s -> copy.[i] <- s) config.Sites
     copy.[match i with Some i -> i | None -> config.Sites.Length] <- site
     if setActive
     then { config with ActiveSite = Some site.Id; Sites = copy }
@@ -2053,7 +2053,7 @@ module Config =
 
   /// Adds or replaces a site with same Id and sets it as the active site
   let addSiteAndSetActive (site: ClusterConfig) (config: IrisConfig) =
-    addSitePrivate site false config
+    addSitePrivate site true config
 
   // ** removeSite
 

@@ -52,10 +52,14 @@ let buildProject (machine: IrisMachine)
   either {
     let! project = Project.create path name machine
 
+    let site =
+        let def = ClusterConfig.Default
+        { def with Members = Map.add mem.Id mem def.Members }
+
     let updated =
       project
       |> Project.updateDataDir raftDir
-      |> Project.addMember mem
+      |> fun p -> Project.updateConfig (Config.addSiteAndSetActive site p.Config) p
 
     let! _ = Asset.saveWithCommit path User.Admin.Signature updated
 

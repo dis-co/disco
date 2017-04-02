@@ -67,6 +67,9 @@ module Constants =
   let EMPTY = "<empty>"
 
   [<Literal>]
+  let DEFAULT = "default"
+
+  [<Literal>]
   let COMMAND_TIMEOUT = 5000
 
   [<Literal>]
