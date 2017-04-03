@@ -74,7 +74,7 @@ export function loadProject() {
   showModal(LoadProject)
     .then((info: ProjectInfo) => {
       cachedInfo = info;
-      Iris.loadProject(info.name, info.username, info.password)
+      return Iris.loadProject(info.name, info.username, info.password)
     })
     .then((err: any) =>
       err != null
