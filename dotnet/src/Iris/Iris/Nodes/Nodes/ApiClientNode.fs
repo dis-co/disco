@@ -97,7 +97,7 @@ module Api =
   // ** enqueueEvent
 
   let private enqueueEvent (state: PluginState) (ev: ClientEvent) =
-      state.Events.Enqueue ev
+    state.Events.Enqueue ev
 
   // ** startClient
 
@@ -177,8 +177,7 @@ module Api =
 
   let private initialize (state: PluginState) =
     if not state.Initialized then
-      state
-      |> startClient
+      startClient state
     else
       state
 
