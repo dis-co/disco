@@ -245,7 +245,7 @@ module Api =
   // ** processInputs
 
   let private processInputs (state: PluginState) =
-    if state.InUpdate.[0] then
+    if state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
