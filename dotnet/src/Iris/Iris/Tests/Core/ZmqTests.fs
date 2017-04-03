@@ -29,8 +29,6 @@ module ZmqIntegrationTests =
   let test_broker_request_handling =
     testCase "broker request handling" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-        Tracing.enable()
         let rand = new System.Random()
 
         let num = 5

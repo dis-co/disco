@@ -7,19 +7,19 @@ open Iris.Tests
 
 let all =
   testList "All tests" [
-      //pinTests
-      //assetTests
-      //stateTests
-      //irisServiceTests
-      //raftTests
-      //configTests
+      pinTests
+      assetTests
+      stateTests
+      irisServiceTests
+      raftTests
+      configTests
       zmqIntegrationTests
-      //raftIntegrationTests
-      //serializationTests
-      //projectTests
-      //storeTests
-      //gitTests
-      //apiTests
+      raftIntegrationTests
+      serializationTests
+      projectTests
+      storeTests
+      gitTests
+      apiTests
     ]
 
 [<EntryPoint>]
@@ -29,6 +29,9 @@ let main _ =
 
   Thread.CurrentThread.GetApartmentState()
   |> printfn "threading model: %A"
+
+  ThreadPool.SetMinThreads(10,10)
+  |> printfn "set min threads %b"
 
   ThreadPool.GetMinThreads()
   |> printfn "min threads (worker,io): %A"
