@@ -313,6 +313,16 @@ module EitherUtils =
 module Test =
   open EitherUtils
 
+  type DisposableAction(f) =
+      interface IDisposable with
+          member __.Dispose() = f()
+
+  let equal expected actual =
+      let areEqual = expected = actual
+      printfn "%A = %A > %b" expected actual areEqual
+      if not areEqual then
+          failwithf "Expected %A but got %A" expected actual
+
   let orFail x =
     match x with
     | Left err -> printfn "ERROR: %O" err
@@ -346,7 +356,23 @@ module Test =
       for x in [|1;2;0;3|] do
         do! riskyOp x
     } |> orFail
+
+  let testUse() =
+      let isDisposed = ref false
+      let step1ok = ref false
+      let step2ok = ref false
+      let resource = either {
+          return new DisposableAction(fun () -> isDisposed := true)
+      }
+      either {
+          use! r = resource
+          step1ok := not !isDisposed
+      } |> ignore
+      step2ok := !isDisposed
+      (!step1ok && !step2ok) |> equal true
+
 #endif
+
 
 // * Option Builder
 
