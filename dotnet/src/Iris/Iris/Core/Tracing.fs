@@ -15,7 +15,7 @@ module Tracing =
       stop.Start()
       let result = f()
       stop.Stop()
-      printfn "%s took %dms" tag stop.ElapsedMilliseconds
+      Logger.trace tag (sprintf "took %dms" stop.ElapsedMilliseconds)
       result
     else f()
     #else

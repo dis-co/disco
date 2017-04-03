@@ -368,19 +368,19 @@ module private Worker =
 
           let mutable response = Unchecked.defaultof<RawResponse>
 
-          // Tracer.trace "Worker.Thread.TryPop" body <| fun _ ->
-          //   // BLOCK UNTIL RESPONSE IS SET
-          while not (state.Responder.TryPop(&response)) do
-            Thread.Sleep(TimeSpan.FromTicks 1L)
+          Tracing.trace "IWorker.waiting" <| fun () ->
+            while not (state.Responder.TryPop(&response)) do
+              Thread.Sleep(TimeSpan.FromTicks 1L)
 
-          use reply = new ZMessage()
-          reply.Add(new ZFrame(clientId));
-          reply.Add(new ZFrame());
-          reply.Add(new ZFrame(response.Via));
-          reply.Add(new ZFrame(response.Body));
+          Tracing.trace "IWorker responding" <| fun () ->
+            use reply = new ZMessage()
+            reply.Add(new ZFrame(clientId));
+            reply.Add(new ZFrame());
+            reply.Add(new ZFrame(response.Via));
+            reply.Add(new ZFrame(response.Body));
 
-          state.Socket.Send(reply)
-          |> ignore
+            state.Socket.Send(reply)
+            |> ignore
       else
         match error with
         | err when err = ZError.EAGAIN -> ()
@@ -454,8 +454,8 @@ module Broker =
         match workers.TryGetValue response.Via with
         | true, worker ->
           try
-            // Tracer.trace "ResponseActor" response.Body <| fun _ ->
-            worker.Respond response     // try to respond
+            Tracing.trace "ResponseActor" <| fun _ ->
+              worker.Respond response     // try to respond
           with
             | exn ->
               agent.Post response       // re-cue the response
@@ -568,6 +568,11 @@ module Broker =
         if clientId <> READY then
           let from = incoming.[4].Read()
           let reply = incoming.[5].Read()
+
+          clientId
+          |> Guid
+          |> string
+          |> Logger.trace "reply to client"
 
           Tracing.trace "Broker Reply To Frontend" <| fun _ ->
             use outgoing = new ZMessage()

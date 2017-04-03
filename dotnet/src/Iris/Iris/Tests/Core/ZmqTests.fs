@@ -29,6 +29,8 @@ module ZmqIntegrationTests =
   let test_broker_request_handling =
     testCase "broker request handling" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
+        Tracing.enable()
         let rand = new System.Random()
 
         let num = 5
@@ -40,15 +42,17 @@ module ZmqIntegrationTests =
           let rec impl () = async {
               let! request = inbox.Receive()
 
-              // add the requesting clients id to the random number so can later on
-              // check that each client has gotten the answer to its own question
-              let response = BitConverter.ToInt64(request.Body,0) +
-                             BitConverter.ToInt64(request.From.ToByteArray(),0)
+              Tracing.trace "Agent responding" <| fun () ->
+                // add the requesting clients id to the random number so can later on
+                // check that each client has gotten the answer to its own question
+                let response = BitConverter.ToInt64(request.Body,0) +
+                               BitConverter.ToInt64(request.From.ToByteArray(),0)
 
-              response
-              |> BitConverter.GetBytes
-              |> RawResponse.fromRequest request
-              |> broker.Respond
+                response
+                |> BitConverter.GetBytes
+                |> RawResponse.fromRequest request
+                |> broker.Respond
+
               return! impl ()
             }
           impl ()
