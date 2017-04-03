@@ -1,1 +1,1 @@
-..\..\Iris\bin\Debug\Iris\iris.exe start --project=iris_sample
+..\..\Iris\bin\Release\Iris\iris.exe start --project=iris_sample

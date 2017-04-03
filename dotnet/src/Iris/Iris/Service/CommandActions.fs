@@ -22,9 +22,9 @@ let getWsAddress (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> "0"
     | Right cfg ->
-        match Map.tryFind cfg.MachineId cfg.Cluster.Members with
-        | Some mem -> sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
-        | None -> "0"
+        match Config.findMember cfg cfg.MachineId with
+        | Right mem -> sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
+        | Left _ -> "0"
     |> Either.succeed
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
@@ -52,10 +52,14 @@ let buildProject (machine: IrisMachine)
   either {
     let! project = Project.create path name machine
 
+    let site =
+        let def = ClusterConfig.Default
+        { def with Members = Map.add mem.Id mem def.Members }
+
     let updated =
       project
       |> Project.updateDataDir raftDir
-      |> Project.addMember mem
+      |> fun p -> Project.updateConfig (Config.addSiteAndSetActive site p.Config) p
 
     let! _ = Asset.saveWithCommit path User.Admin.Signature updated
 
@@ -109,6 +113,14 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
+let getProjectSites machine projectName username password =
+  either {
+    let! path = Project.checkPath machine projectName
+    let! (state: State) = Asset.loadWithMachine path machine
+    // TODO: Check username and password?
+    return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
+  }
+
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
@@ -136,9 +148,12 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | ListProjects -> listProjects cfg
         | GetWebSocketAddress -> getWsAddress iris
         | CreateProject opts -> createProject cfg opts
-        | LoadProject(projectName, userName, password) ->
-          iris.LoadProject(projectName, userName, password)
+        | LoadProject(projectName, username, password, site) ->
+          iris.LoadProject(projectName, username, password, ?site=site)
           |> Either.map (fun _ -> "Loaded project " + projectName)
+        | GetProjectSites(projectName, username, password) ->
+          getProjectSites cfg projectName username password
+          
       replyChannel.Reply res
       do! loop()
     }

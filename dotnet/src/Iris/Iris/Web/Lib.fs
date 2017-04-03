@@ -34,7 +34,7 @@ type GenericObservable<'T>() =
 
 [<NoComparison>]
 type DragEvent = {
-  ``type``: string; value: obj; x: int; y: int; 
+  ``type``: string; value: obj; x: int; y: int;
 }
 
 type [<Pojo>] TreeNode =
@@ -81,12 +81,12 @@ let subscribeToLogs(f:ClientLog->unit): IDisposable =
       | _ -> ())
 
 let removeMember(info: StateInfo, memId: Id) =
-  match Map.tryFind memId info.state.Project.Config.Cluster.Members with
-  | Some mem ->
+  match Config.findMember info.state.Project.Config memId with
+  | Right mem ->
     RemoveMember mem
     |> ClientContext.Singleton.Post
-  | None ->
-    printfn "Couldn't find mem with Id %O" memId
+  | Left error ->
+    printfn "%O" error
 
 let createMemberInfo() =
   let m = Id.Create() |> Member.create
@@ -114,23 +114,36 @@ let alert msg (_: Exception) =
 let (&>) fst v =
   fun x -> fst x; v
 
-let postCommand defValue success (cmd: Command) =
+let private postCommandPrivate (cmd: Command) =
   GlobalFetch.fetch(
     RequestInfo.Url Constants.WEP_API_COMMAND,
     !![ RequestProperties.Method HttpMethod.POST
         RequestProperties.Headers [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
+
+let postCommand onSuccess onFail (cmd: Command) =
+  postCommandPrivate cmd
   |> Promise.bind (fun res ->
     if not res.Ok
-    then res.text() |> Promise.map (fun msg -> notify msg; defValue)
-    else res.text() |> Promise.map success)
+    then res.text() |> Promise.map onFail
+    else res.text() |> Promise.map onSuccess)
+
+let postCommandAndBind onSuccess onFail (cmd: Command) =
+  postCommandPrivate cmd
+  |> Promise.bind (fun res ->
+    if not res.Ok
+    then res.text() |> Promise.bind onFail
+    else res.text() |> Promise.bind onSuccess)
+
+let postCommandWithErrorNotifier defValue onSuccess cmd =
+  postCommand onSuccess (fun msg -> notify msg; defValue) cmd
 
 let postCommandAndForget cmd =
-  postCommand () ignore cmd
+  postCommand ignore notify cmd
 
 let listProjects() =
   ListProjects
-  |> postCommand [||] (String.split [|','|])
+  |> postCommandWithErrorNotifier [||] (String.split [|','|])
 
 let shutdown() =
   Shutdown |> postCommandAndForget
@@ -138,9 +151,27 @@ let shutdown() =
 let unloadProject() =
   UnloadProject |> postCommandAndForget
 
-let loadProject(project, username, password) =
-  LoadProject(project, username, password)
-  |> postCommand () (fun _ -> ClientContext.Singleton.ConnectWithWebSocket() |> ignore)
+let nullify _: 'a = null
+  
+let rec loadProject(project, username, password, site) =
+  LoadProject(project, username, password, site)
+  |> postCommandPrivate
+  |> Promise.bind (fun res ->
+    if res.Ok
+    then ClientContext.Singleton.ConnectWithWebSocket() |> Promise.map nullify
+    else res.text() |> Promise.map (fun msg ->    
+      if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
+        || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
+        || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
+      then msg
+      // We cannot deal with the error, just notify it
+      else notify msg |> nullify
+    )
+  )
+
+let getProjectSites(project, username, password) =
+  GetProjectSites(project, username, password)
+  |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
 
 let createProject(info: obj) =
   { name          = !!info?name
@@ -176,7 +207,8 @@ let project2tree (p: IrisProject) =
     ;  obj2tree "Vvvv" c.Vvvv
     ;  obj2tree "Raft" c.Raft
     ;  obj2tree "Timing" c.Timing
-    ;  obj2tree "Cluster" c.Cluster
+    ;  leaf ("ActiveSite" + string c.ActiveSite)
+    ;  arr2tree "Sites" (Array.map box c.Sites)
     ;  arr2tree "ViewPorts" (Array.map box c.ViewPorts)
     ;  arr2tree "Displays" (Array.map box c.Displays)
     ;  arr2tree "Tasks" (Array.map box c.Tasks)
@@ -220,9 +252,9 @@ let pinToKeyValuePairs (pin: Pin) =
   | NumberPin pin -> Array.map box pin.Values |> zip pin.Labels
   | BoolPin   pin -> Array.map box pin.Values |> zip pin.Labels
   // TODO: Apply transformations to the value of this pins?
-  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels  
-  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels  
-  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels  
+  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels
+  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels
+  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
 
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =

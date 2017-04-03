@@ -987,6 +987,7 @@ let HostGroupFB: HostGroupFBConstructor = failwith "JS only"
 // CLUSTER CONFIG
 
 type ClusterConfigFB =
+  abstract Id:            string
   abstract Name:          string
   abstract Members:       int -> RaftMemberFB
   abstract MembersLength: int
@@ -996,6 +997,7 @@ type ClusterConfigFB =
 type ClusterConfigFBConstructor =
   abstract prototype: ClusterConfigFB with get, set
   abstract StartClusterConfigFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * name:Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
   abstract AddMembers: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
   abstract CreateMembersVector: FlatBufferBuilder * Offset<RaftMemberFB> array -> Offset<'a>
@@ -1178,11 +1180,13 @@ let DisplayFB: DisplayFBConstructor = failwith "JS only"
 type ConfigFB =
   abstract Version: string
   abstract MachineId: string
+  abstract ActiveSite: string
   abstract AudioConfig: AudioConfigFB
   abstract VvvvConfig: VvvvConfigFB
   abstract RaftConfig: RaftConfigFB
   abstract TimingConfig: TimingConfigFB
-  abstract ClusterConfig: ClusterConfigFB
+  abstract Sites: int -> ClusterConfigFB
+  abstract SitesLength: int
   abstract ViewPorts: int -> ViewPortFB
   abstract ViewPortsLength: int
   abstract Displays: int -> DisplayFB
@@ -1195,11 +1199,13 @@ type ConfigFBConstructor =
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
   abstract AddVersion: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddMachineId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddActiveSite: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
   abstract AddRaftConfig: builder: FlatBufferBuilder * v:Offset<RaftConfigFB> -> unit
   abstract AddTimingConfig: builder: FlatBufferBuilder * v:Offset<TimingConfigFB> -> unit
-  abstract AddClusterConfig: builder: FlatBufferBuilder * v:Offset<ClusterConfigFB> -> unit
+  abstract AddSites: builder: FlatBufferBuilder * v:Offset<'a> -> unit
+  abstract CreateSitesVector: FlatBufferBuilder * Offset<ClusterConfigFB> array -> Offset<'a>
   abstract AddViewPorts: builder: FlatBufferBuilder * v:Offset<'a> -> unit
   abstract CreateViewPortsVector: FlatBufferBuilder * Offset<ViewPortFB> array -> Offset<'a>
   abstract AddDisplays: builder: FlatBufferBuilder * v:Offset<'a> -> unit

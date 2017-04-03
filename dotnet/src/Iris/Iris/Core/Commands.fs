@@ -22,6 +22,7 @@ type Command =
   | ListProjects
   | GetWebSocketAddress
   | CreateProject of CreateProjectOptions
-  | LoadProject of projectName:string * userName:string * password:string
+  | LoadProject of projectName:string * username:string * password:string * site:string option
+  | GetProjectSites of projectName:string * username:string * password:string
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

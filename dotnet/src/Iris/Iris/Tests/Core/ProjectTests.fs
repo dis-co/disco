@@ -234,22 +234,23 @@ module ProjectTests =
           }
 
         let cluster =
-          { Name   = "A mighty cool cluster"
-          ; Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
-          ; Groups = [| groupA; groupB |]
-          }
+          { Id = Id.Create()
+            Name   = "A mighty cool cluster"
+            Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
+            Groups = [| groupA; groupB |] }
 
         let! project = Project.create path name machine
 
         let updated =
           Project.updateConfig
             { project.Config with
-                Raft      = engineCfg
-                Vvvv      = vvvvCfg
-                ViewPorts = [| viewPort1; viewPort2 |]
-                Displays  = [| display1;  display2  |]
-                Tasks     = [| task1;     task2     |]
-                Cluster   = cluster }
+                Raft       = engineCfg
+                Vvvv       = vvvvCfg
+                ViewPorts  = [| viewPort1; viewPort2 |]
+                Displays   = [| display1;  display2  |]
+                Tasks      = [| task1;     task2     |]
+                ActiveSite = Some cluster.Id
+                Sites      = [| cluster |] }
             project
 
         let! commit = Asset.saveWithCommit path User.Admin.Signature updated
@@ -263,7 +264,7 @@ module ProjectTests =
         expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) updated.Config.Timing
         expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) updated.Config.Displays
         expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) updated.Config.Tasks
-        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) updated.Config.Cluster
+        expect "Sites should be structurally equal"      true ((=) loaded.Config.Sites) updated.Config.Sites
       }
       |> noError
 

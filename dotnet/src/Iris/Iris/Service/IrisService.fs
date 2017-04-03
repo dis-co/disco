@@ -196,23 +196,21 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git           of GitEvent
-    | Socket        of SocketEvent
-    | Raft          of RaftEvent
-    | Api           of ApiEvent
-    | Log           of LogEvent
-    | Discovery     of Discovery.DiscoveryEvent
-    | Load          of chan:ReplyChan * projectName:string * userName:string * password:string
-    | Start         of chan:ReplyChan
-    | SetConfig     of chan:ReplyChan * config:IrisConfig
-    | AddMember     of chan:ReplyChan * mem:RaftMember
-    | RmMember      of chan:ReplyChan * id:Id
-    | Join          of chan:ReplyChan * ip:IpAddress  * port:uint16
-    | Leave         of chan:ReplyChan
-    | Config        of chan:ReplyChan
-    | Unload        of chan:ReplyChan
-    | State         of chan:ReplyChan
-    | SetAgentState of state:IrisState
+    | Git         of GitEvent
+    | Socket      of SocketEvent
+    | Raft        of RaftEvent
+    | Api         of ApiEvent
+    | Log         of LogEvent
+    | Discovery   of Discovery.DiscoveryEvent
+    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:string option
+    | SetConfig   of ReplyChan * IrisConfig
+    | AddMember   of ReplyChan * RaftMember
+    | RmMember    of ReplyChan * Id
+    | Join        of ReplyChan * IpAddress  * uint16
+    | Leave       of ReplyChan
+    | Config      of ReplyChan
+    | Unload      of ReplyChan
+    | State       of ReplyChan
     | ForceElection
     | Periodic
 
@@ -875,68 +873,91 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: string)
+                          (projectName: string, userName: string, password: string, site: string option)
                           (subscriptions: Subscriptions) =
+    let isValidPassword (user: User) (password: string) =
+      let password = Crypto.hashPassword password user.Salt
+      password = user.Password
 
-    Tracing.trace "IrisService.loadProject" <| fun () ->
-      let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
+    either {
+      let! path = Project.checkPath machine projectName
+      let! (state: State) = Asset.loadWithMachine path machine
 
-      if File.Exists path |> not then
-        sprintf "Project Not Found: %s" projectName
-        |> Error.asProjectError (tag "loadProject")
-        |> Either.fail
-      else
-        either {
-          let! (state: State) = Asset.loadWithMachine path machine
+      let user =
+        state.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
 
-          let user =
-            state.Users
-            |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+      match user with
+      | Some user when isValidPassword user password ->
+        let idleData =
+          match oldState with
+          | Idle idleData -> idleData
+          | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
-          match user with
-          | Some user when User.passwordValid user password ->
-            let idleData =
-              match oldState with
-              | Idle idleData -> idleData
-              | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+        let! state =
+          match site with
+          | Some site ->
+            let site =
+              state.Project.Config.Sites
+              |> Array.tryFind (fun s -> s.Name = site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
 
-            // FIXME: load the actual state from disk
-            let! mem = Config.selfMember state.Project.Config
+            // Add current machine if necessary
+            let site =
+              let mid = machine.MachineId
+              if Map.containsKey mid site.Members
+              then Right site
+              else
+                // Another cluster must cointain the self member, search for it
+                state.Project.Config.Sites
+                |> Seq.collect (fun site -> site.Members)
+                |> Seq.tryFind (fun kvp -> kvp.Key = mid)
+                |> function
+                  | Some kvp -> Right { site with Members = Map.add mid kvp.Value site.Members }
+                  | None -> Error.asProjectError "" "" |> Left
 
-            let! raftserver = RaftServer.create ()
-            let! wsserver   = SocketServer.create mem
-            let! apiserver  = ApiServer.create mem state.Project.Id
-            let! gitserver  = GitServer.create mem path
+            match site with
+            | Right site ->
+              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+              Right { state with Project = { state.Project with Config = cfg }}
+            | Left err -> Left err
+          | None -> Right state
 
-            // Try to put discovered services into the state
-            let state =
-              match idleData.DiscoveryService.Services with
-              | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
-              | Left err ->
-                err
-                |> string
-                |> Logger.err (tag "loadProject.getDiscoveredServices")
-                state
+        // FIXME: load the actual state from disk
+        let! mem = Config.selfMember state.Project.Config
 
-            let loadedData =
-              { MemberId      = mem.Id
-                Leader        = None
-                Status        = ServiceStatus.Starting
-                Store         = new Store(state)
-                ApiServer     = apiserver
-                GitServer     = gitserver
-                RaftServer    = raftserver
-                SocketServer  = wsserver
-                Subscriptions = subscriptions
-                Disposables   = Map.empty }
+        let! raftserver = RaftServer.create ()
+        let! wsserver   = SocketServer.create mem
+        let! apiserver  = ApiServer.create mem state.Project.Id
+        let! gitserver  = GitServer.create mem path
 
-            return Loaded(idleData, loadedData)
-          | _ ->
-            return!
-              "Login rejected"
-              |> Error.asProjectError (tag "loadProject")
-              |> Either.fail
-        }
+        // Try to put discovered services into the state
+        let state =
+          match idleData.DiscoveryService.Services with
+          | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+          | Left err ->
+            string err |> Logger.err (tag "loadProject.getDiscoveredServices")
+            state
+
+        let loadedData =
+          { MemberId      = mem.Id
+          ; Leader        = None
+          ; Status        = ServiceStatus.Starting
+          ; Store         = new Store(state)
+          ; ApiServer     = apiserver
+          ; GitServer     = gitserver
+          ; RaftServer    = raftserver
+          ; SocketServer  = wsserver
+          ; Subscriptions = subscriptions
+          ; Disposables   = Map.empty }
+
+        return Loaded(idleData, loadedData)
+      | _ ->
+        return!
+          "Login rejected"
+          |> Error.asProjectError (tag "loadProject")
+          |> Either.fail
+    }
 
   // ** start
 
@@ -982,35 +1003,14 @@ module Iris =
 
   let private handleLoad (state: IrisState)
                          (chan: ReplyChan)
-                         (projectName: string, userName: string, password: string)
+                         (projectName, userName, password, site)
                          (config: IrisMachine)
+                         (post: CommandAgent)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    Tracing.trace "IrisService.handleLoad" <| fun () ->
-      match loadProject state config (projectName, userName, password) subscriptions with
-      | Right nextstate ->
-        chan
-        |> Msg.Start
-        |> inbox.Post
-        nextstate
-      | Left error ->
-        ServiceStatus.Failed error
-        |> Status
-        |> triggerWithLoaded state
-
-        error
-        |> Either.fail
-        |> chan.Reply
-
-        state
-        |> resetLoaded
-
-  let private handleStart (state: IrisState)
-                          (chan: ReplyChan)
-                          (subscriptions: Subscriptions)
-                          (inbox: IrisAgent)=
-    Tracing.trace "IrisService.handleStart" <| fun () ->
-      match start state inbox with
+    match loadProject state config (projectName, userName, password, site) subscriptions with
+    | Right nextstate ->
+      match start nextstate inbox with
       | Right finalstate ->
         // notify
         ServiceStatus.Running
@@ -1023,10 +1023,6 @@ module Iris =
         |> chan.Reply
 
         finalstate
-        |> Msg.SetAgentState
-        |> inbox.Post
-
-        finalstate
 
       | Left error ->
         // notify
@@ -1041,6 +1037,18 @@ module Iris =
 
         state
         |> resetLoaded
+    | Left error ->
+      // notify
+      ServiceStatus.Failed error
+      |> Status
+      |> triggerOnNext subscriptions
+
+      error
+      |> Either.fail
+      |> chan.Reply
+
+      state
+      |> resetLoaded
 
   //  _
   // | |    ___   __ _
@@ -1061,7 +1069,7 @@ module Iris =
 
   // ** handleUnload
 
-  let private handleUnload (state: IrisState) (chan: ReplyChan) (agent: IrisAgent) =
+  let private handleUnload (state: IrisState) (chan: ReplyChan) =
     Tracing.trace "IrisService.handleUnload" <| fun () ->
       triggerWithLoaded state (Status ServiceStatus.Stopped)
       let idleData =
@@ -1071,16 +1079,11 @@ module Iris =
           dispose loadedData
           idleData
 
-      idleData
-      |> Idle
-      |> Msg.SetAgentState
-      |> agent.Post
-
       Reply.Ok
       |> Either.succeed
       |> chan.Reply
 
-      state
+      Idle idleData
 
   // ** handleConfig
 
@@ -1222,9 +1225,9 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config subs inbox
-          | Msg.Start chan           -> handleStart         state chan subs inbox
-          | Msg.Unload chan          -> handleUnload        state chan inbox
+          | Msg.Load (chan,pname,uname,pass,site) ->
+            handleLoad state chan (pname,uname,pass,site) config post subs inbox
+          | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
           | Msg.Git    ev            -> handleGitEvent      state inbox ev
@@ -1240,7 +1243,6 @@ module Iris =
           | Msg.AddMember (chan,mem) -> handleAddMember     state chan  mem
           | Msg.RmMember (chan,id)   -> handleRmMember      state chan  id
           | Msg.State chan           -> handleState         state chan
-          | Msg.SetAgentState state' -> state'
         return! act newstate
       }
 
@@ -1262,41 +1264,40 @@ module Iris =
                     do subscriptions.TryRemove(guid) |> ignore } }
 
       { new IIrisServer with
-        member self.Config
-          with get () =
-            Tracing.trace "IrisService.Config" <| fun () ->
-              match postCommand agent "Config" (fun chan -> Msg.Config chan) with
-              | Right (Reply.Config config) -> Right config
+          member self.Config
+            with get () =
+              Tracing.trace "IrisService.Config" <| fun () ->
+                match postCommand agent "Config" (fun chan -> Msg.Config chan) with
+                | Right (Reply.Config config) -> Right config
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "Config")
+                  |> Either.fail
+
+          member self.SetConfig (config: IrisConfig) =
+            Tracing.trace "IrisService.SetConfig()" <| fun () ->
+              match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
+              | Right Reply.Ok -> Right ()
               | Left error -> Left error
               | Right other ->
                 sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "Config")
+                |> Error.asOther (tag "SetConfig")
                 |> Either.fail
 
-        member self.SetConfig (config: IrisConfig) =
-          Tracing.trace "IrisService.SetConfig()" <| fun () ->
-            match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
-            | Right Reply.Ok -> Right ()
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "SetConfig")
-              |> Either.fail
+          member self.Status
+            with get () =
+              Tracing.trace "IrisService.Status" <| fun () ->
+                match postCommand agent "Status" (fun chan -> Msg.State chan) with
+                | Right (Reply.State state) -> Right state.Status
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "Status")
+                  |> Either.fail
 
-        member self.Status
-          with get () =
-            Tracing.trace "IrisService.Status" <| fun () ->
-              match postCommand agent "Status" (fun chan -> Msg.State chan) with
-              | Right (Reply.State state) -> Right state.Status
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "Status")
-                |> Either.fail
-
-        member self.LoadProject(name:string, username:string, password:string) =
-          Tracing.trace "IrisService.LoadProject" <| fun () ->
-            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
+          member self.LoadProject(name, username, password, site) =
+            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, site)) with
             | Right Reply.Ok -> Right ()
             | Left error -> Left error
             | Right other ->
@@ -1304,116 +1305,116 @@ module Iris =
               |> Error.asOther (tag "Load")
               |> Either.fail
 
-        member self.UnloadProject() =
-          Tracing.trace "IrisService.UnloadProject" <| fun () ->
-            match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
-            | Right Reply.Ok ->
-              // Notify subscriptor of the change of state
-              triggerOnNext subscriptions (Status ServiceStatus.Running)
-              Right ()
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "Unload")
-              |> Either.fail
-
-        member self.ForceElection () =
-          Tracing.trace "IrisService.ForceElection" <| fun () ->
-            agent.Post(Msg.ForceElection)
-            |> Either.succeed
-
-        member self.Periodic () =
-          Tracing.trace "IrisService.Periodic" <| fun () ->
-            agent.Post(Msg.Periodic)
-            |> Either.succeed
-
-        member self.LeaveCluster () =
-          Tracing.trace "IrisService.LeaveCluster" <| fun () ->
-            match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
-            | Right Reply.Ok -> Right ()
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "LeaveCluster")
-              |> Either.fail
-
-        member self.JoinCluster ip port =
-          Tracing.trace "IrisService.JoinCluster" <| fun () ->
-            match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
-            | Right Reply.Ok -> Right ()
-            | Left error  -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "JoinCluster")
-              |> Either.fail
-
-        member self.AddMember mem =
-          Tracing.trace "IrisService.AddMember" <| fun () ->
-            match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
-            | Right (Reply.Entry entry) -> Right entry
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "AddMember")
-              |> Either.fail
-
-        member self.RmMember id =
-          Tracing.trace "IrisService.RmMember" <| fun () ->
-            match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
-            | Right (Reply.Entry entry) -> Right entry
-            | Left error -> Left error
-            | Right other ->
-              sprintf "Unexpected response from IrisAgent: %A" other
-              |> Error.asOther (tag "RmMember")
-              |> Either.fail
-
-        member self.GitServer
-          with get () =
-            Tracing.trace "IrisService.GitServer" <| fun () ->
-              match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
-              | Right (Reply.State state) -> Right state.GitServer
+          member self.UnloadProject() =
+            Tracing.trace "IrisService.UnloadProject" <| fun () ->
+              match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
+              | Right Reply.Ok ->
+                // Notify subscriptor of the change of state
+                triggerOnNext subscriptions (Status ServiceStatus.Running)
+                Right ()
               | Left error -> Left error
               | Right other ->
                 sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "GitServer")
+                |> Error.asOther (tag "Unload")
                 |> Either.fail
 
-        member self.RaftServer
-          with get () =
-            Tracing.trace "IrisService.RaftServer" <| fun () ->
-              match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
-              | Right (Reply.State state) -> Right state.RaftServer
+          member self.ForceElection () =
+            Tracing.trace "IrisService.ForceElection" <| fun () ->
+              agent.Post(Msg.ForceElection)
+              |> Either.succeed
+
+          member self.Periodic () =
+            Tracing.trace "IrisService.Periodic" <| fun () ->
+              agent.Post(Msg.Periodic)
+              |> Either.succeed
+
+          member self.LeaveCluster () =
+            Tracing.trace "IrisService.LeaveCluster" <| fun () ->
+              match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
+              | Right Reply.Ok -> Right ()
               | Left error -> Left error
               | Right other ->
                 sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "RaftServer")
+                |> Error.asOther (tag "LeaveCluster")
                 |> Either.fail
 
-        member self.SocketServer
-          with get () =
-            Tracing.trace "IrisService.SocketServer" <| fun () ->
-              match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
-              | Right (Reply.State state) -> Right state.SocketServer
+          member self.JoinCluster ip port =
+            Tracing.trace "IrisService.JoinCluster" <| fun () ->
+              match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
+              | Right Reply.Ok -> Right ()
+              | Left error  -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "JoinCluster")
+                |> Either.fail
+
+          member self.AddMember mem =
+            Tracing.trace "IrisService.AddMember" <| fun () ->
+              match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
+              | Right (Reply.Entry entry) -> Right entry
               | Left error -> Left error
               | Right other ->
                 sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "SocketServer")
+                |> Error.asOther (tag "AddMember")
                 |> Either.fail
 
-        member self.Subscribe(callback: IrisEvent -> unit) =
-          { new IObserver<IrisEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          member self.RmMember id =
+            Tracing.trace "IrisService.RmMember" <| fun () ->
+              match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
+              | Right (Reply.Entry entry) -> Right entry
+              | Left error -> Left error
+              | Right other ->
+                sprintf "Unexpected response from IrisAgent: %A" other
+                |> Error.asOther (tag "RmMember")
+                |> Either.fail
 
-        member self.Dispose() =
-          Tracing.trace "IrisService.Dispose" <| fun () ->
-            triggerOnNext subscriptions (Status ServiceStatus.Stopping)
-            postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
-            |> ignore
-            dispose agent
-      }
+          member self.GitServer
+            with get () =
+              Tracing.trace "IrisService.GitServer" <| fun () ->
+                match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
+                | Right (Reply.State state) -> Right state.GitServer
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "GitServer")
+                  |> Either.fail
+
+          member self.RaftServer
+            with get () =
+              Tracing.trace "IrisService.RaftServer" <| fun () ->
+                match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
+                | Right (Reply.State state) -> Right state.RaftServer
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "RaftServer")
+                  |> Either.fail
+
+          member self.SocketServer
+            with get () =
+              Tracing.trace "IrisService.SocketServer" <| fun () ->
+                match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
+                | Right (Reply.State state) -> Right state.SocketServer
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "SocketServer")
+                  |> Either.fail
+
+          member self.Subscribe(callback: IrisEvent -> unit) =
+            { new IObserver<IrisEvent> with
+                member self.OnCompleted() = ()
+                member self.OnError(error) = ()
+                member self.OnNext(value) = callback value }
+            |> listener.Subscribe
+
+          member self.Dispose() =
+            Tracing.trace "IrisService.Dispose" <| fun () ->
+              triggerOnNext subscriptions (Status ServiceStatus.Stopping)
+              postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
+              |> ignore
+              dispose agent
+        }
 
 
     let private initIdleState (agent: (IrisAgent option) ref) (config: IrisMachine) =

@@ -37,6 +37,10 @@ type ConfigNode() =
   val mutable OutMachineId: ISpread<string>
 
   [<DefaultValue>]
+  [<Output("ActiveSite", IsSingle = true)>]
+  val mutable OutActiveSite: ISpread<string>
+
+  [<DefaultValue>]
   [<Output("Audio", IsSingle = true)>]
   val mutable OutAudio: ISpread<AudioConfig>
 
@@ -53,8 +57,8 @@ type ConfigNode() =
   val mutable OutTiming: ISpread<TimingConfig>
 
   [<DefaultValue>]
-  [<Output("Cluster", IsSingle = true)>]
-  val mutable OutCluster: ISpread<ClusterConfig>
+  [<Output("Sites")>]
+  val mutable OutSites: ISpread<ClusterConfig>
 
   [<DefaultValue>]
   [<Output("Viewports")>]
@@ -86,7 +90,8 @@ type ConfigNode() =
         self.OutVvvv.[0] <- config.Vvvv
         self.OutRaft.[0] <- config.Raft
         self.OutTiming.[0] <- config.Timing
-        self.OutCluster.[0] <- config.Cluster
+        self.OutSites.SliceCount <- Array.length config.Sites
+        self.OutSites.AssignFrom config.Sites
         self.OutViewports.SliceCount <- Array.length config.ViewPorts
         self.OutViewports.AssignFrom config.ViewPorts
         self.OutDisplays.SliceCount <- Array.length config.Displays
