@@ -395,6 +395,7 @@ table HostGroupFB {
 }
 
 table ClusterConfigFB {
+      Id: string;
       Name: string;
       Members: [ RaftMemberFB ];
       Groups: [ HostGroupFB ];
@@ -459,16 +460,17 @@ table DisplayFB {
 }
 
 table ConfigFB {
-      Version:        string;
-      MachineId:      string;
-      AudioConfig:    AudioConfigFB;
-      VvvvConfig:     VvvvConfigFB;
-      RaftConfig:     RaftConfigFB;
-      TimingConfig:   TimingConfigFB;
-      ClusterConfig:  ClusterConfigFB;
-      ViewPorts:      [ ViewPortFB ];
-      Displays:       [ DisplayFB ];
-      Tasks:          [ TaskFB ];
+      Version:      string;
+      MachineId:    string;
+      ActiveSite:   string;
+      AudioConfig:  AudioConfigFB;
+      VvvvConfig:   VvvvConfigFB;
+      RaftConfig:   RaftConfigFB;
+      TimingConfig: TimingConfigFB;
+      Sites:        [ ClusterConfigFB ];
+      ViewPorts:    [ ViewPortFB ];
+      Displays:     [ DisplayFB ];
+      Tasks:        [ TaskFB ];
 }
 
 //  ____            _           _

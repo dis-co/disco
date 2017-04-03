@@ -15,11 +15,11 @@ export default function (props) {
         onClick={ev => {
           ev.preventDefault();
           var form = findParentTag(ev.target, "form");
-          Iris.loadProject(
-            form.name.value,
-            form.username.value,
-            form.password.value
-          );
+          props.onSubmit({
+            name: form.name.value,
+            username: form.username.value,
+            password: form.password.value
+          });
         }}>
         Submit
       </Button>

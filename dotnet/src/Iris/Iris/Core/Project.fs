@@ -342,28 +342,29 @@ type HostGroup =
 //  \____|_|\__,_|___/\__\___|_|
 
 type ClusterConfig =
-  { Name    : Name
-    Members : Map<MemberId,RaftMember>
-    Groups  : HostGroup  array }
+  { Id: Id
+    Name: Name
+    Members: Map<MemberId,RaftMember>
+    Groups: HostGroup array }
 
   // ** Default
 
   static member Default
     with get () =
-      { Name    = Constants.EMPTY
+      { Id      = Id.Create()
+        Name    = Constants.DEFAULT
         Members = Map.empty
         Groups  = [| |] }
 
   override self.ToString() =
-    sprintf "Cluster:
-              Name: %A
-              Members: %A
-              Groups: %A"
-            self.Name
-            self.Members
-            self.Groups
+    sprintf "Cluster [Id: %s Name: %A Members: %d Groups: %d]"
+      (string self.Id)
+      self.Name
+      (Map.fold (fun m _ _ -> m + 1) 0 self.Members)
+      (Array.length self.Groups)
 
   member self.ToOffset(builder: FlatBufferBuilder) =
+    let id = builder.CreateString (string self.Id)
     let name = builder.CreateString self.Name
 
     let members =
@@ -377,6 +378,7 @@ type ClusterConfig =
       |> fun offsets -> ClusterConfigFB.CreateGroupsVector(builder, offsets)
 
     ClusterConfigFB.StartClusterConfigFB(builder)
+    ClusterConfigFB.AddId(builder, id)
     ClusterConfigFB.AddName(builder, name)
     ClusterConfigFB.AddMembers(builder, members)
     ClusterConfigFB.AddGroups(builder, groups)
@@ -444,7 +446,8 @@ type ClusterConfig =
           arr
 
       return
-        { Name    = fb.Name
+        { Id      = Id fb.Id
+          Name    = fb.Name
           Members = members
           Groups  = groups }
     }
@@ -459,21 +462,23 @@ type ClusterConfig =
 //                                        |___/
 
 type IrisConfig =
-  { MachineId : Id
-    Version   : string
-    Audio     : AudioConfig
-    Vvvv      : VvvvConfig
-    Raft      : RaftConfig
-    Timing    : TimingConfig
-    Cluster   : ClusterConfig
-    ViewPorts : ViewPort array
-    Displays  : Display  array
-    Tasks     : Task     array }
+  { MachineId:  Id
+    ActiveSite: Id option
+    Version:    string
+    Audio:      AudioConfig
+    Vvvv:       VvvvConfig
+    Raft:       RaftConfig
+    Timing:     TimingConfig
+    Sites:      ClusterConfig array
+    ViewPorts:  ViewPort array
+    Displays:   Display  array
+    Tasks:      Task     array }
 
   // ** Default
   static member Default
     with get () =
       { MachineId = Id Constants.EMPTY
+        ActiveSite = None
         #if FABLE_COMPILER
         Version   = "0.0.0"
         #else
@@ -483,7 +488,7 @@ type IrisConfig =
         Vvvv      = VvvvConfig.Default
         Raft      = RaftConfig.Default
         Timing    = TimingConfig.Default
-        Cluster   = ClusterConfig.Default
+        Sites     = [| |]
         ViewPorts = [| |]
         Displays  = [| |]
         Tasks     = [| |] }
@@ -502,7 +507,15 @@ type IrisConfig =
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
-    let cluster = Binary.toOffset builder self.Cluster
+
+    let site =
+      match self.ActiveSite with
+      | Some id -> id |> string |> builder.CreateString
+      | None -> "" |> builder.CreateString
+
+    let sites =
+      Array.map (Binary.toOffset builder) self.Sites
+      |> fun sites -> ConfigFB.CreateSitesVector(builder, sites)
 
     let viewports =
       Array.map (Binary.toOffset builder) self.ViewPorts
@@ -519,11 +532,12 @@ type IrisConfig =
     ConfigFB.StartConfigFB(builder)
     ConfigFB.AddVersion(builder, version)
     ConfigFB.AddMachineId(builder, machine)
+    ConfigFB.AddActiveSite(builder, site)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
     ConfigFB.AddRaftConfig(builder, raft)
     ConfigFB.AddTimingConfig(builder, timing)
-    ConfigFB.AddClusterConfig(builder, cluster)
+    ConfigFB.AddSites(builder, sites)
     ConfigFB.AddViewPorts(builder, viewports)
     ConfigFB.AddDisplays(builder, displays)
     ConfigFB.AddTasks(builder, tasks)
@@ -533,6 +547,12 @@ type IrisConfig =
     either {
       let machineId = Id fb.MachineId
       let version = fb.Version
+
+      let site =
+        if isNull fb.ActiveSite || fb.ActiveSite = "" then
+          None
+        else
+          Some (Id fb.ActiveSite)
 
       let! audio =
         #if FABLE_COMPILER
@@ -590,19 +610,33 @@ type IrisConfig =
           |> Either.fail
         #endif
 
-      let! cluster =
-        #if FABLE_COMPILER
-        ClusterConfig.FromFB fb.ClusterConfig
-        #else
-        let clusterish = fb.ClusterConfig
-        if clusterish.HasValue then
-          let value = clusterish.Value
-          ClusterConfig.FromFB value
-        else
-          "Could not parse empty ClusterConfigFB"
-          |> Error.asParseError "IrisConfig.FromFB"
-          |> Either.fail
-        #endif
+      let! (_, sites) =
+        let arr =
+          fb.SitesLength
+          |> Array.zeroCreate
+        Array.fold
+          (fun (m: Either<IrisError, int * ClusterConfig array>) _ ->
+            either {
+              let! (idx, sites) = m
+              let! site =
+                #if FABLE_COMPILER
+                fb.Sites(idx)
+                |> ClusterConfig.FromFB
+                #else
+                let clusterish = fb.Sites(idx)
+                if clusterish.HasValue then
+                  let value = clusterish.Value
+                  ClusterConfig.FromFB value
+                else
+                  "Could not parse empty ClusterConfigFB"
+                  |> Error.asParseError "IrisConfig.FromFB"
+                  |> Either.fail
+                #endif
+              sites.[idx] <- site
+              return (idx + 1, sites)
+            })
+            (Right(0, arr))
+            arr
 
       let! (_,viewports) =
         let arr =
@@ -690,12 +724,13 @@ type IrisConfig =
 
       return
         { MachineId = machineId
+          ActiveSite = site
           Version   = version
           Audio     = audio
           Vvvv      = vvvv
           Raft      = raft
           Timing    = timing
-          Cluster   = cluster
+          Sites     = sites
           ViewPorts = viewports
           Displays  = displays
           Tasks     = tasks }
@@ -786,22 +821,24 @@ Project:
         - Key:
           Value:
 
-  Cluster:
-    Name:
-    Members:
-      - Id:
-        HostName:
-        Ip:
-        Port:    -1
-        WsPort:  -1
-        GitPort: -1
-        ApiPort: -1
-        State:
+  ActiveSite:
 
-    Groups:
-      - Name:
-        Members:
-          -
+  Sites:
+    - Id:
+      Name:
+      Members:
+        - Id:
+          HostName:
+          Ip:
+          Port:    -1
+          WsPort:  -1
+          GitPort: -1
+          ApiPort: -1
+          State:
+      Groups:
+        - Name:
+          Members:
+            -
 """
 
   type Config = YamlConfig<"",false,template>
@@ -810,9 +847,9 @@ Project:
   type internal ViewPortYaml  = Config.Project_Type.ViewPorts_Item_Type
   type internal TaskYaml      = Config.Project_Type.Tasks_Item_Type
   type internal ArgumentYaml  = Config.Project_Type.Tasks_Item_Type.Arguments_Item_Type
-  type internal ClusterYaml   = Config.Project_Type.Cluster_Type
-  type internal MemberYaml    = Config.Project_Type.Cluster_Type.Members_Item_Type
-  type internal GroupYaml     = Config.Project_Type.Cluster_Type.Groups_Item_Type
+  type internal ClusterYaml   = Config.Project_Type.Sites_Item_Type
+  type internal MemberYaml    = Config.Project_Type.Sites_Item_Type.Members_Item_Type
+  type internal GroupYaml     = Config.Project_Type.Sites_Item_Type.Groups_Item_Type
   type internal AudioYaml     = Config.Project_Type.Audio_Type
   type internal EngineYaml    = Config.Project_Type.Engine_Type
   type internal MetadatYaml   = Config.Project_Type.Metadata_Type
@@ -1663,53 +1700,85 @@ Project:
   ///
   /// # Returns: Cluster
 
-  let internal parseCluster (config: Config) : Either<IrisError, ClusterConfig> =
+  let internal parseCluster (cluster: ClusterYaml) : Either<IrisError, ClusterConfig> =
     either {
-      let cluster = config.Project.Cluster
-
       let! groups = parseGroups cluster.Groups
       let! mems = parseMembers cluster.Members
 
-      return { Name    = cluster.Name
+      return { Id = Id cluster.Id
+               Name = cluster.Name
                Members = mems
-               Groups  = groups }
+               Groups = groups }
     }
 
-  // ** saveCluster
+  // ** parseSites
+
+  let internal parseSites (config: Config) : Either<IrisError, ClusterConfig array> =
+    either {
+      let arr =
+        config.Project.Sites
+        |> Seq.length
+        |> Array.zeroCreate
+
+      let! (_, sites) =
+        Seq.fold
+          (fun (m: Either<IrisError, int * ClusterConfig array>) cfg ->
+            either {
+              let! (idx, sites) = m
+              let! site = parseCluster cfg
+              sites.[idx] <- site
+              return (idx + 1, sites)
+            })
+          (Right(0, arr))
+          config.Project.Sites
+
+      return sites
+    }
+
+  // ** saveSites
 
   /// ### Save a Cluster value to a configuration file
   ///
   /// Saves the passed `Cluster` value to the passed config file.
   ///
   /// # Returns: ConfigFile
-  let internal saveCluster (file: Config, config: IrisConfig) =
-    file.Project.Cluster.Members.Clear()
-    file.Project.Cluster.Groups.Clear()
-    file.Project.Cluster.Name <- config.Cluster.Name
+  let internal saveSites (file: Config, config: IrisConfig) =
+    file.Project.Sites.Clear()
 
-    for KeyValue(memId,mem) in config.Cluster.Members do
-      let n = new MemberYaml()
-      n.Id       <- string memId
-      n.Ip       <- string mem.IpAddr
-      n.HostName <- mem.HostName
-      n.Port     <- int mem.Port
-      n.WsPort   <- int mem.WsPort
-      n.GitPort  <- int mem.GitPort
-      n.ApiPort  <- int mem.ApiPort
-      n.State    <- string mem.State
-      file.Project.Cluster.Members.Add(n)
+    match config.ActiveSite with
+    | Some id -> file.Project.ActiveSite <- string id
+    | None -> file.Project.ActiveSite <- null
 
-    for group in config.Cluster.Groups do
-      let g = new GroupYaml()
-      g.Name <- group.Name
+    for cluster in config.Sites do
+      let cfg = new ClusterYaml()
+      cfg.Members.Clear()
+      cfg.Groups.Clear()
 
-      g.Members.Clear()
+      cfg.Id <- string cluster.Id
+      cfg.Name <- cluster.Name
 
-      for mem in group.Members do
-        g.Members.Add(string mem)
+      for KeyValue(memId,mem) in cluster.Members do
+        let n = new MemberYaml()
+        n.Id       <- string memId
+        n.Ip       <- string mem.IpAddr
+        n.HostName <- mem.HostName
+        n.Port     <- int mem.Port
+        n.WsPort   <- int mem.WsPort
+        n.GitPort  <- int mem.GitPort
+        n.ApiPort  <- int mem.ApiPort
+        n.State    <- string mem.State
+        cfg.Members.Add(n)
 
-      file.Project.Cluster.Groups.Add(g)
+      for group in cluster.Groups do
+        let g = new GroupYaml()
+        g.Name <- group.Name
+        g.Members.Clear()
 
+        for mem in group.Members do
+          g.Members.Add(string mem)
+
+        cfg.Groups.Add(g)
+      file.Project.Sites.Add(cfg)
     (file, config)
 
   // ** parseLastSaved (private)
@@ -1786,9 +1855,16 @@ module Config =
       let! viewports = ProjectYaml.parseViewPorts file
       let! displays  = ProjectYaml.parseDisplays  file
       let! tasks     = ProjectYaml.parseTasks     file
-      let! cluster   = ProjectYaml.parseCluster   file
+      let! sites     = ProjectYaml.parseSites     file
+
+      let site =
+        if isNull file.Project.ActiveSite || file.Project.ActiveSite = "" then
+          None
+        else
+          Some (Id file.Project.ActiveSite)
 
       return { MachineId = machine.MachineId
+               ActiveSite = site
                Version   = version
                Vvvv      = vvvv
                Audio     = audio
@@ -1797,7 +1873,7 @@ module Config =
                ViewPorts = viewports
                Displays  = displays
                Tasks     = tasks
-               Cluster   = cluster }
+               Sites     = sites }
     }
 
   #endif
@@ -1816,7 +1892,7 @@ module Config =
     |> ProjectYaml.saveViewPorts
     |> ProjectYaml.saveDisplays
     |> ProjectYaml.saveTasks
-    |> ProjectYaml.saveCluster
+    |> ProjectYaml.saveSites
     |> ignore
 
   #endif
@@ -1825,6 +1901,7 @@ module Config =
 
   let create (name: string) (machine: IrisMachine) =
     { MachineId = machine.MachineId
+      ActiveSite = None
       #if FABLE_COMPILER
       Version   = "0.0.0"
       #else
@@ -1837,9 +1914,7 @@ module Config =
       ViewPorts = [| |]
       Displays  = [| |]
       Tasks     = [| |]
-      Cluster   = { Name   = name + " cluster"
-                  ; Members = Map.empty
-                  ; Groups  = [| |] } }
+      Sites     = [| |] }
 
   // ** updateMachine
 
@@ -1884,53 +1959,150 @@ module Config =
   // ** updateCluster
 
   let updateCluster (cluster: ClusterConfig) (config: IrisConfig) =
-    { config with Cluster = cluster }
+    let sites = Array.map (fun site -> if cluster.Id = site.Id then cluster else site) config.Sites
+    { config with Sites = sites }
+
+  // ** updateSites
+
+  let updateSites (sites: ClusterConfig array) (config: IrisConfig) =
+    { config with Sites = sites }
 
   // ** findMember
 
   let findMember (config: IrisConfig) (id: Id) =
-    let result = Map.tryFind id config.Cluster.Members
-
-    match result with
-    | Some mem -> Either.succeed mem
-    | _ ->
-      sprintf "Missing Node: %s" (string id)
+    match config.ActiveSite with
+    | Some active ->
+      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      | Some cluster ->
+        match Map.tryFind id cluster.Members with
+        | Some mem -> Either.succeed mem
+        | _ ->
+          ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
+          |> Error.asProjectError "Config.findMember"
+          |> Either.fail
+      | _ ->
+        ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
+        |> Error.asProjectError "Config.findMember"
+        |> Either.fail
+    | None ->
+      ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.findMember"
       |> Either.fail
 
   // ** getMembers
 
   let getMembers (config: IrisConfig) : Either<IrisError,Map<MemberId,RaftMember>> =
-    config.Cluster.Members
-    |> Either.succeed
+    match config.ActiveSite with
+    | Some active ->
+      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      | Some site -> site.Members |> Either.succeed
+      | None ->
+        ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
+        |> Error.asProjectError "Config.getMembers"
+        |> Either.fail
+    | None ->
+      ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
+      |> Error.asProjectError "Config.getMembers"
+      |> Either.fail
+
+  // ** setActiveSite
+
+  let setActiveSite (id: Id) (config: IrisConfig) =
+    if config.Sites |> Array.exists (fun x -> x.Id = id)
+    then Right { config with ActiveSite = Some id }
+    else
+        ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
+        |> Error.asProjectError "Config.setActiveSite"
+        |> Either.fail
+
+  // ** getActiveSite
+
+  let getActiveSite (config: IrisConfig) =
+    config.ActiveSite
 
   // ** setMembers
 
   let setMembers (mems: Map<MemberId,RaftMember>) (config: IrisConfig) =
-    { config with Cluster = { config.Cluster with Members = mems } }
+    match config.ActiveSite with
+    | Some active ->
+      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      | Some site ->
+        updateCluster { site with Members = mems } config
+      | None -> config
+    | None -> config
 
   // ** selfMember
 
   let selfMember (options: IrisConfig) =
     findMember options options.MachineId
 
+  // ** addSite
+
+  let private addSitePrivate (site: ClusterConfig) setActive (config: IrisConfig) =
+    let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
+    let copy = Array.zeroCreate (config.Sites.Length + (if Option.isSome i then 0 else 1))
+    Array.iteri (fun i s -> copy.[i] <- s) config.Sites
+    copy.[match i with Some i -> i | None -> config.Sites.Length] <- site
+    if setActive
+    then { config with ActiveSite = Some site.Id; Sites = copy }
+    else { config with Sites = copy }
+
+  /// Adds or replaces a site with same Id
+  let addSite (site: ClusterConfig) (config: IrisConfig) =
+    addSitePrivate site false config
+
+  /// Adds or replaces a site with same Id and sets it as the active site
+  let addSiteAndSetActive (site: ClusterConfig) (config: IrisConfig) =
+    addSitePrivate site true config
+
+  // ** removeSite
+
+  let removeSite (id: Id) (config: IrisConfig) =
+    let sites = Array.filter (fun site -> site.Id <> id) config.Sites
+    { config with Sites = sites }
+
+  // ** siteByMember
+
+  let siteByMember (memid: Id) (config: IrisConfig) =
+    Array.fold
+      (fun (m: ClusterConfig option) site ->
+        match m with
+        | Some _ -> m
+        | None ->
+          if Map.containsKey memid site.Members then
+            Some site
+          else None)
+      None
+      config.Sites
+
+  // ** findSite
+
+  let findSite (id: Id) (config: IrisConfig) =
+    Array.tryFind (fun site -> site.Id = id) config.Sites
+
   // ** addMember
 
   let addMember (mem: RaftMember) (config: IrisConfig) =
-    { config with
-        Cluster =
-          { config.Cluster with
-              Members = Map.add mem.Id mem config.Cluster.Members} }
+    match config.ActiveSite with
+    | Some active ->
+      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      | Some site ->
+        let mems = Map.add mem.Id mem site.Members
+        updateCluster { site with Members = mems } config
+      | None -> config
+    | None -> config
 
   // ** removeMember
 
   let removeMember (id: Id) (config: IrisConfig) =
-    { config with
-        Cluster =
-          { config.Cluster with
-              Members = Map.filter
-                          (fun (mem: MemberId) _ -> mem <> id)
-                          config.Cluster.Members } }
+    match config.ActiveSite with
+    | Some active ->
+      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      | Some site ->
+        let mems = Map.remove id site.Members
+        updateCluster { site with Members = mems } config
+      | None -> config
+    | None -> config
 
   // ** logLevel
 
@@ -2276,6 +2448,19 @@ module Project =
   // | |_) / _` | __| '_ \/ __|
   // |  __/ (_| | |_| | | \__ \
   // |_|   \__,_|\__|_| |_|___/
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  let checkPath (machine: IrisMachine) projectName =
+    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
+    if File.Exists path |> not then
+      sprintf "Project Not Found: %s" projectName
+      |> Error.asProjectError "Project.checkPath"
+      |> Either.fail
+    else
+      Either.succeed path
+
+  #endif
 
   // ** filePath
 

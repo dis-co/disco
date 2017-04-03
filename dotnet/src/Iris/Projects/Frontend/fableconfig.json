@@ -9,6 +9,9 @@
     },    
     "targets": {
         "debug": {
+            "symbols": [
+                "DEBUG"
+            ],
             "watch": "../../Iris/Web"
         }
     }

@@ -297,7 +297,7 @@ module CommandLine =
       do!
         match projectDir with
         | Some projectDir ->
-          Commands.Command.LoadProject(projectDir, "admin", "Nsynk")
+          Commands.Command.LoadProject(projectDir, "admin", "Nsynk", None)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
           |> Either.map ignore

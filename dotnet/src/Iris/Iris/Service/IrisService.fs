@@ -178,7 +178,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * projectName:string * userName:string * password:string
+    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -855,67 +855,91 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: string)
+                          (projectName: string, userName: string, password: string, site: string option)
                           (subscriptions: Subscriptions) =
     let isValidPassword (user: User) (password: string) =
       let password = Crypto.hashPassword password user.Salt
       password = user.Password
 
-    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
-    if File.Exists path |> not then
-      sprintf "Project Not Found: %s" projectName
-      |> Error.asProjectError (tag "loadProject")
-      |> Either.fail
-    else
-      either {
-        let! (state: State) = Asset.loadWithMachine path machine
+    either {
+      let! path = Project.checkPath machine projectName
+      let! (state: State) = Asset.loadWithMachine path machine
 
-        let user =
-          state.Users
-          |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+      let user =
+        state.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
 
-        match user with
-        | Some user when isValidPassword user password ->
-          let idleData =
-            match oldState with
-            | Idle idleData -> idleData
-            | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+      match user with
+      | Some user when isValidPassword user password ->
+        let idleData =
+          match oldState with
+          | Idle idleData -> idleData
+          | Loaded (idleData, loadedData) -> dispose loadedData; idleData
 
-          // FIXME: load the actual state from disk
-          let! mem = Config.selfMember state.Project.Config
+        let! state =
+          match site with
+          | Some site ->
+            let site =
+              state.Project.Config.Sites
+              |> Array.tryFind (fun s -> s.Name = site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
+            
+            // Add current machine if necessary
+            let site =
+              let mid = machine.MachineId
+              if Map.containsKey mid site.Members
+              then Right site
+              else
+                // Another cluster must cointain the self member, search for it
+                state.Project.Config.Sites
+                |> Seq.collect (fun site -> site.Members)
+                |> Seq.tryFind (fun kvp -> kvp.Key = mid)
+                |> function
+                  | Some kvp -> Right { site with Members = Map.add mid kvp.Value site.Members }
+                  | None -> Error.asProjectError "" "" |> Left
 
-          let! raftserver = RaftServer.create ()
-          let! wsserver   = SocketServer.create mem
-          let! apiserver  = ApiServer.create mem state.Project.Id
-          let! gitserver  = GitServer.create mem path
+            match site with
+            | Right site ->
+              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+              Right { state with Project = { state.Project with Config = cfg }}
+            | Left err -> Left err
+          | None -> Right state
 
-          // Try to put discovered services into the state
-          let state =
-            match idleData.DiscoveryService.Services with
-            | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
-            | Left err ->
-              string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
-              state
+        // FIXME: load the actual state from disk
+        let! mem = Config.selfMember state.Project.Config
 
-          let loadedData =
-            { MemberId      = mem.Id
-            ; Leader        = None
-            ; Status        = ServiceStatus.Starting
-            ; Store         = new Store(state)
-            ; ApiServer     = apiserver
-            ; GitServer     = gitserver
-            ; RaftServer    = raftserver
-            ; SocketServer  = wsserver
-            ; Subscriptions = subscriptions
-            ; Disposables   = Map.empty }
+        let! raftserver = RaftServer.create ()
+        let! wsserver   = SocketServer.create mem
+        let! apiserver  = ApiServer.create mem state.Project.Id
+        let! gitserver  = GitServer.create mem path
 
-          return Loaded(idleData, loadedData)
-        | _ ->
-          return!
-            "Login rejected"
-            |> Error.asProjectError (tag "loadProject")
-            |> Either.fail
-      }
+        // Try to put discovered services into the state
+        let state =
+          match idleData.DiscoveryService.Services with
+          | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+          | Left err ->
+            string err |> Logger.err mem.Id (tag "loadProject.getDiscoveredServices")
+            state
+
+        let loadedData =
+          { MemberId      = mem.Id
+          ; Leader        = None
+          ; Status        = ServiceStatus.Starting
+          ; Store         = new Store(state)
+          ; ApiServer     = apiserver
+          ; GitServer     = gitserver
+          ; RaftServer    = raftserver
+          ; SocketServer  = wsserver
+          ; Subscriptions = subscriptions
+          ; Disposables   = Map.empty }
+
+        return Loaded(idleData, loadedData)
+      | _ ->
+        return!
+          "Login rejected"
+          |> Error.asProjectError (tag "loadProject")
+          |> Either.fail
+    }
 
   // ** start
 
@@ -960,12 +984,12 @@ module Iris =
 
   let private handleLoad (state: IrisState)
                          (chan: ReplyChan)
-                         (projectName: string, userName: string, password: string)
+                         (projectName, userName, password, site)
                          (config: IrisMachine)
                          (post: CommandAgent)
                          (subscriptions: Subscriptions)
                          (inbox: IrisAgent) =
-    match loadProject state config (projectName, userName, password) subscriptions with
+    match loadProject state config (projectName, userName, password, site) subscriptions with
     | Right nextstate ->
       match start nextstate inbox with
       | Right finalstate ->
@@ -1153,7 +1177,8 @@ module Iris =
         let! msg = inbox.Receive()
         let newstate =
           match msg with
-          | Msg.Load (chan,pname,uname,pass) -> handleLoad state chan (pname,uname,pass) config post subs inbox
+          | Msg.Load (chan,pname,uname,pass,site) ->
+            handleLoad state chan (pname,uname,pass,site) config post subs inbox
           | Msg.Unload chan          -> handleUnload        state chan
           | Msg.Config chan          -> handleConfig        state chan
           | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
@@ -1220,8 +1245,8 @@ module Iris =
               |> Error.asOther (tag "Status")
               |> Either.fail
 
-        member self.LoadProject(name:string, username:string, password:string) =
-          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password)) with
+        member self.LoadProject(name, username, password, site) =
+          match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, site)) with
           | Right Reply.Ok -> Right ()
           | Left error -> Left error
           | Right other ->
