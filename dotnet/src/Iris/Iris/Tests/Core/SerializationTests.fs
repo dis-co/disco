@@ -546,41 +546,79 @@ module SerializationTests =
         let! state = mkTmpDir() |> mkState
 
         [ AddCue        <| mkCue ()
-        ; UpdateCue     <| mkCue ()
-        ; RemoveCue     <| mkCue ()
-        ; AddCueList    <| mkCueList ()
-        ; UpdateCueList <| mkCueList ()
-        ; RemoveCueList <| mkCueList ()
-        ; AddSession    <| mkSession ()
-        ; UpdateSession <| mkSession ()
-        ; RemoveSession <| mkSession ()
-        ; AddUser       <| mkUser ()
-        ; UpdateUser    <| mkUser ()
-        ; RemoveUser    <| mkUser ()
-        ; AddPinGroup      <| mkPinGroup ()
-        ; UpdatePinGroup   <| mkPinGroup ()
-        ; RemovePinGroup   <| mkPinGroup ()
-        ; AddPin        <| mkPin ()
-        ; UpdatePin     <| mkPin ()
-        ; RemovePin     <| mkPin ()
-        ; UpdateSlices  <| mkSlices ()
-        ; AddClient     <| mkClient ()
-        ; UpdateClient  <| mkClient ()
-        ; RemoveClient  <| mkClient ()
-        ; AddMember     <| Member.create (Id.Create())
-        ; UpdateMember  <| Member.create (Id.Create())
-        ; RemoveMember  <| Member.create (Id.Create())
-        ; DataSnapshot  <| state
-        ; Command AppCommand.Undo
-        ; LogMsg(Logger.create Debug "bla" "oohhhh")
-        ; SetLogLevel Warn
-        ]
-        |> List.iter
+          UpdateCue     <| mkCue ()
+          RemoveCue     <| mkCue ()
+          AddCueList    <| mkCueList ()
+          UpdateCueList <| mkCueList ()
+          RemoveCueList <| mkCueList ()
+          AddSession    <| mkSession ()
+          UpdateSession <| mkSession ()
+          RemoveSession <| mkSession ()
+          AddUser       <| mkUser ()
+          UpdateUser    <| mkUser ()
+          RemoveUser    <| mkUser ()
+          AddPinGroup      <| mkPinGroup ()
+          UpdatePinGroup   <| mkPinGroup ()
+          RemovePinGroup   <| mkPinGroup ()
+          AddPin        <| mkPin ()
+          UpdatePin     <| mkPin ()
+          RemovePin     <| mkPin ()
+          UpdateSlices  <| mkSlices ()
+          AddClient     <| mkClient ()
+          UpdateClient  <| mkClient ()
+          RemoveClient  <| mkClient ()
+          AddMember     <| Member.create (Id.Create())
+          UpdateMember  <| Member.create (Id.Create())
+          RemoveMember  <| Member.create (Id.Create())
+          DataSnapshot  <| state
+          Command AppCommand.Undo
+          LogMsg(Logger.create Debug "bla" "oohhhh")
+          SetLogLevel Warn
+        ] |> List.iter
             (fun cmd ->
               let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
               expect "Should be structurally the same" cmd id remsg)
       }
       |> noError
+
+  let test_validate_client_api_request_binary_serialization =
+    testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
+      either {
+        let! state = mkTmpDir() |> mkState
+
+        [ AddCue         <| mkCue ()
+          UpdateCue      <| mkCue ()
+          RemoveCue      <| mkCue ()
+          AddCueList     <| mkCueList ()
+          UpdateCueList  <| mkCueList ()
+          RemoveCueList  <| mkCueList ()
+          AddSession     <| mkSession ()
+          UpdateSession  <| mkSession ()
+          RemoveSession  <| mkSession ()
+          AddUser        <| mkUser ()
+          UpdateUser     <| mkUser ()
+          RemoveUser     <| mkUser ()
+          AddPinGroup    <| mkPinGroup ()
+          UpdatePinGroup <| mkPinGroup ()
+          RemovePinGroup <| mkPinGroup ()
+          AddPin         <| mkPin ()
+          UpdatePin      <| mkPin ()
+          RemovePin      <| mkPin ()
+          UpdateSlices   <| mkSlices ()
+          AddClient      <| mkClient ()
+          UpdateClient   <| mkClient ()
+          RemoveClient   <| mkClient ()
+          AddMember      <| Member.create (Id.Create())
+          UpdateMember   <| Member.create (Id.Create())
+          RemoveMember   <| Member.create (Id.Create())
+        ] |> List.iter
+            (fun cmd ->
+              let msg = cmd |> Iris.Client.ClientApiRequest.Update
+              let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+              expect "Should be structurally the same" msg id remsg)
+      }
+      |> noError
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -620,4 +658,5 @@ module SerializationTests =
       test_validate_client_binary_serialization
       test_validate_state_binary_serialization
       test_validate_state_machine_binary_serialization
+      test_validate_client_api_request_binary_serialization
     ]

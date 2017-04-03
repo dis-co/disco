@@ -14,6 +14,8 @@
 #r "ZeroMQ.dll"
 #r "System.Management"
 #r "Iris.Core.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
 
 open LibGit2Sharp
 open System

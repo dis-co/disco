@@ -1428,6 +1428,6 @@ module Functional =
 module Async =
 
   let asynchronously (f: unit -> unit) =
-    job { f() } |> Hopac.start
+    job { f() } |> Hopac.queue
 
 #endif

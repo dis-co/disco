@@ -621,6 +621,7 @@ module ApiServer =
             client
             |> Msg.AddClient
             |> agent.Post
+
             OK
             |> Binary.encode
             |> RawResponse.fromRequest req
@@ -630,19 +631,21 @@ module ApiServer =
             client
             |> Msg.RemoveClient
             |> agent.Post
+
             OK
             |> Binary.encode
             |> RawResponse.fromRequest req
             |> data.Server.Respond
 
           | Right (Update sm) ->
+            sm
+            |> Msg.ClientUpdate
+            |> agent.Post
+
             OK
             |> Binary.encode
             |> RawResponse.fromRequest req
             |> data.Server.Respond
-            sm
-            |> Msg.ClientUpdate
-            |> agent.Post
 
           | Left error ->
             string error
@@ -662,21 +665,28 @@ module ApiServer =
         let! msg = inbox.Receive()
 
         let newstate =
-          match msg with
-          | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
-          | Msg.Dispose chan                -> handleDispose chan state
-          | Msg.AddClient(client)           -> handleAddClient state subs client inbox
-          | Msg.RemoveClient(client)        -> handleRemoveClient state subs client
-          | Msg.GetClients(chan)            -> handleGetClients chan state
-          | Msg.SetStatus(status)           -> handleSetStatus state subs status
-          | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
-          | Msg.SetState(chan, newstate)    -> handleSetState chan state newstate inbox
-          | Msg.GetState(chan)              -> handleGetState chan state
-          | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-          | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
-          | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
-          | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
-          | Msg.RawRequest(req)             -> handleRawRequest state req inbox
+          try
+            match msg with
+            | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
+            | Msg.Dispose chan                -> handleDispose chan state
+            | Msg.AddClient(client)           -> handleAddClient state subs client inbox
+            | Msg.RemoveClient(client)        -> handleRemoveClient state subs client
+            | Msg.GetClients(chan)            -> handleGetClients chan state
+            | Msg.SetStatus(status)           -> handleSetStatus state subs status
+            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
+            | Msg.SetState(chan, newstate)    -> handleSetState chan state newstate inbox
+            | Msg.GetState(chan)              -> handleGetState chan state
+            | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
+            | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
+            | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
+            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
+            | Msg.RawRequest(req)             -> handleRawRequest state req inbox
+          with
+            | exn ->
+              exn.Message + exn.StackTrace
+              |> sprintf "Error in loop: %O"
+              |> Logger.err "ApiServer"
+              state
 
         return! act newstate
       }

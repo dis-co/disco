@@ -361,7 +361,11 @@ module Logger =
     let tier =
       #if FABLE_COMPILER
       Tier.FrontEnd
-      #else
+      #endif
+      #if IRIS_NODES
+      Tier.Client
+      #endif
+      #if !IRIS_NODES && !FABLE_COMPILER
       Tier.Service
       #endif
 

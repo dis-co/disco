@@ -30,7 +30,7 @@ let main _ =
   Thread.CurrentThread.GetApartmentState()
   |> printfn "threading model: %A"
 
-  ThreadPool.SetMinThreads(10,10)
+  ThreadPool.SetMinThreads(20,20)
   |> printfn "set min threads %b"
 
   ThreadPool.GetMinThreads()
