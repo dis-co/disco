@@ -1,9 +1,9 @@
 ﻿namespace Iris.Service
 
-
 open Argu
 open Iris.Core
 open System
+open System.Threading
 open Iris.Raft
 open Iris.Client
 open Iris.Service
@@ -38,6 +38,16 @@ module Main =
     |> Option.map System.IO.Path.GetFullPath
     |> MachineConfig.init
     |> Error.orExit ignore
+
+    Thread.CurrentThread.GetApartmentState()
+    |> printfn "Using Threading Model: %A"
+
+    let threadCount = System.Environment.ProcessorCount * 2
+    ThreadPool.SetMinThreads(threadCount,threadCount)
+    |> fun result ->
+      printfn "Setting Min. Threads in ThreadPool To %d %s"
+        threadCount
+        (if result then "Successful" else "Unsuccessful")
 
     let result =
       let machine = MachineConfig.get()
