@@ -1405,6 +1405,20 @@ type DoubleFBConstructor =
 
 let DoubleFB: DoubleFBConstructor = failwith "JS only"
 
+type ClockFB =
+  abstract Value: uint32
+
+type ClockFBConstructor =
+  abstract prototype: ClockFB with get, set
+  abstract StartClockFB: builder: FlatBufferBuilder -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: uint32 -> unit
+  abstract EndClockFB: builder: FlatBufferBuilder -> Offset<ClockFB>
+  abstract GetRootAsClockFB: bytes: ByteBuffer -> ClockFB
+  abstract CreateClockFB: builder:FlatBufferBuilder * uint32 -> Offset<ClockFB>
+  abstract Create: unit -> ClockFB
+
+let ClockFB: ClockFBConstructor = failwith "JS only"
+
 //  ____              _ _____ ____
 // | __ )  ___   ___ | |  ___| __ )
 // |  _ \ / _ \ / _ \| | |_  |  _ \
@@ -1488,6 +1502,7 @@ type StateMachinePayloadFBConstructor =
   abstract SlicesFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
+  abstract ClockFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -1506,6 +1521,7 @@ type StateMachineFB =
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
   abstract IrisClientFB: IrisClientFB
+  abstract ClockFB: ClockFB  
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =
