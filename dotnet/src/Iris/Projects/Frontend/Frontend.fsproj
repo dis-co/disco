@@ -40,7 +40,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Core.Frontend\Core.Frontend.fsproj">
       <Name>Iris.Core.Frontend</Name>
-      <Project>{7d6918e9-1494-41e9-9beb-638616110a60}</Project>
+      <Project>{bdd78788-6c2d-47e6-a8c3-f114ee8cc5b4}</Project>
       <Private>True</Private>   
     </ProjectReference>
   </ItemGroup>  
