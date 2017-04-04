@@ -74,97 +74,97 @@ module RaftTestUtils =
 
   let mkcbs (data: StateMachine ref) =
     let onSendRequestVote (n: RaftMember) (v: VoteRequest) =
-      sprintf "%A" v
-      |> Logger.debug n.Id "SendRequestVote"
+      v
+      |> sprintf "%A"
+      |> Logger.debug "SendRequestVote"
       None
 
     let onSendAppendEntries (n: RaftMember) (ae: AppendEntries) =
       string ae
       |> sprintf "%s"
-      |> Logger.debug n.Id "SendAppendEntries"
+      |> Logger.debug "SendAppendEntries"
       None
 
     let onSendInstallSnapshot (n: RaftMember) (is: InstallSnapshot) =
       string is
       |> sprintf "%s"
-      |> Logger.debug n.Id "SendInstall"
+      |> Logger.debug "SendInstall"
       None
 
     let onApplyLog en =
       sprintf "%A" en
-      |> Logger.debug (Id "<unknown>") "ApplyLog"
+      |> Logger.debug "ApplyLog"
 
     let onPersistVote (n : RaftMember option) =
       sprintf "%A" n
-      |> Logger.debug (Id "<fixme>") "PeristVote"
+      |> Logger.debug "PeristVote"
 
     let onPersistTerm (t: Term) =
       sprintf "%A" t
-      |> Logger.debug (Id "<unknown>") "PeristVote"
+      |> Logger.debug "PeristVote"
 
     let onPersistLog (l : RaftLogEntry) =
       l.ToString()
       |> sprintf "%s"
-      |> Logger.debug (Id "<unknown>") "PersistLog"
+      |> Logger.debug "PersistLog"
 
     let onDeleteLog (l : RaftLogEntry) =
       l.ToString()
       |> sprintf "%s"
-      |> Logger.debug (Id "<unknown>") "DeleteLog"
+      |> Logger.debug "DeleteLog"
 
     let onLogMsg (mem: RaftMember) site level str =
-      Logger.log level mem.Id site str
+      Logger.log level site str
 
     let onPrepareSnapshot raft =
       Raft.createSnapshot !data raft |> Some
 
     let onPersistSnapshot (entry: RaftLogEntry) =
       sprintf "Perisisting Snapshot: %A" entry
-      |> Logger.debug (Id "<unknown>") "PersistSnapshot"
+      |> Logger.debug "PersistSnapshot"
 
     let onRetrieveSnapshot _ =
       "Asked to retrieve last snapshot"
-      |> Logger.debug (Id "<unknown>") "RetrieveSnapshot"
+      |> Logger.debug "RetrieveSnapshot"
       None
 
     let onMemberAdded mem =
       sprintf "Member added: %A" mem
-      |> Logger.debug (Id "<unknown>") "MemberAdded"
+      |> Logger.debug "MemberAdded"
 
     let onMemberRemoved mem =
       sprintf "Member removed: %A" mem
-      |> Logger.debug (Id "<unknown>") "MemberRemoved"
+      |> Logger.debug "MemberRemoved"
 
     let onMemberUpdated mem =
       sprintf "Member updated: %A" mem
-      |> Logger.debug (Id "<unknown>") "MemberUpdated"
+      |> Logger.debug "MemberUpdated"
 
     let onConfigured mems =
       sprintf "Cluster configuration applied:\n%A" mems
-      |> Logger.debug (Id "<unknown>") "Configured"
+      |> Logger.debug "Configured"
 
     let onStateChanged olds news =
       sprintf "state changed"
-      |> Logger.debug (Id "<unknown>") "StateChanged"
+      |> Logger.debug "StateChanged"
 
     { SendRequestVote     = onSendRequestVote
-    ; SendAppendEntries   = onSendAppendEntries
-    ; SendInstallSnapshot = onSendInstallSnapshot
-    ; PrepareSnapshot     = onPrepareSnapshot
-    ; PersistSnapshot     = onPersistSnapshot
-    ; RetrieveSnapshot    = onRetrieveSnapshot
-    ; ApplyLog            = onApplyLog
-    ; MemberAdded         = onMemberAdded
-    ; MemberUpdated       = onMemberUpdated
-    ; MemberRemoved       = onMemberRemoved
-    ; Configured          = onConfigured
-    ; StateChanged        = onStateChanged
-    ; PersistVote         = onPersistVote
-    ; PersistTerm         = onPersistTerm
-    ; PersistLog          = onPersistLog
-    ; DeleteLog           = onDeleteLog
-    ; LogMsg              = onLogMsg
-    }
+      SendAppendEntries   = onSendAppendEntries
+      SendInstallSnapshot = onSendInstallSnapshot
+      PrepareSnapshot     = onPrepareSnapshot
+      PersistSnapshot     = onPersistSnapshot
+      RetrieveSnapshot    = onRetrieveSnapshot
+      ApplyLog            = onApplyLog
+      MemberAdded         = onMemberAdded
+      MemberUpdated       = onMemberUpdated
+      MemberRemoved       = onMemberRemoved
+      Configured          = onConfigured
+      StateChanged        = onStateChanged
+      PersistVote         = onPersistVote
+      PersistTerm         = onPersistTerm
+      PersistLog          = onPersistLog
+      DeleteLog           = onDeleteLog
+      LogMsg              = onLogMsg }
 
   let defaultServer _ =
     let self : RaftMember = Member.create (Id.Create())

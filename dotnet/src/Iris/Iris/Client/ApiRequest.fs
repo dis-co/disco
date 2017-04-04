@@ -86,6 +86,31 @@ type ClientApiRequest =
         ClientApiRequestFB.AddParameter(builder, offset.Value)
         ClientApiRequestFB.EndClientApiRequestFB(builder)
 
+      // Client
+      | AddClient    client ->
+        let offset = client.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddClientFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | UpdateClient client ->
+        let offset = client.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateClientFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+      | RemoveClient client ->
+        let offset = client.ToOffset(builder)
+        ClientApiRequestFB.StartClientApiRequestFB(builder)
+        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveClientFB)
+        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
+        ClientApiRequestFB.AddParameter(builder, offset.Value)
+        ClientApiRequestFB.EndClientApiRequestFB(builder)
+
       // Member
       | AddMember    mem ->
         let offset = mem.ToOffset(builder)
@@ -339,6 +364,52 @@ type ClientApiRequest =
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
         return ClientApiRequest.Update (UpdateProject project)
+      }
+
+    //   ____ _ _            _
+    //  / ___| (_) ___ _ __ | |_
+    // | |   | | |/ _ \ '_ \| __|
+    // | |___| | |  __/ | | | |_
+    //  \____|_|_|\___|_| |_|\__|
+
+    | ClientApiCommandFB.AddClientFB ->
+      either {
+        let! client =
+          let clientish = fb.Parameter<IrisClientFB>()
+          if clientish.HasValue then
+            let value = clientish.Value
+            IrisClient.FromFB value
+          else
+            "Empty IrisClientFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddClient client)
+      }
+    | ClientApiCommandFB.UpdateClientFB ->
+      either {
+        let! client =
+          let clientish = fb.Parameter<IrisClientFB>()
+          if clientish.HasValue then
+            let value = clientish.Value
+            IrisClient.FromFB value
+          else
+            "Empty IrisClientFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateClient client)
+      }
+    | ClientApiCommandFB.RemoveClientFB ->
+      either {
+        let! client =
+          let clientish = fb.Parameter<IrisClientFB>()
+          if clientish.HasValue then
+            let value = clientish.Value
+            IrisClient.FromFB value
+          else
+            "Empty IrisClientFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveClient client)
       }
 
     //  __  __                _
@@ -716,7 +787,9 @@ type ClientApiRequest =
     Binary.buildBuffer request
 
   static member FromBytes(raw: byte array) =
-    ClientApiRequestFB.GetRootAsClientApiRequestFB(Binary.createBuffer raw)
+    raw
+    |> Binary.createBuffer
+    |> ClientApiRequestFB.GetRootAsClientApiRequestFB
     |> ClientApiRequest.FromFB
 
 // * ServerApiRequest

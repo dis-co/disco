@@ -24,6 +24,15 @@ module Constants =
   [<Literal>]
   let MCAST_PORT = 5555
 
+  [<Literal>]
+  let API_BACKEND_PREFIX = "inproc://api-backend-"
+
+  [<Literal>]
+  let API_CLIENT_PREFIX = "inproc://api-client-"
+
+  [<Literal>]
+  let RAFT_BACKEND_PREFIX = "inproc://raft-backend-"
+
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|

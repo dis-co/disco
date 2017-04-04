@@ -838,7 +838,7 @@ Project:
       Groups:
         - Name:
           Members:
-            -
+            - 00000000-0000-0000-0000-000000000000
 """
 
   type Config = YamlConfig<"",false,template>
@@ -1658,7 +1658,7 @@ Project:
   let internal parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
       if group.Name.Length > 0 then
-        let ids = Seq.map Id group.Members |> Seq.toArray
+        let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
 
         return { Name    = group.Name
                  Members = ids }
@@ -1775,7 +1775,7 @@ Project:
         g.Members.Clear()
 
         for mem in group.Members do
-          g.Members.Add(string mem)
+          g.Members.Add(mem |> string |> Guid.Parse)
 
         cfg.Groups.Add(g)
       file.Project.Sites.Add(cfg)

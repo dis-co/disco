@@ -26,51 +26,94 @@ module ZmqIntegrationTests =
   // /____|_| |_| |_|\__, |   |_|\___||___/\__|___/
   //                    |_|
 
-  let test_proper_cleanup_of_request_sockets =
-    testCase "validate Req sockets are cleaned up properly" <| fun _ ->
+  let test_broker_request_handling =
+    testCase "broker request handling" <| fun _ ->
       either {
-        let srv = "tcp://127.0.0.1:8989"
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        let n = 12
-        let msgs = [ "hi"; "yep"; "bye" ]
-        let count = ref 0
+        let rand = new System.Random()
 
-        let handler (msg: byte array) =
-          lock count <| fun _ ->
-            let next = !count + 1
-            count := next
-          msg
+        let num = 5
+        let frontend = "tcp://127.0.0.1:5555"
+        let backend = "inproc://backend"
+        use! broker = Broker.create (Id.Create()) num frontend backend
 
-        use rep = new Rep(Id.Create(), srv, handler)
+        let loop (inbox: MailboxProcessor<RawRequest>) =
+          let rec impl () = async {
+              let! request = inbox.Receive()
 
-        do! rep.Start()
+              Tracing.trace "Agent responding" <| fun () ->
+                // add the requesting clients id to the random number so can later on
+                // check that each client has gotten the answer to its own question
+                let response = BitConverter.ToInt64(request.Body,0) +
+                               BitConverter.ToInt64(request.From.ToByteArray(),0)
 
-        let socks =
-          [ for _ in 0 .. (n - 1) do
-              let sock = new Req(Id.Create(), srv, Constants.REQ_TIMEOUT)
-              sock.Start()
-              yield sock ]
+                response
+                |> BitConverter.GetBytes
+                |> RawResponse.fromRequest request
+                |> broker.Respond
 
-        let request (str: string) (sck: Req) =
+              return! impl ()
+            }
+          impl ()
+
+        let mbp = MailboxProcessor.Start(loop)
+        use obs = broker.Subscribe mbp.Post
+
+        let clients =
+          [| for n in 0 .. num - 1 do
+               yield Client.create (Id.Create()) frontend |]
+
+        let mkRequest (client: IClient) =
           async {
-            let result = str |> Encoding.UTF8.GetBytes |> sck.Request
-            return result
+            let request = rand.Next() |> int64
+
+            let response =
+              request
+              |> BitConverter.GetBytes
+              |> client.Request
+              |> Either.map (fun ba -> BitConverter.ToInt64(ba, 0))
+              |> Either.get
+
+            return (client.Id, request, response)
           }
 
-        msgs
-        |> List.fold (fun lst str ->
-                    List.fold
-                      (fun inner sock -> request str sock :: inner)
-                      lst
-                      socks)
-                    []
-        |> Async.Parallel
-        |> Async.RunSynchronously
-        |> Array.iter (expect "Should be a success" true Either.isSuccess)
+        let now = DateTime.Now
 
-        expect "Should have correct number of requests" (n * List.length msgs) id !count
+        // prove that we can correlate the random request number with a client
+        // by adding the clients id to the random number
+        let result =
+          [| for i in 0 .. 50 do
+              yield [| for client in clients do
+                         yield mkRequest client |] |]
+          |> Array.map (Async.Parallel >> Async.RunSynchronously)
+          |> Array.fold
+            (fun m batch ->
+              if m then
+                Array.fold
+                  (fun m' (id,request,response) ->
+                    if m'
+                    then
+                      let computed =
+                        id
+                        |> string
+                        |> Guid.Parse
+                        |> fun guid -> guid.ToByteArray()
+                        |> fun bytes -> BitConverter.ToInt64(bytes,0)
+                      (request + computed) = response
+                    else m')
+                  true
+                  batch
+              else m)
+            true
 
-        List.iter dispose socks
+        let total = DateTime.Now
+
+        // printfn "took %fms" ((total - now).TotalMilliseconds)
+
+        Array.iter dispose clients
+
+        expect "Should be consistent" true id result
       }
       |> noError
 
@@ -82,5 +125,5 @@ module ZmqIntegrationTests =
 
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
-      test_proper_cleanup_of_request_sockets
-    ]
+      test_broker_request_handling
+    ] |> testSequenced

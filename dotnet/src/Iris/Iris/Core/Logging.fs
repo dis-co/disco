@@ -25,6 +25,7 @@ open Iris.Serialization
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
 type LogLevel =
+  | Trace
   | Debug
   | Info
   | Warn
@@ -32,6 +33,7 @@ type LogLevel =
 
   static member Parse (str: string) =
     match String.toLower str with
+    | "trace"         -> Trace
     | "debug"         -> Debug
     | "info"          -> Info
     | "warn"          -> Warn
@@ -44,6 +46,7 @@ type LogLevel =
 
   override self.ToString() =
     match self with
+    | Trace -> "trace"
     | Debug -> "debug"
     | Info  -> "info"
     | Warn  -> "warn"
@@ -230,8 +233,15 @@ module Logger =
 
   open System
   open System.Threading
-
   open Iris.Core
+
+  // ** id
+
+  let mutable private id = Id "<uninitialized>"
+
+  // ** initialize
+
+  let initialize (mid: Id) = id <- mid
 
   // ** stdout
 
@@ -244,13 +254,20 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    log |> string |> printfn "%s"
+    log |> printfn "%O"
+
+  // ** filter
+
+  let filter (level: LogLevel) (logger: LogEvent -> unit) (log: LogEvent) =
+    if level = log.LogLevel then
+      logger log
 
   // ** stdoutWith
 
   let stdoutWith (level: LogLevel) (log: LogEvent) =
     match level, log.LogLevel with
-    | Debug, _ -> stdout log
+    | Trace, _ -> stdout log
+    | Debug, Debug | Debug, Info | Debug, Warn | Debug, Err -> stdout log
     | Info, Info | Info, Warn | Info, Err ->
       stdout log
     | Warn, Warn | Warn, Err ->
@@ -346,11 +363,15 @@ module Logger =
   /// - arg: arg
   ///
   /// Returns: LogEvent
-  let create (level: LogLevel) (id: Id) (callsite: CallSite) (msg: string) =
+  let create (level: LogLevel) (callsite: CallSite) (msg: string) =
     let tier =
       #if FABLE_COMPILER
       Tier.FrontEnd
-      #else
+      #endif
+      #if IRIS_NODES
+      Tier.Client
+      #endif
+      #if !IRIS_NODES && !FABLE_COMPILER
       Tier.Service
       #endif
 
@@ -374,13 +395,29 @@ module Logger =
   ///
   /// ### Signature:
   /// - level: LogLevel
-  /// - id: Id
   /// - callside: CallSite
   /// - msg: string
   ///
   /// Returns: unit
-  let log (level: LogLevel) (id: Id) (callsite: CallSite) (msg: string) =
-    create level id callsite msg
+  let log (level: LogLevel) (callsite: CallSite) (msg: string) =
+    msg
+    |> create level callsite
+    |> agent.Post
+
+  // ** trace
+
+  /// ## trace
+  ///
+  /// Shorthand for creating a Trace event.
+  ///
+  /// ### Signature:
+  /// - callsite: location where even was generated
+  /// - msg: log message
+  ///
+  /// Returns: unit
+  let trace (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Trace callsite
     |> agent.Post
 
   // ** debug
@@ -390,13 +427,13 @@ module Logger =
   /// Shorthand for creating a Debug event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: unit
-  let debug (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Debug id callsite msg
+  let debug (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Debug callsite
     |> agent.Post
 
   // ** info
@@ -406,13 +443,13 @@ module Logger =
   /// Shorthand for creating a Info event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let info (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Info id callsite msg
+  let info (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Info callsite
     |> agent.Post
 
   // ** warn
@@ -422,13 +459,13 @@ module Logger =
   /// Shorthand for creating a Warn event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let warn (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Warn id callsite msg
+  let warn (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Warn callsite
     |> agent.Post
 
   // ** err
@@ -438,11 +475,11 @@ module Logger =
   /// Shorthand for creating a Err event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let err (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Err id callsite msg
+  let err (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Err callsite
     |> agent.Post

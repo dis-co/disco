@@ -56,13 +56,13 @@ type RaftAppContext =
     Raft:        RaftValue
     Options:     IrisConfig
     Callbacks:   IRaftCallbacks
-    Server:      Rep
-    Periodic:    IDisposable
-    Connections: ConcurrentDictionary<Id,Req> }
+    Server:      IBroker
+    Disposables: IDisposable list
+    Connections: ConcurrentDictionary<Id,IClient> }
 
   interface IDisposable with
     member self.Dispose() =
-      dispose self.Periodic
+      List.iter dispose self.Disposables
       for KeyValue(_,connection) in self.Connections do
         dispose connection
       self.Connections.Clear()
@@ -88,7 +88,7 @@ type IRaftServer =
   abstract LeaveCluster  : unit -> Either<IrisError, unit>
   abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
   abstract RmMember      : Id -> Either<IrisError, EntryResponse>
-  abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,Req>>
+  abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,IClient>>
   abstract Leader        : Either<IrisError, RaftMember option>
   abstract IsLeader      : bool
 

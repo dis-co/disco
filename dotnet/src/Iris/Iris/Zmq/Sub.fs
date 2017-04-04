@@ -41,12 +41,11 @@ module Sub =
   /// Thread-safe Sub socket (corresponds to ZSocketType.SUB)
   ///
   /// ### Signature:
-  /// - id:      id of current process/machine
   /// - addr:    Address to connect to
   /// - prefix:  string prefix to match traffic to
   ///
   /// Returns: instance of Sub
-  type Sub (id: Id, addr: string, prefix: string) =
+  type Sub (addr: string, prefix: string) =
 
     let tag = sprintf "Sub.%s"
 
@@ -117,7 +116,7 @@ module Sub =
           bytes
           |> Array.length
           |> sprintf "[%s] Got %d bytes long message on " addr
-          |> Logger.debug id (tag "worker")
+          |> Logger.debug (tag "worker")
 
           notify subscriptions bytes
 

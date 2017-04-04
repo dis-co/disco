@@ -20,6 +20,7 @@ open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
 open System.Runtime.CompilerServices
+open Hopac
 
 #endif
 
@@ -1416,5 +1417,21 @@ module Asset =
 module Functional =
 
   let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
+
+#endif
+
+// * Async
+
+#if !FABLE_COMPILER
+
+[<AutoOpen>]
+module Async =
+
+  let asynchronously (f: unit -> unit) =
+    #if IRIS_NODES
+    async { f() } |> Async.Start
+    #else
+    job { f() } |> Hopac.queue
+    #endif
 
 #endif

@@ -27,6 +27,8 @@ module RaftIntegrationTests =
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let machine1 = MachineConfig.create ()
         let machine2 = MachineConfig.create ()
 
@@ -74,6 +76,8 @@ module RaftIntegrationTests =
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let port = 12000us
         let machine = MachineConfig.create ()
 
@@ -109,6 +113,8 @@ module RaftIntegrationTests =
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = ref None
 
         let setState (ev: RaftEvent) =
@@ -203,7 +209,6 @@ module RaftIntegrationTests =
 
       // db
       // test_log_snapshotting_should_clean_all_logs
-
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log

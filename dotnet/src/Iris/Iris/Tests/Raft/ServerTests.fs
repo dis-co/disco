@@ -2,7 +2,7 @@ namespace Iris.Tests.Raft
 
 open System.Net
 open Expecto
-
+open Hopac
 open Iris.Raft
 open Iris.Core
 
@@ -1001,7 +1001,7 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendVoteRequest peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveVoteResponse peer1.Id response
 
@@ -1253,7 +1253,7 @@ module ServerTests =
         do! Raft.setStateM Leader
 
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1268,7 +1268,7 @@ module ServerTests =
         let! peer = Raft.getMemberM peer.Id >>= (Option.get >> returnM)
 
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1283,7 +1283,7 @@ module ServerTests =
         do! Raft.setNextIndexM peer.Id 2u
         let! peer = Raft.getMemberM peer.Id >>= (Option.get >> returnM)
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1306,7 +1306,7 @@ module ServerTests =
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1320,7 +1320,7 @@ module ServerTests =
         do! Raft.setNextIndexM peer.Id 1u
         do! Raft.appendEntryM log >>= ignoreM
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1343,7 +1343,7 @@ module ServerTests =
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         (!sender.Outbox)
         |> expect "Should have a message" 1 List.length
@@ -1411,11 +1411,11 @@ module ServerTests =
 
         // peer 1
         let! request = Raft.sendAppendEntry peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         // peer 2
         let! request = Raft.sendAppendEntry peer2
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id response
         // first response, no majority yet, will not set commit idx
@@ -1513,10 +1513,10 @@ module ServerTests =
         do! Raft.appendEntryM log3 >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id response
         do! expectM "Should have commit index 0" 0u Raft.commitIndex
@@ -1528,10 +1528,10 @@ module ServerTests =
         do! expectM "Should have lastAppliedIndex 0" 0u Raft.lastAppliedIdx
 
         let! request = Raft.sendAppendEntry peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id { response with CurrentIndex = 2u; FirstIndex = 2u }
         do! expectM "Should have commit index 0" 0u Raft.commitIndex
@@ -1543,10 +1543,10 @@ module ServerTests =
         do! expectM "Should have lastAppliedIndex 0" 0u Raft.lastAppliedIdx
 
         let! request = Raft.sendAppendEntry peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id { response with Term = 2u; CurrentIndex = 3u; FirstIndex = 3u }
         do! expectM "Should have commit index 0" 0u Raft.commitIndex
@@ -1728,10 +1728,10 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer1
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! expectM "Should have 2 msgs" 2 (fun _ -> List.length !sender.Outbox)
         do! Raft.becomeFollower ()
@@ -1878,7 +1878,7 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer
-        Async.RunSynchronously request |> ignore
+        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer.Id resp
         do! expectM "Should have nextIdx Works 1" 1u (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)

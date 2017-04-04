@@ -16,6 +16,8 @@ open System.Management
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Control
 open FSharpx.Functional
+open Hopac
+open Hopac.Infixes
 
 // * GitServer
 
@@ -377,12 +379,13 @@ module Git =
       |> chan.Reply
       state
     | Running data ->
-      for subscription in subscriptions do
-        subscription.OnNext (Exited 0)
-      dispose data
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
+      asynchronously <| fun _ ->
+        for subscription in subscriptions do
+          subscription.OnNext (Exited 0)
+        dispose data
+        Reply.Ok
+        |> Either.succeed
+        |> chan.Reply
       Idle
 
   // ** loop

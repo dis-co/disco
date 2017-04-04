@@ -1,0 +1,29 @@
+namespace Iris.Core
+
+module Tracing =
+  open System
+  open System.Diagnostics
+
+  let mutable private on = false
+
+  let enable() = on <- true
+  let disable() = on <- false
+
+  let trace (tag: string) (f: unit -> 'b) =
+    #if !FABLE_COMPILER
+    let env =
+      match Environment.GetEnvironmentVariable "IRIS_TRACING" with
+      | "true" -> true
+      | _ -> false
+
+    if on || env then
+      let stop = new Stopwatch()
+      stop.Start()
+      let result = f()
+      stop.Stop()
+      Logger.trace tag (sprintf "took %dms" stop.ElapsedMilliseconds)
+      result
+    else f()
+    #else
+    f()
+    #endif

@@ -585,7 +585,7 @@ module Graph =
       | Left error ->
         error
         |> string
-        |> Logger.err state.InClientId.[0] "registerHandlers"
+        |> Logger.err "registerHandlers"
 
     let vecsizeHandler = new EventHandler(vecsizeUpdate)
     let columnsHandler = new EventHandler(vecsizeUpdate)
@@ -724,7 +724,7 @@ module Graph =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "parseSeqWith"
+          |> Logger.err "parseSeqWith"
           lst)
       []
       pins
@@ -1074,7 +1074,7 @@ module Graph =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "onNodeExposed"
+      |> Logger.err "onNodeExposed"
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
@@ -1208,7 +1208,7 @@ module Graph =
             | Left error   ->
               error
               |> string
-              |> Logger.err state.InClientId.[0] "processing"
+              |> Logger.err "processing"
             | Right parsed ->
               List.iter
                 (fun (pin,parsed) ->

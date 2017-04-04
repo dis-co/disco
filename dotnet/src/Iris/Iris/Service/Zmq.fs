@@ -26,7 +26,7 @@ module ZmqUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: Req) (req: RaftRequest) : Either<IrisError,RaftResponse> =
+  let request (sock: IClient) (req: RaftRequest) : Either<IrisError,RaftResponse> =
     req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
   // ** mkReqSocket
@@ -41,10 +41,9 @@ module ZmqUtils =
   ///
   /// Returns: fszmq.Socket
   let mkReqSocket (mem: RaftMember) =
-    let addr = memUri mem
-    let socket = new Req(mem.Id, addr, Constants.REQ_TIMEOUT)
-    socket.Start()
-    socket
+    mem
+    |> memUri
+    |> Client.create (Id.Create())
 
   // ** getSocket
 
@@ -57,7 +56,7 @@ module ZmqUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Req option
-  let getSocket (mem: RaftMember) (connections: Map<Id,Req>) : Req option =
+  let getSocket (mem: RaftMember) (connections: Map<Id,IClient>) : IClient option =
     Map.tryFind mem.Id connections
 
   // ** disposeSocket
@@ -71,7 +70,7 @@ module ZmqUtils =
   /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
-  let disposeSocket (mem: RaftMember) (connections: Map<Id,Req>) =
+  let disposeSocket (mem: RaftMember) (connections: Map<Id,IClient>) =
     match Map.tryFind mem.Id connections with
     | Some client ->
       dispose client
@@ -90,7 +89,7 @@ module ZmqUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: Req) : Either<IrisError,RaftResponse> =
+  let rawRequest (request: RaftRequest) (client: IClient) : Either<IrisError,RaftResponse> =
     request
     |> Binary.encode
     |> client.Request
@@ -109,7 +108,7 @@ module ZmqUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (client: Req) (request: RaftRequest) =
+  let performRequest (client: IClient) (request: RaftRequest) =
     either {
       try
         let! response = rawRequest request client

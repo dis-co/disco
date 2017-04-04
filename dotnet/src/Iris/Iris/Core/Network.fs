@@ -15,12 +15,73 @@ open System.Net.NetworkInformation
 
 #endif
 
+(*
+
+type NetworkInterfaceStatus =
+  | Up
+  | Down
+  | Unknown
+
+type NetworkInterfaceType =
+  | Ethernet
+  | Wireless
+  | Loopback
+  | Unknown
+
+type NetworkInterface =
+  { Name: string
+    Type: NetworkInterfaceType
+    Status: NetworkInterfaceStatus
+    Speed: int64
+    SupportsMulticast: bool
+    IpAddress: IpAddress }
+
+*)
+
 // * Network
 
 [<RequireQualifiedAccess>]
 module Network =
 
-  // *** getHostName
+  (*
+
+  let parseInterfaceType (iface: NetworkInformation.NetworkInterface) =
+    match iface.NetworkInterfaceType with
+    | NetworkInformation.NetworkInterfaceType.Ethernet -> Ethernet
+    | NetworkInformation.NetworkInterfaceType.Wireless80211 -> Wireless
+    | NetworkInformation.NetworkInterfaceType.Loopback -> Loopback
+    | _ -> Unknown
+
+  let parseInterfaceStatus (iface: NetworkInformation.NetworkInterface) =
+    match iface.OperationalStatus with
+    | OperationalStatus.Up -> Up
+    | OperationalStatus.Down -> Down
+    | _ -> NetworkInterfaceStatus.Unknown
+
+  // ** getInterfaces
+
+  let getIntefaces () =
+    NetworkInterface.GetAllNetworkInterfaces()
+    |> Seq.fold
+      (fun lst (iface: NetworkInformation.NetworkInterface) ->
+        if ( iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Ethernet
+           || iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Wireless80211 )
+           && iface.OperationalStatus    = OperationalStatus.Up
+        then
+          let parsed =
+            { Name = iface.Id
+              Type = parseInterfaceType iface
+              Status = parseInterfaceStatus iface
+              Speed = iface.Speed
+              SupportsMulticast = iface.SupportsMulticast
+              IpAddress = Ip}
+          in parsed :: lst
+        else lst)
+      []
+
+  *)
+
+  // ** getHostName
 
   /// ## Get the current machine's host name
   ///
@@ -42,7 +103,7 @@ module Network =
 
   #if !FABLE_COMPILER
 
-  // *** getIpAddress
+  // ** getIpAddress
 
   /// ## getIpAddress
   ///

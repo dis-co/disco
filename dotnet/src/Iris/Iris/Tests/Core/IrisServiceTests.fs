@@ -29,6 +29,8 @@ module IrisServiceTests =
   let test_ensure_gitserver_restart_on_premature_exit =
     testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let signal = ref 0
 
         let path = tmpPath()
@@ -65,6 +67,7 @@ module IrisServiceTests =
           |> File.ReadAllText
 
         use! service = IrisService.create machine (fun _ -> Async.result (Right "ok"))
+
         use oobs =
           (fun ev ->
             match ev with
@@ -74,7 +77,10 @@ module IrisServiceTests =
 
         do! service.LoadProject(name, "admin", "Nsynk")
 
-        let! gitserver = service.GitServer
+        let! gitserver =
+          Tracing.trace "getting git server" <| fun () ->
+            service.GitServer
+
         let! pid = gitserver.Pid
 
         expect "Git should be running" true Process.isRunning pid
@@ -92,6 +98,7 @@ module IrisServiceTests =
         expect "Should be a different pid" false ((=) pid) newpid
         expect "Git should be running" true Process.isRunning newpid
         expect "Should have emitted another Started event" 2 id !signal
+
       }
       |> noError
 
@@ -104,4 +111,4 @@ module IrisServiceTests =
   let irisServiceTests =
     testList "IrisService Tests" [
       test_ensure_gitserver_restart_on_premature_exit
-    ]
+    ] |> testSequenced

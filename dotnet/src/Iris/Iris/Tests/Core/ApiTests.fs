@@ -47,11 +47,13 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem state.Project.Id
+        let! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
         do! server.SetState state
@@ -68,7 +70,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = mem.ApiPort + 1us }
 
-        use! client = ApiClient.create srvr clnt
+        let! client = ApiClient.create srvr clnt
 
         let check = ref false
 
@@ -97,10 +99,12 @@ module ApiTests =
 
         Thread.Sleep 100
 
-        expect "Should have received another snapshot" true id !check
-
         let! clientState = client.State
 
+        dispose server
+        dispose client
+
+        expect "Should have received another snapshot" true id !check
         expect "Should be equal" newstate id clientState
       }
       |> noError
@@ -108,11 +112,13 @@ module ApiTests =
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem state.Project.Id
+        let! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
         do! server.SetState state
@@ -129,13 +135,14 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = mem.ApiPort + 1us }
 
-        use! client = ApiClient.create srvr clnt
+        let! client = ApiClient.create srvr clnt
 
-        let check = ref 0
+        let mutable check = 0L
 
         let handler (ev: ClientEvent) =
           match ev with
-          | ClientEvent.Update _ -> check := !check + 1
+          | ClientEvent.Update _ ->
+            Threading.Interlocked.Increment &check |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
@@ -159,11 +166,13 @@ module ApiTests =
 
         Thread.Sleep 100
 
-        expect "Should have emitted correct number of events" (List.length events) id !check
-
         let! serverState = server.State
         let! clientState = client.State
 
+        dispose server
+        dispose client
+
+        expect "Should have emitted correct number of events" (List.length events |> int64) id check
         expect "Should be equal" serverState id clientState
       }
       |> noError
@@ -177,25 +186,13 @@ module ApiTests =
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create mem state.Project.Id
-
         let check = ref 0
-
-        let apiHandler (ev: ApiEvent) =
-          match ev with
-          | ApiEvent.Update sm ->
-            check := !check + 1
-            server.Update sm
-          | _ -> ()
-
-        use obs2 = server.Subscribe(apiHandler)
-
-        do! server.Start()
-        do! server.SetState state
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
@@ -209,7 +206,21 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = mem.ApiPort + 1us }
 
-        use! client = ApiClient.create srvr clnt
+        let! server = ApiServer.create mem state.Project.Id
+
+        let apiHandler (ev: ApiEvent) =
+          match ev with
+          | ApiEvent.Update sm ->
+            check := !check + 1
+            server.Update sm
+          | _ -> ()
+
+        use obs2 = server.Subscribe(apiHandler)
+
+        let! client = ApiClient.create srvr clnt
+
+        do! server.Start()
+        do! server.SetState state
         do! client.Start()
 
         Thread.Sleep 100
@@ -261,6 +272,9 @@ module ApiTests =
         expect "Client should have zero cuelists" 0 len clientState.CueLists
 
         expect "Should be equal" serverState id clientState
+
+        dispose server
+        dispose client
       }
       |> noError
 

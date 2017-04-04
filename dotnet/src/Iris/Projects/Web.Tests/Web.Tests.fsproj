@@ -112,6 +112,9 @@
     <Compile Include="..\..\Iris\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Tracing.fs">
+      <Link>Tracing.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>

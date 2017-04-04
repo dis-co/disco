@@ -1,5 +1,6 @@
 module Iris.Tests.Main
 
+open System.Threading
 open Expecto
 open Iris.Core
 open Iris.Tests
@@ -23,4 +24,17 @@ let all =
 
 [<EntryPoint>]
 let main _ =
+  Id.Create ()
+  |> Logger.initialize
+
+  Thread.CurrentThread.GetApartmentState()
+  |> printfn "threading model: %A"
+
+  let threadCount = System.Environment.ProcessorCount * 8
+  ThreadPool.SetMinThreads(threadCount,threadCount)
+  |> printfn "set min threads %b"
+
+  ThreadPool.GetMinThreads()
+  |> printfn "min threads (worker,io): %A"
+
   runTests defaultConfig all

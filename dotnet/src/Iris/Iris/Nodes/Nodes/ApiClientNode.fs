@@ -97,7 +97,7 @@ module Api =
   // ** enqueueEvent
 
   let private enqueueEvent (state: PluginState) (ev: ClientEvent) =
-      state.Events.Enqueue ev
+    state.Events.Enqueue ev
 
   // ** startClient
 
@@ -109,7 +109,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "startClient"
+          |> Logger.err "startClient"
           IPv4Address "127.0.0.1"
 
       let name =
@@ -137,7 +137,7 @@ module Api =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "startClient"
+          |> Logger.err "startClient"
           IPv4Address "127.0.0.1"
 
       let port =
@@ -158,7 +158,7 @@ module Api =
     match result with
     | Right client ->
       let apiobs = client.Subscribe(enqueueEvent state)
-      Logger.info state.InClientId.[0] "startClient" "successfully started ApiClient"
+      Logger.info "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Running
@@ -167,7 +167,7 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "startClient"
+      |> Logger.err "startClient"
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -177,15 +177,14 @@ module Api =
 
   let private initialize (state: PluginState) =
     if not state.Initialized then
-      state
-      |> startClient
+      startClient state
     else
       state
 
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Logger.debug state.InClientId.[0] "updateState" "updating state output pins with new state"
+    Logger.debug "updateState" "updating state output pins with new state"
     match state.ApiClient.State with
     | Right data ->
       state.OutState.[0] <- data
@@ -193,11 +192,11 @@ module Api =
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "updateState"
+      |> Logger.err "updateState"
       { state with Status = ServiceStatus.Failed error }
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
-    Logger.debug state.InClientId.[0] "updateCommands" "update command output pins"
+    Logger.debug "updateCommands" "update command output pins"
     state.OutCommands.SliceCount <- (Array.length cmds)
     state.OutCommands.AssignFrom cmds
 
@@ -234,18 +233,18 @@ module Api =
           | Left error ->
             error
             |> string
-            |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
+            |> Logger.err "mergeGraphState"
       plugstate
     | Left error ->
       error
       |> string
-      |> Logger.err plugstate.InClientId.[0] "mergeGraphState"
+      |> Logger.err "mergeGraphState"
       plugstate
 
   // ** processInputs
 
   let private processInputs (state: PluginState) =
-    if state.InUpdate.[0] then
+    if state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
@@ -254,11 +253,11 @@ module Api =
             cmd
             |> string
             |> sprintf "%s successfully appended in cluster"
-            |> Logger.debug state.InClientId.[0] "processInputs"
+            |> Logger.debug "processInputs"
           | Left error ->
             error
             |> string
-            |> Logger.err state.InClientId.[0] "processInputs"
+            |> Logger.err "processInputs"
       state
     else
       state
