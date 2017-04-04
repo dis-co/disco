@@ -1520,9 +1520,9 @@ module Raft =
 
   let applyEntry (cbs: IRaftCallbacks) = function
     | JointConsensus(_,_,_,changes,_) -> Array.iter (notifyChange cbs) changes
-    | Configuration(_,_,_,mems,_)    -> cbs.Configured mems
-    | LogEntry(_,_,_,data,_)          -> cbs.ApplyLog data
-    | Snapshot(_,_,_,_,_,_,data) as snapshot  ->
+    | Configuration(_,_,_,mems,_) -> cbs.Configured mems
+    | LogEntry(_,_,_,data,_) -> cbs.ApplyLog data
+    | Snapshot(_,_,_,_,_,_,data) as snapshot ->
       cbs.PersistSnapshot snapshot
       cbs.ApplyLog data
 
@@ -1635,11 +1635,12 @@ module Raft =
 
       do! setTimeoutElapsedM 0u
 
-      // IMPROVEMENT: implementent chunked transmission as per paper
-      cbs.PersistSnapshot is.Data
-
       match is.Data with
-      | Snapshot(_,idx,_,_,_,mems,_) ->
+      | Snapshot(_,idx,_,_,_,mems,data) as snapshot ->
+
+        // IMPROVEMENT: implementent chunked transmission as per paper
+        cbs.PersistSnapshot snapshot
+
         let! state = get
 
         let! remaining = entriesUntilExcludingM idx
@@ -1707,8 +1708,8 @@ module Raft =
         | Some snapshot ->
           do! updateLog snapshot |> modify
           match snapshot.Data with
-          | Some entry -> cbs.PersistSnapshot entry
-          | None -> ()
+          | Some snapshot -> cbs.PersistSnapshot snapshot
+          | _ -> ()
         | _ -> ()
     }
 

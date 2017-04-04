@@ -178,15 +178,83 @@ module RaftIntegrationTests =
       }
       |> noError
 
+  let test_log_snapshotting_should_clean_all_logs =
+    ftestCase "log snapshotting should clean all logs" <| fun _ ->
+      either {
+        Tracing.enable()
+
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
+        let state = ref None
+
+        let setState (ev: RaftEvent) =
+          match !state, ev with
+          | None, StateChanged (_,Leader) ->
+            lock state <| fun _ ->
+              state := Some Leader
+          | _ -> ()
+
+        let machine1 = MachineConfig.create ()
+        let machine2 = MachineConfig.create ()
+
+        let mem1 =
+          machine1.MachineId
+          |> Member.create
+          |> Member.setPort 8000us
+
+        let mem2 =
+          machine2.MachineId
+          |> Member.create
+          |> Member.setPort 8001us
+
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
+
+        let leadercfg =
+          Config.create "leader" machine1
+          |> Config.addSiteAndSetActive site
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        let followercfg =
+          Config.create "follower" machine2
+          |> Config.addSiteAndSetActive site
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        use! leader = RaftServer.create ()
+
+        use obs1 = leader.Subscribe setState
+
+        do! leader.Load leadercfg
+
+        use! follower = RaftServer.create ()
+
+        use obs2 = follower.Subscribe setState
+
+        do! follower.Load(followercfg)
+
+        let! state1 = leader.State
+        let! state2 = follower.State
+
+        max
+          state1.Raft.ElectionTimeout
+          state2.Raft.ElectionTimeout
+        |> (int >> ((+) 100))
+        |> Thread.Sleep
+
+        expect "Should have elected a leader" (Some Leader) id !state
+
+      }
+      |> noError
+
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
   // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
   // | |_) |  __/ | | | (_| | | | | | (_| |
   // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
   // |_|                             |___/
-
-  let test_log_snapshotting_should_clean_all_logs =
-    pending "log snapshotting should clean all logs"
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"
@@ -208,7 +276,7 @@ module RaftIntegrationTests =
       test_validate_follower_joins_leader_after_startup
 
       // db
-      // test_log_snapshotting_should_clean_all_logs
+      test_log_snapshotting_should_clean_all_logs
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log

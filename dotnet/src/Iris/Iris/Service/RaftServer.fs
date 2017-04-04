@@ -287,25 +287,6 @@ module Raft =
       |> Logger.err (tag "sendInstallSnapshot")
       None
 
-  // ** prepareSnapshot
-
-  let private prepareSnapshot state snapshot =
-    Raft.createSnapshot (DataSnapshot snapshot) state.Raft
-  //     match onCreateSnapshot with
-
-  //     | Some cb ->
-  //       let currIdx = Log.index raft.Log
-  //       let prevTerm = Log.term raft.Log
-  //       let term = raft.CurrentTerm
-  //       let mems = raft.Peers |> Map.toArray |> Array.map snd
-  //       let data = cb ()
-  //       Snapshot(Id.Create(), currIdx + 1u, term, currIdx, prevTerm, mems, data)
-  //       |> Log.fromEntries
-  //       |> Some
-  //     | _ ->
-  //       Logger.err tag "Unable to create snapshot. No data handler specified."
-  //       None
-
   let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
     Tracing.trace "RaftServer.trigger" <| fun () ->
       for subscription in subscriptions do
@@ -332,57 +313,91 @@ module Raft =
 
         member self.PrepareSnapshot raft =
           Tracing.trace "RaftServer.prepareSnapshot" <| fun () ->
-            printfn "PrepareSnapshot"
-            None
+            let ch:Ch<State option> = Ch()
+
+            ch
+            |> RaftEvent.CreateSnapshot
+            |> trigger subscriptions
+
+            let result =
+              job {
+                let! state = Ch.take ch
+                return state
+              }
+              |> Hopac.run
+
+            Option.map
+              (fun snapshot -> Raft.createSnapshot (DataSnapshot snapshot) raft)
+              result
 
         member self.RetrieveSnapshot () =
           Tracing.trace "RaftServer.retrieveSnapshot" <| fun () ->
-            printfn "RetrieveSnapshot"
-            None
+            let ch:Ch<RaftLogEntry option> = Ch()
+
+            asynchronously <| fun () ->
+              ch
+              |> RaftEvent.RetrieveSnapshot
+              |> trigger subscriptions
+
+            job {
+              let! state = Ch.take ch
+              return state
+            }
+            |> Hopac.run
 
         member self.PersistSnapshot log =
-          Tracing.trace "RaftServer.persistSnapshot" <| fun () ->
-            printfn "PersistSnapshot"
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.persistSnapshot" <| fun () ->
+              log
+              |> RaftEvent.PersistSnapshot
+              |> trigger subscriptions
 
         member self.ApplyLog cmd =
-          Tracing.trace "RaftServer.applyLog" <| fun () ->
-            cmd
-            |> RaftEvent.ApplyLog
-            |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.applyLog" <| fun () ->
+              cmd
+              |> RaftEvent.ApplyLog
+              |> trigger subscriptions
 
         member self.MemberAdded mem =
-          Tracing.trace "RaftServer.memberAdded" <| fun () ->
-            mem
-            |> RaftEvent.MemberAdded
-            |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.memberAdded" <| fun () ->
+              mem
+              |> RaftEvent.MemberAdded
+              |> trigger subscriptions
 
         member self.MemberUpdated mem =
-          Tracing.trace "RaftServer.memberUpdated" <| fun () ->
-            mem
-            |> RaftEvent.MemberUpdated
-            |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.memberUpdated" <| fun () ->
+              mem
+              |> RaftEvent.MemberUpdated
+              |> trigger subscriptions
 
         member self.MemberRemoved mem =
-          Tracing.trace "RaftServer.memberRemoved" <| fun () ->
-            mem
-            |> RaftEvent.MemberRemoved
-            |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.memberRemoved" <| fun () ->
+              mem
+              |> RaftEvent.MemberRemoved
+              |> trigger subscriptions
 
         member self.Configured mems =
-          Tracing.trace "RaftServer.configured" <| fun () ->
-            mems
-            |> RaftEvent.Configured
-            |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.configured" <| fun () ->
+              mems
+              |> RaftEvent.Configured
+              |> trigger subscriptions
 
         member self.StateChanged oldstate newstate =
-          Tracing.trace "RaftServer.stateChanged" <| fun () ->
-          (oldstate, newstate)
-          |> RaftEvent.StateChanged
-          |> trigger subscriptions
+          asynchronously <| fun () ->
+            Tracing.trace "RaftServer.stateChanged" <| fun () ->
+              (oldstate, newstate)
+              |> RaftEvent.StateChanged
+              |> trigger subscriptions
 
         member self.PersistVote mem =
           Tracing.trace "RaftServer.persistVote" <| fun () ->
             printfn "PersistVote"
+
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -1782,73 +1797,90 @@ module Raft =
         return
           { new IRaftServer with
               member self.Load (config: IrisConfig) =
-                match postCommand agent (fun chan -> Msg.Load(chan,config)) with
-                | Right Reply.Ok -> Right ()
-                | Right other ->
-                  sprintf "Unexpected reply type from agent:  %A" other
-                  |> Error.asRaftError (tag "create")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "RaftServer.Load()" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Load(chan,config)) with
+                  | Right Reply.Ok -> Right ()
+                  | Right other ->
+                    sprintf "Unexpected reply type from agent:  %A" other
+                    |> Error.asRaftError (tag "create")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.Unload () =
-                match postCommand agent (fun chan -> Msg.Unload chan) with
-                | Right Reply.Ok -> Right ()
-                | Right other ->
-                  sprintf "Unexpected reply type from agent:  %A" other
-                  |> Error.asRaftError (tag "create")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+                Tracing.trace "RaftServer.UnLoad()" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Unload chan) with
+                  | Right Reply.Ok -> Right ()
+                  | Right other ->
+                    sprintf "Unexpected reply type from agent:  %A" other
+                    |> Error.asRaftError (tag "create")
+                    |> Either.fail
+                  | Left error ->
+                    error
+                    |> Either.fail
 
               member self.Member
                 with get () =
-                  match getState agent with
-                  | Right state ->
-                    state.Raft.Member
-                    |> Either.succeed
-                  | Left error ->
-                    Either.fail error
+                  Tracing.trace "RaftServer.Member" <| fun () ->
+                    match getState agent with
+                    | Right state ->
+                      state.Raft.Member
+                      |> Either.succeed
+                    | Left error ->
+                      Either.fail error
 
               member self.MemberId
                 with get () =
-                  match getState agent with
-                  | Right state ->
-                    state.Raft.Member.Id
-                    |> Either.succeed
-                  | Left error ->
-                    Either.fail error
+                  Tracing.trace "RaftServer.MemberId" <| fun () ->
+                    match getState agent with
+                    | Right state ->
+                      state.Raft.Member.Id
+                      |> Either.succeed
+                    | Left error ->
+                      Either.fail error
 
               member self.Append cmd =
-                addCmd agent cmd
+                Tracing.trace "RaftServer.Append" <| fun () ->
+                  addCmd agent cmd
 
               member self.Status
-                with get () = getStatus agent
+                with get () =
+                  Tracing.trace "RaftServer.Status" <| fun () ->
+                    getStatus agent
 
               member self.ForceElection () =
-                agent.Post Msg.ForceElection
-                |> Either.succeed
+                Tracing.trace "RaftServer.ForceElection" <| fun () ->
+                  Msg.ForceElection
+                  |> agent.Post
+                  |> Either.succeed
 
               member self.Periodic () =
-                agent.Post Msg.Periodic
-                |> Either.succeed
+                Tracing.trace "RaftServer.Periodic" <| fun () ->
+                  Msg.Periodic
+                  |> agent.Post
+                  |> Either.succeed
 
               member self.JoinCluster ip port =
-                withOk (fun chan -> Msg.Join(chan,ip,port)) agent
+                Tracing.trace "RaftServer.JoinCluster" <| fun () ->
+                  withOk (fun chan -> Msg.Join(chan,ip,port)) agent
 
               member self.LeaveCluster () =
-                withOk (fun chan -> Msg.Leave chan) agent
+                Tracing.trace "RaftServer.LeaveCluster" <| fun () ->
+                  withOk (fun chan -> Msg.Leave chan) agent
 
               member self.AddMember mem =
-                addMember agent mem
+                Tracing.trace "RaftServer.AddMember" <| fun () ->
+                  addMember agent mem
 
               member self.RmMember id =
-                rmMember agent id
+                Tracing.trace "RaftServer.RmMember" <| fun () ->
+                  rmMember agent id
 
               member self.State
-                with get () = getState agent
+                with get () =
+                  Tracing.trace "RaftServer.State" <| fun () ->
+                    getState agent
 
               member self.Subscribe (callback: RaftEvent -> unit) =
                 { new IObserver<RaftEvent> with
@@ -1857,32 +1889,38 @@ module Raft =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Start () = startServer agent
+              member self.Start () =
+                Tracing.trace "RaftServer.Start" <| fun () ->
+                  startServer agent
 
               member self.Connections
                 with get () =
-                  match getState agent with
-                  | Right ctx  -> ctx.Connections |> Either.succeed
-                  | Left error -> error |> Either.fail
+                  Tracing.trace "RaftServer.Connections" <| fun () ->
+                    match getState agent with
+                    | Right ctx  -> ctx.Connections |> Either.succeed
+                    | Left error -> error |> Either.fail
 
               member self.IsLeader
                 with get () =
-                  match getState agent with
-                  | Right state -> Raft.isLeader state.Raft
-                  | _ -> false
+                  Tracing.trace "RaftServer.IsLeader" <| fun () ->
+                    match getState agent with
+                    | Right state -> Raft.isLeader state.Raft
+                    | _ -> false
 
               member self.Leader
                 with get () =
-                  match getState agent with
-                  | Right state -> Raft.getLeader state.Raft |> Either.succeed
-                  | Left error -> Either.fail error
+                  Tracing.trace "RaftServer.Leader" <| fun () ->
+                    match getState agent with
+                    | Right state -> Raft.getLeader state.Raft |> Either.succeed
+                    | Left error -> Either.fail error
 
               member self.Dispose () =
-                match postCommand agent (fun chan -> Msg.Unload chan) with
-                | Left error -> printfn "unable to dispose:  %A" error
-                | Right _ -> ()
-                subscriptions.Clear()
-                dispose agent
+                Tracing.trace "RaftServer.Dispose()" <| fun () ->
+                  match postCommand agent (fun chan -> Msg.Unload chan) with
+                  | Left error -> printfn "unable to dispose:  %A" error
+                  | Right _ -> ()
+                  subscriptions.Clear()
+                  dispose agent
             }
       }
 
