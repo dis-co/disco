@@ -209,12 +209,9 @@ module RaftIntegrationTests =
 
         use! leader = RaftServer.create ()
 
-        let mutable counter = 0
         let evHandler (ev: RaftEvent) =
           match ev with
-          | RaftEvent.ApplyLog sm ->
-            counter <- counter + 1
-            store.Dispatch sm
+          | RaftEvent.ApplyLog sm -> store.Dispatch sm
           | RaftEvent.CreateSnapshot ch ->
             store.State
             |> Some

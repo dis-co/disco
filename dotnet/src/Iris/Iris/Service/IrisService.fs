@@ -649,8 +649,11 @@ module Iris =
   // ** onPersistSnapshot
 
   let private onPersistSnapshot (state: IrisState) (log: RaftLogEntry) =
-    "OOOOO WEEEEE"
-    |> Logger.err (tag "onPersistSnapshot")
+    withState state <| fun data ->
+      asynchronously <| fun () ->
+        match persistSnapshot data.Store.State log with
+        | Left error -> Logger.err (tag "onPersistSnapshot") (string error)
+        | _ -> ()
     state
 
   // ** requestAppend

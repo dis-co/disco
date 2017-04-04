@@ -148,6 +148,9 @@ module Persistence =
     | UpdateProject project -> Asset.saveWithCommit   path signature project
     | _                     -> Left OK
 
+  let persistSnapshot (state: State) (log: RaftLogEntry) =
+    Asset.save state.Project.Path log
+
   // ** updateRepo
 
   /// ## updateRepo

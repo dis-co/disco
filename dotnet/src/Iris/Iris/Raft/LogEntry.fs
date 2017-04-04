@@ -550,6 +550,10 @@ type RaftLogEntry =
   static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry option> =
     Array.foldBack RaftLogEntry.ParseLogFB logs (Right None)
 
+
+
+
+
 // * LogEntry Module
 
 [<RequireQualifiedAccess>]
