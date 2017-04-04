@@ -57,7 +57,6 @@ module RaftTestUtils =
       member self.PersistTerm mem            = self.PersistTerm mem
       member self.PersistLog log              = self.PersistLog log
       member self.DeleteLog log               = self.DeleteLog log
-      member self.LogMsg mem site level str  = self.LogMsg mem site level str
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =

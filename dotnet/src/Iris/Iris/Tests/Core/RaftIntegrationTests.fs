@@ -15,6 +15,7 @@ open Iris.Service.Raft
 open FSharpx.Functional
 open Microsoft.FSharp.Control
 open ZeroMQ
+open Hopac
 
 [<AutoOpen>]
 module RaftIntegrationTests =
@@ -179,73 +180,65 @@ module RaftIntegrationTests =
       |> noError
 
   let test_log_snapshotting_should_clean_all_logs =
-    ftestCase "log snapshotting should clean all logs" <| fun _ ->
+    testCase "log snapshotting should clean all logs" <| fun _ ->
       either {
-        Tracing.enable()
+        // Tracing.enable()
 
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let state = ref None
 
-        let setState (ev: RaftEvent) =
-          match !state, ev with
-          | None, StateChanged (_,Leader) ->
-            lock state <| fun _ ->
-              state := Some Leader
-          | _ -> ()
-
         let machine1 = MachineConfig.create ()
-        let machine2 = MachineConfig.create ()
+
+        let store = Store(State.Empty)
 
         let mem1 =
           machine1.MachineId
           |> Member.create
           |> Member.setPort 8000us
 
-        let mem2 =
-          machine2.MachineId
-          |> Member.create
-          |> Member.setPort 8001us
-
         let site =
           { ClusterConfig.Default with
               Name = "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1)
-                                       (mem2.Id, mem2) |] }
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
 
         let leadercfg =
           Config.create "leader" machine1
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let followercfg =
-          Config.create "follower" machine2
-          |> Config.addSiteAndSetActive site
-          |> Config.setLogLevel (LogLevel.Debug)
-
         use! leader = RaftServer.create ()
 
-        use obs1 = leader.Subscribe setState
+        let mutable counter = 0
+        let evHandler (ev: RaftEvent) =
+          match ev with
+          | RaftEvent.ApplyLog sm ->
+            counter <- counter + 1
+            store.Dispatch sm
+          | RaftEvent.CreateSnapshot ch ->
+            store.State
+            |> Some
+            |> Ch.send ch
+            |> Hopac.queue
+          | _ -> ()
 
+        use obs1 = leader.Subscribe evHandler
         do! leader.Load leadercfg
 
-        use! follower = RaftServer.create ()
+        let expected = int leadercfg.Raft.MaxLogDepth * 2
 
-        use obs2 = follower.Subscribe setState
+        let cmds =
+          [ for n in 0 .. expected - 1 do
+              yield AddUser (mkUser ()) ]
+          |> List.map leader.Append
 
-        do! follower.Load(followercfg)
+        Thread.Sleep(100)
 
-        let! state1 = leader.State
-        let! state2 = follower.State
+        expect "Should have expected number of Users" expected id store.State.Users.Count
 
-        max
-          state1.Raft.ElectionTimeout
-          state2.Raft.ElectionTimeout
-        |> (int >> ((+) 100))
-        |> Thread.Sleep
+        let! state = leader.State
 
-        expect "Should have elected a leader" (Some Leader) id !state
-
+        expect "Should have only one log" 1u Log.length state.Raft.Log
       }
       |> noError
 

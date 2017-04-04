@@ -126,11 +126,10 @@ module Raft =
   let currentIndex (state: RaftValue) =
     Log.index state.Log
 
-  let log site level str =
-    read >>= fun cbs ->
-      get >>= fun state ->
-        cbs.LogMsg state.Member site level str
-        |> returnM
+  let log site level message =
+    message
+    |> Logger.log level site
+    |> returnM
 
   let debug site str = log site Debug str
 
@@ -153,7 +152,7 @@ module Raft =
               request.PrevLogIdx
               request.PrevLogTerm
 
-          cbs.LogMsg state.Member "sendAppendEntriesM" Debug msg
+          Logger.debug "sendAppendEntriesM" msg
 
           let result = cbs.SendAppendEntries mem request
           return result
@@ -201,21 +200,21 @@ module Raft =
 
   let mkRaft (self : RaftMember) : RaftValue =
     { Member            = self
-    ; State             = Follower
-    ; CurrentTerm       = 0u
-    ; CurrentLeader     = None
-    ; Peers             = Map.ofList [(self.Id, self)]
-    ; OldPeers          = None
-    ; NumMembers          = 1u
-    ; VotedFor          = None
-    ; Log               = Log.empty
-    ; CommitIndex       = 0u
-    ; LastAppliedIdx    = 0u
-    ; TimeoutElapsed    = 0u
-    ; ElectionTimeout   = 4000u         // msec
-    ; RequestTimeout    = 500u          // msec
-    ; MaxLogDepth       = 50u           // items
-    ; ConfigChangeEntry = None
+      State             = Follower
+      CurrentTerm       = 0u
+      CurrentLeader     = None
+      Peers             = Map.ofList [(self.Id, self)]
+      OldPeers          = None
+      NumMembers        = 1u
+      VotedFor          = None
+      Log               = Log.empty
+      CommitIndex       = 0u
+      LastAppliedIdx    = 0u
+      TimeoutElapsed    = 0u
+      ElectionTimeout   = 4000u         // msec
+      RequestTimeout    = 500u          // msec
+      MaxLogDepth       = 50u           // items
+      ConfigChangeEntry = None
     }
 
   /// Is the Raft value in Follower state.
@@ -1922,21 +1921,22 @@ module Raft =
           if mem.State = Running || mem.State = Failed then
             let vote =
               { Term         = state.CurrentTerm
-              ; Candidate    = state.Member
-              ; LastLogIndex = Log.index state.Log
-              ; LastLogTerm  = Log.term state.Log }
+                Candidate    = state.Member
+                LastLogIndex = Log.index state.Log
+                LastLogTerm  = Log.term state.Log }
 
-            sprintf "(to: %s) (state: %A)" (string mem.Id) (mem.State)
-            |> cbs.LogMsg state.Member "sendVoteRequest" Debug
+            mem.State
+            |> sprintf "(to: %s) (state: %A)" (string mem.Id)
+            |> Logger.debug "sendVoteRequest"
 
             let result = cbs.SendRequestVote mem vote
             return result
           else
-            sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
-              (string mem.Id)
-              (Member.isVoting mem)
-              (mem.State)
-            |> cbs.LogMsg state.Member "sendVoteRequest" Debug
+            mem.State
+            |> sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
+                (string mem.Id)
+                (Member.isVoting mem)
+            |> Logger.debug "sendVoteRequest"
 
             return None
         }
@@ -2214,5 +2214,5 @@ module Raft =
       if lai < coi then
         do! applyEntries ()
 
-      // do! maybeSnapshot ()
+      do! maybeSnapshot ()
     }

@@ -38,6 +38,9 @@ module Persistence =
         mem
         |> Raft.mkRaft
         |> Raft.addMembers mems
+        |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
+        |> Raft.setRequestTimeout options.Raft.RequestTimeout
+        |> Raft.setElectionTimeout options.Raft.ElectionTimeout
       return state
     }
 
@@ -66,9 +69,12 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member     = mem
-            NumMembers = count
-            Peers      = mems }
+            Member          = mem
+            NumMembers      = count
+            Peers           = mems
+            MaxLogDepth     = options.Raft.MaxLogDepth
+            RequestTimeout  = options.Raft.RequestTimeout
+            ElectionTimeout = options.Raft.ElectionTimeout }
     }
 
   // ** getRaft

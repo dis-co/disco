@@ -472,9 +472,6 @@ type IRaftCallbacks =
   /// reasons this callback MUST flush the change to disk.
   abstract member DeleteLog:           RaftLogEntry        -> unit
 
-  /// Callback for catching debug messsages
-  abstract member LogMsg: RaftMember -> CallSite -> LogLevel -> String -> unit
-
 // * RaftValueYaml
 
 and RaftValueYaml() =

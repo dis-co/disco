@@ -299,6 +299,7 @@ module Raft =
                           (subscriptions: Subscriptions) =
 
     { new IRaftCallbacks with
+
         member self.SendRequestVote peer request =
           Tracing.trace "RaftServer.sendRequestVote" <| fun () ->
             sendRequestVote id connections peer request
@@ -346,53 +347,46 @@ module Raft =
             |> Hopac.run
 
         member self.PersistSnapshot log =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.persistSnapshot" <| fun () ->
-              log
-              |> RaftEvent.PersistSnapshot
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.persistSnapshot" <| fun () ->
+            log
+            |> RaftEvent.PersistSnapshot
+            |> trigger subscriptions
 
         member self.ApplyLog cmd =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.applyLog" <| fun () ->
-              cmd
-              |> RaftEvent.ApplyLog
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.applyLog" <| fun () ->
+            cmd
+            |> RaftEvent.ApplyLog
+            |> trigger subscriptions
 
         member self.MemberAdded mem =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.memberAdded" <| fun () ->
-              mem
-              |> RaftEvent.MemberAdded
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.memberAdded" <| fun () ->
+            mem
+            |> RaftEvent.MemberAdded
+            |> trigger subscriptions
 
         member self.MemberUpdated mem =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.memberUpdated" <| fun () ->
-              mem
-              |> RaftEvent.MemberUpdated
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.memberUpdated" <| fun () ->
+            mem
+            |> RaftEvent.MemberUpdated
+            |> trigger subscriptions
 
         member self.MemberRemoved mem =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.memberRemoved" <| fun () ->
-              mem
-              |> RaftEvent.MemberRemoved
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.memberRemoved" <| fun () ->
+            mem
+            |> RaftEvent.MemberRemoved
+            |> trigger subscriptions
 
         member self.Configured mems =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.configured" <| fun () ->
-              mems
-              |> RaftEvent.Configured
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.configured" <| fun () ->
+            mems
+            |> RaftEvent.Configured
+            |> trigger subscriptions
 
         member self.StateChanged oldstate newstate =
-          asynchronously <| fun () ->
-            Tracing.trace "RaftServer.stateChanged" <| fun () ->
-              (oldstate, newstate)
-              |> RaftEvent.StateChanged
-              |> trigger subscriptions
+          Tracing.trace "RaftServer.stateChanged" <| fun () ->
+            (oldstate, newstate)
+            |> RaftEvent.StateChanged
+            |> trigger subscriptions
 
         member self.PersistVote mem =
           Tracing.trace "RaftServer.persistVote" <| fun () ->
@@ -437,9 +431,6 @@ module Raft =
           Tracing.trace "RaftServer.deleteLog" <| fun () ->
             printfn "DeleteLog"
 
-        member self.LogMsg mem callsite level msg =
-          Tracing.trace "RaftServer.logMsg" <| fun () ->
-            Logger.log level callsite msg
         }
 
 
