@@ -254,7 +254,13 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    log |> string |> printfn "%s"
+    log |> printfn "%O"
+
+  // ** filter
+
+  let filter (level: LogLevel) (logger: LogEvent -> unit) (log: LogEvent) =
+    if level = log.LogLevel then
+      logger log
 
   // ** stdoutWith
 

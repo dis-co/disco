@@ -569,11 +569,6 @@ module Broker =
           let from = incoming.[4].Read()
           let reply = incoming.[5].Read()
 
-          clientId
-          |> Guid
-          |> string
-          |> Logger.trace "reply to client"
-
           Tracing.trace "Broker Reply To Frontend" <| fun _ ->
             use outgoing = new ZMessage()
             outgoing.Add(new ZFrame(clientId))

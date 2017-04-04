@@ -47,6 +47,8 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
@@ -110,6 +112,8 @@ module ApiTests =
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
@@ -182,6 +186,8 @@ module ApiTests =
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
