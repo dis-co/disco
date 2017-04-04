@@ -1,6 +1,7 @@
 namespace Iris.Core
 
 module Tracing =
+  open System
   open System.Diagnostics
 
   let mutable private on = false
@@ -10,7 +11,12 @@ module Tracing =
 
   let trace (tag: string) (f: unit -> 'b) =
     #if !FABLE_COMPILER
-    if on then
+    let env =
+      match Environment.GetEnvironmentVariable "IRIS_TRACING" with
+      | "true" -> true
+      | _ -> false
+
+    if on || env then
       let stop = new Stopwatch()
       stop.Start()
       let result = f()
