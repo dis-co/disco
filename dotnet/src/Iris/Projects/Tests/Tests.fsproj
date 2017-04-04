@@ -42,6 +42,13 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Core\Core.fsproj">
+      <Name>Iris.Core</Name>
+      <Project>{7d6918e9-1494-41e9-9beb-638616110a60}</Project>
+      <Private>True</Private>     
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="Iris.Serialization">
       <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
@@ -58,9 +65,6 @@
       <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <ProjectReference Include="..\Core\Core.fsproj">
-      <Name>Iris.Core</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="any\netstandard1.6\FSharp.Core.optdata">

@@ -38,111 +38,19 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Core.Frontend\Core.Frontend.fsproj">
+      <Name>Iris.Core.Frontend</Name>
+      <Project>{7d6918e9-1494-41e9-9beb-638616110a60}</Project>
+      <Private>True</Private>   
+    </ProjectReference>
+  </ItemGroup>  
+  <ItemGroup>
     <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
     <Reference Include="../../../../node_modules/fable-powerpack/Fable.PowerPack.dll" />
   </ItemGroup>
   <ItemGroup>
-    <!--<Compile Include="../../AssemblyInfo/FrontendInfo.fs">
+    <Compile Include="../../AssemblyInfo/FrontendInfo.fs">
       <Link>FrontendInfo.fs</Link>
-    </Compile>-->
-    <Compile Include="../../Iris/Core/FlatBuffers.fs">
-      <Link>FlatBuffers.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Web/Core/FlatBufferTypes.fs">
-      <Link>FlatBufferTypes.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Build.fs">
-      <Link>Build.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Constants.fs">
-      <Link>Constants.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Either.fs">
-      <Link>Either.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Serialization.fs">
-      <Link>Serialization.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Error.fs">
-      <Link>Error.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Id.fs">
-      <Link>Id.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Property.fs">
-      <Link>Property.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/IpAddress.fs">
-      <Link>IpAddress.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Aliases.fs">
-      <Link>Aliases.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Platform.fs">
-      <Link>Platform.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\FileSystem.fs">
-      <Link>FileSystem.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Network.fs">
-      <Link>Network.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Machine.fs">
-      <Link>Machine.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\User.fs">
-      <Link>User.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Client.fs">
-      <Link>Client.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Session.fs">
-      <Link>Session.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Color.fs">
-      <Link>Color.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Util.fs">
-      <Link>Util.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Logging.fs">
-      <Link>Logging.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Tracing.fs">
-      <Link>Tracing.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Raft/Member.fs">
-      <Link>Member.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Pin.fs">
-      <Link>Pin.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/PinGroup.fs">
-      <Link>PinGroup.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Cue.fs">
-      <Link>Cue.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/CueList.fs">
-      <Link>CueList.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Renderer.fs">
-      <Link>Renderer.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Project.fs">
-      <Link>Project.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Discovery.fs">
-      <Link>Discovery.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/StateMachine.fs">
-      <Link>StateMachine.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/Commands.fs">
-      <Link>Commands.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Core/ClientMessage.fs">
-      <Link>ClientMessage.fs</Link>
     </Compile>
     <Compile Include="../../Iris/Web/Core/Browser.fs">
       <Link>Browser.fs</Link>

@@ -1,5 +1,8 @@
  {
-    "projFile": "Web.Tests.fsproj",
+    "projFile": [
+        "../Core.Frontend/Core.Frontend.fsproj",
+        "Web.Tests.fsproj"
+    ],    
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "rollup": {
         "dest": "../../../Frontend/js/iris.tests.js"
