@@ -1,5 +1,7 @@
 module Iris.Service.CommandActions
 
+#if !IRIS_NODES
+
 open System
 open System.IO
 open Iris.Raft
@@ -153,7 +155,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
           |> Either.map (fun _ -> "Loaded project " + projectName)
         | GetProjectSites(projectName, username, password) ->
           getProjectSites cfg projectName username password
-          
+
       replyChannel.Reply res
       do! loop()
     }
@@ -172,3 +174,5 @@ let postCommand (agent: (MailboxProcessor<Command*Channel> option) ref) (cmd: Co
       | None -> return err "Request has timeout"
     }
   | None -> err "Command agent hasn't been initialized yet" |> async.Return
+
+#endif

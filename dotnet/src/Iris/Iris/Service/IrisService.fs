@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+#if !IRIS_NODES
+
 // * Imports
 
 open System
@@ -1448,3 +1450,5 @@ module Iris =
         }
       with
       | ex -> IrisError.Other(tag "create", ex.Message) |> Either.fail
+
+#endif

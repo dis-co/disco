@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+#if !IRIS_NODES
+
 // * Imports
 
 open System
@@ -155,3 +157,5 @@ module Persistence =
   let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
     printfn "should pull repository now"
     |> Either.succeed
+
+#endif

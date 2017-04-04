@@ -28,6 +28,9 @@ core.release:
 nodes:
 	${BUILD} BuildDebugNodes
 
+nodes.release:
+	${BUILD} BuildReleaseNodes
+
 serialization:
 	${BUILD} GenerateSerialization
 

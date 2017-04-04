@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -60,6 +60,9 @@
       <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <ProjectReference Include="..\Core\Core.fsproj">
+      <Name>Iris.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="any\netstandard1.6\FSharp.Core.optdata">
@@ -70,183 +73,6 @@
     </Content>
     <Compile Include="..\..\AssemblyInfo\ServiceInfo.fs">
       <Link>ServiceInfo.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Build.fs">
-      <Link>Build.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Constants.fs">
-      <Link>Constants.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Either.fs">
-      <Link>Either.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Serialization.fs">
-      <Link>Serialization.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Error.fs">
-      <Link>Error.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Id.fs">
-      <Link>Id.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Property.fs">
-      <Link>Property.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\IpAddress.fs">
-      <Link>IpAddress.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Aliases.fs">
-      <Link>Aliases.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Platform.fs">
-      <Link>Platform.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\FileSystem.fs">
-      <Link>FileSystem.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Network.fs">
-      <Link>Network.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Machine.fs">
-      <Link>Machine.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Util.fs">
-      <Link>Util.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\User.fs">
-      <Link>User.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Client.fs">
-      <Link>Client.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Session.fs">
-      <Link>Session.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Color.fs">
-      <Link>Color.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Logging.fs">
-      <Link>Logging.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Tracing.fs">
-      <Link>Tracing.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Pin.fs">
-      <Link>Pin.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\PinGroup.fs">
-      <Link>PinGroup.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Cue.fs">
-      <Link>Cue.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\CueList.fs">
-      <Link>CueList.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Validation.fs">
-      <Link>Validation.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Continue.fs">
-      <Link>Continue.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Member.fs">
-      <Link>Member.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Renderer.fs">
-      <Link>Renderer.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Project.fs">
-      <Link>Project.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Discovery.fs">
-      <Link>Discovery.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\StateMachine.fs">
-      <Link>StateMachine.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Commands.fs">
-      <Link>Commands.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\LogEntry.fs">
-      <Link>LogEntry.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Log.fs">
-      <Link>Log.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Types.fs">
-      <Link>Types.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Raft\Raft.fs">
-      <Link>Raft.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\Uri.fs">
-      <Link>Uri.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\Common.fs">
-      <Link>Common.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\Pub.fs">
-      <Link>Pub.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\Sub.fs">
-      <Link>Sub.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\Broker.fs">
-      <Link>Broker.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\ZmqUtils.fs">
-      <Link>ZmqUtils.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Client\Interfaces.fs">
-      <Link>Interfaces.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Client\ApiRequest.fs">
-      <Link>ApiRequest.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Client\ApiClient.fs">
-      <Link>ApiClient.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\RaftRequest.fs">
-      <Link>RaftRequest.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq.fs">
-      <Link>Zmq.fs</Link>
-    </Compile>
-    <compile Include="..\..\Iris\Service\Persistence.fs">
-      <Link>Persistence.fs</Link>
-    </compile>
-    <Compile Include="..\..\Iris\Service\Utilities.fs">
-      <Link>Utilities.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Interfaces.fs">
-      <Link>Interfaces.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\GitServer.fs">
-      <Link>GitServer.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\RaftServer.fs">
-      <Link>RaftServer.fs</Link>
-    </Compile>
-    <compile Include="..\..\Iris\Service\HttpServer.fs">
-      <Link>HttpServer.fs</Link>
-    </compile>
-    <Compile Include="..\..\Iris\Service\WebSocket.fs">
-      <Link>WebSocket.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\ApiServer.fs">
-      <Link>ApiServer.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\DiscoveryService.fs">
-      <Link>DiscoveryService.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\IrisService.fs">
-      <Link>IrisService.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\CommandActions.fs">
-      <Link>CommandActions.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\CommandLine.fs">
-      <Link>CommandLine.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Main.fs">
       <Link>Main.fs</Link>
