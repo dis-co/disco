@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+#if !IRIS_NODES
+
 // * Imports
 
 open System
@@ -1883,3 +1885,5 @@ module Raft =
                 dispose agent
             }
       }
+
+#endif

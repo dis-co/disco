@@ -8,7 +8,6 @@
     <ProjectGuid>{7D6918E9-1494-41E9-9BEB-638616110A60}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <AssemblyName>Iris.Core</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Iris.Core</Name>
@@ -19,6 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
+    <AssemblyName>Iris.Core</AssemblyName>
     <OutputPath>..\..\bin\Debug\Core</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
@@ -27,8 +27,29 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
+    <AssemblyName>Iris.Core</AssemblyName>
     <OutputPath>..\..\bin\Release\Core</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+    <OtherFlags>--warnon:1182</OtherFlags>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'DebugNodes|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <AssemblyName>Iris.Core.Nodes</AssemblyName>
+    <OutputPath>..\..\bin\Debug\Core</OutputPath>
+    <DefineConstants>DEBUG;TRACE;IRIS_NODES</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleaseNodes|x64' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+    <AssemblyName>Iris.Core.Nodes</AssemblyName>
+    <OutputPath>..\..\bin\Release\Core</OutputPath>
+    <DefineConstants>TRACE;IRIS_NODES</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>

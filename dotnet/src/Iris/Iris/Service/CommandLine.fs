@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+#if !IRIS_NODES
+
 // * CommandLine
 module CommandLine =
 
@@ -531,3 +533,5 @@ module CommandLine =
 
       printfn "successfully added new member %A" mem.HostName
     }
+
+#endif

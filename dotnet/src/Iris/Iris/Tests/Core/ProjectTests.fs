@@ -376,7 +376,7 @@ module ProjectTests =
 
         let! loaded = Asset.loadWithMachine path machine
 
-        expect "Authors should be equal"           true ((=) (Option.get loaded.Author))  author3
+        expect "Authors should be equal"           true ((=) (Option.get loaded.Author)) author3
         expect "Projects should have four commits" true ((=) (Git.Repo.commitCount repo)) 4
       }
       |> noError
@@ -389,7 +389,7 @@ module ProjectTests =
         let name = Path.GetFileName path
 
         let! project = Project.create path name machine
-        let! loaded = Asset.loadWithMachine path machine
+        let! (loaded: IrisProject) = Asset.loadWithMachine path machine
 
         expect "Project should have correct path" path id loaded.Path
 
@@ -397,7 +397,7 @@ module ProjectTests =
 
         FileSystem.moveFile path newpath
 
-        let! loaded = Asset.loadWithMachine newpath machine
+        let! (loaded: IrisProject) = Asset.loadWithMachine newpath machine
 
         expect "Project should have correct path" newpath id loaded.Path
       }

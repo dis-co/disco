@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+#if !IRIS_NODES
+
 [<RequireQualifiedAccess>]
 module Uri =
   //  _   _      _
@@ -21,3 +23,5 @@ module Uri =
 
   let mkPinUri (project : IrisProject) (group : string) =
     mkUri "pins" project.Name group
+
+#endif
