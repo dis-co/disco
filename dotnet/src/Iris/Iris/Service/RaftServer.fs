@@ -1554,7 +1554,7 @@ module Raft =
   let private processRequest (data: RaftAppContext) (raw: RawRequest) (arbiter: StateArbiter) =
     Tracing.trace "RaftServer.processRequest" <| fun () ->
       either {
-        let! request = Binary.decode<IrisError,RaftRequest> raw.Body
+        let! request = Binary.decode<RaftRequest> raw.Body
 
         let newstate =
           match request with

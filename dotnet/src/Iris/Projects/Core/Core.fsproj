@@ -79,11 +79,11 @@
     <Compile Include="..\..\Iris\Core\Either.fs">
       <Link>Either.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Serialization.fs">
-      <Link>Serialization.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Error.fs">
       <Link>Error.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Serialization.fs">
+      <Link>Serialization.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Id.fs">
       <Link>Id.fs</Link>
