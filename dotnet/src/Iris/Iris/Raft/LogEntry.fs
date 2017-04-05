@@ -14,6 +14,17 @@ open Iris.Core.FlatBuffers
 #else
 
 open FlatBuffers
+open SharpYaml
+open SharpYaml.Serialization
+
+type SnapshotYaml() =
+  [<DefaultValue>] val mutable Id        : string
+  [<DefaultValue>] val mutable Index     : Index
+  [<DefaultValue>] val mutable Term      : Term
+  [<DefaultValue>] val mutable LastIndex : Index
+  [<DefaultValue>] val mutable LastTerm  : Term
+  [<DefaultValue>] val mutable Members   : RaftMemberYaml array
+  [<DefaultValue>] val mutable Commit    : string
 
 #endif
 
@@ -550,9 +561,40 @@ type RaftLogEntry =
   static member FromFB (logs: LogFB array) : Either<IrisError, RaftLogEntry option> =
     Array.foldBack RaftLogEntry.ParseLogFB logs (Right None)
 
+  //     _                 _
+  //    / \   ___ ___  ___| |_
+  //   / _ \ / __/ __|/ _ \ __|
+  //  / ___ \\__ \__ \  __/ |_
+  // /_/   \_\___/___/\___|\__|
 
+  member log.AssetPath
+    with get () =
+      Constants.RAFT_DIRECTORY </> Constants.SNAPSHOT_FILENAME + Constants.ASSET_EXTENSION
 
-
+  member log.Save (basePath: FilePath) =
+    match log with
+    | Snapshot(id, idx, term, lastidx, lastterm, mems, _) ->
+      either {
+        let serializer = new Serializer()
+        let path = basePath </> Asset.path log
+        use! repo = Git.Repo.repository basePath
+        let! last = Git.Repo.commits repo |> Git.Repo.elementAt 0
+        let yaml = SnapshotYaml()
+        yaml.Id <- string id
+        yaml.Index <- idx
+        yaml.Term <- term
+        yaml.LastIndex <- lastidx
+        yaml.LastTerm <- lastterm
+        yaml.Members <- Array.map Yaml.toYaml mems
+        yaml.Commit <- last.Sha
+        let data = serializer.Serialize yaml
+        let! _ = Asset.write path (Payload data)
+        return ()
+      }
+    | _ ->
+      "Only snapshots can be saved"
+      |> Error.asAssetError "LogEntry.Save"
+      |> Either.fail
 
 // * LogEntry Module
 

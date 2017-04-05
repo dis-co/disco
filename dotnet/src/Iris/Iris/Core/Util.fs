@@ -1051,6 +1051,20 @@ module Git =
           |> Error.asGitError (tag "stage")
           |> Either.fail
 
+    let stageAll (repo: Repository)  =
+      let _stage (ety: StatusEntry) =
+        parentPath repo </> ety.FilePath
+        |> fun path -> Commands.Stage(repo, path)
+      try
+        repo.RetrieveStatus()
+        |> Seq.iter _stage
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "stageAll")
+          |> Either.fail
+
     let commit (repo: Repository) (msg: string) (committer: Signature) =
       try
         repo.Commit(msg, committer, committer)

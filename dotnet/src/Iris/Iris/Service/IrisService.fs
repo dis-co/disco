@@ -21,6 +21,7 @@ open Iris.Service.Http
 open Microsoft.FSharp.Control
 open FSharpx.Functional
 open LibGit2Sharp
+open SharpYaml.Serialization
 open Hopac
 open Hopac.Infixes
 
@@ -640,9 +641,50 @@ module Iris =
   // ** onRetrieveSnapshot
 
   let private onRetrieveSnapshot (state: IrisState) (ch: Ch<RaftLogEntry option>) =
-    job {
-      do! Ch.send ch None
-    } |> Hopac.queue
+    match state with
+    | Loaded (_, data) ->
+      job {
+        let path = Constants.RAFT_DIRECTORY </>
+                   Constants.SNAPSHOT_FILENAME +
+                   Constants.ASSET_EXTENSION
+        match Asset.read path with
+        | Right str ->
+          try
+            let serializer = new Serializer()
+
+            let yml = serializer.Deserialize<SnapshotYaml>(str)
+
+            let members =
+              match Config.getActiveSite data.Store.State.Project.Config with
+              | Some site -> site.Members |> Map.toArray |> Array.map snd
+              | _ -> [| |]
+
+            let snapshot =
+              Snapshot(Id yml.Id
+                      ,yml.Index
+                      ,yml.Term
+                      ,yml.LastIndex
+                      ,yml.LastTerm
+                      ,members
+                      ,DataSnapshot data.Store.State)
+
+            do! Ch.send ch (Some snapshot)
+          with
+            | exn ->
+              exn.Message
+              |> Logger.err (tag "onRetrieveSnapshot")
+              do! Ch.send ch None
+
+        | Left error ->
+          error
+          |> string
+          |> Logger.err (tag "onRetrieveSnapshot")
+          do! Ch.send ch None
+      } |> Hopac.queue
+    | _ ->
+      job {
+        do! Ch.send ch None
+      } |> Hopac.queue
 
     state
 

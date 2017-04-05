@@ -149,7 +149,17 @@ module Persistence =
     | _                     -> Left OK
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
-    Asset.save state.Project.Path log
+    either {
+      let path = state.Project.Path
+      do! state.Save(path)
+      use! repo = Project.repository state.Project
+      do! Git.Repo.stageAll repo
+
+      Git.Repo.commit repo "[Snapshot] Log Compaction" User.Admin.Signature
+      |> ignore
+
+      do! Asset.save path log
+    }
 
   // ** updateRepo
 
