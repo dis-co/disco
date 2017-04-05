@@ -8,6 +8,7 @@ open Fable.Import
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Iris.Core
+open Iris.Core.Commands
 
 //  ____  _                        ___        __         _
 // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
@@ -41,6 +42,7 @@ type [<Pojo; NoComparison>] StateInfo =
 
 and ClientContext private () =
   let mutable session : Id option = None
+  let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
 
@@ -54,6 +56,9 @@ and ClientContext private () =
       singleton <- Some client
       client
 
+  member self.ServiceInfo =
+    serviceInfo.Value
+
   member self.Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
     me.OnError <- fun e -> printfn "%A" e.Message
@@ -63,11 +68,13 @@ and ClientContext private () =
   }
 
   member self.ConnectWithWebSocket() =
-    (Commands.GetWebSocketAddress, [])
+    (Commands.GetServiceInfo, [])
     ||> Fetch.postRecord Constants.WEP_API_COMMAND
     |> Promise.bind (fun res -> res.text())
-    |> Promise.map (fun address ->
-        ClientMessage.Connect address
+    |> Promise.map (fun json ->
+        let info = ofJson<ServiceInfo> json
+        serviceInfo <- Some info
+        ClientMessage.Connect info.webSocket
         |> toJson |> self.Worker.Port.PostMessage)
 
   member self.Session =

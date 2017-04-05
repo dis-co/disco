@@ -9,6 +9,10 @@ export default class GlobalModel {
           this.addLog(log);
         })
       }
+      if (this.state.serviceInfo == null) {
+        const ctx = Iris.getClientContext();
+        this.__setState("serviceInfo", ctx.ServiceInfo);
+      }
       this.__setState("pinGroups", info.state.PinGroups);
     });
 
@@ -17,7 +21,8 @@ export default class GlobalModel {
     this.state = {
       tabs: new Map(),
       widgets: new Map(),
-      useRightClick: false
+      useRightClick: false,
+      serviceInfo: null
     };
   }
 

@@ -16,11 +16,16 @@ type CreateProjectOptions =
     webSocketPort: uint16 
     gitPort: uint16 }
 
+type ServiceInfo =
+  { webSocket: string
+    version: string
+    buildNumber: string }
+
 type Command =
   | Shutdown
   | UnloadProject
   | ListProjects
-  | GetWebSocketAddress
+  | GetServiceInfo
   | CreateProject of CreateProjectOptions
   | LoadProject of projectName:string * username:string * password:string * site:string option
   | GetProjectSites of projectName:string * username:string * password:string

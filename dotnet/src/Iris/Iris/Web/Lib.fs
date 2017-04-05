@@ -47,6 +47,9 @@ let EMPTY = Constants.EMPTY
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
+let getClientContext() =
+    ClientContext.Singleton
+
 let private dragObservable =
     GenericObservable<DragEvent>()
 

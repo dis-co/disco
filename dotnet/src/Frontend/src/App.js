@@ -37,12 +37,14 @@ export function askModal(title, text, buttons) {
 export default class App extends Component {
   constructor(props) {
     super(props);
+    this.state = {};
     this.global = new GlobalModel();
     this.global.addTab({
       name: "Workspace",
       view: Workspace,
       isFixed: true
     });
+    this.global.subscribe("serviceInfo", serviceInfo => this.setState({serviceInfo}));
   }
 
   componentDidMount() {
@@ -85,6 +87,10 @@ export default class App extends Component {
               action: () => global.useRightClick(!global.state.useRightClick),
             }            
           ]} />
+          <div className="separator" />
+          {this.state.serviceInfo != null
+            ? <span>Iris v{this.state.serviceInfo.version} - build {this.state.serviceInfo.buildNumber}</span>
+            : null}
         </header>
         <div id="app-content">
           <div id="ui-layout-container">
