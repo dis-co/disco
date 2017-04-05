@@ -116,13 +116,12 @@ module RaftIntegrationTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        let state = ref None
+        use check1 = new AutoResetEvent(false)
+        use check2 = new AutoResetEvent(false)
 
-        let setState (ev: RaftEvent) =
-          match !state, ev with
-          | None, StateChanged (_,Leader) ->
-            lock state <| fun _ ->
-              state := Some Leader
+        let setState (are: AutoResetEvent) (ev: RaftEvent) =
+          match ev with
+          | StateChanged _ -> are.Set() |> ignore
           | _ -> ()
 
         let machine1 = MachineConfig.create ()
@@ -156,26 +155,21 @@ module RaftIntegrationTests =
 
         use! leader = RaftServer.create ()
 
-        use obs1 = leader.Subscribe setState
+        use obs1 = leader.Subscribe (setState check1)
 
         do! leader.Load leadercfg
 
         use! follower = RaftServer.create ()
 
-        use obs2 = follower.Subscribe setState
+        use obs2 = follower.Subscribe (setState check2)
 
         do! follower.Load(followercfg)
 
         let! state1 = leader.State
         let! state2 = follower.State
 
-        max
-          state1.Raft.ElectionTimeout
-          state2.Raft.ElectionTimeout
-        |> (int >> ((+) 100))
-        |> Thread.Sleep
-
-        expect "Should have elected a leader" (Some Leader) id !state
+        check1.WaitOne() |> ignore
+        check2.WaitOne() |> ignore
       }
       |> noError
 
@@ -185,6 +179,8 @@ module RaftIntegrationTests =
         // Tracing.enable()
 
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use snapshotCheck = new AutoResetEvent(false)
+        use expectedCheck = new AutoResetEvent(false)
 
         let state = ref None
 
@@ -209,33 +205,34 @@ module RaftIntegrationTests =
 
         use! leader = RaftServer.create ()
 
+        let expected = int leadercfg.Raft.MaxLogDepth * 2
+
         let evHandler (ev: RaftEvent) =
           match ev with
-          | RaftEvent.ApplyLog sm -> store.Dispatch sm
+          | RaftEvent.ApplyLog sm ->
+            store.Dispatch sm
+            if store.State.Users.Count = expected then
+              expectedCheck.Set() |> ignore
           | RaftEvent.CreateSnapshot ch ->
             store.State
             |> Some
             |> Ch.send ch
             |> Hopac.queue
+            snapshotCheck.Set() |> ignore
           | _ -> ()
 
         use obs1 = leader.Subscribe evHandler
         do! leader.Load leadercfg
-
-        let expected = int leadercfg.Raft.MaxLogDepth * 2
 
         let cmds =
           [ for n in 0 .. expected - 1 do
               yield AddUser (mkUser ()) ]
           |> List.map leader.Append
 
-        Thread.Sleep(500)
+        snapshotCheck.WaitOne() |> ignore
+        expectedCheck.WaitOne() |> ignore
 
         expect "Should have expected number of Users" expected id store.State.Users.Count
-
-        let! state = leader.State
-
-        expect "Should have only one log" 1u Log.length state.Raft.Log
       }
       |> noError
 

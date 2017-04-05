@@ -72,22 +72,21 @@ module ApiTests =
 
         let! client = ApiClient.create srvr clnt
 
-        let check = ref false
+        use registered = new AutoResetEvent(false)
+        use snapshot = new AutoResetEvent(false)
 
         let handler (ev: ClientEvent) =
           match ev with
-          | ClientEvent.Snapshot -> check := true
+          | ClientEvent.Registered -> registered.Set() |> ignore
+          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
 
         do! client.Start()
 
-        Thread.Sleep 1000
-
-        expect "Should have received snapshot" true id !check
-
-        check := false
+        registered.WaitOne() |> ignore
+        snapshot.WaitOne() |> ignore
 
         let! clientState = client.State
 
@@ -97,15 +96,14 @@ module ApiTests =
 
         do! server.SetState newstate
 
-        Thread.Sleep 1000
+        snapshot.WaitOne() |> ignore
 
         let! clientState = client.State
 
+        expect "Should be equal" newstate id clientState
+
         dispose server
         dispose client
-
-        expect "Should have received another snapshot" true id !check
-        expect "Should be equal" newstate id clientState
       }
       |> noError
 
@@ -137,19 +135,8 @@ module ApiTests =
 
         let! client = ApiClient.create srvr clnt
 
-        let mutable check = 0L
-
-        let handler (ev: ClientEvent) =
-          match ev with
-          | ClientEvent.Update _ ->
-            Threading.Interlocked.Increment &check |> ignore
-          | _ -> ()
-
-        use obs = client.Subscribe(handler)
-
-        do! client.Start()
-
-        Thread.Sleep 1000
+        use snapshot = new AutoResetEvent(false)
+        use doneCheck = new AutoResetEvent(false)
 
         let events = [
           AddCue     (mkCue ())
@@ -162,9 +149,26 @@ module ApiTests =
           AddUser    (mkUser ())
         ]
 
+        let mutable check = 0L
+
+        let handler (ev: ClientEvent) =
+          match ev with
+          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
+          | ClientEvent.Update _ ->
+            Threading.Interlocked.Increment &check |> ignore
+            if int check = List.length events then
+              doneCheck.Set() |> ignore
+          | _ -> ()
+
+        use obs = client.Subscribe(handler)
+
+        do! client.Start()
+
+        snapshot.WaitOne() |> ignore
+
         List.iter (server.Update >> ignore) events
 
-        Thread.Sleep 1000
+        doneCheck.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -184,15 +188,13 @@ module ApiTests =
   //  \____|_|_|\___|_| |_|\__|
 
   let test_client_should_replicate_state_machine_commands_to_server =
-    testCase "client should replicate state machine commands to server" <| fun _ ->
+    ftestCase "client should replicate state machine commands to server" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
-
-        let check = ref 0
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
@@ -208,6 +210,8 @@ module ApiTests =
 
         let! server = ApiServer.create mem state.Project.Id
 
+        let check = ref 0
+
         let apiHandler (ev: ApiEvent) =
           match ev with
           | ApiEvent.Update sm ->
@@ -216,14 +220,28 @@ module ApiTests =
           | _ -> ()
 
         use obs2 = server.Subscribe(apiHandler)
+        use clientRegistered = new AutoResetEvent(false)
+        use clientSnapshot = new AutoResetEvent(false)
+        use clientUpdate = new AutoResetEvent(false)
 
         let! client = ApiClient.create srvr clnt
 
+        let clientHandler (ev: ClientEvent) =
+          match ev with
+          | ClientEvent.Registered -> clientRegistered.Set() |> ignore
+          | ClientEvent.Snapshot -> clientSnapshot.Set() |> ignore
+          | ClientEvent.Update _ -> clientUpdate.Set() |> ignore
+          | _ -> ()
+
+        use obs3 = client.Subscribe(clientHandler)
+
         do! server.Start()
         do! server.SetState state
+
         do! client.Start()
 
-        Thread.Sleep 1000
+        clientRegistered.WaitOne() |> ignore
+        clientSnapshot.WaitOne() |> ignore
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
@@ -231,15 +249,15 @@ module ApiTests =
 
         do! client.AddPin pin
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.AddCue cue
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.AddCueList cuelist
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -254,15 +272,15 @@ module ApiTests =
 
         do! client.UpdatePin (pin.SetSlice (BoolSlice(0u, false)))
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.UpdateCue { cue with Pins = [| mkPin() |] }
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
-        Thread.Sleep 1000
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -271,15 +289,15 @@ module ApiTests =
 
         do! client.RemovePin pin
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.RemoveCue cue
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         do! client.RemoveCueList cuelist
 
-        Thread.Sleep 1000
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State

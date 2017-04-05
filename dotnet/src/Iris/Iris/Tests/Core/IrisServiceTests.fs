@@ -31,7 +31,7 @@ module IrisServiceTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        let signal = ref 0
+        use checkStarted = new AutoResetEvent(false)
 
         let path = tmpPath()
 
@@ -71,34 +71,31 @@ module IrisServiceTests =
         use oobs =
           (fun ev ->
             match ev with
-            | Git (Started _) -> signal := 1 + !signal
+            | Git (Started _) -> checkStarted.Set() |> ignore
             | _ -> ())
           |> service.Subscribe
 
         do! service.LoadProject(name, "admin", "Nsynk")
 
-        let! gitserver =
-          Tracing.trace "getting git server" <| fun () ->
-            service.GitServer
+        checkStarted.WaitOne() |> ignore
+
+        let! gitserver = service.GitServer
 
         let! pid = gitserver.Pid
 
         expect "Git should be running" true Process.isRunning pid
-        expect "Should have emitted one Started event" 1 id !signal
 
         Process.kill pid
 
         expect "Git should be running" false Process.isRunning pid
 
-        Thread.Sleep 100
+        checkStarted.WaitOne() |> ignore
 
         let! gitserver = service.GitServer
         let! newpid = gitserver.Pid
 
         expect "Should be a different pid" false ((=) pid) newpid
         expect "Git should be running" true Process.isRunning newpid
-        expect "Should have emitted another Started event" 2 id !signal
-
       }
       |> noError
 
