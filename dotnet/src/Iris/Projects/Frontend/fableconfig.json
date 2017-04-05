@@ -1,5 +1,8 @@
 {
-    "projFile": "Frontend.fsproj",
+    "projFile": [
+        "../Core.Frontend/Core.Frontend.fsproj",
+        "Frontend.fsproj"
+    ],
     "sourceMaps": false,
     "plugins": ["../../../Fable/FlatBuffersPlugin.fsx"],
     "rollup": {
