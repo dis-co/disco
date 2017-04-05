@@ -9,7 +9,12 @@ export default class GlobalModel {
           this.addLog(log);
         })
       }
-      if (this.state.serviceInfo == null) {
+      if (this.clockSubscription == null) {
+        this.clockSubscription = Iris.subscribeToClock(frames =>
+          this.__setState("clock", frames)
+        )
+      }     
+      if (this.state.serviceInfo.version === "0.0.0") {
         const ctx = Iris.getClientContext();
         this.__setState("serviceInfo", ctx.ServiceInfo);
       }
@@ -22,7 +27,11 @@ export default class GlobalModel {
       tabs: new Map(),
       widgets: new Map(),
       useRightClick: false,
-      serviceInfo: null
+      serviceInfo: {
+        version: "0.0.0",
+        buildNumber: "0"
+      },
+      clock: 0
     };
   }
 

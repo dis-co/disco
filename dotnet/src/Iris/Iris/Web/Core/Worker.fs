@@ -201,6 +201,7 @@ type GlobalContext() =
   member self.OnSocketMessage(ev: StateMachine) : unit =
     match ev with
     | LogMsg log -> self.Log (sprintf "[%O] %s" log.LogLevel log.Message)
+    | UpdateClock value -> self.Broadcast <| ClientMessage.ClockUpdate(value)
     | _ ->
       match ev, store with
       | DataSnapshot state, _ ->

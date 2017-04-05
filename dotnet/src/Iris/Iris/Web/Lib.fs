@@ -83,6 +83,11 @@ let subscribeToLogs(f:ClientLog->unit): IDisposable =
       | ClientMessage.ClientLog log -> f log
       | _ -> ())
 
+let subscribeToClock(f:uint32->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
+      | ClientMessage.ClockUpdate frames -> f frames
+      | _ -> ())
+
 let removeMember(info: StateInfo, memId: Id) =
   match Config.findMember info.state.Project.Config memId with
   | Right mem ->

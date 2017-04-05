@@ -116,9 +116,11 @@ and ClientContext private () =
       // TODO: Restart worker
       //self.Start()
 
-    // Re-render the current view tree with a new state
-    | ClientMessage.Render _ ->
-      // Do nothing, delegate responsibility to controllers
+    // Do nothing, delegate responsibility to controllers
+    | ClientMessage.ClockUpdate _
+    | ClientMessage.Render _        // Re-render the current view tree with a new state
+    | ClientMessage.ClientLog _ ->
+      // printfn "%s" log // Logs are polluting the browser console, disable printing temporally
       ()
 
     | ClientMessage.Connected ->
@@ -127,11 +129,6 @@ and ClientContext private () =
 
     | ClientMessage.Disconnected ->
       printfn "DISCONNECTED!"
-
-    | ClientMessage.ClientLog _log ->
-      // Logs are polluting the browser console, disable printing temporally
-//      printfn "%s" log
-      ()
 
     // initialize this clients session variable
     | ClientMessage.Error(reason) ->
