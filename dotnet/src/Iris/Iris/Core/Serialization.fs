@@ -45,9 +45,8 @@ module Binary =
       (^t : (static member FromBytes : Buffer -> Either<IrisError, ^t>) bytes)
     with
       | exn ->
-        let t = typeof< ^t >
-        exn.Message
-        |> Error.asParseError (t.Name + ".FromBytes")
+        ((typeof< ^t >).Name + ".FromBytes", exn.Message)
+        |> ParseError
         |> Either.fail
 
   let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
