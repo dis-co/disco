@@ -83,7 +83,7 @@ module ApiTests =
 
         do! client.Start()
 
-        Thread.Sleep 100
+        Thread.Sleep 1000
 
         expect "Should have received snapshot" true id !check
 
@@ -97,7 +97,7 @@ module ApiTests =
 
         do! server.SetState newstate
 
-        Thread.Sleep 100
+        Thread.Sleep 1000
 
         let! clientState = client.State
 
@@ -149,7 +149,7 @@ module ApiTests =
 
         do! client.Start()
 
-        Thread.Sleep 100
+        Thread.Sleep 1000
 
         let events = [
           AddCue     (mkCue ())
@@ -164,7 +164,7 @@ module ApiTests =
 
         List.iter (server.Update >> ignore) events
 
-        Thread.Sleep 100
+        Thread.Sleep 1000
 
         let! serverState = server.State
         let! clientState = client.State
@@ -223,14 +223,20 @@ module ApiTests =
         do! server.SetState state
         do! client.Start()
 
-        Thread.Sleep 100
+        Thread.Sleep 1000
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
         let cuelist = mkCueList()
 
         do! client.AddPin pin
+
+        Thread.Sleep 100
+
         do! client.AddCue cue
+
+        Thread.Sleep 100
+
         do! client.AddCueList cuelist
 
         Thread.Sleep 100
@@ -247,10 +253,16 @@ module ApiTests =
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
         do! client.UpdatePin (pin.SetSlice (BoolSlice(0u, false)))
-        do! client.UpdateCue { cue with Pins = [| mkPin() |] }
-        do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
         Thread.Sleep 100
+
+        do! client.UpdateCue { cue with Pins = [| mkPin() |] }
+
+        Thread.Sleep 100
+
+        do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
+
+        Thread.Sleep 1000
 
         let! serverState = server.State
         let! clientState = client.State
@@ -258,10 +270,16 @@ module ApiTests =
         expect "Should be equal" serverState id clientState
 
         do! client.RemovePin pin
-        do! client.RemoveCue cue
-        do! client.RemoveCueList cuelist
 
         Thread.Sleep 100
+
+        do! client.RemoveCue cue
+
+        Thread.Sleep 100
+
+        do! client.RemoveCueList cuelist
+
+        Thread.Sleep 1000
 
         let! serverState = server.State
         let! clientState = client.State

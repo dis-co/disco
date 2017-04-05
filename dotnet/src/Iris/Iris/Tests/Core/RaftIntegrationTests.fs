@@ -229,7 +229,7 @@ module RaftIntegrationTests =
               yield AddUser (mkUser ()) ]
           |> List.map leader.Append
 
-        Thread.Sleep(100)
+        Thread.Sleep(500)
 
         expect "Should have expected number of Users" expected id store.State.Users.Count
 

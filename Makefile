@@ -16,6 +16,9 @@ export MONO_THREADS_PER_CPU
 run.tests:
 	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
 
+tests:
+	${BUILD} BuildTests
+
 service:
 	${BUILD} BuildDebugService
 
