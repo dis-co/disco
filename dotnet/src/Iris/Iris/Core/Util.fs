@@ -545,7 +545,7 @@ module Crypto =
 
 // * Git
 
-#if !FABLE_COMPILER && !IRIS_NODES
+#if !FABLE_COMPILER
 
 //   ____ _ _
 //  / ___(_) |_
@@ -1227,7 +1227,7 @@ module Asset =
 
   // ** write
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   /// ## write
   ///
@@ -1259,7 +1259,7 @@ module Asset =
 
   // ** delete
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   /// ## delete
   ///
@@ -1289,7 +1289,7 @@ module Asset =
 
   // ** read
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   /// ## read
   ///
@@ -1321,7 +1321,7 @@ module Asset =
 
   // ** save
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
                  (path: FilePath)
@@ -1332,7 +1332,7 @@ module Asset =
 
   // ** saveMap
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
     either {
@@ -1344,7 +1344,7 @@ module Asset =
 
   // ** load
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
                  (path: FilePath) =
@@ -1354,7 +1354,7 @@ module Asset =
 
   // ** loadWithMachine
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>)>
                  (path: FilePath)
@@ -1375,7 +1375,7 @@ module Asset =
 
   // ** commit
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
@@ -1396,7 +1396,7 @@ module Asset =
 
   // ** saveWithCommit
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
@@ -1410,7 +1410,7 @@ module Asset =
 
   // ** deleteWithCommit
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
