@@ -188,7 +188,7 @@ module ApiTests =
   //  \____|_|_|\___|_| |_|\__|
 
   let test_client_should_replicate_state_machine_commands_to_server =
-    ftestCase "client should replicate state machine commands to server" <| fun _ ->
+    testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
