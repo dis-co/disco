@@ -12,6 +12,9 @@ module SerializationTests =
   open Iris.Web.Core
   open Iris.Web.Tests
 
+  open Iris.Core.FlatBuffers
+  open Iris.Web.Core.FlatBufferTypes
+
   let rand = new System.Random()
 
   let mk() = Id.Create()
@@ -243,6 +246,15 @@ module SerializationTests =
         AssetError ("one","two")
         RaftError ("one","two")
         Other  ("one","two")
-      ] |> List.iter check
+      ] |> List.iter
+        (fun error ->
+          let reerror =
+            error
+            |> Binary.buildBuffer
+            |> Binary.createBuffer
+            |> ErrorFB.GetRootAsErrorFB
+            |> IrisError.FromFB
+            |> Either.get
+          equals error reerror)
 
       finish()
