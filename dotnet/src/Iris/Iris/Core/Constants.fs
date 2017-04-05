@@ -43,6 +43,9 @@ module Constants =
   let RAFT_DIRECTORY = ".raft"
 
   [<Literal>]
+  let SNAPSHOT_FILENAME = "snapshot"
+
+  [<Literal>]
   let RAFT_METADATA_FILENAME = "metadata"
 
   [<Literal>]
@@ -167,5 +170,3 @@ module Constants =
 
     [<Literal>]
     let PROJECT_MISSING_MEMBER = "Missing member"
-
-    

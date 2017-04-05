@@ -419,36 +419,36 @@ type InstallSnapshot =
 type IRaftCallbacks =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     RaftMember  -> VoteRequest            -> VoteResponse option
+  abstract member SendRequestVote:     RaftMember   -> VoteRequest     -> VoteResponse option
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   RaftMember  -> AppendEntries          -> AppendResponse option
+  abstract member SendAppendEntries:   RaftMember   -> AppendEntries   -> AppendResponse option
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: RaftMember  -> InstallSnapshot        -> AppendResponse option
+  abstract member SendInstallSnapshot: RaftMember   -> InstallSnapshot -> AppendResponse option
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     RaftValue       -> RaftLog option
+  abstract member PrepareSnapshot:     RaftValue    -> RaftLog option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
-  abstract member PersistSnapshot:     RaftLogEntry    -> unit
+  abstract member PersistSnapshot:     RaftLogEntry -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot:    unit            -> RaftLogEntry option
+  abstract member RetrieveSnapshot:    unit         -> RaftLogEntry option
 
   /// apply the given command to state machine
-  abstract member ApplyLog:            StateMachine    -> unit
+  abstract member ApplyLog:            StateMachine -> unit
 
   /// a new server was added to the configuration
-  abstract member MemberAdded:           RaftMember        -> unit
+  abstract member MemberAdded:         RaftMember   -> unit
 
   /// a new server was added to the configuration
-  abstract member MemberUpdated:         RaftMember        -> unit
+  abstract member MemberUpdated:       RaftMember   -> unit
 
   /// a server was removed from the configuration
-  abstract member MemberRemoved:         RaftMember        -> unit
+  abstract member MemberRemoved:       RaftMember   -> unit
 
   /// a cluster configuration transition was successfully applied
   abstract member Configured:          RaftMember array  -> unit
@@ -471,9 +471,6 @@ type IRaftCallbacks =
   /// persist the removal of the passed entry from the log to disk. For safety
   /// reasons this callback MUST flush the change to disk.
   abstract member DeleteLog:           RaftLogEntry        -> unit
-
-  /// Callback for catching debug messsages
-  abstract member LogMsg: RaftMember -> CallSite -> LogLevel -> String -> unit
 
 // * RaftValueYaml
 

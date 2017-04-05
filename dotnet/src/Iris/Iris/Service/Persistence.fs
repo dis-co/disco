@@ -38,6 +38,9 @@ module Persistence =
         mem
         |> Raft.mkRaft
         |> Raft.addMembers mems
+        |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
+        |> Raft.setRequestTimeout options.Raft.RequestTimeout
+        |> Raft.setElectionTimeout options.Raft.ElectionTimeout
       return state
     }
 
@@ -66,9 +69,12 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member     = mem
-            NumMembers = count
-            Peers      = mems }
+            Member          = mem
+            NumMembers      = count
+            Peers           = mems
+            MaxLogDepth     = options.Raft.MaxLogDepth
+            RequestTimeout  = options.Raft.RequestTimeout
+            ElectionTimeout = options.Raft.ElectionTimeout }
     }
 
   // ** getRaft
@@ -141,6 +147,19 @@ module Persistence =
     | RemoveMember  _       -> Asset.deleteWithCommit path signature state.Project
     | UpdateProject project -> Asset.saveWithCommit   path signature project
     | _                     -> Left OK
+
+  let persistSnapshot (state: State) (log: RaftLogEntry) =
+    either {
+      let path = state.Project.Path
+      do! state.Save(path)
+      use! repo = Project.repository state.Project
+      do! Git.Repo.stageAll repo
+
+      Git.Repo.commit repo "[Snapshot] Log Compaction" User.Admin.Signature
+      |> ignore
+
+      do! Asset.save path log
+    }
 
   // ** updateRepo
 

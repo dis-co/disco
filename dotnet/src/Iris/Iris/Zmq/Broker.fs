@@ -142,7 +142,7 @@ module Client =
       try
         self.Context <- new ZContext()
         self.Socket <- new ZSocket(ZSocketType.REQ)
-        self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 2000.0
+        self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 3000.0
         self.Socket.Identity <- clid.ToByteArray()
         self.Socket.Connect(frontend)
         self.Initialized <- true

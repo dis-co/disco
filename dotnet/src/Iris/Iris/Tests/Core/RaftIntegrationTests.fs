@@ -15,6 +15,7 @@ open Iris.Service.Raft
 open FSharpx.Functional
 open Microsoft.FSharp.Control
 open ZeroMQ
+open Hopac
 
 [<AutoOpen>]
 module RaftIntegrationTests =
@@ -115,13 +116,12 @@ module RaftIntegrationTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        let state = ref None
+        use check1 = new AutoResetEvent(false)
+        use check2 = new AutoResetEvent(false)
 
-        let setState (ev: RaftEvent) =
-          match !state, ev with
-          | None, StateChanged (_,Leader) ->
-            lock state <| fun _ ->
-              state := Some Leader
+        let setState (are: AutoResetEvent) (ev: RaftEvent) =
+          match ev with
+          | StateChanged _ -> are.Set() |> ignore
           | _ -> ()
 
         let machine1 = MachineConfig.create ()
@@ -155,26 +155,84 @@ module RaftIntegrationTests =
 
         use! leader = RaftServer.create ()
 
-        use obs1 = leader.Subscribe setState
+        use obs1 = leader.Subscribe (setState check1)
 
         do! leader.Load leadercfg
 
         use! follower = RaftServer.create ()
 
-        use obs2 = follower.Subscribe setState
+        use obs2 = follower.Subscribe (setState check2)
 
         do! follower.Load(followercfg)
 
         let! state1 = leader.State
         let! state2 = follower.State
 
-        max
-          state1.Raft.ElectionTimeout
-          state2.Raft.ElectionTimeout
-        |> (int >> ((+) 100))
-        |> Thread.Sleep
+        check1.WaitOne() |> ignore
+        check2.WaitOne() |> ignore
+      }
+      |> noError
 
-        expect "Should have elected a leader" (Some Leader) id !state
+  let test_log_snapshotting_should_clean_all_logs =
+    testCase "log snapshotting should clean all logs" <| fun _ ->
+      either {
+        // Tracing.enable()
+
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use snapshotCheck = new AutoResetEvent(false)
+        use expectedCheck = new AutoResetEvent(false)
+
+        let state = ref None
+
+        let machine1 = MachineConfig.create ()
+
+        let store = Store(State.Empty)
+
+        let mem1 =
+          machine1.MachineId
+          |> Member.create
+          |> Member.setPort 8000us
+
+        let site =
+          { ClusterConfig.Default with
+              Name = "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+
+        let leadercfg =
+          Config.create "leader" machine1
+          |> Config.addSiteAndSetActive site
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        use! leader = RaftServer.create ()
+
+        let expected = int leadercfg.Raft.MaxLogDepth * 2
+
+        let evHandler (ev: RaftEvent) =
+          match ev with
+          | RaftEvent.ApplyLog sm ->
+            store.Dispatch sm
+            if store.State.Users.Count = expected then
+              expectedCheck.Set() |> ignore
+          | RaftEvent.CreateSnapshot ch ->
+            store.State
+            |> Some
+            |> Ch.send ch
+            |> Hopac.queue
+            snapshotCheck.Set() |> ignore
+          | _ -> ()
+
+        use obs1 = leader.Subscribe evHandler
+        do! leader.Load leadercfg
+
+        let cmds =
+          [ for n in 0 .. expected - 1 do
+              yield AddUser (mkUser ()) ]
+          |> List.map leader.Append
+
+        snapshotCheck.WaitOne() |> ignore
+        expectedCheck.WaitOne() |> ignore
+
+        expect "Should have expected number of Users" expected id store.State.Users.Count
       }
       |> noError
 
@@ -184,9 +242,6 @@ module RaftIntegrationTests =
   // | |_) |  __/ | | | (_| | | | | | (_| |
   // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
   // |_|                             |___/
-
-  let test_log_snapshotting_should_clean_all_logs =
-    pending "log snapshotting should clean all logs"
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"
@@ -208,7 +263,7 @@ module RaftIntegrationTests =
       test_validate_follower_joins_leader_after_startup
 
       // db
-      // test_log_snapshotting_should_clean_all_logs
+      test_log_snapshotting_should_clean_all_logs
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log

@@ -72,22 +72,21 @@ module ApiTests =
 
         let! client = ApiClient.create srvr clnt
 
-        let check = ref false
+        use registered = new AutoResetEvent(false)
+        use snapshot = new AutoResetEvent(false)
 
         let handler (ev: ClientEvent) =
           match ev with
-          | ClientEvent.Snapshot -> check := true
+          | ClientEvent.Registered -> registered.Set() |> ignore
+          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
 
         do! client.Start()
 
-        Thread.Sleep 100
-
-        expect "Should have received snapshot" true id !check
-
-        check := false
+        registered.WaitOne() |> ignore
+        snapshot.WaitOne() |> ignore
 
         let! clientState = client.State
 
@@ -97,15 +96,14 @@ module ApiTests =
 
         do! server.SetState newstate
 
-        Thread.Sleep 100
+        snapshot.WaitOne() |> ignore
 
         let! clientState = client.State
 
+        expect "Should be equal" newstate id clientState
+
         dispose server
         dispose client
-
-        expect "Should have received another snapshot" true id !check
-        expect "Should be equal" newstate id clientState
       }
       |> noError
 
@@ -137,19 +135,8 @@ module ApiTests =
 
         let! client = ApiClient.create srvr clnt
 
-        let mutable check = 0L
-
-        let handler (ev: ClientEvent) =
-          match ev with
-          | ClientEvent.Update _ ->
-            Threading.Interlocked.Increment &check |> ignore
-          | _ -> ()
-
-        use obs = client.Subscribe(handler)
-
-        do! client.Start()
-
-        Thread.Sleep 100
+        use snapshot = new AutoResetEvent(false)
+        use doneCheck = new AutoResetEvent(false)
 
         let events = [
           AddCue     (mkCue ())
@@ -162,9 +149,26 @@ module ApiTests =
           AddUser    (mkUser ())
         ]
 
+        let mutable check = 0L
+
+        let handler (ev: ClientEvent) =
+          match ev with
+          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
+          | ClientEvent.Update _ ->
+            Threading.Interlocked.Increment &check |> ignore
+            if int check = List.length events then
+              doneCheck.Set() |> ignore
+          | _ -> ()
+
+        use obs = client.Subscribe(handler)
+
+        do! client.Start()
+
+        snapshot.WaitOne() |> ignore
+
         List.iter (server.Update >> ignore) events
 
-        Thread.Sleep 100
+        doneCheck.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -192,8 +196,6 @@ module ApiTests =
 
         let mem = Member.create (Id.Create())
 
-        let check = ref 0
-
         let srvr : IrisServer =
           { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
@@ -208,6 +210,8 @@ module ApiTests =
 
         let! server = ApiServer.create mem state.Project.Id
 
+        let check = ref 0
+
         let apiHandler (ev: ApiEvent) =
           match ev with
           | ApiEvent.Update sm ->
@@ -216,24 +220,44 @@ module ApiTests =
           | _ -> ()
 
         use obs2 = server.Subscribe(apiHandler)
+        use clientRegistered = new AutoResetEvent(false)
+        use clientSnapshot = new AutoResetEvent(false)
+        use clientUpdate = new AutoResetEvent(false)
 
         let! client = ApiClient.create srvr clnt
 
+        let clientHandler (ev: ClientEvent) =
+          match ev with
+          | ClientEvent.Registered -> clientRegistered.Set() |> ignore
+          | ClientEvent.Snapshot -> clientSnapshot.Set() |> ignore
+          | ClientEvent.Update _ -> clientUpdate.Set() |> ignore
+          | _ -> ()
+
+        use obs3 = client.Subscribe(clientHandler)
+
         do! server.Start()
         do! server.SetState state
+
         do! client.Start()
 
-        Thread.Sleep 100
+        clientRegistered.WaitOne() |> ignore
+        clientSnapshot.WaitOne() |> ignore
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
         let cuelist = mkCueList()
 
         do! client.AddPin pin
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.AddCue cue
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.AddCueList cuelist
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -247,10 +271,16 @@ module ApiTests =
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
         do! client.UpdatePin (pin.SetSlice (BoolSlice(0u, false)))
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.UpdateCue { cue with Pins = [| mkPin() |] }
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State
@@ -258,10 +288,16 @@ module ApiTests =
         expect "Should be equal" serverState id clientState
 
         do! client.RemovePin pin
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.RemoveCue cue
+
+        clientUpdate.WaitOne() |> ignore
+
         do! client.RemoveCueList cuelist
 
-        Thread.Sleep 100
+        clientUpdate.WaitOne() |> ignore
 
         let! serverState = server.State
         let! clientState = client.State

@@ -2011,14 +2011,16 @@ module Config =
     if config.Sites |> Array.exists (fun x -> x.Id = id)
     then Right { config with ActiveSite = Some id }
     else
-        ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
-        |> Error.asProjectError "Config.setActiveSite"
-        |> Either.fail
+      ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
+      |> Error.asProjectError "Config.setActiveSite"
+      |> Either.fail
 
   // ** getActiveSite
 
   let getActiveSite (config: IrisConfig) =
-    config.ActiveSite
+    match config.ActiveSite with
+    | Some id -> Array.tryFind (fun site -> site.Id = id) config.Sites
+    | None -> None
 
   // ** setMembers
 

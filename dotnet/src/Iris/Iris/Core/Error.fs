@@ -115,17 +115,6 @@ type IrisError =
     | _ -> ()
     ErrorFB.EndErrorFB(builder)
 
-  // ** ToBytes
-
-  member self.ToBytes() = Binary.buildBuffer self
-
-  // ** FromBytes
-
-  static member FromBytes(bytes: Binary.Buffer) =
-    Binary.createBuffer bytes
-    |> ErrorFB.GetRootAsErrorFB
-    |> IrisError.FromFB
-
 
 // * Error Module
 [<RequireQualifiedAccess>]

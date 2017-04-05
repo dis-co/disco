@@ -10,6 +10,7 @@ open Iris.Raft
 open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
+open Hopac
 
 // * IDiscoveryService
 
@@ -39,14 +40,17 @@ type IGitServer =
 
 // * RaftEvent
 
+[<NoComparison;NoEquality>]
 type RaftEvent =
-  | ApplyLog       of StateMachine
-  | MemberAdded    of RaftMember
-  | MemberRemoved  of RaftMember
-  | MemberUpdated  of RaftMember
-  | Configured     of RaftMember array
-  | StateChanged   of RaftState * RaftState
-  | CreateSnapshot of string
+  | ApplyLog         of StateMachine
+  | MemberAdded      of RaftMember
+  | MemberRemoved    of RaftMember
+  | MemberUpdated    of RaftMember
+  | Configured       of RaftMember array
+  | StateChanged     of RaftState * RaftState
+  | CreateSnapshot   of Ch<State option>
+  | RetrieveSnapshot of Ch<RaftLogEntry option>
+  | PersistSnapshot  of RaftLogEntry
 
 // * RaftAppContext
 

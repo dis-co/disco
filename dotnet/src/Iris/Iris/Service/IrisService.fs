@@ -21,6 +21,7 @@ open Iris.Service.Http
 open Microsoft.FSharp.Control
 open FSharpx.Functional
 open LibGit2Sharp
+open SharpYaml.Serialization
 open Hopac
 open Hopac.Infixes
 
@@ -625,10 +626,76 @@ module Iris =
 
   // ** onCreateSnapshot
 
-  let private onCreateSnapshot (state: IrisState) =
+  let private onCreateSnapshot (state: IrisState) (ch: Ch<State option>) =
+    let response =
+      match state with
+      | Idle _ -> None
+      | Loaded (_, data) -> Some data.Store.State
+
+    job {
+      do! Ch.send ch response
+    } |> Hopac.queue
+
+    state
+
+  // ** onRetrieveSnapshot
+
+  let private onRetrieveSnapshot (state: IrisState) (ch: Ch<RaftLogEntry option>) =
+    match state with
+    | Loaded (_, data) ->
+      job {
+        let path = Constants.RAFT_DIRECTORY </>
+                   Constants.SNAPSHOT_FILENAME +
+                   Constants.ASSET_EXTENSION
+        match Asset.read path with
+        | Right str ->
+          try
+            let serializer = new Serializer()
+
+            let yml = serializer.Deserialize<SnapshotYaml>(str)
+
+            let members =
+              match Config.getActiveSite data.Store.State.Project.Config with
+              | Some site -> site.Members |> Map.toArray |> Array.map snd
+              | _ -> [| |]
+
+            let snapshot =
+              Snapshot(Id yml.Id
+                      ,yml.Index
+                      ,yml.Term
+                      ,yml.LastIndex
+                      ,yml.LastTerm
+                      ,members
+                      ,DataSnapshot data.Store.State)
+
+            do! Ch.send ch (Some snapshot)
+          with
+            | exn ->
+              exn.Message
+              |> Logger.err (tag "onRetrieveSnapshot")
+              do! Ch.send ch None
+
+        | Left error ->
+          error
+          |> string
+          |> Logger.err (tag "onRetrieveSnapshot")
+          do! Ch.send ch None
+      } |> Hopac.queue
+    | _ ->
+      job {
+        do! Ch.send ch None
+      } |> Hopac.queue
+
+    state
+
+  // ** onPersistSnapshot
+
+  let private onPersistSnapshot (state: IrisState) (log: RaftLogEntry) =
     withState state <| fun data ->
-      "CreateSnapshot requested"
-      |> Logger.debug (tag "onCreateSnapshot")
+      asynchronously <| fun () ->
+        match persistSnapshot data.Store.State log with
+        | Left error -> Logger.err (tag "onPersistSnapshot") (string error)
+        | _ -> ()
     state
 
   // ** requestAppend
@@ -703,13 +770,15 @@ module Iris =
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
     Tracing.trace "IrisService.handleRaftEvent" <| fun () ->
       match ev with
-      | ApplyLog sm             -> onApplyLog       state sm
-      | MemberAdded mem         -> onMemberAdded    state mem
-      | MemberRemoved mem       -> onMemberRemoved  state mem
-      | MemberUpdated mem       -> onMemberUpdated  state mem
-      | Configured mems         -> onConfigured     state mems
-      | CreateSnapshot _        -> onCreateSnapshot state
-      | StateChanged (ost, nst) -> onStateChanged   state ost nst
+      | ApplyLog sm             -> onApplyLog         state sm
+      | MemberAdded mem         -> onMemberAdded      state mem
+      | MemberRemoved mem       -> onMemberRemoved    state mem
+      | MemberUpdated mem       -> onMemberUpdated    state mem
+      | Configured mems         -> onConfigured       state mems
+      | CreateSnapshot ch       -> onCreateSnapshot   state ch
+      | RetrieveSnapshot ch     -> onRetrieveSnapshot state ch
+      | PersistSnapshot log     -> onPersistSnapshot  state log
+      | StateChanged (ost, nst) -> onStateChanged     state ost nst
 
   // ** handleApiEvent
 

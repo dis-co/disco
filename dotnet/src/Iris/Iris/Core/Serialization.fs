@@ -38,10 +38,16 @@ module Binary =
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> Buffer)) =
     (^t : (member ToBytes : unit -> Buffer) value)
 
-  let inline decode< ^err, ^t when ^t : (static member FromBytes : Buffer -> Either< ^err, ^t >)>
+  let inline decode< ^t when ^t : (static member FromBytes : Buffer -> Either<IrisError, ^t>)>
                                   (bytes: Buffer) :
-                                  Either< ^err, ^t > =
-    (^t : (static member FromBytes : Buffer -> Either< ^err, ^t >) bytes)
+                                  Either<IrisError, ^t > =
+    try
+      (^t : (static member FromBytes : Buffer -> Either<IrisError, ^t>) bytes)
+    with
+      | exn ->
+        ((typeof< ^t >).Name + ".FromBytes", exn.Message)
+        |> ParseError
+        |> Either.fail
 
   let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
                      (builder: FlatBufferBuilder)
