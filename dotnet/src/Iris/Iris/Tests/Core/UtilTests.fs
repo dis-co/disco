@@ -24,7 +24,7 @@ module UtilTests =
   //                       |___/
 
   let test_rmdir_should_delete_recursively =
-    ftestCase "should delete recursively" <| fun _ ->
+    testCase "should delete recursively" <| fun _ ->
       either {
         let dir = Path.GetRandomFileName() |> Directory.CreateDirectory
         let nested = dir.FullName </> Path.GetRandomFileName() |> Directory.CreateDirectory
