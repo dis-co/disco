@@ -263,8 +263,14 @@ module ApiServer =
 
   let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (project: Id) =
     let frontend = formatTCPUri mem.IpAddr (int mem.ApiPort)
-    let backend = "inproc://apiserver"
-    let pubSubAddr = formatEPGMUri mem.IpAddr (IPv4Address Constants.MCAST_ADDRESS) Constants.MCAST_PORT
+
+    let backend = Constants.API_BACKEND_PREFIX + string project
+
+    let pubSubAddr =
+      formatEPGMUri
+        mem.IpAddr
+        (IPv4Address Constants.MCAST_ADDRESS)
+        Constants.MCAST_PORT
 
     let publisher = new Pub(pubSubAddr, string project)
     let subscriber = new Sub(pubSubAddr, string project)
