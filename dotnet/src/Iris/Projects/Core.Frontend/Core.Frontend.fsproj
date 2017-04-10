@@ -10,7 +10,7 @@
     <RootNamespace>Iris</RootNamespace>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Iris.Core</Name>
+    <Name>Iris.Core.Frontend</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
@@ -18,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <AssemblyName>Iris.Core</AssemblyName>
+    <AssemblyName>Iris.Core.Frontend</AssemblyName>
     <OutputPath>..\..\bin\Debug\Core</OutputPath>
     <DefineConstants>DEBUG;TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
@@ -27,7 +27,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <AssemblyName>Iris.Core</AssemblyName>
+    <AssemblyName>Iris.Core.Frontend</AssemblyName>
     <OutputPath>..\..\bin\Release\Core</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
@@ -40,6 +40,10 @@
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
+    <Reference Include="../../../../node_modules/fable-powerpack/Fable.PowerPack.dll" />
+  </ItemGroup>  
   <ItemGroup>
     <Compile Include="../../Iris/Core/FlatBuffers.fs">
       <Link>FlatBuffers.fs</Link>

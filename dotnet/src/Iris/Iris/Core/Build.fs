@@ -3,10 +3,10 @@ namespace Iris.Core
 module Build =
 
   [<Literal>]
-  let VERSION = ""
+  let VERSION = "0.5.0"
 
   [<Literal>]
-  let BUILD_NUMBER = ""
+  let BUILD_NUMBER = "1234"
 
   [<Literal>]
   let BUILD_VERSION = ""

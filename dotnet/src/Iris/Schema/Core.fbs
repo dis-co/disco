@@ -62,6 +62,10 @@ table ByteFB {
      Value: string;
 }
 
+table ClockFB {
+     Value: uint;
+}
+
 //  _                _____                 _
 // | |    ___   __ _| ____|_   _____ _ __ | |_
 // | |   / _ \ / _` |  _| \ \ / / _ \ '_ \| __|
@@ -553,7 +557,8 @@ union StateMachinePayloadFB {
       StateFB,
       SlicesFB,
       ProjectFB,
-      DiscoveredServiceFB
+      DiscoveredServiceFB,
+      ClockFB
 }
 
 enum StateMachineActionFB:ushort {

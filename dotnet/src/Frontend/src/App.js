@@ -43,6 +43,10 @@ export default class App extends Component {
       view: Workspace,
       isFixed: true
     });
+    this.global.subscribe("serviceInfo", serviceInfo => this.setState({serviceInfo}));
+    this.state = {
+      serviceInfo: this.global.state.serviceInfo
+    };
   }
 
   componentDidMount() {
@@ -85,6 +89,8 @@ export default class App extends Component {
               action: () => global.useRightClick(!global.state.useRightClick),
             }            
           ]} />
+          <div className="separator" />
+          <span>Iris v{this.state.serviceInfo.version} - build {this.state.serviceInfo.buildNumber}</span>
         </header>
         <div id="app-content">
           <div id="ui-layout-container">

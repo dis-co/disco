@@ -570,6 +570,7 @@ module SerializationTests =
           AddMember     <| Member.create (Id.Create())
           UpdateMember  <| Member.create (Id.Create())
           RemoveMember  <| Member.create (Id.Create())
+          UpdateClock 1234u          
           DataSnapshot  <| state
           Command AppCommand.Undo
           LogMsg(Logger.create Debug "bla" "oohhhh")

@@ -774,7 +774,7 @@ type State =
 /// the front-end).
 ///
 /// Returns: StoreAction
-and StoreAction =
+and [<NoComparison>] StoreAction =
   { Event: StateMachine
   ; State: State }
 
@@ -1097,7 +1097,7 @@ and Listener = Store -> StateMachine -> unit
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-and StateMachine =
+and [<NoComparison>] StateMachine =
   // Project
   | UpdateProject of IrisProject
 
@@ -1147,6 +1147,8 @@ and StateMachine =
   | AddResolvedService    of Discovery.DiscoveredService
   | UpdateResolvedService of Discovery.DiscoveredService
   | RemoveResolvedService of Discovery.DiscoveredService
+
+  | UpdateClock of uint32
 
   | Command       of AppCommand
 
@@ -1214,6 +1216,8 @@ and StateMachine =
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
     | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
     | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
+
+    | UpdateClock value     -> sprintf "UpdateClock: %i" value
 
   // ** FromFB (JavaScript)
 
@@ -1394,6 +1398,11 @@ and StateMachine =
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
+
+    | x when x = StateMachinePayloadFB.ClockFB ->
+      UpdateClock(fb.ClockFB.Value)
+      |> Either.succeed
+
     | _ ->
       fb.Action
       |> AppCommand.FromFB
@@ -1736,6 +1745,19 @@ and StateMachine =
         else
           return!
             "Could not parse empty string payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    | StateMachinePayloadFB.ClockFB ->
+      either {
+        let clockish = fb.Payload<ClockFB> ()
+        if clockish.HasValue then
+          let value = clockish.Value.Value
+          return (UpdateClock value)
+        else
+          return!
+            "Could not parse empty clock payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
@@ -2140,6 +2162,19 @@ and StateMachine =
     | RemoveResolvedService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
 
+    | UpdateClock value ->
+      ClockFB.StartClockFB(builder)
+      ClockFB.AddValue(builder, value)
+      let offset = ClockFB.EndClockFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClockFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder) 
 
   // ** ToBytes
 

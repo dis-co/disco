@@ -47,6 +47,9 @@ let EMPTY = Constants.EMPTY
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
+let getClientContext() =
+    ClientContext.Singleton
+
 let private dragObservable =
     GenericObservable<DragEvent>()
 
@@ -78,6 +81,11 @@ let notify(msg: string) =
 let subscribeToLogs(f:ClientLog->unit): IDisposable =
     ClientContext.Singleton.OnMessage.Subscribe (function
       | ClientMessage.ClientLog log -> f log
+      | _ -> ())
+
+let subscribeToClock(f:uint32->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
+      | ClientMessage.ClockUpdate frames -> f frames
       | _ -> ())
 
 let removeMember(info: StateInfo, memId: Id) =
