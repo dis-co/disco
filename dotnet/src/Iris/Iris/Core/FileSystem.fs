@@ -88,9 +88,7 @@ module FileSystem =
     try
       let info = new FileInfo(path)
       info.IsReadOnly <- false
-
       let attrs = info.Attributes
-
       if (attrs &&& FileAttributes.Directory) = FileAttributes.Directory then
         let children = DirectoryInfo(path).EnumerateFileSystemInfos()
         if children.Count() > 0 then
