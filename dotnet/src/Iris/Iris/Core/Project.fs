@@ -2022,6 +2022,13 @@ module Config =
     | Some id -> Array.tryFind (fun site -> site.Id = id) config.Sites
     | None -> None
 
+  // ** getActiveMember
+
+  let getActiveMember (config: IrisConfig) =
+    config
+    |> getActiveSite
+    |> Option.bind (fun site -> Map.tryFind config.MachineId site.Members)
+
   // ** setMembers
 
   let setMembers (mems: Map<MemberId,RaftMember>) (config: IrisConfig) =
