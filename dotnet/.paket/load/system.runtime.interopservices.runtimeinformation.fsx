@@ -1,0 +1,7 @@
+#load @"system.reflection.fsx" 
+#load @"system.reflection.extensions.fsx" 
+#load @"system.resources.resourcemanager.fsx" 
+#load @"system.runtime.fsx" 
+#load @"system.runtime.interopservices.fsx" 
+#load @"system.threading.fsx" 
+#r "../../packages/System.Runtime.InteropServices.RuntimeInformation/lib/net45/System.Runtime.InteropServices.RuntimeInformation.dll" 

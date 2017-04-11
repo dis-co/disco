@@ -1,0 +1,6 @@
+((nil . ((eval . (set (make-local-variable 'inferior-fsharp-program)
+                      (let* ((d (dir-locals-find-file "."))
+                             (basedir (if (stringp d) (file-name-directory d) (car d)))
+                             (main (concat "--use:" basedir "/dotnet/.paket/load/main.group.fsx"))
+                             (iris (concat "--use:" basedir "/dotnet/src/Scripts/Fsx/Iris.Core.fsx")))
+                        (concat "fsi --readline- " main " " iris)))))))
