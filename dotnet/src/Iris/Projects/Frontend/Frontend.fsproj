@@ -32,6 +32,12 @@
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Fable.Core">
+      <HintPath>..\..\..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Fable.PowerPack">
+      <HintPath>..\..\..\..\node_modules\fable-powerpack\Fable.PowerPack.dll</HintPath>
+    </Reference>  
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -43,10 +49,6 @@
       <Project>{bdd78788-6c2d-47e6-a8c3-f114ee8cc5b4}</Project>
       <Private>True</Private>   
     </ProjectReference>
-  </ItemGroup>  
-  <ItemGroup>
-    <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
-    <Reference Include="../../../../node_modules/fable-powerpack/Fable.PowerPack.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../AssemblyInfo/FrontendInfo.fs">
