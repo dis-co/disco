@@ -264,7 +264,7 @@ module ApiServer =
   let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (project: Id) =
     let frontend = formatTCPUri mem.IpAddr (int mem.ApiPort)
 
-    let backend = Constants.API_BACKEND_PREFIX + string project
+    let backend = Constants.API_BACKEND_PREFIX + string mem.Id
 
     let pubSubAddr =
       formatEPGMUri
