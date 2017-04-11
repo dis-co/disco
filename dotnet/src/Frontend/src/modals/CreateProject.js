@@ -3,6 +3,8 @@ import React, { Component } from 'react'
 export default class createProject extends Component {
   constructor(props) {
       super(props);
+      let match = /\:(\d+)$/.exec(window.location.host);
+      this.webPort = match != null ? match[1] : null;
       this.state = {
         name: "",
         nameError: "Required",
@@ -31,6 +33,9 @@ export default class createProject extends Component {
     // TODO: Check also range?
     if (isNaN(parseInt(port))) {
       return "Not a valid number";
+    }
+    if (this.webPort && port === this.webPort) {
+      return "Port in use by web server"
     }
     for (let key in this.state) {
       if (key !== id && key.indexOf("Port") > -1 && !key.endsWith("Error")) {
