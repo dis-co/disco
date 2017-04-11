@@ -166,3 +166,44 @@ module FileSystem =
         |> Either.fail
 
   #endif
+
+  // ** copyDir
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  /// ## copyDir
+  ///
+  /// Copy the specified directory recursively to target.
+  ///
+  /// ### Signature:
+  /// - source: FilePath
+  /// - target: FilePath
+  ///
+  /// Returns: Either<IrisError,unit>
+
+  let rec copyDir (source: FilePath) (target: FilePath) : Either<IrisError,unit> =
+    try
+      let source = DirectoryInfo(source)
+
+      let target =
+        let info = DirectoryInfo(target)
+        if not info.Exists then
+          Directory.CreateDirectory info.FullName
+        else info
+
+      for file in source.GetFiles() do
+        let destpath = target.FullName </> file.Name
+        file.CopyTo(destpath, false) |> ignore
+
+      for dir in source.GetDirectories() do
+        let destpath = target.FullName </> dir.Name
+        copyDir dir.FullName destpath |> ignore
+
+      Either.succeed ()
+    with
+      | exn ->
+        ("FileSystem.mkDir", exn.Message)
+        |> IOError
+        |> Either.fail
+
+  #endif
