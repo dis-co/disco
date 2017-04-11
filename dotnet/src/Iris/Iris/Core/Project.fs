@@ -2428,6 +2428,20 @@ module Project =
 
   #endif
 
+  // **  gitRemote
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  let gitRemote (project: IrisProject) =
+    let formatter (mem: RaftMember) =
+      sprintf "git://%O:%d/%s/.git" mem.IpAddr mem.GitPort project.Name
+
+    project.Config
+    |> Config.getActiveMember
+    |> Option.map formatter
+
+  #endif
+
   // ** currentBranch
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -2784,6 +2798,11 @@ module Project =
     project.Config
     |> Config.removeMember mem
     |> flip updateConfig project
+
+  // ** findMember
+
+  let findMember (mem: MemberId) (project: IrisProject) =
+    Config.findMember project.Config mem
 
   // ** addMembers
 
