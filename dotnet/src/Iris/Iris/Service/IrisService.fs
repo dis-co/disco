@@ -1303,22 +1303,22 @@ module Iris =
           match msg with
           | Msg.Load (chan,pname,uname,pass,site) ->
             handleLoad state chan (pname,uname,pass,site) config post subs inbox
-          | Msg.Unload chan          -> handleUnload        state chan
-          | Msg.Config chan          -> handleConfig        state chan
-          | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
-          | Msg.Git    ev            -> handleGitEvent      state inbox ev
-          | Msg.Socket ev            -> handleSocketEvent   state       ev
-          | Msg.Raft   ev            -> handleRaftEvent     state       ev
-          | Msg.Api    ev            -> handleApiEvent      state       ev
-          | Msg.Discovery ev         -> hrafiandleDiscoveryEvent state      ev
-          | Msg.Log   log            -> handleLogEvent      state       log
-          | Msg.ForceElection        -> handleForceElection state
-          | Msg.Periodic             -> handlePeriodic      state
-          | Msg.Join (chan,ip,port)  -> handleJoin          state chan  ip port
-          | Msg.Leave  chan          -> handleLeave         state chan
-          | Msg.AddMember (chan,mem) -> handleAddMember     state chan  mem
-          | Msg.RmMember (chan,id)   -> handleRmMember      state chan  id
-          | Msg.State chan           -> handleState         state chan
+          | Msg.Unload chan          -> handleUnload         state chan
+          | Msg.Config chan          -> handleConfig         state chan
+          | Msg.SetConfig (chan,cnf) -> handleSetConfig      state chan  cnf
+          | Msg.Git    ev            -> handleGitEvent       state inbox ev
+          | Msg.Socket ev            -> handleSocketEvent    state       ev
+          | Msg.Raft   ev            -> handleRaftEvent      state       ev
+          | Msg.Api    ev            -> handleApiEvent       state       ev
+          | Msg.Discovery ev         -> handleDiscoveryEvent state       ev
+          | Msg.Log   log            -> handleLogEvent       state       log
+          | Msg.ForceElection        -> handleForceElection  state
+          | Msg.Periodic             -> handlePeriodic       state
+          | Msg.Join (chan,ip,port)  -> handleJoin           state chan  ip port
+          | Msg.Leave  chan          -> handleLeave          state chan
+          | Msg.AddMember (chan,mem) -> handleAddMember      state chan  mem
+          | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
+          | Msg.State chan           -> handleState          state chan
         return! act newstate
       }
 
