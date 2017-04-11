@@ -581,6 +581,7 @@ module Iris =
               |> string
               |> Logger.err (tag "onApplyLog")
           | None -> ()
+
         | Left error ->
           error
           |> string
@@ -1000,7 +1001,9 @@ module Iris =
         let! raftserver = RaftServer.create ()
         let! wsserver   = SocketServer.create mem
         let! apiserver  = ApiServer.create mem state.Project.Id
-        let! gitserver  = GitServer.create mem path
+        let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
+                                                                  // path here, not the path to
+                                                                  // project.yml
 
         // Try to put discovered services into the state
         let state =
