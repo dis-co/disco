@@ -113,6 +113,31 @@ module FileSystem =
 
   #endif
 
+  // ** lsDir
+
+  /// ## lsDir
+  ///
+  /// Enumerate all files in a given path. Returns the empty list for non-existent paths.
+  ///
+  /// ### Signature:
+  /// - path: FilePath
+  ///
+  /// Returns: FilePath list
+  let rec lsDir path : FilePath list =
+    if File.Exists path then
+      [ path ]
+    elif Directory.Exists path then
+      let children =
+        Array.fold
+          (fun lst path' ->
+            let children' = lsDir path'
+            children' :: lst)
+          []
+          (Directory.GetFileSystemEntries path)
+        |> List.concat
+      path :: children
+    else []
+
   // ** mkDir
 
   #if !FABLE_COMPILER
