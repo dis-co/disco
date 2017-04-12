@@ -235,7 +235,7 @@ module Raft =
     | Left error ->
       dispose client
       connections.TryRemove peer.Id |> ignore
-      memUri peer
+      Uri.raftUri peer
       |> sprintf "Encountered error %A in request to  %A" error
       |> Logger.err (tag "sendRequestVote")
       None
@@ -259,7 +259,7 @@ module Raft =
       |> Logger.err (tag "sendAppendEntries")
       None
     | Left error ->
-      memUri peer
+      Uri.raftUri peer
       |> sprintf "SendAppendEntries: received error  %A in request to  %A" error
       |> Logger.err (tag "sendAppendEntries")
       None
@@ -282,7 +282,7 @@ module Raft =
       |> Logger.err (tag "sendInstallSnapshot")
       None
     | Left error ->
-      memUri peer
+      Uri.raftUri peer
       |> sprintf "SendInstallSnapshot: received error  %A in request to  %A" error
       |> Logger.err (tag "sendInstallSnapshot")
       None
@@ -915,7 +915,7 @@ module Raft =
             return mem
 
           | Redirect next ->
-            sprintf "Got redirected to  %A" (memUri next)
+            sprintf "Got redirected to  %A" (Uri.raftUri next)
             |> Logger.info "tryJoin"
             return! _tryJoin (retry + 1) next
 
@@ -1142,7 +1142,7 @@ module Raft =
         let! raftstate = Persistence.getRaft config
 
         try
-          let frontend = raftstate.Member |> memUri
+          let frontend = raftstate.Member |> Uri.raftUri
           let backend = Constants.RAFT_BACKEND_PREFIX + string raftstate.Member.Id
           let! server = Broker.create raftstate.Member.Id 5 frontend backend
           let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)

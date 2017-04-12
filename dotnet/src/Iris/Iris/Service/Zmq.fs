@@ -42,7 +42,7 @@ module ZmqUtils =
   /// Returns: fszmq.Socket
   let mkReqSocket (mem: RaftMember) =
     mem
-    |> memUri
+    |> Uri.raftUri
     |> Client.create (Id.Create())
 
   // ** getSocket

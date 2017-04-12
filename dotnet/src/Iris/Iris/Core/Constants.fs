@@ -22,7 +22,7 @@ module Constants =
   let MCAST_ADDRESS = "224.0.0.1"
 
   [<Literal>]
-  let MCAST_PORT = 5555
+  let MCAST_PORT = 5555us
 
   [<Literal>]
   let API_BACKEND_PREFIX = "inproc://api-backend-"

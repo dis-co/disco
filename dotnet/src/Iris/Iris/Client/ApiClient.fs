@@ -211,8 +211,8 @@ module ApiClient =
 
     Tracing.trace "ApiClient.start" <| fun () ->
       let backendAddr = "inproc://apiclient"
-      let clientAddr = formatTCPUri client.IpAddress (int client.Port)
-      let srvAddr = formatTCPUri server.IpAddress (int server.Port)
+      let clientAddr = Uri.tcpUri client.IpAddress (Some client.Port)
+      let srvAddr = Uri.tcpUri server.IpAddress (Some server.Port)
 
       sprintf "Starting server on %s" clientAddr
       |> Logger.debug (tag "start")

@@ -174,7 +174,9 @@ module Persistence =
   ///
   /// Returns: Either<IrisError, about:blank>
   let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
-    printfn "should pull repository now"
-    |> Either.succeed
+    // project
+    // |> Project.gitRemote
+    // |>
+    failwith "later"
 
 #endif

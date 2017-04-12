@@ -2432,13 +2432,10 @@ module Project =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let gitRemote (project: IrisProject) =
-    let formatter (mem: RaftMember) =
-      sprintf "git://%O:%d/%s/.git" mem.IpAddr mem.GitPort project.Name
-
+  let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map formatter
+    |> Option.map (Uri.localGitUri project.Path)
 
   #endif
 

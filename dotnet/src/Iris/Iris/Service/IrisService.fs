@@ -591,7 +591,7 @@ module Iris =
   // ** mkLeader
 
   let private mkLeader (self: Id) (leader: RaftMember) =
-    let addr = memUri leader
+    let addr = Uri.raftUri leader
     let socket = Client.create self addr // Constants.REQ_TIMEOUT)
     { Member = leader; Socket = socket }
 

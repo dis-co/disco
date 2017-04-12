@@ -158,6 +158,10 @@ module IrisServiceTests =
 
         let! (project, zipped) = mkCluster 2
 
+        let! repo1 = Project.repository project
+
+        let num1 = Git.Repo.commitCount repo1
+
         //  _
         // / |
         // | |
@@ -166,12 +170,13 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        use! service1 = IrisService.create machine1 (fun _ -> Async.result (Right "ok"))
+        let! service1 = IrisService.create machine1 (fun _ -> Async.result (Right "ok"))
 
         use oobs1 =
           (fun ev ->
             match ev with
-            | Git (Started _) -> checkStarted.Set() |> ignore
+            | Git (Started _) ->
+              checkStarted.Set() |> ignore
             | Raft (StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
             | _ -> ())
@@ -189,12 +194,17 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        use! service2 = IrisService.create machine2 (fun _ -> Async.result (Right "ok"))
+        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> project.Name }
+
+        let num2 = Git.Repo.commitCount repo2
+
+        let! service2 = IrisService.create machine2 (fun _ -> Async.result (Right "ok"))
 
         use oobs2 =
           (fun ev ->
             match ev with
-            | Git (Started _) -> checkStarted.Set() |> ignore
+            | Git (Started _) ->
+              checkStarted.Set() |> ignore
             | Raft (StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
             | _ -> ())
@@ -225,7 +235,11 @@ module IrisServiceTests =
           |> AddCue
           |> leader.Append
 
-        printfn "response: %A" response
+        dispose service1
+        dispose service2
+
+        expect "Instance 1 should have same commit count" (num1 + 1) Git.Repo.commitCount repo1
+        expect "Instance 2 should have same commit count" (num2 + 1) Git.Repo.commitCount repo2
       }
       |> noError
 
