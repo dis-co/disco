@@ -1,3 +1,4 @@
+#r "../../Iris/bin/Debug/Core/LibGit2Sharp.dll"
 #r "../../Iris/bin/Debug/Core/Mono.Zeroconf.dll"
 #r "../../Iris/bin/Debug/Core/Iris.Serialization.dll"
 #r "../../Iris/bin/Debug/Core/Iris.Core.dll"
