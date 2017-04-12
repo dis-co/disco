@@ -25,10 +25,6 @@ export default class ProjectConfig extends Component {
             </span>
           </p>
         </div>
-          {/*<Input style={{
-            display: "inline-block",
-            marginLeft: 20
-          }} label="Site" floatingLabel={true} required={false} value={this.state.selected} onChange={ev => this.setState({selected: ev.target.value})} />*/}
         <div className="field">
           <label className="label">Site</label>
           <p className="control">
