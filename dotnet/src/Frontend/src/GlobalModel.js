@@ -19,6 +19,7 @@ export default class GlobalModel {
         this.__setState("serviceInfo", ctx.ServiceInfo);
       }
       this.__setState("pinGroups", info.state.PinGroups);
+      this.__setState("project", info.state.Project);
     });
 
     this.subscribers = new Map();

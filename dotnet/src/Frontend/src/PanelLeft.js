@@ -4,6 +4,7 @@ import Log from "./widgets/Log"
 import Manager from "./widgets/Manager"
 import GraphView from "./widgets/GraphView"
 import CueList from "./widgets/CueList"
+import ProjectView from "./widgets/ProjectView"
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
@@ -19,6 +20,9 @@ function cardClicked(title, global) {
     case "CUE LIST":
       global.addWidget(new CueList());
       break;      
+    case "PROJECT VIEW":
+      global.addWidget(new ProjectView());
+      break;  
     default:
       alert("Widget " + title + " is not currently supported")
   }
@@ -46,7 +50,7 @@ export default class PanelLeft extends Component {
         <Card key={1} global={this.props.global} letter="G" title="Graph View" text="Cluster Settings" />
         <Card key={2} global={this.props.global} letter="C" title="Cue List" text="Cluster Settings" />
         <Card key={3} global={this.props.global} letter="M" title="Manager" text="Cluster Settings" />
-        <Card key={4} global={this.props.global} letter="P" title="Project Overview (Small)" text="Cluster Settings" />
+        <Card key={4} global={this.props.global} letter="P" title="Project View" text="Cluster Settings" />
         <Card key={5} global={this.props.global} letter="B" title="Branches" text="Cluster Settings" />
         <Card key={6} global={this.props.global} letter="U" title="User Management" text="Cluster Settings" />
         <Card key={7} global={this.props.global} letter="H" title="Unassigned Hosts" text="Cluster Settings" />
