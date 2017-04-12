@@ -165,18 +165,30 @@ module Persistence =
 
   /// ## updateRepo
   ///
-  /// Description
+  /// Pull changes from the leader's git repository
   ///
   /// ### Signature:
-  /// - arg: arg
-  /// - arg: arg
-  /// - arg: arg
+  /// - project: IrisProject
+  /// - leader: RaftMember who is currently leader of the cluster
   ///
-  /// Returns: Either<IrisError, about:blank>
+  /// Returns: Either<IrisError, unit>
   let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
-    // project
-    // |> Project.gitRemote
-    // |>
-    failwith "later"
+    either {
+      let! repo = Project.repository project
+      let remotes = Git.Config.remotes repo
+
+      do! if Map.containsKey (string leader.Id) remotes |> not then
+            leader.Id
+            |> string
+            |> sprintf "Adding %A to list of remotes"
+            |> Logger.debug "updateRepo"
+            leader
+            |> Uri.localGitUri project.Path
+            |> Git.Config.addRemote repo (string leader.Id)
+            |> Either.succeed
+          else Either.nothing
+
+      do! Git.Repo.pull repo (string leader.Id)
+    }
 
 #endif

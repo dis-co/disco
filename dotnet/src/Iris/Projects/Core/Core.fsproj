@@ -112,6 +112,12 @@
     <Compile Include="..\..\Iris\Core\Util.fs">
       <Link>Util.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Git.fs">
+      <Link>Git.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Asset.fs">
+      <Link>Asset.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\User.fs">
       <Link>User.fs</Link>
     </Compile>
