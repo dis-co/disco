@@ -185,7 +185,7 @@ module Persistence =
             leader
             |> Uri.localGitUri project.Path
             |> Git.Config.addRemote repo (string leader.Id)
-            |> Either.succeed
+            |> Either.ignore
           else Either.nothing
 
       do! Git.Repo.pull repo (string leader.Id)

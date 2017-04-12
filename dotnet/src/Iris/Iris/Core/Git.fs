@@ -1,8 +1,8 @@
 namespace Iris.Core
 
-#if !FABLE_COMPILER
-
 // * Imports
+
+#if !FABLE_COMPILER
 
 open System
 open System.IO
@@ -48,7 +48,14 @@ module Git =
     ///
     /// Returns: Branch
     let create (name: string) (repo: Repository) =
-      repo.CreateBranch(name)
+      try
+        repo.CreateBranch(name)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "create")
+          |> Either.fail
 
     /// ## Get the currently checked out branch
     ///
@@ -198,6 +205,29 @@ module Git =
         commits := commit :: !commits
       !commits
 
+    /// ## setTracked
+    ///
+    /// Updates tracking information for all branches
+    ///
+    /// ### Signature:
+    /// - remote: string
+    /// - upstream: string
+    ///
+    /// Returns: Either<IrisError, unit>
+
+    let setTracked (repo: Repository) (branch: Branch) (remote: Remote) =
+      try
+        let setRemote (updater: BranchUpdater) =
+          updater.Remote <- remote.Name
+          updater.UpstreamBranch <- branch.CanonicalName
+        repo.Branches.Update (branch, setRemote)
+        |> Either.ignore
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "setTracked")
+          |> Either.fail
+
   //  ____
   // |  _ \ ___ _ __   ___
   // | |_) / _ \ '_ \ / _ \
@@ -318,7 +348,15 @@ module Git =
     /// - repo: Repository to reset
     ///
     /// Returns: unit
-    let reset (opts: ResetMode) (repo: Repository) = repo.Reset opts
+    let reset (opts: ResetMode) (repo: Repository) =
+      try
+        repo.Reset opts
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "reset")
+          |> Either.fail
 
     /// ## Reset current repository to specified commit
     ///
@@ -330,8 +368,15 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: unit
-    let resetTo (opts: ResetMode) (commit: Commit) (repo: Repository) = repo.Reset(opts, commit)
-
+    let resetTo (opts: ResetMode) (commit: Commit) (repo: Repository) =
+      try
+        repo.Reset(opts, commit)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "resetTo")
+          |> Either.fail
 
     /// ## Clean repository
     ///
@@ -625,6 +670,26 @@ module Git =
       commits repo
       |> fun lst -> lst.Count()
 
+
+    /// ## pull
+    ///
+    /// Pull changes from given remote.
+    ///
+    /// ### Signature:
+    /// - repo: Repository
+    /// - remote: string
+    ///
+    /// Returns: Either<IrisError,unit>
+
+    let pull (repo: Repository) (remote: string) =
+      try
+        failwith "later"
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "pull")
+          |> Either.fail
+
   //   ____             __ _
   //  / ___|___  _ __  / _(_) __ _
   // | |   / _ \| '_ \| |_| |/ _` |
@@ -633,34 +698,80 @@ module Git =
   //                         |___/
 
   module Config =
-    open System.Text.RegularExpressions
-
-    let remoteUrl name =
-      sprintf "remote.%s.url" name
-
-    let remoteFetch name =
-      sprintf "remote.%s.fetch" name
-
-    let fetchSetting name =
-      sprintf "+refs/heads/*:refs/remotes/%s/*" name
-
     let remotes (repo: Repository) =
-      let result = ref Map.empty
-      let url = new Regex("(?<=remote\.).*?(?=\.url)")
-
-      for cfg in repo.Config do
-        let mtch = url.Match cfg.Key
-        if mtch.Success then
-          result := Map.add mtch.Value cfg.Value !result
-
-      !result
+      repo.Network.Remotes
+      |> Seq.fold (fun lst (remote: Remote) -> (remote.Name,remote) :: lst) []
+      |> Map.ofList
 
     let addRemote (repo: Repository) (name: string) (url: string) =
-      repo.Config.Set<string>(remoteUrl name, url)
-      repo.Config.Set<string>(remoteFetch name, fetchSetting name)
+      try
+        repo.Network.Remotes.Add(name, url)
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "addRemote")
+          |> Either.fail
 
-    let delRemote (repo: Repository) (name: string) =
-      repo.Config.Unset(remoteUrl name)
-      repo.Config.Unset(remoteFetch name)
+    let delRemote (repo: Repository) (name: string) : Either<IrisError,unit> =
+      repo.Network.Remotes.Remove name
+      |> Either.succeed
+
+#endif
+
+//  ____  _                                             _
+// |  _ \| | __ _ _   _  __ _ _ __ ___  _   _ _ __   __| |
+// | |_) | |/ _` | | | |/ _` | '__/ _ \| | | | '_ \ / _` |
+// |  __/| | (_| | |_| | (_| | | | (_) | |_| | | | | (_| |
+// |_|   |_|\__,_|\__, |\__, |_|  \___/ \__,_|_| |_|\__,_|
+//                |___/ |___/
+
+#if INTERACTIVE
+
+open System.IO
+open LibGit2Sharp
+open Iris.Core
+
+let path = "/home/k/tmp/meh4"
+
+Repository.Init path
+
+let repo = new Repository(path)
+
+Git.Config.addRemote repo "origin" "git://localhost:6000/meh/.git"
+
+let origin: Remote =
+  Git.Config.remotes repo
+  |> Map.find "origin"
+
+let master = Git.Branch.current repo
+let fix_issue = Git.Repo.checkout "fix_issue" repo
+
+Git.Branch.setTracked repo master origin
+
+repo.Network.Remotes
+
+Git.Repo.reset ResetMode.Soft repo.Reset(Reset)
+
+File.WriteAllText(path </> "README", "9")
+
+let branch = Git.Branch.current repo
+
+let options =
+  let fo = new FetchOptions()
+  let po = new PullOptions()
+  po.FetchOptions <- fo
+  po
+
+Git.Repo.clean repo
+Git.Repo.stageAll repo
+
+let commit = Git.Repo.commit repo "incremented again" User.Admin.Signature
+
+repo.Network.Fetch("git@bitbucket.org:krgn/meh.git", ["master"], "hello")
+
+Commands.Pull(repo, User.Admin.Signature, options)
+
+repo.Network.Push(fix_issue |> Either.get)
 
 #endif
