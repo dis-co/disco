@@ -117,6 +117,21 @@ module ZmqIntegrationTests =
       }
       |> noError
 
+  let test_client_send_fail_restarts_socket =
+    ftestCase "client send fail restarts socket" <| fun _ ->
+      either {
+        use obs = Logger.subscribe Logger.stdout
+        let addr = "tcp://1.2.3.4:5555"
+        let client = Client.create (Id.Create()) addr
+
+        for i in 0 .. 10 do
+          do! i
+              |> BitConverter.GetBytes
+              |> client.Request
+              |> Either.ignore
+      }
+      |> noError
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -126,4 +141,5 @@ module ZmqIntegrationTests =
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
       test_broker_request_handling
+      test_client_send_fail_restarts_socket
     ] |> testSequenced
