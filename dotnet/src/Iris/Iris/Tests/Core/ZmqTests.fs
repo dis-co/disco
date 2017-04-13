@@ -36,7 +36,14 @@ module ZmqIntegrationTests =
         let num = 5
         let frontend = "tcp://127.0.0.1:5555"
         let backend = "inproc://backend"
-        use! broker = Broker.create (Id.Create()) num 20 frontend backend
+        use! broker = Broker.create {
+            Id = Id.Create()
+            MinWorkers = uint8 num
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 200u
+          }
 
         let loop (inbox: MailboxProcessor<RawRequest>) =
           let rec impl () = async {
@@ -136,18 +143,25 @@ module ZmqIntegrationTests =
         let mutable count = 0
 
         let num = 5                     // number of clients
-        let requests = 3                // number of requests per client
+        let requests = 10               // number of requests per client
 
         let frontend = "tcp://127.0.0.1:5555"
         let backend = "inproc://backend"
 
-        use! broker = Broker.create (Id.Create()) num 20 frontend backend
+        use! broker = Broker.create {
+            Id = Id.Create()
+            MinWorkers = uint8 num
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 100u
+          }
 
         use bobs = broker.Subscribe (fun _ -> count <- Interlocked.Increment &count)
 
         let clients =
           [| for n in 0 .. num - 1 do
-               yield Client.create (Id.Create()) frontend Constants.REQ_TIMEOUT |]
+               yield Client.create (Id.Create()) frontend 100.0 |]
 
         let mkRequest (i: int) (client: IClient) =
           async {
@@ -172,6 +186,8 @@ module ZmqIntegrationTests =
         // requests received on the broker subscription with the number of workers used, and if that
         // number is higher than the worker count, the workers have mitigated backend response
         // timeouts successfully.
+
+        printfn "count: %d expected: %d" count (num * requests)
 
         expect "Should have passed on more requests than workers" true ((<) num) count
       }

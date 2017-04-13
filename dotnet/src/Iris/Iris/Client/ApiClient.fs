@@ -210,16 +210,37 @@ module ApiClient =
                     (agent: ApiAgent) =
 
     Tracing.trace "ApiClient.start" <| fun () ->
-      let backendAddr = "inproc://apiclient"
-      let clientAddr = Uri.tcpUri client.IpAddress (Some client.Port)
-      let srvAddr = Uri.tcpUri server.IpAddress (Some server.Port)
+      let backendAddr =
+        client.Id
+        |> string
+        |> Some
+        |> Uri.inprocUri Constants.API_CLIENT_PREFIX
+
+      let clientAddr =
+        client.Port
+        |> Some
+        |> Uri.tcpUri client.IpAddress
+
+      let srvAddr =
+        server.Port
+        |> Some
+        |> Uri.tcpUri server.IpAddress
 
       sprintf "Starting server on %s" clientAddr
       |> Logger.debug (tag "start")
 
       let socket = Client.create client.Id srvAddr Constants.REQ_TIMEOUT
 
-      match Broker.create client.Id 3 20 clientAddr backendAddr with
+      let result = Broker.create {
+        Id = client.Id
+        MinWorkers = 5uy
+        MaxWorkers = 20uy
+        Frontend = clientAddr
+        Backend = backendAddr
+        RequestTimeout = uint32 Constants.REQ_TIMEOUT
+      }
+
+      match result with
       | Right server ->
         let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
 

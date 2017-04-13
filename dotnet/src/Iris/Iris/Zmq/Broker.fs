@@ -45,11 +45,25 @@ type IClient =
   abstract Running: bool
   abstract Restart: unit -> unit
 
+type WorkerArgs =
+  { Id: WorkerId
+    Backend: string
+    Context: ZContext
+    RequestTimeout: uint32 }
+
 type private IWorker =
   inherit IDisposable
   abstract Id: WorkerId
   abstract Respond: RawResponse -> unit
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
+
+type BrokerArgs =
+  { Id: Id
+    MinWorkers: uint8
+    MaxWorkers: uint8
+    Frontend: string
+    Backend: string
+    RequestTimeout: uint32 }
 
 type IBroker =
   inherit IDisposable
@@ -301,7 +315,7 @@ module private Worker =
     String.Format("Worker-{0}.{1}", id, str)
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (id: WorkerId, address: string, context: ZContext) as self =
+  type private LocalThreadState (args: WorkerArgs) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
@@ -331,6 +345,9 @@ module private Worker =
         state.Started
         state.Run
 
+    member self.Timeout
+      with get () = args.RequestTimeout
+
     member self.Start() =
       try
         self.StartSocket()
@@ -344,7 +361,7 @@ module private Worker =
           dispose self
 
           exn.Message + exn.StackTrace
-          |> Error.asSocketError (tag id "Start")
+          |> Error.asSocketError (tag args.Id "Start")
           |> Either.fail
           |> fun error -> self.Error <- error
 
@@ -353,14 +370,14 @@ module private Worker =
           self.Run <- false
 
     member self.StartSocket () =
-      self.Socket <- new ZSocket(context, ZSocketType.REQ)
-      self.Socket.Identity <- BitConverter.GetBytes id
-      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds Constants.REQ_TIMEOUT
+      self.Socket <- new ZSocket(args.Context, ZSocketType.REQ)
+      self.Socket.Identity <- BitConverter.GetBytes args.Id
+      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds (float args.RequestTimeout)
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
-      self.Socket.Connect(address)
+      self.Socket.Connect(args.Backend)
 
     member self.RestartSocket() =
-      Logger.debug (tag id "RestartSocket") "restarting socket"
+      Logger.debug (tag args.Id "RestartSocket") "restarting socket"
       dispose self.Socket
       self.StartSocket()
 
@@ -369,7 +386,7 @@ module private Worker =
       self.Socket.Send(hello)
 
     member self.Id
-      with get () = id
+      with get () = args.Id
 
     interface IDisposable with
       member self.Dispose() =
@@ -379,8 +396,8 @@ module private Worker =
   let private spin (state: LocalThreadState) =
     state.Initialized && state.Started && state.Run
 
-  let private timedOut (timer: Stopwatch) =
-    float timer.ElapsedMilliseconds > Constants.REQ_TIMEOUT
+  let private timedOut (state: LocalThreadState) (timer: Stopwatch) =
+    timer.ElapsedMilliseconds > int64 state.Timeout
 
   let private worker (state: LocalThreadState) () =
     state.Start()
@@ -406,12 +423,12 @@ module private Worker =
 
           let mutable response = Unchecked.defaultof<RawResponse>
 
-          while not (state.Responder.TryPop(&response)) && not (timedOut timer) do
+          while not (state.Responder.TryPop(&response)) && not (timedOut state timer) do
             Thread.Sleep(TimeSpan.FromTicks 1L)
 
           timer.Stop()
 
-          if not (timedOut timer) then
+          if not (timedOut state timer) then
             use reply = new ZMessage()
             reply.Add(new ZFrame(clientId));
             reply.Add(new ZFrame());
@@ -456,8 +473,8 @@ module private Worker =
     state.Stopper.Set() |> ignore
     dispose state.Stopper
 
-  let create (id: WorkerId) (backend: string) (context: ZContext) =
-    let state = new LocalThreadState(id = id, address = backend, context = context)
+  let create (args: WorkerArgs)  =
+    let state = new LocalThreadState(args)
     let listener = createListener state.Subscriptions
 
     let thread = new Thread(new ThreadStart(worker state))
@@ -525,7 +542,7 @@ module Broker =
     impl ()
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (min: int, max: int, frontend: string, backend: string) as self =
+  type private LocalThreadState (args: BrokerArgs) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
@@ -558,10 +575,11 @@ module Broker =
         self.Context <- new ZContext()
         self.Frontend <- new ZSocket(self.Context, ZSocketType.ROUTER)
         self.Backend <- new ZSocket(self.Context, ZSocketType.ROUTER)
-        self.Frontend.Bind(frontend)
-        self.Backend.Bind(backend)
+        self.Frontend.Bind(args.Frontend)
+        self.Backend.Bind(args.Backend)
 
-        for n in 1 .. min do self.AddWorker()
+        for _ in 1uy .. args.MinWorkers do
+          self.AddWorker()
 
         self.Initialized <- true
         self.Started <- true
@@ -575,9 +593,17 @@ module Broker =
 
     member self.AddWorker() =
       let count = self.Workers.Count
-      if count < max then
+      if count < int args.MaxWorkers then
         Logger.debug "Broker.AddWorker" "creating new worker"
-        match Worker.create (uint16 count + 1us) backend self.Context with
+
+        let result = Worker.create {
+            Id = uint16 count + 1us
+            Backend = args.Backend
+            Context = self.Context
+            RequestTimeout = args.RequestTimeout
+          }
+
+        match result with
         | Right worker ->
           notify self.Subscriptions
           |> worker.Subscribe
@@ -671,8 +697,8 @@ module Broker =
     dispose state
     state.Stopper.Set() |> ignore
 
-  let create (id: Id) (min: int) (max: int) (frontend: string) (backend: string) =
-    let state = new LocalThreadState(min = min, max = max, frontend = frontend, backend = backend)
+  let create (args: BrokerArgs) =
+    let state = new LocalThreadState(args)
     let listener = createListener state.Subscriptions
     let cts = new CancellationTokenSource()
     let responder = ResponseActor.Start(loop state.Workers, cts.Token)

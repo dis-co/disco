@@ -16,7 +16,7 @@ module Constants =
   //                    |_|
 
   [<Literal>]
-  let REQ_TIMEOUT = 3000.0              // ms
+  let REQ_TIMEOUT = 3000.0            // ms
 
   [<Literal>]
   let MCAST_ADDRESS = "224.0.0.1"
@@ -25,13 +25,13 @@ module Constants =
   let MCAST_PORT = 5555us
 
   [<Literal>]
-  let API_BACKEND_PREFIX = "inproc://api-backend-"
+  let API_BACKEND_PREFIX = "apibackend"
 
   [<Literal>]
-  let API_CLIENT_PREFIX = "inproc://api-client-"
+  let API_CLIENT_PREFIX = "apiclient"
 
   [<Literal>]
-  let RAFT_BACKEND_PREFIX = "inproc://raft-backend-"
+  let RAFT_BACKEND_PREFIX = "raftbackend"
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_

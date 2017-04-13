@@ -263,8 +263,7 @@ module ApiServer =
 
   let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (project: Id) =
     let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
-
-    let backend = Constants.API_BACKEND_PREFIX + string mem.Id
+    let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
 
     let pubSubAddr =
       Uri.epgmUri
@@ -275,7 +274,16 @@ module ApiServer =
     let publisher = new Pub(pubSubAddr, string project)
     let subscriber = new Sub(pubSubAddr, string project)
 
-    match Broker.create mem.Id 5 20 frontend backend with
+    let result = Broker.create {
+      Id = mem.Id
+      MinWorkers = 5uy
+      MaxWorkers = 20uy
+      Frontend = frontend
+      Backend = backend
+      RequestTimeout = uint32 Constants.REQ_TIMEOUT
+    }
+
+    match result  with
     | Right server ->
       match publisher.Start(), subscriber.Start() with
       | Right (), Right () ->

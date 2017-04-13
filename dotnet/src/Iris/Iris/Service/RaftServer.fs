@@ -1142,9 +1142,23 @@ module Raft =
         let! raftstate = Persistence.getRaft config
 
         try
-          let frontend = raftstate.Member |> Uri.raftUri
-          let backend = Constants.RAFT_BACKEND_PREFIX + string raftstate.Member.Id
-          let! server = Broker.create raftstate.Member.Id 5 20 frontend backend
+          let frontend = Uri.raftUri raftstate.Member
+
+          let backend =
+            raftstate.Member.Id
+            |> string
+            |> Some
+            |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
+
+          let! server = Broker.create {
+              Id = raftstate.Member.Id
+              MinWorkers = 5uy
+              MaxWorkers = 20uy
+              Frontend = frontend
+              Backend = backend
+              RequestTimeout = uint32 Constants.REQ_TIMEOUT
+            }
+
           let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
 
           let callbacks =
