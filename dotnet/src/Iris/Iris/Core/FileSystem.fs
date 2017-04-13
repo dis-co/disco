@@ -86,7 +86,9 @@ module FileSystem =
   /// Returns: Either<IrisError, unit>
   let rec rmDir path : Either<IrisError,unit>  =
     try
-      let attrs = File.GetAttributes(path)
+      let info = new FileInfo(path)
+      info.IsReadOnly <- false
+      let attrs = info.Attributes
       if (attrs &&& FileAttributes.Directory) = FileAttributes.Directory then
         let children = DirectoryInfo(path).EnumerateFileSystemInfos()
         if children.Count() > 0 then

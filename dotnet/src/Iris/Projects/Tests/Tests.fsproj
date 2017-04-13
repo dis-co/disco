@@ -145,6 +145,9 @@
     <Compile Include="..\..\Iris\Tests\Core\ApiTests.fs">
       <Link>ApiTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\UtilTests.fs">
+      <Link>UtilTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Raft\JointConsensusTests.fs">
       <Link>JointConsensusTests.fs</Link>
     </Compile>
