@@ -641,7 +641,6 @@ module Broker =
 
     Logger.debug "IBroker.initialize" "startup done"
 
-    let mutable count = 0
     let available = new ResizeArray<WorkerId>()
     let mutable incoming = Unchecked.defaultof<ZMessage>
     let mutable error = Unchecked.defaultof<ZError>
@@ -674,7 +673,6 @@ module Broker =
 
       if available.Count > 0 then
         if state.Frontend.PollIn(poll, &incoming, &error, timespan) then
-          count <- count + 1
           let clientId = incoming.[0].Read()
           let request = incoming.[2].Read()
           let workerId = available.[0]
