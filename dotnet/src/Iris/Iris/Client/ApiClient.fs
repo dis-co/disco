@@ -217,9 +217,9 @@ module ApiClient =
       sprintf "Starting server on %s" clientAddr
       |> Logger.debug (tag "start")
 
-      let socket = Client.create client.Id srvAddr
+      let socket = Client.create client.Id srvAddr Constants.REQ_TIMEOUT
 
-      match Broker.create client.Id 3 clientAddr backendAddr with
+      match Broker.create client.Id 3 20 clientAddr backendAddr with
       | Right server ->
         let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
 

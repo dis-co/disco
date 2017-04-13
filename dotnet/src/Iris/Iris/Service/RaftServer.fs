@@ -1144,7 +1144,7 @@ module Raft =
         try
           let frontend = raftstate.Member |> Uri.raftUri
           let backend = Constants.RAFT_BACKEND_PREFIX + string raftstate.Member.Id
-          let! server = Broker.create raftstate.Member.Id 5 frontend backend
+          let! server = Broker.create raftstate.Member.Id 5 20 frontend backend
           let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
 
           let callbacks =

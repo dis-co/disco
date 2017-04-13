@@ -275,7 +275,7 @@ module ApiServer =
     let publisher = new Pub(pubSubAddr, string project)
     let subscriber = new Sub(pubSubAddr, string project)
 
-    match Broker.create mem.Id 5 frontend backend with
+    match Broker.create mem.Id 5 20 frontend backend with
     | Right server ->
       match publisher.Start(), subscriber.Start() with
       | Right (), Right () ->
@@ -351,7 +351,7 @@ module ApiServer =
 
         // construct a new client value
         let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
-        let socket = Client.create meta.Id addr
+        let socket = Client.create meta.Id addr Constants.REQ_TIMEOUT
 
         let client =
           { Meta = meta

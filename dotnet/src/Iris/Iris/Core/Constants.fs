@@ -16,7 +16,7 @@ module Constants =
   //                    |_|
 
   [<Literal>]
-  let REQ_TIMEOUT = 1000                // ms
+  let REQ_TIMEOUT = 3000.0              // ms
 
   [<Literal>]
   let MCAST_ADDRESS = "224.0.0.1"
