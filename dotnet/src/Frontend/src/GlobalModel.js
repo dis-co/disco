@@ -18,8 +18,8 @@ export default class GlobalModel {
         const ctx = Iris.getClientContext();
         this.__setState("serviceInfo", ctx.ServiceInfo);
       }
-      this.__setState("pinGroups", info.state.PinGroups);
-      this.__setState("project", info.state.Project);
+      this.__setState("pinGroups", info != null ? info.state.PinGroups : null);
+      this.__setState("project", info != null ? info.state.Project : null);
     });
 
     this.subscribers = new Map();

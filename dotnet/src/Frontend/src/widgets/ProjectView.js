@@ -23,7 +23,7 @@ class ProjectView extends Component {
   render() {
     const project = this.props.global.state.project;
     if (project == null) {
-      return <p>No project loaded</p>;
+      return <p style={{margin: 10}}>No project loaded</p>;
     }
     else {
       return (
