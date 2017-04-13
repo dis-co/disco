@@ -225,8 +225,6 @@ module Client =
       Tracing.trace "IClient.Request" <| fun () ->
         if spin state then
           try
-            let mutable retires = 0
-
             use msg = new ZMessage()
             msg.Add(new ZFrame(state.Request))
             state.Socket.Send(msg)
