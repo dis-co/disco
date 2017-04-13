@@ -235,6 +235,11 @@ module Either =
   let inline nothing< ^err > : Either< ^err,unit > =
     succeed ()
 
+  // ** ignore
+
+  let inline ignore< ^err > _ : Either< ^err, unit > =
+    succeed ()
+
   // ** tryWith
 
   let inline tryWith< ^a, ^err >

@@ -205,7 +205,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * projectName:string * userName:string * password:string * site:string option
+    | Load        of ReplyChan * project:string * user:string * pw:string * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -322,17 +322,17 @@ module Iris =
 
   // ** IIrisServer
 
-  // ** triggerOnNext
+  // ** notify
 
-  let private triggerOnNext (subscriptions: Subscriptions) (ev: IrisEvent) =
+  let private notify (subscriptions: Subscriptions) (ev: IrisEvent) =
     for subscription in subscriptions.Values do
       subscription.OnNext ev
 
-  // ** triggerWithLoaded
+  // ** notifyWithLoaded
 
-  let private triggerWithLoaded (state: IrisState) (ev: IrisEvent) =
+  let private notifyWithLoaded (state: IrisState) (ev: IrisEvent) =
     match state with
-    | Loaded(_,data) -> triggerOnNext data.Subscriptions ev
+    | Loaded(_,data) -> notify data.Subscriptions ev
     | _ -> ()
 
   // ** broadcastMsg
@@ -581,6 +581,7 @@ module Iris =
               |> string
               |> Logger.err (tag "onApplyLog")
           | None -> ()
+
         | Left error ->
           error
           |> string
@@ -590,7 +591,7 @@ module Iris =
   // ** mkLeader
 
   let private mkLeader (self: Id) (leader: RaftMember) =
-    let addr = memUri leader
+    let addr = Uri.raftUri leader
     let socket = Client.create self addr // Constants.REQ_TIMEOUT)
     { Member = leader; Socket = socket }
 
@@ -758,16 +759,18 @@ module Iris =
             { data with Leader = None }
         | Right None ->
           "Could not start re-direct socket: No Known Leader"
-          |> Logger.debug (tag "onStateChanged")
+          |> Logger.debug (tag "forwardCommand")
           data
         | Left error ->
           string error
-          |> Logger.err (tag "onStateChanged")
+          |> Logger.err (tag "forwardCommand")
           data
 
   // ** handleRaftEvent
 
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
+    ev |> IrisEvent.Raft |> notifyWithLoaded state
+
     Tracing.trace "IrisService.handleRaftEvent" <| fun () ->
       match ev with
       | ApplyLog sm             -> onApplyLog         state sm
@@ -817,7 +820,7 @@ module Iris =
           |> ignore
           state
         | _ -> // Status events
-          triggerOnNext data.Subscriptions (IrisEvent.Api ev)
+          notify data.Subscriptions (IrisEvent.Api ev)
           state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
@@ -916,7 +919,7 @@ module Iris =
       match state with
       | Idle _ -> state
       | Loaded (idleData, data) ->
-        triggerOnNext data.Subscriptions (IrisEvent.Git ev)
+        notify data.Subscriptions (IrisEvent.Git ev)
         match ev with
         | Started pid ->
           sprintf "Git daemon started with PID: %d" pid
@@ -1000,7 +1003,9 @@ module Iris =
         let! raftserver = RaftServer.create ()
         let! wsserver   = SocketServer.create mem
         let! apiserver  = ApiServer.create mem state.Project.Id
-        let! gitserver  = GitServer.create mem path
+        let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
+                                                                  // path here, not the path to
+                                                                  // project.yml
 
         // Try to put discovered services into the state
         let state =
@@ -1101,7 +1106,7 @@ module Iris =
         // notify
         ServiceStatus.Running
         |> Status
-        |> triggerOnNext subscriptions
+        |> notify subscriptions
 
         // reply
         Reply.Ok
@@ -1114,7 +1119,7 @@ module Iris =
         // notify
         ServiceStatus.Failed error
         |> Status
-        |> triggerOnNext subscriptions
+        |> notify subscriptions
 
         // reply
         error
@@ -1127,7 +1132,7 @@ module Iris =
       // notify
       ServiceStatus.Failed error
       |> Status
-      |> triggerOnNext subscriptions
+      |> notify subscriptions
 
       error
       |> Either.fail
@@ -1157,7 +1162,7 @@ module Iris =
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) =
     Tracing.trace "IrisService.handleUnload" <| fun () ->
-      triggerWithLoaded state (Status ServiceStatus.Stopped)
+      notifyWithLoaded state (Status ServiceStatus.Stopped)
       let idleData =
         match state with
         | Idle idleData -> idleData
@@ -1315,22 +1320,22 @@ module Iris =
           match msg with
           | Msg.Load (chan,pname,uname,pass,site) ->
             handleLoad state chan (pname,uname,pass,site) config post subs inbox
-          | Msg.Unload chan          -> handleUnload        state chan
-          | Msg.Config chan          -> handleConfig        state chan
-          | Msg.SetConfig (chan,cnf) -> handleSetConfig     state chan  cnf
-          | Msg.Git    ev            -> handleGitEvent      state inbox ev
-          | Msg.Socket ev            -> handleSocketEvent   state       ev
-          | Msg.Raft   ev            -> handleRaftEvent     state       ev
-          | Msg.Api    ev            -> handleApiEvent      state       ev
-          | Msg.Discovery ev         -> handleDiscoveryEvent state      ev
-          | Msg.Log   log            -> handleLogEvent      state       log
-          | Msg.ForceElection        -> handleForceElection state
-          | Msg.Periodic             -> handlePeriodic      state
-          | Msg.Join (chan,ip,port)  -> handleJoin          state chan  ip port
-          | Msg.Leave  chan          -> handleLeave         state chan
-          | Msg.AddMember (chan,mem) -> handleAddMember     state chan  mem
-          | Msg.RmMember (chan,id)   -> handleRmMember      state chan  id
-          | Msg.State chan           -> handleState         state chan
+          | Msg.Unload chan          -> handleUnload         state chan
+          | Msg.Config chan          -> handleConfig         state chan
+          | Msg.SetConfig (chan,cnf) -> handleSetConfig      state chan  cnf
+          | Msg.Git    ev            -> handleGitEvent       state inbox ev
+          | Msg.Socket ev            -> handleSocketEvent    state       ev
+          | Msg.Raft   ev            -> handleRaftEvent      state       ev
+          | Msg.Api    ev            -> handleApiEvent       state       ev
+          | Msg.Discovery ev         -> handleDiscoveryEvent state       ev
+          | Msg.Log   log            -> handleLogEvent       state       log
+          | Msg.ForceElection        -> handleForceElection  state
+          | Msg.Periodic             -> handlePeriodic       state
+          | Msg.Join (chan,ip,port)  -> handleJoin           state chan  ip port
+          | Msg.Leave  chan          -> handleLeave          state chan
+          | Msg.AddMember (chan,mem) -> handleAddMember      state chan  mem
+          | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
+          | Msg.State chan           -> handleState          state chan
         return! act newstate
       }
 
@@ -1398,7 +1403,7 @@ module Iris =
               match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
               | Right Reply.Ok ->
                 // Notify subscriptor of the change of state
-                triggerOnNext subscriptions (Status ServiceStatus.Running)
+                notify subscriptions (Status ServiceStatus.Running)
                 Right ()
               | Left error -> Left error
               | Right other ->
@@ -1498,7 +1503,7 @@ module Iris =
 
           member self.Dispose() =
             Tracing.trace "IrisService.Dispose" <| fun () ->
-              triggerOnNext subscriptions (Status ServiceStatus.Stopping)
+              notify subscriptions (Status ServiceStatus.Stopping)
               postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
               |> ignore
               dispose agent

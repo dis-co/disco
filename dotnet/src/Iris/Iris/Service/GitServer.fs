@@ -147,7 +147,7 @@ module Git =
       Path.GetDirectoryName path
       |> String.replace '\\' '/'
 
-    let sanepath = String.replace '\\' '/' path
+    let sanepath = path |> String.replace '\\' '/'
 
     let args =
       [| "daemon"

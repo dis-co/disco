@@ -115,6 +115,35 @@ module FileSystem =
 
   #endif
 
+  // ** lsDir
+
+  #if !FABLE_COMPILER
+
+  /// ## lsDir
+  ///
+  /// Enumerate all files in a given path. Returns the empty list for non-existent paths.
+  ///
+  /// ### Signature:
+  /// - path: FilePath
+  ///
+  /// Returns: FilePath list
+  let rec lsDir path : FilePath list =
+    if File.Exists path then
+      [ path ]
+    elif Directory.Exists path then
+      let children =
+        Array.fold
+          (fun lst path' ->
+            let children' = lsDir path'
+            children' :: lst)
+          []
+          (Directory.GetFileSystemEntries path)
+        |> List.concat
+      path :: children
+    else []
+
+  #endif
+
   // ** mkDir
 
   #if !FABLE_COMPILER
@@ -136,6 +165,47 @@ module FileSystem =
         |> Either.succeed
       else
         Either.succeed ()
+    with
+      | exn ->
+        ("FileSystem.mkDir", exn.Message)
+        |> IOError
+        |> Either.fail
+
+  #endif
+
+  // ** copyDir
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  /// ## copyDir
+  ///
+  /// Copy the specified directory recursively to target.
+  ///
+  /// ### Signature:
+  /// - source: FilePath
+  /// - target: FilePath
+  ///
+  /// Returns: Either<IrisError,unit>
+
+  let rec copyDir (source: FilePath) (target: FilePath) : Either<IrisError,unit> =
+    try
+      let source = DirectoryInfo(source)
+
+      let target =
+        let info = DirectoryInfo(target)
+        if not info.Exists then
+          Directory.CreateDirectory info.FullName
+        else info
+
+      for file in source.GetFiles() do
+        let destpath = target.FullName </> file.Name
+        file.CopyTo(destpath, false) |> ignore
+
+      for dir in source.GetDirectories() do
+        let destpath = target.FullName </> dir.Name
+        copyDir dir.FullName destpath |> ignore
+
+      Either.succeed ()
     with
       | exn ->
         ("FileSystem.mkDir", exn.Message)

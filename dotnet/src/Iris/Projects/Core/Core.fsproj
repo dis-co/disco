@@ -112,6 +112,12 @@
     <Compile Include="..\..\Iris\Core\Util.fs">
       <Link>Util.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Git.fs">
+      <Link>Git.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\Asset.fs">
+      <Link>Asset.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\User.fs">
       <Link>User.fs</Link>
     </Compile>
@@ -151,6 +157,9 @@
     <Compile Include="..\..\Iris\Raft\Member.fs">
       <Link>Member.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Uri.fs">
+      <Link>Uri.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Renderer.fs">
       <Link>Renderer.fs</Link>
     </Compile>
@@ -178,9 +187,6 @@
     <Compile Include="..\..\Iris\Raft\Raft.fs">
       <Link>Raft.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Uri.fs">
-      <Link>Uri.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Zmq\Common.fs">
       <Link>Common.fs</Link>
     </Compile>
@@ -192,9 +198,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Zmq\Broker.fs">
       <Link>Broker.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\ZmqUtils.fs">
-      <Link>ZmqUtils.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Client\Interfaces.fs">
       <Link>Interfaces.fs</Link>

@@ -3,6 +3,8 @@ VVVV_BASEDIR=dotnet
 BUILD=cd $(VVVV_BASEDIR) && ./build.sh
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
+SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
 export MONO_THREADS_PER_CPU
@@ -14,7 +16,7 @@ export MONO_THREADS_PER_CPU
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
 
 tests:
 	${BUILD} BuildTests
@@ -44,13 +46,13 @@ client:
 	${BUILD} BuildDebugMockClient
 
 run.client:
-	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
 
 run.frontend:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR)/src/Frontend && npm run start"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR)/src/Frontend && npm run start"
 
 run.service:
-	@nix-shell shell.nix -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/Iris/iris.exe start --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/Iris/iris.exe start --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
@@ -74,7 +76,7 @@ web.tests.fsproj:
 	${BUILD} BuildWebTestsFsProj
 
 run.web.tests:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
 
 web.tests:
 	${BUILD} BuildWebTests
@@ -104,7 +106,7 @@ docs:
 #  \__,_|_|_|
 
 tests.all:
-	@nix-shell shell.nix -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh AllTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh AllTests"
 
 debug.all:
 	${BUILD} DebugAll
@@ -129,10 +131,10 @@ release:
 # |___/_| |_|\___|_|_|
 
 shell:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv
+	@nix-shell $(SHELL_NIX) -A irisEnv
 
 nixfsi:
-	@nix-shell ${CURRENT_DIR}/shell.nix -A irisEnv --run "fsi --use:dotnet/src/Iris/bin/Debug/Core/interactive.fsx"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "fsi --use:dotnet/.paket/load/main.group.fsx --use:$(SCRIPT_DIR)/Fsx/Iris.Core.fsx"
 
 #  ____             _
 # |  _ \  ___   ___| | _____ _ __

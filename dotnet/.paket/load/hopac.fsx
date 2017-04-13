@@ -1,0 +1,6 @@
+#load @"fsharp.core.fsx" 
+#load @"fsharp.core.fsx" 
+#load @"netstandard.library.fsx" 
+#r "../../packages/Hopac/lib/net45/Hopac.Core.dll" 
+#r "../../packages/Hopac/lib/net45/Hopac.dll" 
+#r "../../packages/Hopac/lib/net45/Hopac.Platform.dll" 

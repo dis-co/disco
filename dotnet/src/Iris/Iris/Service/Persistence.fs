@@ -19,6 +19,8 @@ open SharpYaml.Serialization
 // * Persistence
 module Persistence =
 
+  let private tag (str: string) = String.Format("Persistence.{0}", str)
+
   // ** createRaft
 
   /// ## Create a new Raft state
@@ -161,20 +163,69 @@ module Persistence =
       do! Asset.save path log
     }
 
+  // ** getRemote
+
+  let private getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
+    let uri = Uri.localGitUri project.Name leader
+    match Git.Config.tryFindRemote repo (string leader.Id) with
+    | None ->
+      leader.Id
+      |> string
+      |> sprintf "Adding %A to list of remotes"
+      |> Logger.debug (tag "getRemote")
+      Git.Config.addRemote repo (string leader.Id) uri
+
+    | Some remote when remote.Url <> uri ->
+      leader.Id
+      |> string
+      |> sprintf "Updating remote section for %A to point to %A" uri
+      |> Logger.debug (tag "getRemote")
+      Git.Config.updateRemote repo remote uri
+
+    | Some remote ->
+      Either.succeed remote
+
+  // ** ensureTracking
+
+  let private ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
+    if not (Git.Branch.isTracking branch) then
+      Git.Branch.setTracked repo branch remote
+    else
+      Either.nothing
+
   // ** updateRepo
 
   /// ## updateRepo
   ///
-  /// Description
+  /// Pull changes from the leader's git repository
   ///
   /// ### Signature:
-  /// - arg: arg
-  /// - arg: arg
-  /// - arg: arg
+  /// - project: IrisProject
+  /// - leader: RaftMember who is currently leader of the cluster
   ///
-  /// Returns: Either<IrisError, about:blank>
+  /// Returns: Either<IrisError, unit>
   let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
-    printfn "should pull repository now"
-    |> Either.succeed
+    either {
+      let! repo = Project.repository project
+      let! remote = getRemote project repo leader
+
+      let branch = Git.Branch.current repo
+      do! ensureTracking repo branch remote
+      let result = Git.Repo.pull repo remote User.Admin.Signature
+      match result with
+      | Right merge ->
+        match merge.Status with
+        | MergeStatus.Conflicts ->
+          "Automatic merge failed with conflicts. Please resolve conflicts manually."
+          |> Logger.err (tag "updateRepo")
+        | _ ->
+          merge.Commit.Sha
+          |> sprintf "Automatic merge successful: %s"
+          |> Logger.debug (tag "updateRepo")
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "updateRepo")
+    }
 
 #endif
