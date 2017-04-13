@@ -1,5 +1,6 @@
-import css from "../css/main.less"
-import css2 from "react-grid-layout/css/styles.css"
+import "bulma/css/bulma.css"
+import "../css/main.less"
+import "react-grid-layout/css/styles.css"
 
 import values from "./values"
 import GlobalModel from "./GlobalModel"
@@ -103,7 +104,7 @@ export default class App extends Component {
           </div>
         </div>
         <footer id="app-footer">
-          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik mbH</a></p>
+          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik GmbH</a></p>
         </footer>
       </div>      
     );
