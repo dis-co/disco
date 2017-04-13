@@ -146,12 +146,9 @@ module IrisServiceTests =
       |> noError
 
   let test_ensure_iris_server_clones_changes_from_leader =
-    ftestCase "ensure iris server clones changes from leader" <| fun _ ->
+    testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        // Tracing.enable()
-        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
-        use lobs = Logger.subscribe Logger.stdout
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         use checkStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
@@ -218,6 +215,7 @@ module IrisServiceTests =
         do! service2.LoadProject (project.Name, "admin", "Nsynk")
 
         checkStarted.WaitOne() |> ignore
+
         electionDone.WaitOne() |> ignore
 
         //  _____
