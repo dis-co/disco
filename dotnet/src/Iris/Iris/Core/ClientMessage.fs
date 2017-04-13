@@ -53,7 +53,7 @@ type ClientMessage<'state> =
   | ClientLog    of ClientLog              // logs a piece of data to all connected clients
   | ClockUpdate  of uint32                 // new clock frame count
   | Error        of string                 // an error occuring inside the worker
-  | Render       of 'state                 // instruct all clients to render new state
+  | Render       of 'state option          // instruct all clients to render new state
   | Event        of Id * StateMachine      // encapsulates an action or event that happened on the client
   | Connect      of string                 // Connect to the specified endpoint
   | Connected                              // worker websocket is connected to service

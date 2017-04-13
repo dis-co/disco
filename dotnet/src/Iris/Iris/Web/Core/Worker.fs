@@ -152,13 +152,13 @@ type PortMap = Map<Id,ClientMessagePort>
 type GlobalContext() =
   let mutable count = 0
   let mutable store: Store option = None
-  let mutable socket : (string * WebSocket) option = None
+  let mutable socket : WebSocket option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()
 
   member self.ConnectServer(addr) =
     let init _ =
-      let sock = new WebSocket(addr)
+      let sock = WebSocket(addr)
 
       sock.BinaryType <- "arraybuffer"
 
@@ -177,13 +177,12 @@ type GlobalContext() =
           sprintf "Unable to parse received message. %A" error
           |> self.Log
 
-      socket <- Some (addr, sock)
+      socket <- Some sock
 
     match socket with
-    | Some (current, sock) ->
-      if addr <> current then
-        sock.Close()
-        init()
+    | Some sock ->
+      sock.Close()
+      init()
     | _  -> init ()
 
   [<Emit("$0.close()")>]
@@ -205,15 +204,18 @@ type GlobalContext() =
     | _ ->
       match ev, store with
       | DataSnapshot state, _ ->
-        let s = new Store(state)
+        let s = Store(state)
         store <- Some s
-        self.Broadcast <| ClientMessage.Render(s.State)
+        self.Broadcast <| ClientMessage.Render(Some s.State)
+      | UnloadProject, _ ->
+        store <- None
+        self.Broadcast <| ClientMessage.Render(None)
       | _, Some store ->
         try
           store.Dispatch ev
         with
           | exn -> self.Log (sprintf "Crash: %s" exn.Message)
-        self.Broadcast <| ClientMessage.Render(store.State)
+        self.Broadcast <| ClientMessage.Render(Some store.State)
       | _ -> ()
 
   (*-------------------------------------------------------------------------*
@@ -253,7 +255,7 @@ type GlobalContext() =
     |> self.SendClient port
 
     store |> Option.iter (fun store ->
-      ClientMessage.Render(store.State)     // ask client to render
+      ClientMessage.Render(Some store.State)     // ask client to render
       |> self.SendClient port)
 
   member self.UnRegister (session: Id) =
@@ -278,8 +280,8 @@ type GlobalContext() =
   member self.SendServer (msg: StateMachine) =
     let buffer = Binary.encode msg
     match socket with
-    | Some (_, server) -> server.Send(buffer)
-    | _                -> self.Log "Cannot update server: no connection."
+    | Some server -> server.Send(buffer)
+    | _           -> self.Log "Cannot update server: no connection."
 
   member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
     port.PostMessage(toJson msg)

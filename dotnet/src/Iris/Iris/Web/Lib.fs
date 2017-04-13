@@ -154,10 +154,10 @@ let listProjects() =
   |> postCommandWithErrorNotifier [||] (String.split [|','|])
 
 let shutdown() =
-  Shutdown |> postCommandAndForget
+  Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
 
 let unloadProject() =
-  UnloadProject |> postCommandAndForget
+  UnloadProject |> postCommand (fun _ -> notify "The project has been unloaded") notify
 
 let nullify _: 'a = null
   
@@ -241,11 +241,13 @@ let startContext f =
   |> Promise.map (fun () ->
     context.OnMessage
     |> Observable.add (function
-      | ClientMessage.Render state ->
+      | ClientMessage.Render(Some state) ->
         match Map.tryFind context.Session state.Sessions with
         | Some session ->
-          f { session = session; state = state }
+          Some { session = session; state = state } |> f
         | None -> ()
+      | ClientMessage.Render None ->
+          f None
       | _ -> ())
   )
 

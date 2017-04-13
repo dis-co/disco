@@ -1162,6 +1162,8 @@ module Iris =
         match state with
         | Idle idleData -> idleData
         | Loaded (idleData, loadedData) ->
+          // TODO: Send it to the store as well? (So it can notify listeners)
+          broadcastMsg loadedData StateMachine.UnloadProject
           dispose loadedData
           idleData
 

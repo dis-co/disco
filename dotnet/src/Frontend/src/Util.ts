@@ -67,6 +67,11 @@ export function xor(a: boolean, b: boolean) {
   return a !== b;
 }
 
+/** Returns true if one and only one of the parameters is null */
+export function oneIsNull(a: {}, b: {}) {
+  return xor(a == null, b == null);
+}
+
 interface ProjectInfo { name: string, username: string, password: string }
 
 export function loadProject() {

@@ -997,6 +997,7 @@ and Store(state : State)=
     | RemoveUser       user -> State.removeUser    user    state |> andRender
 
     | UpdateProject project -> State.updateProject project state |> andRender
+    | UnloadProject         -> self.Notify(ev) // This event doesn't actually modify the state
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.
@@ -1100,6 +1101,7 @@ and Listener = Store -> StateMachine -> unit
 and [<NoComparison>] StateMachine =
   // Project
   | UpdateProject of IrisProject
+  | UnloadProject
 
   // Member
   | AddMember     of RaftMember
@@ -1164,6 +1166,7 @@ and [<NoComparison>] StateMachine =
     match self with
     // Project
     | UpdateProject project -> sprintf "UpdateProject %s" project.Name
+    | UnloadProject         -> "UnloadProject"
 
     // Member
     | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
@@ -1232,10 +1235,12 @@ and [<NoComparison>] StateMachine =
   static member FromFB (fb: StateMachineFB) =
     match fb.PayloadType with
     | x when x = StateMachinePayloadFB.ProjectFB ->
-      let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
+        let project = fb.ProjectFB |> IrisProject.FromFB
         Either.map UpdateProject project
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Right UnloadProject
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1436,6 +1441,7 @@ and [<NoComparison>] StateMachine =
 
         match fb.Action with
         | StateMachineActionFB.UpdateFB -> return (UpdateProject project)
+        | StateMachineActionFB.RemoveFB -> return UnloadProject
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1794,6 +1800,14 @@ and [<NoComparison>] StateMachine =
 #else
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UnloadProject ->
+      StateMachineFB.StartStateMachineFB(builder)
+      // This is not exactly removing a project, but we use RemoveFB to avoid having
+      // another action just for UnloadProject
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ProjectFB)
       StateMachineFB.EndStateMachineFB(builder)
 
     | AddMember       mem ->
