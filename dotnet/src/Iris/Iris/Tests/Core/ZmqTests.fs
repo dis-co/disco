@@ -136,7 +136,7 @@ module ZmqIntegrationTests =
 
 
   let test_worker_timeout_fail_restarts_socket =
-    ftestCase "worker timeout fail restarts socket" <| fun _ ->
+    testCase "worker timeout fail restarts socket" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
