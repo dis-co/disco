@@ -115,6 +115,8 @@ module FileSystem =
 
   // ** lsDir
 
+  #if !FABLE_COMPILER
+
   /// ## lsDir
   ///
   /// Enumerate all files in a given path. Returns the empty list for non-existent paths.
@@ -137,6 +139,8 @@ module FileSystem =
         |> List.concat
       path :: children
     else []
+
+  #endif
 
   // ** mkDir
 
