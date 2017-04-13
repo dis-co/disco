@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
@@ -10,7 +10,7 @@
     <RootNamespace>Iris</RootNamespace>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Iris.Core</Name>
+    <Name>Iris.Core.Frontend</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
@@ -18,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <AssemblyName>Iris.Core</AssemblyName>
+    <AssemblyName>Iris.Core.Frontend</AssemblyName>
     <OutputPath>..\..\bin\Debug\Core</OutputPath>
     <DefineConstants>DEBUG;TRACE;FABLE_COMPILER</DefineConstants>
     <WarningLevel>5</WarningLevel>
@@ -27,19 +27,29 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <AssemblyName>Iris.Core</AssemblyName>
+    <AssemblyName>Iris.Core.Frontend</AssemblyName>
     <OutputPath>..\..\bin\Release\Core</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Fable.Core">
+      <HintPath>..\..\..\..\node_modules\fable-core\Fable.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Fable.PowerPack">
+      <HintPath>..\..\..\..\node_modules\fable-powerpack\Fable.PowerPack.dll</HintPath>
+    </Reference>    
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="../../../../node_modules/fable-core/Fable.Core.dll" />
+    <Reference Include="../../../../node_modules/fable-powerpack/Fable.PowerPack.dll" />
+  </ItemGroup>  
   <ItemGroup>
     <Compile Include="../../Iris/Core/FlatBuffers.fs">
       <Link>FlatBuffers.fs</Link>

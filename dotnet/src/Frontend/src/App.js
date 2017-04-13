@@ -1,5 +1,6 @@
-import css from "../css/main.less"
-import css2 from "react-grid-layout/css/styles.css"
+import "bulma/css/bulma.css"
+import "../css/main.less"
+import "react-grid-layout/css/styles.css"
 
 import values from "./values"
 import GlobalModel from "./GlobalModel"
@@ -43,6 +44,10 @@ export default class App extends Component {
       view: Workspace,
       isFixed: true
     });
+    this.global.subscribe("serviceInfo", serviceInfo => this.setState({serviceInfo}));
+    this.state = {
+      serviceInfo: this.global.state.serviceInfo
+    };
   }
 
   componentDidMount() {
@@ -85,6 +90,8 @@ export default class App extends Component {
               action: () => global.useRightClick(!global.state.useRightClick),
             }            
           ]} />
+          <div className="separator" />
+          <span>Iris v{this.state.serviceInfo.version} - build {this.state.serviceInfo.buildNumber}</span>
         </header>
         <div id="app-content">
           <div id="ui-layout-container">
@@ -97,7 +104,7 @@ export default class App extends Component {
           </div>
         </div>
         <footer id="app-footer">
-          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik mbH</a></p>
+          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik GmbH</a></p>
         </footer>
       </div>      
     );

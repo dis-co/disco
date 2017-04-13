@@ -9,7 +9,17 @@ export default class GlobalModel {
           this.addLog(log);
         })
       }
-      this.__setState("pinGroups", info.state.PinGroups);
+      if (this.clockSubscription == null) {
+        this.clockSubscription = Iris.subscribeToClock(frames =>
+          this.__setState("clock", frames)
+        )
+      }     
+      if (this.state.serviceInfo.version === "0.0.0") {
+        const ctx = Iris.getClientContext();
+        this.__setState("serviceInfo", ctx.ServiceInfo);
+      }
+      this.__setState("pinGroups", info != null ? info.state.PinGroups : null);
+      this.__setState("project", info != null ? info.state.Project : null);
     });
 
     this.subscribers = new Map();
@@ -17,7 +27,12 @@ export default class GlobalModel {
     this.state = {
       tabs: new Map(),
       widgets: new Map(),
-      useRightClick: false
+      useRightClick: false,
+      serviceInfo: {
+        version: "0.0.0",
+        buildNumber: "0"
+      },
+      clock: 0
     };
   }
 

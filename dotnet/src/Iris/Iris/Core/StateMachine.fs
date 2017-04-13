@@ -774,7 +774,7 @@ type State =
 /// the front-end).
 ///
 /// Returns: StoreAction
-and StoreAction =
+and [<NoComparison>] StoreAction =
   { Event: StateMachine
   ; State: State }
 
@@ -997,6 +997,7 @@ and Store(state : State)=
     | RemoveUser       user -> State.removeUser    user    state |> andRender
 
     | UpdateProject project -> State.updateProject project state |> andRender
+    | UnloadProject         -> self.Notify(ev) // This event doesn't actually modify the state
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.
@@ -1097,9 +1098,10 @@ and Listener = Store -> StateMachine -> unit
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-and StateMachine =
+and [<NoComparison>] StateMachine =
   // Project
   | UpdateProject of IrisProject
+  | UnloadProject
 
   // Member
   | AddMember     of RaftMember
@@ -1148,6 +1150,8 @@ and StateMachine =
   | UpdateResolvedService of Discovery.DiscoveredService
   | RemoveResolvedService of Discovery.DiscoveredService
 
+  | UpdateClock of uint32
+
   | Command       of AppCommand
 
   | DataSnapshot  of State
@@ -1162,6 +1166,7 @@ and StateMachine =
     match self with
     // Project
     | UpdateProject project -> sprintf "UpdateProject %s" project.Name
+    | UnloadProject         -> "UnloadProject"
 
     // Member
     | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
@@ -1215,6 +1220,8 @@ and StateMachine =
     | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
     | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
 
+    | UpdateClock value     -> sprintf "UpdateClock: %i" value
+
   // ** FromFB (JavaScript)
 
   //  ____  _
@@ -1228,10 +1235,12 @@ and StateMachine =
   static member FromFB (fb: StateMachineFB) =
     match fb.PayloadType with
     | x when x = StateMachinePayloadFB.ProjectFB ->
-      let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
+        let project = fb.ProjectFB |> IrisProject.FromFB
         Either.map UpdateProject project
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Right UnloadProject
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1394,6 +1403,11 @@ and StateMachine =
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
+
+    | x when x = StateMachinePayloadFB.ClockFB ->
+      UpdateClock(fb.ClockFB.Value)
+      |> Either.succeed
+
     | _ ->
       fb.Action
       |> AppCommand.FromFB
@@ -1427,6 +1441,7 @@ and StateMachine =
 
         match fb.Action with
         | StateMachineActionFB.UpdateFB -> return (UpdateProject project)
+        | StateMachineActionFB.RemoveFB -> return UnloadProject
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1740,6 +1755,19 @@ and StateMachine =
             |> Either.fail
       }
 
+    | StateMachinePayloadFB.ClockFB ->
+      either {
+        let clockish = fb.Payload<ClockFB> ()
+        if clockish.HasValue then
+          let value = clockish.Value.Value
+          return (UpdateClock value)
+        else
+          return!
+            "Could not parse empty clock payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     | _ -> either {
       let! cmd = AppCommand.FromFB fb.Action
       return (Command cmd)
@@ -1772,6 +1800,14 @@ and StateMachine =
 #else
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UnloadProject ->
+      StateMachineFB.StartStateMachineFB(builder)
+      // This is not exactly removing a project, but we use RemoveFB to avoid having
+      // another action just for UnloadProject
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ProjectFB)
       StateMachineFB.EndStateMachineFB(builder)
 
     | AddMember       mem ->
@@ -2140,6 +2176,19 @@ and StateMachine =
     | RemoveResolvedService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
 
+    | UpdateClock value ->
+      ClockFB.StartClockFB(builder)
+      ClockFB.AddValue(builder, value)
+      let offset = ClockFB.EndClockFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClockFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder) 
 
   // ** ToBytes
 

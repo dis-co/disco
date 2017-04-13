@@ -112,7 +112,7 @@ class View extends Component {
   }
 }
 
-export default class Manager {
+export default class GraphView {
   constructor() {
     this.view = View;
     this.name = "Graph View";

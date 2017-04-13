@@ -1015,7 +1015,22 @@ module Iris =
             string err |> Logger.err (tag "loadProject.getDiscoveredServices")
             state
 
-        let loadedData =
+        let loadedData = ref Unchecked.defaultof<IrisLoadedStateData>
+        
+        // TODO: Replace this with a real clock service
+        let mockClock =
+            let mutable clock = 0u
+            let t = new Timers.Timer(20.)
+            t.Elapsed.Add(fun _ ->
+                clock <- clock + 1u
+                broadcastMsg !loadedData (UpdateClock clock))
+            t.Start()
+            { new IDisposable with
+                member __.Dispose() =
+                    t.Stop()
+                    t.Dispose() }
+
+        loadedData :=
           { MemberId      = mem.Id
           ; Leader        = None
           ; Status        = ServiceStatus.Starting
@@ -1025,9 +1040,9 @@ module Iris =
           ; RaftServer    = raftserver
           ; SocketServer  = wsserver
           ; Subscriptions = subscriptions
-          ; Disposables   = Map.empty }
+          ; Disposables   = ["mockClock", mockClock] |> Map }
 
-        return Loaded(idleData, loadedData)
+        return Loaded(idleData, !loadedData)
       | _ ->
         return!
           "Login rejected"
@@ -1152,6 +1167,8 @@ module Iris =
         match state with
         | Idle idleData -> idleData
         | Loaded (idleData, loadedData) ->
+          // TODO: Send it to the store as well? (So it can notify listeners)
+          broadcastMsg loadedData StateMachine.UnloadProject
           dispose loadedData
           idleData
 

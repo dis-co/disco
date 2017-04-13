@@ -47,6 +47,9 @@ let EMPTY = Constants.EMPTY
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
+let getClientContext() =
+    ClientContext.Singleton
+
 let private dragObservable =
     GenericObservable<DragEvent>()
 
@@ -78,6 +81,11 @@ let notify(msg: string) =
 let subscribeToLogs(f:ClientLog->unit): IDisposable =
     ClientContext.Singleton.OnMessage.Subscribe (function
       | ClientMessage.ClientLog log -> f log
+      | _ -> ())
+
+let subscribeToClock(f:uint32->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
+      | ClientMessage.ClockUpdate frames -> f frames
       | _ -> ())
 
 let removeMember(info: StateInfo, memId: Id) =
@@ -146,10 +154,10 @@ let listProjects() =
   |> postCommandWithErrorNotifier [||] (String.split [|','|])
 
 let shutdown() =
-  Shutdown |> postCommandAndForget
+  Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
 
 let unloadProject() =
-  UnloadProject |> postCommandAndForget
+  UnloadProject |> postCommand (fun _ -> notify "The project has been unloaded") notify
 
 let nullify _: 'a = null
   
@@ -158,15 +166,19 @@ let rec loadProject(project, username, password, site) =
   |> postCommandPrivate
   |> Promise.bind (fun res ->
     if res.Ok
-    then ClientContext.Singleton.ConnectWithWebSocket() |> Promise.map nullify
-    else res.text() |> Promise.map (fun msg ->    
-      if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
-        || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
-        || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
-      then msg
-      // We cannot deal with the error, just notify it
-      else notify msg |> nullify
-    )
+    then
+      ClientContext.Singleton.ConnectWithWebSocket()
+      |> Promise.map (fun _msg -> // TODO: Check message?
+        notify "The project has been loaded successfully" |> nullify)
+    else
+      res.text() |> Promise.map (fun msg ->    
+        if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
+          || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
+          || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
+        then msg
+        // We cannot deal with the error, just notify it
+        else notify msg |> nullify
+      )
   )
 
 let getProjectSites(project, username, password) =
@@ -181,7 +193,7 @@ let createProject(info: obj) =
   ; webSocketPort = !!info?webSocketPort
   ; gitPort       = !!info?gitPort }
   |> CreateProject
-  |> postCommandAndForget
+  |> postCommand (fun _ -> notify "The project has been created successfully") notify
 
 let project2tree (p: IrisProject) =
   let leaf m = { ``module``=m; children=None }
@@ -229,11 +241,13 @@ let startContext f =
   |> Promise.map (fun () ->
     context.OnMessage
     |> Observable.add (function
-      | ClientMessage.Render state ->
+      | ClientMessage.Render(Some state) ->
         match Map.tryFind context.Session state.Sessions with
         | Some session ->
-          f { session = session; state = state }
+          Some { session = session; state = state } |> f
         | None -> ()
+      | ClientMessage.Render None ->
+          f None
       | _ -> ())
   )
 

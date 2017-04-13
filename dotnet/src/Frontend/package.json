@@ -52,9 +52,11 @@
   },
   "dependencies": {
     "babel-eslint": "^7.1.1",
+    "bulma": "^0.4.0",
     "dom-to-image": "^2.5.2",
     "eslint": "^3.14.1",
     "eslint-plugin-react": "^6.9.0",
+    "js-tree": "^1.1.0",
     "muicss": "^0.9.10",
     "react": "^15.4.2",
     "react-dom": "^15.4.2",
