@@ -155,6 +155,7 @@ module IrisServiceTests =
 
         use checkStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
+        use appendDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -179,6 +180,8 @@ module IrisServiceTests =
               checkStarted.Set() |> ignore
             | Raft (StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
+            | Raft (ApplyLog _) ->
+              appendDone.Set() |> ignore
             | _ -> ())
           |> service1.Subscribe
 
@@ -207,6 +210,8 @@ module IrisServiceTests =
               checkStarted.Set() |> ignore
             | Raft (StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
+            | Raft (ApplyLog _) ->
+              appendDone.Set() |> ignore
             | _ -> ())
           |> service2.Subscribe
 
@@ -234,6 +239,10 @@ module IrisServiceTests =
           mkCue()
           |> AddCue
           |> leader.Append
+
+        appendDone.WaitOne() |> ignore
+        appendDone.Reset() |> ignore
+        appendDone.WaitOne() |> ignore
 
         dispose service1
         dispose service2
