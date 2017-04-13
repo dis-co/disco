@@ -670,7 +670,6 @@ module Git =
       commits repo
       |> fun lst -> lst.Count()
 
-
     /// ## pull
     ///
     /// Pull changes from given remote.
@@ -679,11 +678,22 @@ module Git =
     /// - repo: Repository
     /// - remote: string
     ///
-    /// Returns: Either<IrisError,unit>
+    /// Returns: Either<IrisError,MergeResult>
 
-    let pull (repo: Repository) (remote: string) =
+    let pull (repo: Repository) (remote: Remote) (signature: Signature) =
       try
-        failwith "later"
+        either {
+          let options =
+            let fopts = new FetchOptions()
+            let popts = new PullOptions()
+            let mopts = new MergeOptions()
+            mopts.FastForwardStrategy <- new FastForwardStrategy()
+            popts.FetchOptions <- fopts
+            popts.MergeOptions <- mopts
+            popts
+
+          return Commands.Pull(repo, signature, options)
+        }
       with
         | exn ->
           exn.Message
@@ -698,6 +708,12 @@ module Git =
   //                         |___/
 
   module Config =
+    let private tag (str: string) = String.Format("Git.Config.{0}", str)
+
+    let tryFindRemote (repo: Repository) (name: string) =
+      repo.Network.Remotes
+      |> Seq.tryFind (fun (remote: Remote) -> remote.Name = name)
+
     let remotes (repo: Repository) =
       repo.Network.Remotes
       |> Seq.fold (fun lst (remote: Remote) -> (remote.Name,remote) :: lst) []
@@ -711,6 +727,19 @@ module Git =
         | exn ->
           exn.Message
           |> Error.asGitError (tag "addRemote")
+          |> Either.fail
+
+    let updateRemote (repo: Repository) (remote: Remote) (url: string) =
+      try
+        let update (updater: RemoteUpdater) =
+          updater.Url <- url
+        repo.Network.Remotes.Update(remote.Name, update)
+        repo.Network.Remotes.[remote.Name]
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "updateRemote")
           |> Either.fail
 
     let delRemote (repo: Repository) (name: string) : Either<IrisError,unit> =
