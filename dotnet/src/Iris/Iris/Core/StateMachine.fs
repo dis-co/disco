@@ -1804,6 +1804,8 @@ and [<NoComparison>] StateMachine =
 
     | UnloadProject ->
       StateMachineFB.StartStateMachineFB(builder)
+      // This is not exactly removing a project, but we use RemoveFB to avoid having
+      // another action just for UnloadProject
       StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
       StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ProjectFB)
       StateMachineFB.EndStateMachineFB(builder)
