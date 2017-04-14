@@ -370,7 +370,7 @@ module private Worker =
     member self.StartSocket () =
       self.Socket <- new ZSocket(args.Context, ZSocketType.REQ)
       self.Socket.Identity <- BitConverter.GetBytes args.Id
-      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds (float args.RequestTimeout)
+      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 10.0
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
       self.Socket.Connect(args.Backend)
 
@@ -421,12 +421,12 @@ module private Worker =
 
           let mutable response = Unchecked.defaultof<RawResponse>
 
-          while not (state.Responder.TryPop(&response)) && not (timedOut state timer) do
+          while not (state.Responder.TryPop(&response)) && not (timedOut state timer) && state.Run do
             Thread.Sleep(TimeSpan.FromTicks 1L)
 
           timer.Stop()
 
-          if not (timedOut state timer) then
+          if not (timedOut state timer) && state.Run then // backend did not time out
             use reply = new ZMessage()
             reply.Add(new ZFrame(clientId));
             reply.Add(new ZFrame());
@@ -445,10 +445,14 @@ module private Worker =
                 |> sprintf "error during send: %O"
                 |> Logger.err (tag state.Id "worker")
                 state.Run <- false
-          else
+          elif state.Run then           // backend timed out, but we are still running
             state.Register()            // put the socket back in business
             timer.ElapsedMilliseconds   // by re-registering it
             |> sprintf "Backend Response Timeout: %d"
+            |> Logger.err (tag state.Id "worker")
+          else
+            state.Run
+            |> sprintf "Stop requested: %b"
             |> Logger.err (tag state.Id "worker")
       else
         match error with
@@ -469,7 +473,6 @@ module private Worker =
 
     dispose state
     state.Stopper.Set() |> ignore
-    dispose state.Stopper
 
   let create (args: WorkerArgs)  =
     let state = new LocalThreadState(args)
@@ -481,16 +484,13 @@ module private Worker =
 
     state.Starter.WaitOne() |> ignore
 
-    match state.Error with
-    | Left error -> Either.fail error
-    | Right _ ->
-      Either.succeed
+    Either.map
+      (fun _ ->
         { new IWorker with
             member worker.Id
               with get () = state.Id
 
             member worker.Respond(response: RawResponse) =
-              // Tracer.trace "Worker.Respond" response.Body <| fun _ ->
               state.Responder.Push(response)
 
             member worker.Subscribe(callback: RawRequest -> unit) =
@@ -503,8 +503,9 @@ module private Worker =
             member worker.Dispose() =
               state.Run <- false
               state.Stopper.WaitOne() |> ignore
-              thread.Join()
-          }
+              dispose state.Stopper
+              thread.Join() })
+      state.Error
 
 //  ____            _
 // | __ ) _ __ ___ | | _____ _ __
@@ -520,6 +521,9 @@ module Broker =
 
   type private ResponseActor = MailboxProcessor<RawResponse>
 
+  let private tag (str: string) =
+    String.Format("Broker.{0}", str)
+
   let private loop (workers: Workers) (agent: ResponseActor) =
     let rec impl () =
       async {
@@ -527,14 +531,14 @@ module Broker =
         match workers.TryGetValue response.Via with
         | true, worker ->
           try
-            Tracing.trace "ResponseActor" <| fun _ ->
+            Tracing.trace (tag "ResponseActor") <| fun _ ->
               worker.Respond response     // try to respond
           with
             | exn ->
               agent.Post response       // re-cue the response
         | _ ->
           sprintf "no worker found for %O" response.Via
-          |> Logger.err "ResponseActor"
+          |> Logger.err (tag "ResponseActor")
         return! impl ()
       }
     impl ()
@@ -584,7 +588,7 @@ module Broker =
       with
         | exn ->
           exn.Message + exn.StackTrace
-          |> Error.asSocketError "Broker.LocalThreadState.Start"
+          |> Error.asSocketError (tag "Start")
           |> Either.fail
           |> fun error -> self.Error <- error
           dispose self
@@ -592,7 +596,7 @@ module Broker =
     member self.AddWorker() =
       let count = self.Workers.Count
       if count < int args.MaxWorkers then
-        Logger.debug "Broker.AddWorker" "creating new worker"
+        Logger.debug (tag "AddWorker") "creating new worker"
 
         let result = Worker.create {
             Id = uint16 count + 1us
@@ -610,27 +614,27 @@ module Broker =
           while not (self.Workers.TryAdd(worker.Id, worker)) do
             Thread.Sleep(TimeSpan.FromTicks 1L)
 
-          Logger.debug "Broker.AddWorker" "successfully added new worker"
+          Logger.debug (tag "AddWorker") "successfully added new worker"
 
         | Left error ->
           error
           |> string
-          |> Logger.err "Broker.AddWorker"
+          |> Logger.err (tag "AddWorker")
 
     interface IDisposable with
       member self.Dispose() =
-        for disp in disposables do
-          tryDispose disp
+        lock self <| fun _ ->
+          for disp in disposables do
+            tryDispose disp
 
-        tryDispose self.Frontend
-        tryDispose self.Backend
+          tryDispose self.Frontend
+          tryDispose self.Backend
 
-        for KeyValue(_, worker) in self.Workers do
-          tryDispose worker
+          for KeyValue(_, worker) in self.Workers do
+            tryDispose worker
 
-        tryDispose self.Context
-
-        self.Disposed <- true
+          tryDispose self.Context
+          self.Disposed <- true
 
   let private spin (state: LocalThreadState) =
     state.Initialized && state.Started && state.Run
@@ -639,7 +643,7 @@ module Broker =
     state.Start()
     state.Starter.Set() |> ignore
 
-    Logger.debug "IBroker.initialize" "startup done"
+    Logger.debug (tag "initialize") "startup done"
 
     let available = new ResizeArray<WorkerId>()
     let mutable incoming = Unchecked.defaultof<ZMessage>
@@ -659,7 +663,7 @@ module Broker =
           let from = incoming.[4].Read()
           let reply = incoming.[5].Read()
 
-          Tracing.trace "Broker Reply To Frontend" <| fun _ ->
+          Tracing.trace (tag "ReplyToFrontend") <| fun _ ->
             use outgoing = new ZMessage()
             outgoing.Add(new ZFrame(clientId))
             outgoing.Add(new ZFrame())
@@ -669,7 +673,7 @@ module Broker =
         else
           workerId
           |> sprintf "registered worker %A"
-          |> Logger.debug "IBroker.Thread"
+          |> Logger.debug (tag "worker")
 
       if available.Count > 0 then
         if state.Frontend.PollIn(poll, &incoming, &error, timespan) then
@@ -677,7 +681,7 @@ module Broker =
           let request = incoming.[2].Read()
           let workerId = available.[0]
 
-          Tracing.trace "Broker Forward To Backend" <| fun _ ->
+          Tracing.trace (tag "ForwardToBackend") <| fun _ ->
             use outgoing = new ZMessage()
             outgoing.Add(new ZFrame(workerId)) // worker ID
             outgoing.Add(new ZFrame())
@@ -705,10 +709,8 @@ module Broker =
 
     state.Starter.WaitOne() |> ignore
 
-    match state.Error with
-    | Left error -> Either.fail error
-    | Right _ ->
-      Either.succeed
+    Either.map
+      (fun _ ->
         { new IBroker with
             member self.Subscribe(callback: RawRequest -> unit) =
               { new IObserver<RawRequest> with
@@ -724,5 +726,5 @@ module Broker =
               state.Run <- false
               state.Stopper.WaitOne() |> ignore
               dispose cts
-              state.Stopper.Dispose()
-            }
+              state.Stopper.Dispose() })
+      state.Error
