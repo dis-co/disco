@@ -1,8 +1,8 @@
 namespace Iris.Service
 
-#if !IRIS_NODES
-
 // * Imports
+
+#if !IRIS_NODES
 
 open System
 open System.Threading
@@ -19,6 +19,7 @@ open Persistence
 open Hopac
 open Hopac.Infixes
 
+
 // * Raft
 
 [<AutoOpen>]
@@ -32,7 +33,8 @@ module Raft =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "RaftServer.%s" str
+  let private tag (str: string) =
+    String.Format("RaftServer.{0}", str)
 
   // ** Connections
 
@@ -288,7 +290,7 @@ module Raft =
       None
 
   let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
-    Tracing.trace "RaftServer.trigger" <| fun () ->
+    Tracing.trace (tag "trigger") <| fun () ->
       for subscription in subscriptions do
         subscription.OnNext ev
 
@@ -301,19 +303,19 @@ module Raft =
     { new IRaftCallbacks with
 
         member self.SendRequestVote peer request =
-          Tracing.trace "RaftServer.sendRequestVote" <| fun () ->
+          Tracing.trace (tag "sendRequestVote") <| fun () ->
             sendRequestVote id connections peer request
 
         member self.SendAppendEntries peer request =
-          Tracing.trace "RaftServer.sendAppendEntries" <| fun () ->
+          Tracing.trace (tag "sendAppendEntries") <| fun () ->
             sendAppendEntries id connections peer request
 
         member self.SendInstallSnapshot peer request =
-          Tracing.trace "RaftServer.sendInstallSnapshot" <| fun () ->
+          Tracing.trace (tag "sendInstallSnapshot") <| fun () ->
             sendInstallSnapshot id connections peer request
 
         member self.PrepareSnapshot raft =
-          Tracing.trace "RaftServer.prepareSnapshot" <| fun () ->
+          Tracing.trace (tag "prepareSnapshot") <| fun () ->
             let ch:Ch<State option> = Ch()
 
             ch
@@ -332,7 +334,7 @@ module Raft =
               result
 
         member self.RetrieveSnapshot () =
-          Tracing.trace "RaftServer.retrieveSnapshot" <| fun () ->
+          Tracing.trace (tag "retrieveSnapshot") <| fun () ->
             let ch:Ch<RaftLogEntry option> = Ch()
 
             asynchronously <| fun () ->
@@ -347,49 +349,49 @@ module Raft =
             |> Hopac.run
 
         member self.PersistSnapshot log =
-          Tracing.trace "RaftServer.persistSnapshot" <| fun () ->
+          Tracing.trace (tag "persistSnapshot") <| fun () ->
             log
             |> RaftEvent.PersistSnapshot
             |> trigger subscriptions
 
         member self.ApplyLog cmd =
-          Tracing.trace "RaftServer.applyLog" <| fun () ->
+          Tracing.trace (tag "applyLog") <| fun () ->
             cmd
             |> RaftEvent.ApplyLog
             |> trigger subscriptions
 
         member self.MemberAdded mem =
-          Tracing.trace "RaftServer.memberAdded" <| fun () ->
+          Tracing.trace (tag "memberAdded") <| fun () ->
             mem
             |> RaftEvent.MemberAdded
             |> trigger subscriptions
 
         member self.MemberUpdated mem =
-          Tracing.trace "RaftServer.memberUpdated" <| fun () ->
+          Tracing.trace (tag "memberUpdated") <| fun () ->
             mem
             |> RaftEvent.MemberUpdated
             |> trigger subscriptions
 
         member self.MemberRemoved mem =
-          Tracing.trace "RaftServer.memberRemoved" <| fun () ->
+          Tracing.trace (tag "memberRemoved") <| fun () ->
             mem
             |> RaftEvent.MemberRemoved
             |> trigger subscriptions
 
         member self.Configured mems =
-          Tracing.trace "RaftServer.configured" <| fun () ->
+          Tracing.trace (tag "configured") <| fun () ->
             mems
             |> RaftEvent.Configured
             |> trigger subscriptions
 
         member self.StateChanged oldstate newstate =
-          Tracing.trace "RaftServer.stateChanged" <| fun () ->
+          Tracing.trace (tag "stateChanged") <| fun () ->
             (oldstate, newstate)
             |> RaftEvent.StateChanged
             |> trigger subscriptions
 
         member self.PersistVote mem =
-          Tracing.trace "RaftServer.persistVote" <| fun () ->
+          Tracing.trace (tag "persistVote") <| fun () ->
             printfn "PersistVote"
 
   //     try
@@ -407,7 +409,7 @@ module Raft =
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistTerm term =
-          Tracing.trace "RaftServer.persistTerm" <| fun () ->
+          Tracing.trace (tag "persistTerm") <| fun () ->
             printfn "PersistTerm"
   //     try
   //       self.State
@@ -424,11 +426,11 @@ module Raft =
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistLog log =
-          Tracing.trace "RaftServer.persistLog" <| fun () ->
+          Tracing.trace (tag "persistLog") <| fun () ->
             printfn "PersistLog"
 
         member self.DeleteLog log =
-          Tracing.trace "RaftServer.deleteLog" <| fun () ->
+          Tracing.trace (tag "deleteLog") <| fun () ->
             printfn "DeleteLog"
 
         }
@@ -443,7 +445,7 @@ module Raft =
   // ** appendEntry
 
   let private appendEntry (state: RaftAppContext) (entry: RaftLogEntry) =
-    Tracing.trace "RaftServer.appendEntry" <| fun () ->
+    Tracing.trace (tag "appendEntry") <| fun () ->
       let result =
         entry
         |> Raft.receiveEntry
@@ -469,7 +471,7 @@ module Raft =
   // ** onConfigDone
 
   let private onConfigDone (state: RaftAppContext) =
-    Tracing.trace "RaftServer.onConfigDone" <| fun () ->
+    Tracing.trace (tag "onConfigDone") <| fun () ->
       "appending entry to exit joint-consensus into regular configuration"
       |> Logger.debug (tag "onConfigDone")
 
@@ -491,7 +493,7 @@ module Raft =
   ///
   /// Returns: Either<RaftError * RaftValue, unit * Raft, EntryResponse * RaftValue>
   let private addMembers (state: RaftAppContext) (mems: RaftMember array) =
-    Tracing.trace "RaftServer.addMembers" <| fun () ->
+    Tracing.trace (tag "addMembers") <| fun () ->
       if Raft.isLeader state.Raft then
         mems
         |> Array.map ConfigChange.MemberAdded
@@ -506,7 +508,7 @@ module Raft =
   // ** addNewMember
 
   let private addNewMember (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
-    Tracing.trace "RaftServer.addNewMember" <| fun () ->
+    Tracing.trace (tag "addNewMember") <| fun () ->
       sprintf "attempting to add mem with
             %A  %A:%d" (string id) (string ip) port
       |> Logger.debug (tag "addNewMember")
@@ -529,7 +531,7 @@ module Raft =
   ///
   /// Returns: RaftResponse
   let private removeMembers (state: RaftAppContext) (mems: RaftMember array) =
-    Tracing.trace "RaftServer.removeMembers" <| fun () ->
+    Tracing.trace (tag "removeMembers") <| fun () ->
       "appending entry to enter joint-consensus"
       |> Logger.debug (tag "removeMembers")
 
@@ -541,7 +543,7 @@ module Raft =
   // ** removeMember
 
   let private removeMember (state: RaftAppContext) (id: Id) =
-    Tracing.trace "RaftServer.removeMember" <| fun () ->
+    Tracing.trace (tag "removeMember") <| fun () ->
       if Raft.isLeader state.Raft then
         string id
         |> sprintf "attempting to remove members with id %A"
@@ -570,7 +572,7 @@ module Raft =
   // ** processAppendEntries
 
   let private processAppendEntries (state: RaftAppContext) (sender: Id) (ae: AppendEntries) (raw: RawRequest) =
-    Tracing.trace "RaftServer.processAppendEntries" <| fun () ->
+    Tracing.trace (tag "processAppendEntries") <| fun () ->
       let result =
         Raft.receiveAppendEntries (Some sender) ae
         |> runRaft state.Raft state.Callbacks
@@ -597,7 +599,7 @@ module Raft =
   // ** processAppendEntry
 
   let private processAppendEntry (state: RaftAppContext) (cmd: StateMachine) (raw: RawRequest) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.processAppendEntry" <| fun () ->
+    Tracing.trace (tag "processAppendEntry") <| fun () ->
       if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
         match appendCommand state cmd with
         | Right (entry, newstate) ->       // command was appended, now queue a message and the later
@@ -642,7 +644,7 @@ module Raft =
   // ** processVoteRequest
 
   let private processVoteRequest (state: RaftAppContext) (sender: Id) (vr: VoteRequest) (raw: RawRequest) =
-    Tracing.trace "RaftServer.processVoteRequest" <| fun () ->
+    Tracing.trace (tag "processVoteRequest") <| fun () ->
       let result =
         Raft.receiveVoteRequest sender vr
         |> runRaft state.Raft state.Callbacks
@@ -669,7 +671,7 @@ module Raft =
   // ** processInstallSnapshot
 
   let private processInstallSnapshot (state: RaftAppContext) (mem: Id) (is: InstallSnapshot) (raw: RawRequest) =
-    Tracing.trace "RaftServer.processInstallSnapshot" <| fun () ->
+    Tracing.trace (tag "processInstallSnapshot") <| fun () ->
       let result =
         Raft.receiveInstallSnapshot is
         |> runRaft state.Raft state.Callbacks
@@ -703,7 +705,7 @@ module Raft =
   ///
   /// Returns: Either<IrisError,RaftResponse>
   let private doRedirect (state: RaftAppContext) (raw: RawRequest) =
-    Tracing.trace "RaftServer.doRedirect" <| fun () ->
+    Tracing.trace (tag "doRedirect") <| fun () ->
       match Raft.getLeader state.Raft with
       | Some mem ->
         asynchronously <| fun _ ->
@@ -736,7 +738,7 @@ module Raft =
   ///
   /// Returns: RaftResponse
   let private processHandshake (state: RaftAppContext) (mem: RaftMember) (raw: RawRequest) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.processHandshake" <| fun () ->
+    Tracing.trace (tag "processHandshake") <| fun () ->
       if Raft.isLeader state.Raft then
         match addMembers state [| mem |] with
         | Right (entry, newstate) ->
@@ -764,7 +766,7 @@ module Raft =
   // ** processHandwaive
 
   let private processHandwaive (state: RaftAppContext) (mem: RaftMember) (raw: RawRequest) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.processHandwaive" <| fun () ->
+    Tracing.trace (tag "processHandwaive") <| fun () ->
       if Raft.isLeader state.Raft then
         match removeMember state mem.Id with
         | Right (entry, newstate) ->
@@ -940,7 +942,7 @@ module Raft =
             |> Either.fail
       }
 
-    Tracing.trace "RaftServer.tryJoin" <| fun () ->
+    Tracing.trace (tag "tryJoin") <| fun () ->
       // execute the join request with a newly created "fake" mem
       _tryJoin 0 { Member.create (Id.Create()) with
                     IpAddr = ip
@@ -949,7 +951,7 @@ module Raft =
   // ** tryJoinCluster
 
   let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
-    Tracing.trace "RaftServer.tryJoinCluster" <| fun () ->
+    Tracing.trace (tag "tryJoinCluster") <| fun () ->
       raft {
         "requesting to join"
         |> Logger.debug (tag "tryJoinCluster")
@@ -1015,7 +1017,7 @@ module Raft =
             |> Either.fail
       }
 
-    Tracing.trace "RaftServer.tryLeave" <| fun () ->
+    Tracing.trace (tag "tryLeave") <| fun () ->
       match state.Raft.CurrentLeader with
       | Some nid ->
         match Map.tryFind nid state.Raft.Peers with
@@ -1033,7 +1035,7 @@ module Raft =
   // ** leaveCluster
 
   let private tryLeaveCluster (state: RaftAppContext) =
-    Tracing.trace "RaftServer.tryLeaveCluster" <| fun () ->
+    Tracing.trace (tag "tryLeaveCluster") <| fun () ->
       raft {
         do! Raft.setTimeoutElapsedM 0u
 
@@ -1066,7 +1068,7 @@ module Raft =
   // ** forceElection
 
   let private forceElection (state: RaftAppContext) =
-    Tracing.trace "RaftServer.forceElection" <| fun () ->
+    Tracing.trace (tag "forceElection") <| fun () ->
       raft {
         let! timeout = Raft.electionTimeoutM ()
         do! Raft.setTimeoutElapsedM timeout
@@ -1088,7 +1090,7 @@ module Raft =
   // ** initializeRaft
 
   let private initializeRaft (state: RaftValue) (callbacks: IRaftCallbacks) =
-    Tracing.trace "RaftServer.initializeRaft" <| fun () ->
+    Tracing.trace (tag "initializeRaft") <| fun () ->
       raft {
         let term = 0u
         do! Raft.setTermM term
@@ -1135,7 +1137,7 @@ module Raft =
   // ** load
 
   let private load (config: IrisConfig) (subscriptions: Subscriptions) (agent: StateArbiter) =
-    Tracing.trace "RaftServer.load" <| fun () ->
+    Tracing.trace (tag "load") <| fun () ->
       either {
         let connections = new Connections()
 
@@ -1209,7 +1211,7 @@ module Raft =
                          (config: IrisConfig)
                          (subscriptions: Subscriptions)
                          (agent: StateArbiter) =
-    Tracing.trace "RaftServer.handleLoad" <| fun () ->
+    Tracing.trace (tag "handleLoad") <| fun () ->
       match state with
       | Loaded data -> dispose data
       | Idle -> ()
@@ -1230,7 +1232,7 @@ module Raft =
   // ** handleUnload
 
   let private handleUnload (state: RaftServerState) (chan: ReplyChan) =
-    Tracing.trace "RaftServer.handleUnload" <| fun () ->
+    Tracing.trace (tag "handleUnload") <| fun () ->
       match state with
       | Idle ->
         Reply.Ok
@@ -1247,7 +1249,7 @@ module Raft =
   // ** handleStatus
 
   let private handleStatus (state: RaftServerState) (chan: ReplyChan) =
-    Tracing.trace "RaftServer.handleStatus" <| fun () ->
+    Tracing.trace (tag "handleStatus") <| fun () ->
       match state with
       | Idle ->
         ServiceStatus.Stopped
@@ -1264,7 +1266,7 @@ module Raft =
   // ** handleJoin
 
   let private handleJoin (state: RaftServerState) (chan: ReplyChan) (ip: IpAddress) (port: UInt16) =
-    Tracing.trace "RaftServer.handleJoin" <| fun () ->
+    Tracing.trace (tag "handleJoin") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1294,7 +1296,7 @@ module Raft =
   // ** handleLeave
 
   let private handleLeave (state: RaftServerState) (chan: ReplyChan) =
-    Tracing.trace "RaftServer.handleLeave" <| fun () ->
+    Tracing.trace (tag "handleLeave") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1324,7 +1326,7 @@ module Raft =
   // ** handleForceElection
 
   let private handleForceElection (state: RaftServerState) =
-    Tracing.trace "RaftServer.handleForceElection" <| fun () ->
+    Tracing.trace (tag "handleForceElection") <| fun () ->
       match state with
       | Idle -> state
       | Loaded data ->
@@ -1346,7 +1348,7 @@ module Raft =
   // ** handleAddCmd
 
   let private handleAddCmd (state: RaftServerState) (chan: ReplyChan) (cmd: StateMachine) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleAddCmd" <| fun () ->
+    Tracing.trace (tag "handleAddCmd") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1414,7 +1416,7 @@ module Raft =
   // ** handlePeriodic
 
   let private handlePeriodic (state: RaftServerState) =
-    Tracing.trace "RaftServer.handlePeriodic" <| fun () ->
+    Tracing.trace (tag "handlePeriodic") <| fun () ->
       match state with
       | Idle -> Idle
       | Loaded data ->
@@ -1427,7 +1429,7 @@ module Raft =
   // ** handleGet
 
   let private handleGet (state: RaftServerState) (chan: ReplyChan) =
-    Tracing.trace "RaftServer.handleGet" <| fun () ->
+    Tracing.trace (tag "handleGet") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1446,7 +1448,7 @@ module Raft =
   // ** handleAddMember
 
   let private handleAddMember (state: RaftServerState) (chan: ReplyChan) (mem: RaftMember) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleAddMember" <| fun () ->
+    Tracing.trace (tag "handleAddMember") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1473,7 +1475,7 @@ module Raft =
   // ** handleRemoveMember
 
   let private handleRemoveMember (state: RaftServerState) (chan: ReplyChan) (id: Id) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleRemoveMember" <| fun () ->
+    Tracing.trace (tag "handleRemoveMember") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1499,7 +1501,7 @@ module Raft =
   // ** handleIsCommitted
 
   let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (chan: ReplyChan) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleIsCommitted" <| fun () ->
+    Tracing.trace (tag "handleIsCommitted") <| fun () ->
       match state with
       | Idle ->
         "No config loaded"
@@ -1566,7 +1568,7 @@ module Raft =
   // ** processRequest
 
   let private processRequest (data: RaftAppContext) (raw: RawRequest) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.processRequest" <| fun () ->
+    Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
 
@@ -1585,7 +1587,7 @@ module Raft =
   // ** handleRawRequest
 
   let private handleRawRequest (state: RaftServerState) (raw: RawRequest) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleRawRequest" <| fun () ->
+    Tracing.trace (tag "handleRawRequest") <| fun () ->
       match state with
       | Loaded data ->
         match processRequest data raw arbiter with
@@ -1603,7 +1605,7 @@ module Raft =
   // ** handleReqCommitted
 
   let private handleReqCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (raw: RawResponse) (arbiter: StateArbiter) =
-    Tracing.trace "RaftServer.handleReqCommitted" <| fun () ->
+    Tracing.trace (tag "handleReqCommitted") <| fun () ->
       match state with
       | Loaded data ->
         let result =
@@ -1665,7 +1667,7 @@ module Raft =
         let! cmd = inbox.Receive()
 
         let newstate =
-          Tracing.trace "RaftServer.loop" <| fun () ->
+          Tracing.trace (tag "loop") <| fun () ->
             match cmd with
             | Msg.Load (chan,config)     -> handleLoad          state chan config subs inbox
             | Msg.Unload chan            -> handleUnload        state chan
@@ -1802,7 +1804,7 @@ module Raft =
         return
           { new IRaftServer with
               member self.Load (config: IrisConfig) =
-                Tracing.trace "RaftServer.Load()" <| fun () ->
+                Tracing.trace (tag "Load()") <| fun () ->
                   match postCommand agent (fun chan -> Msg.Load(chan,config)) with
                   | Right Reply.Ok -> Right ()
                   | Right other ->
@@ -1814,7 +1816,7 @@ module Raft =
                     |> Either.fail
 
               member self.Unload () =
-                Tracing.trace "RaftServer.UnLoad()" <| fun () ->
+                Tracing.trace (tag "UnLoad()") <| fun () ->
                   match postCommand agent (fun chan -> Msg.Unload chan) with
                   | Right Reply.Ok -> Right ()
                   | Right other ->
@@ -1827,7 +1829,7 @@ module Raft =
 
               member self.Member
                 with get () =
-                  Tracing.trace "RaftServer.Member" <| fun () ->
+                  Tracing.trace (tag "Member") <| fun () ->
                     match getState agent with
                     | Right state ->
                       state.Raft.Member
@@ -1837,7 +1839,7 @@ module Raft =
 
               member self.MemberId
                 with get () =
-                  Tracing.trace "RaftServer.MemberId" <| fun () ->
+                  Tracing.trace (tag "MemberId") <| fun () ->
                     match getState agent with
                     | Right state ->
                       state.Raft.Member.Id
@@ -1846,45 +1848,45 @@ module Raft =
                       Either.fail error
 
               member self.Append cmd =
-                Tracing.trace "RaftServer.Append" <| fun () ->
+                Tracing.trace (tag "Append") <| fun () ->
                   addCmd agent cmd
 
               member self.Status
                 with get () =
-                  Tracing.trace "RaftServer.Status" <| fun () ->
+                  Tracing.trace (tag "Status") <| fun () ->
                     getStatus agent
 
               member self.ForceElection () =
-                Tracing.trace "RaftServer.ForceElection" <| fun () ->
+                Tracing.trace (tag "ForceElection") <| fun () ->
                   Msg.ForceElection
                   |> agent.Post
                   |> Either.succeed
 
               member self.Periodic () =
-                Tracing.trace "RaftServer.Periodic" <| fun () ->
+                Tracing.trace (tag "Periodic") <| fun () ->
                   Msg.Periodic
                   |> agent.Post
                   |> Either.succeed
 
               member self.JoinCluster ip port =
-                Tracing.trace "RaftServer.JoinCluster" <| fun () ->
+                Tracing.trace (tag "JoinCluster") <| fun () ->
                   withOk (fun chan -> Msg.Join(chan,ip,port)) agent
 
               member self.LeaveCluster () =
-                Tracing.trace "RaftServer.LeaveCluster" <| fun () ->
+                Tracing.trace (tag "LeaveCluster") <| fun () ->
                   withOk (fun chan -> Msg.Leave chan) agent
 
               member self.AddMember mem =
-                Tracing.trace "RaftServer.AddMember" <| fun () ->
+                Tracing.trace (tag "AddMember") <| fun () ->
                   addMember agent mem
 
               member self.RmMember id =
-                Tracing.trace "RaftServer.RmMember" <| fun () ->
+                Tracing.trace (tag "RmMember") <| fun () ->
                   rmMember agent id
 
               member self.State
                 with get () =
-                  Tracing.trace "RaftServer.State" <| fun () ->
+                  Tracing.trace (tag "State") <| fun () ->
                     getState agent
 
               member self.Subscribe (callback: RaftEvent -> unit) =
@@ -1895,32 +1897,32 @@ module Raft =
                 |> listener.Subscribe
 
               member self.Start () =
-                Tracing.trace "RaftServer.Start" <| fun () ->
+                Tracing.trace (tag "Start") <| fun () ->
                   startServer agent
 
               member self.Connections
                 with get () =
-                  Tracing.trace "RaftServer.Connections" <| fun () ->
+                  Tracing.trace (tag "Connections") <| fun () ->
                     match getState agent with
                     | Right ctx  -> ctx.Connections |> Either.succeed
                     | Left error -> error |> Either.fail
 
               member self.IsLeader
                 with get () =
-                  Tracing.trace "RaftServer.IsLeader" <| fun () ->
+                  Tracing.trace (tag "IsLeader") <| fun () ->
                     match getState agent with
                     | Right state -> Raft.isLeader state.Raft
                     | _ -> false
 
               member self.Leader
                 with get () =
-                  Tracing.trace "RaftServer.Leader" <| fun () ->
+                  Tracing.trace (tag "Leader") <| fun () ->
                     match getState agent with
                     | Right state -> Raft.getLeader state.Raft |> Either.succeed
                     | Left error -> Either.fail error
 
               member self.Dispose () =
-                Tracing.trace "RaftServer.Dispose()" <| fun () ->
+                Tracing.trace (tag "Dispose()") <| fun () ->
                   match postCommand agent (fun chan -> Msg.Unload chan) with
                   | Left error -> printfn "unable to dispose:  %A" error
                   | Right _ -> ()
