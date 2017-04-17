@@ -36,7 +36,14 @@ module ZmqIntegrationTests =
         let num = 5
         let frontend = "tcp://127.0.0.1:5555"
         let backend = "inproc://backend"
-        use! broker = Broker.create (Id.Create()) num frontend backend
+        use! broker = Broker.create {
+            Id = Id.Create()
+            MinWorkers = uint8 num
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 200u
+          }
 
         let loop (inbox: MailboxProcessor<RawRequest>) =
           let rec impl () = async {
@@ -62,7 +69,7 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. num - 1 do
-               yield Client.create (Id.Create()) frontend |]
+               yield Client.create (Id.Create()) frontend 200.0 |]
 
         let mkRequest (client: IClient) =
           async {
@@ -77,8 +84,6 @@ module ZmqIntegrationTests =
 
             return (client.Id, request, response)
           }
-
-        let now = DateTime.Now
 
         // prove that we can correlate the random request number with a client
         // by adding the clients id to the random number
@@ -107,16 +112,86 @@ module ZmqIntegrationTests =
               else m)
             true
 
-        let total = DateTime.Now
-
-        // printfn "took %fms" ((total - now).TotalMilliseconds)
-
         Array.iter dispose clients
 
         expect "Should be consistent" true id result
       }
       |> noError
 
+  let test_client_send_fail_restarts_socket =
+    testCase "client send fail restarts socket" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
+        let addr = "tcp://1.2.3.4:5555"
+        use client = Client.create (Id.Create()) addr 10.0
+
+        for i in 0 .. 10 do
+          do! i
+              |> BitConverter.GetBytes
+              |> client.Request
+              |> Either.ignore
+      }
+      |> noError
+
+
+  let test_worker_timeout_fail_restarts_socket =
+    testCase "worker timeout fail restarts socket" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
+        let mutable count = 0
+
+        let num = 5                     // number of clients
+        let requests = 10               // number of requests per client
+
+        let frontend = "tcp://127.0.0.1:5555"
+        let backend = "inproc://backend"
+
+        use! broker = Broker.create {
+            Id = Id.Create()
+            MinWorkers = uint8 num
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 100u
+          }
+
+        use bobs = broker.Subscribe (fun _ -> count <- Interlocked.Increment &count)
+
+        let clients =
+          [| for n in 0 .. num - 1 do
+               yield Client.create (Id.Create()) frontend 100.0 |]
+
+        let mkRequest (i: int) (client: IClient) =
+          async {
+            let response =
+              i
+              |> BitConverter.GetBytes
+              |> client.Request
+            return (client.Id, response)
+          }
+
+        [| for i in 0 .. requests - 1 do
+            yield [| for client in clients -> mkRequest i client |] |]
+        |> Array.iter (Async.Parallel >> Async.RunSynchronously >> ignore)
+
+        Array.iter dispose clients
+
+        // Explanation:
+        //
+        // We are testing whether the workers are "self-healing" here, that is, they do mitigate
+        // backend timeouts by re-registering themselves with the broker after timeout, such that
+        // they can resume processing requests. This is proven here by comparing the number of
+        // requests received on the broker subscription with the number of workers used, and if that
+        // number is higher than the worker count, the workers have mitigated backend response
+        // timeouts successfully.
+
+        printfn "count: %d expected: %d" count (num * requests)
+
+        expect "Should have passed on more requests than workers" true ((<) num) count
+      }
+      |> noError
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -126,4 +201,6 @@ module ZmqIntegrationTests =
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
       test_broker_request_handling
+      test_client_send_fail_restarts_socket
+      test_worker_timeout_fail_restarts_socket
     ] |> testSequenced

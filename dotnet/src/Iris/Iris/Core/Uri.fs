@@ -151,5 +151,5 @@ module Uri =
 
   // ** inprocURi
 
-  let inprocUri (address: string) =
-    toUri INPROC None None address None
+  let inprocUri (address: string) (path: string option) =
+    toUri INPROC None path address None

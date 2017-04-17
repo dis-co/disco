@@ -1150,7 +1150,7 @@ and [<NoComparison>] StateMachine =
   | UpdateResolvedService of Discovery.DiscoveredService
   | RemoveResolvedService of Discovery.DiscoveredService
 
-  | UpdateClock of uint32
+  | UpdateClock   of uint32
 
   | Command       of AppCommand
 
@@ -2188,7 +2188,7 @@ and [<NoComparison>] StateMachine =
 #else
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
-      StateMachineFB.EndStateMachineFB(builder) 
+      StateMachineFB.EndStateMachineFB(builder)
 
   // ** ToBytes
 

@@ -592,7 +592,7 @@ module Iris =
 
   let private mkLeader (self: Id) (leader: RaftMember) =
     let addr = Uri.raftUri leader
-    let socket = Client.create self addr // Constants.REQ_TIMEOUT)
+    let socket = Client.create self addr Constants.REQ_TIMEOUT
     { Member = leader; Socket = socket }
 
   // ** onStateChanged
@@ -1016,7 +1016,7 @@ module Iris =
             state
 
         let loadedData = ref Unchecked.defaultof<IrisLoadedStateData>
-        
+
         // TODO: Replace this with a real clock service
         let mockClock =
             let mutable clock = 0u

@@ -5,22 +5,32 @@ open Expecto
 open Iris.Core
 open Iris.Tests
 
-let all =
-  testList "All tests" [
+let parallelTests =
+  testList "parallel tests" [
       utilTests
       pinTests
-      assetTests
       stateTests
-      irisServiceTests
       raftTests
-      configTests
-      zmqIntegrationTests
-      raftIntegrationTests
       serializationTests
-      projectTests
       storeTests
+    ]
+
+let serialTests =
+  testList "serial tests" [
       gitTests
       apiTests
+      assetTests
+      configTests
+      projectTests
+      irisServiceTests
+      zmqIntegrationTests
+      raftIntegrationTests
+    ] |> testSequenced
+
+let all =
+  testList "all" [
+      parallelTests
+      serialTests
     ]
 
 [<EntryPoint>]
