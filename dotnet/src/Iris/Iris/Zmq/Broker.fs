@@ -45,7 +45,7 @@ type IClient =
   abstract Running: bool
   abstract Restart: unit -> unit
 
-[<NoComparison>]
+
 type WorkerArgs =
   { Id: WorkerId
     Backend: string
