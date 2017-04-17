@@ -92,7 +92,7 @@ class View extends Component {
       <div className="iris-grapview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
-            <p>{pinGroup[1].Name}</p>
+            <h3 className="title is-3">{pinGroup[1].Name}</h3>
             {map(pinGroup[1].Pins, (pin,i) => {
               var model = new Spread(pin[1]);
               const View = model.view;

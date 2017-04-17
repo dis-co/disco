@@ -4,8 +4,6 @@ import css from "../../css/Spread.less";
 
 const BASE_HEIGHT = 25;
 const ROW_HEIGHT = 17;
-// The arrow must be a bit shorter
-const DIFF_HEIGHT = 2;
 
 class View extends React.Component {
   constructor(props) {
@@ -55,7 +53,7 @@ class View extends React.Component {
 
   render() {
     var model = this.props.model;
-    var height = open ? this.recalculateHeight(model.rows) : BASE_HEIGHT;
+    var height = this.props.model.open ? this.recalculateHeight(model.rows) : BASE_HEIGHT;
 
     return (
       <div className="iris-spread" ref={el => this.onMounted(el)}>
@@ -65,8 +63,8 @@ class View extends React.Component {
         <div className="iris-spread-child iris-flex-2" style={{ height: height}}>
           {this.renderRowValues(model, this.props.global.state.useRightClick)}
         </div>
-        <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
-          <img src="/img/more.png" height="7px"
+        <div className="iris-spread-child iris-spread-end" style={{ height: height }}>
+          <img src="/img/more.png" 
             style={{transform: `rotate(${model.open ? "90" : "0"}deg)`}}
             onClick={ev => {
               ev.stopPropagation();
