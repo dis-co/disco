@@ -49,12 +49,29 @@ class CueListView extends React.Component<CueProps,any> {
     if (Array.isArray(this.disposables)) {
       this.disposables.forEach(x => x.dispose());
     }
-  }  
+  }
+
+  updateSource() {
+    this.props.model.cues.forEach(cue => cue.updateSource());
+  }
 
   render() {
     return (
       <div className="iris-cuelist" ref={el => this.el = el}>
-        <Clock global={this.props.global} />
+        <div className="level">
+          <div className="level-left">
+            <button className="button level-item"
+                    style={{margin: 5}}
+                    onClick={ev => this.updateSource()}>
+              Fire!
+            </button>
+          </div>
+          <div className="level-right">
+            <div className="level-item">
+              <Clock global={this.props.global} />
+            </div>
+          </div>
+        </div>
         {map(this.props.model.cues, (cue, i) => {
           return (
             <div key={i}>
@@ -102,7 +119,9 @@ class Cue {
     this.rows[rowIndex][1] = newValue;
   }
 
-  updateSource(rowIndex, newValue) {
-    Iris.updateSlices(this.pin, rowIndex, newValue);
+  updateSource() {
+    for (let i = 0; i < this.rows.length; i++) {
+      Iris.updateSlices(this.pin, i, this.rows[i][1]);
+    }
   }
 }

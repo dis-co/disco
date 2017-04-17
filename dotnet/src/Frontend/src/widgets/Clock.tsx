@@ -27,6 +27,6 @@ export default class ClockView extends React.Component<{global: GlobalModel},{cl
   }  
 
   render() {
-    return <span>Frames: {this.state.clock}</span>
+    return <span style={{margin: 5}}>Frames: {this.state.clock}</span>
   }
 }
