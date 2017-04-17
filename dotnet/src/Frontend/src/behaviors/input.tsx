@@ -16,21 +16,21 @@ type GenerateFn = (formattedValue: any, props: {}) => JSX.Element
 type UpdateFn = (index: number, value: any) => void
 
 function startDragging(posY: number, index: number, value: number, update: UpdateFn) {
-    console.log("drag start", index, posY)
+    console.log("Input drag start", index, posY)
     $(document)
         .on("contextmenu.drag", e => {
             e.preventDefault();
         })
         .on("mousemove.drag", e => {
             var diff = posY - e.clientY;
-            // console.log("Mouse Y diff: ", diff);
+            console.log("Input drag mouse Y diff: ", diff);
             value += diff;
             posY = e.clientY;
             if (diff !== 0)
                 update(index, value);
         })
         .on("mouseup.drag", e => {
-            console.log("drag stop", e.clientY)
+            console.log("Input drag stop", e.clientY)
             $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
         })
 }

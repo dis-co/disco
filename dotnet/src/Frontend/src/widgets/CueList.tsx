@@ -1,9 +1,12 @@
 import * as React from "react"
-import Spread from "./Spread"
+import Spread, { SpreadView } from "./Spread"
+import Clock from "./Clock"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util"
-import { IDisposable, ILayout } from "../Interfaces"
+import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
+
+declare var Iris: IIris;
 
 interface CueProps {
   id: number
@@ -11,7 +14,7 @@ interface CueProps {
   global: GlobalModel
 }
 
-class CueListView extends React.Component<CueProps,{}> {
+class CueListView extends React.Component<CueProps,any> {
   disposables: IDisposable[];
   el: any;
 
@@ -32,17 +35,13 @@ class CueListView extends React.Component<CueProps,{}> {
                 this.el.classList.add("iris-highlight-blue");
                 return;
               case "stop":
-                this.props.model.cues.push(ev.model);
+                this.props.model.cues.push(new Cue(ev.model));
                 this.forceUpdate();
             }
           }
           this.el.classList.remove("iris-highlight-blue")
         }
       })
-    );
-
-    this.disposables.push(
-      this.props.global.subscribe("clock", () => this.forceUpdate())
     );
   }
 
@@ -55,14 +54,11 @@ class CueListView extends React.Component<CueProps,{}> {
   render() {
     return (
       <div className="iris-cuelist" ref={el => this.el = el}>
-        <span>Frames: {this.props.global.state.clock}</span>
+        <Clock global={this.props.global} />
         {map(this.props.model.cues, (cue, i) => {
-          const View = cue.view as any;
           return (
             <div key={i}>
-              <View
-                model={cue}
-                global={this.props.global} />
+              {React.createElement(SpreadView as any, {model:cue, global: this.props.global})}
             </div>
           )})}
       </div>
@@ -86,5 +82,27 @@ export default class CueList {
       minH: 1, maxH: 10
     };
     this.cues = [];
+  }
+}
+
+class Cue {
+  pin: any;
+  open: boolean;
+  rows: [string, any][];
+  updateView: boolean;
+
+  constructor(spread: Spread) {
+    this.pin = spread.pin;
+    this.open = false;
+    this.rows = spread.rows;
+    this.updateView = true;
+  }
+
+  update(rowIndex, newValue) {
+    this.rows[rowIndex][1] = newValue;
+  }
+
+  updateSource(rowIndex, newValue) {
+    Iris.updateSlices(this.pin, rowIndex, newValue);
   }
 }

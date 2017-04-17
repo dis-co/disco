@@ -5,7 +5,7 @@ import css from "../../css/Spread.less";
 const BASE_HEIGHT = 25;
 const ROW_HEIGHT = 17;
 
-class View extends React.Component {
+export class SpreadView extends React.Component {
   constructor(props) {
     super(props);
     this.state = {editIndex: -1};
@@ -43,7 +43,11 @@ class View extends React.Component {
     model.rows.forEach((kv,i) =>
       viewRows.push(
         addInputView(i, kv[1], useRightClick, this,
-          (i,v) => model.update(i,v),
+          (i,v) => {
+            model.update(i,v);
+            if (model.updateView)
+              this.forceUpdate();
+          },
           (value, props) => <span {...props}>{value}</span>
         )
       )
@@ -79,7 +83,7 @@ class View extends React.Component {
 
 export default class Spread {
   constructor(pin) {
-    this.view = View;
+    this.view = SpreadView;
     this.pin = pin;
     this.open = false;
     this.rows = Iris.pinToKeyValuePairs(pin);
