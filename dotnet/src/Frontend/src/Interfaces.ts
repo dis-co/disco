@@ -18,7 +18,7 @@ export interface IContext {
   ServiceInfo: IServiceInfo
 }
 
-export interface Iris {
+export interface IIris {
   startContext(f: (info:any)=>void): void
   subscribeToLogs(f: (log: string)=>void): IDisposable
   subscribeToClock(f: (frames: number)=>void): IDisposable

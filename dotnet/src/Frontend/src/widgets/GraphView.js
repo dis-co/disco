@@ -16,10 +16,11 @@ class View extends Component {
 
     domtoimage.toPng(node)
       .then(dataUrl => {
-        console.log("drag start")
+        // console.log("drag start")
         const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
         $(document)
           .on("mousemove.drag", e => {
+            // console.log("drag move", {x: e.clientX, y: e.clientY})
             $(img).css({left:e.pageX, top:e.pageY});
             _this.props.global.triggerEvent("drag", {
               type: "move",
@@ -30,7 +31,7 @@ class View extends Component {
             });
           })
           .on("mouseup.drag", e => {
-            console.log("drag stop")
+            // console.log("drag stop")
             img.css({display: "none"});
             _this.props.global.triggerEvent("drag", {
               type: "stop",

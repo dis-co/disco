@@ -1,6 +1,6 @@
-import { Iris, IDisposable, IServiceInfo } from "./Interfaces"
+import { IIris, IDisposable, IServiceInfo } from "./Interfaces"
 
-declare var Iris: Iris;
+declare var Iris: IIris;
 
 let counter = 0;
 const LOG_MAX = 100;
@@ -85,6 +85,7 @@ export default class GlobalModel {
       subscribers.set(event, new Map());
     }
     subscribers.get(event).set(id, subscriber);
+    console.log("Subscription to event", event)
     // `subscribers` must be captured so the closure below works
     return {
       dispose() {
@@ -100,7 +101,7 @@ export default class GlobalModel {
   }
 
   __setState(key: string, value: any) {
-    (this.state as any)[key][key] = value;
+    (this.state as any)[key] = value;
     this.__notify(key, value);
   }
 

@@ -25,6 +25,7 @@ class CueListView extends React.Component<CueProps,{}> {
     this.disposables.push(
       this.props.global.subscribeToEvent("drag", ev => {
         if (this.el != null && ev.origin !== this.props.id) {
+          // console.log("Detected",ev)
           if (touchesElement(this.el, ev.x, ev.y)) {
             switch (ev.type) {
               case "move":
@@ -53,8 +54,17 @@ class CueListView extends React.Component<CueProps,{}> {
 
   render() {
     return (
-      <div>
-        <span>{this.props.global.state.clock}</span>
+      <div className="iris-cuelist" ref={el => this.el = el}>
+        <span>Frames: {this.props.global.state.clock}</span>
+        {map(this.props.model.cues, (cue, i) => {
+          const View = cue.view as any;
+          return (
+            <div key={i}>
+              <View
+                model={cue}
+                global={this.props.global} />
+            </div>
+          )})}
       </div>
     )
   }
