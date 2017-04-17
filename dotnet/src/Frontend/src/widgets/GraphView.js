@@ -1,6 +1,5 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
-import IOBox from "./IOBox"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util.ts"
 
@@ -55,24 +54,24 @@ class View extends Component {
   componentDidMount() {
     this.disposables = [];
 
-    this.disposables.push(
-      this.props.global.subscribeToEvent("drag", ev => {
-        if (this.el != null && ev.origin !== this.props.id) {
-          if (touchesElement(this.el, ev.x, ev.y)) {
-            switch (ev.type) {
-              case "move":
-                this.el.classList.add("iris-highlight-blue");
-                return;
-              case "stop":
-                ev.removeModelFromOrigin();
-                this.props.model.elements.push(ev.model);
-                this.forceUpdate();
-            }
-          }
-          this.el.classList.remove("iris-highlight-blue")
-        }
-      })
-    );
+    // this.disposables.push(
+    //   this.props.global.subscribeToEvent("drag", ev => {
+    //     if (this.el != null && ev.origin !== this.props.id) {
+    //       if (touchesElement(this.el, ev.x, ev.y)) {
+    //         switch (ev.type) {
+    //           case "move":
+    //             this.el.classList.add("iris-highlight-blue");
+    //             return;
+    //           case "stop":
+    //             ev.removeModelFromOrigin();
+    //             this.props.model.elements.push(ev.model);
+    //             this.forceUpdate();
+    //         }
+    //       }
+    //       this.el.classList.remove("iris-highlight-blue")
+    //     }
+    //   })
+    // );
 
     this.disposables.push(
       this.props.global.subscribe(["pinGroups", "useRightClick"], () => {

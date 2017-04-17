@@ -7,8 +7,9 @@
         "allowJs": true,
         "module": "es2015",
         "sourceMap": true,
-        "noImplicitAny": true,
-        "noImplicitReturns": true
+        "noImplicitAny": false,
+        "noImplicitReturns": true,
+        "moduleResolution": "node"
     },
     "include": [
         "./src/**/*.ts"

@@ -32,8 +32,7 @@ class View extends React.Component {
 
   renderRowLabels(model) {
     var viewRows = [];
-    // {/*style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()*/}
-    viewRows.push(<span key={-1}>{model.pin.Name}</span>)
+    viewRows.push(<span style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()} key={-1}>{model.pin.Name}</span>)
     model.rows.forEach((kv,i) => {
       viewRows.push(<span key={i}>{kv[0] || "Label"}</span>)
     });
