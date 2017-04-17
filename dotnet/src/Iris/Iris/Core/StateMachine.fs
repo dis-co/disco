@@ -122,14 +122,14 @@ type AppCommand =
 //
 
 type State =
-  { Project  : IrisProject
-    PinGroups  : Map<Id,PinGroup>
-    Cues     : Map<Id,Cue>
-    CueLists : Map<Id,CueList>
-    Sessions : Map<Id,Session>
-    Users    : Map<Id,User>
-    Clients  : Map<Id,IrisClient>
-    DiscoveredServices : Map<Id,Discovery.DiscoveredService> }
+  { Project:            IrisProject
+    PinGroups:          Map<Id,PinGroup>
+    Cues:               Map<Id,Cue>
+    CueLists:           Map<Id,CueList>
+    Sessions:           Map<Id,Session>
+    Users:              Map<Id,User>
+    Clients:            Map<Id,IrisClient>
+    DiscoveredServices: Map<Id,Discovery.DiscoveredService> }
 
   // ** Empty
 
@@ -154,7 +154,7 @@ type State =
       let! users    = Asset.loadAll project.Path
       let! cues     = Asset.loadAll project.Path
       let! cuelists = Asset.loadAll project.Path
-      let! groups  = Asset.loadAll project.Path
+      let! groups   = Asset.loadAll project.Path
 
       return
         { Project  = project

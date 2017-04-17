@@ -8,14 +8,26 @@ open Iris.Raft
 open System.Net
 open FSharpx.Functional
 open Iris.Core
+open Iris.Service
 
 [<AutoOpen>]
 module PersistenceTests =
 
-  let mkState path : Either<IrisError,State> =
+  let mkProject () =
     either {
-      let! project = mkProject path
+      let root = tmpPath()
+      let name = rndstr()
+      do! MachineConfig.init (Some root)
+      let machine = MachineConfig.get ()
+      let! project = Project.create (root </> name) name machine
+      return machine, project
+    }
+
+  let mkState () =
+    either {
+      let! (machine, project) = mkProject ()
       return
+        machine,
         { Project   = project
           PinGroups = Map.empty
           Cues      = Map.empty
@@ -26,17 +38,19 @@ module PersistenceTests =
           DiscoveredServices = Map.empty }
     }
 
-  let test_write_read_pingroups_correctly =
-    testCase "should write and read pingroups correctly" <| fun _ ->
+  let test_persist_add_pingroups_correctly =
+    testCase "persist add pingroups correctly" <| fun _ ->
       either {
-        let! state = mkState()
-        let! info = Asset.write path (Payload payload)
-        let! data = Asset.read path
-        expect "Payload should be the same" payload id data
+        let group = mkPinGroup()
+        let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddPinGroup group)
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        expect "state should contain PinGroup" state.PinGroups Map.containsKey group.Id
+        expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
       }
       |> noError
 
-  let assetTests =
-    testList "Asset Tests" [
-      test_write_read_pingroups_correctly
-    ] |> testSequenced
+  let persistenceTests =
+    testList "Persistence Tests" [
+      test_persist_add_pingroups_correctly
+    ]

@@ -13,6 +13,7 @@ let parallelTests =
       raftTests
       serializationTests
       storeTests
+      persistenceTests
     ]
 
 let serialTests =
