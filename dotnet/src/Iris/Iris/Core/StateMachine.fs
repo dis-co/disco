@@ -1098,67 +1098,67 @@ and Listener = Store -> StateMachine -> unit
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-and [<NoComparison>] StateMachine =
+and StateMachine =
   // Project
-  | UpdateProject of IrisProject
+  | UpdateProject         of IrisProject
   | UnloadProject
 
   // Member
-  | AddMember     of RaftMember
-  | UpdateMember  of RaftMember
-  | RemoveMember  of RaftMember
+  | AddMember             of RaftMember
+  | UpdateMember          of RaftMember
+  | RemoveMember          of RaftMember
 
   // Client
-  | AddClient     of IrisClient
-  | UpdateClient  of IrisClient
-  | RemoveClient  of IrisClient
+  | AddClient             of IrisClient
+  | UpdateClient          of IrisClient
+  | RemoveClient          of IrisClient
 
   // GROUP
-  | AddPinGroup      of PinGroup
-  | UpdatePinGroup   of PinGroup
-  | RemovePinGroup   of PinGroup
+  | AddPinGroup           of PinGroup
+  | UpdatePinGroup        of PinGroup
+  | RemovePinGroup        of PinGroup
 
   // PIN
-  | AddPin       of Pin
-  | UpdatePin    of Pin
-  | RemovePin    of Pin
-  | UpdateSlices of Slices
+  | AddPin                of Pin
+  | UpdatePin             of Pin
+  | RemovePin             of Pin
+  | UpdateSlices          of Slices
 
   // CUE
-  | AddCue        of Cue
-  | UpdateCue     of Cue
-  | RemoveCue     of Cue
-  | CallCue       of Cue
+  | AddCue                of Cue
+  | UpdateCue             of Cue
+  | RemoveCue             of Cue
+  | CallCue               of Cue
 
   // CUE
-  | AddCueList    of CueList
-  | UpdateCueList of CueList
-  | RemoveCueList of CueList
+  | AddCueList            of CueList
+  | UpdateCueList         of CueList
+  | RemoveCueList         of CueList
 
   // User
-  | AddUser       of User
-  | UpdateUser    of User
-  | RemoveUser    of User
+  | AddUser               of User
+  | UpdateUser            of User
+  | RemoveUser            of User
 
   // Session
-  | AddSession    of Session
-  | UpdateSession of Session
-  | RemoveSession of Session
+  | AddSession            of Session
+  | UpdateSession         of Session
+  | RemoveSession         of Session
 
   // Discovery
   | AddResolvedService    of Discovery.DiscoveredService
   | UpdateResolvedService of Discovery.DiscoveredService
   | RemoveResolvedService of Discovery.DiscoveredService
 
-  | UpdateClock   of uint32
+  | UpdateClock           of uint32
 
-  | Command       of AppCommand
+  | Command               of AppCommand
 
-  | DataSnapshot  of State
+  | DataSnapshot          of State
 
-  | SetLogLevel   of LogLevel
+  | SetLogLevel           of LogLevel
 
-  | LogMsg        of LogEvent
+  | LogMsg                of LogEvent
 
   // ** ToString
 
@@ -1759,8 +1759,8 @@ and [<NoComparison>] StateMachine =
       either {
         let clockish = fb.Payload<ClockFB> ()
         if clockish.HasValue then
-          let value = clockish.Value.Value
-          return (UpdateClock value)
+          let clock = clockish.Value
+          return (UpdateClock clock.Value)
         else
           return!
             "Could not parse empty clock payload"

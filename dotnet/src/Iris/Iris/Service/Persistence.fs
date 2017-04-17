@@ -144,9 +144,15 @@ module Persistence =
     | AddUser       user    -> Asset.saveWithCommit   path signature user
     | UpdateUser    user    -> Asset.saveWithCommit   path signature user
     | RemoveUser    user    -> Asset.deleteWithCommit path signature user
-    | AddMember     _       -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember  _       -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember  _       -> Asset.deleteWithCommit path signature state.Project
+    | AddMember        _    -> Asset.saveWithCommit   path signature state.Project
+    | UpdateMember     _    -> Asset.saveWithCommit   path signature state.Project
+    | RemoveMember     _    -> Asset.deleteWithCommit path signature state.Project
+    | AddPin           _    -> Asset.saveWithCommit   path signature state.Project
+    | UpdatePin        _    -> Asset.saveWithCommit   path signature state.Project
+    | RemovePin        _    -> Asset.deleteWithCommit path signature state.Project
+    | AddPinGroup      _    -> Asset.saveWithCommit   path signature state.Project
+    | UpdatePinGroup   _    -> Asset.saveWithCommit   path signature state.Project
+    | RemovePinGroup   _    -> Asset.deleteWithCommit path signature state.Project
     | UpdateProject project -> Asset.saveWithCommit   path signature project
     | _                     -> Left OK
 
