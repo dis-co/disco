@@ -128,6 +128,12 @@ let getProjectSites machine projectName username password =
     return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
   }
 
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
+//      http://localhost:7000/api/command
+
 let cloneProject (name: string) (uri: string) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> name
