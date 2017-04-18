@@ -4,6 +4,7 @@ module Iris.Service.CommandActions
 
 open System
 open System.IO
+open FSharpx.Functional
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Commands
@@ -127,6 +128,12 @@ let getProjectSites machine projectName username password =
     return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
   }
 
+let cloneProject (name: string) (uri: string) =
+  let machine = MachineConfig.get()
+  let target = machine.WorkSpace </> name
+  Git.Repo.clone target uri
+  |> Either.map (sprintf "Cloned project %A into %A" name target |> konst)
+
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
@@ -154,6 +161,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
         | CreateProject opts -> createProject cfg opts
+        | CloneProject (name, gitUri) -> cloneProject name gitUri
         | LoadProject(projectName, username, password, site) ->
           iris.LoadProject(projectName, username, password, ?site=site)
           |> Either.map (fun _ -> "Loaded project " + projectName)

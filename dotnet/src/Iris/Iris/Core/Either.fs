@@ -22,10 +22,10 @@ module Either =
 
   // FB types are not modeled with nullables in JS
   #if FABLE_COMPILER
-  let ofNullable (v: 'T) (er: string->'Err) =
+  let ofNullable (v: 'T) (er: string -> 'Err) =
     Right v
   #else
-  let ofNullable (v: Nullable<'T>) (er: string->'Err) =
+  let ofNullable (v: Nullable<'T>) (er: string -> 'Err) =
     if v.HasValue
     then Right v.Value
     else "Item has no value" |> er |> Left
@@ -167,7 +167,7 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
-  let mapArray(f: 'a->Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+  let mapArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
     let mutable i = 0
     let mutable error = None
     let arr2 = Array.zeroCreate arr.Length
@@ -272,18 +272,18 @@ module EitherUtils =
 
     member self.ReturnFrom(v: Either<'err, 'a>): Either<'err, 'a> = v
 
-    member self.Bind(m: Either<'err, 'a>, f: 'a->Either<'err, 'b>): Either<'err, 'b> =
+    member self.Bind(m: Either<'err, 'a>, f: 'a -> Either<'err, 'b>): Either<'err, 'b> =
       match m with
       | Right value -> f value
       | Left err    -> Left err
 
     member self.Zero(): Either<'err, unit> = Right ()
 
-    member self.Delay(f: unit->Either<'err, 'a>) = f
+    member self.Delay(f: unit -> Either<'err, 'a>) = f
 
-    member self.Run(f: unit->Either<'err, 'a>) = f()
+    member self.Run(f: unit -> Either<'err, 'a>) = f()
 
-    member self.While(guard: unit->bool, body: unit->Either<'err, unit>): Either<'err, unit> =
+    member self.While(guard: unit -> bool, body: unit -> Either<'err, unit>): Either<'err, unit> =
       if guard ()
       then self.Bind(body(), fun () -> self.While(guard, body))
       else self.Zero()
@@ -307,7 +307,9 @@ module EitherUtils =
       finally
         handler ()
 
-    member self.Using<'a, 'b, 'err when 'a :> IDisposable>(disposable: 'a, body: 'a->Either<'err, 'b>): Either<'err, 'b> =
+    member self.Using<'a, 'b, 'err when 'a :> IDisposable>
+                     (disposable: 'a, body: 'a -> Either<'err, 'b>): Either<'err, 'b> =
+
       let body' = fun () -> body disposable
       self.TryFinally(body', fun () ->
         disposable.Dispose())

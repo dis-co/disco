@@ -13,7 +13,7 @@ type CreateProjectOptions =
     ipAddress: string
     apiPort: uint16
     raftPort: uint16
-    webSocketPort: uint16 
+    webSocketPort: uint16
     gitPort: uint16 }
 
 type ServiceInfo =
@@ -27,6 +27,7 @@ type Command =
   | ListProjects
   | GetServiceInfo
   | CreateProject of CreateProjectOptions
+  | CloneProject of projectName:string * uri:string
   | LoadProject of projectName:string * username:string * password:string * site:string option
   | GetProjectSites of projectName:string * username:string * password:string
 

@@ -4,9 +4,9 @@ with pkgs;
 let
   mono = mono46;
 
-  inputs = [ stdenv curl openssl zlib phantomjs2 ];
+  inputs = [ stdenv curl openssl zlib phantomjs2 e2fsprogs libidn keyutils ];
 
-  libpath="${curl.out}/lib:${openssl.out}/lib:${zlib.out}/lib";
+  libpath= lib.makeLibraryPath inputs;
 
   hook = ''
     export TMPDIR=/tmp
