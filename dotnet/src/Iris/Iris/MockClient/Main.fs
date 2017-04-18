@@ -479,7 +479,7 @@ Usage:
 
   let private getPin (client: IApiClient) (id: string)  =
     match client.State with
-    | Right state -> State.findPin (Id (id.Trim())) state
+    | Right state -> State.tryFindPin (Id (id.Trim())) state
     | Left error -> None
 
   let private showPin (pin: Pin)  =
