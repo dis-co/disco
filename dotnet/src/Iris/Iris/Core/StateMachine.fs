@@ -294,7 +294,7 @@ type State =
     if Map.containsKey pin.PinGroup state.PinGroups then
       let update _ (group: PinGroup) =
         if group.Id = pin.PinGroup then
-          PinGroup.AddPin group pin
+          PinGroup.addPin pin group
         else
           group
       { state with PinGroups = Map.map update state.PinGroups }
@@ -306,7 +306,7 @@ type State =
   static member updatePin (pin : Pin) (state: State) =
     let mapper (_: Id) (group : PinGroup) =
       if group.Id = pin.PinGroup then
-        PinGroup.UpdatePin group pin
+        PinGroup.updatePin pin group
       else
         group
     { state with PinGroups = Map.map mapper state.PinGroups }
@@ -315,7 +315,7 @@ type State =
 
   static member updateSlices (slices: Slices) (state: State) =
     let mapper (_: Id) (group : PinGroup) =
-      PinGroup.UpdateSlices group slices
+      PinGroup.updateSlices slices group
     { state with PinGroups = Map.map mapper state.PinGroups }
 
   // ** removePin
@@ -323,13 +323,13 @@ type State =
   static member removePin (pin : Pin) (state: State) =
     let updater _ (group : PinGroup) =
       if pin.PinGroup = group.Id
-      then PinGroup.RemovePin group pin
+      then PinGroup.removePin pin group
       else group
     { state with PinGroups = Map.map updater state.PinGroups }
 
-  // ** findPin
+  // ** tryFindPin
 
-  static member findPin (id: Id) (state: State) =
+  static member tryFindPin (id: Id) (state: State) =
     Map.fold
       (fun (m: Pin option) _ (group: PinGroup) ->
         match m with
@@ -337,6 +337,24 @@ type State =
         | _ -> Map.tryFind id group.Pins)
       None
       state.PinGroups
+
+  // ** tryFindPinGroup
+
+  static member tryFindPinGroup (id: Id) (state: State) =
+    Map.tryFind id state.PinGroups
+
+  // ** findPinGroupBy
+
+  static member findPinGroupBy (pred: PinGroup -> bool) (state: State) =
+    Map.fold
+      (fun m _ (grp: PinGroup) ->
+        match m with
+        | None when pred grp -> Some grp
+        | None -> None
+        | Some _ -> m)
+      None
+      state.PinGroups
+
 
   // ** addCueList
 
@@ -959,45 +977,45 @@ and Store(state : State)=
                        State = state })  // 4) append to undo history
 
     match ev with
-    | Command (AppCommand.Redo)  -> self.Redo()
-    | Command (AppCommand.Undo)  -> self.Undo()
-    | Command (AppCommand.Reset) -> ()   // do nothing for now
+    | Command (AppCommand.Redo)     -> self.Redo()
+    | Command (AppCommand.Undo)     -> self.Undo()
+    | Command (AppCommand.Reset)    -> ()   // do nothing for now
 
-    | AddCue            cue -> State.addCue        cue     state |> andRender
-    | UpdateCue         cue -> State.updateCue     cue     state |> andRender
-    | RemoveCue         cue -> State.removeCue     cue     state |> andRender
+    | AddCue            cue         -> State.addCue         cue     state |> andRender
+    | UpdateCue         cue         -> State.updateCue      cue     state |> andRender
+    | RemoveCue         cue         -> State.removeCue      cue     state |> andRender
 
-    | AddCueList    cuelist -> State.addCueList    cuelist state |> andRender
-    | UpdateCueList cuelist -> State.updateCueList cuelist state |> andRender
-    | RemoveCueList cuelist -> State.removeCueList cuelist state |> andRender
+    | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
+    | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
+    | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
 
-    | AddPinGroup        group -> State.addPinGroup      group   state |> andRender
-    | UpdatePinGroup     group -> State.updatePinGroup   group   state |> andRender
-    | RemovePinGroup     group -> State.removePinGroup   group   state |> andRender
+    | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
+    | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
+    | RemovePinGroup  group         -> State.removePinGroup group   state |> andRender
 
-    | AddPin            pin -> State.addPin        pin     state |> andRender
-    | UpdatePin         pin -> State.updatePin     pin     state |> andRender
-    | RemovePin         pin -> State.removePin     pin     state |> andRender
-    | UpdateSlices   slices -> State.updateSlices  slices  state |> andRender
+    | AddPin            pin         -> State.addPin         pin     state |> andRender
+    | UpdatePin         pin         -> State.updatePin      pin     state |> andRender
+    | RemovePin         pin         -> State.removePin      pin     state |> andRender
+    | UpdateSlices   slices         -> State.updateSlices   slices  state |> andRender
 
-    | AddMember         mem -> State.addMember     mem     state |> andRender
-    | UpdateMember      mem -> State.updateMember  mem     state |> andRender
-    | RemoveMember      mem -> State.removeMember  mem     state |> andRender
+    | AddMember         mem         -> State.addMember      mem     state |> andRender
+    | UpdateMember      mem         -> State.updateMember   mem     state |> andRender
+    | RemoveMember      mem         -> State.removeMember   mem     state |> andRender
 
-    | AddClient      client -> State.addClient     client  state |> andRender
-    | UpdateClient   client -> State.updateClient  client  state |> andRender
-    | RemoveClient   client -> State.removeClient  client  state |> andRender
+    | AddClient      client         -> State.addClient      client  state |> andRender
+    | UpdateClient   client         -> State.updateClient   client  state |> andRender
+    | RemoveClient   client         -> State.removeClient   client  state |> andRender
 
-    | AddSession    session -> State.addSession    session state |> andRender
-    | UpdateSession session -> State.updateSession session state |> andRender
-    | RemoveSession session -> State.removeSession session state |> andRender
+    | AddSession    session         -> State.addSession     session state |> andRender
+    | UpdateSession session         -> State.updateSession  session state |> andRender
+    | RemoveSession session         -> State.removeSession  session state |> andRender
 
-    | AddUser          user -> State.addUser       user    state |> andRender
-    | UpdateUser       user -> State.updateUser    user    state |> andRender
-    | RemoveUser       user -> State.removeUser    user    state |> andRender
+    | AddUser          user         -> State.addUser        user    state |> andRender
+    | UpdateUser       user         -> State.updateUser     user    state |> andRender
+    | RemoveUser       user         -> State.removeUser     user    state |> andRender
 
-    | UpdateProject project -> State.updateProject project state |> andRender
-    | UnloadProject         -> self.Notify(ev) // This event doesn't actually modify the state
+    | UpdateProject project         -> State.updateProject  project state |> andRender
+    | UnloadProject                 -> self.Notify(ev) // This event doesn't actually modify the state
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.

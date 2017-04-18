@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -14,6 +16,8 @@ open FlatBuffers
 open Iris.Serialization
 
 #endif
+
+// * PinGroupYaml
 
 #if !FABLE_COMPILER && !IRIS_NODES
 
@@ -35,104 +39,20 @@ type PinGroupYaml(id, name, client, pins) as self =
 
 #endif
 
-//  ____       _       _
-// |  _ \ __ _| |_ ___| |__
-// | |_) / _` | __/ __| '_ \
-// |  __/ (_| | || (__| | | |
-// |_|   \__,_|\__\___|_| |_|
+// * PinGroup
+
+//  ____  _        ____
+// |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+// | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+// |  __/| | | | | |_| | | | (_) | |_| | |_) |
+// |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+//                                     |_|
 
 type PinGroup =
   { Id: Id
     Name: Name
     Client: Id
     Pins: Map<Id,Pin> }
-
-  //  _   _           ____  _
-  // | | | | __ _ ___|  _ \(_)_ __
-  // | |_| |/ _` / __| |_) | | '_ \
-  // |  _  | (_| \__ \  __/| | | | |
-  // |_| |_|\__,_|___/_|   |_|_| |_|
-
-  static member HasPin (group : PinGroup) (id: Id) : bool =
-    Map.containsKey id group.Pins
-
-  //  _____ _           _ ____  _
-  // |  ___(_)_ __   __| |  _ \(_)_ __
-  // | |_  | | '_ \ / _` | |_) | | '_ \
-  // |  _| | | | | | (_| |  __/| | | | |
-  // |_|   |_|_| |_|\__,_|_|   |_|_| |_|
-
-  static member FindPin (groups : Map<Id, PinGroup>) (id : Id) : Pin option =
-    let folder (m : Pin option) _ (group: PinGroup) =
-      match m with
-        | Some _ as res -> res
-        |      _        -> Map.tryFind id group.Pins
-    Map.fold folder None groups
-
-  //   ____            _        _           ____  _
-  //  / ___|___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
-  // | |   / _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
-  // | |__| (_) | | | | || (_| | | | | \__ \  __/| | | | |
-  //  \____\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
-
-  static member ContainsPin (groups : Map<Id,PinGroup>) (id: Id) : bool =
-    let folder m _ p =
-      if m then m else PinGroup.HasPin p id || m
-    Map.fold folder false groups
-
-  //     _       _     _ ____  _
-  //    / \   __| | __| |  _ \(_)_ __
-  //   / _ \ / _` |/ _` | |_) | | '_ \
-  //  / ___ \ (_| | (_| |  __/| | | | |
-  // /_/   \_\__,_|\__,_|_|   |_|_| |_|
-
-  static member AddPin (group : PinGroup) (pin : Pin) : PinGroup=
-    if PinGroup.HasPin group pin.Id then
-      group
-    else
-      { group with Pins = Map.add pin.Id pin group.Pins }
-
-  //  _   _           _       _       ____  _
-  // | | | |_ __   __| | __ _| |_ ___|  _ \(_)_ __
-  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
-  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
-  //  \___/| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
-  //       |_|
-
-  static member UpdatePin (group : PinGroup) (pin : Pin) : PinGroup =
-    if PinGroup.HasPin group pin.Id then
-      let mapper _ (other: Pin) =
-        if other.Id = pin.Id then pin else other
-      { group with Pins = Map.map mapper group.Pins }
-    else
-      group
-
-  //  _   _           _       _       ____  _ _
-  // | | | |_ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
-  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
-  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
-  //  \___/| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
-  //       |_|
-
-  static member UpdateSlices (group : PinGroup) (slices: Slices) : PinGroup =
-    if PinGroup.HasPin group slices.Id then
-      let mapper _ (pin: Pin) =
-        if pin.Id = slices.Id then
-          pin.SetSlices slices
-        else pin
-      { group with Pins = Map.map mapper group.Pins }
-    else
-      group
-
-  //  ____                               ____  _
-  // |  _ \ ___ _ __ ___   _____   _____|  _ \(_)_ __
-  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \
-  // |  _ <  __/ | | | | | (_) \ V /  __/  __/| | | | |
-  // |_| \_\___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
-
-  static member RemovePin (group : PinGroup) (pin : Pin) : PinGroup =
-    { group with Pins = Map.remove pin.Id group.Pins }
-
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -323,3 +243,90 @@ type PinGroup =
     }
 
   #endif
+
+// * PinGroup module
+
+module PinGroup =
+
+  //  _               ____  _
+  // | |__   __ _ ___|  _ \(_)_ __
+  // | '_ \ / _` / __| |_) | | '_ \
+  // | | | | (_| \__ \  __/| | | | |
+  // |_| |_|\__,_|___/_|   |_|_| |_|
+
+  let hasPin (id: Id) (group : PinGroup) : bool =
+    Map.containsKey id group.Pins
+
+  //            _     _ ____  _
+  //   __ _  __| | __| |  _ \(_)_ __
+  //  / _` |/ _` |/ _` | |_) | | '_ \
+  // | (_| | (_| | (_| |  __/| | | | |
+  //  \__,_|\__,_|\__,_|_|   |_|_| |_|
+
+  let addPin (pin : Pin) (group : PinGroup) : PinGroup =
+    if hasPin pin.Id group
+    then   group
+    else { group with Pins = Map.add pin.Id pin group.Pins }
+
+  //                  _       _       ____  _
+  //  _   _ _ __   __| | __ _| |_ ___|  _ \(_)_ __
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
+  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
+  //  \__,_| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
+  //       |_|
+
+  let updatePin (pin : Pin) (group : PinGroup) : PinGroup =
+    if hasPin pin.Id group
+    then { group with Pins = Map.add pin.Id pin group.Pins }
+    else   group
+
+  //                  _       _       ____  _ _
+  //  _   _ _ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
+  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
+  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
+  //  \__,_| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
+  //       |_|
+
+  let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
+    match Map.tryFind slices.Id group.Pins with
+    | Some pin -> { group with Pins = Map.add slices.Id (pin.SetSlices slices) group.Pins }
+    | _ -> group
+
+  //                                    ____  _
+  //  _ __ ___ _ __ ___   _____   _____|  _ \(_)_ __
+  // | '__/ _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \
+  // | | |  __/ | | | | | (_) \ V /  __/  __/| | | | |
+  // |_|  \___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
+
+  let removePin (pin : Pin) (group : PinGroup) : PinGroup =
+    { group with Pins = Map.remove pin.Id group.Pins }
+
+
+// * Map module
+
+module Map =
+
+  //  _              _____ _           _ ____  _
+  // | |_ _ __ _   _|  ___(_)_ __   __| |  _ \(_)_ __
+  // | __| '__| | | | |_  | | '_ \ / _` | |_) | | '_ \
+  // | |_| |  | |_| |  _| | | | | | (_| |  __/| | | | |
+  //  \__|_|   \__, |_|   |_|_| |_|\__,_|_|   |_|_| |_|
+  //           |___/
+
+  let tryFindPin (id : Id) (groups : Map<Id, PinGroup>) : Pin option =
+    let folder (m : Pin option) _ (group: PinGroup) =
+      match m with
+        | Some _ as res -> res
+        |      _        -> Map.tryFind id group.Pins
+    Map.fold folder None groups
+
+  //                  _        _           ____  _
+  //   ___ ___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
+  //  / __/ _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
+  // | (_| (_) | | | | || (_| | | | | \__ \  __/| | | | |
+  //  \___\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
+
+  let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
+    let folder m _ group =
+      if m then m else PinGroup.hasPin id group || m
+    Map.fold folder false groups

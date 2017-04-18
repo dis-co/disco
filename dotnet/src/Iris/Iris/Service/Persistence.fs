@@ -132,7 +132,7 @@ module Persistence =
   /// - sm: StateMachine command
   ///
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
-  let inline persistEntry (state: State) (sm: StateMachine) =
+  let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
     let path = state.Project.Path
     match sm with
@@ -152,7 +152,27 @@ module Persistence =
     | UpdateMember        _ -> Asset.saveWithCommit   path signature state.Project
     | RemoveMember        _ -> Asset.deleteWithCommit path signature state.Project
     | UpdateProject project -> Asset.saveWithCommit   path signature project
-    | _                     -> Left OK
+    | AddPin    pin
+    | UpdatePin pin ->
+      either {
+        let! group =
+          State.tryFindPinGroup pin.PinGroup state
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        return! Asset.saveWithCommit path signature group
+      }
+    | RemovePin pin ->
+      either {
+        let! group =
+          State.tryFindPinGroup pin.PinGroup state
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        return! Asset.saveWithCommit path signature group
+      }
+    | _ ->
+      either {
+        let! repo = state.Project |> Project.repository
+        let commits = Git.Repo.commits repo
+        return! Git.Repo.elementAt 0 commits
+      }
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
