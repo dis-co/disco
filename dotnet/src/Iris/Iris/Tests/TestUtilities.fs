@@ -160,7 +160,7 @@ module TestData =
         yield mkSession() |]
 
   let mkProject path =
-    let machine = MachineConfig.create ()
+    let machine = MachineConfig.create()
     Project.create path (rndstr()) machine
 
   let mkClient () : IrisClient =

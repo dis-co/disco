@@ -137,14 +137,14 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(i) -> equals name1 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
         let updated = pin.SetName name2
         store.Dispatch <| UpdatePin(updated)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(i) -> equals name2 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
@@ -158,13 +158,13 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(_) -> ()
           | None    -> failwith "pin is mysteriously missing"
 
         store.Dispatch <| RemovePin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(_) -> failwith "pin should be missing by now but isn't"
           | None    -> finish()
 

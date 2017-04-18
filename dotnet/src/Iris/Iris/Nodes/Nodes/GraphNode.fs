@@ -715,7 +715,7 @@ module Graph =
 
   type private Parser = IPin2 -> Either<IrisError,Pin>
 
-  let private parseSeqWith (parse: Parser) (state: PluginState) (pins: IPin2 seq) =
+  let private parseSeqWith (parse: Parser) (pins: IPin2 seq) =
     Seq.fold
       (fun lst pin ->
         match parse pin with
@@ -731,15 +731,15 @@ module Graph =
 
   // ** parseValuesPins
 
-  let private parseValuePins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseValuePin state pins
+  let private parseValuePins (pins: IPin2 seq) =
+    parseSeqWith parseValuePin pins
 
   // ** parseValueBox
 
-  let private parseValueBox (state: PluginState) (node: INode2) =
+  let private parseValueBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseValuePins state
+    |> parseValuePins
 
   // ** parseStringType
 
@@ -791,15 +791,15 @@ module Graph =
 
   // ** parseStringPins
 
-  let private parseStringPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseStringPin state pins
+  let private parseStringPins (pins: IPin2 seq) =
+    parseSeqWith parseStringPin pins
 
   // ** parseStringBox
 
-  let private parseStringBox (state: PluginState) (node: INode2) =
+  let private parseStringBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseStringPins state
+    |> parseStringPins
 
   // ** parseEnumPin
 
@@ -826,15 +826,15 @@ module Graph =
 
   // ** parseEnumPins
 
-  let private parseEnumPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseEnumPin state pins
+  let private parseEnumPins (pins: IPin2 seq) =
+    parseSeqWith parseEnumPin pins
 
   // ** parseEnumBox
 
-  let private parseEnumBox (state: PluginState) (node: INode2) =
+  let private parseEnumBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseEnumPins state
+    |> parseEnumPins
 
   // ** parseColorPin
 
@@ -859,43 +859,30 @@ module Graph =
 
   // ** parseColorPins
 
-  let private parseColorPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseColorPin state pins
+  let private parseColorPins (pins: IPin2 seq) =
+    parseSeqWith parseColorPin pins
 
   // ** parseColorBox
 
-  let private parseColorBox (state: PluginState) (node: INode2) =
+  let private parseColorBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseColorPins state
+    |> parseColorPins
 
   // ** parseINode2
 
-  let private parseINode2 (state: PluginState) (node: INode2) =
-    // for pin in node.Pins do
-    //   sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
-    //      pin.Name
-    //      pin.Direction
-    //      pin.Visibility
-    //      pin.Type
-    //      pin.SubType
-    //      pin.[0]
-    //   |> Util.debug state
-      // for n in 0 .. pin.SliceCount - 1 do
-      //   sprintf "  [%d] %A" n pin.[n]
-      //   |> Util.debug state
-
+  let private parseINode2 (node: INode2) =
     either {
       let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
       match boxtype with
       | IOBoxType.Value ->
-        return parseValueBox state node
+        return parseValueBox node
       | IOBoxType.String ->
-        return parseStringBox state node
+        return parseStringBox node
       | IOBoxType.Enum ->
-        return parseEnumBox state node
+        return parseEnumBox node
       | IOBoxType.Color ->
-        return parseColorBox state node
+        return parseColorBox node
       | x ->
         return!
           sprintf "unsupported type %A" x
@@ -1068,7 +1055,7 @@ module Graph =
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    match parseINode2 state node with
+    match parseINode2 node with
     | Right [] -> ()
     | Right pins -> List.iter (Msg.PinAdded >> state.Events.Enqueue) pins
     | Left error ->
@@ -1203,7 +1190,7 @@ module Graph =
         | Msg.PinSubTypeChange nodeid ->
           let node = state.V2Host.GetNodeFromPath(nodeid)
           if not (isNull node) then
-            match parseINode2 state node with
+            match parseINode2 node with
             | Right []     -> ()
             | Left error   ->
               error

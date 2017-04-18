@@ -109,14 +109,14 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(i) -> expect "Should be correct name" name1 id i.Name
           | None    -> failwith "pin is mysteriously missing"
 
         let updated = pin.SetName name2
         store.Dispatch <| UpdatePin(updated)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(i) -> expect "Should be correct name" name2 id i.Name
           | None    -> failwith "pin is mysteriously missing"
 
@@ -128,13 +128,13 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(_) -> ()
           | None    -> failwith "pin is mysteriously missing"
 
         store.Dispatch <| RemovePin(pin)
 
-        match PinGroup.FindPin store.State.PinGroups pin.Id with
+        match Map.tryFindPin pin.Id store.State.PinGroups with
           | Some(_) -> failwith "pin should be missing by now but isn't"
           | _       -> ()
 

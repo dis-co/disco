@@ -1,8 +1,8 @@
 namespace Iris.Service
 
-#if !IRIS_NODES
-
 // * Imports
+
+#if !IRIS_NODES
 
 open System
 open System.IO
@@ -17,6 +17,7 @@ open FSharpx.Functional
 open SharpYaml.Serialization
 
 // * Persistence
+
 module Persistence =
 
   let private tag (str: string) = String.Format("Persistence.{0}", str)
@@ -131,24 +132,47 @@ module Persistence =
   /// - sm: StateMachine command
   ///
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
-  let inline persistEntry (state: State) (sm: StateMachine) =
+  let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
     let path = state.Project.Path
     match sm with
-    | AddCue        cue     -> Asset.saveWithCommit   path signature cue
-    | UpdateCue     cue     -> Asset.saveWithCommit   path signature cue
-    | RemoveCue     cue     -> Asset.deleteWithCommit path signature cue
+    | AddCue            cue -> Asset.saveWithCommit   path signature cue
+    | UpdateCue         cue -> Asset.saveWithCommit   path signature cue
+    | RemoveCue         cue -> Asset.deleteWithCommit path signature cue
     | AddCueList    cuelist -> Asset.saveWithCommit   path signature cuelist
     | UpdateCueList cuelist -> Asset.saveWithCommit   path signature cuelist
     | RemoveCueList cuelist -> Asset.deleteWithCommit path signature cuelist
-    | AddUser       user    -> Asset.saveWithCommit   path signature user
-    | UpdateUser    user    -> Asset.saveWithCommit   path signature user
-    | RemoveUser    user    -> Asset.deleteWithCommit path signature user
-    | AddMember     _       -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember  _       -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember  _       -> Asset.deleteWithCommit path signature state.Project
+    | AddPinGroup     group -> Asset.saveWithCommit   path signature group
+    | UpdatePinGroup  group -> Asset.saveWithCommit   path signature group
+    | RemovePinGroup  group -> Asset.deleteWithCommit path signature group
+    | AddUser          user -> Asset.saveWithCommit   path signature user
+    | UpdateUser       user -> Asset.saveWithCommit   path signature user
+    | RemoveUser       user -> Asset.deleteWithCommit path signature user
+    | AddMember           _ -> Asset.saveWithCommit   path signature state.Project
+    | UpdateMember        _ -> Asset.saveWithCommit   path signature state.Project
+    | RemoveMember        _ -> Asset.deleteWithCommit path signature state.Project
     | UpdateProject project -> Asset.saveWithCommit   path signature project
-    | _                     -> Left OK
+    | AddPin    pin
+    | UpdatePin pin ->
+      either {
+        let! group =
+          State.tryFindPinGroup pin.PinGroup state
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        return! Asset.saveWithCommit path signature group
+      }
+    | RemovePin pin ->
+      either {
+        let! group =
+          State.tryFindPinGroup pin.PinGroup state
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        return! Asset.saveWithCommit path signature group
+      }
+    | _ ->
+      either {
+        let! repo = state.Project |> Project.repository
+        let commits = Git.Repo.commits repo
+        return! Git.Repo.elementAt 0 commits
+      }
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {

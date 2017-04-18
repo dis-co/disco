@@ -569,3 +569,22 @@ module Async =
     #endif
 
 #endif
+
+// * Tuple
+
+module Tuple =
+
+  let inline mapFst (f: 'a -> 'c) (a, b) =
+    (f a, b)
+
+  let inline mapSnd (f: 'b -> 'c) (a, b) =
+    (a, f b)
+
+  let inline mapFst3 (f: 'a -> 'd) (a, b, c) =
+    (f a, b, c)
+
+  let inline mapSnd3 (f: 'b -> 'd) (a, b, c) =
+    (a, f b, c)
+
+  let inline mapThrd3 (f: 'c -> 'd) (a, b, c) =
+    (a, b, f c)
