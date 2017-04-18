@@ -4,10 +4,8 @@ import css from "../../css/Spread.less";
 
 const BASE_HEIGHT = 25;
 const ROW_HEIGHT = 17;
-// The arrow must be a bit shorter
-const DIFF_HEIGHT = 2;
 
-class View extends React.Component {
+export class SpreadView extends React.Component {
   constructor(props) {
     super(props);
     this.state = {editIndex: -1};
@@ -32,8 +30,7 @@ class View extends React.Component {
 
   renderRowLabels(model) {
     var viewRows = [];
-    // {/*style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()*/}
-    viewRows.push(<span key={-1}>{model.pin.Name}</span>)
+    viewRows.push(<span style={{cursor: "move"}} onMouseDown={() => this.props.onDragStart()} key={-1}>{model.pin.Name}</span>)
     model.rows.forEach((kv,i) => {
       viewRows.push(<span key={i}>{kv[0] || "Label"}</span>)
     });
@@ -46,7 +43,11 @@ class View extends React.Component {
     model.rows.forEach((kv,i) =>
       viewRows.push(
         addInputView(i, kv[1], useRightClick, this,
-          (i,v) => model.update(i,v),
+          (i,v) => {
+            model.update(i,v);
+            if (model.updateView)
+              this.forceUpdate();
+          },
           (value, props) => <span {...props}>{value}</span>
         )
       )
@@ -56,7 +57,7 @@ class View extends React.Component {
 
   render() {
     var model = this.props.model;
-    var height = open ? this.recalculateHeight(model.rows) : BASE_HEIGHT;
+    var height = this.props.model.open ? this.recalculateHeight(model.rows) : BASE_HEIGHT;
 
     return (
       <div className="iris-spread" ref={el => this.onMounted(el)}>
@@ -66,8 +67,8 @@ class View extends React.Component {
         <div className="iris-spread-child iris-flex-2" style={{ height: height}}>
           {this.renderRowValues(model, this.props.global.state.useRightClick)}
         </div>
-        <div className="iris-spread-child iris-spread-end" style={{ height: height - DIFF_HEIGHT}}>
-          <img src="/img/more.png" height="7px"
+        <div className="iris-spread-child iris-spread-end" style={{ height: height }}>
+          <img src="/img/more.png" 
             style={{transform: `rotate(${model.open ? "90" : "0"}deg)`}}
             onClick={ev => {
               ev.stopPropagation();
@@ -82,7 +83,7 @@ class View extends React.Component {
 
 export default class Spread {
   constructor(pin) {
-    this.view = View;
+    this.view = SpreadView;
     this.pin = pin;
     this.open = false;
     this.rows = Iris.pinToKeyValuePairs(pin);

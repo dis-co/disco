@@ -1,6 +1,5 @@
 import React, { Component } from 'react'
 import Spread from "./Spread"
-import IOBox from "./IOBox"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util.ts"
 
@@ -17,10 +16,11 @@ class View extends Component {
 
     domtoimage.toPng(node)
       .then(dataUrl => {
-        console.log("drag start")
+        // console.log("drag start")
         const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
         $(document)
           .on("mousemove.drag", e => {
+            // console.log("drag move", {x: e.clientX, y: e.clientY})
             $(img).css({left:e.pageX, top:e.pageY});
             _this.props.global.triggerEvent("drag", {
               type: "move",
@@ -31,7 +31,7 @@ class View extends Component {
             });
           })
           .on("mouseup.drag", e => {
-            console.log("drag stop")
+            // console.log("drag stop")
             img.css({display: "none"});
             _this.props.global.triggerEvent("drag", {
               type: "stop",
@@ -55,24 +55,24 @@ class View extends Component {
   componentDidMount() {
     this.disposables = [];
 
-    this.disposables.push(
-      this.props.global.subscribeToEvent("drag", ev => {
-        if (this.el != null && ev.origin !== this.props.id) {
-          if (touchesElement(this.el, ev.x, ev.y)) {
-            switch (ev.type) {
-              case "move":
-                this.el.classList.add("iris-highlight-blue");
-                return;
-              case "stop":
-                ev.removeModelFromOrigin();
-                this.props.model.elements.push(ev.model);
-                this.forceUpdate();
-            }
-          }
-          this.el.classList.remove("iris-highlight-blue")
-        }
-      })
-    );
+    // this.disposables.push(
+    //   this.props.global.subscribeToEvent("drag", ev => {
+    //     if (this.el != null && ev.origin !== this.props.id) {
+    //       if (touchesElement(this.el, ev.x, ev.y)) {
+    //         switch (ev.type) {
+    //           case "move":
+    //             this.el.classList.add("iris-highlight-blue");
+    //             return;
+    //           case "stop":
+    //             ev.removeModelFromOrigin();
+    //             this.props.model.elements.push(ev.model);
+    //             this.forceUpdate();
+    //         }
+    //       }
+    //       this.el.classList.remove("iris-highlight-blue")
+    //     }
+    //   })
+    // );
 
     this.disposables.push(
       this.props.global.subscribe(["pinGroups", "useRightClick"], () => {
@@ -92,7 +92,7 @@ class View extends Component {
       <div className="iris-grapview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
-            <p>{pinGroup[1].Name}</p>
+            <h3 className="title is-3">{pinGroup[1].Name}</h3>
             {map(pinGroup[1].Pins, (pin,i) => {
               var model = new Spread(pin[1]);
               const View = model.view;

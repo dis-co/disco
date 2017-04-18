@@ -1,7 +1,24 @@
+import { IIris, IDisposable, IServiceInfo } from "./Interfaces"
+
+declare var Iris: IIris;
+
 let counter = 0;
 const LOG_MAX = 100;
 
 export default class GlobalModel {
+  logSubscription: IDisposable;
+  clockSubscription: IDisposable;
+  subscribers: Map<string, Map<number, (x:any)=>void>>;
+  eventSubscribers: Map<string, Map<number, (x:any)=>void>>;
+  state: {
+    logs: [number, string][],
+    tabs: Map<number,any>,
+    widgets: Map<number,any>,
+    useRightClick: boolean,
+    serviceInfo: IServiceInfo,
+    clock: number
+  };
+
   constructor() {
     Iris.startContext(info => {
       if (this.logSubscription == null) {
@@ -25,6 +42,7 @@ export default class GlobalModel {
     this.subscribers = new Map();
     this.eventSubscribers = new Map();
     this.state = {
+      logs: [],
       tabs: new Map(),
       widgets: new Map(),
       useRightClick: false,
@@ -36,8 +54,8 @@ export default class GlobalModel {
     };
   }
 
-  subscribe(keys, subscriber) {
-    let subscribers = this.subscribers, disposables = [];
+  subscribe(keys: string | string[], subscriber: (x:any)=>void) {
+    let subscribers = this.subscribers, disposables: IDisposable[] = [];
     if (typeof keys === "string") {
       keys = [keys];
     }
@@ -61,12 +79,13 @@ export default class GlobalModel {
     }
   }
 
-  subscribeToEvent(event, subscriber) {
+  subscribeToEvent(event: string, subscriber: (x:any)=>void) {
     let id = counter++, subscribers = this.eventSubscribers;
     if (!subscribers.has(event)) {
       subscribers.set(event, new Map());
     }
     subscribers.get(event).set(id, subscriber);
+    console.log("Subscription to event", event)
     // `subscribers` must be captured so the closure below works
     return {
       dispose() {
@@ -75,22 +94,22 @@ export default class GlobalModel {
     }
   }
 
-  __notify(key, value = this.state[key]) {
+  __notify(key: string, value: any = (this.state as any)[key]) {
     if (this.subscribers.has(key)) {
       this.subscribers.get(key).forEach(subscriber => subscriber(value));
     }
   }
 
-  __setState(key, value) {
-    this.state[key] = value;
+  __setState(key: string, value: any) {
+    (this.state as any)[key] = value;
     this.__notify(key, value);
   }
 
-  useRightClick(value) {
+  useRightClick(value: boolean) {
     this.__setState("useRightClick", value);
   }
 
-  addWidget(id, widget) {
+  addWidget(id: number, widget: any) {
     if (widget === void 0) {
       widget = id;
       id = counter++;
@@ -100,12 +119,12 @@ export default class GlobalModel {
     return id;
   }
 
-  removeWidget(id) {
+  removeWidget(id: number) {
     this.state.widgets.delete(id);
     this.__notify("widgets");
   }
 
-  addTab(id, tab) {
+  addTab(id: number, tab: any) {
     if (tab === void 0) {
       tab = id;
       id = counter++;
@@ -115,24 +134,22 @@ export default class GlobalModel {
     return id;
   }
 
-  removeTab(id) {
+  removeTab(id: any) {
     this.state.tabs.delete(id);
     this.__notify("tabs");
   }
 
-  addLog(log) {
+  addLog(log: string) {
     var logs = this.state.logs;
-    if (Array.isArray(logs)) {
-      if (logs.length > LOG_MAX) {
-        var diff = Math.floor(LOG_MAX / 100);
-        logs.splice(logs.length - diff, diff);
-      }
-      logs.splice(0, 0, [counter++, log]);
-      this.__notify("logs", logs);
+    if (logs.length > LOG_MAX) {
+      var diff = Math.floor(LOG_MAX / 100);
+      logs.splice(logs.length - diff, diff);
     }
+    logs.splice(0, 0, [counter++, log]);
+    this.__notify("logs", logs);
   }
 
-  triggerEvent(event, data) {
+  triggerEvent(event: string, data: any) {
     if (this.eventSubscribers.has(event)) {
       this.eventSubscribers.get(event).forEach(subscriber => subscriber(data));
     }
