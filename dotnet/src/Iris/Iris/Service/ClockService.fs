@@ -6,7 +6,7 @@ open System
 open System.Threading
 open System.Diagnostics
 open System.Collections.Concurrent
-
+open Iris.Zmq
 open Iris.Core
 
 // * Types
@@ -51,10 +51,11 @@ module Clock =
                 | _ -> subscriptions.TryRemove(obs.GetHashCode())
                       |> ignore } }
 
-
   // ** secPerFrame
 
   let private secPerFrame (fps: uint16) = 1. / float fps
+
+  // ** μsPerFrame
 
   let private μsPerFrame (fps: uint16) =
     secPerFrame fps
@@ -63,10 +64,14 @@ module Clock =
     * 1000. (* ns *)
     |> int64
 
+  // ** μsPerTick
+
   let μsPerTick =
     (1000L (* ms *) * 1000L (* μs *) * 1000L (* ns *))
     / Stopwatch.Frequency
     |> int64
+
+  // ** ticksPerFrame
 
   let ticksPerFrame (fps: uint16) =
     μsPerFrame fps / μsPerTick
@@ -80,7 +85,15 @@ module Clock =
 
   // ** ClockState
 
-  type private ClockState() =
+  type private ClockState(ip: IpAddress) =
+    let addr =
+      Uri.epgmUri
+        ip
+        (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
+        Constants.CLOCK_MCAST_PORT
+
+    let socket = new Pub(addr, Constants.CLOCK_MCAST_PREFIX)
+
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()
 
@@ -91,6 +104,12 @@ module Clock =
     let mutable frame = 0UL
     let mutable fps = 60us
     let mutable timeout = calculateTimeout fps
+
+    do
+      printfn "starting socket"
+      socket.Start()
+      |> Either.mapError (string >> failwith)
+      |> ignore
 
     member state.Run
       with get ()  = run && not disposed
@@ -103,6 +122,9 @@ module Clock =
     member state.Publish
       with get ()  = publish && not disposed
       and set pub  = publish <- pub
+
+    member state.Socket
+      with get () = socket
 
     member state.Timeout
       with get () = timeout
@@ -153,14 +175,26 @@ module Clock =
         if diff >= ticksPerFrame state.Fps then // fire another clock event
           state.Previous <- elapsed
           state.Tick()
-          notify state { Frame = state.Frame
-                         Deviation = diff / μsPerTick }
+
+          let ev = { Frame = state.Frame
+                     Deviation = diff / μsPerTick }
+
+          notify state ev
+
+          state.Frame
+          |> uint32
+          |> UpdateClock
+          |> Binary.encode
+          |> state.Socket.Publish
+          |> Either.mapError (string >> Logger.err "Clock")
+          |> ignore
+
       Thread.Sleep state.Timeout
 
   // ** create
 
-  let create () =
-    let state = new ClockState()
+  let create (ip: IpAddress) =
+    let state = new ClockState(ip)
     let listener = createListener state.Subscriptions
 
     if not Stopwatch.IsHighResolution then
@@ -203,7 +237,8 @@ module Clock =
 
 #if INTERACTIVE
 
-let clock = Clock.create()
+let ip = IPv4Address "192.168.2.108"
+let clock = Clock.create(ip)
 let disp = clock.Subscribe (fun (ev: ClockEvent) -> printfn "t: %O" ev.Frame)
 
 clock.Start()

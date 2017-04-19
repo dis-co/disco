@@ -21,10 +21,13 @@ type Pub (addr: string, prefix: string) =
 
   let tag = sprintf "Pub.%s"
 
-  let mutable starter   = Unchecked.defaultof<AutoResetEvent>
-  let mutable stopper   = Unchecked.defaultof<AutoResetEvent>
-  let mutable requester = Unchecked.defaultof<AutoResetEvent>
-  let mutable responder = Unchecked.defaultof<AutoResetEvent>
+  let lokk = Object()
+
+
+  let starter   = new AutoResetEvent(false)
+  let stopper   = new AutoResetEvent(false)
+  let requester = new AutoResetEvent(false)
+  let responder = new AutoResetEvent(false)
 
   let mutable exn: Exception option = None
 
@@ -37,7 +40,6 @@ type Pub (addr: string, prefix: string) =
 
   let mutable thread = Unchecked.defaultof<Thread>
   let mutable sock = Unchecked.defaultof<ZSocket>
-  let mutable lokk = Unchecked.defaultof<Object>
   let mutable ctx = Unchecked.defaultof<ZContext>
 
   // ** worker
@@ -110,15 +112,6 @@ type Pub (addr: string, prefix: string) =
 
     "thread-local shutdown done"
     |> Logger.debug (tag "worker")
-
-  // ** Constructor
-
-  do
-    lokk      <- Object()                           // lock object
-    starter   <- new AutoResetEvent(false)          // initialize the signals
-    stopper   <- new AutoResetEvent(false)
-    requester <- new AutoResetEvent(false)
-    responder <- new AutoResetEvent(false)
 
   // ** Start
 
