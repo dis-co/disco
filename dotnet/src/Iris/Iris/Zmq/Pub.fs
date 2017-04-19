@@ -42,7 +42,7 @@ type Pub (addr: string, prefix: string) =
 
   // ** worker
 
-  let worker _ =                                              // thread worker function
+  let worker () =                                              // thread worker function
     if isNull sock then                                       // if not yet present
       try
         "initializing context and socket"
@@ -114,7 +114,7 @@ type Pub (addr: string, prefix: string) =
   // ** Constructor
 
   do
-    lokk      <- new Object()                       // lock object
+    lokk      <- Object()                           // lock object
     starter   <- new AutoResetEvent(false)          // initialize the signals
     stopper   <- new AutoResetEvent(false)
     requester <- new AutoResetEvent(false)
@@ -124,7 +124,7 @@ type Pub (addr: string, prefix: string) =
 
   member self.Start() =
     if not disposed then
-      thread <- new Thread(new ThreadStart(worker))  // create worker thread
+      thread <- Thread(worker)                       // create worker thread
       thread.Start()                                // start worker thread
       starter.WaitOne() |> ignore                    // wait for startup-done signal
 

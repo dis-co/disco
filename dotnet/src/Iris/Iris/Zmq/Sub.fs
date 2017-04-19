@@ -167,7 +167,7 @@ module Sub =
 
     member self.Start () : Either<IrisError,unit> =
       if not disposed then
-        thread <- new Thread(new ThreadStart(worker))  // create worker thread
+        thread <- Thread(worker)                       // create worker thread
         thread.Start()                                // start worker thread
         starter.WaitOne() |> ignore                    // wait for startup-done signal
 

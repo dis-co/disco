@@ -258,7 +258,7 @@ module Client =
 
   let create (id: Id) (frontend: string) (timeout: float) =
     let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
-    let mutable thread = new Thread(new ThreadStart(worker state))
+    let mutable thread = Thread(worker state)
     thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
@@ -287,7 +287,7 @@ module Client =
         member self.Restart () =
           self.Dispose()
           state.Reset()
-          thread <- new Thread(new ThreadStart(worker state))
+          thread <- Thread(worker state)
           thread.Name <- sprintf "Client %O" state.Id
           thread.Start()
           state.Starter.WaitOne() |> ignore
@@ -480,7 +480,7 @@ module private Worker =
     let state = new LocalThreadState(args)
     let listener = createListener state.Subscriptions
 
-    let thread = new Thread(new ThreadStart(worker state))
+    let thread = Thread(worker state)
     thread.Name <- sprintf "broker-worker-%d" state.Id
     thread.Start()
 
@@ -705,7 +705,7 @@ module Broker =
     let cts = new CancellationTokenSource()
     let responder = ResponseActor.Start(loop state.Workers, cts.Token)
 
-    let thread = new Thread(new ThreadStart(worker state))
+    let thread = Thread(worker state)
     thread.Name <- sprintf "Broker"
     thread.Start()
 
