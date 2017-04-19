@@ -16,6 +16,16 @@ export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   return ar;
 }
 
+export function first<T>(iterable: Iterable<T>, condition?: (x:T)=>boolean) {
+  if (iterable != null) {
+    let iter = iterable[Symbol.iterator](), cur = iter.next();
+    if (!cur.done && condition(cur.value)) {
+      return cur.value;
+    }
+  }
+  throw new Error("");
+}
+
 export function head<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
   if (iterable != null) {
     let iter = iterable[Symbol.iterator](), cur = iter.next();
