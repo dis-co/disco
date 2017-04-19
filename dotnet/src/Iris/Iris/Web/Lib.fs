@@ -88,8 +88,8 @@ let subscribeToClock(f:uint32->unit): IDisposable =
       | ClientMessage.ClockUpdate frames -> f frames
       | _ -> ())
 
-let removeMember(info: StateInfo, memId: Id) =
-  match Config.findMember info.state.Project.Config memId with
+let removeMember(config: IrisConfig, memId: Id) =
+  match Config.findMember config memId with
   | Right mem ->
     RemoveMember mem
     |> ClientContext.Singleton.Post

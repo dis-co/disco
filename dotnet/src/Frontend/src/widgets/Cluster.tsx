@@ -55,7 +55,7 @@ class ClusterView extends React.Component<any,any> {
                   <td>{node.State.ToString()}</td>
                   <td>left</td>
                   <td>Main, VideoPB, Show1</td>
-                  <td><a onClick={() => { alert("TODO") /*removeMember(this.props.info, kv[0])*/}}>Remove</a></td>
+                  <td><a onClick={() => { Iris.removeMember(config, kv[0]) }}>Remove</a></td>
                 </tr>
               );
             })}
