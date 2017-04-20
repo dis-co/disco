@@ -18,9 +18,8 @@ export interface IContext {
   ServiceInfo: IServiceInfo
 }
 
-export type IPin = any;
-
 export interface IIris {
+  toString(o: any): string
   startContext(f: (info:any)=>void): void
   subscribeToLogs(f: (log: string)=>void): IDisposable
   subscribeToClock(f: (frames: number)=>void): IDisposable
@@ -29,3 +28,8 @@ export interface IIris {
   updateSlices(pin: IPin, rowIndex: number, newValue: any)
   removeMember(projectConfig: any, memberId: any)
 }
+
+// Temp placeholders
+export type IPin = any;
+export type IProject = any;
+export type IService = any;

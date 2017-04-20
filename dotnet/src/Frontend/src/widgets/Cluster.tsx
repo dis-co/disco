@@ -7,7 +7,11 @@ import AddNode from "../modals/AddNode"
 
 declare var Iris: IIris;
 
-class ClusterView extends React.Component<any,any> {
+interface ClusterProps {
+  global: GlobalModel
+}
+
+class ClusterView extends React.Component<ClusterProps,any> {
   disposable: IDisposable;
 
   constructor(props) {
