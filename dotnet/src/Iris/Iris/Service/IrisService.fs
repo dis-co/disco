@@ -1285,7 +1285,9 @@ module Iris =
   let private handleClock (state: IrisState) (clock: ClockEvent) =
     Tracing.trace (tag "handleClock") <| fun () ->
       withState state <| fun data ->
-        broadcastMsg data (clock.Frame |> uint32 |> UpdateClock)
+        let sm = clock.Frame |> uint32 |> UpdateClock
+        broadcastMsg data sm
+        data.ApiServer.Update sm
       state
 
   // ** loop
