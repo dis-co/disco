@@ -44,7 +44,7 @@ module ApiClient =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<int, IObserver<ClientEvent>>
+  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ClientEvent>>
 
   // ** ClientStateData
 
@@ -115,17 +115,17 @@ module ApiClient =
 
   // ** createListener
 
-  let private createListener (subscriptions: Subscriptions) =
+  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
     { new Listener with
         member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(obs.GetHashCode(), obs)) do
+          while not (subscriptions.TryAdd(guid, obs)) do
             Thread.Sleep(1)
 
           { new IDisposable with
               member self.Dispose() =
-                match subscriptions.TryRemove(obs.GetHashCode()) with
+                match subscriptions.TryRemove(guid) with
                 | true, _  -> ()
-                | _ -> subscriptions.TryRemove(obs.GetHashCode())
+                | _ -> subscriptions.TryRemove(guid)
                       |> ignore } }
 
   // ** pingTimer
@@ -640,7 +640,6 @@ module ApiClient =
         let cts = new CancellationTokenSource()
         let subs = new Subscriptions()
         let agent = new ApiAgent(loop Idle server client subs, cts.Token)
-        let listener = createListener subs
         agent.Start()
 
         return
@@ -679,6 +678,8 @@ module ApiClient =
                     | Left error -> ServiceStatus.Failed error
 
               member self.Subscribe (callback: ClientEvent -> unit) =
+                let guid = Guid.NewGuid()
+                let listener = createListener guid subs
                 { new IObserver<ClientEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()

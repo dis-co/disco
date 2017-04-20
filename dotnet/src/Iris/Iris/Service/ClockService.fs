@@ -106,7 +106,6 @@ module Clock =
     let mutable timeout = calculateTimeout fps
 
     do
-      printfn "starting socket"
       socket.Start()
       |> Either.mapError (string >> failwith)
       |> ignore
