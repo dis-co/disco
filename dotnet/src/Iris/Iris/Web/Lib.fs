@@ -182,12 +182,12 @@ let getProjectSites(project, username, password) =
   |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
 
 let createProject(info: obj) =
-  { name          = !!info?name
-  ; ipAddress     = !!info?ipAddress
-  ; apiPort       = !!info?apiPort
-  ; raftPort      = !!info?raftPort
-  ; webSocketPort = !!info?webSocketPort
-  ; gitPort       = !!info?gitPort }
+  { name     = !!info?name
+  ; ipAddr   = !!info?ipAddr
+  ; port     = !!info?port
+  ; apiPort  = !!info?apiPort
+  ; wsPort   = !!info?wsPort
+  ; gitPort  = !!info?gitPort }
   |> CreateProject
   |> postCommand (fun _ -> notify "The project has been created successfully") notify
 
