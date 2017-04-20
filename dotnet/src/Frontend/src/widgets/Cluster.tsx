@@ -2,6 +2,8 @@ import * as React from "react"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
 import { touchesElement, map, first } from "../Util"
+import { showModal } from "../App"
+import AddNode from "../modals/AddNode"
 
 declare var Iris: IIris;
 
@@ -32,7 +34,7 @@ class ClusterView extends React.Component<any,any> {
       <div className="iris-cluster">
         <table className="table is-striped is-narrow" >
           <tfoot>
-            <tr><td><a onClick={() => { alert("TODO") /*showModal(ADD_NODE)*/}}>Add node</a></td></tr>
+            <tr><td><a onClick={() => { showModal(AddNode)}}>Add node</a></td></tr>
           </tfoot>          
           <thead>
             <tr>

@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-export default class createProject extends Component {
+export default class CreateProject extends Component {
   constructor(props) {
       super(props);
       let match = /\:(\d+)$/.exec(window.location.host);

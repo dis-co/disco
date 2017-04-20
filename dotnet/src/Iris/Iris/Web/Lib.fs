@@ -96,19 +96,15 @@ let removeMember(config: IrisConfig, memId: Id) =
   | Left error ->
     printfn "%O" error
 
-let createMemberInfo() =
-  let m = Id.Create() |> Member.create
-  string m.Id, m.HostName, string m.IpAddr, string m.Port, string m.WsPort, string m.GitPort, string m.ApiPort
-
-let addMember(id, host, ip, port: string, wsPort: string, gitPort: string, apiPort: string) =
+let addMember(info: obj) =
   try
-    { Member.create (Id id) with
-        HostName = host
-        IpAddr = IPv4Address ip
-        Port = uint16 port
-        WsPort = uint16 wsPort
-        GitPort = uint16 gitPort
-        ApiPort = uint16 apiPort }
+    { Member.create (Id !!info?id) with
+        HostName = !!info?hostName
+        IpAddr   = IPv4Address !!info?ipAddr
+        Port     = !!info?port
+        WsPort   = !!info?wsPort
+        GitPort  = !!info?gitPort
+        ApiPort  = !!info?apiPort }
     |> AddMember
     |> ClientContext.Singleton.Post
   with
