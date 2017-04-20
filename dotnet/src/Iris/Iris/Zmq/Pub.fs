@@ -19,10 +19,9 @@ open Iris.Core
 /// Returns: instance of Pub
 type Pub (addr: string, prefix: string) =
 
-  let tag = sprintf "Pub.%s"
+  let tag (str: string) = String.Format("Pub.{0}", str)
 
   let lokk = Object()
-
 
   let starter   = new AutoResetEvent(false)
   let stopper   = new AutoResetEvent(false)
@@ -48,7 +47,7 @@ type Pub (addr: string, prefix: string) =
     if isNull sock then                                       // if not yet present
       try
         "initializing context and socket"
-        |> Logger.debug (tag "workder")
+        |> Logger.debug (tag "worker")
 
         ctx <- new ZContext()
         sock <- new ZSocket(ctx, ZSocketType.PUB)                // initialise the socket
@@ -56,12 +55,17 @@ type Pub (addr: string, prefix: string) =
         sprintf "connecting to %A" addr
         |> Logger.debug (tag "worker")
 
-        setOption sock ZSocketOption.RATE 100000
+        sock.MulticastRate <- 100000
         sock.Bind(addr)                                         // connect to server
+
         started <- true
         starter.Set() |> ignore                                  // signal that startup is done
       with
         | ex ->
+          ex.Message
+          |> sprintf "error initializing Pub socket: %s"
+          |> Logger.debug (tag "worker")
+
           run <- false
           exn <- Some ex
           starter.Set() |> ignore
@@ -104,8 +108,8 @@ type Pub (addr: string, prefix: string) =
 
     sock.SetOption(ZSocketOption.LINGER, 0) |> ignore  // set linger to 0 to close socket quickly
     sock.Close()                                      // close the socket
-    sock.Dispose()                                    // dispose of it
-    ctx.Dispose()
+    tryDispose sock ignore                            // dispose of it
+    tryDispose ctx  ignore
     disposed <- true                                   // this socket is disposed
     started <- false                                   // and not running anymore
     stopper.Set() |> ignore                            // signal that everything was cleaned up now

@@ -12,8 +12,8 @@ open Iris.Core
 // * Types
 
 type ClockEvent =
-  { Frame: uint64
-    Deviation: int64 }
+  { Frame: int64<frame>
+    Deviation: int64<ns> }
 
 type IClock =
   inherit IDisposable
@@ -21,8 +21,8 @@ type IClock =
   abstract Start: unit -> unit
   abstract Stop: unit -> unit
   abstract Running: bool with get
-  abstract Fps: uint16   with get, set
-  abstract Frame: uint64
+  abstract Fps: int16<fps>  with get, set
+  abstract Frame: int64<frame>
 
 // * Clock module
 
@@ -53,11 +53,11 @@ module Clock =
 
   // ** secPerFrame
 
-  let private secPerFrame (fps: uint16) = 1. / float fps
+  let private secPerFrame (fps: int16<fps>) = 1. / float fps
 
   // ** μsPerFrame
 
-  let private μsPerFrame (fps: uint16) =
+  let private μsPerFrame (fps: int16<fps>) =
     secPerFrame fps
     * 1000. (* ms *)
     * 1000. (* μs *)
@@ -73,13 +73,13 @@ module Clock =
 
   // ** ticksPerFrame
 
-  let ticksPerFrame (fps: uint16) =
+  let ticksPerFrame (fps: int16<fps>) =
     μsPerFrame fps / μsPerTick
 
   // ** calculateTimeout
 
-  let private calculateTimeout (fps: uint16) =
-    fps * 8us                           // sample the time 8x more often than required
+  let private calculateTimeout (fps: int16<fps>) =
+    fps * 8s                            // sample the time 8x more often than required
     |> ticksPerFrame                     // to achive relative high accuracy
     |> TimeSpan.FromTicks
 
@@ -101,8 +101,8 @@ module Clock =
     let mutable publish = true
     let mutable disposed = false
     let mutable previous = 0L
-    let mutable frame = 0UL
-    let mutable fps = 60us
+    let mutable frame = 0L<frame>
+    let mutable fps = 60s<fps>
     let mutable timeout = calculateTimeout fps
 
     do
@@ -152,7 +152,7 @@ module Clock =
         timeout <- calculateTimeout fps'
 
     member state.Tick() =
-      frame <- frame + 1UL
+      frame <- frame + 1L<frame>
 
     interface IDisposable with
       member self.Dispose() =
@@ -177,7 +177,7 @@ module Clock =
           state.Tick()
 
           let ev = { Frame = state.Frame
-                     Deviation = diff / μsPerTick }
+                     Deviation = (diff / μsPerTick) * 1L<ns> }
 
           notify state ev
 
@@ -232,19 +232,3 @@ module Clock =
         member clock.Dispose() =
           dispose state
       }
-
-// * Playground
-
-#if INTERACTIVE
-
-let ip = IPv4Address "192.168.2.108"
-let clock = Clock.create(ip)
-let disp = clock.Subscribe (fun (ev: ClockEvent) -> printfn "t: %O" ev.Frame)
-
-clock.Start()
-clock.Stop()
-clock.Dispose()
-
-
-
-#endif
