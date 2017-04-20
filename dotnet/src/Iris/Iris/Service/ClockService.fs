@@ -30,7 +30,7 @@ module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<int, IObserver<ClockEvent>>
+  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ClockEvent>>
 
   // ** Listener
 
@@ -38,17 +38,17 @@ module Clock =
 
   // ** createListener
 
-  let private createListener (subscriptions: Subscriptions) =
+  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
     { new Listener with
         member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(obs.GetHashCode(), obs)) do
+          while not (subscriptions.TryAdd(guid, obs)) do
             Thread.Sleep(1)
 
           { new IDisposable with
               member self.Dispose() =
-                match subscriptions.TryRemove(obs.GetHashCode()) with
+                match subscriptions.TryRemove(guid) with
                 | true, _  -> ()
-                | _ -> subscriptions.TryRemove(obs.GetHashCode())
+                | _ -> subscriptions.TryRemove(guid)
                       |> ignore } }
 
   // ** secPerFrame
@@ -196,7 +196,6 @@ module Clock =
 
   let create (ip: IpAddress) =
     let state = new ClockState(ip)
-    let listener = createListener state.Subscriptions
 
     if not Stopwatch.IsHighResolution then
       Logger.warn "Clock" "internal timer is not using high resolution clock"
@@ -224,6 +223,8 @@ module Clock =
           and set fps = if not state.Disposed then state.Fps <- fps
 
         member clock.Subscribe (callback: ClockEvent -> unit) =
+          let guid = Guid.NewGuid()
+          let listener = createListener guid state.Subscriptions
           { new IObserver<ClockEvent> with
               member self.OnCompleted() = ()
               member self.OnError(error) = ()
