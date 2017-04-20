@@ -76,8 +76,6 @@ type Pub (addr: string, prefix: string) =
     while run do
       try
         // wait for the signal that a new request is ready *or* that shutdown is reuqested
-        "waiting for a publish"
-        |> Logger.debug (tag "worker")
         requester.WaitOne() |> ignore
 
         // `run` is usually true, but shutdown first sets this to false to exit the loop
@@ -170,8 +168,6 @@ type Pub (addr: string, prefix: string) =
 
   member self.Publish(req: byte array) : Either<IrisError,unit> =
     if started && not disposed then        // synchronously request the square of `req-`
-      Logger.debug (tag "Publish") "publishing message"
-
       lock lokk <| fun _ ->                 // lock while executing transaction
         request <- req                   // first set the requets
         requester.Set() |> ignore        // then signal a request is ready for execution
@@ -185,10 +181,7 @@ type Pub (addr: string, prefix: string) =
           |> sprintf "Exception thrown on socket thread: %s"
           |> Error.asSocketError "Pub.Publish"
           |> Either.fail
-        | _  ->
-          "publish successful"
-          |> Logger.debug (tag "Publish")
-          Either.succeed ()             // return the response
+        | _  -> Either.succeed ()        // return the response
     elif disposed then                  // disposed sockets need to be re-initialized
       "refusing request. already disposed"
       |> Logger.err (tag "Publish")
