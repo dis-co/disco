@@ -56,7 +56,7 @@ module SerializationTests =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
 
   let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
+    { Id = Id.Create(); Name = "Cue 1"; Slices = [| mkSlices() |] }
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
@@ -112,8 +112,8 @@ module SerializationTests =
     }
 
   let inline check thing =
-    thing |> Binary.encode |> Binary.decode |> Either.get
-    |> fun thong -> equals thong thing
+    let thong = thing |> Binary.encode |> Binary.decode |> Either.get
+    equals thong thing
 
   let main () =
     (* ------------------------------------------------------------------------ *)

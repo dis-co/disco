@@ -289,7 +289,7 @@ module PinGroup =
 
   let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
     match Map.tryFind slices.Id group.Pins with
-    | Some pin -> { group with Pins = Map.add slices.Id (pin.SetSlices slices) group.Pins }
+    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices pin slices) group.Pins }
     | _ -> group
 
   //                                    ____  _

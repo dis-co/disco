@@ -113,7 +113,7 @@ module StoreTests =
           | Some(i) -> expect "Should be correct name" name1 id i.Name
           | None    -> failwith "pin is mysteriously missing"
 
-        let updated = pin.SetName name2
+        let updated = Pin.setName pin name2
         store.Dispatch <| UpdatePin(updated)
 
         match Map.tryFindPin pin.Id store.State.PinGroups with
@@ -148,7 +148,7 @@ module StoreTests =
     testCase "should add a cue to the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -164,7 +164,7 @@ module StoreTests =
     testCase "should update a cue already in the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -182,7 +182,7 @@ module StoreTests =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -195,7 +195,7 @@ module StoreTests =
     testCase "should remove cue from the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 

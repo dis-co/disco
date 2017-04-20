@@ -273,9 +273,9 @@ table PinGroupFB {
 //  \____\__,_|\___|
 
 table CueFB {
-      Id:    string;
-      Name:  string;
-      Pins: [PinFB];
+      Id: string;
+      Name: string;
+      Slices: [SlicesFB];
 }
 
 

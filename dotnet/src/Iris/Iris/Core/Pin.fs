@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -293,7 +293,7 @@ type SliceYaml(tipe, idx, value: obj) as self =
         EnumSlice(uint32 self.Index, { Key = pyml.Key; Value = pyml.Value })
     | "ColorSlice" ->
       either {
-        let! color = Yaml.fromYaml(self.Value :?> ColorYaml)
+        let! color = Yaml.fromYaml (self.Value :?> ColorYaml)
         return ColorSlice(uint32 self.Index, color)
       }
     | unknown ->
@@ -301,9 +301,88 @@ type SliceYaml(tipe, idx, value: obj) as self =
       |> Error.asParseError "SliceYaml.ToSlice"
       |> Either.fail
 
+// * SlicesYaml
+
+//  ____  _ _             __   __              _
+// / ___|| (_) ___ ___  __\ \ / /_ _ _ __ ___ | |
+// \___ \| | |/ __/ _ \/ __\ V / _` | '_ ` _ \| |
+//  ___) | | | (_|  __/\__ \| | (_| | | | | | | |
+// |____/|_|_|\___\___||___/|_|\__,_|_| |_| |_|_|
+
+type SlicesYaml(tipe, id, values: obj array) as self =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable SliceType: string
+  [<DefaultValue>] val mutable Values: obj array
+
+  new () = new SlicesYaml(null,null,null)
+
+  do
+    self.Id        <- id
+    self.SliceType <- tipe
+    self.Values    <- values
+
+  static member StringSlices id (values: string array) =
+    new SlicesYaml("StringSlices", id, Array.map box values)
+
+  static member NumberSlices id (values: double array) =
+    new SlicesYaml("NumberSlices", id, Array.map box values)
+
+  static member BoolSlices id (values: bool array) =
+    new SlicesYaml("BoolSlices", id, Array.map box values)
+
+  static member ByteSlices id (values: byte array array) =
+    new SlicesYaml("ByteSlices", id, Array.map (Convert.ToBase64String >> box) values)
+
+  static member EnumSlices id (values: Property array) =
+    new SlicesYaml("EnumSlices", id, Array.map (Yaml.toYaml >> box) values)
+
+  static member ColorSlices id (values: ColorSpace array) =
+    new SlicesYaml("ColorSlices", id, Array.map (Yaml.toYaml >> box) values)
+
+  member self.ToSlices() =
+    match self.SliceType with
+    | "StringSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
+        StringSlices(Id self.Id, Array.map unbox<string> self.Values)
+    | "NumberSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
+        NumberSlices(Id self.Id, Array.map unbox<double> self.Values)
+    | "BoolSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
+        BoolSlices(Id self.Id, Array.map unbox<bool> self.Values)
+    | "ByteSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
+        ByteSlices(Id self.Id, Array.map (unbox<string> >> Convert.FromBase64String) self.Values)
+    | "EnumSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
+        let ofPyml (o: obj) =
+          let pyml: PropertyYaml = unbox o
+          { Key = pyml.Key; Value = pyml.Value }
+        EnumSlices(Id self.Id, Array.map ofPyml self.Values)
+    | "ColorSlices" ->
+      either {
+        let! colors =
+          Array.fold
+            (fun (m: Either<IrisError,int * ColorSpace array>) value -> either {
+              let! (idx, colors) = m
+              let unboxed: ColorYaml = unbox value
+              let! color = Yaml.fromYaml unboxed
+              colors.[idx] <- color
+              return (idx + 1, colors)
+              })
+            (Right(0, Array.zeroCreate self.Values.Length))
+            self.Values
+          |> Either.map snd
+        return ColorSlices(Id self.Id, colors)
+      }
+    | unknown ->
+      sprintf "Could not de-serialize unknown type: %A" unknown
+      |> Error.asParseError "SlicesYaml.ToSlice"
+      |> Either.fail
+
 // * PinYaml
 
-and PinYaml() =
+type PinYaml() =
   [<DefaultValue>] val mutable PinType    : string
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable Name       : string
@@ -322,15 +401,12 @@ and PinYaml() =
   [<DefaultValue>] val mutable Labels     : string array
   [<DefaultValue>] val mutable Values     : SliceYaml array
 
+#endif
+
 // * Pin
-
-and Pin =
-
-#else
 
 type Pin =
 
-#endif
   | StringPin   of StringPinD
   | NumberPin   of NumberPinD
   | BoolPin     of BoolPinD
@@ -422,61 +498,17 @@ type Pin =
       | EnumPin   data -> data.VecSize
       | ColorPin  data -> data.VecSize
 
-  // ** SetVecSize
-
-  member self.SetVecSize vecSize =
-    match self with
-    | StringPin   data -> StringPin   { data with VecSize = vecSize }
-    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
-    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
-    | BytePin     data -> BytePin     { data with VecSize = vecSize }
-    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
-    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
-
-  // ** SetDirection
-
-  member self.SetDirection direction =
-    match self with
-    | StringPin   data -> StringPin   { data with Direction = direction }
-    | NumberPin   data -> NumberPin   { data with Direction = direction }
-    | BoolPin     data -> BoolPin     { data with Direction = direction }
-    | BytePin     data -> BytePin     { data with Direction = direction }
-    | EnumPin     data -> EnumPin     { data with Direction = direction }
-    | ColorPin    data -> ColorPin    { data with Direction = direction }
-
-  // ** SetName
-
-  member self.SetName name =
-    match self with
-    | StringPin   data -> StringPin   { data with Name = name }
-    | NumberPin   data -> NumberPin   { data with Name = name }
-    | BoolPin     data -> BoolPin     { data with Name = name }
-    | BytePin     data -> BytePin     { data with Name = name }
-    | EnumPin     data -> EnumPin     { data with Name = name }
-    | ColorPin    data -> ColorPin    { data with Name = name }
-
-  // ** SetTags
-
-  member self.SetTags tags =
-    match self with
-    | StringPin   data -> StringPin   { data with Tags = tags }
-    | NumberPin   data -> NumberPin   { data with Tags = tags }
-    | BoolPin     data -> BoolPin     { data with Tags = tags }
-    | BytePin     data -> BytePin     { data with Tags = tags }
-    | EnumPin     data -> EnumPin     { data with Tags = tags }
-    | ColorPin    data -> ColorPin    { data with Tags = tags }
-
   // ** Slices
 
   member pin.Slices
     with get () =
       match pin with
-      | StringPin   data -> StringSlices   (pin.Id, data.Values)
-      | NumberPin   data -> NumberSlices   (pin.Id, data.Values)
-      | BoolPin     data -> BoolSlices     (pin.Id, data.Values)
-      | BytePin     data -> ByteSlices     (pin.Id, data.Values)
-      | EnumPin     data -> EnumSlices     (pin.Id, data.Values)
-      | ColorPin    data -> ColorSlices    (pin.Id, data.Values)
+      | StringPin   data -> StringSlices (pin.Id, data.Values)
+      | NumberPin   data -> NumberSlices (pin.Id, data.Values)
+      | BoolPin     data -> BoolSlices   (pin.Id, data.Values)
+      | BytePin     data -> ByteSlices   (pin.Id, data.Values)
+      | EnumPin     data -> EnumSlices   (pin.Id, data.Values)
+      | ColorPin    data -> ColorSlices  (pin.Id, data.Values)
 
   // ** Labels
 
@@ -495,12 +527,12 @@ type Pin =
   member pin.Values
     with get () =
       match pin with
-      | StringPin data -> StringSlices(data.Id,data.Values)
-      | NumberPin data -> NumberSlices(data.Id,data.Values)
-      | BoolPin   data -> BoolSlices(data.Id,data.Values)
-      | BytePin   data -> ByteSlices(data.Id,data.Values)
-      | EnumPin   data -> EnumSlices(data.Id,data.Values)
-      | ColorPin  data -> ColorSlices(data.Id,data.Values)
+      | StringPin data -> StringSlices(data.Id, data.Values)
+      | NumberPin data -> NumberSlices(data.Id, data.Values)
+      | BoolPin   data -> BoolSlices(data.Id, data.Values)
+      | BytePin   data -> ByteSlices(data.Id, data.Values)
+      | EnumPin   data -> EnumSlices(data.Id, data.Values)
+      | ColorPin  data -> ColorSlices(data.Id, data.Values)
 
   #if !FABLE_COMPILER
 
@@ -510,112 +542,6 @@ type Pin =
     pin.Values.ToSpread()
 
   #endif
-
-  // ** SetSlice
-
-  //  ____       _   ____  _ _
-  // / ___|  ___| |_/ ___|| (_) ___ ___
-  // \___ \ / _ \ __\___ \| | |/ __/ _ \
-  //  ___) |  __/ |_ ___) | | | (_|  __/
-  // |____/ \___|\__|____/|_|_|\___\___|
-
-  member self.SetSlice (value: Slice) =
-    let update (arr : 'a array) (idx: Index) (data: 'a) =
-      let idx = int idx
-      if idx > Array.length arr then
-        #if FABLE_COMPILER
-        /// Rationale:
-        ///
-        /// in JavaScript an array> will re-allocate automatically under the hood
-        /// hence we don't need to worry about out-of-bounds errors.
-        let newarr = Array.copy arr
-        newarr.[idx] <- data
-        newarr
-        #else
-        /// Rationale:
-        ///
-        /// in .NET, we need to worry about out-of-bounds errors, and we
-        /// detected that we are about to run into one, hence re-alloc, copy
-        /// and finally set the value at the correct index.
-        let newarr = Array.zeroCreate (idx + 1)
-        arr.CopyTo(newarr, 0)
-        newarr.[idx] <- data
-        newarr
-        #endif
-      else
-        Array.mapi (fun i old -> if i = idx then data else old) arr
-
-    match self with
-    | StringPin data as current ->
-      match value with
-        | StringSlice (i,slice) -> StringPin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-    | NumberPin data as current ->
-      match value with
-        | NumberSlice (i,slice) -> NumberPin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-    | BoolPin data as current   ->
-      match value with
-        | BoolSlice (i,slice)   -> BoolPin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-    | BytePin data as current   ->
-      match value with
-        | ByteSlice (i,slice)   -> BytePin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-    | EnumPin data as current   ->
-      match value with
-        | EnumSlice (i,slice)   -> EnumPin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-    | ColorPin data as current  ->
-      match value with
-        | ColorSlice (i,slice)  -> ColorPin { data with Values = update data.Values i slice }
-        | _                     -> current
-
-  // ** SetSlices
-
-  member pin.SetSlices slices =
-    match pin with
-    | StringPin data as value ->
-      match slices with
-      | StringSlices (id,arr) when id = data.Id ->
-        StringPin { data with Values = arr }
-      | _ -> value
-
-    | NumberPin data as value ->
-      match slices with
-      | NumberSlices (id,arr) when id = data.Id ->
-        NumberPin { data with Values = arr }
-      | _ -> value
-
-    | BoolPin data as value ->
-      match slices with
-      | BoolSlices (id, arr) when id = data.Id ->
-        BoolPin { data with Values = arr }
-      | _ -> value
-
-    | BytePin data as value ->
-      match slices with
-      | ByteSlices (id, arr) when id = data.Id ->
-        BytePin { data with Values = arr }
-      | _ -> value
-
-    | EnumPin data as value ->
-      match slices with
-      | EnumSlices (id, arr) when id = data.Id ->
-        EnumPin { data with Values = arr }
-      | _ -> value
-
-    | ColorPin data as value ->
-      match slices with
-      | ColorSlices (id,arr) when id = data.Id ->
-        ColorPin { data with Values = arr }
-      | _ -> value
-
 
   static member private EmptyLabels(count: int) =
     let arr = Array.zeroCreate count
@@ -1523,6 +1449,161 @@ type Pin =
 
   #endif
 
+// * Pin module
+
+module Pin =
+
+  // ** setVecSize
+
+  let setVecSize pin vecSize =
+    match pin with
+    | StringPin   data -> StringPin   { data with VecSize = vecSize }
+    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
+    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
+    | BytePin     data -> BytePin     { data with VecSize = vecSize }
+    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
+    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
+
+  // ** setDirection
+
+  let setDirection pin direction =
+    match pin with
+    | StringPin   data -> StringPin   { data with Direction = direction }
+    | NumberPin   data -> NumberPin   { data with Direction = direction }
+    | BoolPin     data -> BoolPin     { data with Direction = direction }
+    | BytePin     data -> BytePin     { data with Direction = direction }
+    | EnumPin     data -> EnumPin     { data with Direction = direction }
+    | ColorPin    data -> ColorPin    { data with Direction = direction }
+
+  // ** setName
+
+  let setName pin name =
+    match pin with
+    | StringPin   data -> StringPin   { data with Name = name }
+    | NumberPin   data -> NumberPin   { data with Name = name }
+    | BoolPin     data -> BoolPin     { data with Name = name }
+    | BytePin     data -> BytePin     { data with Name = name }
+    | EnumPin     data -> EnumPin     { data with Name = name }
+    | ColorPin    data -> ColorPin    { data with Name = name }
+
+  // ** setTags
+
+  let setTags pin tags =
+    match pin with
+    | StringPin   data -> StringPin   { data with Tags = tags }
+    | NumberPin   data -> NumberPin   { data with Tags = tags }
+    | BoolPin     data -> BoolPin     { data with Tags = tags }
+    | BytePin     data -> BytePin     { data with Tags = tags }
+    | EnumPin     data -> EnumPin     { data with Tags = tags }
+    | ColorPin    data -> ColorPin    { data with Tags = tags }
+
+
+  // ** setSlice
+
+  //  ____       _   ____  _ _
+  // / ___|  ___| |_/ ___|| (_) ___ ___
+  // \___ \ / _ \ __\___ \| | |/ __/ _ \
+  //  ___) |  __/ |_ ___) | | | (_|  __/
+  // |____/ \___|\__|____/|_|_|\___\___|
+
+  let setSlice (pin: Pin) (value: Slice) =
+    let update (arr : 'a array) (idx: Index) (data: 'a) =
+      let idx = int idx
+      if idx > Array.length arr then
+        #if FABLE_COMPILER
+        /// Rationale:
+        ///
+        /// in JavaScript an array> will re-allocate automatically under the hood
+        /// hence we don't need to worry about out-of-bounds errors.
+        let newarr = Array.copy arr
+        newarr.[idx] <- data
+        newarr
+        #else
+        /// Rationale:
+        ///
+        /// in .NET, we need to worry about out-of-bounds errors, and we
+        /// detected that we are about to run into one, hence re-alloc, copy
+        /// and finally set the value at the correct index.
+        let newarr = Array.zeroCreate (idx + 1)
+        arr.CopyTo(newarr, 0)
+        newarr.[idx] <- data
+        newarr
+        #endif
+      else
+        Array.mapi (fun i old -> if i = idx then data else old) arr
+
+    match pin with
+    | StringPin data as current ->
+      match value with
+        | StringSlice (i,slice) -> StringPin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+    | NumberPin data as current ->
+      match value with
+        | NumberSlice (i,slice) -> NumberPin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+    | BoolPin data as current   ->
+      match value with
+        | BoolSlice (i,slice)   -> BoolPin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+    | BytePin data as current   ->
+      match value with
+        | ByteSlice (i,slice)   -> BytePin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+    | EnumPin data as current   ->
+      match value with
+        | EnumSlice (i,slice)   -> EnumPin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+    | ColorPin data as current  ->
+      match value with
+        | ColorSlice (i,slice)  -> ColorPin { data with Values = update data.Values i slice }
+        | _                     -> current
+
+  // ** SetSlices
+
+  let setSlices pin slices =
+    match pin with
+    | StringPin data as value ->
+      match slices with
+      | StringSlices (id,arr) when id = data.Id ->
+        StringPin { data with Values = arr }
+      | _ -> value
+
+    | NumberPin data as value ->
+      match slices with
+      | NumberSlices (id,arr) when id = data.Id ->
+        NumberPin { data with Values = arr }
+      | _ -> value
+
+    | BoolPin data as value ->
+      match slices with
+      | BoolSlices (id, arr) when id = data.Id ->
+        BoolPin { data with Values = arr }
+      | _ -> value
+
+    | BytePin data as value ->
+      match slices with
+      | ByteSlices (id, arr) when id = data.Id ->
+        BytePin { data with Values = arr }
+      | _ -> value
+
+    | EnumPin data as value ->
+      match slices with
+      | EnumSlices (id, arr) when id = data.Id ->
+        EnumPin { data with Values = arr }
+      | _ -> value
+
+    | ColorPin data as value ->
+      match slices with
+      | ColorSlices (id,arr) when id = data.Id ->
+        ColorPin { data with Values = arr }
+      | _ -> value
+
+
 // * NumberPinD
 
 //  ____              _     _      ____
@@ -1531,7 +1612,7 @@ type Pin =
 // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
 // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
 
-and NumberPinD =
+type NumberPinD =
   { Id         : Id
     Name       : string
     PinGroup   : Id
@@ -1630,7 +1711,7 @@ and NumberPinD =
 // |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
 //                         |___/
 
-and StringPinD =
+type StringPinD =
   { Id         : Id
     Name       : string
     PinGroup   : Id
@@ -1720,7 +1801,7 @@ and StringPinD =
 // | |_) | (_) | (_) | | |_) | (_) >  <
 // |____/ \___/ \___/|_|____/ \___/_/\_\
 
-and BoolPinD =
+type BoolPinD =
   { Id         : Id
     Name       : string
     PinGroup   : Id
@@ -1804,7 +1885,7 @@ and BoolPinD =
 // |____/ \__, |\__\___|____/ \___/_/\_\
 //        |___/
 
-and [<CustomEquality;CustomComparison>] BytePinD =
+type [<CustomEquality;CustomComparison>] BytePinD =
 
   { Id         : Id
     Name       : string
@@ -1970,7 +2051,7 @@ and [<CustomEquality;CustomComparison>] BytePinD =
 // | |___| | | | |_| | | | | | | |_) | (_) >  <
 // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
 
-and EnumPinD =
+type EnumPinD =
   { Id         : Id
     Name       : string
     PinGroup   : Id
@@ -2080,7 +2161,7 @@ and EnumPinD =
 // | |__| (_) | | (_) | |  | |_) | (_) >  <
 //  \____\___/|_|\___/|_|  |____/ \___/_/\_\
 
-and ColorPinD =
+type ColorPinD =
   { Id:        Id
     Name:      string
     PinGroup:  Id
@@ -2161,7 +2242,7 @@ and ColorPinD =
 //  ___) | | | (_|  __/
 // |____/|_|_|\___\___|
 
-and Slice =
+type Slice =
   | StringSlice   of Index * string
   | NumberSlice   of Index * double
   | BoolSlice     of Index * bool
@@ -2506,7 +2587,7 @@ and Slice =
 //  ___) | | | (_|  __/\__ \
 // |____/|_|_|\___\___||___/
 
-and Slices =
+type Slices =
   | StringSlices   of Id * string array
   | NumberSlices   of Id * double array
   | BoolSlices     of Id * bool array
@@ -2691,42 +2772,35 @@ and Slices =
 
   #endif
 
-  //  _   _      _
-  // | | | | ___| |_ __   ___ _ __ ___
-  // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-  // |  _  |  __/ | |_) |  __/ |  \__ \
-  // |_| |_|\___|_| .__/ \___|_|  |___/
-  //              |_|
+  // ** ToYaml
 
-  // ** CreateString
+  #if !FABLE_COMPILER
 
-  member __.CreateString (idx: Index) (value: string) =
-    StringSlice (idx, value)
+  member self.ToYamlObject() =
+    match self with
+    | StringSlices (id, slices) -> SlicesYaml.StringSlices (string id) slices
+    | NumberSlices (id, slices) -> SlicesYaml.NumberSlices (string id) slices
+    | BoolSlices   (id, slices) -> SlicesYaml.BoolSlices   (string id) slices
+    | ByteSlices   (id, slices) -> SlicesYaml.ByteSlices   (string id) slices
+    | EnumSlices   (id, slices) -> SlicesYaml.EnumSlices   (string id) slices
+    | ColorSlices  (id, slices) -> SlicesYaml.ColorSlices  (string id) slices
 
-  // ** CreateNumber
+  member self.ToYaml(serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
 
-  member __.CreateNumber (idx: Index) (value: double) =
-    NumberSlice (idx, value)
+  static member FromYamlObject(yaml: SlicesYaml) =
+    yaml.ToSlices()
 
-  // ** CreateBool
+  // ** FromYaml
 
-  member __.CreateBool (idx: Index) (value: bool) =
-    BoolSlice (idx, value)
+  static member FromYaml(str: string) =
+    let serializer = Serializer()
+    let yaml = serializer.Deserialize<SlicesYaml>(str)
+    yaml.ToSlices()
 
-  // ** CreateByte
-
-  member __.CreateByte (idx: Index) (value: Binary.Buffer) =
-    ByteSlice (idx, value)
-
-  // ** CreateEnum
-
-  member __.CreateEnum (idx: Index) (value: Property) =
-    EnumSlice (idx, value)
-
-  // ** CreateColor
-
-  member __.CreateColor (idx: Index) (value: ColorSpace) =
-    ColorSlice (idx, value)
+  #endif
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
