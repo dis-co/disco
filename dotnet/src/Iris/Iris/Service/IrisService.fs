@@ -848,7 +848,7 @@ module Iris =
         | _ -> ()
         state
 
-  let inline private fwd (constr: ^a -> Msg) (agent: IrisAgent) =
+  let inline private forwardEvent (constr: ^a -> Msg) (agent: IrisAgent) =
     constr >> agent.Post
 
   //   ____ _ _
@@ -874,7 +874,7 @@ module Iris =
           let! gitserver = GitServer.create mem data.Store.State.Project.Path
           let disposable =
             agent
-            |> fwd Msg.Git
+            |> forwardEvent Msg.Git
             |> gitserver.Subscribe
           match gitserver.Start() with
           | Right () ->
@@ -1031,12 +1031,12 @@ module Iris =
       | Idle _ -> Right state
       | Loaded(idleData, data) ->
         let disposables =
-          [ (LOG_HANDLER,    agent |> fwd Msg.Log    |> Logger.subscribe)
-            (RAFT_SERVER,    agent |> fwd Msg.Raft   |> data.RaftServer.Subscribe)
-            (WS_SERVER,      agent |> fwd Msg.Socket |> data.SocketServer.Subscribe)
-            (API_SERVER,     agent |> fwd Msg.Api    |> data.ApiServer.Subscribe)
-            (GIT_SERVER,     agent |> fwd Msg.Git    |> data.GitServer.Subscribe)
-            (CLOCK_SERVICE,  agent |> fwd Msg.Clock  |> data.ClockService.Subscribe) ]
+          [ (LOG_HANDLER,   agent |> forwardEvent Msg.Log    |> Logger.subscribe)
+            (RAFT_SERVER,   agent |> forwardEvent Msg.Raft   |> data.RaftServer.Subscribe)
+            (WS_SERVER,     agent |> forwardEvent Msg.Socket |> data.SocketServer.Subscribe)
+            (API_SERVER,    agent |> forwardEvent Msg.Api    |> data.ApiServer.Subscribe)
+            (GIT_SERVER,    agent |> forwardEvent Msg.Git    |> data.GitServer.Subscribe)
+            (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
 
         let result =
