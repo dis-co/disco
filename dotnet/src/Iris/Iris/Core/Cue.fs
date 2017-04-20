@@ -96,7 +96,9 @@ type Cue =
     CueFB.EndCueFB(builder)
 
   static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
-    CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
+    bytes
+    |> Binary.createBuffer
+    |> CueFB.GetRootAsCueFB
     |> Cue.FromFB
 
   member self.ToBytes() = Binary.buildBuffer self

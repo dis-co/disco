@@ -92,6 +92,8 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
+
+
   let mkMember _ = Id.Create() |> Member.create
 
   let mkSession _ =
@@ -100,13 +102,13 @@ module SerializationTests =
     ; UserAgent = "Oh my goodness" }
 
   let mkState _ =
-    { Project  = mkProject ()
-    ; PinGroups  = mkPinGroup   () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
-    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
-    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
-    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
-    ; Users    = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
-    ; Clients  = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+    { Project   = mkProject ()
+    ; PinGroups = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; Cues      = Map.empty // mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
+    ; CueLists  = Map.empty // mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
+    ; Sessions  = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
+    ; Users     = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
+    ; Clients   = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
     // TODO: Test DiscoveredServices
     ; DiscoveredServices = Map.empty
     }
