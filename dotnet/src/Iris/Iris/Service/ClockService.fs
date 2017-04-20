@@ -157,6 +157,7 @@ module Clock =
     interface IDisposable with
       member self.Dispose() =
         disposed <- true
+        tryDispose socket ignore
         subscriptions.Clear()
 
   // ** notify
