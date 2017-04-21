@@ -141,7 +141,7 @@ module Store =
           | Some(i) -> equals name1 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
-        let updated = Pin.setName pin name2
+        let updated = Pin.setName name2 pin
         store.Dispatch <| UpdatePin(updated)
 
         match Map.tryFindPin pin.Id store.State.PinGroups with

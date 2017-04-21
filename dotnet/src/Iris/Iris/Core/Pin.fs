@@ -1455,7 +1455,7 @@ module Pin =
 
   // ** setVecSize
 
-  let setVecSize pin vecSize =
+  let setVecSize vecSize pin =
     match pin with
     | StringPin   data -> StringPin   { data with VecSize = vecSize }
     | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
@@ -1466,7 +1466,7 @@ module Pin =
 
   // ** setDirection
 
-  let setDirection pin direction =
+  let setDirection direction pin =
     match pin with
     | StringPin   data -> StringPin   { data with Direction = direction }
     | NumberPin   data -> NumberPin   { data with Direction = direction }
@@ -1477,7 +1477,7 @@ module Pin =
 
   // ** setName
 
-  let setName pin name =
+  let setName name pin =
     match pin with
     | StringPin   data -> StringPin   { data with Name = name }
     | NumberPin   data -> NumberPin   { data with Name = name }
@@ -1488,7 +1488,7 @@ module Pin =
 
   // ** setTags
 
-  let setTags pin tags =
+  let setTags tags pin =
     match pin with
     | StringPin   data -> StringPin   { data with Tags = tags }
     | NumberPin   data -> NumberPin   { data with Tags = tags }
@@ -1506,7 +1506,7 @@ module Pin =
   //  ___) |  __/ |_ ___) | | | (_|  __/
   // |____/ \___|\__|____/|_|_|\___\___|
 
-  let setSlice (pin: Pin) (value: Slice) =
+  let setSlice (value: Slice) (pin: Pin) =
     let update (arr : 'a array) (idx: Index) (data: 'a) =
       let idx = int idx
       if idx > Array.length arr then
@@ -1565,7 +1565,7 @@ module Pin =
 
   // ** SetSlices
 
-  let setSlices pin slices =
+  let setSlices slices pin =
     match pin with
     | StringPin data as value ->
       match slices with

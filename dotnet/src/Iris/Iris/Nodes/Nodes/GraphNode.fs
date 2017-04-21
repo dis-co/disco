@@ -925,7 +925,7 @@ module Graph =
 
   let private updatePinValues (state: PluginState) (group: Id) (slices: Slices) =
     updatePinWith state group slices.Id <| fun oldpin ->
-      Pin.setSlices oldpin slices
+      Pin.setSlices slices oldpin
     slices
     |> UpdateSlices
     |> state.Commands.Add
@@ -934,7 +934,7 @@ module Graph =
 
   let private updatePinName (state: PluginState) (group: Id) (pin: Id) (name: string) =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setName oldpin name
+      let updated = Pin.setName name oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -942,7 +942,7 @@ module Graph =
 
   let private updatePinTags (state: PluginState) (group: Id) (pin: Id) (tags: Tag array) =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setTags oldpin tags
+      let updated = Pin.setTags tags oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -950,7 +950,7 @@ module Graph =
 
   let private updatePinDirection (state: PluginState) (group: Id) (pin: Id) dir =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setDirection oldpin dir
+      let updated = Pin.setDirection dir oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -958,7 +958,7 @@ module Graph =
 
   let private updatePinVecSize (state: PluginState) (group: Id) (pin: Id) vecsize =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setVecSize oldpin vecsize
+      let updated = Pin.setVecSize vecsize oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 

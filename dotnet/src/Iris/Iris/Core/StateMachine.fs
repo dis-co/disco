@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -183,302 +183,6 @@ type State =
     }
 
   #endif
-
-  // ** addUser
-
-  //  _   _
-  // | | | |___  ___ _ __
-  // | | | / __|/ _ \ '__|
-  // | |_| \__ \  __/ |
-  //  \___/|___/\___|_|
-
-  static member addUser (user: User) (state: State) =
-    if Map.containsKey user.Id state.Users then
-      state
-    else
-      let users = Map.add user.Id user state.Users
-      { state with Users = users }
-
-  // ** updateUser
-
-  static member updateUser (user: User) (state: State) =
-    if Map.containsKey user.Id state.Users then
-      let users = Map.add user.Id user state.Users
-      { state with Users = users }
-    else
-      state
-
-  // ** RemoveUser
-
-  static member removeUser (user: User) (state: State) =
-    { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
-
-  // ** addOrUpdateService
-
-  static member addOrUpdateService (service: Discovery.DiscoveredService) (state: State) =
-    { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
-
-  // ** removeService
-
-  static member removeService (service: Discovery.DiscoveredService) (state: State) =
-    { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
-
-  // ** addSession
-
-  //  ____                _
-  // / ___|  ___  ___ ___(_) ___  _ __
-  // \___ \ / _ \/ __/ __| |/ _ \| '_ \
-  //  ___) |  __/\__ \__ \ | (_) | | | |
-  // |____/ \___||___/___/_|\___/|_| |_|
-
-  static member addSession (session: Session) (state: State) =
-    let sessions =
-      if Map.containsKey session.Id state.Sessions then
-        state.Sessions
-      else
-        Map.add session.Id session state.Sessions
-    { state with Sessions = sessions }
-
-  // ** updateSession
-
-  static member updateSession (session: Session) (state: State) =
-    let sessions =
-      if Map.containsKey session.Id state.Sessions then
-        Map.add session.Id session state.Sessions
-      else
-        state.Sessions
-    { state with Sessions = sessions }
-
-  // ** removeSession
-
-  static member removeSession (session: Session) (state: State) =
-    { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
-
-  // ** addPinGroup
-
-  //  ____       _       _
-  // |  _ \ __ _| |_ ___| |__
-  // | |_) / _` | __/ __| '_ \
-  // |  __/ (_| | || (__| | | |
-  // |_|   \__,_|\__\___|_| |_|
-
-  static member addPinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      state
-    else
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-
-  // ** updatePinGroup
-
-  static member updatePinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-    else
-      state
-
-  // ** removePinGroup
-
-  static member removePinGroup (group : PinGroup) (state: State) =
-    { state with PinGroups = Map.remove group.Id state.PinGroups }
-
-
-  // ** addPin
-
-  //  ____  _
-  // |  _ \(_)_ __
-  // | |_) | | '_ \
-  // |  __/| | | | |
-  // |_|   |_|_| |_|
-
-  static member addPin (pin: Pin) (state: State) =
-    if Map.containsKey pin.PinGroup state.PinGroups then
-      let update _ (group: PinGroup) =
-        if group.Id = pin.PinGroup then
-          PinGroup.addPin pin group
-        else
-          group
-      { state with PinGroups = Map.map update state.PinGroups }
-    else
-      state
-
-  // ** updatePin
-
-  static member updatePin (pin : Pin) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      if group.Id = pin.PinGroup then
-        PinGroup.updatePin pin group
-      else
-        group
-    { state with PinGroups = Map.map mapper state.PinGroups }
-
-  // ** updateSlices
-
-  static member updateSlices (slices: Slices) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      PinGroup.updateSlices slices group
-    { state with PinGroups = Map.map mapper state.PinGroups }
-
-  // ** removePin
-
-  static member removePin (pin : Pin) (state: State) =
-    let updater _ (group : PinGroup) =
-      if pin.PinGroup = group.Id
-      then PinGroup.removePin pin group
-      else group
-    { state with PinGroups = Map.map updater state.PinGroups }
-
-  // ** tryFindPin
-
-  static member tryFindPin (id: Id) (state: State) =
-    Map.fold
-      (fun (m: Pin option) _ (group: PinGroup) ->
-        match m with
-        | Some _ -> m
-        | _ -> Map.tryFind id group.Pins)
-      None
-      state.PinGroups
-
-  // ** tryFindPinGroup
-
-  static member tryFindPinGroup (id: Id) (state: State) =
-    Map.tryFind id state.PinGroups
-
-  // ** findPinGroupBy
-
-  static member findPinGroupBy (pred: PinGroup -> bool) (state: State) =
-    Map.fold
-      (fun m _ (grp: PinGroup) ->
-        match m with
-        | None when pred grp -> Some grp
-        | None -> None
-        | Some _ -> m)
-      None
-      state.PinGroups
-
-
-  // ** addCueList
-
-  //   ____           _     _     _
-  //  / ___|   _  ___| |   (_)___| |_ ___
-  // | |  | | | |/ _ \ |   | / __| __/ __|
-  // | |__| |_| |  __/ |___| \__ \ |_\__ \
-  //  \____\__,_|\___|_____|_|___/\__|___/
-
-  static member addCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      state
-    else
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
-
-  // ** updateCueList
-
-  static member updateCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
-    else
-      state
-
-  // ** removeCueList
-
-  static member removeCueList (cuelist : CueList) (state: State) =
-    { state with CueLists = Map.remove cuelist.Id state.CueLists }
-
-  // ** AddCue
-
-  //   ____
-  //  / ___|   _  ___
-  // | |  | | | |/ _ \
-  // | |__| |_| |  __/
-  //  \____\__,_|\___|
-
-  static member addCue (cue : Cue) (state: State) =
-    if Map.containsKey cue.Id state.Cues then
-      state
-    else
-      { state with Cues = Map.add cue.Id cue state.Cues }
-
-  // ** updateCue
-
-  static member updateCue (cue : Cue) (state: State) =
-    if Map.containsKey cue.Id state.Cues then
-      { state with Cues = Map.add cue.Id cue state.Cues }
-    else
-      state
-
-  // ** removeCue
-
-  static member removeCue (cue : Cue) (state: State) =
-    { state with Cues = Map.remove cue.Id state.Cues }
-
-  //  __  __                _
-  // |  \/  | ___ _ __ ___ | |__   ___ _ __
-  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
-  // | |  | |  __/ | | | | | |_) |  __/ |
-  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
-
-  // ** addMember
-
-  static member addMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.addMember mem state.Project }
-
-  // ** updateMember
-
-  static member updateMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.updateMember mem state.Project }
-
-  // ** removeMember
-
-  static member removeMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.removeMember mem.Id state.Project }
-
-  //   ____ _ _            _
-  //  / ___| (_) ___ _ __ | |_
-  // | |   | | |/ _ \ '_ \| __|
-  // | |___| | |  __/ | | | |_
-  //  \____|_|_|\___|_| |_|\__|
-
-  // ** addClient
-
-  static member addClient (client: IrisClient) (state: State) =
-    if Map.containsKey client.Id state.Clients then
-      state
-    else
-      { state with Clients = Map.add client.Id client state.Clients }
-
-  // ** updateClient
-
-  static member updateClient (client: IrisClient) (state: State) =
-    if Map.containsKey client.Id state.Clients then
-      { state with Clients = Map.add client.Id client state.Clients }
-    else
-      state
-
-  // ** removeClient
-
-  static member removeClient (client: IrisClient) (state: State) =
-    { state with Clients = Map.remove client.Id state.Clients }
-
-  //  ____            _           _
-  // |  _ \ _ __ ___ (_) ___  ___| |_
-  // | |_) | '__/ _ \| |/ _ \/ __| __|
-  // |  __/| | | (_) | |  __/ (__| |_
-  // |_|   |_|  \___// |\___|\___|\__|
-  //               |__/
-
-  // ** updateMachine
-
-  static member updateMachine (machine: IrisMachine) (state: State) =
-    { state with Project = Project.updateMachine machine state.Project }
-
-  // ** updateConfig
-
-  static member updateConfig (config: IrisConfig) (state: State) =
-    { state with Project = Project.updateConfig config state.Project }
-
-  // ** updateProject
-
-  static member updateProject (project: IrisProject) (state: State) =
-    { state with Project = project }
 
   // ** ToOffset
 
@@ -775,6 +479,306 @@ type State =
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
 
+// * State module
+
+module State =
+
+  // ** addUser
+
+  //  _   _
+  // | | | |___  ___ _ __
+  // | | | / __|/ _ \ '__|
+  // | |_| \__ \  __/ |
+  //  \___/|___/\___|_|
+
+  let addUser (user: User) (state: State) =
+    if Map.containsKey user.Id state.Users then
+      state
+    else
+      let users = Map.add user.Id user state.Users
+      { state with Users = users }
+
+  // ** updateUser
+
+  let updateUser (user: User) (state: State) =
+    if Map.containsKey user.Id state.Users then
+      let users = Map.add user.Id user state.Users
+      { state with Users = users }
+    else
+      state
+
+  // ** RemoveUser
+
+  let removeUser (user: User) (state: State) =
+    { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
+
+  // ** addOrUpdateService
+
+  let addOrUpdateService (service: Discovery.DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
+
+  // ** removeService
+
+  let removeService (service: Discovery.DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
+
+  // ** addSession
+
+  //  ____                _
+  // / ___|  ___  ___ ___(_) ___  _ __
+  // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+  //  ___) |  __/\__ \__ \ | (_) | | | |
+  // |____/ \___||___/___/_|\___/|_| |_|
+
+  let addSession (session: Session) (state: State) =
+    let sessions =
+      if Map.containsKey session.Id state.Sessions then
+        state.Sessions
+      else
+        Map.add session.Id session state.Sessions
+    { state with Sessions = sessions }
+
+  // ** updateSession
+
+  let updateSession (session: Session) (state: State) =
+    let sessions =
+      if Map.containsKey session.Id state.Sessions then
+        Map.add session.Id session state.Sessions
+      else
+        state.Sessions
+    { state with Sessions = sessions }
+
+  // ** removeSession
+
+  let removeSession (session: Session) (state: State) =
+    { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
+
+  // ** addPinGroup
+
+  //  ____       _       _
+  // |  _ \ __ _| |_ ___| |__
+  // | |_) / _` | __/ __| '_ \
+  // |  __/ (_| | || (__| | | |
+  // |_|   \__,_|\__\___|_| |_|
+
+  let addPinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
+      state
+    else
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
+
+  // ** updatePinGroup
+
+  let updatePinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
+    else
+      state
+
+  // ** removePinGroup
+
+  let removePinGroup (group : PinGroup) (state: State) =
+    { state with PinGroups = Map.remove group.Id state.PinGroups }
+
+
+  // ** addPin
+
+  //  ____  _
+  // |  _ \(_)_ __
+  // | |_) | | '_ \
+  // |  __/| | | | |
+  // |_|   |_|_| |_|
+
+  let addPin (pin: Pin) (state: State) =
+    if Map.containsKey pin.PinGroup state.PinGroups then
+      let update _ (group: PinGroup) =
+        if group.Id = pin.PinGroup then
+          PinGroup.addPin pin group
+        else
+          group
+      { state with PinGroups = Map.map update state.PinGroups }
+    else
+      state
+
+  // ** updatePin
+
+  let updatePin (pin : Pin) (state: State) =
+    let mapper (_: Id) (group : PinGroup) =
+      if group.Id = pin.PinGroup then
+        PinGroup.updatePin pin group
+      else
+        group
+    { state with PinGroups = Map.map mapper state.PinGroups }
+
+  // ** updateSlices
+
+  let updateSlices (slices: Slices) (state: State) =
+    let mapper (_: Id) (group : PinGroup) =
+      PinGroup.updateSlices slices group
+    { state with PinGroups = Map.map mapper state.PinGroups }
+
+  // ** removePin
+
+  let removePin (pin : Pin) (state: State) =
+    let updater _ (group : PinGroup) =
+      if pin.PinGroup = group.Id
+      then PinGroup.removePin pin group
+      else group
+    { state with PinGroups = Map.map updater state.PinGroups }
+
+  // ** tryFindPin
+
+  let tryFindPin (id: Id) (state: State) =
+    Map.fold
+      (fun (m: Pin option) _ (group: PinGroup) ->
+        match m with
+        | Some _ -> m
+        | _ -> Map.tryFind id group.Pins)
+      None
+      state.PinGroups
+
+  // ** tryFindPinGroup
+
+  let tryFindPinGroup (id: Id) (state: State) =
+    Map.tryFind id state.PinGroups
+
+  // ** findPinGroupBy
+
+  let findPinGroupBy (pred: PinGroup -> bool) (state: State) =
+    Map.fold
+      (fun m _ (grp: PinGroup) ->
+        match m with
+        | None when pred grp -> Some grp
+        | None -> None
+        | Some _ -> m)
+      None
+      state.PinGroups
+
+
+  // ** addCueList
+
+  //   ____           _     _     _
+  //  / ___|   _  ___| |   (_)___| |_ ___
+  // | |  | | | |/ _ \ |   | / __| __/ __|
+  // | |__| |_| |  __/ |___| \__ \ |_\__ \
+  //  \____\__,_|\___|_____|_|___/\__|___/
+
+  let addCueList (cuelist : CueList) (state: State) =
+    if Map.containsKey cuelist.Id state.CueLists then
+      state
+    else
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+
+  // ** updateCueList
+
+  let updateCueList (cuelist : CueList) (state: State) =
+    if Map.containsKey cuelist.Id state.CueLists then
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+    else
+      state
+
+  // ** removeCueList
+
+  let removeCueList (cuelist : CueList) (state: State) =
+    { state with CueLists = Map.remove cuelist.Id state.CueLists }
+
+  // ** AddCue
+
+  //   ____
+  //  / ___|   _  ___
+  // | |  | | | |/ _ \
+  // | |__| |_| |  __/
+  //  \____\__,_|\___|
+
+  let addCue (cue : Cue) (state: State) =
+    if Map.containsKey cue.Id state.Cues then
+      state
+    else
+      { state with Cues = Map.add cue.Id cue state.Cues }
+
+  // ** updateCue
+
+  let updateCue (cue : Cue) (state: State) =
+    if Map.containsKey cue.Id state.Cues then
+      { state with Cues = Map.add cue.Id cue state.Cues }
+    else
+      state
+
+  // ** removeCue
+
+  let removeCue (cue : Cue) (state: State) =
+    { state with Cues = Map.remove cue.Id state.Cues }
+
+  //  __  __                _
+  // |  \/  | ___ _ __ ___ | |__   ___ _ __
+  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  // | |  | |  __/ | | | | | |_) |  __/ |
+  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+  // ** addMember
+
+  let addMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.addMember mem state.Project }
+
+  // ** updateMember
+
+  let updateMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.updateMember mem state.Project }
+
+  // ** removeMember
+
+  let removeMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.removeMember mem.Id state.Project }
+
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  // ** addClient
+
+  let addClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      state
+    else
+      { state with Clients = Map.add client.Id client state.Clients }
+
+  // ** updateClient
+
+  let updateClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      { state with Clients = Map.add client.Id client state.Clients }
+    else
+      state
+
+  // ** removeClient
+
+  let removeClient (client: IrisClient) (state: State) =
+    { state with Clients = Map.remove client.Id state.Clients }
+
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
+
+  // ** updateMachine
+
+  let updateMachine (machine: IrisMachine) (state: State) =
+    { state with Project = Project.updateMachine machine state.Project }
+
+  // ** updateConfig
+
+  let updateConfig (config: IrisConfig) (state: State) =
+    { state with Project = Project.updateConfig config state.Project }
+
+  // ** updateProject
+
+  let updateProject (project: IrisProject) (state: State) =
+    { state with Project = project }
+
 // * Store Action
 
 //  ____  _                      _        _   _
@@ -792,7 +796,7 @@ type State =
 /// the front-end).
 ///
 /// Returns: StoreAction
-and [<NoComparison>] StoreAction =
+type [<NoComparison>] StoreAction =
   { Event: StateMachine
   ; State: State }
 
@@ -818,7 +822,7 @@ and [<NoComparison>] StoreAction =
 /// - action: `StoreAction` - the initial `StoreAction` beyond which there is no history
 ///
 /// Returns: History
-and History (action: StoreAction) =
+type History (action: StoreAction) =
   let mutable depth = 10
   let mutable debug = false
   let mutable head = 1
@@ -908,7 +912,7 @@ and History (action: StoreAction) =
 /// - state: `State` - the intitial state to use for the store
 ///
 /// Returns: Store
-and Store(state : State)=
+type Store(state : State)=
 
   let mutable state = state
 
@@ -1105,8 +1109,7 @@ and Store(state : State)=
 /// which gets invoked once a state change occurred.
 ///
 /// Returns: Store -> StateMachine -> unit
-and Listener = Store -> StateMachine -> unit
-
+type Listener = Store -> StateMachine -> unit
 
 // * StateMachine
 
@@ -1116,7 +1119,7 @@ and Listener = Store -> StateMachine -> unit
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-and StateMachine =
+type StateMachine =
   // Project
   | UpdateProject         of IrisProject
   | UnloadProject

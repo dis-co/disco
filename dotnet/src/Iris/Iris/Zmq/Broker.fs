@@ -72,7 +72,6 @@ type IBroker =
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
   abstract Respond: RawResponse -> unit
 
-[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module RawResponse =
 
   let fromRequest (request: RawRequest) (body: byte array) =

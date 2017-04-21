@@ -289,8 +289,8 @@ module PinGroup =
 
   let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
     match Map.tryFind slices.Id group.Pins with
-    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices pin slices) group.Pins }
-    | _ -> group
+    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
+    | None -> group
 
   //                                    ____  _
   //  _ __ ___ _ __ ___   _____   _____|  _ \(_)_ __
