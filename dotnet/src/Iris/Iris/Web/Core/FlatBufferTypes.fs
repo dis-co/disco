@@ -654,18 +654,18 @@ let SlicesFB : SlicesFBConstructor = failwith "JS only"
 type CueFB =
   abstract Id: string
   abstract Name: string
-  abstract PinsLength: int
-  abstract Pins: int -> PinFB
+  abstract SlicesLength: int
+  abstract Slices: int -> SlicesFB
 
 type CueFBConstructor =
   abstract prototype: CueFB with get, set
   abstract StartCueFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
+  abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
   abstract EndCueFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueFB: buffer: ByteBuffer -> CueFB
-  abstract CreatePinsVector: builder: FlatBufferBuilder * Offset<PinFB> array -> Offset<'a>
+  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<SlicesFB> array -> Offset<'a>
   abstract Create: unit -> CueFB
 
 let CueFB : CueFBConstructor = failwith "JS only"
@@ -1521,7 +1521,7 @@ type StateMachineFB =
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
   abstract IrisClientFB: IrisClientFB
-  abstract ClockFB: ClockFB  
+  abstract ClockFB: ClockFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =

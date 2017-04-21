@@ -22,27 +22,22 @@ open FlatBuffers
 
 [<RequireQualifiedAccess>]
 module Binary =
-#if FABLE_COMPILER
-  type Buffer = ArrayBuffer
-#else
-  type Buffer = byte array
-#endif
 
-  let createBuffer (bytes: Buffer) : ByteBuffer =
+  let createBuffer (bytes: byte[]) : ByteBuffer =
 #if FABLE_COMPILER
     ByteBuffer.Create(bytes)
 #else
     new ByteBuffer(bytes)
 #endif
 
-  let inline encode (value : ^t when ^t : (member ToBytes : unit -> Buffer)) =
-    (^t : (member ToBytes : unit -> Buffer) value)
+  let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte[])) =
+    (^t : (member ToBytes : unit -> byte[]) value)
 
-  let inline decode< ^t when ^t : (static member FromBytes : Buffer -> Either<IrisError, ^t>)>
-                                  (bytes: Buffer) :
+  let inline decode< ^t when ^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>)>
+                                  (bytes: byte[]) :
                                   Either<IrisError, ^t > =
     try
-      (^t : (static member FromBytes : Buffer -> Either<IrisError, ^t>) bytes)
+      (^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>) bytes)
     with
       | exn ->
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
@@ -55,7 +50,7 @@ module Binary =
                      : Offset< ^t > =
     (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
 
-  let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : Buffer =
+  let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : byte[] =
 #if FABLE_COMPILER
     let builder = FlatBufferBuilder.Create(1)
     let offset = toOffset builder thing

@@ -88,14 +88,14 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
 [<CustomEquality;CustomComparison>]
 type User =
   { Id:        Id
-  ; UserName:  Name
-  ; FirstName: Name
-  ; LastName:  Name
-  ; Email:     Email
-  ; Password:  string
-  ; Salt:      string
-  ; Joined:    DateTime
-  ; Created:   DateTime }
+    UserName:  Name
+    FirstName: Name
+    LastName:  Name
+    Email:     Email
+    Password:  string
+    Salt:      string
+    Joined:    DateTime
+    Created:   DateTime }
 
   override me.GetHashCode() =
     let mutable hash = 42
@@ -237,7 +237,7 @@ type User =
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 
@@ -351,7 +351,6 @@ type User =
 
 #if !FABLE_COMPILER
 
-[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module User =
 
     let passwordValid (user: User) (password: string) =

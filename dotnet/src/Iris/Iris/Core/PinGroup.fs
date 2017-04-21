@@ -160,9 +160,9 @@ type PinGroup =
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,PinGroup> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroup> =
     Binary.createBuffer bytes
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB
@@ -289,8 +289,8 @@ module PinGroup =
 
   let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
     match Map.tryFind slices.Id group.Pins with
-    | Some pin -> { group with Pins = Map.add slices.Id (pin.SetSlices slices) group.Pins }
-    | _ -> group
+    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
+    | None -> group
 
   //                                    ____  _
   //  _ __ ___ _ __ ___   _____   _____|  _ \(_)_ __
