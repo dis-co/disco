@@ -245,21 +245,27 @@ type VecSize =
 
 type SliceYaml(tipe, idx, value: obj) as self =
   [<DefaultValue>] val mutable SliceType : string
-  [<DefaultValue>] val mutable Index     : int
+  [<DefaultValue>] val mutable Index     : uint32
   [<DefaultValue>] val mutable Value     : obj
 
-  new () = new SliceYaml(null,0,null)
+  new () = new SliceYaml(null,0u,null)
 
   do
     self.SliceType <- tipe
     self.Index     <- idx
     self.Value     <- value
 
-  static member StringSlice idx (value: string) =
+  static member StringSlice (idx: uint32) (value: string) =
     new SliceYaml("StringSlice", idx, value)
 
-  static member NumberSlice idx (value: double) =
+  static member StringSlice (idx: int) (value: string) =
+    new SliceYaml("StringSlice", uint32 idx, value)
+
+  static member NumberSlice (idx: uint32) (value: double) =
     new SliceYaml("NumberSlice", idx, value)
+
+  static member NumberSlice (idx: int) (value: double) =
+    new SliceYaml("NumberSlice", uint32 idx, value)
 
   static member BoolSlice idx (value: bool) =
     new SliceYaml("BoolSlice", idx, value)
@@ -277,24 +283,24 @@ type SliceYaml(tipe, idx, value: obj) as self =
     match self.SliceType with
     | "StringSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
-        StringSlice(uint32 self.Index, self.Value :?> string)
+        StringSlice(index self.Index, self.Value :?> string)
     | "NumberSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
-        NumberSlice(uint32 self.Index, self.Value :?> double)
+        NumberSlice(index self.Index, self.Value :?> double)
     | "BoolSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlice(uint32 self.Index, self.Value :?> bool)
+        BoolSlice(index self.Index, self.Value :?> bool)
     | "ByteSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        ByteSlice(uint32 self.Index, Convert.FromBase64String(self.Value :?> string))
+        ByteSlice(index self.Index, Convert.FromBase64String(self.Value :?> string))
     | "EnumSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
         let pyml = self.Value :?> PropertyYaml
-        EnumSlice(uint32 self.Index, { Key = pyml.Key; Value = pyml.Value })
+        EnumSlice(index self.Index, { Key = pyml.Key; Value = pyml.Value })
     | "ColorSlice" ->
       either {
-        let! color = Yaml.fromYaml (self.Value :?> ColorYaml)
-        return ColorSlice(uint32 self.Index, color)
+        let! color = Yaml.fromYaml(self.Value :?> ColorYaml)
+        return ColorSlice(index self.Index, color)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown
@@ -897,7 +903,7 @@ type Pin =
       yaml.Direction  <- string data.Direction
       yaml.VecSize    <- string data.VecSize
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
+      yaml.Values     <- Array.mapi (SliceYaml.StringSlice) data.Values
 
     | NumberPin data ->
       yaml.PinType    <- "NumberPin"
@@ -2459,7 +2465,7 @@ type Slice =
       let slice = fb.Slice<StringFB>()
       if slice.HasValue then
         let value = slice.Value
-        StringSlice(fb.Index, value.Value)
+        StringSlice(index fb.Index, value.Value)
         |> Either.succeed
       else
         "Could not parse StringSlice"
@@ -2470,7 +2476,7 @@ type Slice =
       let slice = fb.Slice<DoubleFB>()
       if slice.HasValue then
         let value = slice.Value
-        NumberSlice(fb.Index,value.Value)
+        NumberSlice(index fb.Index,value.Value)
         |> Either.succeed
       else
         "Could not parse NumberSlice"
@@ -2481,7 +2487,7 @@ type Slice =
       let slice = fb.Slice<BoolFB>()
       if slice.HasValue then
         let value = slice.Value
-        BoolSlice(fb.Index, value.Value)
+        BoolSlice(index fb.Index, value.Value)
         |> Either.succeed
       else
         "Could not parse BoolSlice"
@@ -2492,7 +2498,7 @@ type Slice =
       let slice = fb.Slice<ByteFB>()
       if slice.HasValue then
         let value = slice.Value
-        ByteSlice(fb.Index, String.decodeBase64 value.Value)
+        ByteSlice(index fb.Index, String.decodeBase64 value.Value)
         |> Either.succeed
       else
         "Could not parse ByteSlice"
@@ -2505,7 +2511,7 @@ type Slice =
         either {
           let value = slice.Value
           let! prop = Property.FromFB value
-          return EnumSlice(fb.Index, prop)
+          return EnumSlice(index fb.Index, prop)
         }
       else
         "Could not parse EnumSlice"
@@ -2518,7 +2524,7 @@ type Slice =
         either {
           let value = slice.Value
           let! color = ColorSpace.FromFB value
-          return ColorSlice(fb.Index, color)
+          return ColorSlice(index fb.Index, color)
         }
       else
         "Could not parse ColorSlice"
@@ -2687,13 +2693,14 @@ type Slices =
   //              |_|
 
   member self.Map (f: Slice -> 'a) : 'a array =
+    let idx = uint32 >> index
     match self with
-    | StringSlices   (_,arr) -> Array.mapi (fun i el -> StringSlice (uint32 i, el) |> f) arr
-    | NumberSlices   (_,arr) -> Array.mapi (fun i el -> NumberSlice (uint32 i, el) |> f) arr
-    | BoolSlices     (_,arr) -> Array.mapi (fun i el -> BoolSlice   (uint32 i, el) |> f) arr
-    | ByteSlices     (_,arr) -> Array.mapi (fun i el -> ByteSlice   (uint32 i, el) |> f) arr
-    | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (uint32 i, el) |> f) arr
-    | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (uint32 i, el) |> f) arr
+    | StringSlices   (_,arr) -> Array.mapi (fun i el -> StringSlice (idx i, el) |> f) arr
+    | NumberSlices   (_,arr) -> Array.mapi (fun i el -> NumberSlice (idx i, el) |> f) arr
+    | BoolSlices     (_,arr) -> Array.mapi (fun i el -> BoolSlice   (idx i, el) |> f) arr
+    | ByteSlices     (_,arr) -> Array.mapi (fun i el -> ByteSlice   (idx i, el) |> f) arr
+    | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (idx i, el) |> f) arr
+    | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (idx i, el) |> f) arr
 
   #if !FABLE_COMPILER
 
@@ -2811,11 +2818,12 @@ type Slices =
   //                           |___/
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
+    let idx = uint32 >> index
     match slices with
     | StringSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> StringSlice(uint32 i,el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> StringSlice(idx i,el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -2825,7 +2833,7 @@ type Slices =
     | NumberSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> NumberSlice(uint32 i, el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> NumberSlice(idx i, el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -2835,7 +2843,7 @@ type Slices =
     | BoolSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> BoolSlice(uint32 i, el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> BoolSlice(idx i, el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -2845,7 +2853,7 @@ type Slices =
     | ByteSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> ByteSlice(uint32 i, el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> ByteSlice(idx i, el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -2855,7 +2863,7 @@ type Slices =
     | EnumSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> EnumSlice(uint32 i, el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> EnumSlice(idx i, el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -2865,7 +2873,7 @@ type Slices =
     | ColorSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> ColorSlice(uint32 i, el) |> Binary.toOffset builder) arr
+        let converted = Array.mapi (fun i el -> ColorSlice(idx i, el) |> Binary.toOffset builder) arr
         SlicesFB.CreateSlicesVector(builder, converted)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)

@@ -11,15 +11,12 @@ namespace Iris.Core
 [<Measure>] type ns                     // nano seconds
 [<Measure>] type us                     // micro seconds
 [<Measure>] type fps = frame/sec
+[<Measure>] type email
+[<Measure>] type index
+[<Measure>] type term
+[<Measure>] type port
 
-[<AutoOpen>]
-module Measure =
-  let filepath p: string<filepath> = UoM.wrap p
-  let name u: string<name> = UoM.wrap u
-  let password p: string<password> = UoM.wrap p
-  let timestamp t: string<timestamp> = UoM.wrap t
-
-// * aliases
+// * Aliases
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
@@ -29,11 +26,10 @@ module Measure =
 
 type NodeId     = Id
 type MemberId   = Id
-type Long       = uint32
-type Index      = Long
-type Term       = Long
+type Index      = uint32<index>
+type Term       = uint32<term>
 type Name       = string<name>
-type Email      = string
+type Email      = string<email>
 type Tag        = string
 type NodePath   = string
 type OSCAddress = string
@@ -44,7 +40,7 @@ type Unit       = string option
 type Filemask   = string option
 type Precision  = int    option
 type MaxChars   = int
-type FilePath   = string
+type FilePath   = string<filepath>
 type UserName   = string<name>
 type UserAgent  = string
 type ClientLog  = string
@@ -52,9 +48,20 @@ type TimeStamp  = string
 type CallSite   = string
 type FileName   = string
 type Hash       = string
-type Password   = string
+type Password   = string<password>
 type Salt       = string
-type Port       = uint16
+type Port       = uint16<port>
+
+[<AutoOpen>]
+module Measure =
+  let filepath p: FilePath = UoM.wrap p
+  let name u: Name = UoM.wrap u
+  let password p: Password = UoM.wrap p
+  let timestamp t: TimeStamp = UoM.wrap t
+  let email e: Email = UoM.wrap e
+  let port p: Port = UoM.wrap p
+  let index i: Index = UoM.wrap i
+  let term t: Index = UoM.wrap t
 
 type IPProtocol =
   | IPv4

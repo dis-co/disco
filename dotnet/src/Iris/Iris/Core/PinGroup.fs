@@ -17,6 +17,8 @@ open Iris.Serialization
 
 #endif
 
+open Path
+
 // * PinGroupYaml
 
 #if !FABLE_COMPILER && !IRIS_NODES
@@ -185,8 +187,8 @@ type PinGroup =
   static member LoadAll(basePath: FilePath) : Either<IrisError, PinGroup array> =
     either {
       try
-        let dir = basePath </> PINGROUP_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath PINGROUP_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,groups) =
           let arr =
@@ -221,12 +223,12 @@ type PinGroup =
 
   member self.AssetPath
     with get () =
-      let filepath =
+      let path =
         sprintf "%s_%s%s"
           (self.Name |> unwrap |> String.sanitize)
           (string self.Id)
           ASSET_EXTENSION
-      PINGROUP_DIR </> filepath
+      PINGROUP_DIR <.> path
 
   //  ____
   // / ___|  __ ___   _____

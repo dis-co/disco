@@ -305,20 +305,6 @@ module String =
     Convert.FromBase64String(buffer)
     #endif
 
-// * Path
-
-#if !FABLE_COMPILER
-
-[<RequireQualifiedAccess>]
-module Path =
-
-  let baseName (path: FilePath) =
-    Path.GetFileName path
-
-  let dirName (path: FilePath) =
-    Path.GetDirectoryName path
-
-#endif
 // * Time
 
 //  _____ _
@@ -525,7 +511,7 @@ module Crypto =
   ///
   /// Returns: string
   let hashPassword (pw: Password) (salt: Salt) : Hash =
-    Encoding.UTF8.GetBytes(salt + pw)
+    Encoding.UTF8.GetBytes(salt + unwrap pw)
     |> sha256sum
 
   /// ## hash

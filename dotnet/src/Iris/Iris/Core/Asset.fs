@@ -5,6 +5,7 @@ namespace Iris.Core
 open System
 open System.IO
 open System.Text
+open Path
 
 // * Asset
 
@@ -44,9 +45,9 @@ module Asset =
     either {
       try
         let data = match payload with | Payload data -> data
-        let info = FileInfo location
-        do! FileSystem.mkDir info.Directory.FullName
-        File.WriteAllText(location, data, Encoding.UTF8)
+        let info = File.fileInfo location
+        do! info.Directory.FullName |> filepath |> mkDir
+        File.writeText data (Some Encoding.UTF8) location
         info.Refresh()
         return info
       with
@@ -74,8 +75,8 @@ module Asset =
   let delete (location: FilePath) =
     either {
       try
-        if File.Exists location then
-          File.Delete location
+        if File.fileExists location then
+          Path.map File.Delete location
           return true
         else
           return false
@@ -104,9 +105,9 @@ module Asset =
   /// Returns: Either<IrisError,string>
   let read (location: FilePath) : Either<IrisError, string> =
     either {
-      if File.Exists location then
+      if File.fileExists location then
         try
-          return File.ReadAllText location
+          return File.readText location
         with
           | exn ->
             return!
@@ -115,7 +116,7 @@ module Asset =
               |> Either.fail
       else
         return!
-          sprintf "File not found: %s" location
+          sprintf "File not found: %O" location
           |> Error.asAssetError (tag "read")
           |> Either.fail
     }
@@ -184,10 +185,10 @@ module Asset =
       use! repo = Git.Repo.repository basepath
 
       let target =
-        if Path.IsPathRooted basepath then
+        if Path.isPathRooted basepath then
           basepath </> path t
         else
-          Path.GetFullPath basepath </> path t
+          Path.getFullPath basepath </> path t
 
       do! Git.Repo.stage repo target
       let! commit = Git.Repo.commit repo msg signature
@@ -203,7 +204,7 @@ module Asset =
   let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
     either {
       do! save basepath t
-      let filename = path t |> Path.GetFileName
+      let filename = t |> path |> Path.getFileName
       let msg = sprintf "%s saved %A" signature.Name filename
       return! commit basepath msg signature t
     }
@@ -218,7 +219,7 @@ module Asset =
     either {
       let filepath = basepath </> path t
       let! _ = delete filepath
-      let msg = sprintf "%s deleted %A" signature.Name (Path.GetFileName filepath)
+      let msg = sprintf "%s deleted %A" signature.Name (Path.getFileName filepath)
       return! commit basepath msg signature t
     }
 

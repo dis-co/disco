@@ -18,6 +18,8 @@ open SharpYaml.Serialization
 
 #endif
 
+open Path
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open LibGit2Sharp
@@ -167,7 +169,7 @@ type User =
   member user.Signature
     with get () =
       let name = String.Format("{0} {1}", user.FirstName, user.LastName)
-      new Signature(name, user.Email, new DateTimeOffset(user.Created))
+      new Signature(name, unwrap user.Email, new DateTimeOffset(user.Created))
 
   // ** AssetPath
 
@@ -178,7 +180,7 @@ type User =
           (user.UserName |> unwrap |> String.sanitize)
           (string user.Id)
           ASSET_EXTENSION
-      USER_DIR </> filename
+      USER_DIR <.> filename
 
   static member Admin
     with get () =
@@ -186,7 +188,7 @@ type User =
       ; UserName  = name "admin"
       ; FirstName = name "Administrator"
       ; LastName  = name ""
-      ; Email     = "admin@nsynk.de"
+      ; Email     = email "admin@nsynk.de"
       ; Password  = ADMIN_DEFAULT_PASSWORD
       ; Salt      = ADMIN_DEFAULT_SALT
       ; Joined    = DateTime.UtcNow
@@ -206,7 +208,7 @@ type User =
     let username  = self.UserName  |> unwrap |> builder.CreateString
     let firstname = self.FirstName |> unwrap |> builder.CreateString
     let lastname  = self.LastName  |> unwrap |> builder.CreateString
-    let email     = self.Email     |> builder.CreateString
+    let email     = self.Email     |> unwrap |> builder.CreateString
     let password  = self.Password  |> builder.CreateString
     let salt      = self.Salt      |> builder.CreateString
     let joined    = self.Joined.ToString("o")  |> builder.CreateString
@@ -228,10 +230,10 @@ type User =
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
     Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-        UserName  = name fb.UserName
-        FirstName = name fb.FirstName
-        LastName  = name fb.LastName
-        Email     = fb.Email
+        UserName  = name  fb.UserName
+        FirstName = name  fb.FirstName
+        LastName  = name  fb.LastName
+        Email     = email fb.Email
         Password  = fb.Password
         Salt      = fb.Salt
         Joined    = DateTime.Parse fb.Joined
@@ -255,7 +257,7 @@ type User =
       unwrap self.UserName,
       unwrap self.FirstName,
       unwrap self.LastName,
-      self.Email,
+      unwrap self.Email,
       self.Password,
       self.Salt,
       self.Joined,
@@ -270,7 +272,7 @@ type User =
         UserName  = name yaml.UserName
         FirstName = name yaml.FirstName
         LastName  = name yaml.LastName
-        Email     = yaml.Email
+        Email     = email yaml.Email
         Password  = yaml.Password
         Salt      = yaml.Salt
         Joined    = yaml.Joined
@@ -301,8 +303,8 @@ type User =
   static member LoadAll(basePath: FilePath) : Either<IrisError, User array> =
     either {
       try
-        let dir = basePath </> USER_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath USER_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,users) =
           let arr =
@@ -353,7 +355,7 @@ type User =
 
 module User =
 
-    let passwordValid (user: User) (password: string) =
+    let passwordValid (user: User) (password: Password) =
       let password = Crypto.hashPassword password user.Salt
       password = user.Password
 
