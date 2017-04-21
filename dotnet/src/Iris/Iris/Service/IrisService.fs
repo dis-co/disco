@@ -38,7 +38,8 @@ module Iris =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "IrisServer.%s" str
+  let private tag (str: string) =
+    String.Format("IrisService.{0}", str)
 
   // ** keys
 
@@ -57,8 +58,8 @@ module Iris =
   [<Literal>]
   let private WS_SERVER = "ws"
 
-  let private signature =
-    new Signature("Karsten Gebbert", "k@ioctl.it", new DateTimeOffset(DateTime.UtcNow))
+  [<Literal>]
+  let private CLOCK_SERVICE = "clock"
 
   // ** Subscriptions
 
@@ -136,6 +137,7 @@ module Iris =
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
+      ClockService  : IClock
       Subscriptions : Subscriptions
       Disposables   : Map<string,IDisposable> }
 
@@ -145,6 +147,7 @@ module Iris =
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
+        dispose self.ClockService
         dispose self.SocketServer
 
   // ** IrisState
@@ -204,6 +207,7 @@ module Iris =
     | Raft        of RaftEvent
     | Api         of ApiEvent
     | Log         of LogEvent
+    | Clock       of ClockEvent
     | Discovery   of Discovery.DiscoveryEvent
     | Load        of ReplyChan * project:string * user:string * pw:string * site:string option
     | SetConfig   of ReplyChan * IrisConfig
@@ -338,7 +342,7 @@ module Iris =
   // ** broadcastMsg
 
   let private broadcastMsg (state: IrisLoadedStateData) (cmd: StateMachine) =
-    Tracing.trace "IrisService.broadcastMsg" <| fun () ->
+    Tracing.trace (tag "broadcastMsg") <| fun () ->
       cmd
       |> state.SocketServer.Broadcast
       |> ignore
@@ -346,7 +350,7 @@ module Iris =
   // ** sendMsg
 
   let private sendMsg (state: IrisLoadedStateData) (id: Id) (cmd: StateMachine) =
-    Tracing.trace "IrisService.sendMsg" <| fun () ->
+    Tracing.trace (tag "sendMsg") <| fun () ->
       cmd
       |> state.SocketServer.Send id
       |> ignore
@@ -354,7 +358,7 @@ module Iris =
   // ** appendCmd
 
   let private appendCmd (state: IrisLoadedStateData) (cmd: StateMachine) =
-    Tracing.trace "IrisService.appendCmd" <| fun () ->
+    Tracing.trace (tag "appendCmd") <| fun () ->
       state.RaftServer.Append(cmd)
 
   // ** onOpen
@@ -732,13 +736,13 @@ module Iris =
       | Left error ->
         Either.fail error
 
-    Tracing.trace "IrisService.requestAppend" <| fun () ->
+    Tracing.trace (tag "requestAppend") <| fun () ->
       impl leader 0
 
   // ** forwardCommand
 
   let private forwardCommand (data: IrisLoadedStateData) (sm: StateMachine) =
-    Tracing.trace "IrisService.forwardCommand" <| fun () ->
+    Tracing.trace (tag "forwardCommand") <| fun () ->
       match data.Leader with
       | Some leader ->
         match requestAppend data.MemberId leader sm with
@@ -771,7 +775,7 @@ module Iris =
   let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
     ev |> IrisEvent.Raft |> notifyWithLoaded state
 
-    Tracing.trace "IrisService.handleRaftEvent" <| fun () ->
+    Tracing.trace (tag "handleRaftEvent") <| fun () ->
       match ev with
       | ApplyLog sm             -> onApplyLog         state sm
       | MemberAdded mem         -> onMemberAdded      state mem
@@ -787,7 +791,7 @@ module Iris =
 
   let private handleApiEvent (state: IrisState) (ev: ApiEvent) =
     withoutReply state <| fun data ->
-      Tracing.trace "IrisService.handleApiEvent" <| fun () ->
+      Tracing.trace (tag "handleApiEvent") <| fun () ->
         match ev with
         | ApiEvent.Update sm ->
           // ApiEvents:
@@ -833,7 +837,7 @@ module Iris =
         |> Logger.err (tag "handleDiscoveryEvent")
 
     withoutReply state <| fun data ->
-      Tracing.trace "IrisService.handleDiscoveryEvent" <| fun () ->
+      Tracing.trace (tag "handleDiscoveryEvent") <| fun () ->
         match ev with
         | Discovery.Appeared service ->
           AddResolvedService service |> appendCommand data
@@ -844,30 +848,8 @@ module Iris =
         | _ -> ()
         state
 
-  // ** forwardLogEvents
-
-  let private forwardLogEvents (agent: IrisAgent) (log: LogEvent) =
-    log |> Msg.Log |> agent.Post
-
-  // ** forwardRaftEvents
-
-  let private forwardRaftEvents (agent: IrisAgent) (ev: RaftEvent) =
-    ev |> Msg.Raft |> agent.Post
-
-  // ** forwardGitEvents
-
-  let private forwardGitEvents (agent: IrisAgent) (ev: GitEvent) =
-    ev |> Msg.Git |> agent.Post
-
-  // ** forwardSocketEvents
-
-  let private forwardSocketEvents (agent: IrisAgent) (ev: SocketEvent) =
-    ev |> Msg.Socket |> agent.Post
-
-  // ** forwardApiEvents
-
-  let private forwardApiEvents (agent: IrisAgent) (ev: ApiEvent) =
-    ev |> Msg.Api |> agent.Post
+  let inline private forwardEvent (constr: ^a -> Msg) (agent: IrisAgent) =
+    constr >> agent.Post
 
   //   ____ _ _
   //  / ___(_) |_
@@ -878,7 +860,7 @@ module Iris =
   // ** restartGitServer
 
   let private restartGitServer (data: IrisLoadedStateData) (agent: IrisAgent) =
-    Tracing.trace "IrisService.restartGitServer" <| fun () ->
+    Tracing.trace (tag "restartGitServer") <| fun () ->
       data.Disposables
       |> Map.tryFind GIT_SERVER
       |> Option.map dispose
@@ -891,7 +873,8 @@ module Iris =
           let! mem = data.RaftServer.Member
           let! gitserver = GitServer.create mem data.Store.State.Project.Path
           let disposable =
-            forwardGitEvents agent
+            agent
+            |> forwardEvent Msg.Git
             |> gitserver.Subscribe
           match gitserver.Start() with
           | Right () ->
@@ -915,7 +898,7 @@ module Iris =
   // ** handleGitEvent
 
   let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
-    Tracing.trace "IrisService.handleGitEvent" <| fun () ->
+    Tracing.trace (tag "handleGitEvent") <| fun () ->
       match state with
       | Idle _ -> state
       | Loaded (idleData, data) ->
@@ -1007,6 +990,8 @@ module Iris =
                                                                   // path here, not the path to
                                                                   // project.yml
 
+        let clock = Clock.create mem.IpAddr
+
         // Try to put discovered services into the state
         let state =
           match idleData.DiscoveryService.Services with
@@ -1017,30 +1002,18 @@ module Iris =
 
         let loadedData = ref Unchecked.defaultof<IrisLoadedStateData>
 
-        // TODO: Replace this with a real clock service
-        let mockClock =
-            let mutable clock = 0u
-            let t = new Timers.Timer(20.)
-            t.Elapsed.Add(fun _ ->
-                clock <- clock + 1u
-                broadcastMsg !loadedData (UpdateClock clock))
-            t.Start()
-            { new IDisposable with
-                member __.Dispose() =
-                    t.Stop()
-                    t.Dispose() }
-
         loadedData :=
           { MemberId      = mem.Id
-          ; Leader        = None
-          ; Status        = ServiceStatus.Starting
-          ; Store         = new Store(state)
-          ; ApiServer     = apiserver
-          ; GitServer     = gitserver
-          ; RaftServer    = raftserver
-          ; SocketServer  = wsserver
-          ; Subscriptions = subscriptions
-          ; Disposables   = ["mockClock", mockClock] |> Map }
+            Leader        = None
+            Status        = ServiceStatus.Starting
+            Store         = new Store(state)
+            ApiServer     = apiserver
+            GitServer     = gitserver
+            RaftServer    = raftserver
+            SocketServer  = wsserver
+            ClockService  = clock
+            Subscriptions = subscriptions
+            Disposables   = Map.empty }
 
         return Loaded(idleData, !loadedData)
       | _ ->
@@ -1053,16 +1026,17 @@ module Iris =
   // ** start
 
   let private start (state: IrisState) (agent: IrisAgent) =
-    Tracing.trace "IrisService.start" <| fun () ->
+    Tracing.trace (tag "start") <| fun () ->
       match state with
       | Idle _ -> Right state
       | Loaded(idleData, data) ->
         let disposables =
-          [ (LOG_HANDLER, forwardLogEvents    agent |> Logger.subscribe)
-            (RAFT_SERVER, forwardRaftEvents   agent |> data.RaftServer.Subscribe)
-            (WS_SERVER,   forwardSocketEvents agent |> data.SocketServer.Subscribe)
-            (API_SERVER,  forwardApiEvents    agent |> data.ApiServer.Subscribe)
-            (GIT_SERVER,  forwardGitEvents    agent |> data.GitServer.Subscribe) ]
+          [ (LOG_HANDLER,   agent |> forwardEvent Msg.Log    |> Logger.subscribe)
+            (RAFT_SERVER,   agent |> forwardEvent Msg.Raft   |> data.RaftServer.Subscribe)
+            (WS_SERVER,     agent |> forwardEvent Msg.Socket |> data.SocketServer.Subscribe)
+            (API_SERVER,    agent |> forwardEvent Msg.Api    |> data.ApiServer.Subscribe)
+            (GIT_SERVER,    agent |> forwardEvent Msg.Git    |> data.GitServer.Subscribe)
+            (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
 
         let result =
@@ -1151,7 +1125,7 @@ module Iris =
   // ** handleLogEvent
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
-    Tracing.trace "IrisService.handleLogEvent" <| fun () ->
+    Tracing.trace (tag "handleLogEvent") <| fun () ->
       withState state <| fun data ->
         log
         |> LogMsg
@@ -1161,7 +1135,7 @@ module Iris =
   // ** handleUnload
 
   let private handleUnload (state: IrisState) (chan: ReplyChan) =
-    Tracing.trace "IrisService.handleUnload" <| fun () ->
+    Tracing.trace (tag "handleUnload") <| fun () ->
       notifyWithLoaded state (Status ServiceStatus.Stopped)
       let idleData =
         match state with
@@ -1181,7 +1155,7 @@ module Iris =
   // ** handleConfig
 
   let private handleConfig (state: IrisState) (chan: ReplyChan) =
-    Tracing.trace "IrisService.handleConfig" <| fun () ->
+    Tracing.trace (tag "handleConfig") <| fun () ->
       withDefaultReply state chan <| fun data ->
         data.Store.State.Project.Config
         |> Reply.Config
@@ -1192,7 +1166,7 @@ module Iris =
   // ** handleSetConfig
 
   let private handleSetConfig (state: IrisState) (chan: ReplyChan) (config: IrisConfig) =
-    Tracing.trace "IrisService.handleSetConfig" <| fun () ->
+    Tracing.trace (tag "handleSetConfig") <| fun () ->
       withDefaultReply state chan <| fun data ->
         Project.updateConfig config data.Store.State.Project
         |> UpdateProject
@@ -1205,7 +1179,7 @@ module Iris =
   // ** handleForceElection
 
   let private handleForceElection (state: IrisState) =
-    Tracing.trace "IrisService.handleForceElection" <| fun () ->
+    Tracing.trace (tag "handleForceElection") <| fun () ->
       withoutReply state <| fun data ->
         match data.RaftServer.ForceElection () with
         | Left error ->
@@ -1218,7 +1192,7 @@ module Iris =
   // ** handlePeriodic
 
   let private handlePeriodic (state: IrisState) =
-    Tracing.trace "IrisService.handlePeriodic" <| fun () ->
+    Tracing.trace (tag "handlePeriodic") <| fun () ->
       withoutReply state <| fun data ->
         match data.RaftServer.Periodic() with
         | Left error ->
@@ -1233,7 +1207,7 @@ module Iris =
   let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        Tracing.trace "IrisService.handleJoin" <| fun () ->
+        Tracing.trace (tag "handleJoin") <| fun () ->
           match data.RaftServer.JoinCluster ip port with
           | Right () ->
             Reply.Ok
@@ -1250,7 +1224,7 @@ module Iris =
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        Tracing.trace "IrisService.handleLeave" <| fun () ->
+        Tracing.trace (tag "handleLeave") <| fun () ->
           match data.RaftServer.LeaveCluster () with
           | Right () ->
             Reply.Ok
@@ -1267,7 +1241,7 @@ module Iris =
   let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        Tracing.trace "IrisService.handleAddMember" <| fun () ->
+        Tracing.trace (tag "handleAddMember") <| fun () ->
           match data.RaftServer.AddMember mem with
           | Right entry ->
             Reply.Entry entry
@@ -1284,7 +1258,7 @@ module Iris =
   let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
       asynchronously <| fun _ ->
-        Tracing.trace "IrisService.handleRmMember" <| fun () ->
+        Tracing.trace (tag "handleRmMember") <| fun () ->
           match data.RaftServer.RmMember id  with
           | Right entry ->
             Reply.Entry entry
@@ -1299,12 +1273,22 @@ module Iris =
   // ** handleState
 
   let private handleState (state: IrisState) (chan: ReplyChan) =
-    Tracing.trace "IrisService.handleState" <| fun () ->
+    Tracing.trace (tag "handleState") <| fun () ->
       withDefaultReply state chan <| fun data ->
         Reply.State data
         |> Either.succeed
         |> chan.Reply
         state
+
+  // ** handleClock
+
+  let private handleClock (state: IrisState) (clock: ClockEvent) =
+    Tracing.trace (tag "handleClock") <| fun () ->
+      withState state <| fun data ->
+        let sm = clock.Frame |> uint32 |> UpdateClock
+        broadcastMsg data sm
+        data.ApiServer.Update sm
+      state
 
   // ** loop
 
@@ -1336,6 +1320,7 @@ module Iris =
           | Msg.AddMember (chan,mem) -> handleAddMember      state chan  mem
           | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
           | Msg.State chan           -> handleState          state chan
+          | Msg.Clock clock          -> handleClock          state       clock
         return! act newstate
       }
 
@@ -1359,7 +1344,7 @@ module Iris =
       { new IIrisServer with
           member self.Config
             with get () =
-              Tracing.trace "IrisService.Config" <| fun () ->
+              Tracing.trace (tag "Config") <| fun () ->
                 match postCommand agent "Config" (fun chan -> Msg.Config chan) with
                 | Right (Reply.Config config) -> Right config
                 | Left error -> Left error
@@ -1369,7 +1354,7 @@ module Iris =
                   |> Either.fail
 
           member self.SetConfig (config: IrisConfig) =
-            Tracing.trace "IrisService.SetConfig()" <| fun () ->
+            Tracing.trace (tag "SetConfig()") <| fun () ->
               match postCommand agent "SetConfig" (fun chan -> Msg.SetConfig(chan,config)) with
               | Right Reply.Ok -> Right ()
               | Left error -> Left error
@@ -1380,7 +1365,7 @@ module Iris =
 
           member self.Status
             with get () =
-              Tracing.trace "IrisService.Status" <| fun () ->
+              Tracing.trace (tag "Status") <| fun () ->
                 match postCommand agent "Status" (fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.Status
                 | Left error -> Left error
@@ -1399,7 +1384,7 @@ module Iris =
               |> Either.fail
 
           member self.UnloadProject() =
-            Tracing.trace "IrisService.UnloadProject" <| fun () ->
+            Tracing.trace (tag "UnloadProject") <| fun () ->
               match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
               | Right Reply.Ok ->
                 // Notify subscriptor of the change of state
@@ -1412,17 +1397,17 @@ module Iris =
                 |> Either.fail
 
           member self.ForceElection () =
-            Tracing.trace "IrisService.ForceElection" <| fun () ->
+            Tracing.trace (tag "ForceElection") <| fun () ->
               agent.Post(Msg.ForceElection)
               |> Either.succeed
 
           member self.Periodic () =
-            Tracing.trace "IrisService.Periodic" <| fun () ->
+            Tracing.trace (tag "Periodic") <| fun () ->
               agent.Post(Msg.Periodic)
               |> Either.succeed
 
           member self.LeaveCluster () =
-            Tracing.trace "IrisService.LeaveCluster" <| fun () ->
+            Tracing.trace (tag "LeaveCluster") <| fun () ->
               match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
               | Right Reply.Ok -> Right ()
               | Left error -> Left error
@@ -1432,7 +1417,7 @@ module Iris =
                 |> Either.fail
 
           member self.JoinCluster ip port =
-            Tracing.trace "IrisService.JoinCluster" <| fun () ->
+            Tracing.trace (tag "JoinCluster") <| fun () ->
               match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
               | Right Reply.Ok -> Right ()
               | Left error  -> Left error
@@ -1442,7 +1427,7 @@ module Iris =
                 |> Either.fail
 
           member self.AddMember mem =
-            Tracing.trace "IrisService.AddMember" <| fun () ->
+            Tracing.trace (tag "AddMember") <| fun () ->
               match postCommand agent "AddMember" (fun chan -> Msg.AddMember(chan,mem)) with
               | Right (Reply.Entry entry) -> Right entry
               | Left error -> Left error
@@ -1452,7 +1437,7 @@ module Iris =
                 |> Either.fail
 
           member self.RmMember id =
-            Tracing.trace "IrisService.RmMember" <| fun () ->
+            Tracing.trace (tag "RmMember") <| fun () ->
               match postCommand agent "RmMember" (fun chan -> Msg.RmMember(chan,id)) with
               | Right (Reply.Entry entry) -> Right entry
               | Left error -> Left error
@@ -1463,7 +1448,7 @@ module Iris =
 
           member self.GitServer
             with get () =
-              Tracing.trace "IrisService.GitServer" <| fun () ->
+              Tracing.trace (tag "GitServer") <| fun () ->
                 match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.GitServer
                 | Left error -> Left error
@@ -1474,7 +1459,7 @@ module Iris =
 
           member self.RaftServer
             with get () =
-              Tracing.trace "IrisService.RaftServer" <| fun () ->
+              Tracing.trace (tag "RaftServer") <| fun () ->
                 match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.RaftServer
                 | Left error -> Left error
@@ -1485,7 +1470,7 @@ module Iris =
 
           member self.SocketServer
             with get () =
-              Tracing.trace "IrisService.SocketServer" <| fun () ->
+              Tracing.trace (tag "SocketServer") <| fun () ->
                 match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
                 | Right (Reply.State state) -> Right state.SocketServer
                 | Left error -> Left error
@@ -1502,7 +1487,7 @@ module Iris =
             |> listener.Subscribe
 
           member self.Dispose() =
-            Tracing.trace "IrisService.Dispose" <| fun () ->
+            Tracing.trace (tag "Dispose") <| fun () ->
               notify subscriptions (Status ServiceStatus.Stopping)
               postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
               |> ignore

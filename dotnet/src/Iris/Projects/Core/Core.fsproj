@@ -241,6 +241,9 @@
     <Compile Include="..\..\Iris\Service\ApiServer.fs">
       <Link>ApiServer.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\ClockService.fs">
+      <Link>ClockService.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>

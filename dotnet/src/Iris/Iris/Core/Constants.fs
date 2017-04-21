@@ -25,6 +25,15 @@ module Constants =
   let MCAST_PORT = 5555us
 
   [<Literal>]
+  let CLOCK_MCAST_ADDRESS = "224.0.0.2"
+
+  [<Literal>]
+  let CLOCK_MCAST_PORT = 6666us
+
+  [<Literal>]
+  let CLOCK_MCAST_PREFIX = "clock"
+
+  [<Literal>]
   let API_BACKEND_PREFIX = "apibackend"
 
   [<Literal>]

@@ -1,5 +1,18 @@
 namespace Iris.Core
 
+
+//  __  __
+// |  \/  | ___  __ _ ___ _   _ _ __ ___  ___
+// | |\/| |/ _ \/ _` / __| | | | '__/ _ \/ __|
+// | |  | |  __/ (_| \__ \ |_| | | |  __/\__ \
+// |_|  |_|\___|\__,_|___/\__,_|_|  \___||___/
+
+[<Measure>] type frame
+[<Measure>] type sec                    // seconds
+[<Measure>] type ns                     // nano seconds
+[<Measure>] type us                     // micro seconds
+[<Measure>] type fps = frame/sec
+
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
 //   / _ \ | | |/ _` / __|/ _ \/ __|
@@ -17,7 +30,6 @@ type Tag        = string
 type NodePath   = string
 type OSCAddress = string
 type Version    = string
-type VectorSize = int    option
 type Min        = int    option
 type Max        = int    option
 type Unit       = string option

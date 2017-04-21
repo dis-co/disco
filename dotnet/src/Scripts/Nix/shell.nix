@@ -4,7 +4,7 @@ with pkgs;
 let
   mono = mono46;
 
-  inputs = [ stdenv curl openssl zlib phantomjs2 e2fsprogs libidn keyutils ];
+  inputs = [ stdenv stdenv.cc.cc.lib curl openssl zlib phantomjs2 e2fsprogs libidn keyutils ];
 
   libpath= lib.makeLibraryPath inputs;
 

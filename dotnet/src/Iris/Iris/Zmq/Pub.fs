@@ -19,12 +19,14 @@ open Iris.Core
 /// Returns: instance of Pub
 type Pub (addr: string, prefix: string) =
 
-  let tag = sprintf "Pub.%s"
+  let tag (str: string) = String.Format("Pub.{0}", str)
 
-  let mutable starter   = Unchecked.defaultof<AutoResetEvent>
-  let mutable stopper   = Unchecked.defaultof<AutoResetEvent>
-  let mutable requester = Unchecked.defaultof<AutoResetEvent>
-  let mutable responder = Unchecked.defaultof<AutoResetEvent>
+  let lokk = Object()
+
+  let starter   = new AutoResetEvent(false)
+  let stopper   = new AutoResetEvent(false)
+  let requester = new AutoResetEvent(false)
+  let responder = new AutoResetEvent(false)
 
   let mutable exn: Exception option = None
 
@@ -37,16 +39,15 @@ type Pub (addr: string, prefix: string) =
 
   let mutable thread = Unchecked.defaultof<Thread>
   let mutable sock = Unchecked.defaultof<ZSocket>
-  let mutable lokk = Unchecked.defaultof<Object>
   let mutable ctx = Unchecked.defaultof<ZContext>
 
   // ** worker
 
-  let worker _ =                                              // thread worker function
+  let worker () =                                              // thread worker function
     if isNull sock then                                       // if not yet present
       try
         "initializing context and socket"
-        |> Logger.debug (tag "workder")
+        |> Logger.debug (tag "worker")
 
         ctx <- new ZContext()
         sock <- new ZSocket(ctx, ZSocketType.PUB)                // initialise the socket
@@ -54,12 +55,17 @@ type Pub (addr: string, prefix: string) =
         sprintf "connecting to %A" addr
         |> Logger.debug (tag "worker")
 
-        setOption sock ZSocketOption.RATE 100000
+        sock.MulticastRate <- 100000
         sock.Bind(addr)                                         // connect to server
+
         started <- true
         starter.Set() |> ignore                                  // signal that startup is done
       with
         | ex ->
+          ex.Message
+          |> sprintf "error initializing Pub socket: %s"
+          |> Logger.debug (tag "worker")
+
           run <- false
           exn <- Some ex
           starter.Set() |> ignore
@@ -70,8 +76,6 @@ type Pub (addr: string, prefix: string) =
     while run do
       try
         // wait for the signal that a new request is ready *or* that shutdown is reuqested
-        "waiting for a publish"
-        |> Logger.debug (tag "worker")
         requester.WaitOne() |> ignore
 
         // `run` is usually true, but shutdown first sets this to false to exit the loop
@@ -102,8 +106,8 @@ type Pub (addr: string, prefix: string) =
 
     sock.SetOption(ZSocketOption.LINGER, 0) |> ignore  // set linger to 0 to close socket quickly
     sock.Close()                                      // close the socket
-    sock.Dispose()                                    // dispose of it
-    ctx.Dispose()
+    tryDispose sock ignore                            // dispose of it
+    tryDispose ctx  ignore
     disposed <- true                                   // this socket is disposed
     started <- false                                   // and not running anymore
     stopper.Set() |> ignore                            // signal that everything was cleaned up now
@@ -111,20 +115,11 @@ type Pub (addr: string, prefix: string) =
     "thread-local shutdown done"
     |> Logger.debug (tag "worker")
 
-  // ** Constructor
-
-  do
-    lokk      <- new Object()                       // lock object
-    starter   <- new AutoResetEvent(false)          // initialize the signals
-    stopper   <- new AutoResetEvent(false)
-    requester <- new AutoResetEvent(false)
-    responder <- new AutoResetEvent(false)
-
   // ** Start
 
   member self.Start() =
     if not disposed then
-      thread <- new Thread(new ThreadStart(worker))  // create worker thread
+      thread <- Thread(worker)                       // create worker thread
       thread.Start()                                // start worker thread
       starter.WaitOne() |> ignore                    // wait for startup-done signal
 
@@ -173,8 +168,6 @@ type Pub (addr: string, prefix: string) =
 
   member self.Publish(req: byte array) : Either<IrisError,unit> =
     if started && not disposed then        // synchronously request the square of `req-`
-      Logger.debug (tag "Publish") "publishing message"
-
       lock lokk <| fun _ ->                 // lock while executing transaction
         request <- req                   // first set the requets
         requester.Set() |> ignore        // then signal a request is ready for execution
@@ -188,10 +181,7 @@ type Pub (addr: string, prefix: string) =
           |> sprintf "Exception thrown on socket thread: %s"
           |> Error.asSocketError "Pub.Publish"
           |> Either.fail
-        | _  ->
-          "publish successful"
-          |> Logger.debug (tag "Publish")
-          Either.succeed ()             // return the response
+        | _  -> Either.succeed ()        // return the response
     elif disposed then                  // disposed sockets need to be re-initialized
       "refusing request. already disposed"
       |> Logger.err (tag "Publish")

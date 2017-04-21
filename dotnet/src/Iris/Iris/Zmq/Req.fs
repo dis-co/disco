@@ -42,7 +42,7 @@ type Req (id: Id, addr: string, timeout: int) =
 
   // ** worker
 
-  let worker _ =                                              // thread worker function
+  let worker () =                                             // thread worker function
     if isNull sock then                                       // if not yet present
       Logger.debug id tag "initializing context and socket"
       ctx <- new ZContext()
@@ -124,7 +124,7 @@ type Req (id: Id, addr: string, timeout: int) =
   member self.Start() =
     if not started && not disposed then
       Logger.debug id tag "starting socket thread"
-      thread <- new Thread(new ThreadStart(worker)) // new Thread as context for the client socket
+      thread <- Thread(worker) // new Thread as context for the client socket
       thread.Start()                               // start thread & intialize socket
       starter.WaitOne() |> ignore                   // wait for signal to indicate startup is done
     elif disposed then

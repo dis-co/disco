@@ -15,19 +15,19 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<int,IObserver<byte array>>
+  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<byte array>>
 
   // ** createListener
 
-  let private createListener (subscriptions: Subscriptions) =
+  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
     { new Listener with
         member self.Subscribe(obs) =
-          subscriptions.TryAdd(obs.GetHashCode(), obs)
+          subscriptions.TryAdd(guid, obs)
           |> ignore
 
           { new IDisposable with
               member self.Dispose() =
-                subscriptions.TryRemove(obs.GetHashCode())
+                subscriptions.TryRemove(guid)
                 |> ignore } }
 
   // ** notify
@@ -51,17 +51,16 @@ module Sub =
 
     let mutable status : ServiceStatus = ServiceStatus.Starting
 
-    let mutable error : Exception option = None
     let mutable disposed = false
     let mutable run = true
     let mutable sock: ZSocket = null
-    let mutable thread: Thread = null
-    let mutable starter: AutoResetEvent = null
-    let mutable stopper: AutoResetEvent = null
     let mutable ctx : ZContext = null
+    let mutable thread: Thread = null
+    let mutable error : Exception option = None
+    let mutable starter: AutoResetEvent = new AutoResetEvent(false)
+    let mutable stopper: AutoResetEvent = new AutoResetEvent(false)
 
-    let mutable subscriptions = Unchecked.defaultof<Subscriptions>
-    let mutable listener = Unchecked.defaultof<Listener>
+    let mutable subscriptions = Subscriptions()
 
     /// ## worker
     ///
@@ -150,12 +149,6 @@ module Sub =
 
       stopper.Set() |> ignore
 
-    do
-      subscriptions <- new Subscriptions()
-      listener <- createListener subscriptions
-      starter <- new AutoResetEvent(false)
-      stopper <- new AutoResetEvent(false)
-
     member self.Status
       with get () = status
 
@@ -167,7 +160,7 @@ module Sub =
 
     member self.Start () : Either<IrisError,unit> =
       if not disposed then
-        thread <- new Thread(new ThreadStart(worker))  // create worker thread
+        thread <- Thread(worker)                       // create worker thread
         thread.Start()                                // start worker thread
         starter.WaitOne() |> ignore                    // wait for startup-done signal
 
@@ -184,6 +177,8 @@ module Sub =
         |> Either.fail
 
     member self.Subscribe (callback: byte array -> unit) =
+      let guid = Guid.NewGuid()
+      let listener = createListener guid subscriptions
       { new IObserver<byte array> with
           member self.OnCompleted() = ()
           member self.OnError(error) = ()
