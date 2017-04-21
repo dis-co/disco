@@ -6,6 +6,11 @@ namespace Iris.Core
 [<Measure>] type name
 [<Measure>] type password
 [<Measure>] type timestamp
+[<Measure>] type frame
+[<Measure>] type sec                    // seconds
+[<Measure>] type ns                     // nano seconds
+[<Measure>] type us                     // micro seconds
+[<Measure>] type fps = frame/sec
 
 [<AutoOpen>]
 module Measure =
@@ -33,7 +38,6 @@ type Tag        = string
 type NodePath   = string
 type OSCAddress = string
 type Version    = string
-type VectorSize = int    option
 type Min        = int    option
 type Max        = int    option
 type Unit       = string option

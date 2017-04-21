@@ -88,24 +88,24 @@ module internal Utils =
 
   let internal READY = [| 0uy; 0uy |] // 0us
 
-  type internal Subscriptions = ConcurrentDictionary<int,IObserver<RawRequest>>
+  type internal Subscriptions = ConcurrentDictionary<Guid,IObserver<RawRequest>>
 
   type internal Listener = IObservable<RawRequest>
 
   let internal tryDispose (disp: IDisposable) =
     try dispose disp with | _ -> ()
 
-  let internal createListener (subs: Subscriptions) =
+  let internal createListener (guid: Guid) (subs: Subscriptions) =
     { new Listener with
         member self.Subscribe (obs) =
-          while not (subs.TryAdd(obs.GetHashCode(), obs)) do
+          while not (subs.TryAdd(guid, obs)) do
             Thread.Sleep(TimeSpan.FromTicks 1L)
 
           { new IDisposable with
               member self.Dispose() =
-                match subs.TryRemove(obs.GetHashCode()) with
+                match subs.TryRemove(guid) with
                 | true, _  -> ()
-                | _ -> subs.TryRemove(obs.GetHashCode())
+                | _ -> subs.TryRemove(guid)
                       |> ignore } }
 
   let internal notify (subs: Subscriptions) (request: RawRequest) =
@@ -258,7 +258,7 @@ module Client =
 
   let create (id: Id) (frontend: string) (timeout: float) =
     let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
-    let mutable thread = new Thread(new ThreadStart(worker state))
+    let mutable thread = Thread(worker state)
     thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
@@ -287,7 +287,7 @@ module Client =
         member self.Restart () =
           self.Dispose()
           state.Reset()
-          thread <- new Thread(new ThreadStart(worker state))
+          thread <- Thread(worker state)
           thread.Name <- sprintf "Client %O" state.Id
           thread.Start()
           state.Starter.WaitOne() |> ignore
@@ -478,9 +478,8 @@ module private Worker =
 
   let create (args: WorkerArgs)  =
     let state = new LocalThreadState(args)
-    let listener = createListener state.Subscriptions
 
-    let thread = new Thread(new ThreadStart(worker state))
+    let thread = Thread(worker state)
     thread.Name <- sprintf "broker-worker-%d" state.Id
     thread.Start()
 
@@ -496,6 +495,8 @@ module private Worker =
               state.Responder.Push(response)
 
             member worker.Subscribe(callback: RawRequest -> unit) =
+              let guid = Guid.NewGuid()
+              let listener = createListener guid state.Subscriptions
               { new IObserver<RawRequest> with
                   member self.OnCompleted() = ()
                   member self.OnError(error) = ()
@@ -701,11 +702,10 @@ module Broker =
 
   let create (args: BrokerArgs) =
     let state = new LocalThreadState(args)
-    let listener = createListener state.Subscriptions
     let cts = new CancellationTokenSource()
     let responder = ResponseActor.Start(loop state.Workers, cts.Token)
 
-    let thread = new Thread(new ThreadStart(worker state))
+    let thread = Thread(worker state)
     thread.Name <- sprintf "Broker"
     thread.Start()
 
@@ -715,6 +715,8 @@ module Broker =
       (fun _ ->
         { new IBroker with
             member self.Subscribe(callback: RawRequest -> unit) =
+              let guid = Guid.NewGuid()
+              let listener = createListener guid state.Subscriptions
               { new IObserver<RawRequest> with
                   member self.OnCompleted() = ()
                   member self.OnError (error) = ()
