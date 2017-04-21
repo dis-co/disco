@@ -101,9 +101,9 @@ type User =
     let mutable hash = 42
     #if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string me.Id)
-    hash <- (hash * 7) + hashCode me.UserName
-    hash <- (hash * 7) + hashCode me.FirstName
-    hash <- (hash * 7) + hashCode me.LastName
+    hash <- (hash * 7) + (me.UserName |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.FirstName |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.LastName |> unwrap |> hashCode)
     hash <- (hash * 7) + hashCode me.Email
     hash <- (hash * 7) + hashCode me.Password
     hash <- (hash * 7) + hashCode me.Salt

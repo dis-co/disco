@@ -61,18 +61,18 @@ module SerializationTests =
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
     { Id = Id.Create()
-      Name = "PinGroup 3"
+      Name = name "PinGroup 3"
       Client = Id.Create()
       Pins = pins }
 
   let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }
 
   let mkUser _ =
     { Id = Id.Create()
-    ; UserName = "krgn"
-    ; FirstName = "Karsten"
-    ; LastName = "Gebbert"
+    ; UserName = name "krgn"
+    ; FirstName = name "Karsten"
+    ; LastName = name "Gebbert"
     ; Email = "k@ioctl.it"
     ; Password = "1234"
     ; Salt = "090asd902"

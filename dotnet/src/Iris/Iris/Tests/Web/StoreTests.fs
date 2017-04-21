@@ -16,7 +16,7 @@ module Store =
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
       { Id = Id "0xb4d1d34"
-        Name = "group-1"
+        Name = name "group-1"
         Client = Id.Create()
         Pins = Map.empty }
 
@@ -75,7 +75,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a group already in the store" <| fun finish ->
         let name1 = group.Name
-        let name2 = "group-2"
+        let name2 = name "group-2"
 
         store.Dispatch <| AddPinGroup(group)
 
@@ -248,7 +248,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -266,7 +266,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -274,7 +274,7 @@ module Store =
 
         equals 1 store.State.CueLists.Count
 
-        let newname = "aww yeah"
+        let newname = name "aww yeah"
         store.Dispatch <| UpdateCueList { cuelist with Name = newname }
 
         equals 1 store.State.CueLists.Count
@@ -286,7 +286,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -300,7 +300,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -323,14 +323,14 @@ module Store =
 
         let user : User =
           { Id = Id.Create()
-          ; UserName = "krgn"
-          ; FirstName = "Karsten"
-          ; LastName = "Gebbert"
-          ; Email = "k@ioctl.it"
-          ; Password = "1234"
-          ; Salt = "090asd902"
-          ; Joined = DateTime.UtcNow.Date
-          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
+            UserName = name "krgn"
+            FirstName = name "Karsten"
+            LastName = name "Gebbert"
+            Email = "k@ioctl.it"
+            Password = "1234"
+            Salt = "090asd902"
+            Joined = DateTime.UtcNow.Date
+            Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -350,14 +350,14 @@ module Store =
 
         let user : User =
           { Id = Id.Create()
-          ; UserName = "krgn"
-          ; FirstName = "Karsten"
-          ; LastName = "Gebbert"
-          ; Email = "k@ioctl.it"
-          ; Password = "1234"
-          ; Salt = "090asd902"
-          ; Joined = DateTime.UtcNow.Date
-          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
+            UserName = name "krgn"
+            FirstName = name "Karsten"
+            LastName = name "Gebbert"
+            Email = "k@ioctl.it"
+            Password = "1234"
+            Salt = "090asd902"
+            Joined = DateTime.UtcNow.Date
+            Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -365,7 +365,7 @@ module Store =
 
         equals 1 store.State.Users.Count
 
-        let newname = "kurt mix master"
+        let newname = name "kurt mix master"
         store.Dispatch <| UpdateUser { user with FirstName = newname }
 
         equals 1 store.State.Users.Count
@@ -379,14 +379,14 @@ module Store =
 
         let user : User =
           { Id = Id.Create()
-          ; UserName = "krgn"
-          ; FirstName = "Karsten"
-          ; LastName = "Gebbert"
-          ; Email = "k@ioctl.it"
-          ; Password = "1234"
-          ; Salt = "090asd902"
-          ; Joined = DateTime.UtcNow.Date
-          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
+            UserName = name "krgn"
+            FirstName = name "Karsten"
+            LastName = name "Gebbert"
+            Email = "k@ioctl.it"
+            Password = "1234"
+            Salt = "090asd902"
+            Joined = DateTime.UtcNow.Date
+            Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -402,14 +402,14 @@ module Store =
 
         let user : User =
           { Id = Id.Create()
-          ; UserName = "krgn"
-          ; FirstName = "Karsten"
-          ; LastName = "Gebbert"
-          ; Email = "k@ioctl.it"
-          ; Password = "1234"
-          ; Salt = "090asd902"
-          ; Joined = DateTime.UtcNow.Date
-          ; Created = DateTime.UtcNow.Date.AddDays(-1.) }
+            UserName = name "krgn"
+            FirstName = name "Karsten"
+            LastName = name "Gebbert"
+            Email = "k@ioctl.it"
+            Password = "1234"
+            Salt = "090asd902"
+            Joined = DateTime.UtcNow.Date
+            Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
 
@@ -515,7 +515,7 @@ module Store =
     withStore <| fun group store ->
       test "store should trigger listeners on undo" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "group-2" })
 
         // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
@@ -531,9 +531,9 @@ module Store =
       test "store should dump previous states for inspection" <| fun finish ->
         equals 1 store.History.Length
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "group-2" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "group-3" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "group-4" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "group-2" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "group-3" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "group-4" })
         equals 5 store.History.Length
         finish()
 
@@ -541,9 +541,9 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should have correct number of historic states when starting fresh" <| fun finish ->
-        let group2 : PinGroup = { group with Name = "group-2" }
-        let group3 : PinGroup = { group2 with Name = "group-3" }
-        let group4 : PinGroup = { group3 with Name = "group-4" }
+        let group2 : PinGroup = { group with Name = name "group-2" }
+        let group3 : PinGroup = { group2 with Name = name "group-3" }
+        let group4 : PinGroup = { group3 with Name = name "group-4" }
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| UpdatePinGroup( group2)
@@ -558,7 +558,7 @@ module Store =
     withStore <| fun group store ->
       test "should undo a single change" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
         store.Undo()
         equals group.Name store.State.PinGroups.[group.Id].Name
         finish()
@@ -567,8 +567,8 @@ module Store =
     withStore <| fun group store ->
       test "should undo two changes" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
         store.Undo()
         store.Undo()
         equals group.Name store.State.PinGroups.[group.Id].Name
@@ -588,61 +588,61 @@ module Store =
     withStore <| fun group store ->
       test "should redo multiple undone changes" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "men"  })
         store.Undo()
         store.Undo()
 
-        equals "dogs" store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "mice" store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "men" store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Id].Name
         store.Redo()
 
-        equals "men" store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should undo/redo interleaved changes" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| UpdatePinGroup( { group with Name = "cats" })
-        store.Dispatch <| UpdatePinGroup( { group with Name = "dogs" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
 
         store.Undo()
-        equals "cats" store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "dogs" store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Id].Name
 
         store.Undo()
-        equals "cats" store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePinGroup( { group with Name = "mice" })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "mice" })
 
         store.Undo()
-        equals "dogs" store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "mice" store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Id].Name
 
         store.Undo()
         store.Undo()
 
-        equals "cats" store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Id].Name
 
-        store.Dispatch <| UpdatePinGroup( { group with Name = "men"  })
+        store.Dispatch <| UpdatePinGroup( { group with Name = name "men"  })
 
         store.Undo()
-        equals "mice" store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Id].Name
 
         store.Redo()
-        equals "men" store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Id].Name
 
         equals 6 store.History.Length
         finish ()
@@ -655,12 +655,11 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
-        |> List.map (fun n ->
-             store.Dispatch <| UpdatePinGroup( { group with Name = n }))
+        |> List.map (fun n -> store.Dispatch <| UpdatePinGroup( { group with Name = name n }))
         |> List.iter (fun _ -> store.Undo())
 
-        equals 4      store.History.Length
-        equals "mice" store.State.PinGroups.[group.Id].Name
+        equals 4             store.History.Length
+        equals (name "mice") store.State.PinGroups.[group.Id].Name
         finish()
 
 
@@ -673,8 +672,7 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
-        |> List.iter (fun n ->
-            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
+        |> List.iter (fun n -> store.Dispatch <| UpdatePinGroup( { group with Name = name n }))
 
         equals 8 store.History.Length
         finish ()
@@ -688,8 +686,7 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
 
         ["dogs"; "cats"; "mice"; "men"; "worms"; "hens"]
-        |> List.iter (fun n ->
-            store.Dispatch <| UpdatePinGroup( { group with Name = n }))
+        |> List.iter (fun n -> store.Dispatch <| UpdatePinGroup( { group with Name = name n }))
 
         equals 8 store.History.Length
         store.Debug <- false
