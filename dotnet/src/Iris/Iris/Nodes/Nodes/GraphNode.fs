@@ -901,7 +901,7 @@ module Graph =
       let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
       let group: PinGroup =
         { Id = pin.PinGroup
-          Name = node.GetNodePath(true)
+          Name = name (node.GetNodePath(true))
           Client = state.InClientId.[0]
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)

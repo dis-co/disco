@@ -300,7 +300,7 @@ type HostGroup =
             (Array.fold (fun m s -> m + " " + string s) "" self.Members)
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
 
     let members =
       Array.map (string >> builder.CreateString) self.Members
@@ -329,7 +329,7 @@ type HostGroup =
           arr
 
       return
-        { Name    = fb.Name
+        { Name    = name fb.Name
           Members = members }
     }
 
@@ -352,7 +352,7 @@ type ClusterConfig =
   static member Default
     with get () =
       { Id      = Id.Create()
-        Name    = Constants.DEFAULT
+        Name    = name Constants.DEFAULT
         Members = Map.empty
         Groups  = [| |] }
 
@@ -365,7 +365,7 @@ type ClusterConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
 
     let members =
       self.Members
@@ -447,7 +447,7 @@ type ClusterConfig =
 
       return
         { Id      = Id fb.Id
-          Name    = fb.Name
+          Name    = name fb.Name
           Members = members
           Groups  = groups }
     }
@@ -952,7 +952,7 @@ Project:
   // ** parsePlugin
 
   let internal parsePlugin (plugin: PluginYaml) : Either<IrisError, VvvvPlugin> =
-    Right { Name = plugin.Name
+    Right { Name = name plugin.Name
             Path = plugin.Path }
 
   // ** parsePlugins
@@ -1015,7 +1015,7 @@ Project:
 
     for plug in config.Vvvv.Plugins do
       let entry = new PluginYaml()
-      entry.Name <- plug.Name
+      entry.Name <- unwrap plug.Name
       entry.Path <- plug.Path
       file.Project.VVVV.Plugins.Add(entry)
 
@@ -1159,7 +1159,7 @@ Project:
       let! overlap = parseRect       viewport.Overlap
 
       return { Id             = Id viewport.Id
-               Name           = viewport.Name
+               Name           = name viewport.Name
                Position       = pos
                Size           = size
                OutputPosition = outpos
@@ -1209,7 +1209,7 @@ Project:
     for vp in config.ViewPorts do
       let item = new ViewPortYaml()
       item.Id             <- string vp.Id
-      item.Name           <- vp.Name
+      item.Name           <- unwrap vp.Name
       item.Size           <- string vp.Size
       item.Position       <- string vp.Position
       item.Overlap        <- string vp.Overlap
@@ -1302,7 +1302,7 @@ Project:
 
       return
         { Id             = Id region.Id
-          Name           = region.Name
+          Name           = name region.Name
           SrcPosition    = srcpos
           SrcSize        = srcsize
           OutputPosition = outpos
@@ -1368,7 +1368,7 @@ Project:
           Regions       = regions }
 
       return { Id        = Id display.Id
-               Name      = display.Name
+               Name      = name display.Name
                Size      = size
                Signals   = signals
                RegionMap = regionmap }
@@ -1417,7 +1417,7 @@ Project:
     for dp in config.Displays do
       let item = new DisplayYaml()
       item.Id <- string dp.Id
-      item.Name <- dp.Name
+      item.Name <- unwrap dp.Name
       item.Size <- dp.Size.ToString()
 
       item.RegionMap.SrcViewportId <- string dp.RegionMap.SrcViewportId
@@ -1426,7 +1426,7 @@ Project:
       for region in dp.RegionMap.Regions do
         let r = new RegionYaml()
         r.Id <- string region.Id
-        r.Name <- region.Name
+        r.Name <- unwrap region.Name
         r.OutputPosition <- region.OutputPosition.ToString()
         r.OutputSize <- region.OutputSize.ToString()
         r.SrcPosition <- region.SrcPosition.ToString()
@@ -1660,7 +1660,7 @@ Project:
       if group.Name.Length > 0 then
         let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
 
-        return { Name    = group.Name
+        return { Name    = name group.Name
                  Members = ids }
       else
         return!
@@ -1706,7 +1706,7 @@ Project:
       let! mems = parseMembers cluster.Members
 
       return { Id = Id cluster.Id
-               Name = cluster.Name
+               Name = name cluster.Name
                Members = mems
                Groups = groups }
     }
@@ -1755,7 +1755,7 @@ Project:
       cfg.Groups.Clear()
 
       cfg.Id <- string cluster.Id
-      cfg.Name <- cluster.Name
+      cfg.Name <- unwrap cluster.Name
 
       for KeyValue(memId,mem) in cluster.Members do
         let n = new MemberYaml()
@@ -1771,7 +1771,7 @@ Project:
 
       for group in cluster.Groups do
         let g = new GroupYaml()
-        g.Name <- group.Name
+        g.Name <- unwrap group.Name
         g.Members.Clear()
 
         for mem in group.Members do
@@ -2164,7 +2164,7 @@ Author:    %A
 Config: %A
 "
       (string project.Id)
-      project.Name
+      (unwrap project.Name)
       project.Path
       project.CreatedOn
       project.LastSaved
@@ -2177,7 +2177,7 @@ Config: %A
   static member Empty
     with get () =
       { Id        = Id Constants.EMPTY
-        Name      = Constants.EMPTY
+        Name      = name Constants.EMPTY
         Path      = ""
         CreatedOn = ""
         LastSaved = None
@@ -2263,7 +2263,7 @@ Config: %A
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
     let path = builder.CreateString self.Path
     let created = builder.CreateString (string self.CreatedOn)
     let lastsaved = Option.map builder.CreateString self.LastSaved
@@ -2333,7 +2333,7 @@ Config: %A
 
       return
         { Id        = Id fb.Id
-          Name      = fb.Name
+          Name      = name fb.Name
           Path      = fb.Path
           CreatedOn = fb.CreatedOn
           LastSaved = lastsaved
@@ -2357,7 +2357,7 @@ Config: %A
 
     // Project metadata
     config.Project.Metadata.Id        <- string self.Id
-    config.Project.Metadata.Name      <- self.Name
+    config.Project.Metadata.Name      <- unwrap self.Name
     config.Project.Metadata.CreatedOn <- self.CreatedOn
 
     Option.map
@@ -2397,7 +2397,7 @@ Config: %A
       let! config = Config.fromFile config dummy
 
       return { Id        = Id meta.Id
-               Name      = meta.Name
+               Name      = name meta.Name
                Path      = Path.GetFullPath(".")
                CreatedOn = meta.CreatedOn
                LastSaved = lastSaved
@@ -2640,7 +2640,7 @@ module Project =
     let payload = thing |> Yaml.encode
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
-    let msg = sprintf "%s save %A" committer.UserName (Path.GetFileName filepath)
+    let msg = String.Format("{0} saved {1}", committer.UserName, Path.GetFileName filepath)
     saveFile filepath payload signature msg project
 
   #endif
@@ -2663,7 +2663,7 @@ module Project =
   let inline deleteAsset (thing: ^t) (committer: User) (project: IrisProject) =
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
-    let msg = sprintf "%s deleted %A" committer.UserName filepath
+    let msg = String.Format("{0} deleted {1}", committer.UserName, filepath)
     deleteFile filepath signature msg project
 
   let private needsInit (project: IrisProject) =
@@ -2722,17 +2722,17 @@ module Project =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: IrisProject
-  let create (path: FilePath) (name : string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
+  let create (path: FilePath) (projectName: string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
     either {
       let project =
         { Id        = Id.Create()
-        ; Name      = name
+        ; Name      = name projectName
         ; Path      = path
         ; CreatedOn = Time.createTimestamp()
         ; LastSaved = Some (Time.createTimestamp ())
         ; Copyright = None
         ; Author    = None
-        ; Config    = Config.create name machine  }
+        ; Config    = Config.create projectName machine  }
 
       do! initRepo project
       let! _ = Asset.saveWithCommit path User.Admin.Signature project

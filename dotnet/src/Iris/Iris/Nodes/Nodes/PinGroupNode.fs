@@ -63,7 +63,7 @@ type PinGroupNode() =
               |> Map.toArray
               |> Array.map snd
             self.OutId.[n] <- string group.Id
-            self.OutName.[n] <- group.Name
+            self.OutName.[n] <- unwrap group.Name
             self.OutPins.[n].SliceCount <- Array.length pins
             self.OutPins.[n].AssignFrom pins
 

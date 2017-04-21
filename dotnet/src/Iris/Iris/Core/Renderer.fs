@@ -56,7 +56,7 @@ type Region =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
 
     RegionFB.StartRegionFB(builder)
     RegionFB.AddId(builder, id)
@@ -75,7 +75,7 @@ type Region =
     either {
       return
         { Id             = Id fb.Id
-          Name           = fb.Name
+          Name           = name fb.Name
           SrcSize        = Rect(fb.SrcSizeX,fb.SrcSizeY)
           SrcPosition    = Coordinate(fb.SrcPositionX,fb.SrcPositionY)
           OutputSize     = Rect(fb.OutputSizeX,fb.OutputSizeY)
@@ -156,7 +156,7 @@ type Display =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
     let signals =
       Array.map (Binary.toOffset builder) self.Signals
       |> fun offsets -> DisplayFB.CreateSignalsVector(builder, offsets)
@@ -219,7 +219,7 @@ type Display =
 
       return
         { Id        = Id fb.Id
-          Name      = fb.Name
+          Name      = name fb.Name
           Size      = Rect(fb.SizeX, fb.SizeY)
           Signals   = signals
           RegionMap = regionmap }
@@ -243,7 +243,7 @@ type ViewPort =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
     let desc = builder.CreateString self.Description
 
     ViewPortFB.StartViewPortFB(builder)
@@ -266,7 +266,7 @@ type ViewPort =
     either {
       return
         { Id = Id fb.Id
-          Name = fb.Name
+          Name = name fb.Name
           Description = fb.Description
           Size = Rect(fb.SizeX, fb.SizeY)
           Position = Coordinate(fb.PositionX, fb.PositionY)
@@ -381,7 +381,7 @@ type VvvvPlugin =
     Path : FilePath }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let name = builder.CreateString self.Name
+    let name = self.Name |> unwrap |> builder.CreateString
     let path = builder.CreateString self.Path
 
     VvvvPluginFB.StartVvvvPluginFB(builder)
@@ -392,6 +392,6 @@ type VvvvPlugin =
   static member FromFB(fb: VvvvPluginFB) =
     either {
       return
-        { Name = fb.Name
+        { Name = name fb.Name
           Path = fb.Path }
     }

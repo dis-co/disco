@@ -266,7 +266,7 @@ module SerializationTests =
 
         let site =
           { ClusterConfig.Default with
-              Name = "Cool Cluster Yo"
+              Name = name "Cool Cluster Yo"
               Members = Map.ofArray [| (self.Id,self)
                                        (mem1.Id, mem1)
                                        (mem2.Id, mem2) |] }
@@ -570,7 +570,7 @@ module SerializationTests =
           AddMember     <| Member.create (Id.Create())
           UpdateMember  <| Member.create (Id.Create())
           RemoveMember  <| Member.create (Id.Create())
-          UpdateClock 1234u          
+          UpdateClock 1234u
           DataSnapshot  <| state
           Command AppCommand.Undo
           LogMsg(Logger.create Debug "bla" "oohhhh")

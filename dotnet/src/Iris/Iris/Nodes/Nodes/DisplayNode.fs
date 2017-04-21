@@ -70,7 +70,7 @@ type DisplayNode() =
           if not (Util.isNullReference self.InDisplay.[n]) then
             let display = self.InDisplay.[n]
             self.OutId.[n] <- string display.Id
-            self.OutName.[n] <- display.Name
+            self.OutName.[n] <- unwrap display.Name
             self.OutSize.[n].SliceCount <- 2
             self.OutSize.[n].[0] <- display.Size.X
             self.OutSize.[n].[1] <- display.Size.Y

@@ -45,7 +45,7 @@ module RaftIntegrationTests =
 
         let site =
           { ClusterConfig.Default with
-              Name = "Cool Cluster Yo"
+              Name = name "Cool Cluster Yo"
               Members = Map.ofArray [| (mem1.Id, mem1)
                                        (mem2.Id, mem2) |] }
         let leadercfg =
@@ -89,7 +89,7 @@ module RaftIntegrationTests =
 
         let site =
           { ClusterConfig.Default with
-              Name = "Cool Cluster Yo"
+              Name = name "Cool Cluster Yo"
               Members = Map.ofArray [| (mem.Id, mem) |] }
 
         let leadercfg =
@@ -139,7 +139,7 @@ module RaftIntegrationTests =
 
         let site =
           { ClusterConfig.Default with
-              Name = "Cool Cluster Yo"
+              Name = name "Cool Cluster Yo"
               Members = Map.ofArray [| (mem1.Id, mem1)
                                        (mem2.Id, mem2) |] }
 
@@ -195,7 +195,7 @@ module RaftIntegrationTests =
 
         let site =
           { ClusterConfig.Default with
-              Name = "Cool Cluster Yo"
+              Name = name "Cool Cluster Yo"
               Members = Map.ofArray [| (mem1.Id, mem1) |] }
 
         let leadercfg =

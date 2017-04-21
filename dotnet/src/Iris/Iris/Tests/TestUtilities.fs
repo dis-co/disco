@@ -57,6 +57,11 @@ module TestData =
     Id.Create()
     |> string
 
+  let rndname() =
+    Id.Create()
+    |> string
+    |> name
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -102,9 +107,9 @@ module TestData =
 
   let mkUser () =
     { Id = Id.Create()
-      UserName = rndstr()
-      FirstName = rndstr()
-      LastName = rndstr()
+      UserName = rndname ()
+      FirstName = rndname ()
+      LastName = rndname ()
       Email =  rndstr()
       Password = rndstr()
       Salt = rndstr()
@@ -129,7 +134,7 @@ module TestData =
       |> Map.ofArray
 
     { Id = Id.Create()
-      Name = rndstr()
+      Name = rndname ()
       Client = Id.Create()
       Pins = pins }
 
@@ -138,7 +143,7 @@ module TestData =
         yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = "PinGroup 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = mkCues() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do

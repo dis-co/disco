@@ -65,7 +65,7 @@ type PinGroup =
   member self.ToYamlObject () =
     let yaml = new PinGroupYaml()
     yaml.Id <- string self.Id
-    yaml.Name <- self.Name
+    yaml.Name <- unwrap self.Name
     yaml.Client <- string self.Client
     yaml.Pins <- self.Pins
                    |> Map.toArray
@@ -90,7 +90,7 @@ type PinGroup =
           yml.Pins
 
       return { Id = Id yml.Id
-               Name = yml.Name
+               Name = name yml.Name
                Client = Id yml.Client
                Pins = pins }
     }
@@ -138,14 +138,14 @@ type PinGroup =
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
+               Name = name fb.Name
                Client = Id fb.Client
                Pins = pins }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> unwrap |> builder.CreateString
     let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
@@ -223,7 +223,7 @@ type PinGroup =
     with get () =
       let filepath =
         sprintf "%s_%s%s"
-          (String.sanitize self.Name)
+          (self.Name |> unwrap |> String.sanitize)
           (string self.Id)
           ASSET_EXTENSION
       PINGROUP_DIR </> filepath

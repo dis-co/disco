@@ -71,7 +71,7 @@ module IrisServiceTests =
 
       let site =
         { ClusterConfig.Default with
-            Name = "Cool Cluster Yo"
+            Name = name "Cool Cluster Yo"
             Members = members |> List.map (fun mem -> mem.Id,mem) |> Map.ofList }
 
       let project =
@@ -82,7 +82,7 @@ module IrisServiceTests =
               | Right project -> (i + 1, project)
               | Left error -> failwithf "unable to create project: %O" error
             else
-              match copyDir project'.Path (machine.WorkSpace </> project'.Name) with
+              match copyDir project'.Path (machine.WorkSpace </> unwrap project'.Name) with
               | Right () -> (i + 1, project')
               | Left error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<IrisProject>)
@@ -121,7 +121,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service.Subscribe
 
-        do! service.LoadProject(project.Name, "admin", "Nsynk")
+        do! service.LoadProject(unwrap project.Name, "admin", "Nsynk")
 
         checkStarted.WaitOne() |> ignore
 
@@ -182,7 +182,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service1.Subscribe
 
-        do! service1.LoadProject(project.Name, "admin", "Nsynk")
+        do! service1.LoadProject(unwrap project.Name, "admin", "Nsynk")
 
         checkStarted.WaitOne() |> ignore
 
@@ -194,7 +194,7 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> project.Name }
+        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> unwrap project.Name }
 
         let num2 = Git.Repo.commitCount repo2
 
@@ -212,7 +212,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service2.Subscribe
 
-        do! service2.LoadProject (project.Name, "admin", "Nsynk")
+        do! service2.LoadProject (unwrap project.Name, "admin", "Nsynk")
 
         checkStarted.WaitOne() |> ignore
 

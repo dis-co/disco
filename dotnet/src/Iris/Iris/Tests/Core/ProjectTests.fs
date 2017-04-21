@@ -97,7 +97,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let filename = Path.GetFileName path
 
         let engineCfg = RaftConfig.Default
 
@@ -114,7 +114,7 @@ module ProjectTests =
 
         let display1 =
           { Id        = Id.Create()
-          ; Name      = "Nice Display"
+          ; Name      = name "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
               [| { Size     = Rect       (500,500)
@@ -126,14 +126,14 @@ module ProjectTests =
               SrcViewportId = Id.Create()
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "A Cool Region"
+                  ; Name           = name "A Cool Region"
                   ; SrcPosition    = Coordinate (0,0)
                   ; SrcSize        = Rect       (50,50)
                   ; OutputPosition = Coordinate (50,50)
                   ; OutputSize     = Rect       (100,100)
                   };
                   { Id             = Id.Create()
-                  ; Name           = "Another Cool Region"
+                  ; Name           = name "Another Cool Region"
                   ; SrcPosition    = Coordinate (8,67)
                   ; SrcSize        = Rect       (588,5130)
                   ; OutputPosition = Coordinate (10,5300)
@@ -144,7 +144,7 @@ module ProjectTests =
 
         let display2 =
           { Id        = Id.Create()
-          ; Name      = "Cool Display"
+          ; Name      = name "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
               [| { Size     = Rect (800,200)
@@ -155,14 +155,14 @@ module ProjectTests =
             { SrcViewportId = Id.Create();
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "One Region"
+                  ; Name           = name "One Region"
                   ; SrcPosition    = Coordinate (0,8)
                   ; SrcSize        = Rect       (50,52)
                   ; OutputPosition = Coordinate (53,50)
                   ; OutputSize     = Rect       (103,800)
                   };
                   { Id             = Id.Create()
-                  ; Name           = "Premium Region"
+                  ; Name           = name "Premium Region"
                   ; SrcPosition    = Coordinate (8333,897)
                   ; SrcSize        = Rect       (83,510)
                   ; OutputPosition = Coordinate (1580,50)
@@ -173,7 +173,7 @@ module ProjectTests =
 
         let viewPort1 =
           { Id             = Id.Create()
-          ; Name           = "One fine viewport"
+          ; Name           = name "One fine viewport"
           ; Position       = Coordinate (22,22)
           ; Size           = Rect       (666,666)
           ; OutputPosition = Coordinate (0,0)
@@ -184,7 +184,7 @@ module ProjectTests =
 
         let viewPort2 =
           { Id             = Id.Create()
-          ; Name           = "Another fine viewport"
+          ; Name           = name "Another fine viewport"
           ; Position       = Coordinate (82,2)
           ; Size           = Rect       (466,86)
           ; OutputPosition = Coordinate (12310,80)
@@ -224,22 +224,22 @@ module ProjectTests =
               Port     = 1234us }
 
         let groupA: HostGroup =
-          { Name    = "Group A"
+          { Name    = name "Group A"
           ; Members = [| Id.Create() |]
           }
 
         let groupB: HostGroup =
-          { Name    = "Group B"
+          { Name    = name "Group B"
           ; Members = [| Id.Create() |]
           }
 
         let cluster =
           { Id = Id.Create()
-            Name   = "A mighty cool cluster"
+            Name   = name "A mighty cool cluster"
             Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
             Groups = [| groupA; groupB |] }
 
-        let! project = Project.create path name machine
+        let! project = Project.create path filename machine
 
         let updated =
           Project.updateConfig
@@ -409,15 +409,15 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let filename = Path.GetFileName path
 
-        let! project = Project.create path name machine
+        let! project = Project.create path filename machine
 
         let user =
           { Id = Id.Create()
-            UserName = "krgn"
-            FirstName = "karsten"
-            LastName = "gebbert"
+            UserName = name "krgn"
+            FirstName = name "karsten"
+            LastName = name "gebbert"
             Email = "k@lazy.af"
             Password = "1234"
             Salt = "56789"

@@ -1,5 +1,21 @@
 namespace Iris.Core
 
+// * Custom Units
+
+[<Measure>] type filepath
+[<Measure>] type name
+[<Measure>] type password
+[<Measure>] type timestamp
+
+[<AutoOpen>]
+module Measure =
+  let filepath p: string<filepath> = UoM.wrap p
+  let name u: string<name> = UoM.wrap u
+  let password p: string<password> = UoM.wrap p
+  let timestamp t: string<timestamp> = UoM.wrap t
+
+// * aliases
+
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
 //   / _ \ | | |/ _` / __|/ _ \/ __|
@@ -11,7 +27,7 @@ type MemberId   = Id
 type Long       = uint32
 type Index      = Long
 type Term       = Long
-type Name       = string
+type Name       = string<name>
 type Email      = string
 type Tag        = string
 type NodePath   = string
@@ -21,11 +37,11 @@ type VectorSize = int    option
 type Min        = int    option
 type Max        = int    option
 type Unit       = string option
-type FileMask   = string option
+type Filemask   = string option
 type Precision  = int    option
 type MaxChars   = int
 type FilePath   = string
-type UserName   = string
+type UserName   = string<name>
 type UserAgent  = string
 type ClientLog  = string
 type TimeStamp  = string

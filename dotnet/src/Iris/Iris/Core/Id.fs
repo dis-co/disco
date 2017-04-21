@@ -95,7 +95,9 @@ type Id =
 
 open System.Text.RegularExpressions
 
-type Id =
+[<MeasureAnnotatedAbbreviation>]
+type Id<[<Measure>] 'Measure> = Id
+and Id =
   | Id of string
 
   override id.ToString() =
@@ -117,5 +119,7 @@ type Id =
     System.Guid.NewGuid()
     |> string
     |> Id
+
+  static member IsUoM(_ : Id, _ : Id<'Measure>) = ()
 
 #endif

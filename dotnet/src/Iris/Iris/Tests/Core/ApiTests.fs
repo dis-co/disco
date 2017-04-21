@@ -21,7 +21,7 @@ module ApiTests =
 
     let project =
       { Id        = Id.Create()
-        Name      = "Hello"
+        Name      = name "Hello"
         Path      = Path.GetTempPath()
         CreatedOn = Time.createTimestamp()
         LastSaved = Some (Time.createTimestamp ())

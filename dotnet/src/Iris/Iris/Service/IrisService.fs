@@ -959,7 +959,7 @@ module Iris =
 
       let user =
         state.Users
-        |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+        |> Map.tryPick (fun _ u -> if u.UserName = name userName then Some u else None)
 
       match user with
       | Some user when isValidPassword user password ->
@@ -973,8 +973,8 @@ module Iris =
           | Some site ->
             let site =
               state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Name = site)
-              |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
+              |> Array.tryFind (fun s -> s.Name = name site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name site }
 
             // Add current machine if necessary
             let site =

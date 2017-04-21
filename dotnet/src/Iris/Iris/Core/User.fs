@@ -88,7 +88,7 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
 [<CustomEquality;CustomComparison>]
 type User =
   { Id:        Id
-  ; UserName:  Name
+  ; UserName:  UserName
   ; FirstName: Name
   ; LastName:  Name
   ; Email:     Email
@@ -166,7 +166,7 @@ type User =
 
   member user.Signature
     with get () =
-      let name = sprintf "%s %s" user.FirstName user.LastName
+      let name = String.Format("{0} {1}", user.FirstName, user.LastName)
       new Signature(name, user.Email, new DateTimeOffset(user.Created))
 
   // ** AssetPath
@@ -175,7 +175,7 @@ type User =
     with get () =
       let filename =
         sprintf "%s_%s%s"
-          (String.sanitize user.UserName)
+          (user.UserName |> unwrap |> String.sanitize)
           (string user.Id)
           ASSET_EXTENSION
       USER_DIR </> filename
@@ -183,9 +183,9 @@ type User =
   static member Admin
     with get () =
       { Id        = Id "cb558968-bd42-4de0-a671-18e2ec7cf580"
-      ; UserName  = "admin"
-      ; FirstName = "Administrator"
-      ; LastName  = ""
+      ; UserName  = name "admin"
+      ; FirstName = name "Administrator"
+      ; LastName  = name ""
       ; Email     = "admin@nsynk.de"
       ; Password  = ADMIN_DEFAULT_PASSWORD
       ; Salt      = ADMIN_DEFAULT_SALT
@@ -203,9 +203,9 @@ type User =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id        = self.Id        |> string |> builder.CreateString
-    let username  = self.UserName  |> builder.CreateString
-    let firstname = self.FirstName |> builder.CreateString
-    let lastname  = self.LastName  |> builder.CreateString
+    let username  = self.UserName  |> unwrap |> builder.CreateString
+    let firstname = self.FirstName |> unwrap |> builder.CreateString
+    let lastname  = self.LastName  |> unwrap |> builder.CreateString
     let email     = self.Email     |> builder.CreateString
     let password  = self.Password  |> builder.CreateString
     let salt      = self.Salt      |> builder.CreateString
@@ -228,9 +228,9 @@ type User =
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
     Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-        UserName  = fb.UserName
-        FirstName = fb.FirstName
-        LastName  = fb.LastName
+        UserName  = name fb.UserName
+        FirstName = name fb.FirstName
+        LastName  = name fb.LastName
         Email     = fb.Email
         Password  = fb.Password
         Salt      = fb.Salt
@@ -252,9 +252,9 @@ type User =
   member self.ToYamlObject () =
     new UserYaml(
       string self.Id,
-      self.UserName,
-      self.FirstName,
-      self.LastName,
+      unwrap self.UserName,
+      unwrap self.FirstName,
+      unwrap self.LastName,
       self.Email,
       self.Password,
       self.Salt,
@@ -267,9 +267,9 @@ type User =
   static member FromYamlObject (yaml: UserYaml) =
     Either.tryWith (Error.asParseError "User.FromYaml") <| fun _ ->
       { Id        = Id yaml.Id
-        UserName  = yaml.UserName
-        FirstName = yaml.FirstName
-        LastName  = yaml.LastName
+        UserName  = name yaml.UserName
+        FirstName = name yaml.FirstName
+        LastName  = name yaml.LastName
         Email     = yaml.Email
         Password  = yaml.Password
         Salt      = yaml.Salt
