@@ -2295,7 +2295,7 @@ Config: %A
   member self.ToBytes () =
     Binary.buildBuffer self
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> ProjectFB.GetRootAsProjectFB
     |> IrisProject.FromFB

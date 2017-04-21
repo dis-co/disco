@@ -92,7 +92,7 @@ type WebSocket(_url: string)  =
   member self.Close() = failwith "ONLY JS"
 
   [<Emit("$0.send($1)")>]
-  member self.Send(_: Binary.Buffer) = failwith "ONLY JS"
+  member self.Send(_: ArrayBuffer) = failwith "ONLY JS"
 
 (* ///////////////////////////////////////////////////////////////////////////////
       ____ _       _           _  ____            _            _
@@ -156,6 +156,8 @@ type GlobalContext() =
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()
 
+  let toBytes(buffer: ArrayBuffer): byte[] = !!JS.Uint8Array.Create(buffer)
+
   member self.ConnectServer(addr) =
     let init _ =
       let sock = WebSocket(addr)
@@ -171,7 +173,7 @@ type GlobalContext() =
         self.Broadcast ClientMessage.Disconnected
 
       sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
-        match Binary.decode ev.Data with
+        match toBytes ev.Data |> Binary.decode with
         | Right sm   -> self.OnSocketMessage sm
         | Left error ->
           sprintf "Unable to parse received message. %A" error
@@ -278,9 +280,9 @@ type GlobalContext() =
   member self.Socket with get () = socket
 
   member self.SendServer (msg: StateMachine) =
-    let buffer = Binary.encode msg
+    let bytes = Binary.encode msg
     match socket with
-    | Some server -> server.Send(buffer)
+    | Some server -> server.Send(!!bytes?buffer)
     | _           -> self.Log "Cannot update server: no connection."
 
   member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =

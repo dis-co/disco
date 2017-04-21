@@ -34,10 +34,8 @@ module SerializationTests =
         ; LastLogTerm = 7u
         ; Candidate = mem }
 
-      let msg   = RequestVote(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      RequestVote(Id.Create(), vr)
+      |> binaryEncDec
 
   // __     __    _       ____
   // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -53,10 +51,8 @@ module SerializationTests =
         ; Granted = false
         ; Reason = Some (RaftError("test","error")) }
 
-      let msg   = RequestVoteResponse(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      RequestVoteResponse(Id.Create(), vr)
+      |> binaryEncDec
 
   //     _                               _ _____       _        _
   //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
@@ -90,15 +86,11 @@ module SerializationTests =
           ; LeaderCommit = 182u
           ; Entries = log }
 
-        let msg   = AppendEntries(Id.Create(), ae)
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+        AppendEntries(Id.Create(), ae)
+        |> binaryEncDec
 
-        expect "Should be structurally the same" msg id remsg
-
-        let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-        expect "Should be structurally the same" msg id remsg
+        AppendEntries(Id.Create(), { ae with Entries = None })
+        |> binaryEncDec
       }
       |> noError
 
@@ -118,10 +110,8 @@ module SerializationTests =
         ; FirstIndex   = 8942u
         }
 
-      let msg = AppendEntriesResponse(Id.Create(), response)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      AppendEntriesResponse(Id.Create(), response)
+      |> binaryEncDec
 
   //  ____                        _           _
   // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -145,10 +135,8 @@ module SerializationTests =
           ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(state))
           }
 
-        let msg = InstallSnapshot(Id.Create(), is)
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-        expect "Should be structurally the same" msg id remsg
+        InstallSnapshot(Id.Create(), is)
+        |> binaryEncDec
       }
       |> noError
 
@@ -160,10 +148,8 @@ module SerializationTests =
 
   let test_validate_handshake_serialization =
     testCase "Validate HandShake Serialization" <| fun _ ->
-      let msg = HandShake(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      HandShake(Member.create (Id.Create()))
+      |> binaryEncDec
 
   //  _   _                 ___        __    _
   // | | | | __ _ _ __   __| \ \      / /_ _(_)_   _____
@@ -173,10 +159,8 @@ module SerializationTests =
 
   let test_validate_handwaive_serialization =
     testCase "Validate HandWaive Serialization" <| fun _ ->
-      let msg = HandWaive(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      HandWaive(Member.create (Id.Create()))
+      |> binaryEncDec
 
   //  ____          _ _               _
   // |  _ \ ___  __| (_)_ __ ___  ___| |_
@@ -186,10 +170,8 @@ module SerializationTests =
 
   let test_validate_redirect_serialization =
     testCase "Validate Redirect Serialization" <| fun _ ->
-      let msg = Redirect(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
+      Redirect(Member.create (Id.Create()))
+      |> binaryEncDec
 
   // __        __   _
   // \ \      / /__| | ___ ___  _ __ ___   ___
@@ -199,9 +181,8 @@ module SerializationTests =
 
   let test_validate_welcome_serialization =
     testCase "Validate Welcome Serialization" <| fun _ ->
-      let msg = Welcome(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally the same" msg id remsg
+      Welcome(Member.create (Id.Create()))
+      |> binaryEncDec
 
   //     _              _               _               _
   //    / \   _ __ _ __(_)_   _____  __| | ___ _ __ ___(_)
@@ -211,9 +192,7 @@ module SerializationTests =
 
   let test_validate_arrivederci_serialization =
     testCase "Validate Arrivederci Serialization" <| fun _ ->
-      let msg = Arrivederci
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally the same" msg id remsg
+      Arrivederci |> binaryEncDec
 
   //  _____
   // | ____|_ __ _ __ ___  _ __
@@ -223,23 +202,17 @@ module SerializationTests =
 
   let test_validate_errorresponse_serialization =
     testCase "Validate ErrorResponse Serialization" <| fun _ ->
-
-      let errors = [
-          OK
-          GitError ("one","two")
-          ProjectError ("one","two")
-          ParseError ("one","two")
-          SocketError ("one","two")
-          IOError ("one","two")
-          AssetError ("one","two")
-          RaftError ("one","two")
-          Other  ("one","two")
-        ]
-      List.iter (fun err ->
-                  let msg = ErrorResponse(err)
-                  let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-                  expect "Should be structurally the same" msg id remsg)
-                errors
+      List.iter (ErrorResponse >> binaryEncDec) [
+        OK
+        GitError ("one","two")
+        ProjectError ("one","two")
+        ParseError ("one","two")
+        SocketError ("one","two")
+        IOError ("one","two")
+        AssetError ("one","two")
+        RaftError ("one","two")
+        Other  ("one","two")
+      ]
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -330,17 +303,11 @@ module SerializationTests =
 
   let test_validate_cue_binary_serialization =
     testCase "Validate Cue Binary Serialization" <| fun _ ->
-      let cue : Cue = mkCue ()
-
-      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
-      expect "should be same" cue id recue
+      mkCue () |> binaryEncDec
 
   let test_validate_cue_yaml_serialization =
     testCase "Validate Cue Yaml Serialization" <| fun _ ->
-      let cue : Cue = mkCue ()
-
-      let recue = cue |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" cue id recue
+      mkCue () |> yamlEncDec
 
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_
@@ -350,17 +317,11 @@ module SerializationTests =
 
   let test_validate_cuelist_binary_serialization =
     testCase "Validate CueList Binary Serialization" <| fun _ ->
-      let cuelist : CueList = mkCueList ()
-
-      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
-      expect "should be same" cuelist id recuelist
+      mkCueList () |> binaryEncDec
 
   let test_validate_cuelist_yaml_serialization =
     testCase "Validate CueList Yaml Serialization" <| fun _ ->
-      let cuelist : CueList = mkCueList ()
-
-      let recuelist = cuelist |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" cuelist id recuelist
+      mkCueList () |> yamlEncDec
 
   //  ____       _       _
   // |  _ \ __ _| |_ ___| |__
@@ -370,17 +331,11 @@ module SerializationTests =
 
   let test_validate_group_binary_serialization =
     testCase "Validate PinGroup Binary Serialization" <| fun _ ->
-      let group : PinGroup = mkPinGroup ()
-
-      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" group id regroup
+      mkPinGroup () |> binaryEncDec
 
   let test_validate_group_yaml_serialization =
     testCase "Validate PinGroup Yaml Serialization" <| fun _ ->
-      let group : PinGroup = mkPinGroup ()
-
-      let regroup = group |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" group id regroup
+      mkPinGroup () |> yamlEncDec
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -390,17 +345,11 @@ module SerializationTests =
 
   let test_validate_session_binary_serialization =
     testCase "Validate Session Binary Serialization" <| fun _ ->
-      let session : Session = mkSession ()
-
-      let resession = session |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" session id resession
+      mkSession () |> binaryEncDec
 
   let test_validate_session_yaml_serialization =
     testCase "Validate Session Yaml Serialization" <| fun _ ->
-      let session : Session = mkSession ()
-
-      let resession = session |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" session id resession
+      mkSession () |> yamlEncDec
 
   //  _   _
   // | | | |___  ___ _ __
@@ -410,17 +359,11 @@ module SerializationTests =
 
   let test_validate_user_binary_serialization =
     testCase "Validate User Binary Serialization" <| fun _ ->
-      let user : User = mkUser ()
-
-      let reuser = user |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" user id reuser
+      mkUser () |> binaryEncDec
 
   let test_validate_user_yaml_serialization =
     testCase "Validate User Yaml Serialization" <| fun _ ->
-      let user : User = mkUser ()
-
-      let reuser = user |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" user id reuser
+      mkUser () |> yamlEncDec
 
   //  ____  _ _
   // / ___|| (_) ___ ___
@@ -430,7 +373,6 @@ module SerializationTests =
 
   let test_validate_slice_binary_serialization =
     testCase "Validate Slice Binary Serialization" <| fun _ ->
-
       [| BoolSlice   (0u, true)
       ;  StringSlice (0u, "hello")
       ;  NumberSlice (0u, 1234.0)
@@ -439,14 +381,10 @@ module SerializationTests =
       ;  ColorSlice  (0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
       ;  ColorSlice  (0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
       |]
-      |> Array.iter
-        (fun slice ->
-          let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
-          expect "Should be structurally equivalent" slice id reslice)
+      |> Array.iter binaryEncDec
 
   let test_validate_slice_yaml_serialization =
     testCase "Validate Slice Yaml Serialization" <| fun _ ->
-
       [| BoolSlice    (0u, true    )
       ;  StringSlice   (0u, "hello" )
       ;  NumberSlice   (0u, 1234.0  )
@@ -455,10 +393,7 @@ module SerializationTests =
       ;  ColorSlice    (0u, RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } )
       ;  ColorSlice    (0u, HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } )
       |]
-      |> Array.iter
-        (fun slice ->
-          let reslice = slice |> Yaml.encode |> Yaml.decode |> Either.get
-          expect "Should be structurally equivalent" slice id reslice)
+      |> Array.iter yamlEncDec
 
   //  ____  _ _
   // / ___|| (_) ___ ___  ___
@@ -468,19 +403,11 @@ module SerializationTests =
 
   let test_validate_slices_binary_serialization =
     testCase "Validate Slices Binary Serialization" <| fun _ ->
+      mkSlices() |> Array.iter binaryEncDec
 
-      [| BoolSlices     (Id.Create(),[| true    |])
-      ;  StringSlices   (Id.Create(), [| "hello" |])
-      ;  NumberSlices   (Id.Create(), [| 1234.0  |])
-      ;  ByteSlices     (Id.Create(), [| [| 0uy; 4uy; 9uy; 233uy |] |])
-      ;  EnumSlices     (Id.Create(), [| { Key = "one"; Value = "two" }|])
-      ;  ColorSlices    (Id.Create(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
-      ;  ColorSlices    (Id.Create(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }|])
-      |]
-      |> Array.iter
-        (fun slices ->
-          let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
-          expect "Should be structurally equivalent" slices id reslices)
+  let test_validate_slices_yaml_serialization =
+    testCase "Validate Slices Yaml Serialization" <| fun _ ->
+      mkSlices() |> Array.iter yamlEncDec
 
   //  ____  _
   // |  _ \(_)_ __
@@ -490,19 +417,11 @@ module SerializationTests =
 
   let test_validate_pin_binary_serialization =
     testCase "Validate Pin Binary Serialization" <| fun _ ->
-      let check pin =
-        pin |> Binary.encode |> Binary.decode |> Either.get
-        |> expect "Should be structurally equivalent" pin id
-
-      Array.iter check (mkPins ())
+      mkPins () |> Array.iter binaryEncDec
 
   let test_validate_pin_yaml_serialization =
     testCase "Validate Pin Yaml Serialization" <| fun _ ->
-      let check pin =
-        pin |> Yaml.encode |> Yaml.decode |> Either.get
-        |> expect "Should be structurally equivalent" pin id
-
-      Array.iter check (mkPins ())
+      mkPins () |> Array.iter yamlEncDec
 
   //   ____ _ _            _
   //  / ___| (_) ___ _ __ | |_
@@ -512,12 +431,7 @@ module SerializationTests =
 
   let test_validate_client_binary_serialization =
     testCase "Validate Client Binary Serialization" <| fun _ ->
-      either {
-        let client = mkClient ()
-        let! reclient = client |> Binary.encode |> Binary.decode
-        expect "Should be structurally equivalent" client id reclient
-      }
-      |> noError
+      mkClient () |> binaryEncDec
 
   //  ____  _        _
   // / ___|| |_ __ _| |_ ___
@@ -527,12 +441,7 @@ module SerializationTests =
 
   let test_validate_state_binary_serialization =
     testCase "Validate State Binary Serialization" <| fun _ ->
-      either {
-        let! state = mkTmpDir() |> mkState
-        let! restate = state |> Binary.encode |> Binary.decode
-        expect "Should be structurally equivalent" state id restate
-      }
-      |> noError
+      mkTmpDir() |> mkState |> Either.map binaryEncDec |> noError
 
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -563,7 +472,7 @@ module SerializationTests =
           AddPin        <| mkPin ()
           UpdatePin     <| mkPin ()
           RemovePin     <| mkPin ()
-          UpdateSlices  <| mkSlices ()
+          UpdateSlices  <| mkSlice ()
           AddClient     <| mkClient ()
           UpdateClient  <| mkClient ()
           RemoveClient  <| mkClient ()
@@ -575,10 +484,7 @@ module SerializationTests =
           Command AppCommand.Undo
           LogMsg(Logger.create Debug "bla" "oohhhh")
           SetLogLevel Warn
-        ] |> List.iter
-            (fun cmd ->
-              let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
-              expect "Should be structurally the same" cmd id remsg)
+        ] |> List.iter binaryEncDec
       }
       |> noError
 
@@ -605,18 +511,14 @@ module SerializationTests =
           AddPin         <| mkPin ()
           UpdatePin      <| mkPin ()
           RemovePin      <| mkPin ()
-          UpdateSlices   <| mkSlices ()
+          UpdateSlices   <| mkSlice ()
           AddClient      <| mkClient ()
           UpdateClient   <| mkClient ()
           RemoveClient   <| mkClient ()
           AddMember      <| Member.create (Id.Create())
           UpdateMember   <| Member.create (Id.Create())
           RemoveMember   <| Member.create (Id.Create())
-        ] |> List.iter
-            (fun cmd ->
-              let msg = cmd |> Iris.Client.ClientApiRequest.Update
-              let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-              expect "Should be structurally the same" msg id remsg)
+        ] |> List.iter binaryEncDec
       }
       |> noError
 

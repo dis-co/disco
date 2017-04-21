@@ -428,17 +428,14 @@ Usage:
   let private parseDoubleValues (str: string) : double array =
     let parse input = try double input with | _ -> 0.0
     parseSimple parse str
-    |> Array.mapi (fun i num -> num)
 
-  let private parseByteValues (str: string) : Binary.Buffer array =
+  let private parseByteValues (str: string) : byte array array =
     parseStringValues str
-    |> Array.map
-      (fun thing -> Encoding.UTF8.GetBytes thing)
+    |> Array.map Encoding.UTF8.GetBytes
 
   let private parseColorValues (str: string) : ColorSpace array =
     parseStringValues str
-    |> Array.map
-      (fun thing -> parseColor thing)
+    |> Array.map parseColor
 
   let private parseEnumValues (props: Property array) (str: string) : Property array =
     str.Split(' ')

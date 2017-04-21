@@ -141,7 +141,7 @@ module Store =
           | Some(i) -> equals name1 i.Name
           | None    -> failwith "pin is mysteriously missing"
 
-        let updated = pin.SetName name2
+        let updated = Pin.setName name2 pin
         store.Dispatch <| UpdatePin(updated)
 
         match Map.tryFindPin pin.Id store.State.PinGroups with
@@ -175,7 +175,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -193,7 +193,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -213,7 +213,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -227,7 +227,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Pins = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 

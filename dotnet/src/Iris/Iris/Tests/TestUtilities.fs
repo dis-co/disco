@@ -74,31 +74,68 @@ module TestData =
     Directory.CreateDirectory path |> ignore
     path
 
+  let mkByte() =
+    let arr = rand.Next(2,12) |> Array.zeroCreate
+    rand.NextBytes(arr)
+    arr
+
+  let mkBytes() =
+    [| for n in 0 .. rand.Next(2,12) -> mkByte() |]
+
+  let mkBools() =
+    [| for n in 0 .. rand.Next(2,9) -> rand.Next(0,2) > 0 |]
+
+  let mkStrings() =
+    [| for n in 0 .. rand.Next(2,8) -> rndstr() |]
+
+  let mkNumbers() =
+    [| for n in 0 .. rand.Next(2,8) -> rand.NextDouble() |]
+
+  let mkProps() =
+    [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
+
   let mkPin() =
     Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [| true |])
 
+  let mkColors() =
+    [| for n in 0 .. rand.Next(2,12) do
+         if rand.Next(0,2) > 0 then
+            yield RGBA { Red   = uint8 (rand.Next(0,255))
+                         Green = uint8 (rand.Next(0,255))
+                         Blue  = uint8 (rand.Next(0,255))
+                         Alpha = uint8 (rand.Next(0,255)) }
+         else
+            yield HSLA { Hue        = uint8 (rand.Next(0,255))
+                         Saturation = uint8 (rand.Next(0,255))
+                         Lightness  = uint8 (rand.Next(0,255))
+                         Alpha      = uint8 (rand.Next(0,255)) } |]
+
   let mkPins () =
-    let props = [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"} |]
-    let selected = props.[0]
-    let rgba = RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy }
-    let hsla = HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }
-    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), [| true |])
-    ;  Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), [| true |])
-    ;  Pin.String    (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.FileName  (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.Directory (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.Url       (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.IP        (mk(), rndstr(), mk(), mkTags(), [| rndstr() |])
-    ;  Pin.Number    (mk(), rndstr(), mk(), mkTags(), [| double 3.0 |])
-    ;  Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), [| [| 2uy; 9uy |] |])
-    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), [| rgba |])
-    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), [| hsla |])
-    ;  Pin.Enum      (mk(), rndstr(), mk(), mkTags(), props, [| selected |])
+    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), mkBools())
+    ;  Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), mkBools())
+    ;  Pin.String    (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.FileName  (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.Directory (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.Url       (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.IP        (mk(), rndstr(), mk(), mkTags(), mkStrings())
+    ;  Pin.Number    (mk(), rndstr(), mk(), mkTags(), mkNumbers())
+    ;  Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), mkBytes())
+    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), mkColors())
+    ;  Pin.Enum      (mk(), rndstr(), mk(), mkTags(), mkProps(), mkProps())
     |]
 
+  let mkSlice() =
+    match rand.Next(0,6) with
+    | 0 -> BoolSlices(mk(), mkBools())
+    | 1 -> StringSlices(mk(), mkStrings())
+    | 2 -> NumberSlices(mk(), mkNumbers())
+    | 3 -> ByteSlices(mk(), mkBytes())
+    | 4 -> ColorSlices(mk(), mkColors())
+    | _ -> EnumSlices(mk(), mkProps())
+
   let mkSlices() =
-    BoolSlices(mk(), [| true |])
+    [| for n in 0 .. rand.Next(2,12) -> mkSlice() |]
 
   let inline asMap arr =
     arr
@@ -121,11 +158,10 @@ module TestData =
         yield mkUser() |]
 
   let mkCue () : Cue =
-    { Id = Id.Create(); Name = rndstr(); Pins = mkPins() }
+    { Id = Id.Create(); Name = rndstr(); Slices = mkSlices() }
 
   let mkCues () =
-    [| for n in 0 .. rand.Next(1,20) do
-        yield mkCue() |]
+    [| for n in 0 .. rand.Next(1,20) -> mkCue() |]
 
   let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
@@ -222,3 +258,11 @@ module TestData =
     |> fun path ->
       LibGit2Sharp.Repository.Init path |> ignore
       new LibGit2Sharp.Repository(path)
+
+  let inline binaryEncDec (thing: ^t) =
+    let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get
+    expect "Should be equal" thing id rething
+
+  let inline yamlEncDec (thing: ^t) =
+    let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Either.get
+    expect "Should be equal" thing id rething

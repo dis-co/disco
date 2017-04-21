@@ -20,24 +20,25 @@ open Iris.Serialization
 open SharpYaml
 open SharpYaml.Serialization
 
-type CueYaml(id, name, pins) as self =
-  [<DefaultValue>] val mutable Id   : string
-  [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Pins : PinYaml array
+type CueYaml(id, name, slices) as self =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Slices: SlicesYaml array
 
   new () = new CueYaml(null, null, null)
 
   do
     self.Id <- id
     self.Name <- name
-    self.Pins <- pins
+    self.Slices <- slices
 
 #endif
 
+[<StructuralEquality; StructuralComparison>]
 type Cue =
-  { Id:   Id
-    Name: string
-    Pins: Pin array }
+  { Id:     Id
+    Name:   string
+    Slices: Slices array }
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -48,32 +49,32 @@ type Cue =
 
   static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
     either {
-      let! pins =
-        let arr = Array.zeroCreate fb.PinsLength
+      let! slices =
+        let arr = Array.zeroCreate fb.SlicesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Pin array>) _ -> either {
-              let! (i, pins) = m
+          (fun (m: Either<IrisError,int * Slices array>) _ -> either {
+              let! (i, slices) = m
 
               #if FABLE_COMPILER
 
-              let! pin = i |> fb.Pins |> Pin.FromFB
+              let! slice = i |> fb.Slices |> Slices.FromFB
 
               #else
 
-              let! pin =
-                let nullable = fb.Pins(i)
+              let! slice =
+                let nullable = fb.Slices(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> Pin.FromFB
+                  |> Slices.FromFB
                 else
-                  "Could not parse empty PinFB"
+                  "Could not parse empty SlicesFB"
                   |> Error.asParseError "Cue.FromFB"
                   |> Either.fail
 
               #endif
 
-              pins.[i] <- pin
-              return (i + 1, pins)
+              slices.[i] <- slice
+              return (i + 1, slices)
             })
           (Right (0, arr))
           arr
@@ -81,22 +82,24 @@ type Cue =
 
       return { Id = Id fb.Id
                Name = fb.Name
-               Pins = pins }
+               Slices = slices }
     }
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
-    let pinoffsets = Array.map (fun (pin: Pin) -> pin.ToOffset(builder)) self.Pins
-    let pins = CueFB.CreatePinsVector(builder, pinoffsets)
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)
     CueFB.StartCueFB(builder)
     CueFB.AddId(builder, id)
     CueFB.AddName(builder, name)
-    CueFB.AddPins(builder, pins)
+    CueFB.AddSlices(builder, slices)
     CueFB.EndCueFB(builder)
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
-    CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Cue> =
+    bytes
+    |> Binary.createBuffer
+    |> CueFB.GetRootAsCueFB
     |> Cue.FromFB
 
   member self.ToBytes() = Binary.buildBuffer self
@@ -110,27 +113,27 @@ type Cue =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
-    let pins = Array.map Yaml.toYaml self.Pins
-    new CueYaml(string self.Id, self.Name, pins)
+    let slices = Array.map Yaml.toYaml self.Slices
+    new CueYaml(string self.Id, self.Name, slices)
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
     either {
-      let! pins =
-        let arr = Array.zeroCreate yaml.Pins.Length
+      let! slices =
+        let arr = Array.zeroCreate yaml.Slices.Length
         Array.fold
-          (fun (m: Either<IrisError,int * Pin array>) box -> either {
+          (fun (m: Either<IrisError,int * Slices array>) box -> either {
             let! (i, arr) = m
-            let! (pin : Pin) = Yaml.fromYaml box
-            arr.[i] <- pin
+            let! (slice : Slices) = Yaml.fromYaml box
+            arr.[i] <- slice
             return (i + 1, arr)
           })
           (Right (0, arr))
-          yaml.Pins
+          yaml.Slices
         |> Either.map snd
 
       return { Id = Id yaml.Id
                Name = yaml.Name
-               Pins = pins }
+               Slices = slices }
     }
 
   member self.ToYaml(serializer: Serializer) =

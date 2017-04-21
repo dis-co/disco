@@ -21,10 +21,10 @@ module SerializationTests =
 
   let mkBytes _ =
     let num = rand.Next(3, 10)
-    let bytes = JS.Uint8Array.Create(JS.ArrayBuffer.Create(float num))
+    let bytes = Array.zeroCreate<byte> num
     for i in 0 .. (num - 1) do
-      bytes.[i] <- float i
-    bytes.buffer
+      bytes.[i] <- byte i
+    bytes
 
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
@@ -56,7 +56,7 @@ module SerializationTests =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
 
   let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; Pins = pins () }
+    { Id = Id.Create(); Name = "Cue 1"; Slices = [| mkSlices() |] }
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
@@ -100,20 +100,21 @@ module SerializationTests =
     ; UserAgent = "Oh my goodness" }
 
   let mkState _ =
-    { Project  = mkProject ()
-    ; PinGroups  = mkPinGroup   () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
-    ; Cues     = mkCue     () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
-    ; CueLists = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
-    ; Sessions = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
-    ; Users    = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
-    ; Clients  = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+    { Project   = mkProject ()
+    ; PinGroups = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; Cues      = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
+    ; CueLists  = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
+    ; Sessions  = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
+    ; Users     = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
+    ; Clients   = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
     // TODO: Test DiscoveredServices
     ; DiscoveredServices = Map.empty
     }
 
   let inline check thing =
-    thing |> Binary.encode |> Binary.decode |> Either.get
-    |> fun thong -> equals thong thing
+    assert false
+    let thong = thing |> Binary.encode |> Binary.decode |> Either.get
+    equals thing thong
 
   let main () =
     (* ------------------------------------------------------------------------ *)
