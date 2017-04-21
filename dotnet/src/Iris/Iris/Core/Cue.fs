@@ -34,6 +34,7 @@ type CueYaml(id, name, slices) as self =
 
 #endif
 
+[<StructuralEquality; StructuralComparison>]
 type Cue =
   { Id:     Id
     Name:   string
@@ -95,7 +96,7 @@ type Cue =
     CueFB.AddSlices(builder, slices)
     CueFB.EndCueFB(builder)
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Cue> =
     bytes
     |> Binary.createBuffer
     |> CueFB.GetRootAsCueFB

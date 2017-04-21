@@ -474,7 +474,7 @@ type State =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,State> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,State> =
     Binary.createBuffer bytes
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
@@ -2217,7 +2217,7 @@ type StateMachine =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,StateMachine> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,StateMachine> =
     Binary.createBuffer bytes
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB

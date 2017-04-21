@@ -281,12 +281,12 @@ module String =
 
   /// *** encodeBase64
 
-  let encodeBase64 (bytes: Binary.Buffer) =
+  let encodeBase64 (bytes: byte[]) =
     #if FABLE_COMPILER
     let mutable str = ""
-    let arr = Fable.Import.JS.Uint8Array.Create(bytes)
-    for i in 0 .. (int arr.length - 1) do
-      str <- str + Fable.Import.JS.String.fromCharCode arr.[i]
+    let arr = bytes
+    for i in 0 .. (int arr.Length - 1) do
+      str <- str + Fable.Import.JS.String.fromCharCode(float arr.[i])
     Fable.Import.Browser.window.btoa str
     #else
     Convert.ToBase64String(bytes)
@@ -294,13 +294,13 @@ module String =
 
   /// *** decodeBase64
 
-  let decodeBase64 (buffer: string) : Binary.Buffer =
+  let decodeBase64 (buffer: string) : byte[] =
     #if FABLE_COMPILER
     let binary = Fable.Import.Browser.window.atob buffer
-    let bytes = Fable.Import.JS.Uint8Array.Create(float binary.Length)
+    let bytes = Array.zeroCreate<byte> binary.Length
     for i in 0 .. (binary.Length - 1) do
       bytes.[i] <- charCodeAt binary i
-    bytes.buffer
+    bytes
     #else
     Convert.FromBase64String(buffer)
     #endif

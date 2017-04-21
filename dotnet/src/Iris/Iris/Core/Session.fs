@@ -70,7 +70,7 @@ type Session =
                UserAgent = fb.UserAgent }
     }
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Session> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Session> =
     Binary.createBuffer bytes
     |> SessionFB.GetRootAsSessionFB
     |> Session.FromFB

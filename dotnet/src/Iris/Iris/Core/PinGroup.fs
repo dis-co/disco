@@ -160,9 +160,9 @@ type PinGroup =
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,PinGroup> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroup> =
     Binary.createBuffer bytes
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB

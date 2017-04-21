@@ -86,7 +86,7 @@ type RGBAValue =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> RGBAValueFB.GetRootAsRGBAValueFB
     |> RGBAValue.FromFB
@@ -166,7 +166,7 @@ type HSLAValue =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> HSLAValueFB.GetRootAsHSLAValueFB
     |> HSLAValue.FromFB
@@ -272,7 +272,7 @@ type ColorSpace =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB

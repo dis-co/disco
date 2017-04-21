@@ -12,16 +12,8 @@ module Mocha =
 
   let success (cb : unit -> unit) : unit = cb ()
 
-  [<Emit("chai.assert.deepEqual($1,$0)")>]
-  let chaiAssert(expectation: 'a) (value: 'a): unit = jsNative
-
   let inline equals (expectation: 'a) (value: 'a) : unit =
-    // Assign the values to prevent running expressions
-    // too many times when inlining
-    let expectation, value = expectation, value
-    if expectation <> value then
-      // Use chai.assert.deepEqual to display diffs with mocha
-      chaiAssert expectation value
+    Fable.Core.Testing.Assert.AreEqual(expectation, value)
 
   [<Emit "window.suite($0)">]
   let suite (desc : string) : unit = failwith "JS only"

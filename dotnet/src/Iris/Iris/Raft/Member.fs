@@ -220,7 +220,7 @@ and RaftMember =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) =
+  static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> RaftMemberFB.GetRootAsRaftMemberFB
     |> RaftMember.FromFB
@@ -322,7 +322,7 @@ and ConfigChange =
 
   member self.ToBytes () = Binary.buildBuffer self
 
-  static member FromBytes (bytes: Binary.Buffer) =
+  static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB

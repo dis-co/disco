@@ -108,7 +108,7 @@ type CueList =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) =
+  static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB

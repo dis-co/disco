@@ -21,10 +21,10 @@ module SerializationTests =
 
   let mkBytes _ =
     let num = rand.Next(3, 10)
-    let bytes = JS.Uint8Array.Create(JS.ArrayBuffer.Create(float num))
+    let bytes = Array.zeroCreate<byte> num
     for i in 0 .. (num - 1) do
-      bytes.[i] <- float i
-    bytes.buffer
+      bytes.[i] <- byte i
+    bytes
 
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
@@ -112,8 +112,9 @@ module SerializationTests =
     }
 
   let inline check thing =
+    assert false
     let thong = thing |> Binary.encode |> Binary.decode |> Either.get
-    equals thong thing
+    equals thing thong
 
   let main () =
     (* ------------------------------------------------------------------------ *)

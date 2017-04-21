@@ -864,11 +864,11 @@ type Pin =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Pin> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Pin> =
     Binary.createBuffer bytes
     |> PinFB.GetRootAsPinFB
     |> Pin.FromFB
@@ -1298,7 +1298,7 @@ type Pin =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<IrisError,int * Binary.Buffer array>) (yml: SliceYaml) ->
+              (fun (m: Either<IrisError,int * byte[] array>) (yml: SliceYaml) ->
                 either {
                   let! (i, arr) = m
                   let! value = yml.ToSlice()
@@ -1693,11 +1693,11 @@ type NumberPinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,NumberPinD> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,NumberPinD> =
     Binary.createBuffer bytes
     |> NumberPinFB.GetRootAsNumberPinFB
     |> NumberPinD.FromFB
@@ -1784,11 +1784,11 @@ type StringPinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromStrings
 
-  static member FromStrings(bytes: Binary.Buffer) : Either<IrisError,StringPinD> =
+  static member FromStrings(bytes: byte[]) : Either<IrisError,StringPinD> =
     Binary.createBuffer bytes
     |> StringPinFB.GetRootAsStringPinFB
     |> StringPinD.FromFB
@@ -1867,11 +1867,11 @@ type BoolPinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BoolPinD> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,BoolPinD> =
     Binary.createBuffer bytes
     |> BoolPinFB.GetRootAsBoolPinFB
     |> BoolPinD.FromFB
@@ -1894,7 +1894,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Labels     : string array
-    Values     : Binary.Buffer array }
+    Values     : byte[] array }
 
   // ** Equals
 
@@ -1916,7 +1916,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Labels)
     hash <- (hash * 7) + hashCode (string self.Direction)
     hash <- (hash * 7) + hashCode (string self.VecSize)
-    hash <- (hash * 7) + (Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) 0 self.Values)
+    hash <- (hash * 7) + (Array.fold (fun m (t: byte[]) -> m + int t.Length) 0 self.Values)
     #else
     hash <- (hash * 7) + self.Id.GetHashCode()
     hash <- (hash * 7) + self.Name.GetHashCode()
@@ -1944,18 +1944,18 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       let mutable contentsEqual = false
       let lengthEqual =
         #if FABLE_COMPILER
-        let mylen = Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) (Array.length self.Values) self.Values
-        let itlen = Array.fold (fun m (t: Binary.Buffer) -> m + int t.byteLength) (Array.length pin.Values) pin.Values
+        let mylen = Array.fold (fun m (t: byte[]) -> m + int t.Length) (Array.length self.Values) self.Values
+        let itlen = Array.fold (fun m (t: byte[]) -> m + int t.Length) (Array.length pin.Values) pin.Values
         let result = mylen = itlen
         if result then
           let mutable contents = true
           let mutable n = 0
 
           while n < Array.length self.Values do
-            let me = Fable.Import.JS.Uint8Array.Create(self.Values.[n])
-            let it = Fable.Import.JS.Uint8Array.Create(pin.Values.[n])
+            let me = self.Values.[n]
+            let it = pin.Values.[n]
             let mutable i = 0
-            while i < int self.Values.[n].byteLength do
+            while i < int self.Values.[n].Length do
               if contents then
                 contents <- me.[i] = it.[i]
               i <- i + 1
@@ -2034,11 +2034,11 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,BytePinD> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,BytePinD> =
     Binary.createBuffer bytes
     |> BytePinFB.GetRootAsBytePinFB
     |> BytePinD.FromFB
@@ -2144,11 +2144,11 @@ type EnumPinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromEnums
 
-  static member FromEnums(bytes: Binary.Buffer) : Either<IrisError,EnumPinD> =
+  static member FromEnums(bytes: byte[]) : Either<IrisError,EnumPinD> =
     Binary.createBuffer bytes
     |> EnumPinFB.GetRootAsEnumPinFB
     |> EnumPinD.FromFB
@@ -2225,11 +2225,11 @@ type ColorPinD =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromColors
 
-  static member FromColors(bytes: Binary.Buffer) : Either<IrisError,ColorPinD> =
+  static member FromColors(bytes: byte[]) : Either<IrisError,ColorPinD> =
     Binary.createBuffer bytes
     |> ColorPinFB.GetRootAsColorPinFB
     |> ColorPinD.FromFB
@@ -2246,7 +2246,7 @@ type Slice =
   | StringSlice   of Index * string
   | NumberSlice   of Index * double
   | BoolSlice     of Index * bool
-  | ByteSlice     of Index * Binary.Buffer
+  | ByteSlice     of Index * byte[]
   | EnumSlice     of Index * Property
   | ColorSlice    of Index * ColorSpace
 
@@ -2534,11 +2534,11 @@ type Slice =
 
   // ** ToBytes
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Slice> =
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Slice> =
     Binary.createBuffer bytes
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
@@ -2587,11 +2587,12 @@ type Slice =
 //  ___) | | | (_|  __/\__ \
 // |____/|_|_|\___\___||___/
 
+[<StructuralEquality; StructuralComparison>]
 type Slices =
   | StringSlices   of Id * string array
   | NumberSlices   of Id * double array
   | BoolSlices     of Id * bool array
-  | ByteSlices     of Id * Binary.Buffer array
+  | ByteSlices     of Id * byte[] array
   | EnumSlices     of Id * Property array
   | ColorSlices    of Id * ColorSpace array
 
@@ -2733,7 +2734,7 @@ type Slices =
         arr
     | ByteSlices(_,arr) ->
       Array.iteri
-        (fun i (value: Binary.Buffer) ->
+        (fun i (value: byte[]) ->
           if i > 0 then sb.Append ',' |> ignore
           sb.Append '|' |> ignore
           value |> String.encodeBase64 |> sb.Append |> ignore
@@ -2935,10 +2936,10 @@ type Slices =
           |> Either.fail
     }
 
-  member slices.ToBytes() : Binary.Buffer =
+  member slices.ToBytes() : byte[] =
     Binary.buildBuffer slices
 
-  static member FromBytes(raw: Binary.Buffer) : Either<IrisError,Slices> =
+  static member FromBytes(raw: byte[]) : Either<IrisError,Slices> =
     Binary.createBuffer raw
     |> SlicesFB.GetRootAsSlicesFB
     |> Slices.FromFB

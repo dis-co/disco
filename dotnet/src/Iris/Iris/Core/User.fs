@@ -237,7 +237,7 @@ type User =
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 

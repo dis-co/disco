@@ -166,7 +166,7 @@ type DiscoveredService =
   member request.ToBytes() =
     Binary.buildBuffer request
 
-  static member FromBytes(raw: Binary.Buffer) =
+  static member FromBytes(raw: byte[]) =
     IrisClientFB.GetRootAsIrisClientFB(Binary.createBuffer raw)
     |> IrisClient.FromFB
 
