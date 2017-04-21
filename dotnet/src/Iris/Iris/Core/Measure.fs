@@ -8,6 +8,28 @@ open System
 
 // * Extended Units of Measure
 
+#if FABLE_COMPILER
+// For some reason it seems these types are deriving from Object in Fable
+// causing and error when the script is compiled. Just add the Erase attribute
+// to remove these from the generated JS code.
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type string<[<Measure>] 'Measure> = string
+
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type bool<[<Measure>] 'Measure> = bool
+
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type uint8<[<Measure>] 'Measure> = uint8
+
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type uint16<[<Measure>] 'Measure> = uint16
+
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type uint32<[<Measure>] 'Measure> = uint32
+
+[<MeasureAnnotatedAbbreviation; Fable.Core.Erase>]
+type uint64<[<Measure>] 'Measure> = uint64
+#else
 [<MeasureAnnotatedAbbreviation>]
 type string<[<Measure>] 'Measure> = string
 
@@ -25,6 +47,7 @@ type uint32<[<Measure>] 'Measure> = uint32
 
 [<MeasureAnnotatedAbbreviation>]
 type uint64<[<Measure>] 'Measure> = uint64
+#endif
 
 // * UoM
 
