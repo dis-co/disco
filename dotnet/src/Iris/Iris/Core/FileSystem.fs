@@ -124,7 +124,7 @@ module File =
 
 // * Directory
 
-#if !FABLE_COMPILER && !IRIS_NODES
+#if !FABLE_COMPILER
 
 [<AutoOpen>]
 module Directory =
