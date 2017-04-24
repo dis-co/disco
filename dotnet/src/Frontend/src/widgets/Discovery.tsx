@@ -1,6 +1,7 @@
 import * as React from "react"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
+import domtoimage from "dom-to-image"
 import { touchesElement, map, first } from "../Util"
 
 declare var Iris: IIris;
@@ -11,12 +12,51 @@ interface DiscoveryProps {
 
 class DiscoveryView extends React.Component<DiscoveryProps,any> {
   disposable: IDisposable;
+  childNodes: Map<string, HTMLElement>;
 
   constructor(props) {
     super(props);
     this.state = { tooltip: {} };
+    this.childNodes = new Map();
   }
 
+  startDragging(id, model) {
+    const __this = this;
+    const node = __this.childNodes.get(id);
+    if (node == null) { return; }
+
+    domtoimage.toPng(node)
+      .then(dataUrl => {
+        // console.log("drag start")
+        const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
+        $(document)
+          .on("mousemove.drag", e => {
+            // console.log("drag move", {x: e.clientX, y: e.clientY})
+            $(img).css({left:e.pageX, top:e.pageY});
+            __this.props.global.triggerEvent("drag", {
+              type: "move",
+              model: model,
+              x: e.clientX,
+              y: e.clientY
+            });
+          })
+          .on("mouseup.drag", e => {
+            // console.log("drag stop")
+            img.css({display: "none"});
+            __this.props.global.triggerEvent("drag", {
+              type: "stop",
+              model: model,
+              x: e.clientX,
+              y: e.clientY,
+            });
+            $(document).off("mousemove.drag mouseup.drag");
+          })
+      })
+      .catch(error => {
+          console.error('Error when generating image:', error);
+      });
+  }
+  
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("services", () => {
@@ -53,7 +93,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
   renderService(service) {
     var id = Iris.toString(service.Id)
     var info = {
-      tag: "service",
+      tag: "discovered-service",
       id: id,
       hostName: service.Hostname,
       ipAddr: Iris.toString(service.IpAddr),
@@ -62,9 +102,13 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
       gitPort: service.GitPort,
       apiPort: service.ApiPort
     }
-    return (<div key={id} className="iris-discovered-service"
+    return (<div
+      key={id}
+      className="iris-discovered-service"
+      ref={el => { if (el != null) this.childNodes.set(id, el) }}
       onMouseEnter={ev => this.displayTooltip(ev, info)}
       onMouseLeave={() => this.hideTooltip()}
+      onMouseDown={() => this.startDragging(id, info)}
     >{id}</div>)
   }  
 

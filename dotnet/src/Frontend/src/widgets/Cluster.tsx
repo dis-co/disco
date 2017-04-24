@@ -12,22 +12,43 @@ interface ClusterProps {
 }
 
 class ClusterView extends React.Component<ClusterProps,any> {
-  disposable: IDisposable;
+  disposables: IDisposable[];
+  el: HTMLElement;
 
   constructor(props) {
     super(props);
   }
 
   componentDidMount() {
-    this.disposable =
+    this.disposables = [];
+    this.disposables.push(
       this.props.global.subscribe("project", () => {
         this.forceUpdate();
-      });
+      })
+    );
+
+    this.disposables.push(
+      this.props.global.subscribeToEvent("drag", ev => {
+        if (this.el != null && ev.model && ev.model.tag === "discovered-service") {
+          // console.log("Detected",ev)
+          if (touchesElement(this.el, ev.x, ev.y)) {
+            switch (ev.type) {
+              case "move":
+                this.el.classList.add("iris-highlight-blue");
+                return;
+              case "stop":
+                Iris.addMember(this.state);
+            }
+          }
+          this.el.classList.remove("iris-highlight-blue")
+        }
+      })
+    );  
   }
 
   componentWillUnmount() {
-    if (this.disposable) {
-      this.disposable.dispose();
+    if (Array.isArray(this.disposables)) {
+      this.disposables.forEach(x => x.dispose());
     }
   }
 
@@ -35,7 +56,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
     const config = this.props.global.state.project.Config;
     let site = first(config.Sites, (site: any) => site.Id = config.ActiveSite);
     return (
-      <div className="iris-cluster">
+      <div className="iris-cluster"  ref={el => this.el = el}>
         <table className="table is-striped is-narrow" >
           <tfoot>
             <tr><td><a onClick={() => { showModal(AddNode)}}>Add node</a></td></tr>

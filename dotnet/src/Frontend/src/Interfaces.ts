@@ -27,9 +27,22 @@ export interface IIris {
   pinToKeyValuePairs(pin: IPin): [string, any][]
   updateSlices(pin: IPin, rowIndex: number, newValue: any)
   removeMember(projectConfig: any, memberId: any)
+  addMember(info: any)
 }
 
 // Temp placeholders
 export type IPin = any;
 export type IProject = any;
 export type IService = any;
+
+export interface Event {
+  name: string
+}
+
+export interface DragEvent extends Event {
+  type: "move" | "stop"
+  x: number,
+  y: number,
+  origin?: any,
+  model?: any
+}
