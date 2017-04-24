@@ -340,7 +340,7 @@ Usage:
     | _ -> None
 
   let private tryLoad (path: FilePath) =
-    let lines = try File.ReadAllLines(path) with | _ -> [| |]
+    let lines = try File.readLines path with | _ -> [| |]
     Array.fold
       (fun (pins: Map<Id,Pin>) line ->
         match parseLine line with
@@ -642,8 +642,8 @@ Usage:
         let server =
           { Port =
               if parsed.Contains <@ Port @>
-              then parsed.GetResult <@ Port @>
-              else Constants.DEFAULT_API_PORT
+              then port (parsed.GetResult <@ Port @>)
+              else port Constants.DEFAULT_API_PORT
             IpAddress =
               if parsed.Contains <@ Host @>
               then IPv4Address (parsed.GetResult <@ Host @>)
@@ -661,7 +661,7 @@ Usage:
               match parsed.Contains <@ Bind @> with
               | true  -> IPv4Address (parsed.GetResult <@ Bind @>)
               | false -> IPv4Address "127.0.0.1"
-            Port = uint16 (nextPort()) }
+            Port = nextPort() |> uint16 |> port }
 
         let! client = ApiClient.create server client
         do! client.Start()
@@ -672,13 +672,14 @@ Usage:
     | Right client ->
       let patch : PinGroup =
         { Id = patchid
-          Name = "MockClient Patch"
+          Name = name "MockClient Patch"
           Client = id
           Pins = Map.empty }
 
       let loaded =
         if parsed.Contains <@ File @> then
           parsed.GetResult <@ File @>
+          |> filepath
           |> tryLoad
         else
           Map.empty

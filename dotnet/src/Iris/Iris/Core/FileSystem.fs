@@ -106,7 +106,7 @@ module File =
     location |> unwrap |> File.ReadAllBytes
 
   let readLines (location: FilePath) =
-    location |> unwrap |> File.ReadAllBytes
+    location |> unwrap |> File.ReadAllLines
 
   // ** info
 
@@ -181,7 +181,7 @@ module FileSystem =
   #if !FABLE_COMPILER
 
   let tmpPath () =
-    (Path.GetTempPath() |> filepath) </> (filepath <| Path.GetRandomFileName())
+    Path.GetTempPath() <.> Path.GetRandomFileName()
 
   #endif
 
