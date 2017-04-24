@@ -105,10 +105,10 @@ module ProjectTests =
           { VvvvConfig.Default with
               Executables =
                 [| { Executable = filepath "/pth/to/nowhere"
-                  ; Version    = "0.0.0.0.0.0.1"
+                  ; Version    = version "0.0.0.0.0.0.1"
                   ; Required   = true };
                   { Executable = filepath "/antoher/path"
-                  ; Version    = "1.2.34.4"
+                  ; Version    = version "1.2.34.4"
                   ; Required   = false } |]
             }
 
@@ -117,7 +117,7 @@ module ProjectTests =
           ; Name      = name "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [| { Size     = Rect       (500,500)
+              [| { Size    = Rect       (500,500)
                 ; Position = Coordinate (0,0) };
                 { Size     = Rect       (800,800)
                 ; Position = Coordinate (29, 13) } |]

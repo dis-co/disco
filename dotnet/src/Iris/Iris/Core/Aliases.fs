@@ -17,6 +17,8 @@ namespace Iris.Core
 [<Measure>] type index
 [<Measure>] type term
 [<Measure>] type port
+[<Measure>] type chars
+[<Measure>] type version
 
 // * Aliases
 
@@ -35,13 +37,13 @@ type Email      = string<email>
 type Tag        = string
 type NodePath   = string
 type OSCAddress = string
-type Version    = string
+type Version    = string<version>
 type Min        = int    option
 type Max        = int    option
 type Unit       = string option
 type Filemask   = string option
 type Precision  = int    option
-type MaxChars   = int
+type MaxChars   = int<chars>
 type FilePath   = string<filepath>
 type UserName   = string<name>
 type UserAgent  = string
@@ -66,6 +68,7 @@ module Measure =
   let checksum t: Hash = UoM.wrap t
   let index i: Index = i * 1<index>
   let term t: Term = t * 1<term>
+  let version v: Version = UoM.wrap v
 
 type IPProtocol =
   | IPv4

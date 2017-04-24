@@ -923,7 +923,7 @@ Project:
 
   let internal parseExe (exe: ExeYaml) : Either<IrisError, VvvvExe> =
     Right { Executable = filepath exe.Path
-            Version    = exe.Version
+            Version    = version exe.Version
             Required   = exe.Required }
 
   // ** parseExes
@@ -1007,7 +1007,7 @@ Project:
     for exe in config.Vvvv.Executables do
       let entry = new ExeYaml()
       entry.Path <- unwrap exe.Executable;
-      entry.Version <- exe.Version;
+      entry.Version <- unwrap exe.Version;
       entry.Required <- exe.Required
       file.Project.VVVV.Executables.Add(entry)
 

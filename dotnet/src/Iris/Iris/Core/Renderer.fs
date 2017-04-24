@@ -353,7 +353,7 @@ type VvvvExe =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let path = self.Executable |> unwrap |> builder.CreateString
-    let version = builder.CreateString self.Version
+    let version = self.Version |> unwrap |> builder.CreateString
 
     VvvvExeFB.StartVvvvExeFB(builder)
     VvvvExeFB.AddExecutable(builder, path)
@@ -365,7 +365,7 @@ type VvvvExe =
     either {
       return
         { Executable = filepath fb.Executable
-          Version    = fb.Version
+          Version    = version fb.Version
           Required   = fb.Required }
     }
 

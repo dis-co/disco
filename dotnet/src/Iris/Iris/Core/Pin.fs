@@ -584,7 +584,7 @@ type Pin =
                 Behavior   = Simple
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -598,7 +598,7 @@ type Pin =
                 Behavior   = MultiLine
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -612,7 +612,7 @@ type Pin =
                 Behavior   = FileName
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -626,7 +626,7 @@ type Pin =
                 Behavior = Directory
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -640,7 +640,7 @@ type Pin =
                 Behavior   = Url
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -654,7 +654,7 @@ type Pin =
                 Behavior   = IP
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int>
+                MaxChars   = sizeof<int> * 1<chars>
                 Labels     = Pin.EmptyLabels(Array.length values)
                 Values     = values }
 
@@ -892,7 +892,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Tags       <- data.Tags
-      yaml.MaxChars   <- data.MaxChars
+      yaml.MaxChars   <- int data.MaxChars
       yaml.Behavior   <- string data.Behavior
       yaml.Direction  <- string data.Direction
       yaml.VecSize    <- string data.VecSize
@@ -1206,7 +1206,7 @@ type Pin =
             Name       = yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = yml.Tags
-            MaxChars   = yml.MaxChars
+            MaxChars   = yml.MaxChars * 1<chars>
             Behavior   = strtype
             VecSize    = vecsize
             Direction  = dir
@@ -1752,7 +1752,7 @@ type StringPinD =
     StringPinFB.AddPinGroup(builder, group)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
-    StringPinFB.AddMaxChars(builder, self.MaxChars)
+    StringPinFB.AddMaxChars(builder, int self.MaxChars)
     StringPinFB.AddVecSize(builder, vecsize)
     StringPinFB.AddDirection(builder, direction)
     StringPinFB.AddLabels(builder, labels)
@@ -1775,7 +1775,7 @@ type StringPinD =
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Behavior  = tipe
-               MaxChars  = fb.MaxChars
+               MaxChars  = 1<chars> * fb.MaxChars
                VecSize   = vecsize
                Direction = direction
                Labels    = labels
