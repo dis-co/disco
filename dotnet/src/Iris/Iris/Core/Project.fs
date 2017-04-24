@@ -48,9 +48,9 @@ open SharpYaml.Serialization
 /// Configuration for Raft-specific, user-facing values.
 ///
 type RaftConfig =
-  { RequestTimeout:   Long
-    ElectionTimeout:  Long
-    MaxLogDepth:      Long
+  { RequestTimeout:   uint32
+    ElectionTimeout:  uint32
+    MaxLogDepth:      uint32
     LogLevel:         Iris.Core.LogLevel
     DataDir:          FilePath
     MaxRetries:       uint8
@@ -63,11 +63,11 @@ type RaftConfig =
       MaxRetries       = 10uy
       PeriodicInterval = 50uy
       LogLevel         = LogLevel.Err
-      DataDir          = "" }
+      DataDir          = filepath "" }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let lvl = builder.CreateString (string self.LogLevel)
-    let dir = builder.CreateString self.DataDir
+    let lvl = self.LogLevel |> string |> builder.CreateString
+    let dir = self.DataDir |> unwrap |> builder.CreateString
 
     RaftConfigFB.StartRaftConfigFB(builder)
     RaftConfigFB.AddRequestTimeout(builder, self.RequestTimeout)
@@ -87,7 +87,7 @@ type RaftConfig =
           ElectionTimeout  = fb.ElectionTimeout
           MaxLogDepth      = fb.MaxLogDepth
           LogLevel         = level
-          DataDir          = fb.DataDir
+          DataDir          = filepath fb.DataDir
           MaxRetries       = uint8 fb.MaxRetries
           PeriodicInterval = uint8 fb.PeriodicInterval }
     }
@@ -922,7 +922,7 @@ Project:
   // ** parseExe
 
   let internal parseExe (exe: ExeYaml) : Either<IrisError, VvvvExe> =
-    Right { Executable = exe.Path
+    Right { Executable = filepath exe.Path
             Version    = exe.Version
             Required   = exe.Required }
 
@@ -953,7 +953,7 @@ Project:
 
   let internal parsePlugin (plugin: PluginYaml) : Either<IrisError, VvvvPlugin> =
     Right { Name = name plugin.Name
-            Path = plugin.Path }
+            Path = filepath plugin.Path }
 
   // ** parsePlugins
 
@@ -1006,7 +1006,7 @@ Project:
 
     for exe in config.Vvvv.Executables do
       let entry = new ExeYaml()
-      entry.Path <- exe.Executable;
+      entry.Path <- unwrap exe.Executable;
       entry.Version <- exe.Version;
       entry.Required <- exe.Required
       file.Project.VVVV.Executables.Add(entry)
@@ -1016,7 +1016,7 @@ Project:
     for plug in config.Vvvv.Plugins do
       let entry = new PluginYaml()
       entry.Name <- unwrap plug.Name
-      entry.Path <- plug.Path
+      entry.Path <- unwrap plug.Path
       file.Project.VVVV.Plugins.Add(entry)
 
     (file, config)
@@ -1046,7 +1046,7 @@ Project:
             ElectionTimeout  = uint32 engine.ElectionTimeout
             MaxLogDepth      = uint32 engine.MaxLogDepth
             LogLevel         = loglevel
-            DataDir          = engine.DataDir
+            DataDir          = filepath engine.DataDir
             MaxRetries       = uint8 engine.MaxRetries
             PeriodicInterval = uint8 engine.PeriodicInterval }
       with
@@ -1069,7 +1069,7 @@ Project:
     file.Project.Engine.ElectionTimeout  <- int config.Raft.ElectionTimeout
     file.Project.Engine.MaxLogDepth      <- int config.Raft.MaxLogDepth
     file.Project.Engine.LogLevel         <- string config.Raft.LogLevel
-    file.Project.Engine.DataDir          <- config.Raft.DataDir
+    file.Project.Engine.DataDir          <- unwrap config.Raft.DataDir
     file.Project.Engine.MaxRetries       <- int config.Raft.MaxRetries
     file.Project.Engine.PeriodicInterval <- int config.Raft.PeriodicInterval
     (file, config)
@@ -1618,8 +1618,8 @@ Project:
                  State      = state
                  Voting     = true
                  VotedForMe = false
-                 NextIndex  = 1u
-                 MatchIndex = 0u }
+                 NextIndex  = index 1u
+                 MatchIndex = index 0u }
       with
         | exn ->
           return!
@@ -2126,12 +2126,12 @@ module Config =
   // ** metadataPath
 
   let metadataPath (config: IrisConfig) =
-    config.Raft.DataDir </> RAFT_METADATA_FILENAME + ASSET_EXTENSION
+    unwrap config.Raft.DataDir <.> RAFT_METADATA_FILENAME + ASSET_EXTENSION
 
   // ** logDataPath
 
   let logDataPath (config: IrisConfig) =
-    config.Raft.DataDir </> RAFT_LOGDATA_PATH
+    unwrap config.Raft.DataDir <.> RAFT_LOGDATA_PATH
 
 // * IrisProject
 
@@ -2165,7 +2165,7 @@ Config: %A
 "
       (string project.Id)
       (unwrap project.Name)
-      project.Path
+      (unwrap project.Path)
       project.CreatedOn
       project.LastSaved
       project.Copyright
@@ -2178,8 +2178,8 @@ Config: %A
     with get () =
       { Id        = Id Constants.EMPTY
         Name      = name Constants.EMPTY
-        Path      = ""
-        CreatedOn = ""
+        Path      = filepath ""
+        CreatedOn = timestamp ""
         LastSaved = None
         Copyright = None
         Author    = None
@@ -2194,7 +2194,9 @@ Config: %A
   // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
 
   member project.AssetPath
-    with get () = PROJECT_FILENAME + ASSET_EXTENSION
+    with get () =
+      PROJECT_FILENAME + ASSET_EXTENSION
+      |> filepath
 
   // ** Save
 
@@ -2212,18 +2214,18 @@ Config: %A
 
       let normalizedPath =
         let withRoot =
-          if Path.IsPathRooted basepath then
+          if Path.isPathRooted basepath then
             basepath
           else
-            Path.GetFullPath basepath
-        if withRoot.EndsWith filename then
+            Path.getFullPath basepath
+        if Path.endsWith filename withRoot then
           withRoot
         else
-          withRoot </> filename
+          unwrap withRoot <.> filename
 
-      if not (File.Exists normalizedPath) then
+      if not (File.exists normalizedPath) then
         return!
-          sprintf "Project Not Found: %s" normalizedPath
+          sprintf "Project Not Found: %O" normalizedPath
           |> Error.asProjectError "Project.load"
           |> Either.fail
       else
@@ -2232,7 +2234,7 @@ Config: %A
 
         return
           { project with
-              Path   = Path.GetDirectoryName normalizedPath
+              Path   = Path.getDirectoryName normalizedPath
               Config = Config.updateMachine machine project.Config }
     }
 
@@ -2264,7 +2266,7 @@ Config: %A
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
     let name = self.Name |> unwrap |> builder.CreateString
-    let path = builder.CreateString self.Path
+    let path = self.Path |> unwrap |> builder.CreateString
     let created = builder.CreateString (string self.CreatedOn)
     let lastsaved = Option.map builder.CreateString self.LastSaved
     let copyright = Option.map builder.CreateString self.Copyright
@@ -2334,7 +2336,7 @@ Config: %A
       return
         { Id        = Id fb.Id
           Name      = name fb.Name
-          Path      = fb.Path
+          Path      = filepath fb.Path
           CreatedOn = fb.CreatedOn
           LastSaved = lastsaved
           Copyright = copyright
@@ -2398,8 +2400,8 @@ Config: %A
 
       return { Id        = Id meta.Id
                Name      = name meta.Name
-               Path      = Path.GetFullPath(".")
-               CreatedOn = meta.CreatedOn
+               Path      = Path.getFullPath (filepath ".")
+               CreatedOn = timestamp meta.CreatedOn
                LastSaved = lastSaved
                Copyright = ProjectYaml.parseStringProp meta.Copyright
                Author    = ProjectYaml.parseStringProp meta.Author
@@ -2435,7 +2437,7 @@ module Project =
   let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (Uri.localGitUri project.Path)
+    |> Option.map (project.Path |> unwrap |> Uri.localGitUri)
 
   #endif
 
@@ -2472,8 +2474,8 @@ module Project =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   let checkPath (machine: IrisMachine) projectName =
-    let path = machine.WorkSpace </> projectName </> PROJECT_FILENAME + ASSET_EXTENSION
-    if File.Exists path |> not then
+    let path = machine.WorkSpace </> (projectName <.> PROJECT_FILENAME + ASSET_EXTENSION)
+    if File.exists path |> not then
       sprintf "Project Not Found: %s" projectName
       |> Error.asProjectError "Project.checkPath"
       |> Either.fail
@@ -2485,22 +2487,22 @@ module Project =
   // ** filePath
 
   let filePath (project: IrisProject) : FilePath =
-    project.Path </> PROJECT_FILENAME + ASSET_EXTENSION
+    unwrap project.Path <.> PROJECT_FILENAME + ASSET_EXTENSION
 
   // ** userDir
 
   let userDir (project: IrisProject) : FilePath =
-    project.Path </> USER_DIR
+    unwrap project.Path <.> USER_DIR
 
   // ** cueDir
 
   let cueDir (project: IrisProject) : FilePath =
-    project.Path </> CUE_DIR
+    unwrap project.Path <.> CUE_DIR
 
   // ** cuelistDir
 
   let cuelistDir (project: IrisProject) : FilePath =
-    project.Path </> CUELIST_DIR
+    unwrap project.Path <.> CUELIST_DIR
 
   //   ____                _
   //  / ___|_ __ ___  __ _| |_ ___
@@ -2514,7 +2516,7 @@ module Project =
 
   let private writeDaemonExportFile (repo: Repository) =
     either {
-      let path = repo.Info.Path </> "git-daemon-export-ok"
+      let path = repo.Info.Path <.> "git-daemon-export-ok"
       let! _ = Asset.write path (Payload "")
       return ()
     }
@@ -2528,7 +2530,7 @@ module Project =
   let private writeGitIgnoreFile (repo: Repository) =
     either {
       let parent = Git.Repo.parentPath repo
-      let path = parent </> ".gitignore"
+      let path = parent </> filepath ".gitignore"
       let! _ = Asset.write path (Payload GITIGNORE)
       do! Git.Repo.stage repo path
     }
@@ -2544,7 +2546,7 @@ module Project =
       let parent = Git.Repo.parentPath repo
       let target = parent </> dir
       do! FileSystem.mkDir target
-      let gitkeep = target </> ".gitkeep"
+      let gitkeep = target </> filepath ".gitkeep"
       let! _ = Asset.write gitkeep (Payload "")
       do! Git.Repo.stage repo gitkeep
     }
@@ -2574,7 +2576,7 @@ module Project =
     either {
       let! repo = repository project
       let abspath =
-        if Path.IsPathRooted filepath then
+        if Path.isPathRooted filepath then
           filepath
         else
           project.Path </> filepath
@@ -2597,8 +2599,8 @@ module Project =
                Either<IrisError,(Commit * IrisProject)> =
 
     either {
-      let info = FileInfo path
-      do! FileSystem.mkDir info.Directory.FullName
+      let info = File.info path
+      do! info.Directory.FullName |> filepath |> FileSystem.mkDir
       let! _ = Asset.write path (Payload contents)
       return! commitPath path committer msg project
     }
@@ -2640,7 +2642,7 @@ module Project =
     let payload = thing |> Yaml.encode
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
-    let msg = String.Format("{0} saved {1}", committer.UserName, Path.GetFileName filepath)
+    let msg = String.Format("{0} saved {1}", committer.UserName, Path.getFileName filepath)
     saveFile filepath payload signature msg project
 
   #endif
@@ -2667,11 +2669,11 @@ module Project =
     deleteFile filepath signature msg project
 
   let private needsInit (project: IrisProject) =
-    let projdir = Directory.Exists project.Path
-    let git = Directory.Exists (project.Path </> ".git")
-    let cues = Directory.Exists (project.Path </> CUE_DIR)
-    let cuelists = Directory.Exists (project.Path </> CUELIST_DIR)
-    let users = Directory.Exists (project.Path </> USER_DIR)
+    let projdir = Directory.exists project.Path
+    let git = Directory.exists (project.Path </> filepath ".git")
+    let cues = Directory.exists (project.Path </> filepath CUE_DIR)
+    let cuelists = Directory.exists (project.Path </> filepath CUELIST_DIR)
+    let users = Directory.exists (project.Path </> filepath USER_DIR)
 
     (not git)      ||
     (not cues)     ||
@@ -2696,10 +2698,10 @@ module Project =
       let! repo = Git.Repo.init project.Path
       do! writeDaemonExportFile repo
       do! writeGitIgnoreFile repo
-      do! createAssetDir repo CUE_DIR
-      do! createAssetDir repo USER_DIR
-      do! createAssetDir repo CUELIST_DIR
-      do! createAssetDir repo PINGROUP_DIR
+      do! createAssetDir repo (filepath CUE_DIR)
+      do! createAssetDir repo (filepath USER_DIR)
+      do! createAssetDir repo (filepath CUELIST_DIR)
+      do! createAssetDir repo (filepath PINGROUP_DIR)
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
       let! _ =
@@ -2748,9 +2750,9 @@ module Project =
   let clone (host : string) (name : string) (destination: FilePath) : FilePath option =
     let url = sprintf "git://%s/%s/.git" host name
     try
-      Repository.Clone(url, Path.Combine(destination, name))
-      |> ignore
-      Some(destination </> name)
+      let path = destination </> filepath name
+      Repository.Clone(url, unwrap path) |> ignore
+      Some path
     with
       | _ -> None
 

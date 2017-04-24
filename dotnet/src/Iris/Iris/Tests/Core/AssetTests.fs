@@ -15,7 +15,7 @@ module AssetTests =
   type TestAsset = { Data: string }
     with
       member self.AssetPath
-        with get () = "test-asset.txt"
+        with get () = filepath "test-asset.txt"
 
       member self.Save(basePath: FilePath) =
         either {

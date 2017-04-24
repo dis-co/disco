@@ -439,7 +439,7 @@ module Process =
 
 #endif
 
-// * Security
+// * Crypto
 
 #if !FABLE_COMPILER
 
@@ -473,6 +473,7 @@ module Crypto =
     let sha256 = new SHA1Managed()
     sha256.ComputeHash(buf)
     |> toString
+    |> checksum
 
   /// ## sha256sum
   ///
@@ -486,6 +487,7 @@ module Crypto =
     let sha256 = new SHA256Managed()
     sha256.ComputeHash(buf)
     |> toString
+    |> checksum
 
   /// ## generateSalt
   ///
@@ -511,7 +513,9 @@ module Crypto =
   ///
   /// Returns: string
   let hashPassword (pw: Password) (salt: Salt) : Hash =
-    Encoding.UTF8.GetBytes(salt + unwrap pw)
+    let concat:string = unwrap salt + unwrap pw
+    concat
+    |> Encoding.UTF8.GetBytes
     |> sha256sum
 
   /// ## hash

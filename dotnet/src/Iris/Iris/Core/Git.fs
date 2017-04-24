@@ -540,7 +540,7 @@ module Git =
           |> Error.asGitError (tag "add")
           |> Either.fail
         else
-          if File.fileExists path then
+          if File.exists path then
             Path.map repo.Index.Add path
           Either.succeed ()
       with

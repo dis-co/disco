@@ -352,7 +352,7 @@ type VvvvExe =
     Required   : bool }
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let path = builder.CreateString self.Executable
+    let path = self.Executable |> unwrap |> builder.CreateString
     let version = builder.CreateString self.Version
 
     VvvvExeFB.StartVvvvExeFB(builder)
@@ -364,7 +364,7 @@ type VvvvExe =
   static member FromFB(fb: VvvvExeFB) =
     either {
       return
-        { Executable = fb.Executable
+        { Executable = filepath fb.Executable
           Version    = fb.Version
           Required   = fb.Required }
     }
@@ -382,7 +382,7 @@ type VvvvPlugin =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let name = self.Name |> unwrap |> builder.CreateString
-    let path = builder.CreateString self.Path
+    let path = self.Path |> unwrap |> builder.CreateString
 
     VvvvPluginFB.StartVvvvPluginFB(builder)
     VvvvPluginFB.AddName(builder,name)
@@ -393,5 +393,5 @@ type VvvvPlugin =
     either {
       return
         { Name = name fb.Name
-          Path = fb.Path }
+          Path = filepath fb.Path }
     }

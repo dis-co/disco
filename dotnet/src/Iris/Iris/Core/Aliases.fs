@@ -5,6 +5,7 @@ namespace Iris.Core
 [<Measure>] type filepath
 [<Measure>] type name
 [<Measure>] type password
+[<Measure>] type checksum
 [<Measure>] type timestamp
 [<Measure>] type frame
 [<Measure>] type sec                    // seconds
@@ -47,9 +48,9 @@ type ClientLog  = string
 type TimeStamp  = string
 type CallSite   = string
 type FileName   = string
-type Hash       = string
+type Hash       = string<checksum>
 type Password   = string<password>
-type Salt       = string
+type Salt       = string<checksum>
 type Port       = uint16<port>
 
 [<AutoOpen>]
@@ -61,7 +62,8 @@ module Measure =
   let email e: Email = UoM.wrap e
   let port p: Port = UoM.wrap p
   let index i: Index = UoM.wrap i
-  let term t: Index = UoM.wrap t
+  let term t: Term = UoM.wrap t
+  let checksum t: Hash = UoM.wrap t
 
 type IPProtocol =
   | IPv4

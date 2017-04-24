@@ -26,13 +26,13 @@ module UtilTests =
   let test_rmdir_should_delete_recursively =
     testCase "rmdir should delete recursively with read-only items" <| fun _ ->
       either {
-        let dir = Path.GetRandomFileName() |> Directory.CreateDirectory
-        let nested = dir.FullName </> Path.GetRandomFileName() |> Directory.CreateDirectory
-        let fn = nested.FullName </> Path.GetRandomFileName()
-        File.WriteAllText(fn, "hello")
-        let info = new FileInfo(fn)
+        let dir = Path.getRandomFileName() |> Directory.createDirectory
+        let nested = dir.FullName <.> Path.GetRandomFileName() |> Directory.createDirectory
+        let fn = nested.FullName <.> Path.GetRandomFileName()
+        File.writeText "hello" None fn
+        let info = File.info fn
         info.IsReadOnly <- true
-        do! rmDir dir.FullName
+        do! rmDir (filepath dir.FullName)
         expect "Should be gone" false Directory.Exists dir.FullName
       }
       |> noError

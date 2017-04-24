@@ -22,7 +22,7 @@ module ApiTests =
     let project =
       { Id        = Id.Create()
         Name      = name "Hello"
-        Path      = Path.GetTempPath()
+        Path      = Path.getTempPath()
         CreatedOn = Time.createTimestamp()
         LastSaved = Some (Time.createTimestamp ())
         Copyright = None
@@ -59,7 +59,7 @@ module ApiTests =
         do! server.SetState state
 
         let srvr : IrisServer =
-          { Port = mem.ApiPort
+          { Port = port mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -68,7 +68,7 @@ module ApiTests =
             Role = Role.Renderer
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
-            Port = mem.ApiPort + 1us }
+            Port = port (unwrap mem.ApiPort + 1us) }
 
         let! client = ApiClient.create srvr clnt
 
@@ -122,7 +122,7 @@ module ApiTests =
         do! server.SetState state
 
         let srvr : IrisServer =
-          { Port = mem.ApiPort
+          { Port = port mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -131,7 +131,7 @@ module ApiTests =
             Role = Role.Renderer
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
-            Port = mem.ApiPort + 1us }
+            Port = port (unwrap mem.ApiPort + 1us) }
 
         let! client = ApiClient.create srvr clnt
 
@@ -197,7 +197,7 @@ module ApiTests =
         let mem = Member.create (Id.Create())
 
         let srvr : IrisServer =
-          { Port = mem.ApiPort
+          { Port = port mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -206,7 +206,7 @@ module ApiTests =
             Role = Role.Renderer
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
-            Port = mem.ApiPort + 1us }
+            Port = port (unwrap mem.ApiPort + 1us) }
 
         let! server = ApiServer.create mem state.Project.Id
 
@@ -270,7 +270,7 @@ module ApiTests =
         expect "Server should have one cuelist" 1 len serverState.CueLists
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
-        do! client.UpdatePin (Pin.setSlice (BoolSlice(0u, false)) pin)
+        do! client.UpdatePin (Pin.setSlice (BoolSlice(index 0u, false)) pin)
 
         clientUpdate.WaitOne() |> ignore
 

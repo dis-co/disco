@@ -90,7 +90,7 @@ module Clock =
       Uri.epgmUri
         ip
         (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
-        Constants.CLOCK_MCAST_PORT
+        (port Constants.CLOCK_MCAST_PORT)
 
     let socket = new Pub(addr, Constants.CLOCK_MCAST_PREFIX)
 

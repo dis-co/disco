@@ -94,8 +94,8 @@ type User =
     FirstName: Name
     LastName:  Name
     Email:     Email
-    Password:  string
-    Salt:      string
+    Password:  Hash
+    Salt:      Hash
     Joined:    DateTime
     Created:   DateTime }
 
@@ -189,8 +189,8 @@ type User =
       ; FirstName = name "Administrator"
       ; LastName  = name ""
       ; Email     = email "admin@nsynk.de"
-      ; Password  = ADMIN_DEFAULT_PASSWORD
-      ; Salt      = ADMIN_DEFAULT_SALT
+      ; Password  = checksum ADMIN_DEFAULT_PASSWORD
+      ; Salt      = checksum ADMIN_DEFAULT_SALT
       ; Joined    = DateTime.UtcNow
       ; Created   = DateTime.UtcNow }
 
@@ -209,8 +209,8 @@ type User =
     let firstname = self.FirstName |> unwrap |> builder.CreateString
     let lastname  = self.LastName  |> unwrap |> builder.CreateString
     let email     = self.Email     |> unwrap |> builder.CreateString
-    let password  = self.Password  |> builder.CreateString
-    let salt      = self.Salt      |> builder.CreateString
+    let password  = self.Password  |> unwrap |> builder.CreateString
+    let salt      = self.Salt      |> unwrap |> builder.CreateString
     let joined    = self.Joined.ToString("o")  |> builder.CreateString
     let created   = self.Created.ToString("o") |> builder.CreateString
     UserFB.StartUserFB(builder)
@@ -230,12 +230,12 @@ type User =
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
     Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-        UserName  = name  fb.UserName
-        FirstName = name  fb.FirstName
-        LastName  = name  fb.LastName
-        Email     = email fb.Email
-        Password  = fb.Password
-        Salt      = fb.Salt
+        UserName  = name     fb.UserName
+        FirstName = name     fb.FirstName
+        LastName  = name     fb.LastName
+        Email     = email    fb.Email
+        Password  = checksum fb.Password
+        Salt      = checksum fb.Salt
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
 
@@ -258,8 +258,8 @@ type User =
       unwrap self.FirstName,
       unwrap self.LastName,
       unwrap self.Email,
-      self.Password,
-      self.Salt,
+      unwrap self.Password,
+      unwrap self.Salt,
       self.Joined,
       self.Created)
 
@@ -273,8 +273,8 @@ type User =
         FirstName = name yaml.FirstName
         LastName  = name yaml.LastName
         Email     = email yaml.Email
-        Password  = yaml.Password
-        Salt      = yaml.Salt
+        Password  = checksum yaml.Password
+        Salt      = checksum yaml.Salt
         Joined    = yaml.Joined
         Created   = yaml.Created }
 

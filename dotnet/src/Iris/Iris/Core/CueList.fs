@@ -167,12 +167,12 @@ type CueList =
 
   member self.AssetPath
     with get () =
-      let filepath =
+      let path =
         sprintf "%s_%s%s"
           (self.Name |> unwrap |> String.sanitize)
           (string self.Id)
           ASSET_EXTENSION
-      CUELIST_DIR </> filepath
+      CUELIST_DIR <.> path
 
   // ** Load
 
@@ -192,8 +192,8 @@ type CueList =
   static member LoadAll(basePath: FilePath) : Either<IrisError, CueList array> =
     either {
       try
-        let dir = basePath </> CUELIST_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath CUELIST_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,cuelists) =
           let arr =

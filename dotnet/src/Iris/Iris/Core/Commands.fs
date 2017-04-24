@@ -28,7 +28,7 @@ type Command =
   | GetServiceInfo
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:string * uri:string
-  | LoadProject of projectName:string * username:string * password:string * site:string option
+  | LoadProject of projectName:string * username:string * password:Password * site:string option
   | GetProjectSites of projectName:string * username:string * password:string
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

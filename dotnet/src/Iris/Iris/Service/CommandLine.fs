@@ -215,12 +215,12 @@ module CommandLine =
     either {
       let machine = MachineConfig.get()
       let! name = parameters |> tryGet "project" id
-      let dir = machine.WorkSpace </> name
-      let raftDir = dir </> RAFT_DIRECTORY
+      let dir = machine.WorkSpace </> filepath name
+      let raftDir = dir </> filepath RAFT_DIRECTORY
 
-      do! match Directory.Exists dir, force with
+      do! match Directory.exists dir, force with
           | true, false  ->
-            match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
+            match Directory.fileSystemEntries(dir).Count() = 0 with
             | true  -> Either.nothing
             | false ->
               printf "%A not empty. I clean first? y/n" dir
@@ -279,7 +279,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectDir: FilePath option) (frontend: string option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) (frontend: FilePath option) : Either<IrisError, unit> =
     either {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
@@ -299,7 +299,7 @@ module CommandLine =
       do!
         match projectDir with
         | Some projectDir ->
-          Commands.Command.LoadProject(projectDir, "admin", "Nsynk", None)
+          Commands.Command.LoadProject(unwrap projectDir, "admin", password "Nsynk", None)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
           |> Either.map ignore
@@ -359,13 +359,13 @@ module CommandLine =
   ///
   /// Returns: unit
   let resetProject (datadir: FilePath) = either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
-      let raftDir = datadir </> RAFT_DIRECTORY
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
+      let raftDir = datadir </> filepath RAFT_DIRECTORY
 
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
-      do! match Directory.Exists raftDir with
+      do! match Directory.exists raftDir with
           | true  -> rmDir raftDir
           | false -> Either.nothing
 
@@ -422,7 +422,7 @@ module CommandLine =
             pass <- String.subString 0 (String.length pass - 1) pass
             Console.Write("\b \b")
       printf "%s" Environment.NewLine
-    pass
+    password pass
 
   let private readString (field: string) =
     let mutable str = ""
@@ -472,14 +472,14 @@ module CommandLine =
 
   let addUser (datadir: FilePath) =
     either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
       let username  = readString "UserName"
       let firstname = readString "First Name"
       let lastname  = readString "Last Name"
-      let email     = readEmail  "Email"
+      let useremail = readEmail  "Email"
       let password1 = readPass   "Enter Password"
       let password2 = readPass   "Re-Enter Password"
 
@@ -490,7 +490,7 @@ module CommandLine =
             UserName  = name username
             FirstName = name firstname
             LastName  = name lastname
-            Email     = email
+            Email     = email useremail
             Password  = hash
             Salt      = salt
             Joined    = DateTime.UtcNow
@@ -506,7 +506,7 @@ module CommandLine =
 
   let addMember (datadir: FilePath) =
     either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 

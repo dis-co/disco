@@ -45,7 +45,7 @@ module Asset =
     either {
       try
         let data = match payload with | Payload data -> data
-        let info = File.fileInfo location
+        let info = File.info location
         do! info.Directory.FullName |> filepath |> mkDir
         File.writeText data (Some Encoding.UTF8) location
         info.Refresh()
@@ -75,7 +75,7 @@ module Asset =
   let delete (location: FilePath) =
     either {
       try
-        if File.fileExists location then
+        if File.exists location then
           Path.map File.Delete location
           return true
         else
@@ -105,7 +105,7 @@ module Asset =
   /// Returns: Either<IrisError,string>
   let read (location: FilePath) : Either<IrisError, string> =
     either {
-      if File.fileExists location then
+      if File.exists location then
         try
           return File.readText location
         with

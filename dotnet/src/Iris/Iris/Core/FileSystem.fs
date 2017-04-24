@@ -19,6 +19,7 @@ open System.Linq
 
 #if !FABLE_COMPILER
 
+[<AutoOpen>]
 module Path =
 
   // ** </>
@@ -107,14 +108,14 @@ module File =
   let readLines (location: FilePath) =
     location |> unwrap |> File.ReadAllBytes
 
-  // ** fileInfo
+  // ** info
 
-  let fileInfo (path: FilePath) =
+  let info (path: FilePath) =
     path |> unwrap |> FileInfo
 
-  // ** fileExists
+  // ** exists
 
-  let fileExists (path: FilePath) =
+  let exists (path: FilePath) =
     path
     |> unwrap
     |> File.Exists
@@ -135,10 +136,9 @@ module Directory =
     |> unwrap
     |> Directory.CreateDirectory
 
+  // ** info
 
-  // ** directoryInfo
-
-  let directoryInfo (path: FilePath) =
+  let info (path: FilePath) =
     path |> unwrap |> DirectoryInfo
 
   // ** fileSystemEntries
@@ -149,9 +149,9 @@ module Directory =
     |> Directory.GetFileSystemEntries
     |> Array.map filepath
 
-  // ** directoryExists
+  // ** exists
 
-  let directoryExists (path: FilePath) =
+  let exists (path: FilePath) =
     path
     |> unwrap
     |> Directory.Exists
@@ -160,6 +160,12 @@ module Directory =
 
   let getFiles (pattern: string) (dir: FilePath) =
     Directory.GetFiles(unwrap dir, pattern)
+    |> Array.map filepath
+
+  let getDirectories (path: FilePath) =
+    path
+    |> unwrap
+    |> Directory.GetDirectories
     |> Array.map filepath
 
 #endif
@@ -324,10 +330,10 @@ module FileSystem =
 
   let rec copyDir (source: FilePath) (target: FilePath) : Either<IrisError,unit> =
     try
-      let source = directoryInfo source
+      let source = Directory.info source
 
       let target =
-        let info = directoryInfo target
+        let info = Directory.info target
         if not info.Exists then
           Directory.CreateDirectory info.FullName
         else info

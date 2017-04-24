@@ -15,6 +15,8 @@ open Iris.Serialization
 
 #endif
 
+open Path
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml
@@ -152,12 +154,12 @@ type Cue =
 
   member self.AssetPath
     with get () =
-      let filepath =
+      let path =
         sprintf "%s_%s%s"
           (String.sanitize self.Name)
           (string self.Id)
           ASSET_EXTENSION
-      CUE_DIR </> filepath
+      CUE_DIR <.> path
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -175,8 +177,8 @@ type Cue =
   static member LoadAll(basePath: FilePath) : Either<IrisError, Cue array> =
     either {
       try
-        let dir = basePath </> CUE_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath CUE_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,cues) =
           let arr =

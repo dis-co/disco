@@ -22,7 +22,7 @@ module PersistenceTests =
       let name = rndstr()
       do! MachineConfig.init (Some root)
       let machine = MachineConfig.get ()
-      let! project = Project.create (root </> name) name machine
+      let! project = Project.create (root </> filepath name) name machine
       return machine, project
     }
 

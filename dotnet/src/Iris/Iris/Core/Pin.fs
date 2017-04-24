@@ -258,14 +258,8 @@ type SliceYaml(tipe, idx, value: obj) as self =
   static member StringSlice (idx: uint32) (value: string) =
     new SliceYaml("StringSlice", idx, value)
 
-  static member StringSlice (idx: int) (value: string) =
-    new SliceYaml("StringSlice", uint32 idx, value)
-
   static member NumberSlice (idx: uint32) (value: double) =
     new SliceYaml("NumberSlice", idx, value)
-
-  static member NumberSlice (idx: int) (value: double) =
-    new SliceYaml("NumberSlice", uint32 idx, value)
 
   static member BoolSlice idx (value: bool) =
     new SliceYaml("BoolSlice", idx, value)
@@ -903,7 +897,7 @@ type Pin =
       yaml.Direction  <- string data.Direction
       yaml.VecSize    <- string data.VecSize
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi (SliceYaml.StringSlice) data.Values
+      yaml.Values     <- Array.mapi (fun i str -> SliceYaml.StringSlice (uint32 i) str) data.Values
 
     | NumberPin data ->
       yaml.PinType    <- "NumberPin"
@@ -918,7 +912,7 @@ type Pin =
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
+      yaml.Values     <- Array.mapi (fun i str -> SliceYaml.NumberSlice (uint32 i) str) data.Values
 
     | BoolPin data ->
       yaml.PinType    <- "BoolPin"
@@ -930,7 +924,7 @@ type Pin =
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
+      yaml.Values     <- Array.mapi (fun i b -> SliceYaml.BoolSlice (uint32 i) b) data.Values
 
     | BytePin data ->
       yaml.PinType    <- "BytePin"
@@ -941,7 +935,7 @@ type Pin =
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
+      yaml.Values     <- Array.mapi (fun i b -> SliceYaml.ByteSlice (uint32 i) b) data.Values
 
     | EnumPin data ->
       yaml.PinType    <- "EnumPin"
@@ -953,7 +947,7 @@ type Pin =
       yaml.Direction  <- string data.Direction
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
+      yaml.Values     <- Array.mapi (fun i e -> SliceYaml.EnumSlice (uint32 i) e) data.Values
 
     | ColorPin  data ->
       yaml.PinType    <- "ColorPin"
@@ -964,7 +958,7 @@ type Pin =
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
+      yaml.Values     <- Array.mapi (fun i c -> SliceYaml.ColorSlice (uint32 i) c) data.Values
 
     yaml
 
@@ -2557,22 +2551,22 @@ type Slice =
     let yaml =
       match self with
       | StringSlice (idx, slice) ->
-        SliceYaml.StringSlice (int idx) slice
+        SliceYaml.StringSlice (unwrap idx) slice
 
       | NumberSlice (idx, slice) ->
-        SliceYaml.NumberSlice (int idx) slice
+        SliceYaml.NumberSlice (unwrap idx) slice
 
       | BoolSlice (idx, slice) ->
-        SliceYaml.BoolSlice (int idx) slice
+        SliceYaml.BoolSlice (unwrap idx) slice
 
       | ByteSlice (idx, slice) ->
-        SliceYaml.ByteSlice (int idx) slice
+        SliceYaml.ByteSlice (unwrap idx) slice
 
       | EnumSlice (idx, slice) ->
-        SliceYaml.EnumSlice (int idx) slice
+        SliceYaml.EnumSlice (unwrap idx) slice
 
       | ColorSlice (idx, slice) ->
-        SliceYaml.ColorSlice (int idx) slice
+        SliceYaml.ColorSlice (unwrap idx) slice
 
     serializer.Serialize yaml
 

@@ -97,7 +97,7 @@ type DiscoveredService =
     DiscoveredServiceFB.StartDiscoveredServiceFB(builder)
     DiscoveredServiceFB.AddId(builder, id)
     DiscoveredServiceFB.AddMachine(builder, machine)
-    DiscoveredServiceFB.AddPort(builder, service.Port)
+    DiscoveredServiceFB.AddPort(builder, unwrap service.Port)
     DiscoveredServiceFB.AddName(builder, name)
     DiscoveredServiceFB.AddFullName(builder, fullname)
     DiscoveredServiceFB.AddType(builder, typ)
@@ -150,17 +150,17 @@ type DiscoveredService =
 
       return
         { Id           = Id fb.Id
-        ; Machine      = Id fb.Machine
-        ; Port         = fb.Port
-        ; Name         = fb.Name
-        ; FullName     = fb.FullName
-        ; Type         = typ
-        ; HostName     = fb.HostName
-        ; HostTarget   = fb.HostTarget
-        ; Aliases      = aliases
-        ; Protocol     = protocol
-        ; AddressList  = Seq.rev revAddressList |> Seq.toArray
-        ; Metadata     = metadata }
+          Machine      = Id fb.Machine
+          Port         = port fb.Port
+          Name         = fb.Name
+          FullName     = fb.FullName
+          Type         = typ
+          HostName     = fb.HostName
+          HostTarget   = fb.HostTarget
+          Aliases      = aliases
+          Protocol     = protocol
+          AddressList  = Seq.rev revAddressList |> Seq.toArray
+          Metadata     = metadata }
     }
 
   member request.ToBytes() =

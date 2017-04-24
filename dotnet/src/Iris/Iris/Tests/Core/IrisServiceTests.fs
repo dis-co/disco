@@ -22,12 +22,12 @@ open ZeroMQ
 module IrisServiceTests =
 
   let private mkMachine () =
-    { MachineConfig.create() with WorkSpace = tmpPath() </> Path.GetRandomFileName() }
+    { MachineConfig.create() with WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let private mkProject (machine: IrisMachine) (site: ClusterConfig) =
     either {
       let name = Path.GetRandomFileName()
-      let path = machine.WorkSpace </> name
+      let path = machine.WorkSpace </> filepath name
 
       let author1 = "karsten"
 
@@ -82,7 +82,7 @@ module IrisServiceTests =
               | Right project -> (i + 1, project)
               | Left error -> failwithf "unable to create project: %O" error
             else
-              match copyDir project'.Path (machine.WorkSpace </> unwrap project'.Name) with
+              match copyDir project'.Path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
               | Right () -> (i + 1, project')
               | Left error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<IrisProject>)
@@ -121,7 +121,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service.Subscribe
 
-        do! service.LoadProject(unwrap project.Name, "admin", "Nsynk")
+        do! service.LoadProject(unwrap project.Name, "admin", password "Nsynk")
 
         checkStarted.WaitOne() |> ignore
 
@@ -182,7 +182,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service1.Subscribe
 
-        do! service1.LoadProject(unwrap project.Name, "admin", "Nsynk")
+        do! service1.LoadProject(unwrap project.Name, "admin", password "Nsynk")
 
         checkStarted.WaitOne() |> ignore
 
@@ -194,7 +194,7 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> unwrap project.Name }
+        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath) }
 
         let num2 = Git.Repo.commitCount repo2
 
@@ -212,7 +212,7 @@ module IrisServiceTests =
             | _ -> ())
           |> service2.Subscribe
 
-        do! service2.LoadProject (unwrap project.Name, "admin", "Nsynk")
+        do! service2.LoadProject (unwrap project.Name, "admin", password"Nsynk")
 
         checkStarted.WaitOne() |> ignore
 

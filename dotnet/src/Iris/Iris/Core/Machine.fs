@@ -116,7 +116,7 @@ module MachineConfig =
 
   let private ensureExists (path: FilePath) =
     try
-      if not (Directory.directoryExists path) then
+      if not (Directory.exists path) then
         Directory.createDirectory path |> ignore
     with
       | _ -> ()
@@ -132,7 +132,7 @@ module MachineConfig =
       else
         filepath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
 
-    if Directory.directoryExists workspace |> not then
+    if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
 
     { MachineId = Id.Create()
@@ -181,7 +181,7 @@ module MachineConfig =
     try
       let location = getLocation path
       let cfg =
-        if File.fileExists location
+        if File.exists location
         then
           let raw = File.ReadAllText(unwrap location)
           serializer.Deserialize<MachineConfigYaml>(raw)

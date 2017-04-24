@@ -25,29 +25,29 @@ module Log =
   let log_is_non_empty =
     testCase "When create, a log should not be empty" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should be one"  1u  Log.length
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should be two" 2u Log.length
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should be two"  3u  Log.length
       |> ignore
 
   let log_have_correct_index =
     testCase "When I add an entry, it should have the correct index" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make 1u defSM)
-      |> assume "Should have currentIndex 1" 1u Log.index
-      |> assume "Should have currentTerm 1" 1u Log.term
+      |> Log.append (Log.make (term 1u) defSM)
+      |> assume "Should have currentIndex 1" (index 1u) Log.getIndex
+      |> assume "Should have currentTerm 1" (term 1u) Log.getTerm
       |> assume "Should have no lastTerm" None Log.prevTerm
       |> assume "Should have no lastIndex" None Log.prevIndex
 
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
 
-      |> assume "Should have currentIndex 2" 2u Log.index
-      |> assume "Should have currentTerm 1" 1u Log.term
-      |> assume "Should have lastTerm 1" (Some 1u) Log.prevTerm
-      |> assume "Should have lastIndex 1" (Some 1u) Log.prevIndex
+      |> assume "Should have currentIndex 2" (index 2u) Log.getIndex
+      |> assume "Should have currentTerm 1" (term 1u) Log.getTerm
+      |> assume "Should have lastTerm 1" (Some (term 1u)) Log.prevTerm
+      |> assume "Should have lastIndex 1" (Some (index 1u)) Log.prevIndex
       |> ignore
 
 
@@ -59,23 +59,23 @@ module Log =
 
       let log =
         Log.empty
-        |> Log.append (LogEntry(id1, 0u, 1u, defSM, None))
-        |> Log.append (LogEntry(id2, 0u, 1u, defSM, None))
-        |> Log.append (LogEntry(id3, 0u, 1u, defSM, None))
+        |> Log.append (LogEntry(id1, index 0u, term 1u, defSM, None))
+        |> Log.append (LogEntry(id2, index 0u, term 1u, defSM, None))
+        |> Log.append (LogEntry(id3, index 0u, term 1u, defSM, None))
 
-      Log.at 1u log
+      Log.at (index 1u) log
       |> assume "Should be correct one" id1 (LogEntry.getId << Option.get)
       |> ignore
 
-      Log.at 2u log
+      Log.at (index 2u) log
       |> assume "Should also be correct one" id2 (LogEntry.getId << Option.get)
       |> ignore
 
-      Log.at 3u log
+      Log.at (index 3u) log
       |> assume "Should also be correct one" id3 (LogEntry.getId << Option.get)
       |> ignore
 
-      expect "Should find none at invalid index" None (Log.at 8u) log
+      expect "Should find none at invalid index" None (Log.at (index 8u)) log
 
   let log_find_by_id =
     testCase "When I get an entry by index, it should be equal" <| fun _ ->
@@ -85,9 +85,9 @@ module Log =
 
       let log =
         Log.empty
-        |> Log.append (LogEntry(id1, 0u, 1u, defSM, None))
-        |> Log.append (LogEntry(id2, 0u, 1u, defSM, None))
-        |> Log.append (LogEntry(id3, 0u, 1u, defSM, None))
+        |> Log.append (LogEntry(id1, index 0u, term 1u, defSM, None))
+        |> Log.append (LogEntry(id2, index 0u, term 1u, defSM, None))
+        |> Log.append (LogEntry(id3, index 0u, term 1u, defSM, None))
 
       Log.find id1 log
       |> assume "Should be correct one" id1 (LogEntry.getId << Option.get)
@@ -108,12 +108,12 @@ module Log =
   let log_depth_test =
     testCase "Should have the correct log depth" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should have length 3" 3u Log.length
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should have depth 5" 5u Log.length
       |> ignore
 
@@ -122,9 +122,9 @@ module Log =
       let sm = AddCue { Id = Id.Create(); Name = "Wonderful"; Slices = [| |] }
       let log =
         Log.empty
-        |> Log.append (Log.make 1u defSM)
-        |> Log.append (Log.make 1u sm)
-        |> Log.append (Log.make 1u defSM)
+        |> Log.append (Log.make (term 1u) defSM)
+        |> Log.append (Log.make (term 1u) sm)
+        |> Log.append (Log.make (term 1u) defSM)
 
       let folder (m: int) (log: RaftLogEntry) : Continue<int> =
         let value = (LogEntry.data >> Option.get) log
@@ -142,14 +142,14 @@ module Log =
     testCase "Should have correct length" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Log.make 1u defSM)
-        |> Log.append (Log.make 1u defSM)
-        |> Log.append (Log.make 1u defSM)
+        |> Log.append (Log.make (term 1u) defSM)
+        |> Log.append (Log.make (term 1u) defSM)
+        |> Log.append (Log.make (term 1u) defSM)
 
       log
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should have length 6" 6u Log.length
       |> ignore
 
@@ -157,20 +157,20 @@ module Log =
     testCase "Should have monotonic index" <| fun _ ->
       let isMonotonic log =
         let __mono (last,ret) _log =
-          let i = LogEntry.index _log
-          if ret then (i, i = (last + 1u)) else (i, ret)
-        Log.foldLogR __mono (0u,true) log
+          let i = LogEntry.getIndex _log
+          if ret then (i, i = (last .++. index 1u)) else (i, ret)
+        Log.foldLogR __mono (index 0u,true) log
 
       let log =
         Log.empty
-        |> Log.append (Log.make 1u defSM)
-        |> Log.append (Log.make 1u defSM)
-        |> Log.append (Log.make 1u defSM)
+        |> Log.append (Log.make (term 1u) defSM)
+        |> Log.append (Log.make (term 1u) defSM)
+        |> Log.append (Log.make (term 1u) defSM)
 
       log
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
-      |> Log.append (Log.make 1u defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
+      |> Log.append (Log.make (term 1u) defSM)
       |> assume "Should be monotonic" true (isMonotonic >> snd)
       |> ignore
 
@@ -189,13 +189,13 @@ module Log =
           log
 
       Log.empty
-      |> Log.append (Log.make 1u (AddCue cues.[0]))
-      |> Log.append (Log.make 1u (AddCue cues.[1]))
-      |> Log.append (Log.make 1u (AddCue cues.[2]))
-      |> Log.append (Log.make 1u (AddCue cues.[3]))
-      |> Log.append (Log.make 1u (AddCue cues.[4]))
-      |> Log.append (Log.make 1u (AddCue cues.[5]))
-      |> Log.until 4u
+      |> Log.append (Log.make (term 1u) (AddCue cues.[0]))
+      |> Log.append (Log.make (term 1u) (AddCue cues.[1]))
+      |> Log.append (Log.make (term 1u) (AddCue cues.[2]))
+      |> Log.append (Log.make (term 1u) (AddCue cues.[3]))
+      |> Log.append (Log.make (term 1u) (AddCue cues.[4]))
+      |> Log.append (Log.make (term 1u) (AddCue cues.[5]))
+      |> Log.until (index 4u)
       |> assume "Should have 3 logs" 3u (Option.get >> LogEntry.depth)
       |> assume "Should have log with these values" [AddCue cues.[5]; AddCue cues.[4]; AddCue cues.[3]] (Option.get >> getData)
       |> ignore
@@ -205,10 +205,10 @@ module Log =
       let id1 = Id.Create()
       let id2 = Id.Create()
 
-      let term = 1u
+      let term = term 1u
 
-      let idx1 = 1u
-      let idx2 = 2u
+      let idx1 = index 1u
+      let idx2 = index 2u
 
       let entries =
         LogEntry(id2,idx2,term,DataSnapshot (State.Empty),
@@ -224,9 +224,9 @@ module Log =
       let id1 = Id.Create()
       let id2 = Id.Create()
 
-      let term = 1u
-      let idx1 = 1u
-      let idx2 = 2u
+      let term = term 1u
+      let idx1 = index 1u
+      let idx2 = index 2u
 
       let entries =
         LogEntry(id2,idx2,term,DataSnapshot(State.Empty),
@@ -243,10 +243,10 @@ module Log =
       let id2 = Id.Create()
       let id3 = Id.Create()
 
-      let term = 1u
-      let idx1 = 1u
-      let idx2 = 2u
-      let idx3 = 3u
+      let term = term 1u
+      let idx1 = index 1u
+      let idx2 = index 2u
+      let idx3 = index 3u
 
       let entires =
         LogEntry(id2,idx2,term,DataSnapshot(State.Empty),
@@ -266,7 +266,7 @@ module Log =
 
   let log_snapshot_remembers_last_state =
     testCase "snapshot remembers last state" <| fun _ ->
-      let term = 8u
+      let term = term 8u
       let data =
         [ for i in 0 .. 3 do
             yield DataSnapshot(State.Empty) ]
@@ -281,7 +281,7 @@ module Log =
 
       Log.snapshot mems (DataSnapshot(State.Empty)) log
       |> assume "Should have correct lastTerm" (Some term) Log.lastTerm
-      |> expect "Should have correct lastIndex" (Some <| Log.index log) Log.lastIndex
+      |> expect "Should have correct lastIndex" (Some <| Log.getIndex log) Log.lastIndex
 
   let log_untilExcluding_should_return_expected_enries =
     testCase "untilExcluding should return expected enries" <| fun _ ->
@@ -289,18 +289,18 @@ module Log =
 
       [ for n in 1u .. num do
           yield AddCue { Id = Id (string n); Name = string n; Slices = [| |] } ]
-      |> List.fold (fun m s -> Log.append (Log.make 0u s) m) Log.empty
-      |> assume "Should be at correct index" num                        Log.length
-      |> assume "Should pick correct item"   16u                      (Log.untilExcluding 15u >> Option.get >> LogEntry.last >> LogEntry.index)
-      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = "16"; Slices = [| |] } |> Some) (Log.untilExcluding 15u >> Option.get >> LogEntry.last >> LogEntry.data)
-      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = "15"; Slices = [| |] } |> Some) (Log.until 15u >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> List.fold (fun m s -> Log.append (Log.make (term 0u) s) m) Log.empty
+      |> assume "Should be at correct index" num Log.length
+      |> assume "Should pick correct item"  (index 16u) (Log.untilExcluding (index 15u) >> Option.get >> LogEntry.last >> LogEntry.getIndex)
+      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15u) >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = "15"; Slices = [| |] } |> Some) (Log.until (index 15u) >> Option.get >> LogEntry.last >> LogEntry.data)
       |> ignore
 
   let log_append_should_work_with_snapshots_too =
     testCase "append should work with snapshots too" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Snapshot(Id.Create(), 0u, 0u, 9u, 1u, Array.empty, DataSnapshot(State.Empty)))
+        |> Log.append (Snapshot(Id.Create(), index 0u, term 0u, index 9u, term 1u, Array.empty, DataSnapshot(State.Empty)))
 
       expect "Log should be size 1" 1u Log.length log
 
@@ -313,25 +313,25 @@ module Log =
 
         let combine a b = (a, b)
 
-        let def = LogEntry(Id.Create(),0u,0u,defSM,None)
+        let def = LogEntry(Id.Create(),index 0u,term 0u,defSM,None)
 
         let folder log (id,term,index) =
           LogEntry(id,index,term,defSM,Some log)
 
-        [ for term in 1u .. 4u do
+        [ for trm in 1u .. 4u do
             let offset = random.Next(1,60)
-            for index in uint32(offset) .. uint32(offset + random.Next(10,70)) do
-              let (_,t,i) as result = (Id.Create(), term, index)
-              if index = uint32(offset) then
+            for idx in uint32(offset) .. uint32(offset + random.Next(10,70)) do
+              let (_,t,i) as result = (Id.Create(), term trm, index idx)
+              if idx = uint32(offset) then
                 fidxs := (t,i) :: !fidxs
               yield result ]
         |> List.fold folder def
         |> Log.fromEntries
         |> combine (!fidxs |> Map.ofList)
 
-      for term in 1u .. 4u do
-        let fidx = Log.firstIndex term log
-        let result = Map.tryFind term indices
+      for trm in 1u .. 4u do
+        let fidx = Log.firstIndex (term trm) log
+        let result = Map.tryFind (term trm) indices
         expect "Should be equal" result id fidx
 
   let log_getn_should_return_right_number_of_entries =
@@ -341,7 +341,7 @@ module Log =
       let log =
         [ for n in 0 .. (n - 1) do
             yield DataSnapshot(State.Empty) ]
-        |> List.fold (fun m n -> Log.append (Log.make 0u n) m) Log.empty
+        |> List.fold (fun m n -> Log.append (Log.make (term 0u) n) m) Log.empty
 
       expect "should have correct depth" (uint32 n) Log.length log
 

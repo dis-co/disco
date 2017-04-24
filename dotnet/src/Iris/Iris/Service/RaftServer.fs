@@ -1092,7 +1092,7 @@ module Raft =
   let private initializeRaft (state: RaftValue) (callbacks: IRaftCallbacks) =
     Tracing.trace (tag "initializeRaft") <| fun () ->
       raft {
-        let term = 0u
+        let term = term 0u
         do! Raft.setTermM term
         let! num = Raft.numMembersM ()
 
@@ -1101,7 +1101,7 @@ module Raft =
           do! Raft.becomeLeader ()
         else
           // set the timeout to something random, to prevent split votes
-          let timeout : Long =
+          let timeout : uint32 =
             rand.Next(0, int state.ElectionTimeout)
             |> uint32
           do! Raft.setTimeoutElapsedM timeout

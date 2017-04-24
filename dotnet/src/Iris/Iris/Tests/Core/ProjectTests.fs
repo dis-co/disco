@@ -25,7 +25,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
 
@@ -48,7 +48,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
         let! repo = Project.repository project
@@ -71,9 +71,9 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let path = Path.GetRandomFileName()
+        let path = Path.getRandomFileName()
 
-        let result = Project.create path path machine
+        let result = Project.create path (unwrap path) machine
 
         expect "Create should have failed" false Either.isSuccess result
 
@@ -97,17 +97,17 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let filename = Path.GetFileName path
+        let fn = Path.getFileName path
 
         let engineCfg = RaftConfig.Default
 
         let vvvvCfg =
           { VvvvConfig.Default with
               Executables =
-                [| { Executable = "/pth/to/nowhere"
+                [| { Executable = filepath "/pth/to/nowhere"
                   ; Version    = "0.0.0.0.0.0.1"
                   ; Required   = true };
-                  { Executable = "/antoher/path"
+                  { Executable = filepath "/antoher/path"
                   ; Version    = "1.2.34.4"
                   ; Required   = false } |]
             }
@@ -239,7 +239,7 @@ module ProjectTests =
             Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
             Groups = [| groupA; groupB |] }
 
-        let! project = Project.create path filename machine
+        let! project = Project.create path (unwrap fn) machine
 
         let updated =
           Project.updateConfig
@@ -292,18 +292,18 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! _ = Project.create path name machine
 
         let loaded = Asset.loadWithMachine path machine
 
-        expect "Projects should be a folder"   true  Directory.Exists path
-        expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
+        expect "Projects should be a folder"   true  Directory.exists path
+        expect "Projects should be a git repo" true  Directory.exists (path </> filepath ".git")
 
-        let projectFile = path </> PROJECT_FILENAME + ASSET_EXTENSION
+        let projectFile = path </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
 
-        expect "Projects should have project yml" true  File.Exists projectFile
+        expect "Projects should have project yml" true  File.exists projectFile
 
         let getRepo =
           Project.repository
@@ -341,7 +341,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let author1 = "karsten"
 
@@ -386,7 +386,7 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
         let! (loaded: IrisProject) = Asset.loadWithMachine path machine
@@ -409,18 +409,18 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let filename = Path.GetFileName path
+        let fn = Path.getFileName path |> unwrap
 
-        let! project = Project.create path filename machine
+        let! project = Project.create path fn machine
 
         let user =
           { Id = Id.Create()
             UserName = name "krgn"
             FirstName = name "karsten"
             LastName = name "gebbert"
-            Email = "k@lazy.af"
-            Password = "1234"
-            Salt = "56789"
+            Email = email "k@lazy.af"
+            Password = checksum "1234"
+            Salt = checksum "56789"
             Joined = DateTime.Now
             Created = DateTime.Now }
 
@@ -428,7 +428,7 @@ module ProjectTests =
 
         let! (loaded: User) =
           let userpath = project.Path </> Asset.path user
-          File.ReadAllText(userpath)
+          File.readText(userpath)
           |> Yaml.decode
 
         expect "Should be the same" true ((=) user) loaded
@@ -440,13 +440,13 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
 
         let! (admin: User) =
           project.Path </> Asset.path User.Admin
-          |> File.ReadAllText
+          |> File.readText
           |> Yaml.decode
 
         // Don't compare Joined and Created as they may differ a bit

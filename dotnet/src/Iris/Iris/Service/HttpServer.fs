@@ -54,7 +54,7 @@ module Http =
     >=> setHeader "Expires" "0"
 
   let private locate dir str =
-    noCache >=> file (dir </> str)
+    noCache >=> (dir </> filepath str |> unwrap |> file)
 
   let getDefaultBasePath() =
   #if INTERACTIVE
@@ -62,7 +62,7 @@ module Http =
   #else
     let asm = System.Reflection.Assembly.GetExecutingAssembly()
     let dir = Path.GetDirectoryName(asm.Location)
-    dir </> "assets"
+    dir <.> "assets"
   #endif
 
   let pathWithArgs (pattern: string) (f: Map<string,string>->WebPart) =
@@ -118,7 +118,7 @@ module Http =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path "/" >=> (Files.file indexHtml)
+          Filters.path "/" >=> (indexHtml |> unwrap |> Files.file)
           Files.browseHome ])
       Filters.POST >=>
         (choose [
@@ -128,7 +128,7 @@ module Http =
     ]
 
   let private mkConfig (config: IrisMachine)
-                       (basePath: string)
+                       (basePath: FilePath)
                        (cts: CancellationTokenSource) :
                        Either<IrisError,SuaveConfig> =
     either {
@@ -161,14 +161,14 @@ module Http =
         let addr = IPAddress.Parse machine.WebIP
         let port = Sockets.Port.Parse (string machine.WebPort)
 
-        sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %s" addr port basePath
+        sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port basePath
         |> Logger.info (tag "mkConfig")
 
         return
           { defaultConfig with
               logger            = logger
               cancellationToken = cts.Token
-              homeFolder        = Some basePath
+              homeFolder        = basePath |> unwrap |> Some
               bindings          = [ HttpBinding.create HTTP addr port ]
               mimeTypesMap      = mimeTypes }
       with
@@ -186,9 +186,9 @@ module Http =
 
     // *** create
 
-    let create (config: IrisMachine) (frontend: string option) (postCommand: CommandAgent) =
+    let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
       either {
-        let basePath = defaultArg frontend <| getDefaultBasePath() |> Path.GetFullPath
+        let basePath = defaultArg frontend <| getDefaultBasePath() |> Path.getFullPath
         let cts = new CancellationTokenSource()
         let! webConfig = mkConfig config basePath cts
 
@@ -197,7 +197,7 @@ module Http =
               member self.Start () =
                 try
                   let _, server =
-                    Path.Combine(basePath, "index.html")
+                    basePath </> filepath "index.html"
                     |> app postCommand
                     |> startWebServerAsync webConfig
                   Async.Start server

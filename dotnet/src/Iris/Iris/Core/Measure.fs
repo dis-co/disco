@@ -79,6 +79,25 @@ module UoM =
   let inline wrap (x : 't) : 'tm = UoM.Wrap<UoM, 't, 'tm> x
   let inline unwrap (x : 'tm) : 't = UoM.UnWrap<UoM, 't, 'tm> x
 
+// * Ops
+
+[<AutoOpen>]
+module Ops =
+
+  [<AutoOpen>]
+  module Uint32 =
+    let inline (.++.) (left: uint32<_>) (right: uint32<_>) : uint32<_> =
+      let l:uint32 = unwrap left
+      let r:uint32 = unwrap right
+      wrap (l + r)
+
+    let inline (.--.) (left: uint32<_>) (right: uint32<_>) : uint32<_> =
+      let l:uint32 = unwrap left
+      let r:uint32 = unwrap right
+      wrap (l - r)
+
+
+
 // Extending UoM to new types
 //
 // [<MeasureAnnotatedAbbreviation>]

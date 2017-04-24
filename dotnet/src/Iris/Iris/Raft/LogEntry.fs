@@ -267,15 +267,15 @@ type RaftLogEntry =
       // | |__| (_) | | | |  _| | (_| | |_| | | | (_| | |_| | (_) | | | |
       //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
       //                         |___/
-      | Configuration(id,index,term,mems,_)          ->
+      | Configuration(id,idx,term,mems,_)          ->
         let id = string id |> builder.CreateString
         let mems = Array.map (Binary.toOffset builder) mems
         let nvec = ConfigurationFB.CreateMembersVector(builder, mems)
 
         ConfigurationFB.StartConfigurationFB(builder)
         ConfigurationFB.AddId(builder, id)
-        ConfigurationFB.AddIndex(builder, index)
-        ConfigurationFB.AddTerm(builder, term)
+        ConfigurationFB.AddIndex(builder, unwrap idx)
+        ConfigurationFB.AddTerm(builder, unwrap term)
         ConfigurationFB.AddMembers(builder, nvec)
 
         let entry = ConfigurationFB.EndConfigurationFB(builder)
@@ -294,8 +294,8 @@ type RaftLogEntry =
 
         JointConsensusFB.StartJointConsensusFB(builder)
         JointConsensusFB.AddId(builder, id)
-        JointConsensusFB.AddIndex(builder, index)
-        JointConsensusFB.AddTerm(builder, term)
+        JointConsensusFB.AddIndex(builder, unwrap index)
+        JointConsensusFB.AddTerm(builder, unwrap term)
         JointConsensusFB.AddChanges(builder, chvec)
 
         let entry = JointConsensusFB.EndJointConsensusFB(builder)
@@ -314,8 +314,8 @@ type RaftLogEntry =
 
         LogEntryFB.StartLogEntryFB(builder)
         LogEntryFB.AddId(builder, id)
-        LogEntryFB.AddIndex(builder, index)
-        LogEntryFB.AddTerm(builder, term)
+        LogEntryFB.AddIndex(builder, unwrap index)
+        LogEntryFB.AddTerm(builder, unwrap term)
         LogEntryFB.AddData(builder, data)
 
         let entry = LogEntryFB.EndLogEntryFB(builder)
@@ -336,10 +336,10 @@ type RaftLogEntry =
 
         SnapshotFB.StartSnapshotFB(builder)
         SnapshotFB.AddId(builder, id)
-        SnapshotFB.AddIndex(builder, index)
-        SnapshotFB.AddTerm(builder, term)
-        SnapshotFB.AddLastIndex(builder, lidx)
-        SnapshotFB.AddLastTerm(builder, lterm)
+        SnapshotFB.AddIndex(builder, unwrap index)
+        SnapshotFB.AddTerm(builder, unwrap term)
+        SnapshotFB.AddLastIndex(builder, unwrap lidx)
+        SnapshotFB.AddLastTerm(builder, unwrap lterm)
         SnapshotFB.AddMembers(builder, nvec)
         SnapshotFB.AddData(builder, data)
 
@@ -401,8 +401,8 @@ type RaftLogEntry =
 
             // successfully parsed this LogEntry, so return it wrapped in an option
             return Configuration(Id logentry.Id,
-                                 logentry.Index,
-                                 logentry.Term,
+                                 index logentry.Index,
+                                 term logentry.Term,
                                  mems,
                                  previous)
                    |> Some
@@ -444,8 +444,8 @@ type RaftLogEntry =
               |> Either.map snd
 
             return JointConsensus(Id logentry.Id,
-                                  logentry.Index,
-                                  logentry.Term,
+                                  index logentry.Index,
+                                  term logentry.Term,
                                   changes,
                                   previous)
                    |> Some
@@ -468,8 +468,8 @@ type RaftLogEntry =
               let! command = StateMachine.FromFB data.Value
 
               return LogEntry(Id logentry.Id,
-                              logentry.Index,
-                              logentry.Term,
+                              index logentry.Index,
+                              term logentry.Term,
                               command,
                               previous)
                      |> Some
@@ -520,10 +520,10 @@ type RaftLogEntry =
                 |> Either.map snd
 
               return Snapshot(id,
-                              logentry.Index,
-                              logentry.Term,
-                              logentry.LastIndex,
-                              logentry.LastTerm,
+                              index logentry.Index,
+                              term logentry.Term,
+                              index logentry.LastIndex,
+                              term logentry.LastTerm,
                               mems,
                               state)
                      |> Some
@@ -569,7 +569,7 @@ type RaftLogEntry =
 
   member log.AssetPath
     with get () =
-      Constants.RAFT_DIRECTORY </> Constants.SNAPSHOT_FILENAME + Constants.ASSET_EXTENSION
+      Constants.RAFT_DIRECTORY <.> Constants.SNAPSHOT_FILENAME + Constants.ASSET_EXTENSION
 
   member log.Save (basePath: FilePath) =
     match log with
@@ -670,7 +670,7 @@ module LogEntry =
   //
   /// Return the index of the current log entry.
 
-  let index = function
+  let getIndex = function
     | Configuration(_,idx,_,_,_)  -> idx
     | JointConsensus(_,idx,_,_,_) -> idx
     | LogEntry(_,idx,_,_,_)       -> idx
@@ -688,9 +688,9 @@ module LogEntry =
   /// Return the index of the previous element if present.
 
   let prevIndex = function
-    | Configuration(_,_,_,_,Some prev)  -> Some (index prev)
-    | JointConsensus(_,_,_,_,Some prev) -> Some (index prev)
-    | LogEntry(_,_,_,_,Some prev)       -> Some (index prev)
+    | Configuration(_,_,_,_,Some prev)  -> Some (getIndex prev)
+    | JointConsensus(_,_,_,_,Some prev) -> Some (getIndex prev)
+    | LogEntry(_,_,_,_,Some prev)       -> Some (getIndex prev)
     | Snapshot(_,_,_,idx,_,_,_)         -> Some idx
     | _                                 -> None
 
@@ -704,7 +704,7 @@ module LogEntry =
   //
   /// Extract the `Term` field from a RaftLogEntry
 
-  let term = function
+  let getTerm = function
     | Configuration(_,_,term,_,_)  -> term
     | JointConsensus(_,_,term,_,_) -> term
     | LogEntry(_,_,term,_,_)       -> term
@@ -722,9 +722,9 @@ module LogEntry =
   /// Return the previous elements' term, if present.
 
   let prevTerm = function
-    | Configuration(_,_,_,_,Some prev)  -> Some (term prev)
-    | JointConsensus(_,_,_,_,Some prev) -> Some (term prev)
-    | LogEntry(_,_,_,_,Some prev)       -> Some (term prev)
+    | Configuration(_,_,_,_,Some prev)  -> Some (getTerm prev)
+    | JointConsensus(_,_,_,_,Some prev) -> Some (getTerm prev)
+    | LogEntry(_,_,_,_,Some prev)       -> Some (getTerm prev)
     | Snapshot(_,_,_,_,term,_,_)        -> Some term
     | _                                 -> None
 
@@ -956,7 +956,7 @@ module LogEntry =
   /// |_|  |_|\__,_|_|\_\___|
 
   let make term data =
-    LogEntry(Id.Create(), 0u, term, data, None)
+    LogEntry(Id.Create(), index 0u, term, data, None)
 
   // ** LogEntry.mkConfig
 
@@ -965,7 +965,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfig term mems =
-    Configuration(Id.Create(), 0u, term, mems, None)
+    Configuration(Id.Create(), index 0u, term, mems, None)
 
   // ** LogEntry.mkConfigChange
 
@@ -975,7 +975,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfigChange term changes =
-    JointConsensus(Id.Create(), 0u, term, changes, None)
+    JointConsensus(Id.Create(), index 0u, term, changes, None)
 
   let calculateChanges oldmems newmems =
     let changes =
@@ -1033,7 +1033,7 @@ module LogEntry =
       | JointConsensus(_,idx,term,_,_) -> idx,term
       | Snapshot(_,idx,term,_,_,_,_)   -> idx,term
     in
-      Snapshot(Id.Create(),idx + 1u,term,idx,term,mems,data)
+      Snapshot(Id.Create(),index (unwrap idx + 1u),term,idx,term,mems,data)
 
   // ** LogEntry.map
 
@@ -1215,28 +1215,28 @@ module LogEntry =
   let rec rewrite entry =
     match entry with
     | Configuration(id, _, _, mems, None) ->
-      Configuration(id, 1u, 1u, mems, None)
+      Configuration(id, index 1u, term 1u, mems, None)
 
     | Configuration(id, _, term, mems, Some prev) ->
       let previous = rewrite prev
-      Configuration(id, index previous + 1u, term, mems, Some previous)
+      Configuration(id, getIndex previous .++. index 1u, term, mems, Some previous)
 
     | JointConsensus(id, _, term, changes, None) ->
-      JointConsensus(id, 1u, term, changes, None)
+      JointConsensus(id, index 1u, term, changes, None)
 
     | JointConsensus(id, _, term, changes, Some prev) ->
       let previous = rewrite prev
-      JointConsensus(id, index previous + 1u, term, changes, Some previous)
+      JointConsensus(id, getIndex previous .++. index 1u, term, changes, Some previous)
 
     | LogEntry(id, _, term, data, None) ->
-      LogEntry(id, 1u, term, data, None)
+      LogEntry(id, index 1u, term, data, None)
 
     | LogEntry(id, _, term, data, Some prev) ->
       let previous = rewrite prev
-      LogEntry(id, index previous + 1u, term, data, Some previous)
+      LogEntry(id, getIndex previous .++. index 1u, term, data, Some previous)
 
     | Snapshot(id, _, term, _, pterm, mems, data) ->
-      Snapshot(id, 2u, term, 1u, pterm, mems, data)
+      Snapshot(id, index 2u, term, index 1u, pterm, mems, data)
 
   // ** LogEntry.append
 
@@ -1254,7 +1254,7 @@ module LogEntry =
       if getId _log = getId _entry then
         _log
       else
-        let nextIdx = index _log + 1u
+        let nextIdx = getIndex _log .++. index 1u
         match _entry with
         | Configuration(id, _, term, mems, _) ->
           Configuration(id, nextIdx, term, mems, Some _log)
@@ -1413,7 +1413,7 @@ module LogEntry =
 
   /// Make sure the current log entry is a singleton (followed by no entries).
   let sanitize term = function
-    | Configuration(id,_,term,mems,_)    -> Configuration(id,0u,term,mems,None)
-    | JointConsensus(id,_,term,changes,_) -> JointConsensus(id,0u,term,changes,None)
-    | LogEntry(id,_,_,data,_)             -> LogEntry(id,0u,term,data,None)
+    | Configuration(id,_,term,mems,_)    -> Configuration(id, index 0u,term,mems,None)
+    | JointConsensus(id,_,term,changes,_) -> JointConsensus(id, index 0u,term,changes,None)
+    | LogEntry(id,_,_,data,_)             -> LogEntry(id, index 0u,term,data,None)
     | Snapshot _ as snapshot              -> snapshot
