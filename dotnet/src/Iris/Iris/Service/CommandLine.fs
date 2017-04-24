@@ -5,7 +5,7 @@ namespace Iris.Service
 // * CommandLine
 module CommandLine =
 
-  let private tag (str: string) = sprintf "CommandLine.%s" str
+  let private logtag (str: string) = sprintf "CommandLine.%s" str
 
   // ** Imports
   open Argu
@@ -170,7 +170,7 @@ module CommandLine =
     let ensureProject result =
       if opts.Contains <@ Project @> |> not then
         "Missing Startup-Project"
-        |> Error.asOther (tag "validateOptions")
+        |> Error.asOther (logtag "validateOptions")
         |> Error.exitWith
       result
 
@@ -193,7 +193,7 @@ module CommandLine =
         if not raft    then printfn "    --raft=<raft port>"
         if not ws      then printfn "    --ws=<ws port>"
         "CLI options parse error"
-        |> Error.asOther (tag "validateOptions")
+        |> Error.asOther (logtag "validateOptions")
         |> Error.exitWith
 
   //   ____                _
@@ -209,8 +209,8 @@ module CommandLine =
       match dic.TryGetValue k with
       | true, v ->
         try map v |> Right
-        with ex -> Other(tag "tryCreateProject", ex.Message) |> Left
-      | false, _ -> Other(tag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
+        with ex -> Other(logtag "tryCreateProject", ex.Message) |> Left
+      | false, _ -> Other(logtag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
 
     either {
       let machine = MachineConfig.get()
@@ -500,7 +500,7 @@ module CommandLine =
       else
         return!
           "Passwords do not match. Try again Sam."
-          |> Error.asOther (tag "addUser")
+          |> Error.asOther (logtag "addUser")
           |> Either.fail
     }
 
@@ -531,7 +531,7 @@ module CommandLine =
           User.Admin.Signature
           (Project.addMember mem project)
 
-      printfn "successfully added new member %A" mem.HostName
+      return ()
     }
 
 #endif

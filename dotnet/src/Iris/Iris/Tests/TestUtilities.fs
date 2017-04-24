@@ -65,7 +65,7 @@ module TestData =
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
-        yield guid.ToString() |]
+        yield guid.ToString() |> astag |]
 
   let mk() = Id.Create()
 

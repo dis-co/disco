@@ -19,6 +19,7 @@ namespace Iris.Core
 [<Measure>] type port
 [<Measure>] type chars
 [<Measure>] type version
+[<Measure>] type tag
 
 // * Aliases
 
@@ -34,7 +35,7 @@ type Index      = int<index>
 type Term       = int<term>
 type Name       = string<name>
 type Email      = string<email>
-type Tag        = string
+type Tag        = string<tag>
 type NodePath   = string
 type OSCAddress = string
 type Version    = string<version>
@@ -69,6 +70,7 @@ module Measure =
   let index i: Index = i * 1<index>
   let term t: Term = t * 1<term>
   let version v: Version = UoM.wrap v
+  let astag t: Tag = UoM.wrap t
 
 type IPProtocol =
   | IPv4

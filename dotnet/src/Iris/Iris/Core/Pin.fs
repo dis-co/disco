@@ -891,7 +891,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.MaxChars   <- int data.MaxChars
       yaml.Behavior   <- string data.Behavior
       yaml.Direction  <- string data.Direction
@@ -904,7 +904,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.Precision  <- data.Precision
       yaml.Min        <- data.Min
       yaml.Max        <- data.Max
@@ -919,7 +919,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.IsTrigger  <- data.IsTrigger
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -931,7 +931,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
@@ -942,7 +942,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
@@ -954,7 +954,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
-      yaml.Tags       <- data.Tags
+      yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
       yaml.Labels     <- data.Labels
@@ -1001,7 +1001,7 @@ type Pin =
   ///
   /// Returns: Either<IrisError, Tag array>
   static member inline ParseTagsFB< ^a when ^a : (member TagsLength : int)
-                                       and  ^a : (member Tags : int -> Tag)>
+                                       and  ^a : (member Tags : int -> string)>
                                        (fb: ^a)
                                        : Either<IrisError, Tag array> =
     let len = (^a : (member TagsLength : int) fb)
@@ -1009,7 +1009,7 @@ type Pin =
     Array.fold
       (fun (result: Either<IrisError,int * Tag array>) _ -> either {
           let! (i, tags) = result
-          tags.[i] <- (^a : (member Tags : int -> Tag) (fb, i))
+          tags.[i] <- astag (^a : (member Tags : int -> string) (fb, i))
           return (i + 1, tags)
         })
       (Right (0, arr))
@@ -1205,7 +1205,7 @@ type Pin =
             Id         = Id yml.Id
             Name       = yml.Name
             PinGroup   = Id yml.PinGroup
-            Tags       = yml.Tags
+            Tags       = Array.map astag yml.Tags
             MaxChars   = yml.MaxChars * 1<chars>
             Behavior   = strtype
             VecSize    = vecsize
@@ -1241,7 +1241,7 @@ type Pin =
             Id        = Id yml.Id
             Name      = yml.Name
             PinGroup  = Id yml.PinGroup
-            Tags      = yml.Tags
+            Tags      = Array.map astag yml.Tags
             VecSize   = vecsize
             Direction = dir
             Min       = yml.Min
@@ -1283,7 +1283,7 @@ type Pin =
             Id        = Id yml.Id
             Name      = yml.Name
             PinGroup  = Id yml.PinGroup
-            Tags      = yml.Tags
+            Tags      = Array.map astag yml.Tags
             IsTrigger = yml.IsTrigger
             VecSize   = vecsize
             Direction = dir
@@ -1322,7 +1322,7 @@ type Pin =
             Id        = Id yml.Id
             Name      = yml.Name
             PinGroup  = Id yml.PinGroup
-            Tags      = yml.Tags
+            Tags      = Array.map astag yml.Tags
             VecSize   = vecsize
             Direction = dir
             Labels    = yml.Labels
@@ -1374,7 +1374,7 @@ type Pin =
             Id         = Id yml.Id
             Name       = yml.Name
             PinGroup   = Id yml.PinGroup
-            Tags       = yml.Tags
+            Tags       = Array.map astag yml.Tags
             Properties = properties
             VecSize    = vecsize
             Direction  = dir
@@ -1414,7 +1414,7 @@ type Pin =
             Id         = Id yml.Id
             Name       = yml.Name
             PinGroup   = Id yml.PinGroup
-            Tags       = yml.Tags
+            Tags       = Array.map astag yml.Tags
             VecSize    = vecsize
             Direction  = dir
             Labels     = yml.Labels
@@ -1640,7 +1640,7 @@ type NumberPinD =
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let unit = self.Unit |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map builder.CreateString self.Labels
     let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -1737,7 +1737,7 @@ type StringPinD =
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map builder.CreateString self.Values
     let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
@@ -1825,7 +1825,7 @@ type BoolPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map builder.CreateString self.Labels
     let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -1991,7 +1991,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
     let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
@@ -2075,7 +2075,7 @@ type EnumPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let propoffsets = Array.map (Binary.toOffset builder) self.Properties
@@ -2184,7 +2184,7 @@ type ColorPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map builder.CreateString self.Tags
+    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
     let labeloffsets = Array.map builder.CreateString self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)

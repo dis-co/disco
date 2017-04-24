@@ -118,27 +118,25 @@ module ProjectTests =
           ; Size      = Rect (1280,1080)
           ; Signals   =
               [| { Size    = Rect       (500,500)
-                ; Position = Coordinate (0,0) };
-                { Size     = Rect       (800,800)
-                ; Position = Coordinate (29, 13) } |]
+                 ; Position = Coordinate (0,0) };
+                 { Size     = Rect       (800,800)
+                 ; Position = Coordinate (29, 13) } |]
           ; RegionMap =
             {
               SrcViewportId = Id.Create()
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = name "A Cool Region"
-                  ; SrcPosition    = Coordinate (0,0)
-                  ; SrcSize        = Rect       (50,50)
-                  ; OutputPosition = Coordinate (50,50)
-                  ; OutputSize     = Rect       (100,100)
-                  };
-                  { Id             = Id.Create()
-                  ; Name           = name "Another Cool Region"
-                  ; SrcPosition    = Coordinate (8,67)
-                  ; SrcSize        = Rect       (588,5130)
-                  ; OutputPosition = Coordinate (10,5300)
-                  ; OutputSize     = Rect       (800,900)
-                  } |]
+                     Name           = name "A Cool Region"
+                     SrcPosition    = Coordinate (0,0)
+                     SrcSize        = Rect       (50,50)
+                     OutputPosition = Coordinate (50,50)
+                     OutputSize     = Rect       (100,100) };
+                   { Id             = Id.Create()
+                     Name           = name "Another Cool Region"
+                     SrcPosition    = Coordinate (8,67)
+                     SrcSize        = Rect       (588,5130)
+                     OutputPosition = Coordinate (10,5300)
+                     OutputSize     = Rect       (800,900) } |]
             }
           }
 
