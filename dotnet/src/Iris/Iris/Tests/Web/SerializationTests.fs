@@ -28,7 +28,7 @@ module SerializationTests =
 
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
-        yield Id.Create() |> string |]
+        yield Id.Create() |> string |> astag |]
 
   let mkProject _ =
     IrisProject.Empty
@@ -73,9 +73,9 @@ module SerializationTests =
     ; UserName = name "krgn"
     ; FirstName = name "Karsten"
     ; LastName = name "Gebbert"
-    ; Email = "k@ioctl.it"
-    ; Password = "1234"
-    ; Salt = "090asd902"
+    ; Email = email "k@ioctl.it"
+    ; Password = checksum "1234"
+    ; Salt = checksum "090asd902"
     ; Joined = DateTime.UtcNow
     ; Created = DateTime.UtcNow
     }
@@ -86,7 +86,7 @@ module SerializationTests =
       Role = Role.Renderer
       Status = ServiceStatus.Running
       IpAddress = IPv4Address "127.0.0.1"
-      Port = 8921us }
+      Port = port 8921us }
 
   let mkClients () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -157,13 +157,13 @@ module SerializationTests =
       finish ()
 
     test "Validate Slice Serialization" <| fun finish ->
-      [| BoolSlice    (0u, true    )
-      ; StringSlice   (0u, "hello" )
-      ; NumberSlice   (0u, 1234.0  )
-      ; ByteSlice     (0u, mkBytes ())
-      ; EnumSlice     (0u, { Key = "one"; Value = "two" })
-      ; ColorSlice    (0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
-      ; ColorSlice    (0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
+      [| BoolSlice  (0<index>, true    )
+      ; StringSlice (0<index>, "hello" )
+      ; NumberSlice (0<index>, 1234.0  )
+      ; ByteSlice   (0<index>, mkBytes ())
+      ; EnumSlice   (0<index>, { Key = "one"; Value = "two" })
+      ; ColorSlice  (0<index>, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
+      ; ColorSlice  (0<index>, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
       |]
       |> Array.iter
         (fun slice ->
