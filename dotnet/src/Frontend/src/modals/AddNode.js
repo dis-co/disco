@@ -2,9 +2,8 @@ import React from 'react';
 import Form from 'muicss/lib/react/form';
 import Input from 'muicss/lib/react/input';
 import Button from 'muicss/lib/react/button';
-import { addMember } from "iris";
 
-export default class AddNode extends Component {
+export default class AddNode extends React.Component {
   constructor(props) {
       super(props);
       let match = /\:(\d+)$/.exec(window.location.host);
