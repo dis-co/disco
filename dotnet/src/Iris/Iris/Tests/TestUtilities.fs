@@ -245,11 +245,11 @@ module TestData =
     either {
       let! state = mkTmpDir() |> mkState
       return
-        LogEntry(Id.Create(), index 7u, term 1u, DataSnapshot(state),
-          Some <| LogEntry(Id.Create(), index 6u, term 1u, DataSnapshot(state),
-            Some <| Configuration(Id.Create(), index 5u, term 1u, [| mkMember () |],
-              Some <| JointConsensus(Id.Create(), index 4u, term 1u, mkChanges (),
-                Some <| Snapshot(Id.Create(), index 3u, term 1u, index 2u, term 1u, mkMembers (), DataSnapshot(state))))))
+        LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
+          Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),
+            Some <| Configuration(Id.Create(), index 5, term 1, [| mkMember () |],
+              Some <| JointConsensus(Id.Create(), index 4, term 1, mkChanges (),
+                Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mkMembers (), DataSnapshot(state))))))
         |> Log.fromEntries
     }
 

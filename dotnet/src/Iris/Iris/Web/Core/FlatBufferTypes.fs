@@ -608,13 +608,13 @@ let SliceTypeFB: SliceTypeFBConstructor = failwith "JS only"
 // |____/|_|_|\___\___|_|   |____/
 
 type SliceFB =
-  abstract Index: uint32
+  abstract Index: int
   abstract Slice: 'a -> 'a
   abstract SliceType: int
 
 type SliceFBConstructor =
   abstract StartSliceFB: builder: FlatBufferBuilder -> unit
-  abstract AddIndex: builder: FlatBufferBuilder * index: uint32 -> unit
+  abstract AddIndex: builder: FlatBufferBuilder * index: int -> unit
   abstract AddSlice: builder: FlatBufferBuilder * offset: Offset<'a> -> unit
   abstract AddSliceType: builder: FlatBufferBuilder * tipe: SliceTypeFB -> unit
   abstract EndSliceFB: builder: FlatBufferBuilder -> Offset<SliceFB>
@@ -753,8 +753,8 @@ type RaftMemberFB =
   abstract Voting: bool
   abstract VotedForMe: bool
   abstract State: RaftMemberStateFB
-  abstract NextIndex: uint32
-  abstract MatchIndex: uint32
+  abstract NextIndex: int
+  abstract MatchIndex: int
 
 type RaftMemberFBConstructor =
   abstract prototype: RaftMemberFB with get, set
@@ -770,8 +770,8 @@ type RaftMemberFBConstructor =
   abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
   abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
   abstract AddState: builder: FlatBufferBuilder * state: RaftMemberStateFB -> unit
-  abstract AddNextIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
-  abstract AddMatchIndex: builder: FlatBufferBuilder * idx: uint32 -> unit
+  abstract AddNextIndex: builder: FlatBufferBuilder * idx: int -> unit
+  abstract AddMatchIndex: builder: FlatBufferBuilder * idx: int -> unit
   abstract EndRaftMemberFB: builder: FlatBufferBuilder -> Offset<RaftMemberFB>
   abstract GetRootAsRaftMemberFB: bytes: ByteBuffer -> RaftMemberFB
   abstract Create: unit -> RaftMemberFB

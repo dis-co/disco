@@ -64,7 +64,7 @@ module Persistence =
     either {
       let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
-      let count = Map.fold (fun m _ _ -> m + 1u) 0u mems
+      let count = Map.fold (fun m _ _ -> m + 1) 0 mems
       let! data =
         options
         |> Config.metadataPath

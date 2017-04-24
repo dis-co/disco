@@ -193,12 +193,12 @@ type RaftLogEntry =
   ///
   /// Compute the depth of the current log.
   ///
-  /// Returns: uint32
+  /// Returns: int
   member self.Depth
     with get () =
       let rec _depth i thing =
         let inline count i prev =
-          let cnt = i + 1u
+          let cnt = i + 1
           match prev with
             | Some other -> _depth cnt other
             |          _ -> cnt
@@ -206,8 +206,8 @@ type RaftLogEntry =
           | Configuration(_,_,_,_,prev)  -> count i prev
           | JointConsensus(_,_,_,_,prev) -> count i prev
           | LogEntry(_,_,_,_,prev)       -> count i prev
-          | Snapshot _                   -> i + 1u
-      _depth 0u self
+          | Snapshot _                   -> i + 1
+      _depth 0 self
 
   // ** Iter
 
@@ -216,25 +216,25 @@ type RaftLogEntry =
   /// Iterate over the entire log sequence and apply `f` to every element.
   ///
   /// ### Signature:
-  /// - f: uint32 -> RaftLogEntry -> unit
+  /// - f: int -> RaftLogEntry -> unit
   ///
   /// Returns: unit
-  member self.Iter (f : uint32 -> RaftLogEntry -> unit) =
+  member self.Iter (f : int -> RaftLogEntry -> unit) =
     let rec impl start = function
       | Configuration(_,_,_,_,Some prev)  as curr ->
-        f start curr; impl (start + 1u) prev
+        f start curr; impl (start + 1) prev
 
       | Configuration(_,_,_,_,None)       as curr ->
         f start curr
 
       | JointConsensus(_,_,_,_,Some prev) as curr ->
-        f start curr; impl (start + 1u) prev
+        f start curr; impl (start + 1) prev
 
       | JointConsensus(_,_,_,_,None)      as curr ->
         f start curr
 
       | LogEntry(_,_,_,_,Some prev)       as curr ->
-        f start curr; impl (start + 1u) prev
+        f start curr; impl (start + 1) prev
 
       | LogEntry(_,_,_,_,None)            as curr ->
         f start curr
@@ -242,7 +242,7 @@ type RaftLogEntry =
       | Snapshot _                        as curr ->
         f start curr
 
-    impl 0u self
+    impl 0 self
 
   // ** ToOffset
 
@@ -274,8 +274,8 @@ type RaftLogEntry =
 
         ConfigurationFB.StartConfigurationFB(builder)
         ConfigurationFB.AddId(builder, id)
-        ConfigurationFB.AddIndex(builder, unwrap idx)
-        ConfigurationFB.AddTerm(builder, unwrap term)
+        ConfigurationFB.AddIndex(builder, int idx)
+        ConfigurationFB.AddTerm(builder, int term)
         ConfigurationFB.AddMembers(builder, nvec)
 
         let entry = ConfigurationFB.EndConfigurationFB(builder)
@@ -294,8 +294,8 @@ type RaftLogEntry =
 
         JointConsensusFB.StartJointConsensusFB(builder)
         JointConsensusFB.AddId(builder, id)
-        JointConsensusFB.AddIndex(builder, unwrap index)
-        JointConsensusFB.AddTerm(builder, unwrap term)
+        JointConsensusFB.AddIndex(builder, int index)
+        JointConsensusFB.AddTerm(builder, int term)
         JointConsensusFB.AddChanges(builder, chvec)
 
         let entry = JointConsensusFB.EndJointConsensusFB(builder)
@@ -314,8 +314,8 @@ type RaftLogEntry =
 
         LogEntryFB.StartLogEntryFB(builder)
         LogEntryFB.AddId(builder, id)
-        LogEntryFB.AddIndex(builder, unwrap index)
-        LogEntryFB.AddTerm(builder, unwrap term)
+        LogEntryFB.AddIndex(builder, int index)
+        LogEntryFB.AddTerm(builder, int term)
         LogEntryFB.AddData(builder, data)
 
         let entry = LogEntryFB.EndLogEntryFB(builder)
@@ -336,10 +336,10 @@ type RaftLogEntry =
 
         SnapshotFB.StartSnapshotFB(builder)
         SnapshotFB.AddId(builder, id)
-        SnapshotFB.AddIndex(builder, unwrap index)
-        SnapshotFB.AddTerm(builder, unwrap term)
-        SnapshotFB.AddLastIndex(builder, unwrap lidx)
-        SnapshotFB.AddLastTerm(builder, unwrap lterm)
+        SnapshotFB.AddIndex(builder, int index)
+        SnapshotFB.AddTerm(builder, int term)
+        SnapshotFB.AddLastIndex(builder, int lidx)
+        SnapshotFB.AddLastTerm(builder, int lterm)
         SnapshotFB.AddMembers(builder, nvec)
         SnapshotFB.AddData(builder, data)
 
@@ -956,7 +956,7 @@ module LogEntry =
   /// |_|  |_|\__,_|_|\_\___|
 
   let make term data =
-    LogEntry(Id.Create(), index 0u, term, data, None)
+    LogEntry(Id.Create(), index 0, term, data, None)
 
   // ** LogEntry.mkConfig
 
@@ -965,7 +965,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfig term mems =
-    Configuration(Id.Create(), index 0u, term, mems, None)
+    Configuration(Id.Create(), index 0, term, mems, None)
 
   // ** LogEntry.mkConfigChange
 
@@ -975,7 +975,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfigChange term changes =
-    JointConsensus(Id.Create(), index 0u, term, changes, None)
+    JointConsensus(Id.Create(), index 0, term, changes, None)
 
   let calculateChanges oldmems newmems =
     let changes =
@@ -1033,7 +1033,7 @@ module LogEntry =
       | JointConsensus(_,idx,term,_,_) -> idx,term
       | Snapshot(_,idx,term,_,_,_,_)   -> idx,term
     in
-      Snapshot(Id.Create(),index (unwrap idx + 1u),term,idx,term,mems,data)
+      Snapshot(Id.Create(),idx + 1<index>,term,idx,term,mems,data)
 
   // ** LogEntry.map
 
@@ -1108,7 +1108,7 @@ module LogEntry =
   /// |_|\__\___|_|
   ///
   /// Iterate over a log from the newest entry to the oldest.
-  let iter (f : uint32 -> RaftLogEntry -> unit) (log : RaftLogEntry) =
+  let iter (f : int -> RaftLogEntry -> unit) (log : RaftLogEntry) =
     log.Iter f
 
   // ** LogEntry.aggregate
@@ -1215,28 +1215,28 @@ module LogEntry =
   let rec rewrite entry =
     match entry with
     | Configuration(id, _, _, mems, None) ->
-      Configuration(id, index 1u, term 1u, mems, None)
+      Configuration(id, index 1, term 1, mems, None)
 
     | Configuration(id, _, term, mems, Some prev) ->
       let previous = rewrite prev
-      Configuration(id, getIndex previous .++. index 1u, term, mems, Some previous)
+      Configuration(id, getIndex previous + index 1, term, mems, Some previous)
 
     | JointConsensus(id, _, term, changes, None) ->
-      JointConsensus(id, index 1u, term, changes, None)
+      JointConsensus(id, index 1, term, changes, None)
 
     | JointConsensus(id, _, term, changes, Some prev) ->
       let previous = rewrite prev
-      JointConsensus(id, getIndex previous .++. index 1u, term, changes, Some previous)
+      JointConsensus(id, getIndex previous + index 1, term, changes, Some previous)
 
     | LogEntry(id, _, term, data, None) ->
-      LogEntry(id, index 1u, term, data, None)
+      LogEntry(id, index 1, term, data, None)
 
     | LogEntry(id, _, term, data, Some prev) ->
       let previous = rewrite prev
-      LogEntry(id, getIndex previous .++. index 1u, term, data, Some previous)
+      LogEntry(id, getIndex previous + index 1, term, data, Some previous)
 
     | Snapshot(id, _, term, _, pterm, mems, data) ->
-      Snapshot(id, index 2u, term, index 1u, pterm, mems, data)
+      Snapshot(id, index 2, term, index 1, pterm, mems, data)
 
   // ** LogEntry.append
 
@@ -1254,7 +1254,7 @@ module LogEntry =
       if getId _log = getId _entry then
         _log
       else
-        let nextIdx = getIndex _log .++. index 1u
+        let nextIdx = getIndex _log + index 1
         match _entry with
         | Configuration(id, _, term, mems, _) ->
           Configuration(id, nextIdx, term, mems, Some _log)
@@ -1355,10 +1355,10 @@ module LogEntry =
   //  \__, |\___|\__|_| |_|
   //  |___/
   let rec getn count log =
-    if count = 0u then
+    if count = 0 then
       None
     else
-      let newcnt = count - 1u
+      let newcnt = count - 1
       match log with
       | Configuration(_,_,_,_, None) as curr -> Some curr
       | JointConsensus(_,_,_,_,None) as curr -> Some curr
@@ -1413,7 +1413,7 @@ module LogEntry =
 
   /// Make sure the current log entry is a singleton (followed by no entries).
   let sanitize term = function
-    | Configuration(id,_,term,mems,_)    -> Configuration(id, index 0u,term,mems,None)
-    | JointConsensus(id,_,term,changes,_) -> JointConsensus(id, index 0u,term,changes,None)
-    | LogEntry(id,_,_,data,_)             -> LogEntry(id, index 0u,term,data,None)
+    | Configuration(id,_,term,mems,_)    -> Configuration(id, index 0,term,mems,None)
+    | JointConsensus(id,_,term,changes,_) -> JointConsensus(id, index 0,term,changes,None)
+    | LogEntry(id,_,_,data,_)             -> LogEntry(id, index 0,term,data,None)
     | Snapshot _ as snapshot              -> snapshot

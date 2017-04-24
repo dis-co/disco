@@ -197,8 +197,8 @@ and RaftMember =
     RaftMemberFB.AddVoting(builder, mem.Voting)
     RaftMemberFB.AddVotedForMe(builder, mem.VotedForMe)
     RaftMemberFB.AddState(builder, state)
-    RaftMemberFB.AddNextIndex(builder, unwrap mem.NextIndex)
-    RaftMemberFB.AddMatchIndex(builder, unwrap mem.MatchIndex)
+    RaftMemberFB.AddNextIndex(builder, int mem.NextIndex)
+    RaftMemberFB.AddMatchIndex(builder, int mem.MatchIndex)
     RaftMemberFB.EndRaftMemberFB(builder)
 
   static member FromFB (fb: RaftMemberFB) : Either<IrisError, RaftMember> =
@@ -377,8 +377,8 @@ module Member =
     ; State      = Running
     ; Voting     = true
     ; VotedForMe = false
-    ; NextIndex  = index 1u
-    ; MatchIndex = index 0u
+    ; NextIndex  = index 1
+    ; MatchIndex = index 0
     }
 
   let isVoting (mem : RaftMember) : bool =

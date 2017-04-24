@@ -9,8 +9,9 @@ namespace Iris.Core
 [<Measure>] type timestamp
 [<Measure>] type frame
 [<Measure>] type sec                    // seconds
-[<Measure>] type ns                     // nano seconds
-[<Measure>] type us                     // micro seconds
+[<Measure>] type ms                     // milliseconds
+[<Measure>] type ns                     // nanoseconds
+[<Measure>] type us                     // microseconds
 [<Measure>] type fps = frame/sec
 [<Measure>] type email
 [<Measure>] type index
@@ -27,8 +28,8 @@ namespace Iris.Core
 
 type NodeId     = Id
 type MemberId   = Id
-type Index      = uint32<index>
-type Term       = uint32<term>
+type Index      = int<index>
+type Term       = int<term>
 type Name       = string<name>
 type Email      = string<email>
 type Tag        = string
@@ -52,6 +53,7 @@ type Hash       = string<checksum>
 type Password   = string<password>
 type Salt       = string<checksum>
 type Port       = uint16<port>
+type Timeout    = int<ms>
 
 [<AutoOpen>]
 module Measure =
@@ -61,9 +63,9 @@ module Measure =
   let timestamp t: TimeStamp = UoM.wrap t
   let email e: Email = UoM.wrap e
   let port p: Port = UoM.wrap p
-  let index i: Index = UoM.wrap i
-  let term t: Term = UoM.wrap t
   let checksum t: Hash = UoM.wrap t
+  let index i: Index = i * 1<index>
+  let term t: Term = t * 1<term>
 
 type IPProtocol =
   | IPv4

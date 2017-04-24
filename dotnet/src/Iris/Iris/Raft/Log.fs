@@ -20,7 +20,7 @@ open SharpYaml.Serialization
 
 type RaftLog =
   { Data  : RaftLogEntry option
-  ; Depth : uint32
+  ; Depth : int
   ; Index : Index
   }
 
@@ -86,8 +86,8 @@ type RaftLog =
                  Index = LogEntry.getIndex entries }
       | _ ->
         return { Data  = None
-                 Depth = 0u
-                 Index = index 0u }
+                 Depth = 0
+                 Index = index 0 }
     }
 
 // * Log Module
@@ -109,8 +109,8 @@ module Log =
   /// Build a new, empty log data structure.
   ///
   /// Returns: RaftLog
-  let empty = { Depth = 0u
-              ; Index = index 0u
+  let empty = { Depth = 0
+              ; Index = index 0
               ; Data  = None }
 
   // ** Log.fromEntries
@@ -178,7 +178,7 @@ module Log =
   let getTerm log =
     match log.Data with
     | Some entries -> LogEntry.getTerm entries
-    | _            -> term 0u
+    | _            -> term 0
 
   // ** Log.prevTerm
 
@@ -296,7 +296,7 @@ module Log =
       | Some entries ->
         let snapshot = LogEntry.snapshot nodes data entries
         { Index = LogEntry.getIndex snapshot
-          Depth = 1u
+          Depth = 1
           Data = Some snapshot }
       | _ -> log
 

@@ -48,18 +48,18 @@ open SharpYaml.Serialization
 /// Configuration for Raft-specific, user-facing values.
 ///
 type RaftConfig =
-  { RequestTimeout:   uint32
-    ElectionTimeout:  uint32
-    MaxLogDepth:      uint32
+  { RequestTimeout:   Timeout
+    ElectionTimeout:  Timeout
+    MaxLogDepth:      int
     LogLevel:         Iris.Core.LogLevel
     DataDir:          FilePath
     MaxRetries:       uint8
     PeriodicInterval: uint8 }
 
   static member Default =
-    { RequestTimeout   = 500u
-      ElectionTimeout  = 6000u
-      MaxLogDepth      = 20u
+    { RequestTimeout   = 500<ms>
+      ElectionTimeout  = 6000<ms>
+      MaxLogDepth      = 20
       MaxRetries       = 10uy
       PeriodicInterval = 50uy
       LogLevel         = LogLevel.Err
@@ -70,8 +70,8 @@ type RaftConfig =
     let dir = self.DataDir |> unwrap |> builder.CreateString
 
     RaftConfigFB.StartRaftConfigFB(builder)
-    RaftConfigFB.AddRequestTimeout(builder, self.RequestTimeout)
-    RaftConfigFB.AddElectionTimeout(builder, self.ElectionTimeout)
+    RaftConfigFB.AddRequestTimeout(builder, int self.RequestTimeout)
+    RaftConfigFB.AddElectionTimeout(builder, int self.ElectionTimeout)
     RaftConfigFB.AddMaxLogDepth(builder, self.MaxLogDepth)
     RaftConfigFB.AddLogLevel(builder, lvl)
     RaftConfigFB.AddDataDir(builder, dir)
@@ -83,8 +83,8 @@ type RaftConfig =
     either {
       let! level = Iris.Core.LogLevel.TryParse fb.LogLevel
       return
-        { RequestTimeout   = fb.RequestTimeout
-          ElectionTimeout  = fb.ElectionTimeout
+        { RequestTimeout   = fb.RequestTimeout * 1<ms>
+          ElectionTimeout  = fb.ElectionTimeout * 1<ms>
           MaxLogDepth      = fb.MaxLogDepth
           LogLevel         = level
           DataDir          = filepath fb.DataDir
@@ -1042,9 +1042,9 @@ Project:
 
       try
         return
-          { RequestTimeout   = uint32 engine.RequestTimeout
-            ElectionTimeout  = uint32 engine.ElectionTimeout
-            MaxLogDepth      = uint32 engine.MaxLogDepth
+          { RequestTimeout   = engine.RequestTimeout * 1<ms>
+            ElectionTimeout  = engine.ElectionTimeout * 1<ms>
+            MaxLogDepth      = engine.MaxLogDepth
             LogLevel         = loglevel
             DataDir          = filepath engine.DataDir
             MaxRetries       = uint8 engine.MaxRetries
@@ -1618,8 +1618,8 @@ Project:
                  State      = state
                  Voting     = true
                  VotedForMe = false
-                 NextIndex  = index 1u
-                 MatchIndex = index 0u }
+                 NextIndex  = index 1
+                 MatchIndex = index 0 }
       with
         | exn ->
           return!

@@ -57,8 +57,8 @@ type EntryResponse =
     let id = self.Id |> string |> builder.CreateString
     EntryResponseFB.StartEntryResponseFB(builder)
     EntryResponseFB.AddId(builder, id)
-    EntryResponseFB.AddTerm(builder, unwrap self.Term)
-    EntryResponseFB.AddIndex(builder, unwrap self.Index)
+    EntryResponseFB.AddTerm(builder, int self.Term)
+    EntryResponseFB.AddIndex(builder, int self.Index)
     EntryResponseFB.EndEntryResponseFB(builder)
 
   static member FromFB(fb: EntryResponseFB) =
@@ -106,9 +106,9 @@ type VoteRequest =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let mem = self.Candidate.ToOffset(builder)
     VoteRequestFB.StartVoteRequestFB(builder)
-    VoteRequestFB.AddTerm(builder, unwrap self.Term)
-    VoteRequestFB.AddLastLogTerm(builder, unwrap self.LastLogTerm)
-    VoteRequestFB.AddLastLogIndex(builder, unwrap self.LastLogIndex)
+    VoteRequestFB.AddTerm(builder, int self.Term)
+    VoteRequestFB.AddLastLogTerm(builder, int self.LastLogTerm)
+    VoteRequestFB.AddLastLogIndex(builder, int self.LastLogIndex)
     VoteRequestFB.AddCandidate(builder, mem)
     VoteRequestFB.EndVoteRequestFB(builder)
 
@@ -168,7 +168,7 @@ type VoteResponse =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let err = Option.map (fun (r: IrisError) -> r.ToOffset(builder)) self.Reason
     VoteResponseFB.StartVoteResponseFB(builder)
-    VoteResponseFB.AddTerm(builder, unwrap self.Term)
+    VoteResponseFB.AddTerm(builder, int self.Term)
     match err with
       | Some offset -> VoteResponseFB.AddReason(builder, offset)
       | _ -> ()
@@ -257,10 +257,10 @@ type AppendEntries =
         self.Entries
 
     AppendEntriesFB.StartAppendEntriesFB(builder)
-    AppendEntriesFB.AddTerm(builder, unwrap self.Term)
-    AppendEntriesFB.AddPrevLogTerm(builder, unwrap self.PrevLogTerm)
-    AppendEntriesFB.AddPrevLogIdx(builder, unwrap self.PrevLogIdx)
-    AppendEntriesFB.AddLeaderCommit(builder, unwrap self.LeaderCommit)
+    AppendEntriesFB.AddTerm(builder, int self.Term)
+    AppendEntriesFB.AddPrevLogTerm(builder, int self.PrevLogTerm)
+    AppendEntriesFB.AddPrevLogIdx(builder, int self.PrevLogIdx)
+    AppendEntriesFB.AddLeaderCommit(builder, int self.LeaderCommit)
 
     Option.map (fun offset -> AppendEntriesFB.AddEntries(builder, offset)) entries
     |> ignore
@@ -302,10 +302,10 @@ type AppendResponse =
   // ** ToOffset
   member self.ToOffset(builder: FlatBufferBuilder) =
     AppendResponseFB.StartAppendResponseFB(builder)
-    AppendResponseFB.AddTerm(builder, unwrap self.Term)
+    AppendResponseFB.AddTerm(builder, int self.Term)
     AppendResponseFB.AddSuccess(builder, self.Success)
-    AppendResponseFB.AddFirstIndex(builder, unwrap self.FirstIndex)
-    AppendResponseFB.AddCurrentIndex(builder, unwrap self.CurrentIndex)
+    AppendResponseFB.AddFirstIndex(builder, int self.FirstIndex)
+    AppendResponseFB.AddCurrentIndex(builder, int self.CurrentIndex)
     AppendResponseFB.EndAppendResponseFB(builder)
 
 // * module AppendRequest
@@ -332,7 +332,7 @@ module AppendRequest =
   let inline numEntries ar =
     match ar.Entries with
       | Some entries -> LogEntry.depth entries
-      | _            -> 0u
+      | _            -> 0
 
   // ** prevLogIndex
   let inline prevLogIndex ae = ae.PrevLogIdx
@@ -362,10 +362,10 @@ type InstallSnapshot =
     let leaderid = string self.LeaderId |> builder.CreateString
 
     InstallSnapshotFB.StartInstallSnapshotFB(builder)
-    InstallSnapshotFB.AddTerm(builder, unwrap self.Term)
+    InstallSnapshotFB.AddTerm(builder, int self.Term)
     InstallSnapshotFB.AddLeaderId(builder, leaderid)
-    InstallSnapshotFB.AddLastTerm(builder, unwrap self.LastTerm)
-    InstallSnapshotFB.AddLastIndex(builder, unwrap self.LastIndex)
+    InstallSnapshotFB.AddLastTerm(builder, int self.LastTerm)
+    InstallSnapshotFB.AddLastIndex(builder, int self.LastIndex)
     InstallSnapshotFB.AddData(builder, data)
     InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
@@ -479,9 +479,9 @@ and RaftValueYaml() =
   [<DefaultValue>] val mutable Term            : Term
   [<DefaultValue>] val mutable Leader          : string
   [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable ElectionTimeout : uint32
-  [<DefaultValue>] val mutable RequestTimeout  : uint32
-  [<DefaultValue>] val mutable MaxLogDepth     : uint32
+  [<DefaultValue>] val mutable ElectionTimeout : int
+  [<DefaultValue>] val mutable RequestTimeout  : int
+  [<DefaultValue>] val mutable MaxLogDepth     : int
 
 // * RaftValue
 
@@ -519,15 +519,15 @@ and RaftValue =
   ; CurrentLeader     : MemberId option
   ; Peers             : Map<MemberId,RaftMember>
   ; OldPeers          : Map<MemberId,RaftMember> option
-  ; NumMembers        : uint32
+  ; NumMembers        : int
   ; VotedFor          : MemberId option
   ; Log               : RaftLog
   ; CommitIndex       : Index
   ; LastAppliedIdx    : Index
-  ; TimeoutElapsed    : uint32
-  ; ElectionTimeout   : uint32
-  ; RequestTimeout    : uint32
-  ; MaxLogDepth       : uint32
+  ; TimeoutElapsed    : Timeout
+  ; ElectionTimeout   : Timeout
+  ; RequestTimeout    : Timeout
+  ; MaxLogDepth       : int
   ; ConfigChangeEntry : RaftLogEntry option
   }
 
@@ -597,8 +597,8 @@ ConfigChangeEntry = %s
       self.VotedFor
     |> ignore
 
-    yaml.ElectionTimeout <- self.ElectionTimeout
-    yaml.RequestTimeout <- self.RequestTimeout
+    yaml.ElectionTimeout <- int self.ElectionTimeout
+    yaml.RequestTimeout <- int self.RequestTimeout
     yaml.MaxLogDepth <- self.MaxLogDepth
     yaml
 
@@ -623,14 +623,14 @@ ConfigChangeEntry = %s
                CurrentLeader     = leader
                Peers             = Map.empty
                OldPeers          = None
-               NumMembers        = 0u
+               NumMembers        = 0
                VotedFor          = votedfor
                Log               = Log.empty
-               CommitIndex       = index 0u
-               LastAppliedIdx    = index 0u
-               TimeoutElapsed    = 0u
-               ElectionTimeout   = yaml.ElectionTimeout
-               RequestTimeout    = yaml.RequestTimeout
+               CommitIndex       = index 0
+               LastAppliedIdx    = index 0
+               TimeoutElapsed    = 0<ms>
+               ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
+               RequestTimeout    = yaml.RequestTimeout * 1<ms>
                MaxLogDepth       = yaml.MaxLogDepth
                ConfigChangeEntry = None }
     }

@@ -1037,7 +1037,7 @@ module Raft =
   let private tryLeaveCluster (state: RaftAppContext) =
     Tracing.trace (tag "tryLeaveCluster") <| fun () ->
       raft {
-        do! Raft.setTimeoutElapsedM 0u
+        do! Raft.setTimeoutElapsedM 0<ms>
 
         match tryLeave state with
 
@@ -1092,18 +1092,16 @@ module Raft =
   let private initializeRaft (state: RaftValue) (callbacks: IRaftCallbacks) =
     Tracing.trace (tag "initializeRaft") <| fun () ->
       raft {
-        let term = term 0u
+        let term = term 0
         do! Raft.setTermM term
         let! num = Raft.numMembersM ()
 
-        if num = 1u then
-          do! Raft.setTimeoutElapsedM 0u
+        if num = 1 then
+          do! Raft.setTimeoutElapsedM 0<ms>
           do! Raft.becomeLeader ()
         else
           // set the timeout to something random, to prevent split votes
-          let timeout : uint32 =
-            rand.Next(0, int state.ElectionTimeout)
-            |> uint32
+          let timeout = 1<ms> * rand.Next(0, int state.ElectionTimeout)
           do! Raft.setTimeoutElapsedM timeout
           do! Raft.becomeFollower ()
       }
@@ -1420,7 +1418,7 @@ module Raft =
       match state with
       | Idle -> Idle
       | Loaded data ->
-        uint32 data.Options.Raft.PeriodicInterval
+        int data.Options.Raft.PeriodicInterval * 1<ms>
         |> Raft.periodic
         |> evalRaft data.Raft data.Callbacks
         |> updateRaft data

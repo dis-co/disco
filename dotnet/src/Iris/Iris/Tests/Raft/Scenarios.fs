@@ -192,13 +192,13 @@ module Scenarios =
 
             let raft =
               Raft.mkRaft peers.[int n]
-              |> Raft.setElectionTimeout 500u
+              |> Raft.setElectionTimeout 500<ms>
               |> Raft.addMembers (Array.map toPair peers |> Map.ofArray)
 
             yield (raft,callbacks) |]
 
       // First member starts election.
-      Raft.periodic 1000u
+      Raft.periodic 1000<ms>
       |> evalRaft  (fst servers.[0]) (snd servers.[0])
       |> fun result ->
         Array.set servers 0 (result, snd servers.[0])
@@ -222,7 +222,7 @@ module Scenarios =
         __logg "Running periodic"
         for n in 0UL .. (numPeers - 1UL) do
           let srv = servers.[int n]
-          Raft.periodic 100u
+          Raft.periodic 100<ms>
           |> evalRaft (fst srv) (snd srv)
           |> fun r -> Array.set servers (int n) (r, snd srv)
 

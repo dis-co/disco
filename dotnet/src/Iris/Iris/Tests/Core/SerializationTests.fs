@@ -29,9 +29,9 @@ module SerializationTests =
             Port     = 8080us }
 
       let vr : VoteRequest =
-        { Term = term 8u
-        ; LastLogIndex = index 128u
-        ; LastLogTerm = term 7u
+        { Term = term 8
+        ; LastLogIndex = index 128
+        ; LastLogTerm = term 7
         ; Candidate = mem }
 
       RequestVote(Id.Create(), vr)
@@ -47,7 +47,7 @@ module SerializationTests =
   let test_validate_requestvote_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let vr : VoteResponse =
-        { Term = term 8u
+        { Term = term 8
         ; Granted = false
         ; Reason = Some (RaftError("test","error")) }
 
@@ -73,17 +73,17 @@ module SerializationTests =
         let mems = [| mem1; mem2 |]
 
         let log =
-          Some <| LogEntry(Id.Create(), index 7u, term 1u, DataSnapshot(state),
-            Some <| LogEntry(Id.Create(), index 6u, term 1u, DataSnapshot(state),
-              Some <| Configuration(Id.Create(), index 5u, term 1u, [| mem1 |],
-                Some <| JointConsensus(Id.Create(), index 4u, term 1u, changes,
-                  Some <| Snapshot(Id.Create(), index 3u, term 1u, index 2u, term 1u, mems, DataSnapshot(state))))))
+          Some <| LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
+            Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),
+              Some <| Configuration(Id.Create(), index 5, term 1, [| mem1 |],
+                Some <| JointConsensus(Id.Create(), index 4, term 1, changes,
+                  Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mems, DataSnapshot(state))))))
 
         let ae : AppendEntries =
-          { Term = term 8u
-          ; PrevLogIdx = index 192u
-          ; PrevLogTerm = term 87u
-          ; LeaderCommit = index 182u
+          { Term = term 8
+          ; PrevLogIdx = index 192
+          ; PrevLogTerm = term 87
+          ; LeaderCommit = index 182
           ; Entries = log }
 
         AppendEntries(Id.Create(), ae)
@@ -104,10 +104,10 @@ module SerializationTests =
   let test_validate_appendentries_response_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       let response : AppendResponse =
-        { Term         = term 38u
+        { Term         = term 38
         ; Success      = true
-        ; CurrentIndex = index 1234u
-        ; FirstIndex   = index 8942u
+        ; CurrentIndex = index 1234
+        ; FirstIndex   = index 8942
         }
 
       AppendEntriesResponse(Id.Create(), response)
@@ -128,11 +128,11 @@ module SerializationTests =
         let mem1 = [| Member.create (Id.Create()) |]
 
         let is : InstallSnapshot =
-          { Term = term 2134u
+          { Term = term 2134
           ; LeaderId = Id.Create()
-          ; LastIndex = index 242u
-          ; LastTerm = term 124242u
-          ; Data = Snapshot(Id.Create(), index 12u, term 3414u, index 241u, term 422u, mem1, DataSnapshot(state))
+          ; LastIndex = index 242
+          ; LastTerm = term 124242
+          ; Data = Snapshot(Id.Create(), index 12, term 3414, index 241, term 422, mem1, DataSnapshot(state))
           }
 
         InstallSnapshot(Id.Create(), is)
@@ -248,7 +248,7 @@ module SerializationTests =
           Config.create "default" machine
           |> Config.addSiteAndSetActive site
 
-        let trm = term 666u
+        let trm = term 666
 
         let! raft =
           createRaft config
@@ -373,25 +373,25 @@ module SerializationTests =
 
   let test_validate_slice_binary_serialization =
     testCase "Validate Slice Binary Serialization" <| fun _ ->
-      [| BoolSlice   (index 0u, true)
-      ;  StringSlice (index 0u, "hello")
-      ;  NumberSlice (index 0u, 1234.0)
-      ;  ByteSlice   (index 0u, [| 0uy; 4uy; 9uy; 233uy |])
-      ;  EnumSlice   (index 0u, { Key = "one"; Value = "two" })
-      ;  ColorSlice  (index 0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
-      ;  ColorSlice  (index 0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
+      [| BoolSlice   (index 0, true)
+      ;  StringSlice (index 0, "hello")
+      ;  NumberSlice (index 0, 1234.0)
+      ;  ByteSlice   (index 0, [| 0uy; 4uy; 9uy; 233uy |])
+      ;  EnumSlice   (index 0, { Key = "one"; Value = "two" })
+      ;  ColorSlice  (index 0, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
+      ;  ColorSlice  (index 0, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
       |]
       |> Array.iter binaryEncDec
 
   let test_validate_slice_yaml_serialization =
     testCase "Validate Slice Yaml Serialization" <| fun _ ->
-      [| BoolSlice    (index 0u, true    )
-      ;  StringSlice  (index 0u, "hello" )
-      ;  NumberSlice  (index 0u, 1234.0  )
-      ;  ByteSlice    (index 0u, [| 0uy; 4uy; 9uy; 233uy |] )
-      ;  EnumSlice    (index 0u, { Key = "one"; Value = "two" })
-      ;  ColorSlice   (index 0u, RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } )
-      ;  ColorSlice   (index 0u, HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } )
+      [| BoolSlice    (index 0, true    )
+      ;  StringSlice  (index 0, "hello" )
+      ;  NumberSlice  (index 0, 1234.0  )
+      ;  ByteSlice    (index 0, [| 0uy; 4uy; 9uy; 233uy |] )
+      ;  EnumSlice    (index 0, { Key = "one"; Value = "two" })
+      ;  ColorSlice   (index 0, RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } )
+      ;  ColorSlice   (index 0, HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } )
       |]
       |> Array.iter yamlEncDec
 

@@ -270,7 +270,7 @@ module ApiTests =
         expect "Server should have one cuelist" 1 len serverState.CueLists
         expect "Client should have one cuelist" 1 len clientState.CueLists
 
-        do! client.UpdatePin (Pin.setSlice (BoolSlice(index 0u, false)) pin)
+        do! client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
 
         clientUpdate.WaitOne() |> ignore
 
