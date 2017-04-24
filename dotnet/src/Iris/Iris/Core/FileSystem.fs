@@ -17,7 +17,6 @@ open System.Linq
 
 // * Path
 
-#if !FABLE_COMPILER
 
 [<AutoOpen>]
 module Path =
@@ -35,16 +34,14 @@ module Path =
   /// Returns: FilePath (string)
   let (</>) (p1: FilePath) (p2: FilePath) : FilePath =
     #if FABLE_COMPILER
-    String.Format "{0}/{1}" p1 p2
-    |> filepath
+    sprintf "%O/%O" p1 p2 |> filepath
     #else
     Path.Combine(unwrap p1, unwrap p2) |> filepath
     #endif
 
   let (<.>) (p1: string) (p2: string) : FilePath =
     #if FABLE_COMPILER
-    String.Format "{0}/{1}" p1 p2
-    |> filepath
+    sprintf "%s/%s" p1 p2 |> filepath
     #else
     Path.Combine(p1, p2) |> filepath
     #endif
@@ -55,14 +52,16 @@ module Path =
   let inline map (f: string -> 'a) (path: FilePath) =
     path |> unwrap |> f
 
+  let endsWith (suffix: string) (path: FilePath) =
+    (unwrap path : string).EndsWith suffix
+
+  #if !FABLE_COMPILER
+
   let baseName (path: FilePath) =
     pmap Path.GetFileName path
 
   let dirName (path: FilePath) =
     pmap Path.GetDirectoryName path
-
-  let endsWith (suffix: string) (path: FilePath) =
-    (unwrap path : string).EndsWith suffix
 
   let getRandomFileName () =
     Path.GetRandomFileName() |> filepath
@@ -82,7 +81,7 @@ module Path =
   let getFileName (path: FilePath) =
     pmap Path.GetFileName path
 
-#endif
+  #endif
 
 // * File
 

@@ -916,9 +916,9 @@ let VvvvConfigFB: VvvvConfigFBConstructor = failwith "JS only"
 // RAFT CONFIG
 
 type RaftConfigFB =
-  abstract RequestTimeout:   uint32
-  abstract ElectionTimeout:  uint32
-  abstract MaxLogDepth:      uint32
+  abstract RequestTimeout:   int
+  abstract ElectionTimeout:  int
+  abstract MaxLogDepth:      int
   abstract LogLevel:         string
   abstract DataDir:          string
   abstract MaxRetries:       uint16
@@ -927,9 +927,9 @@ type RaftConfigFB =
 type RaftConfigFBConstructor =
   abstract prototype: RaftConfigFB with get, set
   abstract StartRaftConfigFB: builder: FlatBufferBuilder -> unit
-  abstract AddRequestTimeout: builder: FlatBufferBuilder * rto:uint32 -> unit
-  abstract AddElectionTimeout: builder: FlatBufferBuilder * eto:uint32 -> unit
-  abstract AddMaxLogDepth: builder: FlatBufferBuilder * eto:uint32 -> unit
+  abstract AddRequestTimeout: builder: FlatBufferBuilder * rto:int -> unit
+  abstract AddElectionTimeout: builder: FlatBufferBuilder * eto:int -> unit
+  abstract AddMaxLogDepth: builder: FlatBufferBuilder * mld:int -> unit
   abstract AddLogLevel: builder: FlatBufferBuilder * lvl:Offset<string> -> unit
   abstract AddDataDir: builder: FlatBufferBuilder * dir:Offset<string> -> unit
   abstract AddMaxRetries: builder: FlatBufferBuilder * rtr:uint16 -> unit

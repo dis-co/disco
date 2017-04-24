@@ -227,7 +227,7 @@ let project2tree (p: IrisProject) =
     |] |> node "Config"
   [| leaf ("Id: " + string p.Id)
   ;  leaf ("Name: " + unwrap p.Name)
-  ;  leaf ("Path: " + p.Path)
+  ;  leaf ("Path: " + unwrap p.Path)
   ;  leaf ("CreatedOn: " + p.CreatedOn)
   ;  leaf ("LastSaved: " + defaultArg p.LastSaved "unknown")
   ;  leaf ("Copyright: " + defaultArg p.Copyright "unknown")

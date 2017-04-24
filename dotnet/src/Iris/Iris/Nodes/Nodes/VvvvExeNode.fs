@@ -58,8 +58,8 @@ type VvvvExeNode() =
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InExe.[n]) then
             let config = self.InExe.[n]
-            self.OutExecutable.[n] <- config.Executable
-            self.OutVersion.[n] <- config.Version
+            self.OutExecutable.[n] <- unwrap config.Executable
+            self.OutVersion.[n] <- unwrap config.Version
             self.OutRequired.[n] <- config.Required
 
       if self.InUpdate.IsChanged then

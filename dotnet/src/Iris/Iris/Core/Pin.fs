@@ -1912,8 +1912,8 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     hash <- (hash * 7) + hashCode (string self.Id)
     hash <- (hash * 7) + hashCode self.Name
     hash <- (hash * 7) + hashCode (string self.PinGroup)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Tags)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + hashCode t) 0 self.Labels)
+    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Tags)
+    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Labels)
     hash <- (hash * 7) + hashCode (string self.Direction)
     hash <- (hash * 7) + hashCode (string self.VecSize)
     hash <- (hash * 7) + (Array.fold (fun m (t: byte[]) -> m + int t.Length) 0 self.Values)
@@ -2416,36 +2416,36 @@ type Slice =
     #if FABLE_COMPILER
     | x when x = SliceTypeFB.StringFB ->
       let slice = StringFB.Create() |> fb.Slice
-      StringSlice(fb.Index, slice.Value)
+      StringSlice(index fb.Index, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.DoubleFB ->
       let slice = DoubleFB.Create() |> fb.Slice
-      NumberSlice(fb.Index,slice.Value)
+      NumberSlice(index fb.Index,slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.BoolFB ->
       let slice = BoolFB.Create() |> fb.Slice
-      BoolSlice(fb.Index,slice.Value)
+      BoolSlice(index fb.Index,slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.ByteFB ->
       let slice = ByteFB.Create() |> fb.Slice
-      ByteSlice(fb.Index,String.decodeBase64 slice.Value)
+      ByteSlice(index fb.Index,String.decodeBase64 slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.EnumPropertyFB ->
       either {
         let slice = EnumPropertyFB.Create() |> fb.Slice
         let! prop = Property.FromFB slice
-        return EnumSlice(fb.Index,prop)
+        return EnumSlice(index fb.Index,prop)
       }
 
     | x when x = SliceTypeFB.ColorSpaceFB ->
       either {
         let slice = ColorSpaceFB.Create() |> fb.Slice
         let! color = ColorSpace.FromFB slice
-        return ColorSlice(fb.Index, color)
+        return ColorSlice(index fb.Index, color)
       }
 
     | x ->

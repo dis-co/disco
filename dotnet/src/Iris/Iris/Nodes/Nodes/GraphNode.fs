@@ -269,7 +269,7 @@ module Graph =
   let private parseTags (str: string) =
     match str with
     | null | "" -> [| |]
-    | _ -> str.Split [| ',' |]
+    | _ -> str.Split [| ',' |] |> Array.map astag
 
   // ** parsePinGroupId
 
@@ -782,7 +782,7 @@ module Graph =
         Tags = [| |]
         Direction = dir
         Behavior = st
-        MaxChars = maxchars
+        MaxChars = 1<chars> * maxchars
         VecSize = vc
         Labels = [| |]
         Values = parseStringValues pin

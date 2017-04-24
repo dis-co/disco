@@ -81,7 +81,7 @@ type UserNode() =
             self.OutUserName.[n] <- unwrap user.UserName
             self.OutFirstName.[n] <- unwrap user.FirstName
             self.OutLastName.[n] <- unwrap user.LastName
-            self.OutEmail.[n] <- user.Email
+            self.OutEmail.[n] <- unwrap user.Email
             self.OutJoined.[n] <- string user.Joined
             self.OutCreated.[n] <- string user.Created
 

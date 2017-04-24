@@ -55,7 +55,7 @@ type VvvvPluginNode() =
           if not (Util.isNullReference self.InPlugin.[0])  then
             let config = self.InPlugin.[n]
             self.OutName.[n] <- unwrap config.Name
-            self.OutPath.[n] <- config.Path
+            self.OutPath.[n] <- unwrap config.Path
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]
