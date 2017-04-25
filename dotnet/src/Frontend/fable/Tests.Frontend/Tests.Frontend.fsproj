@@ -1,0 +1,27 @@
+﻿<Project Sdk="FSharp.NET.Sdk;Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard1.6</TargetFramework>
+    <DefineConstants>FABLE_COMPILER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Frontend/Browser.fs" />
+    <Compile Include="../Frontend/Crypto.fs" />
+    <Compile Include="../Frontend/Html.fs" />
+    <Compile Include="../Frontend/Worker.fs" />
+    <Compile Include="../Frontend/Client.fs" />
+    <Compile Include="../Frontend/Keyboard.fs" />
+    <Compile Include="TestUtilities.fs" />
+    <Compile Include="Mocha.fs" />
+    <Compile Include="TypeTests.fs" />
+    <Compile Include="SerializationTests.fs" />
+    <Compile Include="StorageTests.fs" />
+    <Compile Include="StoreTests.fs" />
+    <Compile Include="Main.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
+    <ProjectReference Include="../../node_modules/fable-powerpack/Fable.Powerpack.fsproj" />
+    <ProjectReference Include="../Core.Frontend/Core.Frontend.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\..\.paket\Paket.Restore.targets" />
+</Project>

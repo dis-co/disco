@@ -30,6 +30,7 @@ group Main
   nuget VVVV.UtilsIL
   nuget Newtonsoft.Json
   nuget Fable.JsonConverter
+  nuget Fable.Core
   nuget Hopac >= 0.3.23
 
 group Build

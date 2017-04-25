@@ -1,8 +1,27 @@
 var path = require('path');
 var webpack = require('webpack');
 
+function resolve(filePath) {
+  return path.join(__dirname, filePath)
+}
+
+var isProduction = process.argv.indexOf("-p") >= 0;
+console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
+
+var babelOptions = {
+  presets: [["es2015", { "modules": false }]],
+  plugins: ["transform-runtime"]
+}
+
+var babelReactOptions = {
+  presets: [["es2015", { "modules": false }], "react"],
+  plugins: ["transform-runtime", "react-hot-loader/babel"]
+}
+
 module.exports = {
-  entry: [
+  entry: isProduction
+    ? resolve('./src/index.js')
+    : [
     'react-hot-loader/patch',
     // activate HMR for React
 
@@ -13,15 +32,14 @@ module.exports = {
     'webpack/hot/only-dev-server',
     // bundle the client for hot reloading
     // only- means to only hot reload for successful updates
-
-    path.join(__dirname, './src/index.js'),
+    resolve('./src/index.js')
     // the entry point of our app
   ],
 
   output: {
     filename: 'bundle.js', // the output bundle
-    path: path.join(__dirname, 'js'),
-    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
+    path: resolve('js'),
+    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks    
   },
 
   externals: {
@@ -32,14 +50,27 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js', '.json']
   },
 
-  devtool: 'inline-source-map',
+  devtool: isProduction ? null : 'inline-source-map',
 
   module: {
     rules: [
       {
-        test: /\.jsx?$/,
-        use: [ 'babel-loader' ],
-        exclude: /node_modules/,
+        test: /\.fs(x|proj)?$/,
+        use: {
+          loader: 'fable-loader',
+          options: {
+            babel: babelOptions,
+            define: isProduction ? [] : ["DEBUG"]
+          }
+        }
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules[\\\/](?!fable-)/,
+        use: {
+          loader: 'babel-loader',
+          options: babelReactOptions
+        },
       },
       {
         test: /\.css$/,
@@ -60,7 +91,9 @@ module.exports = {
     ],
   },
 
-  plugins: [
+  plugins: isProduction
+    ? [new webpack.optimize.UglifyJsPlugin()]
+    : [
     new webpack.HotModuleReplacementPlugin(),
     // enable HMR globally
 
@@ -81,5 +114,5 @@ module.exports = {
         target: 'http://localhost:7000'
       }
     }    
-  },
+  },  
 };

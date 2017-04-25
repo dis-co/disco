@@ -1,0 +1,53 @@
+<Project Sdk="FSharp.NET.Sdk;Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard1.6</TargetFramework>
+    <DefineConstants>FABLE_COMPILER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="any\netstandard1.6\FSharp.Core.optdata">
+      <Paket>True</Paket>
+    </Content>
+    <Content Include="any\netstandard1.6\FSharp.Core.sigdata">
+      <Paket>True</Paket>
+    </Content>
+    <Compile Include="FlatBuffers.fs" />
+    <Compile Include="FlatBufferTypes.fs" />
+    <Compile Include="../../../Iris/Core/Build.fs" />
+    <Compile Include="../../../Iris/Core/Measure.fs" />
+    <Compile Include="../../../Iris/Core/Constants.fs" />
+    <Compile Include="../../../Iris/Core/Either.fs" />
+    <Compile Include="../../../Iris/Core/Error.fs" />
+    <Compile Include="../../../Iris/Core/Serialization.fs" />
+    <Compile Include="../../../Iris/Core/Id.fs" />
+    <Compile Include="../../../Iris/Core/Property.fs" />
+    <Compile Include="../../../Iris/Core/IpAddress.fs" />
+    <Compile Include="../../../Iris/Core/Aliases.fs" />
+    <Compile Include="../../../Iris/Core/Platform.fs" />
+    <Compile Include="../../../Iris/Core/FileSystem.fs" />
+    <Compile Include="../../../Iris/Core/Network.fs" />
+    <Compile Include="../../../Iris/Core/Machine.fs" />
+    <Compile Include="../../../Iris/Core/User.fs" />
+    <Compile Include="../../../Iris/Core/Client.fs" />
+    <Compile Include="../../../Iris/Core/Session.fs" />
+    <Compile Include="../../../Iris/Core/Color.fs" />
+    <Compile Include="../../../Iris/Core/Util.fs" />
+    <Compile Include="../../../Iris/Core/Logging.fs" />
+    <Compile Include="../../../Iris/Core/Tracing.fs" />
+    <Compile Include="../../../Iris/Raft/Member.fs" />
+    <Compile Include="../../../Iris/Core/Pin.fs" />
+    <Compile Include="../../../Iris/Core/PinGroup.fs" />
+    <Compile Include="../../../Iris/Core/Cue.fs" />
+    <Compile Include="../../../Iris/Core/CueList.fs" />
+    <Compile Include="../../../Iris/Core/Renderer.fs" />
+    <Compile Include="../../../Iris/Core/Project.fs" />
+    <Compile Include="../../../Iris/Core/Discovery.fs" />
+    <Compile Include="../../../Iris/Core/StateMachine.fs" />
+    <Compile Include="../../../Iris/Core/Commands.fs" />
+    <Compile Include="../../../Iris/Core/ClientMessage.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
+    <ProjectReference Include="../../node_modules/fable-powerpack/Fable.Powerpack.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\..\.paket\Paket.Restore.targets" />
+</Project>
