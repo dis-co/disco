@@ -72,10 +72,14 @@ and ClientContext private () =
     ||> Fetch.postRecord Constants.WEP_API_COMMAND
     |> Promise.bind (fun res -> res.text())
     |> Promise.map (fun json ->
+      try
         let info = ofJson<ServiceInfo> json
         serviceInfo <- Some info
         ClientMessage.Connect info.webSocket
-        |> toJson |> self.Worker.Port.PostMessage)
+        |> toJson |> self.Worker.Port.PostMessage
+      with
+      | err ->
+        printfn "Error parsing GetServiceInfo reply: %s" err.Message)
 
   member self.Session =
     match session with
