@@ -261,6 +261,9 @@ module Discovery =
 
     match service with
     | Right parsed ->
+      (parsed.Id, parsed.Type)
+      |> sprintf "resolved new service %O"
+      |> Logger.debug (tag "addResolved")
       parsed
       |> Msg.Discovered
       |> agent.Post
