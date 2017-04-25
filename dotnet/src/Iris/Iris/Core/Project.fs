@@ -4,8 +4,6 @@ namespace Iris.Core
 
 open System
 open System.IO
-open System.Linq
-open System.Net
 open System.Text
 open System.Reflection
 open System.Collections.Generic
@@ -20,6 +18,8 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.Linq
+open System.Net
 open FSharpx.Functional
 open FlatBuffers
 open Iris.Serialization

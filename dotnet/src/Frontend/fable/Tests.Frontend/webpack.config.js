@@ -42,4 +42,9 @@ module.exports = {
       },
     ],
   },
+  resolve: {
+    modules: [
+      "node_modules", resolve("../../node_modules/")
+    ]
+  }  
 };
