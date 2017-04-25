@@ -35,6 +35,7 @@ open Hopac.Infixes
 //
 
 module Iris =
+  open Discovery
 
   // ** tag
 
@@ -79,7 +80,7 @@ module Iris =
   /// - disposables: IDisposable seq
   ///
   /// Returns: unit
-  let private disposeAll (disposables: Map<string,IDisposable>) =
+  let inline private disposeAll (disposables: Map<_,IDisposable>) =
     Map.iter (konst dispose) disposables
 
   // ** Leader
@@ -103,11 +104,13 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisIdleStateData =
-    { DiscoveryService : IDiscoveryService }
+    { Machine              : IrisMachine
+      DiscoveryService     : IDiscoveryService
+      DiscoverableServices : Map<ServiceType,IDisposable> }
 
     interface IDisposable with
       member self.Dispose() =
-        ()
+        disposeAll self.DiscoverableServices
 
   // ** IrisLoadedStateData
 
@@ -129,20 +132,24 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisLoadedStateData =
-    { MemberId      : Id
-      Status        : ServiceStatus
-      Store         : Store
-      Leader        : Leader option
-      ApiServer     : IApiServer
-      GitServer     : IGitServer
-      RaftServer    : IRaftServer
-      SocketServer  : IWebSocketServer
-      ClockService  : IClock
-      Subscriptions : Subscriptions
-      Disposables   : Map<string,IDisposable> }
+    { Member               : RaftMember
+      Machine              : IrisMachine
+      Status               : ServiceStatus
+      Store                : Store
+      Leader               : Leader option
+      ApiServer            : IApiServer
+      GitServer            : IGitServer
+      RaftServer           : IRaftServer
+      SocketServer         : IWebSocketServer
+      DiscoveryService     : IDiscoveryService
+      ClockService         : IClock
+      Subscriptions        : Subscriptions
+      Disposables          : Map<string,IDisposable>
+      DiscoverableServices : Map<ServiceType,IDisposable> }
 
     interface IDisposable with
       member self.Dispose() =
+        disposeAll self.DiscoverableServices
         disposeAll self.Disposables
         dispose self.ApiServer
         dispose self.GitServer
@@ -163,14 +170,14 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisState =
-    | Idle of IrisIdleStateData
-    | Loaded of IrisIdleStateData * IrisLoadedStateData
+    | Idle   of IrisIdleStateData
+    | Loaded of IrisLoadedStateData
 
     interface IDisposable with
       member self.Dispose() =
         match self with
-        | Idle data -> dispose data
-        | Loaded (data1,data2) -> dispose data1; dispose data2
+        | Idle   data -> dispose data
+        | Loaded data -> dispose data
 
   // ** Reply
 
@@ -259,8 +266,8 @@ module Iris =
                                 (idle: unit -> 'a)
                                 (loaded: IrisLoadedStateData -> 'a) =
     match state with
-    | Idle _ -> idle ()
-    | Loaded (_,data2) -> loaded data2
+    | Idle   _    -> idle ()
+    | Loaded data -> loaded data
 
   /// ## withState
   ///
@@ -303,6 +310,87 @@ module Iris =
                            (loaded: IrisLoadedStateData -> IrisState) =
     withLoaded state (konst state) loaded
 
+  // ** registerService
+
+  let private registerService (tipe: ServiceType)
+                              (ip: IpAddress)
+                              (port: Port)
+                              (meta: Map<string,string>)
+                              (service: IDiscoveryService)
+                              (services: Map<ServiceType,IDisposable>) =
+    match service.Register tipe port ip meta with
+    | Right http ->
+      services
+      |> Map.tryFind tipe
+      |> Option.iter dispose
+      Map.add ServiceType.Http http services
+    | Left error ->
+      error
+      |> sprintf "could not register %O service: %O" tipe
+      |> Logger.err (tag "registerIdleServices")
+      services
+
+
+  // ** registerHttpService
+
+  let private registerHttpService (config: IrisMachine)
+                                  (meta: Map<string,string>)
+                                  (service: IDiscoveryService)
+                                  (services: Map<ServiceType,IDisposable>) =
+    let tipe = ServiceType.Http
+    let port = port config.WebPort
+    let ip = IPv4Address config.WebIP
+    registerService tipe ip port meta service services
+
+  // ** registerRaftService
+
+  let private registerRaftService (mem:RaftMember)
+                                  (service: IDiscoveryService)
+                                  (services: Map<ServiceType,IDisposable>) =
+    let meta = Map.empty
+    let tipe = ServiceType.Raft
+    let port = port mem.Port
+    let ip = mem.IpAddr
+    registerService tipe ip port meta service services
+
+  // ** registerGitService
+
+  let private registerGitService (mem:RaftMember)
+                                 (service: IDiscoveryService)
+                                 (services: Map<ServiceType,IDisposable>) =
+    let meta = Map.empty
+    let tipe = ServiceType.Git
+    let port = port mem.GitPort
+    let ip = mem.IpAddr
+    registerService tipe ip port meta service services
+
+  // ** registerWebSocketService
+
+  let private registerWebSocketService (mem:RaftMember)
+                                       (service: IDiscoveryService)
+                                       (services: Map<ServiceType,IDisposable>) =
+    let meta = Map.empty
+    let tipe = ServiceType.WebSocket
+    let port = port mem.WsPort
+    let ip = mem.IpAddr
+    registerService tipe ip port meta service services
+
+  // ** registerIdleServices
+
+  let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
+    let meta = Map.ofList [ "status", "available" ]
+    registerHttpService config meta service Map.empty
+
+  // ** registerLoadedServices
+
+  let private registerLoadedServices machine mem service =
+    let meta = Map.ofList [ "status", "in-use" ]
+    Map.empty
+    |> registerHttpService      machine meta service
+    |> registerRaftService      mem          service
+    |> registerGitService       mem          service
+    |> registerWebSocketService mem          service
+
   // ** resetLoaded
 
   /// ## resetLoaded
@@ -316,15 +404,13 @@ module Iris =
   let private resetLoaded (state: IrisState) =
     match state with
     | Idle _ -> state
-    | Loaded (data1,data2) -> dispose data2; Idle data1
-
-  let private updateLoaded (state: IrisState) (data: IrisLoadedStateData) =
-    match state with
-    | Idle _ -> state
-    | Loaded (idleData,_) -> Loaded (idleData, data)
-
-
-  // ** IIrisServer
+    | Loaded data ->
+      let idle = { Machine = data.Machine
+                   DiscoveryService = data.DiscoveryService
+                   DiscoverableServices = Map.empty }
+      dispose data
+      let services = registerIdleServices data.Machine idle.DiscoveryService
+      Idle { idle with DiscoverableServices = services }
 
   // ** notify
 
@@ -336,7 +422,7 @@ module Iris =
 
   let private notifyWithLoaded (state: IrisState) (ev: IrisEvent) =
     match state with
-    | Loaded(_,data) -> notify data.Subscriptions ev
+    | Loaded data -> notify data.Subscriptions ev
     | _ -> ()
 
   // ** broadcastMsg
@@ -488,7 +574,6 @@ module Iris =
   let private onConfigured (state: IrisState) (mems: RaftMember array) =
     withoutReply state <| fun data ->
       either {
-        let! memid = data.RaftServer.MemberId
         mems
         |> Array.map (Member.getId >> string)
         |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
@@ -613,8 +698,7 @@ module Iris =
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
         | Right (Some leader) ->
-          { data with Leader = Some (mkLeader data.MemberId leader) }
-          |> updateLoaded state
+          Loaded { data with Leader = Some (mkLeader data.Member.Id leader) }
         | Right None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug (tag "onStateChanged")
@@ -625,8 +709,7 @@ module Iris =
           state
       | _, Leader ->
         Option.iter dispose data.Leader
-        { data with Leader = None }
-        |> updateLoaded state
+        Loaded { data with Leader = None }
       | _ -> state
 
   // ** onCreateSnapshot
@@ -634,8 +717,8 @@ module Iris =
   let private onCreateSnapshot (state: IrisState) (ch: Ch<State option>) =
     let response =
       match state with
-      | Idle _ -> None
-      | Loaded (_, data) -> Some data.Store.State
+      | Idle   _    -> None
+      | Loaded data -> Some data.Store.State
 
     job {
       do! Ch.send ch response
@@ -647,7 +730,7 @@ module Iris =
 
   let private onRetrieveSnapshot (state: IrisState) (ch: Ch<RaftLogEntry option>) =
     match state with
-    | Loaded (_, data) ->
+    | Loaded data ->
       job {
         let path = Constants.RAFT_DIRECTORY <.>
                    Constants.SNAPSHOT_FILENAME +
@@ -745,7 +828,7 @@ module Iris =
     Tracing.trace (tag "forwardCommand") <| fun () ->
       match data.Leader with
       | Some leader ->
-        match requestAppend data.MemberId leader sm with
+        match requestAppend data.Member.Id leader sm with
         | Right newleader ->
           { data with Leader = Some newleader }
         | Left error ->
@@ -754,8 +837,8 @@ module Iris =
       | None ->
         match data.RaftServer.Leader with
         | Right (Some mem) ->
-          let leader = mkLeader data.MemberId mem
-          match requestAppend data.MemberId leader sm with
+          let leader = mkLeader data.Member.Id mem
+          match requestAppend data.Member.Id leader sm with
           | Right newleader ->
             { data with Leader = Some newleader }
           | Left error ->
@@ -812,7 +895,7 @@ module Iris =
               state
             else
               forwardCommand data other
-              |> updateLoaded state
+              |> Loaded
         | ApiEvent.Register client ->
           data.RaftServer.Append (AddClient client)
           |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
@@ -900,8 +983,8 @@ module Iris =
   let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
     Tracing.trace (tag "handleGitEvent") <| fun () ->
       match state with
-      | Idle _ -> state
-      | Loaded (idleData, data) ->
+      | Idle   _    -> state
+      | Loaded data ->
         notify data.Subscriptions (IrisEvent.Git ev)
         match ev with
         | Started pid ->
@@ -913,7 +996,7 @@ module Iris =
           "Git daemon exited. Attempting to restart."
           |> Logger.debug (tag "handleGitEvent")
           let newData = restartGitServer data agent
-          Loaded (idleData, newData)
+          Loaded newData
 
         | Pull (_, addr, port) ->
           sprintf "Client %s:%d pulled updates from me" addr port
@@ -946,10 +1029,14 @@ module Iris =
 
       match user with
       | Some user when isValidPassword user password ->
-        let idleData =
+        let machine, discoveryService =
           match oldState with
-          | Idle idleData -> idleData
-          | Loaded (idleData, loadedData) -> dispose loadedData; idleData
+          | Idle idle ->
+            dispose idle
+            idle.Machine, idle.DiscoveryService
+          | Loaded loaded ->
+            dispose loaded
+            loaded.Machine, loaded.DiscoveryService
 
         let! state =
           match site with
@@ -980,7 +1067,6 @@ module Iris =
             | Left err -> Left err
           | None -> Right state
 
-        // FIXME: load the actual state from disk
         let! mem = Config.selfMember state.Project.Config
 
         let! raftserver = RaftServer.create ()
@@ -994,28 +1080,27 @@ module Iris =
 
         // Try to put discovered services into the state
         let state =
-          match idleData.DiscoveryService.Services with
-          | Right (_, resolvedServices) -> { state with DiscoveredServices = resolvedServices }
+          match discoveryService.Services with
+          | Right (_, resolvedServices) ->
+            { state with DiscoveredServices = resolvedServices }
           | Left err ->
             string err |> Logger.err (tag "loadProject.getDiscoveredServices")
             state
 
-        let loadedData = ref Unchecked.defaultof<IrisLoadedStateData>
-
-        loadedData :=
-          { MemberId      = mem.Id
-            Leader        = None
-            Status        = ServiceStatus.Starting
-            Store         = new Store(state)
-            ApiServer     = apiserver
-            GitServer     = gitserver
-            RaftServer    = raftserver
-            SocketServer  = wsserver
-            ClockService  = clock
-            Subscriptions = subscriptions
-            Disposables   = Map.empty }
-
-        return Loaded(idleData, !loadedData)
+        return Loaded { Member               = mem
+                        Machine              = machine
+                        Leader               = None
+                        Status               = ServiceStatus.Starting
+                        Store                = new Store(state)
+                        ApiServer            = apiserver
+                        GitServer            = gitserver
+                        RaftServer           = raftserver
+                        SocketServer         = wsserver
+                        ClockService         = clock
+                        Subscriptions        = subscriptions
+                        DiscoveryService     = discoveryService
+                        DiscoverableServices = Map.empty
+                        Disposables          = Map.empty }
       | _ ->
         return!
           "Login rejected"
@@ -1028,8 +1113,8 @@ module Iris =
   let private start (state: IrisState) (agent: IrisAgent) =
     Tracing.trace (tag "start") <| fun () ->
       match state with
-      | Idle _ -> Right state
-      | Loaded(idleData, data) ->
+      | Idle   _    -> Right state
+      | Loaded data ->
         let disposables =
           [ (LOG_HANDLER,   agent |> forwardEvent Msg.Log    |> Logger.subscribe)
             (RAFT_SERVER,   agent |> forwardEvent Msg.Raft   |> data.RaftServer.Subscribe)
@@ -1038,6 +1123,8 @@ module Iris =
             (GIT_SERVER,    agent |> forwardEvent Msg.Git    |> data.GitServer.Subscribe)
             (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
+
+        let services = registerLoadedServices data.Machine data.Member data.DiscoveryService
 
         let result =
           either {
@@ -1049,11 +1136,11 @@ module Iris =
 
         match result with
         | Right _ ->
-          let loadedData =
-            { data with
-                    Status = ServiceStatus.Running
-                    Disposables = disposables }
-          Loaded(idleData, loadedData)
+          { data with
+              Status = ServiceStatus.Running
+              DiscoverableServices = services
+              Disposables = disposables }
+          |> Loaded
           |> Either.succeed
         | Left error ->
           disposeAll disposables
@@ -1062,7 +1149,6 @@ module Iris =
           dispose data.RaftServer
           dispose data.GitServer
           Either.fail error
-
 
   // ** handleLoad
 
@@ -1140,11 +1226,15 @@ module Iris =
       let idleData =
         match state with
         | Idle idleData -> idleData
-        | Loaded (idleData, loadedData) ->
+        | Loaded loaded ->
           // TODO: Send it to the store as well? (So it can notify listeners)
-          broadcastMsg loadedData StateMachine.UnloadProject
-          dispose loadedData
-          idleData
+          broadcastMsg loaded StateMachine.UnloadProject
+          let service = loaded.DiscoveryService
+          let services = registerIdleServices loaded.Machine service
+          dispose loaded
+          { Machine = loaded.Machine
+            DiscoveryService = service
+            DiscoverableServices = services }
 
       Reply.Ok
       |> Either.succeed
@@ -1345,7 +1435,7 @@ module Iris =
           member self.Config
             with get () =
               Tracing.trace (tag "Config") <| fun () ->
-                match postCommand agent "Config" (fun chan -> Msg.Config chan) with
+                match postCommand agent "Config" Msg.Config with
                 | Right (Reply.Config config) -> Right config
                 | Left error -> Left error
                 | Right other ->
@@ -1366,7 +1456,7 @@ module Iris =
           member self.Status
             with get () =
               Tracing.trace (tag "Status") <| fun () ->
-                match postCommand agent "Status" (fun chan -> Msg.State chan) with
+                match postCommand agent "Status" Msg.State with
                 | Right (Reply.State state) -> Right state.Status
                 | Left error -> Left error
                 | Right other ->
@@ -1385,7 +1475,7 @@ module Iris =
 
           member self.UnloadProject() =
             Tracing.trace (tag "UnloadProject") <| fun () ->
-              match postCommand agent "Unload" (fun chan -> Msg.Unload chan) with
+              match postCommand agent "Unload" Msg.Unload with
               | Right Reply.Ok ->
                 // Notify subscriptor of the change of state
                 notify subscriptions (Status ServiceStatus.Running)
@@ -1408,7 +1498,7 @@ module Iris =
 
           member self.LeaveCluster () =
             Tracing.trace (tag "LeaveCluster") <| fun () ->
-              match postCommand agent "LeaveCluster" (fun chan -> Msg.Leave chan) with
+              match postCommand agent "LeaveCluster"  Msg.Leave with
               | Right Reply.Ok -> Right ()
               | Left error -> Left error
               | Right other ->
@@ -1449,7 +1539,7 @@ module Iris =
           member self.GitServer
             with get () =
               Tracing.trace (tag "GitServer") <| fun () ->
-                match postCommand agent "GitServer" (fun chan -> Msg.State chan) with
+                match postCommand agent "GitServer" Msg.State with
                 | Right (Reply.State state) -> Right state.GitServer
                 | Left error -> Left error
                 | Right other ->
@@ -1460,7 +1550,7 @@ module Iris =
           member self.RaftServer
             with get () =
               Tracing.trace (tag "RaftServer") <| fun () ->
-                match postCommand agent "RaftServer" (fun chan -> Msg.State chan) with
+                match postCommand agent "RaftServer" Msg.State with
                 | Right (Reply.State state) -> Right state.RaftServer
                 | Left error -> Left error
                 | Right other ->
@@ -1471,7 +1561,7 @@ module Iris =
           member self.SocketServer
             with get () =
               Tracing.trace (tag "SocketServer") <| fun () ->
-                match postCommand agent "SocketServer" (fun chan -> Msg.State chan) with
+                match postCommand agent "SocketServer" Msg.State with
                 | Right (Reply.State state) -> Right state.SocketServer
                 | Left error -> Left error
                 | Right other ->
@@ -1489,11 +1579,10 @@ module Iris =
           member self.Dispose() =
             Tracing.trace (tag "Dispose") <| fun () ->
               notify subscriptions (Status ServiceStatus.Stopping)
-              postCommand agent "Dispose" (fun chan -> Msg.Unload chan)
+              postCommand agent "Dispose" Msg.Unload
               |> ignore
               dispose agent
         }
-
 
     let private initIdleState (agent: (IrisAgent option) ref) (config: IrisMachine) =
       let discovery = DiscoveryService.create config
@@ -1504,12 +1593,22 @@ module Iris =
           | Some agent -> Msg.Discovery ev |> agent.Post
           | None -> ())
         |> ignore
+
+        // Register the services' http ip and port
+        let services = registerIdleServices config discovery
+
+        Idle { Machine = config
+               DiscoveryService = discovery
+               DiscoverableServices = services }
       | Left error ->
         error
         |> string
         |> Logger.err (tag "startDiscoveryService")
-      { DiscoveryService = discovery }
-      |> Idle
+
+        Idle { Machine = config
+               DiscoveryService = discovery
+               DiscoverableServices = Map.empty }
+
 
     let create (config: IrisMachine) (post: CommandAgent) =
       try
