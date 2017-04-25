@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-export default class createProject extends Component {
+export default class CreateProject extends Component {
   constructor(props) {
       super(props);
       let match = /\:(\d+)$/.exec(window.location.host);
@@ -8,46 +8,54 @@ export default class createProject extends Component {
       this.state = {
         name: "",
         nameError: "Required",
-        ipAddress: "",
-        ipAddressError: "Required",
+        ipAddr: "",
+        ipAddrError: "Required",
         apiPort: "",
         apiPortError: "Required",
-        raftPort: "",
-        raftPortError: "Required",
-        webSocketPort: "",
-        webSocketPortError: "Required",
+        port: "",
+        portError: "Required",
+        wsPort: "",
+        wsPortError: "Required",
         gitPort: "",
         gitPortError: "Required"
       };
   }
 
-  isErrorName(id, name) {
-    return typeof name === "string" && name.length > 0 ? null : "Required";
+  validateName(id, name) {
+    return {
+      value: name,
+      error: typeof name === "string" && name.length > 0 ? null : "Required"
+    };
   }
 
-  isErrorAddress(id, address) {
-     return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(address) ? null : "Not a valid IP address";
+  validateIpAddress(id, address) {
+    return {
+      value: name,
+      error: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(address) ? null : "Not a valid IP address"
+    };
   }
 
-  isErrorPort(id, port) {
+  validatePort(id, port) {
     // TODO: Check also range?
-    if (isNaN(parseInt(port))) {
-      return "Not a valid number";
+    port = parseInt(port);
+    if (isNaN(port)) {
+      return { value: port, error: "Not a valid number" };
     }
     if (this.webPort && port === this.webPort) {
-      return "Port in use by web server"
+      return { value: port, error: "Port in use by web server" };
     }
     for (let key in this.state) {
-      if (key !== id && key.indexOf("Port") > -1 && !key.endsWith("Error")) {
+      if (key !== id && key.toLowerCase().endsWith("port")) {
         if (this.state[key] === port) {
-          return "Duplicated port"
+          return { value: port, error: "Duplicated port" };
         }
       }
     }
-    return null;
+    return { value: port, error: null };;
   }
 
-  renderGroup(id, label, isError, placeholder = "") {
+
+  renderGroup(id, label, validate, placeholder = "") {
     const success = this.state[id + "Error"] == null;
     return (
       <div className="field">
@@ -56,8 +64,8 @@ export default class createProject extends Component {
           <input className={"input " + (success ? "is-success" : "is-danger")}
             type="text" placeholder={placeholder} value={this.state[id]} onChange={ev => {
               const value = ev.target.value;
-              const error = isError(id, value);
-              this.setState({ [id]: value, [id + "Error"]: error})
+              const validation = validate(id, value);
+              this.setState({ [id]: validation.value, [id + "Error"]: validation.error})
             }}/>
           <span className="icon is-small">
             <i className={"fa " + (success ? "fa-check" : "fa-warning")}></i>
@@ -80,12 +88,12 @@ export default class createProject extends Component {
     return (
       <div>
         <p className="title has-text-centered">Create Project</p>
-        {this.renderGroup("name", "Name", this.isErrorName.bind(this))}
-        {this.renderGroup("ipAddress", "IP Address", this.isErrorAddress.bind(this))}
-        {this.renderGroup("apiPort", "Api Port", this.isErrorPort.bind(this))}
-        {this.renderGroup("raftPort", "Raft Port", this.isErrorPort.bind(this))}
-        {this.renderGroup("webSocketPort", "Web Socket Port", this.isErrorPort.bind(this))}
-        {this.renderGroup("gitPort", "Git Daemon Port", this.isErrorPort.bind(this))}
+        {this.renderGroup("name", "Name", this.validateName.bind(this))}
+        {this.renderGroup("ipAddr", "IP Address", this.validateIpAddress.bind(this))}
+        {this.renderGroup("apiPort", "Api Port", this.validatePort.bind(this))}
+        {this.renderGroup("port", "Raft Port", this.validatePort.bind(this))}
+        {this.renderGroup("wsPort", "Web Socket Port", this.validatePort.bind(this))}
+        {this.renderGroup("gitPort", "Git Daemon Port", this.validatePort.bind(this))}
         <div className="field is-grouped">
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {

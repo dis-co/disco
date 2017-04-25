@@ -16,7 +16,7 @@ interface CueProps {
 
 class CueListView extends React.Component<CueProps,any> {
   disposables: IDisposable[];
-  el: any;
+  el: HTMLElement;
 
   constructor(props: CueProps) {
     super(props);
