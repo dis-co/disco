@@ -60,7 +60,8 @@ module.exports = {
           loader: 'fable-loader',
           options: {
             babel: babelOptions,
-            define: isProduction ? [] : ["DEBUG"]
+            define: isProduction ? [] : ["DEBUG"],
+            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
           }
         }
       },
