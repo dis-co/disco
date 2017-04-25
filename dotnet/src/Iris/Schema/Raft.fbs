@@ -28,31 +28,31 @@ table ConfigChangeFB {
 
 table ConfigurationFB {
       Id:    string;
-      Index: uint;
-      Term : uint;
+      Index: int;
+      Term : int;
       Members: [ RaftMemberFB ];
 }
 
 table JointConsensusFB {
       Id:      string;
-      Index:   uint;
-      Term:    uint;
+      Index:   int;
+      Term:    int;
       Changes: [ ConfigChangeFB ];
 }
 
 table LogEntryFB {
       Id:    string;
-      Index: uint;
-      Term:  uint;
+      Index: int;
+      Term:  int;
       Data:  StateMachineFB;
 }
 
 table SnapshotFB {
       Id:         string;
-      Index:      uint;
-      Term:       uint;
-      LastIndex:  uint;
-      LastTerm:   uint;
+      Index:      int;
+      Term:       int;
+      LastIndex:  int;
+      LastTerm:   int;
       Members:    [ RaftMemberFB ];
       Data:       StateMachineFB;
 }
@@ -76,14 +76,14 @@ table LogFB {
 //                          |___/
 
 table VoteRequestFB {
-      Term         : uint;
+      Term         : int;
       Candidate    : RaftMemberFB;
-      LastLogIndex : uint;
-      LastLogTerm  : uint;
+      LastLogIndex : int;
+      LastLogTerm  : int;
 }
 
 table VoteResponseFB {
-      Term    : uint;
+      Term    : int;
       Granted : bool;
       Reason  : ErrorFB;
 }
@@ -96,18 +96,18 @@ table VoteResponseFB {
 //         |_|   |_|
 
 table AppendEntriesFB {
-      Term         : uint;
-      PrevLogIdx   : uint;
-      PrevLogTerm  : uint;
-      LeaderCommit : uint;
+      Term         : int;
+      PrevLogIdx   : int;
+      PrevLogTerm  : int;
+      LeaderCommit : int;
       Entries      : [ LogFB ];
 }
 
 table AppendResponseFB {
-      Term         : uint;
+      Term         : int;
       Success      : bool;
-      CurrentIndex : uint;
-      FirstIndex   : uint;
+      CurrentIndex : int;
+      FirstIndex   : int;
 }
 
 //  ____                        _           _
@@ -119,10 +119,10 @@ table AppendResponseFB {
 
 
 table InstallSnapshotFB {
-      Term      : uint;
+      Term      : int;
       LeaderId  : string;
-      LastIndex : uint;
-      LastTerm  : uint;
+      LastIndex : int;
+      LastTerm  : int;
       Data      : [ LogFB ];
 }
 
@@ -135,8 +135,8 @@ table InstallSnapshotFB {
 
 table EntryResponseFB {
       Id: string;
-      Term: uint;
-      Index: uint;
+      Term: int;
+      Index: int;
 }
 
 //  ____        __ _   __  __

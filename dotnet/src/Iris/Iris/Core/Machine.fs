@@ -47,6 +47,7 @@ type IrisMachine =
 
 [<RequireQualifiedAccess>]
 module MachineConfig =
+  open Path
 
   let private tag (str: string) = sprintf "MachineConfig.%s" str
 
@@ -59,14 +60,15 @@ module MachineConfig =
   let getLocation (path: FilePath option) =
     match path with
     | Some location ->
-      if location.EndsWith(ASSET_EXTENSION)
-      then location
-      else location </> MACHINECONFIG_NAME + ASSET_EXTENSION
+      if Path.endsWith ASSET_EXTENSION location then
+        location
+      else
+        location </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
     | None ->
-      let dir =
-        Assembly.GetExecutingAssembly().Location
-        |> Path.GetDirectoryName
-      dir </> MACHINECONFIG_DEFAULT_PATH </> MACHINECONFIG_NAME + ASSET_EXTENSION
+      Assembly.GetExecutingAssembly().Location
+      |> Path.GetDirectoryName
+      <.> MACHINECONFIG_DEFAULT_PATH
+      </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
 
   // ** MachineConfigYaml (private)
 
@@ -84,13 +86,13 @@ module MachineConfig =
     static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
       yml.MachineId <- string cfg.MachineId
-      yml.WorkSpace <- cfg.WorkSpace
+      yml.WorkSpace <- unwrap cfg.WorkSpace
       yml.WebIP     <- cfg.WebIP
       yml.WebPort   <- cfg.WebPort
       yml.RaftPort  <- cfg.RaftPort
-      yml.WsPort    <- cfg.WsPort  
-      yml.GitPort   <- cfg.GitPort 
-      yml.ApiPort   <- cfg.ApiPort 
+      yml.WsPort    <- cfg.WsPort
+      yml.GitPort   <- cfg.GitPort
+      yml.ApiPort   <- cfg.ApiPort
       yml.Version   <- cfg.Version.ToString()
       yml
 
@@ -100,13 +102,13 @@ module MachineConfig =
     let hostname = Network.getHostName ()
     { MachineId = Id yml.MachineId
       HostName  = hostname
-      WorkSpace = yml.WorkSpace
+      WorkSpace = filepath yml.WorkSpace
       WebIP     = yml.WebIP
       WebPort   = yml.WebPort
       RaftPort  = yml.RaftPort
-      WsPort    = yml.WsPort  
-      GitPort   = yml.GitPort 
-      ApiPort   = yml.ApiPort 
+      WsPort    = yml.WsPort
+      GitPort   = yml.GitPort
+      ApiPort   = yml.ApiPort
       Version   = Version.Parse yml.Version }
     |> Either.succeed
 
@@ -114,9 +116,8 @@ module MachineConfig =
 
   let private ensureExists (path: FilePath) =
     try
-      if not (Directory.Exists path) then
-        Directory.CreateDirectory path
-        |> ignore
+      if not (Directory.exists path) then
+        Directory.createDirectory path |> ignore
     with
       | _ -> ()
 
@@ -127,12 +128,12 @@ module MachineConfig =
     let workspace =
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
-        home </> MACHINECONFIG_DEFAULT_WORKSPACE_UNIX
+        home <.> MACHINECONFIG_DEFAULT_WORKSPACE_UNIX
       else
-        MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
+        filepath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
 
-    if Directory.Exists workspace |> not then
-      Directory.CreateDirectory workspace |> ignore
+    if Directory.exists workspace |> not then
+      Directory.createDirectory workspace |> ignore
 
     { MachineId = Id.Create()
       HostName  = hostname
@@ -159,10 +160,12 @@ module MachineConfig =
         |> serializer.Serialize
 
       location
+      |> unwrap
       |> Path.GetDirectoryName
+      |> filepath
       |> ensureExists
 
-      File.WriteAllText(location, payload)
+      File.WriteAllText(unwrap location, payload)
       |> Either.succeed
     with
       | exn ->
@@ -178,9 +181,9 @@ module MachineConfig =
     try
       let location = getLocation path
       let cfg =
-        if File.Exists location
+        if File.exists location
         then
-          let raw = File.ReadAllText location
+          let raw = File.ReadAllText(unwrap location)
           serializer.Deserialize<MachineConfigYaml>(raw)
           |> parse
         else
@@ -191,9 +194,15 @@ module MachineConfig =
       match cfg with
       | Left err -> Either.fail err
       | Right cfg ->
-        if Path.IsPathRooted cfg.WorkSpace
+        if Path.IsPathRooted (unwrap cfg.WorkSpace)
         then singleton <- cfg
-        else singleton <- { cfg with WorkSpace = Path.GetDirectoryName location </> cfg.WorkSpace }
+        else
+          let wp =
+            unwrap location
+            |> Path.GetDirectoryName
+            |> filepath
+            </> cfg.WorkSpace
+          singleton <- { cfg with WorkSpace = wp }
         Either.succeed()
     with
       | exn ->

@@ -83,7 +83,7 @@ type RaftConfigNode() =
             self.OutElectionTimeout.[n] <- int config.ElectionTimeout
             self.OutMaxLogDepth.[n] <- int config.MaxLogDepth
             self.OutLogLevel.[n] <- string config.LogLevel
-            self.OutDataDir.[n] <- config.DataDir
+            self.OutDataDir.[n] <- unwrap config.DataDir
             self.OutMaxRetries.[n] <- int config.MaxRetries
             self.OutPeriodicInterval.[n] <- int config.PeriodicInterval
 

@@ -57,16 +57,21 @@ module TestData =
     Id.Create()
     |> string
 
+  let rndname() =
+    Id.Create()
+    |> string
+    |> name
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
-        yield guid.ToString() |]
+        yield guid.ToString() |> astag |]
 
   let mk() = Id.Create()
 
   let mkTmpDir () =
-    let path = Path.GetTempPath() </> Path.GetRandomFileName()
-    Directory.CreateDirectory path |> ignore
+    let path = Path.getTempPath() </> Path.getRandomFileName()
+    Directory.createDirectory path |> ignore
     path
 
   let mkByte() =
@@ -139,12 +144,12 @@ module TestData =
 
   let mkUser () =
     { Id = Id.Create()
-      UserName = rndstr()
-      FirstName = rndstr()
-      LastName = rndstr()
-      Email =  rndstr()
-      Password = rndstr()
-      Salt = rndstr()
+      UserName = rndname ()
+      FirstName = rndname ()
+      LastName = rndname ()
+      Email = email (rndstr())
+      Password = checksum (rndstr())
+      Salt = checksum (rndstr())
       Joined = System.DateTime.Now
       Created = System.DateTime.Now }
 
@@ -165,7 +170,7 @@ module TestData =
       |> Map.ofArray
 
     { Id = Id.Create()
-      Name = rndstr()
+      Name = rndname ()
       Client = Id.Create()
       Pins = pins }
 
@@ -174,7 +179,7 @@ module TestData =
         yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = "PinGroup 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = mkCues() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -205,7 +210,7 @@ module TestData =
       Role = Role.Renderer
       Status = ServiceStatus.Running
       IpAddress = IPv4Address "127.0.0.1"
-      Port = 8921us }
+      Port = port 8921us }
 
   let mkClients () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -240,19 +245,19 @@ module TestData =
     either {
       let! state = mkTmpDir() |> mkState
       return
-        LogEntry(Id.Create(), 7u, 1u, DataSnapshot(state),
-          Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(state),
-            Some <| Configuration(Id.Create(), 5u, 1u, [| mkMember () |],
-              Some <| JointConsensus(Id.Create(), 4u, 1u, mkChanges (),
-                Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mkMembers (), DataSnapshot(state))))))
+        LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
+          Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),
+            Some <| Configuration(Id.Create(), index 5, term 1, [| mkMember () |],
+              Some <| JointConsensus(Id.Create(), index 4, term 1, mkChanges (),
+                Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mkMembers (), DataSnapshot(state))))))
         |> Log.fromEntries
     }
 
   let testRepo () =
     mkTmpDir ()
     |> fun path ->
-      LibGit2Sharp.Repository.Init path |> ignore
-      new LibGit2Sharp.Repository(path)
+      path |> unwrap |> LibGit2Sharp.Repository.Init |> ignore
+      new LibGit2Sharp.Repository(unwrap path)
 
   let inline binaryEncDec (thing: ^t) =
     let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get

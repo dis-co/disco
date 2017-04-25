@@ -75,7 +75,7 @@ type RegionNode() =
           if not (Util.isNullReference self.InRegion.[n]) then
             let region = self.InRegion.[n]
             self.OutId.[n] <- string region.Id
-            self.OutName.[n] <- region.Name
+            self.OutName.[n] <- unwrap region.Name
             self.OutSrcSize.[n].SliceCount <- 2
             self.OutSrcSize.[n].[0] <- region.SrcSize.X
             self.OutSrcSize.[n].[1] <- region.SrcSize.Y

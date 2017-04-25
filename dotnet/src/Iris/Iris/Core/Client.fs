@@ -77,7 +77,7 @@ type IrisClient =
     IrisClientFB.AddName(builder, name)
     IrisClientFB.AddRole(builder, role)
     IrisClientFB.AddIpAddress(builder, ip)
-    IrisClientFB.AddPort(builder, client.Port)
+    IrisClientFB.AddPort(builder, unwrap client.Port)
     IrisClientFB.EndIrisClientFB(builder)
 
   static member FromFB(fb: IrisClientFB) =
@@ -88,7 +88,7 @@ type IrisClient =
                Name = fb.Name
                Status = ServiceStatus.Running
                IpAddress = ip
-               Port = uint16 fb.Port
+               Port = port fb.Port
                Role = role }
     }
 

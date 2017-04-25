@@ -136,7 +136,7 @@ union SliceTypeFB {
 }
 
 table SliceFB {
-      Index: uint;
+      Index: int;
       Slice: SliceTypeFB;
 }
 
@@ -344,8 +344,8 @@ table RaftMemberFB {
       Voting     : bool;
       VotedForMe : bool;
       State      : RaftMemberStateFB;
-      NextIndex  : uint;
-      MatchIndex : uint;
+      NextIndex  : int;
+      MatchIndex : int;
 }
 
 //   ____             __ _
@@ -376,9 +376,9 @@ table VvvvConfigFB {
 }
 
 table RaftConfigFB {
-      RequestTimeout: uint;
-      ElectionTimeout: uint;
-      MaxLogDepth: uint;
+      RequestTimeout: int;
+      ElectionTimeout: int;
+      MaxLogDepth: int;
       LogLevel: string;
       DataDir: string;
       MaxRetries: ushort;

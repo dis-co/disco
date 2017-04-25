@@ -133,7 +133,7 @@ module GitTests =
         let repo =
           tmpdir
           |> Path.baseName
-          |> sprintf "git://localhost:%d/%s/.git" port
+          |> sprintf "git://localhost:%O/%O/.git" port
           |> Git.Repo.clone target
 
         expect "Should have successfully clone project" true Either.isSuccess repo

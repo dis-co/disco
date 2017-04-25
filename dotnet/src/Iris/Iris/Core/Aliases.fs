@@ -1,17 +1,27 @@
 namespace Iris.Core
 
+// * Custom Units
 
-//  __  __
-// |  \/  | ___  __ _ ___ _   _ _ __ ___  ___
-// | |\/| |/ _ \/ _` / __| | | | '__/ _ \/ __|
-// | |  | |  __/ (_| \__ \ |_| | | |  __/\__ \
-// |_|  |_|\___|\__,_|___/\__,_|_|  \___||___/
-
+[<Measure>] type filepath
+[<Measure>] type name
+[<Measure>] type password
+[<Measure>] type checksum
+[<Measure>] type timestamp
 [<Measure>] type frame
 [<Measure>] type sec                    // seconds
-[<Measure>] type ns                     // nano seconds
-[<Measure>] type us                     // micro seconds
+[<Measure>] type ms                     // milliseconds
+[<Measure>] type ns                     // nanoseconds
+[<Measure>] type us                     // microseconds
 [<Measure>] type fps = frame/sec
+[<Measure>] type email
+[<Measure>] type index
+[<Measure>] type term
+[<Measure>] type port
+[<Measure>] type chars
+[<Measure>] type version
+[<Measure>] type tag
+
+// * Aliases
 
 //     _    _ _
 //    / \  | (_) __ _ ___  ___  ___
@@ -21,32 +31,46 @@ namespace Iris.Core
 
 type NodeId     = Id
 type MemberId   = Id
-type Long       = uint32
-type Index      = Long
-type Term       = Long
-type Name       = string
-type Email      = string
-type Tag        = string
+type Index      = int<index>
+type Term       = int<term>
+type Name       = string<name>
+type Email      = string<email>
+type Tag        = string<tag>
 type NodePath   = string
 type OSCAddress = string
-type Version    = string
+type Version    = string<version>
 type Min        = int    option
 type Max        = int    option
 type Unit       = string option
-type FileMask   = string option
+type Filemask   = string option
 type Precision  = int    option
-type MaxChars   = int
-type FilePath   = string
-type UserName   = string
+type MaxChars   = int<chars>
+type FilePath   = string<filepath>
+type UserName   = string<name>
 type UserAgent  = string
 type ClientLog  = string
 type TimeStamp  = string
 type CallSite   = string
 type FileName   = string
-type Hash       = string
-type Password   = string
-type Salt       = string
-type Port       = uint16
+type Hash       = string<checksum>
+type Password   = string<password>
+type Salt       = string<checksum>
+type Port       = uint16<port>
+type Timeout    = int<ms>
+
+[<AutoOpen>]
+module Measure =
+  let filepath p: FilePath = UoM.wrap p
+  let name u: Name = UoM.wrap u
+  let password p: Password = UoM.wrap p
+  let timestamp t: TimeStamp = UoM.wrap t
+  let email e: Email = UoM.wrap e
+  let port p: Port = UoM.wrap p
+  let checksum t: Hash = UoM.wrap t
+  let index i: Index = i * 1<index>
+  let term t: Term = t * 1<term>
+  let version v: Version = UoM.wrap v
+  let astag t: Tag = UoM.wrap t
 
 type IPProtocol =
   | IPv4

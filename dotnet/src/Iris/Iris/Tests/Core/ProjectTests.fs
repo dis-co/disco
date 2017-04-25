@@ -25,7 +25,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
 
@@ -48,7 +48,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
         let! repo = Project.repository project
@@ -71,9 +71,9 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
 
-        let path = Path.GetRandomFileName()
+        let path = Path.getRandomFileName()
 
-        let result = Project.create path path machine
+        let result = Project.create path (unwrap path) machine
 
         expect "Create should have failed" false Either.isSuccess result
 
@@ -97,54 +97,52 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let fn = Path.getFileName path
 
         let engineCfg = RaftConfig.Default
 
         let vvvvCfg =
           { VvvvConfig.Default with
               Executables =
-                [| { Executable = "/pth/to/nowhere"
-                  ; Version    = "0.0.0.0.0.0.1"
+                [| { Executable = filepath "/pth/to/nowhere"
+                  ; Version    = version "0.0.0.0.0.0.1"
                   ; Required   = true };
-                  { Executable = "/antoher/path"
-                  ; Version    = "1.2.34.4"
+                  { Executable = filepath "/antoher/path"
+                  ; Version    = version "1.2.34.4"
                   ; Required   = false } |]
             }
 
         let display1 =
           { Id        = Id.Create()
-          ; Name      = "Nice Display"
+          ; Name      = name "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [| { Size     = Rect       (500,500)
-                ; Position = Coordinate (0,0) };
-                { Size     = Rect       (800,800)
-                ; Position = Coordinate (29, 13) } |]
+              [| { Size    = Rect       (500,500)
+                 ; Position = Coordinate (0,0) };
+                 { Size     = Rect       (800,800)
+                 ; Position = Coordinate (29, 13) } |]
           ; RegionMap =
             {
               SrcViewportId = Id.Create()
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "A Cool Region"
-                  ; SrcPosition    = Coordinate (0,0)
-                  ; SrcSize        = Rect       (50,50)
-                  ; OutputPosition = Coordinate (50,50)
-                  ; OutputSize     = Rect       (100,100)
-                  };
-                  { Id             = Id.Create()
-                  ; Name           = "Another Cool Region"
-                  ; SrcPosition    = Coordinate (8,67)
-                  ; SrcSize        = Rect       (588,5130)
-                  ; OutputPosition = Coordinate (10,5300)
-                  ; OutputSize     = Rect       (800,900)
-                  } |]
+                     Name           = name "A Cool Region"
+                     SrcPosition    = Coordinate (0,0)
+                     SrcSize        = Rect       (50,50)
+                     OutputPosition = Coordinate (50,50)
+                     OutputSize     = Rect       (100,100) };
+                   { Id             = Id.Create()
+                     Name           = name "Another Cool Region"
+                     SrcPosition    = Coordinate (8,67)
+                     SrcSize        = Rect       (588,5130)
+                     OutputPosition = Coordinate (10,5300)
+                     OutputSize     = Rect       (800,900) } |]
             }
           }
 
         let display2 =
           { Id        = Id.Create()
-          ; Name      = "Cool Display"
+          ; Name      = name "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
               [| { Size     = Rect (800,200)
@@ -155,14 +153,14 @@ module ProjectTests =
             { SrcViewportId = Id.Create();
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "One Region"
+                  ; Name           = name "One Region"
                   ; SrcPosition    = Coordinate (0,8)
                   ; SrcSize        = Rect       (50,52)
                   ; OutputPosition = Coordinate (53,50)
                   ; OutputSize     = Rect       (103,800)
                   };
                   { Id             = Id.Create()
-                  ; Name           = "Premium Region"
+                  ; Name           = name "Premium Region"
                   ; SrcPosition    = Coordinate (8333,897)
                   ; SrcSize        = Rect       (83,510)
                   ; OutputPosition = Coordinate (1580,50)
@@ -173,7 +171,7 @@ module ProjectTests =
 
         let viewPort1 =
           { Id             = Id.Create()
-          ; Name           = "One fine viewport"
+          ; Name           = name "One fine viewport"
           ; Position       = Coordinate (22,22)
           ; Size           = Rect       (666,666)
           ; OutputPosition = Coordinate (0,0)
@@ -184,7 +182,7 @@ module ProjectTests =
 
         let viewPort2 =
           { Id             = Id.Create()
-          ; Name           = "Another fine viewport"
+          ; Name           = name "Another fine viewport"
           ; Position       = Coordinate (82,2)
           ; Size           = Rect       (466,86)
           ; OutputPosition = Coordinate (12310,80)
@@ -224,22 +222,22 @@ module ProjectTests =
               Port     = 1234us }
 
         let groupA: HostGroup =
-          { Name    = "Group A"
+          { Name    = name "Group A"
           ; Members = [| Id.Create() |]
           }
 
         let groupB: HostGroup =
-          { Name    = "Group B"
+          { Name    = name "Group B"
           ; Members = [| Id.Create() |]
           }
 
         let cluster =
           { Id = Id.Create()
-            Name   = "A mighty cool cluster"
+            Name   = name "A mighty cool cluster"
             Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
             Groups = [| groupA; groupB |] }
 
-        let! project = Project.create path name machine
+        let! project = Project.create path (unwrap fn) machine
 
         let updated =
           Project.updateConfig
@@ -292,18 +290,18 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! _ = Project.create path name machine
 
         let loaded = Asset.loadWithMachine path machine
 
-        expect "Projects should be a folder"   true  Directory.Exists path
-        expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
+        expect "Projects should be a folder"   true  Directory.exists path
+        expect "Projects should be a git repo" true  Directory.exists (path </> filepath ".git")
 
-        let projectFile = path </> PROJECT_FILENAME + ASSET_EXTENSION
+        let projectFile = path </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
 
-        expect "Projects should have project yml" true  File.Exists projectFile
+        expect "Projects should have project yml" true  File.exists projectFile
 
         let getRepo =
           Project.repository
@@ -341,7 +339,7 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let author1 = "karsten"
 
@@ -386,7 +384,7 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
         let! (loaded: IrisProject) = Asset.loadWithMachine path machine
@@ -409,18 +407,18 @@ module ProjectTests =
         let machine = MachineConfig.create ()
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let fn = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
+        let! project = Project.create path fn machine
 
         let user =
           { Id = Id.Create()
-            UserName = "krgn"
-            FirstName = "karsten"
-            LastName = "gebbert"
-            Email = "k@lazy.af"
-            Password = "1234"
-            Salt = "56789"
+            UserName = name "krgn"
+            FirstName = name "karsten"
+            LastName = name "gebbert"
+            Email = email "k@lazy.af"
+            Password = checksum "1234"
+            Salt = checksum "56789"
             Joined = DateTime.Now
             Created = DateTime.Now }
 
@@ -428,7 +426,7 @@ module ProjectTests =
 
         let! (loaded: User) =
           let userpath = project.Path </> Asset.path user
-          File.ReadAllText(userpath)
+          File.readText(userpath)
           |> Yaml.decode
 
         expect "Should be the same" true ((=) user) loaded
@@ -440,13 +438,13 @@ module ProjectTests =
       either {
         let machine = MachineConfig.create ()
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let! project = Project.create path name machine
 
         let! (admin: User) =
           project.Path </> Asset.path User.Admin
-          |> File.ReadAllText
+          |> File.readText
           |> Yaml.decode
 
         // Don't compare Joined and Created as they may differ a bit

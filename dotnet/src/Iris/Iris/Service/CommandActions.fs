@@ -35,8 +35,8 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
     |> Either.succeed
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
-  Directory.GetDirectories(cfg.WorkSpace)
-  |> Array.map Path.GetFileName
+  Directory.getDirectories cfg.WorkSpace
+  |> Array.map (Path.getFileName >> unwrap)
   |> String.concat ","
   |> Either.succeed
 
@@ -71,7 +71,7 @@ let buildProject (machine: IrisMachine)
     let! _ = Asset.saveWithCommit path User.Admin.Signature updated
 
     printfn "project: %A" project.Name
-    printfn "created in: %s" project.Path
+    printfn "created in: %O" project.Path
 
     return updated
   }
@@ -93,12 +93,12 @@ let initializeRaft (project: IrisProject) = either {
   }
 
 let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
-    let dir = machine.WorkSpace </> opts.name
-    let raftDir = dir </> RAFT_DIRECTORY
+    let dir = machine.WorkSpace </> filepath opts.name
+    let raftDir = dir </> filepath RAFT_DIRECTORY
 
     // TODO: Throw error instead?
     do!
-      if Directory.Exists dir
+      if Directory.exists dir
       then rmDir dir
       else Either.nothing
 
@@ -136,7 +136,7 @@ let getProjectSites machine projectName username password =
 
 let cloneProject (name: string) (uri: string) =
   let machine = MachineConfig.get()
-  let target = machine.WorkSpace </> name
+  let target = machine.WorkSpace </> filepath name
   Git.Repo.clone target uri
   |> Either.map (sprintf "Cloned project %A into %A" name target |> konst)
 

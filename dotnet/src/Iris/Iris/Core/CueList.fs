@@ -52,7 +52,7 @@ type CueList =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = self.Id |> string |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> unwrap |> builder.CreateString
     let cueoffsets = Array.map (fun (cue: Cue)  -> cue.ToOffset(builder)) self.Cues
     let cuesvec = CueListFB.CreateCuesVector(builder, cueoffsets)
     CueListFB.StartCueListFB(builder)
@@ -102,7 +102,7 @@ type CueList =
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
+               Name = name fb.Name
                Cues = cues }
     }
 
@@ -126,7 +126,7 @@ type CueList =
   member self.ToYamlObject() =
     new CueListYaml(
       string self.Id,
-      self.Name,
+      unwrap self.Name,
       Array.map Yaml.toYaml self.Cues)
 
   // ** FromYamlObject
@@ -147,7 +147,7 @@ type CueList =
         |> Either.map snd
 
       return { Id = Id yml.Id
-               Name = yml.Name
+               Name = name yml.Name
                Cues = cues }
     }
 
@@ -167,12 +167,12 @@ type CueList =
 
   member self.AssetPath
     with get () =
-      let filepath =
+      let path =
         sprintf "%s_%s%s"
-          (String.sanitize self.Name)
+          (self.Name |> unwrap |> String.sanitize)
           (string self.Id)
           ASSET_EXTENSION
-      CUELIST_DIR </> filepath
+      CUELIST_DIR <.> path
 
   // ** Load
 
@@ -192,8 +192,8 @@ type CueList =
   static member LoadAll(basePath: FilePath) : Either<IrisError, CueList array> =
     either {
       try
-        let dir = basePath </> CUELIST_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath CUELIST_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,cuelists) =
           let arr =

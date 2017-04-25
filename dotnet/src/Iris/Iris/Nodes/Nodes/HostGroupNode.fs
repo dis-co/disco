@@ -54,7 +54,7 @@ type HostGroupNode() =
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InHostGroup.[n]) then
             let group = self.InHostGroup.[n]
-            self.OutName.[n] <- group.Name
+            self.OutName.[n] <- unwrap group.Name
             self.OutMembers.[n].SliceCount <- (Array.length group.Members)
             self.OutMembers.[n].AssignFrom (Array.map string group.Members)
 

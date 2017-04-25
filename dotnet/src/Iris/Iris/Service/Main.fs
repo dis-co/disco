@@ -35,7 +35,7 @@ module Main =
 
     // Init machine config
     parsed.TryGetResult <@ Machine @>
-    |> Option.map System.IO.Path.GetFullPath
+    |> Option.map (filepath >> Path.getFullPath)
     |> MachineConfig.init
     |> Error.orExit ignore
 
@@ -55,10 +55,11 @@ module Main =
       let dir =
         parsed.TryGetResult <@ Project @>
         |> Option.map (fun projectName ->
-          machine.WorkSpace </> projectName)
+          machine.WorkSpace </> filepath projectName)
 
       let frontend =
         parsed.TryGetResult <@ Frontend @>
+        |> Option.map filepath
 
       Logger.initialize machine.MachineId
 

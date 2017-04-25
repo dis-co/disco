@@ -64,7 +64,7 @@ type ClusterConfigNode() =
             let config = self.InCluster.[n]
             let members = config.Members |> Map.toArray |> Array.map snd
 
-            self.OutName.[n] <- config.Name
+            self.OutName.[n] <- unwrap config.Name
             self.OutMembers.[n].SliceCount <- Array.length members
             self.OutMembers.[n].AssignFrom members
             self.OutGroups.[n].SliceCount <- Array.length config.Groups

@@ -84,7 +84,7 @@ type ViewPortNode() =
           if not (Util.isNullReference self.InViewPort.[n]) then
             let config = self.InViewPort.[n]
             self.OutId.[n] <- string config.Id
-            self.OutName.[n] <- config.Name
+            self.OutName.[n] <- unwrap config.Name
             self.OutPosition.[n].SliceCount <- 2
             self.OutPosition.[n].[0] <- config.Position.X
             self.OutPosition.[n].[1] <- config.Position.Y

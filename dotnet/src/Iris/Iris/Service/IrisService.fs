@@ -209,7 +209,7 @@ module Iris =
     | Log         of LogEvent
     | Clock       of ClockEvent
     | Discovery   of Discovery.DiscoveryEvent
-    | Load        of ReplyChan * project:string * user:string * pw:string * site:string option
+    | Load        of ReplyChan * project:string * user:string * pw:Password * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -649,7 +649,7 @@ module Iris =
     match state with
     | Loaded (_, data) ->
       job {
-        let path = Constants.RAFT_DIRECTORY </>
+        let path = Constants.RAFT_DIRECTORY <.>
                    Constants.SNAPSHOT_FILENAME +
                    Constants.ASSET_EXTENSION
         match Asset.read path with
@@ -930,9 +930,9 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: string, site: string option)
+                          (projectName: string, userName: string, password: Password, site: string option)
                           (subscriptions: Subscriptions) =
-    let isValidPassword (user: User) (password: string) =
+    let isValidPassword (user: User) (password: Password) =
       let password = Crypto.hashPassword password user.Salt
       password = user.Password
 
@@ -942,7 +942,7 @@ module Iris =
 
       let user =
         state.Users
-        |> Map.tryPick (fun _ u -> if u.UserName = userName then Some u else None)
+        |> Map.tryPick (fun _ u -> if u.UserName = name userName then Some u else None)
 
       match user with
       | Some user when isValidPassword user password ->
@@ -956,8 +956,8 @@ module Iris =
           | Some site ->
             let site =
               state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Name = site)
-              |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
+              |> Array.tryFind (fun s -> s.Name = name site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name site }
 
             // Add current machine if necessary
             let site =

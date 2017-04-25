@@ -119,9 +119,9 @@ module Api =
 
       let port =
         try
-          uint16 state.InClientPort.[0]
+          state.InClientPort.[0] |> uint16 |> port
         with
-          | _ -> Constants.DEFAULT_API_CLIENT_PORT
+          | _ -> port Constants.DEFAULT_API_CLIENT_PORT
 
       { Id = state.InClientId.[0]
         Name = name
@@ -142,9 +142,9 @@ module Api =
 
       let port =
         try
-          uint16 state.InServerPort.[0]
+          state.InServerPort.[0] |> uint16 |> port
         with
-          | _ -> Constants.DEFAULT_API_PORT
+          | _ -> port Constants.DEFAULT_API_PORT
 
       { Port = port; IpAddress = ip }
 

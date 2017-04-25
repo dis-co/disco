@@ -130,6 +130,7 @@ module Discovery =
     sprintf "%s%s%s%d" (string id) (string tipe) (string ip) port
     |> Encoding.ASCII.GetBytes
     |> Crypto.sha1sum
+    |> unwrap
     |> Id
 
   // ** serviceName
@@ -138,7 +139,7 @@ module Discovery =
     match tipe with
     | ServiceType.Iris      -> sprintf "Iris Service [%s]" (string id)
     | ServiceType.Git       -> sprintf "Git Service [%s]" (string id)
-    | ServiceType.Raft      -> sprintf "SRaft Service [%s]" (string id)
+    | ServiceType.Raft      -> sprintf "Raft Service [%s]" (string id)
     | ServiceType.Http      -> sprintf "Http Service [%s]" (string id)
     | ServiceType.WebSocket -> sprintf "WebSocket Service [%s]" (string id)
     | ServiceType.Other str -> sprintf "%s Service [%s]" str (string id)
@@ -234,7 +235,7 @@ module Discovery =
       return
         { Id = id
           Protocol = proto
-          Port = uint16 service.Port
+          Port = service.Port |> uint16 |> port
           Name = service.Name
           FullName = service.FullName
           Machine = machine

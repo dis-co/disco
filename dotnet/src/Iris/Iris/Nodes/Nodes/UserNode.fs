@@ -78,10 +78,10 @@ type UserNode() =
           if not (Util.isNullReference self.InUser.[n]) then
             let user = self.InUser.[n]
             self.OutId.[n] <- string user.Id
-            self.OutUserName.[n] <- string user.UserName
-            self.OutFirstName.[n] <- user.FirstName
-            self.OutLastName.[n] <- user.LastName
-            self.OutEmail.[n] <- user.Email
+            self.OutUserName.[n] <- unwrap user.UserName
+            self.OutFirstName.[n] <- unwrap user.FirstName
+            self.OutLastName.[n] <- unwrap user.LastName
+            self.OutEmail.[n] <- unwrap user.Email
             self.OutJoined.[n] <- string user.Joined
             self.OutCreated.[n] <- string user.Created
 

@@ -160,7 +160,7 @@ type IIrisServer =
   abstract AddMember     : RaftMember -> Either<IrisError,EntryResponse>
   abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
-  abstract LoadProject   : name:string * userName:string * password:string * ?site:string -> Either<IrisError,unit>
+  abstract LoadProject   : name:string * userName:string * password:Password * ?site:string -> Either<IrisError,unit>
   abstract UnloadProject : unit -> Either<IrisError,unit>
 
 // * IApiServer

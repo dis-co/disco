@@ -59,7 +59,7 @@ type CueListNode() =
           if not (Util.isNullReference self.InCueList.[n]) then
             let cuelist = self.InCueList.[n]
             self.OutId.[n] <- string cuelist.Id
-            self.OutName.[n] <- cuelist.Name
+            self.OutName.[n] <- unwrap cuelist.Name
             self.OutCues.[n].SliceCount <- Array.length cuelist.Cues
             self.OutCues.[n].AssignFrom cuelist.Cues
 

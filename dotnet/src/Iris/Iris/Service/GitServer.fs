@@ -114,7 +114,7 @@ module Git =
     override self.ToString () =
       match self with
       | Start  (path, addr, port, _) ->
-        sprintf "Start path:%s addr:%s port:%d" path addr port
+        sprintf "Start path:%O addr:%s port:%d" path addr port
       | Stop   _ -> "Stop"
       | Status _ -> "Status"
       | Pid    _ -> "Pid"
@@ -144,10 +144,15 @@ module Git =
 
   let private createProcess (path: FilePath) (addr: string) (port: Port) =
     let basedir =
-      Path.GetDirectoryName path
+      path
+      |> unwrap
+      |> Path.GetDirectoryName
       |> String.replace '\\' '/'
 
-    let sanepath = path |> String.replace '\\' '/'
+    let sanepath =
+      path
+      |> unwrap
+      |> String.replace '\\' '/'
 
     let args =
       [| "daemon"
@@ -221,8 +226,8 @@ module Git =
       Started pid
       |> Either.succeed
 
-    | Connection (pid, ip, port) ->
-      Pull(pid, ip, port)
+    | Connection (pid, ip, prt) ->
+      Pull(pid, ip, port prt)
       |> Either.succeed
 
     | _ -> Either.fail IrisError.OK      // we don't care about the rest
@@ -485,7 +490,7 @@ module Git =
 
             member self.Start () =
               let callback (chan: ReplyChan) =
-                Msg.Start(path, string mem.IpAddr, mem.GitPort, chan)
+                Msg.Start(path, string mem.IpAddr, port mem.GitPort, chan)
 
               match postCommand agent callback with
               | Right Reply.Ok ->

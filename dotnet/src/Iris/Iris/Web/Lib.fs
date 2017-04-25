@@ -156,7 +156,7 @@ let unloadProject() =
   UnloadProject |> postCommand (fun _ -> notify "The project has been unloaded") notify
 
 let nullify _: 'a = null
-  
+
 let rec loadProject(project, username, password, site) =
   LoadProject(project, username, password, site)
   |> postCommandPrivate
@@ -167,7 +167,7 @@ let rec loadProject(project, username, password, site) =
       |> Promise.map (fun _msg -> // TODO: Check message?
         notify "The project has been loaded successfully" |> nullify)
     else
-      res.text() |> Promise.map (fun msg ->    
+      res.text() |> Promise.map (fun msg ->
         if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
@@ -222,8 +222,8 @@ let project2tree (p: IrisProject) =
     ;  arr2tree "Tasks" (Array.map box c.Tasks)
     |] |> node "Config"
   [| leaf ("Id: " + string p.Id)
-  ;  leaf ("Name: " + p.Name)
-  ;  leaf ("Path: " + p.Path)
+  ;  leaf ("Name: " + unwrap p.Name)
+  ;  leaf ("Path: " + unwrap p.Path)
   ;  leaf ("CreatedOn: " + p.CreatedOn)
   ;  leaf ("LastSaved: " + defaultArg p.LastSaved "unknown")
   ;  leaf ("Copyright: " + defaultArg p.Copyright "unknown")
@@ -286,7 +286,7 @@ let updateSlices(pin: Pin, rowIndex, newValue: obj) =
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
     BoolSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED" 
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED" 
+  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
+  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
   |> UpdateSlices |> ClientContext.Singleton.Post

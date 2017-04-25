@@ -23,6 +23,7 @@ open LibGit2Sharp
 ///
 [<RequireQualifiedAccess>]
 module Git =
+  open Path
 
   //  ____                       _
   // | __ ) _ __ __ _ _ __   ___| |__
@@ -129,7 +130,8 @@ module Git =
     /// Returns: Reference
     let reference (branch: Branch) = branch.Reference
 
-    let item (path: FilePath) (branch: Branch) = branch.Item path
+    let item (path: FilePath) (branch: Branch) =
+      branch.Item (unwrap path)
 
     /// ## Is the passed branch a remote?
     ///
@@ -246,12 +248,16 @@ module Git =
       repo.Info.Path
 
     let parentPath (repo: Repository) =
-      let p = path repo
-      if p.[p.Length - 1] = Path.DirectorySeparatorChar then
-        p |> Path.GetDirectoryName
+      let pth = path repo
+      if pth.[pth.Length - 1] = Path.DirectorySeparatorChar then
+        pth
         |> Path.GetDirectoryName
+        |> Path.GetDirectoryName
+        |> filepath
       else
-        p |> Path.GetDirectoryName
+        pth
+        |> Path.GetDirectoryName
+        |> filepath
 
     /// ## Get all tags for repository
     ///
@@ -292,7 +298,7 @@ module Git =
     /// Returns: Either<IrisError, Respository>
     let clone (target: FilePath) (remote: string) =
       try
-        new Repository(Repository.Clone(remote, target))
+        new Repository(Repository.Clone(remote, unwrap target))
         |> Either.succeed
       with
         | exn ->
@@ -491,16 +497,16 @@ module Git =
     let repository (path: FilePath) : Either<IrisError,Repository> =
       try
         let normalized =
-          if path.EndsWith ".git" then
+          if Path.endsWith ".git" path then
             path
           else
-            path </> ".git"
+            path </> filepath ".git"
 
-        new Repository(normalized)
+        new Repository(unwrap normalized)
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
-          sprintf "%s: %s" exn.Message path
+          sprintf "%s: %s" exn.Message (unwrap path)
           |> Error.asGitError (tag "repository")
           |> Either.fail
         | exn ->
@@ -518,7 +524,7 @@ module Git =
     /// Returns: Either<IrisError<string>,Repository>
     let init (path: FilePath) =
       try
-        Repository.Init path |> ignore
+        Path.map Repository.Init path |> ignore
         repository path
       with
         | exn ->
@@ -526,15 +532,16 @@ module Git =
           |> Error.asGitError (tag "init")
           |> Either.fail
 
-    let add (repo: Repository) (filepath: FilePath) =
+    let add (repo: Repository) (path: FilePath) =
       try
-        if Path.IsPathRooted filepath then
-          sprintf "Path must be relative to the project root: %s" filepath
+        if Path.isPathRooted path then
+          path
+          |> sprintf "Path must be relative to the project root: %O"
           |> Error.asGitError (tag "add")
           |> Either.fail
         else
-          if File.Exists filepath then
-            repo.Index.Add filepath
+          if File.exists path then
+            Path.map repo.Index.Add path
           Either.succeed ()
       with
         | exn ->
@@ -542,13 +549,14 @@ module Git =
           |> Error.asGitError (tag "add")
           |> Either.fail
 
-    let stage (repo: Repository) (filepath: FilePath) =
+    let stage (repo: Repository) (path: FilePath) =
       try
-        if Path.IsPathRooted filepath then
-          Commands.Stage(repo, filepath)
+        if Path.isPathRooted path then
+          path
+          |> Path.map (fun path -> Commands.Stage(repo, path))
           |> Either.succeed
         else
-          sprintf "Paths must be absolute: %s" filepath
+          sprintf "Paths must be absolute: %O" path
           |> Error.asGitError (tag "stage")
           |> Either.fail
       with
@@ -559,8 +567,8 @@ module Git =
 
     let stageAll (repo: Repository)  =
       let _stage (ety: StatusEntry) =
-        parentPath repo </> ety.FilePath
-        |> fun path -> Commands.Stage(repo, path)
+        parentPath repo </> filepath ety.FilePath
+        |> Path.map (fun path -> Commands.Stage(repo, path))
       try
         repo.RetrieveStatus()
         |> Seq.iter _stage

@@ -104,7 +104,7 @@ module Uri =
   ///
   /// Returns: string
   let raftUri (data: RaftMember) =
-    tcpUri data.IpAddr (Some data.Port)
+    tcpUri data.IpAddr (data.Port |> port |> Some)
 
   // ** gitUri
 
@@ -119,7 +119,7 @@ module Uri =
   /// Returns: string
 
   let localGitUri (path: string) (mem: RaftMember) =
-    toUri LOCALGIT None (Some path) (string mem.IpAddr) (Some mem.GitPort)
+    toUri LOCALGIT None (Some path) (string mem.IpAddr) (mem.GitPort |> port |> Some)
 
   // ** pgmUri
 

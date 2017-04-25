@@ -1186,7 +1186,7 @@ type StateMachine =
   override self.ToString() : string =
     match self with
     // Project
-    | UpdateProject project -> sprintf "UpdateProject %s" project.Name
+    | UpdateProject project -> sprintf "UpdateProject %s" (unwrap project.Name)
     | UnloadProject         -> "UnloadProject"
 
     // Member

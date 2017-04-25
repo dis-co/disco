@@ -18,6 +18,8 @@ open SharpYaml.Serialization
 
 #endif
 
+open Path
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open LibGit2Sharp
@@ -92,8 +94,8 @@ type User =
     FirstName: Name
     LastName:  Name
     Email:     Email
-    Password:  string
-    Salt:      string
+    Password:  Hash
+    Salt:      Hash
     Joined:    DateTime
     Created:   DateTime }
 
@@ -101,12 +103,12 @@ type User =
     let mutable hash = 42
     #if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string me.Id)
-    hash <- (hash * 7) + hashCode me.UserName
-    hash <- (hash * 7) + hashCode me.FirstName
-    hash <- (hash * 7) + hashCode me.LastName
-    hash <- (hash * 7) + hashCode me.Email
-    hash <- (hash * 7) + hashCode me.Password
-    hash <- (hash * 7) + hashCode me.Salt
+    hash <- (hash * 7) + (me.UserName  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.FirstName |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.LastName  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Email     |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Password  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Salt      |> unwrap |> hashCode)
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
     #else
@@ -166,8 +168,8 @@ type User =
 
   member user.Signature
     with get () =
-      let name = sprintf "%s %s" user.FirstName user.LastName
-      new Signature(name, user.Email, new DateTimeOffset(user.Created))
+      let name = String.Format("{0} {1}", user.FirstName, user.LastName)
+      new Signature(name, unwrap user.Email, new DateTimeOffset(user.Created))
 
   // ** AssetPath
 
@@ -175,20 +177,20 @@ type User =
     with get () =
       let filename =
         sprintf "%s_%s%s"
-          (String.sanitize user.UserName)
+          (user.UserName |> unwrap |> String.sanitize)
           (string user.Id)
           ASSET_EXTENSION
-      USER_DIR </> filename
+      USER_DIR <.> filename
 
   static member Admin
     with get () =
       { Id        = Id "cb558968-bd42-4de0-a671-18e2ec7cf580"
-      ; UserName  = "admin"
-      ; FirstName = "Administrator"
-      ; LastName  = ""
-      ; Email     = "admin@nsynk.de"
-      ; Password  = ADMIN_DEFAULT_PASSWORD
-      ; Salt      = ADMIN_DEFAULT_SALT
+      ; UserName  = name "admin"
+      ; FirstName = name "Administrator"
+      ; LastName  = name ""
+      ; Email     = email "admin@nsynk.de"
+      ; Password  = checksum ADMIN_DEFAULT_PASSWORD
+      ; Salt      = checksum ADMIN_DEFAULT_SALT
       ; Joined    = DateTime.UtcNow
       ; Created   = DateTime.UtcNow }
 
@@ -203,12 +205,12 @@ type User =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id        = self.Id        |> string |> builder.CreateString
-    let username  = self.UserName  |> builder.CreateString
-    let firstname = self.FirstName |> builder.CreateString
-    let lastname  = self.LastName  |> builder.CreateString
-    let email     = self.Email     |> builder.CreateString
-    let password  = self.Password  |> builder.CreateString
-    let salt      = self.Salt      |> builder.CreateString
+    let username  = self.UserName  |> unwrap |> builder.CreateString
+    let firstname = self.FirstName |> unwrap |> builder.CreateString
+    let lastname  = self.LastName  |> unwrap |> builder.CreateString
+    let email     = self.Email     |> unwrap |> builder.CreateString
+    let password  = self.Password  |> unwrap |> builder.CreateString
+    let salt      = self.Salt      |> unwrap |> builder.CreateString
     let joined    = self.Joined.ToString("o")  |> builder.CreateString
     let created   = self.Created.ToString("o") |> builder.CreateString
     UserFB.StartUserFB(builder)
@@ -228,12 +230,12 @@ type User =
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
     Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-        UserName  = fb.UserName
-        FirstName = fb.FirstName
-        LastName  = fb.LastName
-        Email     = fb.Email
-        Password  = fb.Password
-        Salt      = fb.Salt
+        UserName  = name     fb.UserName
+        FirstName = name     fb.FirstName
+        LastName  = name     fb.LastName
+        Email     = email    fb.Email
+        Password  = checksum fb.Password
+        Salt      = checksum fb.Salt
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
 
@@ -252,12 +254,12 @@ type User =
   member self.ToYamlObject () =
     new UserYaml(
       string self.Id,
-      self.UserName,
-      self.FirstName,
-      self.LastName,
-      self.Email,
-      self.Password,
-      self.Salt,
+      unwrap self.UserName,
+      unwrap self.FirstName,
+      unwrap self.LastName,
+      unwrap self.Email,
+      unwrap self.Password,
+      unwrap self.Salt,
       self.Joined,
       self.Created)
 
@@ -267,12 +269,12 @@ type User =
   static member FromYamlObject (yaml: UserYaml) =
     Either.tryWith (Error.asParseError "User.FromYaml") <| fun _ ->
       { Id        = Id yaml.Id
-        UserName  = yaml.UserName
-        FirstName = yaml.FirstName
-        LastName  = yaml.LastName
-        Email     = yaml.Email
-        Password  = yaml.Password
-        Salt      = yaml.Salt
+        UserName  = name yaml.UserName
+        FirstName = name yaml.FirstName
+        LastName  = name yaml.LastName
+        Email     = email yaml.Email
+        Password  = checksum yaml.Password
+        Salt      = checksum yaml.Salt
         Joined    = yaml.Joined
         Created   = yaml.Created }
 
@@ -301,8 +303,8 @@ type User =
   static member LoadAll(basePath: FilePath) : Either<IrisError, User array> =
     either {
       try
-        let dir = basePath </> USER_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+        let dir = basePath </> filepath USER_DIR
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
 
         let! (_,users) =
           let arr =
@@ -353,7 +355,7 @@ type User =
 
 module User =
 
-    let passwordValid (user: User) (password: string) =
+    let passwordValid (user: User) (password: Password) =
       let password = Crypto.hashPassword password user.Salt
       password = user.Password
 

@@ -64,7 +64,7 @@ module Persistence =
     either {
       let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
-      let count = Map.fold (fun m _ _ -> m + 1u) 0u mems
+      let count = Map.fold (fun m _ _ -> m + 1) 0 mems
       let! data =
         options
         |> Config.metadataPath
@@ -190,7 +190,7 @@ module Persistence =
   // ** getRemote
 
   let private getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
-    let uri = Uri.localGitUri project.Name leader
+    let uri = Uri.localGitUri (unwrap project.Name) leader
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
       leader.Id
