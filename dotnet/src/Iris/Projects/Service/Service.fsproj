@@ -23,7 +23,7 @@
     <OutputPath>..\..\bin\Debug\Iris</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <StartArguments>start</StartArguments>
+    <StartArguments>start --project=iris_sample</StartArguments>
     <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">

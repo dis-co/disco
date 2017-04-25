@@ -1,3 +1,5 @@
+@import "values";
+
 .ui-icon-close, .ui-icon-copy {
   cursor: pointer;
 }
@@ -67,6 +69,27 @@
   flex-direction: column;
 }
 
+.iris-cluster {
+  overflow-x: scroll;
+}
+
+.iris-discovery {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.iris-discovered-service {
+  cursor: move;
+  margin: 5px;
+  text-align: center;
+  padding: 0 auto;
+  background: @background-grey;
+  width: 150px;
+  height: 50px;
+  line-height: 50px;
+  color: white;
+}
+
 // FLEX --------------------
 .iris-flex-1 {
   flex: 1
@@ -85,18 +108,15 @@
 }
 // -------------------------
 
-// .iris-tooltip {
-//   height: 100px;
-//   background-color: #EBEBEB;
-//   position: absolute;
-//   bottom: 35px;
-//   right: 10px;
-//   padding: 10px;
-//   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-//   display: none;
-//   transition: 0.8s;
-//   z-index: 100000000;
-// }
+.iris-tooltip {
+  // height: 100px;
+  background-color: lightyellow; // #EBEBEB;
+  position: absolute;
+  padding: 10px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  transition: 0.8s;
+  z-index: 100000000;
+}
 
 // .shadow {
 //   height: 20px;

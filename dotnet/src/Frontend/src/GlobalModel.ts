@@ -1,4 +1,4 @@
-import { IIris, IDisposable, IServiceInfo } from "./Interfaces"
+import { IIris, IDisposable, IServiceInfo, IService, IProject } from "./Interfaces"
 
 declare var Iris: IIris;
 
@@ -16,7 +16,9 @@ export default class GlobalModel {
     widgets: Map<number,any>,
     useRightClick: boolean,
     serviceInfo: IServiceInfo,
-    clock: number
+    clock: number,
+    project: IProject,
+    services: IService[]
   };
 
   constructor() {
@@ -50,7 +52,9 @@ export default class GlobalModel {
         version: "0.0.0",
         buildNumber: "0"
       },
-      clock: 0
+      clock: 0,
+      project: null,
+      services: []
     };
   }
 
