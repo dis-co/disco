@@ -21,6 +21,9 @@ run.tests:
 tests:
 	${BUILD} BuildTests
 
+build: paket.restore zeroconf
+	${BUILD}
+
 service:
 	${BUILD} BuildDebugService
 
@@ -41,6 +44,7 @@ serialization:
 
 zeroconf:
 	${BUILD} BuildDebugZeroconf
+	${BUILD} BuildReleaseZeroconf
 
 client:
 	${BUILD} BuildDebugMockClient
@@ -52,7 +56,10 @@ run.frontend:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR)/src/Frontend && npm run start"
 
 run.service:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/Iris/iris.exe start --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start"
+
+run.service.project:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
