@@ -35,28 +35,28 @@ export default class AddNode extends React.Component {
 
   validateIpAddress(id, address) {
     return {
-      value: name,
+      value: address,
       error: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(address) ? null : "Not a valid IP address"
     };
   }
 
   validatePort(id, port) {
     // TODO: Check also range?
-    port = parseInt(port);
-    if (isNaN(port)) {
+    const parsed = parseInt(port);
+    if (isNaN(parsed)) {
       return { value: port, error: "Not a valid number" };
     }
-    if (this.webPort && port === this.webPort) {
-      return { value: port, error: "Port in use by web server" };
+    if (this.webPort && parsed === this.webPort) {
+      return { value: parsed, error: "Port in use by web server" };
     }
     for (let key in this.state) {
       if (key !== id && key.toLowerCase().endsWith("port")) {
-        if (this.state[key] === port) {
-          return { value: port, error: "Duplicated port" };
+        if (this.state[key] === parsed) {
+          return { value: parsed, error: "Duplicated port" };
         }
       }
     }
-    return { value: port, error: null };;
+    return { value: parsed, error: null };;
   }
 
   renderGroup(id, label, validate, placeholder = "") {
