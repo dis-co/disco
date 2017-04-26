@@ -617,11 +617,14 @@ Target "BuildReleaseZeroconf"
 let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runFable frontendDir "" ()
-
-  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
-  runNpm "run build"       (baseDir @@ "../Frontend") ()
+  DotNet.installDotnetSdk ()
+  runNpmNoErrors "install" frontendDir ()
+  runExec DotNet.dotnetExePath "restore" frontendDir false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
 
 //  _____         _

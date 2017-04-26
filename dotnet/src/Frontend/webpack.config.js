@@ -18,23 +18,63 @@ var babelReactOptions = {
   plugins: ["transform-runtime", "react-hot-loader/babel"]
 }
 
-module.exports = {
+var irisConfig = {
+  devtool: "source-map",
+  entry: resolve('./fable/Frontend/Frontend.fsproj'),
+  output: {
+    filename: 'iris.js', // the output bundle
+    path: resolve('js'),
+    libraryTarget: "var",
+    library: "Iris"
+  },
+  module: {
+    rules: [
+      {
+        test: /\.fs(x|proj)?$/,
+        use: {
+          loader: 'fable-loader',
+          options: {
+            babel: babelOptions,
+            define: isProduction ? [] : ["DEBUG"],
+            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
+          }
+        }
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules[\\\/](?!fable-)/,
+        use: {
+          loader: 'babel-loader',
+          options: babelOptions
+        },
+      },
+    ],
+  },
+  resolve: {
+    modules: [
+      "node_modules", resolve("./node_modules/")
+    ]
+  },
+  plugins: isProduction ? [new webpack.optimize.UglifyJsPlugin()] : []
+};
+  
+var bundleConfig = {
   entry: isProduction
     ? resolve('./src/index.js')
     : [
-    'react-hot-loader/patch',
-    // activate HMR for React
+      'react-hot-loader/patch',
+      // activate HMR for React
 
-    'webpack-dev-server/client?http://localhost:3000',
-    // bundle the client for webpack-dev-server
-    // and connect to the provided endpoint
+      'webpack-dev-server/client?http://localhost:3000',
+      // bundle the client for webpack-dev-server
+      // and connect to the provided endpoint
 
-    'webpack/hot/only-dev-server',
-    // bundle the client for hot reloading
-    // only- means to only hot reload for successful updates
-    resolve('./src/index.js')
-    // the entry point of our app
-  ],
+      'webpack/hot/only-dev-server',
+      // bundle the client for hot reloading
+      // only- means to only hot reload for successful updates
+      resolve('./src/index.js')
+      // the entry point of our app
+    ],
 
   output: {
     filename: 'bundle.js', // the output bundle
@@ -54,17 +94,6 @@ module.exports = {
 
   module: {
     rules: [
-      {
-        test: /\.fs(x|proj)?$/,
-        use: {
-          loader: 'fable-loader',
-          options: {
-            babel: babelOptions,
-            define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
-          }
-        }
-      },
       {
         test: /\.js$/,
         exclude: /node_modules[\\\/](?!fable-)/,
@@ -92,12 +121,6 @@ module.exports = {
     ],
   },
 
-  resolve: {
-    modules: [
-      "node_modules", resolve("./node_modules/")
-    ]
-  },
-
   plugins: isProduction
     ? [new webpack.optimize.UglifyJsPlugin()]
     : [
@@ -123,3 +146,5 @@ module.exports = {
     }    
   },  
 };
+
+module.exports = [ irisConfig, bundleConfig ];
