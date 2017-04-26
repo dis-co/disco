@@ -115,8 +115,8 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
   render() {
     const tooltip = this.state.tooltip;
     const services =
-      //this.props.global.state.services;
-      mockupServices;
+      this.props.global.state.services;
+      // mockupServices;
     return (
       <div className="iris-discovery">
         <div className="iris-tooltip" style={{

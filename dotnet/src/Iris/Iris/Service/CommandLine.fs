@@ -279,7 +279,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectDir: FilePath option) (frontend: FilePath option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) (frontend: FilePath option) =
     either {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
