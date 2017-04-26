@@ -55,7 +55,6 @@ var irisConfig = {
       "node_modules", resolve("./node_modules/")
     ]
   },
-  plugins: isProduction ? [new webpack.optimize.UglifyJsPlugin()] : []
 };
   
 var bundleConfig = {
@@ -90,7 +89,7 @@ var bundleConfig = {
     extensions: ['.ts', '.tsx', '.js', '.json']
   },
 
-  devtool: isProduction ? null : 'inline-source-map',
+  devtool: isProduction ? false : 'inline-source-map',
 
   module: {
     rules: [
@@ -121,9 +120,7 @@ var bundleConfig = {
     ],
   },
 
-  plugins: isProduction
-    ? [new webpack.optimize.UglifyJsPlugin()]
-    : [
+  plugins: isProduction ? [] : [
     new webpack.HotModuleReplacementPlugin(),
     // enable HMR globally
 
