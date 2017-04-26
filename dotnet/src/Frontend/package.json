@@ -3,7 +3,7 @@
   "scripts": {
     "start": "webpack-dev-server",
     "build": "webpack -p",
-    "pretest": "webpack --config fable/Tests.Frontend/webpack.config.js",
+    "build-test": "webpack --config fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./tests.html tap"
   },
   "devDependencies": {
