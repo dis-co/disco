@@ -98,7 +98,7 @@ export default class CreateProject extends Component {
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
               ev.preventDefault();
-              Iris.createProject(this.state);
+              IrisLib.createProject(this.state);
               props.onSubmit();
             }}>
               Submit

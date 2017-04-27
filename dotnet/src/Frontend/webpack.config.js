@@ -5,6 +5,7 @@ function resolve(filePath) {
   return path.join(__dirname, filePath)
 }
 
+var isDevServer = process.argv.find(v => v.includes('webpack-dev-server'));
 var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
@@ -25,7 +26,7 @@ var irisConfig = {
     filename: 'iris.js', // the output bundle
     path: resolve('js'),
     libraryTarget: "var",
-    library: "Iris"
+    library: "IrisLib"
   },
   module: {
     rules: [
@@ -144,4 +145,9 @@ var bundleConfig = {
   },  
 };
 
-module.exports = [ irisConfig, bundleConfig ];
+if (isDevServer) {
+  module.exports = bundleConfig;
+}
+else {
+  module.exports = [ irisConfig, bundleConfig ];
+}

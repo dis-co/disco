@@ -29,7 +29,7 @@ class ProjectView extends Component {
       return (
         <Tree
           paddingLeft={20}             
-          tree={Iris.project2tree(project)}      
+          tree={IrisLib.project2tree(project)}      
           freeze={true}  
           renderNode={node => <span>{node.module}</span>}            
         />

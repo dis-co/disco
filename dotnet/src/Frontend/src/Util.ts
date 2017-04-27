@@ -2,7 +2,7 @@ import { showModal } from "./App"
 import LoadProject from './modals/LoadProject'
 import ProjectConfig from './modals/ProjectConfig'
 
-declare var Iris: any;
+declare var IrisLib: any;
 
 export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   let ar = [];
@@ -90,12 +90,12 @@ export function loadProject() {
   showModal(LoadProject)
     .then((info: ProjectInfo) => {
       cachedInfo = info;
-      return Iris.loadProject(info.name, info.username, info.password)
+      return IrisLib.loadProject(info.name, info.username, info.password)
     })
     .then((err: any) =>
       err != null
       // Get project sites and machine config
-      ? Iris.getProjectSites(cachedInfo.name)
+      ? IrisLib.getProjectSites(cachedInfo.name)
       : null
     )
     .then((sites: any) =>
@@ -107,7 +107,7 @@ export function loadProject() {
     .then((site: any) =>
       site != null
       // Try loading the project again with the site config
-      ? Iris.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
+      ? IrisLib.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
       : null
     );
 }

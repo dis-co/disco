@@ -6,7 +6,7 @@ import { touchesElement, map } from "../Util"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
 
-declare var Iris: IIris;
+declare var IrisLib: IIris;
 
 interface CueProps {
   id: number
@@ -121,7 +121,7 @@ class Cue {
 
   updateSource() {
     for (let i = 0; i < this.rows.length; i++) {
-      Iris.updateSlices(this.pin, i, this.rows[i][1]);
+      IrisLib.updateSlices(this.pin, i, this.rows[i][1]);
     }
   }
 }

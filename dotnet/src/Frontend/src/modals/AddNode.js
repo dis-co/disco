@@ -102,7 +102,7 @@ export default class AddNode extends React.Component {
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
               ev.preventDefault();
-              Iris.addMember(this.state);              
+              IrisLib.addMember(this.state);              
               this.props.onSubmit();
             }}>
               Submit

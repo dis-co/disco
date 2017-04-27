@@ -4,7 +4,7 @@ import GlobalModel from "../GlobalModel"
 import domtoimage from "dom-to-image"
 import { touchesElement, map, first } from "../Util"
 
-declare var Iris: IIris;
+declare var IrisLib: IIris;
 
 interface DiscoveryProps {
   global: GlobalModel
@@ -91,12 +91,12 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
   }
 
   renderService(service) {
-    var id = Iris.toString(service.Id)
+    var id = IrisLib.toString(service.Id)
     var info = {
       tag: "discovered-service",
       id: id,
       hostName: service.Hostname,
-      ipAddr: Iris.toString(service.IpAddr),
+      ipAddr: IrisLib.toString(service.IpAddr),
       port: service.Port,
       wsPort: service.WsPort,
       gitPort: service.GitPort,
