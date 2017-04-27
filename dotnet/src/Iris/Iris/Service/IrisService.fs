@@ -145,12 +145,12 @@ module Iris =
       ClockService         : IClock
       Subscriptions        : Subscriptions
       Disposables          : Map<string,IDisposable>
-      DiscoverableServices : Map<ServiceType,IDisposable> }
+      DiscoverableService  : IDisposable }
 
     interface IDisposable with
       member self.Dispose() =
-        disposeAll self.DiscoverableServices
         disposeAll self.Disposables
+        dispose self.DiscoverableService
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
@@ -215,7 +215,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Clock       of ClockEvent
-    | Discovery   of Discovery.DiscoveryEvent
+    | Discovery   of DiscoveryEvent
     | Load        of ReplyChan * project:string * user:string * pw:Password * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
@@ -312,84 +312,42 @@ module Iris =
 
   // ** registerService
 
-  let private registerService (tipe: ServiceType)
-                              (ip: IpAddress)
-                              (port: Port)
-                              (meta: Map<string,string>)
-                              (service: IDiscoveryService)
-                              (services: Map<ServiceType,IDisposable>) =
-    match service.Register tipe port ip meta with
-    | Right http ->
-      services
-      |> Map.tryFind tipe
-      |> Option.iter dispose
-      Map.add ServiceType.Http http services
+  let private registerService (service: IDiscoveryService)
+                              (config: IrisMachine)
+                              (status: MachineStatus)
+                              (services: ExposedService[])
+                              (metadata: Property[])=
+
+    let discoverable: DiscoverableService =
+      { Id = config.MachineId
+        WebPort = port config.WebPort
+        Status = status
+        Services = services
+        ExtraMetadata = metadata }
+
+    match service.Register discoverable with
+    | Right registration -> Either.succeed registration
     | Left error ->
       error
-      |> sprintf "could not register %O service: %O" tipe
+      |> sprintf "Could not register service %O"
       |> Logger.err (tag "registerIdleServices")
-      services
-
-
-  // ** registerHttpService
-
-  let private registerHttpService (config: IrisMachine)
-                                  (meta: Map<string,string>)
-                                  (service: IDiscoveryService)
-                                  (services: Map<ServiceType,IDisposable>) =
-    let tipe = ServiceType.Http
-    let port = port config.WebPort
-    let ip = IPv4Address config.WebIP
-    registerService tipe ip port meta service services
-
-  // ** registerRaftService
-
-  let private registerRaftService (mem:RaftMember)
-                                  (service: IDiscoveryService)
-                                  (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.Raft
-    let port = port mem.Port
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
-
-  // ** registerGitService
-
-  let private registerGitService (mem:RaftMember)
-                                 (service: IDiscoveryService)
-                                 (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.Git
-    let port = port mem.GitPort
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
-
-  // ** registerWebSocketService
-
-  let private registerWebSocketService (mem:RaftMember)
-                                       (service: IDiscoveryService)
-                                       (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.WebSocket
-    let port = port mem.WsPort
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
+      Left error
 
   // ** registerIdleServices
 
   let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
-    let meta = Map.ofList [ "status", "available" ]
-    registerHttpService config meta service Map.empty
+    registerService service config MachineStatus.Idle [| |] [| |]
 
   // ** registerLoadedServices
 
-  let private registerLoadedServices machine mem service =
-    let meta = Map.ofList [ "status", "in-use" ]
-    Map.empty
-    |> registerHttpService      machine meta service
-    |> registerRaftService      mem          service
-    |> registerGitService       mem          service
-    |> registerWebSocketService mem          service
+  let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
+    let status = MachineStatus.Busy (project.Id, project.Name)
+    let services =
+      [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
+         { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
+         { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+         { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
+    registerService service project.Config.Machine status services [| |]
 
   // ** resetLoaded
 
@@ -1124,7 +1082,11 @@ module Iris =
             (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
 
-        let services = registerLoadedServices data.Machine data.Member data.DiscoveryService
+        let services =
+          registerLoadedServices
+            data.Member
+            data.Store.State.Project
+            data.DiscoveryService
 
         let result =
           either {

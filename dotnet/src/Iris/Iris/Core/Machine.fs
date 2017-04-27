@@ -38,10 +38,111 @@ type IrisMachine =
     WsPort    : uint16
     GitPort   : uint16
     ApiPort   : uint16
-    Version   : Version }
+    Version   : Iris.Core.Version }
+
+  // ** ToString
 
   override self.ToString() =
     sprintf "MachineId: %s" (string self.MachineId)
+
+  // ** ToOffset
+
+  member machine.ToOffset(builder: FlatBufferBuilder) =
+    let webip = machine.WebIP |> string |> builder.CreateString
+    let workspace = machine.WorkSpace |> string |> builder.CreateString
+    let hostname = machine.HostName |> string |> builder.CreateString
+    let machineid = machine.MachineId |> string |> builder.CreateString
+    let version = machine.Version |> unwrap |> builder.CreateString
+    IrisMachineFB.StartIrisMachineFB(builder)
+    IrisMachineFB.AddMachineId(builder, machineid)
+    IrisMachineFB.AddHostName(builder, hostname)
+    IrisMachineFB.AddWorkSpace(builder, workspace)
+    IrisMachineFB.AddWebIP(builder, webip)
+    IrisMachineFB.AddWebPort(builder, machine.WebPort)
+    IrisMachineFB.AddRaftPort(builder, machine.RaftPort)
+    IrisMachineFB.AddWsPort(builder, machine.WsPort)
+    IrisMachineFB.AddGitPort(builder, machine.GitPort)
+    IrisMachineFB.AddApiPort(builder, machine.ApiPort)
+    IrisMachineFB.AddVersion(builder, version)
+    IrisMachineFB.EndIrisMachineFB(builder)
+
+  // ** FromFB
+
+  static member FromFB (fb: IrisMachineFB) =
+    { MachineId = Id fb.MachineId
+      WorkSpace = filepath fb.WorkSpace
+      HostName = fb.HostName
+      WebIP = fb.WebIP
+      WebPort = fb.WebPort
+      RaftPort = fb.RaftPort
+      WsPort = fb.WsPort
+      GitPort = fb.GitPort
+      ApiPort = fb.ApiPort
+      Version = version fb.Version }
+    |> Either.succeed
+
+// * MachineStatus
+
+[<AutoOpen>]
+module MachineStatus =
+
+  [<Literal>]
+  let IDLE = "idle"
+
+  [<Literal>]
+  let BUSY = "busy"
+
+  // ** MachineStatus
+
+  type MachineStatus =
+    | Idle
+    | Busy of ProjectId:Id * ProjectName:Name
+
+    // *** ToString
+
+    override status.ToString() =
+      match status with
+      | Idle   -> IDLE
+      | Busy _ -> BUSY
+
+    // *** ToOffset
+
+    member status.ToOffset(builder: FlatBufferBuilder) =
+      MachineStatusFB.StartMachineStatusFB(builder)
+      match status with
+      | Idle -> MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.IdleFB)
+      | Busy (id, name) ->
+        MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
+        let idoff = id |> string |> builder.CreateString
+        let nameoff = name |> unwrap |> builder.CreateString
+        MachineStatusFB.AddProjectId(builder, idoff)
+        MachineStatusFB.AddProjectName(builder, nameoff)
+      MachineStatusFB.EndMachineStatusFB(builder)
+
+    // *** FromOffset
+
+    static member FromFB(fb: MachineStatusFB) =
+      #if FABLE_COMPILER
+      match fb.Status with
+      | x when x = MachineStatusEnumFB.IdleFB   -> Either.succeed Idle
+      | x when x = MachineStatusEnumFB.BusyFB ->
+        Loaded (Id fb.ProjectId, name fb.ProjectName)
+        |> Either.succeed
+      | other ->
+        sprintf "Unknown Machine Status: %d" other
+        |> Error.asParseError "MachineStatus.FromOffset"
+        |> Either.fail
+      #else
+      match fb.Status with
+      | MachineStatusEnumFB.IdleFB -> Either.succeed Idle
+      | MachineStatusEnumFB.BusyFB ->
+        Busy (Id fb.ProjectId, name fb.ProjectName)
+        |> Either.succeed
+      | other ->
+        sprintf "Unknown Machine Status: %O" other
+        |> Error.asParseError "MachineStatus.FromOffset"
+        |> Either.fail
+      #endif
 
 // * MachineConfig module
 
@@ -49,13 +150,21 @@ type IrisMachine =
 module MachineConfig =
   open Path
 
+  // ** tag
+
   let private tag (str: string) = sprintf "MachineConfig.%s" str
 
+  // ** singleton
+
   let mutable private singleton = Unchecked.defaultof<IrisMachine>
+
+  // ** get
 
   let get() = singleton
 
   #if !FABLE_COMPILER
+
+  // ** getLocation
 
   let getLocation (path: FilePath option) =
     match path with
@@ -109,7 +218,7 @@ module MachineConfig =
       WsPort    = yml.WsPort
       GitPort   = yml.GitPort
       ApiPort   = yml.ApiPort
-      Version   = Version.Parse yml.Version }
+      Version   = version yml.Version }
     |> Either.succeed
 
   // ** ensureExists (private)
@@ -135,6 +244,8 @@ module MachineConfig =
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
 
+    let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
+
     { MachineId = Id.Create()
       HostName  = hostname
       WorkSpace = workspace
@@ -144,12 +255,12 @@ module MachineConfig =
       WsPort    = Constants.DEFAULT_WEB_SOCKET_PORT
       GitPort   = Constants.DEFAULT_GIT_PORT
       ApiPort   = Constants.DEFAULT_API_PORT
-      Version   = Assembly.GetExecutingAssembly().GetName().Version }
+      Version   = version }
 
   // ** save
 
   let save (path: FilePath option) (cfg: IrisMachine) : Either<IrisError,unit> =
-    let serializer = new Serializer()
+    let serializer = Serializer()
 
     try
       let location = getLocation path
@@ -177,7 +288,7 @@ module MachineConfig =
 
   /// Attention: this method must be called only when starting the main process
   let init (path: FilePath option) : Either<IrisError,unit> =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     try
       let location = getLocation path
       let cfg =

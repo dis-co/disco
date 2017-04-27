@@ -462,7 +462,7 @@ type ClusterConfig =
 //                                        |___/
 
 type IrisConfig =
-  { MachineId:  Id
+  { Machine:    IrisMachine
     ActiveSite: Id option
     Version:    string
     Audio:      AudioConfig
@@ -477,7 +477,7 @@ type IrisConfig =
   // ** Default
   static member Default
     with get () =
-      { MachineId = Id Constants.EMPTY
+      { Machine    = MachineConfig.get()
         ActiveSite = None
         #if FABLE_COMPILER
         Version   = "0.0.0"
@@ -502,11 +502,12 @@ type IrisConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let version = builder.CreateString self.Version
-    let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
+
+    let machine = Binary.toOffset builder self.Machine
 
     let site =
       match self.ActiveSite with
@@ -545,7 +546,7 @@ type IrisConfig =
 
   static member FromFB(fb: ConfigFB) =
     either {
-      let machineId = Id fb.MachineId
+      let! machine = fb.Machine
       let version = fb.Version
 
       let site =
@@ -723,7 +724,7 @@ type IrisConfig =
           arr
 
       return
-        { MachineId = machineId
+        { Machine   = machine
           ActiveSite = site
           Version   = version
           Audio     = audio
