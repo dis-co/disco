@@ -1,4 +1,5 @@
-#r "../../node_modules/fable-core/Fable.Core.dll"
+module FlatBuffersPlugin
+
 open Fable
 open Fable.AST
 

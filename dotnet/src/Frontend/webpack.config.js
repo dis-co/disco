@@ -1,27 +1,84 @@
 var path = require('path');
 var webpack = require('webpack');
 
-module.exports = {
-  entry: [
-    'react-hot-loader/patch',
-    // activate HMR for React
+function resolve(filePath) {
+  return path.join(__dirname, filePath)
+}
 
-    'webpack-dev-server/client?http://localhost:3000',
-    // bundle the client for webpack-dev-server
-    // and connect to the provided endpoint
+var isProduction = process.argv.indexOf("-p") >= 0;
+console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
-    'webpack/hot/only-dev-server',
-    // bundle the client for hot reloading
-    // only- means to only hot reload for successful updates
+var babelOptions = {
+  presets: [["es2015", { "modules": false }]],
+  plugins: ["transform-runtime"]
+}
 
-    path.join(__dirname, './src/index.js'),
-    // the entry point of our app
-  ],
+var babelReactOptions = {
+  presets: [["es2015", { "modules": false }], "react"],
+  plugins: ["transform-runtime", "react-hot-loader/babel"]
+}
+
+var irisConfig = {
+  devtool: "source-map",
+  entry: resolve('./fable/Frontend/Frontend.fsproj'),
+  output: {
+    filename: 'iris.js', // the output bundle
+    path: resolve('js'),
+    libraryTarget: "var",
+    library: "Iris"
+  },
+  module: {
+    rules: [
+      {
+        test: /\.fs(x|proj)?$/,
+        use: {
+          loader: 'fable-loader',
+          options: {
+            babel: babelOptions,
+            define: isProduction ? [] : ["DEBUG"],
+            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
+          }
+        }
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules[\\\/](?!fable-)/,
+        use: {
+          loader: 'babel-loader',
+          options: babelOptions
+        },
+      },
+    ],
+  },
+  resolve: {
+    modules: [
+      "node_modules", resolve("./node_modules/")
+    ]
+  },
+};
+  
+var bundleConfig = {
+  entry: isProduction
+    ? resolve('./src/index.js')
+    : [
+      'react-hot-loader/patch',
+      // activate HMR for React
+
+      'webpack-dev-server/client?http://localhost:3000',
+      // bundle the client for webpack-dev-server
+      // and connect to the provided endpoint
+
+      'webpack/hot/only-dev-server',
+      // bundle the client for hot reloading
+      // only- means to only hot reload for successful updates
+      resolve('./src/index.js')
+      // the entry point of our app
+    ],
 
   output: {
     filename: 'bundle.js', // the output bundle
-    path: path.join(__dirname, 'js'),
-    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
+    path: resolve('js'),
+    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks    
   },
 
   externals: {
@@ -32,14 +89,17 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js', '.json']
   },
 
-  devtool: 'inline-source-map',
+  devtool: isProduction ? false : 'inline-source-map',
 
   module: {
     rules: [
       {
-        test: /\.jsx?$/,
-        use: [ 'babel-loader' ],
-        exclude: /node_modules/,
+        test: /\.js$/,
+        exclude: /node_modules[\\\/](?!fable-)/,
+        use: {
+          loader: 'babel-loader',
+          options: babelReactOptions
+        },
       },
       {
         test: /\.css$/,
@@ -60,7 +120,7 @@ module.exports = {
     ],
   },
 
-  plugins: [
+  plugins: isProduction ? [] : [
     new webpack.HotModuleReplacementPlugin(),
     // enable HMR globally
 
@@ -81,5 +141,7 @@ module.exports = {
         target: 'http://localhost:7000'
       }
     }    
-  },
+  },  
 };
+
+module.exports = [ irisConfig, bundleConfig ];

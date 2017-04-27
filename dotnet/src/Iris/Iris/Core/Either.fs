@@ -18,6 +18,7 @@ type Either<'err,'a> =
 // * Either Module
 
 [<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Either =
 
   // FB types are not modeled with nullables in JS

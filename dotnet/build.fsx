@@ -2,12 +2,12 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
+#r "System.IO.Compression.FileSystem"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 
 open Fake
 open Fake.Git
 open Fake.ZipHelper
-open Fake.FuchuHelper
 open Fake.Paket
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
@@ -17,6 +17,101 @@ open System
 open System.IO
 open System.Diagnostics
 open System.Text
+
+module DotNet =
+  type ComparisonResult = Smaller | Same | Bigger
+
+  let foldi f init (xs: 'T seq) =
+      let mutable i = -1
+      (init, xs) ||> Seq.fold (fun state x ->
+          i <- i + 1
+          f i state x)
+
+  let compareVersions (expected: string) (actual: string) =
+      if actual = "*" // Wildcard for custom fable-core builds
+      then Same
+      else
+          let expected = expected.Split('.', '-')
+          let actual = actual.Split('.', '-')
+          (Same, expected) ||> foldi (fun i comp expectedPart ->
+              match comp with
+              | Bigger -> Bigger
+              | Same when actual.Length <= i -> Smaller
+              | Same ->
+                  let actualPart = actual.[i]
+                  match Int32.TryParse(expectedPart), Int32.TryParse(actualPart) with
+                  // TODO: Don't allow bigger for major version?
+                  | (true, expectedPart), (true, actualPart) ->
+                      if actualPart > expectedPart
+                      then Bigger
+                      elif actualPart = expectedPart
+                      then Same
+                      else Smaller
+                  | _ ->
+                      if actualPart = expectedPart
+                      then Same
+                      else Smaller
+              | Smaller -> Smaller)
+
+  let dotnetcliVersion = "1.0.1"
+  let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
+
+  let installDotnetSdk () =
+    let dotnetSDKPath = FullName "./dotnetsdk"
+
+    let correctVersionInstalled =
+        try
+            let processResult =
+                ExecProcessAndReturnMessages (fun info ->
+                info.FileName <- dotnetExePath
+                info.WorkingDirectory <- Environment.CurrentDirectory
+                info.Arguments <- "--version") (TimeSpan.FromMinutes 30.)
+
+            let installedVersion = processResult.Messages |> separated "" 
+            match compareVersions dotnetcliVersion installedVersion with
+            | Same | Bigger -> true
+            | Smaller -> false
+        with
+        | _ -> false
+
+    if correctVersionInstalled then
+        tracefn "dotnetcli %s already installed" dotnetcliVersion
+    else
+        CleanDir dotnetSDKPath
+        let archiveFileName =
+            if isWindows then
+                sprintf "dotnet-dev-win-x64.%s.zip" dotnetcliVersion
+            elif isLinux then
+                sprintf "dotnet-dev-ubuntu-x64.%s.tar.gz" dotnetcliVersion
+            else
+                sprintf "dotnet-dev-osx-x64.%s.tar.gz" dotnetcliVersion
+        let downloadPath =
+                sprintf "https://dotnetcli.azureedge.net/dotnet/Sdk/%s/%s" dotnetcliVersion archiveFileName
+        let localPath = Path.Combine(dotnetSDKPath, archiveFileName)
+
+        tracefn "Installing '%s' to '%s'" downloadPath localPath
+
+        use webclient = new Net.WebClient()
+        webclient.DownloadFile(downloadPath, localPath)
+
+        if not isWindows then
+            let assertExitCodeZero x =
+                if x = 0 then () else
+                failwithf "Command failed with exit code %i" x
+
+            Shell.Exec("tar", sprintf """-xvf "%s" -C "%s" """ localPath dotnetSDKPath)
+            |> assertExitCodeZero
+        else
+            System.IO.Compression.ZipFile.ExtractToDirectory(localPath, dotnetSDKPath)
+
+        tracefn "dotnet cli path - %s" dotnetSDKPath
+        System.IO.Directory.EnumerateFiles dotnetSDKPath
+        |> Seq.iter (fun path -> tracefn " - %s" path)
+        System.IO.Directory.EnumerateDirectories dotnetSDKPath
+        |> Seq.iter (fun path -> tracefn " - %s%c" path System.IO.Path.DirectorySeparatorChar)
+
+        dotnetExePath <- dotnetSDKPath </> (if isWindows then "dotnet.exe" else "dotnet")
+                
 
 let konst x _ = x
 
@@ -519,14 +614,17 @@ Target "BuildReleaseZeroconf"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-let frontendDir = baseDir @@ "Projects" @@ "Frontend"
+let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runFable frontendDir "" ()
-
-  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
-  runNpm "run build"       (baseDir @@ "../Frontend") ()
+  DotNet.installDotnetSdk ()
+  runNpmNoErrors "install" frontendDir ()
+  runExec DotNet.dotnetExePath "restore" frontendDir false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
 
 //  _____         _
@@ -534,25 +632,24 @@ Target "BuildFrontend" (fun () ->
 //   | |/ _ \/ __| __/ __|
 //   | |  __/\__ \ |_\__ \
 // JS|_|\___||___/\__|___/
-let webtestsdir = baseDir @@ "Projects" @@ "Web.Tests"
 
 Target "BuildWebTests" (fun _ ->
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runFable webtestsdir "" ()
+  DotNet.installDotnetSdk ()
+  runNpmNoErrors "install" frontendDir ()
+  runExec DotNet.dotnetExePath "restore" frontendDir false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Tests.Frontend") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
 )
 
-Target "WatchWebTests" (runFable webtestsdir "-t watch")
-
-Target "BuildWebTestsFsProj" (buildDebug "Projects/Web.Tests/Web.Tests.fsproj")
-
 Target "RunWebTests" (fun _ ->
-  runNpmNoErrors "install" (baseDir @@ "../Frontend") ()
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+    runExec phantomJsPath "src/Frontend/node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
-    runNpm "run phantomjs -- node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ ()
+    runNpm "test" frontendDir ()
 )
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
@@ -799,8 +896,7 @@ Target "Release" DoNothing
 "CreateArchive"
 ==> "Release"
 
-"BuildDebugService"
-==> "BuildWebTests"
+"BuildWebTests"
 ==> "RunWebTests"
 
 "BuildTests"

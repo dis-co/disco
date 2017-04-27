@@ -14,7 +14,7 @@ open Iris.Web.Core
 open Iris.Core.Commands
 open Fable.Core
 open Fable.PowerPack
-open Fable.PowerPack.Fetch.Fetch_types
+open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
 open Iris.Core.Discovery
@@ -121,8 +121,9 @@ let (&>) fst v =
 let private postCommandPrivate (cmd: Command) =
   GlobalFetch.fetch(
     RequestInfo.Url Constants.WEP_API_COMMAND,
-    !![ RequestProperties.Method HttpMethod.POST
-        RequestProperties.Headers [ContentType "application/json"]
+    requestProps 
+      [ RequestProperties.Method HttpMethod.POST
+        requestHeaders [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
 
 let postCommand onSuccess onFail (cmd: Command) =

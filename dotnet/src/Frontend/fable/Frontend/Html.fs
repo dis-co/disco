@@ -54,12 +54,11 @@ module Html =
     | [<CompiledName "button">]         Button
     | [<CompiledName "reset">]          Reset
 
-  [<KeyValueList>]
   type CSSProperty =
     | TextAlign of string
     | Margin    of string
 
-  [<KeyValueList;NoComparison;NoEquality>]
+  [<NoComparison;NoEquality>]
   type ElementProperty =
     | [<CompiledName("id")>]        ElmId   of string
     | [<CompiledName("href")>]      Href    of string
