@@ -97,6 +97,17 @@ type ExposedService =
     static member FromFB (fb: KeyValueFB) =
       either {
         let tipe = ServiceType.Parse fb.Key
+        #if FABLE_COMPILER
+        try
+          let result = uint16 fb.Value
+          return { ServiceType = tipe; Port = port result }
+        with
+          | exn ->
+            return!
+              "Could not parse Port: " + exn.Message
+              |> Error.asParseError "ExposedService.FromFB"
+              |> Either.fail
+        #else
         let (result, parsed) = UInt16.TryParse fb.Value
         if result then
           return { ServiceType = tipe; Port = port parsed }
@@ -105,6 +116,7 @@ type ExposedService =
             sprintf "Could not parse Port: %s" fb.Value
             |> Error.asParseError "ExposedService.FromFB"
             |> Either.fail
+        #endif
       }
 
 // * DiscoverableService
@@ -377,9 +389,16 @@ module Discovery =
   // ** (|Services|_|)
 
   let private (|Services|_|) (item: TxtRecordItem) =
+    #if FABLE_COMPILER
+    let prt = try Some(uint16 item.ValueString) with | _ -> None
+    match ServiceType.TryParse item.Key, prt with
+    | Right st, (true, prt) -> Some { ServiceType = st; Port = port prt }
+    | _ -> None
+    #else
     match ServiceType.TryParse item.Key, UInt16.TryParse item.ValueString with
     | Right st, (true, prt) -> Some { ServiceType = st; Port = port prt }
     | _ -> None
+    #endif
 
   // ** (|ServiceId|_|)
 

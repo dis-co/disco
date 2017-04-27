@@ -141,7 +141,7 @@ module MachineStatus =
       match fb.Status with
       | x when x = MachineStatusEnumFB.IdleFB   -> Either.succeed Idle
       | x when x = MachineStatusEnumFB.BusyFB ->
-        Loaded (Id fb.ProjectId, name fb.ProjectName)
+        Busy (Id fb.ProjectId, name fb.ProjectName)
         |> Either.succeed
       | other ->
         sprintf "Unknown Machine Status: %d" other

@@ -48,7 +48,7 @@ type MachineStatusFB =
 type MachineStatusFBConstructor =
   abstract prototype: MachineStatusFB with get, set
   abstract StartMachineStatusFB: builder: FlatBufferBuilder -> unit
-  abstract AddStatus: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * key: MachineStatusEnumFB -> unit
   abstract AddProjectId: builder: FlatBufferBuilder * value: Offset<string> -> unit
   abstract AddProjectName: builder: FlatBufferBuilder * value: Offset<string> -> unit
   abstract EndMachineStatusFB: builder: FlatBufferBuilder -> Offset<MachineStatusFB>
@@ -67,7 +67,7 @@ type IrisMachineFB =
   abstract MachineId: string
   abstract HostName: string
   abstract WorkSpace: string
-  abstract WebIp: string
+  abstract WebIP: string
   abstract WebPort: uint16
   abstract RaftPort: uint16
   abstract WsPort: uint16
@@ -81,7 +81,7 @@ type IrisMachineFBConstructor =
   abstract AddMachineId: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
-  abstract AddWebIp: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddWebIP: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * key: uint16 -> unit
@@ -890,25 +890,6 @@ let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
 
-// MACHINE
-
-type MachineConfigFB =
-  abstract MachineId: string
-  abstract HostName:  string
-  abstract WorkSpace: string
-
-type MachineConfigFBConstructor =
-  abstract prototype: MachineConfigFB with get, set
-  abstract StartMachineConfigFB: builder: FlatBufferBuilder -> unit
-  abstract AddMachineId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddHostName: builder: FlatBufferBuilder * hn: Offset<string> -> unit
-  abstract AddWorkSpace: builder: FlatBufferBuilder * wsp: Offset<string> -> unit
-  abstract EndMachineConfigFB: builder: FlatBufferBuilder -> Offset<MachineConfigFB>
-  abstract GetRootAsMachineConfigFB: bytes: ByteBuffer -> MachineConfigFB
-  abstract Create: unit -> MachineConfigFB
-
-let MachineConfigFB: MachineConfigFBConstructor = failwith "JS only"
-
 // AUDIO
 
 type AudioConfigFB =
@@ -1247,7 +1228,7 @@ let DisplayFB: DisplayFBConstructor = failwith "JS only"
 
 type ConfigFB =
   abstract Version: string
-  abstract MachineId: string
+  abstract Machine: IrisMachineFB
   abstract ActiveSite: string
   abstract AudioConfig: AudioConfigFB
   abstract VvvvConfig: VvvvConfigFB
@@ -1266,7 +1247,7 @@ type ConfigFBConstructor =
   abstract prototype: ConfigFB with get, set
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
   abstract AddVersion: builder: FlatBufferBuilder * v:Offset<string> -> unit
-  abstract AddMachineId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddMachine: builder: FlatBufferBuilder * v:Offset<IrisMachineFB> -> unit
   abstract AddActiveSite: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
