@@ -25,7 +25,7 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> null |> serializeJson
     | Right cfg ->
-        match Config.findMember cfg cfg.MachineId with
+        match Config.findMember cfg cfg.Machine.MachineId with
         | Right mem ->
           { webSocket = sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
             version = Build.VERSION

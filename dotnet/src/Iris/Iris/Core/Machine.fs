@@ -81,6 +81,21 @@ type IrisMachine =
       Version = version fb.Version }
     |> Either.succeed
 
+  // ** Default
+
+  static member Default
+    with get () =
+      { MachineId = Id "<empty>"
+        HostName  = "<empty>"
+        WorkSpace = filepath "/dev/null"
+        WebIP     = "127.0.0.1"
+        WebPort   = Constants.DEFAULT_WEB_PORT
+        RaftPort  = Constants.DEFAULT_RAFT_PORT
+        WsPort    = Constants.DEFAULT_WEB_SOCKET_PORT
+        GitPort   = Constants.DEFAULT_GIT_PORT
+        ApiPort   = Constants.DEFAULT_API_PORT
+        Version   = version Build.VERSION }
+
 // * MachineStatus
 
 [<AutoOpen>]
