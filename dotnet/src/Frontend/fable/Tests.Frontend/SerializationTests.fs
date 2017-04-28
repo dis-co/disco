@@ -87,6 +87,20 @@ module SerializationTests =
       Status = ServiceStatus.Running
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
+  
+  let mkDiscoveredService(): DiscoveredService =
+    { Id = Id.Create ()
+      Name = "Nice service"
+      WebPort = port 8921us
+      FullName = "Really nice service"
+      HostName = "remotehost"
+      HostTarget = "localhost"
+      Status = Idle
+      Aliases = [||]
+      Protocol = IPProtocol.IPv4
+      AddressList = [||]
+      Services = [||]
+      ExtraMetadata = [||] }
 
   let mkClients () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -107,8 +121,7 @@ module SerializationTests =
     ; Sessions  = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
     ; Users     = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
     ; Clients   = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
-    // TODO: Test DiscoveredServices
-    ; DiscoveredServices = Map.empty
+    ; DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |]
     }
 
   let inline check thing =

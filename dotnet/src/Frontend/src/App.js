@@ -79,11 +79,11 @@ export default class App extends Component {
             },
             {
               label: () => "Unload project",
-              action: () => Iris.unloadProject(),
+              action: () => IrisLib.unloadProject(),
             },
             {
               label: () => "Shutdown",
-              action: () => Iris.shutdown(),
+              action: () => IrisLib.shutdown(),
             },
             {
               label: () => "Use right click: " + global.state.useRightClick,

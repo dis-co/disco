@@ -5,7 +5,7 @@ import { touchesElement, map, first } from "../Util"
 import { showModal } from "../App"
 import AddNode from "../modals/AddNode"
 
-declare var Iris: IIris;
+declare var IrisLib: IIris;
 
 interface ClusterProps {
   global: GlobalModel
@@ -37,7 +37,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
                 this.el.classList.add("iris-highlight-blue");
                 return;
               case "stop":
-                Iris.addMember(this.state);
+                IrisLib.addMember(this.state);
             }
           }
           this.el.classList.remove("iris-highlight-blue")
@@ -82,7 +82,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
                   <td>{node.State.ToString()}</td>
                   <td>left</td>
                   <td>Main, VideoPB, Show1</td>
-                  <td><a onClick={() => { Iris.removeMember(config, kv[0]) }}>Remove</a></td>
+                  <td><a onClick={() => { IrisLib.removeMember(config, kv[0]) }}>Remove</a></td>
                 </tr>
               );
             })}

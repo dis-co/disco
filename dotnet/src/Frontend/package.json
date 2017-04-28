@@ -3,6 +3,7 @@
   "scripts": {
     "start": "webpack-dev-server",
     "build": "webpack -p",
+    "watch-fable": "webpack --config webpack.config.fable.js -w",
     "build-test": "webpack --config fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./tests.html tap"
   },

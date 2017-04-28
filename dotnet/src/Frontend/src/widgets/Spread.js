@@ -86,10 +86,10 @@ export default class Spread {
     this.view = SpreadView;
     this.pin = pin;
     this.open = false;
-    this.rows = Iris.pinToKeyValuePairs(pin);
+    this.rows = IrisLib.pinToKeyValuePairs(pin);
   }
 
   update(rowIndex, newValue) {
-    Iris.updateSlices(this.pin, rowIndex, newValue);
+    IrisLib.updateSlices(this.pin, rowIndex, newValue);
   }
 }

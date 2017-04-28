@@ -1,6 +1,6 @@
 import { IIris, IDisposable, IServiceInfo, IService, IProject } from "./Interfaces"
 
-declare var Iris: IIris;
+declare var IrisLib: IIris;
 
 let counter = 0;
 const LOG_MAX = 100;
@@ -22,19 +22,19 @@ export default class GlobalModel {
   };
 
   constructor() {
-    Iris.startContext(info => {
+    IrisLib.startContext(info => {
       if (this.logSubscription == null) {
-        this.logSubscription = Iris.subscribeToLogs(log => {
+        this.logSubscription = IrisLib.subscribeToLogs(log => {
           this.addLog(log);
         })
       }
       if (this.clockSubscription == null) {
-        this.clockSubscription = Iris.subscribeToClock(frames =>
+        this.clockSubscription = IrisLib.subscribeToClock(frames =>
           this.__setState("clock", frames)
         )
       }     
       if (this.state.serviceInfo.version === "0.0.0") {
-        const ctx = Iris.getClientContext();
+        const ctx = IrisLib.getClientContext();
         this.__setState("serviceInfo", ctx.ServiceInfo);
       }
       this.__setState("pinGroups", info != null ? info.state.PinGroups : null);
