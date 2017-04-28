@@ -232,6 +232,12 @@ type State =
 
     let clientsoffset = StateFB.CreateClientsVector(builder, clients)
 
+    let services =
+      Map.toArray self.DiscoveredServices
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let servicesoffset = StateFB.CreateDiscoveredServicesVector(builder, services)
+
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
     StateFB.AddPinGroups(builder, groupsoffset)
@@ -240,6 +246,7 @@ type State =
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddClients(builder, clientsoffset)
     StateFB.AddUsers(builder, usersoffset)
+    StateFB.AddDiscoveredServices(builder, servicesoffset)
     StateFB.EndStateFB(builder)
 
   // ** ToBytes
@@ -1023,9 +1030,9 @@ type Store(state : State)=
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.
-    | AddResolvedService    service
-    | UpdateResolvedService service -> State.addOrUpdateService    service state |> andRender
-    | RemoveResolvedService service -> State.removeService service state |> andRender
+    | AddDiscoveredService    service
+    | UpdateDiscoveredService service -> State.addOrUpdateService    service state |> andRender
+    | RemoveDiscoveredService service -> State.removeService service state |> andRender
 
     | _ -> ()
 
@@ -1167,9 +1174,9 @@ type StateMachine =
   | RemoveSession         of Session
 
   // Discovery
-  | AddResolvedService    of DiscoveredService
-  | UpdateResolvedService of DiscoveredService
-  | RemoveResolvedService of DiscoveredService
+  | AddDiscoveredService    of DiscoveredService
+  | UpdateDiscoveredService of DiscoveredService
+  | RemoveDiscoveredService of DiscoveredService
 
   | UpdateClock           of uint32
 
@@ -1232,9 +1239,9 @@ type StateMachine =
     | RemoveSession session -> sprintf "RemoveSession %s" (string session)
 
     // Discovery
-    | AddResolvedService    service -> sprintf "AddResolvedService %s"    (string service)
-    | UpdateResolvedService service -> sprintf "UpdateResolvedService %s" (string service)
-    | RemoveResolvedService service -> sprintf "RemoveResolvedService %s" (string service)
+    | AddDiscoveredService    service -> sprintf "AddDiscoveredService %s"    (string service)
+    | UpdateDiscoveredService service -> sprintf "UpdateDiscoveredService %s" (string service)
+    | RemoveDiscoveredService service -> sprintf "RemoveDiscoveredService %s" (string service)
 
     | Command    ev         -> sprintf "Command: %s"  (string ev)
     | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
@@ -1399,6 +1406,20 @@ type StateMachine =
         Either.map UpdateSession session
       | x when x = StateMachineActionFB.RemoveFB ->
         Either.map RemoveSession session
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    | x when x = StateMachinePayloadFB.DiscoveredServiceFB ->
+      let discoveredService = fb.DiscoveredServiceFB |> DiscoveredService.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddDiscoveredService discoveredService
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateDiscoveredService discoveredService
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemoveDiscoveredService discoveredService
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1729,6 +1750,36 @@ type StateMachine =
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
+
+    //  ____  _                                     _
+    // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+    // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+    // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+    // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
+
+    | StateMachinePayloadFB.DiscoveredServiceFB ->
+      either {
+        let! discoveredService =
+          let discoveredServiceish = fb.Payload<DiscoveredServiceFB>()
+          if discoveredServiceish.HasValue then
+            discoveredServiceish.Value
+            |> DiscoveredService.FromFB
+          else
+            "Could not parse empty discoveredService payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddDiscoveredService    discoveredService)
+        | StateMachineActionFB.UpdateFB -> return (UpdateDiscoveredService discoveredService)
+        | StateMachineActionFB.RemoveFB -> return (RemoveDiscoveredService discoveredService)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     //  __  __ _
     // |  \/  (_)___  ___
     // | |\/| | / __|/ __|
@@ -2188,13 +2239,13 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | AddResolvedService    service ->
+    | AddDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.AddFB
 
-    | UpdateResolvedService    service ->
+    | UpdateDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.UpdateFB
 
-    | RemoveResolvedService    service ->
+    | RemoveDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
 
     | UpdateClock value ->
@@ -2210,6 +2261,7 @@ type StateMachine =
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
+
 
   // ** ToBytes
 

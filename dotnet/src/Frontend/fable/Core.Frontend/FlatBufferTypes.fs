@@ -1400,18 +1400,20 @@ type StateFBConstructor =
   abstract prototype: StateFB with get, set
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
-  abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
-  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
   abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
-  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
   abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
-  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
-  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
   abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
-  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
   abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
+  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
+  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
+  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
+  abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
+  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
+  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
+  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
@@ -1594,6 +1596,7 @@ let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 type StateMachineFB =
   abstract Action: StateMachineActionFB
   abstract PayloadType: StateMachinePayloadFB
+  abstract DiscoveredServiceFB: DiscoveredServiceFB
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB

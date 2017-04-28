@@ -162,6 +162,18 @@ module MachineStatus =
         |> Either.fail
       #endif
 
+    // *** ToBytes
+
+    member status.ToBytes() = Binary.buildBuffer status
+
+    // *** FromBytes
+
+    static member FromBytes(bytes: byte[]) =
+      bytes
+      |> Binary.createBuffer
+      |> MachineStatusFB.GetRootAsMachineStatusFB
+      |> MachineStatus.FromFB
+
 // * MachineConfig module
 
 [<RequireQualifiedAccess>]
