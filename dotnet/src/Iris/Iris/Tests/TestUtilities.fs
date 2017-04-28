@@ -62,6 +62,11 @@ module TestData =
     |> string
     |> name
 
+  let rndport() =
+    rand.Next(0, int UInt16.MaxValue)
+    |> uint16
+    |> port
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -228,7 +233,7 @@ module TestData =
       Protocol = IPProtocol.IPv4
       AddressList = [||]
       Services = [||]
-      ExtraMetadata = [||] }        
+      ExtraMetadata = [||] }
 
   let mkState path : Either<IrisError,State> =
     either {

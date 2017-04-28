@@ -19,6 +19,10 @@ module SerializationTests =
 
   let mk() = Id.Create()
 
+  let rndstr() = mk() |> string
+
+  let rndport() = rand.Next(0,65535) |> uint16 |> port
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = Array.zeroCreate<byte> num
@@ -29,6 +33,12 @@ module SerializationTests =
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
         yield Id.Create() |> string |> astag |]
+
+  let mkProp () =
+    { Key = rndstr(); Value = rndstr() }
+
+  let mkProps () =
+    [| for n = 0 to rand.Next(2,8) do yield mkProp() |]
 
   let mkProject _ =
     IrisProject.Empty
@@ -87,7 +97,7 @@ module SerializationTests =
       Status = ServiceStatus.Running
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
-  
+
   let mkDiscoveredService(): DiscoveredService =
     { Id = Id.Create ()
       Name = "Nice service"
@@ -272,3 +282,31 @@ module SerializationTests =
           equals error reerror)
 
       finish()
+
+    test "Validate DiscoveredService Binary Serialization" <| fun _ ->
+      { Id = Id.Create()
+        Name = rndstr()
+        WebPort = rndport()
+        FullName = rndstr()
+        HostName = rndstr()
+        HostTarget = rndstr()
+        Status = MachineStatus.Busy (Id.Create(), name (rndstr()))
+        Aliases = [| for n in 0 .. rand.Next(2,4) -> rndstr() |]
+        Protocol = IPProtocol.IPv4
+        AddressList = [| IPv4Address "127.0.0.1" |]
+        Services = [| { ServiceType = ServiceType.Git; Port = rndport() }
+                      { ServiceType = ServiceType.Raft; Port = rndport() }
+                      { ServiceType = ServiceType.Api; Port = rndport() }
+                      { ServiceType = ServiceType.Http; Port = rndport() }
+                      { ServiceType = ServiceType.WebSocket; Port = rndport() } |]
+        ExtraMetadata = mkProps() }
+        |> (fun service ->
+            let reservice =
+              service
+              |> Binary.buildBuffer
+              |> Binary.createBuffer
+              |> DiscoveredServiceFB.GetRootAsDiscoveredServiceFB
+              |> DiscoveredService.FromFB
+            printfn "service: %A" service
+            printfn "reservice: %A" reservice
+            equals service (Either.get reservice))

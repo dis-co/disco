@@ -1297,6 +1297,39 @@ type ProjectFBConstructor =
 
 let ProjectFB: ProjectFBConstructor = failwith "JS only"
 
+//  ____  _
+// |  _ \(_)___  ___ _____   _____ _ __ _   _
+// | | | | / __|/ __/ _ \ \ / / _ \ '__| | | |
+// | |_| | \__ \ (_| (_) \ V /  __/ |  | |_| |
+// |____/|_|___/\___\___/ \_/ \___|_|   \__, |
+//                                      |___/
+
+type ExposedServiceTypeFB = int
+
+type ExposedServiceTypeFBConstructor =
+  abstract RendererFB: RoleFB
+  abstract GitFB: ExposedServiceTypeFB
+  abstract RaftFB: ExposedServiceTypeFB
+  abstract HttpFB: ExposedServiceTypeFB
+  abstract WebSocketFB: ExposedServiceTypeFB
+  abstract ApiFB: ExposedServiceTypeFB
+
+let ExposedServiceTypeFB: ExposedServiceTypeFBConstructor = failwith "JS only"
+
+type ExposedServiceFB =
+  abstract Type: ExposedServiceTypeFB
+  abstract Port: uint16
+
+type ExposedServiceFBConstructor =
+  abstract prototype: ExposedServiceFB with get, set
+  abstract StartExposedServiceFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * ExposedServiceTypeFB -> unit
+  abstract AddPort: builder: FlatBufferBuilder * uint16 -> unit
+  abstract EndExposedServiceFB: builder: FlatBufferBuilder -> Offset<ExposedServiceFB>
+  abstract GetRootAsExposedServiceFB: bytes: ByteBuffer -> ExposedServiceFB
+
+let ExposedServiceFB: ExposedServiceFBConstructor = failwith "JS only"
+
 type DiscoveredServiceFB =
   abstract Id: string
   abstract Name: string
@@ -1310,7 +1343,7 @@ type DiscoveredServiceFB =
   abstract AddressListLength: int
   abstract AddressList: int -> string
   abstract ServicesLength: int
-  abstract Services: int -> KeyValueFB
+  abstract Services: int -> ExposedServiceFB
   abstract Status: MachineStatusFB
   abstract ExtraMetadataLength: int
   abstract ExtraMetadata: int -> KeyValueFB
@@ -1335,7 +1368,7 @@ type DiscoveredServiceFBConstructor =
   abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB
   abstract CreateAliasesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateAddressListVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateServicesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
+  abstract CreateServicesVector: builder: FlatBufferBuilder * Offset<ExposedServiceFB> array -> Offset<'a>
   abstract CreateExtraMetadataVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
 
 let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"

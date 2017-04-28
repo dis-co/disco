@@ -488,6 +488,26 @@ module SerializationTests =
       }
       |> noError
 
+  let test_validate_discovered_service_binary_serialization =
+    testCase "Validate DiscoveredService Binary Serialization" <| fun _ ->
+      { Id = Id.Create()
+        Name = rndstr()
+        WebPort = rndport()
+        FullName = rndstr()
+        HostName = rndstr()
+        HostTarget = rndstr()
+        Status = MachineStatus.Busy (Id.Create(), name (rndstr()))
+        Aliases = [| for n in 0 .. rand.Next(2,4) -> rndstr() |]
+        Protocol = IPProtocol.IPv4
+        AddressList = [| IPv4Address "127.0.0.1" |]
+        Services = [| { ServiceType = ServiceType.Git; Port = rndport() }
+                      { ServiceType = ServiceType.Raft; Port = rndport() }
+                      { ServiceType = ServiceType.Api; Port = rndport() }
+                      { ServiceType = ServiceType.Http; Port = rndport() }
+                      { ServiceType = ServiceType.WebSocket; Port = rndport() } |]
+        ExtraMetadata = mkProps() }
+      |> binaryEncDec
+
   let test_validate_client_api_request_binary_serialization =
     testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
       either {
@@ -530,6 +550,7 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_validate_discovered_service_binary_serialization
       test_validate_requestvote_serialization
       test_validate_requestvote_response_serialization
       test_validate_appendentries_serialization
