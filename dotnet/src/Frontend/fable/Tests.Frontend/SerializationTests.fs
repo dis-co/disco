@@ -88,19 +88,19 @@ module SerializationTests =
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
   
-  let mkDiscoveredService(): Discovery.DiscoveredService =
+  let mkDiscoveredService(): DiscoveredService =
     { Id = Id.Create ()
-      Machine = Id.Create ()
-      Port = port 8921us
       Name = "Nice service"
+      WebPort = port 8921us
       FullName = "Really nice service"
-      Type = Discovery.ServiceType.Iris
       HostName = "remotehost"
       HostTarget = "localhost"
+      Status = Idle
       Aliases = [||]
       Protocol = IPProtocol.IPv4
       AddressList = [||]
-      Metadata = Map.empty }
+      Services = [||]
+      ExtraMetadata = [||] }
 
   let mkClients () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -121,7 +121,7 @@ module SerializationTests =
     ; Sessions  = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
     ; Users     = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
     ; Clients   = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
-    ; DiscoveredServices = mkDiscoveredService  () |> fun ser -> Map.ofArray [| (ser.Id, ser) |]
+    ; DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |]
     }
 
   let inline check thing =

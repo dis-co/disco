@@ -216,6 +216,20 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
+  let mkDiscoveredService(): DiscoveredService =
+    { Id = Id.Create ()
+      Name = "Nice service"
+      WebPort = port 8921us
+      FullName = "Really nice service"
+      HostName = "remotehost"
+      HostTarget = "localhost"
+      Status = Idle
+      Aliases = [||]
+      Protocol = IPProtocol.IPv4
+      AddressList = [||]
+      Services = [||]
+      ExtraMetadata = [||] }        
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
@@ -227,8 +241,7 @@ module TestData =
           Sessions = mkSessions() |> asMap
           Users    = mkUsers   () |> asMap
           Clients  = mkClients () |> asMap
-          // TODO: Test DiscoveredServices
-          DiscoveredServices = Map.empty }
+          DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
     }
 
   let mkChange _ =
