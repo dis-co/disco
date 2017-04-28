@@ -494,6 +494,7 @@ module Iris =
         data.Store.Dispatch cmd
         broadcastMsg data cmd
       | cmd ->
+        printfn "onMessage: %s" (string cmd)
         match cmd with
         | AddSession session ->
           data.SocketServer.BuildSession id session
@@ -604,7 +605,7 @@ module Iris =
       if data.RaftServer.IsLeader then
         match persistEntry data.Store.State sm with
         | Right commit ->
-          sprintf "Persisted command in commit: %s" commit.Sha
+          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
           |> Logger.debug (tag "onApplyLog")
           state
         | Left error ->
