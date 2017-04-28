@@ -116,6 +116,7 @@ type IrisError =
     ErrorFB.EndErrorFB(builder)
 
 
+
 // * Error Module
 [<RequireQualifiedAccess>]
 module Error =

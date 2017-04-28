@@ -62,6 +62,11 @@ module TestData =
     |> string
     |> name
 
+  let rndport() =
+    rand.Next(0, int UInt16.MaxValue)
+    |> uint16
+    |> port
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -96,6 +101,24 @@ module TestData =
 
   let mkPin() =
     Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [| true |])
+
+  let mkDiscoveredService() =
+    { Id = Id.Create()
+      Name = rndstr()
+      WebPort = rndport()
+      FullName = rndstr()
+      HostName = rndstr()
+      HostTarget = rndstr()
+      Status = MachineStatus.Busy (Id.Create(), name (rndstr()))
+      Aliases = [| for n in 0 .. rand.Next(2,4) -> rndstr() |]
+      Protocol = IPProtocol.IPv4
+      AddressList = [| IPv4Address "127.0.0.1" |]
+      Services = [| { ServiceType = ServiceType.Git; Port = rndport() }
+                    { ServiceType = ServiceType.Raft; Port = rndport() }
+                    { ServiceType = ServiceType.Api; Port = rndport() }
+                    { ServiceType = ServiceType.Http; Port = rndport() }
+                    { ServiceType = ServiceType.WebSocket; Port = rndport() } |]
+      ExtraMetadata = mkProps() }
 
   let mkColors() =
     [| for n in 0 .. rand.Next(2,12) do
@@ -215,20 +238,6 @@ module TestData =
   let mkClients () =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
-
-  let mkDiscoveredService(): DiscoveredService =
-    { Id = Id.Create ()
-      Name = "Nice service"
-      WebPort = port 8921us
-      FullName = "Really nice service"
-      HostName = "remotehost"
-      HostTarget = "localhost"
-      Status = Idle
-      Aliases = [||]
-      Protocol = IPProtocol.IPv4
-      AddressList = [||]
-      Services = [||]
-      ExtraMetadata = [||] }        
 
   let mkState path : Either<IrisError,State> =
     either {

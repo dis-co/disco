@@ -19,6 +19,10 @@ module SerializationTests =
 
   let mk() = Id.Create()
 
+  let rndstr() = mk() |> string
+
+  let rndport() = rand.Next(0,65535) |> uint16 |> port
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = Array.zeroCreate<byte> num
@@ -29,6 +33,12 @@ module SerializationTests =
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
         yield Id.Create() |> string |> astag |]
+
+  let mkProp () =
+    { Key = rndstr(); Value = rndstr() }
+
+  let mkProps () =
+    [| for n = 0 to rand.Next(2,8) do yield mkProp() |]
 
   let mkProject _ =
     IrisProject.Empty
@@ -87,7 +97,7 @@ module SerializationTests =
       Status = ServiceStatus.Running
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
-  
+
   let mkDiscoveredService(): DiscoveredService =
     { Id = Id.Create ()
       Name = "Nice service"
@@ -125,7 +135,6 @@ module SerializationTests =
     }
 
   let inline check thing =
-    assert false
     let thong = thing |> Binary.encode |> Binary.decode |> Either.get
     equals thing thong
 
@@ -178,10 +187,7 @@ module SerializationTests =
       ; ColorSlice  (0<index>, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
       ; ColorSlice  (0<index>, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
       |]
-      |> Array.iter
-        (fun slice ->
-          let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
-          equals slice reslice)
+      |> Array.iter check
       finish()
 
     test "Validate Slices Serialization" <| fun finish ->
@@ -193,10 +199,7 @@ module SerializationTests =
       ; ColorSlices    (mk(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
       ; ColorSlices    (mk(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |])
       |]
-      |> Array.iter
-        (fun slices ->
-          let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
-          equals slices reslices)
+      |> Array.iter check
       finish()
 
     test "Validate Pin Serialization" <| fun finish ->
@@ -204,44 +207,43 @@ module SerializationTests =
       finish()
 
     test "Validate State Serialization" <| fun finish ->
-      let state : State = mkState ()
-      let restate : State = state |> Binary.encode |> Binary.decode |> Either.get
-      equals restate state
+      mkState () |> check
       finish ()
 
     test "Validate IrisProject Binary Serializaton" <| fun finish ->
-      let project = mkProject()
-      let reproject = project |> Binary.encode |> Binary.decode |> Either.get
-      equals project reproject
+      mkProject() |> check
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->
-      [ AddCue        <| mkCue ()
-      ; UpdateCue     <| mkCue ()
-      ; RemoveCue     <| mkCue ()
-      ; AddCueList    <| mkCueList ()
-      ; UpdateCueList <| mkCueList ()
-      ; RemoveCueList <| mkCueList ()
-      ; AddSession    <| mkSession ()
-      ; UpdateSession <| mkSession ()
-      ; RemoveSession <| mkSession ()
-      ; AddUser       <| mkUser ()
-      ; UpdateUser    <| mkUser ()
-      ; RemoveUser    <| mkUser ()
-      ; AddPinGroup      <| mkPinGroup ()
-      ; UpdatePinGroup   <| mkPinGroup ()
-      ; RemovePinGroup   <| mkPinGroup ()
-      ; AddClient     <| mkClient ()
-      ; UpdateSlices  <| mkSlices ()
-      ; UpdateClient  <| mkClient ()
-      ; RemoveClient  <| mkClient ()
-      ; AddPin        <| mkPin ()
-      ; UpdatePin     <| mkPin ()
-      ; RemovePin     <| mkPin ()
-      ; AddMember     <| Member.create (Id.Create())
-      ; UpdateMember  <| Member.create (Id.Create())
-      ; RemoveMember  <| Member.create (Id.Create())
-      ; DataSnapshot  <| mkState ()
+      [ AddCue                  <| mkCue ()
+      ; UpdateCue               <| mkCue ()
+      ; RemoveCue               <| mkCue ()
+      ; AddCueList              <| mkCueList ()
+      ; UpdateCueList           <| mkCueList ()
+      ; RemoveCueList           <| mkCueList ()
+      ; AddSession              <| mkSession ()
+      ; UpdateSession           <| mkSession ()
+      ; RemoveSession           <| mkSession ()
+      ; AddUser                 <| mkUser ()
+      ; UpdateUser              <| mkUser ()
+      ; RemoveUser              <| mkUser ()
+      ; AddPinGroup             <| mkPinGroup ()
+      ; UpdatePinGroup          <| mkPinGroup ()
+      ; RemovePinGroup          <| mkPinGroup ()
+      ; AddClient               <| mkClient ()
+      ; UpdateSlices            <| mkSlices ()
+      ; UpdateClient            <| mkClient ()
+      ; RemoveClient            <| mkClient ()
+      ; AddPin                  <| mkPin ()
+      ; UpdatePin               <| mkPin ()
+      ; RemovePin               <| mkPin ()
+      ; AddMember               <| Member.create (Id.Create())
+      ; UpdateMember            <| Member.create (Id.Create())
+      ; RemoveMember            <| Member.create (Id.Create())
+      ; AddDiscoveredService    <| mkDiscoveredService ()
+      ; UpdateDiscoveredService <| mkDiscoveredService ()
+      ; RemoveDiscoveredService <| mkDiscoveredService ()
+      ; DataSnapshot            <| mkState ()
       ; Command AppCommand.Undo
       ; LogMsg(Logger.create Debug "bla" "ohai")
       ; SetLogLevel Warn
@@ -271,4 +273,13 @@ module SerializationTests =
             |> Either.get
           equals error reerror)
 
+      finish()
+
+    test "Validate MachineStatus Binary Serialization" <| fun finish ->
+      MachineStatus.Busy (Id.Create(), name (rndstr()))
+      |> check
+      finish()
+
+    test "Validate DiscoveredService Binary Serialization" <| fun finish ->
+      mkDiscoveredService() |> check
       finish()

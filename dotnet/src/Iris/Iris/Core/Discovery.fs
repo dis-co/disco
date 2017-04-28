@@ -61,6 +61,44 @@ type ServiceType =
         |> Error.asParseError "ServiceType.TryParse"
         |> Either.fail
 
+  // ** ToOffset
+
+  member tipe.ToOffset(_: FlatBufferBuilder) =
+    match tipe with
+    |  Git  -> ExposedServiceTypeFB.GitFB
+    |  Raft -> ExposedServiceTypeFB.RaftFB
+    |  Http -> ExposedServiceTypeFB.HttpFB
+    |  Api  -> ExposedServiceTypeFB.ApiFB
+    |  WebSocket -> ExposedServiceTypeFB.WebSocketFB
+
+  // ** FromFB
+
+  static member FromFB(fb: ExposedServiceTypeFB) =
+    #if FABLE_COMPILER
+    match fb with
+    | x when x = ExposedServiceTypeFB.GitFB        -> Right Git
+    | x when x = ExposedServiceTypeFB.RaftFB       -> Right Raft
+    | x when x = ExposedServiceTypeFB.HttpFB       -> Right Http
+    | x when x = ExposedServiceTypeFB.ApiFB        -> Right Api
+    | x when x = ExposedServiceTypeFB.WebSocketFB  -> Right WebSocket
+    | x ->
+      sprintf "Unknown ExposedServiceTypeFB value: %d" x
+      |> Error.asParseError "ServiceType.FromFB"
+      |> Either.fail
+    #else
+    match fb with
+    | ExposedServiceTypeFB.GitFB        -> Right Git
+    | ExposedServiceTypeFB.RaftFB       -> Right Raft
+    | ExposedServiceTypeFB.HttpFB       -> Right Http
+    | ExposedServiceTypeFB.ApiFB        -> Right Api
+    | ExposedServiceTypeFB.WebSocketFB  -> Right WebSocket
+    | x ->
+      sprintf "Unknown ExposedServiceTypeFB value: %O" x
+      |> Error.asParseError "ServiceType.FromFB"
+      |> Either.fail
+    #endif
+
+
 // * ServiceType module
 
 module ServiceType =
@@ -85,38 +123,19 @@ type ExposedService =
     // ** ToOffset
 
     member service.ToOffset(builder: FlatBufferBuilder) =
-      let tipe = service.ServiceType |> string |> builder.CreateString
-      let port = service.Port |> unwrap |> string |> builder.CreateString
-      KeyValueFB.StartKeyValueFB(builder)
-      KeyValueFB.AddKey(builder,tipe)
-      KeyValueFB.AddKey(builder,port)
-      KeyValueFB.EndKeyValueFB(builder)
+      let tipe = service.ServiceType.ToOffset builder
+      let port = service.Port |> unwrap
+      ExposedServiceFB.StartExposedServiceFB(builder)
+      ExposedServiceFB.AddType(builder,tipe)
+      ExposedServiceFB.AddPort(builder,port)
+      ExposedServiceFB.EndExposedServiceFB(builder)
 
     // ** FromFB
 
-    static member FromFB (fb: KeyValueFB) =
+    static member FromFB (fb: ExposedServiceFB) =
       either {
-        let tipe = ServiceType.Parse fb.Key
-        #if FABLE_COMPILER
-        try
-          let result = uint16 fb.Value
-          return { ServiceType = tipe; Port = port result }
-        with
-          | exn ->
-            return!
-              "Could not parse Port: " + exn.Message
-              |> Error.asParseError "ExposedService.FromFB"
-              |> Either.fail
-        #else
-        let (result, parsed) = UInt16.TryParse fb.Value
-        if result then
-          return { ServiceType = tipe; Port = port parsed }
-        else
-          return!
-            sprintf "Could not parse Port: %s" fb.Value
-            |> Error.asParseError "ExposedService.FromFB"
-            |> Either.fail
-        #endif
+        let! tipe = ServiceType.FromFB fb.Type
+        return { ServiceType = tipe; Port = port fb.Port }
       }
 
 // * DiscoverableService
@@ -143,6 +162,8 @@ type DiscoveredService =
     AddressList: IpAddress array
     Services: ExposedService array
     ExtraMetadata: Property array }
+
+  // ** ToOffset
 
   member service.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string service.Id)
@@ -189,6 +210,8 @@ type DiscoveredService =
     DiscoveredServiceFB.AddExtraMetadata(builder, metadata)
     DiscoveredServiceFB.EndDiscoveredServiceFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: DiscoveredServiceFB) =
     either {
       let! protocol =
@@ -228,18 +251,20 @@ type DiscoveredService =
         |> Either.map snd
 
       let! revAddressList =
-        let mutable ls = Right []
-        for i = 0 to fb.AddressListLength do
-          match ls with
-          | Right addresses ->
-            match fb.AddressList(i) |> IpAddress.TryParse with
-            | Right address -> ls <- Right <| address::addresses
-            | Left err -> ls <- Left err
-          | Left _ -> ()
-        ls
+        let arr = Array.zeroCreate fb.AddressListLength
+        Array.fold
+          (fun (m: Either<IrisError, int * IpAddress[]>) _ -> either {
+            let! (idx, addresses) = m
+            let! ip = fb.AddressList(idx) |> IpAddress.TryParse
+            addresses.[idx] <- ip
+            return (idx + 1, addresses)
+          })
+          (Right(0, arr))
+          arr
+        |> Either.map snd
 
       let aliases =
-        [| for i = 0 to fb.AliasesLength do yield fb.Aliases(i) |]
+        [| for i = 0 to fb.AliasesLength - 1 do yield fb.Aliases(i) |]
 
       let! status =
         #if FABLE_COMPILER
@@ -297,12 +322,18 @@ type DiscoveredService =
           ExtraMetadata = metadata }
     }
 
+  // ** ToBytes
+
   member request.ToBytes() =
     Binary.buildBuffer request
 
+  // ** FromBytes
+
   static member FromBytes(raw: byte[]) =
-    IrisClientFB.GetRootAsIrisClientFB(Binary.createBuffer raw)
-    |> IrisClient.FromFB
+    raw
+    |> Binary.createBuffer
+    |> DiscoveredServiceFB.GetRootAsDiscoveredServiceFB
+    |> DiscoveredService.FromFB
 
 // * DiscoveryEvent
 

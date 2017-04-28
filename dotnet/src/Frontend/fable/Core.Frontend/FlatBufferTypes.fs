@@ -1297,6 +1297,39 @@ type ProjectFBConstructor =
 
 let ProjectFB: ProjectFBConstructor = failwith "JS only"
 
+//  ____  _
+// |  _ \(_)___  ___ _____   _____ _ __ _   _
+// | | | | / __|/ __/ _ \ \ / / _ \ '__| | | |
+// | |_| | \__ \ (_| (_) \ V /  __/ |  | |_| |
+// |____/|_|___/\___\___/ \_/ \___|_|   \__, |
+//                                      |___/
+
+type ExposedServiceTypeFB = int
+
+type ExposedServiceTypeFBConstructor =
+  abstract RendererFB: RoleFB
+  abstract GitFB: ExposedServiceTypeFB
+  abstract RaftFB: ExposedServiceTypeFB
+  abstract HttpFB: ExposedServiceTypeFB
+  abstract WebSocketFB: ExposedServiceTypeFB
+  abstract ApiFB: ExposedServiceTypeFB
+
+let ExposedServiceTypeFB: ExposedServiceTypeFBConstructor = failwith "JS only"
+
+type ExposedServiceFB =
+  abstract Type: ExposedServiceTypeFB
+  abstract Port: uint16
+
+type ExposedServiceFBConstructor =
+  abstract prototype: ExposedServiceFB with get, set
+  abstract StartExposedServiceFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * ExposedServiceTypeFB -> unit
+  abstract AddPort: builder: FlatBufferBuilder * uint16 -> unit
+  abstract EndExposedServiceFB: builder: FlatBufferBuilder -> Offset<ExposedServiceFB>
+  abstract GetRootAsExposedServiceFB: bytes: ByteBuffer -> ExposedServiceFB
+
+let ExposedServiceFB: ExposedServiceFBConstructor = failwith "JS only"
+
 type DiscoveredServiceFB =
   abstract Id: string
   abstract Name: string
@@ -1310,7 +1343,7 @@ type DiscoveredServiceFB =
   abstract AddressListLength: int
   abstract AddressList: int -> string
   abstract ServicesLength: int
-  abstract Services: int -> KeyValueFB
+  abstract Services: int -> ExposedServiceFB
   abstract Status: MachineStatusFB
   abstract ExtraMetadataLength: int
   abstract ExtraMetadata: int -> KeyValueFB
@@ -1335,7 +1368,7 @@ type DiscoveredServiceFBConstructor =
   abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB
   abstract CreateAliasesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateAddressListVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateServicesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
+  abstract CreateServicesVector: builder: FlatBufferBuilder * Offset<ExposedServiceFB> array -> Offset<'a>
   abstract CreateExtraMetadataVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
 
 let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
@@ -1367,18 +1400,20 @@ type StateFBConstructor =
   abstract prototype: StateFB with get, set
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
-  abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
-  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
   abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
-  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
   abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
-  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
-  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
   abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
-  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
   abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
+  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
+  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
+  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
+  abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
+  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
+  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
+  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
@@ -1561,6 +1596,7 @@ let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 type StateMachineFB =
   abstract Action: StateMachineActionFB
   abstract PayloadType: StateMachinePayloadFB
+  abstract DiscoveredServiceFB: DiscoveredServiceFB
   abstract CueFB: CueFB
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB

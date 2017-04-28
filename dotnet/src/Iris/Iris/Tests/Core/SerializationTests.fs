@@ -73,11 +73,11 @@ module SerializationTests =
         let mems = [| mem1; mem2 |]
 
         let log =
-          Some <| LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
-            Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),
+          Some <| LogEntry(Id.Create(), index 7, term 1, DataSnapshot            (state),
+            Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot            (state),
               Some <| Configuration(Id.Create(), index 5, term 1, [| mem1 |],
                 Some <| JointConsensus(Id.Create(), index 4, term 1, changes,
-                  Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mems, DataSnapshot(state))))))
+                  Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mems, DataSnapshot            (state))))))
 
         let ae : AppendEntries =
           { Term = term 8
@@ -132,7 +132,7 @@ module SerializationTests =
           ; LeaderId = Id.Create()
           ; LastIndex = index 242
           ; LastTerm = term 124242
-          ; Data = Snapshot(Id.Create(), index 12, term 3414, index 241, term 422, mem1, DataSnapshot(state))
+          ; Data = Snapshot(Id.Create(), index 12, term 3414, index 241, term 422, mem1, DataSnapshot            (state))
           }
 
         InstallSnapshot(Id.Create(), is)
@@ -454,33 +454,36 @@ module SerializationTests =
       either {
         let! state = mkTmpDir() |> mkState
 
-        [ AddCue        <| mkCue ()
-          UpdateCue     <| mkCue ()
-          RemoveCue     <| mkCue ()
-          AddCueList    <| mkCueList ()
-          UpdateCueList <| mkCueList ()
-          RemoveCueList <| mkCueList ()
-          AddSession    <| mkSession ()
-          UpdateSession <| mkSession ()
-          RemoveSession <| mkSession ()
-          AddUser       <| mkUser ()
-          UpdateUser    <| mkUser ()
-          RemoveUser    <| mkUser ()
-          AddPinGroup      <| mkPinGroup ()
-          UpdatePinGroup   <| mkPinGroup ()
-          RemovePinGroup   <| mkPinGroup ()
-          AddPin        <| mkPin ()
-          UpdatePin     <| mkPin ()
-          RemovePin     <| mkPin ()
-          UpdateSlices  <| mkSlice ()
-          AddClient     <| mkClient ()
-          UpdateClient  <| mkClient ()
-          RemoveClient  <| mkClient ()
-          AddMember     <| Member.create (Id.Create())
-          UpdateMember  <| Member.create (Id.Create())
-          RemoveMember  <| Member.create (Id.Create())
+        [ AddCue                  <| mkCue ()
+          UpdateCue               <| mkCue ()
+          RemoveCue               <| mkCue ()
+          AddCueList              <| mkCueList ()
+          UpdateCueList           <| mkCueList ()
+          RemoveCueList           <| mkCueList ()
+          AddSession              <| mkSession ()
+          UpdateSession           <| mkSession ()
+          RemoveSession           <| mkSession ()
+          AddUser                 <| mkUser ()
+          UpdateUser              <| mkUser ()
+          RemoveUser              <| mkUser ()
+          AddPinGroup             <| mkPinGroup ()
+          UpdatePinGroup          <| mkPinGroup ()
+          RemovePinGroup          <| mkPinGroup ()
+          AddPin                  <| mkPin ()
+          UpdatePin               <| mkPin ()
+          RemovePin               <| mkPin ()
+          UpdateSlices            <| mkSlice ()
+          AddClient               <| mkClient ()
+          UpdateClient            <| mkClient ()
+          RemoveClient            <| mkClient ()
+          AddMember               <| Member.create (Id.Create())
+          UpdateMember            <| Member.create (Id.Create())
+          RemoveMember            <| Member.create (Id.Create())
+          AddDiscoveredService    <| mkDiscoveredService ()
+          UpdateDiscoveredService <| mkDiscoveredService ()
+          RemoveDiscoveredService <| mkDiscoveredService ()
+          DataSnapshot            <| state
           UpdateClock 1234u
-          DataSnapshot  <| state
           Command AppCommand.Undo
           LogMsg(Logger.create Debug "bla" "oohhhh")
           SetLogLevel Warn
@@ -488,36 +491,44 @@ module SerializationTests =
       }
       |> noError
 
+  let test_validate_discovered_service_binary_serialization =
+    testCase "Validate DiscoveredService Binary Serialization" <| fun _ ->
+      mkDiscoveredService()
+      |> binaryEncDec
+
   let test_validate_client_api_request_binary_serialization =
     testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
       either {
         let! state = mkTmpDir() |> mkState
-
-        [ AddCue         <| mkCue ()
-          UpdateCue      <| mkCue ()
-          RemoveCue      <| mkCue ()
-          AddCueList     <| mkCueList ()
-          UpdateCueList  <| mkCueList ()
-          RemoveCueList  <| mkCueList ()
-          AddSession     <| mkSession ()
-          UpdateSession  <| mkSession ()
-          RemoveSession  <| mkSession ()
-          AddUser        <| mkUser ()
-          UpdateUser     <| mkUser ()
-          RemoveUser     <| mkUser ()
-          AddPinGroup    <| mkPinGroup ()
-          UpdatePinGroup <| mkPinGroup ()
-          RemovePinGroup <| mkPinGroup ()
-          AddPin         <| mkPin ()
-          UpdatePin      <| mkPin ()
-          RemovePin      <| mkPin ()
-          UpdateSlices   <| mkSlice ()
-          AddClient      <| mkClient ()
-          UpdateClient   <| mkClient ()
-          RemoveClient   <| mkClient ()
-          AddMember      <| Member.create (Id.Create())
-          UpdateMember   <| Member.create (Id.Create())
-          RemoveMember   <| Member.create (Id.Create())
+        [ AddCue                  <| mkCue ()
+          UpdateCue               <| mkCue ()
+          RemoveCue               <| mkCue ()
+          AddCueList              <| mkCueList ()
+          UpdateCueList           <| mkCueList ()
+          RemoveCueList           <| mkCueList ()
+          AddSession              <| mkSession ()
+          UpdateSession           <| mkSession ()
+          RemoveSession           <| mkSession ()
+          AddUser                 <| mkUser ()
+          UpdateUser              <| mkUser ()
+          RemoveUser              <| mkUser ()
+          AddPinGroup             <| mkPinGroup ()
+          UpdatePinGroup          <| mkPinGroup ()
+          RemovePinGroup          <| mkPinGroup ()
+          AddPin                  <| mkPin ()
+          UpdatePin               <| mkPin ()
+          RemovePin               <| mkPin ()
+          UpdateSlices            <| mkSlice ()
+          AddClient               <| mkClient ()
+          UpdateClient            <| mkClient ()
+          RemoveClient            <| mkClient ()
+          AddDiscoveredService    <| mkDiscoveredService ()
+          UpdateDiscoveredService <| mkDiscoveredService ()
+          RemoveDiscoveredService <| mkDiscoveredService ()
+          AddMember               <| Member.create (Id.Create())
+          UpdateMember            <| Member.create (Id.Create())
+          RemoveMember            <| Member.create (Id.Create())
+          DataSnapshot            <| state
         ] |> List.iter binaryEncDec
       }
       |> noError
@@ -530,6 +541,7 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_validate_discovered_service_binary_serialization
       test_validate_requestvote_serialization
       test_validate_requestvote_response_serialization
       test_validate_appendentries_serialization

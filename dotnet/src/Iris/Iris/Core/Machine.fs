@@ -123,23 +123,26 @@ module MachineStatus =
     // *** ToOffset
 
     member status.ToOffset(builder: FlatBufferBuilder) =
-      MachineStatusFB.StartMachineStatusFB(builder)
       match status with
-      | Idle -> MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.IdleFB)
+      | Idle ->
+        MachineStatusFB.StartMachineStatusFB(builder)
+        MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.IdleFB)
+        MachineStatusFB.EndMachineStatusFB(builder)
       | Busy (id, name) ->
-        MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
         let idoff = id |> string |> builder.CreateString
         let nameoff = name |> unwrap |> builder.CreateString
+        MachineStatusFB.StartMachineStatusFB(builder)
+        MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
         MachineStatusFB.AddProjectId(builder, idoff)
         MachineStatusFB.AddProjectName(builder, nameoff)
-      MachineStatusFB.EndMachineStatusFB(builder)
+        MachineStatusFB.EndMachineStatusFB(builder)
 
     // *** FromOffset
 
     static member FromFB(fb: MachineStatusFB) =
       #if FABLE_COMPILER
       match fb.Status with
-      | x when x = MachineStatusEnumFB.IdleFB   -> Either.succeed Idle
+      | x when x = MachineStatusEnumFB.IdleFB -> Either.succeed Idle
       | x when x = MachineStatusEnumFB.BusyFB ->
         Busy (Id fb.ProjectId, name fb.ProjectName)
         |> Either.succeed
@@ -158,6 +161,18 @@ module MachineStatus =
         |> Error.asParseError "MachineStatus.FromOffset"
         |> Either.fail
       #endif
+
+    // *** ToBytes
+
+    member status.ToBytes() = Binary.buildBuffer status
+
+    // *** FromBytes
+
+    static member FromBytes(bytes: byte[]) =
+      bytes
+      |> Binary.createBuffer
+      |> MachineStatusFB.GetRootAsMachineStatusFB
+      |> MachineStatus.FromFB
 
 // * MachineConfig module
 

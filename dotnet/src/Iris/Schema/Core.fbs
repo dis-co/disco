@@ -72,6 +72,26 @@ table IrisClientFB {
      IpAddress: string;
 }
 
+//  ____  _
+// |  _ \(_)___  ___ _____   _____ _ __ _   _
+// | | | | / __|/ __/ _ \ \ / / _ \ '__| | | |
+// | |_| | \__ \ (_| (_) \ V /  __/ |  | |_| |
+// |____/|_|___/\___\___/ \_/ \___|_|   \__, |
+//                                      |___/
+
+enum ExposedServiceTypeFB:ushort {
+     GitFB = 0,
+     RaftFB,
+     HttpFB,
+     WebSocketFB,
+     ApiFB
+}
+
+table ExposedServiceFB {
+     Type: ExposedServiceTypeFB;
+     Port: ushort;
+}
+
 table DiscoveredServiceFB {
      Id: string;
      Name: string;
@@ -82,7 +102,7 @@ table DiscoveredServiceFB {
      Aliases: [string];
      Protocol: string;
      AddressList: [string];
-     Services: [KeyValueFB];
+     Services: [ExposedServiceFB];
      Status: MachineStatusFB;
      ExtraMetadata: [KeyValueFB];
 }

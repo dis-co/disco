@@ -880,9 +880,9 @@ module Iris =
     withoutReply state <| fun data ->
       Tracing.trace (tag "handleDiscoveryEvent") <| fun () ->
         match ev with
-        | Appeared service -> AddResolvedService service    |> appendCommand data
-        | Updated  service -> UpdateResolvedService service |> appendCommand data
-        | Vanished service -> RemoveResolvedService service |> appendCommand data
+        | Appeared service -> AddDiscoveredService service    |> appendCommand data
+        | Updated  service -> UpdateDiscoveredService service |> appendCommand data
+        | Vanished service -> RemoveDiscoveredService service |> appendCommand data
         | _ -> ()
         state
 
