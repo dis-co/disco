@@ -9,6 +9,7 @@ open Suave.Successful
 open Suave.Writers
 open Suave.Logging
 open Suave.Logging.Log
+open Suave.CORS
 open Suave.Web
 open System.Threading
 open System.IO
@@ -118,11 +119,11 @@ module Http =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path "/" >=> (indexHtml |> unwrap |> Files.file)
-          Files.browseHome ])
+          Filters.path "/" >=> cors defaultCORSConfig >=> (indexHtml |> unwrap |> Files.file)
+          Files.browseHome >=> cors defaultCORSConfig ])
       Filters.POST >=>
         (choose [
-          Filters.path Constants.WEP_API_COMMAND >=> postCommand
+          Filters.path Constants.WEP_API_COMMAND >=> cors defaultCORSConfig >=> postCommand
         ])
       RequestErrors.NOT_FOUND "Page not found."
     ]
