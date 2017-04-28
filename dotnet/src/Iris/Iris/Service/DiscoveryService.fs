@@ -20,7 +20,6 @@ open FSharpx.Functional
 
 open Mono.Zeroconf
 
-
 // * Discovery module
 
 //  ____  _
@@ -124,146 +123,20 @@ module Discovery =
     }
     |> Async.RunSynchronously
 
-  // ** createId
-
-  let private createId (id: Id) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
-    sprintf "%s%s%s%d" (string id) (string tipe) (string ip) port
-    |> Encoding.ASCII.GetBytes
-    |> Crypto.sha1sum
-    |> unwrap
-    |> Id
-
-  // ** serviceName
-
-  let private serviceName (id: Id) (tipe: ServiceType) =
-    match tipe with
-    | ServiceType.Iris      -> sprintf "Iris Service [%s]" (string id)
-    | ServiceType.Git       -> sprintf "Git Service [%s]" (string id)
-    | ServiceType.Raft      -> sprintf "Raft Service [%s]" (string id)
-    | ServiceType.Http      -> sprintf "Http Service [%s]" (string id)
-    | ServiceType.WebSocket -> sprintf "WebSocket Service [%s]" (string id)
-    | ServiceType.Other str -> sprintf "%s Service [%s]" str (string id)
-
-  // ** parseServiceId
-
-  let private parseServiceId (name: string) =
-    let m = Regex.Match(name, "^.*\[(.*)\]$")
-    if m.Success then
-      Id m.Groups.[1].Value
-      |> Either.succeed
-    else
-      "Missing Id in discovered service name."
-      |> Error.asOther (tag "parseServiceId")
-      |> Either.fail
-
-  // ** parseServiceType
-
-  let private parseServiceType (txt: ITxtRecord) =
-    try
-      let item = txt.["type"]
-      match item.ValueString with
-      | "git"  -> Either.succeed ServiceType.Git
-      | "raft" -> Either.succeed ServiceType.Raft
-      | "http" -> Either.succeed ServiceType.Http
-      | "ws"   -> Either.succeed ServiceType.WebSocket
-      | null | "" ->
-        sprintf "'type' field was not set or null"
-        |> Error.asOther (tag "parseServiceType")
-        |> Either.fail
-      | other ->
-        other
-        |> ServiceType.Other
-        |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asOther (tag "parseServiceType")
-        |> Either.fail
-
-  // ** parseMachine
-
-  let private parseMachine (txt: ITxtRecord) =
-    try
-      let item = txt.["machine"]
-      match item.ValueString with
-      | null  ->
-        sprintf "'machine' field was not set or null"
-        |> Error.asOther (tag "parseMachine")
-        |> Either.fail
-      | id ->
-        Id id
-        |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asOther (tag "parseMachine")
-        |> Either.fail
-
-  // ** parseProtocol
-
-  let private parseProtocol (proto: AddressProtocol) =
-    match proto with
-    | AddressProtocol.IPv4 -> Either.succeed IPv4
-    | AddressProtocol.IPv6 -> Either.succeed IPv6
-    | x ->
-      sprintf "AddressProtocol could not be parsed: %A" x
-      |> Error.asOther (tag "parseProtocol")
-      |> Either.fail
-
-  // ** toDiscoveredService
-
-  let private toDiscoveredService (service: IResolvableService) =
-    either {
-      let entry = service.HostEntry
-      let! proto = parseProtocol service.AddressProtocol
-      let addresses =
-        if isNull entry then
-          [| |]
-        else
-          Array.map IpAddress.ofIPAddress entry.AddressList
-
-      let! id = parseServiceId service.Name
-      let! machine = parseMachine service.TxtRecord
-      let! tipe = parseServiceType service.TxtRecord
-
-      let metadata =
-        service.TxtRecord
-        |> Seq.cast<TxtRecordItem>
-        |> Seq.map (fun i -> i.Key, i.ValueString)
-        |> Map
-
-      return
-        { Id = id
-          Protocol = proto
-          Port = service.Port |> uint16 |> port
-          Name = service.Name
-          FullName = service.FullName
-          Machine = machine
-          Type = tipe
-          HostName = if isNull entry then "" else entry.HostName
-          HostTarget = service.HostTarget
-          Aliases = if isNull entry then [| |] else entry.Aliases
-          AddressList = addresses
-          Metadata = metadata }
-    }
-
-  // ** mergeDiscovered
-
-  let private mergeDiscovered (have: DiscoveredService) (got: DiscoveredService) =
-    { have with AddressList = Array.append have.AddressList got.AddressList }
-
   // ** addResolved
 
-  let private addResolved (agent: DiscoveryAgent) (o: obj) (_: ServiceResolvedEventArgs) =
+  let private addResolved (agent: DiscoveryAgent) (resolved: obj) _ =
     let service =
-      o :?> IResolvableService
-      |> toDiscoveredService
+      resolved
+      :?> IResolvableService
+      |> Discovery.toDiscoveredService
 
     match service with
     | Right parsed ->
-      (parsed.Id, parsed.Type)
+      parsed.Id
       |> sprintf "resolved new service %O"
       |> Logger.debug (tag "addResolved")
+
       parsed
       |> Msg.Discovered
       |> agent.Post
@@ -278,12 +151,9 @@ module Discovery =
   // ** serviceRemoved
 
   let private serviceRemoved (agent: DiscoveryAgent) (_: obj) (args: ServiceBrowseEventArgs) =
-    match parseServiceId args.Service.Name with
-    | Right id ->
-      id
-      |> Msg.Vanished
-      |> agent.Post
-    | Left _ -> ()
+    match args.Service.Name with
+    | ServiceId id -> id |> Msg.Vanished |> agent.Post
+    | _ -> ()
 
   // ** serviceRegistered
 
@@ -309,23 +179,9 @@ module Discovery =
                               (config: IrisMachine)
                               (disco: DiscoverableService) =
     try
-      let service = new RegisterService()
-      service.Name <- disco.Name
-      service.RegType <- ZEROCONF_TCP_SERVICE
-      service.ReplyDomain <- "local."
-      service.Port <- int16 disco.Port
-
-      let record = new TxtRecord()
-
-      record.Add("type", string disco.Type)
-      record.Add("machine", string config.MachineId)
-      for KeyValue(k, v) in disco.Metadata do
-        record.Add(k, v)
-
-      service.TxtRecord <- record
+      let service = Discovery.toDiscoverableService disco
       let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
       service.Response.AddHandler(handler)
-
       service.Register()
       Either.succeed service
     with
@@ -340,8 +196,9 @@ module Discovery =
                                 (srvc: DiscoverableService)
                                 (_: Subscriptions) =
     for service in services do
-      if service.Name = srvc.Name then
-        dispose service
+      match service.Name with
+      | ServiceId id when id = srvc.Id -> dispose service
+      | _ -> ()
 
   // ** startBrowser
 
@@ -489,12 +346,12 @@ module Discovery =
                               (subs: Subscriptions)
                               (config: IrisMachine)
                               (srvc: DiscoveredService) =
-    if srvc.Machine <> config.MachineId then
+    if srvc.Id <> config.MachineId then
       match state with
       | Loaded data ->
         match Map.tryFind srvc.Id data.ResolvedServices with
         | Some service ->
-          let updated = mergeDiscovered service srvc
+          let updated = Discovery.mergeDiscovered service srvc
           notify subs (DiscoveryEvent.Updated updated)
           Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
         | None ->
@@ -542,6 +399,8 @@ module Discovery =
 
     act initial
 
+  // ** DiscoveryService module
+
   [<RequireQualifiedAccess>]
   module DiscoveryService =
 
@@ -582,17 +441,7 @@ module Discovery =
                 member self.OnNext(value) = callback value }
             |> listener.Subscribe
 
-          member self.Register (tipe: ServiceType) (port: Port) (addr: IpAddress) (metadata: Map<string, string>) =
-            let id = createId config.MachineId port tipe addr
-
-            let service =
-              { Id = id
-                Port = port
-                Name = serviceName id tipe
-                Type = tipe
-                IpAddress = addr
-                Metadata = metadata }
-
+          member self.Register (service: DiscoverableService) =
             match postCommand agent (fun chan -> Msg.Register(chan, service)) with
             | Right Reply.Ok ->
               { new IDisposable with

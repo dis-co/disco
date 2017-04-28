@@ -19,7 +19,7 @@ type IDiscoveryService =
   abstract Services: Either<IrisError,Map<Id,RegisterService> * Map<Id,DiscoveredService>>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Register: tipe:ServiceType -> port:Port -> addr:IpAddress -> metadata:Map<string,string> -> Either<IrisError,IDisposable>
+  abstract Register: service:DiscoverableService -> Either<IrisError,IDisposable>
 
 // * GitEvent
 

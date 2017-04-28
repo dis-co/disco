@@ -17,7 +17,6 @@ open Fable.PowerPack
 open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
-open Iris.Core.Discovery
 
 // TYPES -----------------------------------------------------
 type GenericObservable<'T>() =
@@ -121,7 +120,7 @@ let (&>) fst v =
 let private postCommandPrivate (cmd: Command) =
   GlobalFetch.fetch(
     RequestInfo.Url Constants.WEP_API_COMMAND,
-    requestProps 
+    requestProps
       [ RequestProperties.Method HttpMethod.POST
         requestHeaders [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
@@ -211,7 +210,7 @@ let project2tree (p: IrisProject) =
     Array.mapi (fun i v -> obj2tree (string i) v) arr
     |> node k
   let cfg2tree (c: IrisConfig) =
-    [| leaf ("MachineId: " + string c.MachineId)
+    [| leaf ("MachineId: " + string c.Machine.MachineId)
     ;  obj2tree "Audio" c.Audio
     ;  obj2tree "Vvvv" c.Vvvv
     ;  obj2tree "Raft" c.Raft

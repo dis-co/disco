@@ -462,7 +462,7 @@ type ClusterConfig =
 //                                        |___/
 
 type IrisConfig =
-  { MachineId:  Id
+  { Machine:    IrisMachine
     ActiveSite: Id option
     Version:    string
     Audio:      AudioConfig
@@ -477,7 +477,7 @@ type IrisConfig =
   // ** Default
   static member Default
     with get () =
-      { MachineId = Id Constants.EMPTY
+      { Machine    = IrisMachine.Default
         ActiveSite = None
         #if FABLE_COMPILER
         Version   = "0.0.0"
@@ -502,11 +502,12 @@ type IrisConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let version = builder.CreateString self.Version
-    let machine = builder.CreateString (string self.MachineId)
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
+
+    let machine = Binary.toOffset builder self.Machine
 
     let site =
       match self.ActiveSite with
@@ -531,7 +532,7 @@ type IrisConfig =
 
     ConfigFB.StartConfigFB(builder)
     ConfigFB.AddVersion(builder, version)
-    ConfigFB.AddMachineId(builder, machine)
+    ConfigFB.AddMachine(builder, machine)
     ConfigFB.AddActiveSite(builder, site)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
@@ -545,7 +546,6 @@ type IrisConfig =
 
   static member FromFB(fb: ConfigFB) =
     either {
-      let machineId = Id fb.MachineId
       let version = fb.Version
 
       let site =
@@ -553,6 +553,21 @@ type IrisConfig =
           None
         else
           Some (Id fb.ActiveSite)
+
+      let! machine =
+        #if FABLE_COMPILER
+        IrisMachine.FromFB fb.Machine
+        #else
+        let nullable = fb.Machine
+        if nullable.HasValue then
+          let value = nullable.Value
+          IrisMachine.FromFB value
+        else
+          "Unable to parse empty IrisMachineFB value"
+          |> Error.asParseError "IrisConfig.FromFB"
+          |> Either.fail
+        #endif
+
 
       let! audio =
         #if FABLE_COMPILER
@@ -723,7 +738,7 @@ type IrisConfig =
           arr
 
       return
-        { MachineId = machineId
+        { Machine   = machine
           ActiveSite = site
           Version   = version
           Audio     = audio
@@ -1863,17 +1878,17 @@ module Config =
         else
           Some (Id file.Project.ActiveSite)
 
-      return { MachineId = machine.MachineId
+      return { Machine    = machine
                ActiveSite = site
-               Version   = version
-               Vvvv      = vvvv
-               Audio     = audio
-               Raft      = raftcfg
-               Timing    = timing
-               ViewPorts = viewports
-               Displays  = displays
-               Tasks     = tasks
-               Sites     = sites }
+               Version    = version
+               Vvvv       = vvvv
+               Audio      = audio
+               Raft       = raftcfg
+               Timing     = timing
+               ViewPorts  = viewports
+               Displays   = displays
+               Tasks      = tasks
+               Sites      = sites }
     }
 
   #endif
@@ -1900,7 +1915,7 @@ module Config =
   // ** create
 
   let create (name: string) (machine: IrisMachine) =
-    { MachineId = machine.MachineId
+    { Machine    = machine
       ActiveSite = None
       #if FABLE_COMPILER
       Version   = "0.0.0"
@@ -1919,7 +1934,7 @@ module Config =
   // ** updateMachine
 
   let updateMachine (machine: IrisMachine) (config: IrisConfig) =
-    { config with MachineId = machine.MachineId }
+    { config with Machine = machine }
 
   // ** updateVvvv
 
@@ -2027,7 +2042,7 @@ module Config =
   let getActiveMember (config: IrisConfig) =
     config
     |> getActiveSite
-    |> Option.bind (fun site -> Map.tryFind config.MachineId site.Members)
+    |> Option.bind (fun site -> Map.tryFind config.Machine.MachineId site.Members)
 
   // ** setMembers
 
@@ -2043,7 +2058,7 @@ module Config =
   // ** selfMember
 
   let selfMember (options: IrisConfig) =
-    findMember options options.MachineId
+    findMember options options.Machine.MachineId
 
   // ** addSite
 

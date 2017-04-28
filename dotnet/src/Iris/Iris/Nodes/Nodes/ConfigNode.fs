@@ -33,8 +33,8 @@ type ConfigNode() =
   val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
-  [<Output("MachineId", IsSingle = true)>]
-  val mutable OutMachineId: ISpread<string>
+  [<Output("Machine", IsSingle = true)>]
+  val mutable OutMachine: ISpread<IrisMachine>
 
   [<DefaultValue>]
   [<Output("ActiveSite", IsSingle = true)>]
@@ -85,7 +85,7 @@ type ConfigNode() =
       if self.InUpdate.[0] && not (Util.isNullReference self.InConfig.[0]) then
         let config = self.InConfig.[0]
 
-        self.OutMachineId.[0] <- string config.MachineId
+        self.OutMachine.[0] <- config.Machine
         self.OutAudio.[0] <- config.Audio
         self.OutVvvv.[0] <- config.Vvvv
         self.OutRaft.[0] <- config.Raft

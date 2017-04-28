@@ -692,10 +692,10 @@ module Git =
       try
         either {
           let options =
-            let fopts = new FetchOptions()
-            let popts = new PullOptions()
-            let mopts = new MergeOptions()
-            mopts.FastForwardStrategy <- new FastForwardStrategy()
+            let fopts = FetchOptions()
+            let popts = PullOptions()
+            let mopts = MergeOptions()
+            mopts.FastForwardStrategy <- FastForwardStrategy()
             popts.FetchOptions <- fopts
             popts.MergeOptions <- mopts
             popts

@@ -90,7 +90,9 @@ module Path =
 module File =
 
   let writeText (payload: string) (encoding: Text.Encoding option) (location: FilePath) =
-    File.WriteAllText(unwrap location, payload)
+    match encoding with
+    | Some encoding -> File.WriteAllText(unwrap location, payload, encoding)
+    | None -> File.WriteAllText(unwrap location, payload)
 
   let writeBytes (payload: byte array) (location: FilePath) =
     File.WriteAllBytes(unwrap location, payload)

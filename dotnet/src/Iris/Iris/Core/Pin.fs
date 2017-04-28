@@ -2388,9 +2388,9 @@ type Slice =
       SliceFB.EndSliceFB(builder)
 
     | EnumSlice     (_,data) ->
-      let offset = data.ToOffset(builder)
+      let offset: Offset<KeyValueFB> = data.ToOffset(builder)
       SliceFB.StartSliceFB(builder)
-      SliceFB.AddSliceType(builder, SliceTypeFB.EnumPropertyFB)
+      SliceFB.AddSliceType(builder, SliceTypeFB.KeyValueFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
       #else
@@ -2434,9 +2434,9 @@ type Slice =
       ByteSlice(index fb.Index,String.decodeBase64 slice.Value)
       |> Either.succeed
 
-    | x when x = SliceTypeFB.EnumPropertyFB ->
+    | x when x = SliceTypeFB.KeyValueFB ->
       either {
-        let slice = EnumPropertyFB.Create() |> fb.Slice
+        let slice = KeyValueFB.Create() |> fb.Slice
         let! prop = Property.FromFB slice
         return EnumSlice(index fb.Index,prop)
       }
@@ -2499,8 +2499,8 @@ type Slice =
         |> Error.asParseError "Slice.FromFB"
         |> Either.fail
 
-    | SliceTypeFB.EnumPropertyFB     ->
-      let slice = fb.Slice<EnumPropertyFB>()
+    | SliceTypeFB.KeyValueFB     ->
+      let slice = fb.Slice<KeyValueFB>()
       if slice.HasValue then
         either {
           let value = slice.Value

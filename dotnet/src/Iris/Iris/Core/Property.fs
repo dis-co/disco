@@ -33,12 +33,12 @@ type Property =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let key, value =
         builder.CreateString self.Key, builder.CreateString self.Value
-    EnumPropertyFB.StartEnumPropertyFB(builder)
-    EnumPropertyFB.AddKey(builder, key)
-    EnumPropertyFB.AddValue(builder, value)
-    EnumPropertyFB.EndEnumPropertyFB(builder)
+    KeyValueFB.StartKeyValueFB(builder)
+    KeyValueFB.AddKey(builder, key)
+    KeyValueFB.AddValue(builder, value)
+    KeyValueFB.EndKeyValueFB(builder)
 
-  static member FromFB(fb: EnumPropertyFB) =
+  static member FromFB(fb: KeyValueFB) =
     { Key = fb.Key; Value = fb.Value }
     |> Either.succeed
 
@@ -75,12 +75,12 @@ and Property =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let key, value =
         builder.CreateString self.Key, builder.CreateString self.Value
-    EnumPropertyFB.StartEnumPropertyFB(builder)
-    EnumPropertyFB.AddKey(builder, key)
-    EnumPropertyFB.AddValue(builder, value)
-    EnumPropertyFB.EndEnumPropertyFB(builder)
+    KeyValueFB.StartKeyValueFB(builder)
+    KeyValueFB.AddKey(builder, key)
+    KeyValueFB.AddValue(builder, value)
+    KeyValueFB.EndKeyValueFB(builder)
 
-  static member FromFB(fb: EnumPropertyFB) =
+  static member FromFB(fb: KeyValueFB) =
     { Key = fb.Key; Value = fb.Value }
     |> Either.succeed
 

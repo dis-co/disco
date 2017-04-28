@@ -129,7 +129,7 @@ type State =
     Sessions:           Map<Id,Session>
     Users:              Map<Id,User>
     Clients:            Map<Id,IrisClient>
-    DiscoveredServices: Map<Id,Discovery.DiscoveredService> }
+    DiscoveredServices: Map<Id,DiscoveredService> }
 
   // ** Empty
 
@@ -439,17 +439,17 @@ type State =
       let! discoveredServices =
         let arr = Array.zeroCreate fb.DiscoveredServicesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, Discovery.DiscoveredService>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<Id, DiscoveredService>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
-            let! service = fb.DiscoveredServices(i) |> Discovery.DiscoveredService.FromFB
+            let! service = fb.DiscoveredServices(i) |> DiscoveredService.FromFB
             #else
             let! service =
               let value = fb.DiscoveredServices(i)
               if value.HasValue then
                 value.Value
-                |> Discovery.DiscoveredService.FromFB
+                |> DiscoveredService.FromFB
               else
                 "Could not parse empty DiscoveredService payload"
                 |> Error.asParseError "DiscoveredService.FromFB"
@@ -514,12 +514,12 @@ module State =
 
   // ** addOrUpdateService
 
-  let addOrUpdateService (service: Discovery.DiscoveredService) (state: State) =
+  let addOrUpdateService (service: DiscoveredService) (state: State) =
     { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
 
   // ** removeService
 
-  let removeService (service: Discovery.DiscoveredService) (state: State) =
+  let removeService (service: DiscoveredService) (state: State) =
     { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
 
   // ** addSession
@@ -1167,9 +1167,9 @@ type StateMachine =
   | RemoveSession         of Session
 
   // Discovery
-  | AddResolvedService    of Discovery.DiscoveredService
-  | UpdateResolvedService of Discovery.DiscoveredService
-  | RemoveResolvedService of Discovery.DiscoveredService
+  | AddResolvedService    of DiscoveredService
+  | UpdateResolvedService of DiscoveredService
+  | RemoveResolvedService of DiscoveredService
 
   | UpdateClock           of uint32
 
@@ -1798,7 +1798,7 @@ type StateMachine =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
-    let inline addDiscoveredServicePayload (service: Discovery.DiscoveredService) action =
+    let inline addDiscoveredServicePayload (service: DiscoveredService) action =
       let offset = service.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, action)

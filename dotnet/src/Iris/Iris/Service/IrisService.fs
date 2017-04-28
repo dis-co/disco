@@ -104,13 +104,13 @@ module Iris =
   ///
   [<NoComparison;NoEquality>]
   type private IrisIdleStateData =
-    { Machine              : IrisMachine
-      DiscoveryService     : IDiscoveryService
-      DiscoverableServices : Map<ServiceType,IDisposable> }
+    { Machine             : IrisMachine
+      DiscoveryService    : IDiscoveryService
+      DiscoverableService : IDisposable option }
 
     interface IDisposable with
       member self.Dispose() =
-        disposeAll self.DiscoverableServices
+        Option.iter dispose self.DiscoverableService
 
   // ** IrisLoadedStateData
 
@@ -145,11 +145,11 @@ module Iris =
       ClockService         : IClock
       Subscriptions        : Subscriptions
       Disposables          : Map<string,IDisposable>
-      DiscoverableServices : Map<ServiceType,IDisposable> }
+      DiscoverableService  : IDisposable option }
 
     interface IDisposable with
       member self.Dispose() =
-        disposeAll self.DiscoverableServices
+        Option.iter dispose self.DiscoverableService
         disposeAll self.Disposables
         dispose self.ApiServer
         dispose self.GitServer
@@ -215,7 +215,7 @@ module Iris =
     | Api         of ApiEvent
     | Log         of LogEvent
     | Clock       of ClockEvent
-    | Discovery   of Discovery.DiscoveryEvent
+    | Discovery   of DiscoveryEvent
     | Load        of ReplyChan * project:string * user:string * pw:Password * site:string option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
@@ -312,84 +312,42 @@ module Iris =
 
   // ** registerService
 
-  let private registerService (tipe: ServiceType)
-                              (ip: IpAddress)
-                              (port: Port)
-                              (meta: Map<string,string>)
-                              (service: IDiscoveryService)
-                              (services: Map<ServiceType,IDisposable>) =
-    match service.Register tipe port ip meta with
-    | Right http ->
-      services
-      |> Map.tryFind tipe
-      |> Option.iter dispose
-      Map.add ServiceType.Http http services
+  let private registerService (service: IDiscoveryService)
+                              (config: IrisMachine)
+                              (status: MachineStatus)
+                              (services: ExposedService[])
+                              (metadata: Property[])=
+
+    let discoverable: DiscoverableService =
+      { Id = config.MachineId
+        WebPort = port config.WebPort
+        Status = status
+        Services = services
+        ExtraMetadata = metadata }
+
+    match service.Register discoverable with
+    | Right registration -> Some registration
     | Left error ->
       error
-      |> sprintf "could not register %O service: %O" tipe
+      |> sprintf "Could not register service %O"
       |> Logger.err (tag "registerIdleServices")
-      services
-
-
-  // ** registerHttpService
-
-  let private registerHttpService (config: IrisMachine)
-                                  (meta: Map<string,string>)
-                                  (service: IDiscoveryService)
-                                  (services: Map<ServiceType,IDisposable>) =
-    let tipe = ServiceType.Http
-    let port = port config.WebPort
-    let ip = IPv4Address config.WebIP
-    registerService tipe ip port meta service services
-
-  // ** registerRaftService
-
-  let private registerRaftService (mem:RaftMember)
-                                  (service: IDiscoveryService)
-                                  (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.Raft
-    let port = port mem.Port
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
-
-  // ** registerGitService
-
-  let private registerGitService (mem:RaftMember)
-                                 (service: IDiscoveryService)
-                                 (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.Git
-    let port = port mem.GitPort
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
-
-  // ** registerWebSocketService
-
-  let private registerWebSocketService (mem:RaftMember)
-                                       (service: IDiscoveryService)
-                                       (services: Map<ServiceType,IDisposable>) =
-    let meta = Map.empty
-    let tipe = ServiceType.WebSocket
-    let port = port mem.WsPort
-    let ip = mem.IpAddr
-    registerService tipe ip port meta service services
+      None
 
   // ** registerIdleServices
 
   let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
-    let meta = Map.ofList [ "status", "available" ]
-    registerHttpService config meta service Map.empty
+    registerService service config MachineStatus.Idle [| |] [| |]
 
   // ** registerLoadedServices
 
-  let private registerLoadedServices machine mem service =
-    let meta = Map.ofList [ "status", "in-use" ]
-    Map.empty
-    |> registerHttpService      machine meta service
-    |> registerRaftService      mem          service
-    |> registerGitService       mem          service
-    |> registerWebSocketService mem          service
+  let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
+    let status = MachineStatus.Busy (project.Id, project.Name)
+    let services =
+      [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
+         { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
+         { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+         { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
+    registerService service project.Config.Machine status services [| |]
 
   // ** resetLoaded
 
@@ -407,10 +365,10 @@ module Iris =
     | Loaded data ->
       let idle = { Machine = data.Machine
                    DiscoveryService = data.DiscoveryService
-                   DiscoverableServices = Map.empty }
+                   DiscoverableService = None }
       dispose data
-      let services = registerIdleServices data.Machine idle.DiscoveryService
-      Idle { idle with DiscoverableServices = services }
+      let service = registerIdleServices data.Machine idle.DiscoveryService
+      Idle { idle with DiscoverableService = service }
 
   // ** notify
 
@@ -910,7 +868,7 @@ module Iris =
           notify data.Subscriptions (IrisEvent.Api ev)
           state
 
-  let private handleDiscoveryEvent (state: IrisState) (ev: Discovery.DiscoveryEvent) =
+  let private handleDiscoveryEvent (state: IrisState) (ev: DiscoveryEvent) =
     let appendCommand data cmd =
       match appendCmd data cmd with
       | Right _ -> ()
@@ -922,12 +880,9 @@ module Iris =
     withoutReply state <| fun data ->
       Tracing.trace (tag "handleDiscoveryEvent") <| fun () ->
         match ev with
-        | Discovery.Appeared service ->
-          AddResolvedService service |> appendCommand data
-        | Discovery.Updated  service ->
-          UpdateResolvedService service |> appendCommand data
-        | Discovery.Vanished service ->
-          RemoveResolvedService service |> appendCommand data
+        | Appeared service -> AddResolvedService service    |> appendCommand data
+        | Updated  service -> UpdateResolvedService service |> appendCommand data
+        | Vanished service -> RemoveResolvedService service |> appendCommand data
         | _ -> ()
         state
 
@@ -1087,20 +1042,20 @@ module Iris =
             string err |> Logger.err (tag "loadProject.getDiscoveredServices")
             state
 
-        return Loaded { Member               = mem
-                        Machine              = machine
-                        Leader               = None
-                        Status               = ServiceStatus.Starting
-                        Store                = new Store(state)
-                        ApiServer            = apiserver
-                        GitServer            = gitserver
-                        RaftServer           = raftserver
-                        SocketServer         = wsserver
-                        ClockService         = clock
-                        Subscriptions        = subscriptions
-                        DiscoveryService     = discoveryService
-                        DiscoverableServices = Map.empty
-                        Disposables          = Map.empty }
+        return Loaded { Member              = mem
+                        Machine             = machine
+                        Leader              = None
+                        Status              = ServiceStatus.Starting
+                        Store               = new Store(state)
+                        ApiServer           = apiserver
+                        GitServer           = gitserver
+                        RaftServer          = raftserver
+                        SocketServer        = wsserver
+                        ClockService        = clock
+                        Subscriptions       = subscriptions
+                        DiscoveryService    = discoveryService
+                        DiscoverableService = None
+                        Disposables         = Map.empty }
       | _ ->
         return!
           "Login rejected"
@@ -1124,7 +1079,11 @@ module Iris =
             (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
 
-        let services = registerLoadedServices data.Machine data.Member data.DiscoveryService
+        let service =
+          registerLoadedServices
+            data.Member
+            data.Store.State.Project
+            data.DiscoveryService
 
         let result =
           either {
@@ -1138,7 +1097,7 @@ module Iris =
         | Right _ ->
           { data with
               Status = ServiceStatus.Running
-              DiscoverableServices = services
+              DiscoverableService = service
               Disposables = disposables }
           |> Loaded
           |> Either.succeed
@@ -1230,11 +1189,11 @@ module Iris =
           // TODO: Send it to the store as well? (So it can notify listeners)
           broadcastMsg loaded StateMachine.UnloadProject
           let service = loaded.DiscoveryService
-          let services = registerIdleServices loaded.Machine service
+          let registration = registerIdleServices loaded.Machine service
           dispose loaded
           { Machine = loaded.Machine
             DiscoveryService = service
-            DiscoverableServices = services }
+            DiscoverableService = registration }
 
       Reply.Ok
       |> Either.succeed
@@ -1595,11 +1554,11 @@ module Iris =
         |> ignore
 
         // Register the services' http ip and port
-        let services = registerIdleServices config discovery
+        let service = registerIdleServices config discovery
 
         Idle { Machine = config
                DiscoveryService = discovery
-               DiscoverableServices = services }
+               DiscoverableService = service }
       | Left error ->
         error
         |> string
@@ -1607,7 +1566,7 @@ module Iris =
 
         Idle { Machine = config
                DiscoveryService = discovery
-               DiscoverableServices = Map.empty }
+               DiscoverableService = None }
 
 
     let create (config: IrisMachine) (post: CommandAgent) =

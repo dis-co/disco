@@ -4,6 +4,96 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 
+//  _  __        __     __    _            _____ ____
+// | |/ /___ _   \ \   / /_ _| |_   _  ___|  ___| __ )
+// | ' // _ \ | | \ \ / / _` | | | | |/ _ \ |_  |  _ \
+// | . \  __/ |_| |\ V / (_| | | |_| |  __/  _| | |_) |
+// |_|\_\___|\__, | \_/ \__,_|_|\__,_|\___|_|   |____/
+//           |___/
+
+type KeyValueFB =
+  abstract Key: string
+  abstract Value: string
+
+type KeyValueFBConstructor =
+  abstract prototype: KeyValueFB with get, set
+  abstract StartKeyValueFB: builder: FlatBufferBuilder -> unit
+  abstract AddKey: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract EndKeyValueFB: builder: FlatBufferBuilder -> Offset<KeyValueFB>
+  abstract GetRootAsKeyValueFB: buffer: ByteBuffer -> KeyValueFB
+  abstract Create: unit -> KeyValueFB
+
+let KeyValueFB: KeyValueFBConstructor = failwith "JS only"
+
+//  __  __            _     _            ____  _        _
+// |  \/  | __ _  ___| |__ (_)_ __   ___/ ___|| |_ __ _| |_ _   _ ___
+// | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \___ \| __/ _` | __| | | / __|
+// | |  | | (_| | (__| | | | | | | |  __/___) | || (_| | |_| |_| \__ \
+// |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|____/ \__\__,_|\__|\__,_|___/
+
+type MachineStatusEnumFB = int
+
+type MachineStatusEnumFBConstructor =
+  abstract IdleFB: MachineStatusEnumFB
+  abstract BusyFB: MachineStatusEnumFB
+
+let MachineStatusEnumFB: MachineStatusEnumFBConstructor = failwith "JS only"
+
+type MachineStatusFB =
+  abstract Status: MachineStatusEnumFB
+  abstract ProjectId: string
+  abstract ProjectName: string
+
+type MachineStatusFBConstructor =
+  abstract prototype: MachineStatusFB with get, set
+  abstract StartMachineStatusFB: builder: FlatBufferBuilder -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * key: MachineStatusEnumFB -> unit
+  abstract AddProjectId: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract AddProjectName: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract EndMachineStatusFB: builder: FlatBufferBuilder -> Offset<MachineStatusFB>
+  abstract GetRootAsMachineStatusFB: buffer: ByteBuffer -> MachineStatusFB
+  abstract Create: unit -> MachineStatusFB
+
+let MachineStatusFB: MachineStatusFBConstructor = failwith "JS only"
+
+//  ___      _     __  __            _     _
+// |_ _|_ __(_)___|  \/  | __ _  ___| |__ (_)_ __   ___
+//  | || '__| / __| |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  | || |  | \__ \ |  | | (_| | (__| | | | | | | |  __/
+// |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
+type IrisMachineFB =
+  abstract MachineId: string
+  abstract HostName: string
+  abstract WorkSpace: string
+  abstract WebIP: string
+  abstract WebPort: uint16
+  abstract RaftPort: uint16
+  abstract WsPort: uint16
+  abstract GitPort: uint16
+  abstract ApiPort: uint16
+  abstract Version: string
+
+type IrisMachineFBConstructor =
+  abstract prototype: IrisMachineFB with get, set
+  abstract StartIrisMachineFB: builder: FlatBufferBuilder -> unit
+  abstract AddMachineId: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddWebIP: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddWebPort: builder: FlatBufferBuilder * key: uint16 -> unit
+  abstract AddRaftPort: builder: FlatBufferBuilder * key: uint16 -> unit
+  abstract AddWsPort: builder: FlatBufferBuilder * key: uint16 -> unit
+  abstract AddGitPort: builder: FlatBufferBuilder * key: uint16 -> unit
+  abstract AddApiPort: builder: FlatBufferBuilder * key: uint16 -> unit
+  abstract AddVersion: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract EndIrisMachineFB: builder: FlatBufferBuilder -> Offset<IrisMachineFB>
+  abstract GetRootAsIrisMachineFB: buffer: ByteBuffer -> IrisMachineFB
+  abstract Create: unit -> IrisMachineFB
+
+let IrisMachineFB: IrisMachineFBConstructor = failwith "JS only"
+
 //  ____       _
 // |  _ \ ___ | | ___
 // | |_) / _ \| |/ _ \
@@ -434,28 +524,6 @@ type BytePinFBConstructor =
 
 let BytePinFB : BytePinFBConstructor = failwith "JS only"
 
-//  _____                       ____                  _____ ____
-// | ____|_ __  _   _ _ __ ___ |  _ \ _ __ ___  _ __ |  ___| __ )
-// |  _| | '_ \| | | | '_ ` _ \| |_) | '__/ _ \| '_ \| |_  |  _ \
-// | |___| | | | |_| | | | | | |  __/| | | (_) | |_) |  _| | |_) |
-// |_____|_| |_|\__,_|_| |_| |_|_|   |_|  \___/| .__/|_|   |____/
-//                                             |_|
-
-type EnumPropertyFB =
-  abstract Key: string
-  abstract Value: string
-
-type EnumPropertyFBConstructor =
-  abstract prototype: EnumPropertyFB with get, set
-  abstract StartEnumPropertyFB: builder: FlatBufferBuilder -> unit
-  abstract AddKey: builder: FlatBufferBuilder * key: Offset<string> -> unit
-  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
-  abstract EndEnumPropertyFB: builder: FlatBufferBuilder -> Offset<EnumPropertyFB>
-  abstract GetRootAsEnumPropertyFB: buffer: ByteBuffer -> EnumPropertyFB
-  abstract Create: unit -> EnumPropertyFB
-
-let EnumPropertyFB: EnumPropertyFBConstructor = failwith "JS only"
-
 //  _____                       ____            _____ ____
 // | ____|_ __  _   _ _ __ ___ | __ )  _____  _|  ___| __ )
 // |  _| | '_ \| | | | '_ ` _ \|  _ \ / _ \ \/ / |_  |  _ \
@@ -470,11 +538,11 @@ type EnumPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
-  abstract Properties: int -> EnumPropertyFB
+  abstract Properties: int -> KeyValueFB
   abstract PropertiesLength: int
   abstract Labels: int -> string
   abstract LabelsLength: int
-  abstract Values: int -> EnumPropertyFB
+  abstract Values: int -> KeyValueFB
   abstract ValuesLength: int
 
 type EnumPinFBConstructor =
@@ -492,7 +560,7 @@ type EnumPinFBConstructor =
   abstract EndEnumPinFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsEnumPinFB: buffer: ByteBuffer -> EnumPinFB
   abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<EnumPropertyFB> array -> Offset<'a>
+  abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> EnumPinFB
@@ -596,7 +664,7 @@ type SliceTypeFBConstructor =
   abstract DoubleFB : SliceTypeFB
   abstract BoolFB : SliceTypeFB
   abstract ByteFB : SliceTypeFB
-  abstract EnumPropertyFB : SliceTypeFB
+  abstract KeyValueFB : SliceTypeFB
   abstract ColorSpaceFB : SliceTypeFB
 
 let SliceTypeFB: SliceTypeFBConstructor = failwith "JS only"
@@ -821,25 +889,6 @@ let ConfigChangeFB: ConfigChangeFBConstructor = failwith "JS only"
 // | |__| (_) | | | |  _| | (_| |
 //  \____\___/|_| |_|_| |_|\__, |
 //                         |___/
-
-// MACHINE
-
-type MachineConfigFB =
-  abstract MachineId: string
-  abstract HostName:  string
-  abstract WorkSpace: string
-
-type MachineConfigFBConstructor =
-  abstract prototype: MachineConfigFB with get, set
-  abstract StartMachineConfigFB: builder: FlatBufferBuilder -> unit
-  abstract AddMachineId: builder: FlatBufferBuilder * id: Offset<string> -> unit
-  abstract AddHostName: builder: FlatBufferBuilder * hn: Offset<string> -> unit
-  abstract AddWorkSpace: builder: FlatBufferBuilder * wsp: Offset<string> -> unit
-  abstract EndMachineConfigFB: builder: FlatBufferBuilder -> Offset<MachineConfigFB>
-  abstract GetRootAsMachineConfigFB: bytes: ByteBuffer -> MachineConfigFB
-  abstract Create: unit -> MachineConfigFB
-
-let MachineConfigFB: MachineConfigFBConstructor = failwith "JS only"
 
 // AUDIO
 
@@ -1179,7 +1228,7 @@ let DisplayFB: DisplayFBConstructor = failwith "JS only"
 
 type ConfigFB =
   abstract Version: string
-  abstract MachineId: string
+  abstract Machine: IrisMachineFB
   abstract ActiveSite: string
   abstract AudioConfig: AudioConfigFB
   abstract VvvvConfig: VvvvConfigFB
@@ -1198,7 +1247,7 @@ type ConfigFBConstructor =
   abstract prototype: ConfigFB with get, set
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
   abstract AddVersion: builder: FlatBufferBuilder * v:Offset<string> -> unit
-  abstract AddMachineId: builder: FlatBufferBuilder * v:Offset<string> -> unit
+  abstract AddMachine: builder: FlatBufferBuilder * v:Offset<IrisMachineFB> -> unit
   abstract AddActiveSite: builder: FlatBufferBuilder * v:Offset<string> -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddVvvvConfig: builder: FlatBufferBuilder * v:Offset<VvvvConfigFB> -> unit
@@ -1250,11 +1299,9 @@ let ProjectFB: ProjectFBConstructor = failwith "JS only"
 
 type DiscoveredServiceFB =
   abstract Id: string
-  abstract Machine: string
-  abstract Port: uint16
   abstract Name: string
+  abstract WebPort: uint16
   abstract FullName: string
-  abstract Type: string
   abstract HostName: string
   abstract HostTarget: string
   abstract AliasesLength: int
@@ -1262,16 +1309,18 @@ type DiscoveredServiceFB =
   abstract Protocol: string
   abstract AddressListLength: int
   abstract AddressList: int -> string
-  abstract MetadataLength: int
-  abstract Metadata: int -> string
+  abstract ServicesLength: int
+  abstract Services: int -> KeyValueFB
+  abstract Status: MachineStatusFB
+  abstract ExtraMetadataLength: int
+  abstract ExtraMetadata: int -> KeyValueFB
 
 type DiscoveredServiceFBConstructor =
   abstract prototype: DiscoveredServiceFB with get, set
   abstract StartDiscoveredServiceFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * Offset<string> -> unit
-  abstract AddMachine: builder: FlatBufferBuilder * Offset<string> -> unit
-  abstract AddPort: builder: FlatBufferBuilder * uint16 -> unit
   abstract AddName: builder: FlatBufferBuilder * Offset<string> -> unit
+  abstract AddWebPort: builder: FlatBufferBuilder * uint16 -> unit
   abstract AddFullName: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddType: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * Offset<string> -> unit
@@ -1279,12 +1328,15 @@ type DiscoveredServiceFBConstructor =
   abstract AddAliases: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProtocol: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddAddressList: builder: FlatBufferBuilder * Offset<'a> -> unit
-  abstract AddMetadata: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * Offset<MachineStatusFB> -> unit
+  abstract AddServices: builder: FlatBufferBuilder * Offset<'a> -> unit
+  abstract AddExtraMetadata: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract EndDiscoveredServiceFB: builder: FlatBufferBuilder -> Offset<DiscoveredServiceFB>
   abstract GetRootAsDiscoveredServiceFB: bytes: ByteBuffer -> DiscoveredServiceFB
   abstract CreateAliasesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateAddressListVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
-  abstract CreateMetadataVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateServicesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
+  abstract CreateExtraMetadataVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
 
 let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 

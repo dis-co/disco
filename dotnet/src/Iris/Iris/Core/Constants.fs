@@ -78,6 +78,12 @@ module Constants =
   [<Literal>]
   let ZEROCONF_UDP_SERVICE = "_iris._udp"
 
+  [<Literal>]
+  let ZEROCONF_DOMAIN = "local."
+
+  [<Literal>]
+  let ZEROCONF_SERVICE_NAME = "Iris"
+
   //  ____        __             _ _
   // |  _ \  ___ / _| __ _ _   _| | |_ ___
   // | | | |/ _ \ |_ / _` | | | | | __/ __|

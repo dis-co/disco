@@ -286,7 +286,7 @@ module SerializationTests =
       either {
         let! project = mkTmpDir () |>  mkProject
         let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
-        let reconfig = { reproject.Config with MachineId = project.Config.MachineId }
+        let reconfig = { reproject.Config with Machine = project.Config.Machine }
 
         // not all properties can be the same (timestampts for instance, so we check basics)
         expect "Project Id should be the same" project.Id id reproject.Id
