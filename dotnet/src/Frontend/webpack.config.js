@@ -36,7 +36,7 @@ var irisConfig = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
+            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
           }
         }
       },
@@ -56,7 +56,7 @@ var irisConfig = {
     ]
   },
 };
-  
+
 var bundleConfig = {
   entry: isProduction
     ? resolve('./src/index.js')
@@ -78,7 +78,7 @@ var bundleConfig = {
   output: {
     filename: 'bundle.js', // the output bundle
     path: resolve('js'),
-    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks    
+    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
   },
 
   externals: {
@@ -140,8 +140,11 @@ var bundleConfig = {
       '/api/*': {
         target: 'http://localhost:7000'
       }
-    }    
-  },  
+    },
+    headers: {
+      "Access-Control-Allow-Origin": "*"
+    }
+  }
 };
 
 module.exports = [ irisConfig, bundleConfig ];
