@@ -11,6 +11,48 @@ open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
 open Hopac
+open Disruptor
+
+// * PipelineEvent
+
+type PipelineEvent<'t>() =
+  let mutable cell: 't option = None
+
+  member ev.Event
+    with get () = cell
+    and set value = cell <- value
+
+  member ev.Clear() =
+    cell <- None
+
+// * IHandler
+
+type IHandler<'t> = IEventHandler<PipelineEvent<'t>>
+
+// * EventHandler
+
+type EventHandlerFunc<'t> = int64 -> bool -> 't -> unit
+
+// * IHandlerGroup
+
+type IHandlerGroup<'t> = Dsl.EventHandlerGroup<PipelineEvent<'t>>
+
+// * ISink
+
+type ISink<'t> =
+  abstract Publish: 't -> unit
+
+// * ISource
+
+type ISource<'t> =
+  inherit IDisposable
+  abstract Subscribe: ('t -> unit) -> IDisposable
+
+// * IPipeline
+
+type IPipeline<'t> =
+  inherit IDisposable
+  abstract Push: 't -> unit
 
 // * IDiscoveryService
 
