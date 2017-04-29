@@ -120,7 +120,7 @@ debug.all:
 
 clean:
 	${BUILD} Clean
-
+	@git clean -fdX
 
 #           _
 #  _ __ ___| | ___  __ _ ___  ___
@@ -223,6 +223,8 @@ fsi:
 # | .__/ \__,_|_|\_\___|\__|
 # |_|
 
+restore: paket.restore npm.restore
+
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore
 
@@ -231,3 +233,12 @@ paket.update:
 
 paket.install:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install
+
+paket.generate:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
+
+npm.restore:
+	@cd $(VVVV_BASEDIR)/src/Frontend; npm install
+
+
+tabular.rasa: clean restore paket.generate

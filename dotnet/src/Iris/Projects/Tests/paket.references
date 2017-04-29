@@ -16,3 +16,4 @@ ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
 Hopac
+Disruptor

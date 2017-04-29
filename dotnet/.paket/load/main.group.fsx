@@ -11,6 +11,7 @@
 #r "System.Data" 
 #r "Microsoft.CSharp" 
 #r "../../packages/Argu/lib/net40/Argu.dll" 
+#r "../../packages/Disruptor/lib/net45/Disruptor.dll" 
 #r "../../packages/Fleck/lib/net40/Fleck.dll" 
 #r "../../packages/FsCheck/lib/net45/FsCheck.dll" 
 #r "../../packages/FsControl/lib/net40/FsControl.Core.dll" 

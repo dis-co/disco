@@ -32,6 +32,7 @@ group Main
   nuget Fable.JsonConverter
   nuget Fable.Core
   nuget Hopac >= 0.3.23
+  nuget Disruptor >= 3.3.6-alpha --prerelease
 
 group Build
   source https://nuget.org/api/v2
