@@ -8,6 +8,7 @@ open System.Threading.Tasks
 open Disruptor
 open Disruptor.Dsl
 open Interfaces
+open Iris.Core
 
 // * Pipeline
 
@@ -82,3 +83,98 @@ module Pipeline =
 
         member pipeline.Dispose() =
           disruptor.Shutdown() }
+
+
+// * IrisNG
+
+module IrisNG =
+
+  // ** SrcEvent
+
+  type SrcEvent =
+    | Publish of StateMachine
+    | Replicate of StateMachine
+
+  // ** IDispatcher
+
+  type IDispatcher =
+    inherit IDisposable
+    abstract Dispatch: SrcEvent -> unit
+
+  // ** IIris
+
+  type IIris =
+    abstract Config: IrisConfig with get
+    abstract Publish: SrcEvent -> unit
+
+  // ** IRaft
+
+  type IRaft =
+    inherit IDisposable
+    abstract Append: StateMachine -> unit
+    abstract Subscribe: (RaftEvent -> unit) -> IDisposable
+
+  // ** WebSocketEvent
+
+  type WebSocketEvent =
+    | OnConnect
+    | OnMessage
+    | OnDisconnect
+    | OnError
+
+  // ** IWebSocketSource =
+
+  type IWebSocketSource =
+    inherit IDisposable
+    abstract Subscribe: (WebSocketEvent -> unit) -> IDisposable
+
+  // ** IWebSocketSink =
+
+  type IWebSocketSink =
+    inherit IDisposable
+    abstract Publish: StateMachine -> unit
+
+  // ** dispatchEvent
+
+  let private dispatchEvent (dispatcher: IDispatcher) (ev: SrcEvent) =
+    match ev with
+    | Publish cmd -> failwith "ho"
+    | Replicate cmd -> failwith "hey"
+
+  // ** stateMutator
+
+  let private stateMutator (store: Store) (seqno: int64) (eob: bool) (cmd: StateMachine) =
+    store.Dispatch cmd
+
+  // ** pipelineProcesses
+
+  let private pipelineProcesses (store: Store) =
+    [| Pipeline.createHandler (stateMutator store) |]
+
+  // ** createDispatcher
+
+  let private createDispatcher (store: Store) =
+    let pipeline =
+      store
+      |> pipelineProcesses
+      |> Pipeline.create
+
+    { new IDispatcher with
+        member dispatcher.Dispatch(ev: SrcEvent) =
+          failwith "never"
+
+        member dispatcher.Dispose() =
+          dispose pipeline }
+
+  // ** create
+
+  let create(name, username, password, site) =
+
+    let store = Store(State.Empty)
+
+    { new IIris with
+        member iris.Config
+          with get () = store.State.Project.Config
+
+        member iris.Publish (ev: SrcEvent) =
+          failwith "never" }
