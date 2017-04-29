@@ -89,23 +89,17 @@ module Pipeline =
 
 module IrisNG =
 
-  // ** SrcEvent
-
-  type SrcEvent =
-    | Publish of StateMachine
-    | Replicate of StateMachine
-
   // ** IDispatcher
 
   type IDispatcher =
     inherit IDisposable
-    abstract Dispatch: SrcEvent -> unit
+    abstract Dispatch: StateMachine -> unit
 
   // ** IIris
 
   type IIris =
     abstract Config: IrisConfig with get
-    abstract Publish: SrcEvent -> unit
+    abstract Publish: StateMachine -> unit
 
   // ** IRaft
 
@@ -122,24 +116,37 @@ module IrisNG =
     | OnDisconnect
     | OnError
 
-  // ** IWebSocketSource =
+  // ** IWebSocketSource
 
   type IWebSocketSource =
     inherit IDisposable
     abstract Subscribe: (WebSocketEvent -> unit) -> IDisposable
 
-  // ** IWebSocketSink =
+  // ** IWebSocketSink
 
   type IWebSocketSink =
     inherit IDisposable
     abstract Publish: StateMachine -> unit
 
+  // ** createRaft
+
+  let private createRaft () =
+    { new IRaft with
+        member raft.Append(cmd: StateMachine) =
+          failwith "append"
+
+        member raft.Subscribe(f) =
+          failwith "subscribe"
+
+        member raft.Dispose() =
+          failwith "dispose" }
+
   // ** dispatchEvent
 
-  let private dispatchEvent (dispatcher: IDispatcher) (ev: SrcEvent) =
-    match ev with
-    | Publish cmd -> failwith "ho"
-    | Replicate cmd -> failwith "hey"
+  let private dispatchEvent (pipeline: IPipeline<_>) (raft: IRaft) (cmd:StateMachine) =
+    match cmd.DispatchStrategy with
+    | Publish   -> pipeline.Push cmd
+    | Replicate -> raft.Append cmd
 
   // ** stateMutator
 
@@ -153,28 +160,31 @@ module IrisNG =
 
   // ** createDispatcher
 
-  let private createDispatcher (store: Store) =
+  let private createDispatcher (store: Store) (raft: IRaft) =
     let pipeline =
       store
       |> pipelineProcesses
       |> Pipeline.create
 
     { new IDispatcher with
-        member dispatcher.Dispatch(ev: SrcEvent) =
-          failwith "never"
+        member dispatcher.Dispatch(cmd: StateMachine) =
+          dispatchEvent pipeline raft cmd
 
         member dispatcher.Dispose() =
           dispose pipeline }
 
   // ** create
 
-  let create(name, username, password, site) =
+  let create(project: IrisProject) =
 
+    let raft = createRaft ()
     let store = Store(State.Empty)
+
+    let dispatcher = createDispatcher store raft
 
     { new IIris with
         member iris.Config
           with get () = store.State.Project.Config
 
-        member iris.Publish (ev: SrcEvent) =
-          failwith "never" }
+        member iris.Publish (cmd: StateMachine) =
+          dispatcher.Dispatch cmd }
