@@ -29,6 +29,7 @@ open SharpYaml.Serialization
 type DispatchStrategy =
   | Replicate
   | Publish
+  | Resolve
 
 // * PersistenceStrategy
 
@@ -2315,7 +2316,7 @@ type StateMachine =
       | AddCue                  _ -> Replicate
       | UpdateCue               _ -> Replicate
       | RemoveCue               _ -> Replicate
-      | CallCue                 _ -> Publish
+      | CallCue                 _ -> Resolve
       // CUE
       | AddCueList              _ -> Replicate
       | UpdateCueList           _ -> Replicate

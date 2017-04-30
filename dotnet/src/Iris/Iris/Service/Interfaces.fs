@@ -48,11 +48,30 @@ type ISource<'t> =
   inherit IDisposable
   abstract Subscribe: ('t -> unit) -> IDisposable
 
+// * IIrisSinks
+
+type IIrisSinks =
+  abstract Api: ISink<StateMachine>
+  abstract Raft: ISink<StateMachine>
+  abstract WebSocket: ISink<StateMachine>
+
 // * IPipeline
 
 type IPipeline<'t> =
   inherit IDisposable
   abstract Push: 't -> unit
+
+// * IDispatcher
+
+type IDispatcher =
+  inherit IDisposable
+  abstract Dispatch: StateMachine -> unit
+
+// * IIris
+
+type IIris =
+  abstract Config: IrisConfig with get
+  abstract Publish: StateMachine -> unit
 
 // * IDiscoveryService
 
