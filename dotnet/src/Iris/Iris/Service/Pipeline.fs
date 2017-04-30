@@ -163,6 +163,7 @@ module IrisNG =
     let! raft = RaftServer.create ()
     let! api = ApiServer.create (failwith "mem") (failwith "other")
     let! websockets = WebSockets.SocketServer.create (failwith "mem")
+    let! git = Git.GitServer.create (failwith "mem") (filepath "/hey")
     let discovery = DiscoveryService.create project.Config.Machine
 
     let sinks =
@@ -173,7 +174,8 @@ module IrisNG =
 
     let dispatcher = Dispatcher.create store sinks
 
-    let api = api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
+    let gobs = git.Subscribe(IrisEvent.Git >> dispatcher.Dispatch)
+    let abos = api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
     let wobs = websockets.Subscribe(IrisEvent.Socket >> dispatcher.Dispatch)
     let robs = raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
     let dobs = discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
