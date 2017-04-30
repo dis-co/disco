@@ -188,19 +188,16 @@ module IrisNG =
     let! mem = Project.selfMember project
 
     let! raft = RaftServer.create ()
-    do! raft.Start()
-
     let! api = ApiServer.create mem project.Id
-    do! api.Start()
-
     let! websockets = WebSockets.SocketServer.create mem
-    do! websockets.Start()
-
     let! git = Git.GitServer.create mem project.Path
-    do! git.Start()
-
     let discovery = DiscoveryService.create store.State.Project.Config.Machine
+
+    do! raft.Start()
+    do! api.Start()
     do! discovery.Start()
+    do! websockets.Start()
+    do! git.Start()
 
     // setting up the sinks
     let sinks =
@@ -221,6 +218,18 @@ module IrisNG =
       discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
     |]
 
+    let! idle = discovery.Register {
+      Id = mem.Id
+      WebPort = port project.Config.Machine.WebPort
+      Status = Busy(project.Id, project.Name)
+      Services =
+        [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
+           { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
+           { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+           { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
+      ExtraMetadata = Array.empty
+    }
+
     // done
     return
       { new IIris<IrisEvent> with
@@ -239,6 +248,7 @@ module IrisNG =
 
           member iris.Dispose() =
             subscribers.Clear()
+            dispose idle
             [| raft       :> IDisposable
                api        :> IDisposable
                websockets :> IDisposable
