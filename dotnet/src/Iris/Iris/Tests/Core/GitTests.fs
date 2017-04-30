@@ -33,7 +33,7 @@ module GitTests =
 
     let project =
       let p =
-        Project.create tmpdir "Test Project" machine
+        Project.create (Project.ofFilePath tmpdir) "Test Project" machine
         |> Either.get
       in { p with Config = config }
 

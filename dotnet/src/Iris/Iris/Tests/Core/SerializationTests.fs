@@ -64,7 +64,7 @@ module SerializationTests =
   let test_validate_appendentries_serialization =
     testCase "Validate RequestVote Response Serialization" <| fun _ ->
       either {
-        let! state = mkTmpDir() |> mkState
+        let! state = mkTmpDir() |> Project.ofFilePath |> mkState
 
         let mem1 = Member.create (Id.Create())
         let mem2 = Member.create (Id.Create())
@@ -123,7 +123,7 @@ module SerializationTests =
   let test_validate_installsnapshot_serialization =
     testCase "Validate InstallSnapshot Serialization" <| fun _ ->
       either {
-        let! state = mkTmpDir() |> mkState
+        let! state = mkTmpDir() |> Project.ofFilePath |> mkState
 
         let mem1 = [| Member.create (Id.Create()) |]
 
@@ -275,7 +275,7 @@ module SerializationTests =
   let test_validate_project_binary_serialization =
     testCase "Validate IrisProject Binary Serializaton" <| fun _ ->
       either {
-        let! project = mkTmpDir () |>  mkProject
+        let! project = mkTmpDir () |> Project.ofFilePath |>  mkProject
         let! reproject = project |> Binary.encode |> Binary.decode
         expect "Project should be the same" project id reproject
       }
@@ -284,7 +284,7 @@ module SerializationTests =
   let test_validate_project_yaml_serialization =
     testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
       either {
-        let! project = mkTmpDir () |>  mkProject
+        let! project = mkTmpDir () |> Project.ofFilePath |> mkProject
         let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
         let reconfig = { reproject.Config with Machine = project.Config.Machine }
 
@@ -441,7 +441,7 @@ module SerializationTests =
 
   let test_validate_state_binary_serialization =
     testCase "Validate State Binary Serialization" <| fun _ ->
-      mkTmpDir() |> mkState |> Either.map binaryEncDec |> noError
+      mkTmpDir() |> Project.ofFilePath |> mkState |> Either.map binaryEncDec |> noError
 
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -452,7 +452,7 @@ module SerializationTests =
   let test_validate_state_machine_binary_serialization =
     testCase "Validate StateMachine Binary Serialization" <| fun _ ->
       either {
-        let! state = mkTmpDir() |> mkState
+        let! state = mkTmpDir() |> Project.ofFilePath |> mkState
 
         [ AddCue                  <| mkCue ()
           UpdateCue               <| mkCue ()
@@ -499,7 +499,7 @@ module SerializationTests =
   let test_validate_client_api_request_binary_serialization =
     testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
       either {
-        let! state = mkTmpDir() |> mkState
+        let! state = mkTmpDir() |> Project.ofFilePath |> mkState
         [ AddCue                  <| mkCue ()
           UpdateCue               <| mkCue ()
           RemoveCue               <| mkCue ()

@@ -2752,12 +2752,12 @@ module Project =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: IrisProject
-  let create (path: FilePath) (projectName: string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
+  let create (path: ProjectPath) (projectName: string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
     either {
       let project =
         { Id        = Id.Create()
         ; Name      = name projectName
-        ; Path      = ofFilePath path
+        ; Path      = path
         ; CreatedOn = Time.createTimestamp()
         ; LastSaved = Some (Time.createTimestamp ())
         ; Copyright = None
@@ -2765,7 +2765,7 @@ module Project =
         ; Config    = Config.create projectName machine  }
 
       do! initRepo project
-      let! _ = Asset.saveWithCommit path User.Admin.Signature project
+      let! _ = Asset.saveWithCommit (toFilePath path) User.Admin.Signature project
       return project
     }
 

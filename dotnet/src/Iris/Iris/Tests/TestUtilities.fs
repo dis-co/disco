@@ -265,7 +265,7 @@ module TestData =
 
   let mkLog _ : Either<IrisError,RaftLog> =
     either {
-      let! state = mkTmpDir() |> mkState
+      let! state = mkTmpDir() |> Project.ofFilePath |> mkState
       return
         LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
           Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),

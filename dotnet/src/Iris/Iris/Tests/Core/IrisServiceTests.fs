@@ -36,11 +36,11 @@ module IrisServiceTests =
         |> Config.addSiteAndSetActive site
         |> Config.setLogLevel (LogLevel.Debug)
 
-      let! project = Project.create path name machine
+      let! project = Project.create (Project.ofFilePath path) name machine
 
       let updated =
         { project with
-            Path = path
+            Path = Project.ofFilePath path
             Author = Some(author1)
             Config = cfg }
 
@@ -82,7 +82,8 @@ module IrisServiceTests =
               | Right project -> (i + 1, project)
               | Left error -> failwithf "unable to create project: %O" error
             else
-              match copyDir project'.Path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
+              let path = Project.toFilePath project'.Path
+              match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
               | Right () -> (i + 1, project')
               | Left error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<IrisProject>)
@@ -194,7 +195,11 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath) }
+        let path2 =
+          machine2.WorkSpace </> (project.Name |> unwrap |> filepath)
+          |> Project.ofFilePath
+
+        let! repo2 = Project.repository { project with Path = path2 }
 
         let num2 = Git.Repo.commitCount repo2
 

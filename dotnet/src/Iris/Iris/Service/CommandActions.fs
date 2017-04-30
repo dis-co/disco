@@ -57,7 +57,7 @@ let buildProject (machine: IrisMachine)
                   (raftDir: FilePath)
                   (mem: RaftMember) =
   either {
-    let! project = Project.create path name machine
+    let! project = Project.create (Project.ofFilePath path) name machine
 
     let site =
         let def = ClusterConfig.Default
