@@ -100,24 +100,26 @@ type RaftEvent =
 
 [<NoComparison;NoEquality>]
 type IrisEvent =
-  | Git    of GitEvent
-  | Socket of SocketEvent
-  | Raft   of RaftEvent
-  | Log    of LogEvent
-  | Api    of ApiEvent
-  | Status of ServiceStatus
+  | Git       of GitEvent
+  | Socket    of SocketEvent
+  | Raft      of RaftEvent
+  | Log       of LogEvent
+  | Api       of ApiEvent
+  | Discovery of DiscoveryEvent
+  | Status    of ServiceStatus
 
   // ** DispatchStrategy
 
   member iris.DispatchStrategy
     with get () =
       match iris with
-      | Socket e -> e.DispatchStrategy
-      | Raft   e -> e.DispatchStrategy
-      | Api    e -> e.DispatchStrategy
-      | Git    _ -> Publish
-      | Log    _ -> Publish
-      | Status _ -> Publish
+      | Socket    e -> e.DispatchStrategy
+      | Raft      e -> e.DispatchStrategy
+      | Api       e -> e.DispatchStrategy
+      | Discovery e -> e.DispatchStrategy
+      | Git    _    -> Publish
+      | Log    _    -> Publish
+      | Status _    -> Publish
 
 // * IHandler
 

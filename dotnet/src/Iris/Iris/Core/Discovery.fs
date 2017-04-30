@@ -3,6 +3,7 @@ namespace Iris.Core
 // * Imports
 
 open System
+open Iris.Core
 
 #if FABLE_COMPILER
 
@@ -345,6 +346,17 @@ type DiscoveryEvent =
   | Updated      of DiscoveredService
   | Vanished     of DiscoveredService
 
+  // ** DispatchStrategy
+
+  member ev.DispatchStrategy
+    with get () =
+      match ev with
+      | Registering  _ -> Publish   // DiscoverableService
+      | UnRegistered _ -> Publish   // DiscoverableService
+      | Registered   _ -> Publish   // DiscoverableService
+      | Appeared     _ -> Replicate // DiscoveredService
+      | Updated      _ -> Replicate // DiscoveredService
+      | Vanished     _ -> Replicate // DiscoveredService
 
 // * Discovery module
 

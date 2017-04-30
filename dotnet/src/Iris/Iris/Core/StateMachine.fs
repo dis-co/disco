@@ -24,19 +24,6 @@ open SharpYaml.Serialization
 
 #endif
 
-// * DispatchStrategy
-
-type DispatchStrategy =
-  | Replicate
-  | Publish
-  | Resolve
-
-// * PersistenceStrategy
-
-type PersistenceStrategy =
-  | Volatile
-  | Durable
-
 // * AppCommand
 
 //     _                 ____                                          _
