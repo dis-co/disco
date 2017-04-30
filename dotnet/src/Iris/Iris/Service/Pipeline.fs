@@ -155,18 +155,52 @@ module Dispatcher =
 
 module IrisNG =
 
+  // ** Listener
+
+  type private Listener = IObservable<IrisEvent>
+
+  // ** Subscriptions
+
+  type private Subscriptions = ResizeArray<IObserver<IrisEvent>>
+
+  // ** createListener
+
+  let private createListener (subscriptions: Subscriptions) =
+    { new Listener with
+        member self.Subscribe(obs) =
+          lock subscriptions <| fun _ ->
+            subscriptions.Add obs
+
+          { new IDisposable with
+              member self.Dispose() =
+                lock subscriptions <| fun _ ->
+                  subscriptions.Remove obs
+                  |> ignore } }
+
   // ** create
 
   let create(store: Store) = either {
     let project = store.State.Project
 
+    let subscribers = Subscriptions()
+    let listener = createListener subscribers
+
     let! mem = Project.selfMember project
 
     let! raft = RaftServer.create ()
+    do! raft.Start()
+
     let! api = ApiServer.create mem project.Id
+    do! api.Start()
+
     let! websockets = WebSockets.SocketServer.create mem
+    do! websockets.Start()
+
     let! git = Git.GitServer.create mem project.Path
+    do! git.Start()
+
     let discovery = DiscoveryService.create store.State.Project.Config.Machine
+    do! discovery.Start()
 
     // setting up the sinks
     let sinks =
@@ -179,11 +213,13 @@ module IrisNG =
     let dispatcher = Dispatcher.create store sinks
 
     // wiring up the sources
-    let gobs = git.Subscribe(IrisEvent.Git >> dispatcher.Dispatch)
-    let abos = api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
-    let wobs = websockets.Subscribe(IrisEvent.Socket >> dispatcher.Dispatch)
-    let robs = raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
-    let dobs = discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
+    let wiring = [|
+      git.Subscribe(IrisEvent.Git >> dispatcher.Dispatch)
+      api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
+      websockets.Subscribe(IrisEvent.Socket >> dispatcher.Dispatch)
+      raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
+      discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
+    |]
 
     // done
     return
@@ -192,17 +228,32 @@ module IrisNG =
             with get () = store.State.Project.Config
 
           member iris.Subscribe(f: IrisEvent -> unit) =
-            failwith "subscribe"
+            { new IObserver<IrisEvent> with
+                member self.OnCompleted() = ()
+                member self.OnError(error) = ()
+                member self.OnNext(value) = f value }
+            |> listener.Subscribe
 
           member iris.Publish (cmd: IrisEvent) =
             dispatcher.Dispatch cmd
 
           member iris.Dispose() =
-            [| gobs; abos; wobs; robs; dobs;
-               raft       :> IDisposable;
-               api        :> IDisposable;
-               websockets :> IDisposable;
-               git        :> IDisposable;
+            subscribers.Clear()
+            [| raft       :> IDisposable
+               api        :> IDisposable
+               websockets :> IDisposable
+               git        :> IDisposable
                dispatcher :> IDisposable |]
+            |> Array.append wiring
             |> Array.Parallel.iter dispose }
+    }
+
+  // ** load
+
+  let load (name: string) (machine: IrisMachine) =
+    either {
+      let! path = Project.checkPath machine name
+      let! (state: State) = Asset.loadWithMachine path machine
+      let store = Store state
+      return! create store
     }
