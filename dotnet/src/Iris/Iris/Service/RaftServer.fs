@@ -1919,6 +1919,9 @@ module Raft =
                     | Right state -> Raft.getLeader state.Raft |> Either.succeed
                     | Left error -> Either.fail error
 
+              member self.Publish(cmd: IrisEvent) =
+                printfn "append ye command sire"
+
               member self.Dispose () =
                 Tracing.trace (tag "Dispose()") <| fun () ->
                   match postCommand agent (fun chan -> Msg.Unload chan) with

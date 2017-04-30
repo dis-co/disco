@@ -266,6 +266,11 @@ module WebSockets =
                     |> Error.asSocketError (tag "Start")
                     |> Either.fail
 
+              member self.Publish(cmd: IrisEvent) =
+                // broadcast connections cmd
+                // |> ignore
+                printfn "broadcast ye event"
+
               member self.Dispose () =
                 for KeyValue(_, connection) in connections do
                   connection.Close()

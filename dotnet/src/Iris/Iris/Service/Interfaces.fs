@@ -25,6 +25,100 @@ type PipelineEvent<'t>() =
   member ev.Clear() =
     cell <- None
 
+// * GitEvent
+
+type GitEvent =
+  | Started of pid:int
+  | Exited  of code:int
+  | Pull    of pid:int * address:string * port:Port
+
+  // ** DispatchStrategy
+
+  member git.DispatchStrategy
+    with get () = Publish
+
+// * SocketEvent
+
+[<NoComparison;NoEquality>]
+type SocketEvent =
+  | OnOpen    of Id
+  | OnClose   of Id
+  | OnMessage of Id * StateMachine
+  | OnError   of Id * Exception
+
+  // ** DispatchStrategy
+
+  member socket.DispatchStrategy
+    with get () =
+      match socket with
+      | OnOpen     _       -> Replicate
+      | OnClose    _       -> Replicate
+      | OnMessage (_, cmd) -> cmd.DispatchStrategy
+      | OnError    _       -> Publish
+
+// * ApiEvent
+
+[<RequireQualifiedAccess>]
+type ApiEvent =
+  | Update        of StateMachine
+  | ServiceStatus of ServiceStatus
+  | ClientStatus  of IrisClient
+  | Register      of IrisClient
+  | UnRegister    of IrisClient
+
+  // ** DispatchStrategy
+
+  member api.DispatchStrategy
+    with get () =
+      match api with
+      | Update        e -> e.DispatchStrategy // StateMachine
+      | ServiceStatus _ -> Publish            // ServiceStatus
+      | ClientStatus  _ -> Publish            // IrisClient
+      | Register      _ -> Replicate          // IrisClient
+      | UnRegister    _ -> Replicate          // IrisClient
+
+// * RaftEvent
+
+[<NoComparison;NoEquality>]
+type RaftEvent =
+  | ApplyLog         of StateMachine
+  | MemberAdded      of RaftMember
+  | MemberRemoved    of RaftMember
+  | MemberUpdated    of RaftMember
+  | Configured       of RaftMember array
+  | StateChanged     of RaftState * RaftState
+  | CreateSnapshot   of Ch<State option>
+  | RetrieveSnapshot of Ch<RaftLogEntry option>
+  | PersistSnapshot  of RaftLogEntry
+
+  // ** DispatchStrategy
+
+  member raft.DispatchStrategy
+    with get () = Publish
+
+// * IrisEvent
+
+[<NoComparison;NoEquality>]
+type IrisEvent =
+  | Git    of GitEvent
+  | Socket of SocketEvent
+  | Raft   of RaftEvent
+  | Log    of LogEvent
+  | Api    of ApiEvent
+  | Status of ServiceStatus
+
+  // ** DispatchStrategy
+
+  member iris.DispatchStrategy
+    with get () =
+      match iris with
+      | Socket e -> e.DispatchStrategy
+      | Raft   e -> e.DispatchStrategy
+      | Api    e -> e.DispatchStrategy
+      | Git    _ -> Publish
+      | Log    _ -> Publish
+      | Status _ -> Publish
+
 // * IHandler
 
 type IHandler<'t> = IEventHandler<PipelineEvent<'t>>
@@ -50,10 +144,10 @@ type ISource<'t> =
 
 // * IIrisSinks
 
-type IIrisSinks =
-  abstract Api: ISink<StateMachine>
-  abstract Raft: ISink<StateMachine>
-  abstract WebSocket: ISink<StateMachine>
+type IIrisSinks<'t> =
+  abstract Api: ISink<'t>
+  abstract Raft: ISink<'t>
+  abstract WebSocket: ISink<'t>
 
 // * IPipeline
 
@@ -63,15 +157,16 @@ type IPipeline<'t> =
 
 // * IDispatcher
 
-type IDispatcher =
+type IDispatcher<'t> =
   inherit IDisposable
-  abstract Dispatch: StateMachine -> unit
+  abstract Dispatch: 't -> unit
 
 // * IIris
 
-type IIris =
+type IIris<'t> =
   abstract Config: IrisConfig with get
-  abstract Publish: StateMachine -> unit
+  abstract Publish: 't -> unit
+  abstract Subscribe: ('t -> unit) -> IDisposable
 
 // * IDiscoveryService
 
@@ -82,13 +177,6 @@ type IDiscoveryService =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Register: service:DiscoverableService -> Either<IrisError,IDisposable>
 
-// * GitEvent
-
-type GitEvent =
-  | Started of pid:int
-  | Exited  of code:int
-  | Pull    of pid:int * address:string * port:Port
-
 // * IGitServer
 
 type IGitServer =
@@ -98,20 +186,6 @@ type IGitServer =
   abstract Pid       : Either<IrisError,int>
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
-
-// * RaftEvent
-
-[<NoComparison;NoEquality>]
-type RaftEvent =
-  | ApplyLog         of StateMachine
-  | MemberAdded      of RaftMember
-  | MemberRemoved    of RaftMember
-  | MemberUpdated    of RaftMember
-  | Configured       of RaftMember array
-  | StateChanged     of RaftState * RaftState
-  | CreateSnapshot   of Ch<State option>
-  | RetrieveSnapshot of Ch<RaftLogEntry option>
-  | PersistSnapshot  of RaftLogEntry
 
 // * RaftAppContext
 
@@ -137,6 +211,7 @@ type RaftAppContext =
 
 type IRaftServer =
   inherit IDisposable
+  inherit ISink<IrisEvent>
 
   abstract Member        : Either<IrisError,RaftMember>
   abstract MemberId      : Either<IrisError,Id>
@@ -157,51 +232,33 @@ type IRaftServer =
   abstract Leader        : Either<IrisError, RaftMember option>
   abstract IsLeader      : bool
 
-// * SocketEvent
-
-[<NoComparison;NoEquality>]
-type SocketEvent =
-  | OnOpen    of Id
-  | OnClose   of Id
-  | OnMessage of Id * StateMachine
-  | OnError   of Id * Exception
-
 // * IWsServer
 
 type IWebSocketServer =
-  inherit System.IDisposable
+  inherit IDisposable
+  inherit ISink<IrisEvent>
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
   abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
+// * IApiServer
+
+type IApiServer =
+  inherit IDisposable
+  inherit ISink<IrisEvent>
+  abstract Start: unit -> Either<IrisError,unit>
+  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
+  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
+  abstract State: Either<IrisError,State>
+  abstract Update: sm:StateMachine -> unit
+  abstract SetState: state:State -> Either<IrisError,unit>
 // * IHttpServer
 
 type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-
-// * ApiEvent
-
-[<RequireQualifiedAccess>]
-type ApiEvent =
-  | Update        of StateMachine
-  | ServiceStatus of ServiceStatus
-  | ClientStatus  of IrisClient
-  | Register      of IrisClient
-  | UnRegister    of IrisClient
-
-// * IrisEvent
-
-[<NoComparison;NoEquality>]
-type IrisEvent =
-  | Git    of GitEvent
-  | Socket of SocketEvent
-  | Raft   of RaftEvent
-  | Log    of LogEvent
-  | Api    of ApiEvent
-  | Status of ServiceStatus
 
 // * IIrisServer
 
@@ -223,14 +280,3 @@ type IIrisServer =
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract LoadProject   : name:string * userName:string * password:Password * ?site:string -> Either<IrisError,unit>
   abstract UnloadProject : unit -> Either<IrisError,unit>
-
-// * IApiServer
-
-type IApiServer =
-  inherit IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
-  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
-  abstract State: Either<IrisError,State>
-  abstract Update: sm:StateMachine -> unit
-  abstract SetState: state:State -> Either<IrisError,unit>

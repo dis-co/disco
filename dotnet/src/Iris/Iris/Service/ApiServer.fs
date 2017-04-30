@@ -784,8 +784,12 @@ module ApiServer =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
+              member self.Publish(cmd: IrisEvent) =
+                // agent.Post(Msg.LocalUpdate cmd)
+                printfn "publish that iris event yo"
+
               member self.Dispose () =
-                postCommand agent (fun chan -> Msg.Dispose chan)
+                postCommand agent Msg.Dispose
                 |> ignore
                 dispose cts
             }

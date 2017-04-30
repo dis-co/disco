@@ -54,20 +54,20 @@ module Pipeline =
   // ** clearEvent
 
   let private clearEvent =
-    [| { new IHandler<StateMachine> with
-           member handler.OnEvent(ev: PipelineEvent<StateMachine>, _, _) =
+    [| { new IHandler<'t> with
+           member handler.OnEvent(ev: PipelineEvent<'t>, _, _) =
              ev.Clear() } |]
 
   // ** createHandler
 
-  let createHandler (f: EventHandlerFunc<'t>) =
+  let createHandler<'t> (f: EventHandlerFunc<'t>) : IHandler<'t> =
     { new IHandler<'t> with
         member handler.OnEvent(ev: PipelineEvent<'t>, seqno, eob) =
           Option.iter (f seqno eob) ev.Event }
 
   // ** create
 
-  let create (processors: IHandler<StateMachine>[]) (publish: IHandler<StateMachine>[]) =
+  let create (processors: IHandler<'t>[]) (publish: IHandler<'t>[]) =
     let disruptor = createDisruptor()
 
     disruptor
@@ -78,8 +78,8 @@ module Pipeline =
 
     let ringBuffer = disruptor.Start()
 
-    { new IPipeline<StateMachine> with
-        member pipeline.Push(cmd: StateMachine) =
+    { new IPipeline<'t> with
+        member pipeline.Push(cmd: 't) =
           insertInto ringBuffer cmd
 
         member pipeline.Dispose() =
@@ -92,60 +92,60 @@ module Dispatcher =
 
   // ** stateMutator
 
-  let private stateMutator (store: Store) (seqno: int64) (eob: bool) (cmd: StateMachine) =
-    store.Dispatch cmd
+  let private stateMutator (store: Store) (seqno: int64) (eob: bool) (cmd: IrisEvent) =
+    printfn "dispatch cmd on Store"
 
   // ** statePersistor
 
-  let private statePersistor (seqno: int64) (eob: bool) (cmd: StateMachine) =
+  let private statePersistor (seqno: int64) (eob: bool) (cmd: IrisEvent) =
     printfn "persisting state now"
 
   // ** logPersistor
 
-  let private logPersistor (seqno: int64) (eob: bool) (cmd: StateMachine) =
+  let private logPersistor (seqno: int64) (eob: bool) (cmd: IrisEvent) =
     printfn "writing log to disk"
 
   // ** createPublisher
 
-  let private createPublisher (sink: ISink<StateMachine>) =
-    fun (seqno: int64) (eob: bool) (cmd: StateMachine) ->
+  let private createPublisher (sink: ISink<IrisEvent>) =
+    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
       sink.Publish cmd
 
   // ** commandResolver
 
-  let private commandResolver (sink: ISink<StateMachine>) =
-    fun (seqno: int64) (eob: bool) (cmd: StateMachine) ->
+  let private commandResolver (sink: ISink<IrisEvent>) =
+    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
       printfn "resolving commands"
       sink.Publish cmd
 
   // ** processors
 
-  let private processors (store: Store) =
-    [| Pipeline.createHandler (stateMutator store)
-       Pipeline.createHandler statePersistor
-       Pipeline.createHandler logPersistor |]
+  let private processors (store: Store) : IHandler<IrisEvent>[] =
+    [| Pipeline.createHandler<IrisEvent> (stateMutator store)
+       Pipeline.createHandler<IrisEvent> statePersistor
+       Pipeline.createHandler<IrisEvent> logPersistor |]
 
   // ** publishers
 
-  let private publishers (sinks: IIrisSinks) =
-    [| Pipeline.createHandler (createPublisher sinks.Api)
-       Pipeline.createHandler (createPublisher sinks.WebSocket)
-       Pipeline.createHandler (commandResolver sinks.Api) |]
+  let private publishers (sinks: IIrisSinks<IrisEvent>) =
+    [| Pipeline.createHandler<IrisEvent> (createPublisher sinks.Api)
+       Pipeline.createHandler<IrisEvent> (createPublisher sinks.WebSocket)
+       Pipeline.createHandler<IrisEvent> (commandResolver sinks.Api) |]
 
   // ** dispatchEvent
 
-  let private dispatchEvent (sinks: IIrisSinks) (pipeline: IPipeline<_>) (cmd:StateMachine) =
+  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>) (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Publish | Resolve -> pipeline.Push cmd
     | Replicate -> sinks.Raft.Publish cmd
 
   // ** create
 
-  let create (store: Store) (sinks: IIrisSinks) =
+  let create (store: Store) (sinks: IIrisSinks<IrisEvent>) =
     let pipeline = Pipeline.create (processors store) (publishers sinks)
 
-    { new IDispatcher with
-        member dispatcher.Dispatch(cmd: StateMachine) =
+    { new IDispatcher<IrisEvent> with
+        member dispatcher.Dispatch(cmd: IrisEvent) =
           dispatchEvent sinks pipeline cmd
 
         member dispatcher.Dispose() =
@@ -161,14 +161,27 @@ module IrisNG =
     let store = Store(State.Empty)
 
     let! raft = RaftServer.create ()
-    let sinks = failwith "make sinks"
+    let! api = ApiServer.create (failwith "mem") (failwith "other")
+    let! websockets = WebSockets.SocketServer.create (failwith "mem")
+
+    let sinks =
+      { new IIrisSinks<IrisEvent> with
+          member sinks.Raft = unbox raft
+          member sinks.Api = unbox api
+          member sinks.WebSocket = unbox websockets }
+
     let dispatcher = Dispatcher.create store sinks
 
+    let robs = raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
+
     return
-      { new IIris with
+      { new IIris<IrisEvent> with
           member iris.Config
             with get () = store.State.Project.Config
 
-          member iris.Publish (cmd: StateMachine) =
+          member iris.Subscribe(f: IrisEvent -> unit) =
+            failwith "subscribe"
+
+          member iris.Publish (cmd: IrisEvent) =
             dispatcher.Dispatch cmd }
     }
