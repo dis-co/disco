@@ -166,6 +166,7 @@ type IDispatcher<'t> =
 // * IIris
 
 type IIris<'t> =
+  inherit IDisposable
   abstract Config: IrisConfig with get
   abstract Publish: 't -> unit
   abstract Subscribe: ('t -> unit) -> IDisposable

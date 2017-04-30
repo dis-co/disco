@@ -54,7 +54,7 @@ module Pipeline =
   // ** clearEvent
 
   let private clearEvent =
-    [| { new IHandler<'t> with
+    [|  { new IHandler<'t> with
            member handler.OnEvent(ev: PipelineEvent<'t>, _, _) =
              ev.Clear() } |]
 
@@ -136,8 +136,8 @@ module Dispatcher =
 
   let private dispatchEvent (sinks: IIrisSinks<IrisEvent>) (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
-    | Publish | Resolve -> pipeline.Push cmd
-    | Replicate -> sinks.Raft.Publish cmd
+    |  Publish | Resolve -> pipeline.Push cmd
+    |  Replicate -> sinks.Raft.Publish cmd
 
   // ** create
 
@@ -157,29 +157,35 @@ module IrisNG =
 
   // ** create
 
-  let create(project: IrisProject) = either {
-    let store = Store(State.Empty)
+  let create(store: Store) = either {
+    let project = store.State.Project
+
+    let! mem = Project.selfMember project
 
     let! raft = RaftServer.create ()
-    let! api = ApiServer.create (failwith "mem") (failwith "other")
-    let! websockets = WebSockets.SocketServer.create (failwith "mem")
-    let! git = Git.GitServer.create (failwith "mem") (filepath "/hey")
-    let discovery = DiscoveryService.create project.Config.Machine
+    let! api = ApiServer.create mem project.Id
+    let! websockets = WebSockets.SocketServer.create mem
+    let! git = Git.GitServer.create mem project.Path
+    let discovery = DiscoveryService.create store.State.Project.Config.Machine
 
+    // setting up the sinks
     let sinks =
       { new IIrisSinks<IrisEvent> with
           member sinks.Raft = unbox raft
           member sinks.Api = unbox api
           member sinks.WebSocket = unbox websockets }
 
+    // creating the pipeline
     let dispatcher = Dispatcher.create store sinks
 
+    // wiring up the sources
     let gobs = git.Subscribe(IrisEvent.Git >> dispatcher.Dispatch)
     let abos = api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
     let wobs = websockets.Subscribe(IrisEvent.Socket >> dispatcher.Dispatch)
     let robs = raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
     let dobs = discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
 
+    // done
     return
       { new IIris<IrisEvent> with
           member iris.Config
@@ -189,5 +195,14 @@ module IrisNG =
             failwith "subscribe"
 
           member iris.Publish (cmd: IrisEvent) =
-            dispatcher.Dispatch cmd }
+            dispatcher.Dispatch cmd
+
+          member iris.Dispose() =
+            [| gobs; abos; wobs; robs; dobs;
+               raft       :> IDisposable;
+               api        :> IDisposable;
+               websockets :> IDisposable;
+               git        :> IDisposable;
+               dispatcher :> IDisposable |]
+            |> Array.Parallel.iter dispose }
     }

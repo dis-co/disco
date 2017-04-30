@@ -151,10 +151,10 @@ type State =
   static member Load (path: FilePath, machine: IrisMachine) =
     either {
       let! project  = Asset.loadWithMachine path machine
-      let! users    = Asset.loadAll project.Path
-      let! cues     = Asset.loadAll project.Path
-      let! cuelists = Asset.loadAll project.Path
-      let! groups   = Asset.loadAll project.Path
+      let! users    = project.Path |> Project.toFilePath |> Asset.loadAll
+      let! cues     = project.Path |> Project.toFilePath |> Asset.loadAll
+      let! cuelists = project.Path |> Project.toFilePath |> Asset.loadAll
+      let! groups   = project.Path |> Project.toFilePath |> Asset.loadAll
 
       return
         { Project  = project

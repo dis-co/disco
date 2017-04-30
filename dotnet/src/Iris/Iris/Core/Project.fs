@@ -2160,7 +2160,7 @@ module Config =
 type IrisProject =
   { Id        : Id
   ; Name      : Name
-  ; Path      : FilePath                // project path should always be the path containing '.git'
+  ; Path      : ProjectPath             // project path should always be the path containing '.git'
   ; CreatedOn : TimeStamp
   ; LastSaved : TimeStamp option
   ; Copyright : string    option
@@ -2193,7 +2193,7 @@ Config: %A
     with get () =
       { Id        = Id Constants.EMPTY
         Name      = name Constants.EMPTY
-        Path      = filepath ""
+        Path      = projectpath ""
         CreatedOn = timestamp ""
         LastSaved = None
         Copyright = None
@@ -2249,7 +2249,7 @@ Config: %A
 
         return
           { project with
-              Path   = Path.getDirectoryName normalizedPath
+              Path   = Path.getDirectoryName normalizedPath |> unwrap |> projectpath
               Config = Config.updateMachine machine project.Config }
     }
 
@@ -2351,7 +2351,7 @@ Config: %A
       return
         { Id        = Id fb.Id
           Name      = name fb.Name
-          Path      = filepath fb.Path
+          Path      = projectpath fb.Path
           CreatedOn = fb.CreatedOn
           LastSaved = lastsaved
           Copyright = copyright
@@ -2415,7 +2415,7 @@ Config: %A
 
       return { Id        = Id meta.Id
                Name      = name meta.Name
-               Path      = Path.getFullPath (filepath ".")
+               Path      = projectpath (Path.GetFullPath ".")
                CreatedOn = timestamp meta.CreatedOn
                LastSaved = lastSaved
                Copyright = ProjectYaml.parseStringProp meta.Copyright
@@ -2430,6 +2430,16 @@ Config: %A
 [<RequireQualifiedAccess>]
 module Project =
 
+  // ** toFilePath
+
+  let toFilePath (path: ProjectPath) =
+    path |> unwrap |> filepath
+
+  // ** ofFilePath
+
+  let ofFilePath (path: FilePath) =
+    path |> unwrap |> projectpath
+
   // ** repository
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -2441,7 +2451,9 @@ module Project =
   ///
   /// # Returns: Repository option
   let repository (project: IrisProject) =
-    Git.Repo.repository project.Path
+    project.Path
+    |> toFilePath
+    |> Git.Repo.repository
 
   #endif
 
@@ -2594,7 +2606,7 @@ module Project =
         if Path.isPathRooted filepath then
           filepath
         else
-          project.Path </> filepath
+          toFilePath project.Path </> filepath
       do! Git.Repo.stage repo abspath
       let! commit = Git.Repo.commit repo msg committer
       return commit, project
@@ -2655,7 +2667,7 @@ module Project =
   /// Returns: Either<IrisError,Commit * Project>
   let inline saveAsset (thing: ^t) (committer: User) (project: IrisProject) =
     let payload = thing |> Yaml.encode
-    let filepath = project.Path </> Asset.path thing
+    let filepath = toFilePath project.Path </> Asset.path thing
     let signature = committer.Signature
     let msg = String.Format("{0} saved {1}", committer.UserName, Path.getFileName filepath)
     saveFile filepath payload signature msg project
@@ -2678,17 +2690,18 @@ module Project =
   ///
   /// Returns: Either<IrisError, FileInfo * Commit * Project>
   let inline deleteAsset (thing: ^t) (committer: User) (project: IrisProject) =
-    let filepath = project.Path </> Asset.path thing
+    let filepath = toFilePath project.Path </> Asset.path thing
     let signature = committer.Signature
     let msg = String.Format("{0} deleted {1}", committer.UserName, filepath)
     deleteFile filepath signature msg project
 
   let private needsInit (project: IrisProject) =
-    let projdir = Directory.exists project.Path
-    let git = Directory.exists (project.Path </> filepath ".git")
-    let cues = Directory.exists (project.Path </> filepath CUE_DIR)
-    let cuelists = Directory.exists (project.Path </> filepath CUELIST_DIR)
-    let users = Directory.exists (project.Path </> filepath USER_DIR)
+    let projPath = project.Path |> toFilePath
+    let projdir =  projPath |> Directory.exists
+    let git = Directory.exists (projPath </> filepath ".git")
+    let cues = Directory.exists (projPath </> filepath CUE_DIR)
+    let cuelists = Directory.exists (projPath </> filepath CUELIST_DIR)
+    let users = Directory.exists (projPath </> filepath USER_DIR)
 
     (not git)      ||
     (not cues)     ||
@@ -2710,7 +2723,7 @@ module Project =
   /// # Returns: Repository
   let private initRepo (project: IrisProject) : Either<IrisError,unit> =
     either {
-      let! repo = Git.Repo.init project.Path
+      let! repo = project.Path |> toFilePath |> Git.Repo.init
       do! writeDaemonExportFile repo
       do! writeGitIgnoreFile repo
       do! createAssetDir repo (filepath CUE_DIR)
@@ -2718,7 +2731,7 @@ module Project =
       do! createAssetDir repo (filepath CUELIST_DIR)
       do! createAssetDir repo (filepath PINGROUP_DIR)
       let relPath = Asset.path User.Admin
-      let absPath = project.Path </> relPath
+      let absPath = toFilePath project.Path </> relPath
       let! _ =
         User.Admin
         |> Yaml.encode
@@ -2744,7 +2757,7 @@ module Project =
       let project =
         { Id        = Id.Create()
         ; Name      = name projectName
-        ; Path      = path
+        ; Path      = ofFilePath path
         ; CreatedOn = Time.createTimestamp()
         ; LastSaved = Some (Time.createTimestamp ())
         ; Copyright = None
@@ -2779,7 +2792,7 @@ module Project =
 
   // ** updatePath
 
-  let updatePath (path: FilePath) (project: IrisProject) : IrisProject =
+  let updatePath (path: ProjectPath) (project: IrisProject) : IrisProject =
     { project with Path = path }
 
   // ** updateConfig
@@ -2817,6 +2830,11 @@ module Project =
 
   let findMember (mem: MemberId) (project: IrisProject) =
     Config.findMember project.Config mem
+
+  // ** selfMember
+
+  let selfMember (project: IrisProject) =
+    Config.findMember project.Config project.Config.Machine.MachineId
 
   // ** addMembers
 

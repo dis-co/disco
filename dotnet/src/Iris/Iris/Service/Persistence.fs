@@ -134,7 +134,7 @@ module Persistence =
   /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
-    let path = state.Project.Path
+    let path = state.Project.Path |> Project.toFilePath
     match sm with
     | AddCue            cue -> Asset.saveWithCommit   path signature cue
     | UpdateCue         cue -> Asset.saveWithCommit   path signature cue
@@ -176,7 +176,7 @@ module Persistence =
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
-      let path = state.Project.Path
+      let path = Project.toFilePath state.Project.Path
       do! state.Save(path)
       use! repo = Project.repository state.Project
       do! Git.Repo.stageAll repo

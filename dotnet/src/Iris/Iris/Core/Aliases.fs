@@ -1,8 +1,9 @@
 namespace Iris.Core
 
-// * Custom Units
+// * Units
 
 [<Measure>] type filepath
+[<Measure>] type projectpath
 [<Measure>] type name
 [<Measure>] type password
 [<Measure>] type checksum
@@ -29,38 +30,40 @@ namespace Iris.Core
 //  / ___ \| | | (_| \__ \  __/\__ \
 // /_/   \_\_|_|\__,_|___/\___||___/
 
-type NodeId     = Id
-type MemberId   = Id
-type Index      = int<index>
-type Term       = int<term>
-type Name       = string<name>
-type Email      = string<email>
-type Tag        = string<tag>
-type NodePath   = string
-type OSCAddress = string
-type Version    = string<version>
-type Min        = int    option
-type Max        = int    option
-type Unit       = string option
-type Filemask   = string option
-type Precision  = int    option
-type MaxChars   = int<chars>
-type FilePath   = string<filepath>
-type UserName   = string<name>
-type UserAgent  = string
-type ClientLog  = string
-type TimeStamp  = string
-type CallSite   = string
-type FileName   = string
-type Hash       = string<checksum>
-type Password   = string<password>
-type Salt       = string<checksum>
-type Port       = uint16<port>
-type Timeout    = int<ms>
+type NodeId      = Id
+type MemberId    = Id
+type Index       = int<index>
+type Term        = int<term>
+type Name        = string<name>
+type Email       = string<email>
+type Tag         = string<tag>
+type NodePath    = string
+type OSCAddress  = string
+type Version     = string<version>
+type Min         = int    option
+type Max         = int    option
+type Unit        = string option
+type Filemask    = string option
+type Precision   = int    option
+type MaxChars    = int<chars>
+type FilePath    = string<filepath>
+type ProjectPath = string<projectpath>
+type UserName    = string<name>
+type UserAgent   = string
+type ClientLog   = string
+type TimeStamp   = string
+type CallSite    = string
+type FileName    = string
+type Hash        = string<checksum>
+type Password    = string<password>
+type Salt        = string<checksum>
+type Port        = uint16<port>
+type Timeout     = int<ms>
 
 [<AutoOpen>]
 module Measure =
   let filepath p: FilePath = UoM.wrap p
+  let projectpath p: ProjectPath = UoM.wrap p
   let name u: Name = UoM.wrap u
   let password p: Password = UoM.wrap p
   let timestamp t: TimeStamp = UoM.wrap t
