@@ -30,6 +30,11 @@ module Main =
       str.Substring(3) |> Some
     else None
 
+  let (|Append|_|) (str: string) =
+    if str.StartsWith "append " then
+      str.Substring(7) |> Some
+    else None
+
   [<EntryPoint>]
   let main args =
     use obs = Logger.subscribe Logger.stdout
@@ -49,6 +54,13 @@ module Main =
         | Log str ->
           Logger.create LogLevel.Debug "test" str
           |> IrisEvent.Log
+          |> iris.Publish
+        | Append str ->
+          { Id = Id.Create(); Name = str; Slices = [||] }
+          |> AddCue
+          |> fun cmd -> (Id.Create(), cmd)
+          |> SocketEvent.OnMessage
+          |> IrisEvent.Socket
           |> iris.Publish
         | _ -> ()
 

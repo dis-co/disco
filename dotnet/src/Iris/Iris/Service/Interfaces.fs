@@ -58,7 +58,6 @@ type SocketEvent =
 
 // * ApiEvent
 
-[<RequireQualifiedAccess>]
 type ApiEvent =
   | Update        of StateMachine
   | ServiceStatus of ServiceStatus

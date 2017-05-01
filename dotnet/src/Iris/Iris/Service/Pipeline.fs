@@ -193,7 +193,7 @@ module IrisNG =
     let! git = Git.GitServer.create mem project.Path
     let discovery = DiscoveryService.create store.State.Project.Config.Machine
 
-    do! raft.Start()
+    do! raft.Load(project.Config)
     do! api.Start()
     do! discovery.Start()
     do! websockets.Start()

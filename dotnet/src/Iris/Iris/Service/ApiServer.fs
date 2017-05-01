@@ -631,7 +631,7 @@ module ApiServer =
       asynchronously <| fun _ ->
         Tracing.trace "ApiServer.handleRawRequest" <| fun () ->
           match req.Body |> Binary.decode with
-          | Right (Register client) ->
+          | Right (ServerApiRequest.Register client) ->
             client
             |> Msg.AddClient
             |> agent.Post
@@ -641,7 +641,7 @@ module ApiServer =
             |> RawResponse.fromRequest req
             |> data.Server.Respond
 
-          | Right (UnRegister client) ->
+          | Right (ServerApiRequest.UnRegister client) ->
             client
             |> Msg.RemoveClient
             |> agent.Post
@@ -651,7 +651,7 @@ module ApiServer =
             |> RawResponse.fromRequest req
             |> data.Server.Respond
 
-          | Right (Update sm) ->
+          | Right (ServerApiRequest.Update sm) ->
             sm
             |> Msg.ClientUpdate
             |> agent.Post

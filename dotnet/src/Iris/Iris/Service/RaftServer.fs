@@ -1920,11 +1920,26 @@ module Raft =
                     | Left error -> Either.fail error
 
               member self.Publish(cmd: IrisEvent) =
-                printfn "append ye command sire"
+                let append = addCmd agent >> ignore
+                match cmd with
+                | Api       (Register client)      -> client  |> AddClient               |> append
+                | Api       (ClientStatus client)  -> client  |> UpdateClient            |> append
+                | Api       (UnRegister client)    -> client  |> RemoveClient            |> append
+                | Api       (Update sm)            -> sm      |> append
+                | Discovery (Appeared service)     -> service |> AddDiscoveredService    |> append
+                | Discovery (Updated service)      -> service |> UpdateDiscoveredService |> append
+                | Discovery (Vanished service)     -> service |> RemoveDiscoveredService |> append
+                | Socket    (OnClose id)           -> failwith "Socket.OnClose Id in Raft Publish"
+                | Socket    (OnError (id,_))       -> failwith "Socket.OnError Id in Raft Publish"
+                | Socket    (OnMessage (id,sm))    -> sm      |> append
+                | Socket    (OnOpen id)            -> failwith "Socket.OnOpen Id in Raft Publish"
+                | Status     status                -> failwith "status"
+                | other                            -> ignore other
+                // appendCmd cmd
 
               member self.Dispose () =
                 Tracing.trace (tag "Dispose()") <| fun () ->
-                  match postCommand agent (fun chan -> Msg.Unload chan) with
+                  match postCommand agent Msg.Unload with
                   | Left error -> printfn "unable to dispose:  %A" error
                   | Right _ -> ()
                   subscriptions.Clear()
