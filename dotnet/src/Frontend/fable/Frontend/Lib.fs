@@ -1,4 +1,4 @@
-module Iris.Web.Lib
+module rec Iris.Web.Lib
 
 //  _____                _                 _   __  __       _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| | |  \/  | __ _(_)_ __
@@ -95,20 +95,6 @@ let removeMember(config: IrisConfig, memId: Id) =
   | Left error ->
     printfn "%O" error
 
-let addMember(info: obj) =
-  try
-    { Member.create (Id !!info?id) with
-        HostName = !!info?hostName
-        IpAddr   = IPv4Address !!info?ipAddr
-        Port     = !!info?port
-        WsPort   = !!info?wsPort
-        GitPort  = !!info?gitPort
-        ApiPort  = !!info?apiPort }
-    |> AddMember
-    |> ClientContext.Singleton.Post
-  with
-  | exn -> printfn "Couldn't create mem: %s" exn.Message
-
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 
@@ -139,6 +125,14 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
     then res.text() |> Promise.bind onFail
     else res.text() |> Promise.bind onSuccess)
 
+/// Posts a command, parses the JSON response returns a promise (can fail)
+let inline postCommandParseAndContinue<'T> (cmd: Command) =
+  postCommandPrivate cmd
+  |> Promise.bind (fun res ->
+    if not res.Ok
+    then res.text() |> Promise.map ofJson<'T>
+    else res.text() |> Promise.map (failwithf "%s"))
+
 let postCommandWithErrorNotifier defValue onSuccess cmd =
   postCommand onSuccess (fun msg -> notify msg; defValue) cmd
 
@@ -147,7 +141,51 @@ let postCommandAndForget cmd =
 
 let listProjects() =
   ListProjects
-  |> postCommandWithErrorNotifier [||] (String.split [|','|])
+  |> postCommandWithErrorNotifier [||] (ofJson<NameAndId[]> >> Array.map (fun x -> x.Name))
+
+let addMember(info: obj) =
+  // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
+  
+  // TODO: Get current project Id
+  let currentProjectId: Id = failwith "TODO"
+
+  // List projects of member candidate (B)
+
+  // TODO: Redirect command to member B
+  postCommandParseAndContinue<NameAndId[]> ListProjects
+
+  // If B has leader (A) active project,
+  // then **pull** project from A into B
+  // else **clone** active project from A into B
+
+  // TODO: Actual commands
+  |> Promise.bind (fun projects ->
+    if projects |> Array.exists (fun p -> p.Id = currentProjectId)
+    then failwith "Pull"
+    else failwith "Clone")
+
+  // Load active project in machine B
+
+  // TODO: Redirect command to member B
+  // TODO: Bypass login?
+  // TODO: Make sure member B is loaded into project's active site
+  |> Promise.bind (fun _ -> loadProject("projectName", "", "", None))
+
+  // Add member B to the leader (A) cluster
+  |> Promise.map (fun _ ->
+      { Member.create (Id !!info?id) with
+          HostName = !!info?hostName
+          IpAddr   = IPv4Address !!info?ipAddr
+          Port     = !!info?port
+          WsPort   = !!info?wsPort
+          GitPort  = !!info?gitPort
+          ApiPort  = !!info?apiPort }
+      |> AddMember
+      // TODO: Check the state machine post has been successful
+      |> ClientContext.Singleton.Post
+  )
+  |> Promise.catch (fun exn ->
+    sprintf "Cannot create member: %s" exn.Message |> notify)
 
 let shutdown() =
   Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
@@ -157,8 +195,8 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project, username, password, site) =
-  LoadProject(project, username, password, site)
+let rec loadProject(project, username, pass, site) =
+  LoadProject(project, username, password pass, site)
   |> postCommandPrivate
   |> Promise.bind (fun res ->
     if res.Ok

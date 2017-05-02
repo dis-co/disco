@@ -20,6 +20,10 @@ type ServiceInfo =
     version: string
     buildNumber: string }
 
+type NameAndId(name: string, id: Id) =
+    member val Name = name
+    member val Id = id
+
 type Command =
   | Shutdown
   | UnloadProject

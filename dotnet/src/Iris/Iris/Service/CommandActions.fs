@@ -12,6 +12,7 @@ open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open System.Collections.Concurrent
+open Iris.Core
 
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
@@ -36,8 +37,11 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   Directory.getDirectories cfg.WorkSpace
-  |> Array.map (Path.getFileName >> unwrap)
-  |> String.concat ","
+  |> Array.choose (fun dir ->
+    match IrisProject.Load(dir, cfg) with
+    | Right project -> NameAndId(unwrap project.Name, project.Id) |> Some
+    | Left _ -> None)
+  |> serializeJson
   |> Either.succeed
 
 /// ## buildProject
