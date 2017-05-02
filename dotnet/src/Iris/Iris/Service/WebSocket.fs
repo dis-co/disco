@@ -29,11 +29,11 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
+  type private Subscriptions = ResizeArray<IObserver<WebSocketEvent>>
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<SocketEvent>
+  type private SocketEventProcessor = MailboxProcessor<WebSocketEvent>
 
   // ** getConnectionId
 
@@ -147,7 +147,7 @@ module WebSockets =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
       connections.TryAdd(sid, socket) |> ignore
-      agent.Post(OnOpen sid)
+      agent.Post(SessionAdded sid)
 
       sid
       |> string
@@ -157,7 +157,7 @@ module WebSockets =
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(OnClose sid)
+      agent.Post(SessionRemoved sid)
 
       sid
       |> string
@@ -212,7 +212,7 @@ module WebSockets =
         let subscriptions = new Subscriptions()
 
         let listener =
-          { new IObservable<SocketEvent> with
+          { new IObservable<WebSocketEvent> with
               member self.Subscribe(obs) =
                 lock subscriptions <| fun _ ->
                   subscriptions.Add obs
@@ -241,8 +241,8 @@ module WebSockets =
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session
 
-              member self.Subscribe (callback: SocketEvent -> unit) =
-                { new IObserver<SocketEvent> with
+              member self.Subscribe (callback: WebSocketEvent -> unit) =
+                { new IObserver<WebSocketEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value

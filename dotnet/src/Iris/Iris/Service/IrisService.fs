@@ -210,7 +210,7 @@ module Iris =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
     | Git         of GitEvent
-    | Socket      of SocketEvent
+    | Socket      of WebSocketEvent
     | Raft        of RaftEvent
     | Api         of ApiEvent
     | Log         of LogEvent
@@ -510,10 +510,10 @@ module Iris =
 
   // ** handleSocketEvent
 
-  let private handleSocketEvent (state: IrisState) (ev: SocketEvent) =
+  let private handleSocketEvent (state: IrisState) (ev: WebSocketEvent) =
     match ev with
-    | OnOpen id         -> onOpen    state id
-    | OnClose id        -> onClose   state id
+    | SessionAdded id   -> onOpen    state id
+    | SessionRemoved id -> onClose   state id
     | OnMessage (id,sm) -> onMessage state id sm
     | OnError (id,err)  -> onError   state id err
     state

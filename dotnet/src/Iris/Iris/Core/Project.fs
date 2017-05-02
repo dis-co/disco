@@ -2445,16 +2445,12 @@ module Project =
 
   #endif
 
-  // **  gitRemote
-
-  #if !FABLE_COMPILER && !IRIS_NODES
+  // **  localRemote
 
   let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
     |> Option.map (project.Path |> unwrap |> Uri.localGitUri)
-
-  #endif
 
   // ** currentBranch
 

@@ -99,11 +99,11 @@ type IRaftServer =
 // * SocketEvent
 
 [<NoComparison;NoEquality>]
-type SocketEvent =
-  | OnOpen    of Id
-  | OnClose   of Id
-  | OnMessage of Id * StateMachine
-  | OnError   of Id * Exception
+type WebSocketEvent =
+  | SessionAdded    of Id
+  | SessionRemoved  of Id
+  | OnMessage       of Id * StateMachine
+  | OnError         of Id * Exception
 
 // * IWsServer
 
@@ -112,7 +112,7 @@ type IWebSocketServer =
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-  abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
+  abstract Subscribe    : (WebSocketEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
 // * IHttpServer
@@ -136,7 +136,7 @@ type ApiEvent =
 [<NoComparison;NoEquality>]
 type IrisEvent =
   | Git    of GitEvent
-  | Socket of SocketEvent
+  | Socket of WebSocketEvent
   | Raft   of RaftEvent
   | Log    of LogEvent
   | Api    of ApiEvent
