@@ -148,6 +148,7 @@ module CommandLine =
     | [<EqualsAssignment>] Project      of string
     | [<EqualsAssignment>] Machine      of string
     | [<EqualsAssignment>] Frontend     of string
+    | [<EqualsAssignment>] Shift_Defaults of uint16
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -155,6 +156,7 @@ module CommandLine =
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
           | Frontend _  -> "Path to the frontend files"
+          | Shift_Defaults _  -> "Shift the default ports and workspaces of machine configuration"
           | Bind    _   -> "Specify a valid IP address."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."

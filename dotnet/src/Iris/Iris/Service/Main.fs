@@ -35,8 +35,8 @@ module Main =
 
     // Init machine config
     parsed.TryGetResult <@ Machine @>
-    |> Option.map (filepath >> Path.getFullPath)
-    |> MachineConfig.init
+    |> Option.map (filepath >> Path.getFullPath) 
+    |> MachineConfig.init (parsed.TryGetResult <@ Shift_Defaults @>)
     |> Error.orExit ignore
 
     Thread.CurrentThread.GetApartmentState()

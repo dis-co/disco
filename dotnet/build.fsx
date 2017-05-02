@@ -833,8 +833,8 @@ Target "DockerRunTests" (fun () ->
 
 Target "Release" DoNothing
 
-// "Clean"
-// ==> "GenerateSerialization"
+"Clean"
+==> "GenerateSerialization"
 
 // Serialization
 
