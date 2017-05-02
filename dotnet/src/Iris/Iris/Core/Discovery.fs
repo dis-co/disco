@@ -558,6 +558,15 @@ module Discovery =
       let services = parseServices service.TxtRecord
       let metadata = parseMetadata service.TxtRecord
 
+      let aliases =
+        // need to check both, if the entry is null
+        // *and* the aliases array, since it *can* be null
+        // and would still be valid value (i.e. the type checker)
+        // cannot catch this problem. ouf.
+        if isNull entry || isNull entry.Aliases then
+          [| |]
+        else entry.Aliases
+
       return
         { Id = machine
           Protocol = proto
@@ -566,7 +575,7 @@ module Discovery =
           FullName = service.FullName
           HostName = if isNull entry then "" else entry.HostName
           HostTarget = service.HostTarget
-          Aliases = if isNull entry then [| |] else entry.Aliases
+          Aliases = aliases
           AddressList = addresses
           Status = status
           Services = services

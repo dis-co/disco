@@ -46,6 +46,7 @@ module WebSockets =
                            (socketId: Id)
                            (session: Session) :
                            Either<IrisError,Session> =
+
     match connections.TryGetValue socketId with
     | true, socket ->
       let ua =
@@ -84,7 +85,9 @@ module WebSockets =
         |> Either.succeed
       with
         | exn ->
-          let _, _ = connections.TryRemove(sid)
+          exn.Message + exn.StackTrace
+          |> Logger.err (tag "send")
+
           exn.Message
           |> Error.asSocketError (tag "send")
           |> Either.fail
@@ -108,6 +111,7 @@ module WebSockets =
   let private broadcast (connections: Connections)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
+
     let sendAsync (id: Id) = job {
         let result = send connections id msg
         return result
@@ -146,7 +150,10 @@ module WebSockets =
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
-      connections.TryAdd(sid, socket) |> ignore
+
+      connections.TryAdd(sid, socket)
+      |> ignore
+
       agent.Post(SessionAdded sid)
 
       sid
@@ -186,7 +193,7 @@ module WebSockets =
 
   // ** loop
 
-  let private loop (initial: Subscriptions)(inbox: SocketEventProcessor) =
+  let private loop (initial: Subscriptions) (inbox: SocketEventProcessor) =
     let rec act (subscriptions: Subscriptions) = async {
         let! msg = inbox.Receive()
         for sub in subscriptions do
@@ -208,8 +215,8 @@ module WebSockets =
 
     let create (mem: RaftMember) =
       either {
-        let connections = new Connections()
-        let subscriptions = new Subscriptions()
+        let connections = Connections()
+        let subscriptions = Subscriptions()
 
         let listener =
           { new IObservable<WebSocketEvent> with
