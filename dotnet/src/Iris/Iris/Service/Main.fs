@@ -12,6 +12,7 @@ open Iris.Service.CommandLine
 
 [<AutoOpen>]
 module Main =
+  (*
   ////////////////////////////////////////
   //  __  __       _                    //
   // |  \/  | __ _(_)_ __               //
@@ -94,3 +95,38 @@ module Main =
     result |> Error.orExit ignore
 
     Error.exitWith IrisError.OK
+
+  *)
+
+  [<EntryPoint>]
+  let main args =
+     use obs = Logger.subscribe Logger.stdout
+     MachineConfig.init None |> ignore
+
+     let machine = MachineConfig.get()
+
+     match IrisNG.load args.[0] machine with
+     | Right iris ->
+
+       let mutable run = true
+       while run do
+         match Console.ReadLine() with
+         | Quit _  ->
+           run <- false
+           dispose iris
+         | Log str ->
+           Logger.create LogLevel.Debug "test" str
+           |> IrisEvent.Log
+           |> iris.Publish
+         | Append str ->
+           { Id = Id.Create(); Name = str; Slices = [||] }
+           |> AddCue
+           |> fun cmd -> (Id.Create(), cmd)
+           |> SocketEvent.OnMessage
+           |> IrisEvent.Socket
+           |> iris.Publish
+         | _ -> ()
+
+     | Left error -> printf "error: %A" error
+
+     0
