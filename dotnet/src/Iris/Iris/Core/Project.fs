@@ -2409,7 +2409,7 @@ Config: %A
             with
               | _ -> None
 
-      let dummy = MachineConfig.create ()
+      let dummy = MachineConfig.create None
 
       let! config = Config.fromFile config dummy
 

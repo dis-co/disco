@@ -262,14 +262,22 @@ module MachineConfig =
 
   // ** create
 
-  let create () : IrisMachine =
+  let create (shiftDefaults: uint16 option) : IrisMachine =
+    let shiftPath path =
+        match shiftDefaults with
+        | Some shift -> path + (string shift)
+        | None -> path
+    let shiftPort port =
+        match shiftDefaults with
+        | Some shift -> port + shift
+        | None -> port
     let hostname = Network.getHostName()
     let workspace =
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
-        home <.> MACHINECONFIG_DEFAULT_WORKSPACE_UNIX
+        home <.> (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_UNIX)
       else
-        filepath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
+        filepath (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS)
 
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
@@ -280,11 +288,11 @@ module MachineConfig =
       HostName  = hostname
       WorkSpace = workspace
       WebIP     = Constants.DEFAULT_IP
-      WebPort   = Constants.DEFAULT_WEB_PORT
-      RaftPort  = Constants.DEFAULT_RAFT_PORT
-      WsPort    = Constants.DEFAULT_WEB_SOCKET_PORT
-      GitPort   = Constants.DEFAULT_GIT_PORT
-      ApiPort   = Constants.DEFAULT_API_PORT
+      WebPort   = shiftPort Constants.DEFAULT_WEB_PORT
+      RaftPort  = shiftPort Constants.DEFAULT_RAFT_PORT
+      WsPort    = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort   = shiftPort Constants.DEFAULT_GIT_PORT
+      ApiPort   = shiftPort Constants.DEFAULT_API_PORT
       Version   = version }
 
   // ** save
@@ -317,7 +325,7 @@ module MachineConfig =
   // ** init
 
   /// Attention: this method must be called only when starting the main process
-  let init (path: FilePath option) : Either<IrisError,unit> =
+  let init shiftDefaults (path: FilePath option) : Either<IrisError,unit> =
     let serializer = Serializer()
     try
       let location = getLocation path
@@ -328,7 +336,7 @@ module MachineConfig =
           serializer.Deserialize<MachineConfigYaml>(raw)
           |> parse
         else
-          let cfg = create()
+          let cfg = create shiftDefaults
           save path cfg
           |> Either.map (fun _ -> cfg)
 

@@ -37,94 +37,60 @@ module Main =
 
   [<EntryPoint>]
   let main args =
-    use obs = Logger.subscribe Logger.stdout
-    MachineConfig.init None |> ignore
+    let parsed =
+      try
+        parser.ParseCommandLine args
+      with
+        | exn ->
+          exn.Message
+          |> Error.asOther "Main"
+          |> Error.exitWith
 
-    let machine = MachineConfig.get()
+    validateOptions parsed
 
-    match IrisNG.load args.[0] machine with
-    | Right iris ->
+    // Init machine config
+    parsed.TryGetResult <@ Machine @>
+    |> Option.map (filepath >> Path.getFullPath)
+    |> MachineConfig.init (parsed.TryGetResult <@ Shift_Defaults @>)
+    |> Error.orExit ignore
 
-      let mutable run = true
-      while run do
-        match Console.ReadLine() with
-        | Quit _  ->
-          run <- false
-          dispose iris
-        | Log str ->
-          Logger.create LogLevel.Debug "test" str
-          |> IrisEvent.Log
-          |> iris.Publish
-        | Append str ->
-          { Id = Id.Create(); Name = str; Slices = [||] }
-          |> AddCue
-          |> fun cmd -> (Id.Create(), cmd)
-          |> SocketEvent.OnMessage
-          |> IrisEvent.Socket
-          |> iris.Publish
-        | _ -> ()
+    Thread.CurrentThread.GetApartmentState()
+    |> printfn "Using Threading Model: %A"
 
-    | Left error -> printf "error: %A" error
+    let threadCount = System.Environment.ProcessorCount * 2
+    ThreadPool.SetMinThreads(threadCount,threadCount)
+    |> fun result ->
+      printfn "Setting Min. Threads in ThreadPool To %d %s"
+        threadCount
+        (if result then "Successful" else "Unsuccessful")
 
-    0
+    let result =
+      let machine = MachineConfig.get()
 
+      let dir =
+        parsed.TryGetResult <@ Project @>
+        |> Option.map (fun projectName ->
+          machine.WorkSpace </> filepath projectName)
 
-  // [<EntryPoint>]
-  // let main args =
-  //   let parsed =
-  //     try
-  //       parser.ParseCommandLine args
-  //     with
-  //       | exn ->
-  //         exn.Message
-  //         |> Error.asOther "Main"
-  //         |> Error.exitWith
+      let frontend =
+        parsed.TryGetResult <@ Frontend @>
+        |> Option.map filepath
 
-  //   validateOptions parsed
+      Logger.initialize machine.MachineId
 
-  //   // Init machine config
-  //   parsed.TryGetResult <@ Machine @>
-  //   |> Option.map (filepath >> Path.getFullPath)
-  //   |> MachineConfig.init
-  //   |> Error.orExit ignore
+      match parsed.GetResult <@ Cmd @>, dir with
+      | Create,            _ -> createProject parsed
+      | Start,           dir -> startService dir frontend
+      | Reset,      Some dir -> resetProject dir
+      | Dump,       Some dir -> dumpDataDir dir
+      | Add_User,   Some dir -> addUser dir
+      | Add_Member, Some dir -> addMember dir
+      | Help,              _ -> help ()
+      |  _ ->
+        sprintf "Unexpected command line failure: %A" args
+        |> Error.asParseError "Main"
+        |> Either.fail
 
-  //   Thread.CurrentThread.GetApartmentState()
-  //   |> printfn "Using Threading Model: %A"
+    result |> Error.orExit ignore
 
-  //   let threadCount = System.Environment.ProcessorCount * 2
-  //   ThreadPool.SetMinThreads(threadCount,threadCount)
-  //   |> fun result ->
-  //     printfn "Setting Min. Threads in ThreadPool To %d %s"
-  //       threadCount
-  //       (if result then "Successful" else "Unsuccessful")
-
-  //   let result =
-  //     let machine = MachineConfig.get()
-
-  //     let dir =
-  //       parsed.TryGetResult <@ Project @>
-  //       |> Option.map (fun projectName ->
-  //         machine.WorkSpace </> filepath projectName)
-
-  //     let frontend =
-  //       parsed.TryGetResult <@ Frontend @>
-  //       |> Option.map filepath
-
-  //     Logger.initialize machine.MachineId
-
-  //     match parsed.GetResult <@ Cmd @>, dir with
-  //     | Create,            _ -> createProject parsed
-  //     | Start,           dir -> startService dir frontend
-  //     | Reset,      Some dir -> resetProject dir
-  //     | Dump,       Some dir -> dumpDataDir dir
-  //     | Add_User,   Some dir -> addUser dir
-  //     | Add_Member, Some dir -> addMember dir
-  //     | Help,              _ -> help ()
-  //     |  _ ->
-  //       sprintf "Unexpected command line failure: %A" args
-  //       |> Error.asParseError "Main"
-  //       |> Either.fail
-
-  //   result |> Error.orExit ignore
-
-  //   Error.exitWith IrisError.OK
+    Error.exitWith IrisError.OK
