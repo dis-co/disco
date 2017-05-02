@@ -256,23 +256,6 @@ module CommandLine =
       do! initializeRaft project
     }
 
-  // ** consoleLoop
-
-  //  _
-  // | |    ___   ___  _ __
-  // | |   / _ \ / _ \| '_ \
-  // | |__| (_) | (_) | |_) |
-  // |_____\___/ \___/| .__/ s
-  //                  |_|
-  let registerExitHandlers (context: IIrisServer) (httpServer: IHttpServer) =
-    Console.CancelKeyPress.Add (fun _ ->
-      printfn "Disposing context..."
-      dispose context
-      dispose httpServer
-      exit 0)
-    System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
-    System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
-
   // ** startService
 
   //  ____  _             _
@@ -296,7 +279,10 @@ module CommandLine =
 
       agentRef := CommandActions.startAgent machine irisService |> Some
 
-      registerExitHandlers irisService httpServer
+      Console.addExitHandlers [
+        unbox irisService
+        unbox httpServer
+      ]
 
       do!
         match projectDir with

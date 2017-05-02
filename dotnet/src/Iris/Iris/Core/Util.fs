@@ -578,3 +578,19 @@ module Tuple =
 
   let inline mapThrd3 (f: 'c -> 'd) (a, b, c) =
     (a, b, f c)
+
+// * Console
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+module Console =
+
+  // ** addExitHandlers
+
+  let addExitHandlers (disposables: 't list when 't :> IDisposable) =
+    let inline disposer _ = List.iter dispose disposables
+    Console.CancelKeyPress.Add (fun _ -> disposer(); exit 0)
+    AppDomain.CurrentDomain.ProcessExit.Add  disposer
+    AppDomain.CurrentDomain.DomainUnload.Add disposer
+
+#endif

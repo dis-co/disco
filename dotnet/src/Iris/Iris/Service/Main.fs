@@ -98,6 +98,21 @@ module Main =
 
   *)
 
+  let (|Quit|_|) str =
+    match str with
+    | "quit" | "exit" -> Some ()
+    | _ -> None
+
+  let (|Log|_|) (str: string) =
+    if str.StartsWith("log ") then
+      str.Substring(3) |> Some
+    else None
+
+  let (|Append|_|) (str: string) =
+    if str.StartsWith("append ") then
+      str.Substring(6) |> Some
+    else None
+
   [<EntryPoint>]
   let main args =
      use obs = Logger.subscribe Logger.stdout
@@ -107,6 +122,8 @@ module Main =
 
      match IrisNG.load args.[0] machine with
      | Right iris ->
+
+       Console.addExitHandlers [ unbox iris ]
 
        let mutable run = true
        while run do
