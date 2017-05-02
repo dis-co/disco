@@ -494,10 +494,10 @@ module Iris =
         data.Store.Dispatch cmd
         broadcastMsg data cmd
       | cmd ->
-        printfn "onMessage: %s" (string cmd)
         match cmd with
         | AddSession session ->
-          data.SocketServer.BuildSession id session
+          session
+          |> data.SocketServer.BuildSession id
           |> Either.map AddSession
         | cmd -> Either.succeed cmd
         |> Either.bind (appendCmd data)
