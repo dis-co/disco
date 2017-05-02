@@ -165,10 +165,16 @@ let addMember(info: obj) = promise {
     // then **pull** project from A into B
     // else **clone** active project from A into B
 
-    // TODO: Actual commands
-    if projects |> Array.exists (fun p -> p.Id = latestState.Project.Id)
-    then failwith "Pull"
-    else failwith "Clone"
+    let! commandMsg =
+      let projectGitUri =
+        match Project.localRemote latestState.Project with
+        | Some uri -> uri
+        | None -> failwith "Cannot get URI of project git repository"
+      if projects |> Array.exists (fun p -> p.Id = latestState.Project.Id)
+      then PullProject(unwrap latestState.Project.Name, projectGitUri)
+      else CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      |> postCommandParseAndContinue<string> memberIpAndPort
+    notify commandMsg
 
     // Load active project in machine B
     // TODO: Make sure member B is loaded into project's active site
