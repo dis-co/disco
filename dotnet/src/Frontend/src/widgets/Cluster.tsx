@@ -3,7 +3,7 @@ import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
 import { touchesElement, map, first } from "../Util"
 import { showModal } from "../App"
-import AddNode from "../modals/AddNode"
+import AddMember from "../modals/AddMember"
 
 declare var IrisLib: IIris;
 
@@ -59,7 +59,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
       <div className="iris-cluster"  ref={el => this.el = el}>
         <table className="table is-striped is-narrow" >
           <tfoot>
-            <tr><td><a onClick={() => { showModal(AddNode)}}>Add node</a></td></tr>
+            <tr><td><a onClick={() => { showModal(AddMember)}}>Add node</a></td></tr>
           </tfoot>          
           <thead>
             <tr>

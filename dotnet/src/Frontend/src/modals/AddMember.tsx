@@ -1,13 +1,15 @@
-import React from 'react';
-import Form from 'muicss/lib/react/form';
-import Input from 'muicss/lib/react/input';
-import Button from 'muicss/lib/react/button';
+import * as React from 'react';
+import { IIris } from "../Interfaces"
 
-export default class AddNode extends React.Component {
+declare var IrisLib: IIris;
+
+interface AddMemberProps {
+  onSubmit(): void
+}
+
+export default class AddMember extends React.Component<AddMemberProps,any> {
   constructor(props) {
       super(props);
-      let match = /\:(\d+)$/.exec(window.location.host);
-      this.webPort = match != null ? parseInt(match[1]) : null;
       this.state = {
         id: "",
         idError: "Required",
@@ -15,13 +17,15 @@ export default class AddNode extends React.Component {
         hostNameError: "Required",
         ipAddr: "",
         ipAddrError: "Required",
-        port: "",
+        port: 0,
         portError: "Required",
-        apiPort: "",
+        apiPort: 0,
         apiPortError: "Required",
-        wsPort: "",
+        httpPort: 0,
+        httpPortError: "Required",
+        wsPort: 0,
         wsPortError: "Required",
-        gitPort: "",
+        gitPort: 0,
         gitPortError: "Required"
       };
   }
@@ -45,9 +49,6 @@ export default class AddNode extends React.Component {
     const parsed = parseInt(port);
     if (isNaN(parsed)) {
       return { value: port, error: "Not a valid number" };
-    }
-    if (this.webPort && parsed === this.webPort) {
-      return { value: parsed, error: "Port in use by web server" };
     }
     for (let key in this.state) {
       if (key !== id && key.toLowerCase().endsWith("port")) {
@@ -96,6 +97,7 @@ export default class AddNode extends React.Component {
         {this.renderGroup("ipAddr", "IP Address", this.validateIpAddress.bind(this))}
         {this.renderGroup("apiPort", "Api Port", this.validatePort.bind(this))}
         {this.renderGroup("port", "Raft Port", this.validatePort.bind(this))}
+        {this.renderGroup("httpPort", "HTTP Port", this.validatePort.bind(this))}
         {this.renderGroup("wsPort", "Web Socket Port", this.validatePort.bind(this))}
         {this.renderGroup("gitPort", "Git Daemon Port", this.validatePort.bind(this))}
         <div className="field is-grouped">

@@ -103,31 +103,35 @@ let alert msg (_: Exception) =
 let (&>) fst v =
   fun x -> fst x; v
 
-let private postCommandPrivate (cmd: Command) =
+let private postCommandPrivate (ipAndPort: string option) (cmd: Command) =
+  let url =
+    match ipAndPort with
+    | Some ipAndPort -> sprintf "http://%s%s" ipAndPort Constants.WEP_API_COMMAND
+    | None -> Constants.WEP_API_COMMAND
   GlobalFetch.fetch(
-    RequestInfo.Url Constants.WEP_API_COMMAND,
+    RequestInfo.Url url,
     requestProps
       [ RequestProperties.Method HttpMethod.POST
         requestHeaders [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
 
 let postCommand onSuccess onFail (cmd: Command) =
-  postCommandPrivate cmd
+  postCommandPrivate None cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.map onFail
     else res.text() |> Promise.map onSuccess)
 
 let postCommandAndBind onSuccess onFail (cmd: Command) =
-  postCommandPrivate cmd
+  postCommandPrivate None cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.bind onFail
     else res.text() |> Promise.bind onSuccess)
 
 /// Posts a command, parses the JSON response returns a promise (can fail)
-let inline postCommandParseAndContinue<'T> (cmd: Command) =
-  postCommandPrivate cmd
+let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
+  postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.map ofJson<'T>
@@ -147,12 +151,14 @@ let addMember(info: obj) =
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   
   // TODO: Get current project Id
+  let memberIpAndPort =
+    let memberIpAddr: string = !!info?ipAddr
+    let memberHttpPort: uint16 = !!info?httpPort
+    sprintf "%s:%i" memberIpAddr memberHttpPort |> Some
   let currentProjectId: Id = failwith "TODO"
 
   // List projects of member candidate (B)
-
-  // TODO: Redirect command to member B
-  postCommandParseAndContinue<NameAndId[]> ListProjects
+  postCommandParseAndContinue<NameAndId[]> memberIpAndPort ListProjects
 
   // If B has leader (A) active project,
   // then **pull** project from A into B
@@ -165,11 +171,10 @@ let addMember(info: obj) =
     else failwith "Clone")
 
   // Load active project in machine B
-
-  // TODO: Redirect command to member B
+  
   // TODO: Bypass login?
   // TODO: Make sure member B is loaded into project's active site
-  |> Promise.bind (fun _ -> loadProject("projectName", "", "", None))
+  |> Promise.bind (fun _ -> loadProject("projectName", "", "", None, memberIpAndPort))
 
   // Add member B to the leader (A) cluster
   |> Promise.map (fun _ ->
@@ -195,9 +200,9 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project, username, pass, site) =
+let rec loadProject(project, username, pass, site, ipAndPort) =
   LoadProject(project, username, password pass, site)
-  |> postCommandPrivate
+  |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
     then
