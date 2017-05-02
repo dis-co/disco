@@ -1026,7 +1026,7 @@ module Iris =
         let! mem = Config.selfMember state.Project.Config
 
         let! raftserver = RaftServer.create ()
-        let! wsserver   = SocketServer.create mem
+        let! wsserver   = WebSocketServer.create mem
         let! apiserver  = ApiServer.create mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to

@@ -16,6 +16,7 @@ open Hopac.Infixes
 
 // * WebSockets
 
+[<AutoOpen>]
 module WebSockets =
 
   // ** tag
@@ -203,7 +204,7 @@ module WebSockets =
   // |_|    \__,_|_.__/|_|_|\___|
 
   [<RequireQualifiedAccess>]
-  module SocketServer =
+  module WebSocketServer =
 
     let create (mem: RaftMember) =
       either {
