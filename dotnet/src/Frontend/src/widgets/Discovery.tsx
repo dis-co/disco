@@ -125,16 +125,23 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
       wsPort: wsPort,
       httpPort: httpPort,
       gitPort: gitPort,
-      apiPort: apiPort
+      apiPort: apiPort,
+      enabled: IrisLib.toString(service.Status) === "idle"
     }
-    return (<div
-      key={id}
-      className="iris-discovered-service"
-      ref={el => { if (el != null) this.childNodes.set(id, el) }}
-      onMouseEnter={ev => this.displayTooltip(ev, info)}
-      onMouseLeave={() => this.hideTooltip()}
-      onMouseDown={() => this.startDragging(id, info)}
-    >{service.Name || id}</div>)
+    var props = {
+      key: id,
+      className: "iris-discovered-service",
+      ref: el => { if (el != null) this.childNodes.set(id, el) },
+      onMouseEnter: ev => this.displayTooltip(ev, info),
+      onMouseLeave: () => this.hideTooltip(),
+    };
+    if (info.enabled) {
+      Object.assign(props, {
+        className: "iris-discovered-service enabled",
+        onMouseDown: () => this.startDragging(id, info)
+      });
+    }
+    return (<div {...props}>{service.Name || id}</div>)
   }  
 
   render() {
