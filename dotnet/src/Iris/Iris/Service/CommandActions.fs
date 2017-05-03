@@ -143,7 +143,7 @@ let cloneProject (name: string) (uri: string) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> filepath name
   Git.Repo.clone target uri
-  |> Either.map (sprintf "Cloned project %A into %A" name target |> konst)
+  |> Either.map (konst (serializeJson [| "ok" |]))
 
 // Command to test:
 // curl -H "Content-Type: application/json" \
@@ -169,7 +169,7 @@ let pullProject (id: string) (name: string) (uri: string) = either {
         "Clonflict while pulling from " + uri
         |> Error.asGitError "pullProject"
         |> Either.fail
-    | _ -> return "ok"
+    | _ -> return serializeJson [| "ok" |]
   }
 
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
