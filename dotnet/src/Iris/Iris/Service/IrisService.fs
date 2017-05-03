@@ -251,6 +251,8 @@ module Iris =
     }
     |> Async.RunSynchronously
 
+  // ** withLoaded
+
   /// ## withLoaded
   ///
   /// Reach into passed IrisState value and apply either one of the passed functions to the inner
@@ -269,6 +271,8 @@ module Iris =
     | Idle   _    -> idle ()
     | Loaded data -> loaded data
 
+  // ** withState
+
   /// ## withState
   ///
   /// If the passed `IrisState` is a loaded project, execute the supplied function against it.
@@ -281,6 +285,8 @@ module Iris =
   let private withState (state: IrisState) (loaded: IrisLoadedStateData -> unit) =
     withLoaded state (konst state) (loaded >> konst state)
     |> ignore
+
+  // ** notLoaded
 
   /// ## notLoaded
   ///
@@ -473,7 +479,6 @@ module Iris =
           |> string
           |> Logger.err (tag "onError")
       | _ -> ()
-
 
   // ** onMessage
 
