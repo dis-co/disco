@@ -142,6 +142,7 @@ type ExposedService =
 
 type DiscoverableService =
   { Id: Id
+    WebPort: Port
     Status: MachineStatus
     Services: ExposedService array
     ExtraMetadata: Property array }
@@ -515,6 +516,7 @@ module Discovery =
     service.Name <- serviceName discoverable.Id
     service.RegType <- ZEROCONF_TCP_SERVICE
     service.ReplyDomain <- ZEROCONF_DOMAIN
+    service.Port <- int16 discoverable.WebPort
 
     let record = new TxtRecord()
 

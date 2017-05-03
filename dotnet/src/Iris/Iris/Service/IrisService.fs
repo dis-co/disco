@@ -326,6 +326,7 @@ module Iris =
 
     let discoverable: DiscoverableService =
       { Id = config.MachineId
+        WebPort = port config.WebPort
         Status = status
         Services = services
         ExtraMetadata = metadata }
