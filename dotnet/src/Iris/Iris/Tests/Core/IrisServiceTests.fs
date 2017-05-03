@@ -22,7 +22,8 @@ open ZeroMQ
 module IrisServiceTests =
 
   let private mkMachine () =
-    { MachineConfig.create() with WorkSpace = tmpPath() </> Path.getRandomFileName() }
+    { MachineConfig.create None with
+        WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let private mkProject (machine: IrisMachine) (site: ClusterConfig) =
     either {
