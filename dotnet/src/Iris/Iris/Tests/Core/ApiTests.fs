@@ -17,7 +17,7 @@ open FSharpx.Functional
 module ApiTests =
 
   let mkState () =
-    let machine = MachineConfig.create ()
+    let machine = MachineConfig.create None
 
     let project =
       { Id        = Id.Create()

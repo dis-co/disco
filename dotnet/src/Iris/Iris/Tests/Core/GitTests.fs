@@ -17,7 +17,7 @@ open System.IO
 [<AutoOpen>]
 module GitTests =
   let mkEnvironment port =
-    let machine = MachineConfig.create ()
+    let machine = MachineConfig.create None
 
     let tmpdir = mkTmpDir ()
 
