@@ -75,9 +75,9 @@ class ClusterView extends React.Component<ClusterProps,any> {
             {map(site.Members, kv => {
               const node = kv[1];
               return (
-                <tr key={kv[0].Fields[0]}>
+                <tr key={IrisLib.toString(kv[0])}>
                   <td>{node.HostName}</td>
-                  <td>{node.IpAddr.Fields[0]}</td>
+                  <td>{IrisLib.toString(node.IpAddr)}</td>
                   <td>{node.Port}</td>
                   <td>{node.State.ToString()}</td>
                   <td>left</td>
