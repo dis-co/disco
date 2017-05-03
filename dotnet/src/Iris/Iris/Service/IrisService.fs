@@ -210,7 +210,7 @@ module Iris =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
     | Git         of GitEvent
-    | Socket      of SocketEvent
+    | Socket      of WebSocketEvent
     | Raft        of RaftEvent
     | Api         of ApiEvent
     | Log         of LogEvent
@@ -251,6 +251,8 @@ module Iris =
     }
     |> Async.RunSynchronously
 
+  // ** withLoaded
+
   /// ## withLoaded
   ///
   /// Reach into passed IrisState value and apply either one of the passed functions to the inner
@@ -269,6 +271,8 @@ module Iris =
     | Idle   _    -> idle ()
     | Loaded data -> loaded data
 
+  // ** withState
+
   /// ## withState
   ///
   /// If the passed `IrisState` is a loaded project, execute the supplied function against it.
@@ -281,6 +285,8 @@ module Iris =
   let private withState (state: IrisState) (loaded: IrisLoadedStateData -> unit) =
     withLoaded state (konst state) (loaded >> konst state)
     |> ignore
+
+  // ** notLoaded
 
   /// ## notLoaded
   ///
@@ -474,7 +480,6 @@ module Iris =
           |> Logger.err (tag "onError")
       | _ -> ()
 
-
   // ** onMessage
 
   /// ## OnMessage
@@ -496,7 +501,8 @@ module Iris =
       | cmd ->
         match cmd with
         | AddSession session ->
-          data.SocketServer.BuildSession id session
+          session
+          |> data.SocketServer.BuildSession id
           |> Either.map AddSession
         | cmd -> Either.succeed cmd
         |> Either.bind (appendCmd data)
@@ -509,10 +515,10 @@ module Iris =
 
   // ** handleSocketEvent
 
-  let private handleSocketEvent (state: IrisState) (ev: SocketEvent) =
+  let private handleSocketEvent (state: IrisState) (ev: WebSocketEvent) =
     match ev with
-    | OnOpen id         -> onOpen    state id
-    | OnClose id        -> onClose   state id
+    | SessionAdded id   -> onOpen    state id
+    | SessionRemoved id -> onClose   state id
     | OnMessage (id,sm) -> onMessage state id sm
     | OnError (id,err)  -> onError   state id err
     state
@@ -604,7 +610,7 @@ module Iris =
       if data.RaftServer.IsLeader then
         match persistEntry data.Store.State sm with
         | Right commit ->
-          sprintf "Persisted command in commit: %s" commit.Sha
+          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
           |> Logger.debug (tag "onApplyLog")
           state
         | Left error ->
@@ -1025,7 +1031,7 @@ module Iris =
         let! mem = Config.selfMember state.Project.Config
 
         let! raftserver = RaftServer.create ()
-        let! wsserver   = SocketServer.create mem
+        let! wsserver   = WebSocketServer.create mem
         let! apiserver  = ApiServer.create mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to

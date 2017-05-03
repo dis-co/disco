@@ -392,29 +392,29 @@ module Discovery =
   // ** (|Machine|_|)
 
   let private (|Machine|_|) (item: TxtRecordItem) =
-    match item.Key with
-    | MACHINE -> Some item.ValueString
+    match item.Key, item.ValueString with
+    | MACHINE, value when not (isNull value) -> Some value
     | _ -> None
 
   // ** (|Status|_|)
 
   let private (|Status|_|) (item: TxtRecordItem) =
-    match item.Key with
-    | STATUS -> Some item.ValueString
+    match item.Key, item.ValueString with
+    | STATUS, value when not (isNull value) -> Some value
     | _ -> None
 
   // ** (|ProjectId|_|)
 
   let private (|ProjectId|_|) (item: TxtRecordItem) =
-    match item.Key with
-    | PROJECT_ID -> Some item.ValueString
+    match item.Key, item.ValueString with
+    | PROJECT_ID, value when not (isNull value) -> Some value
     | _ -> None
 
   // ** (|ProjectName|_|)
 
   let private (|ProjectName|_|) (item: TxtRecordItem) =
-    match item.Key with
-    | PROJECT_NAME -> Some item.ValueString
+    match item.Key, item.ValueString with
+    | PROJECT_NAME, value when not (isNull value) -> Some value
     | _ -> None
 
   // ** (|Services|_|)
@@ -476,10 +476,11 @@ module Discovery =
 
     match rawstatus, rawid, rawname with
     | Some MachineStatus.IDLE, _, _ -> Right Idle
-    | Some MachineStatus.BUSY, Some id, Some parsed ->
+    | Some MachineStatus.BUSY, Some id, Some parsed
+      when not (isNull id) && not (isNull parsed) ->
       Busy (Id id, name parsed) |> Either.succeed
     | _, _, _ ->
-      "Failed to parse Machine status: field(s) missing"
+      "Failed to parse Machine status: field(s) missing or null"
       |> Error.asParseError (tag "parseStatus")
       |> Either.fail
 
@@ -497,6 +498,7 @@ module Discovery =
     |> Seq.cast<TxtRecordItem>
     |> Seq.filter (not << reservedField)
     |> Seq.map (fun i -> { Key = i.Key; Value = i.ValueString })
+    |> Seq.filter (fun prop -> not (isNull prop.Key) && not (isNull prop.Value))
     |> Seq.toArray
 
   // ** parseServices
@@ -558,15 +560,45 @@ module Discovery =
       let services = parseServices service.TxtRecord
       let metadata = parseMetadata service.TxtRecord
 
+      let name =
+        if isNull service.Name then
+          Constants.EMPTY
+        else service.Name
+
+      let fullname =
+        if isNull service.FullName then
+          Constants.EMPTY
+        else service.FullName
+
+      let hostname =
+        if isNull entry || isNull entry.HostName then
+          ""
+        else entry.HostName
+
+      let hosttarget =
+        if isNull service.HostTarget then
+          ""
+        else service.HostTarget
+
+      let aliases =
+        // need to check both, if the entry is null
+        // *and* the aliases array, since it *can* be null
+        // and would still be valid value (i.e. the type checker)
+        // cannot catch this problem. ouf.
+        if isNull entry || isNull entry.Aliases then
+          [| |]
+        else
+          Array.filter (isNull >> not) entry.Aliases
+
       return
         { Id = machine
           Protocol = proto
           WebPort = service.Port |> uint16 |> port
-          Name = service.Name
-          FullName = service.FullName
-          HostName = if isNull entry then "" else entry.HostName
-          HostTarget = service.HostTarget
-          Aliases = if isNull entry then [| |] else entry.Aliases
+          Name = name
+          FullName = fullname
+          HostName = hostname
+          HostTarget = hosttarget
+          Aliases = aliases
           AddressList = addresses
           Status = status
           Services = services

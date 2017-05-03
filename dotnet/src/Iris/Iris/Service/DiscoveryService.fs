@@ -346,20 +346,17 @@ module Discovery =
                               (subs: Subscriptions)
                               (config: IrisMachine)
                               (srvc: DiscoveredService) =
-    if srvc.Id <> config.MachineId then
-      match state with
-      | Loaded data ->
-        match Map.tryFind srvc.Id data.ResolvedServices with
-        | Some service ->
-          let updated = Discovery.mergeDiscovered service srvc
-          notify subs (DiscoveryEvent.Updated updated)
-          Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
-        | None ->
-          notify subs (DiscoveryEvent.Appeared srvc)
-          Loaded { data with ResolvedServices = Map.add srvc.Id srvc data.ResolvedServices }
-      | Idle -> state
-    else
-      state
+    match state with
+    | Loaded data ->
+      match Map.tryFind srvc.Id data.ResolvedServices with
+      | Some service ->
+        let updated = Discovery.mergeDiscovered service srvc
+        notify subs (DiscoveryEvent.Updated updated)
+        Loaded { data with ResolvedServices = Map.add updated.Id updated data.ResolvedServices }
+      | None ->
+        notify subs (DiscoveryEvent.Appeared srvc)
+        Loaded { data with ResolvedServices = Map.add srvc.Id srvc data.ResolvedServices }
+    | Idle -> state
 
   // ** handleVanishing
 
