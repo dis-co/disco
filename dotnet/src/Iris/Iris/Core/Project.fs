@@ -56,6 +56,8 @@ type RaftConfig =
     MaxRetries:       uint8
     PeriodicInterval: uint8 }
 
+  // ** Default
+
   static member Default =
     { RequestTimeout   = 500<ms>
       ElectionTimeout  = 6000<ms>
@@ -64,6 +66,8 @@ type RaftConfig =
       PeriodicInterval = 50uy
       LogLevel         = LogLevel.Err
       DataDir          = filepath "" }
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let lvl = self.LogLevel |> string |> builder.CreateString
@@ -78,6 +82,8 @@ type RaftConfig =
     RaftConfigFB.AddMaxRetries(builder, uint16 self.MaxRetries)
     RaftConfigFB.AddPeriodicInterval(builder, uint16 self.PeriodicInterval)
     RaftConfigFB.EndRaftConfigFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: RaftConfigFB) =
     either {
@@ -105,9 +111,13 @@ type VvvvConfig =
   { Executables : VvvvExe array
     Plugins     : VvvvPlugin array }
 
+  // ** Default
+
   static member Default =
     { Executables = [| |]
       Plugins     = [| |] }
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let exes =
@@ -122,6 +132,8 @@ type VvvvConfig =
     VvvvConfigFB.AddExecutables(builder, exes)
     VvvvConfigFB.AddPlugins(builder, plugins)
     VvvvConfigFB.EndVvvvConfigFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: VvvvConfigFB) =
     either {
@@ -206,12 +218,16 @@ type TimingConfig =
     UDPPort   : uint32
     TCPPort   : uint32 }
 
+  // ** Default
+
   static member Default =
     { Framebase = 50u
       Input     = "Iris Freerun"
       Servers   = [| |]
       UDPPort   = 8071u
       TCPPort   = 8072u }
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let input = builder.CreateString self.Input
@@ -226,6 +242,8 @@ type TimingConfig =
     TimingConfigFB.AddUDPPort(builder, self.UDPPort)
     TimingConfigFB.AddTCPPort(builder, self.TCPPort)
     TimingConfigFB.EndTimingConfigFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: TimingConfigFB) =
     either {
@@ -266,13 +284,19 @@ type TimingConfig =
 type AudioConfig =
   { SampleRate : uint32 }
 
+  // ** Default
+
   static member Default =
     { SampleRate = 48000u }
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     AudioConfigFB.StartAudioConfigFB(builder)
     AudioConfigFB.AddSampleRate(builder, self.SampleRate)
     AudioConfigFB.EndAudioConfigFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: AudioConfigFB) =
     either {
@@ -292,12 +316,16 @@ type HostGroup =
   { Name    : Name
     Members : Id array }
 
+  // ** ToString
+
   override self.ToString() =
     sprintf "HostGroup:
               Name: %A
               Members: %A"
             self.Name
             (Array.fold (fun m s -> m + " " + string s) "" self.Members)
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let name = self.Name |> unwrap |> builder.CreateString
@@ -310,6 +338,8 @@ type HostGroup =
     HostGroupFB.AddName(builder,name)
     HostGroupFB.AddMembers(builder,members)
     HostGroupFB.EndHostGroupFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: HostGroupFB) =
     either {
@@ -356,12 +386,16 @@ type ClusterConfig =
         Members = Map.empty
         Groups  = [| |] }
 
+  // ** ToString
+
   override self.ToString() =
     sprintf "Cluster [Id: %s Name: %A Members: %d Groups: %d]"
       (string self.Id)
       self.Name
       (Map.fold (fun m _ _ -> m + 1) 0 self.Members)
       (Array.length self.Groups)
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
@@ -383,6 +417,8 @@ type ClusterConfig =
     ClusterConfigFB.AddMembers(builder, members)
     ClusterConfigFB.AddGroups(builder, groups)
     ClusterConfigFB.EndClusterConfigFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: ClusterConfigFB) =
     either {
@@ -475,6 +511,7 @@ type IrisConfig =
     Tasks:      Task     array }
 
   // ** Default
+
   static member Default
     with get () =
       { Machine    = IrisMachine.Default
@@ -492,6 +529,8 @@ type IrisConfig =
         ViewPorts = [| |]
         Displays  = [| |]
         Tasks     = [| |] }
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -544,6 +583,8 @@ type IrisConfig =
     ConfigFB.AddTasks(builder, tasks)
     ConfigFB.EndConfigFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: ConfigFB) =
     either {
       let version = fb.Version
@@ -567,7 +608,6 @@ type IrisConfig =
           |> Error.asParseError "IrisConfig.FromFB"
           |> Either.fail
         #endif
-
 
       let! audio =
         #if FABLE_COMPILER
@@ -758,6 +798,8 @@ type IrisConfig =
 [<RequireQualifiedAccess>]
 module ProjectYaml =
 
+  // ** template
+
   [<Literal>]
   let private template = """
 Project:
@@ -855,6 +897,8 @@ Project:
           Members:
             - 00000000-0000-0000-0000-000000000000
 """
+
+  // ** YamlConfig
 
   type Config = YamlConfig<"",false,template>
 
@@ -2060,7 +2104,7 @@ module Config =
   let selfMember (options: IrisConfig) =
     findMember options options.Machine.MachineId
 
-  // ** addSite
+  // ** addSitePrivate
 
   let private addSitePrivate (site: ClusterConfig) setActive (config: IrisConfig) =
     let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
@@ -2071,9 +2115,13 @@ module Config =
     then { config with ActiveSite = Some site.Id; Sites = copy }
     else { config with Sites = copy }
 
+  // ** addSite
+
   /// Adds or replaces a site with same Id
   let addSite (site: ClusterConfig) (config: IrisConfig) =
     addSitePrivate site false config
+
+  // ** addSiteAndActive
 
   /// Adds or replaces a site with same Id and sets it as the active site
   let addSiteAndSetActive (site: ClusterConfig) (config: IrisConfig) =
@@ -2167,6 +2215,8 @@ type IrisProject =
   ; Author    : string    option
   ; Config    : IrisConfig }
 
+  // ** ToString
+
   override project.ToString() =
     sprintf @"
 Id:        %s
@@ -2213,7 +2263,7 @@ Config: %A
       PROJECT_FILENAME + ASSET_EXTENSION
       |> filepath
 
-  // ** Save
+  // ** Load
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
@@ -2252,6 +2302,8 @@ Config: %A
               Path   = Path.getDirectoryName normalizedPath
               Config = Config.updateMachine machine project.Config }
     }
+
+  // ** Save
 
   //  ____
   // / ___|  __ ___   _____
@@ -2309,13 +2361,19 @@ Config: %A
     ProjectFB.AddConfig(builder, config)
     ProjectFB.EndProjectFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes () =
     Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> ProjectFB.GetRootAsProjectFB
     |> IrisProject.FromFB
+
+  // ** FromFB
 
   static member FromFB(fb: ProjectFB) =
     either {
@@ -2359,6 +2417,8 @@ Config: %A
           Config    = config }
     }
 
+  // ** ToYaml
+
   #if !FABLE_COMPILER && !IRIS_NODES
 
   // __   __              _
@@ -2393,6 +2453,8 @@ Config: %A
     |> ignore
 
     config.ToString()
+
+  // ** FromYaml
 
   static member FromYaml(str: string) =
     either {
@@ -2475,6 +2537,8 @@ module Project =
     }
 
   #endif
+
+  // ** checkPath
 
   //  ____       _   _
   // |  _ \ __ _| |_| |__  ___
