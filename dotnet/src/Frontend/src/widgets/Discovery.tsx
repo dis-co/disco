@@ -77,7 +77,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
         visible: true,
         left: ev.clientX,
         top: ev.clientY,
-        content: `<p>Host: ${info.hostName}</p><p>IP: ${info.ipAddr}</p><p>Port: ${info.port}</p><p>Web Socket Port: ${info.wsPort}</p><p>Git Port: ${info.gitPort}</p><p>API Port: ${info.apiPort}</p>`
+        content: `<p>Host: ${info.hostName}</p><p>IP: ${info.ipAddr}</p><p>Port: ${info.port}</p><p>HTTP Port: ${info.httpPort}</p><p>Web Socket Port: ${info.wsPort}</p><p>Git Port: ${info.gitPort}</p><p>API Port: ${info.apiPort}</p>`
       }
     })
   }
@@ -91,16 +91,41 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
   }
 
   renderService(service) {
-    var id = IrisLib.toString(service.Id)
+    var id = IrisLib.toString(service.Id);
+    var ipAddr = "0.0.0.0", port = 0, wsPort = 0, httpPort = 0, gitPort = 0, apiPort = 0;
+    if (service.AddressList.length > 0) {
+        ipAddr = IrisLib.toString(service.AddressList[0]);
+    }
+    for (let i = 0; i < service.Services.length; i++) {
+      let exposed = service.Services[i];
+      switch (IrisLib.toString(exposed.ServiceType)) {
+        case "git":
+          gitPort = exposed.Port;
+          break;
+        case "raft":
+          port = exposed.Port;
+          break;
+        case "api":
+          apiPort = exposed.Port;
+          break;
+        case "http":
+          httpPort = exposed.Port;
+          break;
+        case "ws":
+          wsPort = exposed.Port;
+          break;
+      }
+    }
     var info = {
       tag: "discovered-service",
       id: id,
-      hostName: service.Hostname,
-      ipAddr: IrisLib.toString(service.IpAddr),
-      port: service.Port,
-      wsPort: service.WsPort,
-      gitPort: service.GitPort,
-      apiPort: service.ApiPort
+      hostName: service.HostName,
+      ipAddr: ipAddr,
+      port: port,
+      wsPort: wsPort,
+      httpPort: httpPort,
+      gitPort: gitPort,
+      apiPort: apiPort
     }
     return (<div
       key={id}
@@ -109,14 +134,12 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
       onMouseEnter={ev => this.displayTooltip(ev, info)}
       onMouseLeave={() => this.hideTooltip()}
       onMouseDown={() => this.startDragging(id, info)}
-    >{id}</div>)
+    >{service.Name || id}</div>)
   }  
 
   render() {
     const tooltip = this.state.tooltip;
-    const services =
-      this.props.global.state.services;
-      // mockupServices;
+    const services = this.props.global.state.services;
     return (
       <div className="iris-discovery">
         <div className="iris-tooltip" style={{
@@ -124,22 +147,11 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
           left: tooltip.left,
           top: tooltip.right
         }} dangerouslySetInnerHTML={{__html: tooltip.content}}></div>
-        {map(services, x => this.renderService(x))}
+        {map(services, kv => this.renderService(kv[1]))}
       </div>
     )
   }
 }
-
-class MockupService {
-  constructor(public Id: string, public Hostname = "localhost", public IpAddr = "192.127.0.1", public Port = 1100, public WsPort = 1200, public GitPort = 1300, public ApiPort = 1400) {
-  }
-}
-
-const mockupServices = [
-  new MockupService("Service 1"),
-  new MockupService("Service 2"),
-  new MockupService("Service 3")
-];
 
 export default class Discovery {
   view: typeof DiscoveryView;
