@@ -1,8 +1,8 @@
 namespace Iris.Service
 
-#if !IRIS_NODES
-
 // * Imports
+
+#if !IRIS_NODES
 
 open System
 open System.IO
@@ -502,20 +502,22 @@ module Iris =
         data.ApiServer.Update cmd
         data.Store.Dispatch cmd
         broadcastMsg data cmd
-      | cmd ->
-        match cmd with
-        | AddSession session ->
-          session
-          |> data.SocketServer.BuildSession id
-          |> Either.map AddSession
-        | cmd -> Either.succeed cmd
+      | AddSession session ->
+        session
+        |> data.SocketServer.BuildSession id
+        |> Either.map AddSession
         |> Either.bind (appendCmd data)
-        |> function
-          | Right _ -> ()
-          | Left error ->
-            error
-            |> string
-            |> Logger.err (tag "onMessage")
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
+      | AddMember mem ->
+        data.RaftServer.AddMember mem
+        |> Either.map (sprintf "added new member in: %O" >> Logger.debug (tag "onMessage"))
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
+      | cmd ->
+        appendCmd data cmd
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
 
   // ** handleSocketEvent
 

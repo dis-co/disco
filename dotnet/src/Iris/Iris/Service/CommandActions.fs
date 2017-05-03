@@ -201,6 +201,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
+        | LoadProject(projectName, username, password, opts) ->
           iris.LoadProject(projectName, username, password, ?options=opts)
           |> Either.map (fun _ -> "Loaded project " + projectName)
         | GetProjectSites(projectName, username, password) ->
