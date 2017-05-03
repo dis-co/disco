@@ -140,6 +140,33 @@ let cloneProject (name: string) (uri: string) =
   Git.Repo.clone target uri
   |> Either.map (sprintf "Cloned project %A into %A" name target |> konst)
 
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
+//      http://localhost:7000/api/command
+
+let pullProject (id: string) (name: string) (uri: string) = either {
+    let machine = MachineConfig.get()
+    let target = machine.WorkSpace </> filepath name
+    let! repo = Git.Repo.repository target
+
+    let! remote =
+      match Git.Config.tryFindRemote repo (string id) with
+      | Some remote -> Git.Config.updateRemote repo remote uri
+      | None -> Git.Config.addRemote repo (string id) uri
+
+    let! result = Git.Repo.pull repo remote User.Admin.Signature
+
+    match result.Status with
+    | LibGit2Sharp.MergeStatus.Conflicts ->
+      return!
+        "Clonflict while pulling from " + uri
+        |> Error.asGitError "pullProject"
+        |> Either.fail
+    | _ -> return "ok"
+  }
+
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
 let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
@@ -168,6 +195,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | GetServiceInfo -> getServiceInfo iris
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
+        | PullProject (id, name, gitUri) -> pullProject id name gitUri
         | LoadProject(projectName, username, password, site) ->
           iris.LoadProject(projectName, username, password, ?site=site)
           |> Either.map (fun _ -> "Loaded project " + projectName)
