@@ -558,6 +558,16 @@ module Discovery =
       let services = parseServices service.TxtRecord
       let metadata = parseMetadata service.TxtRecord
 
+      let name =
+        if isNull service.Name then
+          Constants.EMPTY
+        else service.Name
+
+      let fullname =
+        if isNull service.FullName then
+          Constants.EMPTY
+        else service.FullName
+
       let aliases =
         // need to check both, if the entry is null
         // *and* the aliases array, since it *can* be null
@@ -565,13 +575,14 @@ module Discovery =
         // cannot catch this problem. ouf.
         if isNull entry || isNull entry.Aliases then
           [| |]
-        else entry.Aliases
+        else
+          Array.filter (isNull >> not) entry.Aliases
 
       return
         { Id = machine
           Protocol = proto
           WebPort = service.Port |> uint16 |> port
-          Name = service.Name
+          Name = name
           FullName = service.FullName
           HostName = if isNull entry then "" else entry.HostName
           HostTarget = service.HostTarget
