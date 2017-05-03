@@ -56,16 +56,17 @@ let listProjects (cfg: IrisMachine): Either<IrisError,string> =
 ///
 /// Returns: IrisProject
 let buildProject (machine: IrisMachine)
-                  (name: string)
+                  (projectName: string)
+                  (activeSiteName: string)
                   (path: FilePath)
                   (raftDir: FilePath)
                   (mem: RaftMember) =
   either {
-    let! project = Project.create path name machine
+    let! project = Project.create path projectName machine
 
     let site =
         let def = ClusterConfig.Default
-        { def with Members = Map.add mem.Id mem def.Members }
+        { def with Name = name activeSiteName; Members = Map.add mem.Id mem def.Members }
 
     let updated =
       project
@@ -96,7 +97,7 @@ let initializeRaft (project: IrisProject) = either {
     return ()
   }
 
-let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
+let createProject (machine: IrisMachine) (opts: ProjectOptions) = either {
     let dir = machine.WorkSpace </> filepath opts.name
     let raftDir = dir </> filepath RAFT_DIRECTORY
 
@@ -117,7 +118,7 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
           ApiPort = opts.apiPort
           Port    = opts.port }
 
-    let! project = buildProject machine opts.name dir raftDir mem
+    let! project = buildProject machine opts.name opts.activeSite dir raftDir mem
 
     do! initializeRaft project
 
@@ -191,7 +192,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
             exit 0
           }
           Right msg
-        | UnloadProject ->
+        | Command.UnloadProject ->
           // TODO: Check if a project is actually loaded
           iris.UnloadProject()
           |> Either.map (fun () -> "Project unloaded")
@@ -200,8 +201,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
-        | LoadProject(projectName, username, password, site) ->
-          iris.LoadProject(projectName, username, password, ?site=site)
+          iris.LoadProject(projectName, username, password, ?options=opts)
           |> Either.map (fun _ -> "Loaded project " + projectName)
         | GetProjectSites(projectName, username, password) ->
           getProjectSites cfg projectName username password

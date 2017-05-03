@@ -216,7 +216,7 @@ module Iris =
     | Log         of LogEvent
     | Clock       of ClockEvent
     | Discovery   of DiscoveryEvent
-    | Load        of ReplyChan * project:string * user:string * pw:Password * site:string option
+    | Load        of ReplyChan * project:string * user:string * pw:Password * opts:ProjectOptions option
     | SetConfig   of ReplyChan * IrisConfig
     | AddMember   of ReplyChan * RaftMember
     | RmMember    of ReplyChan * Id
@@ -978,7 +978,7 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: Password, site: string option)
+                          (projectName: string, userName: string, password: Password, opts: ProjectOptions option)
                           (subscriptions: Subscriptions) =
     let isValidPassword (user: User) (password: Password) =
       let password = Crypto.hashPassword password user.Salt
@@ -1003,34 +1003,32 @@ module Iris =
             dispose loaded
             loaded.Machine, loaded.DiscoveryService
 
-        let! state =
-          match site with
-          | Some site ->
+        let state =
+          match opts with
+          | Some opts ->
             let site =
               state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Name = name site)
-              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name site }
+              |> Array.tryFind (fun s -> s.Name = name opts.activeSite)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name opts.activeSite }
 
             // Add current machine if necessary
             let site =
-              let mid = machine.MachineId
-              if Map.containsKey mid site.Members
-              then Right site
+              let machineId = machine.MachineId
+              if Map.containsKey machineId site.Members
+              then site
               else
-                // Another cluster must cointain the self member, search for it
-                state.Project.Config.Sites
-                |> Seq.collect (fun site -> site.Members)
-                |> Seq.tryFind (fun kvp -> kvp.Key = mid)
-                |> function
-                  | Some kvp -> Right { site with Members = Map.add mid kvp.Value site.Members }
-                  | None -> Error.asProjectError "" "" |> Left
+                let selfMember =
+                  { Member.create(machineId) with
+                      IpAddr  = IpAddress.Parse opts.ipAddr
+                      GitPort = opts.gitPort
+                      WsPort  = opts.wsPort
+                      ApiPort = opts.apiPort
+                      Port    = opts.port }
+                { site with Members = Map.add machineId selfMember site.Members }
 
-            match site with
-            | Right site ->
-              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-              Right { state with Project = { state.Project with Config = cfg }}
-            | Left err -> Left err
-          | None -> Right state
+            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+            { state with Project = { state.Project with Config = cfg }}
+          | None -> state
 
         let! mem = Config.selfMember state.Project.Config
 
@@ -1433,8 +1431,8 @@ module Iris =
                   |> Error.asOther (tag "Status")
                   |> Either.fail
 
-          member self.LoadProject(name, username, password, site) =
-            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, site)) with
+          member self.LoadProject(name, username, password, opts) =
+            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, opts)) with
             | Right Reply.Ok -> Right ()
             | Left error -> Left error
             | Right other ->
