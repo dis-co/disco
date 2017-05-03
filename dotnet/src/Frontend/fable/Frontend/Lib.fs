@@ -170,9 +170,9 @@ let addMember(info: obj) = promise {
         match Project.localRemote latestState.Project with
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
-      if projects |> Array.exists (fun p -> p.Id = latestState.Project.Id)
-      then PullProject(unwrap latestState.Project.Name, projectGitUri)
-      else CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
+      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
+      | None -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
     notify commandMsg
 
