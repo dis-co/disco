@@ -27,6 +27,7 @@ type Command =
   | GetServiceInfo
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:string * uri:string
+  | PullProject of projectId:string * projectName:string * uri:string
   | LoadProject of projectName:string * username:string * password:Password * site:string option
   | GetProjectSites of projectName:string * username:string * password:string
 
