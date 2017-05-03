@@ -37,7 +37,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
                 this.el.classList.add("iris-highlight-blue");
                 return;
               case "stop":
-                IrisLib.addMember(this.state);
+                IrisLib.addMember(ev.model);
             }
           }
           this.el.classList.remove("iris-highlight-blue")

@@ -133,7 +133,7 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
 let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
   postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
-    if not res.Ok
+    if res.Ok
     then res.text() |> Promise.map ofJson<'T>
     else res.text() |> Promise.map (failwithf "%s"))
 
@@ -147,19 +147,23 @@ let listProjects() =
   ListProjects
   |> postCommandWithErrorNotifier [||] (ofJson<NameAndId[]> >> Array.map (fun x -> x.Name))
 
-let addMember(info: obj) = promise {
+let addMember(info: obj) =
+  Promise.start (promise {
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   try
-    let latestState =
-      ClientContext.Singleton.LatestState
+    let latestState = ClientContext.Singleton.LatestState
 
     let memberIpAndPort =
       let memberIpAddr: string = !!info?ipAddr
       let memberHttpPort: uint16 = !!info?httpPort
       sprintf "%s:%i" memberIpAddr memberHttpPort |> Some
 
+    memberIpAndPort |> Option.iter (printfn "New member URI: %s")
+
     // List projects of member candidate (B)
     let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
+
+    printfn "New member projects: %A" projects
 
     // If B has leader (A) active project,
     // then **pull** project from A into B
@@ -174,6 +178,7 @@ let addMember(info: obj) = promise {
       | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
       | None -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
+
     notify commandMsg
 
     // Load active project in machine B
@@ -193,8 +198,9 @@ let addMember(info: obj) = promise {
     // TODO: Check the state machine post has been successful
     |> ClientContext.Singleton.Post
   with
-  | exn -> sprintf "Cannot create member: %s" exn.Message |> notify
-}
+  | exn ->
+    sprintf "Cannot add new member: %s" exn.Message |> notify
+})
 
 let shutdown() =
   Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
