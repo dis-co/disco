@@ -142,7 +142,6 @@ type ExposedService =
 
 type DiscoverableService =
   { Id: Id
-    WebPort: Port
     Status: MachineStatus
     Services: ExposedService array
     ExtraMetadata: Property array }
@@ -152,7 +151,6 @@ type DiscoverableService =
 type DiscoveredService =
   { Id: Id
     Name: string
-    WebPort: Port
     FullName: string
     HostName: string
     HostTarget: string
@@ -198,7 +196,6 @@ type DiscoveredService =
     DiscoveredServiceFB.StartDiscoveredServiceFB(builder)
     DiscoveredServiceFB.AddId(builder, id)
     DiscoveredServiceFB.AddName(builder, name)
-    DiscoveredServiceFB.AddWebPort(builder, unwrap service.WebPort)
     DiscoveredServiceFB.AddFullName(builder, fullname)
     DiscoveredServiceFB.AddHostName(builder, hostname)
     DiscoveredServiceFB.AddHostTarget(builder, hosttarget)
@@ -310,7 +307,6 @@ type DiscoveredService =
       return
         { Id            = Id fb.Id
           Name          = fb.Name
-          WebPort       = port fb.WebPort
           FullName      = fb.FullName
           HostName      = fb.HostName
           HostTarget    = fb.HostTarget
@@ -519,7 +515,6 @@ module Discovery =
     service.Name <- serviceName discoverable.Id
     service.RegType <- ZEROCONF_TCP_SERVICE
     service.ReplyDomain <- ZEROCONF_DOMAIN
-    service.Port <- int16 discoverable.WebPort
 
     let record = new TxtRecord()
 
@@ -593,7 +588,6 @@ module Discovery =
       return
         { Id = machine
           Protocol = proto
-          WebPort = service.Port |> uint16 |> port
           Name = name
           FullName = fullname
           HostName = hostname

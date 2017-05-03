@@ -469,13 +469,13 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project  = project
-               PinGroups  = groups
-               Cues     = cues
-               CueLists = cuelists
-               Users    = users
-               Sessions = sessions
-               Clients  = clients
+      return { Project   = project
+               PinGroups = groups
+               Cues      = cues
+               CueLists  = cuelists
+               Users     = users
+               Sessions  = sessions
+               Clients   = clients
                DiscoveredServices = discoveredServices }
     }
 

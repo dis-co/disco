@@ -326,7 +326,6 @@ module Iris =
 
     let discoverable: DiscoverableService =
       { Id = config.MachineId
-        WebPort = port config.WebPort
         Status = status
         Services = services
         ExtraMetadata = metadata }
@@ -342,7 +341,10 @@ module Iris =
   // ** registerIdleServices
 
   let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
-    registerService service config MachineStatus.Idle [| |] [| |]
+    let services =
+      [| { ServiceType = ServiceType.Http
+           Port = port config.WebPort } |]
+    registerService service config MachineStatus.Idle services [| |]
 
   // ** registerLoadedServices
 
@@ -352,6 +354,7 @@ module Iris =
       [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
          { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
          { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+         { ServiceType = ServiceType.Http;      Port = port project.Config.Machine.WebPort }
          { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
     registerService service project.Config.Machine status services [| |]
 

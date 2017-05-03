@@ -105,7 +105,6 @@ module TestData =
   let mkDiscoveredService() =
     { Id = Id.Create()
       Name = rndstr()
-      WebPort = rndport()
       FullName = rndstr()
       HostName = rndstr()
       HostTarget = rndstr()
