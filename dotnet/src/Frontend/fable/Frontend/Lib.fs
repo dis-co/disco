@@ -187,22 +187,20 @@ let addMember(info: obj) =
         match Project.localRemote latestState.Project with
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
-      printfn "projectGitUri: %A" projectGitUri
       match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p ->
-        printfn "pulling project"
-        PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
-        |> postCommandParseAndContinue<string> memberIpAndPort
-      | None ->
-        printfn "cloning project"
-        CloneProject(unwrap latestState.Project.Name, projectGitUri)
-        |> postCommandParseAndContinue<string> memberIpAndPort
+      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
+      | None   -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      |> postCommandParseAndContinue<string> memberIpAndPort
 
     notify commandMsg
 
+    let active =
+      latestState.Project.Config.ActiveSite
+      |> Option.map string
+
     // Load active project in machine B
     // TODO: Using the admin user for now, should it be the same user as leader A?
-    let! errMsg = loadProject(unwrap latestState.Project.Name, "admin", "Nsynk", None, memberIpAndPort)
+    let! errMsg = loadProject(unwrap latestState.Project.Name, "admin", "Nsynk", active, memberIpAndPort)
     errMsg |> Option.iter (failwith "Error when loading project in member: %s")
 
     // Add member B to the leader (A) cluster
