@@ -163,6 +163,7 @@ type IIrisServer =
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract LoadProject   : name:string * userName:string * password:Password * ?options:ProjectOptions -> Either<IrisError,unit>
   abstract UnloadProject : unit -> Either<IrisError,unit>
+  abstract MachineStatus : Either<IrisError,MachineStatus>
 
 // * IApiServer
 

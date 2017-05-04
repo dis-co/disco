@@ -22,6 +22,12 @@ let private serializeJson =
     let converter = Fable.JsonConverter()
     fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
 
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '"GetServiceInfo"' \
+//      http://localhost:7000/api/comman
+
 let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
     | Left _ -> null |> serializeJson
@@ -34,6 +40,12 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
           |> serializeJson
         | Left _ -> null |> serializeJson
     |> Either.succeed
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '"ListProjects"' \
+//      http://localhost:7000/api/comman
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   Directory.getDirectories cfg.WorkSpace
@@ -136,6 +148,17 @@ let getProjectSites machine projectName username password =
 // Command to test:
 // curl -H "Content-Type: application/json" \
 //      -XPOST \
+//      -d '"MachineStatus"' \
+//      http://localhost:7000/api/comman
+
+let machineStatus (iris: IIrisServer) =
+  match iris.MachineStatus with
+  | Right status -> status |> serializeJson |> Either.succeed
+  | Left error -> Left error
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
 //      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
@@ -198,6 +221,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
           |> Either.map (fun () -> "Project unloaded")
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
+        | MachineStatus -> machineStatus iris
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri

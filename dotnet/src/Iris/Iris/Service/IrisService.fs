@@ -188,9 +188,10 @@ module Iris =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply =
     | Ok
-    | State  of IrisLoadedStateData
-    | Entry  of EntryResponse
-    | Config of IrisConfig
+    | State         of IrisLoadedStateData
+    | Entry         of EntryResponse
+    | Config        of IrisConfig
+    | MachineStatus of MachineStatus
 
   // ** ReplyChan
 
@@ -209,22 +210,23 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git         of GitEvent
-    | Socket      of WebSocketEvent
-    | Raft        of RaftEvent
-    | Api         of ApiEvent
-    | Log         of LogEvent
-    | Clock       of ClockEvent
-    | Discovery   of DiscoveryEvent
-    | Load        of ReplyChan * project:string * user:string * pw:Password * opts:ProjectOptions option
-    | SetConfig   of ReplyChan * IrisConfig
-    | AddMember   of ReplyChan * RaftMember
-    | RmMember    of ReplyChan * Id
-    | Join        of ReplyChan * IpAddress  * uint16
-    | Leave       of ReplyChan
-    | Config      of ReplyChan
-    | Unload      of ReplyChan
-    | State       of ReplyChan
+    | Git           of GitEvent
+    | Socket        of WebSocketEvent
+    | Raft          of RaftEvent
+    | Api           of ApiEvent
+    | Log           of LogEvent
+    | Clock         of ClockEvent
+    | Discovery     of DiscoveryEvent
+    | Load          of ReplyChan * project:string * user:string * pw:Password * opts:ProjectOptions option
+    | SetConfig     of ReplyChan * IrisConfig
+    | AddMember     of ReplyChan * RaftMember
+    | RmMember      of ReplyChan * Id
+    | Join          of ReplyChan * IpAddress  * uint16
+    | Leave         of ReplyChan
+    | Config        of ReplyChan
+    | Unload        of ReplyChan
+    | State         of ReplyChan
+    | MachineStatus of ReplyChan
     | ForceElection
     | Periodic
 
@@ -1349,6 +1351,23 @@ module Iris =
         data.ApiServer.Update sm
       state
 
+  // ** handleMachineStatus
+
+  let private handleMachineStatus (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle _ ->
+      MachineStatus.Idle
+      |> Reply.MachineStatus
+      |> Either.succeed
+      |> chan.Reply
+    | Loaded data ->
+      let project = data.Store.State.Project
+      MachineStatus.Busy(project.Id, project.Name)
+      |> Reply.MachineStatus
+      |> Either.succeed
+      |> chan.Reply
+    state
+
   // ** loop
 
   let private loop (initial: IrisState)
@@ -1380,6 +1399,7 @@ module Iris =
           | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
           | Msg.State chan           -> handleState          state chan
           | Msg.Clock clock          -> handleClock          state       clock
+          | Msg.MachineStatus chan   -> handleMachineStatus  state chan
         return! act newstate
       }
 
@@ -1389,6 +1409,8 @@ module Iris =
 
   [<RequireQualifiedAccess>]
   module IrisService =
+
+    // *** mkIris
 
     let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) =
       let listener =
@@ -1538,6 +1560,17 @@ module Iris =
                   |> Error.asOther (tag "SocketServer")
                   |> Either.fail
 
+          member self.MachineStatus
+            with get () =
+              Tracing.trace (tag "MachineStatus") <| fun () ->
+                match postCommand agent "MachineStatus" Msg.MachineStatus with
+                | Right (Reply.MachineStatus status) -> Right status
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "SocketServer")
+                  |> Either.fail
+
           member self.Subscribe(callback: IrisEvent -> unit) =
             { new IObserver<IrisEvent> with
                 member self.OnCompleted() = ()
@@ -1552,6 +1585,8 @@ module Iris =
               |> ignore
               dispose agent
         }
+
+    // *** initIdleState
 
     let private initIdleState (agent: (IrisAgent option) ref) (config: IrisMachine) =
       let discovery = DiscoveryService.create config
@@ -1578,6 +1613,7 @@ module Iris =
                DiscoveryService = discovery
                DiscoverableService = None }
 
+    // *** create
 
     let create (config: IrisMachine) (post: CommandAgent) =
       try
