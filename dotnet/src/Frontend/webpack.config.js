@@ -71,7 +71,7 @@ var bundleConfig = {
       'react-hot-loader/patch',
       // activate HMR for React
 
-      'webpack-dev-server/client?http://localhost:3000',
+      'webpack-dev-server/client?http://' + irisHost + ':3000',
       // bundle the client for webpack-dev-server
       // and connect to the provided endpoint
 
@@ -139,7 +139,7 @@ var bundleConfig = {
   ],
 
   devServer: {
-    host: "localhost",
+    host: irisHost,
     port: 3000,
     historyApiFallback: true, // respond to 404s with index.html
     hot: true, // enable HMR on the server

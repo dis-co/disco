@@ -64,8 +64,14 @@ run.service.2:
 run.service.3:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three"
 
-run.service.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --project=${PROJECT}"
+run.service.1.project:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+
+run.service.2.project:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two --project=${PROJECT}"
+
+run.service.3.project:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |

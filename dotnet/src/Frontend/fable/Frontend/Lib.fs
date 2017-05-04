@@ -165,8 +165,7 @@ let addMember(info: obj) =
 
     match status with
     | Busy (_, name) ->
-      sprintf "Host cannot be added. Reason: busy with project %A" name
-      |> notify
+      sprintf "Host cannot be added. Reason: busy with project %A" name |> notify
     | Idle ->
       // List projects of member candidate (B)
       let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
