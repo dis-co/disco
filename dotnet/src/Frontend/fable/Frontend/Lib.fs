@@ -167,6 +167,11 @@ let addMember(info: obj) =
     | Busy (_, name) ->
       sprintf "Host cannot be added. Reason: busy with project %A" name |> notify
     | Idle ->
+      // Get the added machines configuration
+      let! (machine: IrisMachine) = postCommandParseAndContinue memberIpAndPort MachineConfig
+
+      printfn "Member config details: %A" machine
+
       // List projects of member candidate (B)
       let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
 
@@ -194,13 +199,13 @@ let addMember(info: obj) =
       errMsg |> Option.iter (failwith "Error when loading project in member: %s")
 
       // Add member B to the leader (A) cluster
-      { Member.create (Id !!info?id) with
-          HostName = !!info?hostName
-          IpAddr   = IPv4Address !!info?ipAddr
-          Port     = !!info?port
-          WsPort   = !!info?wsPort
-          GitPort  = !!info?gitPort
-          ApiPort  = !!info?apiPort }
+      { Member.create machine.MachineId with
+          HostName = machine.HostName
+          IpAddr   = IPv4Address machine.WebIP
+          Port     = machine.RaftPort
+          WsPort   = machine.WsPort
+          GitPort  = machine.GitPort
+          ApiPort  = machine.ApiPort }
       |> AddMember
       // TODO: Check the state machine post has been successful
       |> ClientContext.Singleton.Post

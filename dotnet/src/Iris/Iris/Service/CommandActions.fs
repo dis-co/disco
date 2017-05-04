@@ -158,6 +158,17 @@ let machineStatus (iris: IIrisServer) =
 // Command to test:
 // curl -H "Content-Type: application/json" \
 //      -XPOST \
+//      -d '"MachineConfig"' \
+//      http://localhost:7000/api/comman
+
+let machineConfig () =
+  MachineConfig.get()
+  |> serializeJson
+  |> Either.succeed
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
 //      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
@@ -221,6 +232,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
         | MachineStatus -> machineStatus iris
+        | MachineConfig -> machineConfig ()
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri

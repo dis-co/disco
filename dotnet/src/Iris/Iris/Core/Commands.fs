@@ -30,6 +30,7 @@ type Command =
   | ListProjects
   | GetServiceInfo
   | MachineStatus
+  | MachineConfig
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:string * uri:string
   | PullProject of projectId:string * projectName:string * uri:string

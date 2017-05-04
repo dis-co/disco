@@ -11,22 +11,10 @@ export default class AddMember extends React.Component<AddMemberProps,any> {
   constructor(props) {
       super(props);
       this.state = {
-        id: "",
-        idError: "Required",
-        hostName: "",
-        hostNameError: "Required",
         ipAddr: "",
         ipAddrError: "Required",
-        port: 0,
-        portError: "Required",
-        apiPort: 0,
-        apiPortError: "Required",
         httpPort: 0,
         httpPortError: "Required",
-        wsPort: 0,
-        wsPortError: "Required",
-        gitPort: 0,
-        gitPortError: "Required"
       };
   }
 
@@ -53,7 +41,7 @@ export default class AddMember extends React.Component<AddMemberProps,any> {
     for (let key in this.state) {
       if (key !== id && key.toLowerCase().endsWith("port")) {
         if (this.state[key] === parsed) {
-          return { value: parsed, error: "Duplicated port" };
+          return { value: parsed, error: "Duplicate Port" };
         }
       }
     }
@@ -92,14 +80,8 @@ export default class AddMember extends React.Component<AddMemberProps,any> {
     return (
       <div>
         <p className="title has-text-centered">Node information</p>
-        {this.renderGroup("id", "Id", this.validateName.bind(this))}
-        {this.renderGroup("hostName", "Host Name", this.validateName.bind(this))}
         {this.renderGroup("ipAddr", "IP Address", this.validateIpAddress.bind(this))}
-        {this.renderGroup("apiPort", "Api Port", this.validatePort.bind(this))}
-        {this.renderGroup("port", "Raft Port", this.validatePort.bind(this))}
         {this.renderGroup("httpPort", "HTTP Port", this.validatePort.bind(this))}
-        {this.renderGroup("wsPort", "Web Socket Port", this.validatePort.bind(this))}
-        {this.renderGroup("gitPort", "Git Daemon Port", this.validatePort.bind(this))}
         <div className="field is-grouped">
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
