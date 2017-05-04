@@ -251,7 +251,7 @@ module CommandLine =
             Port    = raft
             ApiPort = api }
 
-      let! project = buildProject machine name "default" dir raftDir mem
+      let! project = buildProject machine name dir raftDir mem
 
       do! initializeRaft project
     }

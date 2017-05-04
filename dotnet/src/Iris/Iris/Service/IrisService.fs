@@ -217,7 +217,7 @@ module Iris =
     | Log           of LogEvent
     | Clock         of ClockEvent
     | Discovery     of DiscoveryEvent
-    | Load          of ReplyChan * project:string * user:string * pw:Password * opts:ProjectOptions option
+    | Load          of ReplyChan * project:string * user:string * pw:Password * site:string option
     | SetConfig     of ReplyChan * IrisConfig
     | AddMember     of ReplyChan * RaftMember
     | RmMember      of ReplyChan * Id
@@ -982,7 +982,7 @@ module Iris =
 
   let private loadProject (oldState: IrisState)
                           (machine: IrisMachine)
-                          (projectName: string, userName: string, password: Password, opts: ProjectOptions option)
+                          (projectName: string, userName: string, password: Password, site: string option)
                           (subscriptions: Subscriptions) =
     let isValidPassword (user: User) (password: Password) =
       let password = Crypto.hashPassword password user.Salt
@@ -1008,14 +1008,15 @@ module Iris =
             loaded.Machine, loaded.DiscoveryService
 
         let state =
-          match opts with
-          | Some opts ->
+          match site with
+          | Some site ->
             let site =
               state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Name = name opts.activeSite)
-              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name opts.activeSite }
+              |> Array.tryFind (fun s -> s.Name = name site)
+              |> function Some s -> s | None -> { ClusterConfig.Default with Name = name site }
 
             // Add current machine if necessary
+            // taking the default ports from MachineConfig
             let site =
               let machineId = machine.MachineId
               if Map.containsKey machineId site.Members
@@ -1023,17 +1024,19 @@ module Iris =
               else
                 let selfMember =
                   { Member.create(machineId) with
-                      IpAddr  = IpAddress.Parse opts.ipAddr
-                      GitPort = opts.gitPort
-                      WsPort  = opts.wsPort
-                      ApiPort = opts.apiPort
-                      Port    = opts.port }
+                      IpAddr  = IpAddress.Parse machine.WebIP
+                      GitPort = machine.GitPort
+                      WsPort  = machine.WsPort
+                      ApiPort = machine.ApiPort
+                      Port    = machine.RaftPort }
                 { site with Members = Map.add machineId selfMember site.Members }
 
             let cfg = state.Project.Config |> Config.addSiteAndSetActive site
             { state with Project = { state.Project with Config = cfg }}
           | None -> state
 
+        // This will fail if there's no ActiveSite set up in state.Project.Config
+        // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
 
         let! raftserver = RaftServer.create ()
@@ -1455,8 +1458,8 @@ module Iris =
                   |> Error.asOther (tag "Status")
                   |> Either.fail
 
-          member self.LoadProject(name, username, password, opts) =
-            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, opts)) with
+          member self.LoadProject(name, username, password, site) =
+            match postCommand agent "Load" (fun chan -> Msg.Load(chan, name, username, password, site)) with
             | Right Reply.Ok -> Right ()
             | Left error -> Left error
             | Right other ->

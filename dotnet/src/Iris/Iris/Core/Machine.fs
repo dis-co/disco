@@ -32,6 +32,8 @@ type IrisMachine =
   { MachineId : Id
     HostName  : string
     WorkSpace : FilePath
+    /// In spite of its name, other services should bind
+    /// to this IP too, not only the HTTP server
     WebIP     : string
     WebPort   : uint16
     RaftPort  : uint16
@@ -262,7 +264,7 @@ module MachineConfig =
 
   // ** create
 
-  let create (shiftDefaults: uint16 option) : IrisMachine =
+  let create bindIp (shiftDefaults: uint16 option) : IrisMachine =
     let shiftPath path =
         match shiftDefaults with
         | Some shift -> path + (string shift)
@@ -287,7 +289,7 @@ module MachineConfig =
     { MachineId = Id.Create()
       HostName  = hostname
       WorkSpace = workspace
-      WebIP     = Constants.DEFAULT_IP
+      WebIP     = bindIp
       WebPort   = shiftPort Constants.DEFAULT_WEB_PORT
       RaftPort  = shiftPort Constants.DEFAULT_RAFT_PORT
       WsPort    = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
@@ -325,7 +327,7 @@ module MachineConfig =
   // ** init
 
   /// Attention: this method must be called only when starting the main process
-  let init shiftDefaults (path: FilePath option) : Either<IrisError,unit> =
+  let init getBindIp shiftDefaults (path: FilePath option) : Either<IrisError,unit> =
     let serializer = Serializer()
     try
       let location = getLocation path
@@ -336,7 +338,8 @@ module MachineConfig =
           serializer.Deserialize<MachineConfigYaml>(raw)
           |> parse
         else
-          let cfg = create shiftDefaults
+          let bindIp = getBindIp()
+          let cfg = create bindIp shiftDefaults
           save path cfg
           |> Either.map (fun _ -> cfg)
 

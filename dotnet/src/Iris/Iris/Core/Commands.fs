@@ -7,9 +7,8 @@ open Iris.Core
 
 // * Commands
 
-type ProjectOptions =
+type CreateProjectOptions =
   { name: string
-    activeSite: string
     ipAddr: string
     port: uint16
     apiPort: uint16
@@ -31,10 +30,10 @@ type Command =
   | ListProjects
   | GetServiceInfo
   | MachineStatus
-  | CreateProject of ProjectOptions
+  | CreateProject of CreateProjectOptions
   | CloneProject of projectName:string * uri:string
   | PullProject of projectId:string * projectName:string * uri:string
-  | LoadProject of projectName:string * username:string * password:Password * options:ProjectOptions option
+  | LoadProject of projectName:string * username:string * password:Password * site:string option
   | GetProjectSites of projectName:string * username:string * password:string
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

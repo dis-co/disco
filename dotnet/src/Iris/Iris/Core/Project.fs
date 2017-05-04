@@ -2471,7 +2471,7 @@ Config: %A
             with
               | _ -> None
 
-      let dummy = MachineConfig.create None
+      let dummy = MachineConfig.create Constants.DEFAULT_IP None
 
       let! config = Config.fromFile config dummy
 

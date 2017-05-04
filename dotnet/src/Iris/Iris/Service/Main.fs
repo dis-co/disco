@@ -33,10 +33,15 @@ module Main =
 
     validateOptions parsed
 
+    let getBindIp() =
+        match parsed.TryGetResult <@ Bind @> with
+        | Some bindIp -> bindIp
+        | None -> failwith "Please specify a valid IP address to bind Iris services with --bind argument"
+
     // Init machine config
     parsed.TryGetResult <@ Machine @>
     |> Option.map (filepath >> Path.getFullPath)
-    |> MachineConfig.init (parsed.TryGetResult <@ Shift_Defaults @>)
+    |> MachineConfig.init getBindIp (parsed.TryGetResult <@ Shift_Defaults @>)
     |> Error.orExit ignore
 
     Thread.CurrentThread.GetApartmentState()

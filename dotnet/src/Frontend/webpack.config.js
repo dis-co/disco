@@ -1,8 +1,6 @@
 var path = require('path');
 var webpack = require('webpack');
 
-var host = process.env.FRONTEND_IP ? process.env.FRONTEND_IP : "localhost";
-
 function resolve(filePath) {
   return path.join(__dirname, filePath)
 }
@@ -10,6 +8,12 @@ function resolve(filePath) {
 var isDevServer = process.argv.find(v => v.includes('webpack-dev-server'));
 var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
+
+var irisHost = process.env.FRONTEND_IP;
+if (irisHost == null && isDevServer) {
+  throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+}
+
 
 var babelOptions = {
   presets: [["es2015", { "modules": false }]],
@@ -67,7 +71,7 @@ var bundleConfig = {
       'react-hot-loader/patch',
       // activate HMR for React
 
-      'webpack-dev-server/client?http://' + host + ':3000',
+      'webpack-dev-server/client?http://localhost:3000',
       // bundle the client for webpack-dev-server
       // and connect to the provided endpoint
 
@@ -135,13 +139,13 @@ var bundleConfig = {
   ],
 
   devServer: {
-    host: host,
+    host: "localhost",
     port: 3000,
     historyApiFallback: true, // respond to 404s with index.html
     hot: true, // enable HMR on the server
     proxy: {
       '/api/*': {
-        target: 'http://localhost:7000'
+        target: 'http://' + irisHost + ':7000'
       }
     },
     headers: {

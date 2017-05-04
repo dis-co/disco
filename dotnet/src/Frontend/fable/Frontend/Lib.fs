@@ -211,19 +211,7 @@ let unloadProject() =
 let nullify _: 'a = null
 
 let rec loadProject(project: string, username: string, pass: string, site: string option, ipAndPort: string option): JS.Promise<string option> =
-  let opts: ProjectOptions option =
-    match site with
-    | None -> None
-    | Some site ->
-      // { name       = project
-      // ; activeSite = site
-      // ; ipAddr     = "0.0.0.0"
-      // ; port       = 0us
-      // ; apiPort    = 0us
-      // ; wsPort     = 0us
-      // ; gitPort    = 0us } |> Some
-      failwith "TODO: Find member info in one of the currently available project sites"
-  LoadProject(project, username, password pass, opts)
+  LoadProject(project, username, password pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
@@ -248,7 +236,6 @@ let getProjectSites(project, username, password) =
 
 let createProject(info: obj) =
   { name     = !!info?name
-  ; activeSite = "default"
   ; ipAddr   = !!info?ipAddr
   ; port     = !!info?port
   ; apiPort  = !!info?apiPort
