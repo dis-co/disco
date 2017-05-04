@@ -14,6 +14,10 @@ if (irisHost == null && isDevServer) {
   throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
 }
 
+var irisPort = process.env.FRONTEND_PORT;
+if (irisPort == null && isDevServer) {
+  throw new Error("Please specify the Iris service Port with the FRONTEND_PORT env var");
+}
 
 var babelOptions = {
   presets: [["es2015", { "modules": false }]],
@@ -145,7 +149,7 @@ var bundleConfig = {
     hot: true, // enable HMR on the server
     proxy: {
       '/api/*': {
-        target: 'http://' + irisHost + ':7000'
+        target: 'http://' + irisHost + ':' + irisPort
       }
     },
     headers: {

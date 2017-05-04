@@ -199,9 +199,15 @@ let addMember(info: obj) =
       |> Option.map string
 
     // Load active project in machine B
+    // Note that we don't use loadProject from below, since that function
+    // restarts the ClientContextn and thus disconnects us from the service.
+
     // TODO: Using the admin user for now, should it be the same user as leader A?
-    let! errMsg = loadProject(unwrap latestState.Project.Name, "admin", "Nsynk", active, memberIpAndPort)
-    errMsg |> Option.iter (failwith "Error when loading project in member: %s")
+    let! loadResult =
+      LoadProject(unwrap latestState.Project.Name, "admin", password "Nsynk", active)
+      |> postCommandPrivate memberIpAndPort
+
+    printfn "response: %A" loadResult
 
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
@@ -212,8 +218,7 @@ let addMember(info: obj) =
         GitPort  = machine.GitPort
         ApiPort  = machine.ApiPort }
     |> AddMember
-    // TODO: Check the state machine post has been successful
-    |> ClientContext.Singleton.Post
+    |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
   with
   | exn ->
     sprintf "Cannot add new member: %s" exn.Message |> notify
