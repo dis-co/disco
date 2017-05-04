@@ -52,7 +52,7 @@ let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   |> Array.choose (fun dir ->
     match IrisProject.Load(dir, cfg) with
     | Right project -> NameAndId(unwrap project.Name, project.Id) |> Some
-    | Left _ -> None)
+    | Left error -> printfn "ERROR: %A" error; None)
   |> serializeJson
   |> Either.succeed
 
@@ -176,7 +176,7 @@ let cloneProject (name: string) (uri: string) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> filepath name
   Git.Repo.clone target uri
-  |> Either.map (konst (serializeJson [| "ok" |]))
+  |> Either.map (konst (serializeJson "ok"))
 
 // Command to test:
 // curl -H "Content-Type: application/json" \
@@ -202,7 +202,7 @@ let pullProject (id: string) (name: string) (uri: string) = either {
         "Clonflict while pulling from " + uri
         |> Error.asGitError "pullProject"
         |> Either.fail
-    | _ -> return serializeJson [| "ok" |]
+    | _ -> return serializeJson "ok"
   }
 
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
