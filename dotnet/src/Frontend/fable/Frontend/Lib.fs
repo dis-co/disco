@@ -160,43 +160,51 @@ let addMember(info: obj) =
 
     memberIpAndPort |> Option.iter (printfn "New member URI: %s")
 
-    // List projects of member candidate (B)
-    let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
+    let! (status: MachineStatus) = postCommandParseAndContinue memberIpAndPort MachineStatus
+    printfn "New member status: %A" status
 
-    printfn "New member projects: %A" projects
+    match status with
+    | Busy (_, name) ->
+      sprintf "Host cannot be added. Reason: busy with project %A" name
+      |> notify
+    | Idle ->
+      // List projects of member candidate (B)
+      let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
 
-    // If B has leader (A) active project,
-    // then **pull** project from A into B
-    // else **clone** active project from A into B
+      printfn "New member projects: %A" projects
 
-    let! commandMsg =
-      let projectGitUri =
-        match Project.localRemote latestState.Project with
-        | Some uri -> uri
-        | None -> failwith "Cannot get URI of project git repository"
-      match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
-      | None -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
-      |> postCommandParseAndContinue<string> memberIpAndPort
+      // If B has leader (A) active project,
+      // then **pull** project from A into B
+      // else **clone** active project from A into B
 
-    notify commandMsg
+      let! commandMsg =
+        let projectGitUri =
+          match Project.localRemote latestState.Project with
+          | Some uri -> uri
+          | None -> failwith "Cannot get URI of project git repository"
+        match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
+        | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
+        | None -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+        |> postCommandParseAndContinue<string> memberIpAndPort
 
-    // Load active project in machine B
-    // TODO: Using the admin user for now, should it be the same user as leader A?
-    let! errMsg = loadProject(unwrap latestState.Project.Name, "admin", "Nsynk", None, memberIpAndPort)
-    errMsg |> Option.iter (failwith "Error when loading project in member: %s")
+      notify commandMsg
 
-    // Add member B to the leader (A) cluster
-    { Member.create (Id !!info?id) with
-        HostName = !!info?hostName
-        IpAddr   = IPv4Address !!info?ipAddr
-        Port     = !!info?port
-        WsPort   = !!info?wsPort
-        GitPort  = !!info?gitPort
-        ApiPort  = !!info?apiPort }
-    |> AddMember
-    // TODO: Check the state machine post has been successful
-    |> ClientContext.Singleton.Post
+      // Load active project in machine B
+      // TODO: Using the admin user for now, should it be the same user as leader A?
+      let! errMsg = loadProject(unwrap latestState.Project.Name, "admin", "Nsynk", None, memberIpAndPort)
+      errMsg |> Option.iter (failwith "Error when loading project in member: %s")
+
+      // Add member B to the leader (A) cluster
+      { Member.create (Id !!info?id) with
+          HostName = !!info?hostName
+          IpAddr   = IPv4Address !!info?ipAddr
+          Port     = !!info?port
+          WsPort   = !!info?wsPort
+          GitPort  = !!info?gitPort
+          ApiPort  = !!info?apiPort }
+      |> AddMember
+      // TODO: Check the state machine post has been successful
+      |> ClientContext.Singleton.Post
   with
   | exn ->
     sprintf "Cannot add new member: %s" exn.Message |> notify
