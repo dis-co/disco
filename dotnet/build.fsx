@@ -67,7 +67,7 @@ module DotNet =
                 info.WorkingDirectory <- Environment.CurrentDirectory
                 info.Arguments <- "--version") (TimeSpan.FromMinutes 30.)
 
-            let installedVersion = processResult.Messages |> separated "" 
+            let installedVersion = processResult.Messages |> separated ""
             match compareVersions dotnetcliVersion installedVersion with
             | Same | Bigger -> true
             | Smaller -> false
@@ -111,7 +111,7 @@ module DotNet =
         |> Seq.iter (fun path -> tracefn " - %s%c" path System.IO.Path.DirectorySeparatorChar)
 
         dotnetExePath <- dotnetSDKPath </> (if isWindows then "dotnet.exe" else "dotnet")
-                
+
 
 let konst x _ = x
 
@@ -626,6 +626,12 @@ Target "BuildFrontend" (fun () ->
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
   runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
+
+Target "BuildFrontendFast" (fun () ->
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
+)
+
 
 //  _____         _
 // |_   _|__  ___| |_ ___

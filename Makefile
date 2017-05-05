@@ -49,6 +49,11 @@ zeroconf:
 client:
 	${BUILD} BuildDebugMockClient
 
+#  _ __ _   _ _ __
+# | '__| | | | '_ \
+# | |  | |_| | | | |
+# |_|   \__,_|_| |_|
+
 run.client:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
 
@@ -73,41 +78,23 @@ run.service.2.project:
 run.service.3.project:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
+run.web.tests:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
+
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
 # |  _| | | (_) | | | | ||  __/ | | | (_| |
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
-frontend.watch:
-	${BUILD} WatchFrontend
-
-frontend.fsproj:
-	${BUILD} BuildFrontendFsProj
-
 frontend:
+	${BUILD} BuildFrontendFast
+
+frontend.full:
 	${BUILD} BuildFrontend
-
-web.tests.watch:
-	${BUILD} WatchWebTests
-
-web.tests.fsproj:
-	${BUILD} BuildWebTestsFsProj
-
-run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
 
 web.tests:
 	${BUILD} BuildWebTests
-
-worker.watch:
-	${BUILD} WatchWorker
-
-worker.fsproj:
-	${BUILD} BuildWorkerFsProj
-
-worker:
-	${BUILD} BuildWorkerDebug
 
 #      _
 #   __| | ___   ___ ___
