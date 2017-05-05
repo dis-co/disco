@@ -22,6 +22,8 @@ module Main =
 
   [<EntryPoint>]
   let main args =
+    // Tracing.enable()
+
     let parsed =
       try
         parser.ParseCommandLine args

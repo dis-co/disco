@@ -398,10 +398,9 @@ module Iris =
   // ** broadcastMsg
 
   let private broadcastMsg (state: IrisLoadedStateData) (cmd: StateMachine) =
-    Tracing.trace (tag "broadcastMsg") <| fun () ->
-      cmd
-      |> state.SocketServer.Broadcast
-      |> ignore
+    cmd
+    |> state.SocketServer.Broadcast
+    |> ignore
 
   // ** sendMsg
 
@@ -1096,7 +1095,7 @@ module Iris =
             (WS_SERVER,     agent |> forwardEvent Msg.Socket |> data.SocketServer.Subscribe)
             (API_SERVER,    agent |> forwardEvent Msg.Api    |> data.ApiServer.Subscribe)
             (GIT_SERVER,    agent |> forwardEvent Msg.Git    |> data.GitServer.Subscribe)
-            (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
+            (* (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) *) ]
           |> Map.ofList
 
         let service =
@@ -1190,12 +1189,11 @@ module Iris =
   // ** handleLogEvent
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
-    Tracing.trace (tag "handleLogEvent") <| fun () ->
-      withState state <| fun data ->
-        log
-        |> LogMsg
-        |> broadcastMsg data
-      state
+    withState state <| fun data ->
+      log
+      |> LogMsg
+      |> broadcastMsg data
+    state
 
   // ** handleUnload
 

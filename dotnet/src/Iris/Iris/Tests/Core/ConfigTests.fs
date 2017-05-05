@@ -4,6 +4,7 @@ open System
 open System.IO
 open Expecto
 open Iris.Core
+open FSharpx.Functional
 
 [<AutoOpen>]
 module ConfigTests =
@@ -17,10 +18,10 @@ module ConfigTests =
   let loadSaveTest =
     testCase "Save/Load MachineConfig with default path should render equal values" <| fun _ ->
       either {
-        let config = MachineConfig.create None
+        let config = MachineConfig.create "127.0.0.1" None
         do! MachineConfig.save None config
 
-        do! MachineConfig.init None None
+        do! MachineConfig.init (konst "127.0.0.1") None None
         let loaded = MachineConfig.get()
 
         expect "MachineConfigs should be equal" config id loaded
@@ -32,10 +33,10 @@ module ConfigTests =
       either {
         let path = tmpPath()
 
-        let config = MachineConfig.create None
+        let config = MachineConfig.create "127.0.0.1" None
         do! MachineConfig.save (Some path) config
 
-        do! MachineConfig.init None (Some path)
+        do! MachineConfig.init (konst "127.0.0.1") None (Some path)
         let loaded = MachineConfig.get()
 
         expect "MachineConfigs should be equal" config id loaded
