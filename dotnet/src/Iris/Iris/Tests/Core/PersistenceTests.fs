@@ -20,7 +20,7 @@ module PersistenceTests =
     either {
       let root = tmpPath()
       let name = rndstr()
-      do! MachineConfig.init (Some root)
+      do! MachineConfig.init (konst "127.0.0.1") None (Some root)
       let machine = MachineConfig.get ()
       let path = Project.ofFilePath (root </> filepath name)
       let! project = Project.create path name machine

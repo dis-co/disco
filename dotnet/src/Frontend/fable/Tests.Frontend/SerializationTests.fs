@@ -101,7 +101,6 @@ module SerializationTests =
   let mkDiscoveredService(): DiscoveredService =
     { Id = Id.Create ()
       Name = "Nice service"
-      WebPort = port 8921us
       FullName = "Really nice service"
       HostName = "remotehost"
       HostTarget = "localhost"

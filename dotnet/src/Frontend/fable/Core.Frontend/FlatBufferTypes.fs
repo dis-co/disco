@@ -1333,7 +1333,6 @@ let ExposedServiceFB: ExposedServiceFBConstructor = failwith "JS only"
 type DiscoveredServiceFB =
   abstract Id: string
   abstract Name: string
-  abstract WebPort: uint16
   abstract FullName: string
   abstract HostName: string
   abstract HostTarget: string
@@ -1353,7 +1352,6 @@ type DiscoveredServiceFBConstructor =
   abstract StartDiscoveredServiceFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * Offset<string> -> unit
-  abstract AddWebPort: builder: FlatBufferBuilder * uint16 -> unit
   abstract AddFullName: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddType: builder: FlatBufferBuilder * Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * Offset<string> -> unit

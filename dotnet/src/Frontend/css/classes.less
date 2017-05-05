@@ -80,15 +80,21 @@
 }
 
 .iris-discovered-service {
-  cursor: move;
   margin: 5px;
   text-align: center;
   padding: 0 auto;
-  background: @background-grey;
+  background: @iris-grey;
   width: 150px;
   height: 50px;
   line-height: 50px;
   color: white;
+  white-space: nowrap;
+  user-select: none;
+
+  &.enabled {
+    cursor: move;
+    background: @background-grey;
+  }
 }
 
 // FLEX --------------------

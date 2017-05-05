@@ -3,7 +3,7 @@ import { IDisposable, ILayout, IIris } from "../Interfaces"
 import GlobalModel from "../GlobalModel"
 import { touchesElement, map, first } from "../Util"
 import { showModal } from "../App"
-import AddNode from "../modals/AddNode"
+import AddMember from "../modals/AddMember"
 
 declare var IrisLib: IIris;
 
@@ -37,7 +37,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
                 this.el.classList.add("iris-highlight-blue");
                 return;
               case "stop":
-                IrisLib.addMember(this.state);
+                IrisLib.addMember(ev.model);
             }
           }
           this.el.classList.remove("iris-highlight-blue")
@@ -59,7 +59,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
       <div className="iris-cluster"  ref={el => this.el = el}>
         <table className="table is-striped is-narrow" >
           <tfoot>
-            <tr><td><a onClick={() => { showModal(AddNode)}}>Add node</a></td></tr>
+            <tr><td><a onClick={() => { showModal(AddMember)}}>Add node</a></td></tr>
           </tfoot>          
           <thead>
             <tr>
@@ -75,9 +75,9 @@ class ClusterView extends React.Component<ClusterProps,any> {
             {map(site.Members, kv => {
               const node = kv[1];
               return (
-                <tr key={kv[0].Fields[0]}>
+                <tr key={IrisLib.toString(kv[0])}>
                   <td>{node.HostName}</td>
-                  <td>{node.IpAddr.Fields[0]}</td>
+                  <td>{IrisLib.toString(node.IpAddr)}</td>
                   <td>{node.Port}</td>
                   <td>{node.State.ToString()}</td>
                   <td>left</td>

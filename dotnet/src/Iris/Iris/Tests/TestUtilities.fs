@@ -105,7 +105,6 @@ module TestData =
   let mkDiscoveredService() =
     { Id = Id.Create()
       Name = rndstr()
-      WebPort = rndport()
       FullName = rndstr()
       HostName = rndstr()
       HostTarget = rndstr()
@@ -224,7 +223,7 @@ module TestData =
         yield mkSession() |]
 
   let mkProject path =
-    let machine = MachineConfig.create()
+    let machine = MachineConfig.create "127.0.0.1" None
     Project.create path (rndstr()) machine
 
   let mkClient () : IrisClient =

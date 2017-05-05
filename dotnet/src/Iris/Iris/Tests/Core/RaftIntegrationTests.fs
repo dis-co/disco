@@ -30,8 +30,8 @@ module RaftIntegrationTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        let machine1 = MachineConfig.create ()
-        let machine2 = MachineConfig.create ()
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
           machine1.MachineId
@@ -80,7 +80,7 @@ module RaftIntegrationTests =
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let port = 12000us
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let mem =
           machine.MachineId
@@ -124,8 +124,8 @@ module RaftIntegrationTests =
           | StateChanged _ -> are.Set() |> ignore
           | _ -> ()
 
-        let machine1 = MachineConfig.create ()
-        let machine2 = MachineConfig.create ()
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
           machine1.MachineId
@@ -184,7 +184,7 @@ module RaftIntegrationTests =
 
         let state = ref None
 
-        let machine1 = MachineConfig.create ()
+        let machine1 = MachineConfig.create "127.0.0.1" None
 
         let store = Store(State.Empty)
 

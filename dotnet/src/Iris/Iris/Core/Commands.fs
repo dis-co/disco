@@ -20,13 +20,18 @@ type ServiceInfo =
     version: string
     buildNumber: string }
 
+type NameAndId = { Name: Name; Id: Id }
+
 type Command =
   | Shutdown
   | UnloadProject
   | ListProjects
   | GetServiceInfo
+  | MachineStatus
+  | MachineConfig
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:string * uri:string
+  | PullProject of projectId:string * projectName:string * uri:string
   | LoadProject of projectName:string * username:string * password:Password * site:string option
   | GetProjectSites of projectName:string * username:string * password:string
 

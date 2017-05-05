@@ -42,6 +42,7 @@ type [<Pojo; NoComparison>] StateInfo =
 
 and ClientContext private () =
   let mutable session : Id option = None
+  let mutable latestState: State option = None
   let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
@@ -91,6 +92,11 @@ and ClientContext private () =
     | Some worker -> worker
     | None -> failwith "Client not initialized"
 
+  member self.LatestState =
+    match latestState with
+    | Some latestState -> latestState
+    | None -> failwith "State not initialized"
+
   member self.Trigger(msg: ClientMessage<StateMachine>) =
     self.Worker.Port.PostMessage(toJson msg)
 
@@ -120,9 +126,11 @@ and ClientContext private () =
       // TODO: Restart worker
       //self.Start()
 
+    | ClientMessage.Render state ->
+      latestState <- state
+
     // Do nothing, delegate responsibility to controllers
     | ClientMessage.ClockUpdate _
-    | ClientMessage.Render _        // Re-render the current view tree with a new state
     | ClientMessage.ClientLog _ ->
       // printfn "%s" log // Logs are polluting the browser console, disable printing temporally
       ()

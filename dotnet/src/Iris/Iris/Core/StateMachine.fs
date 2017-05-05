@@ -469,13 +469,13 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project  = project
-               PinGroups  = groups
-               Cues     = cues
-               CueLists = cuelists
-               Users    = users
-               Sessions = sessions
-               Clients  = clients
+      return { Project   = project
+               PinGroups = groups
+               Cues      = cues
+               CueLists  = cuelists
+               Users     = users
+               Sessions  = sessions
+               Clients   = clients
                DiscoveredServices = discoveredServices }
     }
 
@@ -1193,62 +1193,62 @@ type StateMachine =
   override self.ToString() : string =
     match self with
     // Project
-    | UpdateProject project -> sprintf "UpdateProject %s" (unwrap project.Name)
-    | UnloadProject         -> "UnloadProject"
+    | UpdateProject           _ -> "UpdateProject "
+    | UnloadProject             -> "UnloadProject"
 
     // Member
-    | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
-    | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
-    | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
+    | AddMember               _ -> "AddMember"
+    | UpdateMember            _ -> "UpdateMember"
+    | RemoveMember            _ -> "RemoveMember"
 
     // Client
-    | AddClient    client  -> sprintf "AddClient %s"    (string client)
-    | UpdateClient client  -> sprintf "UpdateClient %s" (string client)
-    | RemoveClient client  -> sprintf "RemoveClient %s" (string client)
+    | AddClient               _ -> "AddClient"
+    | UpdateClient            _ -> "UpdateClient"
+    | RemoveClient            _ -> "RemoveClient"
 
     // GROUP
-    | AddPinGroup    group     -> sprintf "AddPinGroup %s"    (string group)
-    | UpdatePinGroup group     -> sprintf "UpdatePinGroup %s" (string group)
-    | RemovePinGroup group     -> sprintf "RemovePinGroup %s" (string group)
+    | AddPinGroup             _ -> "AddPinGroup"
+    | UpdatePinGroup          _ -> "UpdatePinGroup"
+    | RemovePinGroup          _ -> "RemovePinGroup"
 
     // PIN
-    | AddPin    pin         -> sprintf "AddPin %s"       (string pin)
-    | UpdatePin pin         -> sprintf "UpdatePin %s"    (string pin)
-    | RemovePin pin         -> sprintf "RemovePin %s"    (string pin)
-    | UpdateSlices slices   -> sprintf "UpdateSlices %s" (string slices)
+    | AddPin                  _ -> "AddPin"
+    | UpdatePin               _ -> "UpdatePin"
+    | RemovePin               _ -> "RemovePin"
+    | UpdateSlices            _ -> "UpdateSlices"
 
     // CUE
-    | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
-    | UpdateCue cue         -> sprintf "UpdateCue %s" (string cue)
-    | RemoveCue cue         -> sprintf "RemoveCue %s" (string cue)
-    | CallCue   cue         -> sprintf "CallCue %s"   (string cue)
+    | AddCue                  _ -> "AddCue"
+    | UpdateCue               _ -> "UpdateCue"
+    | RemoveCue               _ -> "RemoveCue"
+    | CallCue                 _ -> "CallCue"
 
     // CUELIST
-    | AddCueList    cuelist -> sprintf "AddCueList %s"    (string cuelist)
-    | UpdateCueList cuelist -> sprintf "UpdateCueList %s" (string cuelist)
-    | RemoveCueList cuelist -> sprintf "RemoveCueList %s" (string cuelist)
+    | AddCueList              _ -> "AddCueList"
+    | UpdateCueList           _ -> "UpdateCueList"
+    | RemoveCueList           _ -> "RemoveCueList"
 
     // User
-    | AddUser    user       -> sprintf "AddUser %s"    (string user)
-    | UpdateUser user       -> sprintf "UpdateUser %s" (string user)
-    | RemoveUser user       -> sprintf "RemoveUser %s" (string user)
+    | AddUser                 _ -> "AddUser"
+    | UpdateUser              _ -> "UpdateUser"
+    | RemoveUser              _ -> "RemoveUser"
 
     // Session
-    | AddSession    session -> sprintf "AddSession %s"    (string session)
-    | UpdateSession session -> sprintf "UpdateSession %s" (string session)
-    | RemoveSession session -> sprintf "RemoveSession %s" (string session)
+    | AddSession              _ -> "AddSession"
+    | UpdateSession           _ -> "UpdateSession"
+    | RemoveSession           _ -> "RemoveSession"
 
     // Discovery
-    | AddDiscoveredService    service -> sprintf "AddDiscoveredService %s"    (string service)
-    | UpdateDiscoveredService service -> sprintf "UpdateDiscoveredService %s" (string service)
-    | RemoveDiscoveredService service -> sprintf "RemoveDiscoveredService %s" (string service)
+    | AddDiscoveredService    _ -> "AddDiscoveredService"
+    | UpdateDiscoveredService _ -> "UpdateDiscoveredService"
+    | RemoveDiscoveredService _ -> "RemoveDiscoveredService"
 
-    | Command    ev         -> sprintf "Command: %s"  (string ev)
-    | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
-    | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
-    | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
+    | Command                 _ -> "Command"
+    | DataSnapshot            _ -> "DataSnapshot"
+    | SetLogLevel             _ -> "SetLogLevel"
+    | LogMsg                  _ -> "LogMsg"
 
-    | UpdateClock value     -> sprintf "UpdateClock: %i" value
+    | UpdateClock             _ -> "UpdateClock"
 
   // ** FromFB (JavaScript)
 

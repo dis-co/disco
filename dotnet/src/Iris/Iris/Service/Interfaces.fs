@@ -5,6 +5,7 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Core.Discovery
 open Iris.Raft
 open Iris.Client
@@ -242,7 +243,7 @@ type IWebSocketServer =
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-  abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
+  abstract Subscribe    : (WebSocketEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
 // * IApiServer

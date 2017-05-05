@@ -16,6 +16,7 @@ open Hopac.Infixes
 
 // * WebSockets
 
+[<AutoOpen>]
 module WebSockets =
 
   // ** tag
@@ -28,11 +29,11 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
+  type private Subscriptions = ResizeArray<IObserver<WebSocketEvent>>
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<SocketEvent>
+  type private SocketEventProcessor = MailboxProcessor<WebSocketEvent>
 
   // ** getConnectionId
 
@@ -45,6 +46,7 @@ module WebSockets =
                            (socketId: Id)
                            (session: Session) :
                            Either<IrisError,Session> =
+
     match connections.TryGetValue socketId with
     | true, socket ->
       let ua =
@@ -83,7 +85,9 @@ module WebSockets =
         |> Either.succeed
       with
         | exn ->
-          let _, _ = connections.TryRemove(sid)
+          exn.Message + exn.StackTrace
+          |> Logger.err (tag "send")
+
           exn.Message
           |> Error.asSocketError (tag "send")
           |> Either.fail
@@ -107,6 +111,7 @@ module WebSockets =
   let private broadcast (connections: Connections)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
+
     let sendAsync (id: Id) = job {
         let result = send connections id msg
         return result
@@ -145,8 +150,11 @@ module WebSockets =
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
-      connections.TryAdd(sid, socket) |> ignore
-      agent.Post(OnOpen sid)
+
+      connections.TryAdd(sid, socket)
+      |> ignore
+
+      agent.Post(SessionAdded sid)
 
       sid
       |> string
@@ -156,7 +164,7 @@ module WebSockets =
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(OnClose sid)
+      agent.Post(SessionRemoved sid)
 
       sid
       |> string
@@ -185,7 +193,7 @@ module WebSockets =
 
   // ** loop
 
-  let private loop (initial: Subscriptions)(inbox: SocketEventProcessor) =
+  let private loop (initial: Subscriptions) (inbox: SocketEventProcessor) =
     let rec act (subscriptions: Subscriptions) = async {
         let! msg = inbox.Receive()
         for sub in subscriptions do
@@ -203,15 +211,15 @@ module WebSockets =
   // |_|    \__,_|_.__/|_|_|\___|
 
   [<RequireQualifiedAccess>]
-  module SocketServer =
+  module WebSocketServer =
 
     let create (mem: RaftMember) =
       either {
-        let connections = new Connections()
-        let subscriptions = new Subscriptions()
+        let connections = Connections()
+        let subscriptions = Subscriptions()
 
         let listener =
-          { new IObservable<SocketEvent> with
+          { new IObservable<WebSocketEvent> with
               member self.Subscribe(obs) =
                 lock subscriptions <| fun _ ->
                   subscriptions.Add obs
@@ -240,8 +248,8 @@ module WebSockets =
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session
 
-              member self.Subscribe (callback: SocketEvent -> unit) =
-                { new IObserver<SocketEvent> with
+              member self.Subscribe (callback: WebSocketEvent -> unit) =
+                { new IObserver<WebSocketEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value

@@ -40,11 +40,13 @@ module Http =
         |> Successful.ok
         >=> Writers.setMimeType "text/plain")
 
-    let respond ctx status (txt: string) =
+    let respondWithCors ctx status (txt: string) =      
       let res =
         { ctx.response with
             status = status
-            headers = ["Content-Type", "text/plain"]
+            headers = ["Access-Control-Allow-Origin", "*"
+                       //"Access-Control-Allow-Headers", "content-type"
+                       "Content-Type", "text/plain"]
             content = Encoding.UTF8.GetBytes txt |> Bytes }
       Some { ctx with response = res }
 
@@ -112,9 +114,9 @@ module Http =
         return
           match res with
           | Left err ->
-            Error.toMessage err |> Actions.respond ctx HTTP_500.status
+            Error.toMessage err |> Actions.respondWithCors ctx HTTP_500.status
           | Right msg ->
-            msg |> Actions.respond ctx HTTP_200.status
+            msg |> Actions.respondWithCors ctx HTTP_200.status
       }
     choose [
       Filters.GET >=>
@@ -123,8 +125,13 @@ module Http =
           Files.browseHome >=> cors defaultCORSConfig ])
       Filters.POST >=>
         (choose [
-          Filters.path Constants.WEP_API_COMMAND >=> cors defaultCORSConfig >=> postCommand
+          // Cannot use `cors defaultCORSConfig` here, postCommand adds its own headers
+          Filters.path Constants.WEP_API_COMMAND >=> postCommand
         ])
+      Filters.OPTIONS >=>
+        // defaultCORSConfig already contains: Access-Control-Allow-Methods: <ALL>
+        Successful.OK "CORS approved" >=> cors defaultCORSConfig
+
       RequestErrors.NOT_FOUND "Page not found."
     ]
 

@@ -7,17 +7,7 @@ export default class CreateProject extends Component {
       this.webPort = match != null ? match[1] : null;
       this.state = {
         name: "",
-        nameError: "Required",
-        ipAddr: "",
-        ipAddrError: "Required",
-        apiPort: "",
-        apiPortError: "Required",
-        port: "",
-        portError: "Required",
-        wsPort: "",
-        wsPortError: "Required",
-        gitPort: "",
-        gitPortError: "Required"
+        nameError: "Required"
       };
   }
 
@@ -89,11 +79,6 @@ export default class CreateProject extends Component {
       <div>
         <p className="title has-text-centered">Create Project</p>
         {this.renderGroup("name", "Name", this.validateName.bind(this))}
-        {this.renderGroup("ipAddr", "IP Address", this.validateIpAddress.bind(this))}
-        {this.renderGroup("apiPort", "Api Port", this.validatePort.bind(this))}
-        {this.renderGroup("port", "Raft Port", this.validatePort.bind(this))}
-        {this.renderGroup("wsPort", "Web Socket Port", this.validatePort.bind(this))}
-        {this.renderGroup("gitPort", "Git Daemon Port", this.validatePort.bind(this))}
         <div className="field is-grouped">
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {

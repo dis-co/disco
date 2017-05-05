@@ -39,6 +39,7 @@ export default class GlobalModel {
       }
       this.__setState("pinGroups", info != null ? info.state.PinGroups : null);
       this.__setState("project", info != null ? info.state.Project : null);
+      this.__setState("services", info != null ? info.state.DiscoveredServices : null);
     });
 
     this.subscribers = new Map();

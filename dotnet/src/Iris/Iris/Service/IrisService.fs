@@ -1,8 +1,8 @@
 namespace Iris.Service
 
-#if !IRIS_NODES
-
 // * Imports
+
+#if !IRIS_NODES
 
 open System
 open System.IO
@@ -188,9 +188,10 @@ module Iris =
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Reply =
     | Ok
-    | State  of IrisLoadedStateData
-    | Entry  of EntryResponse
-    | Config of IrisConfig
+    | State         of IrisLoadedStateData
+    | Entry         of EntryResponse
+    | Config        of IrisConfig
+    | MachineStatus of MachineStatus
 
   // ** ReplyChan
 
@@ -209,22 +210,23 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git         of GitEvent
-    | Socket      of SocketEvent
-    | Raft        of RaftEvent
-    | Api         of ApiEvent
-    | Log         of LogEvent
-    | Clock       of ClockEvent
-    | Discovery   of DiscoveryEvent
-    | Load        of ReplyChan * project:string * user:string * pw:Password * site:string option
-    | SetConfig   of ReplyChan * IrisConfig
-    | AddMember   of ReplyChan * RaftMember
-    | RmMember    of ReplyChan * Id
-    | Join        of ReplyChan * IpAddress  * uint16
-    | Leave       of ReplyChan
-    | Config      of ReplyChan
-    | Unload      of ReplyChan
-    | State       of ReplyChan
+    | Git           of GitEvent
+    | Socket        of WebSocketEvent
+    | Raft          of RaftEvent
+    | Api           of ApiEvent
+    | Log           of LogEvent
+    | Clock         of ClockEvent
+    | Discovery     of DiscoveryEvent
+    | Load          of ReplyChan * project:string * user:string * pw:Password * site:string option
+    | SetConfig     of ReplyChan * IrisConfig
+    | AddMember     of ReplyChan * RaftMember
+    | RmMember      of ReplyChan * Id
+    | Join          of ReplyChan * IpAddress  * uint16
+    | Leave         of ReplyChan
+    | Config        of ReplyChan
+    | Unload        of ReplyChan
+    | State         of ReplyChan
+    | MachineStatus of ReplyChan
     | ForceElection
     | Periodic
 
@@ -251,6 +253,8 @@ module Iris =
     }
     |> Async.RunSynchronously
 
+  // ** withLoaded
+
   /// ## withLoaded
   ///
   /// Reach into passed IrisState value and apply either one of the passed functions to the inner
@@ -269,6 +273,8 @@ module Iris =
     | Idle   _    -> idle ()
     | Loaded data -> loaded data
 
+  // ** withState
+
   /// ## withState
   ///
   /// If the passed `IrisState` is a loaded project, execute the supplied function against it.
@@ -281,6 +287,8 @@ module Iris =
   let private withState (state: IrisState) (loaded: IrisLoadedStateData -> unit) =
     withLoaded state (konst state) (loaded >> konst state)
     |> ignore
+
+  // ** notLoaded
 
   /// ## notLoaded
   ///
@@ -336,7 +344,10 @@ module Iris =
   // ** registerIdleServices
 
   let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
-    registerService service config MachineStatus.Idle [| |] [| |]
+    let services =
+      [| { ServiceType = ServiceType.Http
+           Port = port config.WebPort } |]
+    registerService service config MachineStatus.Idle services [| |]
 
   // ** registerLoadedServices
 
@@ -346,6 +357,7 @@ module Iris =
       [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
          { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
          { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+         { ServiceType = ServiceType.Http;      Port = port project.Config.Machine.WebPort }
          { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
     registerService service project.Config.Machine status services [| |]
 
@@ -386,10 +398,9 @@ module Iris =
   // ** broadcastMsg
 
   let private broadcastMsg (state: IrisLoadedStateData) (cmd: StateMachine) =
-    Tracing.trace (tag "broadcastMsg") <| fun () ->
-      cmd
-      |> state.SocketServer.Broadcast
-      |> ignore
+    cmd
+    |> state.SocketServer.Broadcast
+    |> ignore
 
   // ** sendMsg
 
@@ -401,9 +412,16 @@ module Iris =
 
   // ** appendCmd
 
-  let private appendCmd (state: IrisLoadedStateData) (cmd: StateMachine) =
+  let private appendCmd (data: IrisLoadedStateData) (cmd: StateMachine) =
     Tracing.trace (tag "appendCmd") <| fun () ->
-      state.RaftServer.Append(cmd)
+      if data.RaftServer.IsLeader then
+        cmd
+        |> data.RaftServer.Append
+        |> Either.map ignore
+      else
+        "ignoring append request, not leader"
+        |> Logger.debug (tag "appendCmd")
+        |> Either.succeed
 
   // ** onOpen
 
@@ -474,7 +492,6 @@ module Iris =
           |> Logger.err (tag "onError")
       | _ -> ()
 
-
   // ** onMessage
 
   /// ## OnMessage
@@ -493,26 +510,34 @@ module Iris =
         data.ApiServer.Update cmd
         data.Store.Dispatch cmd
         broadcastMsg data cmd
-      | cmd ->
-        match cmd with
-        | AddSession session ->
-          data.SocketServer.BuildSession id session
-          |> Either.map AddSession
-        | cmd -> Either.succeed cmd
+      | AddSession session ->
+        session
+        |> data.SocketServer.BuildSession id
+        |> Either.map AddSession
         |> Either.bind (appendCmd data)
-        |> function
-          | Right _ -> ()
-          | Left error ->
-            error
-            |> string
-            |> Logger.err (tag "onMessage")
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
+      | AddMember mem ->
+        data.RaftServer.AddMember mem
+        |> Either.map (sprintf "added new member in: %O" >> Logger.debug (tag "onMessage"))
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
+      | RemoveMember mem ->
+        data.RaftServer.RmMember mem.Id
+        |> Either.map (sprintf "removed member in: %O" >> Logger.debug (tag "onMessage"))
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
+      | cmd ->
+        appendCmd data cmd
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
 
   // ** handleSocketEvent
 
-  let private handleSocketEvent (state: IrisState) (ev: SocketEvent) =
+  let private handleSocketEvent (state: IrisState) (ev: WebSocketEvent) =
     match ev with
-    | OnOpen id         -> onOpen    state id
-    | OnClose id        -> onClose   state id
+    | SessionAdded id   -> onOpen    state id
+    | SessionRemoved id -> onClose   state id
     | OnMessage (id,sm) -> onMessage state id sm
     | OnError (id,err)  -> onError   state id err
     state
@@ -604,7 +629,7 @@ module Iris =
       if data.RaftServer.IsLeader then
         match persistEntry data.Store.State sm with
         | Right commit ->
-          sprintf "Persisted command in commit: %s" commit.Sha
+          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
           |> Logger.debug (tag "onApplyLog")
           state
         | Left error ->
@@ -993,7 +1018,7 @@ module Iris =
             dispose loaded
             loaded.Machine, loaded.DiscoveryService
 
-        let! state =
+        let state =
           match site with
           | Some site ->
             let site =
@@ -1002,30 +1027,31 @@ module Iris =
               |> function Some s -> s | None -> { ClusterConfig.Default with Name = name site }
 
             // Add current machine if necessary
+            // taking the default ports from MachineConfig
             let site =
-              let mid = machine.MachineId
-              if Map.containsKey mid site.Members
-              then Right site
+              let machineId = machine.MachineId
+              if Map.containsKey machineId site.Members
+              then site
               else
-                // Another cluster must cointain the self member, search for it
-                state.Project.Config.Sites
-                |> Seq.collect (fun site -> site.Members)
-                |> Seq.tryFind (fun kvp -> kvp.Key = mid)
-                |> function
-                  | Some kvp -> Right { site with Members = Map.add mid kvp.Value site.Members }
-                  | None -> Error.asProjectError "" "" |> Left
+                let selfMember =
+                  { Member.create(machineId) with
+                      IpAddr  = IpAddress.Parse machine.WebIP
+                      GitPort = machine.GitPort
+                      WsPort  = machine.WsPort
+                      ApiPort = machine.ApiPort
+                      Port    = machine.RaftPort }
+                { site with Members = Map.add machineId selfMember site.Members }
 
-            match site with
-            | Right site ->
-              let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-              Right { state with Project = { state.Project with Config = cfg }}
-            | Left err -> Left err
-          | None -> Right state
+            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+            { state with Project = { state.Project with Config = cfg }}
+          | None -> state
 
+        // This will fail if there's no ActiveSite set up in state.Project.Config
+        // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
 
         let! raftserver = RaftServer.create ()
-        let! wsserver   = SocketServer.create mem
+        let! wsserver   = WebSocketServer.create mem
         let! apiserver  = ApiServer.create mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to
@@ -1170,12 +1196,11 @@ module Iris =
   // ** handleLogEvent
 
   let private handleLogEvent (state: IrisState) (log: LogEvent) =
-    Tracing.trace (tag "handleLogEvent") <| fun () ->
-      withState state <| fun data ->
-        log
-        |> LogMsg
-        |> broadcastMsg data
-      state
+    withState state <| fun data ->
+      log
+      |> LogMsg
+      |> broadcastMsg data
+    state
 
   // ** handleUnload
 
@@ -1339,6 +1364,23 @@ module Iris =
         data.ApiServer.Update sm
       state
 
+  // ** handleMachineStatus
+
+  let private handleMachineStatus (state: IrisState) (chan: ReplyChan) =
+    match state with
+    | Idle _ ->
+      MachineStatus.Idle
+      |> Reply.MachineStatus
+      |> Either.succeed
+      |> chan.Reply
+    | Loaded data ->
+      let project = data.Store.State.Project
+      MachineStatus.Busy(project.Id, project.Name)
+      |> Reply.MachineStatus
+      |> Either.succeed
+      |> chan.Reply
+    state
+
   // ** loop
 
   let private loop (initial: IrisState)
@@ -1370,6 +1412,7 @@ module Iris =
           | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
           | Msg.State chan           -> handleState          state chan
           | Msg.Clock clock          -> handleClock          state       clock
+          | Msg.MachineStatus chan   -> handleMachineStatus  state chan
         return! act newstate
       }
 
@@ -1379,6 +1422,8 @@ module Iris =
 
   [<RequireQualifiedAccess>]
   module IrisService =
+
+    // *** mkIris
 
     let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) =
       let listener =
@@ -1528,6 +1573,17 @@ module Iris =
                   |> Error.asOther (tag "SocketServer")
                   |> Either.fail
 
+          member self.MachineStatus
+            with get () =
+              Tracing.trace (tag "MachineStatus") <| fun () ->
+                match postCommand agent "MachineStatus" Msg.MachineStatus with
+                | Right (Reply.MachineStatus status) -> Right status
+                | Left error -> Left error
+                | Right other ->
+                  sprintf "Unexpected response from IrisAgent: %A" other
+                  |> Error.asOther (tag "SocketServer")
+                  |> Either.fail
+
           member self.Subscribe(callback: IrisEvent -> unit) =
             { new IObserver<IrisEvent> with
                 member self.OnCompleted() = ()
@@ -1542,6 +1598,8 @@ module Iris =
               |> ignore
               dispose agent
         }
+
+    // *** initIdleState
 
     let private initIdleState (agent: (IrisAgent option) ref) (config: IrisMachine) =
       let discovery = DiscoveryService.create config
@@ -1568,6 +1626,7 @@ module Iris =
                DiscoveryService = discovery
                DiscoverableService = None }
 
+    // *** create
 
     let create (config: IrisMachine) (post: CommandAgent) =
       try

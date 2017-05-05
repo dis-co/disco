@@ -28,6 +28,7 @@
     <Compile Include="../../../Iris/Iris/Core/Logging.fs" />
     <Compile Include="../../../Iris/Iris/Core/Tracing.fs" />
     <Compile Include="../../../Iris/Iris/Raft/Member.fs" />
+    <Compile Include="../../../Iris/Iris/Core/Uri.fs" />
     <Compile Include="../../../Iris/Iris/Core/Pin.fs" />
     <Compile Include="../../../Iris/Iris/Core/PinGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/Cue.fs" />

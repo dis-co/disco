@@ -95,7 +95,6 @@ table ExposedServiceFB {
 table DiscoveredServiceFB {
      Id: string;
      Name: string;
-     WebPort: ushort;
      FullName: string;
      HostName: string;
      HostTarget: string;

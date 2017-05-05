@@ -1,5 +1,7 @@
 namespace Iris.Zmq
 
+// * Imports
+
 open System
 open System.Text
 open System.Diagnostics
@@ -10,7 +12,11 @@ open System.Collections.Concurrent
 open Iris.Core
 open ZeroMQ
 
+// * WorkerId
+
 type private WorkerId = uint16
+
+// * RequestCount module
 
 [<RequireQualifiedAccess>]
 module private RequestCount =
@@ -18,10 +24,14 @@ module private RequestCount =
   let increment () = Interlocked.Increment &id |> ignore
   let current () = id
 
+// * RawRequest
+
 type RawRequest =
   { From: Guid
     Via: WorkerId
     Body: byte array }
+
+  // ** ToString
 
   override self.ToString() =
     sprintf "[Request] from %O via: %O bytes: %d"
@@ -29,14 +39,20 @@ type RawRequest =
       self.Via
       (Array.length self.Body)
 
+// * RawResponse
+
 type RawResponse =
   { Via: WorkerId
     Body: byte array }
+
+  // ** ToString
 
   override self.ToString() =
     sprintf "[Response] via: %O bytes: %d"
       self.Via
       (Array.length self.Body)
+
+// * IClient
 
 type IClient =
   inherit IDisposable
@@ -45,6 +61,7 @@ type IClient =
   abstract Running: bool
   abstract Restart: unit -> unit
 
+// * WorkerArgs
 
 [<NoComparison>]
 type WorkerArgs =
@@ -53,11 +70,15 @@ type WorkerArgs =
     Context: ZContext
     RequestTimeout: uint32 }
 
+// * IWorker
+
 type private IWorker =
   inherit IDisposable
   abstract Id: WorkerId
   abstract Respond: RawResponse -> unit
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
+
+// * BrokerArgs
 
 type BrokerArgs =
   { Id: Id
@@ -67,15 +88,21 @@ type BrokerArgs =
     Backend: string
     RequestTimeout: uint32 }
 
+// * IBroker
+
 type IBroker =
   inherit IDisposable
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
   abstract Respond: RawResponse -> unit
 
+// * RawResponse
+
 module RawResponse =
 
   let fromRequest (request: RawRequest) (body: byte array) =
     { Via = request.Via; Body = body }
+
+// * Utils
 
 //  _   _ _   _ _
 // | | | | |_(_) |___
@@ -85,14 +112,24 @@ module RawResponse =
 
 module internal Utils =
 
+  // ** READY
+
   let internal READY = [| 0uy; 0uy |] // 0us
+
+  // ** Subscriptions
 
   type internal Subscriptions = ConcurrentDictionary<Guid,IObserver<RawRequest>>
 
+  // ** Listener
+
   type internal Listener = IObservable<RawRequest>
+
+  // ** tryDispose
 
   let internal tryDispose (disp: IDisposable) =
     try dispose disp with | _ -> ()
+
+  // ** createListener
 
   let internal createListener (guid: Guid) (subs: Subscriptions) =
     { new Listener with
@@ -107,15 +144,21 @@ module internal Utils =
                 | _ -> subs.TryRemove(guid)
                       |> ignore } }
 
+  // ** notify
+
   let internal notify (subs: Subscriptions) (request: RawRequest) =
     for KeyValue(_,sub) in subs do
       sub.OnNext(request)
+
+  // ** shouldRestart
 
   let internal shouldRestart (no: int) =
     List.contains no [
       ZError.EAGAIN.Number
       ZError.EFSM.Number
     ]
+
+// * Client module
 
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
@@ -127,7 +170,11 @@ module internal Utils =
 module Client =
   open Utils
 
+  // ** rand
+
   let rand = new System.Random()
+
+  // ** LocalThreadState
 
   type private LocalThreadState(id: Id, frontend: string, timeout: float) as self =
     let clid = string id |> Guid.Parse
@@ -157,8 +204,12 @@ module Client =
       self.Requester <- new AutoResetEvent(false)
       self.Responder <- new AutoResetEvent(false)
 
+    // *** Id
+
     member self.Id
       with get () = id
+
+    // *** Start
 
     member self.Start() =
       try
@@ -177,6 +228,8 @@ module Client =
           |> Either.fail
           |> fun error -> self.Response <- error
 
+    // *** StartSocket
+
     member self.StartSocket() =
       self.Socket <- new ZSocket(self.Context, ZSocketType.REQ)
       self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds timeout
@@ -184,10 +237,14 @@ module Client =
       self.Socket.Identity <- clid.ToByteArray()
       self.Socket.Connect(frontend)
 
+    // *** RestartSocket
+
     member self.RestartSocket() =
       Logger.debug "Client" "restarting socket"
       dispose self.Socket
       self.StartSocket()
+
+    // *** Reset
 
     member self.Reset() =
       if not self.Disposed then
@@ -200,22 +257,32 @@ module Client =
       self.Request <- [| |]
       self.Response <- Right [| |]
 
+    // *** Dispose
+
     interface IDisposable with
       member self.Dispose() =
         tryDispose self.Socket
         tryDispose self.Context
         self.Disposed <- true
 
+  // ** initialize
+
   let private initialize (state: LocalThreadState) =
     if not state.Initialized && not state.Started then
       state.Start()
       state.Starter.Set() |> ignore
 
+  // ** started
+
   let private started (state: LocalThreadState) =
     state.Initialized && state.Started
 
+  // ** spin
+
   let private spin (state: LocalThreadState) =
     state.Initialized && state.Started && state.Run
+
+  // ** worker
 
   let private worker (state: LocalThreadState) () =
     initialize state
@@ -255,13 +322,15 @@ module Client =
     tryDispose state
     state.Stopper.Set() |> ignore
 
+  // ** create
+
   let create (id: Id) (frontend: string) (timeout: float) =
     let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
     let mutable thread = Thread(worker state)
     thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
-    let locker = new Object()
+    let locker = Object()
 
     state.Starter.WaitOne() |> ignore
 
@@ -300,6 +369,8 @@ module Client =
           state.Requester.Set() |> ignore
           state.Stopper.WaitOne() |> ignore }
 
+// * Worker module
+
 // __        __         _
 // \ \      / /__  _ __| | _____ _ __
 //  \ \ /\ / / _ \| '__| |/ / _ \ '__|
@@ -310,8 +381,12 @@ module Client =
 module private Worker =
   open Utils
 
+  // ** tag
+
   let private tag (id: WorkerId) (str: string) =
     String.Format("Worker-{0}.{1}", id, str)
+
+  // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
   type private LocalThreadState (args: WorkerArgs) as self =
@@ -338,14 +413,20 @@ module private Worker =
       self.Stopper <- new AutoResetEvent(false)
       self.Responder <- new ConcurrentStack<RawResponse>()
 
+    // *** ToString
+
     override state.ToString() =
       sprintf "initialized: %b started: %b run: %b"
         state.Initialized
         state.Started
         state.Run
 
+    // *** Timeout
+
     member self.Timeout
       with get () = args.RequestTimeout
+
+    // *** Start
 
     member self.Start() =
       try
@@ -368,6 +449,8 @@ module private Worker =
           self.Started <- false
           self.Run <- false
 
+    // *** StartSocket
+
     member self.StartSocket () =
       self.Socket <- new ZSocket(args.Context, ZSocketType.REQ)
       self.Socket.Identity <- BitConverter.GetBytes args.Id
@@ -375,28 +458,42 @@ module private Worker =
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
       self.Socket.Connect(args.Backend)
 
+    // *** RestartSocket
+
     member self.RestartSocket() =
       Logger.debug (tag args.Id "RestartSocket") "restarting socket"
       dispose self.Socket
       self.StartSocket()
 
+    // *** Register
+
     member self.Register() =
       use hello = new ZFrame(READY)
       self.Socket.Send(hello)
 
+    // *** Id
+
     member self.Id
       with get () = args.Id
+
+    // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
         tryDispose self.Socket
         self.Disposed <- true
 
+  // ** spin
+
   let private spin (state: LocalThreadState) =
     state.Initialized && state.Started && state.Run
 
+  // ** timedOut
+
   let private timedOut (state: LocalThreadState) (timer: Stopwatch) =
     timer.ElapsedMilliseconds > int64 state.Timeout
+
+  // ** worker
 
   let private worker (state: LocalThreadState) () =
     state.Start()
@@ -475,6 +572,8 @@ module private Worker =
     dispose state
     state.Stopper.Set() |> ignore
 
+  // ** create
+
   let create (args: WorkerArgs)  =
     let state = new LocalThreadState(args)
 
@@ -509,6 +608,8 @@ module private Worker =
               thread.Join() })
       state.Error
 
+// * Broker module
+
 //  ____            _
 // | __ ) _ __ ___ | | _____ _ __
 // |  _ \| '__/ _ \| |/ / _ \ '__|
@@ -519,12 +620,18 @@ module private Worker =
 module Broker =
   open Utils
 
+  // ** Workers
+
   type private Workers = ConcurrentDictionary<WorkerId,IWorker>
+
+  // ** ResponseActor
 
   type private ResponseActor = MailboxProcessor<RawResponse>
 
   let private tag (str: string) =
     String.Format("Broker.{0}", str)
+
+  // ** loop
 
   let private loop (workers: Workers) (agent: ResponseActor) =
     let rec impl () =
@@ -544,6 +651,8 @@ module Broker =
         return! impl ()
       }
     impl ()
+
+  // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
   type private LocalThreadState (args: BrokerArgs) as self =
@@ -595,6 +704,8 @@ module Broker =
           |> fun error -> self.Error <- error
           dispose self
 
+    // *** AddWorker
+
     member self.AddWorker() =
       let count = self.Workers.Count
       if count < int args.MaxWorkers then
@@ -623,6 +734,8 @@ module Broker =
           |> string
           |> Logger.err (tag "AddWorker")
 
+    // *** Dispose
+
     interface IDisposable with
       member self.Dispose() =
         lock self <| fun _ ->
@@ -638,8 +751,12 @@ module Broker =
           tryDispose self.Context
           self.Disposed <- true
 
+  // ** spin
+
   let private spin (state: LocalThreadState) =
     state.Initialized && state.Started && state.Run
+
+  // ** worker
 
   let private worker (state: LocalThreadState) () =
     state.Start()
@@ -698,6 +815,8 @@ module Broker =
 
     dispose state
     state.Stopper.Set() |> ignore
+
+  // ** create
 
   let create (args: BrokerArgs) =
     let state = new LocalThreadState(args)

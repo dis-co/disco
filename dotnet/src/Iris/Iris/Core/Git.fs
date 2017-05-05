@@ -25,6 +25,8 @@ open LibGit2Sharp
 module Git =
   open Path
 
+  // ** Branch module
+
   //  ____                       _
   // | __ ) _ __ __ _ _ __   ___| |__
   // |  _ \| '__/ _` | '_ \ / __| '_ \
@@ -37,7 +39,11 @@ module Git =
   ///
   module Branch =
 
+    // *** tag
+
     let private tag (str:string) = sprintf "Git.Branch.%s" str
+
+    // *** create
 
     /// ## Create a new brnac
     ///
@@ -58,6 +64,8 @@ module Git =
           |> Error.asGitError (tag "create")
           |> Either.fail
 
+    // *** current
+
     /// ## Get the currently checked out branch
     ///
     /// Get the currently checked out Branch of a given Repository.
@@ -67,6 +75,8 @@ module Git =
     ///
     /// Returns: Branch
     let current (repo: Repository) = repo.Head
+
+    // *** tracked
 
     /// ## Get the remote tracked branch
     ///
@@ -84,6 +94,8 @@ module Git =
           |> Either.fail
         | branch -> Either.succeed branch
 
+    // *** tracking
+
     /// ## Get details about the remote tracking branch
     ///
     /// Get details about the remote tracked by the passed in branch.
@@ -100,6 +112,8 @@ module Git =
           |> Either.fail
         | details -> Either.succeed details
 
+    // *** tip
+
     /// ## Get the lastest commit object.
     ///
     /// The tip of the branch is the latest commit made to it.
@@ -109,6 +123,8 @@ module Git =
     ///
     /// Returns: Commit
     let tip (branch: Branch) = branch.Tip
+
+    // *** remoteName
 
     /// ## Remote name of current branch
     ///
@@ -120,6 +136,8 @@ module Git =
     /// Returns: string
     let remoteName (branch: Branch) = branch.RemoteName
 
+    // *** reference
+
     /// ## Get Reference object for Branch
     ///
     /// Get the `Reference`
@@ -130,8 +148,12 @@ module Git =
     /// Returns: Reference
     let reference (branch: Branch) = branch.Reference
 
+    // *** item
+
     let item (path: FilePath) (branch: Branch) =
       branch.Item (unwrap path)
+
+    // *** isRemote
 
     /// ## Is the passed branch a remote?
     ///
@@ -143,6 +165,8 @@ module Git =
     /// Returns: boolean
     let isRemote (branch: Branch) = branch.IsRemote
 
+    // *** isTracking
+
     /// ## Check if branch tracks a remote
     ///
     /// Return true if the passed branch tracks any remote branch.
@@ -152,6 +176,8 @@ module Git =
     ///
     /// Returns: boolean
     let isTracking (branch: Branch) = branch.IsRemote
+
+    // *** isCurrentRepositoryHead
 
     /// ## Check if branch is current repository head.
     ///
@@ -163,6 +189,8 @@ module Git =
     /// Returns: boolean
     let isCurrentRepositoryHead (branch: Branch) = branch.IsCurrentRepositoryHead
 
+    // *** canonicalName
+
     /// ## Get the canonical name of a branch
     ///
     /// Get the canonical name of a branch.
@@ -172,6 +200,8 @@ module Git =
     ///
     /// Returns: string
     let canonicalName (branch: Branch) = branch.CanonicalName
+
+    // *** upstreamCanonicalName
 
     /// ## Get the canonical name of upstream branch
     ///
@@ -183,6 +213,8 @@ module Git =
     /// Returns: string
     let upstreamCanonicalName (branch: Branch) = branch.UpstreamBranchCanonicalName
 
+    // *** friendlyName
+
     /// ## Get friendly name of Branch
     ///
     /// Get the human-friendly name of a branch.
@@ -192,6 +224,8 @@ module Git =
     ///
     /// Returns: string
     let friendlyName (branch: Branch) = branch.FriendlyName
+
+    // *** commits
 
     /// ## Get commit log of branch
     ///
@@ -206,6 +240,8 @@ module Git =
       for commit in branch.Commits.Reverse() do
         commits := commit :: !commits
       !commits
+
+    // *** setTracked
 
     /// ## setTracked
     ///
@@ -230,6 +266,8 @@ module Git =
           |> Error.asGitError (tag "setTracked")
           |> Either.fail
 
+  // ** Repo
+
   //  ____
   // |  _ \ ___ _ __   ___
   // | |_) / _ \ '_ \ / _ \
@@ -242,10 +280,17 @@ module Git =
   /// Git repository management code.
   ///
   module Repo =
+
+    // *** tag
+
     let private tag (str: string) = sprintf "Git.Repo.%s" str
+
+    // *** path
 
     let path (repo: Repository) =
       repo.Info.Path
+
+    // *** parentPath
 
     let parentPath (repo: Repository) =
       let pth = path repo
@@ -258,6 +303,8 @@ module Git =
         pth
         |> Path.GetDirectoryName
         |> filepath
+
+    // *** tags
 
     /// ## Get all tags for repository
     ///
@@ -273,6 +320,8 @@ module Git =
         tags := tag :: !tags
       !tags
 
+    // *** submodules
+
     /// ## Get submodules of a repository
     ///
     /// Get all registered submodules for a collection
@@ -286,6 +335,8 @@ module Git =
       for modewl in repo.Submodules do
         modewls := modewl :: !modewls
       !modewls
+
+    // *** clone
 
     /// ## clone
     ///
@@ -304,6 +355,8 @@ module Git =
         | exn ->
           Left (Error.asGitError (tag "clone") exn.Message)
 
+    // *** branches
+
     /// ## Get all branches in repository.
     ///
     /// Get all branches in repository.
@@ -317,6 +370,8 @@ module Git =
       for branch in repo.Branches do
         branches := branch :: !branches
       !branches
+
+    // *** stashes
 
     /// ## Get all stashes in this repository
     ///
@@ -332,6 +387,8 @@ module Git =
         stashes := stash :: !stashes
       !stashes
 
+    // *** revert
+
     /// ## Revert specified commit
     ///
     /// Reverts the specified commit on passed repository.
@@ -344,6 +401,8 @@ module Git =
     /// Returns: RevertResult
     let revert (commit: Commit) (committer: Signature) (repo: Repository) =
       repo.Revert(commit, committer)
+
+    // *** reset
 
     /// ## Reset current repository.
     ///
@@ -363,6 +422,8 @@ module Git =
           exn.Message
           |> Error.asGitError (tag "reset")
           |> Either.fail
+
+    // *** resetTo
 
     /// ## Reset current repository to specified commit
     ///
@@ -384,6 +445,8 @@ module Git =
           |> Error.asGitError (tag "resetTo")
           |> Either.fail
 
+    // *** clean
+
     /// ## Clean repository
     ///
     /// Remove all untracked files from repository.
@@ -393,6 +456,8 @@ module Git =
     ///
     /// Returns: unit
     let clean (repo: Repository) = repo.RemoveUntrackedFiles()
+
+    // *** refs
 
     /// ## List all Refs in repository
     ///
@@ -408,6 +473,8 @@ module Git =
         refs := rev :: !refs
       !refs
 
+    // *** database
+
     /// ## Get the object database for repository
     ///
     /// get all objects in repository
@@ -418,6 +485,8 @@ module Git =
     /// Returns: ObjectDatabase
     let database (repo: Repository) = repo.ObjectDatabase
 
+    // *** index
+
     /// ### Signature:
     /// - repo: Repository
     /// - arg: arg
@@ -425,6 +494,8 @@ module Git =
     ///
     /// Returns: Index
     let index (repo: Repository) = repo.Index
+
+    // *** ignored
 
     /// ## Gets the currently ignored files
     ///
@@ -436,6 +507,8 @@ module Git =
     /// Returns: Ingnore
     let ignored (repo: Repository) = repo.Ignore
 
+    // *** diff
+
     /// ## Get a diff between current working changes and last commit
     ///
     /// Get a diff for current changes
@@ -446,6 +519,8 @@ module Git =
     /// Returns: Diff
     let diff (repo: Repository) = repo.Diff
 
+    // *** config
+
     /// ## Get repository configuration
     ///
     /// Gets the current repository configuration
@@ -455,6 +530,8 @@ module Git =
     ///
     /// Returns: Configuration
     let config (repo: Repository) = repo.Config
+
+    // *** merge
 
     /// ## Merge the specified branch
     ///
@@ -468,6 +545,8 @@ module Git =
     /// Returns: unit
     let merge (branch: Branch) (committer: Signature) (repo: Repository) =
       repo.Merge(branch, committer)
+
+    // *** checkout
 
     /// ## Checkout specified Branch/SHA1/Tag etc
     ///
@@ -485,6 +564,8 @@ module Git =
         |> Error.asGitError (tag "checkout")
         |> Either.fail
       | branch -> Either.succeed branch
+
+    // *** repository
 
     /// ## Find and return Repository object
     ///
@@ -514,6 +595,8 @@ module Git =
           |> Error.asGitError (tag "repository")
           |> Either.fail
 
+    // *** init
+
     /// ## Initialize a new repository
     ///
     /// Initialize a new repository at the location specified
@@ -532,6 +615,8 @@ module Git =
           |> Error.asGitError (tag "init")
           |> Either.fail
 
+    // *** add
+
     let add (repo: Repository) (path: FilePath) =
       try
         if Path.isPathRooted path then
@@ -549,6 +634,8 @@ module Git =
           |> Error.asGitError (tag "add")
           |> Either.fail
 
+    // *** stage
+
     let stage (repo: Repository) (path: FilePath) =
       try
         if Path.isPathRooted path then
@@ -565,6 +652,8 @@ module Git =
           |> Error.asGitError (tag "stage")
           |> Either.fail
 
+    // *** stageAll
+
     let stageAll (repo: Repository)  =
       let _stage (ety: StatusEntry) =
         parentPath repo </> filepath ety.FilePath
@@ -579,6 +668,8 @@ module Git =
           |> Error.asGitError (tag "stageAll")
           |> Either.fail
 
+    // *** commit
+
     let commit (repo: Repository) (msg: string) (committer: Signature) =
       try
         repo.Commit(msg, committer, committer)
@@ -588,6 +679,8 @@ module Git =
           exn.Message
           |> Error.asGitError (tag "commit")
           |> Either.fail
+
+    // *** status
 
     /// ## Retrieve current repository status object
     ///
@@ -607,6 +700,8 @@ module Git =
           |> Error.asGitError (tag "status")
           |> Either.fail
 
+    // *** isDirty
+
     /// ## Check if repository is currently dirty
     ///
     /// Check if the current repository is dirty or nor.
@@ -620,6 +715,8 @@ module Git =
         let! status = status repo
         return status.IsDirty
       }
+
+    // *** untracked
 
     /// ## untracked
     ///
@@ -635,6 +732,8 @@ module Git =
         return status.Untracked
       }
 
+    // *** commits
+
     /// ## Shorthand to work with the commit log of a repository
     ///
     /// Get the list of commits for a repository.
@@ -645,6 +744,8 @@ module Git =
     /// Returns: IQueryableCommitLog
     let commits (repo: Repository) : IQueryableCommitLog =
       repo.Commits
+
+    // *** elementAt
 
     /// ## Get the commit object at given index.
     ///
@@ -666,6 +767,8 @@ module Git =
           |> Error.asGitError (tag "elementAt")
           |> Either.fail
 
+    // *** commitCount
+
     /// ## Count number of commits
     ///
     /// Count number of commits at the repository level.
@@ -677,6 +780,8 @@ module Git =
     let commitCount (repo: Repository) =
       commits repo
       |> fun lst -> lst.Count()
+
+    // *** pull
 
     /// ## pull
     ///
@@ -708,6 +813,8 @@ module Git =
           |> Error.asGitError (tag "pull")
           |> Either.fail
 
+  // ** Config
+
   //   ____             __ _
   //  / ___|___  _ __  / _(_) __ _
   // | |   / _ \| '_ \| |_| |/ _` |
@@ -716,16 +823,25 @@ module Git =
   //                         |___/
 
   module Config =
+
+    // *** tag
+
     let private tag (str: string) = String.Format("Git.Config.{0}", str)
+
+    // *** tryFindRemote
 
     let tryFindRemote (repo: Repository) (name: string) =
       repo.Network.Remotes
       |> Seq.tryFind (fun (remote: Remote) -> remote.Name = name)
 
+    // *** remotes
+
     let remotes (repo: Repository) =
       repo.Network.Remotes
       |> Seq.fold (fun lst (remote: Remote) -> (remote.Name,remote) :: lst) []
       |> Map.ofList
+
+    // *** addRemote
 
     let addRemote (repo: Repository) (name: string) (url: string) =
       try
@@ -736,6 +852,8 @@ module Git =
           exn.Message
           |> Error.asGitError (tag "addRemote")
           |> Either.fail
+
+    // *** updateRemote
 
     let updateRemote (repo: Repository) (remote: Remote) (url: string) =
       try
@@ -750,11 +868,15 @@ module Git =
           |> Error.asGitError (tag "updateRemote")
           |> Either.fail
 
+    // *** delRemote
+
     let delRemote (repo: Repository) (name: string) : Either<IrisError,unit> =
       repo.Network.Remotes.Remove name
       |> Either.succeed
 
 #endif
+
+// * Playground
 
 //  ____  _                                             _
 // |  _ \| | __ _ _   _  __ _ _ __ ___  _   _ _ __   __| |
