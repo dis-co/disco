@@ -31,19 +31,8 @@ dotnet fable npm-run build
 
 ## WATCHING
 
-At the moment, you need to use two terminals to watch Fable and JS files (this will be fixed later).
-Make sure you have installed dependencies and built the plugin (see Building above).
-
-- Watch Fable files:
+Make sure you have installed dependencies and built the plugin (see Building above) and then run:
 
 ```shell
-dotnet fable npm-run watch-fable
+dotnet fable npm-run start
 ```
-
-- Watch JS files and start a Webpack Dev Server (this is only for static files, you must also start
-  an Iris server in localhost:7000 for the HTTP API to work):
-
-```shell
-npm run start
-```
-

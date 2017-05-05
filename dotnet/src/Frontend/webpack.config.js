@@ -1,3 +1,5 @@
+// @ts-check
+
 var path = require('path');
 var webpack = require('webpack');
 
@@ -20,24 +22,43 @@ if (irisPort == null && isDevServer) {
 }
 
 var babelOptions = {
-  presets: [["es2015", { "modules": false }]],
+  presets: [["es2015", { "modules": false }], "react"],
   plugins: ["transform-runtime"]
 }
 
-var babelReactOptions = {
-  presets: [["es2015", { "modules": false }], "react"],
-  plugins: ["transform-runtime", "react-hot-loader/babel"]
-}
-
-var irisConfig = {
-  devtool: "source-map",
+module.exports = {
+  devtool: isProduction ? false : 'inline-source-map',
   entry: resolve('./fable/Frontend/Frontend.fsproj'),
   output: {
     filename: 'iris.js', // the output bundle
     path: resolve('js'),
+    publicPath: '/js/', // For dev server
     libraryTarget: "var",
     library: "IrisLib"
   },
+  externals: {
+    jquery: 'jQuery'
+  },
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.json'],
+    modules: [
+      "node_modules", resolve("./node_modules/")
+    ]
+  },
+  devServer: {
+    host: irisHost,
+    port: 3000,
+    historyApiFallback: true, // respond to 404s with index.html
+    // hot: true, // enable HMR on the server
+    proxy: {
+      '/api/*': {
+        target: 'http://' + irisHost + ':' + irisPort
+      }
+    },
+    headers: {
+      "Access-Control-Allow-Origin": "*"
+    }
+  },  
   module: {
     rules: [
       {
@@ -59,59 +80,6 @@ var irisConfig = {
           options: babelOptions
         },
       },
-    ],
-  },
-  resolve: {
-    modules: [
-      "node_modules", resolve("./node_modules/")
-    ]
-  },
-};
-
-var bundleConfig = {
-  entry: isProduction
-    ? resolve('./src/index.js')
-    : [
-      'react-hot-loader/patch',
-      // activate HMR for React
-
-      'webpack-dev-server/client?http://' + irisHost + ':3000',
-      // bundle the client for webpack-dev-server
-      // and connect to the provided endpoint
-
-      'webpack/hot/only-dev-server',
-      // bundle the client for hot reloading
-      // only- means to only hot reload for successful updates
-      resolve('./src/index.js')
-      // the entry point of our app
-    ],
-
-  output: {
-    filename: 'bundle.js', // the output bundle
-    path: resolve('js'),
-    publicPath: '/js/' // necessary for HMR to know where to load the hot update chunks
-  },
-
-  externals: {
-    jquery: 'jQuery'
-  },
-
-  resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.json']
-  },
-
-  devtool: isProduction ? false : 'inline-source-map',
-
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules[\\\/](?!fable-)/,
-        use: {
-          loader: 'babel-loader',
-          options: babelReactOptions
-        },
-      },
       {
         test: /\.css$/,
         use: [ 'style-loader', 'css-loader' ]
@@ -127,40 +95,7 @@ var bundleConfig = {
       {
         test: /\.tsx?$/,
         loader: "awesome-typescript-loader"
-      },
+      },      
     ],
   },
-
-  plugins: isProduction ? [] : [
-    new webpack.HotModuleReplacementPlugin(),
-    // enable HMR globally
-
-    new webpack.NamedModulesPlugin(),
-    // prints more readable module names in the browser console on HMR updates
-
-    new webpack.NoEmitOnErrorsPlugin(),
-    // do not emit compiled assets that include errors
-  ],
-
-  devServer: {
-    host: irisHost,
-    port: 3000,
-    historyApiFallback: true, // respond to 404s with index.html
-    hot: true, // enable HMR on the server
-    proxy: {
-      '/api/*': {
-        target: 'http://' + irisHost + ':' + irisPort
-      }
-    },
-    headers: {
-      "Access-Control-Allow-Origin": "*"
-    }
-  }
 };
-
-if (isDevServer) {
-  module.exports = bundleConfig;
-}
-else {
-  module.exports = [ irisConfig, bundleConfig ];
-}

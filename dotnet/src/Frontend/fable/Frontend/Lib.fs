@@ -18,6 +18,14 @@ open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
 
+// REACT ----------------------------------------------------
+
+let renderApp(domel: obj) =
+  let React: obj = importDefault "react"
+  let ReactDOM: obj = importDefault "react-dom"
+  let App: obj = importDefault "../../src/App.js"
+  ReactDOM?render(React?createElement(App), domel) |> ignore
+
 // TYPES -----------------------------------------------------
 type GenericObservable<'T>() =
     let listeners = Dictionary<Guid,IObserver<'T>>()
