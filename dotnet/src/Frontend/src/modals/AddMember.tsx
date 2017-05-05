@@ -1,28 +1,20 @@
-import React from 'react';
-import Form from 'muicss/lib/react/form';
-import Input from 'muicss/lib/react/input';
-import Button from 'muicss/lib/react/button';
+import * as React from 'react';
+import { IIris } from "../Interfaces"
 
-export default class AddNode extends React.Component {
+declare var IrisLib: IIris;
+
+interface AddMemberProps {
+  onSubmit(): void
+}
+
+export default class AddMember extends React.Component<AddMemberProps,any> {
   constructor(props) {
       super(props);
-      let match = /\:(\d+)$/.exec(window.location.host);
-      this.webPort = match != null ? parseInt(match[1]) : null;
       this.state = {
-        id: "",
-        idError: "Required",
-        hostName: "",
-        hostNameError: "Required",
         ipAddr: "",
         ipAddrError: "Required",
-        port: "",
-        portError: "Required",
-        apiPort: "",
-        apiPortError: "Required",
-        wsPort: "",
-        wsPortError: "Required",
-        gitPort: "",
-        gitPortError: "Required"
+        httpPort: 0,
+        httpPortError: "Required",
       };
   }
 
@@ -46,13 +38,10 @@ export default class AddNode extends React.Component {
     if (isNaN(parsed)) {
       return { value: port, error: "Not a valid number" };
     }
-    if (this.webPort && parsed === this.webPort) {
-      return { value: parsed, error: "Port in use by web server" };
-    }
     for (let key in this.state) {
       if (key !== id && key.toLowerCase().endsWith("port")) {
         if (this.state[key] === parsed) {
-          return { value: parsed, error: "Duplicated port" };
+          return { value: parsed, error: "Duplicate Port" };
         }
       }
     }
@@ -91,13 +80,8 @@ export default class AddNode extends React.Component {
     return (
       <div>
         <p className="title has-text-centered">Node information</p>
-        {this.renderGroup("id", "Id", this.validateName.bind(this))}
-        {this.renderGroup("hostName", "Host Name", this.validateName.bind(this))}
         {this.renderGroup("ipAddr", "IP Address", this.validateIpAddress.bind(this))}
-        {this.renderGroup("apiPort", "Api Port", this.validatePort.bind(this))}
-        {this.renderGroup("port", "Raft Port", this.validatePort.bind(this))}
-        {this.renderGroup("wsPort", "Web Socket Port", this.validatePort.bind(this))}
-        {this.renderGroup("gitPort", "Git Daemon Port", this.validatePort.bind(this))}
+        {this.renderGroup("httpPort", "HTTP Port", this.validatePort.bind(this))}
         <div className="field is-grouped">
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {

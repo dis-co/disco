@@ -223,7 +223,7 @@ module SerializationTests =
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       either {
-        let machine = MachineConfig.create None
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let self =
           machine.MachineId

@@ -2471,7 +2471,7 @@ Config: %A
             with
               | _ -> None
 
-      let dummy = MachineConfig.create None
+      let dummy = MachineConfig.create Constants.DEFAULT_IP None
 
       let! config = Config.fromFile config dummy
 
@@ -2512,7 +2512,7 @@ module Project =
   let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (project.Path |> unwrap |> Uri.localGitUri)
+    |> Option.map (project.Name |> unwrap |> Uri.localGitUri)
 
   // ** currentBranch
 

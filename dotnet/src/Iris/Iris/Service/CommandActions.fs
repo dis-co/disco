@@ -12,6 +12,7 @@ open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open System.Collections.Concurrent
+open Iris.Core
 
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
@@ -20,6 +21,12 @@ let private tag s = "Iris.Service.Commands." + s
 let private serializeJson =
     let converter = Fable.JsonConverter()
     fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '"GetServiceInfo"' \
+//      http://localhost:7000/api/comman
 
 let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
     match iris.Config with
@@ -34,10 +41,20 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
         | Left _ -> null |> serializeJson
     |> Either.succeed
 
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '"ListProjects"' \
+//      http://localhost:7000/api/comman
+
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
-  Directory.getDirectories cfg.WorkSpace
-  |> Array.map (Path.getFileName >> unwrap)
-  |> String.concat ","
+  cfg.WorkSpace
+  |> Directory.getDirectories
+  |> Array.choose (fun dir ->
+    match IrisProject.Load(dir, cfg) with
+    | Right project -> { Name = project.Name; Id = project.Id } |> Some
+    | Left error -> printfn "ERROR: %A" error; None)
+  |> serializeJson
   |> Either.succeed
 
 /// ## buildProject
@@ -131,14 +148,37 @@ let getProjectSites machine projectName username password =
 // Command to test:
 // curl -H "Content-Type: application/json" \
 //      -XPOST \
+//      -d '"MachineStatus"' \
+//      http://localhost:7000/api/comman
+
+let machineStatus (iris: IIrisServer) =
+  match iris.MachineStatus with
+  | Right status -> status |> serializeJson |> Either.succeed
+  | Left error -> Left error
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
+//      -d '"MachineConfig"' \
+//      http://localhost:7000/api/comman
+
+let machineConfig () =
+  MachineConfig.get()
+  |> serializeJson
+  |> Either.succeed
+
+// Command to test:
+// curl -H "Content-Type: application/json" \
+//      -XPOST \
 //      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
 let cloneProject (name: string) (uri: string) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> filepath name
+  let success = sprintf "Successfully cloned project from: %A" uri
   Git.Repo.clone target uri
-  |> Either.map (sprintf "Cloned project %A into %A" name target |> konst)
+  |> Either.map (konst (serializeJson success))
 
 // Command to test:
 // curl -H "Content-Type: application/json" \
@@ -164,7 +204,10 @@ let pullProject (id: string) (name: string) (uri: string) = either {
         "Clonflict while pulling from " + uri
         |> Error.asGitError "pullProject"
         |> Either.fail
-    | _ -> return "ok"
+    | _ ->
+      return
+        sprintf "Successfully pulled changes from: %A" uri
+        |> serializeJson
   }
 
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
@@ -187,12 +230,14 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
             exit 0
           }
           Right msg
-        | UnloadProject ->
+        | Command.UnloadProject ->
           // TODO: Check if a project is actually loaded
           iris.UnloadProject()
           |> Either.map (fun () -> "Project unloaded")
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
+        | MachineStatus -> machineStatus iris
+        | MachineConfig -> machineConfig ()
         | CreateProject opts -> createProject cfg opts
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri

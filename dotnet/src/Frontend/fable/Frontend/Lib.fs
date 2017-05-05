@@ -1,4 +1,4 @@
-module Iris.Web.Lib
+module rec Iris.Web.Lib
 
 //  _____                _                 _   __  __       _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| | |  \/  | __ _(_)_ __
@@ -95,20 +95,6 @@ let removeMember(config: IrisConfig, memId: Id) =
   | Left error ->
     printfn "%O" error
 
-let addMember(info: obj) =
-  try
-    { Member.create (Id !!info?id) with
-        HostName = !!info?hostName
-        IpAddr   = IPv4Address !!info?ipAddr
-        Port     = !!info?port
-        WsPort   = !!info?wsPort
-        GitPort  = !!info?gitPort
-        ApiPort  = !!info?apiPort }
-    |> AddMember
-    |> ClientContext.Singleton.Post
-  with
-  | exn -> printfn "Couldn't create mem: %s" exn.Message
-
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 
@@ -117,27 +103,39 @@ let alert msg (_: Exception) =
 let (&>) fst v =
   fun x -> fst x; v
 
-let private postCommandPrivate (cmd: Command) =
+let private postCommandPrivate (ipAndPort: string option) (cmd: Command) =
+  let url =
+    match ipAndPort with
+    | Some ipAndPort -> sprintf "http://%s%s" ipAndPort Constants.WEP_API_COMMAND
+    | None -> Constants.WEP_API_COMMAND
   GlobalFetch.fetch(
-    RequestInfo.Url Constants.WEP_API_COMMAND,
+    RequestInfo.Url url,
     requestProps
       [ RequestProperties.Method HttpMethod.POST
         requestHeaders [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
 
 let postCommand onSuccess onFail (cmd: Command) =
-  postCommandPrivate cmd
+  postCommandPrivate None cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.map onFail
     else res.text() |> Promise.map onSuccess)
 
 let postCommandAndBind onSuccess onFail (cmd: Command) =
-  postCommandPrivate cmd
+  postCommandPrivate None cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.bind onFail
     else res.text() |> Promise.bind onSuccess)
+
+/// Posts a command, parses the JSON response returns a promise (can fail)
+let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
+  postCommandPrivate ipAndPort cmd
+  |> Promise.bind (fun res ->
+    if res.Ok
+    then res.text() |> Promise.map ofJson<'T>
+    else res.text() |> Promise.map (failwithf "%s"))
 
 let postCommandWithErrorNotifier defValue onSuccess cmd =
   postCommand onSuccess (fun msg -> notify msg; defValue) cmd
@@ -147,7 +145,87 @@ let postCommandAndForget cmd =
 
 let listProjects() =
   ListProjects
-  |> postCommandWithErrorNotifier [||] (String.split [|','|])
+  |> postCommandWithErrorNotifier [||] (ofJson<NameAndId[]> >> Array.map (fun x -> x.Name))
+
+let addMember(info: obj) =
+  Promise.start (promise {
+  // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
+  try
+    let latestState = ClientContext.Singleton.LatestState
+
+    let memberIpAndPort =
+      let memberIpAddr: string = !!info?ipAddr
+      let memberHttpPort: uint16 = !!info?httpPort
+      sprintf "%s:%i" memberIpAddr memberHttpPort |> Some
+
+    memberIpAndPort |> Option.iter (printfn "New member URI: %s")
+
+    let! status =
+      postCommandParseAndContinue<MachineStatus>
+        memberIpAndPort
+        MachineStatus
+
+    match status with
+    | Busy (_, name) -> failwithf "Host cannot be added. Busy with project %A" name
+    | _ -> ()
+
+    // Get the added machines configuration
+    let! machine =
+      postCommandParseAndContinue<IrisMachine>
+        memberIpAndPort
+        MachineConfig
+
+    // List projects of member candidate (B)
+    let! projects =
+      postCommandParseAndContinue<NameAndId[]>
+        memberIpAndPort
+        ListProjects
+
+    // If B has leader (A) active project,
+    // then **pull** project from A into B
+    // else **clone** active project from A into B
+
+    let! commandMsg =
+      let projectGitUri =
+        match Project.localRemote latestState.Project with
+        | Some uri -> uri
+        | None -> failwith "Cannot get URI of project git repository"
+      match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
+      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
+      | None   -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      |> postCommandParseAndContinue<string> memberIpAndPort
+
+    notify commandMsg
+
+    let active =
+      latestState.Project.Config.ActiveSite
+      |> Option.map string
+
+    // Load active project in machine B
+    // Note that we don't use loadProject from below, since that function
+    // restarts the ClientContextn and thus disconnects us from the service.
+
+    // TODO: Using the admin user for now, should it be the same user as leader A?
+    let! loadResult =
+      LoadProject(unwrap latestState.Project.Name, "admin", password "Nsynk", active)
+      |> postCommandPrivate memberIpAndPort
+
+    printfn "response: %A" loadResult
+
+    // Add member B to the leader (A) cluster
+    { Member.create machine.MachineId with
+        HostName = machine.HostName
+        IpAddr   = IPv4Address machine.WebIP
+        Port     = machine.RaftPort
+        WsPort   = machine.WsPort
+        GitPort  = machine.GitPort
+        ApiPort  = machine.ApiPort }
+    |> AddMember
+    |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
+  with
+  | exn ->
+    sprintf "Cannot add new member: %s" exn.Message |> notify
+})
 
 let shutdown() =
   Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
@@ -157,23 +235,23 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project, username, password, site) =
-  LoadProject(project, username, password, site)
-  |> postCommandPrivate
+let rec loadProject(project: string, username: string, pass: string, site: string option, ipAndPort: string option): JS.Promise<string option> =
+  LoadProject(project, username, password pass, site)
+  |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
     then
       ClientContext.Singleton.ConnectWithWebSocket()
       |> Promise.map (fun _msg -> // TODO: Check message?
-        notify "The project has been loaded successfully" |> nullify)
+        notify "The project has been loaded successfully"; None)
     else
       res.text() |> Promise.map (fun msg ->
         if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
-        then msg
+        then Some msg
         // We cannot deal with the error, just notify it
-        else notify msg |> nullify
+        else notify msg; None
       )
   )
 
@@ -182,14 +260,18 @@ let getProjectSites(project, username, password) =
   |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
 
 let createProject(info: obj) =
-  { name     = !!info?name
-  ; ipAddr   = !!info?ipAddr
-  ; port     = !!info?port
-  ; apiPort  = !!info?apiPort
-  ; wsPort   = !!info?wsPort
-  ; gitPort  = !!info?gitPort }
-  |> CreateProject
-  |> postCommand (fun _ -> notify "The project has been created successfully") notify
+  Promise.start (promise {
+    let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
+
+    do! { name     = !!info?name
+        ; ipAddr   = machine.WebIP
+        ; port     = machine.RaftPort
+        ; apiPort  = machine.ApiPort
+        ; wsPort   = machine.WsPort
+        ; gitPort  = machine.GitPort }
+        |> CreateProject
+        |> postCommand (fun _ -> notify "The project has been created successfully") notify
+  })
 
 let project2tree (p: IrisProject) =
   let leaf m = { ``module``=m; children=None }

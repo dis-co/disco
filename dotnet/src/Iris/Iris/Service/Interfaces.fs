@@ -5,6 +5,7 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Core.Discovery
 open Iris.Raft
 open Iris.Client
@@ -162,6 +163,7 @@ type IIrisServer =
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract LoadProject   : name:string * userName:string * password:Password * ?site:string -> Either<IrisError,unit>
   abstract UnloadProject : unit -> Either<IrisError,unit>
+  abstract MachineStatus : Either<IrisError,MachineStatus>
 
 // * IApiServer
 
