@@ -3,8 +3,6 @@ namespace Iris.Raft
 open System
 open FSharpx.Functional
 open Iris.Core
-open Hopac
-open Hopac.Infixes
 
 [<AutoOpen>]
 module RaftMonad =
@@ -140,24 +138,23 @@ module Raft =
   let error site str = log site Err str
 
   let sendAppendEntriesM (mem: RaftMember) (request: AppendEntries) =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          let msg =
-            sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
-              (string mem.Id)
-              (currentIndex state)
-              request.Term
-              request.LeaderCommit
-              request.PrevLogIdx
-              request.PrevLogTerm
+    raft {
+      let! state = get
+      let! cbs = read
 
-          Logger.debug "sendAppendEntriesM" msg
+      let msg =
+        sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
+          (string mem.Id)
+          (currentIndex state)
+          request.Term
+          request.LeaderCommit
+          request.PrevLogIdx
+          request.PrevLogTerm
 
-          let result = cbs.SendAppendEntries mem request
-          return result
-        }
-        |> returnM
+      Logger.debug "sendAppendEntriesM" msg
+
+      cbs.SendAppendEntries mem request
+    }
 
   let persistVote mem =
     read >>= fun cbs ->
@@ -1172,24 +1169,20 @@ module Raft =
                               match result with
                                 | Some(entry) -> LogEntry.getTerm entry
                                 | _           -> request.Term }
-        return! sendAppendEntriesM peer request
+        do! sendAppendEntriesM peer request
       else
-        return! sendAppendEntriesM peer request
+        do! sendAppendEntriesM peer request
     }
 
   let private sendRemainingEntries peerid =
     raft {
       let! peer = getMemberM peerid
       match peer with
-        | Some mem ->
-          let! entry = getEntryAtM (Member.getNextIndex mem)
-          if Option.isSome entry then
-            let! request = sendAppendEntry mem
-            return Hopac.run request
-          else
-            return None
-        | _ ->
-          return None
+      | Some mem ->
+        let! entry = getEntryAtM (Member.getNextIndex mem)
+        if Option.isSome entry then
+          do! sendAppendEntry mem
+      | _ -> return ()
     }
 
   let rec receiveAppendEntriesResponse (nid : MemberId) resp =
@@ -1266,36 +1259,14 @@ module Raft =
 
     }
 
-  let sendAllAppendEntriesM _ =
+  let sendAllAppendEntriesM () =
     raft {
       let! self = getSelfM ()
       let! peers = logicalPeersM ()
 
-      let requests = ref [| |]
-
       for peer in peers do
         if peer.Value.Id <> self.Id then
-          let! request = sendAppendEntry peer.Value
-          requests := Array.append [| (peer.Value, request) |] !requests
-
-      if Array.length !requests > 0 then
-        let responses =
-          !requests
-          |> Array.map snd
-          |> Job.conCollect
-          |> Hopac.run
-          |> fun arr -> arr.ToArray()
-          |> Array.zip (Array.map fst !requests)
-
-        for (mem, response) in responses do
-          match response with
-          | Some resp ->
-            do! receiveAppendEntriesResponse mem.Id resp
-            let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
-            if peer.State = Failed then
-              do! setMemberStateM mem.Id Running
-          | _ ->
-            do! setMemberStateM mem.Id Failed
+          do! sendAppendEntry peer.Value
 
       do! setTimeoutElapsedM 0<ms>
     }
@@ -1315,23 +1286,22 @@ module Raft =
     Log.snapshot peers data state.Log
 
   let sendInstallSnapshot mem =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          match cbs.RetrieveSnapshot () with
-            | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
-              let is =
-                { Term      = state.CurrentTerm
-                ; LeaderId  = state.Member.Id
-                ; LastIndex = idx
-                ; LastTerm  = term
-                ; Data      = snapshot
-                }
-              return cbs.SendInstallSnapshot mem is
-            | _ -> return None
-        }
-        |> returnM
+    raft {
+      let! state = get
+      let! cbs = read
 
+      match cbs.RetrieveSnapshot () with
+      | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
+        let is =
+          { Term      = state.CurrentTerm
+          ; LeaderId  = state.Member.Id
+          ; LastIndex = idx
+          ; LastTerm  = term
+          ; Data      = snapshot
+          }
+        cbs.SendInstallSnapshot mem is
+      | _ -> ()
+    }
 
   ///////////////////////////////////////////////////////////////////
   //  ____               _             _____       _               //
@@ -1377,8 +1347,6 @@ module Raft =
         let! state = get
         let! peers = logicalPeersM ()
 
-        let requests = ref [| |]
-
         // iterate through all peers and call sendAppendEntries to each
         for peer in peers do
           let mem = peer.Value
@@ -1395,30 +1363,11 @@ module Raft =
             if difference <= (index (int state.MaxLogDepth) + 1<index>) then
               // Only send new entries. Don't send the entry to peers who are
               // behind, to prevent them from becoming congested.
-              let! request = sendAppendEntry mem
-              requests := Array.append [| (mem,request) |] !requests
+              do! sendAppendEntry mem
             else
               // because this mem is way behind in the cluster, get it up to speed
               // with a snapshot
-              let! request = sendInstallSnapshot mem
-              requests := Array.append [| (mem,request) |] !requests
-
-        let results =
-          Array.map snd !requests
-          |> Job.conCollect
-          |> Hopac.run
-          |> fun arr -> arr.ToArray()
-          |> Array.zip (Array.map fst !requests)
-
-        for (mem, response) in results do
-          match response with
-          | Some resp ->
-            do! receiveAppendEntriesResponse mem.Id resp
-            let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
-            if peer.State = Failed then
-              do! setMemberStateM mem.Id Running
-          | _ ->
-            do! setMemberStateM mem.Id Failed
+              do! sendInstallSnapshot mem
 
         do! updateCommitIdx |> modify
 
@@ -1818,6 +1767,7 @@ module Raft =
         let str = sprintf "%s responded to vote request with: %s"
                     (string nid)
                     (if vote.Granted then "granted" else "not granted")
+
         do! debug "receiveVoteResponse" str
 
         /// The term must not be bigger than current raft term,
@@ -1915,65 +1865,40 @@ module Raft =
 
   /// Request a from a given peer
   let sendVoteRequest (mem : RaftMember) =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          if mem.State = Running || mem.State = Failed then
-            let vote =
-              { Term         = state.CurrentTerm
-                Candidate    = state.Member
-                LastLogIndex = Log.getIndex state.Log
-                LastLogTerm  = Log.getTerm state.Log }
+    raft {
+      let! state = get
+      let! cbs = read
 
-            mem.State
-            |> sprintf "(to: %s) (state: %A)" (string mem.Id)
-            |> Logger.debug "sendVoteRequest"
+      if mem.State = Running || mem.State = Failed then
+        let vote =
+          { Term         = state.CurrentTerm
+            Candidate    = state.Member
+            LastLogIndex = Log.getIndex state.Log
+            LastLogTerm  = Log.getTerm state.Log }
 
-            let result = cbs.SendRequestVote mem vote
-            return result
-          else
-            mem.State
-            |> sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
-                (string mem.Id)
-                (Member.isVoting mem)
-            |> Logger.debug "sendVoteRequest"
+        mem.State
+        |> sprintf "(to: %s) (state: %A)" (string mem.Id)
+        |> Logger.debug "sendVoteRequest"
 
-            return None
-        }
-        |> returnM
+        cbs.SendRequestVote mem vote
+      else
+        mem.State
+        |> sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
+            (string mem.Id)
+            (Member.isVoting mem)
+        |> Logger.debug "sendVoteRequest"
+    }
 
-  let requestAllVotes _ =
+  let requestAllVotes () =
     raft {
         let! self = getSelfM ()
         let! peers = logicalPeersM ()
 
         do! info "requestAllVotes" "requesting all votes"
 
-        let requests = ref [| |]
-
         for peer in peers do
           if self.Id <> peer.Value.Id then
-            let! request = sendVoteRequest peer.Value
-            requests := Array.append [| (peer.Value, request) |] !requests
-
-        if Array.length !requests > 0 then
-          let responses =
-            !requests
-            |> Array.map snd
-            |> Job.conCollect
-            |> Hopac.run
-            |> fun arr -> arr.ToArray()
-            |> Array.zip (Array.map fst !requests)
-
-          for (mem, response) in responses do
-            let! leader = isLeaderM ()
-            if not leader then                          // check if raft is already leader
-              match response with                     // otherwise process the vote
-              | Some resp ->
-                do! receiveVoteResponse mem.Id resp
-                do! setMemberStateM mem.Id Running
-              | _ ->
-                do! setMemberStateM mem.Id Failed      // mark mem as failed (calls the callback)
+            do! sendVoteRequest peer.Value
       }
 
   ///////////////////////////////////////////////////////

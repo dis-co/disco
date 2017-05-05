@@ -60,6 +60,7 @@ type IClient =
   abstract Request: byte array -> Either<IrisError,byte array>
   abstract Running: bool
   abstract Restart: unit -> unit
+  abstract Subscribe: (byte array -> unit) -> IDisposable
 
 // * WorkerArgs
 
@@ -176,7 +177,7 @@ module Client =
 
   // ** LocalThreadState
 
-  type private LocalThreadState(id: Id, frontend: string, timeout: float) as self =
+  type private LocalThreadState(id: Id, frontend: string, timeout: float, callback: byte array -> unit) as self =
     let clid = string id |> Guid.Parse
 
     [<DefaultValue>] val mutable Run: bool
@@ -185,24 +186,18 @@ module Client =
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Socket: ZSocket
     [<DefaultValue>] val mutable Context: ZContext
-    [<DefaultValue>] val mutable Request: byte array
-    [<DefaultValue>] val mutable Response: Either<IrisError, byte array>
+    [<DefaultValue>] val mutable Requests: ConcurrentQueue<byte array>
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
-    [<DefaultValue>] val mutable Requester: AutoResetEvent
-    [<DefaultValue>] val mutable Responder: AutoResetEvent
 
     do
       self.Run <- true
       self.Started <- false
       self.Disposed <- false
       self.Initialized <- false
-      self.Request <- [| |]
-      self.Response <- Right [| |]
+      self.Requests <- ConcurrentQueue()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
-      self.Requester <- new AutoResetEvent(false)
-      self.Responder <- new AutoResetEvent(false)
 
     // *** Id
 
@@ -224,14 +219,12 @@ module Client =
           self.Started <- false
           self.Run <- false
           exn.Message + exn.StackTrace
-          |> Error.asRaftError "Client.LocalThreadState.Start"
-          |> Either.fail
-          |> fun error -> self.Response <- error
+          |> Logger.err "IClient"
 
     // *** StartSocket
 
     member self.StartSocket() =
-      self.Socket <- new ZSocket(self.Context, ZSocketType.REQ)
+      self.Socket <- new ZSocket(self.Context, ZSocketType.DEALER)
       self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds timeout
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
       self.Socket.Identity <- clid.ToByteArray()
@@ -254,8 +247,6 @@ module Client =
       self.Started <- false
       self.Disposed <- false
       self.Initialized <- false
-      self.Request <- [| |]
-      self.Response <- Right [| |]
 
     // *** Dispose
 
@@ -284,40 +275,42 @@ module Client =
 
   // ** worker
 
-  let private worker (state: LocalThreadState) () =
+  let private worker (state: LocalThreadState) (cb: byte array -> unit) () =
     initialize state
 
     while spin state do
-      state.Requester.WaitOne() |> ignore
+      Thread.Sleep(1000)
+      // let b = new BlockingCollection<byte array>()
+      // let result, thing = b.TryTake(Timeout.FromMilli 1000)
 
-      Tracing.trace "IClient.Request" <| fun () ->
-        if spin state then
-          try
-            use msg = new ZMessage()
-            msg.Add(new ZFrame(state.Request))
-            state.Socket.Send(msg)
+      // Tracing.trace "IClient.Request" <| fun () ->
+      //   if spin state then
+      //     try
+      //       use msg = new ZMessage()
+      //       msg.Add(new ZFrame(state.Request))
+      //       state.Socket.Send(msg)
 
-            use reply = state.Socket.ReceiveMessage()
-            // let worker = reply.[0].ReadInt64()
+      //       use reply = state.Socket.ReceiveMessage()
+      //       // let worker = reply.[0].ReadInt64()
 
-            state.Response <- reply.[1].Read() |> Either.succeed
-            state.Responder.Set() |> ignore
-          with
-            | :? ZException as exn when shouldRestart exn.ErrNo ->
-              state.RestartSocket()
-              state.Response <-
-                String.Format("{0} encountered sending request", exn.Message)
-                |> Error.asSocketError "Client.worker"
-                |> Either.fail
-              state.Responder.Set() |> ignore
-            | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
-              state.Response <-
-                exn.Message + exn.StackTrace
-                |> Error.asSocketError "IClient.worker"
-                |> Either.fail
-              state.Run <- false
-              state.Started <- false
-              state.Responder.Set() |> ignore
+      //       state.Response <- reply.[1].Read() |> Either.succeed
+      //       state.Responder.Set() |> ignore
+      //     with
+      //       | :? ZException as exn when shouldRestart exn.ErrNo ->
+      //         state.RestartSocket()
+      //         state.Response <-
+      //           String.Format("{0} encountered sending request", exn.Message)
+      //           |> Error.asSocketError "Client.worker"
+      //           |> Either.fail
+      //         state.Responder.Set() |> ignore
+      //       | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
+      //         state.Response <-
+      //           exn.Message + exn.StackTrace
+      //           |> Error.asSocketError "IClient.worker"
+      //           |> Either.fail
+      //         state.Run <- false
+      //         state.Started <- false
+      //         state.Responder.Set() |> ignore
 
     tryDispose state
     state.Stopper.Set() |> ignore
@@ -325,49 +318,50 @@ module Client =
   // ** create
 
   let create (id: Id) (frontend: string) (timeout: float) =
-    let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
-    let mutable thread = Thread(worker state)
-    thread.Name <- sprintf "Client %O" state.Id
-    thread.Start()
+    failwith "IClient"
+    // let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
+    // let mutable thread = Thread(worker state)
+    // thread.Name <- sprintf "Client %O" state.Id
+    // thread.Start()
 
-    let locker = Object()
+    // let locker = Object()
 
-    state.Starter.WaitOne() |> ignore
+    // state.Starter.WaitOne() |> ignore
 
-    { new IClient with
-        member self.Request(body: byte array) =
-          if state.Disposed then
-            "Socket already disposed"
-            |> Error.asSocketError "IClient.Dispose"
-            |> Either.fail
-          else
-            lock locker <| fun _ ->
-              // Tracer.trace "Client.Request" str <| fun _ ->
-              state.Request <- body
-              state.Requester.Set() |> ignore
-              state.Responder.WaitOne() |> ignore
-              state.Response
+    // { new IClient with
+    //     member self.Request(body: byte array) =
+    //       if state.Disposed then
+    //         "Socket already disposed"
+    //         |> Error.asSocketError "IClient.Dispose"
+    //         |> Either.fail
+    //       else
+    //         lock locker <| fun _ ->
+    //           // Tracer.trace "Client.Request" str <| fun _ ->
+    //           state.Request <- body
+    //           state.Requester.Set() |> ignore
+    //           state.Responder.WaitOne() |> ignore
+    //           state.Response
 
-        member self.Running
-          with get () =
-            state.Initialized && state.Run && state.Started
+    //     member self.Running
+    //       with get () =
+    //         state.Initialized && state.Run && state.Started
 
-        member self.Restart () =
-          self.Dispose()
-          state.Reset()
-          thread <- Thread(worker state)
-          thread.Name <- sprintf "Client %O" state.Id
-          thread.Start()
-          state.Starter.WaitOne() |> ignore
+    //     member self.Restart () =
+    //       self.Dispose()
+    //       state.Reset()
+    //       thread <- Thread(worker state)
+    //       thread.Name <- sprintf "Client %O" state.Id
+    //       thread.Start()
+    //       state.Starter.WaitOne() |> ignore
 
-        member self.Id
-          with get () = state.Id
+    //     member self.Id
+    //       with get () = state.Id
 
-        member self.Dispose() =
-          lock state <| fun _ ->
-            state.Run <- false
-          state.Requester.Set() |> ignore
-          state.Stopper.WaitOne() |> ignore }
+    //     member self.Dispose() =
+    //       lock state <| fun _ ->
+    //         state.Run <- false
+    //       state.Requester.Set() |> ignore
+    //       state.Stopper.WaitOne() |> ignore }
 
 // * Worker module
 

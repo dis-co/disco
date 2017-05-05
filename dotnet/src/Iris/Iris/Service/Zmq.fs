@@ -107,20 +107,15 @@ module ZmqUtils =
   ///
   /// Returns: Either<IrisError,RaftResponse>
   let performRequest (client: IClient) (request: RaftRequest) =
-    either {
-      try
-        let! response = rawRequest request client
-        return response
-      with
-        | :? TimeoutException ->
-          return!
-            "Operation timed out"
-            |> Error.asSocketError "ZmqUtils.performRequest"
-            |> Either.fail
-        | exn ->
-          return!
-            exn.Message
-            |> sprintf "performRequest encountered an exception: %s"
-            |> Error.asSocketError "ZmqUtils.performRequest"
-            |> Either.fail
-    }
+    try
+      rawRequest request client
+      |> Either.mapError (string >> Logger.err "performRequest")
+      |> ignore
+    with
+      | :? TimeoutException ->
+        "Operation timed out"
+        |> Logger.err "performRequest"
+      | exn ->
+        exn.Message
+        |> sprintf "Encountered an exception: %s"
+        |> Logger.err "performRequest"

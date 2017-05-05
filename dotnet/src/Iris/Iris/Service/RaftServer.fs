@@ -219,28 +219,11 @@ module Raft =
   let private sendRequestVote (self: Id)
                               (connections: Connections)
                               (peer: RaftMember)
-                              (request: VoteRequest) :
-                              VoteResponse option =
+                              (request: VoteRequest) : unit =
 
     let request = RequestVote(self, request)
     let client = getConnection connections peer
-    let result = performRequest client request
-
-    match result with
-    | Right (RequestVoteResponse(_, vote)) -> Some vote
-    | Right other ->
-      other
-      |> sprintf "Unexpected Response:  %A"
-      |> Logger.err (tag "sendRequestVote")
-      None
-
-    | Left error ->
-      dispose client
-      connections.TryRemove peer.Id |> ignore
-      Uri.raftUri peer
-      |> sprintf "Encountered error %A in request to  %A" error
-      |> Logger.err (tag "sendRequestVote")
-      None
+    performRequest client request
 
   // ** sendAppendEntries
 
@@ -251,20 +234,7 @@ module Raft =
 
     let request = AppendEntries(self, request)
     let client = getConnection connections peer
-    let result = performRequest client request
-
-    match result with
-    | Right (AppendEntriesResponse(_, ar)) -> Some ar
-    | Right response ->
-      response
-      |> sprintf "Unexpected Response:   %A"
-      |> Logger.err (tag "sendAppendEntries")
-      None
-    | Left error ->
-      Uri.raftUri peer
-      |> sprintf "SendAppendEntries: received error  %A in request to  %A" error
-      |> Logger.err (tag "sendAppendEntries")
-      None
+    performRequest client request
 
   // ** sendInstallSnapshot
 
@@ -274,20 +244,7 @@ module Raft =
                                   (is: InstallSnapshot) =
     let client = getConnection connections peer
     let request = InstallSnapshot(self, is)
-    let result = performRequest client request
-
-    match result with
-    | Right (InstallSnapshotResponse(_, ar)) -> Some ar
-    | Right response ->
-      response
-      |> sprintf "Unexpected Response:  %A"
-      |> Logger.err (tag "sendInstallSnapshot")
-      None
-    | Left error ->
-      Uri.raftUri peer
-      |> sprintf "SendInstallSnapshot: received error  %A in request to  %A" error
-      |> Logger.err (tag "sendInstallSnapshot")
-      None
+    performRequest client request
 
   let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
     Tracing.trace (tag "trigger") <| fun () ->

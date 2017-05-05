@@ -52,6 +52,7 @@ type RaftEvent =
   | CreateSnapshot   of Ch<State option>
   | RetrieveSnapshot of Ch<RaftLogEntry option>
   | PersistSnapshot  of RaftLogEntry
+  | RaftError        of IrisError
 
 // * RaftAppContext
 
@@ -78,23 +79,23 @@ type RaftAppContext =
 type IRaftServer =
   inherit IDisposable
 
-  abstract Member        : Either<IrisError,RaftMember>
-  abstract MemberId      : Either<IrisError,Id>
+  abstract Member        : RaftMember
+  abstract MemberId      : Id
   abstract Load          : IrisConfig -> Either<IrisError, unit>
   abstract Unload        : unit -> Either<IrisError, unit>
-  abstract Append        : StateMachine -> Either<IrisError, EntryResponse>
-  abstract ForceElection : unit -> Either<IrisError, unit>
-  abstract State         : Either<IrisError, RaftAppContext>
-  abstract Status        : Either<IrisError, ServiceStatus>
+  abstract Append        : StateMachine -> unit
+  abstract ForceElection : unit -> unit
+  abstract State         : RaftAppContext
+  abstract Status        : ServiceStatus
   abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
   abstract Start         : unit -> Either<IrisError, unit>
-  abstract Periodic      : unit -> Either<IrisError, unit>
-  abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError, unit>
-  abstract LeaveCluster  : unit -> Either<IrisError, unit>
-  abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
-  abstract RmMember      : Id -> Either<IrisError, EntryResponse>
-  abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,IClient>>
-  abstract Leader        : Either<IrisError, RaftMember option>
+  abstract Periodic      : unit -> unit
+  abstract JoinCluster   : IpAddress -> uint16 -> unit
+  abstract LeaveCluster  : unit -> unit
+  abstract AddMember     : RaftMember -> unit
+  abstract RmMember      : Id -> unit
+  abstract Connections   : ConcurrentDictionary<Id,IClient>
+  abstract Leader        : RaftMember option
   abstract IsLeader      : bool
 
 // * SocketEvent
