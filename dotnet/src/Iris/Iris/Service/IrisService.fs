@@ -516,6 +516,11 @@ module Iris =
         |> Either.map (sprintf "added new member in: %O" >> Logger.debug (tag "onMessage"))
         |> Either.mapError (string >> Logger.err (tag "onMessage"))
         |> ignore
+      | RemoveMember mem ->
+        data.RaftServer.RmMember mem.Id
+        |> Either.map (sprintf "removed member in: %O" >> Logger.debug (tag "onMessage"))
+        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> ignore
       | cmd ->
         appendCmd data cmd
         |> Either.mapError (string >> Logger.err (tag "onMessage"))
