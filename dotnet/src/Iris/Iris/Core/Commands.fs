@@ -20,9 +20,7 @@ type ServiceInfo =
     version: string
     buildNumber: string }
 
-type NameAndId(name: string, id: Id) =
-    member val Name = name
-    member val Id = id
+type NameAndId = { Name: Name; Id: Id }
 
 type Command =
   | Shutdown

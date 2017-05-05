@@ -133,7 +133,6 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
 let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
   postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
-    printfn "cmd: %A res: %A" cmd res.Ok
     if res.Ok
     then res.text() |> Promise.map ofJson<'T>
     else res.text() |> Promise.map (failwithf "%s"))
@@ -161,22 +160,26 @@ let addMember(info: obj) =
 
     memberIpAndPort |> Option.iter (printfn "New member URI: %s")
 
-    let! (status: MachineStatus) = postCommandParseAndContinue memberIpAndPort MachineStatus
-    printfn "New member status: %A" status
+    let! status =
+      postCommandParseAndContinue<MachineStatus>
+        memberIpAndPort
+        MachineStatus
 
     match status with
     | Busy (_, name) -> failwithf "Host cannot be added. Busy with project %A" name
     | _ -> ()
 
     // Get the added machines configuration
-    let! (machine: IrisMachine) = postCommandParseAndContinue memberIpAndPort MachineConfig
-
-    printfn "Member config details: %A" machine
+    let! machine =
+      postCommandParseAndContinue<IrisMachine>
+        memberIpAndPort
+        MachineConfig
 
     // List projects of member candidate (B)
-    let! (projects: NameAndId[]) = postCommandParseAndContinue memberIpAndPort ListProjects
-
-    printfn "New member projects: %A" projects
+    let! projects =
+      postCommandParseAndContinue<NameAndId[]>
+        memberIpAndPort
+        ListProjects
 
     // If B has leader (A) active project,
     // then **pull** project from A into B

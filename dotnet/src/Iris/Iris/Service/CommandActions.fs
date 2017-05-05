@@ -48,10 +48,11 @@ let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
 //      http://localhost:7000/api/comman
 
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
-  Directory.getDirectories cfg.WorkSpace
+  cfg.WorkSpace
+  |> Directory.getDirectories
   |> Array.choose (fun dir ->
     match IrisProject.Load(dir, cfg) with
-    | Right project -> NameAndId(unwrap project.Name, project.Id) |> Some
+    | Right project -> { Name = project.Name; Id = project.Id } |> Some
     | Left error -> printfn "ERROR: %A" error; None)
   |> serializeJson
   |> Either.succeed
