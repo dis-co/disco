@@ -1102,7 +1102,7 @@ module Iris =
             (WS_SERVER,     agent |> forwardEvent Msg.Socket |> data.SocketServer.Subscribe)
             (API_SERVER,    agent |> forwardEvent Msg.Api    |> data.ApiServer.Subscribe)
             (GIT_SERVER,    agent |> forwardEvent Msg.Git    |> data.GitServer.Subscribe)
-            (* (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) *) ]
+            (CLOCK_SERVICE, agent |> forwardEvent Msg.Clock  |> data.ClockService.Subscribe) ]
           |> Map.ofList
 
         let service =
