@@ -412,9 +412,16 @@ module Iris =
 
   // ** appendCmd
 
-  let private appendCmd (state: IrisLoadedStateData) (cmd: StateMachine) =
+  let private appendCmd (data: IrisLoadedStateData) (cmd: StateMachine) =
     Tracing.trace (tag "appendCmd") <| fun () ->
-      state.RaftServer.Append(cmd)
+      if data.RaftServer.IsLeader then
+        cmd
+        |> data.RaftServer.Append
+        |> Either.map ignore
+      else
+        "ignoring append request, not leader"
+        |> Logger.debug (tag "appendCmd")
+        |> Either.succeed
 
   // ** onOpen
 
