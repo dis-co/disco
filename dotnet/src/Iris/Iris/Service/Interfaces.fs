@@ -41,8 +41,11 @@ type IGitServer =
 
 // * RaftEvent
 
-[<NoComparison;NoEquality>]
+[<RequireQualifiedAccess;NoComparison;NoEquality>]
 type RaftEvent =
+  | Started
+  | JoinedCluster
+  | LeftCluster
   | ApplyLog         of StateMachine
   | MemberAdded      of RaftMember
   | MemberRemoved    of RaftMember
@@ -57,14 +60,15 @@ type RaftEvent =
 // * RaftAppContext
 
 [<NoComparison;NoEquality>]
-type RaftAppContext =
-  { Status:      ServiceStatus
-    Raft:        RaftValue
-    Options:     IrisConfig
-    Callbacks:   IRaftCallbacks
-    Server:      IBroker
-    Disposables: IDisposable list
-    Connections: ConcurrentDictionary<Id,IClient> }
+type RaftServerState =
+  { Status:        ServiceStatus
+    Raft:          RaftValue
+    Options:       IrisConfig
+    Callbacks:     IRaftCallbacks
+    Server:        IBroker
+    Disposables:   IDisposable list
+    Connections:   ConcurrentDictionary<Id,IClient>
+    Subscriptions: ResizeArray<IObserver<RaftEvent>> }
 
   interface IDisposable with
     member self.Dispose() =
@@ -72,28 +76,26 @@ type RaftAppContext =
       for KeyValue(_,connection) in self.Connections do
         dispose connection
       self.Connections.Clear()
+      self.Subscriptions.Clear()
       dispose self.Server
 
 // * IRaftServer
 
 type IRaftServer =
   inherit IDisposable
-
+  abstract Start         : unit -> Either<IrisError, unit>
   abstract Member        : RaftMember
   abstract MemberId      : Id
-  abstract Load          : IrisConfig -> Either<IrisError, unit>
-  abstract Unload        : unit -> Either<IrisError, unit>
   abstract Append        : StateMachine -> unit
   abstract ForceElection : unit -> unit
-  abstract State         : RaftAppContext
+  abstract State         : RaftServerState
   abstract Status        : ServiceStatus
   abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
-  abstract Start         : unit -> Either<IrisError, unit>
   abstract Periodic      : unit -> unit
   abstract JoinCluster   : IpAddress -> uint16 -> unit
   abstract LeaveCluster  : unit -> unit
   abstract AddMember     : RaftMember -> unit
-  abstract RmMember      : Id -> unit
+  abstract RemoveMember  : Id -> unit
   abstract Connections   : ConcurrentDictionary<Id,IClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool

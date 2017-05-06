@@ -415,13 +415,7 @@ module Iris =
   let private appendCmd (data: IrisLoadedStateData) (cmd: StateMachine) =
     Tracing.trace (tag "appendCmd") <| fun () ->
       if data.RaftServer.IsLeader then
-        cmd
-        |> data.RaftServer.Append
-        |> Either.map ignore
-      else
-        "ignoring append request, not leader"
-        |> Logger.debug (tag "appendCmd")
-        |> Either.succeed
+        data.RaftServer.Append cmd
 
   // ** onOpen
 
@@ -442,18 +436,6 @@ module Iris =
     withState state <| fun data ->
       sendMsg data session (DataSnapshot data.Store.State)
 
-    // FIXME: need to check this bit for proper session handling
-    // match appendCmd state (AddSession session) with
-    // | Right entry ->
-    //   entry
-    //   |> Reply.Entry
-    //   |> Either.succeed
-    //   |> chan.Reply
-    // | Left error ->
-    //   error
-    //   |> Either.fail
-    //   |> chan.Reply
-
   // ** onClose
 
   /// ## OnClose
@@ -463,13 +445,7 @@ module Iris =
   let private onClose (state: IrisState) (id: Id) =
     withState state <| fun data ->
       match Map.tryFind id data.Store.State.Sessions with
-      | Some session ->
-        match appendCmd data (RemoveSession session) with
-        | Right _ -> ()
-        | Left error  ->
-          error
-          |> string
-          |> Logger.err (tag "onClose")
+      | Some session -> session |> RemoveSession |> appendCmd data
       | _ -> ()
 
   // ** onError
@@ -481,15 +457,7 @@ module Iris =
   let private onError (state: IrisState) (sessionid: Id) (err: Exception) =
     withState state <| fun data ->
       match Map.tryFind sessionid data.Store.State.Sessions with
-      | Some session ->
-        match appendCmd data (RemoveSession session) with
-        | Right _ ->
-          err.Message
-          |> Logger.debug (tag "onError")
-        | Left error ->
-          error
-          |> string
-          |> Logger.err (tag "onError")
+      | Some session -> session |> RemoveSession |> appendCmd data
       | _ -> ()
 
   // ** onMessage
@@ -513,24 +481,11 @@ module Iris =
       | AddSession session ->
         session
         |> data.SocketServer.BuildSession id
-        |> Either.map AddSession
-        |> Either.bind (appendCmd data)
-        |> Either.mapError (string >> Logger.err (tag "onMessage"))
+        |> Either.map (AddSession >> appendCmd data)
         |> ignore
-      | AddMember mem ->
-        data.RaftServer.AddMember mem
-        |> Either.map (sprintf "added new member in: %O" >> Logger.debug (tag "onMessage"))
-        |> Either.mapError (string >> Logger.err (tag "onMessage"))
-        |> ignore
-      | RemoveMember mem ->
-        data.RaftServer.RmMember mem.Id
-        |> Either.map (sprintf "removed member in: %O" >> Logger.debug (tag "onMessage"))
-        |> Either.mapError (string >> Logger.err (tag "onMessage"))
-        |> ignore
-      | cmd ->
-        appendCmd data cmd
-        |> Either.mapError (string >> Logger.err (tag "onMessage"))
-        |> ignore
+      | AddMember    mem -> data.RaftServer.AddMember    mem
+      | RemoveMember mem -> data.RaftServer.RemoveMember mem.Id
+      | cmd -> appendCmd data cmd
 
   // ** handleSocketEvent
 
@@ -637,27 +592,15 @@ module Iris =
           |> Logger.err (tag "onApplyLog")
           state
       else
-        match data.RaftServer.State with
-        | Right state ->
-          let mem =
-            state.Raft
-            |> Raft.currentLeader
-            |> Option.bind (flip Raft.getMember state.Raft)
-
-          match mem with
-          | Some leader ->
-            match updateRepo data.Store.State.Project leader with
-            | Right () -> ()
-            | Left error ->
-              error
-              |> string
-              |> Logger.err (tag "onApplyLog")
-          | None -> ()
-
-        | Left error ->
-          error
-          |> string
-          |> Logger.err (tag "onApplyLog")
+        match data.RaftServer.Leader with
+        | Some leader ->
+          match updateRepo data.Store.State.Project leader with
+          | Right () -> ()
+          | Left error ->
+            error
+            |> string
+            |> Logger.err (tag "onApplyLog")
+        | None -> ()
         state
 
   // ** mkLeader
@@ -680,15 +623,11 @@ module Iris =
       | _, Follower ->
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
-        | Right (Some leader) ->
+        | Some leader ->
           Loaded { data with Leader = Some (mkLeader data.Member.Id leader) }
-        | Right None ->
+        | None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug (tag "onStateChanged")
-          state
-        | Left error ->
-          string error
-          |> Logger.err (tag "onStateChanged")
           state
       | _, Leader ->
         Option.iter dispose data.Leader
@@ -819,21 +758,16 @@ module Iris =
           { data with Leader = None }
       | None ->
         match data.RaftServer.Leader with
-        | Right (Some mem) ->
+        | Some mem ->
           let leader = mkLeader data.Member.Id mem
           match requestAppend data.Member.Id leader sm with
-          | Right newleader ->
-            { data with Leader = Some newleader }
+          | Right newleader -> { data with Leader = Some newleader }
           | Left error ->
             dispose leader
             { data with Leader = None }
-        | Right None ->
+        | None ->
           "Could not start re-direct socket: No Known Leader"
           |> Logger.debug (tag "forwardCommand")
-          data
-        | Left error ->
-          string error
-          |> Logger.err (tag "forwardCommand")
           data
 
   // ** handleRaftEvent
@@ -843,15 +777,18 @@ module Iris =
 
     Tracing.trace (tag "handleRaftEvent") <| fun () ->
       match ev with
-      | ApplyLog sm             -> onApplyLog         state sm
-      | MemberAdded mem         -> onMemberAdded      state mem
-      | MemberRemoved mem       -> onMemberRemoved    state mem
-      | MemberUpdated mem       -> onMemberUpdated    state mem
-      | Configured mems         -> onConfigured       state mems
-      | CreateSnapshot ch       -> onCreateSnapshot   state ch
-      | RetrieveSnapshot ch     -> onRetrieveSnapshot state ch
-      | PersistSnapshot log     -> onPersistSnapshot  state log
-      | StateChanged (ost, nst) -> onStateChanged     state ost nst
+      | RaftEvent.ApplyLog sm             -> onApplyLog         state sm
+      | RaftEvent.MemberAdded mem         -> onMemberAdded      state mem
+      | RaftEvent.MemberRemoved mem       -> onMemberRemoved    state mem
+      | RaftEvent.MemberUpdated mem       -> onMemberUpdated    state mem
+      | RaftEvent.Configured mems         -> onConfigured       state mems
+      | RaftEvent.CreateSnapshot ch       -> onCreateSnapshot   state ch
+      | RaftEvent.RetrieveSnapshot ch     -> onRetrieveSnapshot state ch
+      | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
+      | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst
+      | other ->
+        Logger.info (tag "handleRaftEvent") (string other)
+        state
 
   // ** handleApiEvent
 
@@ -873,41 +810,27 @@ module Iris =
           | other ->
             if data.RaftServer.IsLeader then
               data.RaftServer.Append other
-              |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-              |> ignore
               state
             else
               forwardCommand data other
               |> Loaded
         | ApiEvent.Register client ->
           data.RaftServer.Append (AddClient client)
-          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-          |> ignore
           state
         | ApiEvent.UnRegister client ->
           data.RaftServer.Append (RemoveClient client)
-          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-          |> ignore
           state
         | _ -> // Status events
           notify data.Subscriptions (IrisEvent.Api ev)
           state
 
   let private handleDiscoveryEvent (state: IrisState) (ev: DiscoveryEvent) =
-    let appendCommand data cmd =
-      match appendCmd data cmd with
-      | Right _ -> ()
-      | Left error  ->
-        error
-        |> string
-        |> Logger.err (tag "handleDiscoveryEvent")
-
     withoutReply state <| fun data ->
       Tracing.trace (tag "handleDiscoveryEvent") <| fun () ->
         match ev with
-        | Appeared service -> AddDiscoveredService service    |> appendCommand data
-        | Updated  service -> UpdateDiscoveredService service |> appendCommand data
-        | Vanished service -> RemoveDiscoveredService service |> appendCommand data
+        | Appeared service -> AddDiscoveredService service    |> appendCmd data
+        | Updated  service -> UpdateDiscoveredService service |> appendCmd data
+        | Vanished service -> RemoveDiscoveredService service |> appendCmd data
         | _ -> ()
         state
 
@@ -933,7 +856,7 @@ module Iris =
 
       let result =
         either {
-          let! mem = data.RaftServer.Member
+          let mem = data.RaftServer.Member
           let! gitserver = GitServer.create mem data.Store.State.Project.Path
           let disposable =
             agent
@@ -1050,8 +973,8 @@ module Iris =
         // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
 
-        let! raftserver = RaftServer.create ()
         let! wsserver   = WebSocketServer.create mem
+        let! raftserver = RaftServer.create state.Project.Config
         let! apiserver  = ApiServer.create mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to
@@ -1113,7 +1036,7 @@ module Iris =
 
         let result =
           either {
-            do! data.RaftServer.Load(data.Store.State.Project.Config)
+            do! data.RaftServer.Start()
             do! data.ApiServer.Start()
             do! data.SocketServer.Start()
             do! data.GitServer.Start()
@@ -1255,12 +1178,7 @@ module Iris =
   let private handleForceElection (state: IrisState) =
     Tracing.trace (tag "handleForceElection") <| fun () ->
       withoutReply state <| fun data ->
-        match data.RaftServer.ForceElection () with
-        | Left error ->
-          error
-          |> string
-          |> Logger.err (tag "handleForceElection")
-        | other -> ignore other
+        data.RaftServer.ForceElection()
         state
 
   // ** handlePeriodic
@@ -1268,80 +1186,35 @@ module Iris =
   let private handlePeriodic (state: IrisState) =
     Tracing.trace (tag "handlePeriodic") <| fun () ->
       withoutReply state <| fun data ->
-        match data.RaftServer.Periodic() with
-        | Left error ->
-          error
-          |> string
-          |> Logger.err (tag "handlePeriodic")
-        | other -> ignore other
+        data.RaftServer.Periodic()
         state
 
   // ** handleJoin
 
   let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
     withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
-        Tracing.trace (tag "handleJoin") <| fun () ->
-          match data.RaftServer.JoinCluster ip port with
-          | Right () ->
-            Reply.Ok
-            |> Either.succeed
-            |> chan.Reply
-          | Left error ->
-            error
-            |> Either.fail
-            |> chan.Reply
+      data.RaftServer.JoinCluster ip port
       state
 
   // ** handleLeave
 
   let private handleLeave (state: IrisState) (chan: ReplyChan) =
     withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
-        Tracing.trace (tag "handleLeave") <| fun () ->
-          match data.RaftServer.LeaveCluster () with
-          | Right () ->
-            Reply.Ok
-            |> Either.succeed
-            |> chan.Reply
-          | Left error ->
-            error
-            |> Either.fail
-            |> chan.Reply
+      data.RaftServer.LeaveCluster ()
       state
 
   // ** handleAddMember
 
   let private handleAddMember (state: IrisState) (chan: ReplyChan) (mem: RaftMember) =
     withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
-        Tracing.trace (tag "handleAddMember") <| fun () ->
-          match data.RaftServer.AddMember mem with
-          | Right entry ->
-            Reply.Entry entry
-            |> Either.succeed
-            |> chan.Reply
-          | Left error ->
-            error
-            |> Either.fail
-            |> chan.Reply
+      data.RaftServer.AddMember mem
       state
 
   // ** handleRmMember
 
   let private handleRmMember (state: IrisState) (chan: ReplyChan) (id: Id) =
     withDefaultReply state chan <| fun data ->
-      asynchronously <| fun _ ->
-        Tracing.trace (tag "handleRmMember") <| fun () ->
-          match data.RaftServer.RmMember id  with
-          | Right entry ->
-            Reply.Entry entry
-            |> Either.succeed
-            |> chan.Reply
-          | Left error ->
-            error
-            |> Either.fail
-            |> chan.Reply
+      data.RaftServer.RemoveMember id
       state
 
   // ** handleState

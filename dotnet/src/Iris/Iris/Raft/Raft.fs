@@ -1281,7 +1281,7 @@ module Raft =
   ///////////////////////////////////////////////////
 
   /// utiltity to create a snapshot for the current application and raft state
-  let createSnapshot (data: StateMachine) (state: RaftValue) =
+  let createSnapshot (state: RaftValue) (data: StateMachine) =
     let peers = Map.toArray state.Peers |> Array.map snd
     Log.snapshot peers data state.Log
 
