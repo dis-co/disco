@@ -697,108 +697,73 @@ module Raft =
       else
         doRedirect state raw
 
-  // // ** processAppendEntriesResponse
+  // ** processAppendEntriesResponse
 
-  // let private processAppendEntriesResponse (state: RaftServerState) (mem: Id) (ar: AppendResponse) =
-  //   let result =
-  //     Raft.receiveAppendEntriesResponse mem ar
-  //     |> runRaft state.Raft state.Callbacks
+  let private processAppendEntriesResponse (state: RaftServerState) (mem: Id) (ar: AppendResponse) =
+    let result =
+      Raft.receiveAppendEntriesResponse mem ar
+      |> runRaft state.Raft state.Callbacks
 
-  //   match result with
-  //   | Right (_, newstate)  -> updateRaft state newstate
-  //   | Left (err, newstate) -> err, updateRaft state newstate
+    match result with
+    | Right (_, newstate)  -> updateRaft state newstate
+    | Left (err, newstate) ->
+      err
+      |> RaftEvent.RaftError
+      |> notify state.Subscriptions
+      updateRaft state newstate
 
-  // // ** processVoteResponse
+  // ** processVoteResponse
 
-  // let private processVoteResponse (state: RaftServerState)
-  //                                 (sender: Id)
-  //                                 (vr: VoteResponse)
-  //                                 (channel: ReplyChan) =
-  //   let result =
-  //     Raft.receiveVoteResponse sender vr
-  //     |> runRaft state.Raft state.Callbacks
+  let private processVoteResponse (state: RaftServerState) (sender: Id) (vr: VoteResponse) =
+    let result =
+      Raft.receiveVoteResponse sender vr
+      |> runRaft state.Raft state.Callbacks
 
-  //   match result with
-  //   | Right (_, newstate) ->
-  //     Reply.Ok
-  //     |> Either.succeed
-  //     |> channel.Reply
-  //     updateRaft state newstate
+    match result with
+    | Right (_, newstate) -> updateRaft state newstate
+    | Left (err, newstate) ->
+      err
+      |> RaftEvent.RaftError
+      |> notify state.Subscriptions
+      updateRaft state newstate
 
-  //   | Left (err, newstate) ->
-  //     err
-  //     |> Either.fail
-  //     |> channel.Reply
-  //     updateRaft state newstate
+  // ** processSnapshotResponse
 
-  // // ** processSnapshotResponse
+  let private processSnapshotResponse (state: RaftServerState) (sender: Id) (ar: AppendResponse) =
+    "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
+    |> Logger.err (tag "processSnapshotResponse")
+    state
 
-  // let private processSnapshotResponse (state: RaftServerState)
-  //                                     (sender: Id)
-  //                                     (ar: AppendResponse)
-  //                                     (channel: ReplyChan) =
-  //   "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-  //   |> Logger.err (tag "processSnapshotResponse")
+  // ** processRedirect
 
-  //   Reply.Ok
-  //   |> Either.succeed
-  //   |> channel.Reply
-  //   state
+  let private processRedirect (state: RaftServerState) (leader: RaftMember) =
+    "FIX REDIRECT RESPONSE PROCESSING"
+    |> Logger.err (tag "processRedirect")
+    state
 
-  // // ** processRedirect
+  // ** processWelcome
 
-  // let private processRedirect (state: RaftServerState)
-  //                             (leader: RaftMember)
-  //                             (channel: ReplyChan) =
-  //   "FIX REDIRECT RESPONSE PROCESSING"
-  //   |> Logger.err (tag "processRedirect")
+  let private processWelcome (state: RaftServerState) (leader: RaftMember) =
 
-  //   Reply.Ok
-  //   |> Either.succeed
-  //   |> channel.Reply
-  //   state
+    "FIX WELCOME RESPONSE PROCESSING"
+    |> Logger.err (tag "processWelcome")
 
-  // // ** processWelcome
+    state
 
-  // let private processWelcome (state: RaftServerState)
-  //                            (leader: RaftMember)
-  //                            (channel: ReplyChan) =
+  // ** processArrivederci
 
-  //   "FIX WELCOME RESPONSE PROCESSING"
-  //   |> Logger.err (tag "processWelcome")
+  let private processArrivederci (state: RaftServerState) =
+    "FIX ARRIVEDERCI RESPONSE PROCESSING"
+    |> Logger.err (tag "processArrivederci")
+    state
 
-  //   Reply.Ok
-  //   |> Either.succeed
-  //   |> channel.Reply
-  //   state
+  // ** processErrorResponse
 
-  // // ** processArrivederci
-
-  // let private processArrivederci (state: RaftServerState)
-  //                                (channel: ReplyChan) =
-
-  //   "FIX ARRIVEDERCI RESPONSE PROCESSING"
-  //   |> Logger.err (tag "processArrivederci")
-
-  //   Reply.Ok
-  //   |> Either.succeed
-  //   |> channel.Reply
-  //   state
-
-  // // ** processErrorResponse
-
-  // let private processErrorResponse (state: RaftServerState)
-  //                                  (error: IrisError)
-  //                                  (channel: ReplyChan) =
-
-  //   error
-  //   |> sprintf "received error response:  %A"
-  //   |> Logger.err (tag "processErrorResponse")
-
-  //   Reply.Ok
-  //   |> Either.succeed
-  //   |> channel.Reply
-  //   state
+  let private processErrorResponse (state: RaftServerState) (error: IrisError) =
+    error
+    |> sprintf "received error response:  %A"
+    |> Logger.err (tag "processErrorResponse")
+    state
 
   // ** tryJoin
 
@@ -1078,47 +1043,6 @@ module Raft =
         |> notify state.Subscriptions
         newstate
 
-  // // ** handleResponse
-
-  // let private handleResponse (state: RaftServerState) (chan: ReplyChan) (response: RaftResponse) =
-  //   match state with
-  //   | Idle ->
-  //     "No config loaded"
-  //     |> Error.asRaftError (tag "handleResponse")
-  //     |> Either.fail
-  //     |> chan.Reply
-  //     state
-
-  //   | Loaded data ->
-  //     match response with
-  //     | RequestVoteResponse     (sender, vote) -> processVoteResponse          data sender vote chan
-  //     | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse data sender ar   chan
-  //     | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      data sender ar   chan
-  //     | ErrorResponse            error         -> processErrorResponse         data error       chan
-  //     | _                                      -> data
-  //     |> Loaded
-
-  // // ** handleRequest
-
-  // let private handleRequest (state: RaftServerState) (chan: ReplyChan) (req: RaftRequest) =
-  //   match state with
-  //   | Idle ->
-  //     "No config loaded"
-  //     |> Error.asRaftError (tag "handleRequest")
-  //     |> Either.fail
-  //     |> chan.Add
-  //     state
-
-  //   | Loaded data ->
-  //     match req with
-  //     | AppendEntries (id, ae)   -> processAppendEntries   data id ae
-  //     | AppendEntry  sm          -> processAppendEntry     data sm
-  //     | RequestVote (id, vr)     -> processVoteRequest     data id vr
-  //     | InstallSnapshot (id, is) -> processInstallSnapshot data id is
-  //     | HandShake mem            -> processHandshake       data mem
-  //     | HandWaive mem            -> processHandwaive       data mem
-  //     |> Loaded
-
   // ** handlePeriodic
 
   let private handlePeriodic (state: RaftServerState) =
@@ -1314,8 +1238,20 @@ module Raft =
 
   // ** handleRawResponse
 
-  let private handleRawResponse (state: RaftServerState) (resp: RawResponse) arbiter =
-    failwith "never"
+  let private handleRawResponse (state: RaftServerState) (raw: RawResponse) arbiter =
+    match raw.Body |> Binary.decode with
+    | Right response ->
+      match response with
+      | RequestVoteResponse     (sender, vote) -> processVoteResponse          state sender vote
+      | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse state sender ar
+      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      state sender ar
+      | ErrorResponse            error         -> processErrorResponse         state error
+      | _                                      -> state
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "handleRawRespose")
+      state
 
   // ** handleStart
 
