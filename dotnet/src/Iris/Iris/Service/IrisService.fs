@@ -221,14 +221,14 @@ module Iris =
     | SetConfig     of ReplyChan * IrisConfig
     | AddMember     of ReplyChan * RaftMember
     | RmMember      of ReplyChan * Id
-    | Join          of ReplyChan * IpAddress  * uint16
-    | Leave         of ReplyChan
     | Config        of ReplyChan
     | Unload        of ReplyChan
     | State         of ReplyChan
     | MachineStatus of ReplyChan
     | ForceElection
     | Periodic
+    // | Join          of ReplyChan * IpAddress  * uint16
+    // | Leave         of ReplyChan
 
   // ** IrisAgent
 
@@ -1191,17 +1191,17 @@ module Iris =
 
   // ** handleJoin
 
-  let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
-    withDefaultReply state chan <| fun data ->
-      data.RaftServer.JoinCluster ip port
-      state
+  // let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
+  //   withDefaultReply state chan <| fun data ->
+  //     data.RaftServer.JoinCluster ip port
+  //     state
 
   // ** handleLeave
 
-  let private handleLeave (state: IrisState) (chan: ReplyChan) =
-    withDefaultReply state chan <| fun data ->
-      data.RaftServer.LeaveCluster ()
-      state
+  // let private handleLeave (state: IrisState) (chan: ReplyChan) =
+  //   withDefaultReply state chan <| fun data ->
+  //     data.RaftServer.LeaveCluster ()
+  //     state
 
   // ** handleAddMember
 
@@ -1279,13 +1279,13 @@ module Iris =
           | Msg.Log   log            -> handleLogEvent       state       log
           | Msg.ForceElection        -> handleForceElection  state
           | Msg.Periodic             -> handlePeriodic       state
-          | Msg.Join (chan,ip,port)  -> handleJoin           state chan  ip port
-          | Msg.Leave  chan          -> handleLeave          state chan
           | Msg.AddMember (chan,mem) -> handleAddMember      state chan  mem
           | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
           | Msg.State chan           -> handleState          state chan
           | Msg.Clock clock          -> handleClock          state       clock
           | Msg.MachineStatus chan   -> handleMachineStatus  state chan
+          // | Msg.Join (chan,ip,port)  -> handleJoin           state chan  ip port
+          // | Msg.Leave  chan          -> handleLeave          state chan
         return! act newstate
       }
 
@@ -1373,25 +1373,25 @@ module Iris =
               agent.Post(Msg.Periodic)
               |> Either.succeed
 
-          member self.LeaveCluster () =
-            Tracing.trace (tag "LeaveCluster") <| fun () ->
-              match postCommand agent "LeaveCluster"  Msg.Leave with
-              | Right Reply.Ok -> Right ()
-              | Left error -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "LeaveCluster")
-                |> Either.fail
+          // member self.LeaveCluster () =
+          //   Tracing.trace (tag "LeaveCluster") <| fun () ->
+          //     match postCommand agent "LeaveCluster"  Msg.Leave with
+          //     | Right Reply.Ok -> Right ()
+          //     | Left error -> Left error
+          //     | Right other ->
+          //       sprintf "Unexpected response from IrisAgent: %A" other
+          //       |> Error.asOther (tag "LeaveCluster")
+          //       |> Either.fail
 
-          member self.JoinCluster ip port =
-            Tracing.trace (tag "JoinCluster") <| fun () ->
-              match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
-              | Right Reply.Ok -> Right ()
-              | Left error  -> Left error
-              | Right other ->
-                sprintf "Unexpected response from IrisAgent: %A" other
-                |> Error.asOther (tag "JoinCluster")
-                |> Either.fail
+          // member self.JoinCluster ip port =
+          //   Tracing.trace (tag "JoinCluster") <| fun () ->
+          //     match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
+          //     | Right Reply.Ok -> Right ()
+          //     | Left error  -> Left error
+          //     | Right other ->
+          //       sprintf "Unexpected response from IrisAgent: %A" other
+          //       |> Error.asOther (tag "JoinCluster")
+          //       |> Either.fail
 
           member self.AddMember mem =
             Tracing.trace (tag "AddMember") <| fun () ->

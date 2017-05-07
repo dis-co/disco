@@ -63,8 +63,6 @@ module Raft =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Join           of ip:IpAddress * port:uint16
-    | Leave
     | Periodic
     | ForceElection
     | Start
@@ -74,21 +72,23 @@ module Raft =
     | AddMember      of mem:RaftMember
     | RemoveMember   of id:Id
     | ReqCommitted   of started:DateTime * entry:EntryResponse * response:RawResponse
+    // | Join           of ip:IpAddress * port:uint16
+    // | Leave
     // | IsCommitted    of started:DateTime * entry:EntryResponse
 
     override msg.ToString() =
       match msg with
       | Start                     -> "Start"
-      | Join          (ip,port)   -> sprintf "Join: %s %d" (string ip) port
       | RawRequest      _         -> "RawRequest"
       | RawResponse     _         -> "RawResponse"
-      | Leave                     -> "Leave"
       | Periodic                  -> "Periodic"
       | ForceElection             -> "ForceElection"
       | AddCmd          sm        -> sprintf "AddCmd:  %A" sm
       | AddMember       mem       -> sprintf "AddMember:  %O" mem.Id
       | RemoveMember        id    -> sprintf "RemoveMember:  %O" id
       | ReqCommitted  (_,entry,_) -> sprintf "ReqCommitted:  %A" entry
+      // | Join          (ip,port)   -> sprintf "Join: %s %d" (string ip) port
+      // | Leave                     -> "Leave"
       // | IsCommitted   (_,entry)   -> sprintf "IsCommitted:  %A" entry
 
   // ** Subscriptions
@@ -634,6 +634,8 @@ module Raft =
 
   // ** processHandshake
 
+  (*
+
   /// ## Process a HandShake request by a certain Mem.
   ///
   /// Handle a request to join the cluster. Respond with Welcome if everything is OK. Redirect to
@@ -669,8 +671,11 @@ module Raft =
           newstate
       else
         doRedirect state raw
+  *)
 
   // ** processHandwaive
+
+  (*
 
   let private processHandwaive (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (arbiter: StateArbiter) =
     Tracing.trace (tag "processHandwaive") <| fun () ->
@@ -696,6 +701,7 @@ module Raft =
           newstate
       else
         doRedirect state raw
+  *)
 
   // ** processAppendEntriesResponse
 
@@ -730,9 +736,7 @@ module Raft =
   // ** processSnapshotResponse
 
   let private processSnapshotResponse (state: RaftServerState) (sender: Id) (ar: AppendResponse) =
-    "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-    |> Logger.err (tag "processSnapshotResponse")
-    state
+    processAppendEntriesResponse state sender ar
 
   // ** processRedirect
 
@@ -743,19 +747,25 @@ module Raft =
 
   // ** processWelcome
 
+  (*
+
   let private processWelcome (state: RaftServerState) (leader: RaftMember) =
 
     "FIX WELCOME RESPONSE PROCESSING"
     |> Logger.err (tag "processWelcome")
 
     state
+  *)
 
   // ** processArrivederci
+
+  (*
 
   let private processArrivederci (state: RaftServerState) =
     "FIX ARRIVEDERCI RESPONSE PROCESSING"
     |> Logger.err (tag "processArrivederci")
     state
+  *)
 
   // ** processErrorResponse
 
@@ -766,6 +776,8 @@ module Raft =
     state
 
   // ** tryJoin
+
+  (*
 
   let private tryJoin (state: RaftServerState) (ip: IpAddress) (port: uint16) =
     let rec _tryJoin retry peer =
@@ -819,8 +831,11 @@ module Raft =
       _tryJoin 0 { Member.create (Id.Create()) with
                     IpAddr = ip
                     Port   = port }
+  *)
 
   // ** tryJoinCluster
+
+  (*
 
   let private tryJoinCluster (state: RaftServerState) (ip: IpAddress) (port: uint16) =
     Tracing.trace (tag "tryJoinCluster") <| fun () ->
@@ -844,8 +859,11 @@ module Raft =
 
       }
       |> runRaft state.Raft state.Callbacks
+  *)
 
   // ** tryLeave
+
+  (*
 
   /// ## Attempt to leave a Raft cluster
   ///
@@ -903,8 +921,11 @@ module Raft =
         "No known Leader"
         |> Error.asRaftError (tag "tryLeave")
         |> Either.fail
+  *)
 
   // ** leaveCluster
+
+  (*
 
   let private tryLeaveCluster (state: RaftServerState) =
     Tracing.trace (tag "tryLeaveCluster") <| fun () ->
@@ -936,6 +957,7 @@ module Raft =
 
       }
       |> runRaft state.Raft state.Callbacks
+  *)
 
   // ** forceElection
 
@@ -975,6 +997,8 @@ module Raft =
 
   // ** handleJoin
 
+  (*
+
   let private handleJoin (state: RaftServerState) (ip: IpAddress) (port: UInt16) =
     Tracing.trace (tag "handleJoin") <| fun () ->
       match tryJoinCluster state ip port with
@@ -986,8 +1010,11 @@ module Raft =
         |> RaftEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
+  *)
 
   // ** handleLeave
+
+  (*
 
   let private handleLeave (state: RaftServerState) =
     Tracing.trace (tag "handleLeave") <| fun () ->
@@ -1004,6 +1031,7 @@ module Raft =
         |> RaftEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
+  *)
 
   // ** handleForceElection
 
@@ -1166,8 +1194,8 @@ module Raft =
           | RequestVote (id, vr)     -> processVoteRequest     data id  vr  raw
           | InstallSnapshot (id, is) -> processInstallSnapshot data id  is  raw
           | AppendEntry  sm          -> processAppendEntry     data sm  raw arbiter
-          | HandShake mem            -> processHandshake       data mem raw arbiter
-          | HandWaive mem            -> processHandwaive       data mem raw arbiter
+          // | HandShake mem            -> processHandshake       data mem raw arbiter
+          // | HandWaive mem            -> processHandwaive       data mem raw arbiter
 
         return newstate
       }
@@ -1272,8 +1300,6 @@ module Raft =
           Tracing.trace (tag "loop") <| fun () ->
             match cmd with
             | Msg.Start                         -> handleStart         state          inbox
-            | Msg.Join        (ip, port)        -> handleJoin          state ip port
-            | Msg.Leave                         -> handleLeave         state
             | Msg.Periodic                      -> handlePeriodic      state
             | Msg.ForceElection                 -> handleForceElection state
             | Msg.AddCmd             cmd        -> handleAddCmd        state cmd      inbox
@@ -1282,6 +1308,8 @@ module Raft =
             | Msg.RawRequest     request        -> handleRawRequest    state request  inbox
             | Msg.RawResponse   response        -> handleRawResponse   state response inbox
             | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted state ts entry raw inbox
+            // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+            // | Msg.Leave                         -> handleLeave         state
         store.Update newstate
         do! act ()
       }
@@ -1427,11 +1455,11 @@ module Raft =
               member self.Periodic () =
                 agent.Post Msg.Periodic
 
-              member self.JoinCluster ip port =
-                (ip, port) |> Msg.Join |> agent.Post
+              // member self.JoinCluster ip port =
+              //   (ip, port) |> Msg.Join |> agent.Post
 
-              member self.LeaveCluster () =
-                agent.Post Msg.Leave
+              // member self.LeaveCluster () =
+              //   agent.Post Msg.Leave
 
               member self.AddMember mem =
                 mem |> Msg.AddMember |> agent.Post

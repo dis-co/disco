@@ -92,8 +92,8 @@ type IRaftServer =
   abstract Status        : ServiceStatus
   abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
-  abstract JoinCluster   : IpAddress -> uint16 -> unit
-  abstract LeaveCluster  : unit -> unit
+  // abstract JoinCluster   : IpAddress -> uint16 -> unit
+  // abstract LeaveCluster  : unit -> unit
   abstract AddMember     : RaftMember -> unit
   abstract RemoveMember  : Id -> unit
   abstract Connections   : ConcurrentDictionary<Id,IClient>
@@ -159,14 +159,14 @@ type IIrisServer =
   abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
   abstract Periodic      : unit       -> Either<IrisError,unit>
   abstract ForceElection : unit       -> Either<IrisError,unit>
-  abstract LeaveCluster  : unit       -> Either<IrisError,unit>
   abstract RmMember      : Id         -> Either<IrisError,EntryResponse>
   abstract AddMember     : RaftMember -> Either<IrisError,EntryResponse>
-  abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract LoadProject   : name:string * userName:string * password:Password * ?site:string -> Either<IrisError,unit>
   abstract UnloadProject : unit -> Either<IrisError,unit>
   abstract MachineStatus : Either<IrisError,MachineStatus>
+  // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
+  // abstract LeaveCluster  : unit       -> Either<IrisError,unit>
 
 // * IApiServer
 
