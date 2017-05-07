@@ -136,6 +136,7 @@ type ServiceStatus =
   | Stopped
   | Degraded of IrisError
   | Failed   of IrisError
+  | Disposed
 
   override self.ToString() =
     match self with
@@ -145,6 +146,7 @@ type ServiceStatus =
     | Stopped      -> "Stopped"
     | Degraded err -> sprintf "Degraded %A" err
     | Failed   err -> sprintf "Failed %A" err
+    | Disposed     -> "Disposed"
 
 // * Service module
 
@@ -162,6 +164,10 @@ module Service =
   let isStopped = function
     | ServiceStatus.Stopped -> true
     | _                     -> false
+
+  let isDisposed = function
+    | ServiceStatus.Disposed -> true
+    | _                      -> false
 
   let hasFailed = function
     | ServiceStatus.Failed _ -> true

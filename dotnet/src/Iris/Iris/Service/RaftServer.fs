@@ -1287,7 +1287,9 @@ module Raft =
     let interval = int state.Options.Raft.PeriodicInterval
     let periodic = startPeriodic interval agent
     notify state.Subscriptions RaftEvent.Started
-    { state with Disposables = periodic :: state.Disposables }
+    { state with
+        Status = ServiceStatus.Running
+        Disposables = periodic :: state.Disposables }
 
   // ** loop
 
@@ -1314,6 +1316,8 @@ module Raft =
         do! act ()
       }
     act ()
+
+  // ** RaftServer module
 
   //  ____        _     _ _
   // |  _ \ _   _| |__ | (_) ___
@@ -1394,7 +1398,7 @@ module Raft =
         return
           { new IRaftServer with
               member self.Start () =
-                Tracing.trace (tag "Start") <| fun () -> either {
+                Tracing.trace (tag "Start") <| fun () ->
                   if store.State.Status = ServiceStatus.Stopped then
                     let frontend = Uri.raftUri raftState.Member
 
@@ -1404,7 +1408,7 @@ module Raft =
                       |> Some
                       |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
 
-                    let! server = Broker.create {
+                    let result = Broker.create {
                         Id = raftState.Member.Id
                         MinWorkers = 5uy
                         MaxWorkers = 20uy
@@ -1413,29 +1417,34 @@ module Raft =
                         RequestTimeout = uint32 Constants.REQ_TIMEOUT
                       }
 
-                    let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
+                    match result with
+                    | Right server ->
+                      let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
 
-                    Map.iter
-                      (fun _ (peer: RaftMember) ->
-                        if peer.Id <> raftState.Member.Id then
-                          getConnection connections peer
-                          |> ignore)
-                      raftState.Peers
+                      Map.iter
+                        (fun _ (peer: RaftMember) ->
+                          if peer.Id <> raftState.Member.Id then
+                            getConnection connections peer
+                            |> ignore)
+                        raftState.Peers
 
-                    let update =
-                      { store.State with
-                          Server = server
-                          Disposables = [ srvobs ] }
+                      store.Update
+                        { store.State with
+                            Server = server
+                            Disposables = [ srvobs ] }
 
-                    store.Update update
-                    agent.Start()
-                    agent.Post Msg.Start
+                      agent.Start()
+
+                      Msg.Start
+                      |> agent.Post
+                      |> Either.succeed
+                    | Left error ->
+                      store.Update { store.State with Status = ServiceStatus.Failed error }
+                      Either.fail error
                   else
-                    return!
-                      "Service already running or disposed"
-                      |> Error.asRaftError (tag "Start")
-                      |> Either.fail
-                }
+                    sprintf "Status error. %O" store.State.Status
+                    |> Error.asRaftError (tag "Start")
+                    |> Either.fail
 
               member self.Member
                 with get () = store.State.Raft.Member
@@ -1487,8 +1496,10 @@ module Raft =
                 with get () = Raft.getLeader store.State.Raft
 
               member self.Dispose () =
-                dispose agent
-                dispose store.State
+                if not (Service.isDisposed store.State.Status) then
+                  store.Update { store.State with Status = ServiceStatus.Disposed }
+                  dispose agent
+                  dispose store.State
             }
       }
 
