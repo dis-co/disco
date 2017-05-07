@@ -1,5 +1,10 @@
 namespace Iris.Service
 
+// TODO:
+// - need to set node status when receiving and error message
+// - need to fix the socket stuff
+// - need to implement timeouts differently
+
 // * Imports
 
 #if !IRIS_NODES
