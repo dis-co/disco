@@ -973,7 +973,6 @@ module Raft =
       loop 0)
     :> IDisposable
 
-
   // ** handleJoin
 
   let private handleJoin (state: RaftServerState) (ip: IpAddress) (port: UInt16) =
