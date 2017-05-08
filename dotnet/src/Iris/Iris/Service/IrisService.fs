@@ -606,8 +606,11 @@ module Iris =
   // ** mkLeader
 
   let private mkLeader (self: Id) (leader: RaftMember) =
-    let addr = Uri.raftUri leader
-    let socket = Client.create self addr Constants.REQ_TIMEOUT
+    let socket = Client.create {
+        Id = self
+        Frontend = Uri.raftUri leader
+        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+      }
     { Member = leader; Socket = socket }
 
   // ** onStateChanged
@@ -974,7 +977,7 @@ module Iris =
         let! mem = Config.selfMember state.Project.Config
 
         let! wsserver   = WebSocketServer.create mem
-        let! raftserver = RaftServer.create state.Project.Config
+        let! raftserver = RaftServer.create state.Project.Config Client.create
         let! apiserver  = ApiServer.create mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to

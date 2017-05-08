@@ -199,7 +199,7 @@ module Persistence =
       |> Logger.debug (tag "getRemote")
       Git.Config.addRemote repo (string leader.Id) uri
 
-    | Some remote when remote.Url <> uri ->
+    | Some remote when remote.Url <> unwrap uri ->
       leader.Id
       |> string
       |> sprintf "Updating remote section for %A to point to %A" uri

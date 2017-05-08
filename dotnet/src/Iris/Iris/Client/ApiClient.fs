@@ -226,10 +226,14 @@ module ApiClient =
         |> Some
         |> Uri.tcpUri server.IpAddress
 
-      sprintf "Starting server on %s" clientAddr
+      sprintf "Starting server on %O" clientAddr
       |> Logger.debug (tag "start")
 
-      let socket = Client.create client.Id srvAddr Constants.REQ_TIMEOUT
+      let socket = Client.create {
+        Id = client.Id
+        Frontend = srvAddr
+        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+      }
 
       let result = Broker.create {
         Id = client.Id
@@ -237,7 +241,7 @@ module ApiClient =
         MaxWorkers = 20uy
         Frontend = clientAddr
         Backend = backendAddr
-        RequestTimeout = uint32 Constants.REQ_TIMEOUT
+        RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
 
       match result with
@@ -257,13 +261,13 @@ module ApiClient =
         asynchronously <| fun _ ->
           Tracing.trace "ApiClient.start.requestRegister" <| fun () ->
 
-            sprintf "Connecting to server on %s" srvAddr
+            sprintf "Connecting to server on %O" srvAddr
             |> Logger.debug (tag "start")
 
             match requestRegister data with
             | Right () ->
               srvAddr
-              |> sprintf "Registration with %s successful"
+              |> sprintf "Registration with %O successful"
               |> Logger.debug (tag "start")
 
               Reply.Ok
@@ -274,8 +278,7 @@ module ApiClient =
 
             | Left error ->
               error
-              |> string
-              |> sprintf "Registration with %s encountered error: %s" srvAddr
+              |> sprintf "Registration with %O encountered error: %O" srvAddr
               |> Logger.debug (tag "start")
 
               Msg.AsyncDispose

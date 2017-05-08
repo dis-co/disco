@@ -20,6 +20,7 @@ namespace Iris.Core
 [<Measure>] type chars
 [<Measure>] type version
 [<Measure>] type tag
+[<Measure>] type uri
 
 // * Aliases
 
@@ -57,6 +58,7 @@ type Password   = string<password>
 type Salt       = string<checksum>
 type Port       = uint16<port>
 type Timeout    = int<ms>
+type Url        = string<uri>
 
 [<AutoOpen>]
 module Measure =
@@ -71,6 +73,7 @@ module Measure =
   let term t: Term = t * 1<term>
   let version v: Version = UoM.wrap v
   let astag t: Tag = UoM.wrap t
+  let url t: Url = UoM.wrap t
 
 type IPProtocol =
   | IPv4

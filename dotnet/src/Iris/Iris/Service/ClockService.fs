@@ -92,7 +92,7 @@ module Clock =
         (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
         (port Constants.CLOCK_MCAST_PORT)
 
-    let socket = new Pub(addr, Constants.CLOCK_MCAST_PREFIX)
+    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX)
 
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()

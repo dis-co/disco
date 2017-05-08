@@ -29,20 +29,6 @@ module ZmqUtils =
   let request (sock: IClient) (req: RaftRequest) : Either<IrisError,RaftResponse> =
     req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
 
-  // ** mkReqSocket
-
-  /// ## Make a new client socket with correct settings
-  ///
-  /// Creates a new req type socket with correct settings, connects and returns it.
-  ///
-  /// ### Signature:
-  /// - uri: string uri of peer to connect to
-  /// - state: current app state
-  ///
-  /// Returns: fszmq.Socket
-  let mkReqSocket (mem: RaftMember) =
-    Client.create mem.Id (Uri.raftUri mem) Constants.REQ_TIMEOUT
-
   // ** getSocket
 
   /// ## getSocket for Member

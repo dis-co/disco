@@ -164,48 +164,24 @@ module Raft =
 
   // ** getConnection
 
-  let private getConnection (connections: Connections) (peer: RaftMember) =
+  let private getConnection (constr: ClientConfig -> IClient)
+                            (connections: Connections)
+                            (peer: RaftMember)  =
+
     match connections.TryGetValue peer.Id with
     | true, connection -> connection
     | _ ->
-      let connection = mkReqSocket peer
+      let connection = constr {
+          Id = peer.Id
+          Frontend = Uri.raftUri peer
+          Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
+        }
+
       while not (connections.TryAdd(peer.Id, connection)) do
         "Unable to add connection. Retrying."
         |> Logger.err (tag "getConnection")
         Thread.Sleep 1
       connection
-
-  // ** sendRequestVote
-
-  let private sendRequestVote (self: Id)
-                              (connections: Connections)
-                              (peer: RaftMember)
-                              (request: VoteRequest) : unit =
-
-    let request = RequestVote(self, request)
-    let client = getConnection connections peer
-    performRequest client request
-
-  // ** sendAppendEntries
-
-  let private sendAppendEntries (self: Id)
-                                (connections: Connections)
-                                (peer: RaftMember)
-                                (request: AppendEntries) =
-
-    let request = AppendEntries(self, request)
-    let client = getConnection connections peer
-    performRequest client request
-
-  // ** sendInstallSnapshot
-
-  let private sendInstallSnapshot (self: Id)
-                                  (connections: Connections)
-                                  (peer: RaftMember)
-                                  (is: InstallSnapshot) =
-    let client = getConnection connections peer
-    let request = InstallSnapshot(self, is)
-    performRequest client request
 
   // ** notify
 
@@ -217,6 +193,7 @@ module Raft =
   // ** mkCallbacks
 
   let private mkCallbacks (id: Id)
+                          (constr: ClientConfig -> IClient)
                           (connections: Connections)
                           (subscriptions: Subscriptions) =
 
@@ -224,15 +201,21 @@ module Raft =
 
         member self.SendRequestVote peer request =
           Tracing.trace (tag "sendRequestVote") <| fun () ->
-            sendRequestVote id connections peer request
+            let request = RequestVote(id, request)
+            let client = getConnection constr connections peer
+            performRequest client request
 
         member self.SendAppendEntries peer request =
           Tracing.trace (tag "sendAppendEntries") <| fun () ->
-            sendAppendEntries id connections peer request
+            let request = AppendEntries(id, request)
+            let client = getConnection constr connections peer
+            performRequest client request
 
         member self.SendInstallSnapshot peer request =
           Tracing.trace (tag "sendInstallSnapshot") <| fun () ->
-            sendInstallSnapshot id connections peer request
+            let client = getConnection constr connections peer
+            let request = InstallSnapshot(id, request)
+            performRequest client request
 
         member self.PrepareSnapshot raft =
           Tracing.trace (tag "prepareSnapshot") <| fun () ->
@@ -1363,7 +1346,7 @@ module Raft =
 
     // ** create
 
-    let create (config: IrisConfig) =
+    let create (config: IrisConfig) (constr: ClientConfig -> IClient) =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
@@ -1382,7 +1365,12 @@ module Raft =
 
         let! (callbacks, raftState) = either {
             let! raftState = Persistence.getRaft config
-            let callbacks = mkCallbacks raftState.Member.Id connections subscriptions
+            let callbacks =
+              mkCallbacks
+                raftState.Member.Id
+                constr
+                connections
+                subscriptions
             let! initialized = initializeRaft callbacks raftState
             return callbacks, initialized
           }
@@ -1419,7 +1407,7 @@ module Raft =
                         MaxWorkers = 20uy
                         Frontend = frontend
                         Backend = backend
-                        RequestTimeout = uint32 Constants.REQ_TIMEOUT
+                        RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                       }
 
                     match result with
@@ -1429,7 +1417,7 @@ module Raft =
                       Map.iter
                         (fun _ (peer: RaftMember) ->
                           if peer.Id <> raftState.Member.Id then
-                            getConnection connections peer
+                            getConnection constr connections peer
                             |> ignore)
                         raftState.Peers
 

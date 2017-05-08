@@ -193,8 +193,8 @@ let pullProject (id: string) (name: string) (uri: string) = either {
 
     let! remote =
       match Git.Config.tryFindRemote repo (string id) with
-      | Some remote -> Git.Config.updateRemote repo remote uri
-      | None -> Git.Config.addRemote repo (string id) uri
+      | Some remote -> Git.Config.updateRemote repo remote (url uri)
+      | None -> Git.Config.addRemote repo (string id) (url uri)
 
     let! result = Git.Repo.pull repo remote User.Admin.Signature
 
@@ -206,7 +206,7 @@ let pullProject (id: string) (name: string) (uri: string) = either {
         |> Either.fail
     | _ ->
       return
-        sprintf "Successfully pulled changes from: %A" uri
+        sprintf "Successfully pulled changes from: %A" url
         |> serializeJson
   }
 

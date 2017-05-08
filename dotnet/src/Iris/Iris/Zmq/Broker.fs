@@ -62,14 +62,21 @@ type IClient =
   abstract Restart: unit -> unit
   abstract Subscribe: (byte array -> unit) -> IDisposable
 
-// * WorkerArgs
+// * ClientConfig
+
+type ClientConfig =
+  { Id: Id
+    Frontend: Url
+    Timeout: Timeout }
+
+// * WorkerConfig
 
 [<NoComparison>]
-type WorkerArgs =
+type WorkerConfig =
   { Id: WorkerId
-    Backend: string
+    Backend: Url
     Context: ZContext
-    RequestTimeout: uint32 }
+    RequestTimeout: Timeout }
 
 // * IWorker
 
@@ -79,15 +86,15 @@ type private IWorker =
   abstract Respond: RawResponse -> unit
   abstract Subscribe: (RawRequest -> unit) -> IDisposable
 
-// * BrokerArgs
+// * BrokerConfig
 
-type BrokerArgs =
+type BrokerConfig =
   { Id: Id
     MinWorkers: uint8
     MaxWorkers: uint8
-    Frontend: string
-    Backend: string
-    RequestTimeout: uint32 }
+    Frontend: Url
+    Backend: Url
+    RequestTimeout: Timeout }
 
 // * IBroker
 
@@ -173,7 +180,7 @@ module Client =
 
   // ** rand
 
-  let rand = new System.Random()
+  let private rand = new System.Random()
 
   // ** LocalThreadState
 
@@ -317,7 +324,7 @@ module Client =
 
   // ** create
 
-  let create (id: Id) (frontend: string) (timeout: float) =
+  let create (options: ClientConfig) =
     failwith "IClient"
     // let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
     // let mutable thread = Thread(worker state)
@@ -383,7 +390,7 @@ module private Worker =
   // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (args: WorkerArgs) as self =
+  type private LocalThreadState (args: WorkerConfig) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
@@ -450,7 +457,7 @@ module private Worker =
       self.Socket.Identity <- BitConverter.GetBytes args.Id
       self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 10.0
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
-      self.Socket.Connect(args.Backend)
+      self.Socket.Connect(unwrap args.Backend)
 
     // *** RestartSocket
 
@@ -568,7 +575,7 @@ module private Worker =
 
   // ** create
 
-  let create (args: WorkerArgs)  =
+  let create (args: WorkerConfig)  =
     let state = new LocalThreadState(args)
 
     let thread = Thread(worker state)
@@ -649,7 +656,7 @@ module Broker =
   // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (args: BrokerArgs) as self =
+  type private LocalThreadState (args: BrokerConfig) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
@@ -682,8 +689,8 @@ module Broker =
         self.Context <- new ZContext()
         self.Frontend <- new ZSocket(self.Context, ZSocketType.ROUTER)
         self.Backend <- new ZSocket(self.Context, ZSocketType.ROUTER)
-        self.Frontend.Bind(args.Frontend)
-        self.Backend.Bind(args.Backend)
+        self.Frontend.Bind(unwrap args.Frontend)
+        self.Backend.Bind(unwrap args.Backend)
 
         for _ in 1uy .. args.MinWorkers do
           self.AddWorker()
@@ -812,7 +819,7 @@ module Broker =
 
   // ** create
 
-  let create (args: BrokerArgs) =
+  let create (args: BrokerConfig) =
     let state = new LocalThreadState(args)
     let cts = new CancellationTokenSource()
     let responder = ResponseActor.Start(loop state.Workers, cts.Token)

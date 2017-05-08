@@ -271,8 +271,8 @@ module ApiServer =
         (IPv4Address Constants.MCAST_ADDRESS)
         (port Constants.MCAST_PORT)
 
-    let publisher = new Pub(pubSubAddr, string project)
-    let subscriber = new Sub(pubSubAddr, string project)
+    let publisher = new Pub(unwrap pubSubAddr, string project)
+    let subscriber = new Sub(unwrap pubSubAddr, string project)
 
     let result = Broker.create {
       Id = mem.Id
@@ -280,7 +280,7 @@ module ApiServer =
       MaxWorkers = 20uy
       Frontend = frontend
       Backend = backend
-      RequestTimeout = uint32 Constants.REQ_TIMEOUT
+      RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
 
     match result  with
@@ -359,21 +359,24 @@ module ApiServer =
 
         // construct a new client value
         let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
-        let socket = Client.create meta.Id addr Constants.REQ_TIMEOUT
+        let socket = Client.create {
+          Id = meta.Id
+          Frontend = addr
+          Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+        }
 
         let client =
           { Meta = meta
             Socket = socket
             Timer = pingTimer socket agent }
 
-        asynchronously <| fun _ ->
-          meta.Id
-          |> Msg.InstallSnapshot
-          |> agent.Post
+        meta.Id
+        |> Msg.InstallSnapshot
+        |> agent.Post
 
-          meta
-          |> ApiEvent.Register
-          |> notify subs
+        meta
+        |> ApiEvent.Register
+        |> notify subs
 
         Loaded { data with Clients = Map.add meta.Id client data.Clients }
 
