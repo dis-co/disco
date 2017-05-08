@@ -1,0 +1,64 @@
+@charset "UTF-8";
+
+@font-face {
+  font-family: "iris";
+  src:url("fonts/iris.eot");
+  src:url("fonts/iris.eot?#iefix") format("embedded-opentype"),
+    url("fonts/iris.woff") format("woff"),
+    url("fonts/iris.ttf") format("truetype"),
+    url("fonts/iris.svg#iris") format("svg");
+  font-weight: normal;
+  font-style: normal;
+
+}
+
+[data-icon]:before {
+  font-family: "iris" !important;
+  content: attr(data-icon);
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[class^="icon-"]:before,
+[class*=" icon-"]:before {
+  font-family: "iris" !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-fast-backward:before {
+  content: "\61";
+}
+.icon-fast-forward:before {
+  content: "\62";
+}
+.icon-play:before {
+  content: "\63";
+}
+.icon-nextcall:before {
+  content: "\65";
+}
+.icon-close:before {
+  content: "\64";
+}
+.icon-duplicate:before {
+  content: "\66";
+}
+.icon-caret-down-two:before {
+  content: "\67";
+}
+.icon-caret-right:before {
+  content: "\68";
+}
