@@ -85,16 +85,6 @@ let notify(msg: string) =
         | _ -> ())
   | _ -> ()
 
-let subscribeToLogs(f:ClientLog->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClientLog log -> f log
-      | _ -> ())
-
-let subscribeToClock(f:uint32->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClockUpdate frames -> f frames
-      | _ -> ())
-
 let removeMember(config: IrisConfig, memId: Id) =
   match Config.findMember config memId with
   | Right mem ->
@@ -320,22 +310,6 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
-
-let startContext f =
-  let context = ClientContext.Singleton
-  context.Start()
-  |> Promise.map (fun () ->
-    context.OnMessage
-    |> Observable.add (function
-      | ClientMessage.Render(Some state) ->
-        match Map.tryFind context.Session state.Sessions with
-        | Some session ->
-          Some { session = session; state = state } |> f
-        | None -> ()
-      | ClientMessage.Render None ->
-          f None
-      | _ -> ())
-  )
 
 let startWorkerContext() =
   GlobalContext()

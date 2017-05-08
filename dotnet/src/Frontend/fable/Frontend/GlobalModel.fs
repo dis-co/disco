@@ -11,45 +11,130 @@ open Iris.Core
 open Iris.Core.Commands
 
 type ISubscriber = obj -> unit
+type IServiceInfo = interface end
+type IProject = interface end
+type IPinGroup = interface end
 type IWidget = interface end
 type ITab = interface end
 
 [<Literal>]
 let private LOG_MAX = 100
 
+let private subscribeToLogs(f:ClientLog->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
+      | ClientMessage.ClientLog log -> f log
+      | _ -> ())
+
+let private subscribeToClock(f:uint32->unit): IDisposable =
+    ClientContext.Singleton.OnMessage.Subscribe (function
+      | ClientMessage.ClockUpdate frames -> f frames
+      | _ -> ())
+
+let private startContext f =
+  let context = ClientContext.Singleton
+  context.Start()
+  |> Promise.iter (fun () ->
+    context.OnMessage
+    |> Observable.add (function
+      | ClientMessage.Render(Some state) ->
+        match Map.tryFind context.Session state.Sessions with
+        | Some session ->
+          Some { session = session; state = state } |> f
+        | None -> ()
+      | ClientMessage.Render None ->
+          f None
+      | _ -> ())
+  )
+
+[<Pojo>]
+type GlobalState =
+  { logs: (int*string) list
+    tabs: Map<int,ITab>
+    widgets: Map<int,IWidget>
+    pinGroups:  Map<Id,IPinGroup>
+    useRightClick: bool
+    serviceInfo: ServiceInfo
+    clock: int
+    project: IProject option }
+
 // TODO: Unify this with ClientContext?
 
 /// To prevent duplication, this is the model all other views have access to.
 /// It manages the information coming from backend/shared worker.
 type GlobalModel() =
-
   // Private fields
-  let state = Dictionary<string, obj>()
+  let logSubscription = ref None
+  let clockSubscription = ref None
   let subscribers = Dictionary<string, Dictionary<int, ISubscriber>>()
   let eventSubscribers = Dictionary<string, Dictionary<int, ISubscriber>>()
+  let state =
+    { logs = []
+      tabs = Map.empty
+      widgets = Map.empty
+      pinGroups = Map.empty
+      useRightClick = false
+      serviceInfo =
+        { webSocket = "0"
+          version = "0.0.0"
+          buildNumber = "0"  }
+      clock = 0
+      project  = None }
 
   // Private methods
   let newId =
     let mutable counter = 0
     fun () -> counter <- counter + 1; counter
-  let updateState(key: string, defaultValue: Lazy<'T>, updater: 'T->'T) =
-    let newValue =
-      match state.TryGetValue(key) with
-      | true, value ->
-        let newValue = value :?> 'T |> updater
-        state.[key] <- newValue
-        newValue
-      | false, _ ->
-        let newValue = updater defaultValue.Value
-        state.Add(key, newValue)
-        newValue
+
+  let updateStateAndNotify (key: string) (updater: 'T->'T) =
+    let newValue = !!state?(key) |> updater
+    state?(key) <- newValue
     // Notify update
     match subscribers.TryGetValue(key) with
     | true, subscribers -> for s in subscribers.Values do s(newValue)
     | false, _ -> ()
 
+  let setStateAndNotify key (value:'T) =
+    updateStateAndNotify key (fun _ -> value)
+
+  let addLog' log =
+    updateStateAndNotify (nameof(state.logs)) <| fun logs ->
+      let logs =
+        let length = List.length logs
+        if length > LOG_MAX then
+          let diff = LOG_MAX / 100
+          List.take (length - diff) logs
+        else
+          logs
+      (newId(), log)::logs
+
+  // Constructor
+  do startContext(fun info ->
+    // Init logs and clocks upon receiving first message
+    if Option.isNone !logSubscription then
+      logSubscription := addLog' |> subscribeToLogs |> Some
+
+    if Option.isNone !clockSubscription then
+      clockSubscription :=
+        nameof(state.clock)
+        |> setStateAndNotify
+        |> subscribeToClock
+        |> Some
+
+    if state.serviceInfo.version = "0.0.0" then
+      ClientContext.Singleton.ServiceInfo
+      |> setStateAndNotify (nameof(state.serviceInfo))
+
+    match info with
+    | Some i ->
+      setStateAndNotify (nameof(state.pinGroups)) i.state.PinGroups
+      setStateAndNotify (nameof(state.project)) (Some i.state.Project)
+    | None ->
+      setStateAndNotify (nameof(state.pinGroups)) Map.empty
+      setStateAndNotify (nameof(state.project)) None
+  )
+
   // Public methods
-  member this.Subscribe(keys: U2<string, string[]>, subscriber: ISubscriber) =
+  member this.subscribe(keys: U2<string, string[]>, subscriber: ISubscriber) =
     let keys =
       match keys with
       | U2.Case1 key -> [|key|]
@@ -66,7 +151,7 @@ type GlobalModel() =
     { new IDisposable with
         member __.Dispose() = for d in disposables do d.Dispose() }
 
-  member this.SubscribeToEvent(event: string, subscriber: ISubscriber) =
+  member this.subscribeToEvent(event: string, subscriber: ISubscriber) =
     let id = newId()
     if eventSubscribers.ContainsKey(event) |> not then
       eventSubscribers.Add(event, Dictionary())
@@ -75,48 +160,30 @@ type GlobalModel() =
     { new IDisposable with
         member __.Dispose() = eventSubscribers.[event].Remove(id) |> ignore }
 
-  member this.UseRightClick(value: bool) =
-    updateState("useRightClick", lazy false, fun _ -> value)
+  member this.useRightClick(value: bool) =
+    setStateAndNotify (nameof(state.useRightClick)) value
 
-  member this.AddWidget(widget: IWidget, ?id: int) =
+  member this.addWidget(widget: IWidget, ?id: int) =
     let id = match id with Some id -> id | None -> newId()
-    updateState("widgets", lazy Map.empty, Map.add id widget)
+    updateStateAndNotify (nameof(state.widgets)) (Map.add id widget)
     id
 
-  member this.RemoveWidget(id: int) =
-    updateState("widgets", lazy Map.empty, Map.remove id)
+  member this.removeWidget(id: int) =
+    updateStateAndNotify (nameof(state.widgets)) (Map.remove id)
 
-  member this.AddTab(tab: ITab, ?id: int) =
+  member this.addTab(tab: ITab, ?id: int) =
     let id = match id with Some id -> id | None -> newId()
-    updateState("tabs", lazy Map.empty, Map.add id tab)
+    updateStateAndNotify (nameof(state.tabs)) (Map.add id tab)
     id
 
-  member this.RemoveTab(id: int) =
-    updateState("tabs", lazy Map.empty, Map.remove id)
+  member this.removeTab(id: int) =
+    updateStateAndNotify (nameof(state.tabs)) (Map.remove id)
 
-  member this.AddLog(log: string) =
-    updateState("logs", lazy [], fun logs ->
-      let logs =
-        let length = List.length logs
-        if length > LOG_MAX then
-          let diff = LOG_MAX / 100
-          List.take (length - diff) logs
-        else
-          logs
-      (newId(), log)::logs)
+  member this.addLog(log: string) =
+    addLog' log
 
-  member this.TriggerEvent(event: string, data: obj) =
+  member this.triggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with
     | true, subscribers -> for s in subscribers.Values do s(data)
     | false, _ -> ()
 
-  // JS API
-  member this.subscribe = this.Subscribe
-  member this.subscribeToEvent = this.SubscribeToEvent
-  member this.useRightClick = this.UseRightClick
-  member this.addWidget = this.AddWidget
-  member this.removeWidget = this.RemoveWidget
-  member this.addTab = this.AddTab
-  member this.removeTab = this.RemoveTab
-  member this.addLog = this.AddLog
-  member this.triggerEvent = this.TriggerEvent
