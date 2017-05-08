@@ -660,6 +660,11 @@ module private Worker =
 module Broker =
   open Utils
 
+  // ** tag
+
+  let private tag (str: string) =
+    String.Format("Broker.{0}", str)
+
   // ** Workers
 
   type private Workers = ConcurrentDictionary<WorkerId,IWorker>
@@ -667,9 +672,6 @@ module Broker =
   // ** ResponseActor
 
   type private ResponseActor = MailboxProcessor<RawServerResponse>
-
-  let private tag (str: string) =
-    String.Format("Broker.{0}", str)
 
   // ** loop
 
@@ -712,6 +714,8 @@ module Broker =
 
     let disposables = new ResizeArray<IDisposable>()
 
+    // *** do
+
     do
       self.Initialized <- false
       self.Started <- false
@@ -722,6 +726,8 @@ module Broker =
       self.Stopper <- new AutoResetEvent(false)
       self.Workers <- new Workers()
       self.Subscriptions <- new Subscriptions()
+
+    // *** Start
 
     member self.Start () =
       try
@@ -808,9 +814,9 @@ module Broker =
     let mutable incoming = Unchecked.defaultof<ZMessage>
     let mutable error = Unchecked.defaultof<ZError>
     let poll = ZPollItem.CreateReceiver()
+    let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
 
     while spin state do
-      let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
 
       if state.Backend.PollIn(poll, &incoming, &error, timespan) then
         let workerId = incoming.[0].ReadUInt16()

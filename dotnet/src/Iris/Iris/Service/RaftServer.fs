@@ -1,8 +1,9 @@
 namespace Iris.Service
 
 // TODO:
+// - handle client responses
 // - need to set node status when receiving and error message
-// - need to fix the socket stuff
+// - need to fix the socket subscriptions
 // - need to implement timeouts differently
 
 // * Imports
@@ -355,7 +356,6 @@ module Raft =
         |> runRaft state.Raft state.Callbacks
 
       match result with
-
       | Right (appended, raftState) ->
         (appended, updateRaft state raftState)
         |> Either.succeed
@@ -488,7 +488,7 @@ module Raft =
         updateRaft state newstate
 
       | Left (err, newstate) ->
-        err
+        (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
         |> RawServerResponse.fromRequest raw
@@ -512,7 +512,7 @@ module Raft =
           |> arbiter.Post
           newstate
         | Left (err, newstate) ->        // Request was unsuccessful, respond immeditately
-          err
+          (state.Raft.Member.Id, err)
           |> ErrorResponse
           |> Binary.encode
           |> RawServerResponse.fromRequest raw
@@ -532,7 +532,7 @@ module Raft =
           asynchronously <| fun _ ->
             "Not leader and no known leader."
             |> Error.asRaftError (tag "processAppendEntry")
-            |> ErrorResponse
+            |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
             |> Binary.encode
             |> RawServerResponse.fromRequest raw
             |> state.Server.Respond
@@ -558,7 +558,7 @@ module Raft =
 
       | Left (err, newstate) ->
         asynchronously <| fun _ ->
-          err
+          (state.Raft.Member.Id, err)
           |> ErrorResponse
           |> Binary.encode
           |> RawServerResponse.fromRequest raw
@@ -584,7 +584,7 @@ module Raft =
         updateRaft state newstate
       | Left (error, newstate) ->
         asynchronously <| fun _ ->
-          error
+          (state.Raft.Member.Id, error)
           |> ErrorResponse
           |> Binary.encode
           |> RawServerResponse.fromRequest raw
@@ -616,7 +616,7 @@ module Raft =
         asynchronously <| fun _ ->
           "No known leader"
           |> Error.asRaftError (tag "doRedirect")
-          |> ErrorResponse
+          |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
           |> Binary.encode
           |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
@@ -759,7 +759,7 @@ module Raft =
 
   // ** processErrorResponse
 
-  let private processErrorResponse (state: RaftServerState) (error: IrisError) =
+  let private processErrorResponse (state: RaftServerState) (sender: Id) (error: IrisError) =
     error
     |> sprintf "received error response:  %A"
     |> Logger.err (tag "processErrorResponse")
@@ -1197,7 +1197,7 @@ module Raft =
       match processRequest state raw arbiter with
       | Right newdata -> newdata
       | Left error ->
-        error
+        (state.Raft.Member.Id, error)
         |> ErrorResponse
         |> Binary.encode
         |> RawServerResponse.fromRequest raw
@@ -1229,7 +1229,7 @@ module Raft =
         if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
           "AppendEntry timed out"
           |> Error.asRaftError "handleReqCommitted"
-          |> ErrorResponse
+          |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
           |> Binary.encode
           |> fun body -> { raw with Body = body }
           |> state.Server.Respond
@@ -1246,7 +1246,7 @@ module Raft =
           |> arbiter.Post
           updateRaft state newstate
       | Left (err, newstate) ->
-        err
+        (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
         |> fun body -> { raw with Body = body }
@@ -1262,7 +1262,7 @@ module Raft =
       | RequestVoteResponse     (sender, vote) -> processVoteResponse          state sender vote
       | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse state sender ar
       | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      state sender ar
-      | ErrorResponse            error         -> processErrorResponse         state error
+      | ErrorResponse           (sender, error)-> processErrorResponse         state sender error
       | _                                      -> state
     | Left error ->
       error
@@ -1273,7 +1273,44 @@ module Raft =
   // ** handleClientResponse
 
   let private handleClientResponse (state: RaftServerState) (raw: RawClientResponse) arbiter =
-    failwith "never"
+    match raw.Body with
+    | Left error ->
+      let result =
+        raft {
+          let! peer = Raft.getMemberM raw.PeerId
+          match peer with
+          | Some mem -> do! Raft.updateMemberM { mem with State = Failed }
+          | None -> ()
+        }
+        |> runRaft state.Raft state.Callbacks
+
+      match result with
+      | Right (_, newstate) -> updateRaft state newstate
+      | Left (err,_) ->
+        err
+        |> sprintf "Could not set new state on member: %O"
+        |> Logger.err "handleClientResponse"
+        state
+
+    | Right raw ->
+      match raw |> Binary.decode with
+      | Right (AppendEntryResponse entry) ->
+        // FIXME:
+        // this will likely take some more thought and handling
+        sprintf "successfully appended entry in %O" entry.Id
+        |> Logger.debug "handleClientResponse"
+        state
+      | Right (AppendEntriesResponse(id, ar))   -> processAppendEntriesResponse state id ar
+      | Right (RequestVoteResponse(id, vr))     -> processVoteResponse state id vr
+      | Right (InstallSnapshotResponse(id, ar)) -> processSnapshotResponse state id ar
+      | Right (ErrorResponse(id, error))        -> processErrorResponse state id error
+      | Right (Redirect leader)                 -> processRedirect state leader
+      | Left error ->
+        error
+        |> sprintf "Error decoding response: %O"
+        |> Logger.err "handleClientResponse"
+        state
+
 
   // ** handleStart
 

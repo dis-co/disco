@@ -250,8 +250,8 @@ type RaftResponse =
   | RequestVoteResponse     of sender:MemberId * vote:VoteResponse
   | AppendEntriesResponse   of sender:MemberId * ar:AppendResponse
   | InstallSnapshotResponse of sender:MemberId * ar:AppendResponse
+  | ErrorResponse           of sender:MemberId * error:IrisError
   | AppendEntryResponse     of response:EntryResponse
-  | ErrorResponse           of IrisError
   | Redirect                of leader:RaftMember
   // | Welcome                 of leader:RaftMember
   // | Arrivederci
@@ -280,8 +280,9 @@ type RaftResponse =
       RaftMsg.createAppendEntryResponseFB builder entry
       |> RaftMsg.build builder RaftMsgTypeFB.RespondAppendEntryFB
 
-    | ErrorResponse err ->
-      ErrorResponseFB.CreateErrorResponseFB(builder, err.ToOffset builder)
+    | ErrorResponse (id, err) ->
+      let nid = id |> string |> builder.CreateString
+      ErrorResponseFB.CreateErrorResponseFB(builder, nid, err.ToOffset builder)
       |> RaftMsg.build builder RaftMsgTypeFB.ErrorResponseFB
 
     | Redirect mem ->
@@ -392,7 +393,7 @@ type RaftResponse =
           let err = rv.Error
           if err.HasValue then
             let! error = IrisError.FromFB err.Value
-            return ErrorResponse error
+            return ErrorResponse (Id rv.MemberId, error)
           else
             return!
               "Could not parse empty ErrorFB body"
