@@ -47,7 +47,7 @@ class CueListView extends React.Component<CueProps,any> {
 
   componentWillUnmount() {
     if (Array.isArray(this.disposables)) {
-      this.disposables.forEach(x => x.dispose());
+      this.disposables.forEach(x => x.Dispose());
     }
   }
 

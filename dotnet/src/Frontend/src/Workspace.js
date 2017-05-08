@@ -27,7 +27,7 @@ export default class Workspace extends Component {
 
   componentWillUnmount() {
     if (this.disposable) {
-      this.disposable.dispose();
+      this.disposable.Dispose();
     }
   }
 

@@ -16,7 +16,7 @@ class ProjectView extends Component {
 
   componentWillUnmount() {
     if (this.disposable) {
-      this.disposable.dispose();
+      this.disposable.Dispose();
     }
   }
 
@@ -28,10 +28,10 @@ class ProjectView extends Component {
     else {
       return (
         <Tree
-          paddingLeft={20}             
-          tree={IrisLib.project2tree(project)}      
-          freeze={true}  
-          renderNode={node => <span>{node.module}</span>}            
+          paddingLeft={20}
+          tree={IrisLib.project2tree(project)}
+          freeze={true}
+          renderNode={node => <span>{node.module}</span>}
         />
       )
     }

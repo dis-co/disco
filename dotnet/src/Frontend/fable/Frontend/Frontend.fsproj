@@ -14,6 +14,7 @@
     <Compile Include="Crypto.fs" />
     <Compile Include="Worker.fs" />
     <Compile Include="Client.fs" />
+    <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
     <Compile Include="Lib.fs" />
   </ItemGroup>

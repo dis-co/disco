@@ -1,3 +1,7 @@
+import { GlobalModel } from "../fable/Frontend/GlobalModel.fs";
+export default GlobalModel;
+
+/*
 import { IIris, IDisposable, IServiceInfo, IService, IProject } from "./Interfaces"
 
 declare var IrisLib: IIris;
@@ -32,7 +36,7 @@ export default class GlobalModel {
         this.clockSubscription = IrisLib.subscribeToClock(frames =>
           this.__setState("clock", frames)
         )
-      }     
+      }
       if (this.state.serviceInfo.version === "0.0.0") {
         const ctx = IrisLib.getClientContext();
         this.__setState("serviceInfo", ctx.ServiceInfo);
@@ -72,14 +76,14 @@ export default class GlobalModel {
       subscribers.get(key).set(id, subscriber);
       disposables.push({
         // `subscribers` must be captured so the closure below works
-        dispose() {
+        Dispose() {
           subscribers.get(key).delete(id);
         }
       })
     }
     return {
-      dispose() {
-        disposables.forEach(x => x.dispose());
+      Dispose() {
+        disposables.forEach(x => x.Dispose());
       }
     }
   }
@@ -93,7 +97,7 @@ export default class GlobalModel {
     console.log("Subscription to event", event)
     // `subscribers` must be captured so the closure below works
     return {
-      dispose() {
+      Dispose() {
         subscribers.get(event).delete(id);
       }
     }
@@ -160,3 +164,4 @@ export default class GlobalModel {
     }
   }
 }
+*/

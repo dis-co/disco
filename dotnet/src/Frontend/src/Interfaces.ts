@@ -1,5 +1,5 @@
 export interface IDisposable {
-  dispose(): void;
+  Dispose(): void;
 }
 
 export interface ILayout {

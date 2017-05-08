@@ -58,7 +58,7 @@ module.exports = {
     headers: {
       "Access-Control-Allow-Origin": "*"
     }
-  },  
+  },
   module: {
     rules: [
       {
@@ -95,7 +95,7 @@ module.exports = {
       {
         test: /\.tsx?$/,
         loader: "awesome-typescript-loader"
-      },      
+      },
     ],
   },
 };
