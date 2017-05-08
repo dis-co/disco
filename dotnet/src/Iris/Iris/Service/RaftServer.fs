@@ -71,12 +71,13 @@ module Raft =
     | Periodic
     | ForceElection
     | Start
-    | RawRequest     of request:RawRequest
-    | RawResponse    of response:RawResponse
-    | AddCmd         of sm:StateMachine
-    | AddMember      of mem:RaftMember
-    | RemoveMember   of id:Id
-    | ReqCommitted   of started:DateTime * entry:EntryResponse * response:RawResponse
+    | RawServerRequest  of request:RawServerRequest
+    | RawServerResponse of response:RawServerResponse
+    | RawClientResponse of response:RawClientResponse
+    | AddCmd            of sm:StateMachine
+    | AddMember         of mem:RaftMember
+    | RemoveMember      of id:Id
+    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:RawServerResponse
     // | Join           of ip:IpAddress * port:uint16
     // | Leave
     // | IsCommitted    of started:DateTime * entry:EntryResponse
@@ -84,8 +85,9 @@ module Raft =
     override msg.ToString() =
       match msg with
       | Start                     -> "Start"
-      | RawRequest      _         -> "RawRequest"
-      | RawResponse     _         -> "RawResponse"
+      | RawServerRequest       _  -> "RawServerRequest"
+      | RawServerResponse      _  -> "RawServerResponse"
+      | RawClientResponse      _  -> "RawClientResponse"
       | Periodic                  -> "Periodic"
       | ForceElection             -> "ForceElection"
       | AddCmd          sm        -> sprintf "AddCmd:  %A" sm
@@ -172,7 +174,7 @@ module Raft =
     | true, connection -> connection
     | _ ->
       let connection = constr {
-          Id = peer.Id
+          PeerId = peer.Id
           Frontend = Uri.raftUri peer
           Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
         }
@@ -470,7 +472,7 @@ module Raft =
 
   // ** processAppendEntries
 
-  let private processAppendEntries (state: RaftServerState) (sender: Id) (ae: AppendEntries) (raw: RawRequest) =
+  let private processAppendEntries (state: RaftServerState) (sender: Id) (ae: AppendEntries) (raw: RawServerRequest) =
     Tracing.trace (tag "processAppendEntries") <| fun () ->
       let result =
         Raft.receiveAppendEntries (Some sender) ae
@@ -481,7 +483,7 @@ module Raft =
         (state.Raft.Member.Id, response)
         |> AppendEntriesResponse
         |> Binary.encode
-        |> RawResponse.fromRequest raw
+        |> RawServerResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -489,13 +491,13 @@ module Raft =
         err
         |> ErrorResponse
         |> Binary.encode
-        |> RawResponse.fromRequest raw
+        |> RawServerResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
   // ** processAppendEntry
 
-  let private processAppendEntry (state: RaftServerState) (cmd: StateMachine) (raw: RawRequest) (arbiter: StateArbiter) =
+  let private processAppendEntry (state: RaftServerState) (cmd: StateMachine) (raw: RawServerRequest) (arbiter: StateArbiter) =
     Tracing.trace (tag "processAppendEntry") <| fun () ->
       if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
         match appendCommand state cmd with
@@ -504,7 +506,7 @@ module Raft =
             entry                       // timing out or responding to the server
             |> AppendEntryResponse
             |> Binary.encode
-            |> RawResponse.fromRequest raw
+            |> RawServerResponse.fromRequest raw
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> arbiter.Post
@@ -513,7 +515,7 @@ module Raft =
           err
           |> ErrorResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
           newstate
       else
@@ -523,7 +525,7 @@ module Raft =
             mem
             |> Redirect
             |> Binary.encode
-            |> RawResponse.fromRequest raw
+            |> RawServerResponse.fromRequest raw
             |> state.Server.Respond
           state
         | None ->
@@ -532,13 +534,13 @@ module Raft =
             |> Error.asRaftError (tag "processAppendEntry")
             |> ErrorResponse
             |> Binary.encode
-            |> RawResponse.fromRequest raw
+            |> RawServerResponse.fromRequest raw
             |> state.Server.Respond
           state
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: RawRequest) =
+  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: RawServerRequest) =
     Tracing.trace (tag "processVoteRequest") <| fun () ->
       let result =
         Raft.receiveVoteRequest sender vr
@@ -550,7 +552,7 @@ module Raft =
           (state.Raft.Member.Id, response)
           |> RequestVoteResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         updateRaft state newstate
 
@@ -559,13 +561,13 @@ module Raft =
           err
           |> ErrorResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         updateRaft state newstate
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftServerState) (mem: Id) (is: InstallSnapshot) (raw: RawRequest) =
+  let private processInstallSnapshot (state: RaftServerState) (mem: Id) (is: InstallSnapshot) (raw: RawServerRequest) =
     Tracing.trace (tag "processInstallSnapshot") <| fun () ->
       let result =
         Raft.receiveInstallSnapshot is
@@ -577,7 +579,7 @@ module Raft =
           (state.Raft.Member.Id, response)
           |> InstallSnapshotResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         updateRaft state newstate
       | Left (error, newstate) ->
@@ -585,7 +587,7 @@ module Raft =
           error
           |> ErrorResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         updateRaft state newstate
 
@@ -599,7 +601,7 @@ module Raft =
   /// - state: RaftServerState
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftServerState) (raw: RawRequest) =
+  let private doRedirect (state: RaftServerState) (raw: RawServerRequest) =
     Tracing.trace (tag "doRedirect") <| fun () ->
       match Raft.getLeader state.Raft with
       | Some mem ->
@@ -607,7 +609,7 @@ module Raft =
           mem
           |> Redirect
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         state
       | None ->
@@ -616,7 +618,7 @@ module Raft =
           |> Error.asRaftError (tag "doRedirect")
           |> ErrorResponse
           |> Binary.encode
-          |> RawResponse.fromRequest raw
+          |> RawServerResponse.fromRequest raw
           |> state.Server.Respond
         state
 
@@ -1171,7 +1173,7 @@ module Raft =
 
   // ** processRequest
 
-  let private processRequest (data: RaftServerState) (raw: RawRequest) (arbiter: StateArbiter) =
+  let private processRequest (data: RaftServerState) (raw: RawServerRequest) (arbiter: StateArbiter) =
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
@@ -1188,9 +1190,9 @@ module Raft =
         return newstate
       }
 
-  // ** handleRawRequest
+  // ** handleServerRequest
 
-  let private handleRawRequest (state: RaftServerState) (raw: RawRequest) (arbiter: StateArbiter) =
+  let private handleServerRequest (state: RaftServerState) (raw: RawServerRequest) (arbiter: StateArbiter) =
     Tracing.trace (tag "handleRawRequest") <| fun () ->
       match processRequest state raw arbiter with
       | Right newdata -> newdata
@@ -1198,13 +1200,13 @@ module Raft =
         error
         |> ErrorResponse
         |> Binary.encode
-        |> RawResponse.fromRequest raw
+        |> RawServerResponse.fromRequest raw
         |> state.Server.Respond
         state
 
   // ** handleReqCommitted
 
-  let private handleReqCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (raw: RawResponse) (arbiter: StateArbiter) =
+  let private handleReqCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (raw: RawServerResponse) (arbiter: StateArbiter) =
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
       let result =
         Raft.responseCommitted entry
@@ -1251,9 +1253,9 @@ module Raft =
         |> state.Server.Respond
         updateRaft state newstate
 
-  // ** handleRawResponse
+  // ** handleServerResponse
 
-  let private handleRawResponse (state: RaftServerState) (raw: RawResponse) arbiter =
+  let private handleServerResponse (state: RaftServerState) (raw: RawServerResponse) arbiter =
     match raw.Body |> Binary.decode with
     | Right response ->
       match response with
@@ -1267,6 +1269,11 @@ module Raft =
       |> string
       |> Logger.err (tag "handleRawRespose")
       state
+
+  // ** handleClientResponse
+
+  let private handleClientResponse (state: RaftServerState) (raw: RawClientResponse) arbiter =
+    failwith "never"
 
   // ** handleStart
 
@@ -1289,15 +1296,16 @@ module Raft =
         let newstate =
           Tracing.trace (tag "loop") <| fun () ->
             match cmd with
-            | Msg.Start                         -> handleStart         state          inbox
-            | Msg.Periodic                      -> handlePeriodic      state
-            | Msg.ForceElection                 -> handleForceElection state
-            | Msg.AddCmd             cmd        -> handleAddCmd        state cmd      inbox
-            | Msg.AddMember          mem        -> handleAddMember     state mem      inbox
-            | Msg.RemoveMember        id        -> handleRemoveMember  state id       inbox
-            | Msg.RawRequest     request        -> handleRawRequest    state request  inbox
-            | Msg.RawResponse   response        -> handleRawResponse   state response inbox
-            | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted state ts entry raw inbox
+            | Msg.Start                         -> handleStart          state              inbox
+            | Msg.Periodic                      -> handlePeriodic       state
+            | Msg.ForceElection                 -> handleForceElection  state
+            | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
+            | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
+            | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
+            | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
+            | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
+            | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
+            | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
             // | Msg.Join        (ip, port)        -> handleJoin          state ip port
             // | Msg.Leave                         -> handleLeave         state
         store.Update newstate
@@ -1412,7 +1420,7 @@ module Raft =
 
                     match result with
                     | Right server ->
-                      let srvobs = server.Subscribe(Msg.RawRequest >> agent.Post)
+                      let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)
 
                       Map.iter
                         (fun _ (peer: RaftMember) ->

@@ -26,8 +26,11 @@ module ZmqUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: IClient) (req: RaftRequest) : Either<IrisError,RaftResponse> =
-    req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
+  let request (sock: IClient) (req: RaftRequest) =
+    req
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> sock.Request
 
   // ** getSocket
 
@@ -73,11 +76,11 @@ module ZmqUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: IClient) : Either<IrisError,RaftResponse> =
+  let rawRequest (request: RaftRequest) (client: IClient) =
     request
     |> Binary.encode
+    |> fun body -> { Body = body }
     |> client.Request
-    |> Either.bind Binary.decode<RaftResponse>
 
   // ** performRequest
 

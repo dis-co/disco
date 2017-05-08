@@ -100,20 +100,21 @@ module ApiServer =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start           of chan:ReplyChan * mem:RaftMember * projectId:Id
-    | Dispose         of chan:ReplyChan
-    | GetClients      of chan:ReplyChan
-    | SetStatus       of status:ServiceStatus
-    | AddClient       of client:IrisClient
-    | RemoveClient    of client:IrisClient
-    | SetClientStatus of id:Id          * status:ServiceStatus
-    | SetState        of chan:ReplyChan * state:State
-    | GetState        of chan:ReplyChan
-    | InstallSnapshot of id:Id
-    | LocalUpdate     of sm:StateMachine
-    | RemoteUpdate    of sm:StateMachine
-    | ClientUpdate    of sm:StateMachine
-    | RawRequest      of req:RawRequest
+    | Start             of chan:ReplyChan * mem:RaftMember * projectId:Id
+    | Dispose           of chan:ReplyChan
+    | GetClients        of chan:ReplyChan
+    | SetStatus         of status:ServiceStatus
+    | AddClient         of client:IrisClient
+    | RemoveClient      of client:IrisClient
+    | SetClientStatus   of id:Id          * status:ServiceStatus
+    | SetState          of chan:ReplyChan * state:State
+    | GetState          of chan:ReplyChan
+    | InstallSnapshot   of id:Id
+    | LocalUpdate       of sm:StateMachine
+    | RemoteUpdate      of sm:StateMachine
+    | ClientUpdate      of sm:StateMachine
+    | RawServerRequest  of req:RawServerRequest
+    | RawClientResponse of req:RawClientResponse
 
   // ** ApiAgent
 
@@ -162,42 +163,43 @@ module ApiServer =
   // ** requestInstallSnapshot
 
   let private requestInstallSnapshot (data: ServerStateData) (client: Client) (agent: ApiAgent) =
-    let result : Either<IrisError,ApiResponse> =
-      data.Store.State
-      |> ClientApiRequest.Snapshot
-      |> Binary.encode
-      |> client.Socket.Request
-      |> Either.bind Binary.decode
+    data.Store.State
+    |> ClientApiRequest.Snapshot
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> client.Socket.Request
+    |> Either.mapError (string >> Logger.err "requestInstallSnapshot")
+    |> ignore
 
-    match result with
-    | Right ApiResponse.OK -> ()
+    // match result with
+    // | Right ApiResponse.OK -> ()
 
-    | Right (ApiResponse.NOK error) ->
-      error
-      |> string
-      |> Error.asClientError (tag "requestInstallSnapshot")
-      |> ServiceStatus.Failed
-      |> fun reason -> client.Meta.Id, reason
-      |> Msg.SetClientStatus
-      |> agent.Post
+    // | Right (ApiResponse.NOK error) ->
+    //   error
+    //   |> string
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
-    | Right other ->
-      other
-      |> sprintf "Unexpected reply from Client %A"
-      |> Error.asClientError (tag "requestInstallSnapshot")
-      |> ServiceStatus.Failed
-      |> fun reason -> client.Meta.Id, reason
-      |> Msg.SetClientStatus
-      |> agent.Post
+    // | Right other ->
+    //   other
+    //   |> sprintf "Unexpected reply from Client %A"
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
-    | Left error ->
-      error
-      |> string
-      |> Error.asClientError (tag "requestInstallSnapshot")
-      |> ServiceStatus.Failed
-      |> fun reason -> client.Meta.Id, reason
-      |> Msg.SetClientStatus
-      |> agent.Post
+    // | Left error ->
+    //   error
+    //   |> string
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
   // ** pingTimer
 
@@ -208,34 +210,34 @@ module ApiServer =
       async {
         do! Async.Sleep(timeout)
 
-        Tracing.trace "ApiServer.pingRequest" <| fun () ->
-          if not socket.Running then
-            socket.Restart()
+        if not socket.Running then
+          socket.Restart()
 
-          let response : Either<IrisError,ApiResponse> =
-            ClientApiRequest.Ping
-            |> Binary.encode
-            |> socket.Request
-            |> Either.bind Binary.decode
+        ClientApiRequest.Ping
+        |> Binary.encode
+        |> fun body -> { Body = body }
+        |> socket.Request
+        |> Either.mapError (string >> Logger.err "pingTimer")
+        |> ignore
 
-          match response with
-          | Right Pong ->
-            // ping request successful
-            (socket.Id, ServiceStatus.Running)
-            |> Msg.SetClientStatus
-            |> agent.Post
+        // match response with
+        // | Right Pong ->
+        //   // ping request successful
+        //   (socket.Id, ServiceStatus.Running)
+        //   |> Msg.SetClientStatus
+        //   |> agent.Post
 
-          | Left error ->
-            // log this error
-            string error
-            |> sprintf "error during to %s: %s" (string socket.Id)
-            |> Logger.err (tag "pingTimer")
+        // | Left error ->
+        //   // log this error
+        //   string error
+        //   |> sprintf "error during to %s: %s" (string socket.Id)
+        //   |> Logger.err (tag "pingTimer")
 
-            // set the status of this client to error
-            (socket.Id, ServiceStatus.Failed error)
-            |> Msg.SetClientStatus
-            |> agent.Post
-          | _ -> ()
+        //   // set the status of this client to error
+        //   (socket.Id, ServiceStatus.Failed error)
+        //   |> Msg.SetClientStatus
+        //   |> agent.Post
+        // | _ -> ()
 
         return! loop ()
       }
@@ -287,7 +289,7 @@ module ApiServer =
     | Right server ->
       match publisher.Start(), subscriber.Start() with
       | Right (), Right () ->
-        let srv = server.Subscribe (Msg.RawRequest >> agent.Post)
+        let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
         let sub = subscriber.Subscribe(processSubscriptionEvent agent)
 
         Reply.Ok
@@ -360,7 +362,7 @@ module ApiServer =
         // construct a new client value
         let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
         let socket = Client.create {
-          Id = meta.Id
+          PeerId = meta.Id
           Frontend = addr
           Timeout = int Constants.REQ_TIMEOUT * 1<ms>
         }
@@ -402,29 +404,27 @@ module ApiServer =
   // ** updateClient
 
   let private updateClient (sm: StateMachine) (client: Client) =
-    job {
-      if not client.Socket.Running then
-        client.Socket.Restart()
+    // if not client.Socket.Running then
+    //   client.Socket.Restart()
 
-      let result : Either<IrisError,ApiResponse> =
-        Tracing.trace "ApiServer.updateClient" <| fun () ->
-          sm
-          |> ClientApiRequest.Update
-          |> Binary.encode
-          |> client.Socket.Request
-          |> Either.bind Binary.decode
+    sm
+    |> ClientApiRequest.Update
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> client.Socket.Request
+    |> Either.mapError (string >> Logger.err "updateClient")
+    |> ignore
 
-      match result with
-      | Right ApiResponse.OK | Right ApiResponse.Pong ->
-        return Either.succeed ()
-      | Right (ApiResponse.NOK err) ->
-        let error =
-          string err
-          |> Error.asClientError (tag "updateClient")
-        return  Either.fail (client.Meta.Id, error)
-      | Left error ->
-        return Either.fail (client.Meta.Id, error)
-    }
+    // match result with
+    // | Right ApiResponse.OK | Right ApiResponse.Pong ->
+    //   return Either.succeed ()
+    // | Right (ApiResponse.NOK err) ->
+    //   let error =
+    //     string err
+    //     |> Error.asClientError (tag "updateClient")
+    //   return  Either.fail (client.Meta.Id, error)
+    // | Left error ->
+    //   return Either.fail (client.Meta.Id, error)
 
   // ** updateClients
 
@@ -432,18 +432,8 @@ module ApiServer =
     Tracing.trace "ApiServer.updateClients" <| fun () ->
       data.Clients
       |> Map.toArray
-      |> Array.map (snd >> updateClient sm)
-      |> Job.conCollect
-      |> Hopac.run
-      |> fun arr -> arr.ToArray()
-      |> Array.iter
-        (fun result ->
-          match result with
-          | Left (id, error) ->
-            (id, ServiceStatus.Failed error)
-            |> Msg.SetClientStatus
-            |> agent.Post
-          | _ -> ())
+      |> Array.Parallel.map (snd >> updateClient sm)
+      |> ignore
 
   // ** maybePublish
 
@@ -625,14 +615,14 @@ module ApiServer =
         state
       | Idle -> state
 
-  // ** handleRawRequest
+  // ** handleServerRequest
 
-  let private handleRawRequest (state: ServerState) (req: RawRequest) (agent: ApiAgent) =
+  let private handleServerRequest (state: ServerState) (req: RawServerRequest) (agent: ApiAgent) =
     match state with
     | Idle -> state
     | Loaded data ->
       asynchronously <| fun _ ->
-        Tracing.trace "ApiServer.handleRawRequest" <| fun () ->
+        Tracing.trace "ApiServer.handleServerRequest" <| fun () ->
           match req.Body |> Binary.decode with
           | Right (Register client) ->
             client
@@ -641,7 +631,7 @@ module ApiServer =
 
             OK
             |> Binary.encode
-            |> RawResponse.fromRequest req
+            |> RawServerResponse.fromRequest req
             |> data.Server.Respond
 
           | Right (UnRegister client) ->
@@ -651,7 +641,7 @@ module ApiServer =
 
             OK
             |> Binary.encode
-            |> RawResponse.fromRequest req
+            |> RawServerResponse.fromRequest req
             |> data.Server.Respond
 
           | Right (Update sm) ->
@@ -661,7 +651,7 @@ module ApiServer =
 
             OK
             |> Binary.encode
-            |> RawResponse.fromRequest req
+            |> RawServerResponse.fromRequest req
             |> data.Server.Respond
 
           | Left error ->
@@ -669,10 +659,15 @@ module ApiServer =
             |> ApiError.Internal
             |> NOK
             |> Binary.encode
-            |> RawResponse.fromRequest req
+            |> RawServerResponse.fromRequest req
             |> data.Server.Respond
       state
 
+
+  // ** handleClientResponse
+
+  let private handleClientResponse (state: ServerState) (resp: RawClientResponse) (agent: ApiAgent) =
+    failwith "never"
 
   // ** loop
 
@@ -697,7 +692,8 @@ module ApiServer =
             | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
             | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
             | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
-            | Msg.RawRequest(req)             -> handleRawRequest state req inbox
+            | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
+            | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
           with
             | exn ->
               exn.Message + exn.StackTrace

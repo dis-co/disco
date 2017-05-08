@@ -103,7 +103,7 @@ module ApiClient =
     | SetState      of state:State
     | Update        of sm:StateMachine
     | Request       of chan:ReplyChan * sm:StateMachine
-    | ServerRequest of req:RawRequest
+    | ServerRequest of req:RawServerRequest
 
   // ** ApiAgent
 
@@ -154,52 +154,52 @@ module ApiClient =
   // ** requestRegister
 
   let private requestRegister (data: ClientStateData) =
-    let response =
-      Tracing.trace "ApiClient.requestRegister" <| fun () ->
-        data.Client
-        |> ServerApiRequest.Register
-        |> Binary.encode
-        |> data.Socket.Request
-        |> Either.bind Binary.decode
+    data.Client
+    |> ServerApiRequest.Register
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> data.Socket.Request
+    |> Either.mapError (string >> Logger.err "requestRegister")
+    |> ignore
 
-    match response with
-    | Right OK -> Either.succeed ()
-    | Right (NOK error) ->
-      string error
-      |> Error.asClientError (tag "requestRegister")
-      |> Either.fail
-    | Right other ->
-      sprintf "Unexpected Response from server: %A" other
-      |> Error.asClientError (tag "requestRegister")
-      |> Either.fail
-    | Left error ->
-      error
-      |> Either.fail
+    // match response with
+    // | Right OK -> Either.succeed ()
+    // | Right (NOK error) ->
+    //   string error
+    //   |> Error.asClientError (tag "requestRegister")
+    //   |> Either.fail
+    // | Right other ->
+    //   sprintf "Unexpected Response from server: %A" other
+    //   |> Error.asClientError (tag "requestRegister")
+    //   |> Either.fail
+    // | Left error ->
+    //   error
+    //   |> Either.fail
 
   // ** requestUnRegister
 
   let private requestUnRegister (data: ClientStateData) =
-    let response =
-      Tracing.trace "ApiClient.requestUnRegister" <| fun () ->
-        data.Client
-        |> ServerApiRequest.UnRegister
-        |> Binary.encode
-        |> data.Socket.Request
-        |> Either.bind Binary.decode
+    data.Client
+    |> ServerApiRequest.UnRegister
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> data.Socket.Request
+    |> Either.mapError (string >> Logger.err "requestUnregister")
+    |> ignore
 
-    match response with
-    | Right OK -> Either.succeed ()
-    | Right (NOK error) ->
-      string error
-      |> Error.asClientError (tag "requestUnRegister")
-      |> Either.fail
-    | Right other ->
-      sprintf "Unexpected Response from server: %A" other
-      |> Error.asClientError (tag "requestUnRegister")
-      |> Either.fail
-    | Left error ->
-      error
-      |> Either.fail
+    // match response with
+    // | Right OK -> Either.succeed ()
+    // | Right (NOK error) ->
+    //   string error
+    //   |> Error.asClientError (tag "requestUnRegister")
+    //   |> Either.fail
+    // | Right other ->
+    //   sprintf "Unexpected Response from server: %A" other
+    //   |> Error.asClientError (tag "requestUnRegister")
+    //   |> Either.fail
+    // | Left error ->
+    //   error
+    //   |> Either.fail
 
   // ** start
 
@@ -230,7 +230,7 @@ module ApiClient =
       |> Logger.debug (tag "start")
 
       let socket = Client.create {
-        Id = client.Id
+        PeerId = client.Id
         Frontend = srvAddr
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
@@ -258,52 +258,47 @@ module ApiClient =
             Store = new Store(State.Empty)
             Disposables = [ timer; disposable ] }
 
-        asynchronously <| fun _ ->
-          Tracing.trace "ApiClient.start.requestRegister" <| fun () ->
+        sprintf "Connecting to server on %O" srvAddr
+        |> Logger.debug (tag "start")
 
-            sprintf "Connecting to server on %O" srvAddr
-            |> Logger.debug (tag "start")
+        requestRegister data
 
-            match requestRegister data with
-            | Right () ->
-              srvAddr
-              |> sprintf "Registration with %O successful"
-              |> Logger.debug (tag "start")
+        // | Right () ->
+        //   srvAddr
+        //   |> sprintf "Registration with %O successful"
+        //   |> Logger.debug (tag "start")
 
-              Reply.Ok
-              |> Either.succeed
-              |>  chan.Reply
+        //   Reply.Ok
+        //   |> Either.succeed
+        //   |>  chan.Reply
 
-              notify subs ClientEvent.Registered
+        //   notify subs ClientEvent.Registered
 
-            | Left error ->
-              error
-              |> sprintf "Registration with %O encountered error: %O" srvAddr
-              |> Logger.debug (tag "start")
+        // | Left error ->
+        //   error
+        //   |> sprintf "Registration with %O encountered error: %O" srvAddr
+        //   |> Logger.debug (tag "start")
 
-              Msg.AsyncDispose
-              |> agent.Post
+        //   Msg.AsyncDispose
+        //   |> agent.Post
 
-              error
-              |> Either.fail
-              |> chan.Reply
+        //   error
+        //   |> Either.fail
+        //   |> chan.Reply
 
         Loaded data
 
       | Left error ->
-        asynchronously <| fun _ ->
-          Tracing.trace "ApiClient.start.error handler" <| fun () ->
-            error
-            |> string
-            |> sprintf "Error starting sockets: %s"
-            |> Logger.debug (tag "start")
+        error
+        |> string
+        |> sprintf "Error starting sockets: %s"
+        |> Logger.debug (tag "start")
 
-            error
-            |> Either.fail
-            |> chan.Reply
+        error
+        |> Either.fail
+        |> chan.Reply
 
-            dispose socket
-
+        dispose socket
         Idle
 
   // ** handleStart
@@ -327,12 +322,7 @@ module ApiClient =
   let private handleDispose (chan: ReplyChan) (state: ClientState) =
     Tracing.trace "ApiClient.handleDispose" <| fun () ->
       match state with
-      | Loaded data ->
-        match requestUnRegister data with
-        | Left error ->
-          string error
-          |> Logger.err (tag "handleDispose")
-        | _ -> ()
+      | Loaded data -> requestUnRegister data
       | _ -> ()
 
       dispose state
@@ -349,12 +339,7 @@ module ApiClient =
       asynchronously <| fun _ ->
         Tracing.trace "ApiClient.handleAsyncDispose.asynchronously" <| fun () ->
           match state with
-          | Loaded data ->
-            match requestUnRegister data with
-            | Left error ->
-              string error
-              |> Logger.err (tag "handleAsyncDispose")
-            | _ -> ()
+          | Loaded data -> requestUnRegister data
           | _ -> ()
 
           dispose state
@@ -470,29 +455,23 @@ module ApiClient =
   // ** requestUpdate
 
   let private requestUpdate (socket: IClient) (sm: StateMachine) =
-    Tracing.trace "ApiClient.requestUpdate" <| fun () ->
-      try
-        let result : Either<IrisError,ApiResponse> =
-          ServerApiRequest.Update sm
-          |> Binary.encode
-          |> socket.Request
-          |> Either.bind Binary.decode
+    ServerApiRequest.Update sm
+    |> Binary.encode
+    |> fun body -> { Body = body }
+    |> socket.Request
+    |> Either.mapError (string >> Logger.err "requestUpdate")
+    |> ignore
 
-        match result with
-        | Right ApiResponse.OK ->
-          Either.succeed ()
-        | Right other ->
-          sprintf "Unexpected reply from Server: %A" other
-          |> Error.asClientError (tag "requestUpdate")
-          |> Either.fail
-        | Left error ->
-          error
-          |> Either.fail
-      with
-        | exn ->
-          (sprintf "Exception: %s\n%s" exn.Message exn.StackTrace)
-          |> Error.asClientError (tag "requestUpdate")
-          |> Either.fail
+    // match result with
+    // | Right ApiResponse.OK ->
+    //   Either.succeed ()
+    // | Right other ->
+    //   sprintf "Unexpected reply from Server: %A" other
+    //   |> Error.asClientError (tag "requestUpdate")
+    //   |> Either.fail
+    // | Left error ->
+    //   error
+    //   |> Either.fail
 
   // ** maybeDispatch
 
@@ -510,24 +489,22 @@ module ApiClient =
                             (agent: ApiAgent) =
     match state with
     | Loaded data ->
-      asynchronously <| fun _ ->
-        Tracing.trace "ApiClient.handleRequest" <| fun () ->
-          maybeDispatch data sm
-          match requestUpdate data.Socket sm with
-          | Right () ->
-            Reply.Ok
-            |> Either.succeed
-            |> chan.Reply
+      maybeDispatch data sm
+      requestUpdate data.Socket sm
+      // | Right () ->
+      //   Reply.Ok
+      //   |> Either.succeed
+      //   |> chan.Reply
 
-          | Left error ->
-            error
-            |> ServiceStatus.Failed
-            |> Msg.SetStatus
-            |> agent.Post
+      // | Left error ->
+      //   error
+      //   |> ServiceStatus.Failed
+      //   |> Msg.SetStatus
+      //   |> agent.Post
 
-            error
-            |> Either.fail
-            |> chan.Reply
+      //   error
+      //   |> Either.fail
+      // |> chan.Reply
       state
     | Idle ->
       asynchronously <| fun _ ->
@@ -539,50 +516,48 @@ module ApiClient =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ClientState) (req: RawRequest) (agent: ApiAgent) =
+  let private handleServerRequest (state: ClientState) (req: RawServerRequest) (agent: ApiAgent) =
       match state with
       | Idle -> state
       | Loaded data ->
-        asynchronously <| fun _ ->
-          Tracing.trace "ApiClient.handleServerRequest" <| fun () ->
-            match req.Body |> Binary.decode with
-            | Right ClientApiRequest.Ping ->
-              Msg.Ping
-              |> agent.Post
+        match req.Body |> Binary.decode with
+        | Right ClientApiRequest.Ping ->
+          Msg.Ping
+          |> agent.Post
 
-              ApiResponse.Pong
-              |> Binary.encode
-              |> RawResponse.fromRequest req
-              |> data.Server.Respond
+          ApiResponse.Pong
+          |> Binary.encode
+          |> RawServerResponse.fromRequest req
+          |> data.Server.Respond
 
-            | Right (ClientApiRequest.Snapshot snapshot) ->
-              snapshot
-              |> Msg.SetState
-              |> agent.Post
+        | Right (ClientApiRequest.Snapshot snapshot) ->
+          snapshot
+          |> Msg.SetState
+          |> agent.Post
 
-              ApiResponse.OK
-              |> Binary.encode
-              |> RawResponse.fromRequest req
-              |> data.Server.Respond
+          ApiResponse.OK
+          |> Binary.encode
+          |> RawServerResponse.fromRequest req
+          |> data.Server.Respond
 
-            | Right (ClientApiRequest.Update sm) ->
-              sm
-              |> Msg.Update
-              |> agent.Post
+        | Right (ClientApiRequest.Update sm) ->
+          sm
+          |> Msg.Update
+          |> agent.Post
 
-              ApiResponse.OK
-              |> Binary.encode
-              |> RawResponse.fromRequest req
-              |> data.Server.Respond
+          ApiResponse.OK
+          |> Binary.encode
+          |> RawServerResponse.fromRequest req
+          |> data.Server.Respond
 
-            | Left error ->
-              error
-              |> string
-              |> ApiError.MalformedRequest
-              |> ApiResponse.NOK
-              |> Binary.encode
-              |> RawResponse.fromRequest req
-              |> data.Server.Respond
+        | Left error ->
+          error
+          |> string
+          |> ApiError.MalformedRequest
+          |> ApiResponse.NOK
+          |> Binary.encode
+          |> RawServerResponse.fromRequest req
+          |> data.Server.Respond
 
         state
 

@@ -24,9 +24,9 @@ module private RequestCount =
   let increment () = Interlocked.Increment &id |> ignore
   let current () = id
 
-// * RawRequest
+// * RawServerRequest
 
-type RawRequest =
+type RawServerRequest =
   { From: Guid
     Via: WorkerId
     Body: byte array }
@@ -39,33 +39,37 @@ type RawRequest =
       self.Via
       (Array.length self.Body)
 
-// * RawResponse
+// * RawServerResponse
 
-type RawResponse =
+type RawServerResponse =
   { Via: WorkerId
     Body: byte array }
 
-  // ** ToString
+// * RawClientRequest
 
-  override self.ToString() =
-    sprintf "[Response] via: %O bytes: %d"
-      self.Via
-      (Array.length self.Body)
+type RawClientRequest =
+  { Body: byte array }
+
+// * RawClientResponse
+
+type RawClientResponse =
+  { PeerId: Id
+    Body: Either<IrisError,byte array> }
 
 // * IClient
 
 type IClient =
   inherit IDisposable
-  abstract Id: Id
-  abstract Request: byte array -> Either<IrisError,byte array>
+  abstract PeerId: Id
+  abstract Request: RawClientRequest -> Either<IrisError,unit>
   abstract Running: bool
   abstract Restart: unit -> unit
-  abstract Subscribe: (byte array -> unit) -> IDisposable
+  abstract Subscribe: (RawClientResponse -> unit) -> IDisposable
 
 // * ClientConfig
 
 type ClientConfig =
-  { Id: Id
+  { PeerId: Id
     Frontend: Url
     Timeout: Timeout }
 
@@ -83,8 +87,8 @@ type WorkerConfig =
 type private IWorker =
   inherit IDisposable
   abstract Id: WorkerId
-  abstract Respond: RawResponse -> unit
-  abstract Subscribe: (RawRequest -> unit) -> IDisposable
+  abstract Respond: RawServerResponse -> unit
+  abstract Subscribe: (RawServerRequest -> unit) -> IDisposable
 
 // * BrokerConfig
 
@@ -100,14 +104,14 @@ type BrokerConfig =
 
 type IBroker =
   inherit IDisposable
-  abstract Subscribe: (RawRequest -> unit) -> IDisposable
-  abstract Respond: RawResponse -> unit
+  abstract Subscribe: (RawServerRequest -> unit) -> IDisposable
+  abstract Respond: RawServerResponse -> unit
 
-// * RawResponse
+// * RawServerResponse
 
-module RawResponse =
+module RawServerResponse =
 
-  let fromRequest (request: RawRequest) (body: byte array) =
+  let fromRequest (request: RawServerRequest) (body: byte array) =
     { Via = request.Via; Body = body }
 
 // * Utils
@@ -126,11 +130,11 @@ module internal Utils =
 
   // ** Subscriptions
 
-  type internal Subscriptions = ConcurrentDictionary<Guid,IObserver<RawRequest>>
+  type internal Subscriptions = ConcurrentDictionary<Guid,IObserver<RawServerRequest>>
 
   // ** Listener
 
-  type internal Listener = IObservable<RawRequest>
+  type internal Listener = IObservable<RawServerRequest>
 
   // ** tryDispose
 
@@ -139,8 +143,8 @@ module internal Utils =
 
   // ** createListener
 
-  let internal createListener (guid: Guid) (subs: Subscriptions) =
-    { new Listener with
+  let internal createListener<'t> (guid: Guid) (subs: ConcurrentDictionary<Guid,IObserver<'t>>) =
+    { new IObservable<'t> with
         member self.Subscribe (obs) =
           while not (subs.TryAdd(guid, obs)) do
             Thread.Sleep(TimeSpan.FromTicks 1L)
@@ -151,10 +155,9 @@ module internal Utils =
                 | true, _  -> ()
                 | _ -> subs.TryRemove(guid)
                       |> ignore } }
-
   // ** notify
 
-  let internal notify (subs: Subscriptions) (request: RawRequest) =
+  let internal notify (subs: Subscriptions) (request: RawServerRequest) =
     for KeyValue(_,sub) in subs do
       sub.OnNext(request)
 
@@ -178,38 +181,55 @@ module internal Utils =
 module Client =
   open Utils
 
+  // ** tag
+
+  let private tag (str: string) = String.Format("Client.{0}",str)
+
   // ** rand
 
   let private rand = new System.Random()
 
+  // ** Subscriptions
+
+  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<RawClientResponse>>
+
+  // ** notify
+
+  let private notify (subscriptions: Subscriptions) (ev: RawClientResponse) =
+    for KeyValue(_,subscription) in subscriptions do
+      subscription.OnNext ev
+
   // ** LocalThreadState
 
-  type private LocalThreadState(id: Id, frontend: string, timeout: float, callback: byte array -> unit) as self =
-    let clid = string id |> Guid.Parse
+  type private LocalThreadState(options: ClientConfig) as self =
+    let timeout = options.Timeout |> float |> TimeSpan.FromMilliseconds
+    let clid = options.PeerId |> string |> Guid.Parse
 
-    [<DefaultValue>] val mutable Run: bool
-    [<DefaultValue>] val mutable Started: bool
-    [<DefaultValue>] val mutable Disposed: bool
-    [<DefaultValue>] val mutable Initialized: bool
+    [<DefaultValue>] val mutable Status: ServiceStatus
     [<DefaultValue>] val mutable Socket: ZSocket
     [<DefaultValue>] val mutable Context: ZContext
-    [<DefaultValue>] val mutable Requests: ConcurrentQueue<byte array>
+    [<DefaultValue>] val mutable Requests: ConcurrentQueue<RawClientRequest>
+    [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
 
+    // *** do
+
     do
-      self.Run <- true
-      self.Started <- false
-      self.Disposed <- false
-      self.Initialized <- false
+      self.Status <- ServiceStatus.Stopped
       self.Requests <- ConcurrentQueue()
+      self.Subscriptions <- Subscriptions()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
 
     // *** Id
 
     member self.Id
-      with get () = id
+      with get () = options.PeerId
+
+    // *** Timeout
+
+    member self.Timeout with get () = Nullable(timeout)
 
     // *** Start
 
@@ -217,107 +237,122 @@ module Client =
       try
         self.Context <- new ZContext()
         self.StartSocket()
-        self.Initialized <- true
-        self.Started     <- true
+        self.Status <- ServiceStatus.Running
       with
         | exn ->
           dispose self
-          self.Initialized <- true
-          self.Started <- false
-          self.Run <- false
+          self.Status <- ServiceStatus.Disposed
           exn.Message + exn.StackTrace
+          |> sprintf "Exception creating socket for %O: %s" options.PeerId
           |> Logger.err "IClient"
 
     // *** StartSocket
 
     member self.StartSocket() =
       self.Socket <- new ZSocket(self.Context, ZSocketType.DEALER)
-      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds timeout
       self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
       self.Socket.Identity <- clid.ToByteArray()
-      self.Socket.Connect(frontend)
+      self.Socket.Connect(unwrap options.Frontend)
+      self.Status <- ServiceStatus.Running
 
     // *** RestartSocket
 
     member self.RestartSocket() =
-      Logger.debug "Client" "restarting socket"
-      dispose self.Socket
-      self.StartSocket()
+      if self.Status <> ServiceStatus.Disposed then
+        sprintf "restarting socket for %O" options.PeerId
+        |> Logger.debug "Client"
+        dispose self.Socket
+        self.StartSocket()
+      else
+        "Cannot restart client socket, already disposed"
+        |> Logger.err "Client"
 
     // *** Reset
 
     member self.Reset() =
-      if not self.Disposed then
+      if not (Service.isDisposed self.Status) then
         dispose self
-
-      self.Run <- true
-      self.Started <- false
-      self.Disposed <- false
-      self.Initialized <- false
 
     // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
-        tryDispose self.Socket
-        tryDispose self.Context
-        self.Disposed <- true
+        if not (Service.isDisposed self.Status) then
+          tryDispose self.Socket
+          tryDispose self.Context
+          self.Status <- ServiceStatus.Disposed
 
   // ** initialize
 
   let private initialize (state: LocalThreadState) =
-    if not state.Initialized && not state.Started then
+    if state.Status = ServiceStatus.Stopped then
       state.Start()
       state.Starter.Set() |> ignore
 
   // ** started
 
   let private started (state: LocalThreadState) =
-    state.Initialized && state.Started
+    state.Status = ServiceStatus.Running
 
   // ** spin
 
   let private spin (state: LocalThreadState) =
-    state.Initialized && state.Started && state.Run
+    state.Status = ServiceStatus.Running
 
   // ** worker
 
-  let private worker (state: LocalThreadState) (cb: byte array -> unit) () =
+  let private worker (state: LocalThreadState) () =
     initialize state
 
+    let poll = ZPollItem.CreateReceiver()
+    let timeout = Nullable(TimeSpan.FromMilliseconds 1.0)
+    let mutable error = ZError.None
+    let mutable incoming = Unchecked.defaultof<ZMessage>
+
+    state.Starter.Set() |> ignore
+
     while spin state do
-      Thread.Sleep(1000)
-      // let b = new BlockingCollection<byte array>()
-      // let result, thing = b.TryTake(Timeout.FromMilli 1000)
 
-      // Tracing.trace "IClient.Request" <| fun () ->
-      //   if spin state then
-      //     try
-      //       use msg = new ZMessage()
-      //       msg.Add(new ZFrame(state.Request))
-      //       state.Socket.Send(msg)
+      if state.Requests.Count > 0 then
+        while state.Requests.Count > 0 do
+          try
+            // SENDING
+            let result, request = state.Requests.TryDequeue()
+            if result then
+              use msg = new ZMessage()
+              msg.Add(new ZFrame(state.Socket.Identity))
+              msg.Add(new ZFrame(request.Body))
+              state.Socket.Send(msg)
 
-      //       use reply = state.Socket.ReceiveMessage()
-      //       // let worker = reply.[0].ReadInt64()
+            // RECEIVING
+            if state.Socket.PollIn(poll, &incoming, &error, state.Timeout) then
+              incoming.[1].Read()
+              |> Either.succeed
+              |> fun body -> { PeerId = state.Id; Body = body }
+              |> notify state.Subscriptions
+            else // TIMEOUT
+              Error.asSocketError "Client" "Timeout on socket"
+              |> Either.fail
+              |> fun body -> { PeerId = state.Id; Body = body }
+              |> notify state.Subscriptions
 
-      //       state.Response <- reply.[1].Read() |> Either.succeed
-      //       state.Responder.Set() |> ignore
-      //     with
-      //       | :? ZException as exn when shouldRestart exn.ErrNo ->
-      //         state.RestartSocket()
-      //         state.Response <-
-      //           String.Format("{0} encountered sending request", exn.Message)
-      //           |> Error.asSocketError "Client.worker"
-      //           |> Either.fail
-      //         state.Responder.Set() |> ignore
-      //       | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
-      //         state.Response <-
-      //           exn.Message + exn.StackTrace
-      //           |> Error.asSocketError "IClient.worker"
-      //           |> Either.fail
-      //         state.Run <- false
-      //         state.Started <- false
-      //         state.Responder.Set() |> ignore
+          with
+          | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
+            "Encountered ETERM on thread. disposing"
+            |> Logger.err "Client"
+            state.Status <- ServiceStatus.Disposed
+          | :? ZException -> ()
+          | exn ->
+            exn.Message + exn.StackTrace
+            |> Logger.err "Client"
+            state.Status <- ServiceStatus.Disposed
+      else
+        // RECEIVING
+        if state.Socket.PollIn(poll, &incoming, &error, timeout) then
+          incoming.[1].Read()
+          |> Either.succeed
+          |> fun body -> { PeerId = state.Id; Body = body }
+          |> notify state.Subscriptions
 
     tryDispose state
     state.Stopper.Set() |> ignore
@@ -325,50 +360,54 @@ module Client =
   // ** create
 
   let create (options: ClientConfig) =
-    failwith "IClient"
-    // let state = new LocalThreadState(id = id, frontend = frontend, timeout = timeout)
-    // let mutable thread = Thread(worker state)
-    // thread.Name <- sprintf "Client %O" state.Id
-    // thread.Start()
+    let state = new LocalThreadState(options)
 
-    // let locker = Object()
+    let mutable thread = Thread(worker state)
+    thread.Name <- sprintf "Client %O" state.Id
+    thread.Start()
 
-    // state.Starter.WaitOne() |> ignore
+    state.Starter.WaitOne() |> ignore
 
-    // { new IClient with
-    //     member self.Request(body: byte array) =
-    //       if state.Disposed then
-    //         "Socket already disposed"
-    //         |> Error.asSocketError "IClient.Dispose"
-    //         |> Either.fail
-    //       else
-    //         lock locker <| fun _ ->
-    //           // Tracer.trace "Client.Request" str <| fun _ ->
-    //           state.Request <- body
-    //           state.Requester.Set() |> ignore
-    //           state.Responder.WaitOne() |> ignore
-    //           state.Response
+    { new IClient with
+        member self.PeerId
+          with get () = state.Id
 
-    //     member self.Running
-    //       with get () =
-    //         state.Initialized && state.Run && state.Started
+        member self.Request(request: RawClientRequest) =
+          if state.Status <> ServiceStatus.Disposed then
+            request
+            |> state.Requests.Enqueue
+            |> Either.succeed
+          else
+            "Socket already disposed"
+            |> Error.asSocketError "Client"
+            |> Either.fail
 
-    //     member self.Restart () =
-    //       self.Dispose()
-    //       state.Reset()
-    //       thread <- Thread(worker state)
-    //       thread.Name <- sprintf "Client %O" state.Id
-    //       thread.Start()
-    //       state.Starter.WaitOne() |> ignore
+        member self.Running
+          with get () =
+            state.Status = ServiceStatus.Running
 
-    //     member self.Id
-    //       with get () = state.Id
+        member self.Restart () =
+          self.Dispose()
+          state.Reset()
+          state.Status <- ServiceStatus.Stopped
+          thread <- Thread(worker state)
+          thread.Name <- sprintf "Client %O" state.Id
+          thread.Start()
+          state.Starter.WaitOne() |> ignore
 
-    //     member self.Dispose() =
-    //       lock state <| fun _ ->
-    //         state.Run <- false
-    //       state.Requester.Set() |> ignore
-    //       state.Stopper.WaitOne() |> ignore }
+        member self.Subscribe (callback: RawClientResponse -> unit) =
+          let guid = Guid.NewGuid()
+          let listener = createListener guid state.Subscriptions
+          { new IObserver<RawClientResponse> with
+              member self.OnCompleted() = ()
+              member self.OnError (error) = ()
+              member self.OnNext(value) = callback value }
+          |> listener.Subscribe
+
+        member self.Dispose() =
+          lock state <| fun _ ->
+            state.Status <- ServiceStatus.Stopping
+          state.Stopper.WaitOne() |> ignore }
 
 // * Worker module
 
@@ -401,7 +440,7 @@ module private Worker =
     [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
-    [<DefaultValue>] val mutable Responder: ConcurrentStack<RawResponse>
+    [<DefaultValue>] val mutable Responder: ConcurrentStack<RawServerResponse>
 
     do
       self.Initialized <- false
@@ -412,7 +451,7 @@ module private Worker =
       self.Subscriptions <- new Subscriptions()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
-      self.Responder <- new ConcurrentStack<RawResponse>()
+      self.Responder <- new ConcurrentStack<RawServerResponse>()
 
     // *** ToString
 
@@ -518,7 +557,7 @@ module private Worker =
           let timer = new Stopwatch()
           timer.Start()
 
-          let mutable response = Unchecked.defaultof<RawResponse>
+          let mutable response = Unchecked.defaultof<RawServerResponse>
 
           while not (state.Responder.TryPop(&response)) && not (timedOut state timer) && state.Run do
             Thread.Sleep(TimeSpan.FromTicks 1L)
@@ -590,13 +629,13 @@ module private Worker =
             member worker.Id
               with get () = state.Id
 
-            member worker.Respond(response: RawResponse) =
+            member worker.Respond(response: RawServerResponse) =
               state.Responder.Push(response)
 
-            member worker.Subscribe(callback: RawRequest -> unit) =
+            member worker.Subscribe(callback: RawServerRequest -> unit) =
               let guid = Guid.NewGuid()
               let listener = createListener guid state.Subscriptions
-              { new IObserver<RawRequest> with
+              { new IObserver<RawServerRequest> with
                   member self.OnCompleted() = ()
                   member self.OnError(error) = ()
                   member self.OnNext(value) = callback value }
@@ -627,7 +666,7 @@ module Broker =
 
   // ** ResponseActor
 
-  type private ResponseActor = MailboxProcessor<RawResponse>
+  type private ResponseActor = MailboxProcessor<RawServerResponse>
 
   let private tag (str: string) =
     String.Format("Broker.{0}", str)
@@ -833,16 +872,16 @@ module Broker =
     Either.map
       (fun _ ->
         { new IBroker with
-            member self.Subscribe(callback: RawRequest -> unit) =
+            member self.Subscribe(callback: RawServerRequest -> unit) =
               let guid = Guid.NewGuid()
               let listener = createListener guid state.Subscriptions
-              { new IObserver<RawRequest> with
+              { new IObserver<RawServerRequest> with
                   member self.OnCompleted() = ()
                   member self.OnError (error) = ()
                   member self.OnNext(value) = callback value }
               |> listener.Subscribe
 
-            member self.Respond (response: RawResponse) =
+            member self.Respond (response: RawServerResponse) =
               responder.Post response
 
             member self.Dispose() =

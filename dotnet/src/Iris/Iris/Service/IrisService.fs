@@ -1,5 +1,9 @@
 namespace Iris.Service
 
+// TODO:
+// - forwardCommand
+// - process responses from update calls
+
 // * Imports
 
 #if !IRIS_NODES
@@ -607,7 +611,7 @@ module Iris =
 
   let private mkLeader (self: Id) (leader: RaftMember) =
     let socket = Client.create {
-        Id = self
+        PeerId = self
         Frontend = Uri.raftUri leader
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
@@ -717,32 +721,32 @@ module Iris =
     let max = 5
 
     let rec impl (current: Leader) (count: int) =
-      let result : Either<IrisError,RaftResponse> =
-        AppendEntry sm
-        |> Binary.encode
-        |> current.Socket.Request
-        |> Either.bind Binary.decode
+      AppendEntry sm
+      |> Binary.encode
+      |> fun body -> { Body = body }
+      |> current.Socket.Request
+      |> Either.mapError (string >> Logger.err "requestAppend")
 
-      match result with
-      | Right (AppendEntryResponse _) ->
-        Either.succeed leader
-      | Right (Redirect mem) ->
-        if count < max then
-          dispose leader
-          let newleader = mkLeader self mem
-          impl newleader (count + 1)
-        else
-          max
-          |> sprintf "Maximum re-direct count reached (%d). Appending failed"
-          |> Error.asRaftError (tag "requestAppend")
-          |> Either.fail
-      | Right other ->
-        other
-        |> sprintf "Received unexpected response from server: %A"
-        |> Error.asRaftError (tag "requestAppend")
-        |> Either.fail
-      | Left error ->
-        Either.fail error
+      // match result with
+      // | Right (AppendEntryResponse _) ->
+      //   Either.succeed leader
+      // | Right (Redirect mem) ->
+      //   if count < max then
+      //     dispose leader
+      //     let newleader = mkLeader self mem
+      //     impl newleader (count + 1)
+      //   else
+      //     max
+      //     |> sprintf "Maximum re-direct count reached (%d). Appending failed"
+      //     |> Error.asRaftError (tag "requestAppend")
+      //     |> Either.fail
+      // | Right other ->
+      //   other
+      //   |> sprintf "Received unexpected response from server: %A"
+      //   |> Error.asRaftError (tag "requestAppend")
+      //   |> Either.fail
+      // | Left error ->
+      //   Either.fail error
 
     Tracing.trace (tag "requestAppend") <| fun () ->
       impl leader 0
@@ -750,28 +754,29 @@ module Iris =
   // ** forwardCommand
 
   let private forwardCommand (data: IrisLoadedStateData) (sm: StateMachine) =
-    Tracing.trace (tag "forwardCommand") <| fun () ->
-      match data.Leader with
-      | Some leader ->
-        match requestAppend data.Member.Id leader sm with
-        | Right newleader ->
-          { data with Leader = Some newleader }
-        | Left error ->
-          dispose leader
-          { data with Leader = None }
-      | None ->
-        match data.RaftServer.Leader with
-        | Some mem ->
-          let leader = mkLeader data.Member.Id mem
-          match requestAppend data.Member.Id leader sm with
-          | Right newleader -> { data with Leader = Some newleader }
-          | Left error ->
-            dispose leader
-            { data with Leader = None }
-        | None ->
-          "Could not start re-direct socket: No Known Leader"
-          |> Logger.debug (tag "forwardCommand")
-          data
+    failwith "never"
+    // Tracing.trace (tag "forwardCommand") <| fun () ->
+    //   match data.Leader with
+    //   | Some leader ->
+    //     match requestAppend data.Member.Id leader sm with
+    //     | Right newleader ->
+    //       { data with Leader = Some newleader }
+    //     | Left error ->
+    //       dispose leader
+    //       { data with Leader = None }
+    //   | None ->
+    //     match data.RaftServer.Leader with
+    //     | Some mem ->
+    //       let leader = mkLeader data.Member.Id mem
+    //       match requestAppend data.Member.Id leader sm with
+    //       | Right newleader -> { data with Leader = Some newleader }
+    //       | Left error ->
+    //         dispose leader
+    //         { data with Leader = None }
+    //     | None ->
+    //       "Could not start re-direct socket: No Known Leader"
+    //       |> Logger.debug (tag "forwardCommand")
+    //       data
 
   // ** handleRaftEvent
 
