@@ -331,26 +331,4 @@ let pinToKeyValuePairs (pin: Pin) =
   | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
 
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
-  match pin with
-  | StringPin pin ->
-    StringSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | NumberPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(double v)
-      | v -> v
-    NumberSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BoolPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(v.ToLower() = "true")
-      | v -> v
-    BoolSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices |> ClientContext.Singleton.Post
+  Iris.Web.Widgets.CueList.updateSlices(pin, rowIndex, newValue)

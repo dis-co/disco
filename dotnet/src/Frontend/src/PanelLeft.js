@@ -3,10 +3,10 @@ import css from "../css/PanelLeft.less"
 import Log from "./widgets/Log"
 import Manager from "./widgets/Manager"
 import GraphView from "./widgets/GraphView"
-import CueList from "./widgets/CueList"
 import ProjectView from "./widgets/ProjectView"
 import Cluster from "./widgets/Cluster"
 import Discovery from "./widgets/Discovery"
+import { CueList } from "../fable/Frontend/Widgets/CueList.fs"
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
@@ -21,7 +21,7 @@ function cardClicked(title, global) {
       break;
     case "CUE LIST":
       global.addWidget(new CueList());
-      break;      
+      break;
     case "PROJECT VIEW":
       global.addWidget(new ProjectView());
       break;
@@ -30,7 +30,7 @@ function cardClicked(title, global) {
       break;
     case "DISCOVERY":
       global.addWidget(new Discovery());
-      break;      
+      break;
     default:
       alert("Widget " + title + " is not currently supported")
   }
