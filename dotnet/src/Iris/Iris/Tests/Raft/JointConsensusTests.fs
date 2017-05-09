@@ -58,7 +58,7 @@ module JointConsensus =
         Configuration(Id.Create(), index 1, term, mems , None)
 
       let ci = ref (index 0)
-      let state = Raft.mkRaft (Member.create (Id.Create()))
+      let state = defaultServer()
       let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       // Response:
@@ -563,7 +563,7 @@ module JointConsensus =
       let count = ref 0
       let ci = ref (index 0)
       let trm = ref (term 1)
-      let init = Raft.mkRaft (Member.create (Id.Create()))
+      let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM)
                     with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
@@ -636,7 +636,7 @@ module JointConsensus =
       let lokk = new System.Object()
       let count = ref 0
       let trm = ref (term 1)
-      let init = Raft.mkRaft (Member.create (Id.Create()))
+      let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM) with
                     SendRequestVote = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
@@ -710,7 +710,7 @@ module JointConsensus =
       let ci = ref (index 0)
       let trm = ref (term 1)
       let count = ref 0
-      let init = Raft.mkRaft self
+      let init = Raft.create self
       let cbs =
         { Callbacks.Create (ref defSM) with
             SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }

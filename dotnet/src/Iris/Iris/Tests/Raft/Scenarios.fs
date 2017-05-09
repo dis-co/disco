@@ -188,7 +188,7 @@ module Scenarios =
               } :> IRaftCallbacks
 
             let raft =
-              Raft.mkRaft peers.[int n]
+              Raft.create peers.[int n]
               |> Raft.setElectionTimeout 500<ms>
               |> Raft.addMembers (Array.map toPair peers |> Map.ofArray)
 

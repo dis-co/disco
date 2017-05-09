@@ -149,7 +149,7 @@ module ServerTests =
       let msg2 = DataSnapshot (State.Empty)
       let msg3 = DataSnapshot (State.Empty)
 
-      let init = Raft.mkRaft (Member.create (Id.Create()))
+      let init = defaultServer()
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       raft {
@@ -903,7 +903,7 @@ module ServerTests =
       let peer1 = Member.create (Id.Create())
       let peer2 = Member.create (Id.Create())
 
-      let state : RaftValue = Raft.mkRaft peer0
+      let state = Raft.create peer0
       let lokk = new System.Object()
       let i = ref 0
       let cbs =
@@ -965,7 +965,7 @@ module ServerTests =
   let candidate_requestvote_includes_logidx =
     testCase "candidate requestvote includes logidx" <| fun _ ->
       let self = Member.create (Id.Create())
-      let raft' : RaftValue = Raft.mkRaft self
+      let raft' = Raft.create self
       let sender = Sender.create
       let response = { Term = term 5; Granted = true; Reason = None }
       let cbs =
@@ -1124,7 +1124,7 @@ module ServerTests =
 
       let lokk = new System.Object()
       let count = ref 0
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1183,7 +1183,7 @@ module ServerTests =
   let leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx =
     testCase "leader sends appendentries with NextIdx when PrevIdx gt NextIdx" <| fun _ ->
       let peer = { Member.create (Id.Create()) with NextIndex = index 4 }
-      let raft' : RaftValue = defaultServer "localhost"
+      let raft' : RaftValue = defaultServer ()
       let sender = Sender.create
       let log = LogEntry(Id.Create(),index 0, term 1, DataSnapshot (State.Empty), None)
       let cbs =
@@ -1203,7 +1203,7 @@ module ServerTests =
   let leader_sends_appendentries_with_leader_commit =
     testCase "leader sends appendentries with leader commit" <| fun _ ->
       let peer = { Member.create (Id.Create()) with NextIndex = index 4 }
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1232,7 +1232,7 @@ module ServerTests =
   let leader_sends_appendentries_with_prevLogIdx =
     testCase "leader sends appendentries with prevLogIdx" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1284,7 +1284,7 @@ module ServerTests =
   let leader_sends_appendentries_when_mem_has_next_idx_of_0 =
     testCase "leader sends appendentries when mem has next idx of 0" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1320,7 +1320,7 @@ module ServerTests =
   let leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency =
     testCase "leader retries appendentries with decremented NextIdx log inconsistency" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1342,7 +1342,7 @@ module ServerTests =
     testCase "leader append entry to log increases idxno" <| fun _ ->
       let peer = Member.create (Id.Create())
       let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let raft' = defaultServer "local"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
@@ -1363,7 +1363,7 @@ module ServerTests =
       let peer3 = Member.create (Id.Create())
       let peer4 = Member.create (Id.Create())
 
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1431,7 +1431,7 @@ module ServerTests =
         ; FirstIndex = index 1
         }
 
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
@@ -1606,7 +1606,7 @@ module ServerTests =
 
 
   let leader_recv_appendentries_response_decrements_to_lower_next_idx =
-    testCase "leader recv appendentries response decrements to lower next idx" <| fun _ ->
+    ftestCase "leader recv appendentries response decrements to lower next idx" <| fun _ ->
       let peer = Member.create (Id.Create())
       let lokk = new System.Object()
 
@@ -1672,7 +1672,7 @@ module ServerTests =
       let peer1 = Member.create (Id.Create())
       let peer2 = Member.create (Id.Create())
 
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
@@ -1805,7 +1805,7 @@ module ServerTests =
       skiptest "NO CONGESTION CONTROL CURRENTLY IMPLEMENTED"
 
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref defSM) with
@@ -1833,7 +1833,7 @@ module ServerTests =
   let leader_recv_appendentries_response_failure_does_not_set_mem_nextid_to_0 =
     testCase "leader recv appendentries response failure does not set mem nextid to 0" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref defSM)
@@ -1868,7 +1868,7 @@ module ServerTests =
   let leader_recv_appendentries_response_increment_idx_of_mem =
     testCase "leader recv appendentries response increment idx of mem" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref defSM)
@@ -1897,7 +1897,7 @@ module ServerTests =
   let leader_recv_appendentries_response_drop_message_if_term_is_old =
     testCase "leader recv appendentries response drop message if term is old" <| fun _ ->
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
         { Callbacks.Create (ref defSM)
@@ -1970,7 +1970,7 @@ module ServerTests =
     testCase "leader sends empty appendentries every request timeout" <| fun _ ->
       let peer1 = Member.create (Id.Create())
       let peer2 = Member.create (Id.Create())
-      let raft' = defaultServer "localhost"
+      let raft' = defaultServer ()
 
       let lokk = new System.Object()
 
@@ -2093,7 +2093,7 @@ module ServerTests =
 
       let mutable i = 0
 
-      let raft' = Raft.mkRaft mem1
+      let raft' = Raft.create mem1
       let cbs =
         { Callbacks.Create (ref defSM) with SendRequestVote = fun _ _ -> i <- i + 1 }
         :> IRaftCallbacks
@@ -2165,7 +2165,7 @@ module ServerTests =
       let trm = term 1
       let count = ref 0
 
-      let init = defaultServer "holy crap"
+      let init = defaultServer ()
       let cbs =
         { Callbacks.Create (ref defSM) with ApplyLog = fun _ -> count := !count + 1 }
         :> IRaftCallbacks
@@ -2198,7 +2198,7 @@ module ServerTests =
       let trm = term 1
       let count = ref 0
 
-      let init = defaultServer "holy crap"
+      let init = defaultServer ()
       let cbs =
         { Callbacks.Create (ref defSM) with ApplyLog = fun l -> count := !count + 1 }
         :> IRaftCallbacks
@@ -2236,7 +2236,7 @@ module ServerTests =
     testCase "should fire mem callbacks on config change" <| fun _ ->
       let count = ref 0
 
-      let init = defaultServer "holy crap"
+      let init = defaultServer ()
 
       let cb _ l =
         count := !count + 1
@@ -2271,7 +2271,7 @@ module ServerTests =
     testCase "should call persist callback for each appended log" <| fun _ ->
       let count = ref List.empty
 
-      let init = defaultServer "holy crap"
+      let init = defaultServer ()
 
       let cb l = count := LogEntry.getId l :: !count
 
@@ -2308,7 +2308,7 @@ module ServerTests =
 
       let count = ref [ log3; log2; log1; ]
 
-      let init = defaultServer "holy crap"
+      let init = defaultServer ()
 
       let cb l =
         let fltr l r = LogEntry.getId l <> LogEntry.getId r
@@ -2344,7 +2344,7 @@ module ServerTests =
   let should_call_mem_updated_callback_on_mem_udpated =
     testCase "call mem updated callback on mem udpated" <| fun _ ->
       let count = ref 0
-      let init = Raft.mkRaft (Member.create (Id.Create()))
+      let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM)
                     with MemberUpdated = fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
@@ -2364,7 +2364,7 @@ module ServerTests =
   let should_call_state_changed_callback_on_state_change =
     testCase "call state changed callback on state change" <| fun _ ->
       let count = ref 0
-      let init = Raft.mkRaft (Member.create (Id.Create()))
+      let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM) with
                     StateChanged = fun _ _ -> count := 1 + !count }
                 :> IRaftCallbacks

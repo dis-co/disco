@@ -123,18 +123,17 @@ module RaftTestUtils =
         LogMsg = fun (mem: RaftMember) site level str ->
           Logger.log level site str }
 
-  let defaultServer _ =
-    let self : RaftMember = Member.create (Id.Create())
-    Raft.mkRaft self
+  let defaultServer () =
+    Id.Create()
+    |> Member.create
+    |> Raft.create
 
   let runWithCBS cbs action =
-    let self = Member.create (Id.Create())
-    let raft = Raft.mkRaft self
+    let raft = defaultServer()
     runRaft raft cbs action
 
   let runWithData data action =
-    let self = Member.create (Id.Create())
-    let raft = Raft.mkRaft self
+    let raft = defaultServer()
     let cbs = Callbacks.Create data :> IRaftCallbacks
     runRaft raft cbs action
 
