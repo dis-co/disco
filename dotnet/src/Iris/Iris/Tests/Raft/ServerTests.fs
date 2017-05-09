@@ -150,7 +150,7 @@ module ServerTests =
       let msg3 = DataSnapshot (State.Empty)
 
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       raft {
         do! Raft.setStateM Candidate
@@ -349,11 +349,11 @@ module ServerTests =
       let term = ref (term 0)
       let ci = ref (index 0)
 
-      let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendAppendEntries = fun _ _ ->
-              Some  { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = index 1 } }
-        :> IRaftCallbacks
+      // let cbs =
+      //   { Callbacks.Create (ref (DataSnapshot (State.Empty))) with
+      //       SendAppendEntries = fun _ _ ->
+      //         { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = index 1 } }
+      //   :> IRaftCallbacks
 
       let mem = Member.create (Id.Create())
 
@@ -366,19 +366,19 @@ module ServerTests =
         do! Raft.becomeLeader ()
         do! expectM "Should have mem count of two" 2 Raft.numMembers
 
-        ci := index 1
+        ci := 1<index>
 
         let! result = Raft.receiveEntry (mklog !term)
         let! committed = Raft.responseCommitted result
 
-        ci := index 2
+        ci := 2<index>
 
         do! Raft.periodic 1000<ms>
 
         // after entry was applied, we'll see the change
         do! expectM "Should have mem count of one" 1 Raft.numMembers
       }
-      |> runWithCBS cbs
+      |> runWithDefaults
       |> noError
 
 
@@ -455,19 +455,15 @@ module ServerTests =
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
       let mem = Member.create (Id.Create())
-      let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendRequestVote = fun _ _ -> Some { Term = term 2; Granted = true; Reason = None } }
-        :> IRaftCallbacks
-
       raft {
         do! Raft.addMemberM mem
         do! Raft.setTermM (term 1)
         do! expectM "Should have zero votes for me" 0 Raft.numVotesForMe
         do! Raft.becomeCandidate ()
+        do! Raft.receiveVoteResponse mem.Id { Term = term 2; Granted = true; Reason = None }
         do! expectM "Should have two votes for me" 2 Raft.numVotesForMe
       }
-      |> runWithCBS cbs
+      |> runWithDefaults
       |> noError
 
   let recv_requestvote_response_must_be_candidate_to_receive =
@@ -499,7 +495,11 @@ module ServerTests =
         do! Raft.addMemberM mem
         do! Raft.setTermM (term 3)
         do! Raft.becomeCandidate ()
-        let! response = Raft.receiveVoteResponse mem.Id { Term = term 3; Granted = true; Reason = None }
+        let! response = Raft.receiveVoteResponse mem.Id {
+              Term = term 3
+              Granted = true
+              Reason = None
+            }
         do! expectM "Should have term 4" (term 4) Raft.currentTerm
       }
       |> runWithDefaults
@@ -907,11 +907,8 @@ module ServerTests =
       let lokk = new System.Object()
       let i = ref 0
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendRequestVote = fun _ _ ->
-              lock lokk <| fun _ ->
-                i := !i + 1
-                Some { Granted = true; Term = term 3; Reason = None } }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty))) with
+            SendRequestVote = fun _ _ -> lock lokk <| fun _ -> i := !i + 1 }
         :> IRaftCallbacks
 
       raft {
@@ -919,6 +916,8 @@ module ServerTests =
         do! Raft.addMemberM peer2
         do! Raft.setTermM (term 2)
         do! Raft.becomeCandidate ()
+        do! Raft.receiveVoteResponse peer1.Id { Granted = true; Term = term 3; Reason = None }
+        do! Raft.receiveVoteResponse peer2.Id { Granted = true; Term = term 3; Reason = None }
         expect "Should have two vote requests" 2 id !i
       }
       |> runWithRaft state cbs
@@ -926,29 +925,23 @@ module ServerTests =
 
   let candidate_receives_majority_of_votes_becomes_leader =
     testCase "candidate receives majority of votes becomes leader" <| fun _ ->
-      let self  = Member.create (Id.Create())
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
-      let peer3 = Member.create (Id.Create())
-      let peer4 = Member.create (Id.Create())
-
       let peers =
-        [| peer1; peer2; peer3; peer4 |]
-        |> Array.map (fun p -> (p.Id,p))
+        [| for n in 0 .. 3 do
+             let peer = Member.create (Id.Create())
+             yield (peer.Id, peer) |]
         |> Map.ofArray
-
-      let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendRequestVote = fun n _ -> Some { Term = term 1; Granted = true; Reason = None } }
-        :> IRaftCallbacks
 
       raft {
         do! Raft.addPeersM peers
         do! expectM "Should have 5 mems" 5 Raft.numMembers
         do! Raft.becomeCandidate ()
+
+        for KeyValue(id,_) in peers do
+          do! Raft.receiveVoteResponse id { Term = term 1; Granted = true; Reason = None }
+
         do! expectM "Should be leader" true Raft.isLeader
       }
-      |> runWithCBS cbs
+      |> runWithDefaults
       |> noError
 
   let candidate_will_not_respond_to_voterequest_if_it_has_already_voted =
@@ -958,10 +951,9 @@ module ServerTests =
         let peer = Member.create (Id.Create())
         let vote : VoteRequest =
           { Term = term 0                // term must be equal or lower that raft's
-          ; Candidate = raft'.Member    // term for this to work
-          ; LastLogIndex = index 0
-          ; LastLogTerm = term 0
-          }
+            Candidate = raft'.Member    // term for this to work
+            LastLogIndex = index 0
+            LastLogTerm = term 0 }
         do! Raft.addPeerM peer
         do! Raft.voteFor (Some raft'.Member)
         let! resp = Raft.receiveVoteRequest peer.Id vote
@@ -977,8 +969,8 @@ module ServerTests =
       let sender = Sender.create
       let response = { Term = term 5; Granted = true; Reason = None }
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendRequestVote = senderRequestVote sender (Some response) }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendRequestVote = senderRequestVote sender (Some response) }
         :> IRaftCallbacks
 
       raft {
@@ -1001,7 +993,6 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendVoteRequest peer1
-        request |> run |> ignore
 
         do! Raft.receiveVoteResponse peer1.Id response
 
@@ -1136,10 +1127,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
-            SendAppendEntries = fun _ _ ->
-              lock lokk <| fun _ -> count := !count + 1
-              Some { Success = true; Term = term 0; CurrentIndex = index 1; FirstIndex = index 1 } }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := !count + 1 }
         :> IRaftCallbacks
 
       raft {
@@ -1198,7 +1187,8 @@ module ServerTests =
       let sender = Sender.create
       let log = LogEntry(Id.Create(),index 0, term 1, DataSnapshot (State.Empty), None)
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1210,14 +1200,14 @@ module ServerTests =
       |> runWithRaft raft' cbs
       |> noError
 
-
   let leader_sends_appendentries_with_leader_commit =
     testCase "leader sends appendentries with leader commit" <| fun _ ->
       let peer = { Member.create (Id.Create()) with NextIndex = index 4 }
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1245,7 +1235,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
@@ -1253,7 +1244,6 @@ module ServerTests =
         do! Raft.setStateM Leader
 
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1268,7 +1258,6 @@ module ServerTests =
         let! peer = Raft.getMemberM peer.Id >>= (Option.get >> returnM)
 
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1283,7 +1272,6 @@ module ServerTests =
         do! Raft.setNextIndexM peer.Id (index 2)
         let! peer = Raft.getMemberM peer.Id >>= (Option.get >> returnM)
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1299,14 +1287,14 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1320,7 +1308,6 @@ module ServerTests =
         do! Raft.setNextIndexM peer.Id (index 1)
         do! Raft.appendEntryM log >>= ignoreM
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         (!sender.Outbox)
         |> List.head
@@ -1336,15 +1323,14 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       raft {
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
-
         (!sender.Outbox)
         |> expect "Should have a message" 1 List.length
       }
@@ -1358,7 +1344,7 @@ module ServerTests =
       let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
       let raft' = defaultServer "local"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       raft {
         do! Raft.addPeerM peer
@@ -1380,7 +1366,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1411,11 +1398,9 @@ module ServerTests =
 
         // peer 1
         let! request = Raft.sendAppendEntry peer1
-        request |> run |> ignore
 
         // peer 2
         let! request = Raft.sendAppendEntry peer2
-        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id response
         // first response, no majority yet, will not set commit idx
@@ -1448,7 +1433,7 @@ module ServerTests =
 
       let raft' = defaultServer "localhost"
       let sender = Sender.create
-      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
       let log2 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1491,7 +1476,7 @@ module ServerTests =
         ; CurrentIndex = index 1
         ; FirstIndex   = index 1 }
 
-      let cbs = mkcbs (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
       let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
       let log2 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1513,10 +1498,8 @@ module ServerTests =
         do! Raft.appendEntryM log3 >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer1
-        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id response
         do! expectM "Should have commit index 0" (index 0) Raft.commitIndex
@@ -1528,10 +1511,8 @@ module ServerTests =
         do! expectM "Should have lastAppliedIndex 0" (index 0) Raft.lastAppliedIdx
 
         let! request = Raft.sendAppendEntry peer1
-        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id { response with CurrentIndex = index 2; FirstIndex = index 2 }
         do! expectM "Should have commit index 0" (index 0) Raft.commitIndex
@@ -1543,10 +1524,8 @@ module ServerTests =
         do! expectM "Should have lastAppliedIndex 0" (index 0) Raft.lastAppliedIdx
 
         let! request = Raft.sendAppendEntry peer1
-        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer1.Id { response with Term = term 2; CurrentIndex = index 3; FirstIndex = index 3 }
         do! expectM "Should have commit index 0" (index 0) Raft.commitIndex
@@ -1569,11 +1548,10 @@ module ServerTests =
       let appendReq = ref None
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
+        { Callbacks.Create (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
-              appendReq := Some ae
-              None }
+              appendReq := Some ae }
         :> IRaftCallbacks
 
       let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1638,13 +1616,13 @@ module ServerTests =
       let count = ref 0
 
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with
+        { Callbacks.Create (ref (DataSnapshot (State.Empty))) with
             SendAppendEntries = fun n ae ->
               lock lokk <| fun _ -> count := !count + 1
-              Some { Term         = !trm
-                   ; Success      = !result
-                   ; CurrentIndex = !ci
-                   ; FirstIndex   = index 0 }
+              // { Term         = !trm
+              //   Success      = !result
+              //   CurrentIndex = !ci
+              //   FirstIndex   = index 0 }
           } :> IRaftCallbacks
 
       let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1697,7 +1675,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref (DataSnapshot (State.Empty))) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref (DataSnapshot (State.Empty)))
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
@@ -1728,10 +1707,8 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer1
-        request |> run |> ignore
 
         let! request = Raft.sendAppendEntry peer2
-        request |> run |> ignore
 
         do! expectM "Should have 2 msgs" 2 (fun _ -> List.length !sender.Outbox)
         do! Raft.becomeFollower ()
@@ -1831,7 +1808,7 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref defSM) with
+        { Callbacks.Create (ref defSM) with
             SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
@@ -1859,7 +1836,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref defSM) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref defSM)
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       let log = Log.make (term 1) defSM
@@ -1878,7 +1856,6 @@ module ServerTests =
         do! Raft.appendEntryM log >>= ignoreM
 
         let! request = Raft.sendAppendEntry peer
-        request |> run |> ignore
 
         do! Raft.receiveAppendEntriesResponse peer.Id resp
         do! expectM "Should have nextIdx Works 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
@@ -1894,7 +1871,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref defSM) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref defSM)
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       let resp =
@@ -1922,7 +1900,8 @@ module ServerTests =
       let raft' = defaultServer "localhost"
       let sender = Sender.create
       let cbs =
-        { mkcbs (ref defSM) with SendAppendEntries = senderAppendEntries sender None }
+        { Callbacks.Create (ref defSM)
+            with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
       let resp =
@@ -1999,17 +1978,13 @@ module ServerTests =
 
       let response =
         ref { Term = term 0
-            ; Success = true
-            ; CurrentIndex = index 1
-            ; FirstIndex = index 1 }
+              Success = true
+              CurrentIndex = index 1
+              FirstIndex = index 1 }
 
       let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ _ ->
-              lock lokk <| fun _ ->
-                count := !count + 1
-              Some !response
-            }
+        { Callbacks.Create (ref defSM)
+            with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := !count + 1 }
         :> IRaftCallbacks
 
       let peers =
@@ -2120,7 +2095,7 @@ module ServerTests =
 
       let raft' = Raft.mkRaft mem1
       let cbs =
-        { mkcbs (ref defSM) with SendRequestVote = fun _ _ -> i <- i + 1; None }
+        { Callbacks.Create (ref defSM) with SendRequestVote = fun _ _ -> i <- i + 1 }
         :> IRaftCallbacks
 
       let peers =
@@ -2192,7 +2167,7 @@ module ServerTests =
 
       let init = defaultServer "holy crap"
       let cbs =
-        { mkcbs (ref defSM) with ApplyLog = fun _ -> count := !count + 1 }
+        { Callbacks.Create (ref defSM) with ApplyLog = fun _ -> count := !count + 1 }
         :> IRaftCallbacks
 
       let mems =
@@ -2225,10 +2200,7 @@ module ServerTests =
 
       let init = defaultServer "holy crap"
       let cbs =
-        { mkcbs (ref defSM) with
-            ApplyLog = fun l ->
-              count := !count + 1
-          }
+        { Callbacks.Create (ref defSM) with ApplyLog = fun l -> count := !count + 1 }
         :> IRaftCallbacks
 
       let mems =
@@ -2270,7 +2242,7 @@ module ServerTests =
         count := !count + 1
 
       let cbs =
-        { mkcbs (ref defSM) with
+        { Callbacks.Create (ref defSM) with
             MemberAdded   = cb "added"
             MemberRemoved = cb "removed"
         } :> IRaftCallbacks
@@ -2304,7 +2276,7 @@ module ServerTests =
       let cb l = count := LogEntry.getId l :: !count
 
       let cbs =
-        { mkcbs (ref defSM) with
+        { Callbacks.Create (ref defSM) with
             PersistLog = cb
         } :> IRaftCallbacks
 
@@ -2343,7 +2315,7 @@ module ServerTests =
         in count := List.filter (fltr l) !count
 
       let cbs =
-        { mkcbs (ref defSM) with
+        { Callbacks.Create (ref defSM) with
             DeleteLog = cb
         } :> IRaftCallbacks
 
@@ -2373,8 +2345,8 @@ module ServerTests =
     testCase "call mem updated callback on mem udpated" <| fun _ ->
       let count = ref 0
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    MemberUpdated = fun _ -> count := 1 + !count }
+      let cbs = { Callbacks.Create (ref defSM)
+                    with MemberUpdated = fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
 
       raft {
@@ -2393,7 +2365,7 @@ module ServerTests =
     testCase "call state changed callback on state change" <| fun _ ->
       let count = ref 0
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
+      let cbs = { Callbacks.Create (ref defSM) with
                     StateChanged = fun _ _ -> count := 1 + !count }
                 :> IRaftCallbacks
 
@@ -2454,7 +2426,7 @@ module ServerTests =
       let count = ref 0
 
       let cbs =
-        { mkcbs (ref defSM) with ApplyLog = fun _ -> count := !count + 1 }
+        { Callbacks.Create (ref defSM) with ApplyLog = fun _ -> count := !count + 1 }
         :> IRaftCallbacks
 
       raft {

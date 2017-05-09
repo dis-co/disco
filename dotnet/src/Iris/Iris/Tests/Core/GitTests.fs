@@ -52,12 +52,12 @@ module GitTests =
 
       expect "Should be empty" Map.empty id remotes
 
-      let upstream = "git@bla.com"
+      let upstream = url "git@bla.com"
       Git.Config.addRemote repo "origin" upstream
       |> ignore
 
       let remote = Git.Config.tryFindRemote repo "origin" |> Option.get
-      expect "Should be correct upstream" upstream (fun (remote: Remote) -> remote.Url) remote
+      expect "Should be correct upstream" upstream (fun (remote: Remote) -> url remote.Url) remote
 
   let test_remove_remote =
     testCase "Validate Removal Of Remote" <| fun _ ->
@@ -65,12 +65,12 @@ module GitTests =
       let remotes = Git.Config.remotes repo
 
       let name = "origin"
-      let upstream = "git@bla.com"
+      let upstream = url "git@bla.com"
       Git.Config.addRemote repo name upstream
       |> ignore
 
       let remote = Git.Config.tryFindRemote repo name |> Option.get
-      expect "Should be correct upstream" upstream (fun (rmt: Remote) -> rmt.Url) remote
+      expect "Should be correct upstream" upstream (fun (rmt: Remote) -> url rmt.Url) remote
 
       Git.Config.delRemote repo name
       |> ignore

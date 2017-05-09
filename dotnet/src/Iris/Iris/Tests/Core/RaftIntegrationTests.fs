@@ -11,6 +11,7 @@ open Iris.Service.Utilities
 open Iris.Service.Persistence
 open Iris.Service.Interfaces
 open Iris.Raft
+open Iris.Zmq
 open Iris.Service.Raft
 open FSharpx.Functional
 open Microsoft.FSharp.Control
@@ -58,19 +59,19 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let! leader = RaftServer.create ()
-        do! leader.Load(leadercfg)
-        do! expectE "Leader should have one connection" 1 count leader.Connections
+        let! leader = RaftServer.create leadercfg Client.create
+        do! leader.Start()
+        expect "Leader should have one connection" 1 count leader.Connections
 
-        let! follower = RaftServer.create ()
-        do! follower.Load(followercfg)
-        do! expectE "Follower should have one connection" 1 count follower.Connections
+        let! follower = RaftServer.create followercfg Client.create
+        do! follower.Start()
+        expect "Follower should have one connection" 1 count follower.Connections
 
         dispose leader
         dispose follower
 
-        do! expectE "Leader should be stopped"   true Service.isStopped leader.Status
-        do! expectE "Follower should be stopped" true Service.isStopped follower.Status
+        expect "Leader should be stopped"   true Service.isStopped leader.Status
+        expect "Follower should be stopped" true Service.isStopped follower.Status
       }
       |> noError
 
@@ -96,18 +97,18 @@ module RaftIntegrationTests =
           Config.create "leader" machine
           |> Config.addSiteAndSetActive site
 
-        use! leader = RaftServer.create ()
-        do! leader.Load leadercfg
+        use! leader = RaftServer.create leadercfg Client.create
+        do! leader.Start()
 
-        do! expectE "Should be running" true Service.isRunning leader.Status
+        expect "Should be running" true Service.isRunning leader.Status
 
-        use! follower = RaftServer.create ()
+        use! follower = RaftServer.create leadercfg Client.create
 
-        do! match follower.Load leadercfg with
+        do! match follower.Start()  with
             | Right ()   -> Left (Other("loco","Should have failed to start"))
             | Left error -> Right ()
 
-        do! expectE "Should be failed" true Service.isStopped follower.Status
+        expect "Should be failed" true Service.isStopped follower.Status
       }
       |> noError
 
@@ -121,7 +122,7 @@ module RaftIntegrationTests =
 
         let setState (are: AutoResetEvent) (ev: RaftEvent) =
           match ev with
-          | StateChanged _ -> are.Set() |> ignore
+          | RaftEvent.StateChanged _ -> are.Set() |> ignore
           | _ -> ()
 
         let machine1 = MachineConfig.create "127.0.0.1" None
@@ -153,20 +154,17 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ()
+        use! leader = RaftServer.create leadercfg Client.create
 
         use obs1 = leader.Subscribe (setState check1)
 
-        do! leader.Load leadercfg
+        do! leader.Start()
 
-        use! follower = RaftServer.create ()
+        use! follower = RaftServer.create followercfg Client.create
 
         use obs2 = follower.Subscribe (setState check2)
 
-        do! follower.Load(followercfg)
-
-        let! state1 = leader.State
-        let! state2 = follower.State
+        do! follower.Start()
 
         check1.WaitOne() |> ignore
         check2.WaitOne() |> ignore
@@ -203,7 +201,7 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ()
+        use! leader = RaftServer.create leadercfg Client.create
 
         let expected = int leadercfg.Raft.MaxLogDepth * 2
 
@@ -222,7 +220,7 @@ module RaftIntegrationTests =
           | _ -> ()
 
         use obs1 = leader.Subscribe evHandler
-        do! leader.Load leadercfg
+        do! leader.Start()
 
         let cmds =
           [ for n in 0 .. expected - 1 do

@@ -18,9 +18,7 @@ module JointConsensus =
     testCase "periodic executes all cfg changes" <| fun _ ->
       let trm = term 1
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendRequestVote = fun _ _ -> Some { Term = trm; Granted = true; Reason = None } }
+      let response = { Term = trm; Granted = true; Reason = None }
 
       let mem1 = Member.create (Id.Create())
       let mem2 = Member.create (Id.Create())
@@ -61,10 +59,11 @@ module JointConsensus =
 
       let ci = ref (index 0)
       let state = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendAppendEntries = fun _ _ ->
-                      Some { Term = term 0; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-                  } :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      // Response:
+      //
+      // Some { Term = term 0; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -160,12 +159,11 @@ module JointConsensus =
       let lokk = new System.Object()
       let vote = { Granted = true; Term = !trm; Reason = None }
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ req ->
-              lock lokk <| fun _ ->
-                Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-          } :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      // Response:
+      //
+      // Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
 
       raft {
         let me = snd mems.[0]
@@ -460,12 +458,11 @@ module JointConsensus =
 
       let vote = { Granted = true; Term = !trm; Reason = None }
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ req ->
-              lock lokk <| fun _ ->
-                Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-          } :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      // Response
+      //
+      // Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
 
       raft {
         let self = snd mems.[0]        //
@@ -567,12 +564,11 @@ module JointConsensus =
       let ci = ref (index 0)
       let trm = ref (term 1)
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendAppendEntries = fun _ _ ->
-                      lock lokk <| fun _ ->
-                        count := 1 + !count
-                        Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
+      let cbs = { Callbacks.Create (ref defSM)
+                    with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
+
+      // let response = Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
 
       let n = 10                       // we want ten mems overall
 
@@ -641,12 +637,11 @@ module JointConsensus =
       let count = ref 0
       let trm = ref (term 1)
       let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendRequestVote = fun _ _ ->
-                      lock lokk <| fun _ ->
-                        count := 1 + !count
-                        Some { Granted = true; Term = !trm; Reason = None } }
+      let cbs = { Callbacks.Create (ref defSM) with
+                    SendRequestVote = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
+
+      // let response = Some { Granted = true; Term = !trm; Reason = None } }
 
       let n = 10                       // we want ten mems overall
 
@@ -717,12 +712,11 @@ module JointConsensus =
       let count = ref 0
       let init = Raft.mkRaft self
       let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ _ ->
-              lock lokk <| fun _ ->
-                count := 1 + !count
-                Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
+        { Callbacks.Create (ref defSM) with
+            SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
         :> IRaftCallbacks
+
+      // let reponse = { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
 
       raft {
         do! Raft.setPeersM (mems |> Map.ofArray)

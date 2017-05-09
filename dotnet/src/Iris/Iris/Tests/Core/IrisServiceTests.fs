@@ -176,9 +176,9 @@ module IrisServiceTests =
             match ev with
             | Git (Started _) ->
               checkStarted.Set() |> ignore
-            | Raft (StateChanged(oldst, Leader)) ->
+            | Raft (RaftEvent.StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
-            | Raft (ApplyLog _) ->
+            | Raft (RaftEvent.ApplyLog _) ->
               appendDone.Set() |> ignore
             | _ -> ())
           |> service1.Subscribe
@@ -206,9 +206,9 @@ module IrisServiceTests =
             match ev with
             | Git (Started _) ->
               checkStarted.Set() |> ignore
-            | Raft (StateChanged(oldst, Leader)) ->
+            | Raft (RaftEvent.StateChanged(oldst, Leader)) ->
               electionDone.Set() |> ignore
-            | Raft (ApplyLog _) ->
+            | Raft (RaftEvent.ApplyLog _) ->
               appendDone.Set() |> ignore
             | _ -> ())
           |> service2.Subscribe
@@ -234,10 +234,9 @@ module IrisServiceTests =
           | false, true -> raft2
           | left, right -> failwithf "two leaders is bad news (raft1: %b) (raft2: %b)" left right
 
-        let! response =
-          mkCue()
-          |> AddCue
-          |> leader.Append
+        mkCue()
+        |> AddCue
+        |> leader.Append
 
         appendDone.WaitOne() |> ignore
         appendDone.Reset() |> ignore

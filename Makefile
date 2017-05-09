@@ -118,8 +118,7 @@ debug.all:
 	${BUILD} DebugAll
 
 clean:
-	${BUILD} Clean
-
+	@git clean -fdX
 
 #           _
 #  _ __ ___| | ___  __ _ ___  ___
