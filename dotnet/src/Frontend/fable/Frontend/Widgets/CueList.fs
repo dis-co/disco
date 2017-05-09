@@ -9,6 +9,8 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Helpers
 
+importAll "../../../css/cuePlayer.css"
+
 module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
@@ -91,29 +93,101 @@ type CueListView(props) =
     inherit React.Component<CueProps, obj>(props)
     let mutable el = Unchecked.defaultof<_>
 
-    member this.UpdateSource() =
-      failwith "TODO"
+    // member this.render() =
+    //   let header =
+    //     div [Class "level"]
+    //       [div [Class "level-left"]
+    //         [button [Class "button level-item"
+    //                  Style [Margin 5]
+    //                  OnClick(fun ev -> this.UpdateSource())]
+    //           [str "Fire!"]
+    //         ]
+    //       ;div [Class "level-right"]
+    //         [div [Class "level-item"]
+    //           [from Clock %["global"==>this.props.globalModel] []]
+    //         ]
+    //     ]
+    //   let rows =
+    //     this.props.model.cues
+    //     |> Seq.mapi (fun i cue ->
+    //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []
+    //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []])
+    //     |> Seq.toList
+    //   // Return value
+    //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
+
+    member this.renderCue() =
+      div [Class "cueplayer-list-header cueplayer-cue"] [
+        ul [Class "cueplayer-ul"] [
+          li [] [span [Class "cueplayer-icon cueplayer-icon-caret-down-two"] []]
+          li [] [
+            div [Class "cueplayer-button cueplayer-icon cueplayer-player"] [
+              span [Class "cueplayer-icon cueplayer-icon-play"] []
+            ]
+          ]
+          li [] [
+            form [] [
+              input [
+                Class "cueplayer-cueDesc"
+                Type "text"
+                Value !^"0000"
+                Name "firstname"
+              ]
+              br []
+            ]
+          ]
+          li [Id "cueName"] [
+            form [] [
+              input [
+                Class "cueplayer-cueDesc"
+                Type "text"
+                Value !^"Untitled"
+                Name "firstname"
+              ]
+              br []
+            ]
+          ]
+          li [] []
+          form [] [
+            input [
+              Class "cueplayer-cueDesc"
+              // !!("style", "width:60px; margin-right:5px;")
+              Type "text"
+              Value !^"00:00:00"
+              Name "firstname"
+            ]
+            br []
+          ]
+          li [] [
+            div [Class "cueplayer-button cueplayer-icon"] [
+              span [Class "cueplayer-icon cueplayer-icon-duplicate"] []
+            ]
+            div [Class "cueplayer-button cueplayer-icon cueplayer-close"] [
+              span [Class "cueplayer-icon cueplayer-icon-close"] []
+            ]
+          ]
+        ]
+      ]
 
     member this.render() =
-      let header =
-        div [Class "level"]
-          [div [Class "level-left"]
-            [button [Class "button level-item"
-                     Style [Margin 5]
-                     OnClick(fun ev -> this.UpdateSource())]
-              [str "Fire!"]
-            ]
-          ;div [Class "level-right"]
-            [div [Class "level-item"]
-              [from Clock %["global"==>this.props.globalModel] []]
-            ]
+      div [] [
+        // HEADER
+        div [Class "cueplayer-list-header"] [
+          div [Class "cueplayer-button cueplayer-go"] [
+            span [Class "cueplayer-icon"] [str "GO"]
+          ]
+          div [Class "cueplayer-button cueplayer-icon"] [
+            span [Class "cueplayer-icon cueplayer-icon-fast-backward"] []
+          ]
+          div [Class "cueplayer-button cueplayer-icon"] [
+            span [Class "cueplayer-icon cueplayer-icon-fast-forward"] []
+          ]
+          div [Class "cueplayer-button"] [str "Add Cue"]
+          div [Class "cueplayer-button"] [str "Add Group"]
+          div [
+            // !!("style", "clear:both;")
+              ] []
         ]
-      let rows =
-        this.props.model.cues
-        |> Seq.mapi (fun i cue ->
-          let foo = from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []
-          div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []])
-        |> Seq.toList
-      // Return value
-      div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
-
+        // CUE
+        this.renderCue()
+      ]
