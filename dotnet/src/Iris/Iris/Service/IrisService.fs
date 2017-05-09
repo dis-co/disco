@@ -607,21 +607,23 @@ module Iris =
         | None -> ()
         state
 
-  // ** mkLeader
+  // ** makeLeader
 
-  let private mkLeader (self: Id) (leader: RaftMember) =
+  let private makeLeader (leader: RaftMember) =
     let socket = Client.create {
-        PeerId = self
+        PeerId = leader.Id
         Frontend = Uri.raftUri leader
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
+    socket.Subscribe (Msg.)
     { Member = leader; Socket = socket }
 
   // ** onStateChanged
 
   let private onStateChanged (state: IrisState)
                              (oldstate: RaftState)
-                             (newstate: RaftState) =
+                             (newstate: RaftState)
+                             (agent: IrisAgent) =
     withoutReply state <| fun data ->
       sprintf "Raft state changed from %A to %A" oldstate newstate
       |> Logger.debug (tag "onStateChanged")
@@ -631,7 +633,7 @@ module Iris =
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
         | Some leader ->
-          Loaded { data with Leader = Some (mkLeader data.Member.Id leader) }
+          Loaded { data with Leader = Some (makeLeader leader agent) }
         | None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug (tag "onStateChanged")
@@ -733,7 +735,7 @@ module Iris =
       // | Right (Redirect mem) ->
       //   if count < max then
       //     dispose leader
-      //     let newleader = mkLeader self mem
+      //     let newleader = makeLeader self mem
       //     impl newleader (count + 1)
       //   else
       //     max
@@ -767,7 +769,7 @@ module Iris =
     //   | None ->
     //     match data.RaftServer.Leader with
     //     | Some mem ->
-    //       let leader = mkLeader data.Member.Id mem
+    //       let leader = makeLeader data.Member.Id mem
     //       match requestAppend data.Member.Id leader sm with
     //       | Right newleader -> { data with Leader = Some newleader }
     //       | Left error ->
@@ -780,8 +782,10 @@ module Iris =
 
   // ** handleRaftEvent
 
-  let private handleRaftEvent (state: IrisState) (ev: RaftEvent) =
-    ev |> IrisEvent.Raft |> notifyWithLoaded state
+  let private handleRaftEvent (state: IrisState) (ev: RaftEvent) (agent: IrisAgent) =
+    ev
+    |> IrisEvent.Raft
+    |> notifyWithLoaded state
 
     Tracing.trace (tag "handleRaftEvent") <| fun () ->
       match ev with
@@ -793,7 +797,7 @@ module Iris =
       | RaftEvent.CreateSnapshot ch       -> onCreateSnapshot   state ch
       | RaftEvent.RetrieveSnapshot ch     -> onRetrieveSnapshot state ch
       | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
-      | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst
+      | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst agent
       | other ->
         Logger.info (tag "handleRaftEvent") (string other)
         state
@@ -1281,7 +1285,7 @@ module Iris =
           | Msg.SetConfig (chan,cnf) -> handleSetConfig      state chan  cnf
           | Msg.Git    ev            -> handleGitEvent       state inbox ev
           | Msg.Socket ev            -> handleSocketEvent    state       ev
-          | Msg.Raft   ev            -> handleRaftEvent      state       ev
+          | Msg.Raft   ev            -> handleRaftEvent      state       ev inbox
           | Msg.Api    ev            -> handleApiEvent       state       ev
           | Msg.Discovery ev         -> handleDiscoveryEvent state       ev
           | Msg.Log   log            -> handleLogEvent       state       log

@@ -1,10 +1,5 @@
 namespace Iris.Service
 
-// TODO:
-// - need to set node status when receiving and error message
-// - need to fix the socket subscriptions
-// - need to implement timeouts differently
-
 // * Imports
 
 #if !IRIS_NODES
@@ -43,13 +38,13 @@ module Raft =
 
   // ** IRaftStore
 
-  type IRaftStore<'t when 't : not struct> =
+  type private IRaftStore<'t when 't : not struct> =
     abstract State: 't
     abstract Update: 't -> unit
 
   // ** RaftStore module
 
-  module RaftStore =
+  module private RaftStore =
 
     let create<'t when 't : not struct> (initial: 't) =
       let mutable state = initial
