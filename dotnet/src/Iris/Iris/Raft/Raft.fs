@@ -2236,73 +2236,74 @@ module rec Raft =
             |> failM
 
         /// Process the vote if current state of our Raft must be candidate..
-        elif state.State = Candidate then
-
-          if vote.Granted then
-            let! mem = getMemberM nid
-            match mem with
-            // Could not find the mem in current configuration(s)
-            | None ->
-              do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
-              return!
-                "No Node"
-                |> Error.asRaftError (tag "receiveVoteResponse")
-                |> failM
-            // found the mem
-            | Some mem ->
-              do! setVotingM mem true
-
-              let! transitioning = inJointConsensusM ()
-
-              // in joint consensus
-              if transitioning then
-                //      _       _       _
-                //     | | ___ (_)_ __ | |_
-                //  _  | |/ _ \| | '_ \| __|
-                // | |_| | (_) | | | | | |_
-                //  \___/ \___/|_|_| |_|\__| consensus.
-                //
-                // we probe for a majority in both configurations
-                let! newConfig =
-                  numVotesForMeM () >>= regularMajorityM
-
-                let! oldConfig =
-                  numVotesForMeOldConfigM () >>= oldConfigMajorityM
-
-                do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
-                      newConfig
-                      oldConfig
-                    |> debug "receiveVoteResponse"
-
-                // and finally, become leader if we have a majority in either
-                // configuration
-                if newConfig || oldConfig then
-                  do! becomeLeader ()
-              else
-                //  ____                  _
-                // |  _ \ ___  __ _ _   _| | __ _ _ __
-                // | |_) / _ \/ _` | | | | |/ _` | '__|
-                // |  _ <  __/ (_| | |_| | | (_| | |
-                // |_| \_\___|\__, |\__,_|_|\__,_|_| configuration.
-                //            |___/
-                // the base case: we are not in joint consensus so we just use
-                // regular configuration functions
-                let! majority =
-                  numVotesForMeM () >>= regularMajorityM
-
-                do! sprintf "(majority for config: %b)" majority
-                    |> debug "receiveVoteResponse"
-
-                if majority then
-                  do! becomeLeader ()
-
-        /// ...otherwise we respond with the respective RaftError.
         else
-          do! debug "receiveVoteResponse" "Failed: NotCandidate"
-          return!
-            "Not Candidate"
-            |> Error.asRaftError (tag "receiveVoteResponse")
-            |> failM
+          match state.State with
+          | Leader -> return ()
+          | Follower ->
+            /// ...otherwise we respond with the respective RaftError.
+            do! debug "receiveVoteResponse" "Failed: NotCandidate"
+            return!
+              "Not Candidate"
+              |> Error.asRaftError (tag "receiveVoteResponse")
+              |> failM
+          | Candidate ->
+            if vote.Granted then
+              let! mem = getMemberM nid
+              match mem with
+              // Could not find the mem in current configuration(s)
+              | None ->
+                do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
+                return!
+                  "No Node"
+                  |> Error.asRaftError (tag "receiveVoteResponse")
+                  |> failM
+              // found the mem
+              | Some mem ->
+                do! setVotingM mem true
+
+                let! transitioning = inJointConsensusM ()
+
+                // in joint consensus
+                if transitioning then
+                  //      _       _       _
+                  //     | | ___ (_)_ __ | |_
+                  //  _  | |/ _ \| | '_ \| __|
+                  // | |_| | (_) | | | | | |_
+                  //  \___/ \___/|_|_| |_|\__| consensus.
+                  //
+                  // we probe for a majority in both configurations
+                  let! newConfig =
+                    numVotesForMeM () >>= regularMajorityM
+
+                  let! oldConfig =
+                    numVotesForMeOldConfigM () >>= oldConfigMajorityM
+
+                  do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
+                        newConfig
+                        oldConfig
+                      |> debug "receiveVoteResponse"
+
+                  // and finally, become leader if we have a majority in either
+                  // configuration
+                  if newConfig || oldConfig then
+                    do! becomeLeader ()
+                else
+                  //  ____                  _
+                  // |  _ \ ___  __ _ _   _| | __ _ _ __
+                  // | |_) / _ \/ _` | | | | |/ _` | '__|
+                  // |  _ <  __/ (_| | |_| | | (_| | |
+                  // |_| \_\___|\__, |\__,_|_|\__,_|_| configuration.
+                  //            |___/
+                  // the base case: we are not in joint consensus so we just use
+                  // regular configuration functions
+                  let! majority =
+                    numVotesForMeM () >>= regularMajorityM
+
+                  do! sprintf "(majority for config: %b)" majority
+                      |> debug "receiveVoteResponse"
+
+                  if majority then
+                    do! becomeLeader ()
       }
 
   // ** sendVoteRequest

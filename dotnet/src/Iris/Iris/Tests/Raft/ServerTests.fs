@@ -916,8 +916,6 @@ module ServerTests =
         do! Raft.addMemberM peer2
         do! Raft.setTermM (term 2)
         do! Raft.becomeCandidate ()
-        do! Raft.receiveVoteResponse peer1.Id { Granted = true; Term = term 3; Reason = None }
-        do! Raft.receiveVoteResponse peer2.Id { Granted = true; Term = term 3; Reason = None }
         expect "Should have two vote requests" 2 id !i
       }
       |> runWithRaft state cbs
@@ -936,8 +934,10 @@ module ServerTests =
         do! expectM "Should have 5 mems" 5 Raft.numMembers
         do! Raft.becomeCandidate ()
 
+        let! term = Raft.currentTermM ()
+
         for KeyValue(id,_) in peers do
-          do! Raft.receiveVoteResponse id { Term = term 1; Granted = true; Reason = None }
+          do! Raft.receiveVoteResponse id { Term = term; Granted = true; Reason = None }
 
         do! expectM "Should be leader" true Raft.isLeader
       }
