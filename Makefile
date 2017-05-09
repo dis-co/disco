@@ -16,7 +16,7 @@ export MONO_THREADS_PER_CPU
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTestsFast"
 
 tests:
 	${BUILD} BuildTests

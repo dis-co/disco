@@ -709,15 +709,18 @@ Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fs
 *)
 
 Target "BuildTests" (buildDebug "Projects/Tests/Tests.fsproj")
+Target "BuildTestsFast" (buildDebug "Projects/Tests/Tests.fsproj")
 
-Target "RunTests"
-  (fun _ ->
-    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
+let runTests = (fun _ ->
+  let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
 
-    if isUnix then
-      runMono "Iris.Tests.exe" testsDir
-    else
-      runTestsOnWindows "Iris.Tests.exe" testsDir)
+  if isUnix then
+    runMono "Iris.Tests.exe" testsDir
+  else
+    runTestsOnWindows "Iris.Tests.exe" testsDir)
+
+Target "RunTests" runTests
+Target "RunTestsFast" runTests
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
@@ -880,6 +883,9 @@ Target "Release" DoNothing
 
 "BuildTests"
 ==> "RunTests"
+
+"BuildTestsFast"
+==> "RunTestsFast"
 
 // ONWARDS!
 
