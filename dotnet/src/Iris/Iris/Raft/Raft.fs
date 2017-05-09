@@ -247,17 +247,9 @@ module rec Raft =
 
   let private rand = new System.Random()
 
-  // ** mkRaft
+  // ** create
 
-  //////////////////////////////////////
-  //   ____                _          //
-  //  / ___|_ __ ___  __ _| |_ ___    //
-  // | |   | '__/ _ \/ _` | __/ _ \   //
-  // | |___| | |  __/ (_| | ||  __/   //
-  //  \____|_|  \___|\__,_|\__\___|   //
-  //////////////////////////////////////
-
-  let mkRaft (self : RaftMember) : RaftValue =
+  let create (self : RaftMember) : RaftValue =
     { Member            = self
       State             = Follower
       CurrentTerm       = term 0
@@ -267,14 +259,13 @@ module rec Raft =
       NumMembers        = 1
       VotedFor          = None
       Log               = Log.empty
-      CommitIndex       = index 0
-      LastAppliedIdx    = index 0
+      CommitIndex       = 0<index>
+      LastAppliedIdx    = 0<index>
       TimeoutElapsed    = 0<ms>
-      ElectionTimeout   = 4000<ms>        // msec
-      RequestTimeout    = 500<ms>         // msec
-      MaxLogDepth       = 50              // items
-      ConfigChangeEntry = None
-    }
+      ElectionTimeout   = Constants.RAFT_ELECTION_TIMEOUT * 1<ms>
+      RequestTimeout    = Constants.RAFT_REQUEST_TIMEOUT * 1<ms>
+      MaxLogDepth       = Constants.RAFT_MAX_LOGDEPTH
+      ConfigChangeEntry = None }
 
   // ** isFollower
 
@@ -1618,9 +1609,9 @@ module rec Raft =
       let! self = getSelfM ()
       let! peers = logicalPeersM ()
 
-      for peer in peers do
-        if peer.Value.Id <> self.Id then
-          do! sendAppendEntry peer.Value
+      for KeyValue(id,peer) in peers do
+        if id <> self.Id then
+          do! sendAppendEntry peer
 
       do! setTimeoutElapsedM 0<ms>
     }
@@ -2185,8 +2176,8 @@ module rec Raft =
       do! voteForMyself ()
       do! setLeaderM None
       do! setStateM Candidate
-
-      let elapsed = 1<ms> * rand.Next(15, int state.ElectionTimeout)
+      // 150–300ms see page 6 in https://raft.github.io/raft.pdf
+      let elapsed = 1<ms> * rand.Next(10, int state.ElectionTimeout)
       do! debug "becomeCandidate" <| sprintf "setting timeoutElapsed to %d" elapsed
       do! setTimeoutElapsedM elapsed
 

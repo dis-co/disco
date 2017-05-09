@@ -443,8 +443,8 @@ table RaftConfigFB {
       MaxLogDepth: int;
       LogLevel: string;
       DataDir: string;
-      MaxRetries: ushort;
-      PeriodicInterval: ushort;
+      MaxRetries: int;
+      PeriodicInterval: int;
 }
 
 table TimingConfigFB {

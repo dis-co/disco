@@ -53,17 +53,17 @@ type RaftConfig =
     MaxLogDepth:      int
     LogLevel:         Iris.Core.LogLevel
     DataDir:          FilePath
-    MaxRetries:       uint8
-    PeriodicInterval: uint8 }
+    MaxRetries:       int
+    PeriodicInterval: Timeout }
 
   // ** Default
 
   static member Default =
-    { RequestTimeout   = 500<ms>
-      ElectionTimeout  = 6000<ms>
-      MaxLogDepth      = 20
-      MaxRetries       = 10uy
-      PeriodicInterval = 50uy
+    { RequestTimeout   = Constants.RAFT_REQUEST_TIMEOUT * 1<ms>
+      ElectionTimeout  = Constants.RAFT_ELECTION_TIMEOUT * 1<ms>
+      PeriodicInterval = Constants.RAFT_PERIODIC_INTERVAL * 1<ms>
+      MaxLogDepth      = Constants.RAFT_MAX_LOGDEPTH
+      MaxRetries       = 10
       LogLevel         = LogLevel.Err
       DataDir          = filepath "" }
 
@@ -79,8 +79,8 @@ type RaftConfig =
     RaftConfigFB.AddMaxLogDepth(builder, self.MaxLogDepth)
     RaftConfigFB.AddLogLevel(builder, lvl)
     RaftConfigFB.AddDataDir(builder, dir)
-    RaftConfigFB.AddMaxRetries(builder, uint16 self.MaxRetries)
-    RaftConfigFB.AddPeriodicInterval(builder, uint16 self.PeriodicInterval)
+    RaftConfigFB.AddMaxRetries(builder, self.MaxRetries)
+    RaftConfigFB.AddPeriodicInterval(builder, int self.PeriodicInterval)
     RaftConfigFB.EndRaftConfigFB(builder)
 
   // ** FromFB
@@ -94,8 +94,8 @@ type RaftConfig =
           MaxLogDepth      = fb.MaxLogDepth
           LogLevel         = level
           DataDir          = filepath fb.DataDir
-          MaxRetries       = uint8 fb.MaxRetries
-          PeriodicInterval = uint8 fb.PeriodicInterval }
+          MaxRetries       = fb.MaxRetries
+          PeriodicInterval = fb.PeriodicInterval * 1<ms> }
     }
 
 // * VvvvConfig
@@ -1106,8 +1106,8 @@ Project:
             MaxLogDepth      = engine.MaxLogDepth
             LogLevel         = loglevel
             DataDir          = filepath engine.DataDir
-            MaxRetries       = uint8 engine.MaxRetries
-            PeriodicInterval = uint8 engine.PeriodicInterval }
+            MaxRetries       = engine.MaxRetries
+            PeriodicInterval = engine.PeriodicInterval * 1<ms> }
       with
         | exn ->
           return!

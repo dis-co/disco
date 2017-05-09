@@ -39,7 +39,7 @@ module Persistence =
       let! mems = Config.getMembers options
       let state =
         mem
-        |> Raft.mkRaft
+        |> Raft.create
         |> Raft.addMembers mems
         |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
         |> Raft.setRequestTimeout options.Raft.RequestTimeout

@@ -60,6 +60,18 @@ module Constants =
   [<Literal>]
   let RAFT_LOGDATA_PATH = "logs"
 
+  [<Literal>]
+  let RAFT_ELECTION_TIMEOUT = 600       // see page 10 on timings in https://raft.github.io/raft.pdf
+
+  [<Literal>]
+  let RAFT_REQUEST_TIMEOUT = 60         // see ^
+
+  [<Literal>]
+  let RAFT_MAX_LOGDEPTH = 50
+
+  [<Literal>]
+  let RAFT_PERIODIC_INTERVAL = 1
+
   //  ___      _
   // |_ _|_ __(_)___
   //  | || '__| / __|
