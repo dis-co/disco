@@ -98,8 +98,6 @@ module Iris =
       member self.Dispose() =
         dispose self.Socket
 
-  // ** IrisStateData
-
   // ** IrisIdleStateData
 
   /// ## IrisIdleStateData
@@ -1308,9 +1306,9 @@ module Iris =
   [<RequireQualifiedAccess>]
   module IrisService =
 
-    // *** mkIris
+    // *** makeIris
 
-    let private mkIris (subscriptions: Subscriptions) (agent: IrisAgent) =
+    let private makeIris (subscriptions: Subscriptions) (agent: IrisAgent) =
       let listener =
         { new IObservable<IrisEvent> with
             member self.Subscribe(obs) =
@@ -1524,7 +1522,7 @@ module Iris =
             agentRef := Some agent
             agent
           agent.Start()
-          return mkIris subscriptions agent
+          return makeIris subscriptions agent
         }
       with
       | ex -> IrisError.Other(tag "create", ex.Message) |> Either.fail
