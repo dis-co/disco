@@ -7,8 +7,16 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Helpers
 
-let inline private Class x = ClassName x
+module private Helpers =
+  type RCom = React.ComponentClass<obj>
+  let Clock: RCom = importDefault "../../../src/widgets/Clock"
+  let SpreadView: RCom = importMember "../../../src/widgets/Spread"
+
+  let inline Class x = ClassName x
+  let inline (~%) x = createObj x
+
 
 type Layout =
   {
@@ -81,6 +89,7 @@ type CueProps =
 
 type CueListView(props) =
     inherit React.Component<CueProps, obj>(props)
+    let mutable el = Unchecked.defaultof<_>
 
     member this.UpdateSource() =
       failwith "TODO"
@@ -96,16 +105,15 @@ type CueListView(props) =
             ]
           ;div [Class "level-right"]
             [div [Class "level-item"]
-              [str "Clock"] //<Clock global={this.props.global} />
+              [from Clock %["global"==>this.props.globalModel] []]
             ]
         ]
       let rows =
         this.props.model.cues
         |> Seq.mapi (fun i cue ->
-        //       {React.createElement(SpreadView as any, {model:cue, global: this.props.global})}
-          div [Key (string i)] [str "Row"]) // TODO
+          let foo = from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []
+          div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []])
         |> Seq.toList
       // Return value
-      div [Class "iris-cuelist"; Ref ignore] // TODO
-        (header::rows)
+      div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
 
