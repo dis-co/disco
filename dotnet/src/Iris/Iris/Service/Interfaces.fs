@@ -61,14 +61,15 @@ type RaftEvent =
 
 [<NoComparison;NoEquality>]
 type RaftServerState =
-  { Status:        ServiceStatus
-    Raft:          RaftValue
-    Options:       IrisConfig
-    Callbacks:     IRaftCallbacks
-    Server:        IBroker
-    Disposables:   IDisposable list
-    Connections:   ConcurrentDictionary<Id,IClient>
-    Subscriptions: ResizeArray<IObserver<RaftEvent>> }
+  { Status:         ServiceStatus
+    Raft:           RaftValue
+    Options:        IrisConfig
+    Callbacks:      IRaftCallbacks
+    Server:         IBroker
+    Disposables:    IDisposable list
+    MakePeerSocket: ClientConfig -> IClient
+    Connections:    ConcurrentDictionary<Id,IClient>
+    Subscriptions:  ResizeArray<IObserver<RaftEvent>> }
 
   interface IDisposable with
     member self.Dispose() =

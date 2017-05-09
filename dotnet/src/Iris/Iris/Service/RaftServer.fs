@@ -1,7 +1,6 @@
 namespace Iris.Service
 
 // TODO:
-// - handle client responses
 // - need to set node status when receiving and error message
 // - need to fix the socket subscriptions
 // - need to implement timeouts differently
@@ -165,26 +164,34 @@ module Raft =
   let private updateRaft (context: RaftServerState) (raft: RaftValue) : RaftServerState =
     { context with Raft = raft }
 
-  // ** getConnection
+  // ** makePeerSocket
 
-  let private getConnection (constr: ClientConfig -> IClient)
-                            (connections: Connections)
-                            (peer: RaftMember)  =
+  let private makePeerSocket (peer: RaftMember) (construct: ClientConfig -> IClient) =
+    construct {
+      PeerId = peer.Id
+      Frontend = Uri.raftUri peer
+      Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
+    }
 
-    match connections.TryGetValue peer.Id with
-    | true, connection -> connection
-    | _ ->
-      let connection = constr {
-          PeerId = peer.Id
-          Frontend = Uri.raftUri peer
-          Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
-        }
+  // ** getPeerSocket
 
-      while not (connections.TryAdd(peer.Id, connection)) do
-        "Unable to add connection. Retrying."
-        |> Logger.err (tag "getConnection")
-        Thread.Sleep 1
-      connection
+  let private getPeerSocket (connections: Connections) (peer: Id)  =
+    match connections.TryGetValue peer with
+    | true, connection -> Some connection
+    | _ -> None
+
+  // ** registerPeerSocket
+
+  let private registerPeerSocket (arbiter: StateArbiter) (socket: IClient) =
+    socket.Subscribe (Msg.RawClientResponse >> arbiter.Post) |> ignore
+    socket
+
+  // ** addPeerSocket
+
+  let private addPeerSocket (connections: Connections) (socket: IClient) =
+    while not (connections.TryAdd(socket.PeerId, socket)) do
+      TimeSpan.FromTicks 1L
+      |> Thread.Sleep
 
   // ** notify
 
@@ -193,32 +200,35 @@ module Raft =
       for subscription in subscriptions do
         subscription.OnNext ev
 
-  // ** mkCallbacks
+  // ** sendRequest
 
-  let private mkCallbacks (id: Id)
-                          (constr: ClientConfig -> IClient)
-                          (connections: Connections)
-                          (subscriptions: Subscriptions) =
+  let private sendRequest (peer: RaftMember) connections request =
+    peer.Id
+    |> getPeerSocket connections
+    |> Option.map (performRequest request)
+    |> Option.orElse (Logger.err "SendRequestVote" "No Socket found for client" |> Some)
+    |> ignore
+
+  // ** makeCallbacks
+
+  let private makeCallbacks (id: Id)
+                            (constr: ClientConfig -> IClient)
+                            (connections: Connections)
+                            (subscriptions: Subscriptions) =
 
     { new IRaftCallbacks with
 
         member self.SendRequestVote peer request =
           Tracing.trace (tag "sendRequestVote") <| fun () ->
-            let request = RequestVote(id, request)
-            let client = getConnection constr connections peer
-            performRequest client request
+            RequestVote(id, request) |> sendRequest peer connections
 
         member self.SendAppendEntries peer request =
           Tracing.trace (tag "sendAppendEntries") <| fun () ->
-            let request = AppendEntries(id, request)
-            let client = getConnection constr connections peer
-            performRequest client request
+            AppendEntries(id, request) |> sendRequest peer connections
 
         member self.SendInstallSnapshot peer request =
           Tracing.trace (tag "sendInstallSnapshot") <| fun () ->
-            let client = getConnection constr connections peer
-            let request = InstallSnapshot(id, request)
-            performRequest client request
+            InstallSnapshot(id, request) |> sendRequest peer connections
 
         member self.PrepareSnapshot raft =
           Tracing.trace (tag "prepareSnapshot") <| fun () ->
@@ -472,7 +482,11 @@ module Raft =
 
   // ** processAppendEntries
 
-  let private processAppendEntries (state: RaftServerState) (sender: Id) (ae: AppendEntries) (raw: RawServerRequest) =
+  let private processAppendEntries (state: RaftServerState)
+                                   (sender: Id)
+                                   (ae: AppendEntries)
+                                   (raw: RawServerRequest) =
+
     Tracing.trace (tag "processAppendEntries") <| fun () ->
       let result =
         Raft.receiveAppendEntries (Some sender) ae
@@ -497,9 +511,13 @@ module Raft =
 
   // ** processAppendEntry
 
-  let private processAppendEntry (state: RaftServerState) (cmd: StateMachine) (raw: RawServerRequest) (arbiter: StateArbiter) =
+  let private processAppendEntry (state: RaftServerState)
+                                 (cmd: StateMachine)
+                                 (raw: RawServerRequest)
+                                 (arbiter: StateArbiter) =
+
     Tracing.trace (tag "processAppendEntry") <| fun () ->
-      if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
+      if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
         match appendCommand state cmd with
         | Right (entry, newstate) ->     // command was appended, now queue a message and the later
           let response =                // response to check its committed status, eventually
@@ -605,21 +623,19 @@ module Raft =
     Tracing.trace (tag "doRedirect") <| fun () ->
       match Raft.getLeader state.Raft with
       | Some mem ->
-        asynchronously <| fun _ ->
-          mem
-          |> Redirect
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        mem
+        |> Redirect
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         state
       | None ->
-        asynchronously <| fun _ ->
-          "No known leader"
-          |> Error.asRaftError (tag "doRedirect")
-          |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        "No known leader"
+        |> Error.asRaftError (tag "doRedirect")
+        |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         state
 
   // ** processHandshake
@@ -1073,6 +1089,9 @@ module Raft =
 
   let private handleAddMember (state: RaftServerState) (mem: RaftMember) (arbiter: StateArbiter) =
     Tracing.trace (tag "handleAddMember") <| fun () ->
+      makePeerSocket mem state.MakePeerSocket
+      |> registerPeerSocket arbiter
+      |> addPeerSocket state.Connections
       match addMembers state [| mem |] with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
@@ -1093,6 +1112,17 @@ module Raft =
 
   let private handleRemoveMember (state: RaftServerState) (id: Id) (arbiter: StateArbiter) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
+      if state.Connections.ContainsKey id then
+        let result, socket = state.Connections.TryRemove id
+        if result then                // re-try once!
+          let result, socket = state.Connections.TryRemove id
+          if result then
+            dispose socket
+          else
+            Logger.err "handleRemoveMember" "Unable to remove member"
+        else
+          dispose socket
+
       match removeMember state id with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
@@ -1173,11 +1203,13 @@ module Raft =
 
   // ** processRequest
 
-  let private processRequest (data: RaftServerState) (raw: RawServerRequest) (arbiter: StateArbiter) =
+  let private processRequest (data: RaftServerState)
+                             (raw: RawServerRequest)
+                             (arbiter: StateArbiter) =
+
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
-
         let newstate =
           match request with
           | AppendEntries (id, ae)   -> processAppendEntries   data id  ae  raw
@@ -1186,13 +1218,15 @@ module Raft =
           | AppendEntry  sm          -> processAppendEntry     data sm  raw arbiter
           // | HandShake mem            -> processHandshake       data mem raw arbiter
           // | HandWaive mem            -> processHandwaive       data mem raw arbiter
-
         return newstate
       }
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: RaftServerState) (raw: RawServerRequest) (arbiter: StateArbiter) =
+  let private handleServerRequest (state: RaftServerState)
+                                  (raw: RawServerRequest)
+                                  (arbiter: StateArbiter) =
+
     Tracing.trace (tag "handleRawRequest") <| fun () ->
       match processRequest state raw arbiter with
       | Right newdata -> newdata
@@ -1206,7 +1240,12 @@ module Raft =
 
   // ** handleReqCommitted
 
-  let private handleReqCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (raw: RawServerResponse) (arbiter: StateArbiter) =
+  let private handleReqCommitted (state: RaftServerState)
+                                 (ts: DateTime)
+                                 (entry: EntryResponse)
+                                 (raw: RawServerResponse)
+                                 (arbiter: StateArbiter) =
+
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
       let result =
         Raft.responseCommitted entry
@@ -1365,11 +1404,23 @@ module Raft =
 
     let private rand = System.Random()
 
+    // ** createListener
+
+    let private createListener (subscriptions: Subscriptions) =
+      { new IObservable<RaftEvent> with
+          member self.Subscribe(obs) =
+            lock subscriptions <| fun _ ->
+              subscriptions.Add obs
+
+            { new IDisposable with
+                member self.Dispose () =
+                  lock subscriptions <| fun _ ->
+                    subscriptions.Remove obs
+                    |> ignore } }
+
     // ** initializeRaft
 
-    let private initializeRaft (callbacks: IRaftCallbacks)
-                              (state: RaftValue)
-                              : Either<IrisError, RaftValue> =
+    let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftValue)  =
       Tracing.trace (tag "initializeRaft") <| fun () ->
         raft {
           let term = term 0
@@ -1395,23 +1446,12 @@ module Raft =
       either {
         let connections = new Connections()
         let subscriptions = new Subscriptions()
-
-        let listener =
-          { new IObservable<RaftEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
-
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
+        let listener = createListener subscriptions
 
         let! (callbacks, raftState) = either {
             let! raftState = Persistence.getRaft config
             let callbacks =
-              mkCallbacks
+              makeCallbacks
                 raftState.Member.Id
                 constr
                 connections
@@ -1422,10 +1462,11 @@ module Raft =
 
         let store =
           { Status = ServiceStatus.Stopped
+            Server = Unchecked.defaultof<IBroker>
+            MakePeerSocket = constr
             Raft = raftState
             Options = config
             Callbacks = callbacks
-            Server = Unchecked.defaultof<IBroker>
             Disposables = []
             Connections = connections
             Subscriptions = subscriptions }
@@ -1462,8 +1503,9 @@ module Raft =
                       Map.iter
                         (fun _ (peer: RaftMember) ->
                           if peer.Id <> raftState.Member.Id then
-                            getConnection constr connections peer
-                            |> ignore)
+                            makePeerSocket peer store.State.MakePeerSocket
+                            |> registerPeerSocket agent
+                            |> addPeerSocket connections)
                         raftState.Peers
 
                       store.Update

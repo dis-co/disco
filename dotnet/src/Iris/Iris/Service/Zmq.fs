@@ -95,7 +95,7 @@ module ZmqUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (client: IClient) (request: RaftRequest) =
+  let performRequest (request: RaftRequest) (client: IClient) =
     try
       rawRequest request client
       |> Either.mapError (string >> Logger.err "performRequest")
