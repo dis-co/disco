@@ -311,9 +311,6 @@ let project2tree (p: IrisProject) =
   ;  cfg2tree p.Config
   |] |> node "Project"
 
-let startWorkerContext() =
-  GlobalContext()
-
 let pinToKeyValuePairs (pin: Pin) =
   let zip labels values =
     let labels =
