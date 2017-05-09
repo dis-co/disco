@@ -212,21 +212,22 @@ module Iris =
   ///
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Git           of GitEvent
-    | Socket        of WebSocketEvent
-    | Raft          of RaftEvent
-    | Api           of ApiEvent
-    | Log           of LogEvent
-    | Clock         of ClockEvent
-    | Discovery     of DiscoveryEvent
-    | Load          of ReplyChan * project:string * user:string * pw:Password * site:string option
-    | SetConfig     of ReplyChan * IrisConfig
-    | AddMember     of ReplyChan * RaftMember
-    | RmMember      of ReplyChan * Id
-    | Config        of ReplyChan
-    | Unload        of ReplyChan
-    | State         of ReplyChan
-    | MachineStatus of ReplyChan
+    | Git               of GitEvent
+    | Socket            of WebSocketEvent
+    | Raft              of RaftEvent
+    | Api               of ApiEvent
+    | Log               of LogEvent
+    | Clock             of ClockEvent
+    | Discovery         of DiscoveryEvent
+    | Load              of ReplyChan * project:string * user:string * pw:Password * site:string option
+    | SetConfig         of ReplyChan * IrisConfig
+    | AddMember         of ReplyChan * RaftMember
+    | RmMember          of ReplyChan * Id
+    | Config            of ReplyChan
+    | Unload            of ReplyChan
+    | State             of ReplyChan
+    | MachineStatus     of ReplyChan
+    | RawClientResponse of RawClientResponse
     | ForceElection
     | Periodic
     // | Join          of ReplyChan * IpAddress  * uint16
@@ -607,13 +608,13 @@ module Iris =
 
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember) =
+  let private makeLeader (leader: RaftMember) (agent: IrisAgent) =
     let socket = Client.create {
         PeerId = leader.Id
         Frontend = Uri.raftUri leader
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
-    socket.Subscribe (Msg.)
+    socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
     { Member = leader; Socket = socket }
 
   // ** onStateChanged
@@ -1264,6 +1265,11 @@ module Iris =
       |> chan.Reply
     state
 
+  // ** handleClientResponse
+
+  let private handleClientResponse state (resp: RawClientResponse) (agent: IrisAgent) =
+    failwith "never"
+
   // ** loop
 
   let private loop (initial: IrisState)
@@ -1278,22 +1284,23 @@ module Iris =
           match msg with
           | Msg.Load (chan,pname,uname,pass,site) ->
             handleLoad state chan (pname,uname,pass,site) config post subs inbox
-          | Msg.Unload chan          -> handleUnload         state chan
-          | Msg.Config chan          -> handleConfig         state chan
-          | Msg.SetConfig (chan,cnf) -> handleSetConfig      state chan  cnf
-          | Msg.Git    ev            -> handleGitEvent       state inbox ev
-          | Msg.Socket ev            -> handleSocketEvent    state       ev
-          | Msg.Raft   ev            -> handleRaftEvent      state       ev inbox
-          | Msg.Api    ev            -> handleApiEvent       state       ev
-          | Msg.Discovery ev         -> handleDiscoveryEvent state       ev
-          | Msg.Log   log            -> handleLogEvent       state       log
-          | Msg.ForceElection        -> handleForceElection  state
-          | Msg.Periodic             -> handlePeriodic       state
-          | Msg.AddMember (chan,mem) -> handleAddMember      state chan  mem
-          | Msg.RmMember (chan,id)   -> handleRmMember       state chan  id
-          | Msg.State chan           -> handleState          state chan
-          | Msg.Clock clock          -> handleClock          state       clock
-          | Msg.MachineStatus chan   -> handleMachineStatus  state chan
+          | Msg.Unload chan            -> handleUnload         state chan
+          | Msg.Config chan            -> handleConfig         state chan
+          | Msg.SetConfig (chan,cnf)   -> handleSetConfig      state chan  cnf
+          | Msg.Git    ev              -> handleGitEvent       state inbox ev
+          | Msg.Socket ev              -> handleSocketEvent    state       ev
+          | Msg.Raft   ev              -> handleRaftEvent      state       ev inbox
+          | Msg.Api    ev              -> handleApiEvent       state       ev
+          | Msg.Discovery ev           -> handleDiscoveryEvent state       ev
+          | Msg.Log   log              -> handleLogEvent       state       log
+          | Msg.ForceElection          -> handleForceElection  state
+          | Msg.Periodic               -> handlePeriodic       state
+          | Msg.AddMember (chan,mem)   -> handleAddMember      state chan  mem
+          | Msg.RmMember (chan,id)     -> handleRmMember       state chan  id
+          | Msg.State chan             -> handleState          state chan
+          | Msg.Clock clock            -> handleClock          state       clock
+          | Msg.MachineStatus chan     -> handleMachineStatus  state chan
+          | Msg.RawClientResponse resp -> handleClientResponse state resp  inbox
           // | Msg.Join (chan,ip,port)  -> handleJoin           state chan  ip port
           // | Msg.Leave  chan          -> handleLeave          state chan
         return! act newstate
