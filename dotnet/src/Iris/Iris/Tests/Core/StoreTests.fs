@@ -22,13 +22,14 @@ module StoreTests =
     let project = IrisProject.Empty
 
     let state =
-      { Project  = project
-        PinGroups  = Map.empty
-        Cues     = Map.empty
-        CueLists = Map.empty
-        Users    = Map.empty
-        Sessions = Map.empty
-        Clients  = Map.empty
+      { Project            = project
+        PinGroups          = Map.empty
+        Cues               = Map.empty
+        CueLists           = Map.empty
+        Users              = Map.empty
+        Sessions           = Map.empty
+        Clients            = Map.empty
+        CuePlayers         = Map.empty
         DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)

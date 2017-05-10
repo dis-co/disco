@@ -268,3 +268,11 @@ module CuePlayer =
         (string player.Id)
         ASSET_EXTENSION
     CUEPLAYER_DIR <.> path
+
+  // ** updateSlices
+
+  let updateSlices (slices: Slices) (player: CuePlayer) =
+    { player with
+        Call = Pin.setSlices slices player.Call
+        Next = Pin.setSlices slices player.Next
+        Previous = Pin.setSlices slices player.Previous }

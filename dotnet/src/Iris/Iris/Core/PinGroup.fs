@@ -195,7 +195,8 @@ type PinGroup =
   // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, PinGroup array> =
-    IrisData.loadAll basePath
+    basePath </> filepath Constants.PINGROUP_DIR
+    |> IrisData.loadAll
 
   // ** Save
 
@@ -235,6 +236,8 @@ module PinGroup =
         ASSET_EXTENSION
     PINGROUP_DIR <.> path
 
+  // ** hasPin
+
   //  _               ____  _
   // | |__   __ _ ___|  _ \(_)_ __
   // | '_ \ / _` / __| |_) | | '_ \
@@ -243,6 +246,8 @@ module PinGroup =
 
   let hasPin (id: Id) (group : PinGroup) : bool =
     Map.containsKey id group.Pins
+
+  // ** addPin
 
   //            _     _ ____  _
   //   __ _  __| | __| |  _ \(_)_ __
@@ -254,6 +259,8 @@ module PinGroup =
     if hasPin pin.Id group
     then   group
     else { group with Pins = Map.add pin.Id pin group.Pins }
+
+  // ** updatePin
 
   //                  _       _       ____  _
   //  _   _ _ __   __| | __ _| |_ ___|  _ \(_)_ __
@@ -267,6 +274,8 @@ module PinGroup =
     then { group with Pins = Map.add pin.Id pin group.Pins }
     else   group
 
+  // ** updateSlices
+
   //                  _       _       ____  _ _
   //  _   _ _ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
   // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
@@ -278,6 +287,8 @@ module PinGroup =
     match Map.tryFind slices.Id group.Pins with
     | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
     | None -> group
+
+  // ** removePin
 
   //                                    ____  _
   //  _ __ ___ _ __ ___   _____   _____|  _ \(_)_ __

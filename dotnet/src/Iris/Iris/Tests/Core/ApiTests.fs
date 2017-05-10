@@ -29,13 +29,14 @@ module ApiTests =
         Author    = None
         Config    = Config.create "Hello" machine  }
 
-    { Project   = project
-      PinGroups = Map.empty
-      Cues      = Map.empty
-      CueLists  = Map.empty
-      Sessions  = Map.empty
-      Users     = Map.empty
-      Clients   = Map.empty
+    { Project            = project
+      PinGroups          = Map.empty
+      Cues               = Map.empty
+      CueLists           = Map.empty
+      Sessions           = Map.empty
+      Users              = Map.empty
+      Clients            = Map.empty
+      CuePlayers         = Map.empty
       DiscoveredServices = Map.empty }
 
   //  ____

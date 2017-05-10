@@ -129,6 +129,7 @@ type State =
     Sessions:           Map<Id,Session>
     Users:              Map<Id,User>
     Clients:            Map<Id,IrisClient>
+    CuePlayers:         Map<Id,CuePlayer>
     DiscoveredServices: Map<Id,DiscoveredService> }
 
   // ** Empty
@@ -137,11 +138,12 @@ type State =
     with get () =
       { Project  = IrisProject.Empty
         PinGroups  = Map.empty
-        Cues     = Map.empty
-        CueLists = Map.empty
-        Sessions = Map.empty
-        Users    = Map.empty
-        Clients  = Map.empty
+        Cues       = Map.empty
+        CueLists   = Map.empty
+        Sessions   = Map.empty
+        Users      = Map.empty
+        Clients    = Map.empty
+        CuePlayers = Map.empty
         DiscoveredServices = Map.empty }
 
   // ** Load
@@ -150,18 +152,22 @@ type State =
 
   static member Load (path: FilePath, machine: IrisMachine) =
     either {
+      let inline toMap value = Either.map (Array.map toPair >> Map.ofArray) value
+
       let! project  = Asset.loadWithMachine path machine
-      let! users    = Asset.loadAll project.Path
-      let! cues     = Asset.loadAll project.Path
-      let! cuelists = Asset.loadAll project.Path
-      let! groups   = Asset.loadAll project.Path
+      let! users    = Asset.loadAll project.Path |> toMap
+      let! cues     = Asset.loadAll project.Path |> toMap
+      let! cuelists = Asset.loadAll project.Path |> toMap
+      let! groups   = Asset.loadAll project.Path |> toMap
+      let! players  = Asset.loadAll project.Path |> toMap
 
       return
-        { Project  = project
-          Users    = Array.map toPair users    |> Map.ofArray
-          Cues     = Array.map toPair cues     |> Map.ofArray
-          CueLists = Array.map toPair cuelists |> Map.ofArray
-          PinGroups  = Array.map toPair groups  |> Map.ofArray
+        { Project            = project
+          Users              = users
+          Cues               = cues
+          CueLists           = cuelists
+          PinGroups          = groups
+          CuePlayers         = players
           Sessions           = Map.empty
           Clients            = Map.empty
           DiscoveredServices = Map.empty }
@@ -179,6 +185,7 @@ type State =
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CuePlayers
       do! Asset.save basePath state.Project
     }
 
@@ -232,6 +239,12 @@ type State =
 
     let clientsoffset = StateFB.CreateClientsVector(builder, clients)
 
+    let players =
+      Map.toArray self.CuePlayers
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let playersoffset = StateFB.CreateCuePlayersVector(builder, players)
+
     let services =
       Map.toArray self.DiscoveredServices
       |> Array.map (snd >> Binary.toOffset builder)
@@ -246,6 +259,7 @@ type State =
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddClients(builder, clientsoffset)
     StateFB.AddUsers(builder, usersoffset)
+    StateFB.AddCuePlayers(builder, playersoffset)
     StateFB.AddDiscoveredServices(builder, servicesoffset)
     StateFB.EndStateFB(builder)
 
@@ -441,6 +455,34 @@ type State =
           arr
         |> Either.map snd
 
+      // PLAYERS
+
+      let! players =
+        let arr = Array.zeroCreate fb.CuePlayersLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, CuePlayer>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! player = fb.CuePlayers(i) |> CuePlayer.FromFB
+            #else
+            let! player =
+              let value = fb.CuePlayers(i)
+              if value.HasValue then
+                value.Value
+                |> CuePlayer.FromFB
+              else
+                "Could not parse empty CuePlayer payload"
+                |> Error.asParseError "CuePlayer.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add player.Id player map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
       // DISCOVERED SERVICES
 
       let! discoveredServices =
@@ -469,13 +511,14 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project   = project
-               PinGroups = groups
-               Cues      = cues
-               CueLists  = cuelists
-               Users     = users
-               Sessions  = sessions
-               Clients   = clients
+      return { Project            = project
+               PinGroups          = groups
+               Cues               = cues
+               CueLists           = cuelists
+               Users              = users
+               Sessions           = sessions
+               Clients            = clients
+               CuePlayers         = players
                DiscoveredServices = discoveredServices }
     }
 
@@ -489,6 +532,29 @@ type State =
 // * State module
 
 module State =
+
+  // ** addCuePlayer
+
+  let addCuePlayer (player: CuePlayer) (state: State) =
+    if Map.containsKey player.Id state.CuePlayers then
+      state
+    else
+      let players = Map.add player.Id player state.CuePlayers
+      { state with CuePlayers = players }
+
+  // ** updateCuePlayer
+
+  let updateCuePlayer (player: CuePlayer) (state: State) =
+    if Map.containsKey player.Id state.CuePlayers then
+      let players = Map.add player.Id player state.CuePlayers
+      { state with CuePlayers = players }
+    else
+      state
+
+  // ** removeCuePlayer
+
+  let removeCuePlayer (player: CuePlayer) (state: State) =
+    { state with CuePlayers = Map.remove player.Id state.CuePlayers }
 
   // ** addUser
 
@@ -514,10 +580,10 @@ module State =
     else
       state
 
-  // ** RemoveUser
+  // ** removeUser
 
   let removeUser (user: User) (state: State) =
-    { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
+    { state with Users = Map.remove user.Id state.Users }
 
   // ** addOrUpdateService
 
@@ -558,7 +624,7 @@ module State =
   // ** removeSession
 
   let removeSession (session: Session) (state: State) =
-    { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
+    { state with Sessions = Map.remove session.Id state.Sessions }
 
   // ** addPinGroup
 
@@ -620,10 +686,13 @@ module State =
   // ** updateSlices
 
   let updateSlices (slices: Slices) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      PinGroup.updateSlices slices group
-    { state with PinGroups = Map.map mapper state.PinGroups }
-
+    { state with
+        PinGroups = Map.map
+                      (fun _ group -> PinGroup.updateSlices slices group)
+                      state.PinGroups
+        CuePlayers = Map.map
+                      (fun _ player -> CuePlayer.updateSlices slices player)
+                      state.CuePlayers }
   // ** removePin
 
   let removePin (pin : Pin) (state: State) =
@@ -923,7 +992,7 @@ type Store(state : State)=
 
   let mutable state = state
 
-  let mutable history = new History {
+  let mutable history = History {
       State = state;
       Event = Command(AppCommand.Reset);
     }
@@ -967,9 +1036,9 @@ type Store(state : State)=
     with get () = history.Depth
       and set n  = history.Depth <- n
 
-  // ** Disgroup
+  // ** Dispatch
 
-  /// ## Disgroup
+  /// ## Dispatch
   ///
   /// Disgroup an action (StateMachine command) to be executed against the current version of the
   /// `State` to produce the next `State`.
@@ -999,6 +1068,10 @@ type Store(state : State)=
     | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
     | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
     | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
+
+    | AddCuePlayer    player        -> State.addCuePlayer    player state |> andRender
+    | UpdateCuePlayer player        -> State.updateCuePlayer player state |> andRender
+    | RemoveCuePlayer player        -> State.removeCuePlayer player state |> andRender
 
     | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
     | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
@@ -1163,6 +1236,11 @@ type StateMachine =
   | UpdateCueList         of CueList
   | RemoveCueList         of CueList
 
+  // CUEPLAYER
+  | AddCuePlayer          of CuePlayer
+  | UpdateCuePlayer       of CuePlayer
+  | RemoveCuePlayer       of CuePlayer
+
   // User
   | AddUser               of User
   | UpdateUser            of User
@@ -1228,6 +1306,11 @@ type StateMachine =
     | UpdateCueList           _ -> "UpdateCueList"
     | RemoveCueList           _ -> "RemoveCueList"
 
+    // CUEPLAYER
+    | AddCuePlayer            _ -> "AddCuePlayer"
+    | UpdateCuePlayer         _ -> "UpdateCuePlayer"
+    | RemoveCuePlayer         _ -> "RemoveCuePlayer"
+
     // User
     | AddUser                 _ -> "AddUser"
     | UpdateUser              _ -> "UpdateUser"
@@ -1259,7 +1342,8 @@ type StateMachine =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-#if FABLE_COMPILER
+  #if FABLE_COMPILER
+
   static member FromFB (fb: StateMachineFB) =
     match fb.PayloadType with
     | x when x = StateMachinePayloadFB.ProjectFB ->
@@ -1369,6 +1453,20 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    | x when x = StateMachinePayloadFB.CuePlayerFB ->
+      let cuelist = fb.CuePlayerFB |> CuePlayer.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddCuePlayer cuelist
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateCuePlayer cuelist
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemoveCuePlayer cuelist
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
     | x when x = StateMachinePayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
@@ -1455,7 +1553,7 @@ type StateMachine =
       |> AppCommand.FromFB
       |> Either.map Command
 
-#else
+  #else
 
   // ** FromFB (.NET)
 
@@ -1572,6 +1670,36 @@ type StateMachine =
         | StateMachineActionFB.AddFB    -> return (AddCueList    cuelist)
         | StateMachineActionFB.UpdateFB -> return (UpdateCueList cuelist)
         | StateMachineActionFB.RemoveFB -> return (RemoveCueList cuelist)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | StateMachinePayloadFB.CuePlayerFB ->
+      either {
+        let! player =
+          let playerish = fb.Payload<CuePlayerFB>()
+          if playerish.HasValue then
+            playerish.Value
+            |> CuePlayer.FromFB
+          else
+            "Could not parse empty player payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddCuePlayer    player)
+        | StateMachineActionFB.UpdateFB -> return (UpdateCuePlayer player)
+        | StateMachineActionFB.RemoveFB -> return (RemoveCuePlayer player)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1845,7 +1973,8 @@ type StateMachine =
       return (Command cmd)
     }
 
-#endif
+  #endif
+
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
@@ -2119,6 +2248,42 @@ type StateMachine =
       StateMachineFB.AddPayload(builder, cuelist)
 #else
       StateMachineFB.AddPayload(builder, cuelist.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | AddCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdateCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemoveCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 

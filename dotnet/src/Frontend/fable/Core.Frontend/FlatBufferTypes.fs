@@ -1428,6 +1428,8 @@ type StateFB =
   abstract UsersLength: int
   abstract Clients: int -> IrisClientFB
   abstract ClientsLength: int
+  abstract CuePlayers: int -> CuePlayerFB
+  abstract CuePlayersLength: int
   abstract DiscoveredServices: int -> DiscoveredServiceFB
   abstract DiscoveredServicesLength: int
 
@@ -1441,11 +1443,13 @@ type StateFBConstructor =
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
   abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
   abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
+  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: Offset<'a> -> unit
   abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
   abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
   abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
   abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
+  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
   abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
   abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
   abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
@@ -1623,6 +1627,7 @@ type StateMachinePayloadFBConstructor =
   abstract ProjectFB: StateMachinePayloadFB
   abstract SlicesFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
+  abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
 
@@ -1644,6 +1649,7 @@ type StateMachineFB =
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
   abstract IrisClientFB: IrisClientFB
+  abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
   abstract Payload: 'a -> 'a
 

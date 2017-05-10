@@ -256,18 +256,27 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
+  let mkPlayers () =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkCuePlayer() |]
+
+  let mkDiscoveredServices() =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkDiscoveredService() |]
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
       return
-        { Project  = project
-          PinGroups  = mkPinGroups () |> asMap
-          Cues     = mkCues    () |> asMap
-          CueLists = mkCueLists() |> asMap
-          Sessions = mkSessions() |> asMap
-          Users    = mkUsers   () |> asMap
-          Clients  = mkClients () |> asMap
-          DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
+        { Project            = project
+          PinGroups          = mkPinGroups()          |> asMap
+          Cues               = mkCues()               |> asMap
+          CueLists           = mkCueLists()           |> asMap
+          Sessions           = mkSessions()           |> asMap
+          Users              = mkUsers()              |> asMap
+          Clients            = mkClients()            |> asMap
+          CuePlayers         = mkPlayers()            |> asMap
+          DiscoveredServices = mkDiscoveredServices() |> asMap }
     }
 
   let mkChange _ =

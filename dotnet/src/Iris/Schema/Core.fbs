@@ -584,13 +584,14 @@ table CuePlayerFB {
 // |____/ \__\__,_|\__\___|
 
 table StateFB {
-      Project:  ProjectFB;
-      PinGroups:  [PinGroupFB];
-      Cues:     [CueFB];
-      CueLists: [CueListFB];
-      Sessions: [SessionFB];
-      Users:    [UserFB];
-      Clients:  [IrisClientFB];
+      Project:            ProjectFB;
+      PinGroups:          [PinGroupFB];
+      Cues:               [CueFB];
+      CueLists:           [CueListFB];
+      Sessions:           [SessionFB];
+      Users:              [UserFB];
+      Clients:            [IrisClientFB];
+      CuePlayers:         [CuePlayerFB];
       DiscoveredServices: [DiscoveredServiceFB];
 }
 
@@ -639,6 +640,7 @@ union StateMachinePayloadFB {
       StateFB,
       SlicesFB,
       ProjectFB,
+      CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB
 }
