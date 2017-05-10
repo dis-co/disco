@@ -1,1 +1,1 @@
-..\..\Iris\bin\Release\MockClient\client.exe -b 127.0.0.1 -h 192.168.8.10 -p 5000
+..\..\Iris\bin\Release\MockClient\client.exe -b 127.0.0.1 -h 192.168.1.60 -p 5000

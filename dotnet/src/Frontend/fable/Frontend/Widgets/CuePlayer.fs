@@ -15,6 +15,7 @@ module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
   let SpreadView: RCom = importMember "../../../src/widgets/Spread"
+  let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
   let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
@@ -97,11 +98,12 @@ type CuePlayer(?cueLists: CueList list) =
 type CuePlayerProps =
   { id: int;
     model: CuePlayer
-    globalModel: GlobalModel }
+    ``global``: GlobalModel }
 
 type CuePlayerView(props) =
     inherit React.Component<CuePlayerProps, obj>(props)
-    let mutable el = Unchecked.defaultof<_>
+    let disposables = ResizeArray()
+    let mutable selfRef = Unchecked.defaultof<Browser.Element>
 
     // member this.render() =
     //   let header =
@@ -114,17 +116,39 @@ type CuePlayerView(props) =
     //         ]
     //       ;div [Class "level-right"]
     //         [div [Class "level-item"]
-    //           [from Clock %["global"==>this.props.globalModel] []]
+    //           [from Clock %["global"==>this.props.``global``] []]
     //         ]
     //     ]
     //   let rows =
     //     this.props.model.cues
     //     |> Seq.mapi (fun i cue ->
-    //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []
-    //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.globalModel] []])
+    //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
+    //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []])
     //     |> Seq.toList
     //   // Return value
     //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
+
+    member this.componentDidMount() =
+      disposables.Add(this.props.``global``.subscribeToEvent("drag", fun ev ->
+          if selfRef <> null && !!ev?origin <> props.id then
+            let mutable highlight = false
+            if touchesElement(selfRef, !!ev?x, !!ev?y) then
+              match !!ev?``type`` with
+              | "move" ->
+                highlight <- true
+              | "stop" ->
+                failwith "TODO: Add cue to cue list"
+                this.forceUpdate()
+              | _ -> ()
+            if highlight
+            then selfRef.classList.add("iris-highlight-blue")
+            else selfRef.classList.remove("iris-highlight-blue")
+        )
+      )
+
+    member this.componentWillUnmount() =
+      for d in disposables do
+        d.Dispose()
 
     member this.RenderCueList(cueList: CueList) =
       let leftIconClass =
@@ -192,7 +216,10 @@ type CuePlayerView(props) =
       ]
 
     member this.render() =
-      div [Class "cueplayer-container"] [
+      div [
+        Class "cueplayer-container"
+        Ref (fun el -> selfRef <- el)
+      ] [
         // HEADER
         yield
           div [Class "cueplayer-list-header"] [
