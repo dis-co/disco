@@ -17,6 +17,7 @@ module private Helpers =
   let SpreadView: RCom = importMember "../../../src/widgets/Spread"
 
   let inline Class x = ClassName x
+  let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
   let inline (~%) x = createObj x
 
 
@@ -31,6 +32,11 @@ type Layout =
 type ISpread =
   abstract member pin: Pin
   abstract member rows: (string*obj)[]
+
+type IWidgetModel =
+  abstract name: string
+  abstract layout: Layout
+  abstract view: System.Type
 
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
@@ -60,8 +66,6 @@ let updateSlices(pin: Pin, rowIndex, newValue: obj) =
 type Cue(spread: ISpread) =
   member val Pin = spread.pin
   member val Rows = spread.rows
-  member val Open = false with get, set
-  member val UpdateView = true
 
   member this.Update(rowIndex, newValue) =
     let oldValue = this.Rows.[rowIndex]
@@ -71,17 +75,23 @@ type Cue(spread: ISpread) =
     for i = 0 to this.Rows.Length do
       updateSlices(this.Pin, i, snd this.Rows.[i])
 
-type CuePlayer() =
-  member val view = typeof<CuePlayerView>
-  member val name = "Cue Player"
-  member val cues = ResizeArray()
-  member val layout =
-    {
-      x = 0; y = 0;
-      w = 8; h = 5;
-      minW = 2; maxW = 10;
-      minH = 1; maxH = 10;
-    }
+type CueList(cues: Cue list) =
+  member val Cues = cues
+  member val Open = false with get, set
+
+type CuePlayer(?cueLists: CueList list) =
+  member val CueLists = defaultArg cueLists [CueList[]]
+  interface IWidgetModel with
+    member __.view = typeof<CuePlayerView>
+    member __.name = "Cue Player"
+    member __.layout =
+      {
+        x = 0; y = 0;
+        w = 8; h = 5;
+        minW = 2; maxW = 10;
+        minH = 1; maxH = 10;
+      }
+
 
 [<Pojo>]
 type CuePlayerProps =
@@ -116,10 +126,18 @@ type CuePlayerView(props) =
     //   // Return value
     //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
 
-    member this.renderCue() =
+    member this.RenderCueList(cueList: CueList) =
+      let leftIconClass =
+        if cueList.Open
+        then "iris-icon iris-icon-caret-down-two"
+        else "iris-icon iris-icon-caret-right"
       div [Class "cueplayer-list-header cueplayer-cue level"] [
         div [Class "level-left"] [
-          div [Class "level-item"] [span [Class "iris-icon iris-icon-caret-down-two"] []]
+          div [Class "level-item"] [
+            span [
+              Class leftIconClass
+              OnClick (fun _ -> cueList.Open <- not cueList.Open; this.forceUpdate())
+            ] []]
           div [Class "level-item"] [
             div [Class "cueplayer-button iris-icon cueplayer-player"] [
               span [Class "iris-icon iris-icon-play"] []
@@ -152,7 +170,10 @@ type CuePlayerView(props) =
           form [] [
             input [
               Class "cueplayer-cueDesc"
-              // !!("style", "width:60px; margin-right:5px;")
+              Style [
+                CSSProp.Width 60.
+                MarginRight 5.
+              ]
               Type "text"
               Value !^"00:00:00"
               Name "firstname"
@@ -173,22 +194,25 @@ type CuePlayerView(props) =
     member this.render() =
       div [Class "cueplayer-container"] [
         // HEADER
-        div [Class "cueplayer-list-header"] [
-          div [Class "cueplayer-button cueplayer-go"] [
-            span [Class "iris-icon"; !!("data-icon", "c")] [str "GO"]
+        yield
+          div [Class "cueplayer-list-header"] [
+            div [Class "cueplayer-button cueplayer-go"] [
+              span [
+                Class "iris-icon"
+                CustomKeyValue("data-icon", "c")
+              ] [str "GO"]
+            ]
+            div [Class "cueplayer-button iris-icon"] [
+              span [Class "iris-icon iris-icon-fast-backward"] []
+            ]
+            div [Class "cueplayer-button iris-icon"] [
+              span [Class "iris-icon iris-icon-fast-forward"] []
+            ]
+            div [Class "cueplayer-button"] [str "Add Cue"]
+            div [Class "cueplayer-button"] [str "Add Group"]
+            div [Style [Clear "both"]] []
           ]
-          div [Class "cueplayer-button iris-icon"] [
-            span [Class "iris-icon iris-icon-fast-backward"] []
-          ]
-          div [Class "cueplayer-button iris-icon"] [
-            span [Class "iris-icon iris-icon-fast-forward"] []
-          ]
-          div [Class "cueplayer-button"] [str "Add Cue"]
-          div [Class "cueplayer-button"] [str "Add Group"]
-          div [
-            // !!("style", "clear:both;")
-              ] []
-        ]
-        // CUE
-        this.renderCue()
+        // CUE LISTS
+        for cueList in this.props.model.CueLists do
+          yield this.RenderCueList(cueList)
       ]
