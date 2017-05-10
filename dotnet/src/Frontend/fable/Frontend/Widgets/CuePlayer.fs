@@ -119,10 +119,10 @@ type CuePlayerView(props) =
     member this.renderCue() =
       div [Class "cueplayer-list-header cueplayer-cue"] [
         ul [Class "cueplayer-ul"] [
-          li [] [span [Class "cueplayer-icon cueplayer-icon-caret-down-two"] []]
+          li [] [span [Class "iris-icon iris-icon-caret-down-two"] []]
           li [] [
-            div [Class "cueplayer-button cueplayer-icon cueplayer-player"] [
-              span [Class "cueplayer-icon cueplayer-icon-play"] []
+            div [Class "cueplayer-button iris-icon cueplayer-player"] [
+              span [Class "iris-icon iris-icon-play"] []
             ]
           ]
           li [] [
@@ -159,11 +159,11 @@ type CuePlayerView(props) =
             br []
           ]
           li [] [
-            div [Class "cueplayer-button cueplayer-icon"] [
-              span [Class "cueplayer-icon cueplayer-icon-duplicate"] []
+            div [Class "cueplayer-button iris-icon"] [
+              span [Class "iris-icon iris-icon-duplicate"] []
             ]
-            div [Class "cueplayer-button cueplayer-icon cueplayer-close"] [
-              span [Class "cueplayer-icon cueplayer-icon-close"] []
+            div [Class "cueplayer-button iris-icon cueplayer-close"] [
+              span [Class "iris-icon iris-icon-close"] []
             ]
           ]
         ]
@@ -174,13 +174,13 @@ type CuePlayerView(props) =
         // HEADER
         div [Class "cueplayer-list-header"] [
           div [Class "cueplayer-button cueplayer-go"] [
-            span [Class "cueplayer-icon"] [str "GO"]
+            span [Class "iris-icon"; !!("data-icon", "c")] [str "GO"]
           ]
-          div [Class "cueplayer-button cueplayer-icon"] [
-            span [Class "cueplayer-icon cueplayer-icon-fast-backward"] []
+          div [Class "cueplayer-button iris-icon"] [
+            span [Class "iris-icon iris-icon-fast-backward"] []
           ]
-          div [Class "cueplayer-button cueplayer-icon"] [
-            span [Class "cueplayer-icon cueplayer-icon-fast-forward"] []
+          div [Class "cueplayer-button iris-icon"] [
+            span [Class "iris-icon iris-icon-fast-forward"] []
           ]
           div [Class "cueplayer-button"] [str "Add Cue"]
           div [Class "cueplayer-button"] [str "Add Group"]
