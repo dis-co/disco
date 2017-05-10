@@ -20,6 +20,7 @@ module SerializationTests =
   let mk() = Id.Create()
 
   let rndstr() = mk() |> string
+  let rndname() = mk() |> string |> name
 
   let rndport() = rand.Next(0,65535) |> uint16 |> port
 
@@ -121,6 +122,24 @@ module SerializationTests =
     { Id = Id.Create()
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
+
+  let mkCuePlayer() =
+    let rndopt () =
+      if rand.Next(0,2) > 0 then
+        Some (rndstr() |> Id)
+      else
+        None
+
+    { Id = Id.Create()
+      Name = rndname ()
+      CueList = rndopt ()
+      Selected = index (rand.Next(0,1000))
+      Call = mkPin()
+      Next = mkPin()
+      Previous = mkPin()
+      RemainingWait = rand.Next(0,1000)
+      LastCaller = rndopt()
+      LastCalled = rndopt() }
 
   let mkState _ =
     { Project   = mkProject ()
@@ -281,4 +300,8 @@ module SerializationTests =
 
     test "Validate DiscoveredService Binary Serialization" <| fun finish ->
       mkDiscoveredService() |> check
+      finish()
+
+    test "Validate CuePlayer Binary Serialization" <| fun finish ->
+      mkCuePlayer() |> check
       finish()

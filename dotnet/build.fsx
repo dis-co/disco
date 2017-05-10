@@ -649,7 +649,12 @@ Target "BuildWebTests" (fun _ ->
   runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
 )
 
-Target "RunWebTests" (fun _ ->
+Target "BuildWebTestsFast" (fun _ ->
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
+)
+
+let runWebTests = (fun _ ->
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
@@ -657,6 +662,10 @@ Target "RunWebTests" (fun _ ->
   else
     runNpm "test" frontendDir ()
 )
+
+Target "RunWebTests" runWebTests
+Target "RunWebTestsFast" runWebTests
+
 //    _   _ _____ _____
 //   | \ | | ____|_   _|
 //   |  \| |  _|   | |
@@ -904,6 +913,9 @@ Target "Release" DoNothing
 
 "BuildWebTests"
 ==> "RunWebTests"
+
+"BuildWebTestsFast"
+==> "RunWebTestsFast"
 
 "BuildTests"
 ==> "DockerRunTests"

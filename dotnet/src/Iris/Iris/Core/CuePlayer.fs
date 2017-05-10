@@ -209,15 +209,9 @@ type CuePlayer =
 
   member player.ToYamlObject() = CuePlayerYaml.From(player)
 
-  #endif
-
   // ** FromYamlObject
 
-  #if !FABLE_COMPILER && !IRIS_NODES
-
   static member FromYamlObject(yaml: CuePlayerYaml) = yaml.ToPlayer()
-
-  #endif
 
   // ** FromYaml
 
@@ -233,7 +227,11 @@ type CuePlayer =
     |> Yaml.toYaml
     |> serializer.Serialize
 
+  #endif
+
   // ** Load
+
+  #if !FABLE_COMPILER
 
   static member Load(path: FilePath) : Either<IrisError,CuePlayer> =
     IrisData.load path
@@ -248,6 +246,8 @@ type CuePlayer =
 
   member player.Save(basePath: FilePath) =
     IrisData.save basePath player
+
+  #endif
 
   // ** AssetPath
 

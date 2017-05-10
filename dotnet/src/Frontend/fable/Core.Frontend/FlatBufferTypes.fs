@@ -1371,6 +1371,43 @@ type DiscoveredServiceFBConstructor =
 
 let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 
+//   ____           ____  _                       _____ ____
+//  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __|  ___| __ )
+// | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__| |_  |  _ \
+// | |__| |_| |  __/  __/| | (_| | |_| |  __/ |  |  _| | |_) |
+//  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|  |_|   |____/
+//                                |___/
+
+type CuePlayerFB =
+  abstract Id: string
+  abstract Name: string
+  abstract CueList: string
+  abstract Selected: int
+  abstract Call: PinFB
+  abstract Next: PinFB
+  abstract Previous: PinFB
+  abstract RemainingWait: int
+  abstract LastCaller: string
+  abstract LastCalled: string
+
+type CuePlayerFBConstructor =
+  abstract prototype: CuePlayerFB with get, set
+  abstract StartCuePlayerFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<string> -> unit
+  abstract AddSelected: builder: FlatBufferBuilder * int -> unit
+  abstract AddCall: builder: FlatBufferBuilder * call: Offset<PinFB> -> unit
+  abstract AddNext: builder: FlatBufferBuilder * next: Offset<PinFB> -> unit
+  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<PinFB> -> unit
+  abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
+  abstract AddLastCaller: builder: FlatBufferBuilder * lastcaller: Offset<string> -> unit
+  abstract AddLastCalled: builder: FlatBufferBuilder * lastcalled: Offset<string> -> unit
+  abstract EndCuePlayerFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCuePlayerFB: buffer: ByteBuffer -> CuePlayerFB
+
+let CuePlayerFB : CuePlayerFBConstructor = failwith "JS only"
+
 //  ____  _        _       _____ ____
 // / ___|| |_ __ _| |_ ___|  ___| __ )
 // \___ \| __/ _` | __/ _ \ |_  |  _ \

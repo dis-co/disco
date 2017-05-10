@@ -79,7 +79,7 @@ run.service.3.project:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTestsFast"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
