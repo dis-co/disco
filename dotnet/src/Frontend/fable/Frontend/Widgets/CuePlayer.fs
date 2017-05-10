@@ -73,7 +73,7 @@ type Cue(spread: ISpread) =
 
 type CuePlayer() =
   member val view = typeof<CuePlayerView>
-  member val name = "Cue List"
+  member val name = "Cue Player"
   member val cues = ResizeArray()
   member val layout =
     {
@@ -117,37 +117,38 @@ type CuePlayerView(props) =
     //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
 
     member this.renderCue() =
-      div [Class "cueplayer-list-header cueplayer-cue"] [
-        ul [Class "cueplayer-ul"] [
-          li [] [span [Class "iris-icon iris-icon-caret-down-two"] []]
-          li [] [
+      div [Class "cueplayer-list-header cueplayer-cue level"] [
+        div [Class "level-left"] [
+          div [Class "level-item"] [span [Class "iris-icon iris-icon-caret-down-two"] []]
+          div [Class "level-item"] [
             div [Class "cueplayer-button iris-icon cueplayer-player"] [
               span [Class "iris-icon iris-icon-play"] []
             ]
           ]
-          li [] [
-            form [] [
-              input [
-                Class "cueplayer-cueDesc"
-                Type "text"
-                Value !^"0000"
-                Name "firstname"
-              ]
-              br []
+        ]
+        div [Class "level-item"] [
+          form [] [
+            input [
+              Class "cueplayer-cueDesc"
+              Type "text"
+              Value !^"0000"
+              Name "firstname"
             ]
+            br []
           ]
-          li [Id "cueName"] [
-            form [] [
-              input [
-                Class "cueplayer-cueDesc"
-                Type "text"
-                Value !^"Untitled"
-                Name "firstname"
-              ]
-              br []
+        ]
+        div [Class "level-item"] [
+          form [] [
+            input [
+              Class "cueplayer-cueDesc"
+              Type "text"
+              Value !^"Untitled"
+              Name "firstname"
             ]
+            br []
           ]
-          li [] []
+        ]
+        div [Class "level-item"] [
           form [] [
             input [
               Class "cueplayer-cueDesc"
@@ -158,19 +159,19 @@ type CuePlayerView(props) =
             ]
             br []
           ]
-          li [] [
-            div [Class "cueplayer-button iris-icon"] [
-              span [Class "iris-icon iris-icon-duplicate"] []
-            ]
-            div [Class "cueplayer-button iris-icon cueplayer-close"] [
-              span [Class "iris-icon iris-icon-close"] []
-            ]
+        ]
+        div [Class "level-right"] [
+          div [Class "cueplayer-button iris-icon level-item"] [
+            span [Class "iris-icon iris-icon-duplicate"] []
+          ]
+          div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
+            span [Class "iris-icon iris-icon-close"] []
           ]
         ]
       ]
 
     member this.render() =
-      div [] [
+      div [Class "cueplayer-container"] [
         // HEADER
         div [Class "cueplayer-list-header"] [
           div [Class "cueplayer-button cueplayer-go"] [

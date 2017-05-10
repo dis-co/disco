@@ -1,3 +1,8 @@
+.cueplayer-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .cueplayer-list-header {
   background-color: #fff;
   border-top: none;
@@ -87,36 +92,4 @@ input.cueplayer-cueDesc {
   /* Rectangle 373 Copy: */
   background: #7DC93E;
   border:none;
-}
-
-.cueplayer-.cueplayer-ul {
-    display: flex;
-    justify-content: flex-start;
-    flex-direction: row;
-    margin: 0;
-    padding: 0;
-}
-
-.cueplayer-ul li {
-    display: inline-block;
-    list-style: none;
-    flex: 0 0 5em;
-}
-
-.cueplayer-ul li:first-child {
-  flex: 0 0 2em;
-}
-
-.cueplayer-ul li:nth-child(2) {
-  flex: 0 0 4em;
-}
-
-
-.cueplayer-ul li#cueName{
-  flex: 0 0 20em;
-}
-
-.cueplayer-ul li:last-child {
-	margin-left: auto;
-  padding-right: 5px;
 }
