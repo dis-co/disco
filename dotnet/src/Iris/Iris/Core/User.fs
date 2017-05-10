@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -33,54 +33,40 @@ open LibGit2Sharp
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-type UserYaml(i, u, f, l, e, p, s, j, c) =
-  let mutable id        = i
-  let mutable username  = u
-  let mutable firstname = f
-  let mutable lastname  = l
-  let mutable email     = e
-  let mutable password  = p
-  let mutable salt      = s
-  let mutable joined    = j
-  let mutable created   = c
+type UserYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable UserName: string
+  [<DefaultValue>] val mutable FirstName: string
+  [<DefaultValue>] val mutable LastName: string
+  [<DefaultValue>] val mutable Email: string
+  [<DefaultValue>] val mutable Password: string
+  [<DefaultValue>] val mutable Salt: string
+  [<DefaultValue>] val mutable Joined: DateTime
+  [<DefaultValue>] val mutable Created: DateTime
 
-  new () = UserYaml(null, null, null, null, null, null, null, DateTime.MinValue, DateTime.MinValue)
+  static member From(user: User) =
+    let yaml = UserYaml()
+    yaml.Id <- string user.Id
+    yaml.UserName <- unwrap user.UserName
+    yaml.FirstName <- unwrap user.FirstName
+    yaml.LastName <- unwrap user.LastName
+    yaml.Email <- unwrap user.Email
+    yaml.Password <- unwrap user.Password
+    yaml.Salt <- unwrap user.Salt
+    yaml.Joined <- user.Joined
+    yaml.Created <- user.Created
+    yaml
 
-  member self.Id
-    with get ()  = id
-     and set str = id <- str
-
-  member self.UserName
-    with get ()  = username
-     and set str = username <- str
-
-  member self.FirstName
-    with get ()  = firstname
-     and set str = firstname <- str
-
-  member self.LastName
-    with get ()  = lastname
-     and set str = lastname <- str
-
-  member self.Email
-    with get ()  = email
-     and set str = email <- str
-
-  member self.Password
-    with get ()  = password
-     and set str = password <- str
-
-  member self.Salt
-    with get ()  = salt
-     and set str = salt <- str
-
-  member self.Joined
-    with get ()  = joined
-     and set dt = joined <- dt
-
-  member self.Created
-    with get ()  = created
-     and set dt = created <- dt
+  member yaml.ToUser() =
+    Either.succeed { Id        = Id yaml.Id
+                     UserName  = name yaml.UserName
+                     FirstName = name yaml.FirstName
+                     LastName  = name yaml.LastName
+                     Email     = email yaml.Email
+                     Password  = checksum yaml.Password
+                     Salt      = checksum yaml.Salt
+                     Joined    = yaml.Joined
+                     Created   = yaml.Created }
 
 #endif
 
@@ -277,41 +263,21 @@ type User =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject () =
-    new UserYaml(
-      string self.Id,
-      unwrap self.UserName,
-      unwrap self.FirstName,
-      unwrap self.LastName,
-      unwrap self.Email,
-      unwrap self.Password,
-      unwrap self.Salt,
-      self.Joined,
-      self.Created)
+  member user.ToYamlObject () = UserYaml.From(user)
 
   // ** ToYaml
 
-  member self.ToYaml(serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
+  member user.ToYaml(serializer: Serializer) =
+    user |> Yaml.toYaml |> serializer.Serialize
 
   // ** FromYamlObject
 
-  static member FromYamlObject (yaml: UserYaml) =
-    Either.tryWith (Error.asParseError "User.FromYaml") <| fun _ ->
-      { Id        = Id yaml.Id
-        UserName  = name yaml.UserName
-        FirstName = name yaml.FirstName
-        LastName  = name yaml.LastName
-        Email     = email yaml.Email
-        Password  = checksum yaml.Password
-        Salt      = checksum yaml.Salt
-        Joined    = yaml.Joined
-        Created   = yaml.Created }
+  static member FromYamlObject (yaml: UserYaml) = yaml.ToUser()
 
   // ** FromYaml
 
   static member FromYaml(str: string) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     serializer.Deserialize<UserYaml>(str)
     |> User.FromYamlObject
 

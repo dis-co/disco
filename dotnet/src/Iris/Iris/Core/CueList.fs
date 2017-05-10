@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -20,17 +20,37 @@ open Iris.Serialization
 open SharpYaml.Serialization
 // * CueList Yaml
 
-type CueListYaml(id, name, cues) as self =
+type CueListYaml() =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
   [<DefaultValue>] val mutable Cues : CueYaml array
 
-  new () = new CueListYaml(null, null, null)
+  static member From(cuelist: CueList) =
+    let yaml = CueListYaml()
+    yaml.Id   <- string cuelist.Id
+    yaml.Name <- unwrap cuelist.Name
+    yaml.Cues <- Array.map Yaml.toYaml cuelist.Cues
+    yaml
 
-  do
-    self.Id   <- id
-    self.Name <- name
-    self.Cues <- cues
+  member yaml.ToCueList() =
+    either {
+      let! cues =
+        let arr = Array.zeroCreate yaml.Cues.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * Cue array>) cueish -> either {
+            let! (i, arr) = m
+            let! (cue: Cue) = Yaml.fromYaml cueish
+            arr.[i] <- cue
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.Cues
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = name yaml.Name
+               Cues = cues }
+    }
 
 #endif
 
@@ -123,38 +143,17 @@ type CueList =
 
   // ** ToYamlObject
 
-  member self.ToYamlObject() =
-    new CueListYaml(
-      string self.Id,
-      unwrap self.Name,
-      Array.map Yaml.toYaml self.Cues)
+  member cuelist.ToYamlObject() = CueListYaml.From(cuelist)
 
   // ** FromYamlObject
 
   static member FromYamlObject(yml: CueListYaml) : Either<IrisError,CueList> =
-    either {
-      let! cues =
-        let arr = Array.zeroCreate yml.Cues.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * Cue array>) cueish -> either {
-            let! (i, arr) = m
-            let! (cue: Cue) = Yaml.fromYaml cueish
-            arr.[i] <- cue
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yml.Cues
-        |> Either.map snd
-
-      return { Id = Id yml.Id
-               Name = name yml.Name
-               Cues = cues }
-    }
+    yml.ToCueList()
 
   // ** ToYaml
 
-  member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+  member cuelist.ToYaml(serializer: Serializer) =
+    cuelist |> Yaml.toYaml |> serializer.Serialize
 
   // ** FromYaml
 

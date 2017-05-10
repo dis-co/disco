@@ -175,6 +175,24 @@ module TestData =
       Joined = System.DateTime.Now
       Created = System.DateTime.Now }
 
+  let mkCuePlayer() =
+    let rndopt () =
+      if rand.Next(0,2) > 0 then
+        Some (rndstr() |> Id)
+      else
+        None
+
+    { Id = Id.Create()
+      Name = rndname ()
+      CueList = rndopt ()
+      Selected = index (rand.Next(0,1000))
+      Call = mkPin()
+      Next = mkPin()
+      Previous = mkPin()
+      RemainingWait = rand.Next(0,1000)
+      LastCaller = rndopt()
+      LastCalled = rndopt() }
+
   let mkUsers () =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkUser() |]

@@ -25,20 +25,19 @@ open Path
 
 open SharpYaml.Serialization
 
-type PinGroupYaml(pingroup: PinGroup) as self =
-  [<DefaultValue>] val mutable Id   : string
-  [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Client : string
-  [<DefaultValue>] val mutable Pins : PinYaml array
+type PinGroupYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Client: string
+  [<DefaultValue>] val mutable Pins: PinYaml array
 
-  do
-    self.Id <- string pingroup.Id
-    self.Name <- unwrap pingroup.Name
-    self.Client <- string pingroup.Client
-    self.Pins <-
-      pingroup.Pins
-      |> Map.toArray
-      |> Array.map (snd >> Yaml.toYaml)
+  static member From (group: PinGroup) =
+    let yml = PinGroupYaml()
+    yml.Id <- string group.Id
+    yml.Name <- unwrap group.Name
+    yml.Client <- string group.Client
+    yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
+    yml
 
   member yml.ToPinGroup() =
     either {
@@ -85,7 +84,7 @@ type PinGroup =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member group.ToYamlObject () = PinGroupYaml(group)
+  member group.ToYamlObject () = PinGroupYaml.From(group)
 
   // ** ToYaml
 
@@ -102,8 +101,8 @@ type PinGroup =
 
   static member FromYaml (str: string) : Either<IrisError,PinGroup> =
     let serializer = Serializer()
-    serializer.Deserialize<PinGroupYaml>(str)
-    |> Yaml.fromYaml
+    let yml = serializer.Deserialize<PinGroupYaml>(str)
+    Yaml.fromYaml yml
 
   #endif
 

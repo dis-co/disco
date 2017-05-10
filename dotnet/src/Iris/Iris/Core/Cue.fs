@@ -26,17 +26,41 @@ open Path
 open SharpYaml
 open SharpYaml.Serialization
 
-type CueYaml(id, name, slices) as self =
+type CueYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Slices: SlicesYaml array
 
-  new () = CueYaml(null, null, null)
+  // ** From
 
-  do
-    self.Id <- id
-    self.Name <- name
-    self.Slices <- slices
+  static member From(cue: Cue) =
+    let yaml = CueYaml()
+    yaml.Id <- string cue.Id
+    yaml.Name <- cue.Name
+    yaml.Slices <- Array.map Yaml.toYaml cue.Slices
+    yaml
+
+  // ** ToCue
+
+  member yaml.ToCue() =
+    either {
+      let! slices =
+        let arr = Array.zeroCreate yaml.Slices.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * Slices array>) box -> either {
+            let! (i, arr) = m
+            let! (slice : Slices) = Yaml.fromYaml box
+            arr.[i] <- slice
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.Slices
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = yaml.Name
+               Slices = slices }
+    }
 
 #endif
 
@@ -130,31 +154,12 @@ type Cue =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
-    let slices = Array.map Yaml.toYaml self.Slices
-    CueYaml(string self.Id, self.Name, slices)
+  member cue.ToYamlObject() = CueYaml.From(cue)
 
   // ** FromYamlObject
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
-    either {
-      let! slices =
-        let arr = Array.zeroCreate yaml.Slices.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * Slices array>) box -> either {
-            let! (i, arr) = m
-            let! (slice : Slices) = Yaml.fromYaml box
-            arr.[i] <- slice
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yaml.Slices
-        |> Either.map snd
-
-      return { Id = Id yaml.Id
-               Name = yaml.Name
-               Slices = slices }
-    }
+    yaml.ToCue()
 
   // ** ToYaml
 

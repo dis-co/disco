@@ -22,49 +22,60 @@ open Iris.Serialization
 
 open SharpYaml.Serialization
 
-type CuePlayerYaml(player: CuePlayer) as yaml =
+type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
-  [<DefaultValue>] val mutable CueList: string option
+  [<DefaultValue>] val mutable CueList: string
   [<DefaultValue>] val mutable Selected: int
   [<DefaultValue>] val mutable Call: PinYaml
   [<DefaultValue>] val mutable Next: PinYaml
   [<DefaultValue>] val mutable Previous: PinYaml
   [<DefaultValue>] val mutable RemainingWait: int
-  [<DefaultValue>] val mutable LastCalled: string option
-  [<DefaultValue>] val mutable LastCaller: string option
+  [<DefaultValue>] val mutable LastCalled: string
+  [<DefaultValue>] val mutable LastCaller: string
 
-  // ** do
+  // ** From
 
-  do
+  static member From(player: CuePlayer) =
+    let yaml = CuePlayerYaml()
+    let opt2str opt =
+      match opt with
+      | Some thing -> string thing
+      | None -> null
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
-    yaml.CueList <- Option.map string player.CueList
+    yaml.CueList <- opt2str player.CueList
     yaml.Selected <- int player.Selected
     yaml.Call <- Yaml.toYaml player.Call
     yaml.Next <- Yaml.toYaml player.Next
     yaml.Previous <- Yaml.toYaml player.Previous
     yaml.RemainingWait <- player.RemainingWait
-    yaml.LastCaller <- Option.map string player.LastCaller
-    yaml.LastCalled <- Option.map string player.LastCalled
+    yaml.LastCaller <- opt2str player.LastCaller
+    yaml.LastCalled <- opt2str player.LastCalled
+    yaml
 
   // ** ToPlayer
 
   member yaml.ToPlayer() =
     either {
+      let str2opt str =
+        match str with
+        | null -> None
+        | thing -> Some (Id thing)
+
       let! call = Yaml.fromYaml yaml.Call
       let! next = Yaml.fromYaml yaml.Next
       let! previous = Yaml.fromYaml yaml.Previous
       return { Id = Id yaml.Id
                Name = name yaml.Name
-               CueList = Option.map Id yaml.CueList
+               CueList = str2opt yaml.CueList
                Selected = index yaml.Selected
                Call = call
                Next = next
                Previous = previous
                RemainingWait = yaml.RemainingWait
-               LastCaller = Option.map Id yaml.LastCaller
-               LastCalled = Option.map Id yaml.LastCalled }
+               LastCaller = str2opt yaml.LastCaller
+               LastCalled = str2opt yaml.LastCalled }
     }
 
 #endif
@@ -196,7 +207,7 @@ type CuePlayer =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member player.ToYamlObject() = CuePlayerYaml(player)
+  member player.ToYamlObject() = CuePlayerYaml.From(player)
 
   #endif
 
