@@ -557,6 +557,26 @@ table ProjectFB {
       Config:    ConfigFB;
 }
 
+//   ____           ____  _
+//  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+// | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+// | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+//  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+//                                |___/
+
+table CuePlayerFB {
+      Id:            string;
+      Name:          string;
+      CueList:       string;
+      Selected:      int;
+      LastCalled:    string;
+      Call:          PinFB;
+      Next:          PinFB;
+      Previous:      PinFB;
+      RemainingWait: int;
+      LastCaller:    string;
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \

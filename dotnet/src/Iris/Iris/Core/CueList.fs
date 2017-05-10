@@ -183,42 +183,13 @@ type CueList =
   // |_____\___/ \__,_|\__,_|
 
   static member Load(path: FilePath) : Either<IrisError, CueList> =
-    either {
-      let! data = Asset.read path
-      let! cuelist = Yaml.decode data
-      return cuelist
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, CueList array> =
-    either {
-      try
-        let dir = basePath </> filepath CUELIST_DIR
-        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
-
-        let! (_,cuelists) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * CueList array>) path ->
-              either {
-                let! (idx,cuelists) = m
-                let! cuelist = CueList.Load path
-                cuelists.[idx] <- cuelist
-                return (idx + 1, cuelists)
-              })
-            (Right(0, arr))
-            files
-
-        return cuelists
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "CueList.LoadAll"
-            |> Either.fail
-    }
+    basePath </> filepath CUELIST_DIR
+    |> IrisData.loadAll
 
   // ** Save
 
@@ -229,11 +200,6 @@ type CueList =
   // |____/ \__,_| \_/ \___|
 
   member cuelist.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path cuelist
-      let data = Yaml.encode cuelist
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath cuelist
 
   #endif

@@ -224,3 +224,57 @@ module Asset =
     }
 
   #endif
+
+
+// * IrisData
+
+module IrisData =
+
+  // ** load
+
+  let inline load (path: FilePath) =
+    either {
+      let! data = Asset.read path
+      let! group = Yaml.decode data
+      return group
+    }
+
+  // ** loadAll
+
+  let inline loadAll (basePath: FilePath) =
+    either {
+      try
+        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) basePath
+        let! (_,groups) =
+          let arr =
+            files
+            |> Array.length
+            |> Array.zeroCreate
+          Array.fold
+            (fun (m: Either<IrisError, int * ^t array>) path ->
+              either {
+                let! (idx,groups) = m
+                let! group = load path
+                groups.[idx] <- group
+                return (idx + 1, groups)
+              })
+            (Right(0, arr))
+            files
+        return groups
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asAssetError "PinGroup.LoadAll"
+            |> Either.fail
+    }
+
+  // ** save
+
+  let inline save (basePath: FilePath) asset =
+    either {
+      let path = basePath </> Asset.path asset
+      let data = Yaml.encode asset
+      let! _ = Asset.write path (Payload data)
+      return ()
+    }

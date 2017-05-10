@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -25,19 +25,38 @@ open Path
 
 open SharpYaml.Serialization
 
-type PinGroupYaml(id, name, client, pins) as self =
+type PinGroupYaml(pingroup: PinGroup) as self =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
   [<DefaultValue>] val mutable Client : string
   [<DefaultValue>] val mutable Pins : PinYaml array
 
-  new () = new PinGroupYaml(null, null, null, null)
-
   do
-    self.Id <- id
-    self.Name <- name
-    self.Client <- client
-    self.Pins <- pins
+    self.Id <- string pingroup.Id
+    self.Name <- unwrap pingroup.Name
+    self.Client <- string pingroup.Client
+    self.Pins <-
+      pingroup.Pins
+      |> Map.toArray
+      |> Array.map (snd >> Yaml.toYaml)
+
+  member yml.ToPinGroup() =
+    either {
+      let! pins =
+        Array.fold
+          (fun (m: Either<IrisError,Map<Id,Pin>>) pinyml -> either {
+            let! pins = m
+            let! (pin : Pin) = Yaml.fromYaml pinyml
+            return Map.add pin.Id pin pins
+          })
+          (Right Map.empty)
+          yml.Pins
+
+      return { Id = Id yml.Id
+               Name = name yml.Name
+               Client = Id yml.Client
+               Pins = pins }
+    }
 
 #endif
 
@@ -56,6 +75,8 @@ type PinGroup =
     Client: Id
     Pins: Map<Id,Pin> }
 
+  // ** ToYamlObject
+
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
   //  \ V / _` | '_ ` _ \| |
@@ -64,45 +85,29 @@ type PinGroup =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject () =
-    let yaml = new PinGroupYaml()
-    yaml.Id <- string self.Id
-    yaml.Name <- unwrap self.Name
-    yaml.Client <- string self.Client
-    yaml.Pins <- self.Pins
-                   |> Map.toArray
-                   |> Array.map (snd >> Yaml.toYaml)
-    yaml
+  member group.ToYamlObject () = PinGroupYaml(group)
+
+  // ** ToYaml
 
   member self.ToYaml (serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
 
-  static member FromYamlObject (yml: PinGroupYaml) =
-    either {
-      let! pins =
-        Array.fold
-          (fun (m: Either<IrisError,Map<Id,Pin>>) pinyml -> either {
-            let! pins = m
-            let! (pin : Pin) = Yaml.fromYaml pinyml
-            return Map.add pin.Id pin pins
-          })
-          (Right Map.empty)
-          yml.Pins
+  // ** FromYamlObject
 
-      return { Id = Id yml.Id
-               Name = name yml.Name
-               Client = Id yml.Client
-               Pins = pins }
-    }
+  static member FromYamlObject (yml: PinGroupYaml) = yml.ToPinGroup()
+
+  // ** FromYaml
 
   static member FromYaml (str: string) : Either<IrisError,PinGroup> =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     serializer.Deserialize<PinGroupYaml>(str)
     |> Yaml.fromYaml
 
   #endif
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -145,6 +150,8 @@ type PinGroup =
                Pins = pins }
     }
 
+  // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> builder.CreateString
@@ -162,12 +169,18 @@ type PinGroup =
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes() : byte[] = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroup> =
     Binary.createBuffer bytes
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB
+
+  // ** Load
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -178,57 +191,14 @@ type PinGroup =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError, PinGroup> =
-    either {
-      let! data = Asset.read path
-      let! group = Yaml.decode data
-      return group
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, PinGroup array> =
-    either {
-      try
-        let dir = basePath </> filepath PINGROUP_DIR
-        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
+    IrisData.loadAll basePath
 
-        let! (_,groups) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * PinGroup array>) path ->
-              either {
-                let! (idx,groups) = m
-                let! group = PinGroup.Load path
-                groups.[idx] <- group
-                return (idx + 1, groups)
-              })
-            (Right(0, arr))
-            files
-
-        return groups
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "PinGroup.LoadAll"
-            |> Either.fail
-    }
-
-  //     _                 _   ____       _   _
-  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
-  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
-  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
-  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
-
-  member self.AssetPath
-    with get () =
-      let path =
-        sprintf "%s_%s%s"
-          (self.Name |> unwrap |> String.sanitize)
-          (string self.Id)
-          ASSET_EXTENSION
-      PINGROUP_DIR <.> path
+  // ** Save
 
   //  ____
   // / ___|  __ ___   _____
@@ -237,18 +207,34 @@ type PinGroup =
   // |____/ \__,_| \_/ \___|
 
   member group.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path group
-      let data = Yaml.encode group
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath group
 
   #endif
+
+  // ** AssetPath
+
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
+  member pingroup.AssetPath
+    with get () = PinGroup.assetPath pingroup
 
 // * PinGroup module
 
 module PinGroup =
+
+  // ** assetPath
+
+  let assetPath (group: PinGroup) =
+    let path =
+      sprintf "%s_%s%s"
+        (group.Name |> unwrap |> String.sanitize)
+        (string group.Id)
+        ASSET_EXTENSION
+    PINGROUP_DIR <.> path
 
   //  _               ____  _
   // | |__   __ _ ___|  _ \(_)_ __
