@@ -428,7 +428,7 @@ module rec Raft =
 
   // ** updateMember
 
-  let updateMember (mem : RaftMember) (cbs: IRaftCallbacks) (state: RaftValue) =
+  let private updateMember (mem : RaftMember) (cbs: IRaftCallbacks) (state: RaftValue) =
     // if we are in joint consensus, we must update the mem value in either the
     // new or the old configuration, or both.
     let old = Map.tryFind mem.Id state.Peers
@@ -1008,7 +1008,7 @@ module rec Raft =
 
   // ** setTimeoutElapsed
 
-  let setTimeoutElapsed (elapsed: Timeout) (state: RaftValue) =
+  let private setTimeoutElapsed (elapsed: Timeout) (state: RaftValue) =
     { state with TimeoutElapsed = elapsed }
 
   // ** setTimeoutElapsedM
@@ -1047,7 +1047,7 @@ module rec Raft =
 
   // ** lastAppliedIdx
 
-  let lastAppliedIdx (state: RaftValue) =
+  let private lastAppliedIdx (state: RaftValue) =
     state.LastAppliedIdx
 
   // ** lastAppliedIdxM
@@ -1056,7 +1056,7 @@ module rec Raft =
 
   // ** setLastAppliedIdx
 
-  let setLastAppliedIdx (idx : Index) (state: RaftValue) =
+  let private setLastAppliedIdx (idx : Index) (state: RaftValue) =
     { state with LastAppliedIdx = idx }
 
   // ** setLastAppliedIdxM
@@ -1066,7 +1066,7 @@ module rec Raft =
 
   // ** maxLogDepth
 
-  let maxLogDepth (state: RaftValue) = state.MaxLogDepth
+  let private maxLogDepth (state: RaftValue) = state.MaxLogDepth
 
   // ** maxLogDepthM
 
@@ -1074,7 +1074,7 @@ module rec Raft =
 
   // ** lastLogTerm
 
-  let lastLogTerm (state: RaftValue) =
+  let private lastLogTerm (state: RaftValue) =
     Log.getTerm state.Log
 
   // ** lastLogTermM
@@ -1083,7 +1083,7 @@ module rec Raft =
 
   // ** getEntryAt
 
-  let getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
+  let private getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.at idx state.Log
 
   // ** getEntryAtM
@@ -1092,7 +1092,7 @@ module rec Raft =
 
   // ** getEntriesUntil
 
-  let getEntriesUntil (idx : Index) (state: RaftValue) : RaftLogEntry option =
+  let private getEntriesUntil (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.until idx state.Log
 
   // ** getEntriesUntilM
@@ -1101,7 +1101,7 @@ module rec Raft =
 
   // ** entriesUntilExcluding
 
-  let entriesUntilExcluding (idx: Index) (state: RaftValue) =
+  let private entriesUntilExcluding (idx: Index) (state: RaftValue) =
     Log.untilExcluding idx state.Log
 
   // ** entriesUntilExcludingM
@@ -1111,7 +1111,7 @@ module rec Raft =
 
   // ** handleConfigChange
 
-  let handleConfigChange (log: RaftLogEntry) (state: RaftValue) =
+  let private handleConfigChange (log: RaftLogEntry) (state: RaftValue) =
     match log with
     | Configuration(_,_,_,mems,_) ->
       let parting =
@@ -1147,7 +1147,7 @@ module rec Raft =
   //  \__,_| .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|   \__, |
   //       |_|   |_|                                          |___/
 
-  let appendEntry (log: RaftLogEntry) =
+  let private appendEntry (log: RaftLogEntry) =
     raft {
       let! state = get
 
@@ -1204,7 +1204,7 @@ module rec Raft =
 
   /// Delete a log entry at the index specified. Returns the original value if
   /// the record is not found.
-  let removeEntry idx (cbs: IRaftCallbacks) state =
+  let private removeEntry idx (cbs: IRaftCallbacks) state =
     match Log.at idx state.Log with
     | Some log ->
       match LogEntry.pop log with
@@ -1839,7 +1839,7 @@ module rec Raft =
 
   // ** applyEntries
 
-  let applyEntries _ =
+  let applyEntries () =
     raft {
       let! state = get
       let lai = state.LastAppliedIdx
@@ -2015,7 +2015,7 @@ module rec Raft =
 
   // ** maybeSnapshot
 
-  let maybeSnapshot _ =
+  let maybeSnapshot () =
     raft {
       let! state = get
       if Log.length state.Log >= int state.MaxLogDepth then

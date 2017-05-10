@@ -8,7 +8,7 @@ module RaftTests =
 
   [<Tests>]
   let raftTests =
-    testList "Raft tests"
+    ftestList "Raft tests"
       [
         // Continue
         validation_dsl_validation

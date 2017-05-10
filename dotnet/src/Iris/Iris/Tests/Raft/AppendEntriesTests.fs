@@ -276,7 +276,6 @@ module AppendEntries =
         }
 
       let raft' = defaultServer ()
-
       let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
