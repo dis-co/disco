@@ -958,7 +958,7 @@ module rec Raft =
 
   // ** commitIndexM
 
-  let commitIndexM _ = zoomM commitIndex
+  let commitIndexM () = zoomM commitIndex
 
   // ** setCommitIndex
 
@@ -1045,14 +1045,14 @@ module rec Raft =
   let setElectionTimeoutM (timeout: Timeout) =
     setElectionTimeout timeout |> modify
 
-  // ** lastAppliedIdx
+  // ** _lastAppliedIdx
 
-  let private lastAppliedIdx (state: RaftValue) =
+  let private _lastAppliedIdx (state: RaftValue) =
     state.LastAppliedIdx
 
-  // ** lastAppliedIdxM
+  // ** lastAppliedIdx
 
-  let lastAppliedIdxM _ = zoomM lastAppliedIdx
+  let lastAppliedIdx () = zoomM _lastAppliedIdx
 
   // ** setLastAppliedIdx
 
@@ -1083,7 +1083,7 @@ module rec Raft =
 
   // ** getEntryAt
 
-  let private getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
+  let getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.at idx state.Log
 
   // ** getEntryAtM
@@ -2560,7 +2560,7 @@ module rec Raft =
           do! recountPeers ()
 
       let! coi = commitIndexM ()
-      let! lai = lastAppliedIdxM ()
+      let! lai = lastAppliedIdx ()
 
       if lai < coi then
         do! applyEntries ()

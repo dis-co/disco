@@ -180,8 +180,8 @@ module ServerTests =
         do! Raft.setLastAppliedIdxM (index 0)
         do! Raft.applyEntries ()
 
-        let! lidx = Raft.lastAppliedIdxM
-        let! cidx = Raft.commitIndexM
+        let! lidx = Raft.lastAppliedIdx()
+        let! cidx = Raft.commitIndexM()
 
         expect "Last applied index should be zero" 0<index> id lidx
         expect "Last commit index should be zero"  0<index> id cidx
@@ -205,8 +205,8 @@ module ServerTests =
         do! Raft.addMembersM mems
         do! Raft.applyEntries ()
 
-        let! lidx = Raft.lastAppliedIdxM
-        let! cidx = Raft.commitIndexM
+        let! lidx = Raft.lastAppliedIdx()
+        let! cidx = Raft.commitIndexM()
 
         expect "Should not have incremented last applied index" 0<index> id lidx
         expect "Should not have incremented commit index"  0<index> id cidx
@@ -214,8 +214,8 @@ module ServerTests =
         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.applyEntries () >>= ignoreM
 
-        let! lidx = Raft.lastAppliedIdxM
-        let! cidx = Raft.commitIndexM
+        let! lidx = Raft.lastAppliedIdx()
+        let! cidx = Raft.commitIndexM()
 
         expect "Should not have incremented last applied index" 0<index> id lidx
         expect "Should not have incremented commit index"  0<index> id cidx
@@ -233,7 +233,7 @@ module ServerTests =
         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.setCommitIndexM (index 1)
         do! Raft.periodic 1<ms>
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 1" 1<index> id lidx
       }
       |> runWithDefaults
@@ -246,7 +246,7 @@ module ServerTests =
         do! Raft.createEntryM (DataSnapshot (State.Empty)) >>= ignoreM
         do! Raft.setCommitIndexM (index 1)
         do! Raft.applyEntries ()
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 1" 1<index> id lidx
       }
       |> runWithDefaults
@@ -363,13 +363,6 @@ module ServerTests =
     testCase "recv entry removes mem on removemem" <| fun _ ->
       let term = ref (term 0)
       let ci = ref (index 0)
-
-      // let cbs =
-      //   { Callbacks.Create (ref (DataSnapshot (State.Empty))) with
-      //       SendAppendEntries = fun _ _ ->
-      //         { Term = !term; Success = true; CurrentIndex = !ci; FirstIndex = index 1 } }
-      //   :> IRaftCallbacks
-
       let mem = Member.create (Id.Create())
 
       let mklog term =
@@ -384,7 +377,13 @@ module ServerTests =
         ci := 1<index>
 
         let! result = Raft.receiveEntry (mklog !term)
-        let! committed = Raft.responseCommitted result
+
+        do! Raft.receiveAppendEntriesResponse mem.Id {
+              Term = !term
+              Success = true
+              CurrentIndex = !ci
+              FirstIndex = index 1
+            }
 
         ci := 2<index>
 
@@ -1425,12 +1424,12 @@ module ServerTests =
         //  leader will now have majority followers who have appended this log
         do! expectM "Should have commit index 3" (index 3) Raft.commitIndex
 
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 0" 0<index> id lidx
 
         do! Raft.periodic 1<ms>
 
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 3" 3<index> id lidx
       }
       |> runWithRaft raft' cbs
@@ -1527,7 +1526,7 @@ module ServerTests =
 
         do! Raft.periodic 1<ms>
 
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 0" 0<index> id lidx
 
         let! request = Raft.sendAppendEntry peer1
@@ -1542,7 +1541,7 @@ module ServerTests =
 
         do! Raft.periodic 1<ms>
 
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 0" 0<index> id lidx
 
         let! request = Raft.sendAppendEntry peer1
@@ -1557,7 +1556,7 @@ module ServerTests =
 
         do! Raft.periodic 1<ms>
 
-        let! lidx = Raft.lastAppliedIdxM
+        let! lidx = Raft.lastAppliedIdx()
         expect "Should have last applied index 3" 3<index> id lidx
       }
       |> runWithCBS cbs
@@ -1644,30 +1643,27 @@ module ServerTests =
             SendAppendEntries = fun n ae -> lock lokk <| fun _ -> count := !count + 1
           } :> IRaftCallbacks
 
-      let makeReponse () =
+      let makeResponse () =
         { Term         = !trm
           Success      = !result
           CurrentIndex = !ci
           FirstIndex   = index 0 }
-
-      let log1 = LogEntry(Id.Create(),0<index>,1<term>,DataSnapshot(State.Empty),None)
-      let log2 = LogEntry(Id.Create(),0<index>,2<term>,DataSnapshot(State.Empty),None)
-      let log3 = LogEntry(Id.Create(),0<index>,3<term>,DataSnapshot(State.Empty),None)
-      let log4 = LogEntry(Id.Create(),0<index>,4<term>,DataSnapshot(State.Empty),None)
 
       raft {
         do! Raft.addMemberM peer
         do! Raft.setTermM !trm
         do! Raft.setCommitIndexM (index 0)
 
-        do! Raft.appendEntryM log1 >>= ignoreM
-        do! Raft.appendEntryM log2 >>= ignoreM
-        do! Raft.appendEntryM log3 >>= ignoreM
-        do! Raft.appendEntryM log4 >>= ignoreM
+        for n in 1 .. 4 do
+          do! LogEntry(Id.Create(),0<index>,term n,DataSnapshot(State.Empty),None)
+              |> Raft.appendEntryM
+              >>= ignoreM
 
         ci := 0<index>
 
         do! Raft.becomeLeader()
+
+        do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should have correct NextIndex"  (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
         do! expectM "Should have correct MatchIndex" (index 0) (Raft.getMember peer.Id >> Option.get >> Member.getMatchIndex)
@@ -1685,6 +1681,7 @@ module ServerTests =
 
         // send again and process responses
         do! Raft.sendAllAppendEntriesM ()
+        do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should finally have NextIndex 5"  (index 5) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
         do! expectM "Should finally have MatchIndex 4" (index 4) (Raft.getMember peer.Id >> Option.get >> Member.getMatchIndex)
