@@ -1,4 +1,4 @@
-module rec Iris.Web.Widgets.CueList
+module rec Iris.Web.Widgets.CuePlayer
 
 open Iris.Core
 open Iris.Web.Core
@@ -71,8 +71,8 @@ type Cue(spread: ISpread) =
     for i = 0 to this.Rows.Length do
       updateSlices(this.Pin, i, snd this.Rows.[i])
 
-type CueList() =
-  member val view = typeof<CueListView>
+type CuePlayer() =
+  member val view = typeof<CuePlayerView>
   member val name = "Cue List"
   member val cues = ResizeArray()
   member val layout =
@@ -84,13 +84,13 @@ type CueList() =
     }
 
 [<Pojo>]
-type CueProps =
+type CuePlayerProps =
   { id: int;
-    model: CueList
+    model: CuePlayer
     globalModel: GlobalModel }
 
-type CueListView(props) =
-    inherit React.Component<CueProps, obj>(props)
+type CuePlayerView(props) =
+    inherit React.Component<CuePlayerProps, obj>(props)
     let mutable el = Unchecked.defaultof<_>
 
     // member this.render() =

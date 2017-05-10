@@ -328,4 +328,4 @@ let pinToKeyValuePairs (pin: Pin) =
   | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
 
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
-  Iris.Web.Widgets.CueList.updateSlices(pin, rowIndex, newValue)
+  Iris.Web.Widgets.CuePlayer.updateSlices(pin, rowIndex, newValue)

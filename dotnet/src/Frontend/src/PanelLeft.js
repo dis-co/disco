@@ -6,7 +6,7 @@ import GraphView from "./widgets/GraphView"
 import ProjectView from "./widgets/ProjectView"
 import Cluster from "./widgets/Cluster"
 import Discovery from "./widgets/Discovery"
-import { CueList } from "../fable/Frontend/Widgets/CueList.fs"
+import { CuePlayer } from "../fable/Frontend/Widgets/CuePlayer.fs"
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
@@ -19,8 +19,8 @@ function cardClicked(title, global) {
     case "GRAPH VIEW":
       global.addWidget(new GraphView());
       break;
-    case "CUE LIST":
-      global.addWidget(new CueList());
+    case "CUE PLAYER":
+      global.addWidget(new CuePlayer());
       break;
     case "PROJECT VIEW":
       global.addWidget(new ProjectView());
@@ -56,7 +56,7 @@ export default class PanelLeft extends Component {
       <div className="iris-panel-left">
         <Card key={0} global={this.props.global} letter="L" title="LOG" text="Cluster Settings" />
         <Card key={1} global={this.props.global} letter="G" title="Graph View" text="Cluster Settings" />
-        <Card key={2} global={this.props.global} letter="C" title="Cue List" text="Cluster Settings" />
+        <Card key={2} global={this.props.global} letter="C" title="Cue Player" text="Cluster Settings" />
         <Card key={3} global={this.props.global} letter="M" title="Manager" text="Cluster Settings" />
         <Card key={4} global={this.props.global} letter="P" title="Project View" text="Cluster Settings" />
         <Card key={5} global={this.props.global} letter="R" title="Cluster" text="Cluster Settings" />
