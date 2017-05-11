@@ -1,4 +1,6 @@
-namespace Iris.Core
+namespace rec Iris.Core
+
+// * Imports
 
 #if FABLE_COMPILER
 
@@ -15,6 +17,8 @@ open Iris.Serialization
 
 #endif
 
+// * CueYaml
+
 open Path
 
 #if !FABLE_COMPILER && !IRIS_NODES
@@ -22,25 +26,53 @@ open Path
 open SharpYaml
 open SharpYaml.Serialization
 
-type CueYaml(id, name, slices) as self =
+type CueYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Slices: SlicesYaml array
 
-  new () = new CueYaml(null, null, null)
+  // ** From
 
-  do
-    self.Id <- id
-    self.Name <- name
-    self.Slices <- slices
+  static member From(cue: Cue) =
+    let yaml = CueYaml()
+    yaml.Id <- string cue.Id
+    yaml.Name <- cue.Name
+    yaml.Slices <- Array.map Yaml.toYaml cue.Slices
+    yaml
+
+  // ** ToCue
+
+  member yaml.ToCue() =
+    either {
+      let! slices =
+        let arr = Array.zeroCreate yaml.Slices.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * Slices array>) box -> either {
+            let! (i, arr) = m
+            let! (slice : Slices) = Yaml.fromYaml box
+            arr.[i] <- slice
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.Slices
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = yaml.Name
+               Slices = slices }
+    }
 
 #endif
+
+// * Cue
 
 [<StructuralEquality; StructuralComparison>]
 type Cue =
   { Id:     Id
     Name:   string
     Slices: Slices array }
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -87,6 +119,8 @@ type Cue =
                Slices = slices }
     }
 
+  // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> builder.CreateString
@@ -98,13 +132,19 @@ type Cue =
     CueFB.AddSlices(builder, slices)
     CueFB.EndCueFB(builder)
 
+  // ** FromBytes
+
   static member FromBytes(bytes: byte[]) : Either<IrisError,Cue> =
     bytes
     |> Binary.createBuffer
     |> CueFB.GetRootAsCueFB
     |> Cue.FromFB
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -114,37 +154,26 @@ type Cue =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
-    let slices = Array.map Yaml.toYaml self.Slices
-    new CueYaml(string self.Id, self.Name, slices)
+  member cue.ToYamlObject() = CueYaml.From(cue)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
-    either {
-      let! slices =
-        let arr = Array.zeroCreate yaml.Slices.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * Slices array>) box -> either {
-            let! (i, arr) = m
-            let! (slice : Slices) = Yaml.fromYaml box
-            arr.[i] <- slice
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yaml.Slices
-        |> Either.map snd
+    yaml.ToCue()
 
-      return { Id = Id yaml.Id
-               Name = yaml.Name
-               Slices = slices }
-    }
+  // ** ToYaml
 
   member self.ToYaml(serializer: Serializer) =
     Yaml.toYaml self |> serializer.Serialize
 
+  // ** FromYaml
+
   static member FromYaml(str: string) : Either<IrisError,Cue> =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     serializer.Deserialize<CueYaml>(str)
     |> Yaml.fromYaml
+
+  // ** AssetPath
 
   //     _                 _   ____       _   _
   //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
@@ -161,6 +190,8 @@ type Cue =
           ASSET_EXTENSION
       CUE_DIR <.> path
 
+  // ** Load
+
   //  _                    _
   // | |    ___   __ _  __| |
   // | |   / _ \ / _` |/ _` |
@@ -168,42 +199,15 @@ type Cue =
   // |_____\___/ \__,_|\__,_|
 
   static member Load(path: FilePath) : Either<IrisError, Cue> =
-    either {
-      let! data = Asset.read path
-      let! cue = Yaml.decode data
-      return cue
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, Cue array> =
-    either {
-      try
-        let dir = basePath </> filepath CUE_DIR
-        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) dir
+    basePath </> filepath CUE_DIR
+    |> IrisData.loadAll
 
-        let! (_,cues) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * Cue array>) path ->
-              either {
-                let! (idx,cues) = m
-                let! cue = Cue.Load path
-                cues.[idx] <- cue
-                return (idx + 1, cues)
-              })
-            (Right(0, arr))
-            files
-
-        return cues
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "Cue.LoadAll"
-            |> Either.fail
-    }
+  // ** Save
 
   //  ____
   // / ___|  __ ___   _____
@@ -212,11 +216,6 @@ type Cue =
   // |____/ \__,_| \_/ \___|
 
   member cue.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path cue
-      let data = Yaml.encode cue
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath cue
 
   #endif

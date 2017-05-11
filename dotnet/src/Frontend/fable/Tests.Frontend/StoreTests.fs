@@ -35,13 +35,14 @@ module Store =
     let project = IrisProject.Empty
 
     let state =
-      { Project  = project
-        PinGroups = Map.empty
-        Cues     = Map.empty
-        CueLists = Map.empty
-        Users    = Map.empty
-        Sessions = Map.empty
-        Clients  = Map.empty
+      { Project            = project
+        PinGroups          = Map.empty
+        Cues               = Map.empty
+        CueLists           = Map.empty
+        Users              = Map.empty
+        Sessions           = Map.empty
+        Clients            = Map.empty
+        CuePlayers         = Map.empty
         DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)
@@ -110,7 +111,7 @@ module Store =
 
         equals 0 store.State.PinGroups.[group.Id].Pins.Count
 
-        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "hey" |])
+        let pin : Pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "hey" |]
 
         store.Dispatch <| AddPin(pin)
 
@@ -121,7 +122,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add an pin to the store if group does not exists" <| fun finish ->
-        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "Ho" |])
+        let pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "Ho" |]
         store.Dispatch <| AddPin(pin)
         equals 0 store.State.PinGroups.Count
         finish ()
@@ -132,7 +133,7 @@ module Store =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| "swell" |])
+        let pin = Pin.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
@@ -153,7 +154,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove an pin from the store if it exists" <| fun finish ->
-        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| "oh my" |])
+        let pin = Pin.string (Id "0xb33f") "hi" (Id "0xb4d1d34") Array.empty [| "oh my" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)

@@ -256,53 +256,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle name ->
-        Pin.Toggle(Id name,name,patchid, [| |], [| false |])
+        Pin.toggle (Id name) name patchid  [| |]  [| false |]
         |> Some
 
       | Bang name ->
-        Pin.Bang(Id name,name,patchid, [| |], [| false |])
+        Pin.bang (Id name) name patchid [| |] [| false |]
         |> Some
 
       | String name ->
-        Pin.String(Id name,name,patchid, [| |], [| "" |])
+        Pin.string (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Multiline name ->
-        Pin.MultiLine(Id name,name,patchid, [| |], [| "" |])
+        Pin.multiLine (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | File name ->
-        Pin.FileName(Id name,name,patchid, [| |], [| "" |])
+        Pin.fileName (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Dir name ->
-        Pin.Directory(Id name,name,patchid, [| |], [| "" |])
+        Pin.directory (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Url name ->
-        Pin.Url(Id name,name,patchid, [| |], [| "" |])
+        Pin.url (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | IP name ->
-        Pin.IP(Id name,name,patchid, [| |], [| "" |])
+        Pin.ip (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Float name ->
-        Pin.Number(Id name,name,patchid, [| |], [| 0.0 |])
+        Pin.number (Id name) name patchid [| |] [| 0.0 |]
         |> Some
 
       | Bytes name ->
-        Pin.Bytes(Id name,name,patchid, [| |], [| [| |] |])
+        Pin.bytes (Id name) name patchid [| |] [| [| |] |]
         |> Some
 
       | Color name ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Color(Id name,name,patchid, [| |], [| color |])
+        Pin.color (Id name) name patchid [| |] [| color |]
         |> Some
 
       | Enum name ->
         let prop = { Key = ""; Value = "" }
-        Pin.Enum(Id name,name,patchid, [| |], [| prop |], [| prop |])
+        Pin.enum (Id name) name patchid [| |] [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None

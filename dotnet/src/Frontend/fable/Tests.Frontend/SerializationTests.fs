@@ -20,6 +20,7 @@ module SerializationTests =
   let mk() = Id.Create()
 
   let rndstr() = mk() |> string
+  let rndname() = mk() |> string |> name
 
   let rndport() = rand.Next(0,65535) |> uint16 |> port
 
@@ -44,23 +45,23 @@ module SerializationTests =
     IrisProject.Empty
 
   let pins _ =
-    [| Pin.Bang      (mk(), "Bang",      mk(), mktags (), [| true  |])
-    ;  Pin.Toggle    (mk(), "Toggle",    mk(), mktags (), [| true  |])
-    ;  Pin.String    (mk(), "string",    mk(), mktags (), [| "one" |])
-    ;  Pin.MultiLine (mk(), "multiline", mk(), mktags (), [| "two" |])
-    ;  Pin.FileName  (mk(), "filename",  mk(), mktags (), [| "three" |])
-    ;  Pin.Directory (mk(), "directory", mk(), mktags (), [| "four"  |])
-    ;  Pin.Url       (mk(), "url",       mk(), mktags (), [| "five" |])
-    ;  Pin.IP        (mk(), "ip",        mk(), mktags (), [| "six"  |])
-    ;  Pin.Number    (mk(), "number",    mk(), mktags (), [| double 3.0 |])
-    ;  Pin.Bytes     (mk(), "bytes",     mk(), mktags (), [| mkBytes () |])
-    ;  Pin.Color     (mk(), "rgba",      mk(), mktags (), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
-    ;  Pin.Color     (mk(), "hsla",      mk(), mktags (), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |])
-    ;  Pin.Enum      (mk(), "enum",      mk(), mktags (), [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [| { Key = "one"; Value = "two" } |])
+    [| Pin.bang      (mk()) "Bang"      (mk()) (mktags()) [| true  |]
+    ;  Pin.toggle    (mk()) "Toggle"    (mk()) (mktags()) [| true  |]
+    ;  Pin.string    (mk()) "string"    (mk()) (mktags()) [| "one" |]
+    ;  Pin.multiLine (mk()) "multiline" (mk()) (mktags()) [| "two" |]
+    ;  Pin.fileName  (mk()) "filename"  (mk()) (mktags()) [| "three" |]
+    ;  Pin.directory (mk()) "directory" (mk()) (mktags()) [| "four"  |]
+    ;  Pin.url       (mk()) "url"       (mk()) (mktags()) [| "five" |]
+    ;  Pin.ip        (mk()) "ip"        (mk()) (mktags()) [| "six"  |]
+    ;  Pin.number    (mk()) "number"    (mk()) (mktags()) [| double 3.0 |]
+    ;  Pin.bytes     (mk()) "bytes"     (mk()) (mktags()) [| mkBytes () |]
+    ;  Pin.color     (mk()) "rgba"      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
+    ;  Pin.color     (mk()) "hsla"      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
+    ;  Pin.enum      (mk()) "enum"      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
     |]
 
   let mkPin _ =
-    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| "hello" |])
+    Pin.string (Id.Create()) "url input" (Id.Create()) [| |] [| "hello" |]
 
   let mkSlices() =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
@@ -122,14 +123,33 @@ module SerializationTests =
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
 
+  let mkCuePlayer() =
+    let rndopt () =
+      if rand.Next(0,2) > 0 then
+        Some (rndstr() |> Id)
+      else
+        None
+
+    { Id = Id.Create()
+      Name = rndname ()
+      CueList = rndopt ()
+      Selected = index (rand.Next(0,1000))
+      Call = mkPin()
+      Next = mkPin()
+      Previous = mkPin()
+      RemainingWait = rand.Next(0,1000)
+      LastCaller = rndopt()
+      LastCalled = rndopt() }
+
   let mkState _ =
-    { Project   = mkProject ()
-    ; PinGroups = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
-    ; Cues      = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
-    ; CueLists  = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
-    ; Sessions  = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
-    ; Users     = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
-    ; Clients   = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+    { Project    = mkProject ()
+    ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
+    ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
+    ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
+    ; Users      = mkUser    () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
+    ; Clients    = mkClient  () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+    ; CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
     ; DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |]
     }
 
@@ -220,6 +240,9 @@ module SerializationTests =
       ; AddCueList              <| mkCueList ()
       ; UpdateCueList           <| mkCueList ()
       ; RemoveCueList           <| mkCueList ()
+      ; AddCuePlayer            <| mkCuePlayer ()
+      ; UpdateCuePlayer         <| mkCuePlayer ()
+      ; RemoveCuePlayer         <| mkCuePlayer ()
       ; AddSession              <| mkSession ()
       ; UpdateSession           <| mkSession ()
       ; RemoveSession           <| mkSession ()
@@ -281,4 +304,8 @@ module SerializationTests =
 
     test "Validate DiscoveredService Binary Serialization" <| fun finish ->
       mkDiscoveredService() |> check
+      finish()
+
+    test "Validate CuePlayer Binary Serialization" <| fun finish ->
+      mkCuePlayer() |> check
       finish()

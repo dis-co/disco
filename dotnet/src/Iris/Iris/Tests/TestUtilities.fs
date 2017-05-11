@@ -100,7 +100,7 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [| true |])
+    Pin.toggle (mk()) (rndstr()) (mk()) (mkTags()) [| true |]
 
   let mkDiscoveredService() =
     { Id = Id.Create()
@@ -133,18 +133,18 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), mkBools())
-    ;  Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), mkBools())
-    ;  Pin.String    (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.FileName  (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Directory (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Url       (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.IP        (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Number    (mk(), rndstr(), mk(), mkTags(), mkNumbers())
-    ;  Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), mkBytes())
-    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), mkColors())
-    ;  Pin.Enum      (mk(), rndstr(), mk(), mkTags(), mkProps(), mkProps())
+    [| Pin.bang      (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.toggle    (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.string    (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.multiLine (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.fileName  (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.directory (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.url       (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.ip        (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.number    (mk()) (rndstr()) (mk()) (mkTags()) (mkNumbers())
+    ;  Pin.bytes     (mk()) (rndstr()) (mk()) (mkTags()) (mkBytes())
+    ;  Pin.color     (mk()) (rndstr()) (mk()) (mkTags()) (mkColors())
+    ;  Pin.enum      (mk()) (rndstr()) (mk()) (mkTags()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =
@@ -174,6 +174,24 @@ module TestData =
       Salt = checksum (rndstr())
       Joined = System.DateTime.Now
       Created = System.DateTime.Now }
+
+  let mkCuePlayer() =
+    let rndopt () =
+      if rand.Next(0,2) > 0 then
+        Some (rndstr() |> Id)
+      else
+        None
+
+    { Id = Id.Create()
+      Name = rndname ()
+      CueList = rndopt ()
+      Selected = index (rand.Next(0,1000))
+      Call = mkPin()
+      Next = mkPin()
+      Previous = mkPin()
+      RemainingWait = rand.Next(0,1000)
+      LastCaller = rndopt()
+      LastCalled = rndopt() }
 
   let mkUsers () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -238,18 +256,27 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
+  let mkPlayers () =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkCuePlayer() |]
+
+  let mkDiscoveredServices() =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkDiscoveredService() |]
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
       return
-        { Project  = project
-          PinGroups  = mkPinGroups () |> asMap
-          Cues     = mkCues    () |> asMap
-          CueLists = mkCueLists() |> asMap
-          Sessions = mkSessions() |> asMap
-          Users    = mkUsers   () |> asMap
-          Clients  = mkClients () |> asMap
-          DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
+        { Project            = project
+          PinGroups          = mkPinGroups()          |> asMap
+          Cues               = mkCues()               |> asMap
+          CueLists           = mkCueLists()           |> asMap
+          Sessions           = mkSessions()           |> asMap
+          Users              = mkUsers()              |> asMap
+          Clients            = mkClients()            |> asMap
+          CuePlayers         = mkPlayers()            |> asMap
+          DiscoveredServices = mkDiscoveredServices() |> asMap }
     }
 
   let mkChange _ =

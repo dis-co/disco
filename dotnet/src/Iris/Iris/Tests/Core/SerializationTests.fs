@@ -512,6 +512,9 @@ module SerializationTests =
           AddCueList              <| mkCueList ()
           UpdateCueList           <| mkCueList ()
           RemoveCueList           <| mkCueList ()
+          AddCuePlayer            <| mkCuePlayer ()
+          UpdateCuePlayer         <| mkCuePlayer ()
+          RemoveCuePlayer         <| mkCuePlayer ()
           AddSession              <| mkSession ()
           UpdateSession           <| mkSession ()
           RemoveSession           <| mkSession ()
@@ -538,6 +541,14 @@ module SerializationTests =
         ] |> List.iter binaryEncDec
       }
       |> noError
+
+  let test_validate_cueplayer_binary_serialization =
+    testCase "Validate CuePlayer Binary Serialization" <| fun _ ->
+      mkCuePlayer() |> binaryEncDec
+
+  let test_validate_cueplayer_yaml_serialization =
+    testCase "Validate CuePlayer Yaml Serialization" <| fun _ ->
+      mkCuePlayer() |> yamlEncDec
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -580,4 +591,6 @@ module SerializationTests =
       test_validate_state_binary_serialization
       test_validate_state_machine_binary_serialization
       test_validate_client_api_request_binary_serialization
+      test_validate_cueplayer_binary_serialization
+      test_validate_cueplayer_yaml_serialization
     ]
