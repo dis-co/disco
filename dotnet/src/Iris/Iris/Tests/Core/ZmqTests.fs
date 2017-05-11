@@ -32,13 +32,16 @@ module ZmqIntegrationTests =
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let rand = new System.Random()
+        use stopper = new AutoResetEvent(false)
 
-        let num = 5
+        let numclients = 5
+        let numrequests = 50
+
         let frontend = url "tcp://127.0.0.1:5555"
         let backend =  url "inproc://backend"
-        use! broker = Broker.create {
+        let! broker = Broker.create {
             Id = Id.Create()
-            MinWorkers = uint8 num
+            MinWorkers = uint8 numclients
             MaxWorkers = 20uy
             Frontend = frontend
             Backend = backend
@@ -48,20 +51,9 @@ module ZmqIntegrationTests =
         let sloop (inbox: MailboxProcessor<RawServerRequest>) =
           let rec impl () = async {
               let! request = inbox.Receive()
-
-              Tracing.trace "Agent responding" <| fun () ->
-                // add the requesting clients id to the random number so can later on
-                // check that each client has gotten the answer to its own question
-                let response =
-                  let id = request.From
-                  BitConverter.ToInt64(request.Body,0) +
-                  BitConverter.ToInt64(id.ToByteArray(),0)
-
-                response
-                |> BitConverter.GetBytes
-                |> RawServerResponse.fromRequest request
-                |> broker.Respond
-
+              request.Body
+              |> RawServerResponse.fromRequest request
+              |> broker.Respond
               return! impl ()
             }
           impl ()
@@ -69,17 +61,28 @@ module ZmqIntegrationTests =
         let smbp = MailboxProcessor.Start(sloop)
         use obs = broker.Subscribe smbp.Post
 
-        let responses = ResizeArray()
+        let responses = ResizeArray<Id * int64>()
 
         let cloop (inbox: MailboxProcessor<RawClientResponse>) =
+          let mutable count = 0
           let rec imp () = async {
               let! msg = inbox.Receive()
-              match msg.Body with
-              | Right response ->
-                let converted = BitConverter.ToInt64(response, 0)
-                responses.Add(msg.PeerId, converted)
-              | Left error -> error |> string |> Logger.err "client response"
-              printfn "got response!!"
+              try
+                match msg.Body with
+                | Right response ->
+                  let converted = BitConverter.ToInt64(response, 0)
+                  responses.Add(msg.PeerId, converted)
+                | Left error ->
+                  error
+                  |> string
+                  |> Logger.err "client response"
+              with
+              | exn -> Logger.err "client loop" exn.Message
+
+              count <- count + 1
+              if count = (numrequests * numclients) then
+                stopper.Set() |> ignore
+
               return! imp()
             }
           imp()
@@ -87,7 +90,7 @@ module ZmqIntegrationTests =
         let cmbp = MailboxProcessor.Start(cloop)
 
         let clients =
-          [| for n in 0 .. num - 1 do
+          [| for n in 0 .. (numclients - 1) do
                let socket = Client.create {
                   PeerId = Id.Create()
                   Frontend = frontend
@@ -111,57 +114,39 @@ module ZmqIntegrationTests =
             |> Either.mapError (string >> Logger.err "client request")
             |> ignore
 
-            return (client.PeerId, request)
+            return (client.PeerId, value)
           }
 
         // prove that we can correlate the random request number with a client
         // by adding the clients id to the random number
         let requests =
-          [| for i in 0 .. 50 do
+          [| for i in 0 .. (numrequests - 1) do
               yield [| for client in clients do
                           yield mkRequest client |] |]
           |> Array.map (Async.Parallel >> Async.RunSynchronously)
           |> Array.concat
 
-        let result = failwith "never"
-          // (fun m' (id,request,response) ->
-          //         if m'
-          //         then
-          //           let computed =
-          //             id
-          //             |> string
-          //             |> Guid.Parse
-          //             |> fun guid -> guid.ToByteArray()
-          //             |> fun bytes -> BitConverter.ToInt64(bytes,0)
-          //           (request + computed) = response
-          //         else m')
+        stopper.WaitOne() |> ignore
 
         Array.iter dispose clients
+        dispose broker
+
+        expect "Should have same number of requests as responses" (Array.length requests) id responses.Count
+
+        let result =
+          responses.ToArray()
+          |> Array.sort
+          |> Array.zip (Array.sort requests)
+          |> Array.fold
+            (fun m' ((id1,request),(id2, response)) ->
+              if m' then
+                request = response
+              else m')
+            true
 
         expect "Should be consistent" true id result
       }
       |> noError
-
-  // let test_client_send_fail_restarts_socket =
-  //   testCase "client send fail restarts socket" <| fun _ ->
-  //     either {
-  //       use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
-  //       let addr = url "tcp://1.2.3.4:5555"
-  //       use client = Client.create {
-  //           PeerId = Id.Create()
-  //           Frontend = addr
-  //           Timeout = 10<ms>
-  //         }
-
-  //       for i in 0 .. 10 do
-  //         do! i
-  //             |> BitConverter.GetBytes
-  //             |> client.Request
-  //             |> Either.ignore
-  //     }
-  //     |> noError
-
 
   let test_worker_timeout_fail_restarts_socket =
     testCase "worker timeout fail restarts socket" <| fun _ ->
@@ -213,16 +198,45 @@ module ZmqIntegrationTests =
 
         // Explanation:
         //
-        // We are testing whether the workers are "self-healing" here, that is, they do mitigate
-        // backend timeouts by re-registering themselves with the broker after timeout, such that
-        // they can resume processing requests. This is proven here by comparing the number of
-        // requests received on the broker subscription with the number of workers used, and if that
-        // number is higher than the worker count, the workers have mitigated backend response
-        // timeouts successfully.
+        // We are testing whether the requests can still be issued even if the backend
+        // does not, for whatever reason, answer in time.
 
-        printfn "count: %d expected: %d" count (num * requests)
+        expect "Should have received all requests" count id count
+      }
+      |> noError
 
-        expect "Should have passed on more requests than workers" true ((<) num) count
+  let test_client_timeout_keeps_socket_alive =
+    testCase "client timeout keeps socket alive" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe Logger.stdout
+
+        let num = 50
+        let timeout = 10<ms>
+        let mutable count = 0
+
+        use client = Client.create {
+          PeerId = Id.Create()
+          Frontend = url "tcp://127.0.0.1:5555"
+          Timeout = timeout
+        }
+
+        client.Subscribe (fun _ -> Interlocked.Increment &count |> ignore)
+        |> ignore
+
+        let request (n: int) =
+          n
+          |> BitConverter.GetBytes
+          |> fun body -> { Body = body }
+          |> client.Request
+          |> ignore
+
+        do! [| for n in 0 .. (num - 1) -> n |]
+            |> Array.iter request
+            |> Either.succeed
+
+        Thread.Sleep(num * int timeout + 50)
+
+        expect "Should have correct count" num id count
       }
       |> noError
 
@@ -234,7 +248,7 @@ module ZmqIntegrationTests =
 
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
+      test_client_timeout_keeps_socket_alive
       test_broker_request_handling
-      // test_client_send_fail_restarts_socket
       test_worker_timeout_fail_restarts_socket
     ] |> testSequenced

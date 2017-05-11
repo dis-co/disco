@@ -85,7 +85,6 @@ type WorkerConfig =
 // * IWorker
 
 type private IWorker =
-  inherit IDisposable
   abstract Id: WorkerId
   abstract Respond: RawServerResponse -> unit
   abstract Subscribe: (RawServerRequest -> unit) -> IDisposable
@@ -237,7 +236,10 @@ module Client =
     member self.Start() =
       try
         self.Context <- new ZContext()
-        self.StartSocket()
+        self.Socket <- new ZSocket(self.Context, ZSocketType.DEALER)
+        self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
+        self.Socket.Identity <- clid.ToByteArray()
+        self.Socket.Connect(unwrap options.Frontend)
         self.Status <- ServiceStatus.Running
       with
         | exn ->
@@ -246,33 +248,6 @@ module Client =
           exn.Message + exn.StackTrace
           |> sprintf "Exception creating socket for %O: %s" options.PeerId
           |> Logger.err "IClient"
-
-    // *** StartSocket
-
-    member self.StartSocket() =
-      self.Socket <- new ZSocket(self.Context, ZSocketType.DEALER)
-      self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
-      self.Socket.Identity <- clid.ToByteArray()
-      self.Socket.Connect(unwrap options.Frontend)
-      self.Status <- ServiceStatus.Running
-
-    // *** RestartSocket
-
-    member self.RestartSocket() =
-      if self.Status <> ServiceStatus.Disposed then
-        sprintf "restarting socket for %O" options.PeerId
-        |> Logger.debug "Client"
-        dispose self.Socket
-        self.StartSocket()
-      else
-        "Cannot restart client socket, already disposed"
-        |> Logger.err "Client"
-
-    // *** Reset
-
-    member self.Reset() =
-      if not (Service.isDisposed self.Status) then
-        dispose self
 
     // *** Dispose
 
@@ -328,11 +303,12 @@ module Client =
 
             // RECEIVING
             if state.Socket.PollIn(poll, &incoming, &error, state.Timeout) then
-              incoming.[1].Read()
+              incoming.[0].Read()
               |> Either.succeed
               |> fun body -> { PeerId = state.Id; Body = body }
               |> notify state.Subscriptions
             else // TIMEOUT
+              Logger.err "Client" "Timeout on socket"
               Error.asSocketError "Client" "Timeout on socket"
               |> Either.fail
               |> fun body -> { PeerId = state.Id; Body = body }
@@ -340,14 +316,20 @@ module Client =
 
           with
           | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
-            "Encountered ETERM on thread. disposing"
-            |> Logger.err "Client"
-            state.Status <- ServiceStatus.Disposed
+            let msg = "Encountered ETERM on thread. disposing"
+            let error = Error.asSocketError "Client" msg
+            Logger.err "Client" msg
+            { PeerId = state.Id; Body = Left error }
+            |> notify state.Subscriptions
+            state.Status <- ServiceStatus.Failed error
           | :? ZException -> ()
           | exn ->
-            exn.Message + exn.StackTrace
-            |> Logger.err "Client"
-            state.Status <- ServiceStatus.Disposed
+            let msg = String.Format("Exception: {0}\nStackTrace:{1}",exn.Message, exn.StackTrace)
+            let error = Error.asSocketError "Client" msg
+            Logger.err "Client" msg
+            { PeerId = state.Id; Body = Left error }
+            |> notify state.Subscriptions
+            state.Status <- ServiceStatus.Failed error
       else
         // RECEIVING
         if state.Socket.PollIn(poll, &incoming, &error, timeout) then
@@ -390,7 +372,6 @@ module Client =
 
         member self.Restart () =
           self.Dispose()
-          state.Reset()
           state.Status <- ServiceStatus.Stopped
           thread <- Thread(worker state)
           thread.Name <- sprintf "Client %O" state.Id
@@ -407,8 +388,7 @@ module Client =
           |> listener.Subscribe
 
         member self.Dispose() =
-          lock state <| fun _ ->
-            state.Status <- ServiceStatus.Stopping
+          state.Status <- ServiceStatus.Stopping
           state.Stopper.WaitOne() |> ignore }
 
 // * Worker module
@@ -442,7 +422,7 @@ module private Worker =
     [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
-    [<DefaultValue>] val mutable Responder: ConcurrentStack<RawServerResponse>
+    [<DefaultValue>] val mutable Responder: ConcurrentQueue<RawServerResponse>
 
     do
       self.Initialized <- false
@@ -453,7 +433,7 @@ module private Worker =
       self.Subscriptions <- new Subscriptions()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
-      self.Responder <- new ConcurrentStack<RawServerResponse>()
+      self.Responder <- new ConcurrentQueue<RawServerResponse>()
 
     // *** ToString
 
@@ -472,9 +452,8 @@ module private Worker =
 
     member self.Start() =
       try
-        self.StartSocket()
-        self.Register()
-
+        self.Socket <- new ZSocket(args.Context, ZSocketType.DEALER)
+        self.Socket.Connect(unwrap args.Backend)
         self.Initialized <- true
         self.Started <- true
         self.Starter.Set() |> ignore
@@ -491,28 +470,6 @@ module private Worker =
           self.Started <- false
           self.Run <- false
 
-    // *** StartSocket
-
-    member self.StartSocket () =
-      self.Socket <- new ZSocket(args.Context, ZSocketType.REQ)
-      self.Socket.Identity <- BitConverter.GetBytes args.Id
-      self.Socket.ReceiveTimeout <- TimeSpan.FromMilliseconds 10.0
-      self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
-      self.Socket.Connect(unwrap args.Backend)
-
-    // *** RestartSocket
-
-    member self.RestartSocket() =
-      Logger.debug (tag args.Id "RestartSocket") "restarting socket"
-      dispose self.Socket
-      self.StartSocket()
-
-    // *** Register
-
-    member self.Register() =
-      use hello = new ZFrame(READY)
-      self.Socket.Send(hello)
-
     // *** Id
 
     member self.Id
@@ -522,8 +479,10 @@ module private Worker =
 
     interface IDisposable with
       member self.Dispose() =
+        self.Socket.Linger <- TimeSpan.FromMilliseconds 0.0
         tryDispose self.Socket
         self.Disposed <- true
+        Logger.debug "worker" "disposed"
 
   // ** spin
 
@@ -548,20 +507,21 @@ module private Worker =
 
       if state.Socket.ReceiveMessage(&request, &error) then
         Tracing.trace (tag state.Id "request") <| fun () ->
-          let clientId = request.[0].Read()
+          let clientId = request.[1].Read()
           let body = request.[2].Read()
 
+          // blow out the request to the backend process
           { From = Guid clientId
             Via = state.Id
             Body = body }
           |> notify state.Subscriptions
 
-          let timer = new Stopwatch()
+          let timer = Stopwatch()
           timer.Start()
 
           let mutable response = Unchecked.defaultof<RawServerResponse>
 
-          while not (state.Responder.TryPop(&response)) && not (timedOut state timer) && state.Run do
+          while not (state.Responder.TryDequeue(&response)) && not (timedOut state timer) && state.Run do
             Thread.Sleep(TimeSpan.FromTicks 1L)
 
           timer.Stop()
@@ -569,24 +529,19 @@ module private Worker =
           if not (timedOut state timer) && state.Run then // backend did not time out
             use reply = new ZMessage()
             reply.Add(new ZFrame(clientId));
-            reply.Add(new ZFrame());
-            reply.Add(new ZFrame(response.Via));
             reply.Add(new ZFrame(response.Body));
 
             try
               state.Socket.Send(reply)
             with
-              | :? ZException as exn when shouldRestart exn.ErrNo ->
-                Logger.err (tag state.Id "worker") "sending reply error"
-                state.RestartSocket()
-                state.Register()
+              | :? ZException as exn ->
+                String.Format("error sending reply to proxy: {0}", exn.Message)
+                |> Logger.err (tag state.Id "worker")
               | exn ->
-                exn.Message
-                |> sprintf "error during send: %O"
+                String.Format("error during send: {0}", exn.Message)
                 |> Logger.err (tag state.Id "worker")
                 state.Run <- false
           elif state.Run then           // backend timed out, but we are still running
-            state.Register()            // put the socket back in business
             timer.ElapsedMilliseconds   // by re-registering it
             |> sprintf "Backend Response Timeout: %d"
             |> Logger.err (tag state.Id "worker")
@@ -597,12 +552,8 @@ module private Worker =
       else
         match error with
         | err when err = ZError.EAGAIN -> () // don't do anything if we just didn't receive
-        | err when err = ZError.EFSM ->      // restart the socket if in the wrong state
-          Logger.err (tag state.Id "worker") "worker got EFSM"
-          state.RestartSocket()
-          state.Register()
         | err when err = ZError.ETERM ->     // context was killed, so we exit
-          "context was terminated, shutting down"
+          "shutting down"
           |> Logger.err (tag state.Id "worker")
           state.Run <- false
         | other ->                           // something else happened
@@ -632,7 +583,7 @@ module private Worker =
               with get () = state.Id
 
             member worker.Respond(response: RawServerResponse) =
-              state.Responder.Push(response)
+              state.Responder.Enqueue(response)
 
             member worker.Subscribe(callback: RawServerRequest -> unit) =
               let guid = Guid.NewGuid()
@@ -641,13 +592,7 @@ module private Worker =
                   member self.OnCompleted() = ()
                   member self.OnError(error) = ()
                   member self.OnNext(value) = callback value }
-              |> listener.Subscribe
-
-            member worker.Dispose() =
-              state.Run <- false
-              state.Stopper.WaitOne() |> ignore
-              dispose state.Stopper
-              thread.Join() })
+              |> listener.Subscribe })
       state.Error
 
 // * Broker module
@@ -729,7 +674,7 @@ module Broker =
       try
         self.Context <- new ZContext()
         self.Frontend <- new ZSocket(self.Context, ZSocketType.ROUTER)
-        self.Backend <- new ZSocket(self.Context, ZSocketType.ROUTER)
+        self.Backend <- new ZSocket(self.Context, ZSocketType.DEALER)
         self.Frontend.Bind(unwrap args.Frontend)
         self.Backend.Bind(unwrap args.Backend)
 
@@ -780,83 +725,30 @@ module Broker =
 
     interface IDisposable with
       member self.Dispose() =
-        lock self <| fun _ ->
-          for disp in disposables do
-            tryDispose disp
+        for disp in disposables do
+          tryDispose disp
 
-          tryDispose self.Frontend
-          tryDispose self.Backend
+        self.Frontend.Linger <- TimeSpan.FromMilliseconds 0.0
+        self.Backend.Linger <- TimeSpan.FromMilliseconds 0.0
+        tryDispose self.Frontend
+        tryDispose self.Backend
+        tryDispose self.Context
+        self.Disposed <- true
 
-          for KeyValue(_, worker) in self.Workers do
-            tryDispose worker
+  // ** proxy
 
-          tryDispose self.Context
-          self.Disposed <- true
-
-  // ** spin
-
-  let private spin (state: LocalThreadState) =
-    state.Initialized && state.Started && state.Run
-
-  // ** worker
-
-  let private worker (state: LocalThreadState) () =
+  let private proxy (state: LocalThreadState) () =
     state.Start()
     state.Starter.Set() |> ignore
-
-    Logger.debug (tag "initialize") "startup done"
-
-    let available = new ResizeArray<WorkerId>()
-    let mutable incoming = Unchecked.defaultof<ZMessage>
-    let mutable error = Unchecked.defaultof<ZError>
-    let poll = ZPollItem.CreateReceiver()
-
-    while spin state do
-      let timespan = Nullable(TimeSpan.FromMilliseconds(1.0))
-
-      if state.Backend.PollIn(poll, &incoming, &error, timespan) then
-        let workerId = incoming.[0].ReadUInt16()
-        let clientId = incoming.[2].Read()
-
-        available.Add(workerId)
-
-        if clientId <> READY then
-          let from = incoming.[4].Read()
-          let reply = incoming.[5].Read()
-
-          Tracing.trace (tag "ReplyToFrontend") <| fun _ ->
-            use outgoing = new ZMessage()
-            outgoing.Add(new ZFrame(clientId))
-            outgoing.Add(new ZFrame())
-            outgoing.Add(new ZFrame(from))
-            outgoing.Add(new ZFrame(reply))
-            state.Frontend.Send(outgoing)
-        else
-          workerId
-          |> sprintf "registered worker %A"
-          |> Logger.debug (tag "worker")
-
-      if available.Count > 0 then
-        if state.Frontend.PollIn(poll, &incoming, &error, timespan) then
-          let clientId = incoming.[0].Read()
-          let request = incoming.[2].Read()
-          let workerId = available.[0]
-
-          Tracing.trace (tag "ForwardToBackend") <| fun _ ->
-            use outgoing = new ZMessage()
-            outgoing.Add(new ZFrame(workerId)) // worker ID
-            outgoing.Add(new ZFrame())
-            outgoing.Add(new ZFrame(clientId))
-            outgoing.Add(new ZFrame())
-            outgoing.Add(new ZFrame(request))
-            state.Backend.Send(outgoing)
-
-          available.RemoveAt(0)
-      else
-        state.AddWorker()
-
-    dispose state
+    try
+      Logger.debug (tag "proxy") "starting ZMQ proxy"
+      let mutable error = ZError.None
+      if not (ZContext.Proxy(state.Frontend, state.Backend, &error)) then
+        Logger.err "proxy" (string error)
+    with
+      | exn -> Logger.err (tag "proxy") exn.Message
     state.Stopper.Set() |> ignore
+    Logger.err "proxy" "exiting"
 
   // ** create
 
@@ -865,9 +757,9 @@ module Broker =
     let cts = new CancellationTokenSource()
     let responder = ResponseActor.Start(loop state.Workers, cts.Token)
 
-    let thread = Thread(worker state)
-    thread.Name <- sprintf "Broker"
-    thread.Start()
+    let proxy = Thread(proxy state)
+    proxy.Name <- sprintf "BrokerProxy"
+    proxy.Start()
 
     state.Starter.WaitOne() |> ignore
 
@@ -887,8 +779,7 @@ module Broker =
               responder.Post response
 
             member self.Dispose() =
-              state.Run <- false
-              state.Stopper.WaitOne() |> ignore
               dispose cts
+              dispose state
               state.Stopper.Dispose() })
       state.Error
