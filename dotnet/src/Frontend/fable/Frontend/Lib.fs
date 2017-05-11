@@ -149,7 +149,10 @@ let addMember(info: obj) =
   Promise.start (promise {
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   try
-    let latestState = ClientContext.Singleton.LatestState
+    let latestState =
+      match ClientContext.Singleton.Store with
+      | Some store -> store.State
+      | None -> failwith "The client store is not initialized"
 
     let memberIpAndPort =
       let memberIpAddr: string = !!info?ipAddr

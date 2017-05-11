@@ -6,7 +6,7 @@ import GraphView from "./widgets/GraphView"
 import ProjectView from "./widgets/ProjectView"
 import Cluster from "./widgets/Cluster"
 import Discovery from "./widgets/Discovery"
-import { CuePlayer } from "../fable/Frontend/Widgets/CuePlayer.fs"
+import { CuePlayerModel } from "../fable/Frontend/Widgets/CuePlayer.fs"
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
@@ -20,7 +20,7 @@ function cardClicked(title, global) {
       global.addWidget(new GraphView());
       break;
     case "CUE PLAYER":
-      global.addWidget(new CuePlayer());
+      global.addWidget(new CuePlayerModel());
       break;
     case "PROJECT VIEW":
       global.addWidget(new ProjectView());

@@ -80,8 +80,8 @@ type CueList(cues: Cue list) =
   member val Cues = cues
   member val Open = false with get, set
 
-type CuePlayer(?cueLists: CueList list) =
-  member val CueLists = defaultArg cueLists [CueList[]]
+type CuePlayerModel(cuePlayer) =
+  member val CuePlayer: CuePlayer = cuePlayer
   interface IWidgetModel with
     member __.view = typeof<CuePlayerView>
     member __.name = "Cue Player"
@@ -97,7 +97,7 @@ type CuePlayer(?cueLists: CueList list) =
 [<Pojo>]
 type CuePlayerProps =
   { id: int;
-    model: CuePlayer
+    model: CuePlayerModel
     ``global``: GlobalModel }
 
 type CuePlayerView(props) =
@@ -239,7 +239,8 @@ type CuePlayerView(props) =
             div [Class "cueplayer-button"] [str "Add Group"]
             div [Style [Clear "both"]] []
           ]
-        // CUE LISTS
-        for cueList in this.props.model.CueLists do
-          yield this.RenderCueList(cueList)
+        // CUE LIST
+        // this.props.model.CuePlayer.CueList
+        // for cueList in this.props.model.CueLists do
+        //   yield this.RenderCueList(cueList)
       ]

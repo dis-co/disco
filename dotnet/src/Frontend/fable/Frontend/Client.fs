@@ -42,7 +42,7 @@ type [<Pojo; NoComparison>] StateInfo =
 
 and ClientContext private () =
   let mutable session : Id option = None
-  let mutable latestState: State option = None
+  let mutable store: Store option = None
   let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
@@ -92,10 +92,7 @@ and ClientContext private () =
     | Some worker -> worker
     | None -> failwith "Client not initialized"
 
-  member self.LatestState =
-    match latestState with
-    | Some latestState -> latestState
-    | None -> failwith "State not initialized"
+  member self.Store = store
 
   member self.Trigger(msg: ClientMessage<StateMachine>) =
     self.Worker.Port.PostMessage(toJson msg)
@@ -106,47 +103,64 @@ and ClientContext private () =
     |> toJson
     |> self.Worker.Port.PostMessage
 
+  member self.Log (logLevel: LogLevel) (message : string) : unit =
+    let log = Logger.create logLevel "frontend" message
+    let msg = ClientMessage.Event(self.Session, LogMsg log)
+    for ctrl in ctrls.Values do
+      ctrl.OnNext msg
+
   member self.MsgHandler (msg : MessageEvent<string>) : unit =
     let data = ofJson<ClientMessage<State>> msg.Data
-    for ctrl in ctrls.Values do
-      ctrl.OnNext data
 
     match data with
-    // initialize this clients session variable
+    // initialize this client session variable
     | ClientMessage.Initialized(Id id as token) ->
       session <- Some(token)
-      printfn "Initialized with Session: %s" id
+      printfn "Initialized with Session: %s" id // TODO: Log
 
     // close this clients session variable
     | ClientMessage.Closed(token) ->
       printfn "A client closed its session: %A" token
 
     | ClientMessage.Stopped ->
-      printfn "Worker stopped. TODO: Needs to be restarted"
-      // TODO: Restart worker
-      //self.Start()
+      printfn "Worker stopped. TODO: Needs to be restarted"  // TODO: Log
+      //self.Start() // TODO: Restart worker
 
-    | ClientMessage.Render state ->
-      latestState <- state
-
-    // Do nothing, delegate responsibility to controllers
-    | ClientMessage.ClockUpdate _
-    | ClientMessage.ClientLog _ ->
-      // printfn "%s" log // Logs are polluting the browser console, disable printing temporally
-      ()
+    | ClientMessage.Event(_,ev) ->
+      match ev with
+      | LogMsg _
+      | UpdateClock _ -> () // Delegate responsibility to controllers
+      | DataSnapshot state ->
+        let s = Store(state)
+        store <- Some s
+      | StateMachine.UnloadProject ->
+        store <- None
+      | ev ->
+        match store with
+        | Some store ->
+          try
+            store.Dispatch ev
+          with exn ->
+            self.Log LogLevel.Err (sprintf "Error when updating store: %s" exn.Message)
+        | None ->
+          "Received message but store is not initialized"
+          |> self.Log LogLevel.Debug
 
     | ClientMessage.Connected ->
       Session.Empty self.Session |> AddSession |> self.Post
-      printfn "CONNECTED!"
+      printfn "CONNECTED!" // TODO: Log
 
     | ClientMessage.Disconnected ->
-      printfn "DISCONNECTED!"
+      printfn "DISCONNECTED!" // TODO: Log
 
-    // initialize this clients session variable
     | ClientMessage.Error(reason) ->
-      printfn "SharedWorker Error: %A" reason
+      printfn "SharedWorker Error: %A" reason // TODO: Log
 
-    | _ -> printfn "Unknown Event: %A" msg.Data
+    | msg -> printfn "Unknown Event: %A" msg // TODO: Log
+
+    // Inform listeners
+    for ctrl in ctrls.Values do
+      ctrl.OnNext data
 
   member __.OnMessage =
     { new IObservable<_> with

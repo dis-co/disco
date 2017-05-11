@@ -149,9 +149,9 @@ type WebSocket(_url: string)  =
 type ClientMessagePort = MessagePort<string>
 type PortMap = Map<Id,ClientMessagePort>
 
-type GlobalContext() =
+type WorkerContext() =
+  let id = Id.Create()
   let mutable count = 0
-  let mutable store: Store option = None
   let mutable socket : WebSocket option = None
 
   let ports : PortMap = Map.Create<Id,ClientMessagePort>()
@@ -164,7 +164,7 @@ type GlobalContext() =
 
       sock.BinaryType <- "arraybuffer"
 
-      sock.OnError <- sprintf "Error: %A" >> self.Log
+      sock.OnError <- sprintf "Error: %A" >> (self.Log LogLevel.Err)
 
       sock.OnOpen <- fun _ ->
         self.Broadcast ClientMessage.Connected
@@ -177,7 +177,7 @@ type GlobalContext() =
         | Right sm   -> self.OnSocketMessage sm
         | Left error ->
           sprintf "Unable to parse received message. %A" error
-          |> self.Log
+          |> self.Log LogLevel.Err
 
       socket <- Some sock
 
@@ -200,25 +200,8 @@ type GlobalContext() =
    *-------------------------------------------------------------------------*)
 
   member self.OnSocketMessage(ev: StateMachine) : unit =
-    match ev with
-    | LogMsg log -> self.Log (sprintf "[%O] %s" log.LogLevel log.Message)
-    | UpdateClock value -> self.Broadcast <| ClientMessage.ClockUpdate(value)
-    | _ ->
-      match ev, store with
-      | DataSnapshot state, _ ->
-        let s = Store(state)
-        store <- Some s
-        self.Broadcast <| ClientMessage.Render(Some s.State)
-      | UnloadProject, _ ->
-        store <- None
-        self.Broadcast <| ClientMessage.Render(None)
-      | _, Some store ->
-        try
-          store.Dispatch ev
-        with
-          | exn -> self.Log (sprintf "Crash: %s" exn.Message)
-        self.Broadcast <| ClientMessage.Render(Some store.State)
-      | _ -> ()
+    ClientMessage.Event(id, ev)
+    |> self.Broadcast
 
   (*-------------------------------------------------------------------------*
        ____ _ _            _
@@ -238,12 +221,14 @@ type GlobalContext() =
       self.Close ()
 
     | ClientMessage.Connect(address) ->
-      self.Log (sprintf "connecting to %s" address)
+      self.Log LogLevel.Info (sprintf "connecting to %s" address)
       self.ConnectServer(address)
 
     | ClientMessage.Event(_, ev) -> self.SendServer(ev)
 
-    | _ -> self.Log "clients-only message ignored"
+    | msg ->
+      sprintf "Client-only message ignored: %A" msg
+      |> self.Log LogLevel.Debug
 
 
   member self.Register (port : MessagePort<string>) =
@@ -255,10 +240,6 @@ type GlobalContext() =
 
     ClientMessage.Initialized(session)    // tell client all is good
     |> self.SendClient port
-
-    store |> Option.iter (fun store ->
-      ClientMessage.Render(Some store.State)     // ask client to render
-      |> self.SendClient port)
 
   member self.UnRegister (session: Id) =
     count <- count - 1
@@ -276,14 +257,13 @@ type GlobalContext() =
 
   ------------------------------------------------------------------------- *)
 
-  member self.Store  with get () = store
   member self.Socket with get () = socket
 
   member self.SendServer (msg: StateMachine) =
     let bytes = Binary.encode msg
     match socket with
     | Some server -> server.Send(!!bytes?buffer)
-    | _           -> self.Log "Cannot update server: no connection."
+    | _           -> self.Log LogLevel.Err "Cannot update server: no connection."
 
   member self.SendClient (port: ClientMessagePort) (msg: ClientMessage<State>) =
     port.PostMessage(toJson msg)
@@ -300,5 +280,7 @@ type GlobalContext() =
     let func = new System.Func<ClientMessagePort,Id,PortMap,unit> (handler)
     ports.forEach(func)
 
-  member self.Log (thing : ClientLog) : unit =
-    self.Broadcast <| ClientMessage.ClientLog(thing)
+  member self.Log (logLevel: LogLevel) (message : string) : unit =
+    let log = Logger.create logLevel "worker" message
+    ClientMessage.Event(id, LogMsg log)
+    |> self.Broadcast

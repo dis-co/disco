@@ -12,37 +12,49 @@ open Iris.Core.Commands
 
 type ISubscriber = obj -> unit
 type IServiceInfo = interface end
-type IProject = interface end
-type IPinGroup = interface end
 type IWidget = interface end
 type ITab = interface end
 
 [<Literal>]
 let private LOG_MAX = 100
 
-let private subscribeToLogs(f:ClientLog->unit): IDisposable =
+// TODO: Deal with all messages in single pattern matching
+let private subscribeToLogs(f:string->unit): IDisposable =
     ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClientLog log -> f log
+      | ClientMessage.Event(_, LogMsg log) -> f log.Message
       | _ -> ())
 
 let private subscribeToClock(f:uint32->unit): IDisposable =
     ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClockUpdate frames -> f frames
+      | ClientMessage.Event(_, UpdateClock frames) -> f frames
       | _ -> ())
 
 let private startContext f =
   let context = ClientContext.Singleton
+  let notify = function
+    | Some state ->
+      match Map.tryFind context.Session state.Sessions with
+      | Some session ->
+        Some { session = session; state = state } |> f
+      | None -> ()
+    | None ->
+        f None
   context.Start()
   |> Promise.iter (fun () ->
     context.OnMessage
     |> Observable.add (function
-      | ClientMessage.Render(Some state) ->
-        match Map.tryFind context.Session state.Sessions with
-        | Some session ->
-          Some { session = session; state = state } |> f
-        | None -> ()
-      | ClientMessage.Render None ->
-          f None
+      | ClientMessage.Initialized _ ->
+        // TODO: Store should be initialized, throw error if not?
+        context.Store |> Option.map (fun x -> x.State) |> notify
+      | ClientMessage.Event(_, ev) ->
+        match ev with
+        | StateMachine.UnloadProject -> notify None
+        | DataSnapshot state -> notify (Some state)
+        | ev ->
+          match context.Store with
+          // TODO: Reduce the number of notifications to widget suscriptors
+          | Some store -> notify None
+          | None -> () // This case should be handled in ClientContext
       | _ -> ())
   )
 
@@ -51,11 +63,14 @@ type GlobalState =
   { logs: (int*string) list
     tabs: Map<int,ITab>
     widgets: Map<int,IWidget>
-    pinGroups:  Map<Id,IPinGroup>
+    pinGroups: Map<Id,PinGroup>
+    cues: Map<Id,Cue>
+    cueLists: Map<Id,CueList>
+    cuePlayers: Map<Id,CuePlayer>
     useRightClick: bool
     serviceInfo: ServiceInfo
     clock: int
-    project: IProject option }
+    project: IrisProject option }
 
 // TODO: Unify this with ClientContext?
 
@@ -72,6 +87,9 @@ type GlobalModel() =
       tabs = Map.empty
       widgets = Map.empty
       pinGroups = Map.empty
+      cues = Map.empty
+      cueLists = Map.empty
+      cuePlayers = Map.empty
       useRightClick = false
       serviceInfo =
         { webSocket = "0"
@@ -96,7 +114,7 @@ type GlobalModel() =
   let setStateAndNotify key (value:'T) =
     updateStateAndNotify key (fun _ -> value)
 
-  let addLog' log =
+  let addLogPrivate (log: string) =
     updateStateAndNotify (nameof(state.logs)) <| fun logs ->
       let logs =
         let length = List.length logs
@@ -105,13 +123,13 @@ type GlobalModel() =
           List.take (length - diff) logs
         else
           logs
-      (newId(), log)::logs
+      KeyValuePair(newId, log)::logs
 
   // Constructor
   do startContext(fun info ->
     // Init logs and clocks upon receiving first message
     if Option.isNone !logSubscription then
-      logSubscription := addLog' |> subscribeToLogs |> Some
+      logSubscription := addLogPrivate |> subscribeToLogs |> Some
 
     if Option.isNone !clockSubscription then
       clockSubscription :=
@@ -126,11 +144,17 @@ type GlobalModel() =
 
     match info with
     | Some i ->
-      setStateAndNotify (nameof(state.pinGroups)) i.state.PinGroups
       setStateAndNotify (nameof(state.project)) (Some i.state.Project)
+      setStateAndNotify (nameof(state.pinGroups)) i.state.PinGroups
+      setStateAndNotify (nameof(state.cues)) i.state.Cues
+      setStateAndNotify (nameof(state.cueLists)) i.state.CueLists
+      setStateAndNotify (nameof(state.cuePlayers)) i.state.CuePlayers
     | None ->
-      setStateAndNotify (nameof(state.pinGroups)) Map.empty
       setStateAndNotify (nameof(state.project)) None
+      setStateAndNotify (nameof(state.pinGroups)) Map.empty
+      setStateAndNotify (nameof(state.cues)) Map.empty
+      setStateAndNotify (nameof(state.cueLists)) Map.empty
+      setStateAndNotify (nameof(state.cuePlayers)) Map.empty
   )
 
   // Public methods
@@ -180,7 +204,7 @@ type GlobalModel() =
     updateStateAndNotify (nameof(state.tabs)) (Map.remove id)
 
   member this.addLog(log: string) =
-    addLog' log
+    addLogPrivate log
 
   member this.triggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with
