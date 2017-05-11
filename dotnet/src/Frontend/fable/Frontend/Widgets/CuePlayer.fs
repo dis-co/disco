@@ -64,24 +64,19 @@ let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
   |> UpdateSlices |> ClientContext.Singleton.Post
 
-type Cue(spread: ISpread) =
-  member val Pin = spread.pin
-  member val Rows = spread.rows
+// type Cue(spread: ISpread) =
+//   member val Pin = spread.pin
+//   member val Rows = spread.rows
 
-  member this.Update(rowIndex, newValue) =
-    let oldValue = this.Rows.[rowIndex]
-    this.Rows.[rowIndex] <- fst oldValue, newValue
+//   member this.Update(rowIndex, newValue) =
+//     let oldValue = this.Rows.[rowIndex]
+//     this.Rows.[rowIndex] <- fst oldValue, newValue
 
-  member this.UpdateSource() =
-    for i = 0 to this.Rows.Length do
-      updateSlices(this.Pin, i, snd this.Rows.[i])
+//   member this.UpdateSource() =
+//     for i = 0 to this.Rows.Length do
+//       updateSlices(this.Pin, i, snd this.Rows.[i])
 
-type CueList(cues: Cue list) =
-  member val Cues = cues
-  member val Open = false with get, set
-
-type CuePlayerModel(cuePlayer) =
-  member val CuePlayer: CuePlayer = cuePlayer
+type CuePlayerModel() =
   interface IWidgetModel with
     member __.view = typeof<CuePlayerView>
     member __.name = "Cue Player"
@@ -93,17 +88,22 @@ type CuePlayerModel(cuePlayer) =
         minH = 1; maxH = 10;
       }
 
-
 [<Pojo>]
 type CuePlayerProps =
   { id: int;
     model: CuePlayerModel
     ``global``: GlobalModel }
 
+[<Pojo>]
+type CuePlayerState =
+  // TODO: This should be an array or dictionary when we have more groups
+  { isOpen: bool }
+
 type CuePlayerView(props) =
-    inherit React.Component<CuePlayerProps, obj>(props)
+    inherit React.Component<CuePlayerProps, CuePlayerState>(props)
     let disposables = ResizeArray()
     let mutable selfRef = Unchecked.defaultof<Browser.Element>
+    do base.setInitState({isOpen = false})
 
     // member this.render() =
     //   let header =
@@ -150,9 +150,9 @@ type CuePlayerView(props) =
       for d in disposables do
         d.Dispose()
 
-    member this.RenderCueList(cueList: CueList) =
+    member this.renderCueList(cueList: CueList) =
       let leftIconClass =
-        if cueList.Open
+        if this.state.isOpen
         then "iris-icon iris-icon-caret-down-two"
         else "iris-icon iris-icon-caret-right"
       div [Class "cueplayer-list-header cueplayer-cue level"] [
@@ -160,7 +160,7 @@ type CuePlayerView(props) =
           div [Class "level-item"] [
             span [
               Class leftIconClass
-              OnClick (fun _ -> cueList.Open <- not cueList.Open; this.forceUpdate())
+              OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
             ] []]
           div [Class "level-item"] [
             div [Class "cueplayer-button iris-icon cueplayer-player"] [
@@ -215,7 +215,19 @@ type CuePlayerView(props) =
         ]
       ]
 
+    member this.findCueList(id: Id option) =
+      match id with
+      | None -> None
+      | Some id ->
+        this.props.``global``.state.cueLists
+        |> Map.tryFind id
+
     member this.render() =
+      let cuePlayer =
+        // TODO: Use a dropdown to choose the player
+        this.props.``global``.state.cuePlayers
+        |> Seq.head
+        |> fun kv -> kv.Value
       div [
         Class "cueplayer-container"
         Ref (fun el -> selfRef <- el)
@@ -240,7 +252,5 @@ type CuePlayerView(props) =
             div [Style [Clear "both"]] []
           ]
         // CUE LIST
-        // this.props.model.CuePlayer.CueList
-        // for cueList in this.props.model.CueLists do
-        //   yield this.RenderCueList(cueList)
+        yield cuePlayer.CueList |> this.findCueList |> (Option.map this.renderCueList) |> opt
       ]

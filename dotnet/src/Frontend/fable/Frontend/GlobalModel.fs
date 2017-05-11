@@ -35,7 +35,21 @@ type IGlobalState =
   abstract cuePlayers: Map<Id,CuePlayer>
 
 
+let private cueMockup() =
+  let cue: Cue =
+    { Id = Id.Create()
+      Name = "fooCue"
+      Slices = [||] }
+  let cueList: CueList =
+    { Id = Id.Create()
+      Name = name "fooCueList"
+      Cues = [|cue|] }
+  let cuePlayer =
+    CuePlayer.create (name "fooCuePlayer") (Some cueList.Id)
+  Map[cueList.Id, cueList], Map[cuePlayer.Id, cuePlayer]
+
 type GlobalState(readState: unit->State option) =
+  let cueListsMock, cuePlayersMock = cueMockup()
   let projectOrEmpty (project: State -> Map<Id,'T>) =
       match readState() with
       | Some state -> project state
@@ -60,8 +74,10 @@ type GlobalState(readState: unit->State option) =
     member this.project = readState() |> Option.map (fun s -> s.Project)
     member this.pinGroups = projectOrEmpty (fun s -> s.PinGroups)
     member this.cues = projectOrEmpty (fun s -> s.Cues)
-    member this.cueLists = projectOrEmpty (fun s -> s.CueLists)
-    member this.cuePlayers = projectOrEmpty (fun s -> s.CuePlayers)
+    // member this.cueLists = projectOrEmpty (fun s -> s.CueLists)
+    // member this.cuePlayers = projectOrEmpty (fun s -> s.CuePlayers)
+    member this.cueLists = cueListsMock
+    member this.cuePlayers = cuePlayersMock
 
 
 /// To prevent duplication, this is the model all other views have access to.
