@@ -131,6 +131,12 @@ module Constants =
   [<Literal>]
   let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
 
+  //     _                 _
+  //    / \   ___ ___  ___| |_ ___
+  //   / _ \ / __/ __|/ _ \ __/ __|
+  //  / ___ \\__ \__ \  __/ |_\__ \
+  // /_/   \_\___/___/\___|\__|___/
+
   [<Literal>]
   let USER_DIR = "users"
 
@@ -142,6 +148,9 @@ module Constants =
 
   [<Literal>]
   let PINGROUP_DIR = "pingroups"
+
+  [<Literal>]
+  let CUEPLAYER_DIR = "players"
 
   //  __  __            _     _             ____             __ _
   // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _

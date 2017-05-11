@@ -1371,6 +1371,43 @@ type DiscoveredServiceFBConstructor =
 
 let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 
+//   ____           ____  _                       _____ ____
+//  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __|  ___| __ )
+// | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__| |_  |  _ \
+// | |__| |_| |  __/  __/| | (_| | |_| |  __/ |  |  _| | |_) |
+//  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|  |_|   |____/
+//                                |___/
+
+type CuePlayerFB =
+  abstract Id: string
+  abstract Name: string
+  abstract CueList: string
+  abstract Selected: int
+  abstract Call: PinFB
+  abstract Next: PinFB
+  abstract Previous: PinFB
+  abstract RemainingWait: int
+  abstract LastCaller: string
+  abstract LastCalled: string
+
+type CuePlayerFBConstructor =
+  abstract prototype: CuePlayerFB with get, set
+  abstract StartCuePlayerFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<string> -> unit
+  abstract AddSelected: builder: FlatBufferBuilder * int -> unit
+  abstract AddCall: builder: FlatBufferBuilder * call: Offset<PinFB> -> unit
+  abstract AddNext: builder: FlatBufferBuilder * next: Offset<PinFB> -> unit
+  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<PinFB> -> unit
+  abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
+  abstract AddLastCaller: builder: FlatBufferBuilder * lastcaller: Offset<string> -> unit
+  abstract AddLastCalled: builder: FlatBufferBuilder * lastcalled: Offset<string> -> unit
+  abstract EndCuePlayerFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCuePlayerFB: buffer: ByteBuffer -> CuePlayerFB
+
+let CuePlayerFB : CuePlayerFBConstructor = failwith "JS only"
+
 //  ____  _        _       _____ ____
 // / ___|| |_ __ _| |_ ___|  ___| __ )
 // \___ \| __/ _` | __/ _ \ |_  |  _ \
@@ -1391,6 +1428,8 @@ type StateFB =
   abstract UsersLength: int
   abstract Clients: int -> IrisClientFB
   abstract ClientsLength: int
+  abstract CuePlayers: int -> CuePlayerFB
+  abstract CuePlayersLength: int
   abstract DiscoveredServices: int -> DiscoveredServiceFB
   abstract DiscoveredServicesLength: int
 
@@ -1404,11 +1443,13 @@ type StateFBConstructor =
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
   abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
   abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
+  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: Offset<'a> -> unit
   abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
   abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
   abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
   abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
+  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
   abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
   abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
   abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
@@ -1586,6 +1627,7 @@ type StateMachinePayloadFBConstructor =
   abstract ProjectFB: StateMachinePayloadFB
   abstract SlicesFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
+  abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
 
@@ -1607,6 +1649,7 @@ type StateMachineFB =
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
   abstract IrisClientFB: IrisClientFB
+  abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
   abstract Payload: 'a -> 'a
 
