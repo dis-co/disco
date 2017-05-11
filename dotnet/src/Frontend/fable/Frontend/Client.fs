@@ -37,10 +37,7 @@ type SharedWorker<'data>(url: string) =
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
 
-type [<Pojo; NoComparison>] StateInfo =
-  { session: Session; state: State }
-
-and ClientContext private () =
+type ClientContext private () =
   let mutable session : Id option = None
   let mutable store: Store option = None
   let mutable serviceInfo: ServiceInfo option = None
