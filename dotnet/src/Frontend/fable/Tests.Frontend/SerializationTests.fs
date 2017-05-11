@@ -45,23 +45,23 @@ module SerializationTests =
     IrisProject.Empty
 
   let pins _ =
-    [| Pin.Bang      (mk(), "Bang",      mk(), mktags (), [| true  |])
-    ;  Pin.Toggle    (mk(), "Toggle",    mk(), mktags (), [| true  |])
-    ;  Pin.String    (mk(), "string",    mk(), mktags (), [| "one" |])
-    ;  Pin.MultiLine (mk(), "multiline", mk(), mktags (), [| "two" |])
-    ;  Pin.FileName  (mk(), "filename",  mk(), mktags (), [| "three" |])
-    ;  Pin.Directory (mk(), "directory", mk(), mktags (), [| "four"  |])
-    ;  Pin.Url       (mk(), "url",       mk(), mktags (), [| "five" |])
-    ;  Pin.IP        (mk(), "ip",        mk(), mktags (), [| "six"  |])
-    ;  Pin.Number    (mk(), "number",    mk(), mktags (), [| double 3.0 |])
-    ;  Pin.Bytes     (mk(), "bytes",     mk(), mktags (), [| mkBytes () |])
-    ;  Pin.Color     (mk(), "rgba",      mk(), mktags (), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
-    ;  Pin.Color     (mk(), "hsla",      mk(), mktags (), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |])
-    ;  Pin.Enum      (mk(), "enum",      mk(), mktags (), [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|] , [| { Key = "one"; Value = "two" } |])
+    [| Pin.bang      (mk()) "Bang"      (mk()) (mktags()) [| true  |]
+    ;  Pin.toggle    (mk()) "Toggle"    (mk()) (mktags()) [| true  |]
+    ;  Pin.string    (mk()) "string"    (mk()) (mktags()) [| "one" |]
+    ;  Pin.multiLine (mk()) "multiline" (mk()) (mktags()) [| "two" |]
+    ;  Pin.fileName  (mk()) "filename"  (mk()) (mktags()) [| "three" |]
+    ;  Pin.directory (mk()) "directory" (mk()) (mktags()) [| "four"  |]
+    ;  Pin.url       (mk()) "url"       (mk()) (mktags()) [| "five" |]
+    ;  Pin.ip        (mk()) "ip"        (mk()) (mktags()) [| "six"  |]
+    ;  Pin.number    (mk()) "number"    (mk()) (mktags()) [| double 3.0 |]
+    ;  Pin.bytes     (mk()) "bytes"     (mk()) (mktags()) [| mkBytes () |]
+    ;  Pin.color     (mk()) "rgba"      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
+    ;  Pin.color     (mk()) "hsla"      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
+    ;  Pin.enum      (mk()) "enum"      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
     |]
 
   let mkPin _ =
-    Pin.String(Id.Create(), "url input", Id.Create(), [| |], [| "hello" |])
+    Pin.string (Id.Create()) "url input" (Id.Create()) [| |] [| "hello" |]
 
   let mkSlices() =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])

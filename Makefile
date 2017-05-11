@@ -94,7 +94,7 @@ frontend.full:
 	${BUILD} BuildFrontend
 
 web.tests:
-	${BUILD} BuildWebTests
+	${BUILD} BuildWebTestsFast
 
 #      _
 #   __| | ___   ___ ___

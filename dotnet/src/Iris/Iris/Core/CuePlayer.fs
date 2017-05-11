@@ -87,9 +87,9 @@ type CuePlayer =
     Name: Name
     CueList: Id option
     Selected: int<index>
-    Call: Pin
-    Next: Pin
-    Previous: Pin
+    Call: Pin                           // Bang pin type
+    Next: Pin                           // Bang pin type
+    Previous: Pin                       // Bang pin type
     RemainingWait: int
     LastCalled: Id option
     LastCaller: Id option }
@@ -231,7 +231,7 @@ type CuePlayer =
 
   // ** Load
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError,CuePlayer> =
     IrisData.load path
@@ -258,6 +258,21 @@ type CuePlayer =
 // * CuePlayer
 
 module CuePlayer =
+
+  // ** create
+
+  let create (name: Name) (cuelist: Id option) =
+    let id = Id.Create()
+    { Id = id
+      Name = name
+      CueList = cuelist
+      Selected = -1<index>
+      Call = Pin.Player.call id
+      Next = Pin.Player.next id
+      Previous = Pin.Player.previous id
+      RemainingWait = -1
+      LastCalled = None
+      LastCaller = None }
 
   // ** assetPath
 

@@ -406,7 +406,6 @@ type PinYaml() =
 // * Pin
 
 type Pin =
-
   | StringPin   of StringPinD
   | NumberPin   of NumberPinD
   | BoolPin     of BoolPinD
@@ -542,174 +541,6 @@ type Pin =
     pin.Values.ToSpread()
 
   #endif
-
-  static member private EmptyLabels(count: int) =
-    let arr = Array.zeroCreate count
-    Array.fill arr 0 count ""
-    arr
-
-  // ** static Toggle
-
-  static member Toggle(id, name, group, tags, values) =
-    BoolPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              IsTrigger  = false
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = Pin.EmptyLabels(Array.length values)
-              Values     = values }
-
-  // ** static Bang
-
-  static member Bang(id, name, group, tags, values) =
-    BoolPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              IsTrigger  = true
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = Pin.EmptyLabels(Array.length values)
-              Values     = values }
-
-  // ** static String
-
-  static member String(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = Simple
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static MultiLine
-
-  static member MultiLine(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = MultiLine
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static FileName
-
-  static member FileName(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = FileName
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static Directory
-
-  static member Directory(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior = Directory
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static Url
-
-  static member Url(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = Url
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static IP
-
-  static member IP(id, name, group, tags, values) =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = IP
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static Number
-
-  static member Number(id, name, group, tags, values) =
-    NumberPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Min        = 0
-                Max        = sizeof<double>
-                Unit       = ""
-                Precision  = 4u
-                VecSize    = VecSize.Dynamic
-                Direction  = ConnectionDirection.Input
-                Labels     = Pin.EmptyLabels(Array.length values)
-                Values     = values }
-
-  // ** static Bytes
-
-  static member Bytes(id, name, group, tags, values) =
-    BytePin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              VecSize    = VecSize.Dynamic
-              Direction  = ConnectionDirection.Input
-              Labels     = Pin.EmptyLabels(Array.length values)
-              Values     = values }
-
-  // ** static Color
-
-  static member Color(id, name, group, tags, values) =
-    ColorPin { Id         = id
-               Name       = name
-               PinGroup   = group
-               Tags       = tags
-               VecSize    = VecSize.Dynamic
-               Direction  = ConnectionDirection.Input
-               Labels     = Pin.EmptyLabels(Array.length values)
-               Values     = values }
-
-  // ** static Enum
-
-  static member Enum(id, name, group, tags, properties, values) =
-    EnumPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              Properties = properties
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = Pin.EmptyLabels(Array.length values)
-              Values     = values }
 
   // ** ToOffset
 
@@ -1453,6 +1284,219 @@ type Pin =
 
 module Pin =
 
+  // ** emtpyLabels
+
+  let private emptyLabels (count: int) =
+    let arr = Array.zeroCreate count
+    Array.fill arr 0 count ""
+    arr
+
+  // ** toggle
+
+  let toggle id name group tags values =
+    BoolPin { Id         = id
+              Name       = name
+              PinGroup   = group
+              Tags       = tags
+              IsTrigger  = false
+              Direction  = ConnectionDirection.Input
+              VecSize    = VecSize.Dynamic
+              Labels     = emptyLabels(Array.length values)
+              Values     = values }
+
+  // ** bang
+
+  let bang id name group tags values =
+    BoolPin { Id         = id
+              Name       = name
+              PinGroup   = group
+              Tags       = tags
+              IsTrigger  = true
+              Direction  = ConnectionDirection.Input
+              VecSize    = VecSize.Dynamic
+              Labels     = emptyLabels(Array.length values)
+              Values     = values }
+
+  // ** string
+
+  let string id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior   = Simple
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** multiLine
+
+  let multiLine id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior   = MultiLine
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** fileName
+
+  let fileName id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior   = FileName
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** directory
+
+  let directory id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior = Directory
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** url
+
+  let url id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior   = Url
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** ip
+
+  let ip id name group tags values =
+    StringPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Behavior   = IP
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                MaxChars   = sizeof<int> * 1<chars>
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** number
+
+  let number id name group tags values =
+    NumberPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Min        = 0
+                Max        = sizeof<double>
+                Unit       = ""
+                Precision  = 4u
+                VecSize    = VecSize.Dynamic
+                Direction  = ConnectionDirection.Input
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
+
+  // ** bytes
+
+  let bytes id name group tags values =
+    BytePin { Id         = id
+              Name       = name
+              PinGroup   = group
+              Tags       = tags
+              VecSize    = VecSize.Dynamic
+              Direction  = ConnectionDirection.Input
+              Labels     = emptyLabels(Array.length values)
+              Values     = values }
+
+  // ** color
+
+  let color id name group tags values =
+    ColorPin { Id         = id
+               Name       = name
+               PinGroup   = group
+               Tags       = tags
+               VecSize    = VecSize.Dynamic
+               Direction  = ConnectionDirection.Input
+               Labels     = emptyLabels(Array.length values)
+               Values     = values }
+
+  // ** enum
+
+  let enum id name group tags properties values =
+    EnumPin { Id         = id
+              Name       = name
+              PinGroup   = group
+              Tags       = tags
+              Properties = properties
+              Direction  = ConnectionDirection.Input
+              VecSize    = VecSize.Dynamic
+              Labels     = emptyLabels(Array.length values)
+              Values     = values }
+
+  // ** Player module
+
+  module Player =
+
+    // *** next
+
+    let next id =
+      BoolPin { Id         = Id (sprintf "/%O/next" id)
+                Name       = "Next"
+                PinGroup   = id
+                Tags       = Array.empty
+                IsTrigger  = true
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                Labels     = Array.empty
+                Values     = [| false |] }
+
+    // *** previous
+
+    let previous id =
+      BoolPin { Id         = Id (sprintf "/%O/previous" id)
+                Name       = "Previous"
+                PinGroup   = id
+                Tags       = Array.empty
+                IsTrigger  = true
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                Labels     = Array.empty
+                Values     = [| false |] }
+
+    // *** call
+
+    let call id =
+      BoolPin { Id         = Id (sprintf "/%O/call" id)
+                Name       = "Call"
+                PinGroup   = id
+                Tags       = Array.empty
+                IsTrigger  = true
+                Direction  = ConnectionDirection.Input
+                VecSize    = VecSize.Dynamic
+                Labels     = Array.empty
+                Values     = [| false |] }
+
   // ** setVecSize
 
   let setVecSize vecSize pin =
@@ -1563,7 +1607,7 @@ module Pin =
         | ColorSlice (i,slice)  -> ColorPin { data with Values = update data.Values i slice }
         | _                     -> current
 
-  // ** SetSlices
+  // ** setSlices
 
   let setSlices slices pin =
     match pin with
