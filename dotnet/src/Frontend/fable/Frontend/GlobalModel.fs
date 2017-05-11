@@ -17,6 +17,10 @@ type ITab = interface end
 [<Literal>]
 let private LOG_MAX = 100
 
+// Polyfill, Fable doesn't support RemoveRange yet
+[<Emit("$2.splice($0,$1)")>]
+let private removeRange (index: int) (count: int) (ar: ResizeArray<'T>): unit = jsNative
+
 type IGlobalState =
   abstract logs: IEnumerable<string>
   abstract tabs: IDictionary<int,ITab>
@@ -91,7 +95,7 @@ type GlobalModel() =
     let length = stateM.logsM.Count
     if length > LOG_MAX then
       let diff = LOG_MAX / 10
-      stateM.logsM.RemoveRange(length - diff, diff)
+      removeRange (length - diff) diff stateM.logsM
     stateM.logsM.Insert(0, log)
     notify (nameof(stateI.logs)) stateI.logs
 
@@ -129,7 +133,7 @@ type GlobalModel() =
         | UpdateCuePlayer _
         | RemoveCuePlayer _ ->
           notify (nameof(stateI.cuePlayers)) stateI.cuePlayers
-        // Add members to global state for cluster widget
+        // TODO: Add members to global state for cluster widget
         // | AddMember _
         // | UpdateMember _
         // | RemoveMember _

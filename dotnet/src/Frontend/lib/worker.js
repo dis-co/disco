@@ -8,6 +8,6 @@ importScripts(
 
 onconnect = function (ev) {
     var port = ev.ports[0];
-    var context = new IrisWorker.GlobalContext();
+    var context = new IrisWorker.WorkerContext();
     context.Register(port);
 }
