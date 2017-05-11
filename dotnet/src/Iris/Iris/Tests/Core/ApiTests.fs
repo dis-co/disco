@@ -46,7 +46,7 @@ module ApiTests =
   // |____/ \___|_|    \_/ \___|_|
 
   let test_server_should_replicate_state_snapshot_to_client =
-    testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
+    ftestCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 

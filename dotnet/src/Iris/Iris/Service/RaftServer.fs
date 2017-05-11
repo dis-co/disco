@@ -36,25 +36,6 @@ module Raft =
   let private tag (str: string) =
     String.Format("RaftServer.{0}", str)
 
-  // ** IRaftStore
-
-  type private IRaftStore<'t when 't : not struct> =
-    abstract State: 't
-    abstract Update: 't -> unit
-
-  // ** RaftStore module
-
-  module private RaftStore =
-
-    let create<'t when 't : not struct> (initial: 't) =
-      let mutable state = initial
-
-      { new IRaftStore<'t> with
-          member self.State with get () = state
-          member self.Update update =
-            Interlocked.CompareExchange<'t>(&state, update, state)
-            |> ignore }
-
   // ** Connections
 
   type private Connections = ConcurrentDictionary<Id,IClient>
@@ -1359,7 +1340,7 @@ module Raft =
 
   // ** loop
 
-  let private loop (store: IRaftStore<RaftServerState>) (inbox: StateArbiter) =
+  let private loop (store: IAgentStore<RaftServerState>) (inbox: StateArbiter) =
     let rec act () =
       async {
         let! cmd = inbox.Receive()
@@ -1465,7 +1446,7 @@ module Raft =
             Disposables = []
             Connections = connections
             Subscriptions = subscriptions }
-          |> RaftStore.create
+          |> AgentStore.create
 
         let agent = new StateArbiter(loop store)
 

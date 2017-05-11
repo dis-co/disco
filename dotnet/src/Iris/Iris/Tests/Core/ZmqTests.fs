@@ -208,8 +208,6 @@ module ZmqIntegrationTests =
   let test_client_timeout_keeps_socket_alive =
     testCase "client timeout keeps socket alive" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         let num = 50
         let timeout = 10<ms>
         let mutable count = 0

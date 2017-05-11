@@ -211,15 +211,15 @@ enter:
 		-e COMMAND=shell \
 		${IMAGE}
 
-fsi:
-	@cd dotnet/src/Iris; fsharpi --use:bin/Debug/Core/interactive.fsx
-
 #              _        _
 #  _ __   __ _| | _____| |_
 # | '_ \ / _` | |/ / _ \ __|
 # | |_) | (_| |   <  __/ |_
 # | .__/ \__,_|_|\_\___|\__|
 # |_|
+
+paket.generate:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
 
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore
