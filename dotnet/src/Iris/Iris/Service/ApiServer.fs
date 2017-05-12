@@ -55,7 +55,8 @@ module ApiServer =
 
   [<NoComparison;NoEquality>]
   type private ServerState =
-    { Status: ServiceStatus
+    { Id: Id
+      Status: ServiceStatus
       Store: Store
       Server: IBroker
       Publisher: Pub
@@ -178,26 +179,6 @@ module ApiServer =
         |> socket.Request
         |> Either.mapError (string >> Logger.err "pingTimer")
         |> ignore
-
-        // match response with
-        // | Right Pong ->
-        //   // ping request successful
-        //   (socket.Id, ServiceStatus.Running)
-        //   |> Msg.SetClientStatus
-        //   |> agent.Post
-
-        // | Left error ->
-        //   // log this error
-        //   string error
-        //   |> sprintf "error during to %s: %s" (string socket.Id)
-        //   |> Logger.err (tag "pingTimer")
-
-        //   // set the status of this client to error
-        //   (socket.Id, ServiceStatus.Failed error)
-        //   |> Msg.SetClientStatus
-        //   |> agent.Post
-        // | _ -> ()
-
         return! loop ()
       }
 
@@ -245,6 +226,8 @@ module ApiServer =
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
 
+      socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
+
       let client =
         { Meta = meta
           Socket = socket
@@ -269,9 +252,6 @@ module ApiServer =
   // ** updateClient
 
   let private updateClient (sm: StateMachine) (client: Client) =
-    // if not client.Socket.Running then
-    //   client.Socket.Restart()
-
     sm
     |> ClientApiRequest.Update
     |> Binary.encode
@@ -279,17 +259,6 @@ module ApiServer =
     |> client.Socket.Request
     |> Either.mapError (string >> Logger.err "updateClient")
     |> ignore
-
-    // match result with
-    // | Right ApiResponse.OK | Right ApiResponse.Pong ->
-    //   return Either.succeed ()
-    // | Right (ApiResponse.NOK err) ->
-    //   let error =
-    //     string err
-    //     |> Error.asClientError (tag "updateClient")
-    //   return  Either.fail (client.Meta.Id, error)
-    // | Left error ->
-    //   return Either.fail (client.Meta.Id, error)
 
   // ** updateClients
 
@@ -414,8 +383,31 @@ module ApiServer =
 
   // ** handleClientResponse
 
-  let private handleClientResponse (state: ServerState) (resp: RawClientResponse) (agent: ApiAgent) =
-    failwith "never"
+  let private handleClientResponse state (resp: RawClientResponse) (agent: ApiAgent) =
+    match Either.bind Binary.decode resp.Body with
+    | Right ApiResponse.Pong ->
+      (resp.PeerId, ServiceStatus.Running)
+      |> Msg.SetClientStatus
+      |> agent.Post
+    | Right (ApiResponse.OK _) -> ()
+    | Right (ApiResponse.NOK error) ->
+      error
+      |> sprintf "NOK in client request. reason: %O"
+      |> Logger.err (tag "handleClientResponse")
+      // set the status of this client to error
+      let err = error |> string |> Error.asSocketError (tag "handleClientResponse")
+      (resp.PeerId, ServiceStatus.Failed err)
+      |> Msg.SetClientStatus
+      |> agent.Post
+    | Left error ->
+      error
+      |> sprintf "error returned in client request. reason: %O"
+      |> Logger.err (tag "handleClientResponse")
+      // set the status of this client to error
+      (resp.PeerId, ServiceStatus.Failed error)
+      |> Msg.SetClientStatus
+      |> agent.Post
+    state
 
   // ** loop
 
@@ -466,6 +458,7 @@ module ApiServer =
         let cts = new CancellationTokenSource()
 
         let state = {
+          Id = mem.Id
           Status = ServiceStatus.Stopped
           Store = Store(State.Empty)
           Server = Unchecked.defaultof<IBroker>

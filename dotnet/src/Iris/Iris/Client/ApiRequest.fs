@@ -1351,5 +1351,6 @@ type ApiResponse =
     Binary.buildBuffer request
 
   static member FromBytes(raw: byte array) =
-    ApiResponseFB.GetRootAsApiResponseFB(Binary.createBuffer raw)
+    Binary.createBuffer raw
+    |> ApiResponseFB.GetRootAsApiResponseFB
     |> ApiResponse.FromFB
