@@ -95,7 +95,7 @@ type ClientContext private () =
     self.Worker.Port.PostMessage(toJson msg)
 
   member self.Post(ev: StateMachine) =
-    printfn "Will send message %A" ev
+    printfn "Client will send state machine command %A" ev
     ClientMessage.Event(self.Session, ev)
     |> toJson
     |> self.Worker.Port.PostMessage

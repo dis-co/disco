@@ -83,11 +83,18 @@ let updateSlices(pin: Pin, rowIndex, newValue: obj) =
 //     for i = 0 to this.Rows.Length do
 //       updateSlices(this.Pin, i, snd this.Rows.[i])
 
-type [<Pojo>] CueListProps = { ``global``: GlobalModel; cueList: CueList }
-type [<Pojo>] CueListState = { isOpen: bool }
+type [<Pojo>] CueState =
+  { isOpen: bool }
 
-type private CueListView(props) =
-  inherit React.Component<CueListProps, CueListState>(props)
+type [<Pojo>] CueProps =
+  { ``global``: GlobalModel
+  ; cue: Cue
+  ; index: int
+  ; selectedIndex: int
+  ; select: int -> unit }
+
+type private CueView(props) =
+  inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
   do base.setInitState({isOpen = false})
@@ -194,14 +201,96 @@ type CuePlayerModel() =
         minH = 1; maxH = 10;
       }
 
-[<Pojo>]
-type CuePlayerProps =
+type [<Pojo>] CuePlayerProps =
   { id: int;
     model: CuePlayerModel
     ``global``: GlobalModel }
 
+type [<Pojo>] CuePlayerState =
+  { selectedIndex: int }
+
+let private cueMockup() =
+  let cue: Cue =
+    { Id = Id.Create()
+      Name = "MockCue"
+      Slices = [||] }
+  let cueList: CueList =
+    { Id = Id.Create()
+      Name = name "MockCueList"
+      Cues = [|cue|] }
+  let cuePlayer =
+    CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
+  cueList, cuePlayer
+
 type CuePlayerView(props) =
-  inherit React.Component<CuePlayerProps, obj>(props)
+  inherit React.Component<CuePlayerProps, CuePlayerState>(props)
+  let disposables = ResizeArray<IDisposable>()
+  do
+    base.setInitState({ selectedIndex = 0 })
+    // TODO: Mock code, create player if it doesn't exist
+    if Map.count props.``global``.state.cuePlayers = 0 then
+      let cueList, cuePlayer = cueMockup()
+      AddCueList cueList |> ClientContext.Singleton.Post
+      AddCuePlayer cuePlayer |> ClientContext.Singleton.Post
+
+  member this.componentDidMount() =
+    let state = this.props.``global``.state
+    disposables.Add(this.props.``global``.subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ -> this.forceUpdate()))
+
+  member this.componentWillUnmount() =
+    for d in disposables do
+      d.Dispose()
+
+  member this.render() =
+    let cueList =
+      // TODO: Use a dropdown to choose the player
+      Seq.tryHead this.props.``global``.state.cuePlayers
+      |> Option.bind (fun kv -> kv.Value.CueList)
+      |> Option.bind (fun id -> Map.tryFind id this.props.``global``.state.cueLists)
+    let cues =
+      match cueList with
+      | None -> [||]
+      | Some cueList -> cueList.Cues
+    printfn "Cues length: %d" cues.Length
+    div [Class "cueplayer-container"] [
+      // HEADER
+      yield
+        div [Class "cueplayer-list-header"] [
+          div [Class "cueplayer-button cueplayer-go"] [
+            span [
+              Class "iris-icon"
+              CustomKeyValue("data-icon", "c")
+            ] [str "GO"]
+          ]
+          div [Class "cueplayer-button iris-icon"] [
+            span [Class "iris-icon iris-icon-fast-backward"] []
+          ]
+          div [Class "cueplayer-button iris-icon"] [
+            span [Class "iris-icon iris-icon-fast-forward"] []
+          ]
+          div [
+            Class "cueplayer-button"
+            OnClick (fun _ ->
+              match cueList with
+              | None -> printfn "There is no cue list available to add the cue"
+              | Some cueList ->
+                let newCue = { Id = Id.Create(); Name = "Untitled"; Slices = [||] }
+                let cueList2 = { cueList with Cues = Array.append cueList.Cues [|newCue|] }
+                UpdateCueList cueList2 |> ClientContext.Singleton.Post)
+          ] [str "Add Cue"]
+          div [Class "cueplayer-button"] [str "Add Group"]
+          div [Style [Clear "both"]] []
+        ]
+      // CUES
+      for i=0 to (cues.Length-1) do
+        yield com<CueView,_,_>
+          { ``global`` = this.props.``global``
+          ; cue = cues.[i]
+          ; index = i
+          ; selectedIndex = this.state.selectedIndex
+          ; select = fun i -> this.setState({selectedIndex = i}) }
+          []
+    ]
 
   // member this.render() =
   //   let header =
@@ -225,36 +314,3 @@ type CuePlayerView(props) =
   //     |> Seq.toList
   //   // Return value
   //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
-
-  member this.render() =
-    let cuePlayer =
-      // TODO: Use a dropdown to choose the player
-      this.props.``global``.state.cuePlayers
-      |> Seq.head
-      |> fun kv -> kv.Value
-    let cueListCom =
-      cuePlayer.CueList
-      |> Option.bind (fun id -> Map.tryFind id this.props.``global``.state.cueLists)
-      |> Option.map (fun cueList -> com<CueListView,_,_> {``global``=this.props.``global``; cueList=cueList} [])
-    div [Class "cueplayer-container"] [
-      // HEADER
-      div [Class "cueplayer-list-header"] [
-        div [Class "cueplayer-button cueplayer-go"] [
-          span [
-            Class "iris-icon"
-            CustomKeyValue("data-icon", "c")
-          ] [str "GO"]
-        ]
-        div [Class "cueplayer-button iris-icon"] [
-          span [Class "iris-icon iris-icon-fast-backward"] []
-        ]
-        div [Class "cueplayer-button iris-icon"] [
-          span [Class "iris-icon iris-icon-fast-forward"] []
-        ]
-        div [Class "cueplayer-button"] [str "Add Cue"]
-        div [Class "cueplayer-button"] [str "Add Group"]
-        div [Style [Clear "both"]] []
-      ]
-      // CUE LIST
-      opt cueListCom
-    ]
