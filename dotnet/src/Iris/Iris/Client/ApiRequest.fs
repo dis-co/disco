@@ -1306,6 +1306,8 @@ type ServerApiRequest =
 type ApiResponse =
   | Pong
   | OK
+  | Registered
+  | Unregistered
   | NOK of ApiError
 
   member response.ToOffset(builder: FlatBufferBuilder) =
@@ -1318,6 +1320,14 @@ type ApiResponse =
       ApiResponseFB.StartApiResponseFB(builder)
       ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
       ApiResponseFB.EndApiResponseFB(builder)
+    | Registered ->
+      ApiResponseFB.StartApiResponseFB(builder)
+      ApiResponseFB.AddStatus(builder, StatusFB.RegisteredFB)
+      ApiResponseFB.EndApiResponseFB(builder)
+    | Unregistered ->
+      ApiResponseFB.StartApiResponseFB(builder)
+      ApiResponseFB.AddStatus(builder, StatusFB.UnregisteredFB)
+      ApiResponseFB.EndApiResponseFB(builder)
     | NOK error ->
       let err = error.ToOffset(builder)
       ApiResponseFB.StartApiResponseFB(builder)
@@ -1327,8 +1337,10 @@ type ApiResponse =
 
   static member FromFB(fb: ApiResponseFB) =
     match fb.Status with
-    | StatusFB.PongFB -> Right Pong
-    | StatusFB.OKFB   -> Right OK
+    | StatusFB.PongFB         -> Right Pong
+    | StatusFB.OKFB           -> Right OK
+    | StatusFB.RegisteredFB   -> Right Registered
+    | StatusFB.UnregisteredFB -> Right Unregistered
     | StatusFB.NOKFB  ->
       either {
         let! error =

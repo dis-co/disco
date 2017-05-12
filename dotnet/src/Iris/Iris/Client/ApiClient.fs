@@ -121,7 +121,10 @@ module ApiClient =
   // ** requestRegister
 
   let private requestRegister (state: ClientState) =
+    sprintf "registering with %O:%O" state.Peer.IpAddress state.Peer.Port
+    |> Logger.debug (tag "requestRegister")
     state.Client
+
     |> ServerApiRequest.Register
     |> Binary.encode
     |> fun body -> { Body = body }
@@ -276,22 +279,17 @@ module ApiClient =
   // ** handleClientResponse
 
   let private handleClientResponse (state: ClientState) (req: RawClientResponse) (agent: ApiAgent) =
-    match req.Body with
-    | Right body ->
-      match body |> Binary.decode with
-      | Right (ApiResponse.NOK error) ->
-        error
-        |> string
-        |> Logger.err (tag "handleClientResponse")
-      | Right _ -> ()
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "handleClientResponse")
-    | Left error ->
-      error
-      |> string
-      |> Logger.err (tag "handleClientResponse")
+    match Either.bind Binary.decode req.Body with
+    | Right ApiResponse.Registered ->
+      Logger.debug (tag "handleClientResponse") "registration successful"
+      notify state.Subscriptions ClientEvent.Registered
+    | Right ApiResponse.Unregistered ->
+      Logger.debug (tag "handleClientResponse") "un-registration successful"
+      notify state.Subscriptions ClientEvent.UnRegistered
+    | Right ApiResponse.OK
+    | Right ApiResponse.Pong -> ()
+    | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
+    | Left error -> error |> string |> Logger.err (tag "handleClientResponse")
     state
 
   // ** loop
@@ -395,8 +393,10 @@ module ApiClient =
                     store.Update updated
 
                     agent.Start()
+                    agent.Post Msg.Start
                   | Left error ->
                     Logger.err (tag "Start") (string error)
+                    return! Either.fail error
                 }
 
               member self.State

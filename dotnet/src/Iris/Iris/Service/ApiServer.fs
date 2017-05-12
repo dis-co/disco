@@ -361,18 +361,30 @@ module ApiServer =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
       match req.Body |> Binary.decode with
       | Right (Register client) ->
+        client.Id
+        |> sprintf "%O requested to be registered"
+        |> Logger.debug (tag "handleServerRequest")
+
         client |> Msg.AddClient |> agent.Post
-        OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
+        Registered |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Right (UnRegister client) ->
+        client.Id
+        |> sprintf "%O requested to be un-registered"
+        |> Logger.debug (tag "handleServerRequest")
+
         client |> Msg.RemoveClient |> agent.Post
-        OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
+        Unregistered |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Right (Update sm) ->
         sm |> Msg.ClientUpdate |> agent.Post
         OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Left error ->
+        error
+        |> sprintf "error decoding request: %O"
+        |> Logger.err (tag "handleServerRequest")
+
         string error
         |> ApiError.Internal
         |> NOK
@@ -389,7 +401,6 @@ module ApiServer =
       (resp.PeerId, ServiceStatus.Running)
       |> Msg.SetClientStatus
       |> agent.Post
-    | Right (ApiResponse.OK _) -> ()
     | Right (ApiResponse.NOK error) ->
       error
       |> sprintf "NOK in client request. reason: %O"
@@ -399,6 +410,9 @@ module ApiServer =
       (resp.PeerId, ServiceStatus.Failed err)
       |> Msg.SetClientStatus
       |> agent.Post
+    | Right (ApiResponse.OK _)
+    | Right (ApiResponse.Registered _)
+    | Right (ApiResponse.Unregistered _) -> ()
     | Left error ->
       error
       |> sprintf "error returned in client request. reason: %O"
