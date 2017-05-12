@@ -93,8 +93,9 @@ class View extends Component {
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
             <h3 className="title is-3">{pinGroup[1].Name}</h3>
-            {map(pinGroup[1].Pins, (pin,i) => {
-              var model = new Spread(pin[1]);
+            {map(pinGroup[1].Pins, (kv,i) => {
+              var pin = kv[1];
+              var model = new Spread(pin);
               const View = model.view;
               return (
                 <div key={i}

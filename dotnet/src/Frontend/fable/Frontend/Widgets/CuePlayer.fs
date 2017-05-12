@@ -45,43 +45,7 @@ type IDragEvent =
   abstract x: float
   abstract y: float
   abstract ``type``: string
-
-let updateSlices(pin: Pin, rowIndex, newValue: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
-  match pin with
-  | StringPin pin ->
-    StringSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | NumberPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(double v)
-      | v -> v
-    NumberSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BoolPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(v.ToLower() = "true")
-      | v -> v
-    BoolSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices |> ClientContext.Singleton.Post
-
-// type Cue(spread: ISpread) =
-//   member val Pin = spread.pin
-//   member val Rows = spread.rows
-
-//   member this.Update(rowIndex, newValue) =
-//     let oldValue = this.Rows.[rowIndex]
-//     this.Rows.[rowIndex] <- fst oldValue, newValue
-
-//   member this.UpdateSource() =
-//     for i = 0 to this.Rows.Length do
-//       updateSlices(this.Pin, i, snd this.Rows.[i])
+  abstract model: ISpread
 
 type [<Pojo>] CueState =
   { isOpen: bool }
@@ -89,6 +53,7 @@ type [<Pojo>] CueState =
 type [<Pojo>] CueProps =
   { ``global``: GlobalModel
   ; cue: Cue
+  ; cueList: CueList
   ; index: int
   ; selectedIndex: int
   ; select: int -> unit }
@@ -108,8 +73,9 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              failwith "TODO: Add spread to cue list"
-              this.forceUpdate()
+              let newCue = { this.props.cue with Slices = Array.append this.props.cue.Slices [|ev.model.pin.Slices|] }
+              let newCueList = { this.props.cueList with Cues = this.props.cueList.Cues |> Array.map (fun c -> if c.Id = newCue.Id then newCue else c) }
+              UpdateCueList newCueList |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
           then selfRef.classList.add("iris-highlight-blue")
@@ -126,67 +92,74 @@ type private CueView(props) =
       if this.state.isOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
-    div [
-      Class "cueplayer-list-header cueplayer-cue level"
-      Ref (fun el -> selfRef <- el)
-    ] [
-      div [Class "level-left"] [
-        div [Class "level-item"] [
-          span [
-            Class leftIconClass
-            OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
-          ] []]
-        div [Class "level-item"] [
-          div [Class "cueplayer-button iris-icon cueplayer-player"] [
-            span [Class "iris-icon iris-icon-play"] []
-          ]
-        ]
-      ]
-      div [Class "level-item"] [
-        form [] [
-          input [
-            Class "cueplayer-cueDesc"
-            Type "text"
-            Value !^"0000"
-            Name "firstname"
-          ]
-          br []
-        ]
-      ]
-      div [Class "level-item"] [
-        form [] [
-          input [
-            Class "cueplayer-cueDesc"
-            Type "text"
-            Value !^"Untitled"
-            Name "firstname"
-          ]
-          br []
-        ]
-      ]
-      div [Class "level-item"] [
-        form [] [
-          input [
-            Class "cueplayer-cueDesc"
-            Style [
-              CSSProp.Width 60.
-              MarginRight 5.
+    div [] [
+      yield
+        div [
+          Class "cueplayer-list-header cueplayer-cue level"
+          Ref (fun el -> selfRef <- el)
+        ] [
+          div [Class "level-left"] [
+            div [Class "level-item"] [
+              span [
+                Class leftIconClass
+                OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
+              ] []]
+            div [Class "level-item"] [
+              div [Class "cueplayer-button iris-icon cueplayer-player"] [
+                span [Class "iris-icon iris-icon-play"] []
+              ]
             ]
-            Type "text"
-            Value !^"00:00:00"
-            Name "firstname"
           ]
-          br []
+          div [Class "level-item"] [
+            form [] [
+              input [
+                Class "cueplayer-cueDesc"
+                Type "text"
+                Value !^"0000"
+                Name "firstname"
+              ]
+              br []
+            ]
+          ]
+          div [Class "level-item"] [
+            form [] [
+              input [
+                Class "cueplayer-cueDesc"
+                Type "text"
+                Value !^"Untitled"
+                Name "firstname"
+              ]
+              br []
+            ]
+          ]
+          div [Class "level-item"] [
+            form [] [
+              input [
+                Class "cueplayer-cueDesc"
+                Style [
+                  CSSProp.Width 60.
+                  MarginRight 5.
+                ]
+                Type "text"
+                Value !^"00:00:00"
+                Name "firstname"
+              ]
+              br []
+            ]
+          ]
+          div [Class "level-right"] [
+            div [Class "cueplayer-button iris-icon level-item"] [
+              span [Class "iris-icon iris-icon-duplicate"] []
+            ]
+            div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
+              span [Class "iris-icon iris-icon-close"] []
+            ]
+          ]
         ]
-      ]
-      div [Class "level-right"] [
-        div [Class "cueplayer-button iris-icon level-item"] [
-          span [Class "iris-icon iris-icon-duplicate"] []
-        ]
-        div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
-          span [Class "iris-icon iris-icon-close"] []
-        ]
-      ]
+      // if this.state.isOpen then
+      //   for slice in this.props.cue.Slices do
+      //     let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
+      //     yield div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []]
     ]
 
 type CuePlayerModel() =
@@ -247,11 +220,6 @@ type CuePlayerView(props) =
       Seq.tryHead this.props.``global``.state.cuePlayers
       |> Option.bind (fun kv -> kv.Value.CueList)
       |> Option.bind (fun id -> Map.tryFind id this.props.``global``.state.cueLists)
-    let cues =
-      match cueList with
-      | None -> [||]
-      | Some cueList -> cueList.Cues
-    printfn "Cues length: %d" cues.Length
     div [Class "cueplayer-container"] [
       // HEADER
       yield
@@ -282,14 +250,18 @@ type CuePlayerView(props) =
           div [Style [Clear "both"]] []
         ]
       // CUES
-      for i=0 to (cues.Length-1) do
-        yield com<CueView,_,_>
-          { ``global`` = this.props.``global``
-          ; cue = cues.[i]
-          ; index = i
-          ; selectedIndex = this.state.selectedIndex
-          ; select = fun i -> this.setState({selectedIndex = i}) }
-          []
+      match cueList with
+      | None -> ()
+      | Some cueList ->
+        for i=0 to (cueList.Cues.Length-1) do
+          yield com<CueView,_,_>
+            { ``global`` = this.props.``global``
+            ; cue = cueList.Cues.[i]
+            ; cueList = cueList
+            ; index = i
+            ; selectedIndex = this.state.selectedIndex
+            ; select = fun i -> this.setState({selectedIndex = i}) }
+            []
     ]
 
   // member this.render() =
