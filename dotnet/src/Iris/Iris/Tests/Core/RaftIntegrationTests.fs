@@ -27,7 +27,7 @@ module RaftIntegrationTests =
   // |_| \_\__,_|_|  \__|   |_|\___||___/\__|___/
 
   let test_validate_correct_req_socket_tracking =
-    testCase "validate correct req socket tracking" <| fun _ ->
+    ftestCase "validate correct req socket tracking" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
@@ -70,8 +70,8 @@ module RaftIntegrationTests =
         dispose leader
         dispose follower
 
-        expect "Leader should be stopped"   true Service.isStopped leader.Status
-        expect "Follower should be stopped" true Service.isStopped follower.Status
+        expect "Leader should be stopped"   true Service.isDisposed leader.Status
+        expect "Follower should be stopped" true Service.isDisposed follower.Status
       }
       |> noError
 

@@ -70,6 +70,7 @@ module Raft =
     | Periodic
     | ForceElection
     | Start
+    | Stop
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
     | RawClientResponse of response:RawClientResponse
@@ -81,9 +82,12 @@ module Raft =
     // | Leave
     // | IsCommitted    of started:DateTime * entry:EntryResponse
 
+    // *** ToString
+
     override msg.ToString() =
       match msg with
       | Start                     -> "Start"
+      | Stop                      -> "Stop"
       | RawServerRequest       _  -> "RawServerRequest"
       | RawServerResponse      _  -> "RawServerResponse"
       | RawClientResponse      _  -> "RawClientResponse"
@@ -1361,6 +1365,11 @@ module Raft =
         Status = ServiceStatus.Running
         Disposables = periodic :: state.Disposables }
 
+  // ** handleStart
+
+  let private handleStop (state: RaftServerState) =
+    { state with Status = ServiceStatus.Stopped }
+
   // ** loop
 
   let private loop (store: IAgentStore<RaftServerState>) (inbox: StateArbiter) =
@@ -1369,22 +1378,24 @@ module Raft =
         let! cmd = inbox.Receive()
         let state = store.State
         let newstate =
-          Tracing.trace (tag "loop") <| fun () ->
-            match cmd with
-            | Msg.Start                         -> handleStart          state              inbox
-            | Msg.Periodic                      -> handlePeriodic       state
-            | Msg.ForceElection                 -> handleForceElection  state
-            | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
-            | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
-            | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
-            | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
-            | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
-            | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
-            | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
-            // | Msg.Join        (ip, port)        -> handleJoin          state ip port
-            // | Msg.Leave                         -> handleLeave         state
+          match cmd with
+          | Msg.Start                         -> handleStart          state              inbox
+          | Msg.Stop                          -> handleStop           state
+          | Msg.Periodic                      -> handlePeriodic       state
+          | Msg.ForceElection                 -> handleForceElection  state
+          | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
+          | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
+          | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
+          | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
+          | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
+          | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
+          | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
+          // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+          // | Msg.Leave                         -> handleLeave         state
         store.Update newstate
-        do! act ()
+
+        if not (Service.isStopped newstate.Status) then
+          do! act ()
       }
     act ()
 
@@ -1573,9 +1584,10 @@ module Raft =
 
               member self.Dispose () =
                 if not (Service.isDisposed store.State.Status) then
-                  store.Update { store.State with Status = ServiceStatus.Disposed }
+                  agent.Post Msg.Stop
                   dispose agent
                   dispose store.State
+                  store.Update { store.State with Status = ServiceStatus.Disposed }
             }
       }
 
