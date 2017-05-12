@@ -1,4 +1,5 @@
-namespace Iris.Client
+[<AutoOpen>]
+module Iris.Client.Interfaces
 
 // * Imports
 
@@ -7,7 +8,6 @@ open System
 open System.Collections.Concurrent
 open FlatBuffers
 open Iris.Serialization
-
 
 // * IrisServer
 

@@ -205,6 +205,9 @@
     <Compile Include="..\..\Iris\Zmq\Broker.fs">
       <Link>Broker.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Interfaces.fs">
+      <Link>Interfaces.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Client\Interfaces.fs">
       <Link>Interfaces.fs</Link>
     </Compile>

@@ -24,7 +24,7 @@ module ApiClient =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "ApiClient.%s" str
+  let private tag (str: string) = String.Format("ApiClient.{0}",str)
 
   // ** FREQ
 
@@ -64,13 +64,13 @@ module ApiClient =
   type private Msg =
     | Ping
     | Start
-    | Dispose
     | CheckStatus
-    | SetState         of state:State
-    | SetStatus        of status:ServiceStatus
-    | Update           of sm:StateMachine
-    | Request          of sm:StateMachine
-    | RawServerRequest of req:RawServerRequest
+    | SetState          of state:State
+    | SetStatus         of status:ServiceStatus
+    | Update            of sm:StateMachine
+    | Request           of sm:StateMachine
+    | RawServerRequest  of req:RawServerRequest
+    | RawClientResponse of req:RawClientResponse
 
   // ** ApiAgent
 
@@ -126,7 +126,7 @@ module ApiClient =
     |> Binary.encode
     |> fun body -> { Body = body }
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err "requestRegister")
+    |> Either.mapError (string >> Logger.err (tag "requestRegister"))
     |> ignore
 
   // ** requestUnRegister
@@ -137,34 +137,28 @@ module ApiClient =
     |> Binary.encode
     |> fun body -> { Body = body }
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err "requestUnregister")
+    |> Either.mapError (string >> Logger.err (tag "requestUnregister"))
     |> ignore
 
   // ** handleStart
 
   let private handleStart (state: ClientState) (agent: ApiAgent) =
-    Tracing.trace "ApiClient.handleStart" <| fun () ->
+    Tracing.trace (tag "handleStart") <| fun () ->
+      let timer = pingTimer agent
       requestRegister state
-
-  // ** handleDispose
-
-  let private handleDispose (state: ClientState) =
-    Tracing.trace "ApiClient.handleDispose" <| fun () ->
-      requestUnRegister state
-      dispose state
-      state
+      { state with Disposables = timer :: state.Disposables }
 
   // ** handleSetStatus
 
   let private handleSetStatus (state: ClientState) (status: ServiceStatus) =
-    Tracing.trace "ApiClient.handleSetStatus" <| fun () ->
+    Tracing.trace (tag "handleSetStatus") <| fun () ->
       notify state.Subscriptions (ClientEvent.Status status)
       { state with Client = { state.Client with Status = status } }
 
   // ** handleCheckStatus
 
   let private handleCheckStatus (state: ClientState) =
-    Tracing.trace "ApiClient.handleCheckStatus" <| fun () ->
+    Tracing.trace (tag "handleCheckStatus") <| fun () ->
       if not (Service.hasFailed state.Client.Status) then
         match state.Elapsed with
         | x when x > TIMEOUT ->
@@ -174,7 +168,7 @@ module ApiClient =
             |> ServiceStatus.Failed
           notify state.Subscriptions (ClientEvent.Status status)
           { state with
-             Client = { state.Client with Status = status}
+             Client = { state.Client with Status = status }
              Elapsed = state.Elapsed + FREQ }
         | _ ->
           let status =
@@ -193,20 +187,20 @@ module ApiClient =
   // ** handlePing
 
   let private handlePing (state: ClientState) =
-    Tracing.trace "ApiClient.handlePing" <| fun () ->
+    Tracing.trace (tag "handlePing") <| fun () ->
       { state with Elapsed = 0<ms> }
 
   // ** handleSetState
 
-  let private handleSetState (state: ClientState) (subs: Subscriptions) (newstate: State) =
-    Tracing.trace "ApiClient.handleSetState" <| fun () ->
+  let private handleSetState (state: ClientState) (newstate: State) =
+    Tracing.trace (tag "handleSetState") <| fun () ->
       notify state.Subscriptions ClientEvent.Snapshot
       { state with Store = new Store(newstate) }
 
   // ** handleUpdate
 
-  let private handleUpdate (state: ClientState) (subs: Subscriptions) (sm: StateMachine) =
-    Tracing.trace "ApiClient.handleUpdate" <| fun () ->
+  let private handleUpdate (state: ClientState) (sm: StateMachine) =
+    Tracing.trace (tag "handleUpdate") <| fun () ->
       state.Store.Dispatch sm
       notify state.Subscriptions (ClientEvent.Update sm)
       state
@@ -218,13 +212,13 @@ module ApiClient =
     |> Binary.encode
     |> fun body -> { Body = body }
     |> socket.Request
-    |> Either.mapError (string >> Logger.err "requestUpdate")
+    |> Either.mapError (string >> Logger.err (tag "requestUpdate"))
     |> ignore
 
   // ** maybeDispatch
 
   let private maybeDispatch (data: ClientState) (sm: StateMachine) =
-    Tracing.trace "ApiClient.maybeDispatch" <| fun () ->
+    Tracing.trace (tag "maybeDispatch") <| fun () ->
       match sm with
       | UpdateSlices _ -> data.Store.Dispatch sm
       | _ -> ()
@@ -279,6 +273,27 @@ module ApiClient =
         |> state.Server.Respond
       state
 
+  // ** handleClientResponse
+
+  let private handleClientResponse (state: ClientState) (req: RawClientResponse) (agent: ApiAgent) =
+    match req.Body with
+    | Right body ->
+      match body |> Binary.decode with
+      | Right (ApiResponse.NOK error) ->
+        error
+        |> string
+        |> Logger.err (tag "handleClientResponse")
+      | Right _ -> ()
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "handleClientResponse")
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "handleClientResponse")
+    state
+
   // ** loop
 
   let private loop (store: IAgentStore<ClientState>) (inbox: ApiAgent) =
@@ -288,15 +303,15 @@ module ApiClient =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Start             -> handleStart state inbox
-          | Msg.SetState newstate -> handleSetState state newstate
-          | Msg.Dispose chan      -> handleDispose chan state
-          | Msg.CheckStatus       -> handleCheckStatus state subs
-          | Msg.Ping              -> handlePing state
-          | Msg.Update sm         -> handleUpdate state subs sm
-          | Msg.Request       sm  -> handleRequest state sm inbox
-          | Msg.ServerRequest req -> handleServerRequest state req inbox
-
+          | Msg.Start                  -> handleStart          state inbox
+          | Msg.SetStatus status       -> handleSetStatus      state status
+          | Msg.SetState newstate      -> handleSetState       state newstate
+          | Msg.CheckStatus            -> handleCheckStatus    state
+          | Msg.Ping                   -> handlePing           state
+          | Msg.Update sm              -> handleUpdate         state sm
+          | Msg.Request       sm       -> handleRequest        state sm   inbox
+          | Msg.RawServerRequest req   -> handleServerRequest  state req  inbox
+          | Msg.RawClientResponse resp -> handleClientResponse state resp inbox
         store.Update newstate
         return! act()
       }
@@ -315,7 +330,8 @@ module ApiClient =
         let subscriptions = new Subscriptions()
 
         let state =
-          { Client = client
+          { Status = ServiceStatus.Stopped
+            Client = client
             Peer = server
             Server = Unchecked.defaultof<IBroker>
             Socket = Unchecked.defaultof<IClient>
@@ -324,7 +340,7 @@ module ApiClient =
             Subscriptions = subscriptions
             Disposables = [] }
 
-        let store = AgentStore.create state
+        let store:IAgentStore<ClientState> = AgentStore.create state
 
         let agent = new ApiAgent(loop store, cts.Token)
 
@@ -367,27 +383,24 @@ module ApiClient =
 
                   match result with
                   | Right server ->
-                    let disposable = server.Subscribe (Msg.ServerRequest >> agent.Post)
+                    let srvobs = server.Subscribe (Msg.RawServerRequest >> agent.Post)
+                    let clntobs = socket.Subscribe (Msg.RawClientResponse >> agent.Post)
 
-                    let timer = pingTimer agent
+                    let updated =
+                      { store.State with
+                          Socket = socket
+                          Server = server
+                          Disposables = [ srvobs; clntobs ] }
 
-                    let data =
-                      { Elapsed = 0<ms>
-                        Client = client
-                        Socket = socket
-                        Server = server
-                        Store = new Store(State.Empty)
-                        Disposables = [ timer; disposable ] }
+                    store.Update updated
 
-                    sprintf "Connecting to server on %O" srvAddr
-                    |> Logger.debug (tag "start")
-                  | Left error -> Logger.err "Start" (string error)
-
-                  agent.Start()
+                    agent.Start()
+                  | Left error ->
+                    Logger.err (tag "Start") (string error)
                 }
 
               member self.State
-                with get () = store.State.
+                with get () = store.State.Store.State // :D
 
               member self.Status
                 with get () = store.State.Status
@@ -491,7 +504,7 @@ module ApiClient =
                 |> agent.Post
 
               member self.Append(cmd: StateMachine) =
-                Msg.Request cmd
+                cmd
                 |> Msg.Request
                 |> agent.Post
 

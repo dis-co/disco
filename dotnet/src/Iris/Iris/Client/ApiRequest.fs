@@ -2,6 +2,7 @@ namespace Iris.Client
 
 // * Imports
 
+open System
 open Iris.Core
 open Iris.Raft
 open FlatBuffers
@@ -14,6 +15,12 @@ type ApiError =
   | Internal         of string
   | UnknownCommand   of string
   | MalformedRequest of string
+
+  override error.ToString() =
+    match error with
+    | Internal         str -> String.Format("Internal: {0}", str)
+    | UnknownCommand   str -> String.Format("UnknownCommand: {0}", str)
+    | MalformedRequest str -> String.Format("MalformedRequest: {0}", str)
 
   member error.ToOffset(builder: FlatBufferBuilder) =
     match error with
