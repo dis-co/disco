@@ -46,9 +46,10 @@ module ApiTests =
   // |____/ \___|_|    \_/ \___|_|
 
   let test_server_should_replicate_state_snapshot_to_client =
-    ftestCase "should replicate state snapshot on connect and SetState" <| fun _ ->
+    testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use lobs = Logger.subscribe Logger.stdout
 
         let state = mkState ()
 
@@ -57,7 +58,8 @@ module ApiTests =
         let! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
-        do! server.SetState state
+
+        server.State <- state
 
         let srvr : IrisServer =
           { Port = port mem.ApiPort
@@ -78,8 +80,9 @@ module ApiTests =
 
         let handler (ev: ClientEvent) =
           match ev with
-          | ClientEvent.Registered -> registered.Set() |> ignore
-          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
+          | ClientEvent.Registered   -> registered.Set() |> ignore
+          | ClientEvent.UnRegistered -> registered.Set() |> ignore
+          | ClientEvent.Snapshot     -> snapshot.Set() |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
@@ -89,22 +92,21 @@ module ApiTests =
         registered.WaitOne() |> ignore
         snapshot.WaitOne() |> ignore
 
-        let! clientState = client.State
-
-        expect "Should be equal" state id clientState
+        expect "Should be equal" state id client.State
 
         let newstate = mkState ()
 
-        do! server.SetState newstate
+        server.State <- newstate
 
         snapshot.WaitOne() |> ignore
 
-        let! clientState = client.State
+        expect "Should be equal" newstate id client.State
 
-        expect "Should be equal" newstate id clientState
+        dispose client
+
+        registered.WaitOne() |> ignore
 
         dispose server
-        dispose client
       }
       |> noError
 
@@ -120,7 +122,7 @@ module ApiTests =
         let! server = ApiServer.create mem state.Project.Id
 
         do! server.Start()
-        do! server.SetState state
+        server.State <- state
 
         let srvr : IrisServer =
           { Port = port mem.ApiPort
@@ -171,14 +173,11 @@ module ApiTests =
 
         doneCheck.WaitOne() |> ignore
 
-        let! serverState = server.State
-        let! clientState = client.State
-
         dispose server
         dispose client
 
         expect "Should have emitted correct number of events" (List.length events |> int64) id check
-        expect "Should be equal" serverState id clientState
+        expect "Should be equal" server.State id client.State
       }
       |> noError
 
@@ -237,7 +236,7 @@ module ApiTests =
         use obs3 = client.Subscribe(clientHandler)
 
         do! server.Start()
-        do! server.SetState state
+        server.State <- state
 
         do! client.Start()
 
@@ -248,67 +247,58 @@ module ApiTests =
         let cue = mkCue()
         let cuelist = mkCueList()
 
-        do! client.AddPin pin
+        client.AddPin pin
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.AddCue cue
+        client.AddCue cue
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.AddCueList cuelist
+        client.AddCueList cuelist
 
         clientUpdate.WaitOne() |> ignore
-
-        let! serverState = server.State
-        let! clientState = client.State
 
         let len m = m |> Map.toArray |> Array.length
 
-        expect "Should be equal" serverState id clientState
-        expect "Server should have one cue" 1 len serverState.Cues
-        expect "Client should have one cue" 1 len clientState.Cues
-        expect "Server should have one cuelist" 1 len serverState.CueLists
-        expect "Client should have one cuelist" 1 len clientState.CueLists
+        expect "Should be equal" server.State id client.State
+        expect "Server should have one cue" 1 len server.State.Cues
+        expect "Client should have one cue" 1 len client.State.Cues
+        expect "Server should have one cuelist" 1 len server.State.CueLists
+        expect "Client should have one cuelist" 1 len client.State.CueLists
 
-        do! client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
-
-        clientUpdate.WaitOne() |> ignore
-
-        do! client.UpdateCue { cue with Slices = mkSlices() }
+        client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
+        client.UpdateCue { cue with Slices = mkSlices() }
 
         clientUpdate.WaitOne() |> ignore
 
-        let! serverState = server.State
-        let! clientState = client.State
-
-        expect "Should be equal" serverState id clientState
-
-        do! client.RemovePin pin
+        client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.RemoveCue cue
+        expect "Should be equal" server.State id client.State
+
+        client.RemovePin pin
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.RemoveCueList cuelist
+        client.RemoveCue cue
 
         clientUpdate.WaitOne() |> ignore
 
-        let! serverState = server.State
-        let! clientState = client.State
+        client.RemoveCueList cuelist
 
-        expect "Server should have zero cues" 0 len serverState.Cues
-        expect "Client should have zero cues" 0 len clientState.Cues
-        expect "Server should have zero cuelists" 0 len serverState.CueLists
-        expect "Client should have zero cuelists" 0 len clientState.CueLists
+        clientUpdate.WaitOne() |> ignore
 
-        expect "Should be equal" serverState id clientState
+        expect "Server should have zero cues" 0 len server.State.Cues
+        expect "Client should have zero cues" 0 len client.State.Cues
+        expect "Server should have zero cuelists" 0 len server.State.CueLists
+        expect "Client should have zero cuelists" 0 len client.State.CueLists
+
+        expect "Should be equal" server.State id client.State
 
         dispose server
         dispose client

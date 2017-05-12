@@ -50,13 +50,15 @@ module ApiClient =
       Socket: IClient
       Store:  Store
       Subscriptions: Subscriptions
-      Disposables: IDisposable list }
+      Disposables: IDisposable list
+      Stopper: AutoResetEvent }
 
     interface IDisposable with
       member self.Dispose() =
         List.iter dispose self.Disposables
         dispose self.Server
         dispose self.Socket
+        dispose self.Stopper
 
   // ** Msg
 
@@ -64,6 +66,7 @@ module ApiClient =
   type private Msg =
     | Ping
     | Start
+    | Stop
     | CheckStatus
     | SetState          of state:State
     | SetStatus         of status:ServiceStatus
@@ -124,7 +127,6 @@ module ApiClient =
     sprintf "registering with %O:%O" state.Peer.IpAddress state.Peer.Port
     |> Logger.debug (tag "requestRegister")
     state.Client
-
     |> ServerApiRequest.Register
     |> Binary.encode
     |> fun body -> { Body = body }
@@ -135,6 +137,8 @@ module ApiClient =
   // ** requestUnRegister
 
   let private requestUnRegister (state: ClientState) =
+    sprintf "unregistering from %O:%O" state.Peer.IpAddress state.Peer.Port
+    |> Logger.debug (tag "requestUnRegister")
     state.Client
     |> ServerApiRequest.UnRegister
     |> Binary.encode
@@ -292,6 +296,12 @@ module ApiClient =
     | Left error -> error |> string |> Logger.err (tag "handleClientResponse")
     state
 
+  // ** handleStop
+
+  let private handleStop (state: ClientState) =
+    requestUnRegister state
+    state
+
   // ** loop
 
   let private loop (store: IAgentStore<ClientState>) (inbox: ApiAgent) =
@@ -302,6 +312,7 @@ module ApiClient =
         let newstate =
           match msg with
           | Msg.Start                  -> handleStart          state inbox
+          | Msg.Stop                   -> handleStop           state
           | Msg.SetStatus status       -> handleSetStatus      state status
           | Msg.SetState newstate      -> handleSetState       state newstate
           | Msg.CheckStatus            -> handleCheckStatus    state
@@ -336,6 +347,7 @@ module ApiClient =
             Store = Store(State.Empty)
             Elapsed = 0<ms>
             Subscriptions = subscriptions
+            Stopper = new AutoResetEvent(false)
             Disposables = [] }
 
         let store:IAgentStore<ClientState> = AgentStore.create state
@@ -516,6 +528,8 @@ module ApiClient =
               //             |_|
 
               member self.Dispose () =
+                agent.Post Msg.Stop
+                store.State.Stopper.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
                 dispose cts
                 dispose store.State
             }
