@@ -40,7 +40,7 @@ module Raft =
 
   type private Connections = ConcurrentDictionary<Id,IClient>
 
-  // ** RaftAppContext
+  // ** RaftServerState
 
   [<NoComparison;NoEquality>]
   type private RaftServerState =
@@ -61,7 +61,7 @@ module Raft =
           dispose connection
         self.Connections.Clear()
         self.Subscriptions.Clear()
-        dispose self.Server
+        tryDispose self.Server ignore
 
   // ** Msg
 
@@ -1529,6 +1529,7 @@ module Raft =
                       |> agent.Post
                       |> Either.succeed
                     | Left error ->
+                      self.Dispose()
                       store.Update { store.State with Status = ServiceStatus.Failed error }
                       Either.fail error
                   else

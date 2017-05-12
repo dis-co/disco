@@ -27,7 +27,7 @@ module RaftIntegrationTests =
   // |_| \_\__,_|_|  \__|   |_|\___||___/\__|___/
 
   let test_validate_correct_req_socket_tracking =
-    ftestCase "validate correct req socket tracking" <| fun _ ->
+    testCase "validate correct req socket tracking" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
@@ -80,6 +80,7 @@ module RaftIntegrationTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
+        use started = new AutoResetEvent(false)
         let port = 12000us
         let machine = MachineConfig.create "127.0.0.1" None
 
@@ -98,7 +99,16 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
 
         use! leader = RaftServer.create leadercfg Client.create
+
+        let handle = function
+          | RaftEvent.Started -> started.Set() |> ignore
+          | _ -> ()
+
+        use sobs = leader.Subscribe(handle)
+
         do! leader.Start()
+
+        started.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
 
         expect "Should be running" true Service.isRunning leader.Status
 
@@ -108,20 +118,20 @@ module RaftIntegrationTests =
             | Right ()   -> Left (Other("loco","Should have failed to start"))
             | Left error -> Right ()
 
-        expect "Should be failed" true Service.isStopped follower.Status
+        expect "Should be failed" true Service.hasFailed follower.Status
       }
       |> noError
 
   let test_validate_follower_joins_leader_after_startup =
-    testCase "validate follower joins leader after startup" <| fun _ ->
+    ftestCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use lobs = Logger.subscribe Logger.stdout
 
         use check1 = new AutoResetEvent(false)
         use check2 = new AutoResetEvent(false)
 
-        let setState (are: AutoResetEvent) (ev: RaftEvent) =
-          match ev with
+        let setState (are: AutoResetEvent) = function
           | RaftEvent.StateChanged _ -> are.Set() |> ignore
           | _ -> ()
 
