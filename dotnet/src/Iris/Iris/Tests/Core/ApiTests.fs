@@ -48,8 +48,7 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-        use lobs = Logger.subscribe Logger.stdout
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let state = mkState ()
 
