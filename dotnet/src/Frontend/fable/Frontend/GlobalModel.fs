@@ -11,6 +11,7 @@ open Iris.Core
 open Iris.Core.Commands
 
 type ISubscriber = obj -> unit
+type ISubscriber<'T> = 'T -> unit
 type IWidget = interface end
 type ITab = interface end
 
@@ -177,11 +178,11 @@ type GlobalModel() =
     { new IDisposable with
         member __.Dispose() = for d in disposables do d.Dispose() }
 
-  member this.subscribeToEvent(event: string, subscriber: ISubscriber) =
+  member this.subscribeToEvent(event: string, subscriber: ISubscriber<'T>) =
     let id = newId()
     if eventSubscribers.ContainsKey(event) |> not then
       eventSubscribers.Add(event, Dictionary())
-    eventSubscribers.[event].Add(id, subscriber)
+    eventSubscribers.[event].Add(id, !!subscriber)
     printfn "Subscription to event %s" event
     { new IDisposable with
         member __.Dispose() = eventSubscribers.[event].Remove(id) |> ignore }

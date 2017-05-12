@@ -1,5 +1,6 @@
 module rec Iris.Web.Widgets.CuePlayer
 
+open System
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
@@ -39,6 +40,12 @@ type IWidgetModel =
   abstract layout: Layout
   abstract view: System.Type
 
+type IDragEvent =
+  abstract origin: int
+  abstract x: float
+  abstract y: float
+  abstract ``type``: string
+
 let updateSlices(pin: Pin, rowIndex, newValue: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
     let newArray = Array.copy ar
@@ -76,6 +83,105 @@ let updateSlices(pin: Pin, rowIndex, newValue: obj) =
 //     for i = 0 to this.Rows.Length do
 //       updateSlices(this.Pin, i, snd this.Rows.[i])
 
+type [<Pojo>] CueListProps = { ``global``: GlobalModel; cueList: CueList }
+type [<Pojo>] CueListState = { isOpen: bool }
+
+type private CueListView(props) =
+  inherit React.Component<CueListProps, CueListState>(props)
+  let disposables = ResizeArray<IDisposable>()
+  let mutable selfRef = Unchecked.defaultof<Browser.Element>
+  do base.setInitState({isOpen = false})
+
+  member this.componentDidMount() =
+    disposables.Add(this.props.``global``.subscribeToEvent("drag", fun (ev: IDragEvent) ->
+        if selfRef <> null then
+          let mutable highlight = false
+          if touchesElement(selfRef, ev.x, ev.y) then
+            match ev.``type`` with
+            | "move" ->
+              highlight <- true
+            | "stop" ->
+              failwith "TODO: Add spread to cue list"
+              this.forceUpdate()
+            | _ -> ()
+          if highlight
+          then selfRef.classList.add("iris-highlight-blue")
+          else selfRef.classList.remove("iris-highlight-blue")
+      )
+    )
+
+  member this.componentWillUnmount() =
+    for d in disposables do
+      d.Dispose()
+
+  member this.render() =
+    let leftIconClass =
+      if this.state.isOpen
+      then "iris-icon iris-icon-caret-down-two"
+      else "iris-icon iris-icon-caret-right"
+    div [
+      Class "cueplayer-list-header cueplayer-cue level"
+      Ref (fun el -> selfRef <- el)
+    ] [
+      div [Class "level-left"] [
+        div [Class "level-item"] [
+          span [
+            Class leftIconClass
+            OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
+          ] []]
+        div [Class "level-item"] [
+          div [Class "cueplayer-button iris-icon cueplayer-player"] [
+            span [Class "iris-icon iris-icon-play"] []
+          ]
+        ]
+      ]
+      div [Class "level-item"] [
+        form [] [
+          input [
+            Class "cueplayer-cueDesc"
+            Type "text"
+            Value !^"0000"
+            Name "firstname"
+          ]
+          br []
+        ]
+      ]
+      div [Class "level-item"] [
+        form [] [
+          input [
+            Class "cueplayer-cueDesc"
+            Type "text"
+            Value !^"Untitled"
+            Name "firstname"
+          ]
+          br []
+        ]
+      ]
+      div [Class "level-item"] [
+        form [] [
+          input [
+            Class "cueplayer-cueDesc"
+            Style [
+              CSSProp.Width 60.
+              MarginRight 5.
+            ]
+            Type "text"
+            Value !^"00:00:00"
+            Name "firstname"
+          ]
+          br []
+        ]
+      ]
+      div [Class "level-right"] [
+        div [Class "cueplayer-button iris-icon level-item"] [
+          span [Class "iris-icon iris-icon-duplicate"] []
+        ]
+        div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
+          span [Class "iris-icon iris-icon-close"] []
+        ]
+      ]
+    ]
+
 type CuePlayerModel() =
   interface IWidgetModel with
     member __.view = typeof<CuePlayerView>
@@ -94,163 +200,61 @@ type CuePlayerProps =
     model: CuePlayerModel
     ``global``: GlobalModel }
 
-[<Pojo>]
-type CuePlayerState =
-  // TODO: This should be an array or dictionary when we have more groups
-  { isOpen: bool }
-
 type CuePlayerView(props) =
-    inherit React.Component<CuePlayerProps, CuePlayerState>(props)
-    let disposables = ResizeArray()
-    let mutable selfRef = Unchecked.defaultof<Browser.Element>
-    do base.setInitState({isOpen = false})
+  inherit React.Component<CuePlayerProps, obj>(props)
 
-    // member this.render() =
-    //   let header =
-    //     div [Class "level"]
-    //       [div [Class "level-left"]
-    //         [button [Class "button level-item"
-    //                  Style [Margin 5]
-    //                  OnClick(fun ev -> this.UpdateSource())]
-    //           [str "Fire!"]
-    //         ]
-    //       ;div [Class "level-right"]
-    //         [div [Class "level-item"]
-    //           [from Clock %["global"==>this.props.``global``] []]
-    //         ]
-    //     ]
-    //   let rows =
-    //     this.props.model.cues
-    //     |> Seq.mapi (fun i cue ->
-    //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
-    //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []])
-    //     |> Seq.toList
-    //   // Return value
-    //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
+  // member this.render() =
+  //   let header =
+  //     div [Class "level"]
+  //       [div [Class "level-left"]
+  //         [button [Class "button level-item"
+  //                  Style [Margin 5]
+  //                  OnClick(fun ev -> this.UpdateSource())]
+  //           [str "Fire!"]
+  //         ]
+  //       ;div [Class "level-right"]
+  //         [div [Class "level-item"]
+  //           [from Clock %["global"==>this.props.``global``] []]
+  //         ]
+  //     ]
+  //   let rows =
+  //     this.props.model.cues
+  //     |> Seq.mapi (fun i cue ->
+  //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
+  //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []])
+  //     |> Seq.toList
+  //   // Return value
+  //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
 
-    member this.componentDidMount() =
-      disposables.Add(this.props.``global``.subscribeToEvent("drag", fun ev ->
-          if selfRef <> null && !!ev?origin <> props.id then
-            let mutable highlight = false
-            if touchesElement(selfRef, !!ev?x, !!ev?y) then
-              match !!ev?``type`` with
-              | "move" ->
-                highlight <- true
-              | "stop" ->
-                failwith "TODO: Add cue to cue list"
-                this.forceUpdate()
-              | _ -> ()
-            if highlight
-            then selfRef.classList.add("iris-highlight-blue")
-            else selfRef.classList.remove("iris-highlight-blue")
-        )
-      )
-
-    member this.componentWillUnmount() =
-      for d in disposables do
-        d.Dispose()
-
-    member this.renderCueList(cueList: CueList) =
-      let leftIconClass =
-        if this.state.isOpen
-        then "iris-icon iris-icon-caret-down-two"
-        else "iris-icon iris-icon-caret-right"
-      div [Class "cueplayer-list-header cueplayer-cue level"] [
-        div [Class "level-left"] [
-          div [Class "level-item"] [
-            span [
-              Class leftIconClass
-              OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
-            ] []]
-          div [Class "level-item"] [
-            div [Class "cueplayer-button iris-icon cueplayer-player"] [
-              span [Class "iris-icon iris-icon-play"] []
-            ]
-          ]
+  member this.render() =
+    let cuePlayer =
+      // TODO: Use a dropdown to choose the player
+      this.props.``global``.state.cuePlayers
+      |> Seq.head
+      |> fun kv -> kv.Value
+    let cueListCom =
+      cuePlayer.CueList
+      |> Option.bind (fun id -> Map.tryFind id this.props.``global``.state.cueLists)
+      |> Option.map (fun cueList -> com<CueListView,_,_> {``global``=this.props.``global``; cueList=cueList} [])
+    div [Class "cueplayer-container"] [
+      // HEADER
+      div [Class "cueplayer-list-header"] [
+        div [Class "cueplayer-button cueplayer-go"] [
+          span [
+            Class "iris-icon"
+            CustomKeyValue("data-icon", "c")
+          ] [str "GO"]
         ]
-        div [Class "level-item"] [
-          form [] [
-            input [
-              Class "cueplayer-cueDesc"
-              Type "text"
-              Value !^"0000"
-              Name "firstname"
-            ]
-            br []
-          ]
+        div [Class "cueplayer-button iris-icon"] [
+          span [Class "iris-icon iris-icon-fast-backward"] []
         ]
-        div [Class "level-item"] [
-          form [] [
-            input [
-              Class "cueplayer-cueDesc"
-              Type "text"
-              Value !^"Untitled"
-              Name "firstname"
-            ]
-            br []
-          ]
+        div [Class "cueplayer-button iris-icon"] [
+          span [Class "iris-icon iris-icon-fast-forward"] []
         ]
-        div [Class "level-item"] [
-          form [] [
-            input [
-              Class "cueplayer-cueDesc"
-              Style [
-                CSSProp.Width 60.
-                MarginRight 5.
-              ]
-              Type "text"
-              Value !^"00:00:00"
-              Name "firstname"
-            ]
-            br []
-          ]
-        ]
-        div [Class "level-right"] [
-          div [Class "cueplayer-button iris-icon level-item"] [
-            span [Class "iris-icon iris-icon-duplicate"] []
-          ]
-          div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
-            span [Class "iris-icon iris-icon-close"] []
-          ]
-        ]
+        div [Class "cueplayer-button"] [str "Add Cue"]
+        div [Class "cueplayer-button"] [str "Add Group"]
+        div [Style [Clear "both"]] []
       ]
-
-    member this.findCueList(id: Id option) =
-      match id with
-      | None -> None
-      | Some id ->
-        this.props.``global``.state.cueLists
-        |> Map.tryFind id
-
-    member this.render() =
-      let cuePlayer =
-        // TODO: Use a dropdown to choose the player
-        this.props.``global``.state.cuePlayers
-        |> Seq.head
-        |> fun kv -> kv.Value
-      div [
-        Class "cueplayer-container"
-        Ref (fun el -> selfRef <- el)
-      ] [
-        // HEADER
-        yield
-          div [Class "cueplayer-list-header"] [
-            div [Class "cueplayer-button cueplayer-go"] [
-              span [
-                Class "iris-icon"
-                CustomKeyValue("data-icon", "c")
-              ] [str "GO"]
-            ]
-            div [Class "cueplayer-button iris-icon"] [
-              span [Class "iris-icon iris-icon-fast-backward"] []
-            ]
-            div [Class "cueplayer-button iris-icon"] [
-              span [Class "iris-icon iris-icon-fast-forward"] []
-            ]
-            div [Class "cueplayer-button"] [str "Add Cue"]
-            div [Class "cueplayer-button"] [str "Add Group"]
-            div [Style [Clear "both"]] []
-          ]
-        // CUE LIST
-        yield cuePlayer.CueList |> this.findCueList |> (Option.map this.renderCueList) |> opt
-      ]
+      // CUE LIST
+      opt cueListCom
+    ]
