@@ -23,13 +23,6 @@ type IDiscoveryService =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Register: service:DiscoverableService -> Either<IrisError,IDisposable>
 
-// * GitEvent
-
-type GitEvent =
-  | Started of pid:int
-  | Exited  of code:int
-  | Pull    of pid:int * address:string * port:Port
-
 // * IGitServer
 
 type IGitServer =
@@ -40,46 +33,6 @@ type IGitServer =
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
-// * RaftEvent
-
-[<RequireQualifiedAccess;NoComparison;NoEquality>]
-type RaftEvent =
-  | Started
-  | JoinedCluster
-  | LeftCluster
-  | ApplyLog         of StateMachine
-  | MemberAdded      of RaftMember
-  | MemberRemoved    of RaftMember
-  | MemberUpdated    of RaftMember
-  | Configured       of RaftMember array
-  | StateChanged     of RaftState * RaftState
-  | CreateSnapshot   of Ch<State option>
-  | RetrieveSnapshot of Ch<RaftLogEntry option>
-  | PersistSnapshot  of RaftLogEntry
-  | RaftError        of IrisError
-
-// * RaftAppContext
-
-[<NoComparison;NoEquality>]
-type RaftServerState =
-  { Status:         ServiceStatus
-    Raft:           RaftValue
-    Options:        IrisConfig
-    Callbacks:      IRaftCallbacks
-    Server:         IBroker
-    Disposables:    IDisposable list
-    MakePeerSocket: ClientConfig -> IClient
-    Connections:    ConcurrentDictionary<Id,IClient>
-    Subscriptions:  ResizeArray<IObserver<RaftEvent>> }
-
-  interface IDisposable with
-    member self.Dispose() =
-      List.iter dispose self.Disposables
-      for KeyValue(_,connection) in self.Connections do
-        dispose connection
-      self.Connections.Clear()
-      self.Subscriptions.Clear()
-      dispose self.Server
 
 // * IRaftServer
 
@@ -90,7 +43,6 @@ type IRaftServer =
   abstract MemberId      : Id
   abstract Append        : StateMachine -> unit
   abstract ForceElection : unit -> unit
-  abstract State         : RaftServerState
   abstract Status        : ServiceStatus
   abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
@@ -101,15 +53,6 @@ type IRaftServer =
   abstract Connections   : ConcurrentDictionary<Id,IClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
-
-// * SocketEvent
-
-[<NoComparison;NoEquality>]
-type WebSocketEvent =
-  | SessionAdded    of Id
-  | SessionRemoved  of Id
-  | OnMessage       of Id * StateMachine
-  | OnError         of Id * Exception
 
 // * IWsServer
 
@@ -126,27 +69,6 @@ type IWebSocketServer =
 type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-
-// * ApiEvent
-
-[<RequireQualifiedAccess>]
-type ApiEvent =
-  | Update        of StateMachine
-  | ServiceStatus of ServiceStatus
-  | ClientStatus  of IrisClient
-  | Register      of IrisClient
-  | UnRegister    of IrisClient
-
-// * IrisEvent
-
-[<NoComparison;NoEquality>]
-type IrisEvent =
-  | Git    of GitEvent
-  | Socket of WebSocketEvent
-  | Raft   of RaftEvent
-  | Log    of LogEvent
-  | Api    of ApiEvent
-  | Status of ServiceStatus
 
 // * IIrisServer
 
@@ -176,7 +98,6 @@ type IApiServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (ApiEvent -> unit) -> IDisposable
-  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
-  abstract State: Either<IrisError,State>
+  abstract Clients: Map<Id,IrisClient>
+  abstract State: State with get, set
   abstract Update: sm:StateMachine -> unit
-  abstract SetState: state:State -> Either<IrisError,unit>

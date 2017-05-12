@@ -27,7 +27,7 @@ module ApiServer =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "IApiServer.%s" str
+  let private tag (str: string) = String.Format("ApiServer.{0}",str)
 
   // ** timeout
 
@@ -51,64 +51,38 @@ module ApiServer =
         dispose client.Timer
         dispose client.Socket
 
-  // ** ServerStateData
+  // ** ServerState
 
   [<NoComparison;NoEquality>]
-  type private ServerStateData =
+  type private ServerState =
     { Status: ServiceStatus
       Store: Store
       Server: IBroker
       Publisher: Pub
       Subscriber: Sub
       Clients: Map<Id,Client>
+      Subscriptions: Subscriptions
       Disposables: IDisposable list }
 
     interface IDisposable with
       member data.Dispose() =
+        data.Subscriptions.Clear()
         List.iter dispose data.Disposables
         dispose data.Publisher
         dispose data.Subscriber
         dispose data.Server
         Map.iter (fun _ v -> dispose v) data.Clients
 
-  // ** ServerState
-
-  [<NoComparison;NoEquality>]
-  type private ServerState =
-    | Loaded of ServerStateData
-    | Idle
-
-    interface IDisposable with
-      member state.Dispose() =
-        match state with
-        | Loaded data -> dispose data
-        | _ -> ()
-
-  // ** Reply
-
-  [<RequireQualifiedAccess>]
-  type private Reply =
-    | Clients of Map<Id,IrisClient>
-    | State of State
-    | Ok
-
-  // ** ReplyChan
-
-  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
-
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start             of chan:ReplyChan * mem:RaftMember * projectId:Id
-    | Dispose           of chan:ReplyChan
-    | GetClients        of chan:ReplyChan
+    | Start
     | SetStatus         of status:ServiceStatus
     | AddClient         of client:IrisClient
     | RemoveClient      of client:IrisClient
-    | SetClientStatus   of id:Id          * status:ServiceStatus
-    | SetState          of chan:ReplyChan * state:State
-    | GetState          of chan:ReplyChan
+    | SetClientStatus   of id:Id * status:ServiceStatus
+    | SetState          of state:State
     | InstallSnapshot   of id:Id
     | LocalUpdate       of sm:StateMachine
     | RemoteUpdate      of sm:StateMachine
@@ -145,25 +119,10 @@ module ApiServer =
     for KeyValue(_,sub) in subs do
       sub.OnNext ev
 
-  // ** postCommand
-
-  let inline private postCommand (agent: ApiAgent) (cb: ReplyChan -> Msg) =
-    async {
-      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
-      match result with
-      | Some response -> return response
-      | None ->
-        return
-          "Command Timeout"
-          |> Error.asOther (tag "postCommand")
-          |> Either.fail
-    }
-    |> Async.RunSynchronously
-
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (data: ServerStateData) (client: Client) (agent: ApiAgent) =
-    data.Store.State
+  let private requestInstallSnapshot (state: ServerState) (client: Client) (agent: ApiAgent) =
+    state.Store.State
     |> ClientApiRequest.Snapshot
     |> Binary.encode
     |> fun body -> { Body = body }
@@ -261,144 +220,50 @@ module ApiServer =
       | _ -> ()
     | _ -> ()
 
-  // ** start
-
-  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (project: Id) =
-    let frontend = Uri.tcpUri mem.IpAddr (mem.ApiPort |> port |> Some)
-    let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
-
-    let pubSubAddr =
-      Uri.epgmUri
-        mem.IpAddr
-        (IPv4Address Constants.MCAST_ADDRESS)
-        (port Constants.MCAST_PORT)
-
-    let publisher = new Pub(unwrap pubSubAddr, string project)
-    let subscriber = new Sub(unwrap pubSubAddr, string project)
-
-    let result = Broker.create {
-      Id = mem.Id
-      MinWorkers = 5uy
-      MaxWorkers = 20uy
-      Frontend = frontend
-      Backend = backend
-      RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
-    }
-
-    match result  with
-    | Right server ->
-      match publisher.Start(), subscriber.Start() with
-      | Right (), Right () ->
-        let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-        let sub = subscriber.Subscribe(processSubscriptionEvent agent)
-
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-
-        Loaded { Status = ServiceStatus.Running
-                 Store = new Store(State.Empty)
-                 Publisher = publisher
-                 Subscriber = subscriber
-                 Clients = Map.empty
-                 Server = server
-                 Disposables = [ srv; sub ] }
-
-      | Left error, _ | _, Left error ->
-        dispose server
-        dispose publisher
-        dispose subscriber
-        chan.Reply(Left error)
-        Idle
-
-    | Left error ->
-      error
-      |> Either.fail
-      |> chan.Reply
-      Idle
 
   // ** handleStart
 
-  let private handleStart (chan: ReplyChan)
-                          (state: ServerState)
-                          (agent: ApiAgent)
-                          (mem: RaftMember)
-                          (project: Id) =
-    Tracing.trace "ApiServer.handleStart" <| fun () ->
-      match state with
-      | Loaded data ->
-        dispose data
-        start chan agent mem project
-      | Idle ->
-        start chan agent mem project
-
-  // ** handleDispose
-
-  let private handleDispose (chan: ReplyChan) (state: ServerState) =
-    Tracing.trace "ApiServer.handleDispose" <| fun () ->
-      dispose state
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
-      Idle
+  let private handleStart (state: ServerState) (agent: ApiAgent) =
+    state
 
   // ** handleAddClient
 
-  let private handleAddClient (state: ServerState)
-                              (subs: Subscriptions)
-                              (meta: IrisClient)
-                              (agent: ApiAgent) =
-    Tracing.trace "ApiServer.handleAddClient" <| fun () ->
-      match state with
-      | Idle -> state
-      | Loaded data ->
-        // first, dispose of the previous client
-        match Map.tryFind meta.Id data.Clients with
-        | None -> ()
-        | Some client ->
-          dispose client
-          notify subs (ApiEvent.UnRegister client.Meta)
+  let private handleAddClient (state: ServerState) (meta: IrisClient) (agent: ApiAgent) =
+    Tracing.trace (tag "handleAddClient") <| fun () ->
+      // first, dispose of the previous client
+      match Map.tryFind meta.Id state.Clients with
+      | None -> ()
+      | Some client ->
+        dispose client
+        notify state.Subscriptions (ApiEvent.UnRegister client.Meta)
 
-        // construct a new client value
-        let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
-        let socket = Client.create {
-          PeerId = meta.Id
-          Frontend = addr
-          Timeout = int Constants.REQ_TIMEOUT * 1<ms>
-        }
+      // construct a new client value
+      let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
+      let socket = Client.create {
+        PeerId = meta.Id
+        Frontend = addr
+        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+      }
 
-        let client =
-          { Meta = meta
-            Socket = socket
-            Timer = pingTimer socket agent }
+      let client =
+        { Meta = meta
+          Socket = socket
+          Timer = pingTimer socket agent }
 
-        meta.Id
-        |> Msg.InstallSnapshot
-        |> agent.Post
+      meta.Id |> Msg.InstallSnapshot |> agent.Post
+      meta |> ApiEvent.Register |> notify state.Subscriptions
 
-        meta
-        |> ApiEvent.Register
-        |> notify subs
-
-        Loaded { data with Clients = Map.add meta.Id client data.Clients }
+      { state with Clients = Map.add meta.Id client state.Clients }
 
   // ** handleRemoveClient
 
-  let private handleRemoveClient (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (peer: IrisClient) =
-    Tracing.trace "ApiServer.handleRemoveClient" <| fun () ->
-      match state with
-      | Idle -> state
-      | Loaded data ->
-        match Map.tryFind peer.Id data.Clients with
+  let private handleRemoveClient (state: ServerState) (peer: IrisClient) =
+    Tracing.trace (tag "handleRemoveClient") <| fun () ->
+        match Map.tryFind peer.Id state.Clients with
         | Some client ->
-          asynchronously <| fun _ ->
-            dispose client
-            peer
-            |> ApiEvent.UnRegister
-            |> notify subs
-          Loaded { data with Clients = Map.remove peer.Id data.Clients }
+          dispose client
+          peer |> ApiEvent.UnRegister |> notify state.Subscriptions
+          { state with Clients = Map.remove peer.Id state.Clients }
         | _ -> state
 
   // ** updateClient
@@ -428,241 +293,124 @@ module ApiServer =
 
   // ** updateClients
 
-  let private updateClients (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace "ApiServer.updateClients" <| fun () ->
-      data.Clients
+  let private updateClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "updateClients") <| fun () ->
+      state.Clients
       |> Map.toArray
       |> Array.Parallel.map (snd >> updateClient sm)
       |> ignore
 
   // ** maybePublish
 
-  let private maybePublish (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
+  let private maybePublish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
     match sm with
     | UpdateSlices _ | CallCue _ ->
-      asynchronously <| fun () ->
-        Tracing.trace "ApiServer.maybePublish" <| fun () ->
-          sm
-          |> Binary.encode
-          |> data.Publisher.Publish
-          |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
-          |> ignore
+      Tracing.trace (tag "maybePublish") <| fun () ->
+        sm
+        |> Binary.encode
+        |> state.Publisher.Publish
+        |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
+        |> ignore
     | _ -> ()
 
   // ** maybeDispatch
 
-  let private maybeDispatch (data: ServerStateData) (sm: StateMachine) =
+  let private maybeDispatch (state: ServerState) (sm: StateMachine) =
     match sm with
-    | UpdateSlices _ | CallCue _ -> data.Store.Dispatch sm
+    | UpdateSlices _ | CallCue _ -> state.Store.Dispatch sm
     | _ -> ()
-
-  // ** handleGetClients
-
-  let private handleGetClients (chan: ReplyChan) (state: ServerState) =
-    Tracing.trace "ApiServer.handleGetClients" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          data.Clients
-          |> Map.map (fun _ v -> v.Meta)
-          |> Reply.Clients
-          |> Either.succeed
-          |> chan.Reply
-        state
-      | Idle ->
-        asynchronously <| fun _ ->
-          "ClientApi not running"
-          |> Error.asClientError (tag "handleGetClients")
-          |> Either.fail
-          |> chan.Reply
-        state
 
   // ** handleSetStatus
 
-  let private handleSetStatus (state: ServerState)
-                              (subs: Subscriptions)
-                              (status: ServiceStatus) =
-    Tracing.trace "ApiServer.handleSetStatus" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          notify subs (ApiEvent.ServiceStatus status)
-        Loaded { data with Status = status }
-      | idle -> idle
+  let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
+    Tracing.trace (tag "handleSetStatus") <| fun () ->
+      notify state.Subscriptions (ApiEvent.ServiceStatus status)
+      { state with Status = status }
 
   // ** handleSetClientStatus
 
-  let private handleSetClientStatus (state: ServerState)
-                                    (subs: Subscriptions)
-                                    (id: Id)
-                                    (status: ServiceStatus) =
-    Tracing.trace "ApiServer.handleSetClientStatus" <| fun () ->
-      match state with
-      | Loaded data ->
-        match Map.tryFind id data.Clients with
-        | Some client ->
-          match client.Meta.Status, status with
-          | ServiceStatus.Running, ServiceStatus.Running -> state
-          | oldst, newst ->
-            if oldst <> newst then
-              let updated = { client with Meta = { client.Meta with Status = status } }
-              asynchronously <| fun () ->
-                updated.Meta
-                |> ApiEvent.ClientStatus
-                |> notify subs
-              Loaded { data with Clients = Map.add id updated data.Clients }
-            else state
-        | None -> state
-      | idle -> idle
+  let private handleSetClientStatus (state: ServerState) (id: Id) (status: ServiceStatus) =
+    Tracing.trace (tag "handleSetClientStatus") <| fun () ->
+      match Map.tryFind id state.Clients with
+      | Some client ->
+        match client.Meta.Status, status with
+        | ServiceStatus.Running, ServiceStatus.Running -> state
+        | oldst, newst ->
+          if oldst <> newst then
+            let updated = { client with Meta = { client.Meta with Status = status } }
+            updated.Meta |> ApiEvent.ClientStatus |> notify state.Subscriptions
+            { state with Clients = Map.add id updated state.Clients }
+          else state
+      | None -> state
 
   // ** handleSetState
 
-  let private handleSetState (chan: ReplyChan)
-                             (state: ServerState)
-                             (newstate: State)
-                             (agent: ApiAgent) =
-
-    Tracing.trace "ApiServer.handleSetState" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) data.Clients
-          Reply.Ok
-          |> Either.succeed
-          |> chan.Reply
-        Loaded { data with Store = new Store(newstate) }
-      | Idle ->
-        chan.Reply (Right Reply.Ok)
-        state
+  let private handleSetState (state: ServerState) (newstate: State) (agent: ApiAgent) =
+    Tracing.trace (tag "handleSetState") <| fun () ->
+      Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) state.Clients
+      { state with Store = new Store(newstate) }
 
   // ** handleInstallSnapshot
 
   let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
-    Tracing.trace "ApiServer.handleInstallSnapshot" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          match Map.tryFind id data.Clients with
-          | Some client ->
-            requestInstallSnapshot data client agent
-          | None -> ()
-        state
-      | Idle -> state
-
-  // ** handleGetState
-
-  let private handleGetState (chan: ReplyChan) (state: ServerState) =
-    Tracing.trace "ApiServer.handleGetState" <| fun () ->
-      match state with
-      | Loaded data ->
-        asynchronously <| fun _ ->
-          data.Store.State
-          |> Reply.State
-          |> Either.succeed
-          |> chan.Reply
-        state
-      | _ ->
-        asynchronously <| fun _ ->
-          "Not Loaded"
-          |> Error.asClientError (tag "handleGetState")
-          |> Either.fail
-          |> chan.Reply
-        state
+    Tracing.trace (tag "handleInstallSnapshot") <| fun () ->
+      match Map.tryFind id state.Clients with
+      | Some client -> requestInstallSnapshot state client agent
+      | None -> ()
+      state
 
   // ** handleClientUpdate
 
-  let private handleClientUpdate (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (sm: StateMachine)
-                                 (agent: ApiAgent) =
-    Tracing.trace "ApiServer.handleClientUpdate" <| fun () ->
-      match state with
-      | Loaded data ->
-        maybeDispatch data sm
-        maybePublish data sm agent
-        notify subs (ApiEvent.Update sm)
-        state
-      | Idle ->
-        state
+  let private handleClientUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "handleClientUpdate") <| fun () ->
+      maybeDispatch state sm
+      maybePublish state sm agent
+      notify state.Subscriptions (ApiEvent.Update sm)
+      state
 
   // ** handleRemoteUpdate
 
-  let private handleRemoteUpdate (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (sm: StateMachine)
-                                 (agent: ApiAgent) =
-    Tracing.trace "ApiServer.handleRemoteUpdate" <| fun () ->
-      match state with
-      | Loaded data ->
-        maybeDispatch data sm             // we need to send these request synchronously
-        updateClients data sm agent       // in order to preserve ordering of the messages
-        notify subs (ApiEvent.Update sm)
-        state
-      | Idle ->
-        state
+  let private handleRemoteUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
+      maybeDispatch state sm             // we need to send these request synchronously
+      updateClients state sm agent       // in order to preserve ordering of the messages
+      notify state.Subscriptions (ApiEvent.Update sm)
+      state
 
   // ** handleLocalUpdate
 
-  let private handleLocalUpdate (state: ServerState)
-                                (sm: StateMachine)
-                                (agent: ApiAgent) =
-    Tracing.trace "ApiServer.handleLocalUpdate" <| fun () ->
-      match state with
-      | Loaded data ->
-        data.Store.Dispatch sm            // we need to send these request synchronously
-        maybePublish data sm agent        // in order to preserve ordering of the messages
-        updateClients data sm agent
-        state
-      | Idle -> state
+  let private handleLocalUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "handleLocalUpdate") <| fun () ->
+      state.Store.Dispatch sm            // we need to send these request synchronously
+      maybePublish state sm agent        // in order to preserve ordering of the messages
+      updateClients state sm agent
+      state
 
   // ** handleServerRequest
 
   let private handleServerRequest (state: ServerState) (req: RawServerRequest) (agent: ApiAgent) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
-      asynchronously <| fun _ ->
-        Tracing.trace "ApiServer.handleServerRequest" <| fun () ->
-          match req.Body |> Binary.decode with
-          | Right (Register client) ->
-            client
-            |> Msg.AddClient
-            |> agent.Post
+    Tracing.trace (tag "handleServerRequest") <| fun () ->
+      match req.Body |> Binary.decode with
+      | Right (Register client) ->
+        client |> Msg.AddClient |> agent.Post
+        OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
-            OK
-            |> Binary.encode
-            |> RawServerResponse.fromRequest req
-            |> data.Server.Respond
+      | Right (UnRegister client) ->
+        client |> Msg.RemoveClient |> agent.Post
+        OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
-          | Right (UnRegister client) ->
-            client
-            |> Msg.RemoveClient
-            |> agent.Post
+      | Right (Update sm) ->
+        sm |> Msg.ClientUpdate |> agent.Post
+        OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
-            OK
-            |> Binary.encode
-            |> RawServerResponse.fromRequest req
-            |> data.Server.Respond
-
-          | Right (Update sm) ->
-            sm
-            |> Msg.ClientUpdate
-            |> agent.Post
-
-            OK
-            |> Binary.encode
-            |> RawServerResponse.fromRequest req
-            |> data.Server.Respond
-
-          | Left error ->
-            string error
-            |> ApiError.Internal
-            |> NOK
-            |> Binary.encode
-            |> RawServerResponse.fromRequest req
-            |> data.Server.Respond
+      | Left error ->
+        string error
+        |> ApiError.Internal
+        |> NOK
+        |> Binary.encode
+        |> RawServerResponse.fromRequest req
+        |> state.Server.Respond
       state
-
 
   // ** handleClientResponse
 
@@ -671,27 +419,24 @@ module ApiServer =
 
   // ** loop
 
-  let private loop (initial: ServerState) (subs: Subscriptions) (inbox: ApiAgent) =
-    let rec act (state: ServerState) =
+  let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
+    let rec act () =
       async {
         let! msg = inbox.Receive()
-
+        let state = store.State
         let newstate =
           try
             match msg with
-            | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
-            | Msg.Dispose chan                -> handleDispose chan state
-            | Msg.AddClient(client)           -> handleAddClient state subs client inbox
-            | Msg.RemoveClient(client)        -> handleRemoveClient state subs client
-            | Msg.GetClients(chan)            -> handleGetClients chan state
-            | Msg.SetStatus(status)           -> handleSetStatus state subs status
-            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
-            | Msg.SetState(chan, newstate)    -> handleSetState chan state newstate inbox
-            | Msg.GetState(chan)              -> handleGetState chan state
+            | Msg.Start                       -> handleStart state inbox
+            | Msg.AddClient(client)           -> handleAddClient state client inbox
+            | Msg.RemoveClient(client)        -> handleRemoveClient state client
+            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+            | Msg.SetState(newstate)          -> handleSetState state newstate inbox
+            | Msg.SetStatus(status)           -> handleSetStatus state status
             | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
             | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
-            | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
-            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
+            | Msg.ClientUpdate(sm)            -> handleClientUpdate state sm inbox
+            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state sm inbox
             | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
             | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
           with
@@ -700,10 +445,10 @@ module ApiServer =
               |> sprintf "Error in loop: %O"
               |> Logger.err "ApiServer"
               state
-
-        return! act newstate
+        store.Update newstate
+        return! act ()
       }
-    act initial
+    act ()
 
   //  ____        _     _ _
   // |  _ \ _   _| |__ | (_) ___
@@ -719,64 +464,87 @@ module ApiServer =
     let create (mem: RaftMember) (projectId: Id) =
       either {
         let cts = new CancellationTokenSource()
-        let subs = new Subscriptions()
-        let agent = new ApiAgent(loop Idle subs, cts.Token)
-        agent.Start()
+
+        let state = {
+          Status = ServiceStatus.Stopped
+          Store = Store(State.Empty)
+          Server = Unchecked.defaultof<IBroker>
+          Publisher = Unchecked.defaultof<Pub>
+          Subscriber = Unchecked.defaultof<Sub>
+          Clients = Map.empty
+          Subscriptions = Subscriptions()
+          Disposables = []
+        }
+
+        let store = AgentStore.create state
+        let agent = new ApiAgent(loop store, cts.Token)
 
         return
           { new IApiServer with
-              member self.Start () =
-                match postCommand agent (fun chan -> Msg.Start(chan,mem,projectId)) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "Start")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
+              member self.Start () = either {
+                  let frontend = Uri.tcpUri mem.IpAddr (mem.ApiPort |> port |> Some)
+                  let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
+
+                  let pubSubAddr =
+                    Uri.epgmUri
+                      mem.IpAddr
+                      (IPv4Address Constants.MCAST_ADDRESS)
+                      (port Constants.MCAST_PORT)
+
+                  let publisher = new Pub(unwrap pubSubAddr, string projectId)
+                  let subscriber = new Sub(unwrap pubSubAddr, string projectId)
+
+                  let result = Broker.create {
+                    Id = mem.Id
+                    MinWorkers = 5uy
+                    MaxWorkers = 20uy
+                    Frontend = frontend
+                    Backend = backend
+                    RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
+                  }
+
+                  match result  with
+                  | Right server ->
+                    match publisher.Start(), subscriber.Start() with
+                    | Right (), Right () ->
+                      let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
+                      let sub = subscriber.Subscribe(processSubscriptionEvent agent)
+
+                      let updated =
+                        { store.State with
+                            Status = ServiceStatus.Running
+                            Publisher = publisher
+                            Subscriber = subscriber
+                            Server = server
+                            Disposables = [ srv; sub ] }
+
+                      store.Update updated
+                      agent.Start()
+                      agent.Post Msg.Start
+
+                    | Left error, _ | _, Left error ->
+                      dispose server
+                      dispose publisher
+                      dispose subscriber
+                      return! Either.fail error
+
+                  | Left error ->
+                    return! Either.fail error
+                }
 
               member self.Clients
-                with get () =
-                  match postCommand agent (fun chan -> Msg.GetClients(chan)) with
-                  | Right (Reply.Clients clients) -> Either.succeed clients
-                  | Right other ->
-                    sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "Clients")
-                    |> Either.fail
-                  | Left error ->
-                    error
-                    |> Either.fail
+                with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
 
               member self.State
-                with get () =
-                  match postCommand agent (fun chan -> Msg.GetState(chan)) with
-                  | Right (Reply.State state) -> Either.succeed state
-                  | Right other ->
-                    sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "State")
-                    |> Either.fail
-                  | Left error ->
-                    error
-                    |> Either.fail
+                with get () = store.State.Store.State
+                 and set state = state |> Msg.SetState |> agent.Post
 
               member self.Update (sm: StateMachine) =
                 agent.Post(Msg.LocalUpdate sm)
 
-              member self.SetState (state: State) =
-                match postCommand agent (fun chan -> Msg.SetState(chan, state)) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "SetState")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
               member self.Subscribe (callback: ApiEvent -> unit) =
                 let guid = Guid.NewGuid()
-                let listener = createListener guid subs
+                let listener = createListener guid store.State.Subscriptions
                 { new IObserver<ApiEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
@@ -784,8 +552,7 @@ module ApiServer =
                 |> listener.Subscribe
 
               member self.Dispose () =
-                postCommand agent (fun chan -> Msg.Dispose chan)
-                |> ignore
                 dispose cts
+                dispose store.State
             }
       }

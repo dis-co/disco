@@ -40,6 +40,29 @@ module Raft =
 
   type private Connections = ConcurrentDictionary<Id,IClient>
 
+  // ** RaftAppContext
+
+  [<NoComparison;NoEquality>]
+  type private RaftServerState =
+    { Status:         ServiceStatus
+      Raft:           RaftValue
+      Options:        IrisConfig
+      Callbacks:      IRaftCallbacks
+      Server:         IBroker
+      Disposables:    IDisposable list
+      MakePeerSocket: ClientConfig -> IClient
+      Connections:    ConcurrentDictionary<Id,IClient>
+      Subscriptions:  ResizeArray<IObserver<RaftEvent>> }
+
+    interface IDisposable with
+      member self.Dispose() =
+        List.iter dispose self.Disposables
+        for KeyValue(_,connection) in self.Connections do
+          dispose connection
+        self.Connections.Clear()
+        self.Subscriptions.Clear()
+        dispose self.Server
+
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
@@ -1531,9 +1554,6 @@ module Raft =
 
               member self.RemoveMember id =
                 id |> Msg.RemoveMember |> agent.Post
-
-              member self.State
-                with get () = store.State
 
               member self.Subscribe (callback: RaftEvent -> unit) =
                 { new IObserver<RaftEvent> with
