@@ -16,11 +16,20 @@ module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
   let SpreadView: RCom = importMember "../../../src/widgets/Spread"
+  let SpreadCons: JsConstructor<Pin,obj> = importDefault "../../../src/widgets/Spread"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
   let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
   let inline (~%) x = createObj x
+
+  module Array =
+    // TODO: Fable is not able to resolve this, check
+    // let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
+    //   Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
+
+    let inline replaceById (newItem : Cue) (ar: Cue[]) =
+      Array.map (fun (x: Cue) -> if newItem.Id = x.Id then newItem else x) ar
 
 
 type Layout =
@@ -58,6 +67,12 @@ type [<Pojo>] CueProps =
   ; selectedIndex: int
   ; select: int -> unit }
 
+// TODO: Create a cache to speed up look ups
+let findPin (pinId: Id) (state: IGlobalState) =
+  match Map.tryFindPin pinId state.pinGroups with
+  | Some pin -> pin
+  | None -> failwithf "Cannot find pind with Id %O in GlobalState" pinId
+
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
@@ -74,7 +89,7 @@ type private CueView(props) =
               highlight <- true
             | "stop" ->
               let newCue = { this.props.cue with Slices = Array.append this.props.cue.Slices [|ev.model.pin.Slices|] }
-              let newCueList = { this.props.cueList with Cues = this.props.cueList.Cues |> Array.map (fun c -> if c.Id = newCue.Id then newCue else c) }
+              let newCueList = { this.props.cueList with Cues = Array.replaceById newCue this.props.cueList.Cues }
               UpdateCueList newCueList |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
@@ -151,15 +166,21 @@ type private CueView(props) =
             div [Class "cueplayer-button iris-icon level-item"] [
               span [Class "iris-icon iris-icon-duplicate"] []
             ]
-            div [Class "cueplayer-button iris-icon cueplayer-close level-item"] [
+            div [
+              Class "cueplayer-button iris-icon cueplayer-close level-item"
+              OnClick (fun _ ->
+                let cueList2 = { this.props.cueList with Cues = this.props.cueList.Cues |> Array.filter (fun c -> c.Id = this.props.cue.Id) }
+                UpdateCueList cueList2 |> ClientContext.Singleton.Post)
+            ] [
               span [Class "iris-icon iris-icon-close"] []
             ]
           ]
         ]
-      // if this.state.isOpen then
-      //   for slice in this.props.cue.Slices do
-      //     let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
-      //     yield div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []]
+      if this.state.isOpen then
+        for slice in this.props.cue.Slices do
+          let pin: Pin = findPin slice.Id this.props.``global``.state
+          let spreadModel = SpreadCons.Create(pin) // TODO: Use slice values instead of pin's
+          yield from SpreadView %["key"==>i; "model"==>spreadModel; "global"==>this.props.``global``] []
     ]
 
 type CuePlayerModel() =
