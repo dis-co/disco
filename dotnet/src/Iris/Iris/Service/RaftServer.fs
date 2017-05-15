@@ -18,7 +18,7 @@ open Utilities
 open Persistence
 open Hopac
 open Hopac.Infixes
-
+open ZeroMQ
 
 // * Raft
 
@@ -54,15 +54,6 @@ module Raft =
       Connections:    ConcurrentDictionary<Id,IClient>
       Subscriptions:  ResizeArray<IObserver<RaftEvent>> }
 
-    interface IDisposable with
-      member self.Dispose() =
-        List.iter dispose self.Disposables
-        for KeyValue(_,connection) in self.Connections do
-          dispose connection
-        self.Connections.Clear()
-        self.Subscriptions.Clear()
-        tryDispose self.Server ignore
-
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
@@ -70,7 +61,7 @@ module Raft =
     | Periodic
     | ForceElection
     | Start
-    | Stop
+    | Stop              of AutoResetEvent
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
     | RawClientResponse of response:RawClientResponse
@@ -87,7 +78,7 @@ module Raft =
     override msg.ToString() =
       match msg with
       | Start                     -> "Start"
-      | Stop                      -> "Stop"
+      | Stop                   _  -> "Stop"
       | RawServerRequest       _  -> "RawServerRequest"
       | RawServerResponse      _  -> "RawServerResponse"
       | RawClientResponse      _  -> "RawClientResponse"
@@ -108,6 +99,12 @@ module Raft =
   // ** StateArbiter
 
   type private StateArbiter = MailboxProcessor<Msg>
+
+  // ** tryPost
+
+  let private tryPost (agent: StateArbiter) msg =
+    try agent.Post msg
+    with | exn -> printfn "exn: %s" exn.Message
 
   // ** getRaft
 
@@ -186,52 +183,73 @@ module Raft =
   // ** registerPeerSocket
 
   let private registerPeerSocket (arbiter: StateArbiter) (socket: IClient) =
-    socket.Subscribe (Msg.RawClientResponse >> arbiter.Post) |> ignore
+    socket.Subscribe (Msg.RawClientResponse >> tryPost arbiter) |> ignore
     socket
 
   // ** addPeerSocket
 
   let private addPeerSocket (connections: Connections) (socket: IClient) =
-    while not (connections.TryAdd(socket.PeerId, socket)) do
-      TimeSpan.FromTicks 1L
-      |> Thread.Sleep
+    match connections.TryAdd(socket.PeerId, socket) with
+    | true -> ()
+    | false ->
+      match connections.TryAdd(socket.PeerId, socket) with
+      | true -> ()
+      | false ->
+        "unable to add peer socket after 1 retry"
+        |> Logger.err (tag "addPeerSocket")
 
   // ** notify
 
   let private notify (subscriptions: Subscriptions) (ev: RaftEvent) =
-    Tracing.trace (tag "trigger") <| fun () ->
-      for subscription in subscriptions do
+    let subs = subscriptions.ToArray()
+    for subscription in subs do
+      try
         subscription.OnNext ev
+      with
+        | exn ->
+          exn.Message
+          |> sprintf "could not notify listeners of event: %s"
+          |> Logger.err (tag "notify")
 
   // ** sendRequest
 
-  let private sendRequest (peer: RaftMember) connections request =
-    peer.Id
-    |> getPeerSocket connections
-    |> Option.map (performRequest request)
-    |> Option.orElse (Logger.err "SendRequestVote" "No Socket found for client" |> Some)
-    |> ignore
+  let private sendRequest (peer: RaftMember) construct connections agent request =
+    match peer.Id |> getPeerSocket connections with
+    | Some connection -> performRequest request connection
+    | None ->
+      peer.Id
+      |> sprintf "unable to find peer socket for %O. starting one.."
+      |> Logger.debug (tag "sendRequest")
+      let connection =
+        makePeerSocket peer construct
+        |> registerPeerSocket agent
+      performRequest request connection
+      addPeerSocket connections connection
 
   // ** makeCallbacks
 
   let private makeCallbacks (id: Id)
-                            (constr: ClientConfig -> IClient)
+                            (construct: ClientConfig -> IClient)
                             (connections: Connections)
-                            (subscriptions: Subscriptions) =
+                            (subscriptions: Subscriptions)
+                            (agent: StateArbiter) =
 
     { new IRaftCallbacks with
 
         member self.SendRequestVote peer request =
           Tracing.trace (tag "sendRequestVote") <| fun () ->
-            RequestVote(id, request) |> sendRequest peer connections
+            RequestVote(id, request)
+            |> sendRequest peer construct connections agent
 
         member self.SendAppendEntries peer request =
           Tracing.trace (tag "sendAppendEntries") <| fun () ->
-            AppendEntries(id, request) |> sendRequest peer connections
+            AppendEntries(id, request)
+            |> sendRequest peer construct connections agent
 
         member self.SendInstallSnapshot peer request =
           Tracing.trace (tag "sendInstallSnapshot") <| fun () ->
-            InstallSnapshot(id, request) |> sendRequest peer connections
+            InstallSnapshot(id, request)
+            |> sendRequest peer construct connections agent
 
         member self.PrepareSnapshot raft =
           Tracing.trace (tag "prepareSnapshot") <| fun () ->
@@ -1354,6 +1372,12 @@ module Raft =
         state
 
 
+  // ** handleStop
+
+  let private handleStop (state: RaftServerState) (stop: AutoResetEvent) =
+    stop.Set() |> ignore
+    { state with Status = ServiceStatus.Stopping }
+
   // ** handleStart
 
   let private handleStart (state: RaftServerState) (agent: StateArbiter) =
@@ -1365,11 +1389,6 @@ module Raft =
         Status = ServiceStatus.Running
         Disposables = periodic :: state.Disposables }
 
-  // ** handleStart
-
-  let private handleStop (state: RaftServerState) =
-    { state with Status = ServiceStatus.Stopped }
-
   // ** loop
 
   let private loop (store: IAgentStore<RaftServerState>) (inbox: StateArbiter) =
@@ -1380,7 +1399,7 @@ module Raft =
         let newstate =
           match cmd with
           | Msg.Start                         -> handleStart          state              inbox
-          | Msg.Stop                          -> handleStop           state
+          | Msg.Stop               ev         -> handleStop           state ev
           | Msg.Periodic                      -> handlePeriodic       state
           | Msg.ForceElection                 -> handleForceElection  state
           | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
@@ -1394,7 +1413,9 @@ module Raft =
           // | Msg.Leave                         -> handleLeave         state
         store.Update newstate
 
-        if not (Service.isStopped newstate.Status) then
+        if Service.isStopping store.State.Status then
+          return ()
+        else
           do! act ()
       }
     act ()
@@ -1452,37 +1473,40 @@ module Raft =
 
     // ** create
 
-    let create (config: IrisConfig) (constr: ClientConfig -> IClient) =
+    let create ctx (config: IrisConfig) =
       either {
+        let cts = new CancellationTokenSource()
         let connections = new Connections()
         let subscriptions = new Subscriptions()
         let listener = createListener subscriptions
+
+        let store = AgentStore.create()
+        let agent = new StateArbiter(loop store, cts.Token)
+        agent.Error.Add(sprintf "%O" >> Logger.err (tag "loop"))
 
         let! (callbacks, raftState) = either {
             let! raftState = Persistence.getRaft config
             let callbacks =
               makeCallbacks
                 raftState.Member.Id
-                constr
+                (Client.create ctx)
                 connections
                 subscriptions
+                agent
             let! initialized = initializeRaft callbacks raftState
             return callbacks, initialized
           }
 
-        let store =
+        store.Update
           { Status = ServiceStatus.Stopped
             Server = Unchecked.defaultof<IBroker>
-            MakePeerSocket = constr
+            MakePeerSocket = Client.create ctx
             Raft = raftState
             Options = config
             Callbacks = callbacks
             Disposables = []
             Connections = connections
             Subscriptions = subscriptions }
-          |> AgentStore.create
-
-        let agent = new StateArbiter(loop store)
 
         return
           { new IRaftServer with
@@ -1497,7 +1521,7 @@ module Raft =
                       |> Some
                       |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
 
-                    let result = Broker.create {
+                    let result = Broker.create ctx {
                         Id = raftState.Member.Id
                         MinWorkers = 5uy
                         MaxWorkers = 20uy
@@ -1506,13 +1530,23 @@ module Raft =
                         RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                       }
 
+                    agent.Start()       // we must start the agent, so the dispose logic will work
+                                        // as expected
+
                     match result with
                     | Right server ->
+                      backend
+                      |> sprintf "successfullly started broker on: %O"
+                      |> Logger.debug (tag "Start")
+
                       let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)
 
                       Map.iter
                         (fun _ (peer: RaftMember) ->
                           if peer.Id <> raftState.Member.Id then
+                            peer.Id
+                            |> sprintf "adding peer socket for %O"
+                            |> Logger.debug (tag "Start")
                             makePeerSocket peer store.State.MakePeerSocket
                             |> registerPeerSocket agent
                             |> addPeerSocket connections)
@@ -1523,13 +1557,13 @@ module Raft =
                             Server = server
                             Disposables = [ srvobs ] }
 
-                      agent.Start()
-
                       Msg.Start
                       |> agent.Post
                       |> Either.succeed
                     | Left error ->
-                      self.Dispose()
+                      error
+                      |> sprintf "error starting broker: %O"
+                      |> Logger.err (tag "Start")
                       store.Update { store.State with Status = ServiceStatus.Failed error }
                       Either.fail error
                   else
@@ -1585,9 +1619,36 @@ module Raft =
 
               member self.Dispose () =
                 if not (Service.isDisposed store.State.Status) then
-                  agent.Post Msg.Stop
-                  dispose agent
-                  dispose store.State
+                  // dispose periodic
+                  for disp in store.State.Disposables do
+                    dispose disp
+
+                  // wait for actor to settle
+                  use ev = new AutoResetEvent(false)
+                  ev |> Msg.Stop |> agent.Post
+                  ev.WaitOne() |> ignore
+
+                  // clear all listener subscriptions
+                  store.State.Subscriptions.Clear()
+
+                  // stop the actor
+                  try cts.Cancel()
+                  with | exn -> Logger.err (tag "Dispose") exn.Message
+                  tryDispose agent ignore // then stop the actor so it doesn't keep processing
+                  tryDispose cts ignore   // buffered msgs
+
+                  for KeyValue(_,client) in store.State.Connections do
+                    dispose client
+
+                  // clear connections
+                  self.Connections.Clear()
+
+                  tryDispose store.State.Server <| fun exn ->
+                    exn.Message
+                    |> sprintf "error disposing server: %s"
+                    |> Logger.err (tag "Dispose")
+
+                  // mark as disposed
                   store.Update { store.State with Status = ServiceStatus.Disposed }
             }
       }

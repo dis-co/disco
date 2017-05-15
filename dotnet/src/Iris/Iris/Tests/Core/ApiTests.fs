@@ -10,6 +10,7 @@ open Iris.Client
 open Iris.Service
 open Iris.Service.Interfaces
 open System.Net
+open ZeroMQ
 open FSharpx.Control
 open FSharpx.Functional
 
@@ -49,12 +50,12 @@ module ApiTests =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create mem state.Project.Id
+        let! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
 
@@ -72,7 +73,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create srvr clnt
+        let! client = ApiClient.create ctx srvr clnt
 
         use registered = new AutoResetEvent(false)
         use snapshot = new AutoResetEvent(false)
@@ -113,12 +114,12 @@ module ApiTests =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create mem state.Project.Id
+        let! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
         server.State <- state
@@ -135,7 +136,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create srvr clnt
+        let! client = ApiClient.create ctx srvr clnt
 
         use snapshot = new AutoResetEvent(false)
         use doneCheck = new AutoResetEvent(false)
@@ -190,7 +191,7 @@ module ApiTests =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
@@ -207,7 +208,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! server = ApiServer.create mem state.Project.Id
+        let! server = ApiServer.create ctx mem state.Project.Id
 
         let check = ref 0
 
@@ -223,7 +224,7 @@ module ApiTests =
         use clientSnapshot = new AutoResetEvent(false)
         use clientUpdate = new AutoResetEvent(false)
 
-        let! client = ApiClient.create srvr clnt
+        let! client = ApiClient.create ctx srvr clnt
 
         let clientHandler (ev: ClientEvent) =
           match ev with

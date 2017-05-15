@@ -166,13 +166,13 @@ module rec Raft =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "Raft.%s" str
+  let private tag (str: string) = String.Format("Raft.{0}",str)
 
   // ** log
 
   let log site level message =
     message
-    |> Logger.log level site
+    |> Logger.log level (tag site)
     |> returnM
 
   // ** debug
@@ -207,7 +207,7 @@ module rec Raft =
           request.PrevLogIdx
           request.PrevLogTerm
 
-      Logger.debug "sendAppendEntriesM" msg
+      do! debug "sendAppendEntriesM" msg
 
       cbs.SendAppendEntries mem request
     }

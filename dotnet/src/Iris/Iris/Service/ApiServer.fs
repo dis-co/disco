@@ -18,6 +18,7 @@ open Hopac.Infixes
 
 [<AutoOpen>]
 module ApiServer =
+  open ZeroMQ
 
   //  ____       _            _
   // |  _ \ _ __(_)_   ____ _| |_ ___
@@ -62,6 +63,7 @@ module ApiServer =
       Publisher: Pub
       Subscriber: Sub
       Clients: Map<Id,Client>
+      Context: ZContext
       Subscriptions: Subscriptions
       Disposables: IDisposable list }
 
@@ -220,7 +222,7 @@ module ApiServer =
 
       // construct a new client value
       let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
-      let socket = Client.create {
+      let socket = Client.create state.Context {
         PeerId = meta.Id
         Frontend = addr
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
@@ -467,7 +469,7 @@ module ApiServer =
   [<RequireQualifiedAccess>]
   module ApiServer =
 
-    let create (mem: RaftMember) (projectId: Id) =
+    let create ctx (mem: RaftMember) (projectId: Id) =
       either {
         let cts = new CancellationTokenSource()
 
@@ -480,10 +482,12 @@ module ApiServer =
           Subscriber = Unchecked.defaultof<Sub>
           Clients = Map.empty
           Subscriptions = Subscriptions()
+          Context = ctx
           Disposables = []
         }
 
-        let store = AgentStore.create state
+        let store = AgentStore.create ()
+        store.Update state
         let agent = new ApiAgent(loop store, cts.Token)
 
         return
@@ -498,10 +502,10 @@ module ApiServer =
                       (IPv4Address Constants.MCAST_ADDRESS)
                       (port Constants.MCAST_PORT)
 
-                  let publisher = new Pub(unwrap pubSubAddr, string projectId)
-                  let subscriber = new Sub(unwrap pubSubAddr, string projectId)
+                  let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
+                  let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
 
-                  let result = Broker.create {
+                  let result = Broker.create ctx {
                     Id = mem.Id
                     MinWorkers = 5uy
                     MaxWorkers = 20uy

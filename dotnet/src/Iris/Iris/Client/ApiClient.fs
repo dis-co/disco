@@ -10,6 +10,7 @@ open Iris.Client
 open Iris.Zmq
 open Iris.Serialization
 open Hopac
+open ZeroMQ
 
 // * ApiClient module
 
@@ -333,7 +334,7 @@ module ApiClient =
 
     // *** create
 
-    let create (server: IrisServer) (client: IrisClient) =
+    let create ctx (server: IrisServer) (client: IrisClient) =
       either {
         let cts = new CancellationTokenSource()
         let subscriptions = new Subscriptions()
@@ -350,7 +351,8 @@ module ApiClient =
             Stopper = new AutoResetEvent(false)
             Disposables = [] }
 
-        let store:IAgentStore<ClientState> = AgentStore.create state
+        let store:IAgentStore<ClientState> = AgentStore.create()
+        store.Update state
 
         let agent = new ApiAgent(loop store, cts.Token)
 
@@ -376,13 +378,13 @@ module ApiClient =
                   sprintf "Starting server on %O" clientAddr
                   |> Logger.debug (tag "start")
 
-                  let socket = Client.create {
+                  let socket = Client.create ctx {
                     PeerId = client.Id
                     Frontend = srvAddr
                     Timeout = int Constants.REQ_TIMEOUT * 1<ms>
                   }
 
-                  let result = Broker.create {
+                  let result = Broker.create ctx {
                     Id = client.Id
                     MinWorkers = 5uy
                     MaxWorkers = 20uy
@@ -425,6 +427,20 @@ module ApiClient =
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
+
+              //  ____  _
+              // |  _ \(_)___ _ __   ___  ___  ___
+              // | | | | / __| '_ \ / _ \/ __|/ _ \
+              // | |_| | \__ \ |_) | (_) \__ \  __/
+              // |____/|_|___/ .__/ \___/|___/\___|
+              //             |_|
+
+              member self.Dispose () =
+                agent.Post Msg.Stop
+                store.State.Stopper.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
+                dispose cts
+                dispose store.State
+                dispose ctx
 
               //   ____
               //  / ___|   _  ___
@@ -519,18 +535,5 @@ module ApiClient =
                 cmd
                 |> Msg.Request
                 |> agent.Post
-
-              //  ____  _
-              // |  _ \(_)___ _ __   ___  ___  ___
-              // | | | | / __| '_ \ / _ \/ __|/ _ \
-              // | |_| | \__ \ |_) | (_) \__ \  __/
-              // |____/|_|___/ .__/ \___/|___/\___|
-              //             |_|
-
-              member self.Dispose () =
-                agent.Post Msg.Stop
-                store.State.Stopper.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
-                dispose cts
-                dispose store.State
             }
       }

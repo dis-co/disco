@@ -8,6 +8,7 @@ open System.Diagnostics
 open System.Collections.Concurrent
 open Iris.Zmq
 open Iris.Core
+open ZeroMQ
 
 // * Types
 
@@ -85,14 +86,14 @@ module Clock =
 
   // ** ClockState
 
-  type private ClockState(ip: IpAddress) =
+  type private ClockState(ip: IpAddress, ctx: ZContext) =
     let addr =
       Uri.epgmUri
         ip
         (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
         (port Constants.CLOCK_MCAST_PORT)
 
-    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX)
+    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX, ctx)
 
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()
@@ -193,8 +194,8 @@ module Clock =
 
   // ** create
 
-  let create (ip: IpAddress) =
-    let state = new ClockState(ip)
+  let create ctx (ip: IpAddress) =
+    let state = new ClockState(ip, ctx)
 
     if not Stopwatch.IsHighResolution then
       Logger.warn "Clock" "internal timer is not using high resolution clock"

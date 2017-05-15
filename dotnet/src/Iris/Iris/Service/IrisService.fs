@@ -28,6 +28,7 @@ open LibGit2Sharp
 open SharpYaml.Serialization
 open Hopac
 open Hopac.Infixes
+open ZeroMQ
 
 // * IrisService
 
@@ -147,6 +148,7 @@ module Iris =
       ClockService         : IClock
       Subscriptions        : Subscriptions
       Disposables          : Map<string,IDisposable>
+      Context              : ZContext
       DiscoverableService  : IDisposable option }
 
     interface IDisposable with
@@ -608,8 +610,8 @@ module Iris =
 
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember) (agent: IrisAgent) =
-    let socket = Client.create {
+  let private makeLeader ctx (leader: RaftMember) (agent: IrisAgent) =
+    let socket = Client.create ctx {
         PeerId = leader.Id
         Frontend = Uri.raftUri leader
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
@@ -632,7 +634,7 @@ module Iris =
         Option.iter dispose data.Leader
         match data.RaftServer.Leader with
         | Some leader ->
-          Loaded { data with Leader = Some (makeLeader leader agent) }
+          Loaded { data with Leader = Some (makeLeader data.Context leader agent) }
         | None ->
           "Could not start re-direct socket: no leader"
           |> Logger.debug (tag "onStateChanged")
@@ -934,6 +936,8 @@ module Iris =
       password = user.Password
 
     either {
+      let ctx = new ZContext()
+
       let! path = Project.checkPath machine projectName
       let! (state: State) = Asset.loadWithMachine path machine
 
@@ -985,13 +989,13 @@ module Iris =
         let! mem = Config.selfMember state.Project.Config
 
         let! wsserver   = WebSocketServer.create mem
-        let! raftserver = RaftServer.create state.Project.Config Client.create
-        let! apiserver  = ApiServer.create mem state.Project.Id
+        let! raftserver = RaftServer.create ctx state.Project.Config
+        let! apiserver  = ApiServer.create ctx mem state.Project.Id
         let! gitserver  = GitServer.create mem state.Project.Path // IMPORTANT: use the projects
                                                                   // path here, not the path to
                                                                   // project.yml
 
-        let clock = Clock.create mem.IpAddr
+        let clock = Clock.create ctx mem.IpAddr
 
         // Try to put discovered services into the state
         let state =
@@ -1015,6 +1019,7 @@ module Iris =
                         Subscriptions       = subscriptions
                         DiscoveryService    = discoveryService
                         DiscoverableService = None
+                        Context             = ctx
                         Disposables         = Map.empty }
       | _ ->
         return!

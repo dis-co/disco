@@ -201,13 +201,12 @@ module Client =
 
   // ** LocalThreadState
 
-  type private LocalThreadState(options: ClientConfig) as self =
+  type private LocalThreadState(options: ClientConfig, context: ZContext) as self =
     let timeout = options.Timeout |> float |> TimeSpan.FromMilliseconds
     let clid = options.PeerId |> string |> Guid.Parse
 
     [<DefaultValue>] val mutable Status: ServiceStatus
     [<DefaultValue>] val mutable Socket: ZSocket
-    [<DefaultValue>] val mutable Context: ZContext
     [<DefaultValue>] val mutable Requests: ConcurrentQueue<RawClientRequest>
     [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
@@ -235,9 +234,7 @@ module Client =
 
     member self.Start() =
       try
-        self.Context <- new ZContext()
-        self.Socket <- new ZSocket(self.Context, ZSocketType.DEALER)
-        self.Socket.Linger <- TimeSpan.FromMilliseconds 1.0
+        self.Socket <- new ZSocket(context, ZSocketType.DEALER)
         self.Socket.Identity <- clid.ToByteArray()
         self.Socket.Connect(unwrap options.Frontend)
         self.Status <- ServiceStatus.Running
@@ -254,10 +251,14 @@ module Client =
     interface IDisposable with
       member self.Dispose() =
         if not (Service.isDisposed self.Status) then
-          tryDispose self.Socket
-          tryDispose self.Context
+          Logger.debug (tag "Dispose") "disposing client socket"
           self.Subscriptions.Clear()
+          try
+            self.Socket.Linger <- TimeSpan.FromMilliseconds 0.0
+            self.Socket.Close()
+          with | exn -> Logger.err (tag "Dispose") exn.Message
           self.Status <- ServiceStatus.Disposed
+          Logger.debug (tag "Dispose") "client socket disposed"
 
   // ** initialize
 
@@ -289,7 +290,6 @@ module Client =
     state.Starter.Set() |> ignore
 
     while spin state do
-
       if state.Requests.Count > 0 then
         while state.Requests.Count > 0 do
           try
@@ -308,25 +308,24 @@ module Client =
               |> fun body -> { PeerId = state.Id; Body = body }
               |> notify state.Subscriptions
             else // TIMEOUT
-              Logger.err "Client" "Timeout on socket"
-              Error.asSocketError "Client" "Timeout on socket"
+              Logger.err (tag "worker") "Timeout on socket"
+              Error.asSocketError (tag "worker") "Timeout on socket"
               |> Either.fail
               |> fun body -> { PeerId = state.Id; Body = body }
               |> notify state.Subscriptions
-
           with
           | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
             let msg = "Encountered ETERM on thread. disposing"
-            let error = Error.asSocketError "Client" msg
-            Logger.err "Client" msg
+            let error = Error.asSocketError (tag "worker") msg
+            Logger.err (tag "worker") msg
             { PeerId = state.Id; Body = Left error }
             |> notify state.Subscriptions
-            state.Status <- ServiceStatus.Failed error
+            state.Status <- ServiceStatus.Stopping
           | :? ZException -> ()
           | exn ->
             let msg = String.Format("Exception: {0}\nStackTrace:{1}",exn.Message, exn.StackTrace)
-            let error = Error.asSocketError "Client" msg
-            Logger.err "Client" msg
+            let error = Error.asSocketError (tag "worker") msg
+            Logger.err (tag "worker") msg
             { PeerId = state.Id; Body = Left error }
             |> notify state.Subscriptions
             state.Status <- ServiceStatus.Failed error
@@ -343,8 +342,8 @@ module Client =
 
   // ** create
 
-  let create (options: ClientConfig) =
-    let state = new LocalThreadState(options)
+  let create (ctx: ZContext) (options: ClientConfig) =
+    let state = new LocalThreadState(options, ctx)
 
     let mutable thread = Thread(worker state)
     thread.Name <- sprintf "Client %O" state.Id
@@ -363,7 +362,7 @@ module Client =
             |> Either.succeed
           else
             "Socket already disposed"
-            |> Error.asSocketError "Client"
+            |> Error.asSocketError (tag "create")
             |> Either.fail
 
         member self.Running
@@ -479,10 +478,11 @@ module private Worker =
 
     interface IDisposable with
       member self.Dispose() =
-        self.Socket.Linger <- TimeSpan.FromMilliseconds 0.0
+        self.Subscriptions.Clear()
+        self.Socket.Close()
         tryDispose self.Socket
         self.Disposed <- true
-        Logger.debug "worker" "disposed"
+        Logger.debug (tag args.Id "worker") "disposed"
 
   // ** spin
 
@@ -642,14 +642,12 @@ module Broker =
   // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (args: BrokerConfig) as self =
+  type private LocalThreadState private (args: BrokerConfig, ctx: ZContext) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
     [<DefaultValue>] val mutable Started: bool
     [<DefaultValue>] val mutable Run: bool
-    [<DefaultValue>] val mutable Error: Either<IrisError,unit>
-    [<DefaultValue>] val mutable Context: ZContext
     [<DefaultValue>] val mutable Frontend: ZSocket
     [<DefaultValue>] val mutable Backend: ZSocket
     [<DefaultValue>] val mutable Workers: Workers
@@ -664,32 +662,46 @@ module Broker =
       self.Started <- false
       self.Run <- true
       self.Disposed <- false
-      self.Error <- Right ()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
       self.Workers <- new Workers()
       self.Subscriptions <- new Subscriptions()
 
+    // *** Init
+
+    static member Create(args, ctx) =
+      either {
+        let state = new LocalThreadState(args,ctx)
+
+        let frontend = new ZSocket(ctx, ZSocketType.ROUTER)
+        let backend  = new ZSocket(ctx, ZSocketType.DEALER)
+
+        let mutable error = ZError.None
+
+        let fresult = frontend.Bind(unwrap args.Frontend, &error)
+        let bresult = backend.Bind(unwrap args.Backend, &error)
+
+        if fresult && bresult then
+          state.Frontend <- frontend
+          state.Backend <- backend
+          return state
+        else
+          frontend.Close()
+          backend.Close()
+          return!
+            "failed to initialize sockets"
+            |> Error.asSocketError (tag "Create")
+            |> Either.fail
+      }
+
+    // *** Start
+
     member self.Start () =
-      try
-        self.Context <- new ZContext()
-        self.Frontend <- new ZSocket(self.Context, ZSocketType.ROUTER)
-        self.Backend <- new ZSocket(self.Context, ZSocketType.DEALER)
-        self.Frontend.Bind(unwrap args.Frontend)
-        self.Backend.Bind(unwrap args.Backend)
+      for _ in 1uy .. args.MinWorkers do
+        self.AddWorker()
 
-        for _ in 1uy .. args.MinWorkers do
-          self.AddWorker()
-
-        self.Initialized <- true
-        self.Started <- true
-      with
-        | exn ->
-          exn.Message + exn.StackTrace
-          |> Error.asSocketError (tag "Start")
-          |> Either.fail
-          |> fun error -> self.Error <- error
-          dispose self
+      self.Initialized <- true
+      self.Started <- true
 
     // *** AddWorker
 
@@ -701,7 +713,7 @@ module Broker =
         let result = Worker.create {
             Id = uint16 count + 1us
             Backend = args.Backend
-            Context = self.Context
+            Context = ctx
             RequestTimeout = args.RequestTimeout
           }
 
@@ -727,12 +739,12 @@ module Broker =
       member self.Dispose() =
         for disp in disposables do
           tryDispose disp
-
         self.Frontend.Linger <- TimeSpan.FromMilliseconds 0.0
         self.Backend.Linger <- TimeSpan.FromMilliseconds 0.0
+        self.Frontend.Close()
+        self.Backend.Close()
         tryDispose self.Frontend
         tryDispose self.Backend
-        tryDispose self.Context
         self.Disposed <- true
 
   // ** proxy
@@ -744,27 +756,27 @@ module Broker =
       Logger.debug (tag "proxy") "starting ZMQ proxy"
       let mutable error = ZError.None
       if not (ZContext.Proxy(state.Frontend, state.Backend, &error)) then
-        Logger.err "proxy" (string error)
+        Logger.err (tag "proxy") (string error)
     with
       | exn -> Logger.err (tag "proxy") exn.Message
     state.Stopper.Set() |> ignore
-    Logger.err "proxy" "exiting"
+    Logger.err (tag "proxy") "exiting"
 
   // ** create
 
-  let create (args: BrokerConfig) =
-    let state = new LocalThreadState(args)
-    let cts = new CancellationTokenSource()
-    let responder = ResponseActor.Start(loop state.Workers, cts.Token)
+  let create (ctx: ZContext) (args: BrokerConfig) = either {
+      let! state = LocalThreadState.Create(args, ctx)
 
-    let proxy = Thread(proxy state)
-    proxy.Name <- sprintf "BrokerProxy"
-    proxy.Start()
+      let cts = new CancellationTokenSource()
+      let responder = ResponseActor.Start(loop state.Workers, cts.Token)
 
-    state.Starter.WaitOne() |> ignore
+      let proxy = Thread(proxy state)
+      proxy.Name <- sprintf "BrokerProxy"
+      proxy.Start()
 
-    Either.map
-      (fun _ ->
+      state.Starter.WaitOne() |> ignore
+
+      return
         { new IBroker with
             member self.Subscribe(callback: RawServerRequest -> unit) =
               let guid = Guid.NewGuid()
@@ -780,6 +792,5 @@ module Broker =
 
             member self.Dispose() =
               dispose cts
-              dispose state
-              state.Stopper.Dispose() })
-      state.Error
+              dispose state }
+    }

@@ -37,9 +37,11 @@ module ZmqIntegrationTests =
         let numclients = 5
         let numrequests = 50
 
+        use ctx = new ZContext()
+
         let frontend = url "tcp://127.0.0.1:5555"
         let backend =  url "inproc://backend"
-        let! broker = Broker.create {
+        let! broker = Broker.create ctx {
             Id = Id.Create()
             MinWorkers = uint8 numclients
             MaxWorkers = 20uy
@@ -91,7 +93,7 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. (numclients - 1) do
-               let socket = Client.create {
+               let socket = Client.create ctx {
                   PeerId = Id.Create()
                   Frontend = frontend
                   Timeout = 200<ms>
@@ -151,6 +153,7 @@ module ZmqIntegrationTests =
   let test_worker_timeout_fail_restarts_socket =
     testCase "worker timeout fail restarts socket" <| fun _ ->
       either {
+        use ctx = new ZContext()
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let mutable count = 0
@@ -161,7 +164,7 @@ module ZmqIntegrationTests =
         let frontend = url "tcp://127.0.0.1:5555"
         let backend = url "inproc://backend"
 
-        use! broker = Broker.create {
+        use! broker = Broker.create ctx {
             Id = Id.Create()
             MinWorkers = uint8 num
             MaxWorkers = 20uy
@@ -174,7 +177,7 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. num - 1 do
-               yield Client.create {
+               yield Client.create ctx {
                   PeerId = Id.Create()
                   Frontend = frontend
                   Timeout = 100<ms>
@@ -212,7 +215,9 @@ module ZmqIntegrationTests =
         let timeout = 10<ms>
         let mutable count = 0
 
-        use client = Client.create {
+        use ctx = new ZContext()
+
+        use client = Client.create ctx {
           PeerId = Id.Create()
           Frontend = url "tcp://127.0.0.1:5555"
           Timeout = timeout
@@ -238,6 +243,40 @@ module ZmqIntegrationTests =
       }
       |> noError
 
+  let test_duplicate_broker_fails_gracefully =
+    testCase "duplicate broker fails gracefully" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
+        let frontend = url "tcp://127.0.0.1:5555"
+        let backend = url "inproc://backend"
+
+        use! broker1 = Broker.create ctx {
+            Id = Id.Create()
+            MinWorkers = 5uy
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 100<ms>
+          }
+
+        let broker2 = Broker.create ctx {
+            Id = Id.Create()
+            MinWorkers = 5uy
+            MaxWorkers = 20uy
+            Frontend = frontend
+            Backend = backend
+            RequestTimeout = 100<ms>
+          }
+
+        return!
+          match broker2 with
+          | Right _ -> Left(Other("test","should have failed"))
+          | Left _ -> Right ()
+      }
+      |> noError
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -249,4 +288,5 @@ module ZmqIntegrationTests =
       test_client_timeout_keeps_socket_alive
       test_broker_request_handling
       test_worker_timeout_fail_restarts_socket
+      test_duplicate_broker_fails_gracefully
     ] |> testSequenced

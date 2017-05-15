@@ -64,13 +64,13 @@ module Constants =
   let RAFT_ELECTION_TIMEOUT = 600       // see page 10 on timings in https://raft.github.io/raft.pdf
 
   [<Literal>]
-  let RAFT_REQUEST_TIMEOUT = 60         // see ^
+  let RAFT_REQUEST_TIMEOUT = 100        // see ^
 
   [<Literal>]
   let RAFT_MAX_LOGDEPTH = 50
 
   [<Literal>]
-  let RAFT_PERIODIC_INTERVAL = 1
+  let RAFT_PERIODIC_INTERVAL = 10       // ms
 
   //  ___      _
   // |_ _|_ __(_)___

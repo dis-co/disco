@@ -45,7 +45,7 @@ module Sub =
   /// - prefix:  string prefix to match traffic to
   ///
   /// Returns: instance of Sub
-  type Sub (addr: string, prefix: string) =
+  type Sub (addr: string, prefix: string, ctx: ZContext) =
 
     let tag = sprintf "Sub.%s"
 
@@ -54,7 +54,6 @@ module Sub =
     let mutable disposed = false
     let mutable run = true
     let mutable sock: ZSocket = null
-    let mutable ctx : ZContext = null
     let mutable thread: Thread = null
     let mutable error : Exception option = None
     let mutable starter: AutoResetEvent = new AutoResetEvent(false)
@@ -89,7 +88,6 @@ module Sub =
       ///
       if isNull sock then
         try
-          ctx  <- new ZContext()
           sock <- new ZSocket(ctx, ZSocketType.SUB)
           sock.Connect(addr)
           sock.Subscribe(prefix)
@@ -143,7 +141,6 @@ module Sub =
 
       tryClose  sock
       tryDispose sock ignore
-      tryDispose ctx ignore
 
       disposed <- true
 

@@ -19,8 +19,8 @@ type IAgentStore<'t when 't : not struct> =
 module AgentStore =
   open System.Threading
 
-  let create<'t when 't : not struct> (initial: 't) =
-    let mutable state = initial
+  let create<'t when 't : not struct> () =
+    let mutable state = Unchecked.defaultof<'t>
 
     { new IAgentStore<'t> with
         member self.State with get () = state
