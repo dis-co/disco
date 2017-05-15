@@ -49,8 +49,7 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-        use lobs = Logger.subscribe Logger.stdout
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         use ctx = new ZContext()
         let state = mkState ()
@@ -114,12 +113,13 @@ module ApiTests =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+
         use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create ctx mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
         server.State <- state
@@ -136,7 +136,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create ctx srvr clnt
+        use! client = ApiClient.create ctx srvr clnt
 
         use snapshot = new AutoResetEvent(false)
         use doneCheck = new AutoResetEvent(false)
@@ -173,9 +173,6 @@ module ApiTests =
 
         doneCheck.WaitOne() |> ignore
 
-        dispose server
-        dispose client
-
         expect "Should have emitted correct number of events" (List.length events |> int64) id check
         expect "Should be equal" server.State id client.State
       }
@@ -208,7 +205,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! server = ApiServer.create ctx mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         let check = ref 0
 
@@ -224,7 +221,7 @@ module ApiTests =
         use clientSnapshot = new AutoResetEvent(false)
         use clientUpdate = new AutoResetEvent(false)
 
-        let! client = ApiClient.create ctx srvr clnt
+        use! client = ApiClient.create ctx srvr clnt
 
         let clientHandler (ev: ClientEvent) =
           match ev with
@@ -299,9 +296,6 @@ module ApiTests =
         expect "Client should have zero cuelists" 0 len client.State.CueLists
 
         expect "Should be equal" server.State id client.State
-
-        dispose server
-        dispose client
       }
       |> noError
 

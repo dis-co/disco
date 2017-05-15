@@ -316,6 +316,7 @@ module ApiClient =
   let private handleDispose (state: ClientState) =
     List.iter dispose state.Disposables
     state.Stopper.Set() |> ignore
+    ServiceStatus.Stopping |> ClientEvent.Status |> notify state.Subscriptions
     { state with
         Status = ServiceStatus.Stopping
         Disposables = [] }
@@ -466,9 +467,13 @@ module ApiClient =
 
               member self.Dispose () =
                 agent.Post Msg.Stop
-                store.State.Stopper.WaitOne() |> ignore
+                match store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0) with
+                | true -> ()
+                | false -> Logger.debug (tag "Dispose") "attempt to un-register with server failed"
                 dispose cts
+                ServiceStatus.Disposed |> ClientEvent.Status |> notify state.Subscriptions
                 dispose store.State
+                store.Update { store.State with Status = ServiceStatus.Disposed }
 
               // **** AddCue
 
