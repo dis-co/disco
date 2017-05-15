@@ -1571,6 +1571,9 @@ module Raft =
                     |> Error.asRaftError (tag "Start")
                     |> Either.fail
 
+              member self.Raft
+                with get () = store.State.Raft
+
               member self.Member
                 with get () = store.State.Raft.Member
 

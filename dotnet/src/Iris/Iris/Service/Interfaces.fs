@@ -46,13 +46,14 @@ type IRaftServer =
   abstract Status        : ServiceStatus
   abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
-  // abstract JoinCluster   : IpAddress -> uint16 -> unit
-  // abstract LeaveCluster  : unit -> unit
   abstract AddMember     : RaftMember -> unit
   abstract RemoveMember  : Id -> unit
   abstract Connections   : ConcurrentDictionary<Id,IClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
+  abstract Raft          : RaftValue
+  // abstract JoinCluster   : IpAddress -> uint16 -> unit
+  // abstract LeaveCluster  : unit -> unit
 
 // * IWsServer
 
@@ -75,20 +76,17 @@ type IHttpServer =
 /// Interface type to close over internal actors and state.
 type IIrisServer =
   inherit IDisposable
-  abstract Config        : Either<IrisError,IrisConfig>
-  abstract Status        : Either<IrisError,ServiceStatus>
-  abstract GitServer     : Either<IrisError,IGitServer>
-  abstract RaftServer    : Either<IrisError,IRaftServer>
-  abstract SocketServer  : Either<IrisError,IWebSocketServer>
-  abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
-  abstract Periodic      : unit       -> Either<IrisError,unit>
-  abstract ForceElection : unit       -> Either<IrisError,unit>
-  abstract RmMember      : Id         -> Either<IrisError,EntryResponse>
-  abstract AddMember     : RaftMember -> Either<IrisError,EntryResponse>
-  abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
-  abstract LoadProject   : name:string * userName:string * password:Password * ?site:string -> Either<IrisError,unit>
-  abstract UnloadProject : unit -> Either<IrisError,unit>
-  abstract MachineStatus : Either<IrisError,MachineStatus>
+  abstract Config:        IrisConfig with get, set
+  abstract Project:       IrisProject
+  abstract Status:        ServiceStatus
+  abstract GitServer:     IGitServer
+  abstract RaftServer:    IRaftServer
+  abstract SocketServer:  IWebSocketServer
+  abstract Periodic:      unit       -> unit
+  abstract ForceElection: unit       -> unit
+  abstract RemoveMember:  Id         -> unit
+  abstract AddMember:     RaftMember -> unit
+  abstract Subscribe:     (IrisEvent -> unit) -> IDisposable
   // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   // abstract LeaveCluster  : unit       -> Either<IrisError,unit>
 
