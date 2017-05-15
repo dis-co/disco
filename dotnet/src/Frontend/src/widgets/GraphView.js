@@ -83,7 +83,7 @@ class View extends Component {
 
   componentWillUnmount() {
     if (Array.isArray(this.disposables)) {
-      this.disposables.forEach(x => x.Dispose());
+      this.disposables.forEach(x => x.dispose());
     }
   }
 

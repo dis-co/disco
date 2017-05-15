@@ -66,7 +66,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
 
   componentWillUnmount() {
     if (this.disposable) {
-      this.disposable.Dispose();
+      this.disposable.dispose();
     }
   }
 

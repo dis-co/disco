@@ -76,14 +76,14 @@ export default class GlobalModel {
       subscribers.get(key).set(id, subscriber);
       disposables.push({
         // `subscribers` must be captured so the closure below works
-        Dispose() {
+        dispose() {
           subscribers.get(key).delete(id);
         }
       })
     }
     return {
-      Dispose() {
-        disposables.forEach(x => x.Dispose());
+      dispose() {
+        disposables.forEach(x => x.dispose());
       }
     }
   }
@@ -97,7 +97,7 @@ export default class GlobalModel {
     console.log("Subscription to event", event)
     // `subscribers` must be captured so the closure below works
     return {
-      Dispose() {
+      dispose() {
         subscribers.get(event).delete(id);
       }
     }

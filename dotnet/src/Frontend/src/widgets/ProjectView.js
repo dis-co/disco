@@ -16,7 +16,7 @@ class ProjectView extends Component {
 
   componentWillUnmount() {
     if (this.disposable) {
-      this.disposable.Dispose();
+      this.disposable.dispose();
     }
   }
 

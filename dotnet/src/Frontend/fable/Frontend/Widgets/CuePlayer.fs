@@ -16,12 +16,31 @@ module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
   let SpreadView: RCom = importMember "../../../src/widgets/Spread"
-  let SpreadCons: JsConstructor<Pin,obj> = importDefault "../../../src/widgets/Spread"
+  let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
   let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
   let inline (~%) x = createObj x
+
+  // TODO: Create a cache to speed up look-ups
+  let findPin (pinId: Id) (state: IGlobalState) =
+    match Map.tryFindPin pinId state.pinGroups with
+    | Some pin -> pin
+    | None -> failwithf "Cannot find pind with Id %O in GlobalState" pinId
+
+  let cueMockup() =
+    let cue: Cue =
+      { Id = Id.Create()
+        Name = "MockCue"
+        Slices = [||] }
+    let cueList: CueList =
+      { Id = Id.Create()
+        Name = name "MockCueList"
+        Cues = [|cue|] }
+    let cuePlayer =
+      CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
+    cueList, cuePlayer
 
   module Array =
     // TODO: Fable is not able to resolve this, check
@@ -31,8 +50,9 @@ module private Helpers =
     let inline replaceById (newItem : Cue) (ar: Cue[]) =
       Array.map (fun (x: Cue) -> if newItem.Id = x.Id then newItem else x) ar
 
+// INTERFACES (JS) -------------------------------------------------
 
-type Layout =
+type [<Pojo>] Layout =
   {
     x: int; y: int;
     w: int; h: int;
@@ -49,6 +69,11 @@ type IWidgetModel =
   abstract layout: Layout
   abstract view: System.Type
 
+type [<Pojo>] IWidgetProps<'T> =
+  abstract id: Guid
+  abstract model: 'T
+  abstract ``global``: IGlobalModel
+
 type IDragEvent =
   abstract origin: int
   abstract x: float
@@ -56,31 +81,27 @@ type IDragEvent =
   abstract ``type``: string
   abstract model: ISpread
 
-type [<Pojo>] CueState =
-  { isOpen: bool }
+// IMPLEMENTATIONS -------------------------------------------------
 
-type [<Pojo>] CueProps =
-  { ``global``: GlobalModel
-  ; cue: Cue
-  ; cueList: CueList
-  ; index: int
-  ; selectedIndex: int
-  ; select: int -> unit }
+type [<Pojo>] private CueState =
+  { IsOpen: bool }
 
-// TODO: Create a cache to speed up look ups
-let findPin (pinId: Id) (state: IGlobalState) =
-  match Map.tryFindPin pinId state.pinGroups with
-  | Some pin -> pin
-  | None -> failwithf "Cannot find pind with Id %O in GlobalState" pinId
+type [<Pojo>] private CueProps =
+  { Global: GlobalModel
+  ; Cue: Cue
+  ; CueList: CueList
+  ; Index: int
+  ; SelectedIndex: int
+  ; Select: int -> unit }
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
-  do base.setInitState({isOpen = false})
+  do base.setInitState({IsOpen = false})
 
   member this.componentDidMount() =
-    disposables.Add(this.props.``global``.subscribeToEvent("drag", fun (ev: IDragEvent) ->
+    disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) ->
         if selfRef <> null then
           let mutable highlight = false
           if touchesElement(selfRef, ev.x, ev.y) then
@@ -88,8 +109,8 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              let newCue = { this.props.cue with Slices = Array.append this.props.cue.Slices [|ev.model.pin.Slices|] }
-              let newCueList = { this.props.cueList with Cues = Array.replaceById newCue this.props.cueList.Cues }
+              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
+              let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
               UpdateCueList newCueList |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
@@ -104,7 +125,7 @@ type private CueView(props) =
 
   member this.render() =
     let leftIconClass =
-      if this.state.isOpen
+      if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
     div [] [
@@ -117,7 +138,7 @@ type private CueView(props) =
             div [Class "level-item"] [
               span [
                 Class leftIconClass
-                OnClick (fun _ -> this.setState({isOpen = not this.state.isOpen}))
+                OnClick (fun _ -> this.setState({IsOpen = not this.state.IsOpen}))
               ] []]
             div [Class "level-item"] [
               div [Class "cueplayer-button iris-icon cueplayer-player"] [
@@ -169,18 +190,18 @@ type private CueView(props) =
             div [
               Class "cueplayer-button iris-icon cueplayer-close level-item"
               OnClick (fun _ ->
-                let cueList2 = { this.props.cueList with Cues = this.props.cueList.Cues |> Array.filter (fun c -> c.Id = this.props.cue.Id) }
+                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id = this.props.Cue.Id) }
                 UpdateCueList cueList2 |> ClientContext.Singleton.Post)
             ] [
               span [Class "iris-icon iris-icon-close"] []
             ]
           ]
         ]
-      if this.state.isOpen then
-        for slice in this.props.cue.Slices do
-          let pin: Pin = findPin slice.Id this.props.``global``.state
+      if this.state.IsOpen then
+        for slice in this.props.Cue.Slices do
+          let pin: Pin = findPin slice.Id this.props.Global.State
           let spreadModel = SpreadCons.Create(pin) // TODO: Use slice values instead of pin's
-          yield from SpreadView %["key"==>i; "model"==>spreadModel; "global"==>this.props.``global``] []
+          yield from SpreadView %["key"==>i; "model"==>spreadModel; "global"==>this.props.Global] []
     ]
 
 type CuePlayerModel() =
@@ -195,41 +216,24 @@ type CuePlayerModel() =
         minH = 1; maxH = 10;
       }
 
-type [<Pojo>] CuePlayerProps =
-  { id: int;
-    model: CuePlayerModel
-    ``global``: GlobalModel }
-
 type [<Pojo>] CuePlayerState =
   { selectedIndex: int }
 
-let private cueMockup() =
-  let cue: Cue =
-    { Id = Id.Create()
-      Name = "MockCue"
-      Slices = [||] }
-  let cueList: CueList =
-    { Id = Id.Create()
-      Name = name "MockCueList"
-      Cues = [|cue|] }
-  let cuePlayer =
-    CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
-  cueList, cuePlayer
-
 type CuePlayerView(props) =
-  inherit React.Component<CuePlayerProps, CuePlayerState>(props)
+  inherit React.Component<IWidgetProps<CuePlayerModel>, CuePlayerState>(props)
   let disposables = ResizeArray<IDisposable>()
+  let globalModel = props.``global`` :?> GlobalModel
   do
     base.setInitState({ selectedIndex = 0 })
     // TODO: Mock code, create player if it doesn't exist
-    if Map.count props.``global``.state.cuePlayers = 0 then
+    if Map.count globalModel.State.cuePlayers = 0 then
       let cueList, cuePlayer = cueMockup()
       AddCueList cueList |> ClientContext.Singleton.Post
       AddCuePlayer cuePlayer |> ClientContext.Singleton.Post
 
   member this.componentDidMount() =
-    let state = this.props.``global``.state
-    disposables.Add(this.props.``global``.subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ -> this.forceUpdate()))
+    let state = globalModel.State
+    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ -> this.forceUpdate()))
 
   member this.componentWillUnmount() =
     for d in disposables do
@@ -238,9 +242,9 @@ type CuePlayerView(props) =
   member this.render() =
     let cueList =
       // TODO: Use a dropdown to choose the player
-      Seq.tryHead this.props.``global``.state.cuePlayers
+      Seq.tryHead globalModel.State.cuePlayers
       |> Option.bind (fun kv -> kv.Value.CueList)
-      |> Option.bind (fun id -> Map.tryFind id this.props.``global``.state.cueLists)
+      |> Option.bind (fun id -> Map.tryFind id globalModel.State.cueLists)
     div [Class "cueplayer-container"] [
       // HEADER
       yield
@@ -276,12 +280,12 @@ type CuePlayerView(props) =
       | Some cueList ->
         for i=0 to (cueList.Cues.Length-1) do
           yield com<CueView,_,_>
-            { ``global`` = this.props.``global``
-            ; cue = cueList.Cues.[i]
-            ; cueList = cueList
-            ; index = i
-            ; selectedIndex = this.state.selectedIndex
-            ; select = fun i -> this.setState({selectedIndex = i}) }
+            { Global = globalModel
+            ; Cue = cueList.Cues.[i]
+            ; CueList = cueList
+            ; Index = i
+            ; SelectedIndex = this.state.selectedIndex
+            ; Select = fun i -> this.setState({selectedIndex = i}) }
             []
     ]
 

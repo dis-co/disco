@@ -22,10 +22,18 @@ let private LOG_MAX = 100
 [<Emit("$2.splice($0,$1)")>]
 let private removeRange (index: int) (count: int) (ar: ResizeArray<'T>): unit = jsNative
 
+// INTERFACES --------------------------------------------------
+
+// As these interfaces are exposed to JS, we start the members
+// with lower case to follow JS conventions
+
+type IDisposableJS =
+  abstract dispose: unit->unit
+
 type IGlobalState =
   abstract logs: IEnumerable<string>
-  abstract tabs: IDictionary<int,ITab>
-  abstract widgets: IDictionary<int,IWidget>
+  abstract tabs: IDictionary<Guid,ITab>
+  abstract widgets: IDictionary<Guid,IWidget>
   abstract clock: int
   abstract useRightClick: bool
   abstract serviceInfo: ServiceInfo
@@ -35,52 +43,66 @@ type IGlobalState =
   abstract cueLists: Map<Id,CueList>
   abstract cuePlayers: Map<Id,CuePlayer>
 
+type IGlobalModel =
+  abstract state: IGlobalState
+  abstract subscribe: keys: U2<string, string[]> * subscriber: ISubscriber -> IDisposableJS
+  abstract subscribeToEvent: event: string * subscriber: ISubscriber<'T> -> IDisposableJS
+  abstract useRightClick: value: bool -> unit
+  abstract addWidget: widget: IWidget * ?id: Guid -> Guid
+  abstract removeWidget: id: Guid -> unit
+  abstract addTab: tab: ITab * ?id: Guid -> Guid
+  abstract removeTab: id: Guid -> unit
+  abstract addLog: log: string -> unit
+  abstract triggerEvent: event: string * data: obj -> unit
 
-type GlobalState(readState: unit->State option) =
+// IMPLEMENTATIONS --------------------------------------------------
+
+type private Disposable(f: unit->unit) =
+  interface IDisposableJS with
+    member __.dispose() = f()
+  interface System.IDisposable with
+    member __.Dispose() = f()
+
+type private GlobalStateMutable(readState: unit->State option) =
   let projectOrEmpty (project: State -> Map<Id,'T>) =
       match readState() with
       | Some state -> project state
       | None -> Map.empty
-  member val logsM = ResizeArray()
-  member val tabsM = Dictionary()
-  member val widgetsM = Dictionary()
-  member val clockM = 0 with get, set
-  member val useRightClickM = false with get, set
-  member val serviceInfoM =
+  member val Logs = ResizeArray()
+  member val Tabs = Dictionary()
+  member val Widgets = Dictionary()
+  member val Clock = 0 with get, set
+  member val UseRightClick = false with get, set
+  member val ServiceInfo =
       { webSocket = "0"
         version = "0.0.0"
         buildNumber = "0"  } with get, set
   interface IGlobalState with
 
-    member this.logs = upcast this.logsM
-    member this.tabs = upcast this.tabsM
-    member this.widgets = upcast this.widgetsM
-    member this.clock = this.clockM
-    member this.useRightClick = this.useRightClickM
-    member this.serviceInfo = this.serviceInfoM
+    member this.logs = upcast this.Logs
+    member this.tabs = upcast this.Tabs
+    member this.widgets = upcast this.Widgets
+    member this.clock = this.Clock
+    member this.useRightClick = this.UseRightClick
+    member this.serviceInfo = this.ServiceInfo
     member this.project = readState() |> Option.map (fun s -> s.Project)
     member this.pinGroups = projectOrEmpty (fun s -> s.PinGroups)
     member this.cues = projectOrEmpty (fun s -> s.Cues)
     member this.cueLists = projectOrEmpty (fun s -> s.CueLists)
     member this.cuePlayers = projectOrEmpty (fun s -> s.CuePlayers)
 
-
 /// To prevent duplication, this is the model all other views have access to.
 /// It manages the information coming from backend/shared worker.
 type GlobalModel() =
   // Private fields
   let context = ClientContext.Singleton
-  let stateM: GlobalState = GlobalState(fun () ->
+  let stateMutable: GlobalStateMutable = GlobalStateMutable(fun () ->
     context.Store |> Option.map (fun x -> x.State))
-  let stateI: IGlobalState = upcast stateM
-  let subscribers = Dictionary<string, Dictionary<int, ISubscriber>>()
-  let eventSubscribers = Dictionary<string, Dictionary<int, ISubscriber>>()
+  let stateImmutable: IGlobalState = upcast stateMutable
+  let subscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
+  let eventSubscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
 
   // Private methods
-  let newId =
-    let mutable counter = 0
-    fun () -> counter <- counter + 1; counter
-
   let notify key (newValue: obj) =
     match subscribers.TryGetValue(key) with
     | true, keySubscribers -> for s in keySubscribers.Values do s(newValue)
@@ -88,17 +110,17 @@ type GlobalModel() =
 
   let notifyAll () =
     for KeyValue(key, keySubscribers) in subscribers do
-      let value = stateM?(key)
+      let value = stateMutable?(key)
       for subscriber in keySubscribers.Values do
         subscriber(value)
 
   let addLogPrivate (log: string) =
-    let length = stateM.logsM.Count
+    let length = stateMutable.Logs.Count
     if length > LOG_MAX then
       let diff = LOG_MAX / 10
-      removeRange (length - diff) diff stateM.logsM
-    stateM.logsM.Insert(0, log)
-    notify (nameof(stateI.logs)) stateI.logs
+      removeRange (length - diff) diff stateMutable.Logs
+    stateMutable.Logs.Insert(0, log)
+    notify (nameof(stateImmutable.logs)) stateImmutable.logs
 
   // Constructor
   do context.Start()
@@ -112,7 +134,7 @@ type GlobalModel() =
         | DataSnapshot _ -> notifyAll()
         | StateMachine.UnloadProject -> notifyAll()
         | UpdateProject _ ->
-          notify (nameof(stateI.project)) stateI.project
+          notify (nameof(stateImmutable.project)) stateImmutable.project
         | AddPinGroup _
         | UpdatePinGroup _
         | RemovePinGroup _
@@ -120,20 +142,20 @@ type GlobalModel() =
         | UpdatePin _
         | RemovePin _
         | UpdateSlices _ ->
-          notify (nameof(stateI.pinGroups)) stateI.pinGroups
+          notify (nameof(stateImmutable.pinGroups)) stateImmutable.pinGroups
         | AddCue _
         | UpdateCue _
         | RemoveCue _
         | CallCue _ ->
-          notify (nameof(stateI.cues)) stateI.cues
+          notify (nameof(stateImmutable.cues)) stateImmutable.cues
         | AddCueList _
         | UpdateCueList _
         | RemoveCueList _ ->
-          notify (nameof(stateI.cueLists)) stateI.cueLists
+          notify (nameof(stateImmutable.cueLists)) stateImmutable.cueLists
         | AddCuePlayer    _
         | UpdateCuePlayer _
         | RemoveCuePlayer _ ->
-          notify (nameof(stateI.cuePlayers)) stateI.cuePlayers
+          notify (nameof(stateImmutable.cuePlayers)) stateImmutable.cuePlayers
         // TODO: Add members to global state for cluster widget
         // | AddMember _
         // | UpdateMember _
@@ -143,62 +165,71 @@ type GlobalModel() =
   )
 
   // Public methods
-  member this.state: IGlobalState = stateI
+  member this.State: IGlobalState = stateImmutable
 
-  member this.subscribe(keys: U2<string, string[]>, subscriber: ISubscriber) =
+  member this.Subscribe(keys: U2<string, string[]>, subscriber: ISubscriber): IDisposable =
     let keys =
       match keys with
       | U2.Case1 key -> [|key|]
       | U2.Case2 keys -> keys
     let disposables = ResizeArray<IDisposable>()
     for key in keys do
-      let id = newId()
+      let id = Guid.NewGuid()
       if subscribers.ContainsKey(key) |> not then
         subscribers.Add(key, Dictionary())
       subscribers.[key].Add(id, subscriber)
-      { new IDisposable with
-          member __.Dispose() = subscribers.[key].Remove(id) |> ignore }
+      new Disposable(fun () -> subscribers.[key].Remove(id) |> ignore)
       |> disposables.Add
-    { new IDisposable with
-        member __.Dispose() = for d in disposables do d.Dispose() }
+    upcast new Disposable(fun () -> for d in disposables do d.Dispose())
 
-  member this.subscribeToEvent(event: string, subscriber: ISubscriber<'T>) =
-    let id = newId()
+  member this.SubscribeToEvent(event: string, subscriber: ISubscriber<'T>): IDisposable =
+    let id = Guid.NewGuid()
     if eventSubscribers.ContainsKey(event) |> not then
       eventSubscribers.Add(event, Dictionary())
     eventSubscribers.[event].Add(id, !!subscriber)
     printfn "Subscription to event %s" event
-    { new IDisposable with
-        member __.Dispose() = eventSubscribers.[event].Remove(id) |> ignore }
+    upcast new Disposable(fun () -> eventSubscribers.[event].Remove(id) |> ignore)
 
-  member this.useRightClick(value: bool) =
-    stateM.useRightClickM <- value
-    notify (nameof(this.state.useRightClick)) value
+  member this.UseRightClick(value: bool) =
+    stateMutable.UseRightClick <- value
+    notify (nameof(this.State.useRightClick)) value
 
-  member this.addWidget(widget: IWidget, ?id: int) =
-    let id = match id with Some id -> id | None -> newId()
-    stateM.widgetsM.Add(id, widget)
-    notify (nameof(this.state.widgets)) this.state.widgets
+  member this.AddWidget(widget: IWidget, ?id: Guid) =
+    let id = match id with Some id -> id | None -> Guid.NewGuid()
+    stateMutable.Widgets.Add(id, widget)
+    notify (nameof(this.State.widgets)) this.State.widgets
     id
 
-  member this.removeWidget(id: int) =
-    stateM.widgetsM.Remove(id) |> ignore
-    notify (nameof(this.state.widgets)) this.state.widgets
+  member this.RemoveWidget(id: Guid) =
+    stateMutable.Widgets.Remove(id) |> ignore
+    notify (nameof(this.State.widgets)) this.State.widgets
 
-  member this.addTab(tab: ITab, ?id: int) =
-    let id = match id with Some id -> id | None -> newId()
-    stateM.tabsM.Add(id, tab)
-    notify (nameof(this.state.tabs)) this.state.tabs
+  member this.AddTab(tab: ITab, ?id: Guid) =
+    let id = match id with Some id -> id | None -> Guid.NewGuid()
+    stateMutable.Tabs.Add(id, tab)
+    notify (nameof(this.State.tabs)) this.State.tabs
     id
 
-  member this.removeTab(id: int) =
-    stateM.tabsM.Remove(id) |> ignore
-    notify (nameof(this.state.tabs)) this.state.tabs
+  member this.RemoveTab(id: Guid) =
+    stateMutable.Tabs.Remove(id) |> ignore
+    notify (nameof(this.State.tabs)) this.State.tabs
 
-  member this.addLog(log: string) =
+  member this.AddLog(log: string) =
     addLogPrivate log
 
-  member this.triggerEvent(event: string, data: obj) =
+  member this.TriggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with
     | true, subscribers -> for s in subscribers.Values do s(data)
     | false, _ -> ()
+
+  interface IGlobalModel with
+    member this.state: IGlobalState = this.State
+    member this.subscribe(keys, subscriber) = this.Subscribe(keys, subscriber) :?> IDisposableJS
+    member this.subscribeToEvent(event, subscriber) = this.SubscribeToEvent(event, subscriber) :?> IDisposableJS
+    member this.useRightClick(value) = this.UseRightClick(value)
+    member this.addWidget(widget, ?id) = this.AddWidget(widget, ?id=id)
+    member this.removeWidget(id) = this.RemoveWidget(id)
+    member this.addTab(tab, ?id) = this.AddTab(tab, ?id=id)
+    member this.removeTab(id) = this.RemoveTab(id)
+    member this.addLog(log) = this.AddLog(log)
+    member this.triggerEvent(event, data) = this.TriggerEvent(event, data)
