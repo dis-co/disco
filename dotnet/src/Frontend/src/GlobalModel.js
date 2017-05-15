@@ -1,3 +1,7 @@
+import { GlobalModel } from "../fable/Frontend/GlobalModel.fs";
+export default GlobalModel;
+
+/*
 import { IIris, IDisposable, IServiceInfo, IService, IProject } from "./Interfaces"
 
 declare var IrisLib: IIris;
@@ -32,7 +36,7 @@ export default class GlobalModel {
         this.clockSubscription = IrisLib.subscribeToClock(frames =>
           this.__setState("clock", frames)
         )
-      }     
+      }
       if (this.state.serviceInfo.version === "0.0.0") {
         const ctx = IrisLib.getClientContext();
         this.__setState("serviceInfo", ctx.ServiceInfo);
@@ -160,3 +164,4 @@ export default class GlobalModel {
     }
   }
 }
+*/

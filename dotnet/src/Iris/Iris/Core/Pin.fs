@@ -2721,6 +2721,15 @@ type Slices =
 
   member self.At (idx: Index) = self.Item idx
 
+  member self.Length =
+    match self with
+    | StringSlices (_,arr) -> arr.Length
+    | NumberSlices (_,arr) -> arr.Length
+    | BoolSlices   (_,arr) -> arr.Length
+    | ByteSlices   (_,arr) -> arr.Length
+    | EnumSlices   (_,arr) -> arr.Length
+    | ColorSlices  (_,arr) -> arr.Length
+
   // ** Map
 
   //  __  __

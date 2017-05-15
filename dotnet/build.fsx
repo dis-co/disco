@@ -624,11 +624,13 @@ Target "BuildFrontend" (fun () ->
   runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
   runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
   runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
 
 Target "BuildFrontendFast" (fun () ->
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  // runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
   runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
 

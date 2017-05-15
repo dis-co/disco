@@ -24,7 +24,7 @@ class View extends Component {
     const logs = this.props.global.state.logs;
     return (
       <div className="iris-log">
-        {map(logs, kv => <p key={kv[0]}>{kv[1]}</p>)}
+        {map(logs, (log, i) => <p key={i}>{log}</p>)}
       </div>
     )
   }

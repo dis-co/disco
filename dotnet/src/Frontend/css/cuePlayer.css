@@ -1,0 +1,95 @@
+.cueplayer-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.cueplayer-list-header {
+  background-color: #fff;
+  border-top: none;
+}
+
+.cueplayer-list-header.cueplayer-cue:hover {
+  background-color: #F3F3F3;
+  cursor: pointer;
+}
+
+.cueplayer-out {
+  background-color: #F3F3F3;
+  width: 100%;
+  padding: 5px 5px 5px 20px;
+}
+
+.cueplayer-out img {
+  padding-left: 5px;
+}
+
+.cueplayer-ui-accordion .cueplayer-ui-accordion-content {
+  margin: 0px;
+  padding: 0px;
+}
+
+
+.cueplayer-button {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border: 1px solid #555555;
+  border-radius: 5px;
+  line-height: 22px;
+
+  margin-right: 5px;
+  padding: 0px 5px 0px 5px;
+  height: 20px;
+}
+
+.cueplayer-list-header.cueplayer-cue .cueplayer-button.cueplayer-player {
+  display: block;
+}
+
+.cueplayer-list-header.cueplayer-cue .cueplayer-button {
+  display: none;
+}
+
+.cueplayer-list-header.cueplayer-cue:hover .cueplayer-button {
+  display: block;
+}
+
+
+input.cueplayer-cueDesc {
+  border: none;
+  height: 20px;
+  padding-left: 5px;
+  width: 70%;
+}
+
+.cueplayer-list-header:hover input.cueplayer-cueDesc {
+  border: 1px solid #D5D4D4;
+}
+
+.cueplayer-button {
+  text-align: center;
+  cursor: pointer;
+  float: left;
+}
+
+.cueplayer-button:hover {
+  background: #555555;
+  color: #fff;
+}
+
+.cueplayer-close:hover {
+  background: #F00;
+  border: none;
+}
+
+.cueplayer-button.cueplayer-icon {
+  width: 20px;
+  padding: 0px;
+}
+
+.cueplayer-button.cueplayer-go {
+  width: 44px;
+  color: white;
+  /* Rectangle 373 Copy: */
+  background: #7DC93E;
+  border:none;
+}

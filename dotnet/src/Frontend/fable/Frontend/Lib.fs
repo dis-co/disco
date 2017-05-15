@@ -1,10 +1,6 @@
 module rec Iris.Web.Lib
 
-//  _____                _                 _   __  __       _
-// |  ___| __ ___  _ __ | |_ ___ _ __   __| | |  \/  | __ _(_)_ __
-// | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` | | |\/| |/ _` | | '_ \
-// |  _|| | | (_) | | | | ||  __/ | | | (_| | | |  | | (_| | | | | |
-// |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
+// Helper methods to be used from JS
 
 open System
 open System.Collections.Generic
@@ -85,16 +81,6 @@ let notify(msg: string) =
         | _ -> ())
   | _ -> ()
 
-let subscribeToLogs(f:ClientLog->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClientLog log -> f log
-      | _ -> ())
-
-let subscribeToClock(f:uint32->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClockUpdate frames -> f frames
-      | _ -> ())
-
 let removeMember(config: IrisConfig, memId: Id) =
   match Config.findMember config memId with
   | Right mem ->
@@ -159,7 +145,10 @@ let addMember(info: obj) =
   Promise.start (promise {
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   try
-    let latestState = ClientContext.Singleton.LatestState
+    let latestState =
+      match ClientContext.Singleton.Store with
+      | Some store -> store.State
+      | None -> failwith "The client store is not initialized"
 
     let memberIpAndPort =
       let memberIpAddr: string = !!info?ipAddr
@@ -320,25 +309,6 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
-
-let startContext f =
-  let context = ClientContext.Singleton
-  context.Start()
-  |> Promise.map (fun () ->
-    context.OnMessage
-    |> Observable.add (function
-      | ClientMessage.Render(Some state) ->
-        match Map.tryFind context.Session state.Sessions with
-        | Some session ->
-          Some { session = session; state = state } |> f
-        | None -> ()
-      | ClientMessage.Render None ->
-          f None
-      | _ -> ())
-  )
-
-let startWorkerContext() =
-  GlobalContext()
 
 let pinToKeyValuePairs (pin: Pin) =
   let zip labels values =

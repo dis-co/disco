@@ -56,7 +56,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
           console.error('Error when generating image:', error);
       });
   }
-  
+
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("services", () => {
@@ -142,7 +142,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
       });
     }
     return (<div {...props}>{service.Name || id}</div>)
-  }  
+  }
 
   render() {
     const tooltip = this.state.tooltip;
