@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import Spread from "./Spread"
+import { Spread } from "../../fable/Frontend/Widgets/Spread.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util.ts"
 
