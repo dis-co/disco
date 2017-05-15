@@ -49,7 +49,6 @@ type MaxChars   = int<chars>
 type FilePath   = string<filepath>
 type UserName   = string<name>
 type UserAgent  = string
-type ClientLog  = string
 type TimeStamp  = string
 type CallSite   = string
 type FileName   = string

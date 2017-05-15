@@ -1231,7 +1231,7 @@ type StateMachine =
   | RemoveCue             of Cue
   | CallCue               of Cue
 
-  // CUE
+  // CUELIST
   | AddCueList            of CueList
   | UpdateCueList         of CueList
   | RemoveCueList         of CueList

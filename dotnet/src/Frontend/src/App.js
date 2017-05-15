@@ -3,7 +3,7 @@ import "../css/main.less"
 import "react-grid-layout/css/styles.css"
 
 import values from "./values"
-import GlobalModel from "./GlobalModel"
+import { GlobalModel } from "../fable/Frontend/GlobalModel.fs"
 import * as util from "./Util"
 
 import React, { Component } from 'react'
@@ -18,7 +18,7 @@ import SimpleModal from './modals/Simple'
 let modal = null;
 
 export function showModal(content, props) {
-  props = props != null ? props : {}; 
+  props = props != null ? props : {};
   return new Promise(resolve =>
     modal.setState({ content, props, onSubmit: resolve })
   );
@@ -65,7 +65,7 @@ export default class App extends Component {
     var global = this.global;
     return (
       <div id="app">
-        <ModalDialog ref={el => modal = (el || modal)} />        
+        <ModalDialog ref={el => modal = (el || modal)} />
         <header id="app-header">
           <h1>Iris</h1>
           <DropdownMenu options={[
@@ -88,7 +88,7 @@ export default class App extends Component {
             {
               label: () => "Use right click: " + global.state.useRightClick,
               action: () => global.useRightClick(!global.state.useRightClick),
-            }            
+            }
           ]} />
           <div className="separator" />
           <span>Iris v{this.state.serviceInfo.version} - build {this.state.serviceInfo.buildNumber}</span>
@@ -106,7 +106,7 @@ export default class App extends Component {
         <footer id="app-footer">
           <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik GmbH</a></p>
         </footer>
-      </div>      
+      </div>
     );
   }
 }

@@ -38,7 +38,7 @@ export default class Tabs extends Component {
         spans.push(
           <span key={1} className="ui-icon ui-icon-copy" onClick={ev => {
             ev.stopPropagation();
-            this.props.global.addWidget(id, tab);
+            this.props.global.addWidget(tab, id);
             this.props.global.removeTab(id);
           }}></span>,
           <span key={2} className="ui-icon ui-icon-close" onClick={ev => {

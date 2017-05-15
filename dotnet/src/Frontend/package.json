@@ -3,6 +3,8 @@
   "scripts": {
     "start": "webpack-dev-server",
     "build": "webpack -p",
+    "build-worker": "webpack --config fable/Worker/webpack.config.js -p",
+    "watch-worker": "webpack --config fable/Worker/webpack.config.js -w",
     "build-test": "webpack --config fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./tests.html tap"
   },
@@ -20,8 +22,9 @@
     "css-loader": "^0.26.1",
     "expect.js": "^0.3.1",
     "fable-core": "^1.0.0-narumi-914",
-    "fable-loader": "^1.0.0-narumi-912",
+    "fable-loader": "^1.0.0-narumi-914",
     "fable-powerpack": "^1.0.0-narumi-5",
+    "fable-react": "^1.0.0-narumi-7",
     "less": "^2.7.2",
     "less-loader": "^2.2.3",
     "mocha": "^3.2.0",
