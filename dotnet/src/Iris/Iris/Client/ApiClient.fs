@@ -69,6 +69,7 @@ module ApiClient =
     | Start
     | Stop
     | CheckStatus
+    | Dispose
     | SetState          of state:State
     | SetStatus         of status:ServiceStatus
     | Update            of sm:StateMachine
@@ -119,8 +120,14 @@ module ApiClient =
   // ** notify
 
   let private notify (subs: Subscriptions) (ev: ClientEvent) =
-    for KeyValue(_,sub) in subs do
-      sub.OnNext ev
+    let subscriptions = subs.ToArray()
+    for KeyValue(_,sub) in subscriptions do
+      try sub.OnNext ev
+      with
+        | exn ->
+          exn.Message
+          |> sprintf "error calling on next on listener subscription: %s"
+          |> Logger.err (tag "notify")
 
   // ** requestRegister
 
@@ -291,6 +298,7 @@ module ApiClient =
     | Right ApiResponse.Unregistered ->
       Logger.debug (tag "handleClientResponse") "un-registration successful"
       notify state.Subscriptions ClientEvent.UnRegistered
+      agent.Post Msg.Dispose
     | Right ApiResponse.OK
     | Right ApiResponse.Pong -> ()
     | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
@@ -303,6 +311,15 @@ module ApiClient =
     requestUnRegister state
     state
 
+  // ** handleDispose
+
+  let private handleDispose (state: ClientState) =
+    List.iter dispose state.Disposables
+    state.Stopper.Set() |> ignore
+    { state with
+        Status = ServiceStatus.Stopping
+        Disposables = [] }
+
   // ** loop
 
   let private loop (store: IAgentStore<ClientState>) (inbox: ApiAgent) =
@@ -312,6 +329,7 @@ module ApiClient =
         let state = store.State
         let newstate =
           match msg with
+          | Msg.Dispose                -> handleDispose        state
           | Msg.Start                  -> handleStart          state inbox
           | Msg.Stop                   -> handleStop           state
           | Msg.SetStatus status       -> handleSetStatus      state status
@@ -355,9 +373,12 @@ module ApiClient =
         store.Update state
 
         let agent = new ApiAgent(loop store, cts.Token)
+        agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
 
         return
           { new IApiClient with
+
+              // **** Start
               member self.Start () = either {
                   let backendAddr =
                     client.Id
@@ -413,11 +434,17 @@ module ApiClient =
                     return! Either.fail error
                 }
 
+              // **** State
+
               member self.State
                 with get () = store.State.Store.State // :D
 
+              // **** Status
+
               member self.Status
                 with get () = store.State.Status
+
+              // **** Subscribe
 
               member self.Subscribe (callback: ClientEvent -> unit) =
                 let guid = Guid.NewGuid()
@@ -428,6 +455,8 @@ module ApiClient =
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
+              // **** Dispose
+
               //  ____  _
               // |  _ \(_)___ _ __   ___  ___  ___
               // | | | | / __| '_ \ / _ \/ __|/ _ \
@@ -437,10 +466,11 @@ module ApiClient =
 
               member self.Dispose () =
                 agent.Post Msg.Stop
-                store.State.Stopper.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
+                store.State.Stopper.WaitOne() |> ignore
                 dispose cts
                 dispose store.State
-                dispose ctx
+
+              // **** AddCue
 
               //   ____
               //  / ___|   _  ___
@@ -453,83 +483,91 @@ module ApiClient =
                 |> Msg.Request
                 |> agent.Post
 
+              // **** UpdateCue
+
               member self.UpdateCue (cue: Cue) =
                 UpdateCue cue
                 |> Msg.Request
                 |> agent.Post
+
+              // **** RemoveCue
 
               member self.RemoveCue (cue: Cue) =
                 RemoveCue cue
                 |> Msg.Request
                 |> agent.Post
 
-              //  ____       _       _
-              // |  _ \ __ _| |_ ___| |__
-              // | |_) / _` | __/ __| '_ \
-              // |  __/ (_| | || (__| | | |
-              // |_|   \__,_|\__\___|_| |_|
+              // **** AddPinGroup
 
               member self.AddPinGroup (group: PinGroup) =
                 AddPinGroup group
                 |> Msg.Request
                 |> agent.Post
 
+              // **** UpdatePinGroup
+
               member self.UpdatePinGroup (group: PinGroup) =
                 UpdatePinGroup group
                 |> Msg.Request
                 |> agent.Post
+
+              // **** RemovePinGroup
 
               member self.RemovePinGroup (group: PinGroup) =
                 RemovePinGroup group
                 |> Msg.Request
                 |> agent.Post
 
-              //   ____           _     _     _
-              //  / ___|   _  ___| |   (_)___| |_
-              // | |  | | | |/ _ \ |   | / __| __|
-              // | |__| |_| |  __/ |___| \__ \ |_
-              //  \____\__,_|\___|_____|_|___/\__|
+              // **** AddCueList
 
               member self.AddCueList (cuelist: CueList) =
                 AddCueList cuelist
                 |> Msg.Request
                 |> agent.Post
 
+              // **** UpdateCueList
+
               member self.UpdateCueList (cuelist: CueList) =
                 UpdateCueList cuelist
                 |> Msg.Request
                 |> agent.Post
+
+              // **** RemoveCueList
 
               member self.RemoveCueList (cuelist: CueList) =
                 RemoveCueList cuelist
                 |> Msg.Request
                 |> agent.Post
 
-              //  ____  _
-              // |  _ \(_)_ __
-              // | |_) | | '_ \
-              // |  __/| | | | |
-              // |_|   |_|_| |_|
+              // **** AddPin
 
               member self.AddPin(pin: Pin) =
                 AddPin pin
                 |> Msg.Request
                 |> agent.Post
 
+              // **** UpdatePin
+
               member self.UpdatePin(pin: Pin) =
                 UpdatePin pin
                 |> Msg.Request
                 |> agent.Post
+
+              // **** UpdateSlices
 
               member self.UpdateSlices(slices: Slices) =
                 UpdateSlices slices
                 |> Msg.Request
                 |> agent.Post
 
+              // **** RemovePin
+
               member self.RemovePin(pin: Pin) =
                 RemovePin pin
                 |> Msg.Request
                 |> agent.Post
+
+              // **** AddPin
 
               member self.Append(cmd: StateMachine) =
                 cmd

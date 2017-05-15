@@ -119,8 +119,14 @@ module ApiServer =
   // ** notify
 
   let private notify (subs: Subscriptions) (ev: ApiEvent) =
-    for KeyValue(_,sub) in subs do
-      sub.OnNext ev
+    let subscriptions = subs.ToArray()
+    for KeyValue(_,sub) in subscriptions do
+      try sub.OnNext ev
+      with
+        | exn ->
+          exn.Message
+          |> sprintf "error notifying even listener subscription: %s"
+          |> Logger.err (tag "notify")
 
   // ** requestInstallSnapshot
 
@@ -130,7 +136,7 @@ module ApiServer =
     |> Binary.encode
     |> fun body -> { Body = body }
     |> client.Socket.Request
-    |> Either.mapError (string >> Logger.err "requestInstallSnapshot")
+    |> Either.mapError (string >> Logger.err (tag "requestInstallSnapshot"))
     |> ignore
 
     // match result with
@@ -179,7 +185,7 @@ module ApiServer =
         |> Binary.encode
         |> fun body -> { Body = body }
         |> socket.Request
-        |> Either.mapError (string >> Logger.err "pingTimer")
+        |> Either.mapError (string >> Logger.err (tag "pingTimer"))
         |> ignore
         return! loop ()
       }
@@ -259,7 +265,7 @@ module ApiServer =
     |> Binary.encode
     |> fun body -> { Body = body }
     |> client.Socket.Request
-    |> Either.mapError (string >> Logger.err "updateClient")
+    |> Either.mapError (string >> Logger.err (tag "updateClient"))
     |> ignore
 
   // ** updateClients
@@ -451,7 +457,7 @@ module ApiServer =
             | exn ->
               exn.Message + exn.StackTrace
               |> sprintf "Error in loop: %O"
-              |> Logger.err "ApiServer"
+              |> Logger.err (tag "loop")
               state
         store.Update newstate
         return! act ()
@@ -468,6 +474,8 @@ module ApiServer =
 
   [<RequireQualifiedAccess>]
   module ApiServer =
+
+    // *** create
 
     let create ctx (mem: RaftMember) (projectId: Id) =
       either {
@@ -488,10 +496,15 @@ module ApiServer =
 
         let store = AgentStore.create ()
         store.Update state
+
         let agent = new ApiAgent(loop store, cts.Token)
+        agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
         return
           { new IApiServer with
+
+              // **** Start
+
               member self.Start () = either {
                   let frontend = Uri.tcpUri mem.IpAddr (mem.ApiPort |> port |> Some)
                   let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
@@ -543,15 +556,23 @@ module ApiServer =
                     return! Either.fail error
                 }
 
+              // **** Clients
+
               member self.Clients
                 with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
+
+              // **** State
 
               member self.State
                 with get () = store.State.Store.State
                  and set state = state |> Msg.SetState |> agent.Post
 
+              // **** Update
+
               member self.Update (sm: StateMachine) =
                 agent.Post(Msg.LocalUpdate sm)
+
+              // **** Subscribe
 
               member self.Subscribe (callback: ApiEvent -> unit) =
                 let guid = Guid.NewGuid()
@@ -561,6 +582,8 @@ module ApiServer =
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }
                 |> listener.Subscribe
+
+              // **** Dispose
 
               member self.Dispose () =
                 dispose cts

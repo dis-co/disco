@@ -49,13 +49,15 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use lobs = Logger.subscribe Logger.stdout
+
         use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create ctx mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
 
@@ -76,12 +78,12 @@ module ApiTests =
         let! client = ApiClient.create ctx srvr clnt
 
         use registered = new AutoResetEvent(false)
+        use unregistered = new AutoResetEvent(false)
         use snapshot = new AutoResetEvent(false)
 
-        let handler (ev: ClientEvent) =
-          match ev with
+        let handler = function
           | ClientEvent.Registered   -> registered.Set() |> ignore
-          | ClientEvent.UnRegistered -> registered.Set() |> ignore
+          | ClientEvent.UnRegistered -> unregistered.Set() |> ignore
           | ClientEvent.Snapshot     -> snapshot.Set() |> ignore
           | _ -> ()
 
@@ -104,9 +106,7 @@ module ApiTests =
 
         dispose client
 
-        registered.WaitOne() |> ignore
-
-        dispose server
+        unregistered.WaitOne() |> ignore
       }
       |> noError
 

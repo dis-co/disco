@@ -1140,7 +1140,7 @@ module Raft =
           if result then
             dispose socket
           else
-            Logger.err "handleRemoveMember" "Unable to remove member"
+            Logger.err (tag "handleRemoveMember") "Unable to remove member"
         else
           dispose socket
 
@@ -1281,7 +1281,7 @@ module Raft =
         delta
         |> fun delta -> delta.TotalMilliseconds
         |> sprintf "Entry took %fms to commit"
-        |> Logger.debug "handleReqCommitted"
+        |> Logger.debug (tag "handleReqCommitted")
 
         updateRaft state newstate
 
@@ -1297,7 +1297,7 @@ module Raft =
           delta
           |> fun delta -> delta.TotalMilliseconds
           |> sprintf "AppendEntry timed out: %f"
-          |> Logger.debug "handleReqCommitted"
+          |> Logger.debug (tag "handleReqCommitted")
 
           updateRaft state newstate
         else
@@ -1349,7 +1349,7 @@ module Raft =
       | Left (err,_) ->
         err
         |> sprintf "Could not set new state on member: %O"
-        |> Logger.err "handleClientResponse"
+        |> Logger.err (tag "handleClientResponse")
         state
 
     | Right raw ->
@@ -1358,7 +1358,7 @@ module Raft =
         // FIXME:
         // this will likely take some more thought and handling
         sprintf "successfully appended entry in %O" entry.Id
-        |> Logger.debug "handleClientResponse"
+        |> Logger.debug (tag "handleClientResponse")
         state
       | Right (AppendEntriesResponse(id, ar))   -> processAppendEntriesResponse state id ar
       | Right (RequestVoteResponse(id, vr))     -> processVoteResponse state id vr
@@ -1368,7 +1368,7 @@ module Raft =
       | Left error ->
         error
         |> sprintf "Error decoding response: %O"
-        |> Logger.err "handleClientResponse"
+        |> Logger.err (tag "handleClientResponse")
         state
 
 
@@ -1482,7 +1482,7 @@ module Raft =
 
         let store = AgentStore.create()
         let agent = new StateArbiter(loop store, cts.Token)
-        agent.Error.Add(sprintf "%O" >> Logger.err (tag "loop"))
+        agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
         let! (callbacks, raftState) = either {
             let! raftState = Persistence.getRaft config
