@@ -121,8 +121,8 @@ module Http =
     choose [
       Filters.GET >=>
         (choose [
-          Filters.path "/" >=> cors defaultCORSConfig >=> (indexHtml |> unwrap |> Files.file)
-          Files.browseHome >=> cors defaultCORSConfig ])
+          Filters.path "/" >=> cors defaultCORSConfig >=> noCache >=> (indexHtml |> unwrap |> Files.file)
+          Files.browseHome >=> cors defaultCORSConfig >=> noCache ])
       Filters.POST >=>
         (choose [
           // Cannot use `cors defaultCORSConfig` here, postCommand adds its own headers
