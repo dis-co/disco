@@ -105,7 +105,8 @@ module IrisServiceTests =
   let test_ensure_gitserver_restart_on_premature_exit =
     testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use lobs = Logger.subscribe Logger.stdout
 
         use checkStarted = new AutoResetEvent(false)
 
