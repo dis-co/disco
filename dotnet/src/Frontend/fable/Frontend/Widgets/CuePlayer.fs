@@ -62,7 +62,10 @@ module private Helpers =
 
 
 type [<Pojo>] private CueState =
-  { IsOpen: bool }
+  { IsOpen: bool
+  ; Name: string
+  ; Offset: string
+  ; Time: string }
 
 type [<Pojo>] private CueProps =
   { Global: GlobalModel
@@ -76,7 +79,7 @@ type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
-  do base.setInitState({IsOpen = false})
+  do base.setInitState({IsOpen = false; Name = props.Cue.Name; Offset = "0000"; Time = "00:00:00" })
 
   member this.componentDidMount() =
     disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) ->
@@ -113,38 +116,48 @@ type private CueView(props) =
             div [Class "level-item"] [
               span [
                 Class leftIconClass
-                OnClick (fun _ -> this.setState({IsOpen = not this.state.IsOpen}))
+                OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
               ] []]
             div [Class "level-item"] [
-              div [Class "cueplayer-button iris-icon cueplayer-player"] [
+              div [
+                Class "cueplayer-button iris-icon cueplayer-player"
+                OnClick (fun _ -> CallCue this.props.Cue |> ClientContext.Singleton.Post)
+              ] [
                 span [Class "iris-icon iris-icon-play"] []
               ]
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Type "text"
-                Value !^"0000"
-                Name "firstname"
+                Name "cueoffset"
+                Value !^this.state.Offset
+                OnChange (fun ev -> this.setState({this.state with Offset = !!ev.target?value}))
               ]
               br []
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Type "text"
-                Value !^"Untitled"
-                Name "firstname"
+                Name "cuename"
+                Value !^this.state.Name
+                OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
+                OnBlur (fun _ ->
+                  let newCue = { this.props.Cue with Name = this.state.Name }
+                  let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+                  UpdateCueList newCueList |> ClientContext.Singleton.Post)
+                OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
               br []
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Style [
@@ -152,8 +165,9 @@ type private CueView(props) =
                   MarginRight 5.
                 ]
                 Type "text"
-                Value !^"00:00:00"
-                Name "firstname"
+                Name "cuetime"
+                Value !^this.state.Time
+                OnChange (fun ev -> this.setState({this.state with Time = !!ev.target?value}))
               ]
               br []
             ]
@@ -165,7 +179,7 @@ type private CueView(props) =
             div [
               Class "cueplayer-button iris-icon cueplayer-close level-item"
               OnClick (fun _ ->
-                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id = this.props.Cue.Id) }
+                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id <> this.props.Cue.Id) }
                 UpdateCueList cueList2 |> ClientContext.Singleton.Post)
             ] [
               span [Class "iris-icon iris-icon-close"] []
