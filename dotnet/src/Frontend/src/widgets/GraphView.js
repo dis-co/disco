@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import Spread from "./Spread"
+import { Spread, SpreadView } from "../../fable/Frontend/Widgets/Spread.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util.ts"
 
@@ -96,11 +96,10 @@ class View extends Component {
             {map(pinGroup[1].Pins, (kv,i) => {
               var pin = kv[1];
               var model = new Spread(pin);
-              const View = model.view;
               return (
                 <div key={i}
                   ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-                  <View
+                  <SpreadView
                     model={model}
                     global={this.props.global}
                     onDragStart={() => this.startDragging(model, i)} />
