@@ -8,6 +8,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Spread
 open Helpers
 
 importAll "../../../css/cuePlayer.css"
@@ -15,8 +16,8 @@ importAll "../../../css/cuePlayer.css"
 module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
-  let SpreadView: RCom = importMember "../../../src/widgets/Spread"
-  let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
+  // let SpreadView: RCom = importMember "../../../src/widgets/Spread"
+  // let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
@@ -96,12 +97,9 @@ type private CueView(props) =
       if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
-    div [] [
+    div [Ref (fun el -> selfRef <- el)] [
       yield
-        div [
-          Class "cueplayer-list-header cueplayer-cue level"
-          Ref (fun el -> selfRef <- el)
-        ] [
+        div [Class "cueplayer-list-header cueplayer-cue level"] [
           div [Class "level-left"] [
             div [Class "level-item"] [
               span [
@@ -166,10 +164,13 @@ type private CueView(props) =
           ]
         ]
       if this.state.IsOpen then
-        for slice in this.props.Cue.Slices do
-          let pin: Pin = findPin slice.Id this.props.Global.State
-          let spreadModel = SpreadCons.Create(pin) // TODO: Use slice values instead of pin's
-          yield from SpreadView %["key"==>i; "model"==>spreadModel; "global"==>this.props.Global] []
+        for i=0 to this.props.Cue.Slices.Length - 1 do
+          let slice = this.props.Cue.Slices.[i]
+          yield com<SpreadView,_,_>
+            { key = string i
+            ; model = Spread(findPin slice.Id this.props.Global.State)  // TODO: Use slice values instead of pin's
+            ; ``global`` = this.props.Global
+            ; onDragStart = None } []
     ]
 
 type CuePlayerModel() =

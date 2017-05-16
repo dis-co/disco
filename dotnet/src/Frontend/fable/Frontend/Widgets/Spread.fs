@@ -30,6 +30,9 @@ let addInputView
 
 let [<Global>] jQuery(el: obj): obj = jsNative
 
+[<Import("createElement", from="react")>]
+let private createEl(rcom: obj, props: obj, child: obj): React.ReactElement = jsNative
+
 let private pinToKeyValuePairs (pin: Pin) =
   let zip labels values =
     let labels =
@@ -71,21 +74,22 @@ let private updateSlices(pin: Pin, rowIndex, newValue: obj) =
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
   |> UpdateSlices |> ClientContext.Singleton.Post
 
+let (|NullOrEmpty|_|) str =
+  if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
 type Spread(pin: Pin) =
-  member __.view = typeof<SpreadView>
-  member __.pin = pin
-  member val ``open`` = false with get, set
-  member val rows = pinToKeyValuePairs(pin)
+  member val Pin = pin
+  member val IsOpen = false with get, set
 
-  member __.update(rowIndex, newValue) =
+  member __.Update(rowIndex, newValue) =
     updateSlices(pin, rowIndex, newValue)
 
 
 type [<Pojo>] SpreadProps =
-  abstract model: Spread
-  abstract ``global``: IGlobalModel
-  abstract onDragStart: unit -> unit
+  { key: string
+  ; model: Spread
+  ; ``global``: IGlobalModel
+  ; onDragStart: (unit -> unit) option }
 
 type SpreadView(props) =
   inherit React.Component<SpreadProps, InputState>(props)
@@ -108,32 +112,38 @@ type SpreadView(props) =
     yield span [
       Key "-1"
       Style [!!("cursor", "move")]
-      OnMouseDown (fun ev -> ev.stopPropagation(); this.props.onDragStart())
-    ] [str model.pin.Name]
-    let mutable i = 0
-    for i=0 to model.rows.Length - 1 do
-      let key, _ = model.rows.[i]
-      let key = if String.IsNullOrEmpty(key) then "Label" else key
-      yield span [Key (string i)] [str key]
+      OnMouseDown (fun ev ->
+        ev.stopPropagation()
+        match this.props.onDragStart with
+        | Some onDragStart -> onDragStart()
+        | None -> ())
+    ] [str model.Pin.Name]
+    for i=0 to model.Pin.Values.Length - 1 do
+      let label =
+        // The Labels array can be shorter than Values'
+        match Array.tryItem i model.Pin.Labels with
+        | None | Some(NullOrEmpty) -> "Label"
+        | Some label -> label
+      yield span [Key (string i)] [str label]
   ]
 
   member this.renderRowValues(model: Spread, useRightClick: bool) = [
     yield span [
       Key "-1"
-    ] [str (sprintf "%O (%d)" (snd model.rows.[0]) model.rows.Length)]
+    ] [str (sprintf "%O (%d)" (model.Pin.Values.[index 0].Value) model.Pin.Values.Length)]
     let mutable i = 0
-    for i=0 to model.rows.Length - 1 do
-      let _, value = model.rows.[i]
+    for i=0 to model.Pin.Values.Length - 1 do
+      let value = model.Pin.Values.[index i].Value
       yield addInputView
         (i, value, useRightClick, this,
-         (fun i v -> model.update(i,v)),
-         (fun value props -> span [] [!!value])) // TODO {...props}
+         (fun i v -> model.Update(i,v)),
+         (fun value props -> createEl("span", props, value)))
   ]
 
   member this.render() =
     let model = this.props.model
-    let arrowRotation = if model.``open`` then 90 else 0
-    let height = if model.``open`` then this.recalculateHeight(model.rows.Length) else BASE_HEIGHT
+    let arrowRotation = if model.IsOpen then 90 else 0
+    let height = if model.IsOpen then this.recalculateHeight(model.Pin.Values.Length) else BASE_HEIGHT
     div [
       ClassName "iris-spread"
       Ref (fun el -> this.onMounted(el))
@@ -155,7 +165,7 @@ type SpreadView(props) =
           Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
           OnClick (fun ev ->
             ev.stopPropagation()
-            model.``open`` <- not model.``open``
+            model.IsOpen <- not model.IsOpen
             this.forceUpdate())
         ]
       ]
