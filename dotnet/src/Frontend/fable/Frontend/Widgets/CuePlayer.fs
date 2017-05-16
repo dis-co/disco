@@ -8,6 +8,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Spread
 open Helpers
 
 importAll "../../../css/cuePlayer.css"
@@ -15,8 +16,8 @@ importAll "../../../css/cuePlayer.css"
 module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
-  let SpreadView: RCom = importMember "../../../src/widgets/Spread"
-  let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
+  // let SpreadView: RCom = importMember "../../../src/widgets/Spread"
+  // let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
@@ -42,6 +43,15 @@ module private Helpers =
       CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
     cueList, cuePlayer
 
+  let updateSlicesValue (index: int) (value: obj) slices: Slices =
+    match slices with
+    | StringSlices(id, arr) -> StringSlices(id, Array.mapi (fun i el -> if i = index then value :?> string     else el) arr)
+    | NumberSlices(id, arr) -> NumberSlices(id, Array.mapi (fun i el -> if i = index then value :?> double     else el) arr)
+    | BoolSlices  (id, arr) -> BoolSlices  (id, Array.mapi (fun i el -> if i = index then value :?> bool       else el) arr)
+    | ByteSlices  (id, arr) -> ByteSlices  (id, Array.mapi (fun i el -> if i = index then value :?> byte[]     else el) arr)
+    | EnumSlices  (id, arr) -> EnumSlices  (id, Array.mapi (fun i el -> if i = index then value :?> Property   else el) arr)
+    | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
+
   module Array =
     // TODO: Fable is not able to resolve this, check
     // let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
@@ -50,41 +60,12 @@ module private Helpers =
     let inline replaceById (newItem : Cue) (ar: Cue[]) =
       Array.map (fun (x: Cue) -> if newItem.Id = x.Id then newItem else x) ar
 
-// INTERFACES (JS) -------------------------------------------------
-
-type [<Pojo>] Layout =
-  {
-    x: int; y: int;
-    w: int; h: int;
-    minW: int; maxW: int;
-    minH: int; maxH: int;
-  }
-
-type ISpread =
-  abstract member pin: Pin
-  abstract member rows: (string*obj)[]
-
-type IWidgetModel =
-  abstract name: string
-  abstract layout: Layout
-  abstract view: System.Type
-
-type [<Pojo>] IWidgetProps<'T> =
-  abstract id: Guid
-  abstract model: 'T
-  abstract ``global``: IGlobalModel
-
-type IDragEvent =
-  abstract origin: int
-  abstract x: float
-  abstract y: float
-  abstract ``type``: string
-  abstract model: ISpread
-
-// IMPLEMENTATIONS -------------------------------------------------
 
 type [<Pojo>] private CueState =
-  { IsOpen: bool }
+  { IsOpen: bool
+  ; Name: string
+  ; Offset: string
+  ; Time: string }
 
 type [<Pojo>] private CueProps =
   { Global: GlobalModel
@@ -98,7 +79,7 @@ type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
-  do base.setInitState({IsOpen = false})
+  do base.setInitState({IsOpen = false; Name = props.Cue.Name; Offset = "0000"; Time = "00:00:00" })
 
   member this.componentDidMount() =
     disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) ->
@@ -128,48 +109,55 @@ type private CueView(props) =
       if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
-    div [] [
+    div [Ref (fun el -> selfRef <- el)] [
       yield
-        div [
-          Class "cueplayer-list-header cueplayer-cue level"
-          Ref (fun el -> selfRef <- el)
-        ] [
+        div [Class "cueplayer-list-header cueplayer-cue level"] [
           div [Class "level-left"] [
             div [Class "level-item"] [
               span [
                 Class leftIconClass
-                OnClick (fun _ -> this.setState({IsOpen = not this.state.IsOpen}))
+                OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
               ] []]
             div [Class "level-item"] [
-              div [Class "cueplayer-button iris-icon cueplayer-player"] [
+              div [
+                Class "cueplayer-button iris-icon cueplayer-player"
+                OnClick (fun _ -> CallCue this.props.Cue |> ClientContext.Singleton.Post)
+              ] [
                 span [Class "iris-icon iris-icon-play"] []
               ]
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Type "text"
-                Value !^"0000"
-                Name "firstname"
+                Name "cueoffset"
+                Value !^this.state.Offset
+                OnChange (fun ev -> this.setState({this.state with Offset = !!ev.target?value}))
               ]
               br []
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Type "text"
-                Value !^"Untitled"
-                Name "firstname"
+                Name "cuename"
+                Value !^this.state.Name
+                OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
+                OnBlur (fun _ ->
+                  let newCue = { this.props.Cue with Name = this.state.Name }
+                  let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+                  UpdateCueList newCueList |> ClientContext.Singleton.Post)
+                OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
               br []
             ]
           ]
           div [Class "level-item"] [
-            form [] [
+            form [OnSubmit (fun ev -> ev.preventDefault())] [
               input [
                 Class "cueplayer-cueDesc"
                 Style [
@@ -177,8 +165,9 @@ type private CueView(props) =
                   MarginRight 5.
                 ]
                 Type "text"
-                Value !^"00:00:00"
-                Name "firstname"
+                Name "cuetime"
+                Value !^this.state.Time
+                OnChange (fun ev -> this.setState({this.state with Time = !!ev.target?value}))
               ]
               br []
             ]
@@ -190,7 +179,7 @@ type private CueView(props) =
             div [
               Class "cueplayer-button iris-icon cueplayer-close level-item"
               OnClick (fun _ ->
-                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id = this.props.Cue.Id) }
+                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id <> this.props.Cue.Id) }
                 UpdateCueList cueList2 |> ClientContext.Singleton.Post)
             ] [
               span [Class "iris-icon iris-icon-close"] []
@@ -198,11 +187,23 @@ type private CueView(props) =
           ]
         ]
       if this.state.IsOpen then
-        for slice in this.props.Cue.Slices do
-          let pin: Pin = findPin slice.Id this.props.Global.State
-          let spreadModel = SpreadCons.Create(pin) // TODO: Use slice values instead of pin's
-          yield from SpreadView %["key"==>i; "model"==>spreadModel; "global"==>this.props.Global] []
+        for i=0 to this.props.Cue.Slices.Length - 1 do
+          let slices = this.props.Cue.Slices.[i]
+          let pin = findPin slices.Id this.props.Global.State
+          yield com<SpreadView,_,_>
+            { key = string i
+            ; model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
+            ; ``global`` = this.props.Global
+            ; onDragStart = None } []
     ]
+
+  member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
+    let newSlices =
+      this.props.Cue.Slices |> Array.mapi (fun i slices ->
+        if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
+    let newCue = { this.props.Cue with Slices = newSlices }
+    let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+    UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 type CuePlayerModel() =
   interface IWidgetModel with
