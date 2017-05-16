@@ -119,6 +119,13 @@ module Either =
     | Right value -> f value
     | Left _ -> ()
 
+  // ** iterError
+
+  let inline iterError< ^a, ^err >(f: ^err -> unit) (a: Either< ^err, ^a >) =
+    match a with
+    | Left error -> f error
+    | Right _ -> ()
+
   // ** unwrap
 
   /// Gets the value if it's successful and runs the provided function otherwise
@@ -255,6 +262,12 @@ module Either =
         |> err
         |> fail
 
+
+  // ** orElse
+
+  let inline orElse value = function
+    | Right _ as good -> good
+    | Left _ -> Right value
 
 // * Either Builder
 

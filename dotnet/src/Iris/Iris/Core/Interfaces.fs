@@ -72,6 +72,18 @@ type ApiEvent =
   | Register      of IrisClient
   | UnRegister    of IrisClient
 
+// * DiscoveryEvent
+
+type DiscoveryEvent =
+  | Status       of ServiceStatus
+  | Registering  of DiscoverableService
+  | UnRegistered of DiscoverableService
+  | Registered   of DiscoverableService
+  | Appeared     of DiscoveredService
+  | Updated      of DiscoveredService
+  | Vanished     of DiscoveredService
+
+
 // * IrisEvent
 
 [<NoComparison;NoEquality>]

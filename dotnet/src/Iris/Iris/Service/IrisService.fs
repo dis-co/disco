@@ -191,13 +191,7 @@ module IrisService =
         Services = services
         ExtraMetadata = metadata }
 
-    match service.Register discoverable with
-    | Right registration -> Some registration
-    | Left error ->
-      error
-      |> sprintf "Could not register service %O"
-      |> Logger.err (tag "registerIdleServices")
-      None
+    service.Register discoverable |> Some
 
   // ** registerIdleServices
 

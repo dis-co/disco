@@ -18,10 +18,10 @@ open Hopac
 
 type IDiscoveryService =
   inherit IDisposable
-  abstract Services: Either<IrisError,Map<Id,RegisterService> * Map<Id,DiscoveredService>>
+  abstract Services: Map<Id,RegisterService> * Map<Id,DiscoveredService>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Register: service:DiscoverableService -> Either<IrisError,IDisposable>
+  abstract Register: service:DiscoverableService -> IDisposable
 
 // * IGitServer
 
@@ -126,7 +126,7 @@ type IIris =
   inherit IDisposable
   abstract Machine: IrisMachine
   abstract HttpServer: IHttpServer
-  abstract DiscoveryService: IDiscoveryService
+  abstract DiscoveryService: IDiscoveryService option
   abstract IrisService: IIrisService option
   abstract LoadProject: Name * UserName * Password * Name option -> Either<IrisError,unit>
   abstract UnloadProject: unit -> Either<IrisError,unit>

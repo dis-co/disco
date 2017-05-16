@@ -332,17 +332,6 @@ type DiscoveredService =
     |> DiscoveredServiceFB.GetRootAsDiscoveredServiceFB
     |> DiscoveredService.FromFB
 
-// * DiscoveryEvent
-
-type DiscoveryEvent =
-  | Registering  of DiscoverableService
-  | UnRegistered of DiscoverableService
-  | Registered   of DiscoverableService
-  | Appeared     of DiscoveredService
-  | Updated      of DiscoveredService
-  | Vanished     of DiscoveredService
-
-
 // * Discovery module
 
 #if !FABLE_COMPILER
