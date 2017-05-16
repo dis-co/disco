@@ -72,6 +72,8 @@ module Iris =
               with get () = !iris
 
             member self.LoadProject(name, username, password, site) = either {
+                Option.iter dispose !iris
+                Option.iter dispose !subscription
                 let irisService = IrisService.create {
                   Machine = options.Machine
                   ProjectName = name
