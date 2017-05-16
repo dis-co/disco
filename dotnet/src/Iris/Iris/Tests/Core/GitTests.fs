@@ -90,10 +90,10 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10000us
 
-        use! gitserver = GitServer.create mem path
+        use gitserver = GitServer.create mem path
         do! gitserver.Start()
 
-        do! expectE "Should be running" true Service.isRunning gitserver.Status
+        expect "Should be running" true Service.isRunning gitserver.Status
       }
       |> noError
 
@@ -103,15 +103,15 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
-        use! gitserver1 = GitServer.create mem path
+        use gitserver1 = GitServer.create mem path
         do! gitserver1.Start()
-        do! expectE "Should be running" true Service.isRunning gitserver1.Status
+        expect "Should be running" true Service.isRunning gitserver1.Status
 
-        use! gitserver2 = GitServer.create mem path
+        use gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
-            | Right ()   -> Left (Other("loco","Should have failed to start"))
+            | Right ()   -> Left (Other("test","Should have failed to start"))
             | Left error -> Right ()
-        do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
+        expect "Should have failed" true Service.hasFailed gitserver2.Status
       }
       |> noError
 
@@ -123,10 +123,10 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
-        use! gitserver = GitServer.create mem path
+        use gitserver = GitServer.create mem path
         do! gitserver.Start()
 
-        do! expectE "Should be running" true Service.isRunning gitserver.Status
+        expect "Should be running" true Service.isRunning gitserver.Status
 
         let target = mkTmpDir ()
 
@@ -148,30 +148,30 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
-        let! gitserver1 = GitServer.create mem path
+        let gitserver1 = GitServer.create mem path
         do! gitserver1.Start()
 
-        do! expectE "Should be running" true Service.isRunning gitserver1.Status
+        expect "Should be running" true Service.isRunning gitserver1.Status
 
-        let! gitserver2 = GitServer.create mem path
+        let gitserver2 = GitServer.create mem path
 
         do! match gitserver2.Start() with
-            | Right () -> Left (Other("loc","Should have failed but didn't"))
+            | Right () -> Left (Other("test","Should have failed but didn't"))
             | Left error -> Right ()
 
-        do! expectE "Should have failed" true Service.hasFailed gitserver2.Status
+        expect "Should have failed" true Service.hasFailed gitserver2.Status
 
-        let! pid1 = gitserver1.Pid
-        let! pid2 = gitserver2.Pid
+        let pid1 = gitserver1.Pid
+        let pid2 = gitserver2.Pid
 
         dispose gitserver1
         dispose gitserver2
 
-        do! expectE "1 should be stopped" true Service.isStopped gitserver1.Status
-        do! expectE "2 should be stopped" true Service.isStopped gitserver2.Status
+        expect "1 should be stopped" true Service.isStopped gitserver1.Status
+        expect "2 should be stopped" true Service.isStopped gitserver2.Status
 
-        do! expectE "1 should leave no dangling process" false Process.isRunning (Right pid1)
-        do! expectE "2 should leave no dangling process" false Process.isRunning (Right pid2)
+        expect "1 should leave no dangling process" false Process.isRunning pid1
+        expect "2 should leave no dangling process" false Process.isRunning pid2
       }
       |> noError
 
@@ -182,7 +182,7 @@ module GitTests =
   //   |_|\___||___/\__| |_____|_|___/\__|
 
   let gitTests =
-    testList "Git Tests" [
+    ftestList "Git Tests" [
       // REMOTES
       test_correct_remote_list
       test_remove_remote

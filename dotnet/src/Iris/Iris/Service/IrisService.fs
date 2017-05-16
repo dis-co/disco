@@ -634,7 +634,7 @@ module IrisService =
       let result =
         either {
           let mem = state.RaftServer.Member
-          let! gitserver = GitServer.create mem state.Store.State.Project.Path
+          let gitserver = GitServer.create mem state.Store.State.Project.Path
           let disposable =
             agent
             |> forwardEvent Msg.Git
@@ -916,9 +916,9 @@ module IrisService =
                 let! raftServer = RaftServer.create context state.Project.Config
                 let! socketServer = WebSocketServer.create mem
                 let! apiServer = ApiServer.create context mem state.Project.Id
-                let! gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the
-                                                                          // projects path here, not
-                                                                          // the path to project.yml
+                let gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the
+                                                                        // projects path here, not
+                                                                        // the path to project.yml
 
                 // set up event forwarding of various services to the actor
                 let disposables =

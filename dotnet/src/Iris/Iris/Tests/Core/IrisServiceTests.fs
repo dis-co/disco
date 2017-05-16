@@ -134,7 +134,7 @@ module IrisServiceTests =
 
         let gitserver = service.GitServer
 
-        let! pid = gitserver.Pid
+        let pid = gitserver.Pid
 
         expect "Git should be running" true Process.isRunning pid
 
@@ -145,7 +145,7 @@ module IrisServiceTests =
         checkGitStarted.WaitOne() |> ignore
 
         let gitserver = service.GitServer
-        let! newpid = gitserver.Pid
+        let newpid = gitserver.Pid
 
         expect "Should be a different pid" false ((=) pid) newpid
         expect "Git should be running" true Process.isRunning newpid

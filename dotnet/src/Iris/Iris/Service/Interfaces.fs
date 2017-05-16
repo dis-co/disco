@@ -27,9 +27,8 @@ type IDiscoveryService =
 
 type IGitServer =
   inherit IDisposable
-
-  abstract Status    : Either<IrisError,ServiceStatus>
-  abstract Pid       : Either<IrisError,int>
+  abstract Status    : ServiceStatus
+  abstract Pid       : int
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
