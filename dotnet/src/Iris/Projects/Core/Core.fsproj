@@ -256,6 +256,9 @@
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\Iris.fs">
+      <Link>Iris.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\CommandActions.fs">
       <Link>CommandActions.fs</Link>
     </Compile>

@@ -2548,10 +2548,11 @@ module Project =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let checkPath (machine: IrisMachine) projectName =
-    let path = machine.WorkSpace </> (projectName <.> PROJECT_FILENAME + ASSET_EXTENSION)
+  let checkPath (machine: IrisMachine) (projectName: Name) =
+    let file = PROJECT_FILENAME + ASSET_EXTENSION
+    let path = machine.WorkSpace </> (unwrap projectName <.> file)
     if File.exists path |> not then
-      sprintf "Project Not Found: %s" projectName
+      sprintf "Project Not Found: %O" projectName
       |> Error.asProjectError "Project.checkPath"
       |> Either.fail
     else

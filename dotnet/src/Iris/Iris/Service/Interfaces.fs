@@ -71,11 +71,34 @@ type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
 
-// * IIrisServer
+// * IApiServer
+
+type IApiServer =
+  inherit IDisposable
+  abstract Start: unit -> Either<IrisError,unit>
+  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
+  abstract Clients: Map<Id,IrisClient>
+  abstract State: State with get, set
+  abstract Update: sm:StateMachine -> unit
+
+// * IrisServiceOptions
+
+[<NoComparison;NoEquality>]
+type IrisServiceOptions =
+  { Machine: IrisMachine
+    ProjectName: Name
+    UserName: Name
+    Password: Password
+    SiteName: Name option
+    CommandAgent: CommandAgent
+    DiscoveryService: IDiscoveryService }
+
+// * IIrisService
 
 /// Interface type to close over internal actors and state.
-type IIrisServer =
+type IIrisService =
   inherit IDisposable
+  abstract Start:         unit -> Either<IrisError,unit>
   abstract Config:        IrisConfig with get, set
   abstract Project:       IrisProject
   abstract Status:        ServiceStatus
@@ -86,16 +109,25 @@ type IIrisServer =
   abstract ForceElection: unit       -> unit
   abstract RemoveMember:  Id         -> unit
   abstract AddMember:     RaftMember -> unit
+  abstract Machine:       IrisMachine
   abstract Subscribe:     (IrisEvent -> unit) -> IDisposable
   // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   // abstract LeaveCluster  : unit       -> Either<IrisError,unit>
 
-// * IApiServer
+// * IrisOptions
 
-type IApiServer =
+type IrisOptions =
+  { Machine: IrisMachine
+    FrontendPath: FilePath option
+    ProjectPath: FilePath option }
+
+// * IIris
+
+type IIris =
   inherit IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
-  abstract Clients: Map<Id,IrisClient>
-  abstract State: State with get, set
-  abstract Update: sm:StateMachine -> unit
+  abstract Machine: IrisMachine
+  abstract HttpServer: IHttpServer
+  abstract DiscoveryService: IDiscoveryService
+  abstract IrisService: IIrisService option
+  abstract LoadProject: Name * UserName * Password * Name option -> Either<IrisError,unit>
+  abstract UnloadProject: unit -> Either<IrisError,unit>
