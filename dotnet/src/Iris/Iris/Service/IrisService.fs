@@ -38,8 +38,6 @@ open ZeroMQ
 
 [<AutoOpen>]
 module IrisService =
-  open Discovery
-
   // ** tag
 
   let private tag (str: string) =
@@ -158,7 +156,6 @@ module IrisService =
     | Api               of ApiEvent
     | Log               of LogEvent
     | Clock             of ClockEvent
-    | Discovery         of DiscoveryEvent
     | SetConfig         of IrisConfig
     | AddMember         of RaftMember
     | RemoveMember      of Id
@@ -175,43 +172,6 @@ module IrisService =
   /// Type alias for internal state mutation actor.
   ///
   type private IrisAgent = MailboxProcessor<Msg>
-
-  // ** registerService
-
-  let private registerService (service: IDiscoveryService)
-                              (config: IrisMachine)
-                              (status: MachineStatus)
-                              (services: ExposedService[])
-                              (metadata: Property[])=
-
-    let discoverable: DiscoverableService =
-      { Id = config.MachineId
-        WebPort = port config.WebPort
-        Status = status
-        Services = services
-        ExtraMetadata = metadata }
-
-    service.Register discoverable |> Some
-
-  // ** registerIdleServices
-
-  let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
-    let services =
-      [| { ServiceType = ServiceType.Http
-           Port = port config.WebPort } |]
-    registerService service config MachineStatus.Idle services [| |]
-
-  // ** registerLoadedServices
-
-  let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
-    let status = MachineStatus.Busy (project.Id, project.Name)
-    let services =
-      [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
-         { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
-         { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
-         { ServiceType = ServiceType.Http;      Port = port project.Config.Machine.WebPort }
-         { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
-    registerService service project.Config.Machine status services [| |]
 
   // ** notify
 
@@ -655,21 +615,11 @@ module IrisService =
         notify state.Subscriptions (IrisEvent.Api ev)
         state
 
-  // ** handleDiscoveryEvent
-
-  let private handleDiscoveryEvent (state: IrisState) (ev: DiscoveryEvent) =
-    Tracing.trace (tag "handleDiscoveryEvent") <| fun () ->
-      match ev with
-      | Appeared service -> AddDiscoveredService service    |> appendCmd state
-      | Updated  service -> UpdateDiscoveredService service |> appendCmd state
-      | Vanished service -> RemoveDiscoveredService service |> appendCmd state
-      | _ -> ()
-      state
-
   // ** forwardEvent
 
   let inline private forwardEvent (constr: ^a -> Msg) (agent: IrisAgent) =
     constr >> agent.Post
+
   // ** restartGitServer
 
   let private restartGitServer (state: IrisState) (agent: IrisAgent) =
@@ -866,7 +816,6 @@ module IrisService =
           | Msg.Socket              ev -> handleSocketEvent    state       ev
           | Msg.Raft                ev -> handleRaftEvent      state inbox ev
           | Msg.Api                 ev -> handleApiEvent       state inbox ev
-          | Msg.Discovery           ev -> handleDiscoveryEvent state       ev
           | Msg.Log                log -> handleLogEvent       state       log
           | Msg.ForceElection          -> handleForceElection  state
           | Msg.Periodic               -> handlePeriodic       state

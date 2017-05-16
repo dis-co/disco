@@ -6,6 +6,7 @@ namespace Iris.Service
 
 open System
 open Iris.Core
+open Iris.Raft
 open Iris.Service.Http
 open Iris.Service.Discovery
 open FSharpx.Functional
@@ -42,11 +43,47 @@ module Iris =
       |> Some
     | None -> None
 
+  // ** registerService
+
+  let private registerService (service: IDiscoveryService)
+                              (config: IrisMachine)
+                              (status: MachineStatus)
+                              (services: ExposedService[])
+                              (metadata: Property[])=
+    { Id = config.MachineId
+      WebPort = port config.WebPort
+      Status = status
+      Services = services
+      ExtraMetadata = metadata }
+    |> service.Register
+    |> Some
+
+  // ** registerIdleServices
+
+  let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
+    let services =
+      [| { ServiceType = ServiceType.Http
+           Port = port config.WebPort } |]
+    registerService service config MachineStatus.Idle services [| |]
+
+  // ** registerLoadedServices
+
+  let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
+    let status = MachineStatus.Busy (project.Id, project.Name)
+    let services =
+      [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
+         { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
+         { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
+         { ServiceType = ServiceType.Http;      Port = port project.Config.Machine.WebPort }
+         { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
+    registerService service project.Config.Machine status services [| |]
+
   // ** create
 
   let create post (options: IrisOptions) = either {
       let iris = ref None
-      let subscription = ref None
+      let registration = ref None
+      let eventSubscription = ref None
 
       let! httpServer = HttpServer.create options.Machine options.FrontendPath post
 
@@ -55,6 +92,8 @@ module Iris =
         |> fun service -> service.Start() |> Either.map (konst service)
         |> Either.map Some
         |> Either.orElse None
+
+      registration := Option.bind (registerIdleServices options.Machine) discovery
 
       do! httpServer.Start()
       return
@@ -72,8 +111,9 @@ module Iris =
               with get () = !iris
 
             member self.LoadProject(name, username, password, site) = either {
-                Option.iter dispose !iris
-                Option.iter dispose !subscription
+                Option.iter dispose !iris              // in case there was already something loaded
+                Option.iter dispose !eventSubscription // and its subscription as well
+                Option.iter dispose !registration      // and any registered service
                 let irisService = IrisService.create {
                   Machine = options.Machine
                   ProjectName = name
@@ -82,17 +122,22 @@ module Iris =
                   SiteName = site
                 }
                 do! irisService.Start()
-                subscription := subscribeDiscovery irisService discovery
+                eventSubscription := subscribeDiscovery irisService discovery
+                let mem = irisService.RaftServer.Raft.Member
+                let project = irisService.Project
+                registration := Option.bind (registerLoadedServices mem project) discovery
                 iris := Some irisService
                 return ()
               }
 
             member self.UnloadProject() = either {
-                match !iris, !subscription with
+                match !iris, !eventSubscription with
                 | Some irisService, subscription ->
+                  Option.iter dispose !registration
                   Option.iter dispose subscription
                   dispose irisService
                   iris := None
+                  registration := Option.bind (registerIdleServices options.Machine) discovery
                   return ()
                 | None, _ ->
                   return!
@@ -102,9 +147,11 @@ module Iris =
               }
 
             member self.Dispose() =
-              self.UnloadProject() |> ignore
-              Option.iter dispose discovery
+              Option.iter dispose !registration
+              Option.iter dispose !eventSubscription
+              Option.iter dispose !iris
               dispose httpServer
+              Option.iter dispose discovery
           }
     }
 
