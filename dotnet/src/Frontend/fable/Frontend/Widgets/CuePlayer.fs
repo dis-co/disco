@@ -43,6 +43,15 @@ module private Helpers =
       CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
     cueList, cuePlayer
 
+  let updateSlicesValue (index: int) (value: obj) slices: Slices =
+    match slices with
+    | StringSlices(id, arr) -> StringSlices(id, Array.mapi (fun i el -> if i = index then value :?> string     else el) arr)
+    | NumberSlices(id, arr) -> NumberSlices(id, Array.mapi (fun i el -> if i = index then value :?> double     else el) arr)
+    | BoolSlices  (id, arr) -> BoolSlices  (id, Array.mapi (fun i el -> if i = index then value :?> bool       else el) arr)
+    | ByteSlices  (id, arr) -> ByteSlices  (id, Array.mapi (fun i el -> if i = index then value :?> byte[]     else el) arr)
+    | EnumSlices  (id, arr) -> EnumSlices  (id, Array.mapi (fun i el -> if i = index then value :?> Property   else el) arr)
+    | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
+
   module Array =
     // TODO: Fable is not able to resolve this, check
     // let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
@@ -165,13 +174,22 @@ type private CueView(props) =
         ]
       if this.state.IsOpen then
         for i=0 to this.props.Cue.Slices.Length - 1 do
-          let slice = this.props.Cue.Slices.[i]
+          let slices = this.props.Cue.Slices.[i]
+          let pin = findPin slices.Id this.props.Global.State
           yield com<SpreadView,_,_>
             { key = string i
-            ; model = Spread(findPin slice.Id this.props.Global.State)  // TODO: Use slice values instead of pin's
+            ; model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
             ; ``global`` = this.props.Global
             ; onDragStart = None } []
     ]
+
+  member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
+    let newSlices =
+      this.props.Cue.Slices |> Array.mapi (fun i slices ->
+        if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
+    let newCue = { this.props.Cue with Slices = newSlices }
+    let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+    UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 type CuePlayerModel() =
   interface IWidgetModel with

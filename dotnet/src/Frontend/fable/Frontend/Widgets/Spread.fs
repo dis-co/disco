@@ -33,42 +33,26 @@ let [<Global>] jQuery(el: obj): obj = jsNative
 [<Import("createElement", from="react")>]
 let private createEl(rcom: obj, props: obj, child: obj): React.ReactElement = jsNative
 
-let private pinToKeyValuePairs (pin: Pin) =
-  let zip labels values =
-    let labels =
-      if Array.length labels = Array.length values
-      then labels
-      else Array.replicate values.Length ""
-    Array.zip labels values
-  match pin with
-  | StringPin pin -> Array.map box pin.Values |> zip pin.Labels
-  | NumberPin pin -> Array.map box pin.Values |> zip pin.Labels
-  | BoolPin   pin -> Array.map box pin.Values |> zip pin.Labels
-  // TODO: Apply transformations to the value of this pins?
-  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels
-  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels
-  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
-
-let private updateSlices(pin: Pin, rowIndex, newValue: obj) =
+let private updatePinValue(pin: Pin, index: int, value: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
     let newArray = Array.copy ar
     newArray.[i] <- unbox v
     newArray
   match pin with
   | StringPin pin ->
-    StringSlices(pin.Id, updateArray rowIndex newValue pin.Values)
+    StringSlices(pin.Id, updateArray index value pin.Values)
   | NumberPin pin ->
-    let newValue =
-      match newValue with
+    let value =
+      match value with
       | :? string as v -> box(double v)
       | v -> v
-    NumberSlices(pin.Id, updateArray rowIndex newValue pin.Values)
+    NumberSlices(pin.Id, updateArray index value pin.Values)
   | BoolPin pin ->
-    let newValue =
-      match newValue with
+    let value =
+      match value with
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
-    BoolSlices(pin.Id, updateArray rowIndex newValue pin.Values)
+    BoolSlices(pin.Id, updateArray index value pin.Values)
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
   | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
@@ -77,12 +61,23 @@ let private updateSlices(pin: Pin, rowIndex, newValue: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-type Spread(pin: Pin) =
-  member val Pin = pin
+type Spread(pin: Pin, ?slices: Slices, ?update: int->obj->unit) =
+  let length =
+    match slices with
+    | Some slices -> slices.Length
+    | None -> pin.Values.Length
   member val IsOpen = false with get, set
+  member __.Pin = pin
+  member __.Length = length
+  member __.ValueAt(i) =
+    match slices with
+    | Some slices -> slices.[index i].Value
+    | None -> pin.Values.[index i].Value
 
-  member __.Update(rowIndex, newValue) =
-    updateSlices(pin, rowIndex, newValue)
+  member __.Update(index: int, value: obj) =
+    match update with
+    | Some update -> update index value
+    | None -> updatePinValue(pin, index, value)
 
 
 type [<Pojo>] SpreadProps =
@@ -118,7 +113,7 @@ type SpreadView(props) =
         | Some onDragStart -> onDragStart()
         | None -> ())
     ] [str model.Pin.Name]
-    for i=0 to model.Pin.Values.Length - 1 do
+    for i=0 to model.Length - 1 do
       let label =
         // The Labels array can be shorter than Values'
         match Array.tryItem i model.Pin.Labels with
@@ -130,10 +125,10 @@ type SpreadView(props) =
   member this.renderRowValues(model: Spread, useRightClick: bool) = [
     yield span [
       Key "-1"
-    ] [str (sprintf "%O (%d)" (model.Pin.Values.[index 0].Value) model.Pin.Values.Length)]
+    ] [str (sprintf "%O (%d)" (model.ValueAt(0)) model.Length)]
     let mutable i = 0
-    for i=0 to model.Pin.Values.Length - 1 do
-      let value = model.Pin.Values.[index i].Value
+    for i=0 to model.Length - 1 do
+      let value = model.ValueAt(0)
       yield addInputView
         (i, value, useRightClick, this,
          (fun i v -> model.Update(i,v)),
@@ -143,7 +138,7 @@ type SpreadView(props) =
   member this.render() =
     let model = this.props.model
     let arrowRotation = if model.IsOpen then 90 else 0
-    let height = if model.IsOpen then this.recalculateHeight(model.Pin.Values.Length) else BASE_HEIGHT
+    let height = if model.IsOpen then this.recalculateHeight(model.Length) else BASE_HEIGHT
     div [
       ClassName "iris-spread"
       Ref (fun el -> this.onMounted(el))
