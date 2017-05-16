@@ -105,29 +105,34 @@ module IrisServiceTests =
   let test_ensure_gitserver_restart_on_premature_exit =
     testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
-        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-        use lobs = Logger.subscribe Logger.stdout
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        use checkStarted = new AutoResetEvent(false)
+        use checkGitStarted = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
 
         let mem, machine = List.head zipped
 
-        use! service = IrisService.create machine (fun _ -> Async.result (Right "ok"))
+        use service = IrisService.create {
+          Machine = machine
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteName = None
+        }
 
         use oobs =
           (fun ev ->
             match ev with
-            | Git (Started _) -> checkStarted.Set() |> ignore
+            | Git (Started _) -> checkGitStarted.Set() |> ignore
             | _ -> ())
           |> service.Subscribe
 
-        do! service.LoadProject(unwrap project.Name, "admin", password "Nsynk")
+        do! service.Start()
 
-        checkStarted.WaitOne() |> ignore
+        checkGitStarted.WaitOne() |> ignore
 
-        let! gitserver = service.GitServer
+        let gitserver = service.GitServer
 
         let! pid = gitserver.Pid
 
@@ -137,9 +142,9 @@ module IrisServiceTests =
 
         expect "Git should be running" false Process.isRunning pid
 
-        checkStarted.WaitOne() |> ignore
+        checkGitStarted.WaitOne() |> ignore
 
-        let! gitserver = service.GitServer
+        let gitserver = service.GitServer
         let! newpid = gitserver.Pid
 
         expect "Should be a different pid" false ((=) pid) newpid
@@ -152,7 +157,7 @@ module IrisServiceTests =
       either {
         use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
-        use checkStarted = new AutoResetEvent(false)
+        use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
 
@@ -170,23 +175,25 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let! service1 = IrisService.create machine1 (fun _ -> Async.result (Right "ok"))
+        let service1 = IrisService.create {
+          Machine = machine1
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteName = None
+        }
 
         use oobs1 =
-          (fun ev ->
-            match ev with
-            | Git (Started _) ->
-              checkStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) ->
-              electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _) ->
-              appendDone.Set() |> ignore
-            | _ -> ())
+          (function
+            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
+            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
+            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
+            | _                                            -> ())
           |> service1.Subscribe
 
-        do! service1.LoadProject(unwrap project.Name, "admin", password "Nsynk")
+        do! service1.Start()
 
-        checkStarted.WaitOne() |> ignore
+        checkGitStarted.WaitOne() |> ignore
 
         //  ____
         // |___ \
@@ -200,40 +207,47 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let! service2 = IrisService.create machine2 (fun _ -> Async.result (Right "ok"))
+        let service2 = IrisService.create {
+          Machine = machine2
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteName = None
+        }
 
         use oobs2 =
-          (fun ev ->
-            match ev with
-            | Git (Started _) ->
-              checkStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) ->
-              electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _) ->
-              appendDone.Set() |> ignore
-            | _ -> ())
+          (function
+            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
+            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
+            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
+            | _                                            -> ())
           |> service2.Subscribe
 
-        do! service2.LoadProject (unwrap project.Name, "admin", password"Nsynk")
+        do! service2.Start()
 
-        checkStarted.WaitOne() |> ignore
+        checkGitStarted.WaitOne() |> ignore
 
         electionDone.WaitOne() |> ignore
 
+        Thread.Sleep(50)                // sleep for 50ms because the events are triggered inside
+                                        // the runRaft function and thus appear *before* the result
+                                        // of that comutation is is saved into the internal
+                                        // RaftServer store
         //  _____
         // |___ /
         //   |_ \
         //  ___) |
         // |____/ do some work
 
-        let! raft1 = service1.RaftServer
-        let! raft2 = service2.RaftServer
+        let raft1 = service1.RaftServer
+        let raft2 = service2.RaftServer
 
         let leader =
           match raft1.IsLeader, raft2.IsLeader with
-          | true, false -> raft1
-          | false, true -> raft2
-          | left, right -> failwithf "two leaders is bad news (raft1: %b) (raft2: %b)" left right
+          | true, false  -> raft1
+          | false, true  -> raft2
+          | false, false -> failwith "no leader is bad news"
+          | true, true   -> failwith "two leaders is really bad news"
 
         mkCue()
         |> AddCue

@@ -117,38 +117,41 @@ module IrisService =
   ///
   [<NoComparison;NoEquality>]
   type private IrisState =
-    { Member               : RaftMember
-      Machine              : IrisMachine
-      Status               : ServiceStatus
-      Store                : Store
-      Leader               : Leader option
-      ApiServer            : IApiServer
-      GitServer            : IGitServer
-      RaftServer           : IRaftServer
-      SocketServer         : IWebSocketServer
-      DiscoveryService     : IDiscoveryService
-      ClockService         : IClock
-      Subscriptions        : Subscriptions
-      MakePeerSocket       : ClientConfig -> IClient
-      Disposables          : Map<string,IDisposable>
-      DiscoverableService  : IDisposable option }
+    { Member         : RaftMember
+      Machine        : IrisMachine
+      Status         : ServiceStatus
+      Store          : Store
+      Leader         : Leader option
+      ApiServer      : IApiServer
+      GitServer      : IGitServer
+      RaftServer     : IRaftServer
+      SocketServer   : IWebSocketServer
+      ClockService   : IClock
+      Subscriptions  : Subscriptions
+      Disposables    : Map<string,IDisposable>
+      Context        : ZContext }
 
     // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
-        Option.iter dispose self.DiscoverableService
+        self.Subscriptions.Clear()
         disposeAll self.Disposables
+        Option.iter dispose self.Leader
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.ClockService
         dispose self.SocketServer
+        dispose self.Context
 
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
+    | Start
+    | Stop              of AutoResetEvent
+    | Append            of StateMachine
     | Git               of GitEvent
     | Socket            of WebSocketEvent
     | Raft              of RaftEvent
@@ -475,8 +478,8 @@ module IrisService =
       Option.iter dispose state.Leader
       match state.RaftServer.Leader with
       | Some leader ->
-        { state with
-            Leader = Some (makeLeader leader state.MakePeerSocket agent) }
+        let makePeerSocket = Client.create state.Context
+        { state with Leader = Some (makeLeader leader makePeerSocket agent) }
       | None ->
         "Could not start re-direct socket: no leader"
         |> Logger.debug (tag "onStateChanged")
@@ -595,7 +598,8 @@ module IrisService =
       | None ->
         match state.RaftServer.Leader with
         | Some mem ->
-          let leader = makeLeader mem state.MakePeerSocket agent
+          let makePeerSocket = Client.create state.Context
+          let leader = makeLeader mem makePeerSocket agent
           requestAppend state.Member.Id leader sm
           state
           // | Right newleader ->
@@ -830,6 +834,27 @@ module IrisService =
   let private handleClientResponse (state: IrisState) (response: RawClientResponse) =
     state
 
+  // ** handleStart
+
+  let private handleStart (state: IrisState) =
+    let status = ServiceStatus.Running
+    status |> IrisEvent.Status |> notify state.Subscriptions
+    { state with Status = status }
+
+  // ** handleStop
+
+  let private handleStop (state: IrisState) (are: AutoResetEvent) =
+    let status = ServiceStatus.Stopping
+    status |> IrisEvent.Status |> notify state.Subscriptions
+    are.Set() |> ignore
+    { state with Status = status }
+
+  // ** handleAppend
+
+  let private handleAppend (state: IrisState) cmd =
+    state.RaftServer.Append cmd
+    state
+
   // ** loop
 
   let private loop (store: IAgentStore<IrisState>) (inbox: IrisAgent) =
@@ -839,59 +864,34 @@ module IrisService =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.SetConfig       cnf  -> handleSetConfig      state       cnf
-          | Msg.Git    ev            -> handleGitEvent       state inbox ev
-          | Msg.Socket ev            -> handleSocketEvent    state       ev
-          | Msg.Raft   ev            -> handleRaftEvent      state inbox ev
-          | Msg.Api    ev            -> handleApiEvent       state inbox ev
-          | Msg.Discovery ev         -> handleDiscoveryEvent state       ev
-          | Msg.Log   log            -> handleLogEvent       state       log
-          | Msg.ForceElection        -> handleForceElection  state
-          | Msg.Periodic             -> handlePeriodic       state
-          | Msg.AddMember       mem  -> handleAddMember      state       mem
-          | Msg.RemoveMember    id   -> handleRemoveMember   state       id
-          | Msg.Clock clock          -> handleClock          state       clock
-          | Msg.RawClientResponse r  -> handleClientResponse state       r
+          | Msg.Start                  -> handleStart          state
+          | Msg.Stop               are -> handleStop           state       are
+          | Msg.Append             cmd -> handleAppend         state       cmd
+          | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
+          | Msg.Git                 ev -> handleGitEvent       state inbox ev
+          | Msg.Socket              ev -> handleSocketEvent    state       ev
+          | Msg.Raft                ev -> handleRaftEvent      state inbox ev
+          | Msg.Api                 ev -> handleApiEvent       state inbox ev
+          | Msg.Discovery           ev -> handleDiscoveryEvent state       ev
+          | Msg.Log                log -> handleLogEvent       state       log
+          | Msg.ForceElection          -> handleForceElection  state
+          | Msg.Periodic               -> handlePeriodic       state
+          | Msg.AddMember          mem -> handleAddMember      state       mem
+          | Msg.RemoveMember        id -> handleRemoveMember   state       id
+          | Msg.Clock clock            -> handleClock          state       clock
+          | Msg.RawClientResponse resp -> handleClientResponse state       resp
         store.Update newstate
-        return! act ()
+        if Service.isStopping store.State.Status then
+          return ()
+        else
+          return! act ()
       }
-
     act ()
 
   // ** IrisService
 
   [<RequireQualifiedAccess>]
   module IrisService =
-
-    // *** handleLoad
-
-    // let private handleLoad (state: IrisState)
-    //                       (projectName, userName, password, site)
-    //                       (config: IrisMachine)
-    //                       (post: CommandAgent)
-    //                       (subscriptions: Subscriptions)
-    //                       (inbox: IrisAgent) =
-    //   match loadProject state config (projectName, userName, password, site) subscriptions with
-    //   | Right nextstate ->
-    //     match start nextstate inbox with
-    //     | Right finalstate ->
-    //       // notify
-    //       ServiceStatus.Running
-    //       |> Status
-    //       |> notify subscriptions
-    //       finalstate
-    //     | Left error ->
-    //       // notify
-    //       ServiceStatus.Failed error
-    //       |> Status
-    //       |> notify subscriptions
-    //       state
-    //   | Left error ->
-    //     // notify
-    //     ServiceStatus.Failed error
-    //     |> Status
-    //     |> notify subscriptions
-    //     state
 
     // *** isValidPassword
 
@@ -901,7 +901,7 @@ module IrisService =
 
     // *** makeListener
 
-    let makeListener (subscriptions: Subscriptions) =
+    let private makeListener (subscriptions: Subscriptions) =
       { new IObservable<IrisEvent> with
           member self.Subscribe(obs) =
             let guid = Guid.NewGuid()
@@ -967,12 +967,12 @@ module IrisService =
                 // The frontend needs to handle that case
                 let! mem = Config.selfMember state.Project.Config
 
-                let ctx = new ZContext()
+                let context = new ZContext()
 
-                let clockService = Clock.create ctx mem.IpAddr
-                let! raftServer = RaftServer.create ctx state.Project.Config
+                let clockService = Clock.create context mem.IpAddr
+                let! raftServer = RaftServer.create context state.Project.Config
                 let! socketServer = WebSocketServer.create mem
-                let! apiServer = ApiServer.create ctx mem state.Project.Id
+                let! apiServer = ApiServer.create context mem state.Project.Id
                 let! gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the
                                                                           // projects path here, not
                                                                           // the path to project.yml
@@ -987,35 +987,21 @@ module IrisService =
                     (CLOCK_SERVICE, forwardEvent Msg.Clock  agent |> clockService.Subscribe) ]
                   |> Map.ofList
 
-                // Try to put discovered services into the state
-                let services =
-                  match iris.DiscoveryService.Services with
-                  | Right (_, resolvedServices) -> resolvedServices
-                  | Left err -> Map.empty
-
                 // set up the agent state
-                { Member              = mem
-                  Machine             = iris.Machine
-                  Leader              = None
-                  Status              = ServiceStatus.Starting
-                  Store               = new Store({ state with DiscoveredServices = services })
-                  ApiServer           = apiServer
-                  GitServer           = gitServer
-                  RaftServer          = raftServer
-                  SocketServer        = socketServer
-                  ClockService        = clockService
-                  Subscriptions       = subscriptions
-                  DiscoveryService    = iris.DiscoveryService
-                  DiscoverableService = None
-                  MakePeerSocket      = Client.create ctx
-                  Disposables         = disposables }
+                { Member         = mem
+                  Machine        = iris.Machine
+                  Leader         = None
+                  Status         = ServiceStatus.Starting
+                  Store          = new Store(state)
+                  Context        = context
+                  ApiServer      = apiServer
+                  GitServer      = gitServer
+                  RaftServer     = raftServer
+                  SocketServer   = socketServer
+                  ClockService   = clockService
+                  Subscriptions  = subscriptions
+                  Disposables    = disposables }
                 |> store.Update          // and feed it to the store, before we start the services
-
-                // let service =
-                //   registerLoadedServices
-                //     state.Member
-                //     state.Store.State.Project
-                //     state.DiscoveryService
 
                 let result =
                   either {
@@ -1024,6 +1010,8 @@ module IrisService =
                     do! socketServer.Start()
                     do! gitServer.Start()
                   }
+
+                agent.Post Msg.Start    // this service is ready for action
 
                 match result with
                 | Right _ -> return ()
@@ -1056,14 +1044,13 @@ module IrisService =
           member self.Periodic () = agent.Post(Msg.Periodic)
 
           member self.AddMember mem =
-            mem
-            |> Msg.AddMember
-            |> agent.Post
+            mem |> Msg.AddMember |> agent.Post
 
           member self.RemoveMember id =
-            id
-            |> Msg.RemoveMember
-            |> agent.Post
+            id |> Msg.RemoveMember |> agent.Post
+
+          member self.Append cmd =
+            cmd |> Msg.Append |> agent.Post
 
           member self.GitServer
             with get () = store.State.GitServer
@@ -1087,10 +1074,18 @@ module IrisService =
 
           member self.Dispose() =
             Tracing.trace (tag "Dispose") <| fun () ->
-              ServiceStatus.Stopping
-              |> Status
-              |> notify store.State.Subscriptions
-              dispose agent
+              match store.State.Status with
+              | ServiceStatus.Starting -> dispose agent
+              | ServiceStatus.Running ->
+                use are = new AutoResetEvent(false)
+                are |> Msg.Stop |> agent.Post // signalling stop to the loop
+                are.WaitOne() |> ignore      // waiting for it to be done
+                cts.Cancel()                // cancel the actor
+                dispose cts
+                dispose agent
+                dispose store.State         // dispose the state
+                store.Update { store.State with Status = ServiceStatus.Disposed }
+              | _ -> ()
 
           // member self.LeaveCluster () =
           //   Tracing.trace (tag "LeaveCluster") <| fun () ->

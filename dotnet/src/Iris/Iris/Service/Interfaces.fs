@@ -89,27 +89,26 @@ type IrisServiceOptions =
     ProjectName: Name
     UserName: Name
     Password: Password
-    SiteName: Name option
-    CommandAgent: CommandAgent
-    DiscoveryService: IDiscoveryService }
+    SiteName: Name option }
 
 // * IIrisService
 
 /// Interface type to close over internal actors and state.
 type IIrisService =
   inherit IDisposable
-  abstract Start:         unit -> Either<IrisError,unit>
-  abstract Config:        IrisConfig with get, set
-  abstract Project:       IrisProject
-  abstract Status:        ServiceStatus
-  abstract GitServer:     IGitServer
-  abstract RaftServer:    IRaftServer
-  abstract SocketServer:  IWebSocketServer
-  abstract Periodic:      unit       -> unit
-  abstract ForceElection: unit       -> unit
-  abstract RemoveMember:  Id         -> unit
   abstract AddMember:     RaftMember -> unit
+  abstract Append:        StateMachine -> unit
+  abstract Config:        IrisConfig with get, set
+  abstract ForceElection: unit       -> unit
+  abstract GitServer:     IGitServer
   abstract Machine:       IrisMachine
+  abstract Periodic:      unit       -> unit
+  abstract Project:       IrisProject
+  abstract RaftServer:    IRaftServer
+  abstract RemoveMember:  Id         -> unit
+  abstract SocketServer:  IWebSocketServer
+  abstract Start:         unit -> Either<IrisError,unit>
+  abstract Status:        ServiceStatus
   abstract Subscribe:     (IrisEvent -> unit) -> IDisposable
   // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
   // abstract LeaveCluster  : unit       -> Either<IrisError,unit>

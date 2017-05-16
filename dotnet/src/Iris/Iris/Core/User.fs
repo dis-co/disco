@@ -187,11 +187,11 @@ type User =
   static member Admin
     with get () =
       { Id        = Id "cb558968-bd42-4de0-a671-18e2ec7cf580"
-        UserName  = name "admin"
-        FirstName = name "Administrator"
-        LastName  = name ""
-        Email     = email "admin@nsynk.de"
-        Password  = checksum ADMIN_DEFAULT_PASSWORD
+        UserName  = name Constants.ADMIN_USER_NAME
+        FirstName = name Constants.ADMIN_FIRST_NAME
+        LastName  = name Constants.ADMIN_LAST_NAME
+        Email     = email Constants.ADMIN_EMAIL
+        Password  = checksum ADMIN_DEFAULT_PASSWORD_HASH
         Salt      = checksum ADMIN_DEFAULT_SALT
         Joined    = DateTime.UtcNow
         Created   = DateTime.UtcNow }

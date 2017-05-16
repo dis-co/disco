@@ -572,7 +572,7 @@ module ApiClient =
                 |> Msg.Request
                 |> agent.Post
 
-              // **** AddPin
+              // **** Append
 
               member self.Append(cmd: StateMachine) =
                 cmd

@@ -136,7 +136,22 @@ module Constants =
   let DEFAULT_GIT_PORT = 9000us
 
   [<Literal>]
-  let ADMIN_DEFAULT_PASSWORD =
+  let ADMIN_USER_NAME = "admin"
+
+  [<Literal>]
+  let ADMIN_EMAIL = "admin@nsynk.de"
+
+  [<Literal>]
+  let ADMIN_FIRST_NAME = "Administrator"
+
+  [<Literal>]
+  let ADMIN_LAST_NAME = ""
+
+  [<Literal>]
+  let ADMIN_DEFAULT_PASSWORD = "Nsynk"
+
+  [<Literal>]
+  let ADMIN_DEFAULT_PASSWORD_HASH =
     // "Nsynk"
     "9305b34e6df2f0ee0a7aab083cb7c47761f4320cce0a0a6a35f6974c95483366"
 
