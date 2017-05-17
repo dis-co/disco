@@ -38,6 +38,10 @@ module Raft =
 
   type private Connections = ConcurrentDictionary<Id,IClient>
 
+  // ** Subscriptions
+
+  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<RaftEvent>>
+
   // ** RaftServerState
 
   [<NoComparison;NoEquality>]
@@ -50,7 +54,7 @@ module Raft =
       Disposables:    IDisposable list
       MakePeerSocket: ClientConfig -> IClient
       Connections:    ConcurrentDictionary<Id,IClient>
-      Subscriptions:  ResizeArray<IObserver<RaftEvent>> }
+      Subscriptions:  Subscriptions }
 
   // ** Msg
 
@@ -60,6 +64,7 @@ module Raft =
     | ForceElection
     | Start
     | Stop              of AutoResetEvent
+    | Notify            of RaftEvent
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
     | RawClientResponse of response:RawClientResponse
@@ -77,6 +82,7 @@ module Raft =
       match msg with
       | Start                     -> "Start"
       | Stop                   _  -> "Stop"
+      | Notify                 e  -> sprintf "Notify: %A" e
       | RawServerRequest       _  -> "RawServerRequest"
       | RawServerResponse      _  -> "RawServerResponse"
       | RawClientResponse      _  -> "RawClientResponse"
@@ -90,17 +96,13 @@ module Raft =
       // | Leave                     -> "Leave"
       // | IsCommitted   (_,entry)   -> sprintf "IsCommitted:  %A" entry
 
-  // ** Subscriptions
+  // ** RaftAgent
 
-  type private Subscriptions = ResizeArray<IObserver<RaftEvent>>
-
-  // ** StateArbiter
-
-  type private StateArbiter = MailboxProcessor<Msg>
+  type private RaftAgent = MailboxProcessor<Msg>
 
   // ** tryPost
 
-  let private tryPost (agent: StateArbiter) msg =
+  let private tryPost (agent: RaftAgent) msg =
     try agent.Post msg
     with | exn -> printfn "exn: %s" exn.Message
 
@@ -180,8 +182,8 @@ module Raft =
 
   // ** registerPeerSocket
 
-  let private registerPeerSocket (arbiter: StateArbiter) (socket: IClient) =
-    socket.Subscribe (Msg.RawClientResponse >> tryPost arbiter) |> ignore
+  let private registerPeerSocket (agent: RaftAgent) (socket: IClient) =
+    socket.Subscribe (Msg.RawClientResponse >> tryPost agent) |> ignore
     socket
 
   // ** addPeerSocket
@@ -196,18 +198,19 @@ module Raft =
         "unable to add peer socket after 1 retry"
         |> Logger.err (tag "addPeerSocket")
 
-  // ** notify
+  // ** handleNotify
 
-  let private notify (subscriptions: Subscriptions) (ev: RaftEvent) =
-    let subs = subscriptions.ToArray()
-    for subscription in subs do
+  let private handleNotify (state: RaftServerState) (ev: RaftEvent) =
+    let subs = state.Subscriptions.ToArray()
+    for KeyValue(_,subscription) in subs do
       try
         subscription.OnNext ev
       with
         | exn ->
           exn.Message
           |> sprintf "could not notify listeners of event: %s"
-          |> Logger.err (tag "notify")
+          |> Logger.err (tag "handleNotify")
+    state
 
   // ** sendRequest
 
@@ -229,12 +232,10 @@ module Raft =
   let private makeCallbacks (id: Id)
                             (construct: ClientConfig -> IClient)
                             (connections: Connections)
-                            (subscriptions: Subscriptions)
                             (callbacks: IRaftSnapshotCallbacks)
-                            (agent: StateArbiter) =
+                            (agent: RaftAgent) =
 
     { new IRaftCallbacks with
-
         member self.SendRequestVote peer request =
           Tracing.trace (tag "sendRequestVote") <| fun () ->
             RequestVote(id, request)
@@ -263,43 +264,50 @@ module Raft =
           Tracing.trace (tag "persistSnapshot") <| fun () ->
             log
             |> RaftEvent.PersistSnapshot
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.ApplyLog cmd =
           Tracing.trace (tag "applyLog") <| fun () ->
             cmd
             |> RaftEvent.ApplyLog
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberAdded mem =
           Tracing.trace (tag "memberAdded") <| fun () ->
             mem
             |> RaftEvent.MemberAdded
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberUpdated mem =
           Tracing.trace (tag "memberUpdated") <| fun () ->
             mem
             |> RaftEvent.MemberUpdated
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberRemoved mem =
           Tracing.trace (tag "memberRemoved") <| fun () ->
             mem
             |> RaftEvent.MemberRemoved
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
             mems
             |> RaftEvent.Configured
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.StateChanged oldstate newstate =
           Tracing.trace (tag "stateChanged") <| fun () ->
             (oldstate, newstate)
             |> RaftEvent.StateChanged
-            |> notify subscriptions
+            |> Msg.Notify
+            |> agent.Post
 
         member self.PersistVote mem =
           Tracing.trace (tag "persistVote") <| fun () ->
@@ -511,7 +519,7 @@ module Raft =
   let private processAppendEntry (state: RaftServerState)
                                  (cmd: StateMachine)
                                  (raw: RawServerRequest)
-                                 (arbiter: StateArbiter) =
+                                 (agent: RaftAgent) =
 
     Tracing.trace (tag "processAppendEntry") <| fun () ->
       if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
@@ -524,7 +532,7 @@ module Raft =
             |> RawServerResponse.fromRequest raw
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
-          |> arbiter.Post
+          |> agent.Post
           newstate
         | Left (err, newstate) ->        // Request was unsuccessful, respond immeditately
           (state.Raft.Member.Id, err)
@@ -649,7 +657,7 @@ module Raft =
   /// - appState: current TVar<RaftServerState>
   ///
   /// Returns: RaftResponse
-  let private processHandshake (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (arbiter: StateArbiter) =
+  let private processHandshake (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
     Tracing.trace (tag "processHandshake") <| fun () ->
       if Raft.isLeader state.Raft then
         match addMembers state [| mem |] with
@@ -662,7 +670,7 @@ module Raft =
               |> RawResponse.fromRequest raw
             (DateTime.Now, entry, response)
             |> Msg.ReqCommitted
-            |> arbiter.Post
+            |> agent.Post
           newstate
         | Left (err, newstate) ->
           asynchronously <| fun _ ->
@@ -680,7 +688,7 @@ module Raft =
 
   (*
 
-  let private processHandwaive (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (arbiter: StateArbiter) =
+  let private processHandwaive (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
     Tracing.trace (tag "processHandwaive") <| fun () ->
       if Raft.isLeader state.Raft then
         match removeMember state mem.Id with
@@ -692,7 +700,7 @@ module Raft =
               |> RawResponse.fromRequest raw
             (DateTime.Now, entry, response)
             |> Msg.ReqCommitted
-            |> arbiter.Post
+            |> agent.Post
           newstate
         | Left (err, newstate) ->
           asynchronously <| fun _ ->
@@ -708,7 +716,10 @@ module Raft =
 
   // ** processAppendEntriesResponse
 
-  let private processAppendEntriesResponse (state: RaftServerState) (mem: Id) (ar: AppendResponse) =
+  let private processAppendEntriesResponse (state: RaftServerState)
+                                           (mem: Id)
+                                           (ar: AppendResponse)
+                                           (agent: RaftAgent) =
     let result =
       Raft.receiveAppendEntriesResponse mem ar
       |> runRaft state.Raft state.Callbacks
@@ -718,12 +729,16 @@ module Raft =
     | Left (err, newstate) ->
       err
       |> RaftEvent.RaftError
-      |> notify state.Subscriptions
+      |> Msg.Notify
+      |> agent.Post
       updateRaft state newstate
 
   // ** processVoteResponse
 
-  let private processVoteResponse (state: RaftServerState) (sender: Id) (vr: VoteResponse) =
+  let private processVoteResponse (state: RaftServerState)
+                                  (sender: Id)
+                                  (vr: VoteResponse)
+                                  (agent: RaftAgent) =
     let result =
       Raft.receiveVoteResponse sender vr
       |> runRaft state.Raft state.Callbacks
@@ -733,7 +748,8 @@ module Raft =
     | Left (err, newstate) ->
       err
       |> RaftEvent.RaftError
-      |> notify state.Subscriptions
+      |> Msg.Notify
+      |> agent.Post
       updateRaft state newstate
 
   // ** processSnapshotResponse
@@ -985,13 +1001,13 @@ module Raft =
   /// - appState: current RaftServerState TVar
   ///
   /// Returns: CancellationTokenSource
-  let private startPeriodic (interval: int) (arbiter: StateArbiter) : IDisposable =
+  let private startPeriodic (interval: int) (agent: RaftAgent) : IDisposable =
     MailboxProcessor.Start(fun inbox ->
       let rec loop n =
         async {
           inbox.Post()                  // kick the machine
           let! _ = inbox.Receive()
-          arbiter.Post(Msg.Periodic)
+          agent.Post(Msg.Periodic)
           do! Async.Sleep(interval) // sleep for inverval (ms)
           return! loop (n + 1)
         }
@@ -1038,7 +1054,7 @@ module Raft =
 
   // ** handleForceElection
 
-  let private handleForceElection (state: RaftServerState) =
+  let private handleForceElection (state: RaftServerState) (agent: RaftAgent) =
     Tracing.trace (tag "handleForceElection") <| fun () ->
       match forceElection state with
       | Right (_, newstate) -> updateRaft state newstate
@@ -1049,19 +1065,20 @@ module Raft =
 
         err
         |> RaftEvent.RaftError
-        |> notify state.Subscriptions
+        |> Msg.Notify
+        |> agent.Post
 
         updateRaft state newstate
 
   // ** handleAddCmd
 
-  let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (arbiter: StateArbiter) =
+  let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (agent: RaftAgent) =
     Tracing.trace (tag "handleAddCmd") <| fun () ->
       match appendCommand state cmd with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
-        // |> arbiter.Post
+        // |> agent.Post
         newstate
 
       | Left (err, newstate) ->
@@ -1070,7 +1087,8 @@ module Raft =
         |> Logger.err (tag "handleAddCmd")
         err
         |> RaftEvent.RaftError
-        |> notify state.Subscriptions
+        |> Msg.Notify
+        |> agent.Post
         newstate
 
   // ** handlePeriodic
@@ -1084,16 +1102,16 @@ module Raft =
 
   // ** handleAddMember
 
-  let private handleAddMember (state: RaftServerState) (mem: RaftMember) (arbiter: StateArbiter) =
+  let private handleAddMember (state: RaftServerState) (mem: RaftMember) (agent: RaftAgent) =
     Tracing.trace (tag "handleAddMember") <| fun () ->
       makePeerSocket mem state.MakePeerSocket
-      |> registerPeerSocket arbiter
+      |> registerPeerSocket agent
       |> addPeerSocket state.Connections
       match addMembers state [| mem |] with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
-        // |> arbiter.Post
+        // |> agent.Post
         newstate
 
       | Left (err, newstate) ->
@@ -1102,12 +1120,13 @@ module Raft =
         |> Logger.err (tag "handleAddMember")
         err
         |> RaftEvent.RaftError
-        |> notify state.Subscriptions
+        |> Msg.Notify
+        |> agent.Post
         newstate
 
   // ** handleRemoveMember
 
-  let private handleRemoveMember (state: RaftServerState) (id: Id) (arbiter: StateArbiter) =
+  let private handleRemoveMember (state: RaftServerState) (id: Id) (agent: RaftAgent) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
       if state.Connections.ContainsKey id then
         let result, socket = state.Connections.TryRemove id
@@ -1124,7 +1143,7 @@ module Raft =
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
-        // |> arbiter.Post
+        // |> agent.Post
         newstate
 
       | Left (err, newstate) ->
@@ -1134,14 +1153,15 @@ module Raft =
 
         err
         |> RaftEvent.RaftError
-        |> notify state.Subscriptions
+        |> Msg.Notify
+        |> agent.Post
         newstate
 
   // ** handleIsCommitted
 
   (*
 
-  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (chan: ReplyChan) (arbiter: StateArbiter) =
+  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (chan: ReplyChan) (agent: RaftAgent) =
     Tracing.trace (tag "handleIsCommitted") <| fun () ->
       let result =
         Raft.responseCommitted entry
@@ -1181,7 +1201,7 @@ module Raft =
             do! timeOutMillis 1000
             (ts, entry, chan)
             |> Msg.IsCommitted
-            |> arbiter.Post
+            |> agent.Post
           } |> Hopac.start
 
         newstate
@@ -1202,7 +1222,7 @@ module Raft =
 
   let private processRequest (data: RaftServerState)
                              (raw: RawServerRequest)
-                             (arbiter: StateArbiter) =
+                             (agent: RaftAgent) =
 
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
@@ -1212,9 +1232,9 @@ module Raft =
           | AppendEntries (id, ae)   -> processAppendEntries   data id  ae  raw
           | RequestVote (id, vr)     -> processVoteRequest     data id  vr  raw
           | InstallSnapshot (id, is) -> processInstallSnapshot data id  is  raw
-          | AppendEntry  sm          -> processAppendEntry     data sm  raw arbiter
-          // | HandShake mem            -> processHandshake       data mem raw arbiter
-          // | HandWaive mem            -> processHandwaive       data mem raw arbiter
+          | AppendEntry  sm          -> processAppendEntry     data sm  raw agent
+          // | HandShake mem            -> processHandshake       data mem raw agent
+          // | HandWaive mem            -> processHandwaive       data mem raw agent
         return newstate
       }
 
@@ -1222,10 +1242,10 @@ module Raft =
 
   let private handleServerRequest (state: RaftServerState)
                                   (raw: RawServerRequest)
-                                  (arbiter: StateArbiter) =
+                                  (agent: RaftAgent) =
 
     Tracing.trace (tag "handleRawRequest") <| fun () ->
-      match processRequest state raw arbiter with
+      match processRequest state raw agent with
       | Right newdata -> newdata
       | Left error ->
         (state.Raft.Member.Id, error)
@@ -1241,7 +1261,7 @@ module Raft =
                                  (ts: DateTime)
                                  (entry: EntryResponse)
                                  (raw: RawServerResponse)
-                                 (arbiter: StateArbiter) =
+                                 (agent: RaftAgent) =
 
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
       let result =
@@ -1279,7 +1299,7 @@ module Raft =
         else
           (ts, entry, raw)
           |> Msg.ReqCommitted
-          |> arbiter.Post
+          |> agent.Post
           updateRaft state newstate
       | Left (err, newstate) ->
         (state.Raft.Member.Id, err)
@@ -1291,15 +1311,15 @@ module Raft =
 
   // ** handleServerResponse
 
-  let private handleServerResponse (state: RaftServerState) (raw: RawServerResponse) arbiter =
+  let private handleServerResponse (state: RaftServerState) (raw: RawServerResponse) agent =
     match raw.Body |> Binary.decode with
     | Right response ->
       match response with
-      | RequestVoteResponse     (sender, vote) -> processVoteResponse          state sender vote
-      | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse state sender ar
-      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      state sender ar
-      | ErrorResponse           (sender, error)-> processErrorResponse         state sender error
-      | _                                      -> state
+      | RequestVoteResponse (sender, vote)   -> processVoteResponse state sender vote agent
+      | AppendEntriesResponse (sender, ar)   -> processAppendEntriesResponse state sender ar agent
+      | InstallSnapshotResponse (sender, ar) -> processSnapshotResponse state sender ar agent
+      | ErrorResponse (sender, error)        -> processErrorResponse state sender error
+      | _ -> state
     | Left error ->
       error
       |> string
@@ -1308,7 +1328,7 @@ module Raft =
 
   // ** handleClientResponse
 
-  let private handleClientResponse (state: RaftServerState) (raw: RawClientResponse) arbiter =
+  let private handleClientResponse (state: RaftServerState) (raw: RawClientResponse) agent =
     match raw.Body with
     | Left error ->
       let result =
@@ -1336,9 +1356,9 @@ module Raft =
         sprintf "successfully appended entry in %O" entry.Id
         |> Logger.debug (tag "handleClientResponse")
         state
-      | Right (AppendEntriesResponse(id, ar))   -> processAppendEntriesResponse state id ar
-      | Right (RequestVoteResponse(id, vr))     -> processVoteResponse state id vr
-      | Right (InstallSnapshotResponse(id, ar)) -> processSnapshotResponse state id ar
+      | Right (AppendEntriesResponse(id, ar))   -> processAppendEntriesResponse state id ar agent
+      | Right (RequestVoteResponse(id, vr))     -> processVoteResponse state id vr agent
+      | Right (InstallSnapshotResponse(id, ar)) -> processSnapshotResponse state id ar agent
       | Right (ErrorResponse(id, error))        -> processErrorResponse state id error
       | Right (Redirect leader)                 -> processRedirect state leader
       | Left error ->
@@ -1356,18 +1376,18 @@ module Raft =
 
   // ** handleStart
 
-  let private handleStart (state: RaftServerState) (agent: StateArbiter) =
+  let private handleStart (state: RaftServerState) (agent: RaftAgent) =
     // periodic function
     let interval = int state.Options.Raft.PeriodicInterval
     let periodic = startPeriodic interval agent
-    notify state.Subscriptions RaftEvent.Started
+    RaftEvent.Started |> Msg.Notify |> agent.Post
     { state with
         Status = ServiceStatus.Running
         Disposables = periodic :: state.Disposables }
 
   // ** loop
 
-  let private loop (store: IAgentStore<RaftServerState>) (inbox: StateArbiter) =
+  let private loop (store: IAgentStore<RaftServerState>) (inbox: RaftAgent) =
     let rec act () =
       async {
         let! cmd = inbox.Receive()
@@ -1376,8 +1396,9 @@ module Raft =
           match cmd with
           | Msg.Start                         -> handleStart          state              inbox
           | Msg.Stop               ev         -> handleStop           state ev
+          | Msg.Notify             ev         -> handleNotify         state ev
           | Msg.Periodic                      -> handlePeriodic       state
-          | Msg.ForceElection                 -> handleForceElection  state
+          | Msg.ForceElection                 -> handleForceElection  state              inbox
           | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
           | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
           | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
@@ -1414,16 +1435,13 @@ module Raft =
     // ** createListener
 
     let private createListener (subscriptions: Subscriptions) =
+      let guid = Guid.NewGuid()
       { new IObservable<RaftEvent> with
           member self.Subscribe(obs) =
-            lock subscriptions <| fun _ ->
-              subscriptions.Add obs
-
+            subscriptions.TryAdd(guid, obs) |> ignore
             { new IDisposable with
                 member self.Dispose () =
-                  lock subscriptions <| fun _ ->
-                    subscriptions.Remove obs
-                    |> ignore } }
+                  subscriptions.TryRemove(guid) |> ignore } }
 
     // ** initializeRaft
 
@@ -1453,11 +1471,9 @@ module Raft =
       either {
         let cts = new CancellationTokenSource()
         let connections = new Connections()
-        let subscriptions = new Subscriptions()
-        let listener = createListener subscriptions
-
         let store = AgentStore.create()
-        let agent = new StateArbiter(loop store, cts.Token)
+
+        let agent = new RaftAgent(loop store, cts.Token)
         agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
         let! (callbacks, raftState) = either {
@@ -1467,7 +1483,6 @@ module Raft =
                 raftState.Member.Id
                 (Client.create ctx)
                 connections
-                subscriptions
                 callbacks
                 agent
             let! initialized = initializeRaft callbacks raftState
@@ -1483,7 +1498,7 @@ module Raft =
             Callbacks = callbacks
             Disposables = []
             Connections = connections
-            Subscriptions = subscriptions }
+            Subscriptions = new Subscriptions() }
 
         return
           { new IRaftServer with
@@ -1582,6 +1597,7 @@ module Raft =
                 id |> Msg.RemoveMember |> agent.Post
 
               member self.Subscribe (callback: RaftEvent -> unit) =
+                let listener = createListener store.State.Subscriptions
                 { new IObserver<RaftEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
