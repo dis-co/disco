@@ -203,7 +203,9 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        let! repo2 = Project.repository { project with Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath) }
+        let! repo2 = Project.repository { project with
+          Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath)
+        }
 
         let num2 = Git.Repo.commitCount repo2
 
