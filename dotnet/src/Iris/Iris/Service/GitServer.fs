@@ -70,6 +70,7 @@ module Git =
       Address       : IpAddress
       Port          : Port
       Starter       : AutoResetEvent
+      Stopper       : AutoResetEvent
       Subscriptions : Subscriptions
       Disposables   : IDisposable seq }
 
@@ -87,14 +88,12 @@ module Git =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start
     | Exit     of int                   // Event from Git, needs no reply
     | Log      of string                // Event from Git, needs no reply either
-    | Stop     of AutoResetEvent
+    | Stop
 
     override self.ToString () =
       match self with
-      | Start    -> "Start"
       | Stop   _ -> "Stop"
       | Exit   c -> sprintf "Exit: %d" c
       | Log str  -> sprintf "Log: %s" str
@@ -228,11 +227,6 @@ module Git =
                   subscriptions.TryRemove(guid)
                   |> ignore } }
 
-  // ** handleStart
-
-  let private handleStart (state: GitState) (agent: GitAgent) =
-    state
-
   // ** handleLog
 
   let private handleLog (state: GitState) (msg: string) =
@@ -242,8 +236,10 @@ module Git =
       // handle
       match msg with
       | Started pid ->
+        state.Starter.Set() |> ignore
         { state with
             Status = ServiceStatus.Running
+            Pid = state.Process.Id
             SubPid = pid }
       | _ -> state
     | _ -> state
@@ -253,18 +249,20 @@ module Git =
   let private handleExit (state: GitState) (code: int) =
     code |> Exited |> notify state
     match code with
-    | 0 -> { state with Status = ServiceStatus.Stopped }
+    | 0 | 143 ->                         // 143 is 128 (process was killed) + 15 (with SIGTERM)
+      state.Stopper.Set() |> ignore
+      { state with Status = ServiceStatus.Stopped }
     | _ ->
       let error =
         sprintf "Non-zero exit code: %d" code
         |> Error.asGitError (tag "handleExit")
+      state.Stopper.Set() |> ignore
       { state with Status = ServiceStatus.Failed error }
 
   // ** handleStop
 
-  let private handleStop (state: GitState) (are: AutoResetEvent) =
-    0 |> Exited |> notify state
-    dispose state
+  let private handleStop (state: GitState) =
+    Process.kill state.Pid
     state
 
   // ** loop
@@ -276,8 +274,7 @@ module Git =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Start     -> handleStart state inbox
-          | Msg.Stop are  -> handleStop  state are
+          | Msg.Stop      -> handleStop  state
           | Msg.Exit code -> handleExit  state code
           | Msg.Log msg   -> handleLog   state msg
         store.Update newstate
@@ -319,10 +316,10 @@ module Git =
           Port          = port mem.GitPort
           Subscriptions = new Subscriptions()
           Starter       = new AutoResetEvent(false)
+          Stopper       = new AutoResetEvent(false)
           Disposables   = [ stdoutReader
                             stderrReader
-                            onExitEvent ]
-        }
+                            onExitEvent ] }
 
       store.Update state
       agent.Start()
@@ -345,7 +342,6 @@ module Git =
           member self.Start () = either {
               try
                 if proc.Start() then
-                  agent.Post Msg.Start
                   proc.BeginOutputReadLine()
                   proc.BeginErrorReadLine()
                   let started = store.State.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0)
@@ -374,8 +370,12 @@ module Git =
             }
 
           member self.Dispose() =
+            agent.Post Msg.Stop
+            let stopped = store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+            if not stopped then
+              "Timeout disposing GitServer"
+              |> Logger.err (tag "Dispose")
             dispose store.State
             cts.Cancel()
-            dispose cts
             dispose agent
         }

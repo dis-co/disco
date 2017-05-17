@@ -168,7 +168,7 @@ module GitTests =
         dispose gitserver2
 
         expect "1 should be stopped" true Service.isStopped gitserver1.Status
-        expect "2 should be stopped" true Service.isStopped gitserver2.Status
+        expect "2 should have failed" true Service.hasFailed gitserver2.Status
 
         expect "1 should leave no dangling process" false Process.isRunning pid1
         expect "2 should leave no dangling process" false Process.isRunning pid2
@@ -182,7 +182,7 @@ module GitTests =
   //   |_|\___||___/\__| |_____|_|___/\__|
 
   let gitTests =
-    ftestList "Git Tests" [
+    testList "Git Tests" [
       // REMOTES
       test_correct_remote_list
       test_remove_remote
