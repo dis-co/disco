@@ -36,7 +36,7 @@ module Discovery =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "DiscoveryService.%s" str
+  let private tag (str: string) = String.Format("DiscoveryService.{0}", str)
 
   // ** Listener
 

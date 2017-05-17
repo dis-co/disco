@@ -23,16 +23,9 @@ open ZeroMQ
 [<AutoOpen>]
 module Raft =
 
-  //  ____       _            _
-  // |  _ \ _ __(_)_   ____ _| |_ ___
-  // | |_) | '__| \ \ / / _` | __/ _ \
-  // |  __/| |  | |\ V / (_| | ||  __/
-  // |_|   |_|  |_| \_/ \__,_|\__\___|
-
   // ** tag
 
-  let private tag (str: string) =
-    String.Format("RaftServer.{0}", str)
+  let private tag (str: string) = String.Format("RaftServer.{0}", str)
 
   // ** Connections
 
@@ -54,7 +47,8 @@ module Raft =
       Disposables:    IDisposable list
       MakePeerSocket: ClientConfig -> IClient
       Connections:    ConcurrentDictionary<Id,IClient>
-      Subscriptions:  Subscriptions }
+      Subscriptions:  Subscriptions
+      Started:        AutoResetEvent }
 
   // ** Msg
 
@@ -63,6 +57,7 @@ module Raft =
     | Periodic
     | ForceElection
     | Start
+    | Started
     | Stop              of AutoResetEvent
     | Notify            of RaftEvent
     | RawServerRequest  of request:RawServerRequest
@@ -81,6 +76,7 @@ module Raft =
     override msg.ToString() =
       match msg with
       | Start                     -> "Start"
+      | Started                   -> "Started"
       | Stop                   _  -> "Stop"
       | Notify                 e  -> sprintf "Notify: %A" e
       | RawServerRequest       _  -> "RawServerRequest"
@@ -104,7 +100,9 @@ module Raft =
 
   let private tryPost (agent: RaftAgent) msg =
     try agent.Post msg
-    with | exn -> printfn "exn: %s" exn.Message
+    with
+      | exn -> sprintf "exn: %s" exn.Message
+               |> Logger.err (tag "tryPost")
 
   // ** getRaft
 
@@ -997,12 +995,14 @@ module Raft =
   /// loop can be cancelled at a later time.
   ///
   /// ### Signature:
-  /// - timeoput: interval at which the loop runs
+  /// - timeout: interval at which the loop runs
   /// - appState: current RaftServerState TVar
   ///
   /// Returns: CancellationTokenSource
   let private startPeriodic (interval: int) (agent: RaftAgent) : IDisposable =
-    MailboxProcessor.Start(fun inbox ->
+    let cts = new CancellationTokenSource()
+
+    let loop (inbox: MailboxProcessor<unit>) =
       let rec loop n =
         async {
           inbox.Post()                  // kick the machine
@@ -1011,8 +1011,17 @@ module Raft =
           do! Async.Sleep(interval) // sleep for inverval (ms)
           return! loop (n + 1)
         }
-      loop 0)
-    :> IDisposable
+      loop 0
+
+    let mbp = MailboxProcessor.Start(loop, cts.Token)
+
+    { new IDisposable with
+        member self.Dispose() =
+          try
+            cts.Cancel()
+            dispose cts
+          finally
+            dispose mbp }
 
   // ** handleJoin
 
@@ -1374,16 +1383,54 @@ module Raft =
     stop.Set() |> ignore
     { state with Status = ServiceStatus.Stopping }
 
+  // ** initializeRaft
+
+  let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftValue)  =
+    Tracing.trace (tag "initializeRaft") <| fun () ->
+      let rand = System.Random()
+      raft {
+        let term = term 0
+        do! Raft.setTermM term
+        let! num = Raft.numMembersM ()
+
+        if num = 1 then
+          do! Raft.setTimeoutElapsedM 0<ms>
+          do! Raft.becomeLeader ()
+        else
+          // set the timeout to something random, to prevent split votes
+          let timeout = 1<ms> * rand.Next(0, int state.ElectionTimeout)
+          do! Raft.setTimeoutElapsedM timeout
+          do! Raft.becomeFollower ()
+      }
+      |> runRaft state callbacks
+      |> Either.mapError fst
+      |> Either.map snd
+
   // ** handleStart
 
   let private handleStart (state: RaftServerState) (agent: RaftAgent) =
-    // periodic function
-    let interval = int state.Options.Raft.PeriodicInterval
-    let periodic = startPeriodic interval agent
-    RaftEvent.Started |> Msg.Notify |> agent.Post
-    { state with
-        Status = ServiceStatus.Running
-        Disposables = periodic :: state.Disposables }
+    match initializeRaft state.Callbacks state.Raft with
+    | Right initialized ->
+      // periodic function
+      let interval = int state.Options.Raft.PeriodicInterval
+      let periodic = startPeriodic interval agent
+      RaftEvent.Started |> Msg.Notify |> agent.Post
+      agent.Post Msg.Started
+      { state with
+          Status = ServiceStatus.Running
+          Raft = initialized
+          Disposables = periodic :: state.Disposables }
+    | Left error ->
+      sprintf "Fatal, could not initialize Raft: %O" error
+      |> Logger.err (tag "handleStart")
+      agent.Post Msg.Started
+      { state with Status = ServiceStatus.Failed error  }
+
+  // ** handleStarted
+
+  let private handleStarted (state: RaftServerState) =
+    state.Started.Set() |> ignore
+    state
 
   // ** loop
 
@@ -1395,6 +1442,7 @@ module Raft =
         let newstate =
           match cmd with
           | Msg.Start                         -> handleStart          state              inbox
+          | Msg.Started                       -> handleStarted        state
           | Msg.Stop               ev         -> handleStop           state ev
           | Msg.Notify             ev         -> handleNotify         state ev
           | Msg.Periodic                      -> handlePeriodic       state
@@ -1409,11 +1457,7 @@ module Raft =
           // | Msg.Join        (ip, port)        -> handleJoin          state ip port
           // | Msg.Leave                         -> handleLeave         state
         store.Update newstate
-
-        if Service.isStopping store.State.Status then
-          return ()
-        else
-          do! act ()
+        return! act ()
       }
     act ()
 
@@ -1428,10 +1472,6 @@ module Raft =
   [<RequireQualifiedAccess>]
   module RaftServer =
 
-    // ** rand
-
-    let private rand = System.Random()
-
     // ** createListener
 
     let private createListener (subscriptions: Subscriptions) =
@@ -1442,28 +1482,6 @@ module Raft =
             { new IDisposable with
                 member self.Dispose () =
                   subscriptions.TryRemove(guid) |> ignore } }
-
-    // ** initializeRaft
-
-    let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftValue)  =
-      Tracing.trace (tag "initializeRaft") <| fun () ->
-        raft {
-          let term = term 0
-          do! Raft.setTermM term
-          let! num = Raft.numMembersM ()
-
-          if num = 1 then
-            do! Raft.setTimeoutElapsedM 0<ms>
-            do! Raft.becomeLeader ()
-          else
-            // set the timeout to something random, to prevent split votes
-            let timeout = 1<ms> * rand.Next(0, int state.ElectionTimeout)
-            do! Raft.setTimeoutElapsedM timeout
-            do! Raft.becomeFollower ()
-        }
-        |> runRaft state callbacks
-        |> Either.mapError fst
-        |> Either.map snd
 
     // ** create
 
@@ -1476,18 +1494,14 @@ module Raft =
         let agent = new RaftAgent(loop store, cts.Token)
         agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
-        let! (callbacks, raftState) = either {
-            let! raftState = Persistence.getRaft config
-            let callbacks =
-              makeCallbacks
-                raftState.Member.Id
-                (Client.create ctx)
-                connections
-                callbacks
-                agent
-            let! initialized = initializeRaft callbacks raftState
-            return callbacks, initialized
-          }
+        let! raftState = Persistence.getRaft config
+        let callbacks =
+          makeCallbacks
+            raftState.Member.Id
+            (Client.create ctx)
+            connections
+            callbacks
+            agent
 
         store.Update
           { Status = ServiceStatus.Stopped
@@ -1498,7 +1512,8 @@ module Raft =
             Callbacks = callbacks
             Disposables = []
             Connections = connections
-            Subscriptions = new Subscriptions() }
+            Subscriptions = new Subscriptions()
+            Started = new AutoResetEvent(false) }
 
         return
           { new IRaftServer with
@@ -1549,9 +1564,19 @@ module Raft =
                             Server = server
                             Disposables = [ srvobs ] }
 
-                      Msg.Start
-                      |> agent.Post
-                      |> Either.succeed
+                      agent.Post Msg.Start // kick it off
+
+                      let result = store.State.Started.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+
+                      if result then
+                        match store.State.Status with
+                        | ServiceStatus.Failed error ->
+                          Either.fail error
+                        | _ -> Either.succeed ()
+                      else
+                        "Timeout waiting for started signal"
+                        |> Error.asRaftError (tag "Start")
+                        |> Either.fail
                     | Left error ->
                       error
                       |> sprintf "error starting broker: %O"
@@ -1615,6 +1640,9 @@ module Raft =
 
               member self.Dispose () =
                 if not (Service.isDisposed store.State.Status) then
+                  for KeyValue(_,client) in store.State.Connections do
+                    dispose client
+
                   // dispose periodic
                   for disp in store.State.Disposables do
                     dispose disp
@@ -1622,7 +1650,10 @@ module Raft =
                   // wait for actor to settle
                   use ev = new AutoResetEvent(false)
                   ev |> Msg.Stop |> agent.Post
-                  ev.WaitOne() |> ignore
+                  let result = ev.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+
+                  if not result then
+                    Logger.err (tag "Dispose") "timeout waiting for stop to complete"
 
                   // clear all listener subscriptions
                   store.State.Subscriptions.Clear()
@@ -1632,9 +1663,6 @@ module Raft =
                   with | exn -> Logger.err (tag "Dispose") exn.Message
                   tryDispose agent ignore // then stop the actor so it doesn't keep processing
                   tryDispose cts ignore   // buffered msgs
-
-                  for KeyValue(_,client) in store.State.Connections do
-                    dispose client
 
                   // clear connections
                   self.Connections.Clear()
@@ -1648,141 +1676,5 @@ module Raft =
                   store.Update { store.State with Status = ServiceStatus.Disposed }
             }
       }
-
-#endif
-
-// * Playground
-
-#if INTERACTIVE
-
-#time "on"
-
-type State = string list
-
-type IStore =
-  inherit IDisposable
-  abstract Append: string -> unit
-  abstract State: State
-  abstract Clear: unit -> unit
-
-module AsyncTests =
-  open System
-
-  type private ReplyChan = AsyncReplyChannel<State>
-
-  type private Msg =
-    | State  of ReplyChan
-    | Append of string
-    | Clear
-
-  let private loop (inbox: MailboxProcessor<Msg>) =
-    let rec impl (state: State) = async {
-      let! msg = inbox.Receive()
-      let newstate =
-        match msg with
-        | Append str -> str :: state
-        | State chan -> chan.Reply state; state
-        | Clear -> []
-      return! impl newstate
-    }
-    impl []
-
-  let create () =
-    let mbp = MailboxProcessor<Msg>.Start(loop)
-    { new IStore with
-        member self.Append str = str |> Msg.Append |> mbp.Post
-        member self.State
-          with get () = mbp.PostAndReply(Msg.State)
-        member self.Clear() = Msg.Clear |> mbp.Post
-        member self.Dispose () = ()
-      }
-
-module HopacTests =
-
-  open System
-  open System.Collections.Generic
-  open Hopac
-  open Hopac.Infixes
-
-  type private ReplyChan = IVar<State>
-
-  type private Msg =
-    | Append of string
-    | State of ReplyChan
-    | Clear
-
-  let rec private loop (rcv: Ch<Msg>) (state: State) = job {
-      let! msg = Ch.take rcv
-      match msg with
-      | Msg.Append str ->
-        let newstate = str :: state
-        return! loop rcv newstate
-      | Msg.State chan ->
-        do! IVar.fill chan state
-        return! loop rcv state
-      | Msg.Clear ->
-        return! loop rcv []
-    }
-
-  let create () =
-    let send = Ch()
-    loop send [] |> Hopac.start
-    { new IStore with
-        member self.Append str = str |> Msg.Append |> Ch.give send |> Hopac.start
-        member self.State
-          with get () =
-            let ivar = IVar()
-            ivar |> Msg.State |> Ch.send send |> Hopac.queue
-            ivar |> IVar.read |> Hopac.run
-        member self.Clear() =
-          Msg.Clear |> Ch.send send |> Hopac.queue
-        member self.Dispose () = ()
-      }
-
-let asrv = AsyncTests.create ()
-
-for n in 0 .. 4000000 do
-  n |> string |> asrv.Append
-
-asrv.Clear()
-asrv.State
-
-let hsrv = HopacTests.create ()
-
-for n in 0 .. 4000000 do
-  n |> string |> hsrv.Append
-
-hsrv.Clear()
-hsrv.State
-
-// Thread-safe, multi-reader, single-writer state
-
-type IState<'t when 't : not struct> =
-  abstract State: 't
-  abstract Update: 't -> unit
-
-module IState =
-  open System.Threading
-
-  let create<'t when 't : not struct> (initial: 't) =
-    let mutable state = initial
-
-    { new IState<'t> with
-        member self.State with get () = state
-        member self.Update update =
-          Interlocked.CompareExchange<'t>(&state, update, state)
-          |> ignore }
-
-
-type State = { i: int }
-
-let mutable t = { i = 0 }
-
-let a = { i = 1 }
-let b = { i = 3 }
-
-Interlocked.CompareExchange<State>(&t, b, t)
-
-t
 
 #endif

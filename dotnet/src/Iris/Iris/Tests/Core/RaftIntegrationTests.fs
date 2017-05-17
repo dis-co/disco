@@ -19,6 +19,8 @@ open ZeroMQ
 
 [<AutoOpen>]
 module RaftIntegrationTests =
+  let obs = Logger.subscribe Logger.stdout
+
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -75,8 +77,8 @@ module RaftIntegrationTests =
         do! follower.Start()
         expect "Follower should have one connection" 1 count follower.Connections
 
-        dispose leader
         dispose follower
+        dispose leader
 
         expect "Leader should be disposed"   true Service.isDisposed leader.Status
         expect "Follower should be disposed" true Service.isDisposed follower.Status
@@ -210,8 +212,8 @@ module RaftIntegrationTests =
 
         do! follower.Start()
 
-        check1.WaitOne() |> ignore
-        check2.WaitOne() |> ignore
+        check1.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
+        check2.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
       }
       |> noError
 
@@ -272,8 +274,8 @@ module RaftIntegrationTests =
               yield AddUser (mkUser ()) ]
           |> List.map leader.Append
 
-        snapshotCheck.WaitOne() |> ignore
-        expectedCheck.WaitOne() |> ignore
+        snapshotCheck.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
+        expectedCheck.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
 
         expect "Should have expected number of Users" expected id store.State.Users.Count
       }
@@ -299,7 +301,7 @@ module RaftIntegrationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let raftIntegrationTests =
-    testList "Raft Integration Tests" [
+    ftestList "Raft Integration Tests" [
       // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port
