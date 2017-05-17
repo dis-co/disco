@@ -69,6 +69,7 @@ module Discovery =
   type private Msg =
     | Start
     | Stop        of AutoResetEvent
+    | Notify      of DiscoveryEvent
     | Register    of srvc:DiscoverableService
     | UnRegister  of srvc:DiscoverableService
     | RegisterErr of err:string * srvc:DiscoverableService
@@ -91,17 +92,18 @@ module Discovery =
               member self.Dispose() =
                 subscriptions.TryRemove(guid) |> ignore } }
 
-  // ** notify
+  // ** handleNotify
 
-  let private notify (subscriptions: Subscriptions) (ev: DiscoveryEvent) =
-    let subs = subscriptions.ToArray()
+  let private handleNotify (state: DiscoveryState) (ev: DiscoveryEvent) =
+    let subs = state.Subscriptions.ToArray()
     for KeyValue(_,subscription) in subs do
       try subscription.OnNext ev
       with
         | exn ->
           exn.Message
           |> sprintf "error trying to notify subsriber: %O"
-          |> Logger.err (tag "notify")
+          |> Logger.err (tag "handleNotify")
+    state
 
   // ** addResolved
 
@@ -143,7 +145,8 @@ module Discovery =
                                 (_: obj)
                                 (args: RegisterServiceEventArgs) =
     match args.ServiceError with
-    | ServiceErrorCode.None -> notify subs (DiscoveryEvent.Registered disco)
+    | ServiceErrorCode.None ->
+      disco |> DiscoveryEvent.Registered |> Msg.Notify |> agent.Post
     | ServiceErrorCode.NameConflict ->
       let err = sprintf "Error: Name-Collision! '%s' is already registered" args.Service.Name
       agent.Post(Msg.RegisterErr(err,disco))
@@ -195,17 +198,17 @@ module Discovery =
 
   // ** handleStop
 
-  let private handleStop (state: DiscoveryState) (are: AutoResetEvent) =
+  let private handleStop (state: DiscoveryState) (agent: DiscoveryAgent) (are: AutoResetEvent) =
     are.Set() |> ignore
     let status = ServiceStatus.Stopping
-    status |> DiscoveryEvent.Status |> notify state.Subscriptions
+    status |> DiscoveryEvent.Status |> Msg.Notify |> agent.Post
     { state with Status = status }
 
   // ** handleStart
 
-  let private handleStart (state: DiscoveryState) =
+  let private handleStart (state: DiscoveryState) (agent: DiscoveryAgent) =
     let status = ServiceStatus.Running
-    status |> DiscoveryEvent.Status |> notify state.Subscriptions
+    status |> DiscoveryEvent.Status |> Msg.Notify |> agent.Post
     { state with Status = status }
 
   // ** handleRegister
@@ -216,10 +219,10 @@ module Discovery =
     match Map.tryFind srvc.Id state.RegisteredServices with
     | Some registered ->
       dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> notify state.Subscriptions
+      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
       match registerService state.Subscriptions state.Machine agent srvc with
       | Right service ->
-        srvc |> DiscoveryEvent.Registering  |> notify state.Subscriptions
+        srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
         { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }
       | Left error ->
         error
@@ -229,7 +232,7 @@ module Discovery =
     | None ->
       match registerService state.Subscriptions state.Machine agent srvc with
       | Right service ->
-        srvc |> DiscoveryEvent.Registering |> notify state.Subscriptions
+        srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
         { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }
       | Left error ->
         error
@@ -239,43 +242,50 @@ module Discovery =
 
   // ** handleUnRegister
 
-  let private handleUnRegister (state: DiscoveryState) (srvc: DiscoverableService) =
+  let private handleUnRegister (state: DiscoveryState)
+                               (agent: DiscoveryAgent)
+                               (srvc: DiscoverableService) =
     match Map.tryFind srvc.Id state.RegisteredServices with
     | None -> state
     | Some registered ->
       dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> notify state.Subscriptions
+      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
       { state with RegisteredServices = Map.remove srvc.Id state.RegisteredServices }
 
   // ** handleRegisterErr
 
-  let private handleRegisterErr (state: DiscoveryState) (_: string) (srvc: DiscoverableService) =
+  let private handleRegisterErr (state: DiscoveryState)
+                                (agent: DiscoveryAgent)
+                                (_: string)
+                                (srvc: DiscoverableService) =
     match Map.tryFind srvc.Id state.RegisteredServices with
     | None -> state
     | Some registered ->
       dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> notify state.Subscriptions
+      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
       { state with RegisteredServices = Map.remove srvc.Id state.RegisteredServices }
 
   // ** handleDiscovery
 
-  let private handleDiscovery (state: DiscoveryState) (srvc: DiscoveredService) =
+  let private handleDiscovery (state: DiscoveryState)
+                              (agent: DiscoveryAgent)
+                              (srvc: DiscoveredService) =
     match Map.tryFind srvc.Id state.ResolvedServices with
     | Some service ->
       let updated = Discovery.mergeDiscovered service srvc
-      updated |> DiscoveryEvent.Updated |> notify state.Subscriptions
+      updated |> DiscoveryEvent.Updated |> Msg.Notify |> agent.Post
       { state with ResolvedServices = Map.add updated.Id updated state.ResolvedServices }
     | None ->
-      srvc |> DiscoveryEvent.Appeared  |> notify state.Subscriptions
+      srvc |> DiscoveryEvent.Appeared |> Msg.Notify |> agent.Post
       { state with ResolvedServices = Map.add srvc.Id srvc state.ResolvedServices }
 
   // ** handleVanishing
 
-  let private handleVanishing (state: DiscoveryState) (id: Id) =
+  let private handleVanishing (state: DiscoveryState) (agent: DiscoveryAgent) (id: Id) =
     match Map.tryFind id state.ResolvedServices with
     | None -> state
     | Some service ->
-      service |> DiscoveryEvent.Vanished |> notify state.Subscriptions
+      service |> DiscoveryEvent.Vanished |> Msg.Notify |> agent.Post
       { state with ResolvedServices = Map.remove id state.ResolvedServices }
 
   // ** loop
@@ -287,13 +297,14 @@ module Discovery =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Stop            are    -> handleStop state are
-          | Msg.Start                  -> handleStart state
-          | Msg.Register       srvc    -> handleRegister state inbox srvc
-          | Msg.UnRegister       srvc  -> handleUnRegister state srvc
-          | Msg.RegisterErr (err,srvc) -> handleRegisterErr state err srvc
-          | Msg.Discovered srvc        -> handleDiscovery state srvc
-          | Msg.Vanished id            -> handleVanishing state id
+          | Msg.Stop            are    -> handleStop        state inbox are
+          | Msg.Start                  -> handleStart       state inbox
+          | Msg.Register       srvc    -> handleRegister    state inbox srvc
+          | Msg.UnRegister       srvc  -> handleUnRegister  state inbox srvc
+          | Msg.RegisterErr (err,srvc) -> handleRegisterErr state inbox err  srvc
+          | Msg.Discovered srvc        -> handleDiscovery   state inbox srvc
+          | Msg.Vanished id            -> handleVanishing   state inbox id
+          | Msg.Notify ev              -> handleNotify      state       ev
         store.Update newstate
         if Service.isStopping newstate.Status then
           return ()

@@ -203,8 +203,9 @@ module IrisServiceTests =
 
         let mem2, machine2 = List.last zipped
 
-        let! repo2 = Project.repository { project with
-          Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath)
+        let! repo2 = Project.repository {
+          project with
+            Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath)
         }
 
         let num2 = Git.Repo.commitCount repo2
@@ -231,10 +232,6 @@ module IrisServiceTests =
 
         electionDone.WaitOne() |> ignore
 
-        Thread.Sleep(50)                // sleep for 50ms because the events are triggered inside
-                                        // the runRaft function and thus appear *before* the result
-                                        // of that comutation is is saved into the internal
-                                        // RaftServer store
         //  _____
         // |___ /
         //   |_ \

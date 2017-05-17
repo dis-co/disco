@@ -149,6 +149,7 @@ module IrisService =
   type private Msg =
     | Start
     | Stop              of AutoResetEvent
+    | Notify            of IrisEvent
     | Append            of StateMachine
     | Git               of GitEvent
     | Socket            of WebSocketEvent
@@ -173,17 +174,18 @@ module IrisService =
   ///
   type private IrisAgent = MailboxProcessor<Msg>
 
-  // ** notify
+  // ** handleNotify
 
-  let private notify (subscriptions: Subscriptions) (ev: IrisEvent) =
-    let subs = subscriptions.ToArray()
+  let private handleNotify (state: IrisState) (ev: IrisEvent) =
+    let subs = state.Subscriptions.ToArray()
     for KeyValue(_,subscription) in subs do
       try subscription.OnNext ev
       with
         | exn ->
           exn.Message
           |> sprintf "error notifying listeners: %s"
-          |> Logger.err (tag "notify")
+          |> Logger.err (tag "handleNotify")
+    state
 
   // ** broadcastMsg
 
@@ -568,8 +570,8 @@ module IrisService =
 
   // ** handleRaftEvent
 
-  let private handleRaftEvent (state: IrisState) agent (ev: RaftEvent) =
-    ev |> IrisEvent.Raft |> notify state.Subscriptions
+  let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: RaftEvent) =
+    ev |> IrisEvent.Raft |> Msg.Notify |> agent.Post
     Tracing.trace (tag "handleRaftEvent") <| fun () ->
       match ev with
       | RaftEvent.ApplyLog sm             -> onApplyLog         state sm
@@ -612,7 +614,7 @@ module IrisService =
         state.RaftServer.Append (RemoveClient client)
         state
       | _ -> // Status events
-        notify state.Subscriptions (IrisEvent.Api ev)
+        IrisEvent.Api ev |> Msg.Notify |> agent.Post
         state
 
   // ** forwardEvent
@@ -662,7 +664,7 @@ module IrisService =
 
   let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
     Tracing.trace (tag "handleGitEvent") <| fun () ->
-      ev |> IrisEvent.Git |> notify state.Subscriptions
+      ev |> IrisEvent.Git |> Msg.Notify |> agent.Post
       match ev with
       | Started pid ->
         sprintf "Git daemon started with PID: %d" pid
@@ -672,8 +674,13 @@ module IrisService =
       | Exited _ ->
         "Git daemon exited. Attempting to restart."
         |> Logger.debug (tag "handleGitEvent")
-        let newData = restartGitServer state agent
-        newData
+        restartGitServer state agent
+
+      | Failed reason ->
+        reason
+        |> sprintf "Git daemon failed. %A Attempting to restart."
+        |> Logger.debug (tag "handleGitEvent")
+        restartGitServer state agent
 
       | Pull (_, addr, port) ->
         sprintf "Client %s:%d pulled updates from me" addr port
@@ -780,16 +787,16 @@ module IrisService =
 
   // ** handleStart
 
-  let private handleStart (state: IrisState) =
+  let private handleStart (state: IrisState) (agent: IrisAgent) =
     let status = ServiceStatus.Running
-    status |> IrisEvent.Status |> notify state.Subscriptions
+    status |> IrisEvent.Status |> Msg.Notify |> agent.Post
     { state with Status = status }
 
   // ** handleStop
 
-  let private handleStop (state: IrisState) (are: AutoResetEvent) =
+  let private handleStop (state: IrisState) (agent: IrisAgent) (are: AutoResetEvent) =
     let status = ServiceStatus.Stopping
-    status |> IrisEvent.Status |> notify state.Subscriptions
+    status |> IrisEvent.Status |> Msg.Notify |> agent.Post
     are.Set() |> ignore
     { state with Status = status }
 
@@ -808,8 +815,9 @@ module IrisService =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Start                  -> handleStart          state
-          | Msg.Stop               are -> handleStop           state       are
+          | Msg.Start                  -> handleStart          state inbox
+          | Msg.Stop               are -> handleStop           state inbox are
+          | Msg.Notify              ev -> handleNotify         state       ev
           | Msg.Append             cmd -> handleAppend         state       cmd
           | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
           | Msg.Git                 ev -> handleGitEvent       state inbox ev

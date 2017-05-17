@@ -103,15 +103,25 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
+        use started = new AutoResetEvent(false)
+
+        let handleStarted = function
+          | GitEvent.Started _ -> started.Set() |> ignore
+          | _ -> ()
+
         use gitserver1 = GitServer.create mem path
+        use gobs1 = gitserver1.Subscribe(handleStarted)
         do! gitserver1.Start()
+
+        started.WaitOne() |> ignore
         expect "Should be running" true Service.isRunning gitserver1.Status
 
         use gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
             | Right ()   -> Left (Other("test","Should have failed to start"))
             | Left error -> Right ()
-        expect "Should have failed" true Service.hasFailed gitserver2.Status
+
+        expect "Should be disposed" true Service.isDisposed gitserver2.Status
       }
       |> noError
 
@@ -159,7 +169,7 @@ module GitTests =
             | Right () -> Left (Other("test","Should have failed but didn't"))
             | Left error -> Right ()
 
-        expect "Should have failed" true Service.hasFailed gitserver2.Status
+        expect "Should be disposed" true Service.isDisposed gitserver2.Status
 
         let pid1 = gitserver1.Pid
         let pid2 = gitserver2.Pid
@@ -167,8 +177,8 @@ module GitTests =
         dispose gitserver1
         dispose gitserver2
 
-        expect "1 should be stopped" true Service.isStopped gitserver1.Status
-        expect "2 should have failed" true Service.hasFailed gitserver2.Status
+        expect "1 should be disposed" true Service.isDisposed gitserver1.Status
+        expect "2 should be disposed" true Service.isDisposed gitserver2.Status
 
         expect "1 should leave no dangling process" false Process.isRunning pid1
         expect "2 should leave no dangling process" false Process.isRunning pid2

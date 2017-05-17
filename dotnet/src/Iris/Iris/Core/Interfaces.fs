@@ -33,6 +33,7 @@ module AgentStore =
 type GitEvent =
   | Started of pid:int
   | Exited  of code:int
+  | Failed  of reason:string
   | Pull    of pid:int * address:string * port:Port
 
 // * RaftEvent

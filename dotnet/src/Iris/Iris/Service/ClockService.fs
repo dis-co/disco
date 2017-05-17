@@ -160,12 +160,6 @@ module Clock =
         tryDispose socket ignore
         subscriptions.Clear()
 
-  // ** notify
-
-  let private notify (state: ClockState) (ev: ClockEvent) =
-    for KeyValue(_,obs) in state.Subscriptions do
-      obs.OnNext(ev)
-
   // ** worker
 
   let private worker (state: ClockState) () =
@@ -180,7 +174,9 @@ module Clock =
           let ev = { Frame = state.Frame
                      Deviation = (diff / μsPerTick) * 1L<ns> }
 
-          notify state ev
+          let subscriptions = state.Subscriptions.ToArray()
+          for KeyValue(_,obs) in subscriptions do
+            obs.OnNext(ev)
 
           state.Frame
           |> uint32

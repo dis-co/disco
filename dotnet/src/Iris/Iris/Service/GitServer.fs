@@ -90,30 +90,23 @@ module Git =
   type private Msg =
     | Exit     of int                   // Event from Git, needs no reply
     | Log      of string                // Event from Git, needs no reply either
+    | Notify   of GitEvent
     | Stop
+    | Stopped
+    | Started
 
     override self.ToString () =
       match self with
       | Stop   _ -> "Stop"
+      | Stopped  -> "Stopped"
+      | Started  -> "Started"
       | Exit   c -> sprintf "Exit: %d" c
       | Log str  -> sprintf "Log: %s" str
+      | Notify e -> sprintf "Notify: %A" e
 
   // ** GitAgent
 
   type private GitAgent = MailboxProcessor<Msg>
-
-  // ** notify
-
-  let private notify (state: GitState) msg =
-    let subscriptions = state.Subscriptions.ToArray()
-    // notify
-    for KeyValue(_,subscription) in subscriptions do
-      try subscription.OnNext msg
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "could not notify subscriber of event: %O"
-          |> Logger.err (tag "notify")
 
   // ** createProcess
 
@@ -199,6 +192,17 @@ module Git =
     else
       None
 
+  // ** (|Fatal|_|)
+
+ // [3672] Could not bind to 127.0.0.1: No such file or directory
+ // [3672] unable to allocate any listen sockets for host 127.0.0.1 on port 10001
+ // fatal: unable to allocate any listen sockets on port 10001
+
+  let private (|Fatal|_|) (input: string) =
+    if input.Contains "fatal" then
+      Some input
+    else None
+
   // ** parseLog
 
   let private parseLog (line: string) =
@@ -209,6 +213,10 @@ module Git =
 
     | Connection (pid, ip, prt) ->
       Pull(pid, ip, port prt)
+      |> Either.succeed
+
+    | Fatal reason ->
+      Failed reason
       |> Either.succeed
 
     | _ -> Either.fail IrisError.OK      // we don't care about the rest
@@ -229,34 +237,40 @@ module Git =
 
   // ** handleLog
 
-  let private handleLog (state: GitState) (msg: string) =
+  let private handleLog (state: GitState) (msg: string) (agent: GitAgent) =
     match parseLog msg with
     | Right msg ->
-      notify state msg
+      msg |> Msg.Notify |> agent.Post
       // handle
       match msg with
       | Started pid ->
-        state.Starter.Set() |> ignore
+        Msg.Started |> agent.Post
         { state with
             Status = ServiceStatus.Running
             Pid = state.Process.Id
             SubPid = pid }
+      | Failed reason ->
+        Msg.Started |> agent.Post
+        let error = Error.asGitError (tag "handleLog") reason
+        error |> string |> Logger.err (tag "handleLog")
+        { state with Status = ServiceStatus.Failed error }
       | _ -> state
     | _ -> state
 
   // ** handleExit
 
-  let private handleExit (state: GitState) (code: int) =
-    code |> Exited |> notify state
+  let private handleExit (state: GitState) (code: int) (agent: GitAgent) =
+    code |> Exited |> Msg.Notify |> agent.Post
     match code with
     | 0 | 143 ->                         // 143 is 128 (process was killed) + 15 (with SIGTERM)
-      state.Stopper.Set() |> ignore
+      Msg.Stopped |> agent.Post
       { state with Status = ServiceStatus.Stopped }
     | _ ->
       let error =
         sprintf "Non-zero exit code: %d" code
         |> Error.asGitError (tag "handleExit")
-      state.Stopper.Set() |> ignore
+      error |> string |> Logger.err (tag "handleExit")
+      Msg.Stopped |> agent.Post
       { state with Status = ServiceStatus.Failed error }
 
   // ** handleStop
@@ -264,6 +278,32 @@ module Git =
   let private handleStop (state: GitState) =
     Process.kill state.Pid
     { state with Status = ServiceStatus.Stopping }
+
+  // ** handleStopped
+
+  let private handleStopped (state: GitState) =
+    state.Stopper.Set() |> ignore
+    state
+
+  // ** handleStarted
+
+  let private handleStarted (state: GitState) =
+    state.Starter.Set() |> ignore
+    state
+
+  // ** handleNotify
+
+  let private handleNotify (state: GitState) ev =
+    let subscriptions = state.Subscriptions.ToArray()
+    // notify
+    for KeyValue(_,subscription) in subscriptions do
+      try subscription.OnNext ev
+      with
+        | exn ->
+          exn.Message
+          |> sprintf "could not notify subscriber of event: %O"
+          |> Logger.err (tag "notify")
+    state
 
   // ** loop
 
@@ -274,9 +314,12 @@ module Git =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Stop      -> handleStop  state
-          | Msg.Exit code -> handleExit  state code
-          | Msg.Log msg   -> handleLog   state msg
+          | Msg.Stop      -> handleStop    state
+          | Msg.Stopped   -> handleStopped state
+          | Msg.Started   -> handleStarted state
+          | Msg.Exit code -> handleExit    state code inbox
+          | Msg.Log msg   -> handleLog     state msg inbox
+          | Msg.Notify ev -> handleNotify  state ev
         store.Update newstate
         return! act ()
       }
@@ -346,12 +389,19 @@ module Git =
                   proc.BeginErrorReadLine()
                   let started = store.State.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0)
 
-                  if not started then
+                  do! if not started then
+                        dispose self
+                        "Starting of GitServer failed (timeout)"
+                        |> Error.asGitError (tag "Start")
+                        |> Either.fail
+                      else Either.succeed ()
+
+                  match store.State.Status with
+                  | ServiceStatus.Failed error ->
+                    error |> string |> Logger.err (tag "Start")
                     dispose self
-                    return!
-                      "Starting of GitServer failed (timeout)"
-                      |> Error.asGitError (tag "Start")
-                      |> Either.fail
+                    return! Either.fail error
+                  | _ -> ()
                 else
                   dispose self
                   return!
