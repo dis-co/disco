@@ -118,7 +118,7 @@ module IrisServiceTests =
           ProjectName = project.Name
           UserName = User.Admin.UserName
           Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteName = None
+          SiteId = None
         }
 
         use oobs =
@@ -180,7 +180,7 @@ module IrisServiceTests =
           ProjectName = project.Name
           UserName = User.Admin.UserName
           Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteName = None
+          SiteId = None
         }
 
         use oobs1 =
@@ -212,7 +212,7 @@ module IrisServiceTests =
           ProjectName = project.Name
           UserName = User.Admin.UserName
           Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteName = None
+          SiteId = None
         }
 
         use oobs2 =
