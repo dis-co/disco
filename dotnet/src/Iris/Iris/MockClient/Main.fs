@@ -12,6 +12,7 @@ open Iris.Raft
 open Iris.Client
 open Iris.Service
 open Iris.Service.Interfaces
+open ZeroMQ
 
 [<AutoOpen>]
 module Main =
@@ -319,20 +320,15 @@ Usage:
     | _ -> None
 
   let private listPins (client: IApiClient) =
-    match client.State with
-    | Right state ->
-      printfn ""
-      Map.iter
-        (fun _ (patch: PinGroup) ->
-          printfn "Patch: %A" (string patch.Id)
-          Map.iter
-            (fun _ (pin: Pin) ->
-              printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
-            patch.Pins)
-        state.PinGroups
-      printfn ""
-    | Left error ->
-      Console.Error.WriteLine("error getting state in listPins: {0}", string error)
+    Map.iter
+      (fun _ (patch: PinGroup) ->
+        printfn "Patch: %A" (string patch.Id)
+        Map.iter
+          (fun _ (pin: Pin) ->
+            printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
+          patch.Pins)
+      client.State.PinGroups
+    printfn ""
 
   let private parseLine (line: string) : Pin option =
     match line with
@@ -451,33 +447,19 @@ Usage:
   let private PS1 = "λ: "
 
   let private addPin (client: IApiClient) (pin: Pin) =
-    match client.AddPin pin with
-    | Right () -> printfn "successfully added %A" pin.Name
-    | Left error ->
-      Console.Error.WriteLine("Could not add \"{0}\": {1}", pin.Name, string error)
+    client.AddPin pin
 
   let private updateSlices (client: IApiClient) (slices: Slices) =
-    match client.UpdateSlices slices with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not update slices {0}", string error)
+    client.UpdateSlices slices
 
   let private updatePin (client: IApiClient) (pin: Pin) =
-    match client.UpdatePin pin with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not update pin \"{0}\": {1}", pin.Name, string error)
+    client.UpdatePin pin
 
   let private removePin (client: IApiClient) (pin: Pin) =
-    match client.RemovePin pin with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not remove \"{0}\": {1}", pin.Name, string error)
+    client.RemovePin pin
 
   let private getPin (client: IApiClient) (id: string)  =
-    match client.State with
-    | Right state -> State.tryFindPin (Id (id.Trim())) state
-    | Left error -> None
+    State.tryFindPin (Id (id.Trim())) client.State
 
   let private showPin (pin: Pin)  =
     printfn ""
@@ -487,11 +469,7 @@ Usage:
   let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:PinGroup) =
     let mutable run = true
 
-    match client.AddPinGroup patch with
-    | Right () -> ()
-    | Left err ->
-      Console.Error.WriteLine("Unable to add mock client patch: {0}",err)
-      exit 128
+    client.AddPinGroup patch
 
     Map.iter (fun _ (pin: Pin) -> addPin client pin) initial
 
@@ -637,6 +615,8 @@ Usage:
 
     Logger.initialize id
 
+    use ctx = new ZContext()
+
     let result =
       either {
         let server =
@@ -663,7 +643,7 @@ Usage:
               | false -> IPv4Address "127.0.0.1"
             Port = nextPort() |> uint16 |> port }
 
-        let! client = ApiClient.create server client
+        let client = ApiClient.create ctx server client
         do! client.Start()
         return client
       }
@@ -694,10 +674,12 @@ Usage:
 
       loop client loaded patch
       dispose client
+      dispose ctx
       exit 0
     | Left error ->
       Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
+      dispose ctx
       error
       |> Error.toExitCode
       |> exit
