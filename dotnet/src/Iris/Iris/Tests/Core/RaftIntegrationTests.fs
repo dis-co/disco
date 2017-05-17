@@ -16,7 +16,6 @@ open Iris.Service.Raft
 open FSharpx.Functional
 open Microsoft.FSharp.Control
 open ZeroMQ
-open Hopac
 
 [<AutoOpen>]
 module RaftIntegrationTests =
@@ -60,11 +59,19 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let! leader = RaftServer.create ctx leadercfg
+        let! leader = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
         do! leader.Start()
         expect "Leader should have one connection" 1 count leader.Connections
 
-        let! follower = RaftServer.create ctx followercfg
+        let! follower = RaftServer.create ctx followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
         do! follower.Start()
         expect "Follower should have one connection" 1 count follower.Connections
 
@@ -100,7 +107,11 @@ module RaftIntegrationTests =
           Config.create "leader" machine
           |> Config.addSiteAndSetActive site
 
-        use! leader = RaftServer.create ctx leadercfg
+        use! leader = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
         let handle = function
           | RaftEvent.Started -> started.Set() |> ignore
@@ -114,7 +125,11 @@ module RaftIntegrationTests =
 
         expect "Should be running" true Service.isRunning leader.Status
 
-        use! follower = RaftServer.create ctx leadercfg
+        use! follower = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
         do! match follower.Start() with
             | Right _ -> Left (Other("test","follower should have failed"))
@@ -175,13 +190,21 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ctx leadercfg
+        use! leader = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
         use obs1 = leader.Subscribe (setState mem1.Id check1)
 
         do! leader.Start()
 
-        use! follower = RaftServer.create ctx followercfg
+        use! follower = RaftServer.create ctx followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
         use obs2 = follower.Subscribe (setState mem2.Id check2)
 
@@ -223,7 +246,13 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ctx leadercfg
+        use! leader = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() =
+                snapshotCheck.Set() |> ignore
+                Some store.State
+          }
 
         let expected = int leadercfg.Raft.MaxLogDepth * 2
 
@@ -233,12 +262,6 @@ module RaftIntegrationTests =
             store.Dispatch sm
             if store.State.Users.Count = expected then
               expectedCheck.Set() |> ignore
-          | RaftEvent.CreateSnapshot ch ->
-            store.State
-            |> Some
-            |> Ch.send ch
-            |> Hopac.queue
-            snapshotCheck.Set() |> ignore
           | _ -> ()
 
         use obs1 = leader.Subscribe evHandler

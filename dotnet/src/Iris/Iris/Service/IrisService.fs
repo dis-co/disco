@@ -23,8 +23,6 @@ open Microsoft.FSharp.Control
 open FSharpx.Functional
 open LibGit2Sharp
 open SharpYaml.Serialization
-open Hopac
-open Hopac.Infixes
 open ZeroMQ
 
 // * IrisService
@@ -445,56 +443,42 @@ module IrisService =
       { state with Leader = None }
     | _ -> state
 
-  // ** onCreateSnapshot
+  // ** retrieveSnapshot
 
-  let private onCreateSnapshot (state: IrisState) (ch: Ch<State option>) =
-    job {
-      do! Ch.send ch (Some state.Store.State)
-    } |> Hopac.queue
-    state
+  let private retrieveSnapshot (state: IrisState) =
+    let path = Constants.RAFT_DIRECTORY <.>
+               Constants.SNAPSHOT_FILENAME +
+               Constants.ASSET_EXTENSION
+    match Asset.read path with
+    | Right str ->
+      try
+        let serializer = new Serializer()
+        let yml = serializer.Deserialize<SnapshotYaml>(str)
 
-  // ** onRetrieveSnapshot
+        let members =
+          match Config.getActiveSite state.Store.State.Project.Config with
+          | Some site -> site.Members |> Map.toArray |> Array.map snd
+          | _ -> [| |]
 
-  let private onRetrieveSnapshot (state: IrisState) (ch: Ch<RaftLogEntry option>) =
-    job {
-      let path = Constants.RAFT_DIRECTORY <.>
-                  Constants.SNAPSHOT_FILENAME +
-                  Constants.ASSET_EXTENSION
-      match Asset.read path with
-      | Right str ->
-        try
-          let serializer = new Serializer()
+        Snapshot(Id yml.Id
+                ,yml.Index
+                ,yml.Term
+                ,yml.LastIndex
+                ,yml.LastTerm
+                ,members
+                ,DataSnapshot state.Store.State)
+        |> Some
+      with
+        | exn ->
+          exn.Message
+          |> Logger.err (tag "retrieveSnapshot")
+          None
 
-          let yml = serializer.Deserialize<SnapshotYaml>(str)
-
-          let members =
-            match Config.getActiveSite state.Store.State.Project.Config with
-            | Some site -> site.Members |> Map.toArray |> Array.map snd
-            | _ -> [| |]
-
-          let snapshot =
-            Snapshot(Id yml.Id
-                    ,yml.Index
-                    ,yml.Term
-                    ,yml.LastIndex
-                    ,yml.LastTerm
-                    ,members
-                    ,DataSnapshot state.Store.State)
-
-          do! Ch.send ch (Some snapshot)
-        with
-          | exn ->
-            exn.Message
-            |> Logger.err (tag "onRetrieveSnapshot")
-            do! Ch.send ch None
-
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "onRetrieveSnapshot")
-        do! Ch.send ch None
-    } |> Hopac.queue
-    state
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "retrieveSnapshot")
+      None
 
   // ** onPersistSnapshot
 
@@ -579,8 +563,6 @@ module IrisService =
       | RaftEvent.MemberRemoved mem       -> onMemberRemoved    state mem
       | RaftEvent.MemberUpdated mem       -> onMemberUpdated    state mem
       | RaftEvent.Configured mems         -> onConfigured       state mems
-      | RaftEvent.CreateSnapshot ch       -> onCreateSnapshot   state ch
-      | RaftEvent.RetrieveSnapshot ch     -> onRetrieveSnapshot state ch
       | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
       | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst agent
       | _ -> state
@@ -921,7 +903,11 @@ module IrisService =
                 let context = new ZContext()
 
                 let clockService = Clock.create context mem.IpAddr
-                let! raftServer = RaftServer.create context state.Project.Config
+                let! raftServer = RaftServer.create context state.Project.Config {
+                    new IRaftSnapshotCallbacks with
+                      member self.PrepareSnapshot () = Some store.State.Store.State
+                      member self.RetrieveSnapshot () = retrieveSnapshot store.State
+                  }
                 let! socketServer = WebSocketServer.create mem
                 let! apiServer = ApiServer.create context mem state.Project.Id
                 let gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the

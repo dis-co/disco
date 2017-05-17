@@ -6,7 +6,6 @@ module Iris.Core.Interfaces
 open System
 open Iris.Core
 open Iris.Raft
-open Hopac
 
 // * IAgentStore
 
@@ -49,8 +48,6 @@ type RaftEvent =
   | MemberUpdated    of RaftMember
   | Configured       of RaftMember array
   | StateChanged     of RaftState * RaftState
-  | CreateSnapshot   of Ch<State option>
-  | RetrieveSnapshot of Ch<RaftLogEntry option>
   | PersistSnapshot  of RaftLogEntry
   | RaftError        of IrisError
 

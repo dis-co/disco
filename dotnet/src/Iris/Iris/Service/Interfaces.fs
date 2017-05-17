@@ -32,6 +32,11 @@ type IGitServer =
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
+// * IRaftSnapshotCallbacks
+
+type IRaftSnapshotCallbacks =
+  abstract PrepareSnapshot: unit -> State option
+  abstract RetrieveSnapshot: unit -> RaftLogEntry option
 
 // * IRaftServer
 

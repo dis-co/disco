@@ -16,8 +16,6 @@ open Iris.Raft
 open FSharpx.Functional
 open Utilities
 open Persistence
-open Hopac
-open Hopac.Infixes
 open ZeroMQ
 
 // * Raft
@@ -232,6 +230,7 @@ module Raft =
                             (construct: ClientConfig -> IClient)
                             (connections: Connections)
                             (subscriptions: Subscriptions)
+                            (callbacks: IRaftSnapshotCallbacks)
                             (agent: StateArbiter) =
 
     { new IRaftCallbacks with
@@ -253,35 +252,12 @@ module Raft =
 
         member self.PrepareSnapshot raft =
           Tracing.trace (tag "prepareSnapshot") <| fun () ->
-            let ch:Ch<State option> = Ch()
-
-            ch
-            |> RaftEvent.CreateSnapshot
-            |> notify subscriptions
-
-            let result =
-              job {
-                let! state = Ch.take ch
-                return state
-              }
-              |> Hopac.run
-
-            Option.map (DataSnapshot >> Raft.createSnapshot raft) result
+            callbacks.PrepareSnapshot ()
+            |> Option.map (DataSnapshot >> Raft.createSnapshot raft)
 
         member self.RetrieveSnapshot () =
           Tracing.trace (tag "retrieveSnapshot") <| fun () ->
-            let ch:Ch<RaftLogEntry option> = Ch()
-
-            asynchronously <| fun () ->
-              ch
-              |> RaftEvent.RetrieveSnapshot
-              |> notify subscriptions
-
-            job {
-              let! state = Ch.take ch
-              return state
-            }
-            |> Hopac.run
+            callbacks.RetrieveSnapshot()
 
         member self.PersistSnapshot log =
           Tracing.trace (tag "persistSnapshot") <| fun () ->
@@ -1473,7 +1449,7 @@ module Raft =
 
     // ** create
 
-    let create ctx (config: IrisConfig) =
+    let create ctx (config: IrisConfig) callbacks =
       either {
         let cts = new CancellationTokenSource()
         let connections = new Connections()
@@ -1492,6 +1468,7 @@ module Raft =
                 (Client.create ctx)
                 connections
                 subscriptions
+                callbacks
                 agent
             let! initialized = initializeRaft callbacks raftState
             return callbacks, initialized
