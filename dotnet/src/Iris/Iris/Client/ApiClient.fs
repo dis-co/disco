@@ -354,229 +354,227 @@ module ApiClient =
     // *** create
 
     let create ctx (server: IrisServer) (client: IrisClient) =
-      either {
-        let cts = new CancellationTokenSource()
-        let subscriptions = new Subscriptions()
+      let cts = new CancellationTokenSource()
+      let subscriptions = new Subscriptions()
 
-        let state =
-          { Status = ServiceStatus.Stopped
-            Client = client
-            Peer = server
-            Server = Unchecked.defaultof<IBroker>
-            Socket = Unchecked.defaultof<IClient>
-            Store = Store(State.Empty)
-            Elapsed = 0<ms>
-            Subscriptions = subscriptions
-            Stopper = new AutoResetEvent(false)
-            Disposables = [] }
+      let state =
+        { Status = ServiceStatus.Stopped
+          Client = client
+          Peer = server
+          Server = Unchecked.defaultof<IBroker>
+          Socket = Unchecked.defaultof<IClient>
+          Store = Store(State.Empty)
+          Elapsed = 0<ms>
+          Subscriptions = subscriptions
+          Stopper = new AutoResetEvent(false)
+          Disposables = [] }
 
-        let store:IAgentStore<ClientState> = AgentStore.create()
-        store.Update state
+      let store:IAgentStore<ClientState> = AgentStore.create()
+      store.Update state
 
-        let agent = new ApiAgent(loop store, cts.Token)
-        agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
+      let agent = new ApiAgent(loop store, cts.Token)
+      agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
 
-        return
-          { new IApiClient with
+      { new IApiClient with
 
-              // **** Start
-              member self.Start () = either {
-                  let backendAddr =
-                    client.Id
-                    |> string
-                    |> Some
-                    |> Uri.inprocUri Constants.API_CLIENT_PREFIX
+          // **** Start
 
-                  let clientAddr =
-                    client.Port
-                    |> Some
-                    |> Uri.tcpUri client.IpAddress
+          member self.Start () = either {
+              let backendAddr =
+                client.Id
+                |> string
+                |> Some
+                |> Uri.inprocUri Constants.API_CLIENT_PREFIX
 
-                  let srvAddr =
-                    server.Port
-                    |> Some
-                    |> Uri.tcpUri server.IpAddress
+              let clientAddr =
+                client.Port
+                |> Some
+                |> Uri.tcpUri client.IpAddress
 
-                  sprintf "Starting server on %O" clientAddr
-                  |> Logger.debug (tag "start")
+              let srvAddr =
+                server.Port
+                |> Some
+                |> Uri.tcpUri server.IpAddress
 
-                  let socket = Client.create ctx {
-                    PeerId = client.Id
-                    Frontend = srvAddr
-                    Timeout = int Constants.REQ_TIMEOUT * 1<ms>
-                  }
+              sprintf "Starting server on %O" clientAddr
+              |> Logger.debug (tag "start")
 
-                  let result = Broker.create ctx {
-                    Id = client.Id
-                    MinWorkers = 5uy
-                    MaxWorkers = 20uy
-                    Frontend = clientAddr
-                    Backend = backendAddr
-                    RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
-                  }
+              let socket = Client.create ctx {
+                PeerId = client.Id
+                Frontend = srvAddr
+                Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+              }
 
-                  match result with
-                  | Right server ->
-                    let srvobs = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                    let clntobs = socket.Subscribe (Msg.RawClientResponse >> agent.Post)
+              let result = Broker.create ctx {
+                Id = client.Id
+                MinWorkers = 5uy
+                MaxWorkers = 20uy
+                Frontend = clientAddr
+                Backend = backendAddr
+                RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
+              }
 
-                    let updated =
-                      { store.State with
-                          Socket = socket
-                          Server = server
-                          Disposables = [ srvobs; clntobs ] }
+              match result with
+              | Right server ->
+                let srvobs = server.Subscribe (Msg.RawServerRequest >> agent.Post)
+                let clntobs = socket.Subscribe (Msg.RawClientResponse >> agent.Post)
 
-                    store.Update updated
+                let updated =
+                  { store.State with
+                      Socket = socket
+                      Server = server
+                      Disposables = [ srvobs; clntobs ] }
 
-                    agent.Start()
-                    agent.Post Msg.Start
-                  | Left error ->
-                    Logger.err (tag "Start") (string error)
-                    return! Either.fail error
-                }
+                store.Update updated
 
-              // **** State
-
-              member self.State
-                with get () = store.State.Store.State // :D
-
-              // **** Status
-
-              member self.Status
-                with get () = store.State.Status
-
-              // **** Subscribe
-
-              member self.Subscribe (callback: ClientEvent -> unit) =
-                let guid = Guid.NewGuid()
-                let listener = createListener guid subscriptions
-                { new IObserver<ClientEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
-
-              // **** Dispose
-
-              //  ____  _
-              // |  _ \(_)___ _ __   ___  ___  ___
-              // | | | | / __| '_ \ / _ \/ __|/ _ \
-              // | |_| | \__ \ |_) | (_) \__ \  __/
-              // |____/|_|___/ .__/ \___/|___/\___|
-              //             |_|
-
-              member self.Dispose () =
-                agent.Post Msg.Stop
-                match store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0) with
-                | true -> ()
-                | false -> Logger.debug (tag "Dispose") "attempt to un-register with server failed"
-                dispose cts
-                ServiceStatus.Disposed |> ClientEvent.Status |> notify state.Subscriptions
-                dispose store.State
-                store.Update { store.State with Status = ServiceStatus.Disposed }
-
-              // **** AddCue
-
-              //   ____
-              //  / ___|   _  ___
-              // | |  | | | |/ _ \
-              // | |__| |_| |  __/
-              //  \____\__,_|\___|
-
-              member self.AddCue (cue: Cue) =
-                AddCue cue
-                |> Msg.Request
-                |> agent.Post
-
-              // **** UpdateCue
-
-              member self.UpdateCue (cue: Cue) =
-                UpdateCue cue
-                |> Msg.Request
-                |> agent.Post
-
-              // **** RemoveCue
-
-              member self.RemoveCue (cue: Cue) =
-                RemoveCue cue
-                |> Msg.Request
-                |> agent.Post
-
-              // **** AddPinGroup
-
-              member self.AddPinGroup (group: PinGroup) =
-                AddPinGroup group
-                |> Msg.Request
-                |> agent.Post
-
-              // **** UpdatePinGroup
-
-              member self.UpdatePinGroup (group: PinGroup) =
-                UpdatePinGroup group
-                |> Msg.Request
-                |> agent.Post
-
-              // **** RemovePinGroup
-
-              member self.RemovePinGroup (group: PinGroup) =
-                RemovePinGroup group
-                |> Msg.Request
-                |> agent.Post
-
-              // **** AddCueList
-
-              member self.AddCueList (cuelist: CueList) =
-                AddCueList cuelist
-                |> Msg.Request
-                |> agent.Post
-
-              // **** UpdateCueList
-
-              member self.UpdateCueList (cuelist: CueList) =
-                UpdateCueList cuelist
-                |> Msg.Request
-                |> agent.Post
-
-              // **** RemoveCueList
-
-              member self.RemoveCueList (cuelist: CueList) =
-                RemoveCueList cuelist
-                |> Msg.Request
-                |> agent.Post
-
-              // **** AddPin
-
-              member self.AddPin(pin: Pin) =
-                AddPin pin
-                |> Msg.Request
-                |> agent.Post
-
-              // **** UpdatePin
-
-              member self.UpdatePin(pin: Pin) =
-                UpdatePin pin
-                |> Msg.Request
-                |> agent.Post
-
-              // **** UpdateSlices
-
-              member self.UpdateSlices(slices: Slices) =
-                UpdateSlices slices
-                |> Msg.Request
-                |> agent.Post
-
-              // **** RemovePin
-
-              member self.RemovePin(pin: Pin) =
-                RemovePin pin
-                |> Msg.Request
-                |> agent.Post
-
-              // **** Append
-
-              member self.Append(cmd: StateMachine) =
-                cmd
-                |> Msg.Request
-                |> agent.Post
+                agent.Start()
+                agent.Post Msg.Start
+              | Left error ->
+                Logger.err (tag "Start") (string error)
+                return! Either.fail error
             }
-      }
+
+          // **** State
+
+          member self.State
+            with get () = store.State.Store.State // :D
+
+          // **** Status
+
+          member self.Status
+            with get () = store.State.Status
+
+          // **** Subscribe
+
+          member self.Subscribe (callback: ClientEvent -> unit) =
+            let guid = Guid.NewGuid()
+            let listener = createListener guid subscriptions
+            { new IObserver<ClientEvent> with
+                member self.OnCompleted() = ()
+                member self.OnError(error) = ()
+                member self.OnNext(value) = callback value }
+            |> listener.Subscribe
+
+          // **** Dispose
+
+          //  ____  _
+          // |  _ \(_)___ _ __   ___  ___  ___
+          // | | | | / __| '_ \ / _ \/ __|/ _ \
+          // | |_| | \__ \ |_) | (_) \__ \  __/
+          // |____/|_|___/ .__/ \___/|___/\___|
+          //             |_|
+
+          member self.Dispose () =
+            agent.Post Msg.Stop
+            match store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0) with
+            | true -> ()
+            | false -> Logger.debug (tag "Dispose") "attempt to un-register with server failed"
+            dispose cts
+            ServiceStatus.Disposed |> ClientEvent.Status |> notify state.Subscriptions
+            dispose store.State
+            store.Update { store.State with Status = ServiceStatus.Disposed }
+
+          // **** AddCue
+
+          //   ____
+          //  / ___|   _  ___
+          // | |  | | | |/ _ \
+          // | |__| |_| |  __/
+          //  \____\__,_|\___|
+
+          member self.AddCue (cue: Cue) =
+            AddCue cue
+            |> Msg.Request
+            |> agent.Post
+
+          // **** UpdateCue
+
+          member self.UpdateCue (cue: Cue) =
+            UpdateCue cue
+            |> Msg.Request
+            |> agent.Post
+
+          // **** RemoveCue
+
+          member self.RemoveCue (cue: Cue) =
+            RemoveCue cue
+            |> Msg.Request
+            |> agent.Post
+
+          // **** AddPinGroup
+
+          member self.AddPinGroup (group: PinGroup) =
+            AddPinGroup group
+            |> Msg.Request
+            |> agent.Post
+
+          // **** UpdatePinGroup
+
+          member self.UpdatePinGroup (group: PinGroup) =
+            UpdatePinGroup group
+            |> Msg.Request
+            |> agent.Post
+
+          // **** RemovePinGroup
+
+          member self.RemovePinGroup (group: PinGroup) =
+            RemovePinGroup group
+            |> Msg.Request
+            |> agent.Post
+
+          // **** AddCueList
+
+          member self.AddCueList (cuelist: CueList) =
+            AddCueList cuelist
+            |> Msg.Request
+            |> agent.Post
+
+          // **** UpdateCueList
+
+          member self.UpdateCueList (cuelist: CueList) =
+            UpdateCueList cuelist
+            |> Msg.Request
+            |> agent.Post
+
+          // **** RemoveCueList
+
+          member self.RemoveCueList (cuelist: CueList) =
+            RemoveCueList cuelist
+            |> Msg.Request
+            |> agent.Post
+
+          // **** AddPin
+
+          member self.AddPin(pin: Pin) =
+            AddPin pin
+            |> Msg.Request
+            |> agent.Post
+
+          // **** UpdatePin
+
+          member self.UpdatePin(pin: Pin) =
+            UpdatePin pin
+            |> Msg.Request
+            |> agent.Post
+
+          // **** UpdateSlices
+
+          member self.UpdateSlices(slices: Slices) =
+            UpdateSlices slices
+            |> Msg.Request
+            |> agent.Post
+
+          // **** RemovePin
+
+          member self.RemovePin(pin: Pin) =
+            RemovePin pin
+            |> Msg.Request
+            |> agent.Post
+
+          // **** Append
+
+          member self.Append(cmd: StateMachine) =
+            cmd
+            |> Msg.Request
+            |> agent.Post
+        }

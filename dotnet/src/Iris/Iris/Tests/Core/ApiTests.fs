@@ -74,7 +74,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create ctx srvr clnt
+        let client = ApiClient.create ctx srvr clnt
 
         use registered = new AutoResetEvent(false)
         use unregistered = new AutoResetEvent(false)
@@ -136,7 +136,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        use! client = ApiClient.create ctx srvr clnt
+        use client = ApiClient.create ctx srvr clnt
 
         use snapshot = new AutoResetEvent(false)
         use doneCheck = new AutoResetEvent(false)
@@ -221,10 +221,9 @@ module ApiTests =
         use clientSnapshot = new AutoResetEvent(false)
         use clientUpdate = new AutoResetEvent(false)
 
-        use! client = ApiClient.create ctx srvr clnt
+        use client = ApiClient.create ctx srvr clnt
 
-        let clientHandler (ev: ClientEvent) =
-          match ev with
+        let clientHandler = function
           | ClientEvent.Registered -> clientRegistered.Set() |> ignore
           | ClientEvent.Snapshot -> clientSnapshot.Set() |> ignore
           | ClientEvent.Update _ -> clientUpdate.Set() |> ignore
