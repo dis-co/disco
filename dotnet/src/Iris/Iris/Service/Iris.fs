@@ -81,6 +81,7 @@ module Iris =
   // ** create
 
   let create post (options: IrisOptions) = either {
+      let status = ref ServiceStatus.Stopped
       let iris = ref None
       let registration = ref None
       let eventSubscription = ref None
@@ -111,6 +112,7 @@ module Iris =
               with get () = !iris
 
             member self.LoadProject(name, username, password, site) = either {
+                status := ServiceStatus.Starting
                 Option.iter dispose !iris              // in case there was already something loaded
                 Option.iter dispose !eventSubscription // and its subscription as well
                 Option.iter dispose !registration      // and any registered service
@@ -121,13 +123,18 @@ module Iris =
                   Password = password
                   SiteId = site
                 }
-                do! irisService.Start()
-                eventSubscription := subscribeDiscovery irisService discovery
-                let mem = irisService.RaftServer.Raft.Member
-                let project = irisService.Project
-                registration := Option.bind (registerLoadedServices mem project) discovery
-                iris := Some irisService
-                return ()
+                match irisService.Start() with
+                | Right () ->
+                  eventSubscription := subscribeDiscovery irisService discovery
+                  let mem = irisService.RaftServer.Raft.Member
+                  let project = irisService.Project
+                  registration := Option.bind (registerLoadedServices mem project) discovery
+                  iris := Some irisService
+                  status := ServiceStatus.Running
+                  return ()
+                | Left error ->
+                  status := ServiceStatus.Failed error
+                  return! Either.fail error
               }
 
             member self.UnloadProject() = either {
@@ -147,11 +154,14 @@ module Iris =
               }
 
             member self.Dispose() =
-              Option.iter dispose !registration
-              Option.iter dispose !eventSubscription
-              Option.iter dispose !iris
-              dispose httpServer
-              Option.iter dispose discovery
+              if not (Service.isDisposed !status) then
+                status := ServiceStatus.Stopping
+                Option.iter dispose !registration
+                Option.iter dispose !eventSubscription
+                Option.iter dispose !iris
+                dispose httpServer
+                Option.iter dispose discovery
+                status := ServiceStatus.Disposed
           }
     }
 

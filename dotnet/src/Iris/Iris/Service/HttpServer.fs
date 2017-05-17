@@ -40,7 +40,7 @@ module Http =
         |> Successful.ok
         >=> Writers.setMimeType "text/plain")
 
-    let respondWithCors ctx status (txt: string) =      
+    let respondWithCors ctx status (txt: string) =
       let res =
         { ctx.response with
             status = status
@@ -196,30 +196,36 @@ module Http =
 
     let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
       either {
+        let status = ref ServiceStatus.Stopped
         let basePath = defaultArg frontend <| getDefaultBasePath() |> Path.getFullPath
         let cts = new CancellationTokenSource()
         let! webConfig = mkConfig config basePath cts
 
         return
           { new IHttpServer with
-              member self.Start () =
-                try
-                  let _, server =
-                    basePath </> filepath "index.html"
-                    |> app postCommand
-                    |> startWebServerAsync webConfig
-                  Async.Start server
-                  |> Either.succeed
-                with
-                  | exn ->
-                    exn.Message
-                    |> Error.asSocketError (tag "create")
-                    |> Either.fail
+              member self.Start () = either {
+                  try
+                    let _, server =
+                      basePath </> filepath "index.html"
+                      |> app postCommand
+                      |> startWebServerAsync webConfig
+                    Async.Start server
+                    status := ServiceStatus.Running
+                    return ()
+                  with
+                    | exn ->
+                      return!
+                        exn.Message
+                        |> Error.asSocketError (tag "create")
+                        |> Either.fail
+                }
 
               member self.Dispose () =
-                try
-                  cts.Cancel ()
-                  cts.Dispose ()
-                with
-                  | _ -> () }
+                if Service.isRunning !status then
+                  try
+                    cts.Cancel ()
+                    cts.Dispose ()
+                    status := ServiceStatus.Disposed
+                  with
+                    | _ -> () }
       }

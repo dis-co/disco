@@ -202,7 +202,7 @@ module WebSockets =
       }
     act initial
 
-  // ** WsServer
+  // ** WebSocketServer
 
   //  ____        _     _ _
   // |  _ \ _   _| |__ | (_) ___
@@ -215,6 +215,7 @@ module WebSockets =
 
     let create (mem: RaftMember) =
       either {
+        let status = ref ServiceStatus.Stopped
         let connections = Connections()
         let subscriptions = Subscriptions()
 
@@ -257,6 +258,7 @@ module WebSockets =
                 |> listener.Subscribe
 
               member self.Start () =
+                status := ServiceStatus.Starting
                 try
                   uri
                   |> sprintf "Starting WebSocketServer on: %s"
@@ -265,6 +267,7 @@ module WebSockets =
                   agent.Start()
                   server.Start(new Action<IWebSocketConnection>(handler))
 
+                  status := ServiceStatus.Running
                   "WebSocketServer successfully started"
                   |> Logger.debug (tag "Start")
                   |> Either.succeed
@@ -275,11 +278,13 @@ module WebSockets =
                     |> Either.fail
 
               member self.Dispose () =
-                for KeyValue(_, connection) in connections do
-                  connection.Close()
-                connections.Clear()
-                subscriptions.Clear()
-                dispose server }
+                if Service.isRunning !status then
+                  for KeyValue(_, connection) in connections do
+                    connection.Close()
+                  connections.Clear()
+                  subscriptions.Clear()
+                  dispose server
+                  status := ServiceStatus.Disposed }
       }
 
     let broadcast (cmd: StateMachine) (server: IWebSocketServer) =

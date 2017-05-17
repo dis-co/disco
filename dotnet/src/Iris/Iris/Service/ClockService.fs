@@ -232,5 +232,6 @@ module Clock =
           |> listener.Subscribe
 
         member clock.Dispose() =
-          dispose state
+          if not state.Disposed then
+            dispose state
       }

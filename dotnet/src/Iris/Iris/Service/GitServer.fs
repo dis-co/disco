@@ -263,7 +263,7 @@ module Git =
 
   let private handleStop (state: GitState) =
     Process.kill state.Pid
-    state
+    { state with Status = ServiceStatus.Stopping }
 
   // ** loop
 
@@ -370,12 +370,14 @@ module Git =
             }
 
           member self.Dispose() =
-            agent.Post Msg.Stop
-            let stopped = store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)
-            if not stopped then
-              "Timeout disposing GitServer"
-              |> Logger.err (tag "Dispose")
-            dispose store.State
-            cts.Cancel()
-            dispose agent
+            if not (Service.isDisposed store.State.Status) then
+              agent.Post Msg.Stop
+              let stopped = store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+              if not stopped then
+                "Timeout disposing GitServer"
+                |> Logger.err (tag "Dispose")
+              dispose store.State
+              cts.Cancel()
+              dispose agent
+              store.Update { state with Status = ServiceStatus.Disposed }
         }

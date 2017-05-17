@@ -89,8 +89,7 @@ module Discovery =
 
           { new IDisposable with
               member self.Dispose() =
-                lock subscriptions <| fun _ ->
-                  subscriptions.TryRemove(guid) |> ignore } }
+                subscriptions.TryRemove(guid) |> ignore } }
 
   // ** notify
 
@@ -366,11 +365,13 @@ module Discovery =
                   service |> Msg.UnRegister |> agent.Post }
 
           member self.Dispose() =
-            use are = new AutoResetEvent(false)
-            are |> Msg.Stop |> agent.Post
-            are.WaitOne() |> ignore
-            dispose store.State
-            source.Cancel()
-            dispose source
-            dispose agent
+            if not (Service.isDisposed store.State.Status) then
+              use are = new AutoResetEvent(false)
+              are |> Msg.Stop |> agent.Post
+              are.WaitOne() |> ignore
+              dispose store.State
+              source.Cancel()
+              dispose source
+              dispose agent
+              store.Update { state with Status = ServiceStatus.Disposed }
         }
