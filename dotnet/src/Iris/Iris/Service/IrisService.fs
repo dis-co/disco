@@ -879,12 +879,12 @@ module IrisService =
               match user with
               | Some user when isValidPassword user iris.Password ->
                 let state =
-                  match iris.SiteName with
+                  match iris.SiteId with
                   | Some site ->
                     let site =
                       state.Project.Config.Sites
-                      |> Array.tryFind (fun s -> s.Name = site)
-                      |> function Some s -> s | None -> { ClusterConfig.Default with Name = site }
+                      |> Array.tryFind (fun s -> s.Id = site)
+                      |> function Some s -> s | None -> ClusterConfig.Default
 
                     // Add current machine if necessary
                     // taking the default ports from MachineConfig

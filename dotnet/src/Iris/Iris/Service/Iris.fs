@@ -119,7 +119,7 @@ module Iris =
                   ProjectName = name
                   UserName = username
                   Password = password
-                  SiteName = site
+                  SiteId = site
                 }
                 do! irisService.Start()
                 eventSubscription := subscribeDiscovery irisService discovery

@@ -88,7 +88,7 @@ type IrisServiceOptions =
     ProjectName: Name
     UserName: Name
     Password: Password
-    SiteName: Name option }
+    SiteId: Id option }
 
 // * IIrisService
 
@@ -127,5 +127,5 @@ type IIris =
   abstract HttpServer: IHttpServer
   abstract DiscoveryService: IDiscoveryService option
   abstract IrisService: IIrisService option
-  abstract LoadProject: Name * UserName * Password * Name option -> Either<IrisError,unit>
+  abstract LoadProject: Name * UserName * Password * Id option -> Either<IrisError,unit>
   abstract UnloadProject: unit -> Either<IrisError,unit>

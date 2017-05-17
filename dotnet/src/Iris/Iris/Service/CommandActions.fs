@@ -176,11 +176,11 @@ let machineConfig () =
 //      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
-let cloneProject (name: Name) (uri: string) =
+let cloneProject (name: Name) (uri: Url) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> filepath (unwrap name)
   let success = sprintf "Successfully cloned project from: %A" uri
-  Git.Repo.clone target uri
+  Git.Repo.clone target (unwrap uri)
   |> Either.map (konst (serializeJson success))
 
 // Command to test:
@@ -189,22 +189,22 @@ let cloneProject (name: Name) (uri: string) =
 //      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
-let pullProject (id: string) (name: Name) (uri: string) = either {
+let pullProject (id: Id) (name: Name) (uri: Url) = either {
     let machine = MachineConfig.get()
     let target = machine.WorkSpace </> filepath (unwrap name)
     let! repo = Git.Repo.repository target
 
     let! remote =
       match Git.Config.tryFindRemote repo (string id) with
-      | Some remote -> Git.Config.updateRemote repo remote (url uri)
-      | None -> Git.Config.addRemote repo (string id) (url uri)
+      | Some remote -> Git.Config.updateRemote repo remote uri
+      | None -> Git.Config.addRemote repo (string id) uri
 
     let! result = Git.Repo.pull repo remote User.Admin.Signature
 
     match result.Status with
     | LibGit2Sharp.MergeStatus.Conflicts ->
       return!
-        "Clonflict while pulling from " + uri
+        "Clonflict while pulling from " + unwrap uri
         |> Error.asGitError "pullProject"
         |> Either.fail
     | _ ->
