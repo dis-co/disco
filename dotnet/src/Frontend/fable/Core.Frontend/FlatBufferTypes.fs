@@ -970,8 +970,8 @@ type RaftConfigFB =
   abstract MaxLogDepth:      int
   abstract LogLevel:         string
   abstract DataDir:          string
-  abstract MaxRetries:       uint16
-  abstract PeriodicInterval: uint16
+  abstract MaxRetries:       int
+  abstract PeriodicInterval: int
 
 type RaftConfigFBConstructor =
   abstract prototype: RaftConfigFB with get, set
@@ -981,8 +981,8 @@ type RaftConfigFBConstructor =
   abstract AddMaxLogDepth: builder: FlatBufferBuilder * mld:int -> unit
   abstract AddLogLevel: builder: FlatBufferBuilder * lvl:Offset<string> -> unit
   abstract AddDataDir: builder: FlatBufferBuilder * dir:Offset<string> -> unit
-  abstract AddMaxRetries: builder: FlatBufferBuilder * rtr:uint16 -> unit
-  abstract AddPeriodicInterval: builder: FlatBufferBuilder * pi:uint16 -> unit
+  abstract AddMaxRetries: builder: FlatBufferBuilder * rtr:int -> unit
+  abstract AddPeriodicInterval: builder: FlatBufferBuilder * pi:int -> unit
   abstract EndRaftConfigFB: builder: FlatBufferBuilder -> Offset<RaftConfigFB>
   abstract GetRootAsRaftConfigFB: bytes: ByteBuffer -> RaftConfigFB
   abstract Create: unit -> RaftConfigFB

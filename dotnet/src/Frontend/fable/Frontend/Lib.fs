@@ -188,15 +188,13 @@ let addMember(info: obj) =
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
       match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
-      | None   -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      | Some p -> PullProject(p.Id, latestState.Project.Name, projectGitUri)
+      | None   -> CloneProject(latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
 
     notify commandMsg
 
-    let active =
-      latestState.Project.Config.ActiveSite
-      |> Option.map string
+    let active = latestState.Project.Config.ActiveSite
 
     // Load active project in machine B
     // Note that we don't use loadProject from below, since that function
@@ -204,7 +202,7 @@ let addMember(info: obj) =
 
     // TODO: Using the admin user for now, should it be the same user as leader A?
     let! loadResult =
-      LoadProject(unwrap latestState.Project.Name, "admin", password "Nsynk", active)
+      LoadProject(latestState.Project.Name, name "admin", password "Nsynk", active)
       |> postCommandPrivate memberIpAndPort
 
     printfn "response: %A" loadResult
@@ -232,8 +230,8 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: string, username: string, pass: string, site: string option, ipAndPort: string option): JS.Promise<string option> =
-  LoadProject(project, username, password pass, site)
+let rec loadProject(project: Name, username: UserName, pass: Password, site: Id option, ipAndPort: string option): JS.Promise<string option> =
+  LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
@@ -309,4 +307,3 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
-
