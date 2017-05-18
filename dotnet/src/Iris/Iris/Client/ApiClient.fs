@@ -9,7 +9,6 @@ open Iris.Core
 open Iris.Client
 open Iris.Zmq
 open Iris.Serialization
-open Hopac
 open ZeroMQ
 
 // * ApiClient module
@@ -57,9 +56,9 @@ module ApiClient =
     interface IDisposable with
       member self.Dispose() =
         List.iter dispose self.Disposables
-        dispose self.Server
-        dispose self.Socket
-        dispose self.Stopper
+        try dispose self.Server  with | _ -> ()
+        try dispose self.Socket  with | _ -> ()
+        try dispose self.Stopper with | _ -> ()
 
   // ** Msg
 
@@ -401,7 +400,7 @@ module ApiClient =
               sprintf "Starting server on %O" clientAddr
               |> Logger.debug (tag "start")
 
-              let socket = Client.create ctx {
+              let! socket = Client.create ctx {
                 PeerId = client.Id
                 Frontend = srvAddr
                 Timeout = int Constants.REQ_TIMEOUT * 1<ms>
@@ -473,7 +472,8 @@ module ApiClient =
             | false ->
               Logger.debug (tag "Dispose") "attempt to un-register with server failed"
               ServiceStatus.Disposed |> ClientEvent.Status |> Msg.Notify |> agent.Post
-              store.State.Stopper.WaitOne() |> ignore
+              if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                Logger.debug (tag "Dispose") "timeout: attempt to dispose api client failed"
             dispose cts
             dispose store.State
             store.Update { store.State with Status = ServiceStatus.Disposed }

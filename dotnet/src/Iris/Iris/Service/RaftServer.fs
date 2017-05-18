@@ -45,7 +45,7 @@ module Raft =
       Callbacks:      IRaftCallbacks
       Server:         IBroker
       Disposables:    IDisposable list
-      MakePeerSocket: ClientConfig -> IClient
+      MakePeerSocket: ClientConfig -> Either<IrisError,IClient>
       Connections:    ConcurrentDictionary<Id,IClient>
       Subscriptions:  Subscriptions
       Started:        AutoResetEvent
@@ -167,12 +167,19 @@ module Raft =
 
   // ** makePeerSocket
 
-  let private makePeerSocket (peer: RaftMember) (construct: ClientConfig -> IClient) =
-    construct {
+  let private makePeerSocket (peer: RaftMember) (construct: ClientConfig -> Either<IrisError,IClient>) =
+    let result = construct {
       PeerId = peer.Id
       Frontend = Uri.raftUri peer
       Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
     }
+    match result with
+    | Right socket -> Some socket
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "makePeerSocket")
+      None
 
   // ** getPeerSocket
 
@@ -224,14 +231,14 @@ module Raft =
       |> Logger.debug (tag "sendRequest")
       let connection =
         makePeerSocket peer construct
-        |> registerPeerSocket agent
-      performRequest request connection
-      addPeerSocket connections connection
+        |> Option.map (registerPeerSocket agent)
+      Option.iter (performRequest request) connection
+      Option.iter (addPeerSocket connections) connection
 
   // ** makeCallbacks
 
   let private makeCallbacks (id: Id)
-                            (construct: ClientConfig -> IClient)
+                            (construct: ClientConfig -> Either<IrisError,IClient>)
                             (connections: Connections)
                             (callbacks: IRaftSnapshotCallbacks)
                             (agent: RaftAgent) =
@@ -1117,8 +1124,8 @@ module Raft =
   let private handleAddMember (state: RaftServerState) (mem: RaftMember) (agent: RaftAgent) =
     Tracing.trace (tag "handleAddMember") <| fun () ->
       makePeerSocket mem state.MakePeerSocket
-      |> registerPeerSocket agent
-      |> addPeerSocket state.Connections
+      |> Option.map (registerPeerSocket agent)
+      |> Option.iter (addPeerSocket state.Connections)
       match addMembers state [| mem |] with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
@@ -1570,8 +1577,8 @@ module Raft =
                             |> sprintf "adding peer socket for %O"
                             |> Logger.debug (tag "Start")
                             makePeerSocket peer store.State.MakePeerSocket
-                            |> registerPeerSocket agent
-                            |> addPeerSocket connections)
+                            |> Option.map (registerPeerSocket agent)
+                            |> Option.iter (addPeerSocket connections))
                         raftState.Peers
 
                       store.Update

@@ -11,7 +11,7 @@ open Iris.Core
 module TestUtilities =
 
   let waitOrDie (tag: string) (are: AutoResetEvent) =
-    let timeout = 1000.0
+    let timeout = 3000.0
     if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
       Either.succeed()
     else

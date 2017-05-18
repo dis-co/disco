@@ -379,7 +379,8 @@ module Discovery =
             if not (Service.isDisposed store.State.Status) then
               use are = new AutoResetEvent(false)
               are |> Msg.Stop |> agent.Post
-              are.WaitOne() |> ignore
+              if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                Logger.debug (tag "Dispose") "timeout: attempt to dispose discovery service failed"
               dispose store.State
               source.Cancel()
               dispose source

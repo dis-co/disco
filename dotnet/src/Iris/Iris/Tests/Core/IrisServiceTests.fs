@@ -105,8 +105,6 @@ module IrisServiceTests =
   let test_ensure_gitserver_restart_on_premature_exit =
     testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
         use checkGitStarted = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
@@ -155,8 +153,6 @@ module IrisServiceTests =
   let test_ensure_iris_server_clones_changes_from_leader =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)

@@ -408,15 +408,22 @@ module IrisService =
   // ** makeLeader
 
   let private makeLeader (leader: RaftMember)
-                         (construct: ClientConfig -> IClient)
+                         (construct: ClientConfig -> Either<IrisError,IClient>)
                          (agent: IrisAgent) =
-    let socket = construct {
-        PeerId = leader.Id
-        Frontend = Uri.raftUri leader
-        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
-      }
-    socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
-    { Member = leader; Socket = socket }
+    let result = construct {
+      PeerId = leader.Id
+      Frontend = Uri.raftUri leader
+      Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+    }
+    match result with
+    | Right socket ->
+      socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
+      Some { Member = leader; Socket = socket }
+    | Left error ->
+      error
+      |> sprintf "error creating connection for leader: %O"
+      |> Logger.err (tag "makeLeader")
+      None
 
   // ** onStateChanged
 
@@ -433,7 +440,7 @@ module IrisService =
       match state.RaftServer.Leader with
       | Some leader ->
         let makePeerSocket = Client.create state.Context
-        { state with Leader = Some (makeLeader leader makePeerSocket agent) }
+        { state with Leader = makeLeader leader makePeerSocket agent }
       | None ->
         "Could not start re-direct socket: no leader"
         |> Logger.debug (tag "onStateChanged")
@@ -530,23 +537,13 @@ module IrisService =
       | Some leader ->
         requestAppend state.Member.Id leader sm
         state
-        // | Right newleader ->
-        //   { state with Leader = Some newleader }
-        // | Left error ->
-        //   dispose leader
-        //   { state with Leader = None }
       | None ->
         match state.RaftServer.Leader with
         | Some mem ->
           let makePeerSocket = Client.create state.Context
           let leader = makeLeader mem makePeerSocket agent
-          requestAppend state.Member.Id leader sm
-          state
-          // | Right newleader ->
-          //   { state with Leader = Some newleader }
-          // | Left error ->
-          //   dispose leader
-          //   { state with Leader = None }
+          Option.iter (fun leader -> requestAppend state.Member.Id leader sm) leader
+          { state with Leader = leader }
         | None ->
           "Could not start re-direct socket: No Known Leader"
           |> Logger.debug (tag "forwardCommand")
@@ -1016,7 +1013,9 @@ module IrisService =
               | ServiceStatus.Running ->
                 use are = new AutoResetEvent(false)
                 are |> Msg.Stop |> agent.Post // signalling stop to the loop
-                are.WaitOne() |> ignore      // waiting for it to be done
+                if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                  "timeout: attempt to dispose iris service failed"
+                  |> Logger.debug (tag "Dispose")
                 cts.Cancel()                // cancel the actor
                 dispose cts
                 dispose agent

@@ -179,10 +179,6 @@ module ApiServer =
     let rec loop () =
       async {
         do! Async.Sleep(timeout)
-
-        if not socket.Running then
-          socket.Restart()
-
         ClientApiRequest.Ping
         |> Binary.encode
         |> fun body -> { Body = body }
@@ -230,23 +226,29 @@ module ApiServer =
 
       // construct a new client value
       let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
-      let socket = Client.create state.Context {
+      let client = Client.create state.Context {
         PeerId = meta.Id
         Frontend = addr
         Timeout = int Constants.REQ_TIMEOUT * 1<ms>
       }
 
-      socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
+      match client with
+      | Right socket ->
+        socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
 
-      let client =
-        { Meta = meta
-          Socket = socket
-          Timer = pingTimer socket agent }
+        let client =
+          { Meta = meta
+            Socket = socket
+            Timer = pingTimer socket agent }
 
-      meta.Id |> Msg.InstallSnapshot |> agent.Post
-      meta |> ApiEvent.Register |> notify state.Subscriptions
-
-      { state with Clients = Map.add meta.Id client state.Clients }
+        meta.Id |> Msg.InstallSnapshot |> agent.Post
+        meta |> ApiEvent.Register |> notify state.Subscriptions
+        { state with Clients = Map.add meta.Id client state.Clients }
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "handleAddClient")
+        state
 
   // ** handleRemoveClient
 
@@ -599,7 +601,8 @@ module ApiServer =
 
               member self.Dispose () =
                 agent.Post Msg.Stop
-                store.State.Stopper.WaitOne() |> ignore
+                if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                  Logger.debug (tag "Dispose") "timeout: attempt to dispose api server failed"
                 dispose cts
             }
       }

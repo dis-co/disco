@@ -63,7 +63,6 @@ type IClient =
   abstract PeerId: Id
   abstract Request: RawClientRequest -> Either<IrisError,unit>
   abstract Running: bool
-  abstract Restart: unit -> unit
   abstract Subscribe: (RawClientResponse -> unit) -> IDisposable
 
 // * ClientConfig
@@ -260,13 +259,6 @@ module Client =
           self.Status <- ServiceStatus.Disposed
           Logger.debug (tag "Dispose") "client socket disposed"
 
-  // ** initialize
-
-  let private initialize (state: LocalThreadState) =
-    if state.Status = ServiceStatus.Stopped then
-      state.Start()
-      state.Starter.Set() |> ignore
-
   // ** started
 
   let private started (state: LocalThreadState) =
@@ -280,7 +272,7 @@ module Client =
   // ** worker
 
   let private worker (state: LocalThreadState) () =
-    initialize state
+    state.Start()
 
     let poll = ZPollItem.CreateReceiver()
     let timeout = Nullable(TimeSpan.FromMilliseconds 1.0)
@@ -349,46 +341,47 @@ module Client =
     thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
-    state.Starter.WaitOne() |> ignore
+    if not (state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+      let msg = "timeout: starting client failed"
+      Logger.debug (tag "create") msg
+      thread.Abort()
+      dispose state
+      msg |> Error.asSocketError (tag "create") |> Either.fail
+    else
+      { new IClient with
+          member self.PeerId
+            with get () = state.Id
 
-    { new IClient with
-        member self.PeerId
-          with get () = state.Id
+          member self.Request(request: RawClientRequest) =
+            if state.Status <> ServiceStatus.Disposed then
+              request
+              |> state.Requests.Enqueue
+              |> Either.succeed
+            else
+              "Socket already disposed"
+              |> Error.asSocketError (tag "create")
+              |> Either.fail
 
-        member self.Request(request: RawClientRequest) =
-          if state.Status <> ServiceStatus.Disposed then
-            request
-            |> state.Requests.Enqueue
-            |> Either.succeed
-          else
-            "Socket already disposed"
-            |> Error.asSocketError (tag "create")
-            |> Either.fail
+          member self.Running
+            with get () =
+              state.Status = ServiceStatus.Running
 
-        member self.Running
-          with get () =
-            state.Status = ServiceStatus.Running
+          member self.Subscribe (callback: RawClientResponse -> unit) =
+            let guid = Guid.NewGuid()
+            let listener = createListener guid state.Subscriptions
+            { new IObserver<RawClientResponse> with
+                member self.OnCompleted() = ()
+                member self.OnError (error) = ()
+                member self.OnNext(value) = callback value }
+            |> listener.Subscribe
 
-        member self.Restart () =
-          self.Dispose()
-          state.Status <- ServiceStatus.Stopped
-          thread <- Thread(worker state)
-          thread.Name <- sprintf "Client %O" state.Id
-          thread.Start()
-          state.Starter.WaitOne() |> ignore
-
-        member self.Subscribe (callback: RawClientResponse -> unit) =
-          let guid = Guid.NewGuid()
-          let listener = createListener guid state.Subscriptions
-          { new IObserver<RawClientResponse> with
-              member self.OnCompleted() = ()
-              member self.OnError (error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
-
-        member self.Dispose() =
-          state.Status <- ServiceStatus.Stopping
-          state.Stopper.WaitOne() |> ignore }
+          member self.Dispose() =
+            state.Status <- ServiceStatus.Stopping
+            if not (state.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+              Logger.err (tag "Dispose") "timeout: disposing client socket failed"
+              thread.Abort()
+              dispose state }
+      |> Either.succeed
 
 // * Worker module
 
@@ -574,26 +567,31 @@ module private Worker =
     thread.Name <- sprintf "broker-worker-%d" state.Id
     thread.Start()
 
-    state.Starter.WaitOne() |> ignore
+    if state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0) then
+      Either.map
+        (fun _ ->
+          { new IWorker with
+              member worker.Id
+                with get () = state.Id
 
-    Either.map
-      (fun _ ->
-        { new IWorker with
-            member worker.Id
-              with get () = state.Id
+              member worker.Respond(response: RawServerResponse) =
+                state.Responder.Enqueue(response)
 
-            member worker.Respond(response: RawServerResponse) =
-              state.Responder.Enqueue(response)
-
-            member worker.Subscribe(callback: RawServerRequest -> unit) =
-              let guid = Guid.NewGuid()
-              let listener = createListener guid state.Subscriptions
-              { new IObserver<RawServerRequest> with
-                  member self.OnCompleted() = ()
-                  member self.OnError(error) = ()
-                  member self.OnNext(value) = callback value }
-              |> listener.Subscribe })
-      state.Error
+              member worker.Subscribe(callback: RawServerRequest -> unit) =
+                let guid = Guid.NewGuid()
+                let listener = createListener guid state.Subscriptions
+                { new IObserver<RawServerRequest> with
+                    member self.OnCompleted() = ()
+                    member self.OnError(error) = ()
+                    member self.OnNext(value) = callback value }
+                |> listener.Subscribe })
+        state.Error
+    else
+      thread.Abort()
+      dispose state
+      let msg = "timeout: starting worker failed"
+      Logger.err (tag state.Id "create") msg
+      msg |> Error.asSocketError (tag state.Id "create") |> Either.fail
 
 // * Broker module
 
@@ -774,23 +772,28 @@ module Broker =
       proxy.Name <- sprintf "BrokerProxy"
       proxy.Start()
 
-      state.Starter.WaitOne() |> ignore
+      if state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0) then
+        return
+          { new IBroker with
+              member self.Subscribe(callback: RawServerRequest -> unit) =
+                let guid = Guid.NewGuid()
+                let listener = createListener guid state.Subscriptions
+                { new IObserver<RawServerRequest> with
+                    member self.OnCompleted() = ()
+                    member self.OnError (error) = ()
+                    member self.OnNext(value) = callback value }
+                |> listener.Subscribe
 
-      return
-        { new IBroker with
-            member self.Subscribe(callback: RawServerRequest -> unit) =
-              let guid = Guid.NewGuid()
-              let listener = createListener guid state.Subscriptions
-              { new IObserver<RawServerRequest> with
-                  member self.OnCompleted() = ()
-                  member self.OnError (error) = ()
-                  member self.OnNext(value) = callback value }
-              |> listener.Subscribe
+              member self.Respond (response: RawServerResponse) =
+                responder.Post response
 
-            member self.Respond (response: RawServerResponse) =
-              responder.Post response
-
-            member self.Dispose() =
-              dispose cts
-              dispose state }
+              member self.Dispose() =
+                dispose cts
+                dispose state }
+      else
+        proxy.Abort()
+        dispose state
+        let msg = "timeout: failed to start broker"
+        Logger.err (tag "create") msg
+        return! msg |> Error.asSocketError (tag "create") |> Either.fail
     }

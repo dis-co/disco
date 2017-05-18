@@ -29,8 +29,6 @@ module ZmqIntegrationTests =
   let test_broker_request_handling =
     testCase "broker request handling" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 
@@ -93,13 +91,16 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. (numclients - 1) do
-               let socket = Client.create ctx {
+               let result = Client.create ctx {
                   PeerId = Id.Create()
                   Frontend = frontend
                   Timeout = 200<ms>
                 }
-               socket.Subscribe cmbp.Post |> ignore
-               yield socket
+               match result with
+               | Right socket ->
+                  socket.Subscribe cmbp.Post |> ignore
+                  yield socket
+               | Left error -> failwithf "unable to create socket: %O" error
            |]
 
         let mkRequest (client: IClient) =
@@ -154,7 +155,6 @@ module ZmqIntegrationTests =
     testCase "worker timeout fail restarts socket" <| fun _ ->
       either {
         use ctx = new ZContext()
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let mutable count = 0
 
@@ -177,11 +177,14 @@ module ZmqIntegrationTests =
 
         let clients =
           [| for n in 0 .. num - 1 do
-               yield Client.create ctx {
+               let result = Client.create ctx {
                   PeerId = Id.Create()
                   Frontend = frontend
                   Timeout = 100<ms>
-                 } |]
+                 }
+               match result with
+               | Right socket -> yield socket
+               | Left error -> failwithf "unable to create client socket: %O" error |]
 
         let mkRequest (i: int) (client: IClient) =
           async {
@@ -217,7 +220,7 @@ module ZmqIntegrationTests =
 
         use ctx = new ZContext()
 
-        use client = Client.create ctx {
+        use! client = Client.create ctx {
           PeerId = Id.Create()
           Frontend = url "tcp://127.0.0.1:5555"
           Timeout = timeout
@@ -247,7 +250,6 @@ module ZmqIntegrationTests =
     testCase "duplicate broker fails gracefully" <| fun _ ->
       either {
         use ctx = new ZContext()
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let frontend = url "tcp://127.0.0.1:5555"
         let backend = url "inproc://backend"
@@ -281,7 +283,6 @@ module ZmqIntegrationTests =
     testCase "pub socket disposes properly" <| fun _ ->
       either {
         use ctx = new ZContext()
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
         let uri = Uri.epgmUri
                     (IPv4Address "127.0.0.1")
                     (IPv4Address Constants.MCAST_ADDRESS)
@@ -297,7 +298,6 @@ module ZmqIntegrationTests =
     testCase "sub socket disposes properly" <| fun _ ->
       either {
         use ctx = new ZContext()
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
         let uri = Uri.epgmUri
                     (IPv4Address "127.0.0.1")
                     (IPv4Address Constants.MCAST_ADDRESS)

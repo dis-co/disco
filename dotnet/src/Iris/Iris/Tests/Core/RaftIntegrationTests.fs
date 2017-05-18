@@ -30,7 +30,6 @@ module RaftIntegrationTests =
     testCase "validate correct req socket tracking" <| fun _ ->
       either {
         use ctx = new ZContext()
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
         let machine1 = MachineConfig.create "127.0.0.1" None
         let machine2 = MachineConfig.create "127.0.0.1" None
@@ -87,8 +86,6 @@ module RaftIntegrationTests =
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
         use ctx = new ZContext()
         use started = new AutoResetEvent(false)
         let port = 12000us
@@ -143,8 +140,6 @@ module RaftIntegrationTests =
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
         use ctx = new ZContext()
         use check1 = new AutoResetEvent(false)
         use check2 = new AutoResetEvent(false)
@@ -219,9 +214,6 @@ module RaftIntegrationTests =
   let test_log_snapshotting_should_clean_all_logs =
     testCase "log snapshotting should clean all logs" <| fun _ ->
       either {
-        // Tracing.enable()
-
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
         use ctx = new ZContext()
         use snapshotCheck = new AutoResetEvent(false)
         use expectedCheck = new AutoResetEvent(false)
