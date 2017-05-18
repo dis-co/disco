@@ -48,7 +48,8 @@ module Raft =
       MakePeerSocket: ClientConfig -> IClient
       Connections:    ConcurrentDictionary<Id,IClient>
       Subscriptions:  Subscriptions
-      Started:        AutoResetEvent }
+      Started:        AutoResetEvent
+      Stopped:        AutoResetEvent }
 
   // ** Msg
 
@@ -58,7 +59,8 @@ module Raft =
     | ForceElection
     | Start
     | Started
-    | Stop              of AutoResetEvent
+    | Stop
+    | Stopped
     | Notify            of RaftEvent
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
@@ -78,6 +80,7 @@ module Raft =
       | Start                     -> "Start"
       | Started                   -> "Started"
       | Stop                   _  -> "Stop"
+      | Stopped                _  -> "Stopped"
       | Notify                 e  -> sprintf "Notify: %A" e
       | RawServerRequest       _  -> "RawServerRequest"
       | RawServerResponse      _  -> "RawServerResponse"
@@ -1376,12 +1379,17 @@ module Raft =
         |> Logger.err (tag "handleClientResponse")
         state
 
-
   // ** handleStop
 
-  let private handleStop (state: RaftServerState) (stop: AutoResetEvent) =
-    stop.Set() |> ignore
+  let private handleStop (state: RaftServerState) (agent: RaftAgent) =
+    agent.Post Msg.Stopped
     { state with Status = ServiceStatus.Stopping }
+
+  // ** handleStopped
+
+  let private handleStopped (state: RaftServerState) =
+    state.Stopped.Set() |> ignore
+    state
 
   // ** initializeRaft
 
@@ -1443,7 +1451,8 @@ module Raft =
           match cmd with
           | Msg.Start                         -> handleStart          state              inbox
           | Msg.Started                       -> handleStarted        state
-          | Msg.Stop               ev         -> handleStop           state ev
+          | Msg.Stop                          -> handleStop           state              inbox
+          | Msg.Stopped                       -> handleStopped        state
           | Msg.Notify             ev         -> handleNotify         state ev
           | Msg.Periodic                      -> handlePeriodic       state
           | Msg.ForceElection                 -> handleForceElection  state              inbox
@@ -1456,7 +1465,12 @@ module Raft =
           | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
           // | Msg.Join        (ip, port)        -> handleJoin          state ip port
           // | Msg.Leave                         -> handleLeave         state
-        store.Update newstate
+
+        // once we received the signal to stop we don't allow any more updates to the state to get a
+        // consistent result in the Dispose method (due to possibly queued up messages on the actors
+        // queue)
+        if not (Service.isStopping newstate.Status) then
+          store.Update newstate
         return! act ()
       }
     act ()
@@ -1513,7 +1527,8 @@ module Raft =
             Disposables = []
             Connections = connections
             Subscriptions = new Subscriptions()
-            Started = new AutoResetEvent(false) }
+            Started = new AutoResetEvent(false)
+            Stopped = new AutoResetEvent(false) }
 
         return
           { new IRaftServer with
@@ -1640,23 +1655,23 @@ module Raft =
 
               member self.Dispose () =
                 if not (Service.isDisposed store.State.Status) then
-                  for KeyValue(_,client) in store.State.Connections do
-                    dispose client
+                  // tell the loop to settle and eventually stop processing state updates
+                  agent.Post Msg.Stop
 
-                  // dispose periodic
+                  // dispose periodic functions
                   for disp in store.State.Disposables do
                     dispose disp
 
-                  // wait for actor to settle
-                  use ev = new AutoResetEvent(false)
-                  ev |> Msg.Stop |> agent.Post
-                  let result = ev.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+                  let result = store.State.Stopped.WaitOne(TimeSpan.FromMilliseconds 3000.0)
 
                   if not result then
                     Logger.err (tag "Dispose") "timeout waiting for stop to complete"
 
                   // clear all listener subscriptions
                   store.State.Subscriptions.Clear()
+
+                  for KeyValue(_,client) in store.State.Connections do
+                    dispose client
 
                   // stop the actor
                   try cts.Cancel()

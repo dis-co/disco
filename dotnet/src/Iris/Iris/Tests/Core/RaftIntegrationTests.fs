@@ -301,7 +301,7 @@ module RaftIntegrationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let raftIntegrationTests =
-    ftestList "Raft Integration Tests" [
+    testList "Raft Integration Tests" [
       // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port
