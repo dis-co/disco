@@ -272,6 +272,100 @@ module RaftIntegrationTests =
       }
       |> noError
 
+  let test_validate_add_member_works =
+    ftestCase "validate add member works" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe Logger.stdout
+
+        use ctx = new ZContext()
+        use added = new AutoResetEvent(false)
+        use configured = new AutoResetEvent(false)
+        use check1 = new AutoResetEvent(false)
+        use check2 = new AutoResetEvent(false)
+
+        let setState (id: Id) (are: AutoResetEvent) = function
+          | RaftEvent.StateChanged (_,Leader) ->
+            id
+            |> sprintf "%O became leader"
+            |> Logger.debug "test"
+            are.Set() |> ignore
+          | RaftEvent.StateChanged (_,Follower) ->
+            id
+            |> sprintf "%O became follower"
+            |> Logger.debug "test"
+            are.Set() |> ignore
+          | RaftEvent.MemberAdded mem ->
+            mem.Id
+            |> sprintf "%O was added"
+            |> Logger.debug "test"
+            added.Set() |> ignore
+          | RaftEvent.Configured mems ->
+            Array.length mems
+            |> sprintf "new cluster configuration active with %d members"
+            |> Logger.debug "test"
+            configured.Set() |> ignore
+          | _ -> ()
+
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
+
+        let mem1 =
+          machine1.MachineId
+          |> Member.create
+          |> Member.setPort 8000us
+
+        let mem2 =
+          machine2.MachineId
+          |> Member.create
+          |> Member.setPort 8001us
+
+        let site1 =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+
+        let site2 =
+          { site1 with Members = Map.ofArray [| (mem2.Id, mem2) |] }
+
+        let leadercfg =
+          Config.create "leader" machine1
+          |> Config.addSiteAndSetActive site1
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        let followercfg =
+          Config.create "follower" machine2
+          |> Config.addSiteAndSetActive site2
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        use! leader = RaftServer.create ctx leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+
+        use obs1 = leader.Subscribe (setState mem1.Id check1)
+
+        do! leader.Start()
+
+        use! follower = RaftServer.create ctx followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+
+        use obs2 = follower.Subscribe (setState mem2.Id check2)
+
+        do! follower.Start()
+
+        do! waitOrDie "check1" check1
+        do! waitOrDie "check2" check2
+
+        leader.AddMember mem2           // add mem2 to cluster
+
+        do! waitOrDie "added" added
+        do! waitOrDie "configured" configured
+      }
+      |> noError
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
   // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
@@ -300,6 +394,9 @@ module RaftIntegrationTests =
 
       // db
       test_log_snapshotting_should_clean_all_logs
+
+      // cluster changes
+      test_validate_add_member_works
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log

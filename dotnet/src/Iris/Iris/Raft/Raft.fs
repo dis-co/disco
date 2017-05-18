@@ -1361,7 +1361,7 @@ module rec Raft =
       if current < msg.PrevLogIdx then
         do! msg.PrevLogIdx
             |> sprintf "Failed (ci: %d) < (prev log idx: %d)" current
-            |> debug "receiveAppendEntries"
+            |> error "receiveAppendEntries"
         return resp
       else
         let term = LogEntry.getTerm entry
@@ -1371,7 +1371,7 @@ module rec Raft =
                   msg.PrevLogTerm
                   current
                   msg.PrevLogIdx
-              |> debug "receiveAppendEntries"
+              |> error "receiveAppendEntries"
           let response = { resp with CurrentIndex = msg.PrevLogIdx - index 1 }
           do! removeEntryM msg.PrevLogIdx
           return response
@@ -1486,7 +1486,7 @@ module rec Raft =
             | Some log -> return! checkAndProcess log nid msg resp
             | _        ->
               let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
-              do! debug "receiveAppendEntries" str
+              do! error "receiveAppendEntries" str
               return resp
         else
           return! processEntry nid msg resp
@@ -1500,9 +1500,13 @@ module rec Raft =
       let! mem = getMemberM nid
       match mem with
       | None ->
-        do! debug "receiveAppendEntriesResponse" (sprintf "Failed: NoMember %s" (string nid))
+        do! string nid
+            |> sprintf "Failed: NoMember %s"
+            |> error "receiveAppendEntriesResponse"
+
         return!
-          sprintf "Node not found: %s" (string nid)
+          string nid
+          |> sprintf "Node not found: %s"
           |> Error.asRaftError (tag "receiveAppendEntriesResponse")
           |> failM
       | Some peer ->
@@ -1510,7 +1514,7 @@ module rec Raft =
           let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
                         resp.CurrentIndex
                         peer.MatchIndex
-          do! debug "receiveAppendEntriesResponse" str
+          do! error "receiveAppendEntriesResponse" str
           // set to current index at follower and try again
           do! updateMemberM { peer with
                                 NextIndex = resp.CurrentIndex + 1<index>
@@ -1526,12 +1530,12 @@ module rec Raft =
             //  and convert to follower (§5.3)
             if term < resp.Term then
               let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
-              do! debug "receiveAppendEntriesResponse" str
+              do! error "receiveAppendEntriesResponse" str
               do! setTermM resp.Term
               do! becomeFollower ()
             elif term <> resp.Term then
               let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
-              do! debug "receiveAppendEntriesResponse" str
+              do! error "receiveAppendEntriesResponse" str
             elif not resp.Success then
               // If AppendEntries fails because of log inconsistency:
               // decrement nextIndex and retry (§5.3)
@@ -1541,7 +1545,7 @@ module rec Raft =
 
                 do! nextIndex
                     |> sprintf "Failed: cidx < nxtidx. setting nextIndex for %O to %d" peer.Id
-                    |> debug "receiveAppendEntriesResponse"
+                    |> error "receiveAppendEntriesResponse"
 
                 do! setNextIndexM peer.Id nextIndex
                 do! setMatchIndexM peer.Id (nextIndex - 1<index>)
@@ -1550,11 +1554,12 @@ module rec Raft =
 
                 do! nextIndex
                     |> sprintf "Failed: cidx >= nxtidx. setting nextIndex for %O to %d" peer.Id
-                    |> debug "receiveAppendEntriesResponse"
+                    |> error "receiveAppendEntriesResponse"
 
                 do! setNextIndexM peer.Id nextIndex
                 do! setMatchIndexM peer.Id (nextIndex - index 1)
             else
+              do! debug "receiveAppendEntriesResponse" "success"
               do! updateMemberIndices resp peer
               do! updateCommitIndex resp
           else

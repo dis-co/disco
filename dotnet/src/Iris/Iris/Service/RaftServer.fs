@@ -430,19 +430,6 @@ module Raft =
         Logger.err (tag "addMembers") msg
         Either.fail (error, state)
 
-  // ** addNewMember
-
-  let private addNewMember (state: RaftServerState) (id: Id) (ip: IpAddress) (port: uint32) =
-    Tracing.trace (tag "addNewMember") <| fun () ->
-      sprintf "attempting to add mem with
-            %A  %A:%d" (string id) (string ip) port
-      |> Logger.debug (tag "addNewMember")
-
-      [| { Member.create id with
-            IpAddr = ip
-            Port   = uint16 port } |]
-      |> addMembers state
-
   // ** removeMembers
 
   /// ## removeMembers
