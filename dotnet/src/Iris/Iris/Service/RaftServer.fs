@@ -362,7 +362,6 @@ module Raft =
 
         }
 
-
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|
@@ -552,21 +551,19 @@ module Raft =
       else
         match Raft.getLeader state.Raft with // redirect to known leader or fail
         | Some mem ->
-          asynchronously <| fun _ ->
-            mem
-            |> Redirect
-            |> Binary.encode
-            |> RawServerResponse.fromRequest raw
-            |> state.Server.Respond
+          mem
+          |> Redirect
+          |> Binary.encode
+          |> RawServerResponse.fromRequest raw
+          |> state.Server.Respond
           state
         | None ->
-          asynchronously <| fun _ ->
-            "Not leader and no known leader."
-            |> Error.asRaftError (tag "processAppendEntry")
-            |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
-            |> Binary.encode
-            |> RawServerResponse.fromRequest raw
-            |> state.Server.Respond
+          "Not leader and no known leader."
+          |> Error.asRaftError (tag "processAppendEntry")
+          |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
+          |> Binary.encode
+          |> RawServerResponse.fromRequest raw
+          |> state.Server.Respond
           state
 
   // ** processVoteRequest
@@ -579,21 +576,19 @@ module Raft =
 
       match result with
       | Right (response, newstate) ->
-        asynchronously <| fun _ ->
-          (state.Raft.Member.Id, response)
-          |> RequestVoteResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        (state.Raft.Member.Id, response)
+        |> RequestVoteResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         updateRaft state newstate
 
       | Left (err, newstate) ->
-        asynchronously <| fun _ ->
-          (state.Raft.Member.Id, err)
-          |> ErrorResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        (state.Raft.Member.Id, err)
+        |> ErrorResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         updateRaft state newstate
 
   // ** processInstallSnapshot
@@ -606,20 +601,18 @@ module Raft =
 
       match result with
       | Right (response, newstate) ->
-        asynchronously <| fun _ ->
-          (state.Raft.Member.Id, response)
-          |> InstallSnapshotResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        (state.Raft.Member.Id, response)
+        |> InstallSnapshotResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         updateRaft state newstate
       | Left (error, newstate) ->
-        asynchronously <| fun _ ->
-          (state.Raft.Member.Id, error)
-          |> ErrorResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
+        (state.Raft.Member.Id, error)
+        |> ErrorResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
         updateRaft state newstate
 
   // ** doRedirect
@@ -670,7 +663,6 @@ module Raft =
       if Raft.isLeader state.Raft then
         match addMembers state [| mem |] with
         | Right (entry, newstate) ->
-          asynchronously <| fun _ ->
             let response =                  // response to check its committed status, eventually
               mem
               |> Welcome
@@ -681,7 +673,6 @@ module Raft =
             |> agent.Post
           newstate
         | Left (err, newstate) ->
-          asynchronously <| fun _ ->
             err
             |> ErrorResponse
             |> Binary.encode
@@ -701,7 +692,6 @@ module Raft =
       if Raft.isLeader state.Raft then
         match removeMember state mem.Id with
         | Right (entry, newstate) ->
-          asynchronously <| fun _ ->
             let response =                  // response to check its committed status, eventually
               Arrivederci
               |> Binary.encode
@@ -711,7 +701,6 @@ module Raft =
             |> agent.Post
           newstate
         | Left (err, newstate) ->
-          asynchronously <| fun _ ->
             err
             |> ErrorResponse
             |> Binary.encode
@@ -1190,7 +1179,6 @@ module Raft =
 
       match result with
       | Right (true, newstate) ->        // the entry was committed, hence we reply to the caller
-        asynchronously <| fun _ ->
           entry
           |> Reply.Entry
           |> Either.succeed
@@ -1206,7 +1194,6 @@ module Raft =
 
       | Right (false, newstate) ->       // the entry was not yet committed
         if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
-          asynchronously <| fun _ ->                        // the maximum timout has been crossed, hence the request
             "Command timed out"          // failed miserably
             |> Error.asRaftError "handleIsCommitted"
             |> Either.fail

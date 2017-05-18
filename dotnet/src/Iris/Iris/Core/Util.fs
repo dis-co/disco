@@ -544,22 +544,6 @@ module Functional =
 
 #endif
 
-// * Async
-
-#if !FABLE_COMPILER
-
-[<AutoOpen>]
-module Async =
-
-  let asynchronously (f: unit -> unit) =
-    #if IRIS_NODES
-    async { f() } |> Async.Start
-    #else
-    job { f() } |> Hopac.queue
-    #endif
-
-#endif
-
 // * Tuple
 
 module Tuple =
