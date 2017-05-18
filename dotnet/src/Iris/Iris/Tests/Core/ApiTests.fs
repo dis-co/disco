@@ -49,7 +49,8 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use lobs = Logger.subscribe Logger.stdout
 
         use ctx = new ZContext()
         let state = mkState ()
@@ -90,8 +91,8 @@ module ApiTests =
 
         do! client.Start()
 
-        registered.WaitOne() |> ignore
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "registered" registered
+        do! waitOrDie "snapshot" snapshot
 
         expect "Should be equal" state id client.State
 
@@ -99,13 +100,13 @@ module ApiTests =
 
         server.State <- newstate
 
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "snapshot" snapshot
 
         expect "Should be equal" newstate id client.State
 
         dispose client
 
-        unregistered.WaitOne() |> ignore
+        do! waitOrDie "unregistered" unregistered
       }
       |> noError
 
@@ -167,11 +168,11 @@ module ApiTests =
 
         do! client.Start()
 
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "shaptwhot" snapshot
 
         List.iter (server.Update >> ignore) events
 
-        doneCheck.WaitOne() |> ignore
+        do! waitOrDie "doneCheck" doneCheck
 
         expect "Should have emitted correct number of events" (List.length events |> int64) id check
         expect "Should be equal" server.State id client.State
@@ -236,8 +237,8 @@ module ApiTests =
 
         do! client.Start()
 
-        clientRegistered.WaitOne() |> ignore
-        clientSnapshot.WaitOne() |> ignore
+        do! waitOrDie "clientRegisterd" clientRegistered
+        do! waitOrDie "clientSnaphot" clientSnapshot
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
@@ -245,15 +246,15 @@ module ApiTests =
 
         client.AddPin pin
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.AddCue cue
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.AddCueList cuelist
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         let len m = m |> Map.toArray |> Array.length
 
@@ -265,29 +266,29 @@ module ApiTests =
 
         client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.UpdateCue { cue with Slices = mkSlices() }
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         expect "Should be equal" server.State id client.State
 
         client.RemovePin pin
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.RemoveCue cue
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         client.RemoveCueList cuelist
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
         expect "Server should have zero cues" 0 len server.State.Cues
         expect "Client should have zero cues" 0 len client.State.Cues
@@ -298,6 +299,44 @@ module ApiTests =
       }
       |> noError
 
+  let test_server_should_dispose_properly =
+    testCase "server should dispose properly" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use ctx = new ZContext()
+        let state = mkState ()
+        let mem = Member.create (Id.Create())
+
+        use! server = ApiServer.create ctx mem state.Project.Id
+        do! server.Start()
+      }
+      |> noError
+
+  let test_client_should_dispose_properly =
+    testCase "client should dispose properly" <| fun _ ->
+      either {
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        use ctx = new ZContext()
+
+        let mem = Member.create (Id.Create())
+
+        let srvr : IrisServer =
+          { Port = port mem.ApiPort
+            IpAddress = mem.IpAddr }
+
+        let clnt : IrisClient =
+          { Id = Id.Create()
+            Name = "client cool"
+            Role = Role.Renderer
+            Status = ServiceStatus.Starting
+            IpAddress = mem.IpAddr
+            Port = port (unwrap mem.ApiPort + 1us) }
+
+        use client = ApiClient.create ctx srvr clnt
+        do! client.Start()
+      }
+      |> noError
+
   //     _    _ _
   //    / \  | | |
   //   / _ \ | | |
@@ -305,8 +344,10 @@ module ApiTests =
   // /_/   \_\_|_|
 
   let apiTests =
-    testList "API Tests" [
+    ftestList "API Tests" [
       test_server_should_replicate_state_snapshot_to_client
       test_server_should_replicate_state_machine_commands_to_client
       test_client_should_replicate_state_machine_commands_to_server
+      // test_server_should_dispose_properly
+      // test_client_should_dispose_properly
     ] |> testSequenced

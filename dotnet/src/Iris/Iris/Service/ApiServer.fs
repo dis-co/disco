@@ -65,22 +65,24 @@ module ApiServer =
       Clients: Map<Id,Client>
       Context: ZContext
       Subscriptions: Subscriptions
-      Disposables: IDisposable list }
+      Disposables: IDisposable list
+      Stopper: AutoResetEvent }
 
     interface IDisposable with
       member data.Dispose() =
-        data.Subscriptions.Clear()
         List.iter dispose data.Disposables
+        dispose data.Server
         dispose data.Publisher
         dispose data.Subscriber
-        dispose data.Server
         Map.iter (fun _ v -> dispose v) data.Clients
+        data.Subscriptions.Clear()
 
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
     | Start
+    | Stop
     | SetStatus         of status:ServiceStatus
     | AddClient         of client:IrisClient
     | RemoveClient      of client:IrisClient
@@ -250,12 +252,12 @@ module ApiServer =
 
   let private handleRemoveClient (state: ServerState) (peer: IrisClient) =
     Tracing.trace (tag "handleRemoveClient") <| fun () ->
-        match Map.tryFind peer.Id state.Clients with
-        | Some client ->
-          dispose client
-          peer |> ApiEvent.UnRegister |> notify state.Subscriptions
-          { state with Clients = Map.remove peer.Id state.Clients }
-        | _ -> state
+      match Map.tryFind peer.Id state.Clients with
+      | Some client ->
+        dispose client
+        peer |> ApiEvent.UnRegister |> notify state.Subscriptions
+        { state with Clients = Map.remove peer.Id state.Clients }
+      | _ -> state
 
   // ** updateClient
 
@@ -431,6 +433,13 @@ module ApiServer =
       |> agent.Post
     state
 
+  // ** handleStop
+
+  let private handleStop (state: ServerState) =
+    dispose state
+    state.Stopper.Set() |> ignore
+    { state with Status = ServiceStatus.Stopping }
+
   // ** loop
 
   let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
@@ -442,6 +451,7 @@ module ApiServer =
           try
             match msg with
             | Msg.Start                       -> handleStart state inbox
+            | Msg.Stop                        -> handleStop state
             | Msg.AddClient(client)           -> handleAddClient state client inbox
             | Msg.RemoveClient(client)        -> handleRemoveClient state client
             | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
@@ -459,7 +469,8 @@ module ApiServer =
               |> sprintf "Error in loop: %O"
               |> Logger.err (tag "loop")
               state
-        store.Update newstate
+        if not (Service.isStopping newstate.Status) then
+          store.Update newstate
         return! act ()
       }
     act ()
@@ -492,6 +503,7 @@ module ApiServer =
           Subscriptions = Subscriptions()
           Context = ctx
           Disposables = []
+          Stopper = new AutoResetEvent(false)
         }
 
         let store = AgentStore.create ()
@@ -586,7 +598,8 @@ module ApiServer =
               // **** Dispose
 
               member self.Dispose () =
+                agent.Post Msg.Stop
+                store.State.Stopper.WaitOne() |> ignore
                 dispose cts
-                dispose store.State
             }
       }

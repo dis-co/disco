@@ -113,7 +113,8 @@ module GitTests =
         use gobs1 = gitserver1.Subscribe(handleStarted)
         do! gitserver1.Start()
 
-        started.WaitOne() |> ignore
+        do! waitOrDie "started" started
+
         expect "Should be running" true Service.isRunning gitserver1.Status
 
         use gitserver2 = GitServer.create mem path

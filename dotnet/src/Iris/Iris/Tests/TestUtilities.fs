@@ -3,11 +3,22 @@ namespace Iris.Tests
 open Expecto
 open System
 open System.IO
+open System.Threading
 open Iris.Raft
 open Iris.Core
 
 [<AutoOpen>]
 module TestUtilities =
+
+  let waitOrDie (tag: string) (are: AutoResetEvent) =
+    let timeout = 1000.0
+    if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
+      Either.succeed()
+    else
+      sprintf "Timout after %f waiting for %s" timeout tag
+      |> Error.asOther "test"
+      |> Either.fail
+
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =

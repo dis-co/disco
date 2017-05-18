@@ -130,7 +130,7 @@ module IrisServiceTests =
 
         do! service.Start()
 
-        checkGitStarted.WaitOne() |> ignore
+        do! waitOrDie "checkGitStarted" checkGitStarted
 
         let gitserver = service.GitServer
 
@@ -142,7 +142,7 @@ module IrisServiceTests =
 
         expect "Git should be running" false Process.isRunning pid
 
-        checkGitStarted.WaitOne() |> ignore
+        do! waitOrDie "checkGitStarted" checkGitStarted
 
         let gitserver = service.GitServer
         let newpid = gitserver.Pid
@@ -193,7 +193,7 @@ module IrisServiceTests =
 
         do! service1.Start()
 
-        checkGitStarted.WaitOne() |> ignore
+        do! waitOrDie "checkGitStarted" checkGitStarted
 
         //  ____
         // |___ \
@@ -228,9 +228,9 @@ module IrisServiceTests =
 
         do! service2.Start()
 
-        checkGitStarted.WaitOne() |> ignore
+        do! waitOrDie "checkGitStarted" checkGitStarted
 
-        electionDone.WaitOne() |> ignore
+        do! waitOrDie "electionDone" electionDone
 
         //  _____
         // |___ /
@@ -252,9 +252,9 @@ module IrisServiceTests =
         |> AddCue
         |> leader.Append
 
-        appendDone.WaitOne() |> ignore
+        do! waitOrDie "appendDone" appendDone
         appendDone.Reset() |> ignore
-        appendDone.WaitOne() |> ignore
+        do! waitOrDie "appendDone" appendDone
 
         dispose service1
         dispose service2

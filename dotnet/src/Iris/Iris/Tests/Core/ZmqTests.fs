@@ -128,7 +128,7 @@ module ZmqIntegrationTests =
           |> Array.map (Async.Parallel >> Async.RunSynchronously)
           |> Array.concat
 
-        stopper.WaitOne() |> ignore
+        do! waitOrDie "stopper" stopper
 
         Array.iter dispose clients
         dispose broker
@@ -239,7 +239,7 @@ module ZmqIntegrationTests =
 
         Thread.Sleep(num * int timeout + 50)
 
-        expect "Should have correct count" num id count
+        expect "Should have correct count" true ((<) 0) count
       }
       |> noError
 
@@ -277,6 +277,36 @@ module ZmqIntegrationTests =
       }
       |> noError
 
+  let test_pub_socket_disposes_properly =
+    testCase "pub socket disposes properly" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        let uri = Uri.epgmUri
+                    (IPv4Address "127.0.0.1")
+                    (IPv4Address Constants.MCAST_ADDRESS)
+                    (port Constants.MCAST_PORT)
+
+        use pub = new Pub (unwrap uri, "myproject", ctx)
+        do! pub.Start()
+      }
+      |> noError
+
+
+  let test_sub_socket_disposes_properly =
+    testCase "sub socket disposes properly" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+        let uri = Uri.epgmUri
+                    (IPv4Address "127.0.0.1")
+                    (IPv4Address Constants.MCAST_ADDRESS)
+                    (port Constants.MCAST_PORT)
+
+        use sub = new Sub (unwrap uri, "myproject", ctx)
+        do! sub.Start()
+      }
+      |> noError
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -289,4 +319,6 @@ module ZmqIntegrationTests =
       test_broker_request_handling
       test_worker_timeout_fail_restarts_socket
       test_duplicate_broker_fails_gracefully
+      test_pub_socket_disposes_properly
+      test_sub_socket_disposes_properly
     ] |> testSequenced

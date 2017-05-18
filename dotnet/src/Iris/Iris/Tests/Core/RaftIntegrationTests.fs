@@ -19,7 +19,6 @@ open ZeroMQ
 
 [<AutoOpen>]
 module RaftIntegrationTests =
-  let obs = Logger.subscribe Logger.stdout
 
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
@@ -123,7 +122,7 @@ module RaftIntegrationTests =
 
         do! leader.Start()
 
-        started.WaitOne(int Constants.REQ_TIMEOUT) |> ignore
+        do! waitOrDie "started" started
 
         expect "Should be running" true Service.isRunning leader.Status
 
@@ -212,8 +211,8 @@ module RaftIntegrationTests =
 
         do! follower.Start()
 
-        check1.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
-        check2.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
+        do! waitOrDie "check1" check1
+        do! waitOrDie "check2" check2
       }
       |> noError
 
@@ -274,8 +273,8 @@ module RaftIntegrationTests =
               yield AddUser (mkUser ()) ]
           |> List.map leader.Append
 
-        snapshotCheck.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
-        expectedCheck.WaitOne(TimeSpan.FromMilliseconds 1000.0) |> ignore
+        do! waitOrDie "snapshot" snapshotCheck
+        do! waitOrDie "expectedCheck" expectedCheck
 
         expect "Should have expected number of Users" expected id store.State.Users.Count
       }

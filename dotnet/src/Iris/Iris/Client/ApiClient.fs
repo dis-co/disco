@@ -70,6 +70,7 @@ module ApiClient =
     | Stop
     | CheckStatus
     | Dispose
+    | Notify            of ClientEvent
     | SetState          of state:State
     | SetStatus         of status:ServiceStatus
     | Update            of sm:StateMachine
@@ -117,10 +118,10 @@ module ApiClient =
         member self.Dispose () =
           cts.Cancel() }
 
-  // ** notify
+  // ** handleNotify
 
-  let private notify (subs: Subscriptions) (ev: ClientEvent) =
-    let subscriptions = subs.ToArray()
+  let private handleNotify (state: ClientState) (ev: ClientEvent) =
+    let subscriptions = state.Subscriptions.ToArray()
     for KeyValue(_,sub) in subscriptions do
       try sub.OnNext ev
       with
@@ -128,6 +129,7 @@ module ApiClient =
           exn.Message
           |> sprintf "error calling on next on listener subscription: %s"
           |> Logger.err (tag "notify")
+    state
 
   // ** requestRegister
 
@@ -165,14 +167,14 @@ module ApiClient =
 
   // ** handleSetStatus
 
-  let private handleSetStatus (state: ClientState) (status: ServiceStatus) =
+  let private handleSetStatus (state: ClientState) (status: ServiceStatus) (agent: ApiAgent) =
     Tracing.trace (tag "handleSetStatus") <| fun () ->
-      notify state.Subscriptions (ClientEvent.Status status)
+      status |> ClientEvent.Status |> Msg.Notify |> agent.Post
       { state with Client = { state.Client with Status = status } }
 
   // ** handleCheckStatus
 
-  let private handleCheckStatus (state: ClientState) =
+  let private handleCheckStatus (state: ClientState) (agent: ApiAgent) =
     Tracing.trace (tag "handleCheckStatus") <| fun () ->
       if not (Service.hasFailed state.Client.Status) then
         match state.Elapsed with
@@ -181,7 +183,7 @@ module ApiClient =
             "Server ping timed out"
             |> Error.asClientError (tag "handleCheckStatus")
             |> ServiceStatus.Failed
-          notify state.Subscriptions (ClientEvent.Status status)
+          status |> ClientEvent.Status |> Msg.Notify |> agent.Post
           { state with
              Client = { state.Client with Status = status }
              Elapsed = state.Elapsed + FREQ }
@@ -191,7 +193,7 @@ module ApiClient =
             | ServiceStatus.Running -> state.Client.Status
             | _ ->
               let newstatus = ServiceStatus.Running
-              notify state.Subscriptions (ClientEvent.Status newstatus)
+              newstatus |> ClientEvent.Status |> Msg.Notify |> agent.Post
               newstatus
           { state with
              Client = { state.Client with Status = status }
@@ -207,17 +209,17 @@ module ApiClient =
 
   // ** handleSetState
 
-  let private handleSetState (state: ClientState) (newstate: State) =
+  let private handleSetState (state: ClientState) (newstate: State) (agent: ApiAgent) =
     Tracing.trace (tag "handleSetState") <| fun () ->
-      notify state.Subscriptions ClientEvent.Snapshot
+      ClientEvent.Snapshot |> Msg.Notify |> agent.Post
       { state with Store = new Store(newstate) }
 
   // ** handleUpdate
 
-  let private handleUpdate (state: ClientState) (sm: StateMachine) =
+  let private handleUpdate (state: ClientState) (sm: StateMachine) (agent: ApiAgent) =
     Tracing.trace (tag "handleUpdate") <| fun () ->
       state.Store.Dispatch sm
-      notify state.Subscriptions (ClientEvent.Update sm)
+      sm |> ClientEvent.Update |> Msg.Notify |> agent.Post
       state
 
   // ** requestUpdate
@@ -294,10 +296,10 @@ module ApiClient =
     match Either.bind Binary.decode req.Body with
     | Right ApiResponse.Registered ->
       Logger.debug (tag "handleClientResponse") "registration successful"
-      notify state.Subscriptions ClientEvent.Registered
+      ClientEvent.Registered |> Msg.Notify |> agent.Post
     | Right ApiResponse.Unregistered ->
       Logger.debug (tag "handleClientResponse") "un-registration successful"
-      notify state.Subscriptions ClientEvent.UnRegistered
+      ClientEvent.UnRegistered |> Msg.Notify |> agent.Post
       agent.Post Msg.Dispose
     | Right ApiResponse.OK
     | Right ApiResponse.Pong -> ()
@@ -316,7 +318,6 @@ module ApiClient =
   let private handleDispose (state: ClientState) =
     List.iter dispose state.Disposables
     state.Stopper.Set() |> ignore
-    ServiceStatus.Stopping |> ClientEvent.Status |> notify state.Subscriptions
     { state with
         Status = ServiceStatus.Stopping
         Disposables = [] }
@@ -330,17 +331,18 @@ module ApiClient =
         let state = store.State
         let newstate =
           match msg with
+          | Msg.Notify ev              -> handleNotify         state ev
           | Msg.Dispose                -> handleDispose        state
           | Msg.Start                  -> handleStart          state inbox
           | Msg.Stop                   -> handleStop           state
-          | Msg.SetStatus status       -> handleSetStatus      state status
-          | Msg.SetState newstate      -> handleSetState       state newstate
-          | Msg.CheckStatus            -> handleCheckStatus    state
+          | Msg.SetStatus status       -> handleSetStatus      state status   inbox
+          | Msg.SetState newstate      -> handleSetState       state newstate inbox
+          | Msg.CheckStatus            -> handleCheckStatus    state          inbox
           | Msg.Ping                   -> handlePing           state
-          | Msg.Update sm              -> handleUpdate         state sm
-          | Msg.Request       sm       -> handleRequest        state sm   inbox
-          | Msg.RawServerRequest req   -> handleServerRequest  state req  inbox
-          | Msg.RawClientResponse resp -> handleClientResponse state resp inbox
+          | Msg.Update sm              -> handleUpdate         state sm       inbox
+          | Msg.Request       sm       -> handleRequest        state sm       inbox
+          | Msg.RawServerRequest req   -> handleServerRequest  state req      inbox
+          | Msg.RawClientResponse resp -> handleClientResponse state resp     inbox
         store.Update newstate
         return! act()
       }
@@ -468,9 +470,11 @@ module ApiClient =
             agent.Post Msg.Stop
             match store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0) with
             | true -> ()
-            | false -> Logger.debug (tag "Dispose") "attempt to un-register with server failed"
+            | false ->
+              Logger.debug (tag "Dispose") "attempt to un-register with server failed"
+              ServiceStatus.Disposed |> ClientEvent.Status |> Msg.Notify |> agent.Post
+              store.State.Stopper.WaitOne() |> ignore
             dispose cts
-            ServiceStatus.Disposed |> ClientEvent.Status |> notify state.Subscriptions
             dispose store.State
             store.Update { store.State with Status = ServiceStatus.Disposed }
 
