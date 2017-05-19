@@ -218,6 +218,9 @@ enter:
 # | .__/ \__,_|_|\_\___|\__|
 # |_|
 
+restore: paket.restore
+	@cd $(VVVV_BASEDIR) && ./build.sh Bootstrap
+
 paket.generate:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
 

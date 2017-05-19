@@ -320,6 +320,8 @@ let buildDebug fsproj _ =
 let buildRelease fsproj _ =
   build (setParams "Release") (baseDir @@ fsproj)
 
+let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
+
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
 // |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
@@ -329,8 +331,11 @@ let buildRelease fsproj _ =
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ () // restore Npm packages
-  // runNpmNoErrors "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" frontendDir ()
+  runExec DotNet.dotnetExePath "restore" frontendDir false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
+  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
 )
 
 //     _                           _     _       ___        __
@@ -614,7 +619,6 @@ Target "BuildReleaseZeroconf"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
@@ -629,8 +633,8 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  // runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
+  runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
   runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
 )
 
