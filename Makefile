@@ -81,6 +81,9 @@ run.service.3.project:
 run.web.tests:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTestsFast"
 
+run.service.1.project.profile:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |

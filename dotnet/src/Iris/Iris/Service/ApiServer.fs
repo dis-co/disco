@@ -59,7 +59,7 @@ module ApiServer =
     { Id: Id
       Status: ServiceStatus
       Store: Store
-      Server: IBroker
+      Server: IServer
       Publisher: Pub
       Subscriber: Sub
       Clients: Map<Id,Client>
@@ -498,7 +498,7 @@ module ApiServer =
           Id = mem.Id
           Status = ServiceStatus.Stopped
           Store = Store(State.Empty)
-          Server = Unchecked.defaultof<IBroker>
+          Server = Unchecked.defaultof<IServer>
           Publisher = Unchecked.defaultof<Pub>
           Subscriber = Unchecked.defaultof<Sub>
           Clients = Map.empty
@@ -532,12 +532,9 @@ module ApiServer =
                   let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
                   let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
 
-                  let result = Broker.create ctx {
+                  let result = Server.create ctx {
                     Id = mem.Id
-                    MinWorkers = 5uy
-                    MaxWorkers = 20uy
-                    Frontend = frontend
-                    Backend = backend
+                    Listen = frontend
                     RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                   }
 

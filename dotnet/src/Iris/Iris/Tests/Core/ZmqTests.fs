@@ -26,25 +26,23 @@ module ZmqIntegrationTests =
   // /____|_| |_| |_|\__, |   |_|\___||___/\__|___/
   //                    |_|
 
-  let test_broker_request_handling =
-    testCase "broker request handling" <| fun _ ->
+  let test_server_request_handling =
+    testCase "server request handling" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
+
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 
         let numclients = 5
-        let numrequests = 50
+        let numrequests = 2
 
         use ctx = new ZContext()
 
         let frontend = url "tcp://127.0.0.1:5555"
-        let backend =  url "inproc://backend"
-        let! broker = Broker.create ctx {
+        let! server = Server.create ctx {
             Id = Id.Create()
-            MinWorkers = uint8 numclients
-            MaxWorkers = 20uy
-            Frontend = frontend
-            Backend = backend
+            Listen = frontend
             RequestTimeout = 200<ms>
           }
 
@@ -53,13 +51,13 @@ module ZmqIntegrationTests =
               let! request = inbox.Receive()
               request.Body
               |> RawServerResponse.fromRequest request
-              |> broker.Respond
+              |> server.Respond
               return! impl ()
             }
           impl ()
 
         let smbp = MailboxProcessor.Start(sloop)
-        use obs = broker.Subscribe smbp.Post
+        use obs = server.Subscribe smbp.Post
 
         let responses = ResizeArray<Id * int64>()
 
@@ -132,7 +130,7 @@ module ZmqIntegrationTests =
         do! waitOrDie "stopper" stopper
 
         Array.iter dispose clients
-        dispose broker
+        dispose server
 
         expect "Should have same number of requests as responses" (Array.length requests) id responses.Count
 
@@ -162,18 +160,14 @@ module ZmqIntegrationTests =
         let requests = 10               // number of requests per client
 
         let frontend = url "tcp://127.0.0.1:5555"
-        let backend = url "inproc://backend"
 
-        use! broker = Broker.create ctx {
+        use! server = Server.create ctx {
             Id = Id.Create()
-            MinWorkers = uint8 num
-            MaxWorkers = 20uy
-            Frontend = frontend
-            Backend = backend
+            Listen = frontend
             RequestTimeout = 100<ms>
           }
 
-        use bobs = broker.Subscribe (fun _ -> count <- Interlocked.Increment &count)
+        use bobs = server.Subscribe (fun _ -> count <- Interlocked.Increment &count)
 
         let clients =
           [| for n in 0 .. num - 1 do
@@ -254,34 +248,27 @@ module ZmqIntegrationTests =
       }
       |> noError
 
-  let test_duplicate_broker_fails_gracefully =
-    testCase "duplicate broker fails gracefully" <| fun _ ->
+  let test_duplicate_server_fails_gracefully =
+    testCase "duplicate server fails gracefully" <| fun _ ->
       either {
         use ctx = new ZContext()
 
         let frontend = url "tcp://127.0.0.1:5555"
-        let backend = url "inproc://backend"
 
-        use! broker1 = Broker.create ctx {
+        use! server1 = Server.create ctx {
             Id = Id.Create()
-            MinWorkers = 5uy
-            MaxWorkers = 20uy
-            Frontend = frontend
-            Backend = backend
+            Listen = frontend
             RequestTimeout = 100<ms>
           }
 
-        let broker2 = Broker.create ctx {
+        let server2 = Server.create ctx {
             Id = Id.Create()
-            MinWorkers = 5uy
-            MaxWorkers = 20uy
-            Frontend = frontend
-            Backend = backend
+            Listen = frontend
             RequestTimeout = 100<ms>
           }
 
         return!
-          match broker2 with
+          match server2 with
           | Right _ -> Left(Other("test","should have failed"))
           | Left _ -> Right ()
       }
@@ -324,9 +311,9 @@ module ZmqIntegrationTests =
   let zmqIntegrationTests =
     testList "Zmq Integration Tests" [
       test_client_timeout_keeps_socket_alive
-      test_broker_request_handling
+      test_server_request_handling
       test_worker_timeout_fail_restarts_socket
-      test_duplicate_broker_fails_gracefully
+      test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly
       test_sub_socket_disposes_properly
     ] |> testSequenced

@@ -29,22 +29,21 @@ module private RequestCount =
 type RawServerRequest =
   { RequestId: Guid
     From: Guid
-    Via: WorkerId
     Body: byte array }
 
   // ** ToString
 
   override self.ToString() =
-    sprintf "[Request] from %O via: %O bytes: %d"
+    sprintf "[Request] requestid %O from: %O bytes: %d"
+      self.RequestId
       self.From
-      self.Via
       (Array.length self.Body)
 
 // * RawServerResponse
 
 type RawServerResponse =
   { RequestId: Guid
-    Via: WorkerId
+    From: Guid
     Body: byte array }
 
 // * RawClientRequest
@@ -56,8 +55,8 @@ type RawClientRequest =
 // * RawClientResponse
 
 type RawClientResponse =
-  { PeerId: Id
-    RequestId: Guid
+  { RequestId: Guid
+    PeerId: Id
     Body: Either<IrisError,byte array> }
 
 // * IClient
@@ -76,38 +75,36 @@ type ClientConfig =
     Frontend: Url
     Timeout: Timeout }
 
-// * WorkerConfig
+// * ServerConfig
 
-[<NoComparison>]
-type WorkerConfig =
-  { Id: WorkerId
-    Backend: Url
-    Context: ZContext
-    RequestTimeout: Timeout }
-
-// * IWorker
-
-type private IWorker =
-  abstract Id: WorkerId
-  abstract Respond: RawServerResponse -> unit
-  abstract Subscribe: (RawServerRequest -> unit) -> IDisposable
-
-// * BrokerConfig
-
-type BrokerConfig =
+type ServerConfig =
   { Id: Id
-    MinWorkers: uint8
-    MaxWorkers: uint8
-    Frontend: Url
-    Backend: Url
+    Listen: Url
     RequestTimeout: Timeout }
 
-// * IBroker
+// * IServer
 
-type IBroker =
+type IServer =
   inherit IDisposable
   abstract Subscribe: (RawServerRequest -> unit) -> IDisposable
   abstract Respond: RawServerResponse -> unit
+
+// * RawClientRequest
+
+module RawClientRequest =
+
+  let create (body: byte array) : RawClientRequest =
+    { RequestId = Guid.NewGuid()
+      Body = body }
+
+// * RawServerRequest
+
+module RawServerRequest =
+
+  let create (from: Guid) (body: byte array) : RawServerRequest =
+    { RequestId = Guid.NewGuid()
+      From = from
+      Body = body }
 
 // * RawServerResponse
 
@@ -115,7 +112,7 @@ module RawServerResponse =
 
   let fromRequest (request: RawServerRequest) (body: byte array) =
     { RequestId = request.RequestId
-      Via = request.Via
+      From = request.From
       Body = body }
 
 // * Utils
@@ -303,26 +300,27 @@ module Client =
         //  ___) |  __/ | | | (_| |
         // |____/ \___|_| |_|\__,_|
         while state.Requests.Count > 0 do
-            let result, request = state.Requests.TryDequeue()
-            if result then
-              try
-                use msg = new ZMessage()
-                msg.Add(new ZFrame(state.Socket.Identity))           // add this sockets identit
-                msg.Add(new ZFrame(request.RequestId.ToByteArray())) // add the request id
-                msg.Add(new ZFrame(request.Body))                    // add the request body
-                state.Socket.Send(msg, ZSocketFlags.DontWait)        // send that shit
-                state.Pending.TryAdd(request.RequestId, state.Stopwatch.ElapsedMilliseconds)
-                |> function
-                  | true  -> ()
-                  | false -> Logger.err (tag "clientLoop") "could not add request to pending queue"
-              with
-                | exn ->
-                  exn.Message
-                  |> sprintf "error sending request: %s"
-                  |> Error.asSocketError (tag "clientLoop")
-                  |> Either.fail
-                  |> fun body -> { RequestId = request.RequestId; PeerId = state.Id; Body = body }
-                  |> notify state.Subscriptions // respond to subscriber that this request has failed
+          let result, request = state.Requests.TryDequeue()
+          if result then
+            try
+              use msg = new ZMessage()
+              msg.Add(new ZFrame(state.Socket.Identity))           // add this sockets identit
+              msg.Add(new ZFrame())                                // add empty frame
+              msg.Add(new ZFrame(request.RequestId.ToByteArray())) // add the request id
+              msg.Add(new ZFrame(request.Body))                    // add the request body
+              state.Socket.Send(msg)                               // send that shit
+              state.Pending.TryAdd(request.RequestId, state.Stopwatch.ElapsedMilliseconds)
+              |> function
+                | true  -> ()
+                | false -> Logger.err (tag "clientLoop") "could not add request to pending queue"
+            with
+              | exn ->
+                exn.Message
+                |> sprintf "error sending request: %s"
+                |> Error.asSocketError (tag "clientLoop")
+                |> Either.fail
+                |> fun body -> { RequestId = request.RequestId; PeerId = state.Id; Body = body }
+                |> notify state.Subscriptions // respond to subscriber that this request has failed
 
         //  ____               _
         // |  _ \ ___  ___ ___(_)_   _____
@@ -334,9 +332,9 @@ module Client =
 
         while state.Socket.PollIn(poll, &incoming, &error, timeout) do
           try
-            { RequestId = Guid (incoming.[0].Read())
+            { RequestId = Guid (incoming.[1].Read())
               PeerId = state.Id
-              Body = Right (incoming.[1].Read()) }
+              Body = Right (incoming.[2].Read()) }
             |> notify state.Subscriptions
           with
             | exn ->
@@ -426,49 +424,51 @@ module Client =
               dispose state }
       |> Either.succeed
 
-// * Worker module
+// * Server module
 
-// __        __         _
-// \ \      / /__  _ __| | _____ _ __
-//  \ \ /\ / / _ \| '__| |/ / _ \ '__|
-//   \ V  V / (_) | |  |   <  __/ |
-//    \_/\_/ \___/|_|  |_|\_\___|_|
+//  ____
+// / ___|  ___ _ ____   _____ _ __
+// \___ \ / _ \ '__\ \ / / _ \ '__|
+//  ___) |  __/ |   \ V /  __/ |
+// |____/ \___|_|    \_/ \___|_|
 
 [<RequireQualifiedAccess>]
-module private Worker =
+module Server =
   open Utils
 
   // ** tag
 
-  let private tag (id: WorkerId) (str: string) =
-    String.Format("Worker-{0}.{1}", id, str)
+  let private tag (str: string) =
+    String.Format("Server.", id, str)
 
   // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
-  type private LocalThreadState (args: WorkerConfig) as self =
+  type private LocalThreadState (ctx: ZContext, args: ServerConfig) as self =
 
     [<DefaultValue>] val mutable Initialized: bool
     [<DefaultValue>] val mutable Disposed: bool
     [<DefaultValue>] val mutable Started: bool
     [<DefaultValue>] val mutable Run: bool
     [<DefaultValue>] val mutable Socket: ZSocket
-    [<DefaultValue>] val mutable Error: Either<IrisError,unit>
     [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
-    [<DefaultValue>] val mutable Responder: ConcurrentQueue<RawServerResponse>
+    [<DefaultValue>] val mutable Stopwatch: Stopwatch
+    [<DefaultValue>] val mutable Pending: ConcurrentDictionary<Guid,int64>
+    [<DefaultValue>] val mutable Responses: ConcurrentQueue<RawServerResponse>
 
     do
       self.Initialized <- false
       self.Disposed <- false
       self.Started <- false
       self.Run <- true
-      self.Error <- Right ()
       self.Subscriptions <- new Subscriptions()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
-      self.Responder <- new ConcurrentQueue<RawServerResponse>()
+      self.Stopwatch <- Stopwatch()
+      self.Pending <- ConcurrentDictionary()
+      self.Responses <- new ConcurrentQueue<RawServerResponse>()
 
     // *** ToString
 
@@ -487,23 +487,24 @@ module private Worker =
 
     member self.Start() =
       try
-        self.Socket <- new ZSocket(args.Context, ZSocketType.DEALER)
-        self.Socket.Connect(unwrap args.Backend)
+        let id = args.Id |> string |> Guid.Parse
+        self.Socket <- new ZSocket(ctx, ZSocketType.ROUTER)
+        self.Socket.Identity <- id.ToByteArray()
+        self.Socket.Bind(unwrap args.Listen)
         self.Initialized <- true
         self.Started <- true
-        self.Starter.Set() |> ignore
+        Either.succeed ()
       with
         | exn ->
           dispose self
 
-          exn.Message + exn.StackTrace
-          |> Error.asSocketError (tag args.Id "Start")
-          |> Either.fail
-          |> fun error -> self.Error <- error
-
           self.Initialized <- true
           self.Started <- false
           self.Run <- false
+
+          exn.Message + exn.StackTrace
+          |> Error.asSocketError (tag "Start")
+          |> Either.fail
 
     // *** Id
 
@@ -518,7 +519,7 @@ module private Worker =
         self.Socket.Close()
         tryDispose self.Socket
         self.Disposed <- true
-        Logger.debug (tag args.Id "worker") "disposed"
+        Logger.debug (tag "Dispose") "disposed"
 
   // ** spin
 
@@ -530,316 +531,123 @@ module private Worker =
   let private timedOut (state: LocalThreadState) (timer: Stopwatch) =
     timer.ElapsedMilliseconds > int64 state.Timeout
 
-  // ** workerLoop
+  // ** serverLoop
 
-  let private workerLoop (state: LocalThreadState) () =
-    state.Start()
+  let private serverLoop (state: LocalThreadState) () =
+    Logger.debug (tag "serverLoop") "startup done"
 
-    Logger.debug (tag state.Id "initialize") "startup done"
+    let poll = ZPollItem.CreateReceiver()
+    let timeout = Nullable(TimeSpan.FromMilliseconds 1.0)
+
+    let toerror =
+      "Timeout on socket"
+      |> Error.asSocketError (tag "worker")
+      |> Either.fail
+
+    state.Starter.Set() |> ignore
 
     while spin state do
-      use mutable request = Unchecked.defaultof<ZMessage>
-      let mutable error = Unchecked.defaultof<ZError>
+      try
+        //  ____                                 _
+        // |  _ \ ___  ___ _ __   ___  _ __   __| |
+        // | |_) / _ \/ __| '_ \ / _ \| '_ \ / _` |
+        // |  _ <  __/\__ \ |_) | (_) | | | | (_| |
+        // |_| \_\___||___/ .__/ \___/|_| |_|\__,_|
+        //                |_|
+        while state.Responses.Count > 0 && state.Run do
+          let result, response = state.Responses.TryDequeue()
+          try
+            if result then
+              use reply = new ZMessage()
+              reply.Add(new ZFrame(response.From.ToByteArray()));
+              reply.Add(new ZFrame());
+              reply.Add(new ZFrame(response.RequestId.ToByteArray()));
+              reply.Add(new ZFrame(response.Body));
 
-      if state.Socket.ReceiveMessage(&request, &error) then
-        Tracing.trace (tag state.Id "request") <| fun () ->
-          let clientId = request.[1].Read()
-          let reqid = request.[2].Read()
-          let body = request.[3].Read()
+              let mutable error = ZError.None
+              let result = state.Socket.Send(reply, &error)
 
-          // blow out the request to the backend process
-          { RequestId = Guid reqid
-            From = Guid clientId
-            Via = state.Id
-            Body = body }
-          |> notify state.Subscriptions
+              if not result || error <> ZError.None then
+                String.Format("error sending reply to client: {0}", error)
+                |> Logger.err (tag "serverLoop")
+          with
+            | :? ZException as err when err.ErrNo = ZError.EAGAIN.Number -> ()
+            | :? ZException as err when err.ErrNo = ZError.ETERM.Number -> // context was killed
+              state.Run <- false
+            | exn ->
+              exn.Message + exn.StackTrace
+              |> Logger.err (tag "serverLoop")
 
-          let timer = Stopwatch()
-          timer.Start()
+        //  ____               _
+        // |  _ \ ___  ___ ___(_)_   _____
+        // | |_) / _ \/ __/ _ \ \ \ / / _ \
+        // |  _ <  __/ (_|  __/ |\ V /  __/
+        // |_| \_\___|\___\___|_| \_/ \___|
+        let mutable error = ZError.None
+        use mutable incoming = new ZMessage()
+        while state.Socket.PollIn(poll, &incoming, &error, timeout) && state.Run do
+          try
+            let request: RawServerRequest =
+              { From = Guid (incoming.[1].Read())
+                RequestId = Guid (incoming.[3].Read())
+                Body = incoming.[4].Read() }
+            notify state.Subscriptions request
+          with
+            | exn ->
+              exn.Message + exn.StackTrace
+              |> Logger.err (tag "serverLoop")
 
-          let mutable response = Unchecked.defaultof<RawServerResponse>
-
-          while not (state.Responder.TryDequeue(&response)) && not (timedOut state timer) && state.Run do
-            Thread.Sleep(TimeSpan.FromTicks 1L)
-
-          timer.Stop()
-
-          if not (timedOut state timer) && state.Run then // backend did not time out
-            use reply = new ZMessage()
-            reply.Add(new ZFrame(clientId));
-            reply.Add(new ZFrame(reqid));
-            reply.Add(new ZFrame(response.Body));
-
-            try
-              state.Socket.Send(reply)
-            with
-              | :? ZException as exn ->
-                String.Format("error sending reply to proxy: {0}", exn.Message)
-                |> Logger.err (tag state.Id "worker")
-              | exn ->
-                String.Format("error during send: {0}", exn.Message)
-                |> Logger.err (tag state.Id "worker")
-                state.Run <- false
-          elif state.Run then           // backend timed out, but we are still running
-            timer.ElapsedMilliseconds   // by re-registering it
-            |> sprintf "Backend Response Timeout: %d"
-            |> Logger.err (tag state.Id "worker")
-          else
-            state.Run
-            |> sprintf "Stop requested: %b"
-            |> Logger.err (tag state.Id "worker")
-      else
-        match error with
-        | err when err = ZError.EAGAIN -> () // don't do anything if we just didn't receive
-        | err when err = ZError.ETERM ->     // context was killed, so we exit
-          "shutting down"
-          |> Logger.err (tag state.Id "worker")
-          state.Run <- false
-        | other ->                           // something else happened
-          other
-          |> sprintf "error in worker: %O"
-          |> Logger.err (tag state.Id "worker")
-          state.Run <- false
+      with
+      | :? ZException as err when err.ErrNo = ZError.EAGAIN.Number -> ()
+      | :? ZException as err when err.ErrNo = ZError.ETERM.Number -> // context was killed
+        "shutting down"
+        |> Logger.err (tag "serverLoop")
+        state.Run <- false
+      | other ->                           // something else happened
+        other
+        |> sprintf "error in worker: %O"
+        |> Logger.err (tag "serverLoop")
+        state.Run <- false
 
     dispose state
     state.Stopper.Set() |> ignore
 
   // ** create
 
-  let create (args: WorkerConfig)  =
-    let state = new LocalThreadState(args)
+  let create ctx (args: ServerConfig)  = either {
+      let state = new LocalThreadState(ctx, args)
+      do! state.Start()
 
-    let thread = Thread(workerLoop state)
-    thread.Name <- sprintf "broker-worker-%d" state.Id
-    thread.Start()
+      let thread = Thread(serverLoop state)
+      thread.Name <- sprintf "server-%O" args.Id
+      thread.Start()
 
-    if state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0) then
-      Either.map
-        (fun _ ->
-          { new IWorker with
-              member worker.Id
-                with get () = state.Id
+      if state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0) then
+        return
+          { new IServer with
+              member server.Respond(response: RawServerResponse) =
+                state.Responses.Enqueue(response)
 
-              member worker.Respond(response: RawServerResponse) =
-                state.Responder.Enqueue(response)
-
-              member worker.Subscribe(callback: RawServerRequest -> unit) =
+              member server.Subscribe(callback: RawServerRequest -> unit) =
                 let guid = Guid.NewGuid()
                 let listener = createListener guid state.Subscriptions
                 { new IObserver<RawServerRequest> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }
-                |> listener.Subscribe })
-        state.Error
-    else
-      thread.Abort()
-      dispose state
-      let msg = "timeout: starting worker failed"
-      Logger.err (tag state.Id "create") msg
-      msg |> Error.asSocketError (tag state.Id "create") |> Either.fail
-
-// * Broker module
-
-//  ____            _
-// | __ ) _ __ ___ | | _____ _ __
-// |  _ \| '__/ _ \| |/ / _ \ '__|
-// | |_) | | | (_) |   <  __/ |
-// |____/|_|  \___/|_|\_\___|_|
-
-[<RequireQualifiedAccess>]
-module Broker =
-  open Utils
-
-  // ** Workers
-
-  type private Workers = ConcurrentDictionary<WorkerId,IWorker>
-
-  // ** ResponseActor
-
-  type private ResponseActor = MailboxProcessor<RawServerResponse>
-
-  let private tag (str: string) =
-    String.Format("Broker.{0}", str)
-
-  // ** loop
-
-  let private loop (workers: Workers) (agent: ResponseActor) =
-    let rec impl () =
-      async {
-        let! response = agent.Receive()
-        match workers.TryGetValue response.Via with
-        | true, worker ->
-          try
-            Tracing.trace (tag "ResponseActor") <| fun _ ->
-              worker.Respond response     // try to respond
-          with
-            | exn ->
-              agent.Post response       // re-cue the response
-        | _ ->
-          sprintf "no worker found for %O" response.Via
-          |> Logger.err (tag "ResponseActor")
-        return! impl ()
-      }
-    impl ()
-
-  // ** LocalThreadState
-
-  [<NoComparison;NoEquality>]
-  type private LocalThreadState private (args: BrokerConfig, ctx: ZContext) as self =
-
-    [<DefaultValue>] val mutable Initialized: bool
-    [<DefaultValue>] val mutable Disposed: bool
-    [<DefaultValue>] val mutable Started: bool
-    [<DefaultValue>] val mutable Run: bool
-    [<DefaultValue>] val mutable Frontend: ZSocket
-    [<DefaultValue>] val mutable Backend: ZSocket
-    [<DefaultValue>] val mutable Workers: Workers
-    [<DefaultValue>] val mutable Subscriptions: Subscriptions
-    [<DefaultValue>] val mutable Starter: AutoResetEvent
-    [<DefaultValue>] val mutable Stopper: AutoResetEvent
-
-    let disposables = new ResizeArray<IDisposable>()
-
-    do
-      self.Initialized <- false
-      self.Started <- false
-      self.Run <- true
-      self.Disposed <- false
-      self.Starter <- new AutoResetEvent(false)
-      self.Stopper <- new AutoResetEvent(false)
-      self.Workers <- new Workers()
-      self.Subscriptions <- new Subscriptions()
-
-    // *** Init
-
-    static member Create(args, ctx) =
-      either {
-        let state = new LocalThreadState(args,ctx)
-
-        let frontend = new ZSocket(ctx, ZSocketType.ROUTER)
-        let backend  = new ZSocket(ctx, ZSocketType.DEALER)
-
-        let mutable error = ZError.None
-
-        let fresult = frontend.Bind(unwrap args.Frontend, &error)
-        let bresult = backend.Bind(unwrap args.Backend, &error)
-
-        if fresult && bresult then
-          state.Frontend <- frontend
-          state.Backend <- backend
-          return state
-        else
-          frontend.Close()
-          backend.Close()
-          return!
-            "failed to initialize sockets"
-            |> Error.asSocketError (tag "Create")
-            |> Either.fail
-      }
-
-    // *** Start
-
-    member self.Start () =
-      for _ in 1uy .. args.MinWorkers do
-        self.AddWorker()
-
-      self.Initialized <- true
-      self.Started <- true
-
-    // *** AddWorker
-
-    member self.AddWorker() =
-      let count = self.Workers.Count
-      if count < int args.MaxWorkers then
-        Logger.debug (tag "AddWorker") "creating new worker"
-
-        let result = Worker.create {
-            Id = uint16 count + 1us
-            Backend = args.Backend
-            Context = ctx
-            RequestTimeout = args.RequestTimeout
-          }
-
-        match result with
-        | Right worker ->
-          notify self.Subscriptions
-          |> worker.Subscribe
-          |> disposables.Add
-
-          while not (self.Workers.TryAdd(worker.Id, worker)) do
-            Thread.Sleep(TimeSpan.FromTicks 1L)
-
-          Logger.debug (tag "AddWorker") "successfully added new worker"
-
-        | Left error ->
-          error
-          |> string
-          |> Logger.err (tag "AddWorker")
-
-    // *** Dispose
-
-    interface IDisposable with
-      member self.Dispose() =
-        for disp in disposables do
-          tryDispose disp
-        self.Frontend.Linger <- TimeSpan.FromMilliseconds 0.0
-        self.Backend.Linger <- TimeSpan.FromMilliseconds 0.0
-        self.Frontend.Close()
-        self.Backend.Close()
-        tryDispose self.Frontend
-        tryDispose self.Backend
-        self.Disposed <- true
-
-  // ** proxy
-
-  let private proxy (state: LocalThreadState) () =
-    state.Start()
-    state.Starter.Set() |> ignore
-    try
-      Logger.debug (tag "proxy") "starting ZMQ proxy"
-      let mutable error = ZError.None
-      if not (ZContext.Proxy(state.Frontend, state.Backend, &error)) then
-        Logger.err (tag "proxy") (string error)
-    with
-      | exn -> Logger.err (tag "proxy") exn.Message
-    state.Stopper.Set() |> ignore
-    Logger.err (tag "proxy") "exiting"
-
-  // ** create
-
-  let create (ctx: ZContext) (args: BrokerConfig) = either {
-      let! state = LocalThreadState.Create(args, ctx)
-
-      let cts = new CancellationTokenSource()
-      let responder = ResponseActor.Start(loop state.Workers, cts.Token)
-
-      let proxy = Thread(proxy state)
-      proxy.Name <- sprintf "BrokerProxy"
-      proxy.Start()
-
-      if state.Starter.WaitOne(TimeSpan.FromMilliseconds 1000.0) then
-        return
-          { new IBroker with
-              member self.Subscribe(callback: RawServerRequest -> unit) =
-                let guid = Guid.NewGuid()
-                let listener = createListener guid state.Subscriptions
-                { new IObserver<RawServerRequest> with
-                    member self.OnCompleted() = ()
-                    member self.OnError (error) = ()
-                    member self.OnNext(value) = callback value }
                 |> listener.Subscribe
 
-              member self.Respond (response: RawServerResponse) =
-                responder.Post response
-
-              member self.Dispose() =
-                dispose cts
-                dispose state }
+              member server.Dispose() =
+                if not state.Disposed then
+                  state.Run <- false
+                  state.Disposed <- true
+                  if not (state.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                    Logger.err (tag "Dispose") "Dispose timed out"
+            }
       else
-        proxy.Abort()
+        thread.Abort()
         dispose state
-        let msg = "timeout: failed to start broker"
+        let msg = "timeout: starting worker failed"
         Logger.err (tag "create") msg
         return! msg |> Error.asSocketError (tag "create") |> Either.fail
     }

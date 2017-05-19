@@ -46,7 +46,7 @@ module ApiClient =
       Client: IrisClient
       Peer: IrisServer
       Elapsed: Timeout
-      Server: IBroker
+      Server: IServer
       Socket: IClient
       Store:  Store
       Subscriptions: Subscriptions
@@ -138,7 +138,7 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.Register
     |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+    |> RawClientRequest.create
     |> state.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestRegister"))
     |> ignore
@@ -151,7 +151,7 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.UnRegister
     |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+    |> RawClientRequest.create
     |> state.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestUnregister"))
     |> ignore
@@ -226,7 +226,7 @@ module ApiClient =
   let private requestUpdate (socket: IClient) (sm: StateMachine) =
     ServerApiRequest.Update sm
     |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+    |> RawClientRequest.create
     |> socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestUpdate"))
     |> ignore
@@ -362,7 +362,7 @@ module ApiClient =
         { Status = ServiceStatus.Stopped
           Client = client
           Peer = server
-          Server = Unchecked.defaultof<IBroker>
+          Server = Unchecked.defaultof<IServer>
           Socket = Unchecked.defaultof<IClient>
           Store = Store(State.Empty)
           Elapsed = 0<ms>
@@ -406,12 +406,9 @@ module ApiClient =
                 Timeout = int Constants.REQ_TIMEOUT * 1<ms>
               }
 
-              let result = Broker.create ctx {
+              let result = Server.create ctx {
                 Id = client.Id
-                MinWorkers = 5uy
-                MaxWorkers = 20uy
-                Frontend = clientAddr
-                Backend = backendAddr
+                Listen = clientAddr
                 RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
               }
 

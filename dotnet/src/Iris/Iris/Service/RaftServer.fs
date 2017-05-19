@@ -43,7 +43,7 @@ module Raft =
       Raft:           RaftValue
       Options:        IrisConfig
       Callbacks:      IRaftCallbacks
-      Server:         IBroker
+      Server:         IServer
       Disposables:    IDisposable list
       MakePeerSocket: ClientConfig -> Either<IrisError,IClient>
       Connections:    ConcurrentDictionary<Id,IClient>
@@ -487,26 +487,39 @@ module Raft =
                                    (raw: RawServerRequest) =
 
     Tracing.trace (tag "processAppendEntries") <| fun () ->
-      let result =
-        Raft.receiveAppendEntries (Some sender) ae
-        |> runRaft state.Raft state.Callbacks
+      try
+        let result =
+          Raft.receiveAppendEntries (Some sender) ae
+          |> runRaft state.Raft state.Callbacks
 
-      match result with
-      | Right (response, newstate) ->
-        (state.Raft.Member.Id, response)
-        |> AppendEntriesResponse
-        |> Binary.encode
-        |> RawServerResponse.fromRequest raw
-        |> state.Server.Respond
-        updateRaft state newstate
+        match result with
+        | Right (response, newstate) ->
+          (state.Raft.Member.Id, response)
+          |> AppendEntriesResponse
+          |> Binary.encode
+          |> RawServerResponse.fromRequest raw
+          |> state.Server.Respond
+          updateRaft state newstate
 
-      | Left (err, newstate) ->
-        (state.Raft.Member.Id, err)
-        |> ErrorResponse
-        |> Binary.encode
-        |> RawServerResponse.fromRequest raw
-        |> state.Server.Respond
-        updateRaft state newstate
+        | Left (err, newstate) ->
+          (state.Raft.Member.Id, err)
+          |> ErrorResponse
+          |> Binary.encode
+          |> RawServerResponse.fromRequest raw
+          |> state.Server.Respond
+          updateRaft state newstate
+      with
+        | exn ->
+          exn.Message
+          |> Logger.err (tag "processAppendEntries")
+          let err = exn.Message |> Error.asRaftError (tag "processAppendEntries")
+          (state.Raft.Member.Id, err)
+          |> ErrorResponse
+          |> Binary.encode
+          |> RawServerResponse.fromRequest raw
+          |> state.Server.Respond
+
+          state
 
   // ** processAppendEntry
 
@@ -1508,7 +1521,7 @@ module Raft =
 
         store.Update
           { Status = ServiceStatus.Stopped
-            Server = Unchecked.defaultof<IBroker>
+            Server = Unchecked.defaultof<IServer>
             MakePeerSocket = Client.create ctx
             Raft = raftState
             Options = config
@@ -1532,12 +1545,9 @@ module Raft =
                       |> Some
                       |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
 
-                    let result = Broker.create ctx {
+                    let result = Server.create ctx {
                         Id = raftState.Member.Id
-                        MinWorkers = 5uy
-                        MaxWorkers = 20uy
-                        Frontend = frontend
-                        Backend = backend
+                        Listen = frontend
                         RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                       }
 

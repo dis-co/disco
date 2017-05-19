@@ -29,7 +29,7 @@ module ZmqUtils =
   let request (sock: IClient) (req: RaftRequest) =
     req
     |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+    |> RawClientRequest.create
     |> sock.Request
 
   // ** getSocket
@@ -79,7 +79,7 @@ module ZmqUtils =
   let rawRequest (request: RaftRequest) (client: IClient) =
     request
     |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+    |> RawClientRequest.create
     |> client.Request
 
   // ** performRequest
