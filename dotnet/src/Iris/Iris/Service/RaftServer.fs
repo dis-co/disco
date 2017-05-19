@@ -487,39 +487,25 @@ module Raft =
                                    (raw: RawServerRequest) =
 
     Tracing.trace (tag "processAppendEntries") <| fun () ->
-      try
-        let result =
-          Raft.receiveAppendEntries (Some sender) ae
-          |> runRaft state.Raft state.Callbacks
+      let result =
+        Raft.receiveAppendEntries (Some sender) ae
+        |> runRaft state.Raft state.Callbacks
+      match result with
+      | Right (response, newstate) ->
+        (state.Raft.Member.Id, response)
+        |> AppendEntriesResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
-        match result with
-        | Right (response, newstate) ->
-          (state.Raft.Member.Id, response)
-          |> AppendEntriesResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
-          updateRaft state newstate
-
-        | Left (err, newstate) ->
-          (state.Raft.Member.Id, err)
-          |> ErrorResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
-          updateRaft state newstate
-      with
-        | exn ->
-          exn.Message
-          |> Logger.err (tag "processAppendEntries")
-          let err = exn.Message |> Error.asRaftError (tag "processAppendEntries")
-          (state.Raft.Member.Id, err)
-          |> ErrorResponse
-          |> Binary.encode
-          |> RawServerResponse.fromRequest raw
-          |> state.Server.Respond
-
-          state
+      | Left (err, newstate) ->
+        (state.Raft.Member.Id, err)
+        |> ErrorResponse
+        |> Binary.encode
+        |> RawServerResponse.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
   // ** processAppendEntry
 
