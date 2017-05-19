@@ -16,7 +16,7 @@ module Constants =
   //                    |_|
 
   [<Literal>]
-  let REQ_TIMEOUT = 3000.0            // ms
+  let REQ_TIMEOUT = 500.0            // ms
 
   [<Literal>]
   let MCAST_ADDRESS = "224.0.0.1"
@@ -70,7 +70,7 @@ module Constants =
   let RAFT_MAX_LOGDEPTH = 50
 
   [<Literal>]
-  let RAFT_PERIODIC_INTERVAL = 10       // ms
+  let RAFT_PERIODIC_INTERVAL = 400       // ms
 
   //  ___      _
   // |_ _|_ __(_)___
