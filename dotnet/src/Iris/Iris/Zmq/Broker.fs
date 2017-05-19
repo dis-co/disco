@@ -27,7 +27,8 @@ module private RequestCount =
 // * RawServerRequest
 
 type RawServerRequest =
-  { From: Guid
+  { RequestId: Guid
+    From: Guid
     Via: WorkerId
     Body: byte array }
 
@@ -42,18 +43,21 @@ type RawServerRequest =
 // * RawServerResponse
 
 type RawServerResponse =
-  { Via: WorkerId
+  { RequestId: Guid
+    Via: WorkerId
     Body: byte array }
 
 // * RawClientRequest
 
 type RawClientRequest =
-  { Body: byte array }
+  { RequestId: Guid
+    Body: byte array }
 
 // * RawClientResponse
 
 type RawClientResponse =
   { PeerId: Id
+    RequestId: Guid
     Body: Either<IrisError,byte array> }
 
 // * IClient
@@ -110,7 +114,9 @@ type IBroker =
 module RawServerResponse =
 
   let fromRequest (request: RawServerRequest) (body: byte array) =
-    { Via = request.Via; Body = body }
+    { RequestId = request.RequestId
+      Via = request.Via
+      Body = body }
 
 // * Utils
 
@@ -207,6 +213,8 @@ module Client =
     [<DefaultValue>] val mutable Status: ServiceStatus
     [<DefaultValue>] val mutable Socket: ZSocket
     [<DefaultValue>] val mutable Requests: ConcurrentQueue<RawClientRequest>
+    [<DefaultValue>] val mutable Pending: ConcurrentDictionary<Guid,int64>
+    [<DefaultValue>] val mutable Stopwatch: Stopwatch
     [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
@@ -216,6 +224,8 @@ module Client =
     do
       self.Status <- ServiceStatus.Stopped
       self.Requests <- ConcurrentQueue()
+      self.Pending <- ConcurrentDictionary()
+      self.Stopwatch <- Stopwatch()
       self.Subscriptions <- Subscriptions()
       self.Starter <- new AutoResetEvent(false)
       self.Stopper <- new AutoResetEvent(false)
@@ -237,6 +247,7 @@ module Client =
         self.Socket.Identity <- clid.ToByteArray()
         self.Socket.Connect(unwrap options.Frontend)
         self.Status <- ServiceStatus.Running
+        self.Stopwatch.Start()
       with
         | exn ->
           dispose self
@@ -269,65 +280,97 @@ module Client =
   let private spin (state: LocalThreadState) =
     state.Status = ServiceStatus.Running
 
-  // ** worker
+  // ** clientLoop
 
-  let private worker (state: LocalThreadState) () =
+  let private clientLoop (state: LocalThreadState) () =
     state.Start()
 
     let poll = ZPollItem.CreateReceiver()
     let timeout = Nullable(TimeSpan.FromMilliseconds 1.0)
-    let mutable error = ZError.None
-    let mutable incoming = Unchecked.defaultof<ZMessage>
+
+    let toerror =
+      "Timeout on socket"
+      |> Error.asSocketError (tag "worker")
+      |> Either.fail
 
     state.Starter.Set() |> ignore
 
-    while spin state do
-      if state.Requests.Count > 0 then
+    try
+      while spin state do
+        //  ____                 _
+        // / ___|  ___ _ __   __| |
+        // \___ \ / _ \ '_ \ / _` |
+        //  ___) |  __/ | | | (_| |
+        // |____/ \___|_| |_|\__,_|
         while state.Requests.Count > 0 do
-          try
-            // SENDING
             let result, request = state.Requests.TryDequeue()
             if result then
-              use msg = new ZMessage()
-              msg.Add(new ZFrame(state.Socket.Identity))
-              msg.Add(new ZFrame(request.Body))
-              state.Socket.Send(msg)
+              try
+                use msg = new ZMessage()
+                msg.Add(new ZFrame(state.Socket.Identity))           // add this sockets identit
+                msg.Add(new ZFrame(request.RequestId.ToByteArray())) // add the request id
+                msg.Add(new ZFrame(request.Body))                    // add the request body
+                state.Socket.Send(msg, ZSocketFlags.DontWait)        // send that shit
+                state.Pending.TryAdd(request.RequestId, state.Stopwatch.ElapsedMilliseconds)
+                |> function
+                  | true  -> ()
+                  | false -> Logger.err (tag "clientLoop") "could not add request to pending queue"
+              with
+                | exn ->
+                  exn.Message
+                  |> sprintf "error sending request: %s"
+                  |> Error.asSocketError (tag "clientLoop")
+                  |> Either.fail
+                  |> fun body -> { RequestId = request.RequestId; PeerId = state.Id; Body = body }
+                  |> notify state.Subscriptions // respond to subscriber that this request has failed
 
-            // RECEIVING
-            if state.Socket.PollIn(poll, &incoming, &error, state.Timeout) then
-              incoming.[0].Read()
-              |> Either.succeed
-              |> fun body -> { PeerId = state.Id; Body = body }
-              |> notify state.Subscriptions
-            else // TIMEOUT
-              Logger.err (tag "worker") "Timeout on socket"
-              Error.asSocketError (tag "worker") "Timeout on socket"
-              |> Either.fail
-              |> fun body -> { PeerId = state.Id; Body = body }
-              |> notify state.Subscriptions
+        //  ____               _
+        // |  _ \ ___  ___ ___(_)_   _____
+        // | |_) / _ \/ __/ _ \ \ \ / / _ \
+        // |  _ <  __/ (_|  __/ |\ V /  __/
+        // |_| \_\___|\___\___|_| \_/ \___|
+        let mutable error = ZError.None
+        let mutable incoming = Unchecked.defaultof<ZMessage>
+
+        while state.Socket.PollIn(poll, &incoming, &error, timeout) do
+          try
+            { RequestId = Guid (incoming.[0].Read())
+              PeerId = state.Id
+              Body = Right (incoming.[1].Read()) }
+            |> notify state.Subscriptions
           with
-          | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
-            let msg = "Encountered ETERM on thread. disposing"
-            let error = Error.asSocketError (tag "worker") msg
-            Logger.err (tag "worker") msg
-            { PeerId = state.Id; Body = Left error }
+            | exn ->
+              exn.Message
+              |> Error.asParseError (tag "clientLoop")
+              |> fun error -> { RequestId = Guid.Empty; PeerId = state.Id; Body = Left error }
+              |> notify state.Subscriptions
+
+        //  ____                _ _
+        // |  _ \ ___ _ __   __| (_)_ __   __ _
+        // | |_) / _ \ '_ \ / _` | | '_ \ / _` |
+        // |  __/  __/ | | | (_| | | | | | (_| |
+        // |_|   \___|_| |_|\__,_|_|_| |_|\__, |
+        //                                |___/
+        let pending = state.Pending.ToArray()
+        for KeyValue(reqid, ts) in pending do
+          if (state.Stopwatch.ElapsedMilliseconds - ts) > int64 Constants.REQ_TIMEOUT then
+            // PENDING REQUEST TIMED OUT
+            { RequestId = reqid; PeerId = state.Id; Body = toerror }
             |> notify state.Subscriptions
-            state.Status <- ServiceStatus.Stopping
-          | :? ZException -> ()
-          | exn ->
-            let msg = String.Format("Exception: {0}\nStackTrace:{1}",exn.Message, exn.StackTrace)
-            let error = Error.asSocketError (tag "worker") msg
-            Logger.err (tag "worker") msg
-            { PeerId = state.Id; Body = Left error }
-            |> notify state.Subscriptions
-            state.Status <- ServiceStatus.Failed error
-      else
-        // RECEIVING
-        if state.Socket.PollIn(poll, &incoming, &error, timeout) then
-          incoming.[1].Read()
-          |> Either.succeed
-          |> fun body -> { PeerId = state.Id; Body = body }
-          |> notify state.Subscriptions
+            state.Pending.TryRemove(reqid) |> ignore // its save, because this collection is only
+                                                    // ever modified in one place
+
+    with
+    | :? ZException as exn when exn.ErrNo = ZError.ETERM.Number ->
+      "Encountered ETERM on thread. Disposing"
+      |> Logger.err (tag "clientLoop")
+      state.Status <- ServiceStatus.Stopping
+    | :? ZException -> ()
+    | exn ->
+      let msg = String.Format("Exception: {0}\nStackTrace:{1}",exn.Message, exn.StackTrace)
+      let error = Error.asSocketError (tag "clientLoop") msg
+      Logger.err (tag "clientLoop") msg
+      state.Status <- ServiceStatus.Failed error
 
     tryDispose state
     state.Stopper.Set() |> ignore
@@ -337,7 +380,7 @@ module Client =
   let create (ctx: ZContext) (options: ClientConfig) =
     let state = new LocalThreadState(options, ctx)
 
-    let mutable thread = Thread(worker state)
+    let mutable thread = Thread(clientLoop state)
     thread.Name <- sprintf "Client %O" state.Id
     thread.Start()
 
@@ -487,9 +530,9 @@ module private Worker =
   let private timedOut (state: LocalThreadState) (timer: Stopwatch) =
     timer.ElapsedMilliseconds > int64 state.Timeout
 
-  // ** worker
+  // ** workerLoop
 
-  let private worker (state: LocalThreadState) () =
+  let private workerLoop (state: LocalThreadState) () =
     state.Start()
 
     Logger.debug (tag state.Id "initialize") "startup done"
@@ -501,10 +544,12 @@ module private Worker =
       if state.Socket.ReceiveMessage(&request, &error) then
         Tracing.trace (tag state.Id "request") <| fun () ->
           let clientId = request.[1].Read()
-          let body = request.[2].Read()
+          let reqid = request.[2].Read()
+          let body = request.[3].Read()
 
           // blow out the request to the backend process
-          { From = Guid clientId
+          { RequestId = Guid reqid
+            From = Guid clientId
             Via = state.Id
             Body = body }
           |> notify state.Subscriptions
@@ -522,6 +567,7 @@ module private Worker =
           if not (timedOut state timer) && state.Run then // backend did not time out
             use reply = new ZMessage()
             reply.Add(new ZFrame(clientId));
+            reply.Add(new ZFrame(reqid));
             reply.Add(new ZFrame(response.Body));
 
             try
@@ -563,7 +609,7 @@ module private Worker =
   let create (args: WorkerConfig)  =
     let state = new LocalThreadState(args)
 
-    let thread = Thread(worker state)
+    let thread = Thread(workerLoop state)
     thread.Name <- sprintf "broker-worker-%d" state.Id
     thread.Start()
 

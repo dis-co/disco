@@ -500,7 +500,7 @@ module IrisService =
   let private requestAppend (self: MemberId) (leader: Leader) (sm: StateMachine) =
     AppendEntry sm
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> leader.Socket.Request
     |> Either.mapError (sprintf "request error: %O" >> Logger.err (tag "requestAppend"))
     |> ignore
@@ -790,32 +790,40 @@ module IrisService =
   let private loop (store: IAgentStore<IrisState>) (inbox: IrisAgent) =
     let rec act () =
       async {
-        let! msg = inbox.Receive()
-        let state = store.State
-        let newstate =
-          match msg with
-          | Msg.Start                  -> handleStart          state inbox
-          | Msg.Stop               are -> handleStop           state inbox are
-          | Msg.Notify              ev -> handleNotify         state       ev
-          | Msg.Append             cmd -> handleAppend         state       cmd
-          | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
-          | Msg.Git                 ev -> handleGitEvent       state inbox ev
-          | Msg.Socket              ev -> handleSocketEvent    state       ev
-          | Msg.Raft                ev -> handleRaftEvent      state inbox ev
-          | Msg.Api                 ev -> handleApiEvent       state inbox ev
-          | Msg.Log                log -> handleLogEvent       state       log
-          | Msg.ForceElection          -> handleForceElection  state
-          | Msg.Periodic               -> handlePeriodic       state
-          | Msg.AddMember          mem -> handleAddMember      state       mem
-          | Msg.RemoveMember        id -> handleRemoveMember   state       id
-          | Msg.Clock clock            -> handleClock          state       clock
-          | Msg.RawClientResponse resp -> handleClientResponse state       resp
-        store.Update newstate
+        try
+          let! msg = inbox.Receive()
+          let state = store.State
+          let newstate =
+            match msg with
+            | Msg.Start                  -> handleStart          state inbox
+            | Msg.Stop               are -> handleStop           state inbox are
+            | Msg.Notify              ev -> handleNotify         state       ev
+            | Msg.Append             cmd -> handleAppend         state       cmd
+            | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
+            | Msg.Git                 ev -> handleGitEvent       state inbox ev
+            | Msg.Socket              ev -> handleSocketEvent    state       ev
+            | Msg.Raft                ev -> handleRaftEvent      state inbox ev
+            | Msg.Api                 ev -> handleApiEvent       state inbox ev
+            | Msg.Log                log -> handleLogEvent       state       log
+            | Msg.ForceElection          -> handleForceElection  state
+            | Msg.Periodic               -> handlePeriodic       state
+            | Msg.AddMember          mem -> handleAddMember      state       mem
+            | Msg.RemoveMember        id -> handleRemoveMember   state       id
+            | Msg.Clock clock            -> handleClock          state       clock
+            | Msg.RawClientResponse resp -> handleClientResponse state       resp
+          store.Update newstate
+        with
+          | exn ->
+            let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
+            String.Format(format,
+                          exn.Message, exn.StackTrace,
+                          exn.InnerException.Message, exn.InnerException.StackTrace)
+            |> Logger.err (tag "loop")
         if Service.isStopping store.State.Status then
           return ()
         else
           return! act ()
-      }
+    }
     act ()
 
   // ** IrisService

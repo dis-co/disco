@@ -27,7 +27,7 @@ module Binary =
 #if FABLE_COMPILER
     ByteBuffer.Create(bytes)
 #else
-    new ByteBuffer(bytes)
+    ByteBuffer(bytes)
 #endif
 
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte[])) =
@@ -57,7 +57,7 @@ module Binary =
     builder.Finish(offset)
     builder.SizedByteArray()
 #else
-    let builder = new FlatBufferBuilder(1)
+    let builder = FlatBufferBuilder(1)
     let offset = toOffset builder thing
     builder.Finish(offset.Value)
     builder.SizedByteArray()
@@ -77,7 +77,7 @@ module Yaml =
   open SharpYaml.Serialization
 
   let inline encode< ^t when ^t : (member ToYaml : Serializer -> string)> (thing: ^t) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     (^t : (member ToYaml : Serializer -> string) thing,serializer)
 
   let inline decode< ^err, ^t when ^t : (static member FromYaml : string -> Either< ^err, ^t >)> (str: string) =

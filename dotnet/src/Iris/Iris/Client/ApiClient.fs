@@ -138,7 +138,7 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.Register
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> state.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestRegister"))
     |> ignore
@@ -151,7 +151,7 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.UnRegister
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> state.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestUnregister"))
     |> ignore
@@ -226,7 +226,7 @@ module ApiClient =
   let private requestUpdate (socket: IClient) (sm: StateMachine) =
     ServerApiRequest.Update sm
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestUpdate"))
     |> ignore

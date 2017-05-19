@@ -110,7 +110,7 @@ module ZmqIntegrationTests =
             let request =
               value
               |> BitConverter.GetBytes
-              |> fun bytes -> { Body = bytes }
+              |> fun bytes -> { RequestId = Guid.NewGuid(); Body = bytes }
 
             request
             |> client.Request
@@ -191,7 +191,7 @@ module ZmqIntegrationTests =
             let response =
               i
               |> BitConverter.GetBytes
-              |> fun body -> { Body = body }
+              |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
               |> client.Request
             return (client.PeerId, response)
           }
@@ -217,6 +217,9 @@ module ZmqIntegrationTests =
         let num = 50
         let timeout = 10<ms>
         let mutable count = 0
+        let mutable timedout = 0
+
+        use doneCheck = new AutoResetEvent(false)
 
         use ctx = new ZContext()
 
@@ -226,13 +229,18 @@ module ZmqIntegrationTests =
           Timeout = timeout
         }
 
-        client.Subscribe (fun _ -> Interlocked.Increment &count |> ignore)
+        client.Subscribe (fun response ->
+          if Either.isFail response.Body then
+            Interlocked.Increment &timedout |> ignore
+          Interlocked.Increment &count |> ignore
+          if count = num then
+            doneCheck.Set() |> ignore)
         |> ignore
 
         let request (n: int) =
           n
           |> BitConverter.GetBytes
-          |> fun body -> { Body = body }
+          |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
           |> client.Request
           |> ignore
 
@@ -242,7 +250,7 @@ module ZmqIntegrationTests =
 
         Thread.Sleep(num * int timeout + 50)
 
-        expect "Should have correct count" true ((<) 0) count
+        do! waitOrDie "doneCheck" doneCheck
       }
       |> noError
 

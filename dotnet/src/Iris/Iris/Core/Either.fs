@@ -328,7 +328,7 @@ module EitherUtils =
       self.TryFinally(body', fun () ->
         disposable.Dispose())
 
-  let either = new EitherBuilder()
+  let either = EitherBuilder()
 
 #if INTERACTIVE
 module Test =

@@ -136,7 +136,7 @@ module ApiServer =
     state.Store.State
     |> ClientApiRequest.Snapshot
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> client.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "requestInstallSnapshot"))
     |> ignore
@@ -181,7 +181,7 @@ module ApiServer =
         do! Async.Sleep(timeout)
         ClientApiRequest.Ping
         |> Binary.encode
-        |> fun body -> { Body = body }
+        |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
         |> socket.Request
         |> Either.mapError (string >> Logger.err (tag "pingTimer"))
         |> ignore
@@ -267,7 +267,7 @@ module ApiServer =
     sm
     |> ClientApiRequest.Update
     |> Binary.encode
-    |> fun body -> { Body = body }
+    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> client.Socket.Request
     |> Either.mapError (string >> Logger.err (tag "updateClient"))
     |> ignore
