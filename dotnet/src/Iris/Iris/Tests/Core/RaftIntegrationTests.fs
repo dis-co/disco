@@ -273,10 +273,8 @@ module RaftIntegrationTests =
       |> noError
 
   let test_validate_add_member_works =
-    ftestCase "validate add member works" <| fun _ ->
+    testCase "validate add member works" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use ctx = new ZContext()
         use added = new AutoResetEvent(false)
         use configured = new AutoResetEvent(false)
