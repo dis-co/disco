@@ -33,7 +33,7 @@ module Raft =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<RaftEvent>>
+  type private Subscriptions = Subscriptions<RaftEvent>
 
   // ** RaftServerState
 
@@ -209,15 +209,7 @@ module Raft =
   // ** handleNotify
 
   let private handleNotify (state: RaftServerState) (ev: RaftEvent) =
-    let subs = state.Subscriptions.ToArray()
-    for KeyValue(_,subscription) in subs do
-      try
-        subscription.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "could not notify listeners of event: %s"
-          |> Logger.err (tag "handleNotify")
+    Observable.notify state.Subscriptions ev
     state
 
   // ** sendRequest
@@ -1534,7 +1526,6 @@ module Raft =
                     let result = Server.create ctx {
                         Id = raftState.Member.Id
                         Listen = frontend
-                        RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                       }
 
                     agent.Start()       // we must start the agent, so the dispose logic will work

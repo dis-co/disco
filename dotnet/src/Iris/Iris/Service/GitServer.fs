@@ -56,7 +56,7 @@ module Git =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<GitEvent>>
+  type private Subscriptions = Subscriptions<GitEvent>
 
   // ** GitState
 
@@ -294,15 +294,7 @@ module Git =
   // ** handleNotify
 
   let private handleNotify (state: GitState) ev =
-    let subscriptions = state.Subscriptions.ToArray()
-    // notify
-    for KeyValue(_,subscription) in subscriptions do
-      try subscription.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "could not notify subscriber of event: %O"
-          |> Logger.err (tag "notify")
+    Observable.notify state.Subscriptions ev
     state
 
   // ** loop

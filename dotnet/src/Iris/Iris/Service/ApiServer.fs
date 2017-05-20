@@ -37,7 +37,7 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ApiEvent>>
+  type private Subscriptions = Subscriptions<ApiEvent>
 
   // ** Client
 
@@ -98,37 +98,6 @@ module ApiServer =
   // ** ApiAgent
 
   type private ApiAgent = MailboxProcessor<Msg>
-
-  // ** Listener
-
-  type private Listener = IObservable<ApiEvent>
-
-  // ** createListener
-
-  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(guid, obs)) do
-            Thread.Sleep(1)
-
-          { new IDisposable with
-              member self.Dispose() =
-                match subscriptions.TryRemove(guid) with
-                | true, _  -> ()
-                | _ -> subscriptions.TryRemove(guid)
-                      |> ignore } }
-
-  // ** notify
-
-  let private notify (subs: Subscriptions) (ev: ApiEvent) =
-    let subscriptions = subs.ToArray()
-    for KeyValue(_,sub) in subscriptions do
-      try sub.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "error notifying even listener subscription: %s"
-          |> Logger.err (tag "notify")
 
   // ** requestInstallSnapshot
 
@@ -222,7 +191,9 @@ module ApiServer =
       | None -> ()
       | Some client ->
         dispose client
-        notify state.Subscriptions (ApiEvent.UnRegister client.Meta)
+        client.Meta
+        |> ApiEvent.UnRegister
+        |> Observable.notify state.Subscriptions
 
       // construct a new client value
       let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
@@ -242,7 +213,7 @@ module ApiServer =
             Timer = pingTimer socket agent }
 
         meta.Id |> Msg.InstallSnapshot |> agent.Post
-        meta |> ApiEvent.Register |> notify state.Subscriptions
+        meta |> ApiEvent.Register |> Observable.notify state.Subscriptions
         { state with Clients = Map.add meta.Id client state.Clients }
       | Left error ->
         error
@@ -257,7 +228,7 @@ module ApiServer =
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
         dispose client
-        peer |> ApiEvent.UnRegister |> notify state.Subscriptions
+        peer |> ApiEvent.UnRegister |> Observable.notify state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
 
@@ -305,7 +276,7 @@ module ApiServer =
 
   let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
     Tracing.trace (tag "handleSetStatus") <| fun () ->
-      notify state.Subscriptions (ApiEvent.ServiceStatus status)
+      status |> ApiEvent.ServiceStatus |> Observable.notify state.Subscriptions
       { state with Status = status }
 
   // ** handleSetClientStatus
@@ -319,7 +290,7 @@ module ApiServer =
         | oldst, newst ->
           if oldst <> newst then
             let updated = { client with Meta = { client.Meta with Status = status } }
-            updated.Meta |> ApiEvent.ClientStatus |> notify state.Subscriptions
+            updated.Meta |> ApiEvent.ClientStatus |> Observable.notify state.Subscriptions
             { state with Clients = Map.add id updated state.Clients }
           else state
       | None -> state
@@ -346,7 +317,7 @@ module ApiServer =
     Tracing.trace (tag "handleClientUpdate") <| fun () ->
       maybeDispatch state sm
       maybePublish state sm agent
-      notify state.Subscriptions (ApiEvent.Update sm)
+      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
       state
 
   // ** handleRemoteUpdate
@@ -355,7 +326,7 @@ module ApiServer =
     Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
       maybeDispatch state sm             // we need to send these request synchronously
       updateClients state sm agent       // in order to preserve ordering of the messages
-      notify state.Subscriptions (ApiEvent.Update sm)
+      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
       state
 
   // ** handleLocalUpdate
@@ -535,7 +506,6 @@ module ApiServer =
                   let result = Server.create ctx {
                     Id = mem.Id
                     Listen = frontend
-                    RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
                   }
 
                   match result  with
@@ -586,8 +556,7 @@ module ApiServer =
               // **** Subscribe
 
               member self.Subscribe (callback: ApiEvent -> unit) =
-                let guid = Guid.NewGuid()
-                let listener = createListener guid store.State.Subscriptions
+                let listener = Observable.createListener store.State.Subscriptions
                 { new IObserver<ApiEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()

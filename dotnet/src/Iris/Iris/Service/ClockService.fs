@@ -31,7 +31,7 @@ module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ClockEvent>>
+  type private Subscriptions = Subscriptions<ClockEvent>
 
   // ** Listener
 

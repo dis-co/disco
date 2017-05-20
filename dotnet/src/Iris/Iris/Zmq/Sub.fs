@@ -15,26 +15,7 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<byte array>>
-
-  // ** createListener
-
-  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          subscriptions.TryAdd(guid, obs)
-          |> ignore
-
-          { new IDisposable with
-              member self.Dispose() =
-                subscriptions.TryRemove(guid)
-                |> ignore } }
-
-  // ** notify
-
-  let private notify (subscriptions: Subscriptions) (ev: byte array) =
-    for KeyValue(_,subscription) in subscriptions do
-      subscription.OnNext ev
+  type private Subscriptions = Subscriptions<byte array>
 
   /// ## Sub
   ///
@@ -115,7 +96,7 @@ module Sub =
           |> sprintf "[%s] Got %d bytes long message on " addr
           |> Logger.debug (tag "worker")
 
-          notify subscriptions bytes
+          Observable.notify subscriptions bytes
 
           dispose msg
 
@@ -174,8 +155,7 @@ module Sub =
         |> Either.fail
 
     member self.Subscribe (callback: byte array -> unit) =
-      let guid = Guid.NewGuid()
-      let listener = createListener guid subscriptions
+      let listener = Observable.createListener subscriptions
       { new IObserver<byte array> with
           member self.OnCompleted() = ()
           member self.OnError(error) = ()

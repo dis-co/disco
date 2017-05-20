@@ -44,7 +44,7 @@ module Discovery =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<DiscoveryEvent>>
+  type private Subscriptions = Subscriptions<DiscoveryEvent>
 
   // ** DiscoveryState
 
@@ -80,29 +80,10 @@ module Discovery =
 
   type private DiscoveryAgent = MailboxProcessor<Msg>
 
-  // ** createListener
-
-  let private createListener (subscriptions: Subscriptions) =
-    let guid = Guid.NewGuid()
-    { new Listener with
-        member self.Subscribe(obs) =
-          subscriptions.TryAdd(guid, obs) |> ignore
-
-          { new IDisposable with
-              member self.Dispose() =
-                subscriptions.TryRemove(guid) |> ignore } }
-
   // ** handleNotify
 
   let private handleNotify (state: DiscoveryState) (ev: DiscoveryEvent) =
-    let subs = state.Subscriptions.ToArray()
-    for KeyValue(_,subscription) in subs do
-      try subscription.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "error trying to notify subsriber: %O"
-          |> Logger.err (tag "handleNotify")
+    Observable.notify state.Subscriptions ev
     state
 
   // ** addResolved
@@ -362,7 +343,7 @@ module Discovery =
             with get () = store.State.RegisteredServices, store.State.ResolvedServices
 
           member self.Subscribe (callback: DiscoveryEvent -> unit) =
-            let listener = createListener store.State.Subscriptions
+            let listener = Observable.createListener store.State.Subscriptions
             { new IObserver<DiscoveryEvent> with
                 member self.OnCompleted() = ()
                 member self.OnError(error) = ()

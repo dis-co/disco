@@ -139,6 +139,9 @@
     <Compile Include="..\..\Iris\Core\Tracing.fs">
       <Link>Tracing.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\Observable.fs">
+      <Link>Observable.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>
@@ -202,8 +205,11 @@
     <Compile Include="..\..\Iris\Zmq\Sub.fs">
       <Link>Sub.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\Broker.fs">
-      <Link>Broker.fs</Link>
+    <Compile Include="..\..\Iris\Zmq\ClientSocket.fs">
+      <Link>ClientSocket.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Zmq\ServerSocket.fs">
+      <Link>ServerSocket.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Interfaces.fs">
       <Link>Interfaces.fs</Link>

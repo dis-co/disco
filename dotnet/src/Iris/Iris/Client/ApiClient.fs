@@ -36,7 +36,7 @@ module ApiClient =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ClientEvent>>
+  type private Subscriptions = Subscriptions<ClientEvent>
 
   // ** ClientState
 
@@ -81,25 +81,6 @@ module ApiClient =
 
   type private ApiAgent = MailboxProcessor<Msg>
 
-  // ** Listener
-
-  type private Listener = IObservable<ClientEvent>
-
-  // ** createListener
-
-  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(guid, obs)) do
-            Thread.Sleep(1)
-
-          { new IDisposable with
-              member self.Dispose() =
-                match subscriptions.TryRemove(guid) with
-                | true, _  -> ()
-                | _ -> subscriptions.TryRemove(guid)
-                      |> ignore } }
-
   // ** pingTimer
 
   let private pingTimer (agent: ApiAgent) =
@@ -120,14 +101,7 @@ module ApiClient =
   // ** handleNotify
 
   let private handleNotify (state: ClientState) (ev: ClientEvent) =
-    let subscriptions = state.Subscriptions.ToArray()
-    for KeyValue(_,sub) in subscriptions do
-      try sub.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "error calling on next on listener subscription: %s"
-          |> Logger.err (tag "notify")
+    Observable.notify state.Subscriptions ev
     state
 
   // ** requestRegister
@@ -409,7 +383,6 @@ module ApiClient =
               let result = Server.create ctx {
                 Id = client.Id
                 Listen = clientAddr
-                RequestTimeout = int Constants.REQ_TIMEOUT * 1<ms>
               }
 
               match result with
@@ -445,8 +418,7 @@ module ApiClient =
           // **** Subscribe
 
           member self.Subscribe (callback: ClientEvent -> unit) =
-            let guid = Guid.NewGuid()
-            let listener = createListener guid subscriptions
+            let listener = Observable.createListener subscriptions
             { new IObserver<ClientEvent> with
                 member self.OnCompleted() = ()
                 member self.OnError(error) = ()

@@ -29,7 +29,7 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<WebSocketEvent>>
+  type private Subscriptions = Subscriptions<WebSocketEvent>
 
   // ** SocketEventProcessor
 
@@ -193,14 +193,13 @@ module WebSockets =
 
   // ** loop
 
-  let private loop (initial: Subscriptions) (inbox: SocketEventProcessor) =
-    let rec act (subscriptions: Subscriptions) = async {
+  let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
+    let rec act () = async {
         let! msg = inbox.Receive()
-        for sub in subscriptions do
-          sub.OnNext msg
-        do! act subscriptions
+        Observable.notify subscriptions msg
+        return! act ()
       }
-    act initial
+    act()
 
   // ** WebSocketServer
 
@@ -218,18 +217,6 @@ module WebSockets =
         let status = ref ServiceStatus.Stopped
         let connections = Connections()
         let subscriptions = Subscriptions()
-
-        let listener =
-          { new IObservable<WebSocketEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
-
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
 
         let agent = new SocketEventProcessor(loop subscriptions)
 
@@ -250,6 +237,7 @@ module WebSockets =
                 buildSession connections id session
 
               member self.Subscribe (callback: WebSocketEvent -> unit) =
+                let listener = Observable.createListener subscriptions
                 { new IObserver<WebSocketEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()

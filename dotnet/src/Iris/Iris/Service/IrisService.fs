@@ -175,14 +175,7 @@ module IrisService =
   // ** handleNotify
 
   let private handleNotify (state: IrisState) (ev: IrisEvent) =
-    let subs = state.Subscriptions.ToArray()
-    for KeyValue(_,subscription) in subs do
-      try subscription.OnNext ev
-      with
-        | exn ->
-          exn.Message
-          |> sprintf "error notifying listeners: %s"
-          |> Logger.err (tag "handleNotify")
+    Observable.notify state.Subscriptions ev
     state
 
   // ** broadcastMsg

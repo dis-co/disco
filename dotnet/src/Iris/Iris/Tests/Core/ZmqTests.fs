@@ -43,7 +43,6 @@ module ZmqIntegrationTests =
         let! server = Server.create ctx {
             Id = Id.Create()
             Listen = frontend
-            RequestTimeout = 200<ms>
           }
 
         let sloop (inbox: MailboxProcessor<RawServerRequest>) =
@@ -164,7 +163,6 @@ module ZmqIntegrationTests =
         use! server = Server.create ctx {
             Id = Id.Create()
             Listen = frontend
-            RequestTimeout = 100<ms>
           }
 
         use bobs = server.Subscribe (fun _ -> count <- Interlocked.Increment &count)
@@ -258,13 +256,11 @@ module ZmqIntegrationTests =
         use! server1 = Server.create ctx {
             Id = Id.Create()
             Listen = frontend
-            RequestTimeout = 100<ms>
           }
 
         let server2 = Server.create ctx {
             Id = Id.Create()
             Listen = frontend
-            RequestTimeout = 100<ms>
           }
 
         return!
