@@ -210,7 +210,7 @@ let addMember(info: obj) =
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
         HostName = machine.HostName
-        IpAddr   = IPv4Address machine.WebIP
+        IpAddr   = machine.BindAddress
         Port     = machine.RaftPort
         WsPort   = machine.WsPort
         GitPort  = machine.GitPort
@@ -259,11 +259,11 @@ let createProject(info: obj) =
     let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
 
     do! { name     = !!info?name
-        ; ipAddr   = machine.WebIP
-        ; port     = machine.RaftPort
-        ; apiPort  = machine.ApiPort
-        ; wsPort   = machine.WsPort
-        ; gitPort  = machine.GitPort }
+        ; ipAddr   = string machine.BindAddress
+        ; port     = unwrap machine.RaftPort
+        ; apiPort  = unwrap machine.ApiPort
+        ; wsPort   = unwrap machine.WsPort
+        ; gitPort  = unwrap machine.GitPort }
         |> CreateProject
         |> postCommand (fun _ -> notify "The project has been created successfully") notify
   })

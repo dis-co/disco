@@ -67,7 +67,7 @@ type IrisMachineFB =
   abstract MachineId: string
   abstract HostName: string
   abstract WorkSpace: string
-  abstract WebIP: string
+  abstract BindAddress: string
   abstract WebPort: uint16
   abstract RaftPort: uint16
   abstract WsPort: uint16
@@ -81,7 +81,7 @@ type IrisMachineFBConstructor =
   abstract AddMachineId: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
-  abstract AddWebIP: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddBindAddress: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * key: uint16 -> unit
