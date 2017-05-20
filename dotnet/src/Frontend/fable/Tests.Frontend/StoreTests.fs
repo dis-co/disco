@@ -21,16 +21,16 @@ module Store =
         Pins = Map.empty }
 
     let machine =
-      { MachineId = Id.Create ()
-        HostName  = "La la Land"
-        WorkSpace = filepath "C:\Program Files\Yo Mama"
-        WebIP     = "127.0.0.1"
-        WebPort   = 80us
-        RaftPort  = 70us
-        WsPort    = 60us
-        GitPort   = 50us
-        ApiPort   = 40us
-        Version   = version "1.0.0" }
+      { MachineId   = Id.Create ()
+        HostName    = name "La la Land"
+        WorkSpace   = filepath "C:\Program Files\Yo Mama"
+        BindAddress = IPv4Address "127.0.0.1"
+        WebPort     = 80us
+        RaftPort    = 70us
+        WsPort      = 60us
+        GitPort     = 50us
+        ApiPort     = 40us
+        Version     = version "1.0.0" }
 
     let project = IrisProject.Empty
 
