@@ -1,4 +1,4 @@
-namespace Iris.Zmq
+namespace rec Iris.Zmq
 
 // * Imports
 

@@ -183,12 +183,23 @@ and RaftMember =
   member mem.ToOffset (builder: FlatBufferBuilder) =
     let id = string mem.Id |> builder.CreateString
     let ip = string mem.IpAddr |> builder.CreateString
-    let hostname = mem.HostName |> unwrap |> builder.CreateString
+
+    let hostname =
+      let unwrapped = unwrap mem.HostName
+      if isNull unwrapped then
+        None
+      else
+        unwrapped |> builder.CreateString |> Some
+
     let state = mem.State.ToOffset()
 
     RaftMemberFB.StartRaftMemberFB(builder)
     RaftMemberFB.AddId(builder, id)
-    RaftMemberFB.AddHostName(builder, hostname)
+
+    match hostname with
+    | Some hostname -> RaftMemberFB.AddHostName(builder, hostname)
+    | None -> ()
+
     RaftMemberFB.AddIpAddr(builder, ip)
     RaftMemberFB.AddPort(builder, unwrap mem.Port)
     RaftMemberFB.AddWsPort(builder, unwrap mem.WsPort)

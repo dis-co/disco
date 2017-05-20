@@ -1,15 +1,124 @@
 namespace Iris.Tests
 
 open Expecto
+open Expecto.Helpers
+open FsCheck
+open FsCheck.GenBuilder
 open Iris.Core
 open Iris.Raft
 open Iris.Service
 open Iris.Serialization
 open Iris.Service.Utilities
 open Iris.Service.Persistence
+open System
 open System.Net
 open FlatBuffers
 open FSharpx.Functional
+
+module Generators =
+  open System.Net
+
+  //  ___         _       _     _
+  // |_ _|_ __   / \   __| | __| |_ __ ___  ___ ___
+  //  | || '_ \ / _ \ / _` |/ _` | '__/ _ \/ __/ __|
+  //  | || |_) / ___ \ (_| | (_| | | |  __/\__ \__ \
+  // |___| .__/_/   \_\__,_|\__,_|_|  \___||___/___/
+  //     |_|
+  let ipv4 = gen {
+      let! bts = Gen.listOfLength 4 Arb.generate<byte>
+      let addr =
+        bts
+        |> List.map (int >> string)
+        |> fun parts -> String.Join(".", parts)
+      return addr
+    }
+
+  let ipv6 = gen {
+      let! bts = Gen.listOfLength 16 Arb.generate<byte>
+      let addr =
+        bts
+        |> List.map (fun bte -> String.Format("{0:X2}",bte))
+        |> List.chunkBySize 2
+        |> List.fold
+          (fun m lst ->
+            match lst with
+            | [ fst; snd ] -> fst + snd :: m
+            | _ -> m)
+          []
+        |> fun lst -> String.Join(":", lst)
+      return addr
+    }
+
+  let ipgen =
+    Gen.oneof [ Gen.map IPv4Address ipv4
+                Gen.map IPv6Address ipv6 ]
+
+  //  ___    _
+  // |_ _|__| |
+  //  | |/ _` |
+  //  | | (_| |
+  // |___\__,_|
+
+  let idgen = gen {
+      let! value = Arb.generate<Guid>
+      return Id (string value)
+    }
+
+  //  ____        __ _   ____  _        _
+  // |  _ \ __ _ / _| |_/ ___|| |_ __ _| |_ ___
+  // | |_) / _` | |_| __\___ \| __/ _` | __/ _ \
+  // |  _ < (_| |  _| |_ ___) | || (_| | ||  __/
+  // |_| \_\__,_|_|  \__|____/ \__\__,_|\__\___|
+
+
+  let stategen = Gen.oneof [ Gen.constant Joining
+                             Gen.constant Running
+                             Gen.constant Failed ]
+
+  //  ____        __ _   __  __                _
+  // |  _ \ __ _ / _| |_|  \/  | ___ _ __ ___ | |__   ___ _ __
+  // | |_) / _` | |_| __| |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  // |  _ < (_| |  _| |_| |  | |  __/ | | | | | |_) |  __/ |
+  // |_| \_\__,_|_|  \__|_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+  let raftMem = gen {
+      let! id = idgen
+      let! n = Arb.generate<string> |> Gen.map name
+      let! ip = ipgen
+      let! p = Arb.generate<uint16> |> Gen.map port
+      let! wp = Arb.generate<uint16> |> Gen.map port
+      let! ap = Arb.generate<uint16> |> Gen.map port
+      let! gp = Arb.generate<uint16> |> Gen.map port
+      let! voting = Arb.generate<bool>
+      let! vfm = Arb.generate<bool>
+      let! state = stategen
+      let! nidx = Arb.generate<int> |> Gen.map index
+      let! midx = Arb.generate<int> |> Gen.map index
+      return
+        { Id         = id
+          HostName   = n
+          IpAddr     = ip
+          Port       = p
+          WsPort     = wp
+          GitPort    = gp
+          ApiPort    = ap
+          Voting     = voting
+          VotedForMe = vfm
+          State      = state
+          NextIndex  = nidx
+          MatchIndex = midx }
+    }
+
+  //   ____             __ _        ____ _
+  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+  //                         |___/                         |___/
+
+  let changeGen = Gen.oneof [ Gen.map MemberAdded raftMem
+                              Gen.map MemberRemoved raftMem ]
+                  |> Arb.fromGen
 
 [<AutoOpen>]
 module SerializationTests =
@@ -20,22 +129,10 @@ module SerializationTests =
   // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
   //               |_|
 
-  let test_validate_requestvote_serialization =
-    testCase "Validate RequestVote Serialization" <| fun _ ->
-      let mem =
-        { Member.create (Id.Create()) with
-            HostName = name "test-host"
-            IpAddr   = IpAddress.Parse "192.168.2.10"
-            Port     = port 8080us }
-
-      let vr : VoteRequest =
-        { Term = term 8
-        ; LastLogIndex = index 128
-        ; LastLogTerm = term 7
-        ; Candidate = mem }
-
-      RequestVote(Id.Create(), vr)
-      |> binaryEncDec
+  let test_validate_raftrequest_serialization =
+    testProperty "Validate RequestVote Serialization" <| fun (rr: RaftRequest) ->
+      let rerr = rr |> Binary.encode |> Binary.decode |> Either.get
+      rr = rerr
 
   // __     __    _       ____
   // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
@@ -219,6 +316,21 @@ module SerializationTests =
         RaftError ("one","two")
         Other  ("one","two")
       ]
+
+  //   ____             __ _        ____ _
+  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+  //                         |___/                         |___/
+
+  let test_config_change =
+    testCase "ConfigChange serialization should work" <| fun _ ->
+      let prop =
+        fun (ch: ConfigChange) ->
+          let rech = ch |> Binary.encode |> Binary.decode |> Either.get
+          ch = rech
+      Check.QuickThrowOnFailure (Prop.forAll Generators.changeGen prop)
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -557,40 +669,42 @@ module SerializationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/
 
   let serializationTests =
-    testList "Serialization Tests" [
-      test_validate_discovered_service_binary_serialization
-      test_validate_requestvote_serialization
-      test_validate_requestvote_response_serialization
-      test_validate_appendentries_serialization
-      test_validate_appendentries_response_serialization
-      test_validate_installsnapshot_serialization
-      test_validate_handshake_serialization
-      test_validate_handwaive_serialization
-      test_validate_redirect_serialization
-      test_validate_welcome_serialization
-      test_validate_arrivederci_serialization
-      test_validate_errorresponse_serialization
-      test_save_restore_raft_value_correctly
-      test_validate_project_binary_serialization
-      test_validate_project_yaml_serialization
-      test_validate_cue_binary_serialization
-      test_validate_cue_yaml_serialization
-      test_validate_cuelist_binary_serialization
-      test_validate_cuelist_yaml_serialization
-      test_validate_group_binary_serialization
-      test_validate_group_yaml_serialization
-      test_validate_session_binary_serialization
-      test_validate_session_yaml_serialization
-      test_validate_user_binary_serialization
-      test_validate_user_yaml_serialization
-      test_validate_slice_binary_serialization
-      test_validate_slices_binary_serialization
-      test_validate_pin_binary_serialization
-      test_validate_pin_yaml_serialization
-      test_validate_client_binary_serialization
-      test_validate_state_binary_serialization
-      test_validate_state_machine_binary_serialization
-      test_validate_client_api_request_binary_serialization
-      test_validate_cueplayer_binary_serialization
-      test_validate_cueplayer_yaml_serialization
+    ftestList "Serialization Tests" [
+      // test_validate_discovered_service_binary_serialization
+      // test_validate_requestvote_response_serialization
+      // test_validate_appendentries_serialization
+      // test_validate_appendentries_response_serialization
+      // test_validate_installsnapshot_serialization
+      // test_validate_handshake_serialization
+      // test_validate_handwaive_serialization
+      // test_validate_redirect_serialization
+      // test_validate_welcome_serialization
+      // test_validate_arrivederci_serialization
+      // test_validate_errorresponse_serialization
+      // test_save_restore_raft_value_correctly
+      // test_validate_project_binary_serialization
+      // test_validate_project_yaml_serialization
+      // test_validate_cue_binary_serialization
+      // test_validate_cue_yaml_serialization
+      // test_validate_cuelist_binary_serialization
+      // test_validate_cuelist_yaml_serialization
+      // test_validate_group_binary_serialization
+      // test_validate_group_yaml_serialization
+      // test_validate_session_binary_serialization
+      // test_validate_session_yaml_serialization
+      // test_validate_user_binary_serialization
+      // test_validate_user_yaml_serialization
+      // test_validate_slice_binary_serialization
+      // test_validate_slices_binary_serialization
+      // test_validate_pin_binary_serialization
+      // test_validate_pin_yaml_serialization
+      // test_validate_client_binary_serialization
+      // test_validate_state_binary_serialization
+      // test_validate_state_machine_binary_serialization
+      // test_validate_client_api_request_binary_serialization
+      // test_validate_cueplayer_binary_serialization
+      // test_validate_cueplayer_yaml_serialization
+
+      test_config_change
+      // test_validate_raftrequest_serialization
     ]
