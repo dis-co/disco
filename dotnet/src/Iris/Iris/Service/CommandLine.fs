@@ -246,10 +246,10 @@ module CommandLine =
       let mem =
         { Member.create(machine.MachineId) with
             IpAddr  = bind
-            GitPort = git
-            WsPort  = ws
-            Port    = raft
-            ApiPort = api }
+            GitPort = port git
+            WsPort  = port ws
+            Port    = port raft
+            ApiPort = port api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -526,11 +526,11 @@ module CommandLine =
 
       let mem =
         { Member.create id with
-            HostName = hn
+            HostName = name hn
             IpAddr   = ip
-            Port     = raft
-            WsPort   = ws
-            GitPort  = git }
+            Port     = port raft
+            WsPort   = port ws
+            GitPort  = port git }
 
       let! _ =
         Asset.saveWithCommit

@@ -61,7 +61,7 @@ module ApiTests =
         server.State <- state
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -121,7 +121,7 @@ module ApiTests =
         server.State <- state
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -189,7 +189,7 @@ module ApiTests =
         let mem = Member.create (Id.Create())
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -313,7 +313,7 @@ module ApiTests =
         let mem = Member.create (Id.Create())
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =

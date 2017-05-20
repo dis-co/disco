@@ -520,7 +520,7 @@ module ApiServer =
               // **** Start
 
               member self.Start () = either {
-                  let frontend = Uri.tcpUri mem.IpAddr (mem.ApiPort |> port |> Some)
+                  let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
                   let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
 
                   let pubSubAddr =

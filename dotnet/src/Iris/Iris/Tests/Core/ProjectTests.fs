@@ -209,17 +209,17 @@ module ProjectTests =
 
         let memA =
           { Member.create (Id.Create()) with
-              HostName = "moomoo"
+              HostName = name "moomoo"
               IpAddr   = IpAddress.Parse "182.123.18.2"
               State    = Running
-              Port     = 1234us }
+              Port     = port 1234us }
 
         let memB =
           { Member.create (Id.Create()) with
-              HostName = "taataaa"
+              HostName = name "taataaa"
               IpAddr   = IpAddress.Parse "118.223.8.12"
               State    = Joining
-              Port     = 1234us }
+              Port     = port 1234us }
 
         let groupA: HostGroup =
           { Name    = name "Group A"

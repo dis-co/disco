@@ -126,10 +126,10 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     let mem =
       { Member.create(machine.MachineId) with
           IpAddr  = IpAddress.Parse opts.ipAddr
-          GitPort = opts.gitPort
-          WsPort  = opts.wsPort
-          ApiPort = opts.apiPort
-          Port    = opts.port }
+          GitPort = port opts.gitPort
+          WsPort  = port opts.wsPort
+          ApiPort = port opts.apiPort
+          Port    = port opts.port }
 
     let! project = buildProject machine opts.name dir raftDir mem
 

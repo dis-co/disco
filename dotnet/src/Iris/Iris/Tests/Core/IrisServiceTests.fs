@@ -52,10 +52,10 @@ module IrisServiceTests =
 
   let private mkMember baseport (machine: IrisMachine) =
     { Member.create machine.MachineId with
-        Port = baseport
-        ApiPort = baseport + 1us
-        GitPort = baseport + 2us
-        WsPort = baseport + 3us }
+        Port = port  baseport
+        ApiPort = port (baseport + 1us)
+        GitPort = port (baseport + 2us)
+        WsPort = port (baseport + 3us) }
 
   let private mkCluster (num: int) =
     either {

@@ -39,7 +39,7 @@ table IrisMachineFB {
       MachineId: string;
       HostName: string;
       WorkSpace: string;
-      WebIP: string;
+      BindAddress: string;
       WebPort: ushort;
       RaftPort: ushort;
       WsPort: ushort;

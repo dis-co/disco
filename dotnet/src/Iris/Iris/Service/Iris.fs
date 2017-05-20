@@ -51,7 +51,7 @@ module Iris =
                               (services: ExposedService[])
                               (metadata: Property[])=
     { Id = config.MachineId
-      WebPort = port config.WebPort
+      WebPort = config.WebPort
       Status = status
       Services = services
       ExtraMetadata = metadata }
@@ -63,7 +63,7 @@ module Iris =
   let private registerIdleServices (config: IrisMachine) (service: IDiscoveryService) =
     let services =
       [| { ServiceType = ServiceType.Http
-           Port = port config.WebPort } |]
+           Port = config.WebPort } |]
     registerService service config MachineStatus.Idle services [| |]
 
   // ** registerLoadedServices
@@ -71,11 +71,11 @@ module Iris =
   let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
     let status = MachineStatus.Busy (project.Id, project.Name)
     let services =
-      [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
-         { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
-         { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
-         { ServiceType = ServiceType.Http;      Port = port project.Config.Machine.WebPort }
-         { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
+      [| { ServiceType = ServiceType.Api;       Port = mem.ApiPort }
+         { ServiceType = ServiceType.Git;       Port = mem.GitPort }
+         { ServiceType = ServiceType.Raft;      Port = mem.Port    }
+         { ServiceType = ServiceType.Http;      Port = project.Config.Machine.WebPort }
+         { ServiceType = ServiceType.WebSocket; Port = mem.WsPort  } |]
     registerService service project.Config.Machine status services [| |]
 
   // ** create

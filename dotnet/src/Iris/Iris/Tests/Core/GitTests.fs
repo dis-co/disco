@@ -16,7 +16,7 @@ open System.IO
 
 [<AutoOpen>]
 module GitTests =
-  let mkEnvironment port =
+  let mkEnvironment p =
     let machine = MachineConfig.create "127.0.0.1" None
 
     let tmpdir = mkTmpDir ()
@@ -24,7 +24,7 @@ module GitTests =
     let mem =
       machine.MachineId
       |> Member.create
-      |> Member.setGitPort port
+      |> Member.setGitPort (port p)
 
     let config =
       Config.create "Test Project" machine

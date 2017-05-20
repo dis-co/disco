@@ -890,7 +890,7 @@ module IrisService =
                       else
                         let selfMember =
                           { Member.create(machineId) with
-                              IpAddr  = IpAddress.Parse iris.Machine.WebIP
+                              IpAddr  = iris.Machine.BindAddress
                               GitPort = iris.Machine.GitPort
                               WsPort  = iris.Machine.WsPort
                               ApiPort = iris.Machine.ApiPort

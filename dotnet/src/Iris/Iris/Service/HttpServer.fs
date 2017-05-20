@@ -166,7 +166,7 @@ module Http =
                 [|"iris"|] }
 
         let machine = MachineConfig.get()
-        let addr = IPAddress.Parse machine.WebIP
+        let addr = machine.BindAddress |> string |> IPAddress.Parse
         let port = Sockets.Port.Parse (string machine.WebPort)
 
         sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port basePath

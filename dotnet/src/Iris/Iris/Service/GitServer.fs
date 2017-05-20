@@ -338,7 +338,7 @@ module Git =
       let agent = new GitAgent(loop store, cts.Token)
       agent.Error.Add (sprintf "error on GitServer loop: %O" >> Logger.err (tag "loop"))
 
-      let proc = createProcess path mem.IpAddr (port mem.GitPort)
+      let proc = createProcess path mem.IpAddr mem.GitPort
 
       let stdoutReader =
         Observable.subscribe (logHandler agent) proc.OutputDataReceived
@@ -356,7 +356,7 @@ module Git =
           SubPid        = -1
           BasePath      = path
           Address       = mem.IpAddr
-          Port          = port mem.GitPort
+          Port          = mem.GitPort
           Subscriptions = new Subscriptions()
           Starter       = new AutoResetEvent(false)
           Stopper       = new AutoResetEvent(false)

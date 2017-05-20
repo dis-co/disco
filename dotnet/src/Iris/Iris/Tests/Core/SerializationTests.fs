@@ -24,9 +24,9 @@ module SerializationTests =
     testCase "Validate RequestVote Serialization" <| fun _ ->
       let mem =
         { Member.create (Id.Create()) with
-            HostName = "test-host"
+            HostName = name "test-host"
             IpAddr   = IpAddress.Parse "192.168.2.10"
-            Port     = 8080us }
+            Port     = port 8080us }
 
       let vr : VoteRequest =
         { Term = term 8

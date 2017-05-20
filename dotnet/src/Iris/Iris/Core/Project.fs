@@ -1668,12 +1668,12 @@ Project:
 
       try
         return { Id         = Id mem.Id
-                 HostName   = mem.HostName
+                 HostName   = name mem.HostName
                  IpAddr     = ip
-                 Port       = uint16 mem.Port
-                 WsPort     = uint16 mem.WsPort
-                 GitPort    = uint16 mem.GitPort
-                 ApiPort    = uint16 mem.ApiPort
+                 Port       = mem.Port    |> uint16 |> port
+                 WsPort     = mem.WsPort  |> uint16 |> port
+                 GitPort    = mem.GitPort |> uint16 |> port
+                 ApiPort    = mem.ApiPort |> uint16 |> port
                  State      = state
                  Voting     = true
                  VotedForMe = false
@@ -1820,7 +1820,7 @@ Project:
         let n = new MemberYaml()
         n.Id       <- string memId
         n.Ip       <- string mem.IpAddr
-        n.HostName <- mem.HostName
+        n.HostName <- unwrap mem.HostName
         n.Port     <- int mem.Port
         n.WsPort   <- int mem.WsPort
         n.GitPort  <- int mem.GitPort
