@@ -59,10 +59,13 @@ module Generators =
   //  | | (_| |
   // |___\__,_|
 
-  let idgen = gen {
+  let idGen = gen {
       let! value = Arb.generate<Guid>
       return Id (string value)
     }
+
+  let indexGen = Arb.generate<int> |> Gen.map index
+  let termGen = Arb.generate<int> |> Gen.map term
 
   //  ____        __ _   ____  _        _
   // |  _ \ __ _ / _| |_/ ___|| |_ __ _| |_ ___
@@ -82,7 +85,7 @@ module Generators =
   // |_| \_\__,_|_|  \__|_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
   let raftMem = gen {
-      let! id = idgen
+      let! id = idGen
       let! n = Arb.generate<string> |> Gen.map name
       let! ip = ipgen
       let! p = Arb.generate<uint16> |> Gen.map port
@@ -120,20 +123,64 @@ module Generators =
                               Gen.map MemberRemoved raftMem ]
                   |> Arb.fromGen
 
+  //  _                _____       _
+  // | |    ___   __ _| ____|_ __ | |_ _ __ _   _
+  // | |   / _ \ / _` |  _| | '_ \| __| '__| | | |
+  // | |__| (_) | (_| | |___| | | | |_| |  | |_| |
+  // |_____\___/ \__, |_____|_| |_|\__|_|   \__, |
+  //             |___/                      |___/
+
+  let rec logGen = gen {
+      let! id = idGen
+      let! idx = indexGen
+      let! trm = termGen
+
+    }
+
+  // __     __    _       ____                            _
+  // \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
+  //  \ \ / / _ \| __/ _ \ |_) / _ \/ _` | | | |/ _ \/ __| __|
+  //   \ V / (_) | ||  __/  _ <  __/ (_| | |_| |  __/\__ \ |_
+  //    \_/ \___/ \__\___|_| \_\___|\__, |\__,_|\___||___/\__|
+  //                                   |_|
+
+  let voteReqGen = gen {
+      let! mem = raftMem
+      let! trm = termGen
+      let! lidx = indexGen
+      let! ltrm = termGen
+      return
+        { Term = trm
+          Candidate = mem
+          LastLogIndex = lidx
+          LastLogTerm = ltrm }
+    }
+
+  //     _                               _ _____       _        _
+  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+  //         |_|   |_|
+
+  let appendReqGen = gen {
+      let! trm = termGen
+      let! plidx = indexGen
+      let! pltrm = termGen
+      let! lcmt = indexGen
+      let! entries = Gen.oneof [ raftLogGen |> Gen.map Some
+                                 Gen.constant None ]
+      return
+        { Term         = trm
+          PrevLogIdx   = plidx
+          PrevLogTerm  = pltrm
+          LeaderCommit = lcmt
+          Entries      = entries }
+    }
+
+
 [<AutoOpen>]
 module SerializationTests =
-  //  ____                            _ __     __    _
-  // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
-  // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
-  // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
-  // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
-  //               |_|
-
-  let test_validate_raftrequest_serialization =
-    testProperty "Validate RequestVote Serialization" <| fun (rr: RaftRequest) ->
-      let rerr = rr |> Binary.encode |> Binary.decode |> Either.get
-      rr = rerr
-
   // __     __    _       ____
   // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
   //  \ \ / / _ \| __/ _ \ |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
@@ -326,11 +373,24 @@ module SerializationTests =
 
   let test_config_change =
     testCase "ConfigChange serialization should work" <| fun _ ->
-      let prop =
-        fun (ch: ConfigChange) ->
-          let rech = ch |> Binary.encode |> Binary.decode |> Either.get
-          ch = rech
+      let prop (ch: ConfigChange) =
+        let rech = ch |> Binary.encode |> Binary.decode |> Either.get
+        ch = rech
       Check.QuickThrowOnFailure (Prop.forAll Generators.changeGen prop)
+
+  //  ____        __ _   ____                            _
+  // |  _ \ __ _ / _| |_|  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _` | |_| __| |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ < (_| |  _| |_|  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\__,_|_|  \__|_| \_\___|\__, |\__,_|\___||___/\__|
+  //                                  |_|
+
+  let test_validate_raftrequest_serialization =
+    testProperty "Validate RaftRequest Serialization" <| fun _ ->
+      let prop (req: RaftRequest) =
+        let rerr = rr |> Binary.encode |> Binary.decode |> Either.get
+        rr = rerr
+      Check.QuickThrowOnFailure (Prop.forAll Generators.raftReqGen prop)
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -706,5 +766,5 @@ module SerializationTests =
       // test_validate_cueplayer_yaml_serialization
 
       test_config_change
-      // test_validate_raftrequest_serialization
+      test_validate_raftrequest_serialization
     ]
