@@ -1948,39 +1948,6 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       (self :> System.IEquatable<BytePinD>).Equals(pin)
     | _ -> false
 
-  // ** GetHashCode
-
-  override self.GetHashCode() =
-    let mutable hash = 42
-    #if FABLE_COMPILER
-    hash <- (hash * 7) + hashCode (string self.Id)
-    hash <- (hash * 7) + hashCode self.Name
-    hash <- (hash * 7) + hashCode (string self.PinGroup)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Tags)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Labels)
-    hash <- (hash * 7) + hashCode (string self.Direction)
-    hash <- (hash * 7) + hashCode (string self.VecSize)
-    hash <- (hash * 7) + (Array.fold (fun m (t: byte[]) -> m + int t.Length) 0 self.Values)
-    #else
-    hash <- (hash * 7) + self.Id.GetHashCode()
-    hash <- (hash * 7) + self.Name.GetHashCode()
-    hash <- (hash * 7) + self.PinGroup.GetHashCode()
-    hash <- (hash * 7) + self.Tags.GetHashCode()
-    hash <- (hash * 7) + self.Labels.GetHashCode()
-    hash <- (hash * 7) + self.Direction.GetHashCode()
-    hash <- (hash * 7) + self.VecSize.GetHashCode()
-    hash <- (hash * 7) + self.Values.GetHashCode()
-    #endif
-    hash
-
-  // ** CompareTo
-
-  interface System.IComparable with
-    member self.CompareTo other =
-      match other with
-      | :? BytePinD as pin -> compare self.Name pin.Name
-      | _ -> invalidArg "other" "cannot compare value of different types"
-
   // ** Equals<ByteSliceD>
 
   interface System.IEquatable<BytePinD> with
@@ -2021,6 +1988,39 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       pin.Labels = self.Labels &&
       lengthEqual &&
       contentsEqual
+
+  // ** GetHashCode
+
+  override self.GetHashCode() =
+    let mutable hash = 42
+    #if FABLE_COMPILER
+    hash <- (hash * 7) + hashCode (string self.Id)
+    hash <- (hash * 7) + hashCode self.Name
+    hash <- (hash * 7) + hashCode (string self.PinGroup)
+    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Tags)
+    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Labels)
+    hash <- (hash * 7) + hashCode (string self.Direction)
+    hash <- (hash * 7) + hashCode (string self.VecSize)
+    hash <- (hash * 7) + (Array.fold (fun m (t: byte[]) -> m + int t.Length) 0 self.Values)
+    #else
+    hash <- (hash * 7) + self.Id.GetHashCode()
+    hash <- (hash * 7) + self.Name.GetHashCode()
+    hash <- (hash * 7) + self.PinGroup.GetHashCode()
+    hash <- (hash * 7) + self.Tags.GetHashCode()
+    hash <- (hash * 7) + self.Labels.GetHashCode()
+    hash <- (hash * 7) + self.Direction.GetHashCode()
+    hash <- (hash * 7) + self.VecSize.GetHashCode()
+    hash <- (hash * 7) + self.Values.GetHashCode()
+    #endif
+    hash
+
+  // ** CompareTo
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? BytePinD as pin -> compare self.Name pin.Name
+      | _ -> invalidArg "other" "cannot compare value of different types"
 
   // ** ToOffset
 
@@ -2286,6 +2286,7 @@ type ColorPinD =
 //  ___) | | | (_|  __/
 // |____/|_|_|\___\___|
 
+[<CustomEquality;CustomComparison>]
 type Slice =
   | StringSlice   of Index * string
   | NumberSlice   of Index * double
@@ -2317,6 +2318,55 @@ type Slice =
       | ByteSlice    (_, data) -> data :> obj
       | EnumSlice    (_, data) -> data :> obj
       | ColorSlice   (_, data) -> data :> obj
+
+  // ** Equals
+
+  override self.Equals(other) =
+    match other with
+    | :? Slice as slice -> (self :> System.IEquatable<Slice>).Equals(slice)
+    | _ -> false
+
+  // ** CompareTo
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? Slice as slice -> compare self.Index slice.Index
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
+  // ** Equals<Slice>
+
+  interface System.IEquatable<Slice> with
+    member self.Equals(slice: Slice) =
+      match slice with
+      | StringSlice (idx, value) ->
+        match self with
+        | StringSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
+      | NumberSlice (idx, value) when Double.IsNaN value ->
+        match self with
+        | NumberSlice (sidx, svalue) when Double.IsNaN svalue -> idx = sidx
+        | _ -> false
+      | NumberSlice (idx, value) ->
+        match self with
+        | NumberSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
+      | BoolSlice   (idx, value) ->
+        match self with
+        | BoolSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
+      | ByteSlice   (idx, value) ->
+        match self with
+        | ByteSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
+      | EnumSlice (idx, value) ->
+        match self with
+        | EnumSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
+      | ColorSlice (idx, value) ->
+        match self with
+        | ColorSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | _ -> false
 
   // ** StringValue
 
@@ -2377,12 +2427,13 @@ type Slice =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     match self with
-    | StringSlice   (_,data) ->
-      let str = builder.CreateString data
+    | StringSlice (idx, data) ->
+      let str = Option.mapNull builder.CreateString data
       StringFB.StartStringFB(builder)
-      StringFB.AddValue(builder, str)
+      Option.iter (fun data -> StringFB.AddValue(builder, data)) str
       let offset = StringFB.EndStringFB(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.StringFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2391,11 +2442,12 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | NumberSlice   (_,data) ->
+    | NumberSlice (idx, data) ->
       DoubleFB.StartDoubleFB(builder)
       DoubleFB.AddValue(builder, data)
       let offset = DoubleFB.EndDoubleFB(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.DoubleFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2404,11 +2456,12 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | BoolSlice (_,data) ->
+    | BoolSlice (idx, data) ->
       BoolFB.StartBoolFB(builder)
       BoolFB.AddValue(builder,data)
       let offset = BoolFB.EndBoolFB(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.BoolFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2417,12 +2470,13 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | ByteSlice     (_,data) ->
+    | ByteSlice (idx, data) ->
       let str = data |> String.encodeBase64 |> builder.CreateString
       StringFB.StartStringFB(builder)
       StringFB.AddValue(builder,str)
       let offset = StringFB.EndStringFB(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.ByteFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2431,9 +2485,10 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | EnumSlice     (_,data) ->
+    | EnumSlice (idx, data) ->
       let offset: Offset<KeyValueFB> = data.ToOffset(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.KeyValueFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2442,9 +2497,10 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | ColorSlice    (_,data) ->
+    | ColorSlice (idx, data) ->
       let offset = data.ToOffset(builder)
       SliceFB.StartSliceFB(builder)
+      SliceFB.AddIndex(builder, int idx)
       SliceFB.AddSliceType(builder, SliceTypeFB.ColorSpaceFB)
       #if FABLE_COMPILER
       SliceFB.AddSlice(builder, offset)
@@ -2465,7 +2521,7 @@ type Slice =
 
     | x when x = SliceTypeFB.DoubleFB ->
       let slice = DoubleFB.Create() |> fb.Slice
-      NumberSlice(index fb.Index,slice.Value)
+      NumberSlice(index fb.Index, value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.BoolFB ->

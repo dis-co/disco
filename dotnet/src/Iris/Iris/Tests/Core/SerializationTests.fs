@@ -368,6 +368,9 @@ module SerializationTests =
       test_validate_user_yaml_serialization
       test_validate_user_binary_serialization
 
+      test_validate_slice_binary_serialization
+      // test_validate_slices_binary_serialization
+
       // test_validate_raftrequest_serialization
       // test_validate_requestvote_response_serialization
       // test_validate_discovered_service_binary_serialization
@@ -382,8 +385,6 @@ module SerializationTests =
       // test_validate_group_yaml_serialization
       // test_validate_session_binary_serialization
       // test_validate_session_yaml_serialization
-      // test_validate_slice_binary_serialization
-      // test_validate_slices_binary_serialization
       // test_validate_pin_binary_serialization
       // test_validate_pin_yaml_serialization
       // test_validate_client_binary_serialization
