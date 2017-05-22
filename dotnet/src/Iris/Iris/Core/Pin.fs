@@ -3052,7 +3052,12 @@ type Slices =
             Array.fold
               (fun (m: Either<IrisError,string array * int>) _ -> either {
                   let! (parsed,idx) = m
-                  parsed.[idx] <- slices.Values(idx)
+                  let! value =
+                    try
+                      slices.Values(idx) |> Either.succeed
+                    with
+                      | _ -> null |> Either.succeed
+                  parsed.[idx] <- value
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
@@ -3153,8 +3158,13 @@ type Slices =
             Array.fold
               (fun (m: Either<IrisError,string array * int>) _ -> either {
                   let! (parsed,idx) = m
-                  parsed.[idx] <- slices.Values(idx)
-                  return parsed, idx + 1 })
+                  let! value =
+                    try
+                      slices.Values(idx) |> Either.succeed
+                    with
+                      | _ -> null |> Either.succeed
+                  parsed.[idx] <- value
+                  return (parsed, idx + 1) })
               (Right (arr, 0))
               arr
             |> Either.map (fun (strings, _) -> StringSlices(id, strings))
