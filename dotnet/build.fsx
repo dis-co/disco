@@ -618,20 +618,18 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
-  runNpmNoErrors "install" frontendDir ()
-  runExec DotNet.dotnetExePath "restore" frontendDir false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
-  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runExec DotNet.dotnetExePath "restore Fable.proj" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "fable") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  // runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
-  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  // runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
 
@@ -643,26 +641,25 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
-  runNpmNoErrors "install" frontendDir ()
-  runExec DotNet.dotnetExePath "restore" frontendDir false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Tests.Frontend") false
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runExec DotNet.dotnetExePath "restore Fable.proj" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "fable") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
 Target "BuildWebTestsFast" (fun _ ->
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
 let runWebTests = (fun _ ->
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    runExec phantomJsPath "src/Frontend/node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
-    runNpm "test" frontendDir ()
+    runNpm "test" __SOURCE_DIRECTORY__ ()
 )
 
 Target "RunWebTests" runWebTests

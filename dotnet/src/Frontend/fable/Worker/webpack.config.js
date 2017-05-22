@@ -27,7 +27,7 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json'],
     modules: [
-      "node_modules", resolve("../../node_modules/")
+      "node_modules", resolve("../../../../node_modules/")
     ]
   },
   module: {
@@ -39,7 +39,7 @@ module.exports = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("../plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
           }
         }
       },

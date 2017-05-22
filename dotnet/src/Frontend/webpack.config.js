@@ -22,7 +22,7 @@ if (irisPort == null && isDevServer) {
 }
 
 var babelOptions = {
-  presets: [["es2015", { "modules": false }], "react"],
+  presets: [["es2015", { "modules": false }], "stage-2", "react"],
   plugins: ["transform-runtime"]
 }
 
@@ -42,7 +42,7 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json'],
     modules: [
-      "node_modules", resolve("./node_modules/")
+      "node_modules", resolve("../../node_modules/")
     ]
   },
   devServer: {
@@ -68,7 +68,7 @@ module.exports = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("./fable/plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
           }
         }
       },
