@@ -2882,7 +2882,7 @@ type Slices =
 
   #endif
 
-  // ** ToYaml
+  // ** ToYamlObject
 
   #if !FABLE_COMPILER
 
@@ -2895,10 +2895,14 @@ type Slices =
     | EnumSlices   (id, slices) -> SlicesYaml.EnumSlices   (string id) slices
     | ColorSlices  (id, slices) -> SlicesYaml.ColorSlices  (string id) slices
 
+  // ** ToYaml
+
   member self.ToYaml(serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: SlicesYaml) =
     yaml.ToSlices()
@@ -2912,6 +2916,8 @@ type Slices =
 
   #endif
 
+  // ** ToOffset
+
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
   // |  _ \| | '_ \ / _` | '__| | | |
@@ -2924,91 +2930,146 @@ type Slices =
     match slices with
     | StringSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
-        let converted = Array.mapi (fun i el -> StringSlice(idx i,el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+
+      let strings =
+        Array.map
+          (function
+            | null -> Unchecked.defaultof<StringOffset> // otherwise we cannot represent null :(
+            | str -> builder.CreateString str)
+          arr
+        |> fun coll -> StringsFB.CreateValuesVector(builder,coll)
+
+      let offset = StringsFB.CreateStringsFB(builder, strings)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.StringsFB)
+      #if FABLE_COMPILER
+      SlicesFB.AddSlices(builder, offset)
+      #else
+      SlicesFB.AddSlices(builder, offset.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
 
     | NumberSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> NumberSlice(idx i, el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+        DoublesFB.CreateValuesVector(builder, arr)
+        |> fun vec -> DoublesFB.CreateDoublesFB(builder, vec)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.DoublesFB)
+      #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offsets)
+      #else
+      SlicesFB.AddSlices(builder,offsets.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
 
     | BoolSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> BoolSlice(idx i, el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+        BoolsFB.CreateValuesVector(builder, arr)
+        |> fun vec -> BoolsFB.CreateBoolsFB(builder, vec)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.BoolsFB)
+      #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offsets)
+      #else
+      SlicesFB.AddSlices(builder,offsets.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
 
     | ByteSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> ByteSlice(idx i, el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+        Array.map (String.encodeBase64 >> builder.CreateString) arr
+        |> fun coll -> BytesFB.CreateValuesVector(builder, coll)
+        |> fun vec -> BytesFB.CreateBytesFB(builder, vec)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.BytesFB)
+      #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offsets)
+      #else
+      SlicesFB.AddSlices(builder,offsets.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
 
     | EnumSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> EnumSlice(idx i, el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+        Array.map (Binary.toOffset builder) arr
+        |> fun coll -> KeyValuesFB.CreateValuesVector(builder, coll)
+        |> fun vec -> KeyValuesFB.CreateKeyValuesFB(builder, vec)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.KeyValuesFB)
+      #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offsets)
+      #else
+      SlicesFB.AddSlices(builder,offsets.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
 
     | ColorSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
       let offsets =
-        let converted = Array.mapi (fun i el -> ColorSlice(idx i, el) |> Binary.toOffset builder) arr
-        SlicesFB.CreateSlicesVector(builder, converted)
+        Array.map (Binary.toOffset builder) arr
+        |> fun coll -> ColorSpacesFB.CreateValuesVector(builder,coll)
+        |> fun vec -> ColorSpacesFB.CreateColorSpacesFB(builder, vec)
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
+      SlicesFB.AddSlicesType(builder,SlicesTypeFB.ColorSpacesFB)
+      #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offsets)
+      #else
+      SlicesFB.AddSlices(builder,offsets.Value)
+      #endif
       SlicesFB.EndSlicesFB(builder)
+
+  // ** FromFB
 
   static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
     either {
-      let! (slices,_) =
-        let arr = Array.zeroCreate fb.SlicesLength
-        Array.fold
-          (fun (m: Either<IrisError,Slice array * int>) _ -> either {
-              let! (parsed,idx) = m
-              let slicish = fb.Slices(idx)
-              #if FABLE_COMPILER
-              let! slice = Slice.FromFB slicish
-              parsed.[idx] <- slice
-              return parsed, idx + 1
-              #else
-              if slicish.HasValue then
-                let value = slicish.Value
-                let! slice = Slice.FromFB value
+      let! slices =
+        let slicesish = fb.Slices()
+        if slicesish.HasValue then
+          let slices = slicesish.Value
+          let arr = Array.zeroCreate slices.ValuesLength
+          Array.fold
+            (fun (m: Either<IrisError,Slice array * int>) _ -> either {
+                let! (parsed,idx) = m
+                let slicish = fb.Slices(idx)
+                #if FABLE_COMPILER
+                let! slice = Slice.FromFB slicish
                 parsed.[idx] <- slice
                 return parsed, idx + 1
-              else
-                return!
-                  "Empty slice value"
-                  |> Error.asParseError "Slices.FromFB"
-                  |> Either.fail
-              #endif
-            })
-          (Right (arr, 0))
-          arr
+                #else
+                if slicish.HasValue then
+                  let value = slicish.Value
+                  let! slice = Slice.FromFB value
+                  parsed.[idx] <- slice
+                  return parsed, idx + 1
+                else
+                  return!
+                    "Empty slice value"
+                    |> Error.asParseError "Slices.FromFB"
+                    |> Either.fail
+                #endif
+              })
+            (Right (arr, 0))
+            arr
+          |> Either.map snd
+        else
+          return!
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Etiher.fail
 
       if Array.length slices > 0 then
         let first = slices.[0]

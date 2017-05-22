@@ -48,6 +48,8 @@ type PropertyYaml(key, value) as self =
 type Property =
   { Key: string; Value: string }
 
+  // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     let key = if isNull self.Key then None else Some (builder.CreateString self.Key)
     let value = if isNull self.Value then None else Some (builder.CreateString self.Value)
@@ -56,14 +58,20 @@ type Property =
     Option.iter (fun data -> KeyValueFB.AddValue(builder, data)) value
     KeyValueFB.EndKeyValueFB(builder)
 
+  // ** FromOffset
+
   static member FromFB(fb: KeyValueFB) =
     { Key = fb.Key; Value = fb.Value }
     |> Either.succeed
+
+  // ** ToYamlObject
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     PropertyYaml(self.Key, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yml: PropertyYaml) : Either<IrisError,Property> =
     try

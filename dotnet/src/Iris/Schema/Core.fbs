@@ -202,9 +202,43 @@ table SliceFB {
       Slice: SliceTypeFB;
 }
 
+
+table StringsFB {
+     Values: [string];
+}
+
+table DoublesFB {
+     Values: [double];
+}
+
+table BoolsFB {
+     Values: [bool];
+}
+
+table BytesFB {
+     Values: [string];
+}
+
+table KeyValuesFB {
+     Values: [KeyValueFB];
+}
+
+table ColorSpacesFB {
+     Values: [ColorSpaceFB];
+}
+
+union SlicesTypeFB {
+     StringsFB,
+     DoublesFB,
+     BoolsFB,
+     BytesFB,
+     KeyValuesFB,
+     ColorSpacesFB
+}
+
 table SlicesFB {
       Id: string;
-      Slices: [SliceFB];
+      Slices: SlicesTypeFB;
 }
 
 enum ConnectionDirectionFB:ushort {

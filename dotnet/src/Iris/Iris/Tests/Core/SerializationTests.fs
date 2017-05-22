@@ -369,7 +369,7 @@ module SerializationTests =
       test_validate_user_binary_serialization
 
       test_validate_slice_binary_serialization
-      // test_validate_slices_binary_serialization
+      test_validate_slices_binary_serialization
 
       // test_validate_raftrequest_serialization
       // test_validate_requestvote_response_serialization
