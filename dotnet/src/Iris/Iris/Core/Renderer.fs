@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -12,6 +14,8 @@ open FlatBuffers
 open Iris.Serialization
 
 #endif
+
+// * Signal
 
 //  ____  _                   _
 // / ___|(_) __ _ _ __   __ _| |
@@ -38,6 +42,8 @@ type Signal =
         { Size     = Rect(fb.SizeX, fb.SizeY)
           Position = Coordinate(fb.PositionX, fb.PositionY) }
     }
+
+// * Region
 
 //  ____            _
 // |  _ \ ___  __ _(_) ___  _ __
@@ -81,6 +87,8 @@ type Region =
           OutputSize     = Rect(fb.OutputSizeX,fb.OutputSizeY)
           OutputPosition = Coordinate(fb.OutputPositionX,fb.OutputPositionY) }
     }
+
+// * RegionMap
 
 //  ____            _             __  __
 // |  _ \ ___  __ _(_) ___  _ __ |  \/  | __ _ _ __
@@ -139,6 +147,8 @@ type RegionMap =
         { SrcViewportId = Id fb.SrcViewportId
           Regions       = regions }
     }
+
+// * Display
 
 //  ____  _           _
 // |  _ \(_)___ _ __ | | __ _ _   _
@@ -225,6 +235,8 @@ type Display =
           RegionMap = regionmap }
     }
 
+// * ViewPort
+
 // __     ___               ____            _
 // \ \   / (_) _____      _|  _ \ ___  _ __| |_
 //  \ \ / /| |/ _ \ \ /\ / / |_) / _ \| '__| __|
@@ -274,6 +286,8 @@ type ViewPort =
           OutputPosition = Coordinate(fb.OutputPositionX, fb.OutputPositionY)
           Overlap = Rect(fb.OverlapX, fb.OverlapY) }
     }
+
+// * Task
 
 //  _____         _
 // |_   _|_ _ ___| | __
@@ -340,6 +354,8 @@ type Task =
           Arguments   = arguments }
     }
 
+// * VvvvExe
+
 // __     __                    _____
 // \ \   / /_   ____   ____   _| ____|_  _____
 //  \ \ / /\ \ / /\ \ / /\ \ / /  _| \ \/ / _ \
@@ -368,6 +384,8 @@ type VvvvExe =
           Version    = version fb.Version
           Required   = fb.Required }
     }
+
+// * VvvvPlugin
 
 // __     __                    ____  _             _
 // \ \   / /_   ____   ____   _|  _ \| |_   _  __ _(_)_ __

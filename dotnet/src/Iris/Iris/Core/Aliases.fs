@@ -59,6 +59,8 @@ type Port       = uint16<port>
 type Timeout    = int<ms>
 type Url        = string<uri>
 
+// * Measure module
+
 [<AutoOpen>]
 module Measure =
   let filepath p: FilePath = UoM.wrap p
@@ -74,13 +76,21 @@ module Measure =
   let astag t: Tag = UoM.wrap t
   let url t: Url = UoM.wrap t
 
+// * IPProtocol
+
 type IPProtocol =
   | IPv4
   | IPv6
 
+// * Actor<'t>
+
 type Actor<'t> = MailboxProcessor<'t>
 
+// * StringPayload
+
 type StringPayload = Payload of string
+
+// * Coordinate
 
 /// ## Coordinate
 ///
@@ -101,6 +111,8 @@ type Coordinate = Coordinate of (int * int) with
     with get () =
       match self with
       | Coordinate (_,y) -> y
+
+// * Rect
 
 /// ## Rect
 ///

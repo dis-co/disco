@@ -255,7 +255,7 @@ type CuePlayer =
     with get () =
       CuePlayer.assetPath player
 
-// * CuePlayer
+// * CuePlayer module
 
 module CuePlayer =
 
