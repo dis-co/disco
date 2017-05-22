@@ -2687,7 +2687,7 @@ type Slice =
 //  ___) | | | (_|  __/\__ \
 // |____/|_|_|\___\___||___/
 
-[<StructuralEquality; StructuralComparison>]
+[<CustomEquality; CustomComparison>]
 type Slices =
   | StringSlices   of Id * string array
   | NumberSlices   of Id * double array
@@ -3036,81 +3036,308 @@ type Slices =
 
   static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
     either {
-      let! slices =
-        let slicesish = fb.Slices()
-        if slicesish.HasValue then
-          let slices = slicesish.Value
+      let id = Id fb.Id
+
+      return!
+        //      _ ____
+        //     | / ___|
+        //  _  | \___ \
+        // | |_| |___) |
+        //  \___/|____/
+        #if FABLE_COMPILER
+        match fb.SlicesType with
+        | x when x = SlicesTypeFB.StringsFB ->
+          let slices = StringsFB.Create() |> fb.Slices
+          let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,string array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  parsed.[idx] <- slices.Values(idx)
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (strings, _) -> StringSlices(id, strings))
+        | x when x = SlicesTypeFB.DoublesFB ->
+          let slices = DoublesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<IrisError,Slice array * int>) _ -> either {
+            (fun (m: Either<IrisError,double array * int>) _ -> either {
                 let! (parsed,idx) = m
-                let slicish = fb.Slices(idx)
-                #if FABLE_COMPILER
-                let! slice = Slice.FromFB slicish
-                parsed.[idx] <- slice
-                return parsed, idx + 1
-                #else
-                if slicish.HasValue then
-                  let value = slicish.Value
-                  let! slice = Slice.FromFB value
-                  parsed.[idx] <- slice
-                  return parsed, idx + 1
-                else
-                  return!
-                    "Empty slice value"
-                    |> Error.asParseError "Slices.FromFB"
-                    |> Either.fail
-                #endif
-              })
+                parsed.[idx] <- slices.Values(idx)
+                return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map snd
-        else
-          return!
-            "empty slices value"
-            |> Error.asParseError "Slices.FromFB"
-            |> Etiher.fail
-
-      if Array.length slices > 0 then
-        let first = slices.[0]
-        try
-          return
-            match first with
-            | StringSlice   _ ->
-              let stringslices = Array.map (fun (sl: Slice) ->  sl.StringValue |> Option.get) slices
-              StringSlices(Id fb.Id, stringslices)
-            | NumberSlice   _ ->
-              let numberslices = Array.map (fun (sl: Slice) -> sl.NumberValue |> Option.get) slices
-              NumberSlices(Id fb.Id, numberslices)
-            | BoolSlice     _ ->
-              let boolslices = Array.map (fun (sl: Slice) -> sl.BoolValue |> Option.get) slices
-              BoolSlices(Id fb.Id, boolslices)
-            | ByteSlice     _ ->
-              let byteslices = Array.map (fun (sl: Slice) -> sl.ByteValue |> Option.get) slices
-              ByteSlices(Id fb.Id, byteslices)
-            | EnumSlice     _ ->
-              let enumslices = Array.map (fun (sl: Slice) -> sl.EnumValue |> Option.get) slices
-              EnumSlices(Id fb.Id, enumslices)
-            | ColorSlice    _ ->
-              let colorslices = Array.map (fun (sl: Slice) -> sl.ColorValue |> Option.get) slices
-              ColorSlices(Id fb.Id, colorslices)
-        with
-          | exn ->
-            return!
-              exn.Message
-              |> Error.asParseError "Slices.FromFB"
-              |> Either.fail
-      else
-        return!
-          "Empty slices makes no sense brotha"
+          |> Either.map (fun (doubles,_) -> NumberSlices(id, doubles))
+        | x when x = SlicesTypeFB.BoolsFB ->
+          let slices = BoolsFB.Create() |> fb.Slices
+          let arr = Array.zeroCreate slices.ValuesLength
+          Array.fold
+            (fun (m: Either<IrisError,bool array * int>) _ -> either {
+                let! (parsed,idx) = m
+                parsed.[idx] <- slices.Values(idx)
+                return parsed, idx + 1 })
+            (Right (arr, 0))
+            arr
+          |> Either.map (fun (bools,_) -> BoolSlices(id, bools))
+        | x when x = SlicesTypeFB.BytesFB ->
+          let slices = BytesFB.Create() |> fb.Slices
+          let arr = Array.zeroCreate slices.ValuesLength
+          Array.fold
+            (fun (m: Either<IrisError,byte[] array * int>) _ -> either {
+                let! (parsed,idx) = m
+                let bytes = slices.Values(idx) |> String.decodeBase64
+                parsed.[idx] <- bytes
+                return parsed, idx + 1 })
+            (Right (arr, 0))
+            arr
+          |> Either.map (fun (bytes,_) -> ByteSlices(id, bytes))
+        | x when x = SlicesTypeFB.KeyValuesFB ->
+          let slices = KeyValuesFB.Create() |> fb.Slices
+          let arr = Array.zeroCreate slices.ValuesLength
+          Array.fold
+            (fun (m: Either<IrisError,Property array * int>) _ -> either {
+                let! (parsed,idx) = m
+                let! prop =
+                  let propish = slices.Values(idx)
+                  if propish.HasValue then
+                    let value = propish.Value
+                    Property.FromFB value
+                  else
+                    "could not parse empty property"
+                    |> Error.asParseError "Slices.FromFB"
+                    |> Either.fail
+                parsed.[idx] <- prop
+                return parsed, idx + 1 })
+            (Right (arr, 0))
+            arr
+          |> Either.map (fun (props,_) -> EnumSlices(id, props))
+        | x when x = SlicesTypeFB.ColorSpacesFB ->
+          let slices = ColorSpacesFB.Create() |> fb.Slices
+          let arr = Array.zeroCreate slices.ValuesLength
+          Array.fold
+            (fun (m: Either<IrisError,ColorSpace array * int>) _ -> either {
+                let! (parsed,idx) = m
+                let! color =
+                  let colorish = slices.Values(idx)
+                  if colorish.HasValue then
+                    let value = colorish.Value
+                    ColorSpace.FromFB value
+                  else
+                    "could not parse empty colorspace"
+                    |> Error.asParseError "Slices.FromFB"
+                    |> Either.fail
+                parsed.[idx] <- color
+                return parsed, idx + 1 })
+            (Right (arr, 0))
+            arr
+          |> Either.map (fun (colors,_) -> ColorSlices(id,colors))
+        | x ->
+          sprintf "unknown slices type: %O" x
           |> Error.asParseError "Slices.FromFB"
           |> Either.fail
+
+        //    _   _ _____ _____
+        //   | \ | | ____|_   _|
+        //   |  \| |  _|   | |
+        //  _| |\  | |___  | |
+        // (_)_| \_|_____| |_|
+
+        #else
+
+        match fb.SlicesType with
+        | SlicesTypeFB.StringsFB ->
+          let slicesish = fb.Slices<StringsFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,string array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  parsed.[idx] <- slices.Values(idx)
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (strings, _) -> StringSlices(id, strings))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | SlicesTypeFB.DoublesFB ->
+          let slicesish = fb.Slices<DoublesFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,double array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  parsed.[idx] <- slices.Values(idx)
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (doubles,_) -> NumberSlices(id, doubles))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | SlicesTypeFB.BoolsFB ->
+          let slicesish = fb.Slices<BoolsFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,bool array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  parsed.[idx] <- slices.Values(idx)
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (bools,_) -> BoolSlices(id, bools))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | SlicesTypeFB.BytesFB ->
+          let slicesish = fb.Slices<BytesFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,byte[] array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  let bytes = slices.Values(idx) |> String.decodeBase64
+                  parsed.[idx] <- bytes
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (bytes,_) -> ByteSlices(id, bytes))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | SlicesTypeFB.KeyValuesFB ->
+          let slicesish = fb.Slices<KeyValuesFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,Property array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  let! prop =
+                    let propish = slices.Values(idx)
+                    if propish.HasValue then
+                      let value = propish.Value
+                      Property.FromFB value
+                    else
+                      "could not parse empty property"
+                      |> Error.asParseError "Slices.FromFB"
+                      |> Either.fail
+                  parsed.[idx] <- prop
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (props,_) -> EnumSlices(id, props))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | SlicesTypeFB.ColorSpacesFB ->
+          let slicesish = fb.Slices<ColorSpacesFB>()
+          if slicesish.HasValue then
+            let slices = slicesish.Value
+            let arr = Array.zeroCreate slices.ValuesLength
+            Array.fold
+              (fun (m: Either<IrisError,ColorSpace array * int>) _ -> either {
+                  let! (parsed,idx) = m
+                  let! color =
+                    let colorish = slices.Values(idx)
+                    if colorish.HasValue then
+                      let value = colorish.Value
+                      ColorSpace.FromFB value
+                    else
+                      "could not parse empty colorspace"
+                      |> Error.asParseError "Slices.FromFB"
+                      |> Either.fail
+                  parsed.[idx] <- color
+                  return parsed, idx + 1 })
+              (Right (arr, 0))
+              arr
+            |> Either.map (fun (colors,_) -> ColorSlices(id,colors))
+          else
+            "empty slices value"
+            |> Error.asParseError "Slices.FromFB"
+            |> Either.fail
+        | x ->
+          sprintf "unknown slices type: %O" x
+          |> Error.asParseError "Slices.FromFB"
+          |> Either.fail
+        #endif
     }
+
+  // ** ToBytes
 
   member slices.ToBytes() : byte[] =
     Binary.buildBuffer slices
+
+  // ** FromBytes
 
   static member FromBytes(raw: byte[]) : Either<IrisError,Slices> =
     Binary.createBuffer raw
     |> SlicesFB.GetRootAsSlicesFB
     |> Slices.FromFB
+
+  // ** CompareTo
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? Slices as slices -> compare self.Id slices.Id
+      | _ -> invalidArg "other" "cannot compare value of different types"
+
+  // ** Equals
+
+  override self.Equals(other) =
+    match other with
+    | :? Slices as slices -> (self :> System.IEquatable<Slices>).Equals(slices)
+    | _ -> false
+
+  // ** Equals<Slices>
+
+  interface System.IEquatable<Slices> with
+    member self.Equals(slices: Slices) =
+      match slices with
+      | StringSlices (id, values) ->
+        match self with
+        | StringSlices (sid, svalues) when id = sid -> values = svalues
+        | _ -> false
+      | NumberSlices (id, values) ->
+        match self with
+        | NumberSlices (sid, svalues) when id = sid ->
+          if Array.length values = Array.length svalues then
+            Array.fold
+              (fun m (left,right) ->
+                if m then
+                  match left, right with
+                  | _,_ when Double.IsNaN left && Double.IsNaN right  -> true
+                  | _,_ when left = right -> true
+                  | _ -> false
+                else m)
+              true
+              (Array.zip values svalues)
+          else false
+        | _ -> false
+      | BoolSlices  (id, values) ->
+        match self with
+        | BoolSlices (sid, svalues) when id = sid -> values = svalues
+        | _ -> false
+      | ByteSlices  (id, values) ->
+        match self with
+        | ByteSlices (sid, svalues) when id = sid -> values = svalues
+        | _ -> false
+      | EnumSlices (id, values) ->
+        match self with
+        | EnumSlices (sid, svalues) when id = sid -> values = svalues
+        | _ -> false
+      | ColorSlices (id, values) ->
+        match self with
+        | ColorSlices (sid, svalues) when id = sid -> values = svalues
+        | _ -> false
