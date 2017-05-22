@@ -209,22 +209,22 @@ type User =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id        = self.Id        |> string |> builder.CreateString
-    let username  = self.UserName  |> unwrap |> builder.CreateString
-    let firstname = self.FirstName |> unwrap |> builder.CreateString
-    let lastname  = self.LastName  |> unwrap |> builder.CreateString
-    let email     = self.Email     |> unwrap |> builder.CreateString
-    let password  = self.Password  |> unwrap |> builder.CreateString
-    let salt      = self.Salt      |> unwrap |> builder.CreateString
+    let username  = self.UserName  |> unwrap |> Option.mapNull builder.CreateString
+    let firstname = self.FirstName |> unwrap |> Option.mapNull builder.CreateString
+    let lastname  = self.LastName  |> unwrap |> Option.mapNull builder.CreateString
+    let email     = self.Email     |> unwrap |> Option.mapNull builder.CreateString
+    let password  = self.Password  |> unwrap |> Option.mapNull builder.CreateString
+    let salt      = self.Salt      |> unwrap |> Option.mapNull builder.CreateString
     let joined    = self.Joined.ToString("o")  |> builder.CreateString
     let created   = self.Created.ToString("o") |> builder.CreateString
     UserFB.StartUserFB(builder)
     UserFB.AddId(builder, id)
-    UserFB.AddUserName(builder, username)
-    UserFB.AddFirstName(builder, firstname)
-    UserFB.AddLastName(builder, lastname)
-    UserFB.AddEmail(builder, email)
-    UserFB.AddPassword(builder, password)
-    UserFB.AddSalt(builder, salt)
+    Option.iter (fun value -> UserFB.AddUserName(builder, value)) username
+    Option.iter (fun value -> UserFB.AddFirstName(builder, value)) firstname
+    Option.iter (fun value -> UserFB.AddLastName(builder, value)) lastname
+    Option.iter (fun value -> UserFB.AddEmail(builder, value)) email
+    Option.iter (fun value -> UserFB.AddPassword(builder, value)) password
+    Option.iter (fun value -> UserFB.AddSalt(builder, value)) salt
     UserFB.AddJoined(builder, joined)
     UserFB.AddCreated(builder, created)
     UserFB.EndUserFB(builder)

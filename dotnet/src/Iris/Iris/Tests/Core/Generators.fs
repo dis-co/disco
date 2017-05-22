@@ -15,6 +15,7 @@ open System
 open System.Net
 open FlatBuffers
 open FSharpx.Functional
+open System.Text
 
 module Generators =
   open System.Net
@@ -54,7 +55,12 @@ module Generators =
     Gen.oneof [ Gen.map IPv4Address ipv4
                 Gen.map IPv6Address ipv6 ]
 
-  let stringGen = Arb.generate<string>
+  let maybeEncode (str: string) =
+    match str with
+    | null -> null
+    | _ -> str |> Encoding.UTF8.GetBytes |> Convert.ToBase64String
+
+  let stringGen = Arb.generate<string> |> Gen.map maybeEncode
   let stringsGen = Gen.arrayOf stringGen
   let intGen = Arb.generate<int>
   let intsGen = Gen.arrayOf intGen
