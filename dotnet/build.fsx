@@ -56,6 +56,21 @@ module DotNet =
   let dotnetcliVersion = "1.0.1"
   let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
 
+  let restore workdir project =
+    ExecProcess (fun info ->
+          info.FileName <- dotnetExePath
+          info.Arguments <- "restore " + project
+          info.UseShellExecute <- false
+          info.WorkingDirectory <- workdir)
+      TimeSpan.MaxValue
+    |> function
+      | 0    -> ()
+      | code -> failwithf "Restore %s failed with exit code %d" project code
+
+  let restoreMultiple workdir (projects: string list) =
+    for project in projects do
+      restore workdir project
+
   let installDotnetSdk () =
     let dotnetSDKPath = FullName "./dotnetsdk"
 
@@ -619,8 +634,14 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  runExec DotNet.dotnetExePath "restore Fable.proj" __SOURCE_DIRECTORY__ false
-  runExec DotNet.dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "fable") false
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
@@ -642,8 +663,14 @@ Target "BuildFrontendFast" (fun () ->
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  runExec DotNet.dotnetExePath "restore Fable.proj" __SOURCE_DIRECTORY__ false
-  runExec DotNet.dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "fable") false
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
