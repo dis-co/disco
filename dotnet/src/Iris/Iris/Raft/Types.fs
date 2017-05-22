@@ -43,8 +43,8 @@ type RaftState =
 ///  - `Index` - the entry's index in the log
 type EntryResponse =
   {  Id    : Id
-  ;  Term  : Term
-  ;  Index : Index }
+     Term  : Term
+     Index : Index }
 
   // ** ToString
   override self.ToString() =
