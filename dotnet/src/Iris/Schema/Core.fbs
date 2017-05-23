@@ -340,6 +340,13 @@ table CueFB {
       Slices: [SlicesFB];
 }
 
+table CueReferenceFB {
+      Id: string;
+      CueId: string;
+      AutoFollow: int;
+      Duration: int;
+      Prewait: int;
+}
 
 //   ____           _     _     _
 //  / ___|   _  ___| |   (_)___| |_
