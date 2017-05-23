@@ -66,34 +66,58 @@ type IrisClient =
     IpAddress: IpAddress
     Port: Port }
 
+  // ** ToOffset
+
   member client.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string client.Id)
-    let name = builder.CreateString client.Name
+    let name = Option.mapNull builder.CreateString client.Name
     let ip = builder.CreateString (string client.IpAddress)
     let role = client.Role.ToOffset(builder)
+    let status = client.Status.ToOffset(builder)
 
     IrisClientFB.StartIrisClientFB(builder)
     IrisClientFB.AddId(builder, id)
-    IrisClientFB.AddName(builder, name)
+    Option.iter (fun value -> IrisClientFB.AddName(builder, value)) name
+    IrisClientFB.AddStatus(builder, status)
     IrisClientFB.AddRole(builder, role)
     IrisClientFB.AddIpAddress(builder, ip)
     IrisClientFB.AddPort(builder, unwrap client.Port)
     IrisClientFB.EndIrisClientFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: IrisClientFB) =
     either {
       let! role = Role.FromFB fb.Role
       let! ip = IpAddress.TryParse fb.IpAddress
+      let! status =
+        #if FABLE_COMPILER
+        ServiceStatus.FromFB fb.Status
+        #else
+        let statusish = fb.Status
+        if statusish.HasValue then
+          let status = statusish.Value
+          ServiceStatus.FromFB status
+        else
+          "could not parse empty status payload"
+          |> Error.asParseError "IrisClient.FromFB"
+          |> Either.fail
+        #endif
+
       return { Id = Id fb.Id
                Name = fb.Name
-               Status = ServiceStatus.Running
+               Status = status
                IpAddress = ip
                Port = port fb.Port
                Role = role }
     }
 
+  // ** ToBytes
+
   member request.ToBytes() =
     Binary.buildBuffer request
+
+  // ** FromBytes
 
   static member FromBytes(raw: byte[]) =
     IrisClientFB.GetRootAsIrisClientFB(Binary.createBuffer raw)

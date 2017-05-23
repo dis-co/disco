@@ -80,6 +80,11 @@ type IrisError =
   // ** ToOffset
 
   member error.ToOffset (builder: FlatBufferBuilder) =
+    let map (str: string) =
+      match str with
+      | null -> Unchecked.defaultof<StringOffset>
+      | _ -> builder.CreateString str
+
     let tipe =
       match error with
       | OK             -> ErrorTypeFB.OKFB
@@ -95,15 +100,15 @@ type IrisError =
 
     let str =
       match error with
-      | GitError     (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ProjectError (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | AssetError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ParseError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | SocketError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ClientError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | IOError      (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | Other        (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | RaftError    (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
+      | GitError     (loc,msg) -> (map loc, map msg) |> Some
+      | ProjectError (loc,msg) -> (map loc, map msg) |> Some
+      | AssetError   (loc,msg) -> (map loc, map msg) |> Some
+      | ParseError   (loc,msg) -> (map loc, map msg) |> Some
+      | SocketError  (loc,msg) -> (map loc, map msg) |> Some
+      | ClientError  (loc,msg) -> (map loc, map msg) |> Some
+      | IOError      (loc,msg) -> (map loc, map msg) |> Some
+      | Other        (loc,msg) -> (map loc, map msg) |> Some
+      | RaftError    (loc,msg) -> (map loc, map msg) |> Some
       | _                      -> None
 
     ErrorFB.StartErrorFB(builder)

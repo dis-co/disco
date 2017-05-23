@@ -4,6 +4,45 @@ open Fable.Core
 open Fable.Import
 open Iris.Core.FlatBuffers
 
+//  _____                     _____ ____
+// | ____|_ __ _ __ ___  _ __|  ___| __ )
+// |  _| | '__| '__/ _ \| '__| |_  |  _ \
+// | |___| |  | | | (_) | |  |  _| | |_) |
+// |_____|_|  |_|  \___/|_|  |_|   |____/
+
+type ErrorTypeFB = int
+
+type ErrorTypeFBConstructor =
+  abstract OKFB: ErrorTypeFB
+  abstract GitErrorFB: ErrorTypeFB
+  abstract ProjectErrorFB: ErrorTypeFB
+  abstract AssetErrorFB: ErrorTypeFB
+  abstract ParseErrorFB: ErrorTypeFB
+  abstract SocketErrorFB: ErrorTypeFB
+  abstract ClientErrorFB: ErrorTypeFB
+  abstract IOErrorFB: ErrorTypeFB
+  abstract OtherFB: ErrorTypeFB
+  abstract RaftErrorFB: ErrorTypeFB
+
+let ErrorTypeFB: ErrorTypeFBConstructor = failwith "JS only"
+
+type ErrorFB =
+  abstract Type: ErrorTypeFB
+  abstract Location: string
+  abstract Message: string
+
+type ErrorFBConstructor =
+  abstract prototype: ErrorFB with get, set
+  abstract StartErrorFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: ErrorTypeFB -> unit
+  abstract AddLocation: builder: FlatBufferBuilder * location: Offset<string> -> unit
+  abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
+  abstract EndErrorFB: builder: FlatBufferBuilder -> Offset<ErrorFB>
+  abstract GetRootAsErrorFB: bytes: ByteBuffer -> ErrorFB
+  abstract Create: unit -> ErrorFB
+
+let ErrorFB: ErrorFBConstructor = failwith "JS only"
+
 //  _  __        __     __    _            _____ ____
 // | |/ /___ _   \ \   / /_ _| |_   _  ___|  ___| __ )
 // | ' // _ \ | | \ \ / / _` | | | | |/ _ \ |_  |  _ \
@@ -106,6 +145,40 @@ type RoleFBConstructor =
   abstract RendererFB: RoleFB
 
 let RoleFB: RoleFBConstructor = failwith "JS only"
+
+//  ____                  _          ____  _        _
+// / ___|  ___ _ ____   _(_) ___ ___/ ___|| |_ __ _| |_ _   _ ___
+// \___ \ / _ \ '__\ \ / / |/ __/ _ \___ \| __/ _` | __| | | / __|
+//  ___) |  __/ |   \ V /| | (_|  __/___) | || (_| | |_| |_| \__ \
+// |____/ \___|_|    \_/ |_|\___\___|____/ \__\__,_|\__|\__,_|___/
+
+type ServiceStatusTypeFB = int
+
+type ServiceStatusTypeFBConstructor =
+  abstract StartingFB: ServiceStatusTypeFB
+  abstract RunningFB: ServiceStatusTypeFB
+  abstract StoppingFB: ServiceStatusTypeFB
+  abstract StoppedFB: ServiceStatusTypeFB
+  abstract DegradedFB: ServiceStatusTypeFB
+  abstract FailedFB: ServiceStatusTypeFB
+  abstract DisposedFB: ServiceStatusTypeFB
+
+let ServiceStatusTypeFB: ServiceStatusTypeFBConstructor = failwith "JS only"
+
+
+type ServiceStatusFB =
+  abstract Type: ServiceStatusTypeFB
+  abstract Error: ErrorFB
+
+type ServiceStatusFBConstructor =
+  abstract prototype: ServiceStatusFB with get, set
+  abstract StartServiceStatusFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: ServiceStatusTypeFB -> unit
+  abstract AddError: builder: FlatBufferBuilder * error: Offset<ErrorFB> -> unit
+  abstract EndServiceStatusFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsServiceStatusFB: buffer: ByteBuffer -> ServiceStatusFB
+
+let ServiceStatusFB : ServiceStatusFBConstructor = failwith "JS only"
 
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
@@ -696,9 +769,100 @@ let SliceFB: SliceFBConstructor = failwith "JS only"
 //  ___) | | | (_|  __/\__ \  _| | |_) |
 // |____/|_|_|\___\___||___/_|   |____/
 
+type StringsFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type StringsFBConstructor =
+  abstract StartStringsFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateStringsFB: builder: FlatBufferBuilder -> Offset<StringsFB>
+  abstract EndStringsFB: builder: FlatBufferBuilder -> Offset<StringsFB>
+  abstract GetRootAsStringsFB: bytes: ByteBuffer -> StringsFB
+
+let StringsFB: StringsFBConstructor = failwith "JS only"
+
+type DoublesFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type DoublesFBConstructor =
+  abstract StartDoublesFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateDoublesFB: builder: FlatBufferBuilder -> Offset<DoublesFB>
+  abstract EndDoublesFB: builder: FlatBufferBuilder -> Offset<DoublesFB>
+  abstract GetRootAsDoublesFB: bytes: ByteBuffer -> DoublesFB
+
+let DoublesFB: DoublesFBConstructor = failwith "JS only"
+
+type BoolsFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type BoolsFBConstructor =
+  abstract StartBoolsFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateBoolsFB: builder: FlatBufferBuilder -> Offset<BoolsFB>
+  abstract EndBoolsFB: builder: FlatBufferBuilder -> Offset<BoolsFB>
+  abstract GetRootAsBoolsFB: bytes: ByteBuffer -> BoolsFB
+
+let BoolsFB: BoolsFBConstructor = failwith "JS only"
+
+type BytesFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type BytesFBConstructor =
+  abstract StartBytesFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateBytesFB: builder: FlatBufferBuilder -> Offset<BytesFB>
+  abstract EndBytesFB: builder: FlatBufferBuilder -> Offset<BytesFB>
+  abstract GetRootAsBytesFB: bytes: ByteBuffer -> BytesFB
+
+let BytesFB: BytesFBConstructor = failwith "JS only"
+
+type KeyValuesFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type KeyValuesFBConstructor =
+  abstract StartKeyValuesFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateKeyValuesFB: builder: FlatBufferBuilder -> Offset<KeyValuesFB>
+  abstract EndKeyValuesFB: builder: FlatBufferBuilder -> Offset<KeyValuesFB>
+  abstract GetRootAsKeyValuesFB: keyValues: ByteBuffer -> KeyValuesFB
+
+let KeyValuesFB: KeyValuesFBConstructor = failwith "JS only"
+
+type ColorSpacesFB =
+  abstract ValuesLength: int
+  abstract Values: int -> string
+
+type ColorSpacesFBConstructor =
+  abstract StartColorSpacesFB: builder: FlatBufferBuilder -> unit
+  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
+  abstract CreateColorSpacesFB: builder: FlatBufferBuilder -> Offset<ColorSpacesFB>
+  abstract EndColorSpacesFB: builder: FlatBufferBuilder -> Offset<ColorSpacesFB>
+  abstract GetRootAsColorSpacesFB: colorSpaces: ByteBuffer -> ColorSpacesFB
+
+let ColorSpacesFB: ColorSpacesFBConstructor = failwith "JS only"
+
+type SlicesTypeFB = int
+
+type SlicesTypeFBConstructor =
+  abstract StringsFB : SlicesTypeFB
+  abstract DoublesFB : SlicesTypeFB
+  abstract BoolsFB : SlicesTypeFB
+  abstract BytesFB : SlicesTypeFB
+  abstract KeyValuesFB : SlicesTypeFB
+  abstract ColorSpacesFB : SlicesTypeFB
+
+let SlicesTypeFB: SlicesTypeFBConstructor = failwith "JS only"
+
+
 type SlicesFB =
   abstract Id: string
-  abstract Slices: int -> SliceFB
+  abstract Slices: int -> SliceTypeFB
   abstract SlicesLength: int
 
 type SlicesFBConstructor =
@@ -1663,42 +1827,3 @@ type StateMachineFBConstructor =
   abstract GetRootAsStateMachineFB: bytes: ByteBuffer -> StateMachineFB
 
 let StateMachineFB: StateMachineFBConstructor = failwith "JS only"
-
-//  _____                     _____ ____
-// | ____|_ __ _ __ ___  _ __|  ___| __ )
-// |  _| | '__| '__/ _ \| '__| |_  |  _ \
-// | |___| |  | | | (_) | |  |  _| | |_) |
-// |_____|_|  |_|  \___/|_|  |_|   |____/
-
-type ErrorTypeFB = int
-
-type ErrorTypeFBConstructor =
-  abstract OKFB: ErrorTypeFB
-  abstract GitErrorFB: ErrorTypeFB
-  abstract ProjectErrorFB: ErrorTypeFB
-  abstract AssetErrorFB: ErrorTypeFB
-  abstract ParseErrorFB: ErrorTypeFB
-  abstract SocketErrorFB: ErrorTypeFB
-  abstract ClientErrorFB: ErrorTypeFB
-  abstract IOErrorFB: ErrorTypeFB
-  abstract OtherFB: ErrorTypeFB
-  abstract RaftErrorFB: ErrorTypeFB
-
-let ErrorTypeFB: ErrorTypeFBConstructor = failwith "JS only"
-
-type ErrorFB =
-  abstract Type: ErrorTypeFB
-  abstract Location: string
-  abstract Message: string
-
-type ErrorFBConstructor =
-  abstract prototype: ErrorFB with get, set
-  abstract StartErrorFB: builder: FlatBufferBuilder -> unit
-  abstract AddType: builder: FlatBufferBuilder * tipe: ErrorTypeFB -> unit
-  abstract AddLocation: builder: FlatBufferBuilder * location: Offset<string> -> unit
-  abstract AddMessage: builder: FlatBufferBuilder * msg: Offset<string> -> unit
-  abstract EndErrorFB: builder: FlatBufferBuilder -> Offset<ErrorFB>
-  abstract GetRootAsErrorFB: bytes: ByteBuffer -> ErrorFB
-  abstract Create: unit -> ErrorFB
-
-let ErrorFB: ErrorFBConstructor = failwith "JS only"
