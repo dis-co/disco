@@ -32,6 +32,8 @@
     <Compile Include="../../../Iris/Iris/Core/Pin.fs" />
     <Compile Include="../../../Iris/Iris/Core/PinGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/Cue.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CueReference.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CueGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/CueList.fs" />
     <Compile Include="../../../Iris/Iris/Core/CuePlayer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Renderer.fs" />

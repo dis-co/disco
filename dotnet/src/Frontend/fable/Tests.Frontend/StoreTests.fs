@@ -176,7 +176,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -194,7 +194,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -202,7 +202,7 @@ module Store =
 
         equals 1 store.State.Cues.Count
 
-        let newname = "aww yeah"
+        let newname = name "aww yeah"
         store.Dispatch <| UpdateCue { cue with Name = newname }
 
         equals 1 store.State.Cues.Count
@@ -214,7 +214,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -228,7 +228,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -249,7 +249,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -267,7 +267,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -287,7 +287,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -301,7 +301,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 

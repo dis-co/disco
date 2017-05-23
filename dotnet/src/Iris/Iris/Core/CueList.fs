@@ -97,7 +97,7 @@ type CueList =
 
             #if FABLE_COMPILER
 
-            let! cue =
+            let! group =
               fb.Groups(i)
               |> CueGroup.FromFB
             #else

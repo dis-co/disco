@@ -24,6 +24,8 @@ module SerializationTests =
 
   let rndport() = rand.Next(0,65535) |> uint16 |> port
 
+  let rndint() = rand.Next()
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = Array.zeroCreate<byte> num
@@ -67,7 +69,19 @@ module SerializationTests =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
 
   let mkCue _ : Cue =
-    { Id = Id.Create(); Name = "Cue 1"; Slices = [| mkSlices() |] }
+    { Id = Id.Create(); Name = name "Cue 1"; Slices = [| mkSlices() |] }
+
+  let mkCueRef () : CueReference =
+    { Id = Id.Create(); CueId = Id.Create(); AutoFollow = rndint(); Duration = rndint(); Prewait = rndint() }
+
+  let mkCueRefs () : CueReference array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
+
+  let mkCueGroup () : CueGroup =
+    { Id = Id.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+
+  let mkCueGroups () : CueGroup array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
@@ -77,7 +91,7 @@ module SerializationTests =
       Pins = pins }
 
   let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = [| mkCue (); mkCue () |] }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
 
   let mkUser _ =
     { Id = Id.Create()
@@ -167,6 +181,21 @@ module SerializationTests =
           yield  mkCue () |]
       |> Array.iter check
       finish()
+
+    testSync "Validate Cue Serialization" <| fun () ->
+      let cue : Cue = mkCue ()
+      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
+      equals cue recue
+
+    testSync "Validate CueReference Serialization" <| fun () ->
+      let cueReference : CueReference = mkCueRef ()
+      let recueReference = cueReference |> Binary.encode |> Binary.decode |> Either.get
+      equals cueReference recueReference
+
+    testSync "Validate CueGroup Serialization" <| fun () ->
+      let cueGroup : CueGroup = mkCueGroup ()
+      let recueGroup = cueGroup |> Binary.encode |> Binary.decode |> Either.get
+      equals cueGroup recueGroup
 
     test "Validate CueList Serialization" <| fun finish ->
       let cuelist : CueList = mkCueList ()

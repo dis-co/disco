@@ -6,7 +6,6 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
 open Iris.Core.FlatBuffers
 
 #else
@@ -17,27 +16,27 @@ open FlatBuffers
 
 [<RequireQualifiedAccess>]
 module EitherExt =
-  open System
 
-  let bindNullableSeqToArray loc length (f: 'a -> Either<IrisError,'b>) (xs: Nullable<'a> seq): Either<IrisError,'b[]> =
+  let bindGeneratorToArray loc length generator (f: 'a -> Either<IrisError,'b>) =
     let mutable i = 0
     let mutable error = None
-    let enum = xs.GetEnumerator()
-    let arr2 = Array.zeroCreate length
-    while i < length && Option.isNone error do
-      if not(enum.MoveNext()) then
-        error <- ParseError(loc, sprintf "Sequence had less items (%i) than expected (%i)" i length) |> Some
+    let arr = Array.zeroCreate length
+    while i < arr.Length && Option.isNone error do
+      #if !FABLE_COMPILER
+      let item: System.Nullable<'a> = generator i
+      if not item.HasValue then
+        error <- ParseError(loc, "Could not parse empty item") |> Some
       else
-        let item = enum.Current
-        if not item.HasValue then
-          error <- ParseError(loc, "Could not parse empty item") |> Some
-        else
-          match f item.Value with
-          | Left err -> error <- Some err
-          | Right value -> arr2.[i] <- value; i <- i + 1
+        let item = item.Value
+      #else
+        let item = generator i
+      #endif
+        match f item with
+        | Right value -> arr.[i] <- value; i <- i + 1
+        | Left err -> error <- Some err
     match error with
     | Some err -> Left err
-    | None -> Right arr2
+    | None -> Right arr
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _

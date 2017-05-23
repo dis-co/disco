@@ -73,9 +73,7 @@ type CueGroup =
   static member FromFB(fb: CueGroupFB) : Either<IrisError,CueGroup> =
     either {
       let! cues =
-        let length = fb.CueRefsLength
-        seq { for i = 0 to length do yield fb.CueRefs(i) }
-        |> EitherExt.bindNullableSeqToArray "CueGroup.FromFB" length CueReference.FromFB
+        EitherExt.bindGeneratorToArray "CueGroup.FromFB" fb.CueRefsLength fb.CueRefs CueReference.FromFB
       return { Id = Id fb.Id
                Name = name fb.Name
                CueRefs = cues }
