@@ -40,6 +40,8 @@ module Binary =
       (^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>) bytes)
     with
       | exn ->
+        printfn "exn: %s" exn.Message
+        printfn "st: %s" exn.StackTrace
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
         |> ParseError
         |> Either.fail

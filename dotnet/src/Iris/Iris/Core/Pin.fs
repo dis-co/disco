@@ -304,20 +304,20 @@ type SliceYaml(tipe, idx, value: obj) as self =
         BoolSlice(index self.Index, self.Value :?> bool)
     | "ByteSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        let parse (value: obj) =
-          match value with
-          | :? String -> (value :?> String) |> Convert.FromBase64String
-          | :? Double ->
-            printfn "(ByteSlice.Double) offending byte value: %A" value
-            (value :?> Double) |> BitConverter.GetBytes
-          | :? Int32 ->
-            printfn "(ByteSlice.Int32) offending byte value: %A" value
-            (value :?> Int32)   |> BitConverter.GetBytes
-          | other ->
-            printfn "(ByteSlice): offending value: %A" other
-            printfn "(ByteSlice): type of offending value: %A" (other.GetType())
-            [| |]
-        ByteSlice(index self.Index, parse self.Value)
+        // let parse (value: obj) =
+        //   match value with
+        //   | :? String -> (value :?> String) |> Convert.FromBase64String
+        //   | :? Double ->
+        //     printfn "(ByteSlice.Double) offending byte value: %A" value
+        //     (value :?> Double) |> BitConverter.GetBytes
+        //   | :? Int32 ->
+        //     printfn "(ByteSlice.Int32) offending byte value: %A" value
+        //     (value :?> Int32)   |> BitConverter.GetBytes
+        //   | other ->
+        //     printfn "(ByteSlice): offending value: %A" other
+        //     printfn "(ByteSlice): type of offending value: %A" (other.GetType())
+        //     [| |]
+        ByteSlice(index self.Index, self.Value |> string |> Convert.FromBase64String)
     | "EnumSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
         let pyml = self.Value :?> PropertyYaml

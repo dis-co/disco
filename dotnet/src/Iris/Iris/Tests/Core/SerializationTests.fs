@@ -53,7 +53,7 @@ module SerializationTests =
   // |_| \_\__,_|_|  \__|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
   //                                   |_|
 
-  let test_validate_requestvote_response_serialization =
+  let test_validate_raftresponse_serialization =
     testCase "Validate RaftResponse Serialization" <| fun _ ->
       binaryEncDec<RaftResponse>
       |> Prop.forAll Generators.raftResponseArb
@@ -363,35 +363,33 @@ module SerializationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/
 
   let serializationTests =
-    ftestList "Serialization Tests" [
-      // test_save_restore_raft_value_correctly
-      // test_validate_config_change
-      // test_validate_user_yaml_serialization
-      // test_validate_user_binary_serialization
-      // test_validate_slice_binary_serialization
-      // test_validate_slices_binary_serialization
-      // test_validate_client_binary_serialization
-      // test_validate_cue_binary_serialization
-      // test_validate_cue_yaml_serialization
-      // test_validate_cuelist_binary_serialization
-      // test_validate_cuelist_yaml_serialization
-      // test_validate_session_binary_serialization
-      // test_validate_session_yaml_serialization
-      // test_validate_pin_binary_serialization
-      // test_validate_pin_yaml_serialization
-      // test_validate_cueplayer_binary_serialization
-      // test_validate_cueplayer_yaml_serialization
-      // test_validate_group_binary_serialization
-      // test_validate_group_yaml_serialization
-      // test_validate_discovered_service_binary_serialization
-      // test_validate_project_binary_serialization
-      // test_validate_state_binary_serialization
-
+    testList "Serialization Tests" [
+      test_save_restore_raft_value_correctly
+      test_validate_config_change
+      test_validate_user_yaml_serialization
+      test_validate_user_binary_serialization
+      test_validate_slice_binary_serialization
+      test_validate_slices_binary_serialization
+      test_validate_client_binary_serialization
+      test_validate_cue_binary_serialization
+      test_validate_cue_yaml_serialization
+      test_validate_cuelist_binary_serialization
+      test_validate_cuelist_yaml_serialization
+      test_validate_session_binary_serialization
+      test_validate_session_yaml_serialization
+      test_validate_pin_binary_serialization
+      test_validate_pin_yaml_serialization
+      test_validate_cueplayer_binary_serialization
+      test_validate_cueplayer_yaml_serialization
+      test_validate_group_binary_serialization
+      test_validate_group_yaml_serialization
+      test_validate_discovered_service_binary_serialization
+      test_validate_project_binary_serialization
+      test_validate_state_binary_serialization
       test_validate_raftrequest_serialization
-
-      // test_validate_requestvote_response_serialization
-      // test_validate_state_machine_binary_serialization
-      // test_validate_client_api_request_binary_serialization
+      test_validate_raftresponse_serialization
+      test_validate_state_machine_binary_serialization
+      test_validate_client_api_request_binary_serialization
 
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

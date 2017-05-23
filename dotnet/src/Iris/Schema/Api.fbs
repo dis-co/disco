@@ -37,6 +37,7 @@ enum ClientApiCommandFB:ushort {
      PingFB = 0,
      SnapshotFB,
      UpdateProjectFB,
+     UnloadProjectFB,
      AddClientFB,
      UpdateClientFB,
      RemoveClientFB,
@@ -61,10 +62,20 @@ enum ClientApiCommandFB:ushort {
      AddSessionFB,
      RemoveSessionFB,
      UpdateSessionFB,
+     AddCuePlayerFB,
+     RemoveCuePlayerFB,
+     UpdateCuePlayerFB,
+     AddDiscoveredServiceFB,
+     RemoveDiscoveredServiceFB,
+     UpdateDiscoveredServiceFB,
+     LogEventFB,
      UndoFB,
      RedoFB,
      ResetFB,
      UpdateSlicesFB,
+     UpdateClockFB,
+     DataSnapshotFB,
+     SetLogLevelFB,
      CallCueFB,
 }
 
@@ -77,9 +88,14 @@ union ParameterFB {
      PinFB,
      CueFB,
      CueListFB,
+     CuePlayerFB,
      UserFB,
+     ClockFB,
      SessionFB,
      SlicesFB,
+     LogEventFB,
+     StringFB,
+     DiscoveredServiceFB,
 }
 
 table ServerApiRequestFB {
