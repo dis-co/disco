@@ -48,22 +48,25 @@ type IrisMachine =
   // ** ToOffset
 
   member machine.ToOffset(builder: FlatBufferBuilder) =
+    let mapNull = function
+      | null -> None
+      | str -> builder.CreateString str |> Some
     let webip = machine.BindAddress |> string |> builder.CreateString
-    let workspace = machine.WorkSpace |> string |> builder.CreateString
-    let hostname = machine.HostName |> string |> builder.CreateString
+    let workspace = machine.WorkSpace |> unwrap |> mapNull
+    let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = machine.MachineId |> string |> builder.CreateString
-    let version = machine.Version |> unwrap |> builder.CreateString
+    let version = machine.Version |> unwrap |> mapNull
     IrisMachineFB.StartIrisMachineFB(builder)
     IrisMachineFB.AddMachineId(builder, machineid)
-    IrisMachineFB.AddHostName(builder, hostname)
-    IrisMachineFB.AddWorkSpace(builder, workspace)
+    Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
+    Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
     IrisMachineFB.AddWsPort(builder, unwrap machine.WsPort)
     IrisMachineFB.AddGitPort(builder, unwrap machine.GitPort)
     IrisMachineFB.AddApiPort(builder, unwrap machine.ApiPort)
-    IrisMachineFB.AddVersion(builder, version)
+    Option.iter (fun value ->IrisMachineFB.AddVersion(builder, value)) version
     IrisMachineFB.EndIrisMachineFB(builder)
 
   // ** FromFB
@@ -126,6 +129,9 @@ module MachineStatus =
     // *** ToOffset
 
     member status.ToOffset(builder: FlatBufferBuilder) =
+      let mapNull (builder: FlatBufferBuilder) = function
+        | null -> None
+        | other -> builder.CreateString other |> Some
       match status with
       | Idle ->
         MachineStatusFB.StartMachineStatusFB(builder)
@@ -133,11 +139,11 @@ module MachineStatus =
         MachineStatusFB.EndMachineStatusFB(builder)
       | Busy (id, name) ->
         let idoff = id |> string |> builder.CreateString
-        let nameoff = name |> unwrap |> builder.CreateString
+        let nameoff = name |> unwrap |> mapNull builder
         MachineStatusFB.StartMachineStatusFB(builder)
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
         MachineStatusFB.AddProjectId(builder, idoff)
-        MachineStatusFB.AddProjectName(builder, nameoff)
+        Option.iter (fun value -> MachineStatusFB.AddProjectName(builder,value)) nameoff
         MachineStatusFB.EndMachineStatusFB(builder)
 
     // *** FromOffset

@@ -386,14 +386,13 @@ type RaftLogEntry =
                   let! mem =
                     let value = logentry.Members(i)
                     if value.HasValue then
-                      value.Value
-                      |> RaftMember.FromFB
+                      value.Value |> RaftMember.FromFB
                     else
                       "Could not parse empty MemberFB value"
                       |> Error.asParseError "StateMachine.ParseLogFB"
                       |> Either.fail
                   arr.[i] <- mem
-                  return (i + i, arr)
+                  return (i + 1, arr)
                 })
                 (Right (0, arr))
                 arr

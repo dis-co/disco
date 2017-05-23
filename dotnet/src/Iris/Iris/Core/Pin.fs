@@ -307,8 +307,12 @@ type SliceYaml(tipe, idx, value: obj) as self =
         let parse (value: obj) =
           match value with
           | :? String -> (value :?> String) |> Convert.FromBase64String
-          | :? Double -> (value :?> Double) |> BitConverter.GetBytes
-          | :? Int32 -> (value :?> Int32)   |> BitConverter.GetBytes
+          | :? Double ->
+            printfn "(ByteSlice.Double) offending byte value: %A" value
+            (value :?> Double) |> BitConverter.GetBytes
+          | :? Int32 ->
+            printfn "(ByteSlice.Int32) offending byte value: %A" value
+            (value :?> Int32)   |> BitConverter.GetBytes
           | other ->
             printfn "(ByteSlice): offending value: %A" other
             printfn "(ByteSlice): type of offending value: %A" (other.GetType())

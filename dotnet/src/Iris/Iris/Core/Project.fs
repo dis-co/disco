@@ -71,14 +71,14 @@ type RaftConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let lvl = self.LogLevel |> string |> builder.CreateString
-    let dir = self.DataDir |> unwrap |> builder.CreateString
+    let dir = self.DataDir |> unwrap |> Option.mapNull builder.CreateString
 
     RaftConfigFB.StartRaftConfigFB(builder)
     RaftConfigFB.AddRequestTimeout(builder, int self.RequestTimeout)
     RaftConfigFB.AddElectionTimeout(builder, int self.ElectionTimeout)
     RaftConfigFB.AddMaxLogDepth(builder, self.MaxLogDepth)
     RaftConfigFB.AddLogLevel(builder, lvl)
-    RaftConfigFB.AddDataDir(builder, dir)
+    Option.iter (fun value -> RaftConfigFB.AddDataDir(builder,value)) dir
     RaftConfigFB.AddMaxRetries(builder, self.MaxRetries)
     RaftConfigFB.AddPeriodicInterval(builder, int self.PeriodicInterval)
     RaftConfigFB.EndRaftConfigFB(builder)
@@ -230,14 +230,14 @@ type TimingConfig =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let input = builder.CreateString self.Input
+    let input = Option.mapNull builder.CreateString self.Input
     let servers =
       Array.map (string >> builder.CreateString) self.Servers
       |> fun offsets -> TimingConfigFB.CreateServersVector(builder,offsets)
 
     TimingConfigFB.StartTimingConfigFB(builder)
     TimingConfigFB.AddFramebase(builder,self.Framebase)
-    TimingConfigFB.AddInput(builder, input)
+    Option.iter (fun value -> TimingConfigFB.AddInput(builder,value)) input
     TimingConfigFB.AddServers(builder, servers)
     TimingConfigFB.AddUDPPort(builder, self.UDPPort)
     TimingConfigFB.AddTCPPort(builder, self.TCPPort)
@@ -328,14 +328,14 @@ type HostGroup =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
 
     let members =
       Array.map (string >> builder.CreateString) self.Members
       |> fun offsets -> HostGroupFB.CreateMembersVector(builder, offsets)
 
     HostGroupFB.StartHostGroupFB(builder)
-    HostGroupFB.AddName(builder,name)
+    Option.iter (fun value -> HostGroupFB.AddName(builder,value)) name
     HostGroupFB.AddMembers(builder,members)
     HostGroupFB.EndHostGroupFB(builder)
 
@@ -399,7 +399,7 @@ type ClusterConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
 
     let members =
       self.Members
@@ -413,7 +413,7 @@ type ClusterConfig =
 
     ClusterConfigFB.StartClusterConfigFB(builder)
     ClusterConfigFB.AddId(builder, id)
-    ClusterConfigFB.AddName(builder, name)
+    Option.iter (fun value -> ClusterConfigFB.AddName(builder,value)) name
     ClusterConfigFB.AddMembers(builder, members)
     ClusterConfigFB.AddGroups(builder, groups)
     ClusterConfigFB.EndClusterConfigFB(builder)
@@ -540,18 +540,17 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let version = builder.CreateString self.Version
+    let version = Option.mapNull builder.CreateString self.Version
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
-
     let machine = Binary.toOffset builder self.Machine
 
     let site =
       match self.ActiveSite with
       | Some id -> id |> string |> builder.CreateString
-      | None -> "" |> builder.CreateString
+      | None -> Unchecked.defaultof<StringOffset>
 
     let sites =
       Array.map (Binary.toOffset builder) self.Sites
@@ -570,7 +569,7 @@ type IrisConfig =
       |> fun tasks -> ConfigFB.CreateTasksVector(builder, tasks)
 
     ConfigFB.StartConfigFB(builder)
-    ConfigFB.AddVersion(builder, version)
+    Option.iter (fun value -> ConfigFB.AddVersion(builder,value)) version
     ConfigFB.AddMachine(builder, machine)
     ConfigFB.AddActiveSite(builder, site)
     ConfigFB.AddAudioConfig(builder, audio)
@@ -590,7 +589,7 @@ type IrisConfig =
       let version = fb.Version
 
       let site =
-        if isNull fb.ActiveSite || fb.ActiveSite = "" then
+        if isNull fb.ActiveSite then
           None
         else
           Some (Id fb.ActiveSite)
@@ -1522,13 +1521,7 @@ Project:
   /// Returns: Either<IrisError, string * string>
   let internal parseArgument (argument: ArgumentYaml) =
     either {
-      if (argument.Key.Length > 0) && (argument.Value.Length > 0) then
-        return (argument.Key, argument.Value)
-      else
-        return!
-          sprintf "Could not parse Argument: %A" argument
-          |> Error.asParseError "Config.parseArgument"
-          |> Either.fail
+      return (argument.Key, argument.Value)
     }
 
   // ** parseArguments
@@ -1716,16 +1709,9 @@ Project:
 
   let internal parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
-      if group.Name.Length > 0 then
-        let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
-
-        return { Name    = name group.Name
-                 Members = ids }
-      else
-        return!
-          "Invalid HostGroup setting (Name must be given)"
-          |> Error.asParseError "Config.parseGroup"
-          |> Either.fail
+      let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
+      return { Name = name group.Name
+               Members = ids }
     }
 
   // ** parseGroups
@@ -2331,32 +2317,29 @@ Config: %A
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
+    let strornull (str: string) =
+      let nll = sprintf "%A" null
+      match str with
+      | null -> nll |> builder.CreateString
+      | str -> str |> builder.CreateString
     let id = builder.CreateString (string self.Id)
-    let name = self.Name |> unwrap |> builder.CreateString
-    let path = self.Path |> unwrap |> builder.CreateString
-    let created = builder.CreateString (string self.CreatedOn)
-    let lastsaved = Option.map builder.CreateString self.LastSaved
-    let copyright = Option.map builder.CreateString self.Copyright
-    let author = Option.map builder.CreateString self.Author
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let path = self.Path |> unwrap |> Option.mapNull builder.CreateString
+    let created = Option.mapNull builder.CreateString self.CreatedOn
+    let lastsaved = Option.map strornull self.LastSaved
+    let copyright = Option.map strornull self.Copyright
+    let author = Option.map strornull self.Author
     let config = Binary.toOffset builder self.Config
 
     ProjectFB.StartProjectFB(builder)
     ProjectFB.AddId(builder, id)
-    ProjectFB.AddName(builder, name)
-    ProjectFB.AddPath(builder, path)
-    ProjectFB.AddCreatedOn(builder, created)
 
-    match lastsaved with
-    | Some offset -> ProjectFB.AddLastSaved(builder,offset)
-    | _ -> ()
-
-    match copyright with
-    | Some offset -> ProjectFB.AddCopyright(builder,offset)
-    | _ -> ()
-
-    match author with
-    | Some offset -> ProjectFB.AddAuthor(builder,offset)
-    | _ -> ()
+    Option.iter (fun value -> ProjectFB.AddPath(builder,value)) path
+    Option.iter (fun value -> ProjectFB.AddName(builder,value)) name
+    Option.iter (fun value -> ProjectFB.AddCreatedOn(builder,value)) created
+    Option.iter (fun offset -> ProjectFB.AddLastSaved(builder,offset)) lastsaved
+    Option.iter (fun offset -> ProjectFB.AddCopyright(builder,offset)) copyright
+    Option.iter (fun offset -> ProjectFB.AddAuthor(builder,offset)) author
 
     ProjectFB.AddConfig(builder, config)
     ProjectFB.EndProjectFB(builder)
@@ -2377,19 +2360,24 @@ Config: %A
 
   static member FromFB(fb: ProjectFB) =
     either {
+      let nll = sprintf "%A" null
+
       let! lastsaved =
         match fb.LastSaved with
         | null    -> Right None
+        | value when value = nll -> Right (Some null)
         | date -> Right (Some date)
 
       let! copyright =
         match fb.Copyright with
         | null   -> Right None
+        | value when value = nll -> Right (Some null)
         | str -> Right (Some str)
 
       let! author =
         match fb.Author with
         | null   -> Right None
+        | value when value = nll -> Right (Some null)
         | str -> Right (Some str)
 
       let! config =
