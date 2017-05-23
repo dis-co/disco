@@ -373,23 +373,23 @@ module SerializationTests =
       test_validate_client_binary_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
+      test_validate_cuelist_binary_serialization
+      test_validate_cuelist_yaml_serialization
+      test_validate_session_binary_serialization
+      test_validate_session_yaml_serialization
+      test_validate_pin_binary_serialization
+      test_validate_pin_yaml_serialization
+      test_validate_cueplayer_binary_serialization
+      test_validate_cueplayer_yaml_serialization
+      test_validate_group_binary_serialization
+      test_validate_group_yaml_serialization
 
       // test_validate_raftrequest_serialization
       // test_validate_requestvote_response_serialization
       // test_validate_discovered_service_binary_serialization
       // test_validate_project_binary_serialization
       // test_validate_project_yaml_serialization
-      // test_validate_cuelist_binary_serialization
-      // test_validate_cuelist_yaml_serialization
-      // test_validate_group_binary_serialization
-      // test_validate_group_yaml_serialization
-      // test_validate_session_binary_serialization
-      // test_validate_session_yaml_serialization
-      // test_validate_pin_binary_serialization
-      // test_validate_pin_yaml_serialization
       // test_validate_state_binary_serialization
       // test_validate_state_machine_binary_serialization
       // test_validate_client_api_request_binary_serialization
-      // test_validate_cueplayer_binary_serialization
-      // test_validate_cueplayer_yaml_serialization
     ]

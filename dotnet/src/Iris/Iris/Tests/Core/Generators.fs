@@ -61,15 +61,15 @@ module Generators =
     | _ -> str |> Encoding.UTF8.GetBytes |> Convert.ToBase64String
 
   let stringGen = Arb.generate<string> |> Gen.map maybeEncode
-  let stringsGen = Gen.arrayOf stringGen
+  let stringsGen = Gen.arrayOfLength 2 stringGen
   let intGen = Arb.generate<int>
-  let intsGen = Gen.arrayOf intGen
+  let intsGen = Gen.arrayOfLength 4 intGen
   let boolGen = Arb.generate<bool>
-  let boolsGen = Gen.arrayOf boolGen
+  let boolsGen = Gen.arrayOfLength 4 boolGen
   let byteGen = Arb.generate<byte>
-  let bytesGen = Gen.arrayOf byteGen
+  let bytesGen = Gen.arrayOfLength 4 byteGen
   let doubleGen = Arb.generate<double>
-  let doublesGen = Gen.arrayOf doubleGen
+  let doublesGen = Gen.arrayOfLength 4 doubleGen
   let uint8Gen = Arb.generate<uint8>
   let uint16Gen = Arb.generate<uint16>
   let uint32Gen = Arb.generate<uint32>
@@ -89,7 +89,7 @@ module Generators =
   let inline maybeGen g = Gen.oneof [ Gen.constant None
                                       Gen.map Some g ]
 
-  let inline mapGen g = Gen.arrayOf g |> Gen.map (Array.map toPair >> Map.ofArray)
+  let inline mapGen g = Gen.arrayOfLength 2 g |> Gen.map (Array.map toPair >> Map.ofArray)
 
   //  ___    _
   // |_ _|__| |
@@ -177,7 +177,7 @@ module Generators =
           MatchIndex = midx }
     }
 
-  let raftMemArr = Gen.arrayOf raftMemberGen
+  let raftMemArr = Gen.arrayOfLength 2 raftMemberGen
 
   //  _                _                   _
   // | |    ___   __ _| |    _____   _____| |
@@ -223,8 +223,8 @@ module Generators =
     }
 
   let vvvvGen = gen {
-      let! exes = Gen.arrayOf exeGen
-      let! plugs = Gen.arrayOf plugGen
+      let! exes = Gen.arrayOfLength 2 exeGen
+      let! plugs = Gen.arrayOfLength 2 plugGen
       return { Executables = exes; Plugins = plugs }
     }
 
@@ -696,9 +696,9 @@ module Generators =
     [ Gen.map StringSlices (Gen.zip idGen stringsGen)
       Gen.map NumberSlices (Gen.zip idGen doublesGen)
       Gen.map BoolSlices   (Gen.zip idGen boolsGen)
-      Gen.map ByteSlices   (Gen.zip idGen (Gen.arrayOf bytesGen))
-      Gen.map EnumSlices   (Gen.zip idGen (Gen.arrayOf propertyGen))
-      Gen.map ColorSlices  (Gen.zip idGen (Gen.arrayOf colorGen)) ]
+      Gen.map ByteSlices   (Gen.zip idGen (Gen.arrayOfLength 2 bytesGen))
+      Gen.map EnumSlices   (Gen.zip idGen (Gen.arrayOfLength 2 propertyGen))
+      Gen.map ColorSlices  (Gen.zip idGen (Gen.arrayOfLength 2 colorGen)) ]
     |> Gen.oneof
 
   //   ____
@@ -710,7 +710,7 @@ module Generators =
   let cueGen = gen {
       let! id = idGen
       let! nm = stringGen
-      let! slcs = Gen.arrayOf slicesGen
+      let! slcs = Gen.arrayOfLength 2 slicesGen
       return
         { Id = id
           Name = nm

@@ -153,7 +153,7 @@ type PinGroup =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
@@ -163,7 +163,7 @@ type PinGroup =
     let pins = PinGroupFB.CreatePinsVector(builder, pinoffsets)
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
-    PinGroupFB.AddName(builder, name)
+    Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
     PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)

@@ -72,12 +72,12 @@ type CueList =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = self.Id |> string |> builder.CreateString
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let cueoffsets = Array.map (fun (cue: Cue)  -> cue.ToOffset(builder)) self.Cues
     let cuesvec = CueListFB.CreateCuesVector(builder, cueoffsets)
     CueListFB.StartCueListFB(builder)
     CueListFB.AddId(builder, id)
-    CueListFB.AddName(builder, name)
+    Option.iter (fun value -> CueListFB.AddName(builder, value)) name
     CueListFB.AddCues(builder, cuesvec)
     CueListFB.EndCueListFB(builder)
 

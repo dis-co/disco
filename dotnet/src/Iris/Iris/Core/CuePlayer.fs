@@ -98,7 +98,7 @@ type CuePlayer =
 
   member player.ToOffset(builder: FlatBufferBuilder) =
     let id = player.Id |> string |> builder.CreateString
-    let name = player.Name |> unwrap |> builder.CreateString
+    let name = player.Name |> unwrap |> Option.mapNull builder.CreateString
     let cuelist = player.CueList |> Option.map (string >> builder.CreateString)
     let call = Binary.toOffset builder player.Call
     let next = Binary.toOffset builder player.Next
@@ -108,7 +108,7 @@ type CuePlayer =
 
     CuePlayerFB.StartCuePlayerFB(builder)
     CuePlayerFB.AddId(builder, id)
-    CuePlayerFB.AddName(builder, name)
+    Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
     CuePlayerFB.AddCall(builder, call)

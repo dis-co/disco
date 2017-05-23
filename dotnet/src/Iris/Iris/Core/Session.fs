@@ -91,11 +91,11 @@ type Session =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let session = self.Id |> string |> builder.CreateString
     let ip = self.IpAddress |> string |> builder.CreateString
-    let ua = self.UserAgent |> string |> builder.CreateString
+    let ua = self.UserAgent |> Option.mapNull builder.CreateString
     SessionFB.StartSessionFB(builder)
     SessionFB.AddId(builder, session)
     SessionFB.AddIpAddress(builder, ip)
-    SessionFB.AddUserAgent(builder, ua)
+    Option.iter (fun value -> SessionFB.AddUserAgent(builder, value)) ua
     SessionFB.EndSessionFB(builder)
 
   // ** ToBytes

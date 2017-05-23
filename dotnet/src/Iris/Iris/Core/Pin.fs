@@ -277,16 +277,43 @@ type SliceYaml(tipe, idx, value: obj) as self =
     match self.SliceType with
     | "StringSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
-        StringSlice(index self.Index, self.Value :?> string)
+        let parse (str: obj) =
+          match str with
+          | null -> null
+          | _ -> str :?> String
+        StringSlice(index self.Index, parse self.Value)
     | "NumberSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
-        NumberSlice(index self.Index, self.Value :?> double)
+        let parse (value: obj) =
+          try
+            match value with
+            | :? Double -> value :?> Double
+            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
+            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
+            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
+            | _ -> 0.0
+          with
+            | exn ->
+              exn.Message
+              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
+              |> Logger.err "Slices.ToSlices (Number)"
+              0.0
+        NumberSlice(index self.Index, parse self.Value)
     | "BoolSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
         BoolSlice(index self.Index, self.Value :?> bool)
     | "ByteSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        ByteSlice(index self.Index, Convert.FromBase64String(self.Value :?> string))
+        let parse (value: obj) =
+          match value with
+          | :? String -> (value :?> String) |> Convert.FromBase64String
+          | :? Double -> (value :?> Double) |> BitConverter.GetBytes
+          | :? Int32 -> (value :?> Int32)   |> BitConverter.GetBytes
+          | other ->
+            printfn "(ByteSlice): offending value: %A" other
+            printfn "(ByteSlice): type of offending value: %A" (other.GetType())
+            [| |]
+        ByteSlice(index self.Index, parse self.Value)
     | "EnumSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
         let pyml = self.Value :?> PropertyYaml
@@ -343,7 +370,11 @@ type SlicesYaml(tipe, id, values: obj array) as self =
     match self.SliceType with
     | "StringSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
-        StringSlices(Id self.Id, Array.map unbox<string> self.Values)
+        let parse (str: obj) =
+          match str with
+          | null -> null
+          | _ -> str :?> String
+        StringSlices(Id self.Id, Array.map parse self.Values)
     | "NumberSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
@@ -366,7 +397,16 @@ type SlicesYaml(tipe, id, values: obj array) as self =
         BoolSlices(Id self.Id, Array.map unbox<bool> self.Values)
     | "ByteSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
-        ByteSlices(Id self.Id, Array.map (unbox<string> >> Convert.FromBase64String) self.Values)
+        let parse (value: obj) =
+          match value with
+          | :? String -> (value :?> String) |> Convert.FromBase64String
+          | :? Double -> (value :?> Double) |> BitConverter.GetBytes
+          | :? Int32  -> (value :?> Int32)  |> BitConverter.GetBytes
+          | other ->
+            printfn "(ByteSlices): offending value: %A" other
+            printfn "(ByteSlices): type of offending value: %A" (other.GetType())
+            [| |]
+        ByteSlices(Id self.Id, Array.map parse self.Values)
     | "EnumSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
         let ofPyml (o: obj) =
@@ -854,7 +894,10 @@ type Pin =
     Array.fold
       (fun (result: Either<IrisError,int * Tag array>) _ -> either {
           let! (i, tags) = result
-          tags.[i] <- astag (^a : (member Tags : int -> string) (fb, i))
+          let value =
+            try (^a : (member Tags : int -> string) (fb, i))
+            with | _ -> null
+          tags.[i] <- astag value
           return (i + 1, tags)
         })
       (Right (0, arr))
@@ -880,7 +923,10 @@ type Pin =
     Array.fold
       (fun (result: Either<IrisError,int * string array>) _ -> either {
           let! (i, labels) = result
-          labels.[i] <- (^a : (member Labels : int -> string) (fb, i))
+          let value =
+            try (^a : (member Labels : int -> string) (fb, i))
+            with | _ -> null
+          labels.[i] <- value
           return (i + 1, labels)
         })
       (Right (0, arr))
@@ -947,7 +993,10 @@ type Pin =
 
           // In .NET, Flatbuffers are modelled with nullables, hence
           // parsing is slightly more elaborate
-          let slice = (^b : (member Values : int -> ^a) (fb, i))
+          let slice =
+            try (^b : (member Values : int -> ^a) (fb, i))
+            with | _ -> Unchecked.defaultof< ^a >
+
           // add the slice to the array> at its correct position
           slices.[i] <- slice
           return (i + 1, slices)
@@ -1040,7 +1089,7 @@ type Pin =
                 either {
                   let! (i, arr) = m
                   let! value = yml.ToSlice()
-                  arr.[i] <- string value.Value
+                  arr.[i] <- (value.Value :?> String)
                   return (i + 1, arr)
                 })
               (Right(0, arr))
@@ -1662,6 +1711,13 @@ module Pin =
       | _ -> value
 
 
+  // ** str2offset
+
+  let str2offset (builder: FlatBufferBuilder) (str: string) =
+    match str with
+    | null -> Unchecked.defaultof<StringOffset>
+    | _ -> builder.CreateString str
+
 // * NumberPinD
 
 //  ____              _     _      ____
@@ -1670,6 +1726,7 @@ module Pin =
 // | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
 // |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
 
+[<CustomComparison; CustomEquality>]
 type NumberPinD =
   { Id         : Id
     Name       : string
@@ -1695,25 +1752,25 @@ type NumberPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let unit = self.Unit |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
+    let unit = self.Unit |> Option.mapNull builder.CreateString
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
-    let labeloffsets = Array.map builder.CreateString self.Labels
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
     let values = NumberPinFB.CreateValuesVector(builder, self.Values)
     let vecsize = self.VecSize.ToOffset(builder)
     let direction = self.Direction.ToOffset(builder)
     NumberPinFB.StartNumberPinFB(builder)
     NumberPinFB.AddId(builder, id)
-    NumberPinFB.AddName(builder, name)
+    Option.iter (fun value -> NumberPinFB.AddName(builder, value)) name
     NumberPinFB.AddPinGroup(builder, group)
     NumberPinFB.AddTags(builder, tags)
     NumberPinFB.AddVecSize(builder, vecsize)
     NumberPinFB.AddMin(builder, self.Min)
     NumberPinFB.AddMax(builder, self.Max)
-    NumberPinFB.AddUnit(builder, unit)
+    Option.iter (fun value -> NumberPinFB.AddUnit(builder, value)) unit
     NumberPinFB.AddPrecision(builder, self.Precision)
     NumberPinFB.AddVecSize(builder, vecsize)
     NumberPinFB.AddDirection(builder, direction)
@@ -1725,7 +1782,6 @@ type NumberPinD =
 
   static member FromFB(fb: NumberPinFB) : Either<IrisError,NumberPinD> =
     either {
-      let unit = if isNull fb.Unit then "" else fb.Unit
       let! tags = Pin.ParseTagsFB fb
       let! labels = Pin.ParseLabelsFB fb
       let! vecsize = Pin.ParseVecSize fb
@@ -1741,7 +1797,7 @@ type NumberPinD =
                Tags      = tags
                Min       = fb.Min
                Max       = fb.Max
-               Unit      = unit
+               Unit      = fb.Unit
                Precision = fb.Precision
                VecSize   = vecsize
                Direction = direction
@@ -1759,6 +1815,48 @@ type NumberPinD =
     Binary.createBuffer bytes
     |> NumberPinFB.GetRootAsNumberPinFB
     |> NumberPinD.FromFB
+
+  // ** Equals
+
+  override self.Equals(other) =
+    match other with
+    | :? NumberPinD as pin ->
+      (self :> System.IEquatable<NumberPinD>).Equals(pin)
+    | _ -> false
+
+  // ** Equals<NumberPinD>
+
+  interface System.IEquatable<NumberPinD> with
+    member self.Equals(pin: NumberPinD) =
+      let valuesEqual =
+        if Array.length pin.Values = Array.length self.Values then
+          Array.fold
+            (fun m (left, right) ->
+              if m then
+                match left, right with
+                | _,_ when Double.IsNaN left && Double.IsNaN right -> true
+                | _ -> left = right
+              else m)
+            true
+            (Array.zip pin.Values self.Values)
+        else false
+
+      pin.Id = self.Id &&
+      pin.Name = self.Name &&
+      pin.PinGroup = self.PinGroup &&
+      pin.Tags = self.Tags &&
+      pin.VecSize = self.VecSize &&
+      pin.Direction = self.Direction &&
+      pin.Labels = self.Labels &&
+      valuesEqual
+
+  // ** CompareTo
+
+  interface System.IComparable with
+    member self.CompareTo other =
+      match other with
+      | :? NumberPinD as pin -> compare self.Name pin.Name
+      | _ -> invalidArg "other" "cannot compare value of different types"
 
 // * StringPinD
 
@@ -1792,12 +1890,12 @@ type StringPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
-    let labeloffsets = Array.map builder.CreateString self.Labels
-    let sliceoffsets = Array.map builder.CreateString self.Values
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
+    let sliceoffsets = Array.map (Pin.str2offset builder) self.Values
     let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
     let labels = StringPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = StringPinFB.CreateValuesVector(builder, sliceoffsets)
@@ -1806,7 +1904,7 @@ type StringPinD =
 
     StringPinFB.StartStringPinFB(builder)
     StringPinFB.AddId(builder, id)
-    StringPinFB.AddName(builder, name)
+    Option.iter (fun value -> StringPinFB.AddName(builder,value)) name
     StringPinFB.AddPinGroup(builder, group)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
@@ -1881,18 +1979,18 @@ type BoolPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
-    let labeloffsets = Array.map builder.CreateString self.Labels
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = BoolPinFB.CreateValuesVector(builder, self.Values)
     let direction = self.Direction.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
     BoolPinFB.StartBoolPinFB(builder)
     BoolPinFB.AddId(builder, id)
-    BoolPinFB.AddName(builder, name)
+    Option.iter (fun value -> BoolPinFB.AddName(builder,value)) name
     BoolPinFB.AddPinGroup(builder, group)
     BoolPinFB.AddIsTrigger(builder, self.IsTrigger)
     BoolPinFB.AddTags(builder, tags)
@@ -2003,31 +2101,6 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       lengthEqual &&
       contentsEqual
 
-  // ** GetHashCode
-
-  override self.GetHashCode() =
-    let mutable hash = 42
-    #if FABLE_COMPILER
-    hash <- (hash * 7) + hashCode (string self.Id)
-    hash <- (hash * 7) + hashCode self.Name
-    hash <- (hash * 7) + hashCode (string self.PinGroup)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Tags)
-    hash <- (hash * 7) + (Array.fold (fun m t -> m + (t |> unwrap |> hashCode)) 0 self.Labels)
-    hash <- (hash * 7) + hashCode (string self.Direction)
-    hash <- (hash * 7) + hashCode (string self.VecSize)
-    hash <- (hash * 7) + (Array.fold (fun m (t: byte[]) -> m + int t.Length) 0 self.Values)
-    #else
-    hash <- (hash * 7) + self.Id.GetHashCode()
-    hash <- (hash * 7) + self.Name.GetHashCode()
-    hash <- (hash * 7) + self.PinGroup.GetHashCode()
-    hash <- (hash * 7) + self.Tags.GetHashCode()
-    hash <- (hash * 7) + self.Labels.GetHashCode()
-    hash <- (hash * 7) + self.Direction.GetHashCode()
-    hash <- (hash * 7) + self.VecSize.GetHashCode()
-    hash <- (hash * 7) + self.Values.GetHashCode()
-    #endif
-    hash
-
   // ** CompareTo
 
   interface System.IComparable with
@@ -2047,10 +2120,10 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
-    let labeloffsets = Array.map builder.CreateString self.Labels
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
     let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
     let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
@@ -2059,7 +2132,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     let direction = self.Direction.ToOffset(builder)
     BytePinFB.StartBytePinFB(builder)
     BytePinFB.AddId(builder, id)
-    BytePinFB.AddName(builder, name)
+    Option.iter (fun value -> BytePinFB.AddName(builder,value)) name
     BytePinFB.AddPinGroup(builder, group)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
@@ -2131,10 +2204,10 @@ type EnumPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
-    let labeloffsets = Array.map builder.CreateString self.Labels
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let propoffsets = Array.map (Binary.toOffset builder) self.Properties
     let tags = EnumPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2145,7 +2218,7 @@ type EnumPinD =
     let vecsize = self.VecSize.ToOffset(builder)
     EnumPinFB.StartEnumPinFB(builder)
     EnumPinFB.AddId(builder, id)
-    EnumPinFB.AddName(builder, name)
+    Option.iter (fun value -> EnumPinFB.AddName(builder,value)) name
     EnumPinFB.AddPinGroup(builder, group)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
@@ -2240,10 +2313,10 @@ type ColorPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> builder.CreateString) self.Tags
-    let labeloffsets = Array.map builder.CreateString self.Labels
+    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
     let labels = ColorPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -2252,7 +2325,7 @@ type ColorPinD =
     let vecsize = self.VecSize.ToOffset(builder)
     ColorPinFB.StartColorPinFB(builder)
     ColorPinFB.AddId(builder, id)
-    ColorPinFB.AddName(builder, name)
+    Option.iter (fun value -> ColorPinFB.AddName(builder,value)) name
     ColorPinFB.AddPinGroup(builder, group)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
@@ -3358,3 +3431,27 @@ type Slices =
         match self with
         | ColorSlices (sid, svalues) when id = sid -> values = svalues
         | _ -> false
+
+
+// * Playground
+
+#if INTERACTIVE
+
+open SharpYaml
+open SharpYaml.Serialization
+
+
+type F() =
+  [<DefaultValue>] val mutable a : obj
+
+
+let serializer = Serializer()
+
+
+let result = serializer.Serialize (F())
+
+let parsed = serializer.Deserialize<F> result
+
+parsed
+
+#endif
