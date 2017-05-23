@@ -371,14 +371,14 @@ module SerializationTests =
       test_validate_slice_binary_serialization
       test_validate_slices_binary_serialization
       test_validate_client_binary_serialization
+      test_validate_cue_binary_serialization
+      test_validate_cue_yaml_serialization
 
       // test_validate_raftrequest_serialization
       // test_validate_requestvote_response_serialization
       // test_validate_discovered_service_binary_serialization
       // test_validate_project_binary_serialization
       // test_validate_project_yaml_serialization
-      // test_validate_cue_binary_serialization
-      // test_validate_cue_yaml_serialization
       // test_validate_cuelist_binary_serialization
       // test_validate_cuelist_yaml_serialization
       // test_validate_group_binary_serialization

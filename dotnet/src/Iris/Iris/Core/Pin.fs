@@ -346,7 +346,21 @@ type SlicesYaml(tipe, id, values: obj array) as self =
         StringSlices(Id self.Id, Array.map unbox<string> self.Values)
     | "NumberSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
-        NumberSlices(Id self.Id, Array.map unbox<double> self.Values)
+        let parse (value: obj) =
+          try
+            match value with
+            | :? Double -> value :?> Double
+            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
+            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
+            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
+            | _ -> 0.0
+          with
+            | exn ->
+              exn.Message
+              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
+              |> Logger.err "Slices.ToSlices (Number)"
+              0.0
+        NumberSlices(Id self.Id, Array.map parse self.Values)
     | "BoolSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
         BoolSlices(Id self.Id, Array.map unbox<bool> self.Values)
@@ -3052,12 +3066,7 @@ type Slices =
             Array.fold
               (fun (m: Either<IrisError,string array * int>) _ -> either {
                   let! (parsed,idx) = m
-                  let! value =
-                    try
-                      slices.Values(idx) |> Either.succeed
-                    with
-                      | _ -> null |> Either.succeed
-                  parsed.[idx] <- value
+                  parsed.[idx] <- slices.Values(idx)
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
@@ -3158,13 +3167,11 @@ type Slices =
             Array.fold
               (fun (m: Either<IrisError,string array * int>) _ -> either {
                   let! (parsed,idx) = m
-                  let! value =
-                    try
-                      slices.Values(idx) |> Either.succeed
-                    with
-                      | _ -> null |> Either.succeed
+                  let value =
+                    try slices.Values(idx)
+                    with | _ -> null
                   parsed.[idx] <- value
-                  return (parsed, idx + 1) })
+                  return parsed, idx + 1 })
               (Right (arr, 0))
               arr
             |> Either.map (fun (strings, _) -> StringSlices(id, strings))
