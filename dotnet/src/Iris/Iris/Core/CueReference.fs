@@ -30,9 +30,9 @@ open SharpYaml.Serialization
 type CueReferenceYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable CueId: string
-  [<DefaultValue>] val mutable AutoFollow: Nullable<int>
-  [<DefaultValue>] val mutable Duration: Nullable<int>
-  [<DefaultValue>] val mutable Prewait: Nullable<int>
+  [<DefaultValue>] val mutable AutoFollow: int
+  [<DefaultValue>] val mutable Duration: int
+  [<DefaultValue>] val mutable Prewait: int
 
   // ** From
 
@@ -40,9 +40,9 @@ type CueReferenceYaml() =
     let yaml = CueReferenceYaml()
     yaml.Id <- string cue.Id
     yaml.CueId <- string cue.CueId
-    yaml.AutoFollow <- Option.toNullable cue.AutoFollow
-    yaml.Duration <- Option.toNullable cue.Duration
-    yaml.Prewait <- Option.toNullable cue.Prewait
+    yaml.AutoFollow <- cue.AutoFollow
+    yaml.Duration   <- cue.Duration
+    yaml.Prewait    <- cue.Prewait
     yaml
 
   // ** ToCueReference
@@ -50,9 +50,9 @@ type CueReferenceYaml() =
   member yaml.ToCueReference() =
     { Id          = Id yaml.Id
       CueId       = Id yaml.CueId    
-      AutoFollow  = Option.ofNullable yaml.AutoFollow
-      Duration    = Option.ofNullable yaml.Duration
-      Prewait     = Option.ofNullable yaml.Prewait }
+      AutoFollow  = yaml.AutoFollow
+      Duration    = yaml.Duration
+      Prewait     = yaml.Prewait }
     |> Right
 
 #endif
@@ -63,9 +63,9 @@ type CueReferenceYaml() =
 type CueReference =
   { Id:         Id
     CueId:      Id
-    AutoFollow: int option
-    Duration:   int option
-    Prewait:    int option
+    AutoFollow: int
+    Duration:   int
+    Prewait:    int
     //Trigger:  Event option
   }
 
@@ -81,9 +81,9 @@ type CueReference =
   static member FromFB(fb: CueReferenceFB) : Either<IrisError,CueReference> =
     { Id          = Id fb.Id
       CueId       = Id fb.CueId    
-      AutoFollow  = Option.ofNullable fb.AutoFollow
-      Duration    = Option.ofNullable fb.Duration
-      Prewait     = Option.ofNullable fb.Prewait }
+      AutoFollow  = fb.AutoFollow
+      Duration    = fb.Duration
+      Prewait     = fb.Prewait }
     |> Right
 
   // ** ToOffset
@@ -94,9 +94,9 @@ type CueReference =
     CueReferenceFB.StartCueReferenceFB(builder)
     CueReferenceFB.AddId(builder, id)
     CueReferenceFB.AddCueId(builder, cueId)
-    self.AutoFollow |> Option.iter (fun x -> CueReferenceFB.AddAutoFollow(builder, x))
-    self.Duration |> Option.iter (fun x -> CueReferenceFB.AddDuration(builder, x))
-    self.Prewait |> Option.iter (fun x -> CueReferenceFB.AddPrewait(builder, x))
+    CueReferenceFB.AddAutoFollow(builder, self.AutoFollow)
+    CueReferenceFB.AddDuration(builder, self.Duration)
+    CueReferenceFB.AddPrewait(builder, self.Prewait)
     CueReferenceFB.EndCueReferenceFB(builder)
 
   // ** FromBytes

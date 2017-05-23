@@ -309,6 +309,22 @@ module SerializationTests =
     testCase "Validate Cue Yaml Serialization" <| fun _ ->
       mkCue () |> yamlEncDec
 
+  let test_validate_cueref_binary_serialization =
+    testCase "Validate CueReference Binary Serialization" <| fun _ ->
+      mkCueRef () |> binaryEncDec
+
+  let test_validate_cueref_yaml_serialization =
+    testCase "Validate CueReference Yaml Serialization" <| fun _ ->
+      mkCueRef () |> yamlEncDec
+
+  let test_validate_cuegroup_binary_serialization =
+    testCase "Validate CueGroup Binary Serialization" <| fun _ ->
+      mkCueGroup () |> binaryEncDec
+
+  let test_validate_cuegroup_yaml_serialization =
+    testCase "Validate CueGroup Yaml Serialization" <| fun _ ->
+      mkCueGroup () |> yamlEncDec
+
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_
   // | |  | | | |/ _ \ |   | / __| __|

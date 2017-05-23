@@ -279,7 +279,7 @@ module ApiTests =
 
         clientUpdate.WaitOne() |> ignore
 
-        do! client.UpdateCueList { cuelist with Groups = [| mkCue() |] }
+        do! client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
 
         clientUpdate.WaitOne() |> ignore
 

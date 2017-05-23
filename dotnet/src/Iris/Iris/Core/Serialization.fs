@@ -34,7 +34,7 @@ module EitherExt =
         else
           match f item.Value with
           | Left err -> error <- Some err
-          | Right value -> arr2.[i] <- value; i <- i + i
+          | Right value -> arr2.[i] <- value; i <- i + 1
     match error with
     | Some err -> Left err
     | None -> Right arr2
