@@ -152,6 +152,9 @@
     <Compile Include="..\..\Iris\Core\CueReference.fs">
       <Link>CueReference.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\CueGroup.fs">
+      <Link>CueGroup.fs</Link>
+    </Compile>    
     <Compile Include="..\..\Iris\Core\CueList.fs">
       <Link>CueList.fs</Link>
     </Compile>

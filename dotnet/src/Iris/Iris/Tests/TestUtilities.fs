@@ -219,7 +219,7 @@ module TestData =
         yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCues() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do

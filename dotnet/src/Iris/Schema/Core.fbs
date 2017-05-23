@@ -348,6 +348,12 @@ table CueReferenceFB {
       Prewait: int;
 }
 
+table CueGroupFB {
+      Id: string;
+      Name: string;
+      CueRefs: [CueReferenceFB];
+}
+
 //   ____           _     _     _
 //  / ___|   _  ___| |   (_)___| |_
 // | |  | | | |/ _ \ |   | / __| __|
@@ -357,7 +363,7 @@ table CueReferenceFB {
 table CueListFB {
       Id:   string;
       Name: string;
-      Cues: [CueFB];
+      Groups: [CueGroupFB];
 }
 
 //  _   _

@@ -151,7 +151,7 @@ type CueReference =
   member self.AssetPath
     with get () =
       let path = (string self.Id) + ASSET_EXTENSION
-      CUE_DIR <.> path
+      CUEREF_DIR <.> path
 
   // ** Load
 
