@@ -36,7 +36,7 @@ type CueYaml() =
   static member From(cue: Cue) =
     let yaml = CueYaml()
     yaml.Id <- string cue.Id
-    yaml.Name <- cue.Name
+    yaml.Name <- unwrap cue.Name
     yaml.Slices <- Array.map Yaml.toYaml cue.Slices
     yaml
 
@@ -58,7 +58,7 @@ type CueYaml() =
         |> Either.map snd
 
       return { Id = Id yaml.Id
-               Name = yaml.Name
+               Name = name yaml.Name
                Slices = slices }
     }
 
@@ -69,7 +69,7 @@ type CueYaml() =
 [<StructuralEquality; StructuralComparison>]
 type Cue =
   { Id:     Id
-    Name:   string
+    Name:   Name
     Slices: Slices array }
 
   // ** FromFB
@@ -115,7 +115,7 @@ type Cue =
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
+               Name = name fb.Name
                Slices = slices }
     }
 
@@ -123,7 +123,7 @@ type Cue =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = unwrap self.Name |> builder.CreateString
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)
     CueFB.StartCueFB(builder)
@@ -185,7 +185,7 @@ type Cue =
     with get () =
       let path =
         sprintf "%s_%s%s"
-          (String.sanitize self.Name)
+          (self.Name |> string |> String.sanitize )
           (string self.Id)
           ASSET_EXTENSION
       CUE_DIR <.> path
