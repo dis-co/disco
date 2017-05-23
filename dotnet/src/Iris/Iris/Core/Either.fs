@@ -168,7 +168,7 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
-  let mapArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+  let bindArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
     let mutable i = 0
     let mutable error = None
     let arr2 = Array.zeroCreate arr.Length

@@ -1,3 +1,5 @@
+
+
 namespace Iris.Core
 
 #if FABLE_COMPILER
@@ -12,6 +14,30 @@ open Iris.Core.FlatBuffers
 open FlatBuffers
 
 #endif
+
+[<RequireQualifiedAccess>]
+module EitherExt =
+  open System
+
+  let bindNullableSeqToArray loc length (f: 'a -> Either<IrisError,'b>) (xs: Nullable<'a> seq): Either<IrisError,'b[]> =
+    let mutable i = 0
+    let mutable error = None
+    let enum = xs.GetEnumerator()
+    let arr2 = Array.zeroCreate length
+    while i < length && Option.isNone error do
+      if not(enum.MoveNext()) then
+        error <- ParseError(loc, sprintf "Sequence had less items (%i) than expected (%i)" i length) |> Some
+      else
+        let item = enum.Current
+        if not item.HasValue then
+          error <- ParseError(loc, "Could not parse empty item") |> Some
+        else
+          match f item.Value with
+          | Left err -> error <- Some err
+          | Right value -> arr2.[i] <- value; i <- i + i
+    match error with
+    | Some err -> Left err
+    | None -> Right arr2
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _

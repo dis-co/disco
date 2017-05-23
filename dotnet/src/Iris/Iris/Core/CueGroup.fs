@@ -45,19 +45,7 @@ type CueGroupYaml() =
 
   member yaml.ToCueGroup() =
     either {
-      let! cues =
-        let arr = Array.zeroCreate yaml.CueRefs.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * CueReference array>) cueish -> either {
-            let! (i, arr) = m
-            let! (cue: CueReference) = Yaml.fromYaml cueish
-            arr.[i] <- cue
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yaml.CueRefs
-        |> Either.map snd
-
+      let! cues = Either.bindArray Yaml.fromYaml yaml.CueRefs
       return { Id = Id yaml.Id
                Name = name yaml.Name
                CueRefs = cues }
@@ -85,37 +73,9 @@ type CueGroup =
   static member FromFB(fb: CueGroupFB) : Either<IrisError,CueGroup> =
     either {
       let! cues =
-        let arr = Array.zeroCreate fb.CueRefsLength
-        Array.fold
-          (fun (m: Either<IrisError,int * CueReference array>) _ -> either {
-            let! (i, cues) = m
-
-            #if FABLE_COMPILER
-
-            let! cue =
-              fb.CueRefs(i)
-              |> CueReference.FromFB
-            #else
-
-            let! cue =
-              let value = fb.CueRefs(i)
-              if value.HasValue then
-                value.Value
-                |> CueReference.FromFB
-              else
-                "Could not parse empty CueReferenceFB"
-                |> Error.asParseError "CueGroup.FromFB"
-                |> Either.fail
-
-            #endif
-
-            cues.[i] <- cue
-            return (i + 1, cues)
-          })
-          (Right (0, arr))
-          arr
-        |> Either.map snd
-
+        let length = fb.CueRefsLength
+        seq { for i = 0 to length do yield fb.CueRefs(i) }
+        |> EitherExt.bindNullableSeqToArray "CueGroup.FromFB" length CueReference.FromFB
       return { Id = Id fb.Id
                Name = name fb.Name
                CueRefs = cues }
