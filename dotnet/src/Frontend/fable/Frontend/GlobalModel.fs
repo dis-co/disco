@@ -146,11 +146,11 @@ type GlobalModel() =
         | RemovePin _
         | UpdateSlices _ ->
           notify (nameof(stateImmutable.pinGroups)) stateImmutable.pinGroups []
-        | AddCue _
-        | UpdateCue _
-        | RemoveCue _
-        | CallCue _ ->
-          notify (nameof(stateImmutable.cues)) stateImmutable.cues []
+        | AddCue cue
+        | UpdateCue cue
+        | RemoveCue cue
+        | CallCue cue ->
+          notify (nameof(stateImmutable.cues)) stateImmutable.cues [nameof cue.Id ==> cue.Id]
         | AddCueList _
         | UpdateCueList _
         | RemoveCueList _ ->

@@ -23,6 +23,11 @@ module private Helpers =
   let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
   let inline (~%) x = createObj x
 
+  let tryDic key value (dic: IDictionary<string, obj>) =
+    match dic.TryGetValue(key) with
+    | true, v when v = value -> true
+    | _ -> false
+
   let findPin =
     let cache = Dictionary<string, Pin>()
     fun (pinId: Id) (state: IGlobalState) ->
@@ -74,28 +79,38 @@ module private Helpers =
 
 
 type [<Pojo>] private CueState =
-  { IsOpen: bool
-  ; Name: Name
-  ; Offset: string
-  ; Time: string }
+  { Cue: Cue
+    IsOpen: bool
+    Name: Name
+    Offset: string
+    Time: string }
 
 type [<Pojo>] private CueProps =
-  { Global: GlobalModel
-  ; Cue: Cue
-  ; CueRef: CueReference
-  ; CueGroup: CueGroup
-  ; CueList: CueList
-  ; Index: int
-  ; SelectedIndex: int
-  ; Select: int -> unit }
+  { key: string
+    Global: GlobalModel
+    CueRef: CueReference
+    CueGroup: CueGroup
+    CueList: CueList
+    Index: int
+    SelectedCueGroupIndex: int
+    SelectedCueIndex: int
+    SelectCue: int -> unit }
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
   let disposables = ResizeArray<IDisposable>()
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
-  do base.setInitState({IsOpen = false; Name = props.Cue.Name; Offset = "0000"; Time = "00:00:00" })
+  do
+    let cue = findCue props.CueRef.CueId props.Global.State
+    base.setInitState({Cue = cue; IsOpen = false; Name = cue.Name; Offset = "0000"; Time = "00:00:00" })
 
   member this.componentDidMount() =
+    let globalModel = this.props.Global
+    disposables.Add(globalModel.Subscribe(!^(nameof globalModel.State.cues), fun _ dic ->
+      if tryDic "Id" this.state.Cue.Id dic then
+        let cue = Map.find this.state.Cue.Id globalModel.State.cues
+        this.setState({this.state with Cue=cue; Name=cue.Name})
+    ))
     disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) _ ->
         if selfRef <> null then
           let mutable highlight = false
@@ -104,14 +119,13 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
+              let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.pin.Slices|] }
               UpdateCue newCue |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
           then selfRef.classList.add("iris-highlight-blue")
           else selfRef.classList.remove("iris-highlight-blue")
-      )
-    )
+    ))
 
   member this.componentWillUnmount() =
     for d in disposables do
@@ -134,7 +148,9 @@ type private CueView(props) =
             div [Class "level-item"] [
               div [
                 Class "cueplayer-button iris-icon cueplayer-player"
-                OnClick (fun _ -> CallCue this.props.Cue |> ClientContext.Singleton.Post)
+                OnClick (fun _ ->
+                  // TODO: Edit the value of the pin directly
+                  CallCue this.state.Cue |> ClientContext.Singleton.Post)
               ] [
                 span [Class "iris-icon iris-icon-play"] []
               ]
@@ -161,7 +177,7 @@ type private CueView(props) =
                 Value !^(unwrap this.state.Name: string)
                 OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
                 OnBlur (fun _ ->
-                  { this.props.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
+                  { this.state.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
                 OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
               br []
@@ -200,62 +216,56 @@ type private CueView(props) =
           ]
         ]
       if this.state.IsOpen then
-        for i=0 to this.props.Cue.Slices.Length - 1 do
-          let slices = this.props.Cue.Slices.[i]
+        for i=0 to this.state.Cue.Slices.Length - 1 do
+          let slices = this.state.Cue.Slices.[i]
           let pin = findPin slices.Id this.props.Global.State
           yield com<SpreadView,_,_>
             { key = string i
-            ; model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
-            ; ``global`` = this.props.Global
-            ; onDragStart = None } []
+              model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
+              ``global`` = this.props.Global
+              onDragStart = None } []
     ]
 
   member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =
-      this.props.Cue.Slices |> Array.mapi (fun i slices ->
+      this.state.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
-    { this.props.Cue with Slices = newSlices } |> UpdateCue |> ClientContext.Singleton.Post
+    { this.state.Cue with Slices = newSlices } |> UpdateCue |> ClientContext.Singleton.Post
 
 type [<Pojo>] private CueGroupState =
   { IsOpen: bool
   ; Name: Name }
 
 type [<Pojo>] private CueGroupProps =
-  { Global: GlobalModel
-  ; CueGroup: CueGroup
-  ; CueList: CueList
-  ; Index: int }
+  { key: string
+    Global: GlobalModel
+    CueGroup: CueGroup
+    CueList: CueList
+    CueGroupIndex: int
+    SelectedCueGroupIndex: int
+    SelectedCueIndex: int
+    SelectCueGroup: int -> unit
+    SelectCue: int -> unit }
 
 type private CueGroupView(props) =
   inherit React.Component<CueGroupProps, CueGroupState>(props)
-  let disposables = ResizeArray<IDisposable>()
   do base.setInitState({IsOpen = true; Name = props.CueGroup.Name })
-
-  member this.componentDidMount() =
-    disposables.Add(this.props.Global.Subscribe(!^"cueGroups", fun _ _ ->
-      // failwith "TODO"
-      ()
-    ))
-
-  member this.componentWillUnmount() =
-    for d in disposables do
-      d.Dispose()
 
   member this.render() =
     div [] [
       if this.state.IsOpen then
         for i=0 to this.props.CueGroup.CueRefs.Length - 1 do
           let cueRef = this.props.CueGroup.CueRefs.[i]
-          let cue = findCue cueRef.CueId this.props.Global.State
           yield com<CueView,_,_>
-            { Global = this.props.Global
-            ; Cue = cue
-            ; CueRef = cueRef
-            ; CueGroup = this.props.CueGroup
-            ; CueList = this.props.CueList
-            ; Index = i
-            ; SelectedIndex = -1 // failwith "TODO"
-            ; Select = fun i -> failwith "TODO" } // this.setState({selectedIndex = i}) }
+            { key = string cueRef.Id
+              Global = this.props.Global
+              CueRef = cueRef
+              CueGroup = this.props.CueGroup
+              CueList = this.props.CueList
+              Index = i
+              SelectedCueIndex = this.props.SelectedCueIndex
+              SelectedCueGroupIndex = this.props.SelectedCueGroupIndex
+              SelectCue = this.props.SelectCue }
             []
     ]
 
@@ -264,22 +274,21 @@ type CuePlayerModel() =
     member __.view = typeof<CuePlayerView>
     member __.name = "Cue Player"
     member __.layout =
-      {
-        x = 0; y = 0;
+      { x = 0; y = 0;
         w = 8; h = 5;
         minW = 2; maxW = 10;
-        minH = 1; maxH = 10;
-      }
+        minH = 1; maxH = 10; }
 
 type [<Pojo>] CuePlayerState =
-  { selectedIndex: int }
+  { selectedCueGroupIndex: int
+    selectedCueIndex: int }
 
 type CuePlayerView(props) =
   inherit React.Component<IWidgetProps<CuePlayerModel>, CuePlayerState>(props)
   let disposables = ResizeArray<IDisposable>()
   let globalModel = props.``global`` :?> GlobalModel
   do
-    base.setInitState({ selectedIndex = 0 })
+    base.setInitState({ selectedCueGroupIndex = 0; selectedCueIndex = 0 })
     // TODO: Mock code, create player if it doesn't exist
     if Map.count globalModel.State.cuePlayers = 0 then
       let cueList, cuePlayer = cueMockup()
@@ -322,52 +331,45 @@ type CuePlayerView(props) =
               match cueList with
               | None -> printfn "There is no cue list available to add the cue"
               | Some cueList ->
-                failwith "TODO: Check selected group"
-                // // let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-                // let newGroup = failwith "TODO"
-                // let cueList2 = { cueList with Groups = Array.append cueList.Groups [|newGroup|] }
-                // UpdateCueList cueList2 |> ClientContext.Singleton.Post
+                let cueGroup = cueList.Groups.[this.state.selectedCueGroupIndex]
+                let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
+                let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+                // TODO: Add CueRef after selected cue
+                let newCueGroup = { cueGroup with CueRefs = Array.append cueGroup.CueRefs [| newCueRef |] }
+                let newCueList = { cueList with Groups = Array.append cueList.Groups [|newCueGroup|] }
+                AddCue newCue |>  ClientContext.Singleton.Post
+                UpdateCueList newCueList |> ClientContext.Singleton.Post
               )
           ] [str "Add Cue"]
-          div [Class "cueplayer-button"] [str "Add Group"]
+          div [
+            Class "cueplayer-button"
+            OnClick (fun _ ->
+              match cueList with
+              | None -> printfn "There is no cue list available to add the group"
+              | Some cueList ->
+                let newCueGroup = { Id = Id.Create(); Name = name "Untitled"; CueRefs = [||] }
+                // TODO: Add CueGroup after selected group
+                let newCueList = { cueList with Groups = Array.append cueList.Groups [|newCueGroup|] }
+                UpdateCueList newCueList |> ClientContext.Singleton.Post
+              )
+          ] [str "Add Group"]
           div [Style [Clear "both"]] []
         ]
-      // CUES
+      // CUE GROUPS
       match cueList with
       | None -> ()
       | Some cueList ->
         for i=0 to (cueList.Groups.Length-1) do
-          yield com<CueView,_,_>
-            { Global = globalModel
-            ; Cue = failwith "TODO" //cueList.Groups.[i]
-            ; CueRef = failwith "TODO"
-            ; CueGroup = failwith "TODO"
-            ; CueList = cueList
-            ; Index = i
-            ; SelectedIndex = this.state.selectedIndex
-            ; Select = fun i -> this.setState({selectedIndex = i}) }
+          let cueGroup = cueList.Groups.[i]
+          yield com<CueGroupView,_,_>
+            { key = string cueGroup.Id
+              Global = globalModel
+              CueGroup = cueGroup
+              CueList = cueList
+              CueGroupIndex = i
+              SelectedCueGroupIndex = this.state.selectedCueGroupIndex
+              SelectedCueIndex = this.state.selectedCueIndex
+              SelectCueGroup = fun i -> this.setState({this.state with selectedCueGroupIndex = i})
+              SelectCue = fun i -> this.setState({this.state with selectedCueIndex = i}) }
             []
     ]
-
-  // member this.render() =
-  //   let header =
-  //     div [Class "level"]
-  //       [div [Class "level-left"]
-  //         [button [Class "button level-item"
-  //                  Style [Margin 5]
-  //                  OnClick(fun ev -> this.UpdateSource())]
-  //           [str "Fire!"]
-  //         ]
-  //       ;div [Class "level-right"]
-  //         [div [Class "level-item"]
-  //           [from Clock %["global"==>this.props.``global``] []]
-  //         ]
-  //     ]
-  //   let rows =
-  //     this.props.model.cues
-  //     |> Seq.mapi (fun i cue ->
-  //       let foo = from SpreadView %["model"==>cue; "global"==>this.props.``global``] []
-  //       div [Key (string i)] [from SpreadView %["model"==>cue; "global"==>this.props.``global``] []])
-  //     |> Seq.toList
-  //   // Return value
-  //   div [Class "iris-cuelist"; Ref(fun el' -> el <- el')] (header::rows)
