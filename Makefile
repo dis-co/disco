@@ -243,12 +243,3 @@ paket.update:
 
 paket.install:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install
-
-paket.generate:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
-
-npm.restore:
-	@cd $(VVVV_BASEDIR)/src/Frontend; npm install
-
-
-tabular.rasa: clean restore paket.generate
