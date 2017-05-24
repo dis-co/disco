@@ -1,10 +1,11 @@
+
+
 namespace Iris.Core
 
 #if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
 open Iris.Core.FlatBuffers
 
 #else
@@ -12,6 +13,30 @@ open Iris.Core.FlatBuffers
 open FlatBuffers
 
 #endif
+
+[<RequireQualifiedAccess>]
+module EitherExt =
+
+  let bindGeneratorToArray loc length generator (f: 'a -> Either<IrisError,'b>) =
+    let mutable i = 0
+    let mutable error = None
+    let arr = Array.zeroCreate length
+    while i < arr.Length && Option.isNone error do
+      #if !FABLE_COMPILER
+      let item: System.Nullable<'a> = generator i
+      if not item.HasValue then
+        error <- ParseError(loc, "Could not parse empty item") |> Some
+      else
+        let item = item.Value
+      #else
+        let item = generator i
+      #endif
+        match f item with
+        | Right value -> arr.[i] <- value; i <- i + 1
+        | Left err -> error <- Some err
+    match error with
+    | Some err -> Left err
+    | None -> Right arr
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _

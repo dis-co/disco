@@ -149,7 +149,7 @@ module StoreTests =
     testCase "should add a cue to the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -165,7 +165,7 @@ module StoreTests =
     testCase "should update a cue already in the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -173,7 +173,7 @@ module StoreTests =
 
         expect "Should be 1" 1 id store.State.Cues.Count
 
-        let newname = "aww yeah"
+        let newname = name "aww yeah"
         store.Dispatch <| UpdateCue { cue with Name = newname }
 
         expect "Should be 1" 1 id store.State.Cues.Count
@@ -183,7 +183,7 @@ module StoreTests =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -196,7 +196,7 @@ module StoreTests =
     testCase "should remove cue from the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -218,7 +218,7 @@ module StoreTests =
     testCase "should add a cuelist to the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
 
@@ -235,7 +235,7 @@ module StoreTests =
     testCase "should update a cuelist already in the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
 
@@ -254,7 +254,7 @@ module StoreTests =
     testCase "should not add cuelist to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
 
@@ -266,7 +266,7 @@ module StoreTests =
     testCase "should remove cuelist from the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
 

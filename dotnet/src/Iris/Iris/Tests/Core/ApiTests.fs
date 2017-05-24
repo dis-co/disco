@@ -266,7 +266,7 @@ module ApiTests =
 
         do! waitOrDie "clientUpdate" clientUpdate
 
-        client.UpdateCueList { cuelist with Cues = [| mkCue() |] }
+        do! client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
 
         do! waitOrDie "clientUpdate" clientUpdate
 

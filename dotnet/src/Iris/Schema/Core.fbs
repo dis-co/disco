@@ -421,6 +421,19 @@ table CueFB {
       Slices: [SlicesFB];
 }
 
+table CueReferenceFB {
+      Id: string;
+      CueId: string;
+      AutoFollow: int;
+      Duration: int;
+      Prewait: int;
+}
+
+table CueGroupFB {
+      Id: string;
+      Name: string;
+      CueRefs: [CueReferenceFB];
+}
 
 //   ____           _     _     _
 //  / ___|   _  ___| |   (_)___| |_
@@ -431,7 +444,7 @@ table CueFB {
 table CueListFB {
       Id:   string;
       Name: string;
-      Cues: [CueFB];
+      Groups: [CueGroupFB];
 }
 
 //  _   _

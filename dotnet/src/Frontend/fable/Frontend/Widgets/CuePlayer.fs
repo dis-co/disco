@@ -31,14 +31,15 @@ module private Helpers =
     | None -> failwithf "Cannot find pind with Id %O in GlobalState" pinId
 
   let cueMockup() =
-    let cue: Cue =
-      { Id = Id.Create()
-        Name = "MockCue"
-        Slices = [||] }
+    let group: CueGroup =
+      failwith "TODO"
+      // { Id = Id.Create()
+      //   Name = name "MockCue"
+      //   Slices = [||] }
     let cueList: CueList =
       { Id = Id.Create()
         Name = name "MockCueList"
-        Cues = [|cue|] }
+        Groups = [|group|] }
     let cuePlayer =
       CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
     cueList, cuePlayer
@@ -57,13 +58,13 @@ module private Helpers =
     // let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
     //   Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
 
-    let inline replaceById (newItem : Cue) (ar: Cue[]) =
-      Array.map (fun (x: Cue) -> if newItem.Id = x.Id then newItem else x) ar
+    let inline replaceById (newItem : CueGroup) (ar: CueGroup[]) =
+      Array.map (fun (x: CueGroup) -> if newItem.Id = x.Id then newItem else x) ar
 
 
 type [<Pojo>] private CueState =
   { IsOpen: bool
-  ; Name: string
+  ; Name: Name
   ; Offset: string
   ; Time: string }
 
@@ -90,8 +91,9 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
-              let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+              // let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
+              let newGroup = failwith "TODO"
+              let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
               UpdateCueList newCueList |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
@@ -145,11 +147,11 @@ type private CueView(props) =
                 Class "cueplayer-cueDesc"
                 Type "text"
                 Name "cuename"
-                Value !^this.state.Name
+                Value !^(unwrap this.state.Name: string)
                 OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
                 OnBlur (fun _ ->
-                  let newCue = { this.props.Cue with Name = this.state.Name }
-                  let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+                  let newGroup = failwith "TODO" // { this.props.Cue with Name = this.state.Name }
+                  let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
                   UpdateCueList newCueList |> ClientContext.Singleton.Post)
                 OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
@@ -179,7 +181,8 @@ type private CueView(props) =
             div [
               Class "cueplayer-button iris-icon cueplayer-close level-item"
               OnClick (fun _ ->
-                let cueList2 = { this.props.CueList with Cues = this.props.CueList.Cues |> Array.filter (fun c -> c.Id <> this.props.Cue.Id) }
+                // let cueList2 = { this.props.CueList with Groups = this.props.CueList.Groups |> Array.filter (fun c -> c.Id <> this.props.Cue.Id) }
+                let cueList2 = failwith "TODO"
                 UpdateCueList cueList2 |> ClientContext.Singleton.Post)
             ] [
               span [Class "iris-icon iris-icon-close"] []
@@ -201,8 +204,9 @@ type private CueView(props) =
     let newSlices =
       this.props.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
-    let newCue = { this.props.Cue with Slices = newSlices }
-    let newCueList = { this.props.CueList with Cues = Array.replaceById newCue this.props.CueList.Cues }
+    // let newCue = { this.props.Cue with Slices = newSlices }
+    let newGroup = failwith "TODO"
+    let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
     UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 type CuePlayerModel() =
@@ -268,8 +272,9 @@ type CuePlayerView(props) =
               match cueList with
               | None -> printfn "There is no cue list available to add the cue"
               | Some cueList ->
-                let newCue = { Id = Id.Create(); Name = "Untitled"; Slices = [||] }
-                let cueList2 = { cueList with Cues = Array.append cueList.Cues [|newCue|] }
+                // let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
+                let newGroup = failwith "TODO"
+                let cueList2 = { cueList with Groups = Array.append cueList.Groups [|newGroup|] }
                 UpdateCueList cueList2 |> ClientContext.Singleton.Post)
           ] [str "Add Cue"]
           div [Class "cueplayer-button"] [str "Add Group"]
@@ -279,10 +284,10 @@ type CuePlayerView(props) =
       match cueList with
       | None -> ()
       | Some cueList ->
-        for i=0 to (cueList.Cues.Length-1) do
+        for i=0 to (cueList.Groups.Length-1) do
           yield com<CueView,_,_>
             { Global = globalModel
-            ; Cue = cueList.Cues.[i]
+            ; Cue = failwith "TODO" //cueList.Groups.[i]
             ; CueList = cueList
             ; Index = i
             ; SelectedIndex = this.state.selectedIndex

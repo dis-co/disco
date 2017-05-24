@@ -167,7 +167,7 @@ module AppendEntries =
 
         let data =
           [| "one"; "two"; "three"; |]
-          |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Slices = [| |] })
+          |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
 
         let peer = Member.create (Id.Create())
 
@@ -181,7 +181,7 @@ module AppendEntries =
           ; PrevLogIdx   = index 1
           ; PrevLogTerm  = term 1
           ; LeaderCommit = index 5
-          ; Entries      = Log.make (term 2) (AddCue { Id = Id "four"; Name = "four"; Slices = [| |] }) |> Some
+          ; Entries      = Log.make (term 2) (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) |> Some
           }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
@@ -189,8 +189,8 @@ module AppendEntries =
 
         do! expectM "Should have 2 entries" 2 Raft.numLogs
 
-        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = "one"; Slices = [| |] }) (getNth (index 1))
-        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = "four"; Slices = [| |] }) (getNth (index 2))
+        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] }) (getNth (index 1))
+        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) (getNth (index 2))
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -205,7 +205,7 @@ module AppendEntries =
 
       let data =
         [| "one"; "two"; "three"; |]
-        |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Slices = [| |] })
+        |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
 
       let peer = Member.create (Id.Create())
       let raft' = defaultServer ()
@@ -228,7 +228,7 @@ module AppendEntries =
         expect "Should have succeeded" true AppendRequest.succeeded response
         do! expectM "Should have 1 log entry" 1 Raft.numLogs
         let! entry = getNth (index 1)
-        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = "one"; Slices = [| |] })) id entry
+        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] })) id entry
       }
       |> runWithRaft raft' cbs
       |> ignore
