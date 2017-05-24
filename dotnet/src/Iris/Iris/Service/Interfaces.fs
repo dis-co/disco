@@ -90,6 +90,7 @@ type IApiServer =
   abstract State: Either<IrisError,State>
   abstract Update: sm:StateMachine -> unit
   abstract SetState: state:State -> Either<IrisError,unit>
+
 // * IHttpServer
 
 type IHttpServer =

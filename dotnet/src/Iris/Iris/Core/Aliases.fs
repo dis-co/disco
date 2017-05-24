@@ -65,7 +65,6 @@ type Url        = string<uri>
 [<AutoOpen>]
 module Measure =
   let filepath p: FilePath = UoM.wrap p
-  let projectpath p: ProjectPath = UoM.wrap p
   let name u: Name = UoM.wrap u
   let password p: Password = UoM.wrap p
   let timestamp t: TimeStamp = UoM.wrap t
