@@ -140,8 +140,6 @@ module RaftIntegrationTests =
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use ctx = new ZContext()
         use check1 = new AutoResetEvent(false)
         use check2 = new AutoResetEvent(false)

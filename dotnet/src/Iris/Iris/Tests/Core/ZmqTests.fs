@@ -29,8 +29,6 @@ module ZmqIntegrationTests =
   let test_server_request_handling =
     testCase "server request handling" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 
