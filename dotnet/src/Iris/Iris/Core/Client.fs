@@ -73,7 +73,7 @@ type IrisClient =
     let name = Option.mapNull builder.CreateString client.Name
     let ip = builder.CreateString (string client.IpAddress)
     let role = client.Role.ToOffset(builder)
-    let status = client.Status.ToOffset(builder)
+    let status = Binary.toOffset builder client.Status
 
     IrisClientFB.StartIrisClientFB(builder)
     IrisClientFB.AddId(builder, id)

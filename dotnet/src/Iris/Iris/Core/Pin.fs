@@ -1719,7 +1719,11 @@ module Pin =
 
   let str2offset (builder: FlatBufferBuilder) (str: string) =
     match str with
+    #if FABLE_COMPILER
+    | null -> Unchecked.defaultof<Offset<string>>
+    #else
     | null -> Unchecked.defaultof<StringOffset>
+    #endif
     | _ -> builder.CreateString str
 
 // * NumberPinD
@@ -2612,7 +2616,7 @@ type Slice =
 
     | x when x = SliceTypeFB.DoubleFB ->
       let slice = DoubleFB.Create() |> fb.Slice
-      NumberSlice(index fb.Index, value)
+      NumberSlice(index fb.Index, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.BoolFB ->
@@ -3023,14 +3027,11 @@ type Slices =
       let id = id |> string |> builder.CreateString
 
       let strings =
-        Array.map
-          (function
-            | null -> Unchecked.defaultof<StringOffset> // otherwise we cannot represent null :(
-            | str -> builder.CreateString str)
-          arr
+        Array.map (Pin.str2offset builder) arr
         |> fun coll -> StringsFB.CreateValuesVector(builder,coll)
-
-      let offset = StringsFB.CreateStringsFB(builder, strings)
+      StringsFB.StartStringsFB(builder)
+      StringsFB.AddValues(builder, strings)
+      let offset = StringsFB.EndStringsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
@@ -3044,82 +3045,99 @@ type Slices =
 
     | NumberSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
-        DoublesFB.CreateValuesVector(builder, arr)
-        |> fun vec -> DoublesFB.CreateDoublesFB(builder, vec)
+
+      let vector = DoublesFB.CreateValuesVector(builder, arr)
+      DoublesFB.StartDoublesFB(builder)
+      DoublesFB.AddValues(builder, vector)
+      let offset = DoublesFB.EndDoublesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.DoublesFB)
       #if FABLE_COMPILER
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlices(builder,offset)
       #else
-      SlicesFB.AddSlices(builder,offsets.Value)
+      SlicesFB.AddSlices(builder,offset.Value)
       #endif
       SlicesFB.EndSlicesFB(builder)
 
     | BoolSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
-        BoolsFB.CreateValuesVector(builder, arr)
-        |> fun vec -> BoolsFB.CreateBoolsFB(builder, vec)
+
+      let vector = BoolsFB.CreateValuesVector(builder, arr)
+      BoolsFB.StartBoolsFB(builder)
+      BoolsFB.AddValues(builder, vector)
+      let offset = BoolsFB.EndBoolsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BoolsFB)
       #if FABLE_COMPILER
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlices(builder,offset)
       #else
-      SlicesFB.AddSlices(builder,offsets.Value)
+      SlicesFB.AddSlices(builder,offset.Value)
       #endif
       SlicesFB.EndSlicesFB(builder)
 
     | ByteSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
+
+      let vector =
         Array.map (String.encodeBase64 >> builder.CreateString) arr
         |> fun coll -> BytesFB.CreateValuesVector(builder, coll)
-        |> fun vec -> BytesFB.CreateBytesFB(builder, vec)
+
+      BytesFB.StartBytesFB(builder)
+      BytesFB.AddValues(builder, vector)
+      let offset = BytesFB.EndBytesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BytesFB)
       #if FABLE_COMPILER
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlices(builder,offset)
       #else
-      SlicesFB.AddSlices(builder,offsets.Value)
+      SlicesFB.AddSlices(builder,offset.Value)
       #endif
       SlicesFB.EndSlicesFB(builder)
 
     | EnumSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
+
+      let vector =
         Array.map (Binary.toOffset builder) arr
         |> fun coll -> KeyValuesFB.CreateValuesVector(builder, coll)
-        |> fun vec -> KeyValuesFB.CreateKeyValuesFB(builder, vec)
+
+      KeyValuesFB.StartKeyValuesFB(builder)
+      KeyValuesFB.AddValues(builder,vector)
+      let offset = KeyValuesFB.EndKeyValuesFB(builder)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.KeyValuesFB)
       #if FABLE_COMPILER
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlices(builder,offset)
       #else
-      SlicesFB.AddSlices(builder,offsets.Value)
+      SlicesFB.AddSlices(builder,offset.Value)
       #endif
       SlicesFB.EndSlicesFB(builder)
 
     | ColorSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
-      let offsets =
+      let vector =
         Array.map (Binary.toOffset builder) arr
         |> fun coll -> ColorSpacesFB.CreateValuesVector(builder,coll)
-        |> fun vec -> ColorSpacesFB.CreateColorSpacesFB(builder, vec)
+
+      ColorSpacesFB.StartColorSpacesFB(builder)
+      ColorSpacesFB.AddValues(builder, vector)
+      let offset = ColorSpacesFB.EndColorSpacesFB(builder)
+
       SlicesFB.StartSlicesFB(builder)
       SlicesFB.AddId(builder,id)
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.ColorSpacesFB)
       #if FABLE_COMPILER
-      SlicesFB.AddSlices(builder,offsets)
+      SlicesFB.AddSlices(builder,offset)
       #else
-      SlicesFB.AddSlices(builder,offsets.Value)
+      SlicesFB.AddSlices(builder,offset.Value)
       #endif
       SlicesFB.EndSlicesFB(builder)
 
@@ -3140,14 +3158,14 @@ type Slices =
         | x when x = SlicesTypeFB.StringsFB ->
           let slices = StringsFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
-            Array.fold
-              (fun (m: Either<IrisError,string array * int>) _ -> either {
-                  let! (parsed,idx) = m
-                  parsed.[idx] <- slices.Values(idx)
-                  return parsed, idx + 1 })
-              (Right (arr, 0))
-              arr
-            |> Either.map (fun (strings, _) -> StringSlices(id, strings))
+          Array.fold
+            (fun (m: Either<IrisError,string array * int>) _ -> either {
+                let! (parsed,idx) = m
+                parsed.[idx] <- slices.Values(idx)
+                return parsed, idx + 1 })
+            (Right (arr, 0))
+            arr
+          |> Either.map (fun (strings, _) -> StringSlices(id, strings))
         | x when x = SlicesTypeFB.DoublesFB ->
           let slices = DoublesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3189,14 +3207,8 @@ type Slices =
             (fun (m: Either<IrisError,Property array * int>) _ -> either {
                 let! (parsed,idx) = m
                 let! prop =
-                  let propish = slices.Values(idx)
-                  if propish.HasValue then
-                    let value = propish.Value
-                    Property.FromFB value
-                  else
-                    "could not parse empty property"
-                    |> Error.asParseError "Slices.FromFB"
-                    |> Either.fail
+                  let value = slices.Values(idx)
+                  Property.FromFB value
                 parsed.[idx] <- prop
                 return parsed, idx + 1 })
             (Right (arr, 0))
@@ -3209,14 +3221,8 @@ type Slices =
             (fun (m: Either<IrisError,ColorSpace array * int>) _ -> either {
                 let! (parsed,idx) = m
                 let! color =
-                  let colorish = slices.Values(idx)
-                  if colorish.HasValue then
-                    let value = colorish.Value
-                    ColorSpace.FromFB value
-                  else
-                    "could not parse empty colorspace"
-                    |> Error.asParseError "Slices.FromFB"
-                    |> Either.fail
+                  let value = slices.Values(idx)
+                  ColorSpace.FromFB value
                 parsed.[idx] <- color
                 return parsed, idx + 1 })
             (Right (arr, 0))

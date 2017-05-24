@@ -20,7 +20,7 @@ open SharpYaml.Serialization
 
 // * PropertyYaml
 
-#if !FABLE_COMPILER && !IRIS_NODES
+#if !FABLE_COMPILER
 
 open SharpYaml.Serialization
 
@@ -66,7 +66,7 @@ type Property =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     PropertyYaml(self.Key, self.Value)

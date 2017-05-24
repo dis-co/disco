@@ -259,7 +259,13 @@ module SerializationTests =
       finish ()
 
     test "Validate IrisProject Binary Serializaton" <| fun finish ->
-      mkProject() |> check
+      mkProject()
+      |> (fun project ->
+          let reproject = project |> Binary.encode |> Binary.decode |> Either.get
+          if project <> reproject then
+            printfn "project: %O" project
+            printfn "reproject: %O" reproject
+          equals project reproject)
       finish ()
 
     test "Validate StateMachine Serialization" <| fun finish ->
@@ -299,7 +305,14 @@ module SerializationTests =
       ; LogMsg(Logger.create Debug "bla" "ohai")
       ; SetLogLevel Warn
       ]
-      |> List.iter check
+      |> List.iter
+        (fun ting ->
+          let reting = ting |> Binary.encode |> Binary.decode |> Either.get
+          if ting <> reting then
+            printfn "ting: %O" ting
+            printfn "reting: %O" reting
+          equals ting reting)
+      // |> List.iter check
       finish()
 
     test "Validate Error Serialization" <| fun finish ->

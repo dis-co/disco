@@ -45,7 +45,7 @@ type IrisError =
 
   static member FromFB (fb: ErrorFB) =
     match fb.Type with
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     | x when x = ErrorTypeFB.OKFB           -> Right OK
     | x when x = ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
@@ -60,7 +60,7 @@ type IrisError =
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrorTypeFB: %A" x)
       |> ParseError
       |> Either.fail
-#else
+    #else
     | ErrorTypeFB.OKFB           -> Right OK
     | ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
     | ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
@@ -75,14 +75,18 @@ type IrisError =
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrotTypeFB: %A" x)
       |> ParseError
       |> Either.fail
-#endif
+    #endif
 
   // ** ToOffset
 
   member error.ToOffset (builder: FlatBufferBuilder) =
     let map (str: string) =
       match str with
+      #if FABLE_COMPILER
+      | null -> Unchecked.defaultof<Offset<string>>
+      #else
       | null -> Unchecked.defaultof<StringOffset>
+      #endif
       | _ -> builder.CreateString str
 
     let tipe =

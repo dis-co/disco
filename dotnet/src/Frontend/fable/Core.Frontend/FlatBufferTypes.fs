@@ -190,7 +190,7 @@ type IrisClientFB =
   abstract Id: string
   abstract Name: string
   abstract Role: RoleFB
-  abstract Status: string
+  abstract Status: ServiceStatusFB
   abstract IpAddress: string
   abstract Port: uint16
 
@@ -200,7 +200,7 @@ type IrisClientFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddRole: builder: FlatBufferBuilder * role: RoleFB -> unit
-  abstract AddStatus: builder: FlatBufferBuilder * status: Offset<string> -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * status: Offset<ServiceStatusFB> -> unit
   abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
   abstract AddPort: builder: FlatBufferBuilder * port:uint16 -> unit
   abstract EndIrisClientFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -775,36 +775,39 @@ type StringsFB =
 
 type StringsFBConstructor =
   abstract StartStringsFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateStringsFB: builder: FlatBufferBuilder -> Offset<StringsFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndStringsFB: builder: FlatBufferBuilder -> Offset<StringsFB>
   abstract GetRootAsStringsFB: bytes: ByteBuffer -> StringsFB
+  abstract Create: unit -> StringsFB
 
 let StringsFB: StringsFBConstructor = failwith "JS only"
 
 type DoublesFB =
   abstract ValuesLength: int
-  abstract Values: int -> string
+  abstract Values: int -> double
 
 type DoublesFBConstructor =
   abstract StartDoublesFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateDoublesFB: builder: FlatBufferBuilder -> Offset<DoublesFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * double array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndDoublesFB: builder: FlatBufferBuilder -> Offset<DoublesFB>
   abstract GetRootAsDoublesFB: bytes: ByteBuffer -> DoublesFB
+  abstract Create: unit -> DoublesFB
 
 let DoublesFB: DoublesFBConstructor = failwith "JS only"
 
 type BoolsFB =
   abstract ValuesLength: int
-  abstract Values: int -> string
+  abstract Values: int -> bool
 
 type BoolsFBConstructor =
   abstract StartBoolsFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateBoolsFB: builder: FlatBufferBuilder -> Offset<BoolsFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * bool array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndBoolsFB: builder: FlatBufferBuilder -> Offset<BoolsFB>
   abstract GetRootAsBoolsFB: bytes: ByteBuffer -> BoolsFB
+  abstract Create: unit -> BoolsFB
 
 let BoolsFB: BoolsFBConstructor = failwith "JS only"
 
@@ -814,36 +817,39 @@ type BytesFB =
 
 type BytesFBConstructor =
   abstract StartBytesFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateBytesFB: builder: FlatBufferBuilder -> Offset<BytesFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndBytesFB: builder: FlatBufferBuilder -> Offset<BytesFB>
   abstract GetRootAsBytesFB: bytes: ByteBuffer -> BytesFB
+  abstract Create: unit -> BytesFB
 
 let BytesFB: BytesFBConstructor = failwith "JS only"
 
 type KeyValuesFB =
   abstract ValuesLength: int
-  abstract Values: int -> string
+  abstract Values: int -> KeyValueFB
 
 type KeyValuesFBConstructor =
   abstract StartKeyValuesFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateKeyValuesFB: builder: FlatBufferBuilder -> Offset<KeyValuesFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndKeyValuesFB: builder: FlatBufferBuilder -> Offset<KeyValuesFB>
   abstract GetRootAsKeyValuesFB: keyValues: ByteBuffer -> KeyValuesFB
+  abstract Create: unit -> KeyValuesFB
 
 let KeyValuesFB: KeyValuesFBConstructor = failwith "JS only"
 
 type ColorSpacesFB =
   abstract ValuesLength: int
-  abstract Values: int -> string
+  abstract Values: int -> ColorSpaceFB
 
 type ColorSpacesFBConstructor =
   abstract StartColorSpacesFB: builder: FlatBufferBuilder -> unit
-  abstract CreateValuesVector: builder: FlatBufferBuilder -> Offset<'a>
-  abstract CreateColorSpacesFB: builder: FlatBufferBuilder -> Offset<ColorSpacesFB>
+  abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<ColorSpaceFB> array -> VectorOffset
+  abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndColorSpacesFB: builder: FlatBufferBuilder -> Offset<ColorSpacesFB>
   abstract GetRootAsColorSpacesFB: colorSpaces: ByteBuffer -> ColorSpacesFB
+  abstract Create: unit -> ColorSpacesFB
 
 let ColorSpacesFB: ColorSpacesFBConstructor = failwith "JS only"
 
@@ -862,13 +868,14 @@ let SlicesTypeFB: SlicesTypeFBConstructor = failwith "JS only"
 
 type SlicesFB =
   abstract Id: string
-  abstract Slices: int -> SliceTypeFB
-  abstract SlicesLength: int
+  abstract Slices: 'a -> 'a
+  abstract SlicesType: SliceTypeFB
 
 type SlicesFBConstructor =
   abstract prototype: SlicesFB with get, set
   abstract StartSlicesFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddSlicesType: builder: FlatBufferBuilder * tipe: SlicesTypeFB -> unit
   abstract AddSlices: builder: FlatBufferBuilder * slices: Offset<'a> -> unit
   abstract EndSlicesFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsSlicesFB: buffer: ByteBuffer -> SlicesFB

@@ -174,8 +174,13 @@ type DiscoveredService =
 
     let aliases =
       let serialize = function
+        #if FABLE_COMPILER
+        | null -> Unchecked.defaultof<Offset<string>>
+        #else
         | null -> Unchecked.defaultof<StringOffset>
+        #endif
         | other -> builder.CreateString other
+
       (builder, Array.map serialize service.Aliases)
       |> DiscoveredServiceFB.CreateAliasesVector
 

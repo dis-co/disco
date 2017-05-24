@@ -549,8 +549,8 @@ type IrisConfig =
 
     let site =
       match self.ActiveSite with
-      | Some id -> id |> string |> builder.CreateString
-      | None -> Unchecked.defaultof<StringOffset>
+      | Some id -> id |> string |> builder.CreateString |> Some
+      | None -> None
 
     let sites =
       Array.map (Binary.toOffset builder) self.Sites
@@ -570,8 +570,8 @@ type IrisConfig =
 
     ConfigFB.StartConfigFB(builder)
     Option.iter (fun value -> ConfigFB.AddVersion(builder,value)) version
+    Option.iter (fun value -> ConfigFB.AddActiveSite(builder, value)) site
     ConfigFB.AddMachine(builder, machine)
-    ConfigFB.AddActiveSite(builder, site)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
     ConfigFB.AddRaftConfig(builder, raft)
