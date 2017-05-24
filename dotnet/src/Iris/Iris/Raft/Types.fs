@@ -43,8 +43,8 @@ type RaftState =
 ///  - `Index` - the entry's index in the log
 type EntryResponse =
   {  Id    : Id
-  ;  Term  : Term
-  ;  Index : Index }
+     Term  : Term
+     Index : Index }
 
   // ** ToString
   override self.ToString() =
@@ -419,13 +419,13 @@ type InstallSnapshot =
 type IRaftCallbacks =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     RaftMember   -> VoteRequest     -> VoteResponse option
+  abstract member SendRequestVote:     RaftMember   -> VoteRequest     -> unit
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   RaftMember   -> AppendEntries   -> AppendResponse option
+  abstract member SendAppendEntries:   RaftMember   -> AppendEntries   -> unit
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: RaftMember   -> InstallSnapshot -> AppendResponse option
+  abstract member SendInstallSnapshot: RaftMember   -> InstallSnapshot -> unit
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state

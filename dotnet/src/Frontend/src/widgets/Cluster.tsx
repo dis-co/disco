@@ -43,7 +43,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
           this.el.classList.remove("iris-highlight-blue")
         }
       })
-    );  
+    );
   }
 
   componentWillUnmount() {
@@ -60,7 +60,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
         <table className="table is-striped is-narrow" >
           <tfoot>
             <tr><td><a onClick={() => { showModal(AddMember)}}>Add node</a></td></tr>
-          </tfoot>          
+          </tfoot>
           <thead>
             <tr>
               <th>Host</th>
@@ -87,7 +87,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
               );
             })}
           </tbody>
-        </table>        
+        </table>
       </div>
     )
   }

@@ -13,6 +13,7 @@
     <Compile Include="../../../Iris/Iris/Core/Error.fs" />
     <Compile Include="../../../Iris/Iris/Core/Serialization.fs" />
     <Compile Include="../../../Iris/Iris/Core/Id.fs" />
+    <Compile Include="../../../Iris/Iris/Core/Util.fs" />
     <Compile Include="../../../Iris/Iris/Core/Property.fs" />
     <Compile Include="../../../Iris/Iris/Core/IpAddress.fs" />
     <Compile Include="../../../Iris/Iris/Core/Aliases.fs" />
@@ -24,7 +25,6 @@
     <Compile Include="../../../Iris/Iris/Core/Client.fs" />
     <Compile Include="../../../Iris/Iris/Core/Session.fs" />
     <Compile Include="../../../Iris/Iris/Core/Color.fs" />
-    <Compile Include="../../../Iris/Iris/Core/Util.fs" />
     <Compile Include="../../../Iris/Iris/Core/Logging.fs" />
     <Compile Include="../../../Iris/Iris/Core/Tracing.fs" />
     <Compile Include="../../../Iris/Iris/Raft/Member.fs" />
@@ -32,7 +32,10 @@
     <Compile Include="../../../Iris/Iris/Core/Pin.fs" />
     <Compile Include="../../../Iris/Iris/Core/PinGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/Cue.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CueReference.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CueGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/CueList.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CuePlayer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Renderer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Project.fs" />
     <Compile Include="../../../Iris/Iris/Core/Discovery.fs" />
@@ -42,7 +45,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
-    <ProjectReference Include="../../node_modules/fable-powerpack/Fable.PowerPack.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\..\.paket\Paket.Restore.targets" />
 </Project>

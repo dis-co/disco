@@ -24,7 +24,7 @@ export default class ClockView extends React.Component<{global: GlobalModel},{cl
     if (Array.isArray(this.disposables)) {
       this.disposables.forEach(x => x.dispose());
     }
-  }  
+  }
 
   render() {
     return <span style={{margin: 5}}>Frames: {this.state.clock}</span>

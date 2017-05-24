@@ -1,5 +1,30 @@
 namespace Iris.Serialization;
 
+//  _____
+// | ____|_ __ _ __ ___  _ __
+// |  _| | '__| '__/ _ \| '__|
+// | |___| |  | | | (_) | |
+// |_____|_|  |_|  \___/|_|
+
+enum ErrorTypeFB:ushort {
+     GitErrorFB,
+     ProjectErrorFB,
+     AssetErrorFB,
+     ParseErrorFB,
+     SocketErrorFB,
+     ClientErrorFB,
+     IOErrorFB,
+     RaftErrorFB,
+     OKFB,
+     OtherFB
+}
+
+table ErrorFB {
+      Type: ErrorTypeFB;
+      Location: string;
+      Message: string;
+}
+
 //  _  __        __     __    _
 // | |/ /___ _   \ \   / /_ _| |_   _  ___
 // | ' // _ \ | | \ \ / / _` | | | | |/ _ \
@@ -39,7 +64,7 @@ table IrisMachineFB {
       MachineId: string;
       HostName: string;
       WorkSpace: string;
-      WebIP: string;
+      BindAddress: string;
       WebPort: ushort;
       RaftPort: ushort;
       WsPort: ushort;
@@ -58,6 +83,27 @@ enum RoleFB:ushort {
      RendererFB = 0
 }
 
+//  ____                  _          ____  _        _
+// / ___|  ___ _ ____   _(_) ___ ___/ ___|| |_ __ _| |_ _   _ ___
+// \___ \ / _ \ '__\ \ / / |/ __/ _ \___ \| __/ _` | __| | | / __|
+//  ___) |  __/ |   \ V /| | (_|  __/___) | || (_| | |_| |_| \__ \
+// |____/ \___|_|    \_/ |_|\___\___|____/ \__\__,_|\__|\__,_|___/
+
+enum ServiceStatusTypeFB:ushort {
+    StartingFB,
+    RunningFB,
+    StoppingFB,
+    StoppedFB,
+    DegradedFB,
+    FailedFB,
+    DisposedFB
+}
+
+table ServiceStatusFB {
+    Type: ServiceStatusTypeFB;
+    Error: ErrorFB;
+}
+
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
 // | |   | | |/ _ \ '_ \| __|
@@ -69,6 +115,7 @@ table IrisClientFB {
      Name: string;
      Role: RoleFB;
      Port: ushort;
+     Status: ServiceStatusFB;
      IpAddress: string;
 }
 
@@ -202,9 +249,43 @@ table SliceFB {
       Slice: SliceTypeFB;
 }
 
+
+table StringsFB {
+     Values: [string];
+}
+
+table DoublesFB {
+     Values: [double];
+}
+
+table BoolsFB {
+     Values: [bool];
+}
+
+table BytesFB {
+     Values: [string];
+}
+
+table KeyValuesFB {
+     Values: [KeyValueFB];
+}
+
+table ColorSpacesFB {
+     Values: [ColorSpaceFB];
+}
+
+union SlicesTypeFB {
+     StringsFB,
+     DoublesFB,
+     BoolsFB,
+     BytesFB,
+     KeyValuesFB,
+     ColorSpacesFB
+}
+
 table SlicesFB {
       Id: string;
-      Slices: [SliceFB];
+      Slices: SlicesTypeFB;
 }
 
 enum ConnectionDirectionFB:ushort {
@@ -340,6 +421,19 @@ table CueFB {
       Slices: [SlicesFB];
 }
 
+table CueReferenceFB {
+      Id: string;
+      CueId: string;
+      AutoFollow: int;
+      Duration: int;
+      Prewait: int;
+}
+
+table CueGroupFB {
+      Id: string;
+      Name: string;
+      CueRefs: [CueReferenceFB];
+}
 
 //   ____           _     _     _
 //  / ___|   _  ___| |   (_)___| |_
@@ -350,7 +444,7 @@ table CueFB {
 table CueListFB {
       Id:   string;
       Name: string;
-      Cues: [CueFB];
+      Groups: [CueGroupFB];
 }
 
 //  _   _
@@ -443,8 +537,8 @@ table RaftConfigFB {
       MaxLogDepth: int;
       LogLevel: string;
       DataDir: string;
-      MaxRetries: ushort;
-      PeriodicInterval: ushort;
+      MaxRetries: int;
+      PeriodicInterval: int;
 }
 
 table TimingConfigFB {
@@ -557,6 +651,26 @@ table ProjectFB {
       Config:    ConfigFB;
 }
 
+//   ____           ____  _
+//  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+// | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+// | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+//  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+//                                |___/
+
+table CuePlayerFB {
+      Id:            string;
+      Name:          string;
+      CueList:       string;
+      Selected:      int;
+      LastCalled:    string;
+      Call:          PinFB;
+      Next:          PinFB;
+      Previous:      PinFB;
+      RemainingWait: int;
+      LastCaller:    string;
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -564,39 +678,15 @@ table ProjectFB {
 // |____/ \__\__,_|\__\___|
 
 table StateFB {
-      Project:  ProjectFB;
-      PinGroups:  [PinGroupFB];
-      Cues:     [CueFB];
-      CueLists: [CueListFB];
-      Sessions: [SessionFB];
-      Users:    [UserFB];
-      Clients:  [IrisClientFB];
+      Project:            ProjectFB;
+      PinGroups:          [PinGroupFB];
+      Cues:               [CueFB];
+      CueLists:           [CueListFB];
+      Sessions:           [SessionFB];
+      Users:              [UserFB];
+      Clients:            [IrisClientFB];
+      CuePlayers:         [CuePlayerFB];
       DiscoveredServices: [DiscoveredServiceFB];
-}
-
-//  _____
-// | ____|_ __ _ __ ___  _ __
-// |  _| | '__| '__/ _ \| '__|
-// | |___| |  | | | (_) | |
-// |_____|_|  |_|  \___/|_|
-
-enum ErrorTypeFB:ushort {
-     GitErrorFB,
-     ProjectErrorFB,
-     AssetErrorFB,
-     ParseErrorFB,
-     SocketErrorFB,
-     ClientErrorFB,
-     IOErrorFB,
-     RaftErrorFB,
-     OKFB,
-     OtherFB
-}
-
-table ErrorFB {
-      Type: ErrorTypeFB;
-      Location: string;
-      Message: string;
 }
 
 //  ____  _        _       __  __            _     _
@@ -619,6 +709,7 @@ union StateMachinePayloadFB {
       StateFB,
       SlicesFB,
       ProjectFB,
+      CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB
 }

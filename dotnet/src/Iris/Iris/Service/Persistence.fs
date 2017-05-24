@@ -39,7 +39,7 @@ module Persistence =
       let! mems = Config.getMembers options
       let state =
         mem
-        |> Raft.mkRaft
+        |> Raft.create
         |> Raft.addMembers mems
         |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
         |> Raft.setRequestTimeout options.Raft.RequestTimeout
@@ -136,39 +136,39 @@ module Persistence =
     let signature = User.Admin.Signature
     let path = state.Project.Path |> Project.toFilePath
     match sm with
-    | AddCue            cue -> Asset.saveWithCommit   path signature cue
-    | UpdateCue         cue -> Asset.saveWithCommit   path signature cue
-    | RemoveCue         cue -> Asset.deleteWithCommit path signature cue
-    | AddCueList    cuelist -> Asset.saveWithCommit   path signature cuelist
-    | UpdateCueList cuelist -> Asset.saveWithCommit   path signature cuelist
-    | RemoveCueList cuelist -> Asset.deleteWithCommit path signature cuelist
-    | AddPinGroup     group -> Asset.saveWithCommit   path signature group
-    | UpdatePinGroup  group -> Asset.saveWithCommit   path signature group
-    | RemovePinGroup  group -> Asset.deleteWithCommit path signature group
-    | AddUser          user -> Asset.saveWithCommit   path signature user
-    | UpdateUser       user -> Asset.saveWithCommit   path signature user
-    | RemoveUser       user -> Asset.deleteWithCommit path signature user
-    | AddMember           _ -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember        _ -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember        _ -> Asset.deleteWithCommit path signature state.Project
-    | UpdateProject project -> Asset.saveWithCommit   path signature project
+    | AddCue            cue  -> Asset.saveWithCommit   path signature cue
+    | UpdateCue         cue  -> Asset.saveWithCommit   path signature cue
+    | RemoveCue         cue  -> Asset.deleteWithCommit path signature cue
+    | AddCueList    cuelist  -> Asset.saveWithCommit   path signature cuelist
+    | UpdateCueList cuelist  -> Asset.saveWithCommit   path signature cuelist
+    | RemoveCueList cuelist  -> Asset.deleteWithCommit path signature cuelist
+    | AddCuePlayer    player -> Asset.saveWithCommit   path signature player
+    | UpdateCuePlayer player -> Asset.saveWithCommit   path signature player
+    | RemoveCuePlayer player -> Asset.deleteWithCommit path signature player
+    | AddPinGroup     group  -> Asset.saveWithCommit   path signature group
+    | UpdatePinGroup  group  -> Asset.saveWithCommit   path signature group
+    | RemovePinGroup  group  -> Asset.deleteWithCommit path signature group
+    | AddUser          user  -> Asset.saveWithCommit   path signature user
+    | UpdateUser       user  -> Asset.saveWithCommit   path signature user
+    | RemoveUser       user  -> Asset.deleteWithCommit path signature user
+    | AddMember           _  -> Asset.saveWithCommit   path signature state.Project
+    | UpdateMember        _  -> Asset.saveWithCommit   path signature state.Project
+    | RemoveMember        _  -> Asset.deleteWithCommit path signature state.Project
+    | UpdateProject project  -> Asset.saveWithCommit   path signature project
     | AddPin    pin
-    | UpdatePin pin ->
-      either {
+    | UpdatePin pin -> either {
         let! group =
           State.tryFindPinGroup pin.PinGroup state
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
         return! Asset.saveWithCommit path signature group
       }
-    | RemovePin pin ->
-      either {
+    | RemovePin pin -> either {
         let! group =
           State.tryFindPinGroup pin.PinGroup state
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
         return! Asset.saveWithCommit path signature group
       }
-    | _ ->
-      either {
+    | _ -> either {
         let! repo = state.Project |> Project.repository
         let commits = Git.Repo.commits repo
         return! Git.Repo.elementAt 0 commits
@@ -199,7 +199,7 @@ module Persistence =
       |> Logger.debug (tag "getRemote")
       Git.Config.addRemote repo (string leader.Id) uri
 
-    | Some remote when remote.Url <> uri ->
+    | Some remote when remote.Url <> unwrap uri ->
       leader.Id
       |> string
       |> sprintf "Updating remote section for %A to point to %A" uri

@@ -167,14 +167,22 @@ type DiscoveredService =
 
   member service.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string service.Id)
-    let name = builder.CreateString service.Name
-    let fullname = builder.CreateString service.FullName
-    let hostname = builder.CreateString service.HostName
-    let hosttarget = builder.CreateString service.HostTarget
+    let name = Option.mapNull builder.CreateString service.Name
+    let fullname = Option.mapNull builder.CreateString service.FullName
+    let hostname = Option.mapNull builder.CreateString service.HostName
+    let hosttarget = Option.mapNull builder.CreateString service.HostTarget
     let status = Binary.toOffset builder service.Status
 
     let aliases =
-      (builder, Array.map builder.CreateString service.Aliases)
+      let serialize = function
+        #if FABLE_COMPILER
+        | null -> Unchecked.defaultof<Offset<string>>
+        #else
+        | null -> Unchecked.defaultof<StringOffset>
+        #endif
+        | other -> builder.CreateString other
+
+      (builder, Array.map serialize service.Aliases)
       |> DiscoveredServiceFB.CreateAliasesVector
 
     let protocol =
@@ -184,8 +192,9 @@ type DiscoveredService =
       |> builder.CreateString
 
     let addressList =
-      (builder, Array.map (string >> builder.CreateString) service.AddressList)
-      |> DiscoveredServiceFB.CreateAddressListVector
+      service.AddressList
+      |> Array.map (string >> builder.CreateString)
+      |> fun addrs -> DiscoveredServiceFB.CreateAddressListVector(builder, addrs)
 
     let services =
       (builder, Array.map (Binary.toOffset builder) service.Services)
@@ -197,10 +206,10 @@ type DiscoveredService =
 
     DiscoveredServiceFB.StartDiscoveredServiceFB(builder)
     DiscoveredServiceFB.AddId(builder, id)
-    DiscoveredServiceFB.AddName(builder, name)
-    DiscoveredServiceFB.AddFullName(builder, fullname)
-    DiscoveredServiceFB.AddHostName(builder, hostname)
-    DiscoveredServiceFB.AddHostTarget(builder, hosttarget)
+    Option.iter (fun value -> DiscoveredServiceFB.AddName(builder,value)) name
+    Option.iter (fun value -> DiscoveredServiceFB.AddFullName(builder,value)) fullname
+    Option.iter (fun value -> DiscoveredServiceFB.AddHostName(builder,value)) hostname
+    Option.iter (fun value -> DiscoveredServiceFB.AddHostTarget(builder,value)) hosttarget
     DiscoveredServiceFB.AddAliases(builder, aliases)
     DiscoveredServiceFB.AddProtocol(builder, protocol)
     DiscoveredServiceFB.AddAddressList(builder, addressList)
@@ -249,7 +258,7 @@ type DiscoveredService =
           arr
         |> Either.map snd
 
-      let! revAddressList =
+      let! addressList =
         let arr = Array.zeroCreate fb.AddressListLength
         Array.fold
           (fun (m: Either<IrisError, int * IpAddress[]>) _ -> either {
@@ -263,7 +272,9 @@ type DiscoveredService =
         |> Either.map snd
 
       let aliases =
-        [| for i = 0 to fb.AliasesLength - 1 do yield fb.Aliases(i) |]
+        [| for i = 0 to fb.AliasesLength - 1 do
+            let value = try fb.Aliases(i) with | _ -> null
+            yield value |]
 
       let! status =
         #if FABLE_COMPILER
@@ -316,7 +327,7 @@ type DiscoveredService =
           Protocol      = protocol
           Status        = status
           Services      = services
-          AddressList   = Seq.rev revAddressList |> Seq.toArray
+          AddressList   = addressList |> Seq.toArray
           ExtraMetadata = metadata }
     }
 
@@ -332,28 +343,6 @@ type DiscoveredService =
     |> Binary.createBuffer
     |> DiscoveredServiceFB.GetRootAsDiscoveredServiceFB
     |> DiscoveredService.FromFB
-
-// * DiscoveryEvent
-
-type DiscoveryEvent =
-  | Registering  of DiscoverableService
-  | UnRegistered of DiscoverableService
-  | Registered   of DiscoverableService
-  | Appeared     of DiscoveredService
-  | Updated      of DiscoveredService
-  | Vanished     of DiscoveredService
-
-  // ** DispatchStrategy
-
-  member ev.DispatchStrategy
-    with get () =
-      match ev with
-      | Registering  _ -> Publish   // DiscoverableService
-      | UnRegistered _ -> Publish   // DiscoverableService
-      | Registered   _ -> Publish   // DiscoverableService
-      | Appeared     _ -> Replicate // DiscoveredService
-      | Updated      _ -> Replicate // DiscoveredService
-      | Vanished     _ -> Replicate // DiscoveredService
 
 // * Discovery module
 

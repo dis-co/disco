@@ -8,12 +8,15 @@
     <Compile Include="Crypto.fs" />
     <Compile Include="Worker.fs" />
     <Compile Include="Client.fs" />
+    <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
+    <Compile Include="Widgets/Interfaces.fs" />
+    <Compile Include="Widgets/Spread.fs" />
+    <Compile Include="Widgets/CuePlayer.fs" />
     <Compile Include="Lib.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
-    <ProjectReference Include="../../node_modules/fable-powerpack/Fable.PowerPack.fsproj" />
     <ProjectReference Include="../Core.Frontend/Core.Frontend.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\..\.paket\Paket.Restore.targets" />

@@ -107,17 +107,17 @@ type RaftMemberYaml() =
 
 and RaftMember =
   { Id         : MemberId
-  ; HostName   : string
-  ; IpAddr     : IpAddress
-  ; Port       : uint16
-  ; WsPort     : uint16
-  ; GitPort    : uint16
-  ; ApiPort    : uint16
-  ; Voting     : bool
-  ; VotedForMe : bool
-  ; State      : RaftMemberState
-  ; NextIndex  : Index
-  ; MatchIndex : Index }
+    HostName   : Name
+    IpAddr     : IpAddress
+    Port       : Port
+    WsPort     : Port
+    GitPort    : Port
+    ApiPort    : Port
+    Voting     : bool
+    VotedForMe : bool
+    State      : RaftMemberState
+    NextIndex  : Index
+    MatchIndex : Index }
 
   override self.ToString() =
     sprintf "%s on %s (%s:%d) %s %s %s"
@@ -140,12 +140,12 @@ and RaftMember =
   member self.ToYamlObject () =
     let yaml = new RaftMemberYaml()
     yaml.Id         <- string self.Id
-    yaml.HostName   <- self.HostName
+    yaml.HostName   <- unwrap self.HostName
     yaml.IpAddr     <- string self.IpAddr
-    yaml.Port       <- self.Port
-    yaml.WsPort     <- self.WsPort
-    yaml.GitPort    <- self.GitPort
-    yaml.ApiPort    <- self.ApiPort
+    yaml.Port       <- unwrap self.Port
+    yaml.WsPort     <- unwrap self.WsPort
+    yaml.GitPort    <- unwrap self.GitPort
+    yaml.ApiPort    <- unwrap self.ApiPort
     yaml.State      <- string self.State
     yaml.NextIndex  <- self.NextIndex
     yaml.MatchIndex <- self.MatchIndex
@@ -158,12 +158,12 @@ and RaftMember =
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftMemberState.TryParse yaml.State
       return { Id         = Id yaml.Id
-             ; HostName   = yaml.HostName
+             ; HostName   = name yaml.HostName
              ; IpAddr     = ip
-             ; Port       = yaml.Port
-             ; WsPort     = yaml.WsPort
-             ; GitPort    = yaml.GitPort
-             ; ApiPort    = yaml.ApiPort
+             ; Port       = port yaml.Port
+             ; WsPort     = port yaml.WsPort
+             ; GitPort    = port yaml.GitPort
+             ; ApiPort    = port yaml.ApiPort
              ; Voting     = yaml.Voting
              ; VotedForMe = yaml.VotedForMe
              ; NextIndex  = yaml.NextIndex
@@ -183,17 +183,28 @@ and RaftMember =
   member mem.ToOffset (builder: FlatBufferBuilder) =
     let id = string mem.Id |> builder.CreateString
     let ip = string mem.IpAddr |> builder.CreateString
-    let hostname = mem.HostName |> builder.CreateString
+
+    let hostname =
+      let unwrapped = unwrap mem.HostName
+      if isNull unwrapped then
+        None
+      else
+        unwrapped |> builder.CreateString |> Some
+
     let state = mem.State.ToOffset()
 
     RaftMemberFB.StartRaftMemberFB(builder)
     RaftMemberFB.AddId(builder, id)
-    RaftMemberFB.AddHostName(builder, hostname)
+
+    match hostname with
+    | Some hostname -> RaftMemberFB.AddHostName(builder, hostname)
+    | None -> ()
+
     RaftMemberFB.AddIpAddr(builder, ip)
-    RaftMemberFB.AddPort(builder, mem.Port)
-    RaftMemberFB.AddWsPort(builder, mem.WsPort)
-    RaftMemberFB.AddGitPort(builder, mem.GitPort)
-    RaftMemberFB.AddApiPort(builder, mem.ApiPort)
+    RaftMemberFB.AddPort(builder, unwrap mem.Port)
+    RaftMemberFB.AddWsPort(builder, unwrap mem.WsPort)
+    RaftMemberFB.AddGitPort(builder, unwrap mem.GitPort)
+    RaftMemberFB.AddApiPort(builder, unwrap mem.ApiPort)
     RaftMemberFB.AddVoting(builder, mem.Voting)
     RaftMemberFB.AddVotedForMe(builder, mem.VotedForMe)
     RaftMemberFB.AddState(builder, state)
@@ -206,12 +217,12 @@ and RaftMember =
       let! state = RaftMemberState.FromFB fb.State
       return { Id         = Id fb.Id
                State      = state
-               HostName   = fb.HostName
+               HostName   = name fb.HostName
                IpAddr     = IpAddress.Parse fb.IpAddr
-               Port       = fb.Port
-               WsPort     = fb.WsPort
-               GitPort    = fb.GitPort
-               ApiPort    = fb.ApiPort
+               Port       = port fb.Port
+               WsPort     = port fb.WsPort
+               GitPort    = port fb.GitPort
+               ApiPort    = port fb.ApiPort
                Voting     = fb.Voting
                VotedForMe = fb.VotedForMe
                NextIndex  = index fb.NextIndex
@@ -368,18 +379,17 @@ module Member =
     let hostname = Network.getHostName ()
 #endif
     { Id         = id
-    ; HostName   = hostname
-    ; IpAddr     = IPv4Address "127.0.0.1"
-    ; Port       = Constants.DEFAULT_RAFT_PORT
-    ; WsPort     = Constants.DEFAULT_WEB_SOCKET_PORT
-    ; GitPort    = Constants.DEFAULT_GIT_PORT
-    ; ApiPort    = Constants.DEFAULT_API_PORT
-    ; State      = Running
-    ; Voting     = true
-    ; VotedForMe = false
-    ; NextIndex  = index 1
-    ; MatchIndex = index 0
-    }
+      HostName   = name hostname
+      IpAddr     = IPv4Address "127.0.0.1"
+      Port       = port Constants.DEFAULT_RAFT_PORT
+      WsPort     = port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort    = port Constants.DEFAULT_GIT_PORT
+      ApiPort    = port Constants.DEFAULT_API_PORT
+      State      = Running
+      Voting     = true
+      VotedForMe = false
+      NextIndex  = index 1
+      MatchIndex = index 0 }
 
   let isVoting (mem : RaftMember) : bool =
     match mem.State, mem.Voting with
@@ -436,11 +446,11 @@ module Member =
     |> List.append (removed oldmems newmems)
     |> Array.ofList
 
-  let setPort (port: uint16) (mem: RaftMember) =
+  let setPort (port: Port) (mem: RaftMember) =
     { mem with Port = port }
 
-  let setGitPort (port: uint16) (mem: RaftMember) =
+  let setGitPort (port: Port) (mem: RaftMember) =
     { mem with GitPort = port }
 
-  let setWsPort (port: uint16) (mem: RaftMember) =
+  let setWsPort (port: Port) (mem: RaftMember) =
     { mem with WsPort = port }

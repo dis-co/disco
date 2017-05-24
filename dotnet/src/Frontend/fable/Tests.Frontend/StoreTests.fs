@@ -21,27 +21,28 @@ module Store =
         Pins = Map.empty }
 
     let machine =
-      { MachineId = Id.Create ()
-        HostName  = "La la Land"
-        WorkSpace = filepath "C:\Program Files\Yo Mama"
-        WebIP     = "127.0.0.1"
-        WebPort   = 80us
-        RaftPort  = 70us
-        WsPort    = 60us
-        GitPort   = 50us
-        ApiPort   = 40us
-        Version   = version "1.0.0" }
+      { MachineId   = Id.Create ()
+        HostName    = name "La la Land"
+        WorkSpace   = filepath "C:\Program Files\Yo Mama"
+        BindAddress = IPv4Address "127.0.0.1"
+        WebPort     = port 80us
+        RaftPort    = port 70us
+        WsPort      = port 60us
+        GitPort     = port 50us
+        ApiPort     = port 40us
+        Version     = version "1.0.0" }
 
     let project = IrisProject.Empty
 
     let state =
-      { Project  = project
-        PinGroups = Map.empty
-        Cues     = Map.empty
-        CueLists = Map.empty
-        Users    = Map.empty
-        Sessions = Map.empty
-        Clients  = Map.empty
+      { Project            = project
+        PinGroups          = Map.empty
+        Cues               = Map.empty
+        CueLists           = Map.empty
+        Users              = Map.empty
+        Sessions           = Map.empty
+        Clients            = Map.empty
+        CuePlayers         = Map.empty
         DiscoveredServices = Map.empty }
 
     let store : Store = new Store(state)
@@ -110,7 +111,7 @@ module Store =
 
         equals 0 store.State.PinGroups.[group.Id].Pins.Count
 
-        let pin : Pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "hey" |])
+        let pin : Pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "hey" |]
 
         store.Dispatch <| AddPin(pin)
 
@@ -121,7 +122,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add an pin to the store if group does not exists" <| fun finish ->
-        let pin = Pin.String(Id "0xb33f","url input", group.Id, Array.empty, [| "Ho" |])
+        let pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "Ho" |]
         store.Dispatch <| AddPin(pin)
         equals 0 store.State.PinGroups.Count
         finish ()
@@ -132,7 +133,7 @@ module Store =
         let name1 = "can a cat own a cat?"
         let name2 = "yes, cats are re-entrant."
 
-        let pin = Pin.String(Id "0xb33f", name1, group.Id, Array.empty, [| "swell" |])
+        let pin = Pin.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
@@ -153,7 +154,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove an pin from the store if it exists" <| fun finish ->
-        let pin = Pin.String(Id "0xb33f", "hi", Id "0xb4d1d34", Array.empty, [| "oh my" |])
+        let pin = Pin.string (Id "0xb33f") "hi" (Id "0xb4d1d34") Array.empty [| "oh my" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
@@ -175,7 +176,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -193,7 +194,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -201,7 +202,7 @@ module Store =
 
         equals 1 store.State.Cues.Count
 
-        let newname = "aww yeah"
+        let newname = name "aww yeah"
         store.Dispatch <| UpdateCue { cue with Name = newname }
 
         equals 1 store.State.Cues.Count
@@ -213,7 +214,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -227,7 +228,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
 
-        let cue : Cue = { Id = Id.Create(); Name = "My Cue"; Slices = [| |] }
+        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
 
         equals 0 store.State.Cues.Count
 
@@ -248,7 +249,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -266,7 +267,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -286,7 +287,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 
@@ -300,7 +301,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
 
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Cues = [| |] }
+        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
 

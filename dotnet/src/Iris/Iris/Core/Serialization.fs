@@ -1,10 +1,11 @@
+
+
 namespace Iris.Core
 
 #if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
 open Iris.Core.FlatBuffers
 
 #else
@@ -12,6 +13,30 @@ open Iris.Core.FlatBuffers
 open FlatBuffers
 
 #endif
+
+[<RequireQualifiedAccess>]
+module EitherExt =
+
+  let bindGeneratorToArray loc length generator (f: 'a -> Either<IrisError,'b>) =
+    let mutable i = 0
+    let mutable error = None
+    let arr = Array.zeroCreate length
+    while i < arr.Length && Option.isNone error do
+      #if !FABLE_COMPILER
+      let item: System.Nullable<'a> = generator i
+      if not item.HasValue then
+        error <- ParseError(loc, "Could not parse empty item") |> Some
+      else
+        let item = item.Value
+      #else
+        let item = generator i
+      #endif
+        match f item with
+        | Right value -> arr.[i] <- value; i <- i + 1
+        | Left err -> error <- Some err
+    match error with
+    | Some err -> Left err
+    | None -> Right arr
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _
@@ -27,7 +52,7 @@ module Binary =
 #if FABLE_COMPILER
     ByteBuffer.Create(bytes)
 #else
-    new ByteBuffer(bytes)
+    ByteBuffer(bytes)
 #endif
 
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte[])) =
@@ -40,6 +65,8 @@ module Binary =
       (^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>) bytes)
     with
       | exn ->
+        printfn "exn: %s" exn.Message
+        printfn "st: %s" exn.StackTrace
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
         |> ParseError
         |> Either.fail
@@ -57,7 +84,7 @@ module Binary =
     builder.Finish(offset)
     builder.SizedByteArray()
 #else
-    let builder = new FlatBufferBuilder(1)
+    let builder = FlatBufferBuilder(1)
     let offset = toOffset builder thing
     builder.Finish(offset.Value)
     builder.SizedByteArray()
@@ -77,7 +104,7 @@ module Yaml =
   open SharpYaml.Serialization
 
   let inline encode< ^t when ^t : (member ToYaml : Serializer -> string)> (thing: ^t) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     (^t : (member ToYaml : Serializer -> string) thing,serializer)
 
   let inline decode< ^err, ^t when ^t : (static member FromYaml : string -> Either< ^err, ^t >)> (str: string) =

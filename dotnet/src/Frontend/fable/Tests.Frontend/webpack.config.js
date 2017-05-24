@@ -20,6 +20,12 @@ module.exports = {
     filename: 'iris.tests.js',
     path: resolve('../../js'),
   },
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.json'],
+    modules: [
+      "node_modules", resolve("../../../../node_modules/")
+    ]
+  },  
   module: {
     rules: [
       {
@@ -29,7 +35,7 @@ module.exports = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("../plugins/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
+            plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),            
           }
         }
       },
@@ -42,10 +48,5 @@ module.exports = {
         },
       },
     ],
-  },
-  resolve: {
-    modules: [
-      "node_modules", resolve("../../node_modules/")
-    ]
-  }  
+  }
 };

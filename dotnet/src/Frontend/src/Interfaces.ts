@@ -24,8 +24,6 @@ export interface IIris {
   subscribeToLogs(f: (log: string)=>void): IDisposable
   subscribeToClock(f: (frames: number)=>void): IDisposable
   getClientContext(): IContext
-  pinToKeyValuePairs(pin: IPin): [string, any][]
-  updateSlices(pin: IPin, rowIndex: number, newValue: any)
   removeMember(projectConfig: any, memberId: any)
   addMember(info: any)
 }

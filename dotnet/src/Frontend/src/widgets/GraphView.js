@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import Spread from "./Spread"
+import { Spread, SpreadView } from "../../fable/Frontend/Widgets/Spread.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util.ts"
 
@@ -85,7 +85,7 @@ class View extends Component {
     if (Array.isArray(this.disposables)) {
       this.disposables.forEach(x => x.dispose());
     }
-  }  
+  }
 
   render() {
     return (
@@ -93,13 +93,13 @@ class View extends Component {
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
             <h3 className="title is-3">{pinGroup[1].Name}</h3>
-            {map(pinGroup[1].Pins, (pin,i) => {
-              var model = new Spread(pin[1]);
-              const View = model.view;
+            {map(pinGroup[1].Pins, (kv,i) => {
+              var pin = kv[1];
+              var model = new Spread(pin);
               return (
                 <div key={i}
                   ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-                  <View
+                  <SpreadView
                     model={model}
                     global={this.props.global}
                     onDragStart={() => this.startDragging(model, i)} />
@@ -107,7 +107,7 @@ class View extends Component {
               )})}
           </div>
         ))}
-      </div>          
+      </div>
     )
   }
 }

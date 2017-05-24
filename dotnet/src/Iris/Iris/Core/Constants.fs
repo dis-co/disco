@@ -16,7 +16,7 @@ module Constants =
   //                    |_|
 
   [<Literal>]
-  let REQ_TIMEOUT = 3000.0            // ms
+  let REQ_TIMEOUT = 500.0            // ms
 
   [<Literal>]
   let MCAST_ADDRESS = "224.0.0.1"
@@ -59,6 +59,18 @@ module Constants =
 
   [<Literal>]
   let RAFT_LOGDATA_PATH = "logs"
+
+  [<Literal>]
+  let RAFT_ELECTION_TIMEOUT = 600       // see page 10 on timings in https://raft.github.io/raft.pdf
+
+  [<Literal>]
+  let RAFT_REQUEST_TIMEOUT = 100        // see ^
+
+  [<Literal>]
+  let RAFT_MAX_LOGDEPTH = 50
+
+  [<Literal>]
+  let RAFT_PERIODIC_INTERVAL = 400       // ms
 
   //  ___      _
   // |_ _|_ __(_)___
@@ -124,12 +136,33 @@ module Constants =
   let DEFAULT_GIT_PORT = 9000us
 
   [<Literal>]
-  let ADMIN_DEFAULT_PASSWORD =
+  let ADMIN_USER_NAME = "admin"
+
+  [<Literal>]
+  let ADMIN_EMAIL = "admin@nsynk.de"
+
+  [<Literal>]
+  let ADMIN_FIRST_NAME = "Administrator"
+
+  [<Literal>]
+  let ADMIN_LAST_NAME = ""
+
+  [<Literal>]
+  let ADMIN_DEFAULT_PASSWORD = "Nsynk"
+
+  [<Literal>]
+  let ADMIN_DEFAULT_PASSWORD_HASH =
     // "Nsynk"
     "9305b34e6df2f0ee0a7aab083cb7c47761f4320cce0a0a6a35f6974c95483366"
 
   [<Literal>]
   let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
+
+  //     _                 _
+  //    / \   ___ ___  ___| |_ ___
+  //   / _ \ / __/ __|/ _ \ __/ __|
+  //  / ___ \\__ \__ \  __/ |_\__ \
+  // /_/   \_\___/___/\___|\__|___/
 
   [<Literal>]
   let USER_DIR = "users"
@@ -142,6 +175,9 @@ module Constants =
 
   [<Literal>]
   let PINGROUP_DIR = "pingroups"
+
+  [<Literal>]
+  let CUEPLAYER_DIR = "players"
 
   //  __  __            _     _             ____             __ _
   // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _

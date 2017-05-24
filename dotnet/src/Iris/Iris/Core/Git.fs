@@ -843,9 +843,9 @@ module Git =
 
     // *** addRemote
 
-    let addRemote (repo: Repository) (name: string) (url: string) =
+    let addRemote (repo: Repository) (name: string) (url: Url) =
       try
-        repo.Network.Remotes.Add(name, url)
+        repo.Network.Remotes.Add(name, unwrap url)
         |> Either.succeed
       with
         | exn ->
@@ -855,10 +855,10 @@ module Git =
 
     // *** updateRemote
 
-    let updateRemote (repo: Repository) (remote: Remote) (url: string) =
+    let updateRemote (repo: Repository) (remote: Remote) (url: Url) =
       try
         let update (updater: RemoteUpdater) =
-          updater.Url <- url
+          updater.Url <- unwrap url
         repo.Network.Remotes.Update(remote.Name, update)
         repo.Network.Remotes.[remote.Name]
         |> Either.succeed

@@ -119,6 +119,13 @@ module Either =
     | Right value -> f value
     | Left _ -> ()
 
+  // ** iterError
+
+  let inline iterError< ^a, ^err >(f: ^err -> unit) (a: Either< ^err, ^a >) =
+    match a with
+    | Left error -> f error
+    | Right _ -> ()
+
   // ** unwrap
 
   /// Gets the value if it's successful and runs the provided function otherwise
@@ -168,7 +175,7 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
-  let mapArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+  let bindArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
     let mutable i = 0
     let mutable error = None
     let arr2 = Array.zeroCreate arr.Length
@@ -256,6 +263,12 @@ module Either =
         |> fail
 
 
+  // ** orElse
+
+  let inline orElse value = function
+    | Right _ as good -> good
+    | Left _ -> Right value
+
 // * Either Builder
 
 //  _____ _ _   _                 ____        _ _     _
@@ -315,7 +328,7 @@ module EitherUtils =
       self.TryFinally(body', fun () ->
         disposable.Dispose())
 
-  let either = new EitherBuilder()
+  let either = EitherBuilder()
 
 #if INTERACTIVE
 module Test =

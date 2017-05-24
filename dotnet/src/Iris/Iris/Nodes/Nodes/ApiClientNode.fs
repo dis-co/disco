@@ -15,6 +15,7 @@ open Iris.Raft
 open Iris.Core
 open Iris.Client
 open Iris.Nodes
+open ZeroMQ
 
 // * Api
 
@@ -49,6 +50,7 @@ module Api =
       OutConnected: ISpread<bool>
       OutStatus: ISpread<string>
       OutUpdate: ISpread<bool>
+      Context: ZContext
       Disposables: IDisposable list }
 
     static member Create () =
@@ -73,6 +75,7 @@ module Api =
         OutCommands = null
         OutStatus = null
         OutUpdate = null
+        Context = null
         Disposables = List.empty }
 
     interface IDisposable with
@@ -150,7 +153,7 @@ module Api =
 
     let result =
       either {
-        let! client = ApiClient.create server myself
+        let client = ApiClient.create state.Context server myself
         do! client.Start()
         return client
       }
@@ -185,15 +188,8 @@ module Api =
 
   let private updateState (state: PluginState) =
     Logger.debug "updateState" "updating state output pins with new state"
-    match state.ApiClient.State with
-    | Right data ->
-      state.OutState.[0] <- data
-      state
-    | Left error ->
-      error
-      |> string
-      |> Logger.err "updateState"
-      { state with Status = ServiceStatus.Failed error }
+    state.OutState.[0] <- state.ApiClient.State
+    state
 
   let private updateCommands (state: PluginState) (cmds: StateMachine array) =
     Logger.debug "updateCommands" "update command output pins"
@@ -212,34 +208,22 @@ module Api =
         Map.empty
         plugstate.InPinGroups
 
-    match plugstate.ApiClient.State with
-    | Right appstate ->
-      if local <> appstate.PinGroups then
-        let commands: StateMachine list =
-          Map.fold
-            (fun lst (id: Id) (lgrp: PinGroup) ->
-              match Map.tryFind id appstate.PinGroups with
-              | Some grp ->
-                if lgrp <> grp then
-                  (UpdatePinGroup lgrp) :: lst
-                else
-                  lst
-              | None -> (AddPinGroup lgrp) :: lst)
-            []
-            local
-        for cmd in commands do
-          match plugstate.ApiClient.Append cmd with
-          | Right () -> ()
-          | Left error ->
-            error
-            |> string
-            |> Logger.err "mergeGraphState"
-      plugstate
-    | Left error ->
-      error
-      |> string
-      |> Logger.err "mergeGraphState"
-      plugstate
+    if local <> plugstate.ApiClient.State.PinGroups then
+      let commands: StateMachine list =
+        Map.fold
+          (fun lst (id: Id) (lgrp: PinGroup) ->
+            match Map.tryFind id plugstate.ApiClient.State.PinGroups with
+            | Some grp ->
+              if lgrp <> grp then
+                (UpdatePinGroup lgrp) :: lst
+              else
+                lst
+            | None -> (AddPinGroup lgrp) :: lst)
+          []
+          local
+      for cmd in commands do
+        plugstate.ApiClient.Append cmd
+    plugstate
 
   // ** processInputs
 
@@ -248,16 +232,7 @@ module Api =
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
-          match state.ApiClient.Append cmd with
-          | Right () ->
-            cmd
-            |> string
-            |> sprintf "%s successfully appended in cluster"
-            |> Logger.debug "processInputs"
-          | Left error ->
-            error
-            |> string
-            |> Logger.err "processInputs"
+          state.ApiClient.Append cmd
       state
     else
       state
@@ -411,7 +386,8 @@ type ApiClientNode() =
               OutCommands = self.OutCommands
               OutConnected = self.OutConnected
               OutStatus = self.OutStatus
-              OutUpdate = self.OutUpdate }
+              OutUpdate = self.OutUpdate
+              Context = new ZContext() }
         initialized <- true
 
       state <- Api.evaluate state spreadMax

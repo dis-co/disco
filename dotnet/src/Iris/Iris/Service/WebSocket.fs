@@ -29,7 +29,7 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<WebSocketEvent>>
+  type private Subscriptions = Subscriptions<WebSocketEvent>
 
   // ** SocketEventProcessor
 
@@ -193,16 +193,15 @@ module WebSockets =
 
   // ** loop
 
-  let private loop (initial: Subscriptions) (inbox: SocketEventProcessor) =
-    let rec act (subscriptions: Subscriptions) = async {
+  let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
+    let rec act () = async {
         let! msg = inbox.Receive()
-        for sub in subscriptions do
-          sub.OnNext msg
-        do! act subscriptions
+        Observable.notify subscriptions msg
+        return! act ()
       }
-    act initial
+    act()
 
-  // ** WsServer
+  // ** WebSocketServer
 
   //  ____        _     _ _
   // |  _ \ _   _| |__ | (_) ___
@@ -215,20 +214,9 @@ module WebSockets =
 
     let create (mem: RaftMember) =
       either {
+        let status = ref ServiceStatus.Stopped
         let connections = Connections()
         let subscriptions = Subscriptions()
-
-        let listener =
-          { new IObservable<WebSocketEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
-
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
 
         let agent = new SocketEventProcessor(loop subscriptions)
 
@@ -249,6 +237,7 @@ module WebSockets =
                 buildSession connections id session
 
               member self.Subscribe (callback: WebSocketEvent -> unit) =
+                let listener = Observable.createListener subscriptions
                 { new IObserver<WebSocketEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
@@ -257,6 +246,7 @@ module WebSockets =
                 |> listener.Subscribe
 
               member self.Start () =
+                status := ServiceStatus.Starting
                 try
                   uri
                   |> sprintf "Starting WebSocketServer on: %s"
@@ -265,6 +255,7 @@ module WebSockets =
                   agent.Start()
                   server.Start(new Action<IWebSocketConnection>(handler))
 
+                  status := ServiceStatus.Running
                   "WebSocketServer successfully started"
                   |> Logger.debug (tag "Start")
                   |> Either.succeed
@@ -280,11 +271,13 @@ module WebSockets =
                 printfn "broadcast ye event"
 
               member self.Dispose () =
-                for KeyValue(_, connection) in connections do
-                  connection.Close()
-                connections.Clear()
-                subscriptions.Clear()
-                dispose server }
+                if Service.isRunning !status then
+                  for KeyValue(_, connection) in connections do
+                    connection.Close()
+                  connections.Clear()
+                  subscriptions.Clear()
+                  dispose server
+                  status := ServiceStatus.Disposed }
       }
 
     let broadcast (cmd: StateMachine) (server: IWebSocketServer) =

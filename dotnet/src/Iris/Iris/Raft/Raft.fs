@@ -1,37 +1,55 @@
 namespace Iris.Raft
 
+// * Imports
+
 open System
 open FSharpx.Functional
 open Iris.Core
-open Hopac
-open Hopac.Infixes
+
+// * RaftMonad
 
 [<AutoOpen>]
 module RaftMonad =
 
+  // ** warn
+
   let warn str = printfn "[RAFT WARNING] %s" str
+
+  // ** get
 
   /// get current Raft state
   let get = MkRM (fun _ s -> Right (s, s))
 
+  // ** put
+
   /// update Raft/State to supplied value
   let put s = MkRM (fun _ _ -> Right ((), s))
 
+  // ** read
+
   /// get the read-only environment value
   let read : RaftM<_,_> = MkRM (fun l s -> Right (l, s))
+
+  // ** apply
 
   /// unwrap the closure and apply it to the supplied state/env
   let apply (env: 'e) (state: 's) (m: RaftMonad<'e,'s,_,_>)  =
     match m with | MkRM func -> func env state
 
+  // ** runRaft
+
   /// run the monadic action against state and environment values
   let runRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     apply l s m
+
+  // ** evalRaft
 
   /// run monadic action against supplied state and evironment and return new state
   let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     match runRaft s l m with
     | Right (_,state) | Left (_,state) -> state
+
+  // ** returnM
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
   /// This variant wraps it in a `Right` value. This means the computation will,
@@ -39,8 +57,12 @@ module RaftMonad =
   let returnM value : RaftMonad<'e,'s,'t,'err> =
     MkRM (fun _ state -> Right(value, state))
 
+  // ** ignoreM
+
   let ignoreM _ : RaftMonad<'e,'s,unit,'err> =
     MkRM (fun _ state -> Right((), state))
+
+  // ** failM
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
   /// This variant wraps it in a `Left` value. This means the computation will
@@ -48,15 +70,23 @@ module RaftMonad =
   let failM l =
     MkRM (fun _ s -> Left (l, s))
 
+  // ** returnFromM
+
   /// pass through the given action
   let returnFromM func : RaftMonad<'e,'s,'t,'err> =
     func
 
+  // ** zeroM
+
   let zeroM () =
     MkRM (fun _ state -> Right((), state))
 
+  // ** delayM
+
   let delayM (f: unit -> RaftMonad<'e,'s,'t,'err>) =
     MkRM (fun env state -> f () |> apply env state)
+
+  // ** bindM
 
   /// Chain up effectful actions.
   let bindM (m: RaftMonad<'env,'state,'a,'err>)
@@ -67,34 +97,50 @@ module RaftMonad =
           | Right  (value,state') -> f value |> apply env state'
           | Left    err           -> Left err)
 
+  // ** (>>=)
+
   let (>>=) = bindM
+
+  // ** combineM
 
   let combineM (m1: RaftMonad<_,_,_,_>) (m2: RaftMonad<_,_,_,_>) =
     bindM m1 (fun _ -> m2)
+
+  // ** tryWithM
 
   let tryWithM (body: RaftMonad<_,_,_,_>) (handler: exn -> RaftMonad<_,_,_,_>) =
     MkRM (fun env state ->
           try apply env state body
           with ex -> apply env state (handler ex))
 
+  // ** tryFinallyM
+
   let tryFinallyM (body: RaftMonad<_,_,_,_>) handler : RaftMonad<_,_,_,_> =
     MkRM (fun env state ->
           try apply env state body
           finally handler ())
+
+  // ** usingM
 
   let usingM (resource: ('a :> System.IDisposable)) (body: 'a -> RaftMonad<_,_,_,_>) =
     tryFinallyM (body resource)
       (fun _ -> if not <| isNull (box resource)
                 then resource.Dispose())
 
+  // ** whileM
+
   let rec whileM (guard: unit -> bool) (body: RaftMonad<_,_,_,_>) =
     match guard () with
     | true -> bindM body (fun _ -> whileM guard body)
     | _ -> zeroM ()
 
+  // ** forM
+
   let rec forM (sequence: seq<_>) (body: 'a -> RaftMonad<_,_,_,_>) : RaftMonad<_,_,_,_> =
     usingM (sequence.GetEnumerator())
       (fun enum -> whileM enum.MoveNext (delayM (fun _ -> body enum.Current)))
+
+  // ** RaftBuilder
 
   type RaftBuilder() =
     member __.Return(v) = returnM v
@@ -109,96 +155,101 @@ module RaftMonad =
     member __.While(guard, body) = whileM guard body
     member __.For(seq, body) = forM seq body
 
+  // ** raft
+
   let raft = new RaftBuilder()
 
+// * Raft
+
 [<RequireQualifiedAccess>]
-module Raft =
+module rec Raft =
 
-  let private tag (str: string) = sprintf "Raft.%s" str
+  // ** tag
 
-  /////////////////////////////////////////////
-  //  __  __                       _ _       //
-  // |  \/  | ___  _ __   __ _  __| (_) ___  //
-  // | |\/| |/ _ \| '_ \ / _` |/ _` | |/ __| //
-  // | |  | | (_) | | | | (_| | (_| | | (__  //
-  // |_|  |_|\___/|_| |_|\__,_|\__,_|_|\___| //
-  /////////////////////////////////////////////
-  let currentIndex (state: RaftValue) =
-    Log.getIndex state.Log
+  let private tag (str: string) = String.Format("Raft.{0}",str)
+
+  // ** log
 
   let log site level message =
     message
-    |> Logger.log level site
+    |> Logger.log level (tag site)
     |> returnM
+
+  // ** debug
 
   let debug site str = log site Debug str
 
+  // ** info
+
   let info site str = log site Info str
+
+  // ** warn
 
   let warn site str = log site Warn str
 
+  // ** error
+
   let error site str = log site Err str
 
+  // ** sendAppendEntriesM
+
   let sendAppendEntriesM (mem: RaftMember) (request: AppendEntries) =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          let msg =
-            sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
-              (string mem.Id)
-              (currentIndex state)
-              request.Term
-              request.LeaderCommit
-              request.PrevLogIdx
-              request.PrevLogTerm
+    raft {
+      let! state = get
+      let! cbs = read
 
-          Logger.debug "sendAppendEntriesM" msg
+      let msg =
+        sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
+          (string mem.Id)
+          (currentIndex state)
+          request.Term
+          request.LeaderCommit
+          request.PrevLogIdx
+          request.PrevLogTerm
 
-          let result = cbs.SendAppendEntries mem request
-          return result
-        }
-        |> returnM
+      do! debug "sendAppendEntriesM" msg
+
+      cbs.SendAppendEntries mem request
+    }
+
+  // ** persistVote
 
   let persistVote mem =
     read >>= fun cbs ->
       cbs.PersistVote mem
       |> returnM
 
+  // ** persistTerm
+
   let persistTerm term =
     read >>= fun cbs ->
       cbs.PersistTerm term
       |> returnM
+
+  // ** persistLog
 
   let persistLog log =
     read >>= fun cbs ->
       cbs.PersistLog log
       |> returnM
 
+  // ** modify
+
   let modify (f: RaftValue -> RaftValue) =
     get >>= (f >> put)
+
+  // ** zoomM
 
   let zoomM (f: RaftValue -> 'a) =
     get >>= (f >> returnM)
 
-  ///////////////////////////////////////
-  //  ____       _            _        //
-  // |  _ \ _ __(_)_   ____ _| |_ ___  //
-  // | |_) | '__| \ \ / / _` | __/ _ \ //
-  // |  __/| |  | |\ V / (_| | ||  __/ //
-  // |_|   |_|  |_| \_/ \__,_|\__\___| //
-  ///////////////////////////////////////
+  // ** rand
 
   let private rand = new System.Random()
 
-  //////////////////////////////////////
-  //   ____                _          //
-  //  / ___|_ __ ___  __ _| |_ ___    //
-  // | |   | '__/ _ \/ _` | __/ _ \   //
-  // | |___| | |  __/ (_| | ||  __/   //
-  //  \____|_|  \___|\__,_|\__\___|   //
-  //////////////////////////////////////
+  // ** create
 
-  let mkRaft (self : RaftMember) : RaftValue =
+  let create (self : RaftMember) : RaftValue =
     { Member            = self
       State             = Follower
       CurrentTerm       = term 0
@@ -208,39 +259,56 @@ module Raft =
       NumMembers        = 1
       VotedFor          = None
       Log               = Log.empty
-      CommitIndex       = index 0
-      LastAppliedIdx    = index 0
+      CommitIndex       = 0<index>
+      LastAppliedIdx    = 0<index>
       TimeoutElapsed    = 0<ms>
-      ElectionTimeout   = 4000<ms>        // msec
-      RequestTimeout    = 500<ms>         // msec
-      MaxLogDepth       = 50              // items
-      ConfigChangeEntry = None
-    }
+      ElectionTimeout   = Constants.RAFT_ELECTION_TIMEOUT * 1<ms>
+      RequestTimeout    = Constants.RAFT_REQUEST_TIMEOUT * 1<ms>
+      MaxLogDepth       = Constants.RAFT_MAX_LOGDEPTH
+      ConfigChangeEntry = None }
+
+  // ** isFollower
 
   /// Is the Raft value in Follower state.
   let isFollower (state: RaftValue) =
     state.State = Follower
 
+  // ** isFollowerM
+
   let isFollowerM = fun _ -> zoomM isFollower
+
+  // ** isCandidate
 
   /// Is the Raft value in Candate state.
   let isCandidate (state: RaftValue) =
     state.State = Candidate
 
+  // ** isCandidateM
+
   let isCandidateM _ = zoomM isCandidate
+
+  // ** isLeader
 
   /// Is the Raft value in Leader state
   let isLeader (state: RaftValue) =
     state.State = Leader
 
+  // ** isLeaderM
+
   let isLeaderM _ = zoomM isLeader
+
+  // ** inJointConsensus
 
   let inJointConsensus (state: RaftValue) =
     match state.ConfigChangeEntry with
       | Some (JointConsensus _) -> true
       | _                       -> false
 
+  // ** inJointConsensusM
+
   let inJointConsensusM _ = zoomM inJointConsensus
+
+  // ** hasNonVotingMembers
 
   let hasNonVotingMembers (state: RaftValue) =
     Map.fold
@@ -252,21 +320,18 @@ module Raft =
       false
       state.Peers
 
+  // ** hasNonVotingMembersM
+
   let hasNonVotingMembersM _ = zoomM hasNonVotingMembers
 
-  ////////////////////////////////////////////////
-  //  _   _           _         ___             //
-  // | \ | | ___   __| | ___   / _ \ _ __  ___  //
-  // |  \| |/ _ \ / _` |/ _ \ | | | | '_ \/ __| //
-  // | |\  | (_) | (_| |  __/ | |_| | |_) \__ \ //
-  // |_| \_|\___/ \__,_|\___|  \___/| .__/|___/ //
-  //                                |_|         //
-  ////////////////////////////////////////////////
+  // ** getChanges
 
   let getChanges (state: RaftValue) =
     match state.ConfigChangeEntry with
       | Some (JointConsensus(_,_,_,changes,_)) -> Some changes
       | _ -> None
+
+  // ** logicalPeers
 
   let logicalPeers (state: RaftValue) =
     // when setting the NumMembers counter we have to include the old config
@@ -278,23 +343,37 @@ module Raft =
     else
       state.Peers
 
+  // ** logicalPeersM
+
   let logicalPeersM _ = zoomM logicalPeers
 
+  // ** countMembers
+
   let countMembers peers = Map.fold (fun m _ _ -> m + 1) 0 peers
+
+  // ** numLogicalPeers
 
   let numLogicalPeers (state: RaftValue) =
     logicalPeers state |> countMembers
 
+  // ** setNumPeers
+
   let setNumPeers (state: RaftValue) =
     { state with NumMembers = countMembers state.Peers }
 
+  // ** recountPeers
+
   let recountPeers () =
     get >>= (setNumPeers >> put)
+
+  // ** setPeers
 
   /// Set States Members to supplied Map of Mems. Also cache count of mems.
   let setPeers (peers : Map<MemberId,RaftMember>) (state: RaftValue) =
     { state with Peers = Map.add state.Member.Id state.Member peers }
     |> setNumPeers
+
+  // ** addMember
 
   /// Adds a mem to the list of known Members and increments NumMembers counter
   let addMember (mem : RaftMember) (state: RaftValue) : RaftValue =
@@ -306,16 +385,27 @@ module Raft =
             then state.NumMembers
             else state.NumMembers + 1 }
 
+  // ** addMemberM
+
   let addMemberM (mem: RaftMember) =
     get >>= (addMember mem >> put)
 
+  // ** addPeer
+
   /// Alias for `addMember`
   let addPeer = addMember
+
+  // ** addPeerM
+
   let addPeerM = addMemberM
+
+  // ** addNonVotingMember
 
   /// Add a Non-voting Peer to the list of known Members
   let addNonVotingMember (mem : RaftMember) (state: RaftValue) =
     addMember { mem with Voting = false; State = Joining } state
+
+  // ** removeMember
 
   /// Remove a Peer from the list of known Members and decrement NumMembers counter
   let removeMember (mem : RaftMember) (state: RaftValue) =
@@ -328,7 +418,17 @@ module Raft =
         Peers = Map.remove mem.Id state.Peers
         NumMembers = numMembers }
 
-  let updateMember (mem : RaftMember) (cbs: IRaftCallbacks) (state: RaftValue) =
+  // ** applyChanges
+
+  let applyChanges changes state =
+    let folder _state = function
+      | MemberAdded   mem -> addNonVotingMember mem _state
+      | MemberRemoved mem -> removeMember       mem _state
+    Array.fold folder state changes
+
+  // ** updateMember
+
+  let private updateMember (mem : RaftMember) (cbs: IRaftCallbacks) (state: RaftValue) =
     // if we are in joint consensus, we must update the mem value in either the
     // new or the old configuration, or both.
     let old = Map.tryFind mem.Id state.Peers
@@ -345,20 +445,20 @@ module Raft =
             else state.Peers
           OldPeers =
             match state.OldPeers with
-              | Some peers ->
-                if Map.containsKey mem.Id peers then
-                  if Option.isNone old then cbs.MemberUpdated mem
-                  Map.add mem.Id mem peers |> Some
-                else Some peers
-              | None ->                 // apply all required changes again
-                let folder m = function // but this is an edge case
-                  | MemberAdded   peer -> Map.add peer.Id peer m
-                  | MemberRemoved peer -> Map.filter (fun k _ -> k <> peer.Id) m
-                let changes = getChanges state |> Option.get
-                let peers = Array.fold folder state.Peers changes
-                if Map.containsKey mem.Id peers
-                then Map.add mem.Id mem peers |> Some
-                else Some peers }
+            | Some peers ->
+              if Map.containsKey mem.Id peers then
+                if Option.isNone old then cbs.MemberUpdated mem
+                Map.add mem.Id mem peers |> Some
+              else Some peers
+            | None ->                    // apply all required changes again
+              let folder m = function          // but this is an edge case
+                | MemberAdded   peer -> Map.add peer.Id peer m
+                | MemberRemoved peer -> Map.filter (fun k _ -> k <> peer.Id) m
+              let changes = getChanges state |> Option.get
+              let peers = Array.fold folder state.Peers changes
+              if Map.containsKey mem.Id peers then
+                Map.add mem.Id mem peers |> Some
+              else Some peers }
       |> setNumPeers
     else // base case
       // if the mems has structurally changed fire the callback
@@ -371,35 +471,50 @@ module Raft =
             then Map.add mem.Id mem state.Peers
             else state.Peers }
 
-  let applyChanges changes state =
-    let folder _state = function
-      | MemberAdded   mem -> addNonVotingMember mem _state
-      | MemberRemoved mem -> removeMember       mem _state
-    Array.fold folder state changes
+  // ** updateMemberM
 
   let updateMemberM (mem: RaftMember) =
     read >>= fun env ->
       get >>= (updateMember mem env >> put)
 
+  // ** addMembers
+
   let addMembers (mems : Map<MemberId,RaftMember>) (state: RaftValue) =
     Map.fold (fun m _ n -> addMember n m) state mems
+
+  // ** addMembersM
 
   let addMembersM (mems: Map<MemberId,RaftMember>) =
     get >>= (addMembers mems >> put)
 
+  // ** addPeers
+
   let addPeers = addMembers
+
+  // ** addPeersM
+
   let addPeersM = addMembersM
+
+  // ** addNonVotingMemberM
 
   let addNonVotingMemberM (mem: RaftMember) =
     get >>= (addNonVotingMember mem >> put)
 
+  // ** removeMemberM
+
   let removeMemberM (mem: RaftMember) =
     get >>= (removeMember mem >> put)
+
+  // ** hasMember
 
   let hasMember (nid : MemberId) (state: RaftValue) =
     Map.containsKey nid state.Peers
 
+  // ** hasMemberM
+
   let hasMemberM _ = hasMember >> zoomM
+
+  // ** getMember
 
   let getMember (nid : MemberId) (state: RaftValue) =
     if inJointConsensus state then
@@ -407,45 +522,61 @@ module Raft =
     else
       Map.tryFind nid state.Peers
 
+  // ** getMemberM
+
   /// Find a peer by its Id. Return None if not found.
   let getMemberM nid = getMember nid |> zoomM
 
+  // ** setMemberStateM
+
   let setMemberStateM (nid: MemberId) state =
-    getMemberM nid >>=
-      fun result ->
-        match result with
-        | Some mem -> updateMemberM { mem with State = state }
-        | _         -> returnM ()
+    getMemberM nid >>= function
+      | Some mem -> updateMemberM { mem with State = state }
+      | None     -> returnM ()
+
+  // ** getMembers
 
   let getMembers (state: RaftValue) = state.Peers
+
+  // ** getMembersM
+
   let getMembersM _ = zoomM getMembers
 
+  // ** getSelf
+
   let getSelf (state: RaftValue) = state.Member
+
+  // ** getSelfM
+
   let getSelfM _ = zoomM getSelf
+
+  // ** setSelf
 
   let setSelf (mem: RaftMember) (state: RaftValue) =
     { state with Member = mem }
 
+  // ** setSelfM
+
   let setSelfM mem =
     setSelf mem |> modify
+
+  // ** lastConfigChange
 
   let lastConfigChange (state: RaftValue) =
     state.ConfigChangeEntry
 
+  // ** lastConfigChangeM
+
   let lastConfigChangeM _ =
     lastConfigChange |> zoomM
 
-  ////////////////////////////////////////
-  //  ____        __ _                  //
-  // |  _ \ __ _ / _| |_                //
-  // | |_) / _` | |_| __|               //
-  // |  _ < (_| |  _| |_                //
-  // |_| \_\__,_|_|  \__|               //
-  ////////////////////////////////////////
+  // ** setTerm
 
   /// Set CurrentTerm on Raft to supplied term.
   let setTerm (term : Term) (state: RaftValue) =
     { state with CurrentTerm = term }
+
+  // ** setTermM
 
   /// Set CurrentTerm to supplied value. Monadic action.
   let setTermM (term : Term) =
@@ -453,6 +584,8 @@ module Raft =
       do! setTerm term |> modify
       do! persistTerm term
     }
+
+  // ** setState
 
   /// Set current RaftState to supplied state.
   let setState (rs : RaftState) (env: IRaftCallbacks) (state: RaftValue) =
@@ -464,61 +597,95 @@ module Raft =
           then Some(state.Member.Id)
           else state.CurrentLeader }
 
+  // ** setStateM
+
   /// Set current RaftState to supplied state. Monadic action.
   let setStateM (state : RaftState) =
     read >>= (setState state >> modify)
+
+  // ** getState
 
   /// Get current RaftState: Leader, Candidate or Follower
   let getState (state: RaftValue) =
     state.State
 
+  // ** getStateM
+
   /// Get current RaftState. Monadic action.
   let getStateM _ = zoomM getState
+
+  // ** getMaxLogDepth
 
   let getMaxLogDepth (state: RaftValue) =
     state.MaxLogDepth
 
+  // ** getMaxLogDepthM
+
   let getMaxLogDepthM _ = zoomM getMaxLogDepth
+
+  // ** setMaxLogDepth
 
   let setMaxLogDepth (depth: int) (state: RaftValue) =
     { state with MaxLogDepth = depth }
 
+  // ** setMaxLogDepthM
+
   let setMaxLogDepthM (depth: int) =
     setMaxLogDepth depth |> modify
+
+  // ** self
 
   /// Get Member associated with supplied raft value.
   let self (state: RaftValue) =
     state.Member
 
+  // ** selfM
+
   /// Get Member associated with supplied raft value. Monadic action.
   let selfM _ = zoomM self
 
+  // ** setOldPeers
+
   let setOldPeers (peers : Map<MemberId,RaftMember> option) (state: RaftValue) =
     { state with OldPeers = peers  } |> setNumPeers
+
+  // ** setPeersM
 
   /// Set States Members to supplied Map of Members. Monadic action.
   let setPeersM (peers: Map<_,_>) =
     setPeers peers |> modify
 
+  // ** setOldPeersM
+
   /// Set States Members to supplied Map of Members. Monadic action.
   let setOldPeersM (peers: Map<_,_> option) =
     setOldPeers peers |> modify
+
+  // ** updatePeers
 
   /// Map over States Members with supplied mapping function
   let updatePeers (f: RaftMember -> RaftMember) (state: RaftValue) =
     { state with Peers = Map.map (fun _ v -> f v) state.Peers }
 
+  // ** updatePeersM
+
   /// Map over States Members with supplied mapping function. Monadic action
   let updatePeersM (f: RaftMember -> RaftMember) =
     updatePeers f |> modify
+
+  // ** setLeader
 
   /// Set States CurrentLeader field to supplied MemberId.
   let setLeader (leader : MemberId option) (state: RaftValue) =
     { state with CurrentLeader = leader }
 
+  // ** setLeaderM
+
   /// Set States CurrentLeader field to supplied MemberId. Monadic action.
   let setLeaderM (leader : MemberId option) =
     setLeader leader |> modify
+
+  // ** setNextIndex
 
   /// Set the nextIndex field on Member corresponding to supplied Id (should it
   /// exist, that is).
@@ -526,13 +693,17 @@ module Raft =
     let mem = getMember nid state
     let nextidx = if idx < index 1 then index 1 else idx
     match mem with
-      | Some mem -> updateMember { mem with NextIndex = nextidx } cbs state
-      | _         -> state
+    | Some mem -> updateMember { mem with NextIndex = nextidx } cbs state
+    | _         -> state
+
+  // ** setNextIndexM
 
   /// Set the nextIndex field on Member corresponding to supplied Id (should it
   /// exist, that is) and supplied index. Monadic action.
   let setNextIndexM (nid : MemberId) idx =
     read >>= (setNextIndex nid idx >> modify)
+
+  // ** setAllNextIndex
 
   /// Set the nextIndex field on all Members to supplied index.
   let setAllNextIndex idx (state: RaftValue) =
@@ -547,18 +718,26 @@ module Raft =
     else
       { state with Peers = Map.map updater state.Peers }
 
+  // ** setAllNextIndexM
+
   let setAllNextIndexM idx =
     setAllNextIndex idx |> modify
+
+  // ** setMatchIndex
 
   /// Set the matchIndex field on Member to supplied index.
   let setMatchIndex nid idx env (state: RaftValue) =
     let mem = getMember nid state
     match mem with
-      | Some peer -> updateMember { peer with MatchIndex = idx } env state
-      | _         -> state
+    | Some peer -> updateMember { peer with MatchIndex = idx } env state
+    | _         -> state
+
+  // ** setMatchIndexM
 
   let setMatchIndexM nid idx =
     read >>= (setMatchIndex nid idx >> modify)
+
+  // ** setAllMatchIndex
 
   /// Set the matchIndex field on all Members to supplied index.
   let setAllMatchIndex idx (state: RaftValue) =
@@ -573,8 +752,12 @@ module Raft =
     else
       { state with Peers = Map.map updater state.Peers }
 
+  // ** setAllMatchIndexM
+
   let setAllMatchIndexM idx =
     setAllMatchIndex idx |> modify
+
+  // ** voteFor
 
   /// Remeber who we have voted for in current election.
   let voteFor (mem : RaftMember option) =
@@ -587,12 +770,16 @@ module Raft =
       do! doVoteFor state |> put
     }
 
+  // ** voteForId
+
   /// Remeber who we have voted for in current election
   let voteForId (nid : MemberId)  =
     raft {
       let! mem = getMemberM nid
       do! voteFor mem
     }
+
+  // ** resetVotes
 
   let resetVotes (state: RaftValue) =
     let resetter _ peer = Member.voteForMe peer false
@@ -603,21 +790,33 @@ module Raft =
             | Some peers -> Map.map resetter peers |> Some
             | _ -> None }
 
+  // ** resetVotesM
+
   let resetVotesM _ =
     resetVotes |> modify
+
+  // ** voteForMyself
 
   let voteForMyself _ =
     get >>= fun state -> voteFor (Some state.Member)
 
+  // ** votedForMyself
+
   let votedForMyself (state: RaftValue) =
     match state.VotedFor with
-      | Some(nid) -> nid = state.Member.Id
-      | _ -> false
+    | Some(nid) -> nid = state.Member.Id
+    | _ -> false
+
+  // ** votedFor
 
   let votedFor (state: RaftValue) =
     state.VotedFor
 
+  // ** votedForM
+
   let votedForM _ = zoomM votedFor
+
+  // ** setVoting
 
   let setVoting (mem : RaftMember) (vote : bool) (state: RaftValue) =
     let updated = Member.voteForMe mem vote
@@ -637,6 +836,8 @@ module Raft =
     else
       { state with Peers = Map.add updated.Id updated state.Peers }
 
+  // ** setVotingM
+
   let setVotingM (mem: RaftMember) (vote: bool) =
     raft {
       let msg = sprintf "setting mem %s voting to %b" (string mem.Id) vote
@@ -644,193 +845,300 @@ module Raft =
       do! setVoting mem vote |> modify
     }
 
+  // ** currentIndex
+
+  let currentIndex (state: RaftValue) =
+    Log.getIndex state.Log
+
+  // ** currentIndexM
+
   let currentIndexM _ = zoomM currentIndex
+
+  // ** numMembers
 
   let numMembers (state: RaftValue) =
     state.NumMembers
 
+  // ** numMembersM
+
   let numMembersM _ = zoomM numMembers
 
+  // ** numPeers
+
   let numPeers = numMembers
+
+  // ** numPeersM
+
   let numPeersM = numMembersM
+
+  // ** numOldPeers
 
   let numOldPeers (state: RaftValue) =
     match state.OldPeers with
-      | Some peers -> Map.fold (fun m _ _ -> m + 1) 0 peers
-      |      _     -> 0
+    | Some peers -> Map.fold (fun m _ _ -> m + 1) 0 peers
+    |      _     -> 0
+
+  // ** numOldPeersM
 
   let numOldPeersM _ = zoomM numOldPeers
+
+  // ** votingMembers
+
+  let votingMembers (state: RaftValue) =
+    votingMembersForConfig state.Peers
+
+  // ** votingMembersM
+
+  let votingMembersM _ = zoomM votingMembers
+
+  // ** votingMembersForConfig
 
   let votingMembersForConfig peers =
     let counter r _ n =
       if Member.isVoting n then r + 1 else r
     Map.fold counter 0 peers
 
-  let votingMembers (state: RaftValue) =
-    votingMembersForConfig state.Peers
-
-  let votingMembersM _ = zoomM votingMembers
+  // ** votingMembersForOldConfig
 
   let votingMembersForOldConfig (state: RaftValue) =
     match state.OldPeers with
-      | Some peers -> votingMembersForConfig peers
-      | _ -> 0
+    | Some peers -> votingMembersForConfig peers
+    | _ -> 0
+
+  // ** votingMembersForOldConfigM
 
   let votingMembersForOldConfigM _ = zoomM votingMembersForOldConfig
+
+  // ** numLogs
 
   let numLogs (state: RaftValue) =
     Log.length state.Log
 
+  // ** numLogsM
+
   let numLogsM _ = zoomM numLogs
+
+  // ** currentTerm
 
   let currentTerm (state: RaftValue) =
     state.CurrentTerm
 
+  // ** currentTermM
+
   let currentTermM _ = zoomM currentTerm
+
+  // ** firstIndex
 
   let firstIndex (term: Term) (state: RaftValue) =
     Log.firstIndex term state.Log
 
+  // ** firstIndexM
+
   let firstIndexM (term: Term) =
     firstIndex term |> zoomM
+
+  // ** currentLeader
 
   let currentLeader (state: RaftValue) =
     state.CurrentLeader
 
+  // ** currentLeaderM
+
   let currentLeaderM _ = zoomM currentLeader
+
+  // ** getLeader
 
   let getLeader (state: RaftValue) =
     currentLeader state |> Option.bind (flip getMember state)
 
+  // ** commitIndex
+
   let commitIndex (state: RaftValue) =
     state.CommitIndex
 
-  let commitIndexM _ = zoomM commitIndex
+  // ** commitIndexM
+
+  let commitIndexM () = zoomM commitIndex
+
+  // ** setCommitIndex
 
   let setCommitIndex (idx : Index) (state: RaftValue) =
     { state with CommitIndex = idx }
 
+  // ** setCommitIndexM
+
   let setCommitIndexM (idx : Index) =
     setCommitIndex idx |> modify
+
+  // ** requestTimedout
 
   let requestTimedOut (state: RaftValue) : bool =
     state.RequestTimeout <= state.TimeoutElapsed
 
+  // ** requestTimedoutM
+
   let requestTimedOutM _ = zoomM requestTimedOut
+
+  // ** electionTimedout
 
   let electionTimedOut (state: RaftValue) : bool =
     state.ElectionTimeout <= state.TimeoutElapsed
 
+  // ** electionTimedoutM
+
   let electionTimedOutM _ = zoomM electionTimedOut
+
+  // ** electionTimeout
 
   let electionTimeout (state: RaftValue) =
     state.ElectionTimeout
 
+  // ** electionTimeoutM
+
   let electionTimeoutM _ = zoomM electionTimeout
+
+  // ** timeoutElapsed
 
   let timeoutElapsed (state: RaftValue) =
     state.TimeoutElapsed
 
+  // ** timeoutElapsedM
+
   let timeoutElapsedM _ = zoomM timeoutElapsed
 
-  let setTimeoutElapsed (elapsed: Timeout) (state: RaftValue) =
+  // ** setTimeoutElapsed
+
+  let private setTimeoutElapsed (elapsed: Timeout) (state: RaftValue) =
     { state with TimeoutElapsed = elapsed }
+
+  // ** setTimeoutElapsedM
 
   let setTimeoutElapsedM (elapsed: Timeout) =
     setTimeoutElapsed elapsed |> modify
 
+  // ** requestTimeout
+
   let requestTimeout (state: RaftValue) =
     state.RequestTimeout
 
+  // ** requestTimeoutM
+
   let requestTimeoutM _ = zoomM requestTimeout
+
+  // ** setRequestTimeout
 
   let setRequestTimeout (timeout : Timeout) (state: RaftValue) =
     { state with RequestTimeout = timeout }
 
+  // ** setRequestTimeoutM
+
   let setRequestTimeoutM (timeout: Timeout) =
     setRequestTimeout timeout |> modify
+
+  // ** setElectionTimeout
 
   let setElectionTimeout (timeout : Timeout) (state: RaftValue) =
     { state with ElectionTimeout = timeout }
 
+  // ** setElectionTimeoutM
+
   let setElectionTimeoutM (timeout: Timeout) =
     setElectionTimeout timeout |> modify
 
-  let lastAppliedIdx (state: RaftValue) =
+  // ** _lastAppliedIdx
+
+  let private _lastAppliedIdx (state: RaftValue) =
     state.LastAppliedIdx
 
-  let lastAppliedIdxM _ = zoomM lastAppliedIdx
+  // ** lastAppliedIdx
 
-  let setLastAppliedIdx (idx : Index) (state: RaftValue) =
+  let lastAppliedIdx () = zoomM _lastAppliedIdx
+
+  // ** setLastAppliedIdx
+
+  let private setLastAppliedIdx (idx : Index) (state: RaftValue) =
     { state with LastAppliedIdx = idx }
+
+  // ** setLastAppliedIdxM
 
   let setLastAppliedIdxM (idx: Index) =
     setLastAppliedIdx idx |> modify
 
-  let maxLogDepth (state: RaftValue) = state.MaxLogDepth
+  // ** maxLogDepth
+
+  let private maxLogDepth (state: RaftValue) = state.MaxLogDepth
+
+  // ** maxLogDepthM
 
   let maxLogDepthM _ = zoomM maxLogDepth
 
-  let becomeFollower _ =
-    raft {
-      do! info "becomeFollower" "becoming follower"
-      do! setStateM Follower
-    }
+  // ** lastLogTerm
 
-  //////////////////////////////////////////
-  //  _                   ___             //
-  // | |    ___   __ _   / _ \ _ __  ___  //
-  // | |   / _ \ / _` | | | | | '_ \/ __| //
-  // | |__| (_) | (_| | | |_| | |_) \__ \ //
-  // |_____\___/ \__, |  \___/| .__/|___/ //
-  //             |___/        |_|         //
-  //////////////////////////////////////////
-
-  let lastLogTerm (state: RaftValue) =
+  let private lastLogTerm (state: RaftValue) =
     Log.getTerm state.Log
 
+  // ** lastLogTermM
+
   let lastLogTermM _ = zoomM lastLogTerm
+
+  // ** getEntryAt
 
   let getEntryAt (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.at idx state.Log
 
+  // ** getEntryAtM
+
   let getEntryAtM (idx: Index) = zoomM (getEntryAt idx)
 
-  let getEntriesUntil (idx : Index) (state: RaftValue) : RaftLogEntry option =
+  // ** getEntriesUntil
+
+  let private getEntriesUntil (idx : Index) (state: RaftValue) : RaftLogEntry option =
     Log.until idx state.Log
+
+  // ** getEntriesUntilM
 
   let getEntriesUntilM (idx: Index) = zoomM (getEntriesUntil idx)
 
-  let entriesUntilExcluding (idx: Index) (state: RaftValue) =
+  // ** entriesUntilExcluding
+
+  let private entriesUntilExcluding (idx: Index) (state: RaftValue) =
     Log.untilExcluding idx state.Log
+
+  // ** entriesUntilExcludingM
 
   let entriesUntilExcludingM (idx: Index) =
     entriesUntilExcluding idx |> zoomM
 
-  let handleConfigChange (log: RaftLogEntry) (state: RaftValue) =
+  // ** handleConfigChange
+
+  let private handleConfigChange (log: RaftLogEntry) (state: RaftValue) =
     match log with
-      | Configuration(_,_,_,mems,_) ->
-        let parting =
-          mems
-          |> Array.map (fun (mem: RaftMember) -> mem.Id)
-          |> Array.contains state.Member.Id
-          |> not
+    | Configuration(_,_,_,mems,_) ->
+      let parting =
+        mems
+        |> Array.map (fun (mem: RaftMember) -> mem.Id)
+        |> Array.contains state.Member.Id
+        |> not
 
-        let peers =
-          if parting then // we have been kicked out of the configuration
-            [| (state.Member.Id, state.Member) |]
-            |> Map.ofArray
-          else            // we are still part of the new cluster configuration
-            Array.map toPair mems
-            |> Map.ofArray
+      let peers =
+        if parting then // we have been kicked out of the configuration
+          [| (state.Member.Id, state.Member) |]
+          |> Map.ofArray
+        else            // we are still part of the new cluster configuration
+          Array.map toPair mems
+          |> Map.ofArray
 
-        setPeers peers state
-        |> setOldPeers None
-      | JointConsensus(_,_,_,changes,_) ->
-        let old = state.Peers
-        applyChanges changes state
-        |> setOldPeers (Some old)
-      | _ -> state
+      state
+      |> setPeers peers
+      |> setOldPeers None
+    | JointConsensus(_,_,_,changes,_) ->
+      let old = state.Peers
+      state
+      |> applyChanges changes
+      |> setOldPeers (Some old)
+    | _ -> state
+
+  // ** appendEntry
 
   //                                   _ _____       _
   //   __ _ _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __ _   _
@@ -839,7 +1147,7 @@ module Raft =
   //  \__,_| .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|   \__, |
   //       |_|   |_|                                          |___/
 
-  let appendEntry (log: RaftLogEntry) =
+  let private appendEntry (log: RaftLogEntry) =
     raft {
       let! state = get
 
@@ -852,15 +1160,18 @@ module Raft =
       return Log.getn (LogEntry.depth log) newlog
     }
 
+  // ** appendEntryM
+
   let appendEntryM (log: RaftLogEntry) =
     raft {
       let! result = appendEntry log
       match result with
-        | Some entries ->
-          do! persistLog entries
-        | _ -> ()
+      | Some entries -> do! persistLog entries
+      | _ -> ()
       return result
     }
+
+  // ** createEntryM
 
   //                      _       _____       _
   //   ___ _ __ ___  __ _| |_ ___| ____|_ __ | |_ _ __ _   _
@@ -876,8 +1187,12 @@ module Raft =
       return! appendEntryM log
     }
 
+  // ** updateLog
+
   let updateLog (log: RaftLog) (state: RaftValue) =
     { state with Log = log }
+
+  // ** updateLogEntries
 
   let updateLogEntries (entries: RaftLogEntry) (state: RaftValue) =
     { state with
@@ -885,28 +1200,33 @@ module Raft =
                 Depth = LogEntry.depth entries
                 Data  = Some entries } }
 
+  // ** removeEntry
+
   /// Delete a log entry at the index specified. Returns the original value if
   /// the record is not found.
-  let removeEntry idx (cbs: IRaftCallbacks) state =
+  let private removeEntry idx (cbs: IRaftCallbacks) state =
     match Log.at idx state.Log with
-      | Some log ->
-        match LogEntry.pop log with
-          | Some newlog ->
-            match Log.until idx state.Log with
-              | Some items ->
-                LogEntry.iter (fun _ entry -> cbs.DeleteLog entry) items
-              | _ -> ()
-            updateLogEntries newlog state
-          | _ ->
-            cbs.DeleteLog log
-            updateLog Log.empty state
-      | _ -> state
+    | Some log ->
+      match LogEntry.pop log with
+      | Some newlog ->
+        match Log.until idx state.Log with
+          | Some items -> LogEntry.iter (fun _ entry -> cbs.DeleteLog entry) items
+          | _ -> ()
+        updateLogEntries newlog state
+      | _ ->
+        cbs.DeleteLog log
+        updateLog Log.empty state
+    | _ -> state
+
+  // ** removeEntryM
 
   let removeEntryM idx =
     raft {
       let! env = read
       do! removeEntry idx env |> modify
     }
+
+  // ** makeResponse
 
   /////////////////////////////////////////////////////////////////////////////
   //     _    Receive                    _ _____       _        _            //
@@ -931,9 +1251,9 @@ module Raft =
 
       let resp =
         { Term         = term
-        ; Success      = false
-        ; CurrentIndex = current
-        ; FirstIndex   = first }
+          Success      = false
+          CurrentIndex = current
+          FirstIndex   = first }
 
       // 1) If this mem is currently candidate and both its and the requests
       // term are equal, we become follower and reset VotedFor.
@@ -957,6 +1277,8 @@ module Raft =
         return Right resp
     }
 
+  // ** handleConflicts
+
   // If an existing entry conflicts with a new one (same index
   // but different terms), delete the existing entry and all that
   // follow it (§5.3)
@@ -971,15 +1293,17 @@ module Raft =
         // find the entry in the local log that corresponds to position of
         // then log in the request and compare their terms
         match local with
-          | Some entry ->
-            if LogEntry.getTerm entry <> LogEntry.getTerm remote then
-              // removes entry at idx (and all following entries)
-              do! removeEntryM idx
-          | _ -> ()
+        | Some entry ->
+          if LogEntry.getTerm entry <> LogEntry.getTerm remote then
+            // removes entry at idx (and all following entries)
+            do! removeEntryM idx
+        | _ -> ()
       | _ ->
         if Option.isSome local then
           do! removeEntryM idx
     }
+
+  // ** applyRemainder
 
   let private applyRemainder (msg : AppendEntries) (resp : AppendResponse) =
     raft {
@@ -987,17 +1311,20 @@ module Raft =
       | Some entries ->
         let! result = appendEntryM entries
         match result with
-          | Some log ->
-            let! fst = currentTermM () >>= firstIndexM
-            return { resp with
-                      CurrentIndex = LogEntry.getIndex log
-                      FirstIndex   =
-                          match fst with
-                            | Some fidx -> fidx
-                            | _         -> msg.PrevLogIdx + (log |> LogEntry.depth |> int |> index) }
-          | _ -> return resp
+        | Some log ->
+          let! fst = currentTermM () >>= firstIndexM
+          let fidx =
+            match fst with
+            | Some fidx -> fidx
+            | _         -> msg.PrevLogIdx + (log |> LogEntry.depth |> int |> index)
+          return { resp with
+                    CurrentIndex = LogEntry.getIndex log
+                    FirstIndex   = fidx }
+        | _ -> return resp
       | _ -> return resp
     }
+
+  // ** maybeSetCommitIdx
 
   /// If leaderCommit > commitIndex, set commitIndex =
   /// min(leaderCommit, index of most recent entry)
@@ -1012,15 +1339,18 @@ module Raft =
         do! setCommitIndexM newIndex
     }
 
+  // ** processEntry
+
   let private processEntry nid msg resp =
     raft {
       do! handleConflicts msg
       let! response = applyRemainder msg resp
       do! maybeSetCommitIdx msg
       do! setLeaderM nid
-
       return { response with Success = true }
     }
+
+  // ** checkAndProcess
 
   ///  2. Reply false if log doesn't contain an entry at prevLogIndex whose
   /// term matches prevLogTerm (§5.3)
@@ -1029,18 +1359,19 @@ module Raft =
       let! current = currentIndexM ()
 
       if current < msg.PrevLogIdx then
-        let msg = sprintf "Failed (ci: %d) < (prev log idx: %d)" current msg.PrevLogIdx
-        do! debug "receiveAppendEntries" msg
+        do! msg.PrevLogIdx
+            |> sprintf "Failed (ci: %d) < (prev log idx: %d)" current
+            |> error "receiveAppendEntries"
         return resp
       else
         let term = LogEntry.getTerm entry
         if term <> msg.PrevLogTerm then
-          let str = sprintf "Failed (term %d) != (prev log term %d) (ci: %d) (prev log idx: %d)"
-                        term
-                        msg.PrevLogTerm
-                        current
-                        msg.PrevLogIdx
-          do! debug "receiveAppendEntries" str
+          do! sprintf "Failed (term %d) != (prev log term %d) (ci: %d) (prev log idx: %d)"
+                  term
+                  msg.PrevLogTerm
+                  current
+                  msg.PrevLogIdx
+              |> error "receiveAppendEntries"
           let response = { resp with CurrentIndex = msg.PrevLogIdx - index 1 }
           do! removeEntryM msg.PrevLogIdx
           return response
@@ -1048,41 +1379,7 @@ module Raft =
           return! processEntry nid msg resp
     }
 
-  let receiveAppendEntries (nid: MemberId option) (msg: AppendEntries) =
-    raft {
-      do! setTimeoutElapsedM 0<ms>      // reset timer, so we don't start an election
-
-      // log this if any entries are to be processed
-      if Option.isSome msg.Entries then
-        let! current = currentIndexM ()
-        let str =
-          sprintf "(from: %s) (term: %d) (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
-                     (string nid)
-                     msg.Term
-                     current
-                     msg.LeaderCommit
-                     msg.PrevLogIdx
-                     msg.PrevLogTerm
-                     (Option.get msg.Entries |> LogEntry.depth)    // let the world know
-        do! debug "receiveAppendEntries" str
-
-      let! result = makeResponse msg  // check terms et al match, fail otherwise
-
-      match result with
-        | Right resp ->
-          // this is not the first AppendEntry we're reeiving
-          if msg.PrevLogIdx > index 0 then
-            let! entry = getEntryAtM msg.PrevLogIdx
-            match entry with
-              | Some log -> return! checkAndProcess log nid msg resp
-              | _        ->
-                let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
-                do! debug "receiveAppendEntries" str
-                return resp
-          else
-            return! processEntry nid msg resp
-        | Left err -> return err
-    }
+  // ** updateMemberIndices
 
   /////////////////////////////////////////////////////////////////////////////
   //     _                               _ _____       _        _            //
@@ -1113,6 +1410,8 @@ module Raft =
         do! updateMemberM peer
     }
 
+  // ** shouldCommit
+
   let private shouldCommit peers state resp =
     let folder (votes : int) nid (mem : RaftMember) =
       if nid = state.Member.Id || not (Member.isVoting mem) then
@@ -1131,6 +1430,8 @@ module Raft =
     let votes = Map.fold folder 1 peers
 
     (num / 2) < votes && commit < resp.CurrentIndex
+
+  // ** updateCommitIndex
 
   let private updateCommitIndex (resp : AppendResponse) =
     raft {
@@ -1154,6 +1455,122 @@ module Raft =
         do! setCommitIndexM resp.CurrentIndex
     }
 
+  // ** receiveAppendEntries
+
+  let receiveAppendEntries (nid: MemberId option) (msg: AppendEntries) =
+    raft {
+      do! setTimeoutElapsedM 0<ms>      // reset timer, so we don't start an election
+
+      // log this if any entries are to be processed
+      if Option.isSome msg.Entries then
+        let! current = currentIndexM ()
+        let str =
+          sprintf "(from: %s) (term: %d) (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
+                     (string nid)
+                     msg.Term
+                     current
+                     msg.LeaderCommit
+                     msg.PrevLogIdx
+                     msg.PrevLogTerm
+                     (Option.get msg.Entries |> LogEntry.depth)    // let the world know
+        do! debug "receiveAppendEntries" str
+
+      let! result = makeResponse msg  // check terms et al match, fail otherwise
+
+      match result with
+      | Right resp ->
+        // this is not the first AppendEntry we're receiving
+        if msg.PrevLogIdx > index 0 then
+          let! entry = getEntryAtM msg.PrevLogIdx
+          match entry with
+            | Some log -> return! checkAndProcess log nid msg resp
+            | _        ->
+              let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
+              do! error "receiveAppendEntries" str
+              return resp
+        else
+          return! processEntry nid msg resp
+      | Left err -> return err
+    }
+
+  // ** receiveAppendEntriesResponse
+
+  let rec receiveAppendEntriesResponse (nid : MemberId) resp =
+    raft {
+      let! mem = getMemberM nid
+      match mem with
+      | None ->
+        do! string nid
+            |> sprintf "Failed: NoMember %s"
+            |> error "receiveAppendEntriesResponse"
+
+        return!
+          string nid
+          |> sprintf "Node not found: %s"
+          |> Error.asRaftError (tag "receiveAppendEntriesResponse")
+          |> failM
+      | Some peer ->
+        if resp.CurrentIndex <> index 0 && resp.CurrentIndex < peer.MatchIndex then
+          let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
+                        resp.CurrentIndex
+                        peer.MatchIndex
+          do! error "receiveAppendEntriesResponse" str
+          // set to current index at follower and try again
+          do! updateMemberM { peer with
+                                NextIndex = resp.CurrentIndex + 1<index>
+                                MatchIndex = resp.CurrentIndex }
+          return ()
+        else
+          let! state = get
+
+          // we only process this if we are indeed the leader of the pack
+          if isLeader state then
+            let term = currentTerm state
+            //  If response contains term T > currentTerm: set currentTerm = T
+            //  and convert to follower (§5.3)
+            if term < resp.Term then
+              let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
+              do! error "receiveAppendEntriesResponse" str
+              do! setTermM resp.Term
+              do! becomeFollower ()
+            elif term <> resp.Term then
+              let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
+              do! error "receiveAppendEntriesResponse" str
+            elif not resp.Success then
+              // If AppendEntries fails because of log inconsistency:
+              // decrement nextIndex and retry (§5.3)
+              if resp.CurrentIndex < peer.NextIndex - 1<index> then
+                let! idx = currentIndexM ()
+                let nextIndex = min (resp.CurrentIndex + 1<index>) idx
+
+                do! nextIndex
+                    |> sprintf "Failed: cidx < nxtidx. setting nextIndex for %O to %d" peer.Id
+                    |> error "receiveAppendEntriesResponse"
+
+                do! setNextIndexM peer.Id nextIndex
+                do! setMatchIndexM peer.Id (nextIndex - 1<index>)
+              else
+                let nextIndex = peer.NextIndex - index 1
+
+                do! nextIndex
+                    |> sprintf "Failed: cidx >= nxtidx. setting nextIndex for %O to %d" peer.Id
+                    |> error "receiveAppendEntriesResponse"
+
+                do! setNextIndexM peer.Id nextIndex
+                do! setMatchIndexM peer.Id (nextIndex - index 1)
+            else
+              do! debug "receiveAppendEntriesResponse" "success"
+              do! updateMemberIndices resp peer
+              do! updateCommitIndex resp
+          else
+            return!
+              "Not Leader"
+              |> Error.asRaftError (tag "receiveAppendEntriesResponse")
+              |> failM
+    }
+
+  // ** sendAppendEntry
+
   let sendAppendEntry (peer: RaftMember) =
     raft {
       let! state = get
@@ -1172,133 +1589,39 @@ module Raft =
                               match result with
                                 | Some(entry) -> LogEntry.getTerm entry
                                 | _           -> request.Term }
-        return! sendAppendEntriesM peer request
+        do! sendAppendEntriesM peer request
       else
-        return! sendAppendEntriesM peer request
+        do! sendAppendEntriesM peer request
     }
+
+  // ** sendRemainingEntries
 
   let private sendRemainingEntries peerid =
     raft {
       let! peer = getMemberM peerid
       match peer with
-        | Some mem ->
-          let! entry = getEntryAtM (Member.getNextIndex mem)
-          if Option.isSome entry then
-            let! request = sendAppendEntry mem
-            return Hopac.run request
-          else
-            return None
-        | _ ->
-          return None
+      | Some mem ->
+        let! entry = getEntryAtM (Member.getNextIndex mem)
+        if Option.isSome entry then
+          do! sendAppendEntry mem
+      | _ -> return ()
     }
 
-  let rec receiveAppendEntriesResponse (nid : MemberId) resp =
-    raft {
-      let! mem = getMemberM nid
-      match mem with
-      | None ->
-        do! debug "receiveAppendEntriesResponse" (sprintf "Failed: NoMember %s" (string nid))
-        return!
-          sprintf "Node not found: %s" (string nid)
-          |> Error.asRaftError (tag "receiveAppendEntriesResponse")
-          |> failM
-      | Some peer ->
-        if resp.CurrentIndex <> index 0 && resp.CurrentIndex < peer.MatchIndex then
-          let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
-                        resp.CurrentIndex
-                        peer.MatchIndex
-          do! debug "receiveAppendEntriesResponse" str
-          // set to current index at follower and try again
-          do! updateMemberM { peer with
-                                NextIndex = resp.CurrentIndex + 1<index>
-                                MatchIndex = resp.CurrentIndex }
-          return ()
-        else
-          let! state = get
+  // ** sendAllAppendEntriesM
 
-          // we only process this if we are indeed the leader of the pack
-          if isLeader state then
-            let term = currentTerm state
-            //  If response contains term T > currentTerm: set currentTerm = T
-            //  and convert to follower (§5.3)
-            if term < resp.Term then
-              let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
-              do! debug "receiveAppendEntriesResponse" str
-              do! setTermM resp.Term
-              do! becomeFollower ()
-              return ()
-            elif term <> resp.Term then
-              let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
-              do! debug "receiveAppendEntriesResponse" str
-              return ()
-            elif not resp.Success then
-              // If AppendEntries fails because of log inconsistency:
-              // decrement nextIndex and retry (§5.3)
-              if resp.CurrentIndex < peer.NextIndex - 1<index> then
-                let! idx = currentIndexM ()
-                let nextIndex = min (resp.CurrentIndex + 1<index>) idx
-
-                let str = sprintf "Failed: cidx < nxtidx. setting nextIndex for %s to %d"
-                              (string peer.Id)
-                              nextIndex
-                do! debug "receiveAppendEntriesResponse" str
-
-                do! setNextIndexM peer.Id nextIndex
-                do! setMatchIndexM peer.Id (nextIndex - 1<index>)
-              else
-                let nextIndex = peer.NextIndex - index 1
-
-                let str = sprintf "Failed: cidx >= nxtidx. setting nextIndex for %s to %d"
-                              (string peer.Id)
-                              nextIndex
-                do! debug "receiveAppendEntriesResponse" str
-
-                do! setNextIndexM peer.Id nextIndex
-                do! setMatchIndexM peer.Id (nextIndex - index 1)
-            else
-              do! updateMemberIndices resp peer
-              do! updateCommitIndex resp
-          else
-            return!
-              "Not Leader"
-              |> Error.asRaftError (tag "receiveAppendEntriesResponse")
-              |> failM
-
-    }
-
-  let sendAllAppendEntriesM _ =
+  let sendAllAppendEntriesM () =
     raft {
       let! self = getSelfM ()
       let! peers = logicalPeersM ()
 
-      let requests = ref [| |]
-
-      for peer in peers do
-        if peer.Value.Id <> self.Id then
-          let! request = sendAppendEntry peer.Value
-          requests := Array.append [| (peer.Value, request) |] !requests
-
-      if Array.length !requests > 0 then
-        let responses =
-          !requests
-          |> Array.map snd
-          |> Job.conCollect
-          |> Hopac.run
-          |> fun arr -> arr.ToArray()
-          |> Array.zip (Array.map fst !requests)
-
-        for (mem, response) in responses do
-          match response with
-          | Some resp ->
-            do! receiveAppendEntriesResponse mem.Id resp
-            let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
-            if peer.State = Failed then
-              do! setMemberStateM mem.Id Running
-          | _ ->
-            do! setMemberStateM mem.Id Failed
+      for KeyValue(id,peer) in peers do
+        if id <> self.Id then
+          do! sendAppendEntry peer
 
       do! setTimeoutElapsedM 0<ms>
     }
+
+  // ** createSnapshot
 
   ///////////////////////////////////////////////////
   //  ____                        _           _    //
@@ -1310,28 +1633,31 @@ module Raft =
   ///////////////////////////////////////////////////
 
   /// utiltity to create a snapshot for the current application and raft state
-  let createSnapshot (data: StateMachine) (state: RaftValue) =
+  let createSnapshot (state: RaftValue) (data: StateMachine) =
     let peers = Map.toArray state.Peers |> Array.map snd
     Log.snapshot peers data state.Log
 
-  let sendInstallSnapshot mem =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          match cbs.RetrieveSnapshot () with
-            | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
-              let is =
-                { Term      = state.CurrentTerm
-                ; LeaderId  = state.Member.Id
-                ; LastIndex = idx
-                ; LastTerm  = term
-                ; Data      = snapshot
-                }
-              return cbs.SendInstallSnapshot mem is
-            | _ -> return None
-        }
-        |> returnM
+  // ** sendInstallSnapshot
 
+  let sendInstallSnapshot mem =
+    raft {
+      let! state = get
+      let! cbs = read
+
+      match cbs.RetrieveSnapshot () with
+      | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
+        let is =
+          { Term      = state.CurrentTerm
+          ; LeaderId  = state.Member.Id
+          ; LastIndex = idx
+          ; LastTerm  = term
+          ; Data      = snapshot
+          }
+        cbs.SendInstallSnapshot mem is
+      | _ -> ()
+    }
+
+  // ** responseCommitted
 
   ///////////////////////////////////////////////////////////////////
   //  ____               _             _____       _               //
@@ -1360,6 +1686,8 @@ module Raft =
             return resp.Index <= cidx
     }
 
+  // ** updateCommitIdx
+
   let private updateCommitIdx (state: RaftValue) =
     let idx =
       if state.NumMembers = 1 then
@@ -1367,6 +1695,8 @@ module Raft =
       else
         state.CommitIndex
     { state with CommitIndex = idx }
+
+  // ** handleLog
 
   let private handleLog entry resp =
     raft {
@@ -1376,8 +1706,6 @@ module Raft =
       | Some appended ->
         let! state = get
         let! peers = logicalPeersM ()
-
-        let requests = ref [| |]
 
         // iterate through all peers and call sendAppendEntries to each
         for peer in peers do
@@ -1395,30 +1723,11 @@ module Raft =
             if difference <= (index (int state.MaxLogDepth) + 1<index>) then
               // Only send new entries. Don't send the entry to peers who are
               // behind, to prevent them from becoming congested.
-              let! request = sendAppendEntry mem
-              requests := Array.append [| (mem,request) |] !requests
+              do! sendAppendEntry mem
             else
               // because this mem is way behind in the cluster, get it up to speed
               // with a snapshot
-              let! request = sendInstallSnapshot mem
-              requests := Array.append [| (mem,request) |] !requests
-
-        let results =
-          Array.map snd !requests
-          |> Job.conCollect
-          |> Hopac.run
-          |> fun arr -> arr.ToArray()
-          |> Array.zip (Array.map fst !requests)
-
-        for (mem, response) in results do
-          match response with
-          | Some resp ->
-            do! receiveAppendEntriesResponse mem.Id resp
-            let! peer = getMemberM mem.Id >>= (Option.get >> returnM)
-            if peer.State = Failed then
-              do! setMemberStateM mem.Id Running
-          | _ ->
-            do! setMemberStateM mem.Id Failed
+              do! sendInstallSnapshot mem
 
         do! updateCommitIdx |> modify
 
@@ -1433,6 +1742,8 @@ module Raft =
           |> Error.asRaftError (tag "handleLog")
           |> failM
     }
+
+  // ** receiveEntry
 
   ///                    _           _____       _
   ///  _ __ ___  ___ ___(_)_   _____| ____|_ __ | |_ _ __ _   _
@@ -1486,6 +1797,8 @@ module Raft =
           |> failM
     }
 
+  // ** calculateChanges
+
   ////////////////////////////////////////////////////////////////
   //     _                _         _____       _               //
   //    / \   _ __  _ __ | |_   _  | ____|_ __ | |_ _ __ _   _  //
@@ -1512,10 +1825,14 @@ module Raft =
           | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
     |> List.toArray
 
+  // ** notifyChange
+
   let notifyChange (cbs: IRaftCallbacks) change =
     match change with
       | MemberAdded(mem)   -> cbs.MemberAdded   mem
       | MemberRemoved(mem) -> cbs.MemberRemoved mem
+
+  // ** applyEntry
 
   let applyEntry (cbs: IRaftCallbacks) = function
     | JointConsensus(_,_,_,changes,_) -> Array.iter (notifyChange cbs) changes
@@ -1525,7 +1842,9 @@ module Raft =
       cbs.PersistSnapshot snapshot
       cbs.ApplyLog data
 
-  let applyEntries _ =
+  // ** applyEntries
+
+  let applyEntries () =
     raft {
       let! state = get
       let lai = state.LastAppliedIdx
@@ -1596,6 +1915,8 @@ module Raft =
         | _ ->
           do! debug "applyEntries" (sprintf "no log entries found for index %d" logIdx)
     }
+
+  // ** receiveInstallSnapshot
 
   (*
    *  ____               _
@@ -1697,7 +2018,9 @@ module Raft =
           |> failM
     }
 
-  let maybeSnapshot _ =
+  // ** maybeSnapshot
+
+  let maybeSnapshot () =
     raft {
       let! state = get
       if Log.length state.Log >= int state.MaxLogDepth then
@@ -1711,6 +2034,8 @@ module Raft =
           | _ -> ()
         | _ -> ()
     }
+
+  // ** majority
 
   ///////////////////////////////////////////////
   //  _____ _           _   _                  //
@@ -1741,15 +2066,21 @@ module Raft =
     else
       yays > (total / 2)
 
+  // ** regularMajorityM
+
   /// Determine whether a vote count constitutes a majority in the *regular*
   /// configuration (does not cover the joint consensus state).
   let regularMajorityM votes =
     votingMembersM () >>= fun num ->
       majority num votes |> returnM
 
+  // ** oldConfigMajorityM
+
   let oldConfigMajorityM votes =
     votingMembersForOldConfigM () >>= fun num ->
       majority num votes |> returnM
+
+  // ** numVotesForConfig
 
   let numVotesForConfig (self: RaftMember) (votedFor: MemberId option) peers =
     let counter m _ (peer : RaftMember) =
@@ -1764,17 +2095,27 @@ module Raft =
 
     Map.fold counter start peers
 
+  // ** numVotesForMe
+
   let numVotesForMe (state: RaftValue) =
     numVotesForConfig state.Member state.VotedFor state.Peers
 
+  // ** numVotesForMeM
+
   let numVotesForMeM _ = zoomM numVotesForMe
+
+  // ** numVotesForMeOldConfig
 
   let numVotesForMeOldConfig (state: RaftValue) =
     match state.OldPeers with
       | Some peers -> numVotesForConfig state.Member state.VotedFor peers
       |      _     -> 0
 
+  // ** numVotesForMeOldConfigM
+
   let numVotesForMeOldConfigM _ = zoomM numVotesForMeOldConfig
+
+  // ** maybeSetIndex
 
   /////////////////////////////////////////////////////////////////////////////
   //  ____                                  _                   _            //
@@ -1791,6 +2132,8 @@ module Raft =
       else peer
     updatePeersM mapper
 
+  // ** becomeLeader
+
   /// Become leader afer a successful election
   let becomeLeader _ =
     raft {
@@ -1801,6 +2144,52 @@ module Raft =
       do! maybeSetIndex state.Member.Id nextidx (index 0)
       do! sendAllAppendEntriesM ()
     }
+
+  // ** becomeFollower
+
+  let becomeFollower _ =
+    raft {
+      do! info "becomeFollower" "becoming follower"
+      do! setStateM Follower
+    }
+
+  // ** becomeCandidate
+
+  //  ____
+  // | __ )  ___  ___ ___  _ __ ___   ___
+  // |  _ \ / _ \/ __/ _ \| '_ ` _ \ / _ \
+  // | |_) |  __/ (_| (_) | | | | | |  __/
+  // |____/ \___|\___\___/|_| |_| |_|\___|
+  //   ____                _ _     _       _
+  //  / ___|__ _ _ __   __| (_) __| | __ _| |_ ___
+  // | |   / _` | '_ \ / _` | |/ _` |/ _` | __/ _ \
+  // | |__| (_| | | | | (_| | | (_| | (_| | ||  __/
+  //  \____\__,_|_| |_|\__,_|_|\__,_|\__,_|\__\___|
+
+  /// After timeout a Member must become Candidate
+  let becomeCandidate () =
+    raft {
+      do! info "becomeCandidate" "becoming candidate"
+
+      let! state = get
+
+      let term = state.CurrentTerm + 1<term>
+      do! debug "becomeCandidate" <| sprintf "setting term to %d" term
+      do! setTermM term
+
+      do! resetVotesM ()
+      do! voteForMyself ()
+      do! setLeaderM None
+      do! setStateM Candidate
+      // 150–300ms see page 6 in https://raft.github.io/raft.pdf
+      let elapsed = 1<ms> * rand.Next(10, int state.ElectionTimeout)
+      do! debug "becomeCandidate" <| sprintf "setting timeoutElapsed to %d" elapsed
+      do! setTimeoutElapsedM elapsed
+
+      do! requestAllVotes ()
+    }
+
+  // ** receiveVoteResponse
 
   ///////////////////////////////////////////////////////////////
   // __     __    _       ____ Send ->                    _    //
@@ -1815,40 +2204,48 @@ module Raft =
     raft {
         let! state = get
 
-        let str = sprintf "%s responded to vote request with: %s"
-                    (string nid)
-                    (if vote.Granted then "granted" else "not granted")
-        do! debug "receiveVoteResponse" str
+        do! (if vote.Granted then "granted" else "not granted")
+            |> sprintf "%O responded to vote request with: %s" nid
+            |> debug "receiveVoteResponse"
 
         /// The term must not be bigger than current raft term,
         /// otherwise set term to vote term become follower.
         if vote.Term > state.CurrentTerm then
-          let str = sprintf "(vote term: %d) > (current term: %d). Setting to %d."
-                      vote.Term
-                      state.CurrentTerm
-                      state.CurrentTerm
-          do! debug "receiveVoteResponse" str
+          do! sprintf "(vote term: %d) > (current term: %d). Setting to %d."
+                vote.Term
+                state.CurrentTerm
+                state.CurrentTerm
+              |> debug "receiveVoteResponse"
           do! setTermM vote.Term
           do! becomeFollower ()
 
         /// If the vote term is smaller than current term it is considered an
         /// error and the client will be notified.
         elif vote.Term < state.CurrentTerm then
-          let str = sprintf "Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
-                      vote.Term
-                      state.CurrentTerm
-          do! debug "receiveVoteResponse" str
+          do! sprintf "Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
+                vote.Term
+                state.CurrentTerm
+              |> debug "receiveVoteResponse"
           return!
             "Vote Term Mismatch"
             |> Error.asRaftError (tag "receiveVoteResponse")
             |> failM
 
         /// Process the vote if current state of our Raft must be candidate..
-        elif state.State = Candidate then
-
-          if vote.Granted then
-            let! mem = getMemberM nid
-            match mem with
+        else
+          match state.State with
+          | Leader -> return ()
+          | Follower ->
+            /// ...otherwise we respond with the respective RaftError.
+            do! debug "receiveVoteResponse" "Failed: NotCandidate"
+            return!
+              "Not Candidate"
+              |> Error.asRaftError (tag "receiveVoteResponse")
+              |> failM
+          | Candidate ->
+            if vote.Granted then
+              let! mem = getMemberM nid
+              match mem with
               // Could not find the mem in current configuration(s)
               | None ->
                 do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
@@ -1877,11 +2274,10 @@ module Raft =
                   let! oldConfig =
                     numVotesForMeOldConfigM () >>= oldConfigMajorityM
 
-                  let str =
-                    sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
-                      newConfig
-                      oldConfig
-                  do! debug "receiveVoteResponse" str
+                  do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
+                        newConfig
+                        oldConfig
+                      |> debug "receiveVoteResponse"
 
                   // and finally, become leader if we have a majority in either
                   // configuration
@@ -1899,82 +2295,54 @@ module Raft =
                   let! majority =
                     numVotesForMeM () >>= regularMajorityM
 
-                  do! debug "receiveVoteResponse" <| sprintf "(majority for config: %b)" majority
+                  do! sprintf "(majority for config: %b)" majority
+                      |> debug "receiveVoteResponse"
 
                   if majority then
                     do! becomeLeader ()
-
-        /// ...otherwise we respond with the respective RaftError.
-        else
-          do! debug "receiveVoteResponse" "Failed: NotCandidate"
-          return!
-            "Not Candidate"
-            |> Error.asRaftError (tag "receiveVoteResponse")
-            |> failM
       }
+
+  // ** sendVoteRequest
 
   /// Request a from a given peer
   let sendVoteRequest (mem : RaftMember) =
-    get >>= fun state ->
-      read >>= fun cbs ->
-        job {
-          if mem.State = Running || mem.State = Failed then
-            let vote =
-              { Term         = state.CurrentTerm
-                Candidate    = state.Member
-                LastLogIndex = Log.getIndex state.Log
-                LastLogTerm  = Log.getTerm state.Log }
+    raft {
+      let! state = get
+      let! cbs = read
 
-            mem.State
+      if mem.State = Running || mem.State = Failed then
+        let vote =
+          { Term         = state.CurrentTerm
+            Candidate    = state.Member
+            LastLogIndex = Log.getIndex state.Log
+            LastLogTerm  = Log.getTerm state.Log }
+
+        do! mem.State
             |> sprintf "(to: %s) (state: %A)" (string mem.Id)
-            |> Logger.debug "sendVoteRequest"
+            |> debug "sendVoteRequest"
 
-            let result = cbs.SendRequestVote mem vote
-            return result
-          else
-            mem.State
-            |> sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
-                (string mem.Id)
-                (Member.isVoting mem)
-            |> Logger.debug "sendVoteRequest"
+        cbs.SendRequestVote mem vote
+      else
+        do! sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
+              (string mem.Id)
+              (Member.isVoting mem)
+              mem.State
+            |> debug "sendVoteRequest"
+    }
 
-            return None
-        }
-        |> returnM
+  // ** requestAllVotes
 
-  let requestAllVotes _ =
+  let requestAllVotes () =
     raft {
         let! self = getSelfM ()
         let! peers = logicalPeersM ()
-
         do! info "requestAllVotes" "requesting all votes"
-
-        let requests = ref [| |]
-
         for peer in peers do
           if self.Id <> peer.Value.Id then
-            let! request = sendVoteRequest peer.Value
-            requests := Array.append [| (peer.Value, request) |] !requests
-
-        if Array.length !requests > 0 then
-          let responses =
-            !requests
-            |> Array.map snd
-            |> Job.conCollect
-            |> Hopac.run
-            |> fun arr -> arr.ToArray()
-            |> Array.zip (Array.map fst !requests)
-
-          for (mem, response) in responses do
-            let! leader = isLeaderM ()
-            if not leader then                          // check if raft is already leader
-              match response with                     // otherwise process the vote
-              | Some resp ->
-                do! receiveVoteResponse mem.Id resp
-                do! setMemberStateM mem.Id Running
-              | _ ->
-                do! setMemberStateM mem.Id Failed      // mark mem as failed (calls the callback)
+            do! sendVoteRequest peer.Value
       }
+
+  // ** validateTerm
 
   ///////////////////////////////////////////////////////
   //   ____  Should I?       _    __     __    _       //
@@ -1990,28 +2358,40 @@ module Raft =
     let err = RaftError (tag "shouldGrantVote","Invalid Term")
     (vote.Term < state.CurrentTerm, err)
 
+  // ** alreadyVoted
+
   let private alreadyVoted (state: RaftValue) =
     let err = RaftError (tag "shouldGrantVote","Already Voted")
     (Option.isSome state.VotedFor, err)
 
+  // ** validateLastLog
+
   let private validateLastLog vote state =
     let err = RaftError (tag "shouldGrantVote","Invalid Last Log")
     let result =
-         vote.LastLogTerm = lastLogTerm state &&
-         currentIndex state <= vote.LastLogIndex
+      vote.LastLogTerm = lastLogTerm state &&
+      currentIndex state <= vote.LastLogIndex
     (result,err)
+
+  // ** validateLastLogTerm
 
   let private validateLastLogTerm vote state =
     let err = RaftError (tag "shouldGrantVote","Invalid LastLogTerm")
     (lastLogTerm state < vote.LastLogTerm, err)
 
+  // ** validateCurrentIdx
+
   let private validateCurrentIdx state =
     let err = RaftError (tag "shouldGrantVote","Invalid Current Index")
     (currentIndex state = index 0, err)
 
+  // ** validateCandiate
+
   let private validateCandidate (vote: VoteRequest) state =
     let err = RaftError (tag "shouldGrantVote","Candidate Unknown")
     (getMember vote.Candidate.Id state |> Option.isNone, err)
+
+  // ** shouldGrantVote
 
   let shouldGrantVote (vote : VoteRequest) =
     raft {
@@ -2040,6 +2420,8 @@ module Raft =
       return result
     }
 
+  // ** maybeResetFollower
+
   ///////////////////////////////////////////////////////////////
   // __     __    _       ____ Receive->                  _    //
   // \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_  //
@@ -2058,6 +2440,8 @@ module Raft =
         do! becomeFollower ()
         do! voteFor None
     }
+
+  // ** processVoteRequest
 
   let private processVoteRequest (vote : VoteRequest) =
     raft {
@@ -2087,6 +2471,8 @@ module Raft =
                    Reason  = Some err }
     }
 
+  // ** receiveVoteRequest
+
   let receiveVoteRequest (nid : MemberId) (vote : VoteRequest) =
     raft {
       let! mem = getMemberM nid
@@ -2111,39 +2497,7 @@ module Raft =
                    Reason  = Some err }
     }
 
-  //  ____
-  // | __ )  ___  ___ ___  _ __ ___   ___
-  // |  _ \ / _ \/ __/ _ \| '_ ` _ \ / _ \
-  // | |_) |  __/ (_| (_) | | | | | |  __/
-  // |____/ \___|\___\___/|_| |_| |_|\___|
-  //   ____                _ _     _       _
-  //  / ___|__ _ _ __   __| (_) __| | __ _| |_ ___
-  // | |   / _` | '_ \ / _` | |/ _` |/ _` | __/ _ \
-  // | |__| (_| | | | | (_| | | (_| | (_| | ||  __/
-  //  \____\__,_|_| |_|\__,_|_|\__,_|\__,_|\__\___|
-
-  /// After timeout a Member must become Candidate
-  let becomeCandidate () =
-    raft {
-      do! info "becomeCandidate" "becoming candidate"
-
-      let! state = get
-
-      let term = state.CurrentTerm + 1<term>
-      do! debug "becomeCandidate" <| sprintf "setting term to %d" term
-      do! setTermM term
-
-      do! resetVotesM ()
-      do! voteForMyself ()
-      do! setLeaderM None
-      do! setStateM Candidate
-
-      let elapsed = 1<ms> * rand.Next(15, int state.ElectionTimeout)
-      do! debug "becomeCandidate" <| sprintf "setting timeoutElapsed to %d" elapsed
-      do! setTimeoutElapsedM elapsed
-
-      do! requestAllVotes ()
-    }
+  // ** startElection
 
   //  ____  _             _     _____ _           _   _
   // / ___|| |_ __ _ _ __| |_  | ____| | ___  ___| |_(_) ___  _ __
@@ -2163,6 +2517,8 @@ module Raft =
       do! debug "startElection" str
       do! becomeCandidate ()
     }
+
+  // ** periodic
 
   //  ____           _           _ _
   // |  _ \ ___ _ __(_) ___   __| (_) ___
@@ -2209,7 +2565,7 @@ module Raft =
           do! recountPeers ()
 
       let! coi = commitIndexM ()
-      let! lai = lastAppliedIdxM ()
+      let! lai = lastAppliedIdx ()
 
       if lai < coi then
         do! applyEntries ()

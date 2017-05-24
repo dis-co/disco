@@ -14,7 +14,7 @@ open Iris.Service
 module PersistenceTests =
 
   let mkPin group =
-    Pin.Toggle(mk(), rndstr(), group, mkTags(), [| true |])
+    Pin.toggle (mk()) (rndstr()) group (mkTags()) [| true |]
 
   let mkProject () =
     either {
@@ -32,13 +32,14 @@ module PersistenceTests =
       let! (machine, project) = mkProject ()
       return
         machine,
-        { Project   = project
-          PinGroups = Map.empty
-          Cues      = Map.empty
-          CueLists  = Map.empty
-          Sessions  = Map.empty
-          Users     = Map.empty
-          Clients   = Map.empty
+        { Project            = project
+          PinGroups          = Map.empty
+          Cues               = Map.empty
+          CueLists           = Map.empty
+          Sessions           = Map.empty
+          Users              = Map.empty
+          Clients            = Map.empty
+          CuePlayers         = Map.empty
           DiscoveredServices = Map.empty }
     }
 
@@ -71,6 +72,38 @@ module PersistenceTests =
 
         expect "state should contain PinGroup" true (Map.containsKey group.Id >> not)  updated.PinGroups
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
+      }
+      |> noError
+
+  let test_persist_add_cueplayers_correctly =
+    testCase "persist add cueplayers correctly" <| fun _ ->
+      either {
+        let player = mkCuePlayer()
+        let! (machine, state) = mkState () |> Either.map (State.addCuePlayer player |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddCuePlayer player)
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        expect "state should contain CuePlayer" true (Map.containsKey player.Id) state.CuePlayers
+        expect "Cueplayers should be the same" state.CuePlayers id loaded.CuePlayers
+      }
+      |> noError
+
+  let test_persist_remove_cueplayers_correctly =
+    testCase "persist remove cueplayers correctly" <| fun _ ->
+      either {
+        let player = mkCuePlayer()
+        let! (machine, state) = mkState () |> Either.map (State.addCuePlayer player |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddCuePlayer player)
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
+
+        expect "state should contain PinGroup" true (Map.containsKey player.Id) state.CuePlayers
+        expect "Cueplayers should be the same" state.CuePlayers id loaded.CuePlayers
+
+        let updated = State.removeCuePlayer player loaded
+        let! _ = Persistence.persistEntry state (RemoveCuePlayer player)
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
+
+        expect "state should contain CuePlayer" true (Map.containsKey player.Id >> not)  updated.CuePlayers
+        expect "Cueplayers should be the same" updated.CuePlayers id loaded.CuePlayers
       }
       |> noError
 
@@ -129,4 +162,6 @@ module PersistenceTests =
       test_persist_remove_pingroups_correctly
       test_persist_add_pin_correctly
       test_persist_remove_pin_correctly
+      test_persist_add_cueplayers_correctly
+      test_persist_remove_cueplayers_correctly
     ]

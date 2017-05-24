@@ -15,26 +15,7 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<byte array>>
-
-  // ** createListener
-
-  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          subscriptions.TryAdd(guid, obs)
-          |> ignore
-
-          { new IDisposable with
-              member self.Dispose() =
-                subscriptions.TryRemove(guid)
-                |> ignore } }
-
-  // ** notify
-
-  let private notify (subscriptions: Subscriptions) (ev: byte array) =
-    for KeyValue(_,subscription) in subscriptions do
-      subscription.OnNext ev
+  type private Subscriptions = Subscriptions<byte array>
 
   /// ## Sub
   ///
@@ -45,7 +26,7 @@ module Sub =
   /// - prefix:  string prefix to match traffic to
   ///
   /// Returns: instance of Sub
-  type Sub (addr: string, prefix: string) =
+  type Sub (addr: string, prefix: string, ctx: ZContext) =
 
     let tag = sprintf "Sub.%s"
 
@@ -54,7 +35,6 @@ module Sub =
     let mutable disposed = false
     let mutable run = true
     let mutable sock: ZSocket = null
-    let mutable ctx : ZContext = null
     let mutable thread: Thread = null
     let mutable error : Exception option = None
     let mutable starter: AutoResetEvent = new AutoResetEvent(false)
@@ -89,7 +69,6 @@ module Sub =
       ///
       if isNull sock then
         try
-          ctx  <- new ZContext()
           sock <- new ZSocket(ctx, ZSocketType.SUB)
           sock.Connect(addr)
           sock.Subscribe(prefix)
@@ -117,7 +96,7 @@ module Sub =
           |> sprintf "[%s] Got %d bytes long message on " addr
           |> Logger.debug (tag "worker")
 
-          notify subscriptions bytes
+          Observable.notify subscriptions bytes
 
           dispose msg
 
@@ -143,7 +122,6 @@ module Sub =
 
       tryClose  sock
       tryDispose sock ignore
-      tryDispose ctx ignore
 
       disposed <- true
 
@@ -177,8 +155,7 @@ module Sub =
         |> Either.fail
 
     member self.Subscribe (callback: byte array -> unit) =
-      let guid = Guid.NewGuid()
-      let listener = createListener guid subscriptions
+      let listener = Observable.createListener subscriptions
       { new IObserver<byte array> with
           member self.OnCompleted() = ()
           member self.OnError(error) = ()

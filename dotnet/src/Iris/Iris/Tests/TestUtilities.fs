@@ -3,11 +3,23 @@ namespace Iris.Tests
 open Expecto
 open System
 open System.IO
+open System.Threading
 open Iris.Raft
 open Iris.Core
+open SharpYaml.Serialization
 
 [<AutoOpen>]
 module TestUtilities =
+
+  let waitOrDie (tag: string) (are: AutoResetEvent) =
+    let timeout = 3000.0
+    if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
+      Either.succeed()
+    else
+      sprintf "Timout after %f waiting for %s" timeout tag
+      |> Error.asOther "test"
+      |> Either.fail
+
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
@@ -67,6 +79,9 @@ module TestData =
     |> uint16
     |> port
 
+  let rndint() =
+    rand.Next()
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -100,7 +115,10 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.Toggle(mk(), rndstr(), mk(), mkTags(), [| true |])
+    Pin.toggle (mk()) (rndstr()) (mk()) (mkTags()) [| true |]
+
+  let mkOptional(f:unit->'T): 'T option =
+    if rand.Next(0,2) > 0 then f() |> Some else None
 
   let mkDiscoveredService() =
     { Id = Id.Create()
@@ -133,18 +151,18 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.Bang      (mk(), rndstr(), mk(), mkTags(), mkBools())
-    ;  Pin.Toggle    (mk(), rndstr(), mk(), mkTags(), mkBools())
-    ;  Pin.String    (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.MultiLine (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.FileName  (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Directory (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Url       (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.IP        (mk(), rndstr(), mk(), mkTags(), mkStrings())
-    ;  Pin.Number    (mk(), rndstr(), mk(), mkTags(), mkNumbers())
-    ;  Pin.Bytes     (mk(), rndstr(), mk(), mkTags(), mkBytes())
-    ;  Pin.Color     (mk(), rndstr(), mk(), mkTags(), mkColors())
-    ;  Pin.Enum      (mk(), rndstr(), mk(), mkTags(), mkProps(), mkProps())
+    [| Pin.bang      (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.toggle    (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.string    (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.multiLine (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.fileName  (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.directory (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.url       (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.ip        (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.number    (mk()) (rndstr()) (mk()) (mkTags()) (mkNumbers())
+    ;  Pin.bytes     (mk()) (rndstr()) (mk()) (mkTags()) (mkBytes())
+    ;  Pin.color     (mk()) (rndstr()) (mk()) (mkTags()) (mkColors())
+    ;  Pin.enum      (mk()) (rndstr()) (mk()) (mkTags()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =
@@ -175,15 +193,45 @@ module TestData =
       Joined = System.DateTime.Now
       Created = System.DateTime.Now }
 
+  let mkCuePlayer() =
+    let rndopt () =
+      if rand.Next(0,2) > 0 then
+        Some (rndstr() |> Id)
+      else
+        None
+
+    { Id = Id.Create()
+      Name = rndname ()
+      CueList = rndopt ()
+      Selected = index (rand.Next(0,1000))
+      Call = mkPin()
+      Next = mkPin()
+      Previous = mkPin()
+      RemainingWait = rand.Next(0,1000)
+      LastCaller = rndopt()
+      LastCalled = rndopt() }
+
   let mkUsers () =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkUser() |]
 
   let mkCue () : Cue =
-    { Id = Id.Create(); Name = rndstr(); Slices = mkSlices() }
+    { Id = Id.Create(); Name = rndname(); Slices = mkSlices() }
 
   let mkCues () =
     [| for n in 0 .. rand.Next(1,20) -> mkCue() |]
+
+  let mkCueRef () : CueReference =
+    { Id = Id.Create(); CueId = Id.Create(); AutoFollow = rndint(); Duration = rndint(); Prewait = rndint() }
+
+  let mkCueRefs () : CueReference array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
+
+  let mkCueGroup () : CueGroup =
+    { Id = Id.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+
+  let mkCueGroups () : CueGroup array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
@@ -201,7 +249,7 @@ module TestData =
         yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -238,18 +286,27 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
+  let mkPlayers () =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkCuePlayer() |]
+
+  let mkDiscoveredServices() =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkDiscoveredService() |]
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
       return
-        { Project  = project
-          PinGroups  = mkPinGroups () |> asMap
-          Cues     = mkCues    () |> asMap
-          CueLists = mkCueLists() |> asMap
-          Sessions = mkSessions() |> asMap
-          Users    = mkUsers   () |> asMap
-          Clients  = mkClients () |> asMap
-          DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
+        { Project            = project
+          PinGroups          = mkPinGroups()          |> asMap
+          Cues               = mkCues()               |> asMap
+          CueLists           = mkCueLists()           |> asMap
+          Sessions           = mkSessions()           |> asMap
+          Users              = mkUsers()              |> asMap
+          Clients            = mkClients()            |> asMap
+          CuePlayers         = mkPlayers()            |> asMap
+          DiscoveredServices = mkDiscoveredServices() |> asMap }
     }
 
   let mkChange _ =
@@ -280,10 +337,16 @@ module TestData =
       path |> unwrap |> LibGit2Sharp.Repository.Init |> ignore
       new LibGit2Sharp.Repository(unwrap path)
 
-  let inline binaryEncDec (thing: ^t) =
+  let inline binaryEncDec< ^t when ^t : (member ToBytes: unit -> byte[])
+                              and ^t : (static member FromBytes: byte[] -> Either<IrisError, ^t>)
+                              and ^t : equality>
+                              (thing: ^t) =
     let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get
     expect "Should be equal" thing id rething
 
-  let inline yamlEncDec (thing: ^t) =
+  let inline yamlEncDec< ^t when ^t : (member ToYaml: Serializer -> string)
+                            and ^t : (static member FromYaml: string -> Either<IrisError, ^t>)
+                            and ^t : equality>
+                            (thing: ^t) =
     let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Either.get
     expect "Should be equal" thing id rething

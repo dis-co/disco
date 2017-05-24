@@ -29,18 +29,16 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId : Id
-    HostName  : string
-    WorkSpace : FilePath
-    /// In spite of its name, other services should bind
-    /// to this IP too, not only the HTTP server
-    WebIP     : string
-    WebPort   : uint16
-    RaftPort  : uint16
-    WsPort    : uint16
-    GitPort   : uint16
-    ApiPort   : uint16
-    Version   : Iris.Core.Version }
+  { MachineId   : Id
+    HostName    : Name
+    WorkSpace   : FilePath
+    BindAddress : IpAddress
+    WebPort     : Port
+    RaftPort    : Port
+    WsPort      : Port
+    GitPort     : Port
+    ApiPort     : Port
+    Version     : Iris.Core.Version }
 
   // ** ToString
 
@@ -50,53 +48,59 @@ type IrisMachine =
   // ** ToOffset
 
   member machine.ToOffset(builder: FlatBufferBuilder) =
-    let webip = machine.WebIP |> string |> builder.CreateString
-    let workspace = machine.WorkSpace |> string |> builder.CreateString
-    let hostname = machine.HostName |> string |> builder.CreateString
+    let mapNull = function
+      | null -> None
+      | str -> builder.CreateString str |> Some
+    let webip = machine.BindAddress |> string |> builder.CreateString
+    let workspace = machine.WorkSpace |> unwrap |> mapNull
+    let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = machine.MachineId |> string |> builder.CreateString
-    let version = machine.Version |> unwrap |> builder.CreateString
+    let version = machine.Version |> unwrap |> mapNull
     IrisMachineFB.StartIrisMachineFB(builder)
     IrisMachineFB.AddMachineId(builder, machineid)
-    IrisMachineFB.AddHostName(builder, hostname)
-    IrisMachineFB.AddWorkSpace(builder, workspace)
-    IrisMachineFB.AddWebIP(builder, webip)
-    IrisMachineFB.AddWebPort(builder, machine.WebPort)
-    IrisMachineFB.AddRaftPort(builder, machine.RaftPort)
-    IrisMachineFB.AddWsPort(builder, machine.WsPort)
-    IrisMachineFB.AddGitPort(builder, machine.GitPort)
-    IrisMachineFB.AddApiPort(builder, machine.ApiPort)
-    IrisMachineFB.AddVersion(builder, version)
+    Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
+    Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
+    IrisMachineFB.AddBindAddress(builder, webip)
+    IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
+    IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
+    IrisMachineFB.AddWsPort(builder, unwrap machine.WsPort)
+    IrisMachineFB.AddGitPort(builder, unwrap machine.GitPort)
+    IrisMachineFB.AddApiPort(builder, unwrap machine.ApiPort)
+    Option.iter (fun value ->IrisMachineFB.AddVersion(builder, value)) version
     IrisMachineFB.EndIrisMachineFB(builder)
 
   // ** FromFB
 
   static member FromFB (fb: IrisMachineFB) =
-    { MachineId = Id fb.MachineId
-      WorkSpace = filepath fb.WorkSpace
-      HostName = fb.HostName
-      WebIP = fb.WebIP
-      WebPort = fb.WebPort
-      RaftPort = fb.RaftPort
-      WsPort = fb.WsPort
-      GitPort = fb.GitPort
-      ApiPort = fb.ApiPort
-      Version = version fb.Version }
-    |> Either.succeed
+    either {
+      let! ip = IpAddress.TryParse fb.BindAddress
+      return
+        { MachineId   = Id fb.MachineId
+          WorkSpace   = filepath fb.WorkSpace
+          HostName    = name fb.HostName
+          BindAddress = ip
+          WebPort     = port fb.WebPort
+          RaftPort    = port fb.RaftPort
+          WsPort      = port fb.WsPort
+          GitPort     = port fb.GitPort
+          ApiPort     = port fb.ApiPort
+          Version     = version fb.Version }
+    }
 
   // ** Default
 
   static member Default
     with get () =
-      { MachineId = Id "<empty>"
-        HostName  = "<empty>"
-        WorkSpace = filepath "/dev/null"
-        WebIP     = "127.0.0.1"
-        WebPort   = Constants.DEFAULT_WEB_PORT
-        RaftPort  = Constants.DEFAULT_RAFT_PORT
-        WsPort    = Constants.DEFAULT_WEB_SOCKET_PORT
-        GitPort   = Constants.DEFAULT_GIT_PORT
-        ApiPort   = Constants.DEFAULT_API_PORT
-        Version   = version Build.VERSION }
+      { MachineId   = Id "<empty>"
+        HostName    = name "<empty>"
+        WorkSpace   = filepath "/dev/null"
+        BindAddress = IPv4Address "127.0.0.1"
+        WebPort     = port Constants.DEFAULT_WEB_PORT
+        RaftPort    = port Constants.DEFAULT_RAFT_PORT
+        WsPort      = port Constants.DEFAULT_WEB_SOCKET_PORT
+        GitPort     = port Constants.DEFAULT_GIT_PORT
+        ApiPort     = port Constants.DEFAULT_API_PORT
+        Version     = version Build.VERSION }
 
 // * MachineStatus
 
@@ -125,6 +129,9 @@ module MachineStatus =
     // *** ToOffset
 
     member status.ToOffset(builder: FlatBufferBuilder) =
+      let mapNull (builder: FlatBufferBuilder) = function
+        | null -> None
+        | other -> builder.CreateString other |> Some
       match status with
       | Idle ->
         MachineStatusFB.StartMachineStatusFB(builder)
@@ -132,11 +139,11 @@ module MachineStatus =
         MachineStatusFB.EndMachineStatusFB(builder)
       | Busy (id, name) ->
         let idoff = id |> string |> builder.CreateString
-        let nameoff = name |> unwrap |> builder.CreateString
+        let nameoff = name |> unwrap |> mapNull builder
         MachineStatusFB.StartMachineStatusFB(builder)
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
         MachineStatusFB.AddProjectId(builder, idoff)
-        MachineStatusFB.AddProjectName(builder, nameoff)
+        Option.iter (fun value -> MachineStatusFB.AddProjectName(builder,value)) nameoff
         MachineStatusFB.EndMachineStatusFB(builder)
 
     // *** FromOffset
@@ -214,44 +221,47 @@ module MachineConfig =
   // ** MachineConfigYaml (private)
 
   type MachineConfigYaml () =
-    [<DefaultValue>] val mutable MachineId : string
-    [<DefaultValue>] val mutable WorkSpace : string
-    [<DefaultValue>] val mutable WebIP     : string
-    [<DefaultValue>] val mutable WebPort   : uint16
-    [<DefaultValue>] val mutable RaftPort  : uint16
-    [<DefaultValue>] val mutable WsPort    : uint16
-    [<DefaultValue>] val mutable GitPort   : uint16
-    [<DefaultValue>] val mutable ApiPort   : uint16
-    [<DefaultValue>] val mutable Version   : string
+    [<DefaultValue>] val mutable MachineId   : string
+    [<DefaultValue>] val mutable WorkSpace   : string
+    [<DefaultValue>] val mutable BindAddress : string
+    [<DefaultValue>] val mutable WebPort     : uint16
+    [<DefaultValue>] val mutable RaftPort    : uint16
+    [<DefaultValue>] val mutable WsPort      : uint16
+    [<DefaultValue>] val mutable GitPort     : uint16
+    [<DefaultValue>] val mutable ApiPort     : uint16
+    [<DefaultValue>] val mutable Version     : string
 
     static member Create (cfg: IrisMachine) =
       let yml = new MachineConfigYaml()
-      yml.MachineId <- string cfg.MachineId
-      yml.WorkSpace <- unwrap cfg.WorkSpace
-      yml.WebIP     <- cfg.WebIP
-      yml.WebPort   <- cfg.WebPort
-      yml.RaftPort  <- cfg.RaftPort
-      yml.WsPort    <- cfg.WsPort
-      yml.GitPort   <- cfg.GitPort
-      yml.ApiPort   <- cfg.ApiPort
-      yml.Version   <- cfg.Version.ToString()
+      yml.MachineId   <- string cfg.MachineId
+      yml.WorkSpace   <- unwrap cfg.WorkSpace
+      yml.BindAddress <- string cfg.BindAddress
+      yml.WebPort     <- unwrap cfg.WebPort
+      yml.RaftPort    <- unwrap cfg.RaftPort
+      yml.WsPort      <- unwrap cfg.WsPort
+      yml.GitPort     <- unwrap cfg.GitPort
+      yml.ApiPort     <- unwrap cfg.ApiPort
+      yml.Version     <- cfg.Version.ToString()
       yml
 
   // ** parse (private)
 
   let private parse (yml: MachineConfigYaml) : Either<IrisError,IrisMachine> =
-    let hostname = Network.getHostName ()
-    { MachineId = Id yml.MachineId
-      HostName  = hostname
-      WorkSpace = filepath yml.WorkSpace
-      WebIP     = yml.WebIP
-      WebPort   = yml.WebPort
-      RaftPort  = yml.RaftPort
-      WsPort    = yml.WsPort
-      GitPort   = yml.GitPort
-      ApiPort   = yml.ApiPort
-      Version   = version yml.Version }
-    |> Either.succeed
+    either {
+      let hostname = Network.getHostName ()
+      let! ip = IpAddress.TryParse yml.BindAddress
+      return
+        { MachineId   = Id yml.MachineId
+          HostName    = name hostname
+          WorkSpace   = filepath yml.WorkSpace
+          BindAddress = ip
+          WebPort     = port yml.WebPort
+          RaftPort    = port yml.RaftPort
+          WsPort      = port yml.WsPort
+          GitPort     = port yml.GitPort
+          ApiPort     = port yml.ApiPort
+          Version     = version yml.Version }
+    }
 
   // ** ensureExists (private)
 
@@ -264,15 +274,15 @@ module MachineConfig =
 
   // ** create
 
-  let create bindIp (shiftDefaults: uint16 option) : IrisMachine =
+  let create (bindIp: string) (shiftDefaults: uint16 option) : IrisMachine =
     let shiftPath path =
         match shiftDefaults with
         | Some shift -> path + (string shift)
         | None -> path
-    let shiftPort port =
+    let shiftPort p =
         match shiftDefaults with
-        | Some shift -> port + shift
-        | None -> port
+        | Some shift -> port (p + shift)
+        | None -> port p
     let hostname = Network.getHostName()
     let workspace =
       if Platform.isUnix then
@@ -286,16 +296,16 @@ module MachineConfig =
 
     let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
 
-    { MachineId = Id.Create()
-      HostName  = hostname
-      WorkSpace = workspace
-      WebIP     = bindIp
-      WebPort   = shiftPort Constants.DEFAULT_WEB_PORT
-      RaftPort  = shiftPort Constants.DEFAULT_RAFT_PORT
-      WsPort    = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
-      GitPort   = shiftPort Constants.DEFAULT_GIT_PORT
-      ApiPort   = shiftPort Constants.DEFAULT_API_PORT
-      Version   = version }
+    { MachineId   = Id.Create()
+      HostName    = name hostname
+      WorkSpace   = workspace
+      BindAddress = IpAddress.Parse bindIp
+      WebPort     = shiftPort Constants.DEFAULT_WEB_PORT
+      RaftPort    = shiftPort Constants.DEFAULT_RAFT_PORT
+      WsPort      = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort     = shiftPort Constants.DEFAULT_GIT_PORT
+      ApiPort     = shiftPort Constants.DEFAULT_API_PORT
+      Version     = version }
 
   // ** save
 

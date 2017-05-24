@@ -1,10 +1,6 @@
 module rec Iris.Web.Lib
 
-//  _____                _                 _   __  __       _
-// |  ___| __ ___  _ __ | |_ ___ _ __   __| | |  \/  | __ _(_)_ __
-// | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` | | |\/| |/ _` | | '_ \
-// |  _|| | | (_) | | | | ||  __/ | | | (_| | | |  | | (_| | | | | |
-// |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| |_|  |_|\__,_|_|_| |_|
+// Helper methods to be used from JS
 
 open System
 open System.Collections.Generic
@@ -85,16 +81,6 @@ let notify(msg: string) =
         | _ -> ())
   | _ -> ()
 
-let subscribeToLogs(f:ClientLog->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClientLog log -> f log
-      | _ -> ())
-
-let subscribeToClock(f:uint32->unit): IDisposable =
-    ClientContext.Singleton.OnMessage.Subscribe (function
-      | ClientMessage.ClockUpdate frames -> f frames
-      | _ -> ())
-
 let removeMember(config: IrisConfig, memId: Id) =
   match Config.findMember config memId with
   | Right mem ->
@@ -138,7 +124,8 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
     else res.text() |> Promise.bind onSuccess)
 
 /// Posts a command, parses the JSON response returns a promise (can fail)
-let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
+[<PassGenerics>]
+let postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
   postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
     if res.Ok
@@ -159,7 +146,10 @@ let addMember(info: obj) =
   Promise.start (promise {
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   try
-    let latestState = ClientContext.Singleton.LatestState
+    let latestState =
+      match ClientContext.Singleton.Store with
+      | Some store -> store.State
+      | None -> failwith "The client store is not initialized"
 
     let memberIpAndPort =
       let memberIpAddr: string = !!info?ipAddr
@@ -199,15 +189,13 @@ let addMember(info: obj) =
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
       match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
-      | None   -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      | Some p -> PullProject(p.Id, latestState.Project.Name, projectGitUri)
+      | None   -> CloneProject(latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
 
     notify commandMsg
 
-    let active =
-      latestState.Project.Config.ActiveSite
-      |> Option.map string
+    let active = latestState.Project.Config.ActiveSite
 
     // Load active project in machine B
     // Note that we don't use loadProject from below, since that function
@@ -215,7 +203,7 @@ let addMember(info: obj) =
 
     // TODO: Using the admin user for now, should it be the same user as leader A?
     let! loadResult =
-      LoadProject(unwrap latestState.Project.Name, "admin", password "Nsynk", active)
+      LoadProject(latestState.Project.Name, name "admin", password "Nsynk", active)
       |> postCommandPrivate memberIpAndPort
 
     printfn "response: %A" loadResult
@@ -223,7 +211,7 @@ let addMember(info: obj) =
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
         HostName = machine.HostName
-        IpAddr   = IPv4Address machine.WebIP
+        IpAddr   = machine.BindAddress
         Port     = machine.RaftPort
         WsPort   = machine.WsPort
         GitPort  = machine.GitPort
@@ -243,8 +231,8 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: string, username: string, pass: string, site: string option, ipAndPort: string option): JS.Promise<string option> =
-  LoadProject(project, username, password pass, site)
+let rec loadProject(project: Name, username: UserName, pass: Password, site: Id option, ipAndPort: string option): JS.Promise<string option> =
+  LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
@@ -272,11 +260,11 @@ let createProject(info: obj) =
     let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
 
     do! { name     = !!info?name
-        ; ipAddr   = machine.WebIP
-        ; port     = machine.RaftPort
-        ; apiPort  = machine.ApiPort
-        ; wsPort   = machine.WsPort
-        ; gitPort  = machine.GitPort }
+        ; ipAddr   = string machine.BindAddress
+        ; port     = unwrap machine.RaftPort
+        ; apiPort  = unwrap machine.ApiPort
+        ; wsPort   = unwrap machine.WsPort
+        ; gitPort  = unwrap machine.GitPort }
         |> CreateProject
         |> postCommand (fun _ -> notify "The project has been created successfully") notify
   })
@@ -320,63 +308,3 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
-
-let startContext f =
-  let context = ClientContext.Singleton
-  context.Start()
-  |> Promise.map (fun () ->
-    context.OnMessage
-    |> Observable.add (function
-      | ClientMessage.Render(Some state) ->
-        match Map.tryFind context.Session state.Sessions with
-        | Some session ->
-          Some { session = session; state = state } |> f
-        | None -> ()
-      | ClientMessage.Render None ->
-          f None
-      | _ -> ())
-  )
-
-let startWorkerContext() =
-  GlobalContext()
-
-let pinToKeyValuePairs (pin: Pin) =
-  let zip labels values =
-    let labels =
-      if Array.length labels = Array.length values
-      then labels
-      else Array.replicate values.Length ""
-    Array.zip labels values
-  match pin with
-  | StringPin pin -> Array.map box pin.Values |> zip pin.Labels
-  | NumberPin pin -> Array.map box pin.Values |> zip pin.Labels
-  | BoolPin   pin -> Array.map box pin.Values |> zip pin.Labels
-  // TODO: Apply transformations to the value of this pins?
-  | BytePin   pin -> Array.map box pin.Values |> zip pin.Labels
-  | EnumPin   pin -> Array.map box pin.Values |> zip pin.Labels
-  | ColorPin  pin -> Array.map box pin.Values |> zip pin.Labels
-
-let updateSlices(pin: Pin, rowIndex, newValue: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
-  match pin with
-  | StringPin pin ->
-    StringSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | NumberPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(double v)
-      | v -> v
-    NumberSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BoolPin pin ->
-    let newValue =
-      match newValue with
-      | :? string as v -> box(v.ToLower() = "true")
-      | v -> v
-    BoolSlices(pin.Id, updateArray rowIndex newValue pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices |> ClientContext.Singleton.Post
