@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -160,7 +160,7 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\CueGroup.fs">
       <Link>CueGroup.fs</Link>
-    </Compile>    
+    </Compile>
     <Compile Include="..\..\Iris\Core\CueList.fs">
       <Link>CueList.fs</Link>
     </Compile>
@@ -356,6 +356,15 @@
       <ItemGroup>
         <Reference Include="Disruptor">
           <HintPath>..\..\..\..\packages\Disruptor\lib\net45\Disruptor.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And ($(TargetFrameworkVersion) == 'v1.1' Or $(TargetFrameworkVersion) == 'v2.0')">
+      <ItemGroup>
+        <Reference Include="Disruptor">
+          <HintPath>..\..\..\..\packages\Disruptor\lib\netcoreapp1.1\Disruptor.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
