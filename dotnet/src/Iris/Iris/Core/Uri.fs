@@ -57,27 +57,15 @@ module Uri =
                     (port:   Port option) =
 
     match proto, prefix, path, port with
-    | LOCALGIT, _, Some path, Some port ->
-      String.Format("{0}://{1}:{2}/{3}/.git",string proto, ip, port, path)
-
-    | REMOTEGIT, _, Some path, Some port ->
-      String.Format("{0}://{1}:{2}/{3}",string proto, ip, port, path)
-
+    | LOCALGIT, _, Some path, Some port  -> String.Format("{0}://{1}:{2}/{3}/.git",string proto, ip, port, path)
+    | REMOTEGIT, _, Some path, Some port -> String.Format("{0}://{1}:{2}/{3}",string proto, ip, port, path)
     | PGM,  Some prefix, _, Some port
-    | EPGM, Some prefix, _, Some port ->
-      String.Format("{0}://{1};{2}:{3}",string proto, prefix, ip, port)
-
-    | _, _, Some path, None ->
-      String.Format("{0}://{1}/{2}",string proto, ip, path)
-
-    | _, _, Some path, Some port ->
-      String.Format("{0}://{1}:{2}/{3}", string proto, ip, port, path)
-
-    | _, _, None, Some port ->
-      String.Format("{0}://{1}:{2}", string proto, ip, port)
-
-    | _, _, None, None ->
-      String.Format("{0}://{1}", string proto, ip)
+    | EPGM, Some prefix, _, Some port    -> String.Format("{0}://{1};{2}:{3}",string proto, prefix, ip, port)
+    | _, _, Some path, None              -> String.Format("{0}://{1}/{2}",string proto, ip, path)
+    | _, _, Some path, Some port         -> String.Format("{0}://{1}:{2}/{3}", string proto, ip, port, path)
+    | _, _, None, Some port              -> String.Format("{0}://{1}:{2}", string proto, ip, port)
+    | _, _, None, None                   -> String.Format("{0}://{1}", string proto, ip)
+    |> url
 
   // ** tcpUri
 
@@ -104,7 +92,7 @@ module Uri =
   ///
   /// Returns: string
   let raftUri (data: RaftMember) =
-    tcpUri data.IpAddr (data.Port |> port |> Some)
+    tcpUri data.IpAddr (data.Port |> Some)
 
   // ** gitUri
 
@@ -119,7 +107,7 @@ module Uri =
   /// Returns: string
 
   let localGitUri (path: string) (mem: RaftMember) =
-    toUri LOCALGIT None (Some path) (string mem.IpAddr) (mem.GitPort |> port |> Some)
+    toUri LOCALGIT None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
 
   // ** pgmUri
 

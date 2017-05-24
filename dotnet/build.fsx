@@ -335,6 +335,8 @@ let buildDebug fsproj _ =
 let buildRelease fsproj _ =
   build (setParams "Release") (baseDir @@ fsproj)
 
+let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
+
 //  ____              _       _
 // | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
 // |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
@@ -344,8 +346,15 @@ let buildRelease fsproj _ =
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ () // restore Npm packages
-  // runNpmNoErrors "-g install fable-compiler mocha-phantomjs webpack" __SOURCE_DIRECTORY__ ()
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
 )
 
 //     _                           _     _       ___        __
@@ -629,7 +638,6 @@ Target "BuildReleaseZeroconf"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
-let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
@@ -648,8 +656,8 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  // runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
@@ -676,7 +684,7 @@ Target "BuildWebTests" (fun _ ->
 )
 
 Target "BuildWebTestsFast" (fun _ ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
@@ -744,15 +752,18 @@ Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fs
 *)
 
 Target "BuildTests" (buildDebug "Projects/Tests/Tests.fsproj")
+Target "BuildTestsFast" (buildDebug "Projects/Tests/Tests.fsproj")
 
-Target "RunTests"
-  (fun _ ->
-    let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
+let runTests = (fun _ ->
+  let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
 
-    if isUnix then
-      runMono "Iris.Tests.exe" testsDir
-    else
-      runTestsOnWindows "Iris.Tests.exe" testsDir)
+  if isUnix then
+    runMono "Iris.Tests.exe" testsDir
+  else
+    runTestsOnWindows "Iris.Tests.exe" testsDir)
+
+Target "RunTests" runTests
+Target "RunTestsFast" runTests
 
 //  ____
 // / ___|  ___ _ ____   _____ _ __
@@ -915,6 +926,9 @@ Target "Release" DoNothing
 
 "BuildTests"
 ==> "RunTests"
+
+"BuildTestsFast"
+==> "RunTestsFast"
 
 // ONWARDS!
 

@@ -127,6 +127,8 @@ type LogEvent =
     LogLevel  : LogLevel
     Message   : string }
 
+  // ** ToString
+
   override self.ToString() =
     sprintf "[%s - %s - %s - %d - %d - %s]: %s"
       (System.String.Format("{0,-5}",string self.LogLevel))
@@ -137,7 +139,7 @@ type LogEvent =
       self.Tag
       self.Message
 
-  // ** Binary
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -149,25 +151,26 @@ type LogEvent =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let tier = builder.CreateString (string self.Tier)
     let id = builder.CreateString (string self.Id)
-    let tag = builder.CreateString self.Tag
+    let tag = Option.mapNull builder.CreateString self.Tag
     let level = builder.CreateString (string self.LogLevel)
-    let msg = builder.CreateString self.Message
+    let msg = Option.mapNull builder.CreateString self.Message
 
     LogEventFB.StartLogEventFB(builder)
     LogEventFB.AddTime(builder, self.Time)
     LogEventFB.AddThread(builder, self.Thread)
     LogEventFB.AddTier(builder, tier)
     LogEventFB.AddId(builder,id)
-    LogEventFB.AddTag(builder,tag)
+    Option.iter (fun value -> LogEventFB.AddTag(builder,value)) tag
     LogEventFB.AddLogLevel(builder, level)
-    LogEventFB.AddMessage(builder, msg)
+    Option.iter (fun value -> LogEventFB.AddMessage(builder,value)) msg
     LogEventFB.EndLogEventFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: LogEventFB) = either {
       let id = Id fb.Id
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
-
       return { Time     = fb.Time
                Thread   = fb.Thread
                Tier     = tier
@@ -177,7 +180,7 @@ type LogEvent =
                Message  = fb.Message }
     }
 
-  // ** Yaml
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -188,7 +191,7 @@ type LogEvent =
   #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
-    let yaml = new LogEventYaml()
+    let yaml = LogEventYaml()
     yaml.Time     <- self.Time
     yaml.Thread   <- self.Thread
     yaml.Tier     <- string self.Tier
@@ -198,10 +201,14 @@ type LogEvent =
     yaml.Message  <- self.Message
     yaml
 
+  // ** ToYaml
+
   member self.ToYaml(serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: LogEventYaml) = either {
       let id = Id yaml.Id
@@ -216,8 +223,10 @@ type LogEvent =
                Message  = yaml.Message }
     }
 
+  // ** FromYaml
+
   static member FromYaml(str: string) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     str
     |> serializer.Deserialize
     |> LogEvent.FromYamlObject

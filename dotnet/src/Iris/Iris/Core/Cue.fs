@@ -87,15 +87,13 @@ type Cue =
         let arr = Array.zeroCreate fb.SlicesLength
         Array.fold
           (fun (m: Either<IrisError,int * Slices array>) _ -> either {
-              let! (i, slices) = m
+            let! (i, slices) = m
 
-              #if FABLE_COMPILER
-
-              let! slice = i |> fb.Slices |> Slices.FromFB
-
-              #else
-
-              let! slice =
+            let! slice =
+              try
+                #if FABLE_COMPILER
+                i |> fb.Slices |> Slices.FromFB
+                #else
                 let nullable = fb.Slices(i)
                 if nullable.HasValue then
                   nullable.Value
@@ -104,12 +102,15 @@ type Cue =
                   "Could not parse empty SlicesFB"
                   |> Error.asParseError "Cue.FromFB"
                   |> Either.fail
+                #endif
+              with
+                | exn ->
+                  exn.Message
+                  |> Error.asParseError "Cue.FromtFB"
+                  |> Either.fail
 
-              #endif
-
-              slices.[i] <- slice
-              return (i + 1, slices)
-            })
+            slices.[i] <- slice
+            return (i + 1, slices) })
           (Right (0, arr))
           arr
         |> Either.map snd
@@ -123,12 +124,12 @@ type Cue =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
-    let name = unwrap self.Name |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)
     CueFB.StartCueFB(builder)
     CueFB.AddId(builder, id)
-    CueFB.AddName(builder, name)
+    Option.iter (fun value -> CueFB.AddName(builder, value)) name
     CueFB.AddSlices(builder, slices)
     CueFB.EndCueFB(builder)
 

@@ -10,6 +10,7 @@ open Iris.Client
 open Iris.Service
 open Iris.Service.Interfaces
 open System.Net
+open ZeroMQ
 open FSharpx.Control
 open FSharpx.Functional
 
@@ -48,19 +49,19 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
-        do! server.SetState state
+
+        server.State <- state
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -71,59 +72,56 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create srvr clnt
+        let client = ApiClient.create ctx srvr clnt
 
         use registered = new AutoResetEvent(false)
+        use unregistered = new AutoResetEvent(false)
         use snapshot = new AutoResetEvent(false)
 
-        let handler (ev: ClientEvent) =
-          match ev with
-          | ClientEvent.Registered -> registered.Set() |> ignore
-          | ClientEvent.Snapshot -> snapshot.Set() |> ignore
+        let handler = function
+          | ClientEvent.Registered   -> registered.Set() |> ignore
+          | ClientEvent.UnRegistered -> unregistered.Set() |> ignore
+          | ClientEvent.Snapshot     -> snapshot.Set() |> ignore
           | _ -> ()
 
         use obs = client.Subscribe(handler)
 
         do! client.Start()
 
-        registered.WaitOne() |> ignore
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "registered" registered
+        do! waitOrDie "snapshot" snapshot
 
-        let! clientState = client.State
-
-        expect "Should be equal" state id clientState
+        expect "Should be equal" state id client.State
 
         let newstate = mkState ()
 
-        do! server.SetState newstate
+        server.State <- newstate
 
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "snapshot" snapshot
 
-        let! clientState = client.State
+        expect "Should be equal" newstate id client.State
 
-        expect "Should be equal" newstate id clientState
-
-        dispose server
         dispose client
+
+        do! waitOrDie "unregistered" unregistered
       }
       |> noError
 
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
-        let! server = ApiServer.create mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         do! server.Start()
-        do! server.SetState state
+        server.State <- state
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -134,7 +132,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! client = ApiClient.create srvr clnt
+        use client = ApiClient.create ctx srvr clnt
 
         use snapshot = new AutoResetEvent(false)
         use doneCheck = new AutoResetEvent(false)
@@ -165,20 +163,14 @@ module ApiTests =
 
         do! client.Start()
 
-        snapshot.WaitOne() |> ignore
+        do! waitOrDie "shaptwhot" snapshot
 
         List.iter (server.Update >> ignore) events
 
-        doneCheck.WaitOne() |> ignore
-
-        let! serverState = server.State
-        let! clientState = client.State
-
-        dispose server
-        dispose client
+        do! waitOrDie "doneCheck" doneCheck
 
         expect "Should have emitted correct number of events" (List.length events |> int64) id check
-        expect "Should be equal" serverState id clientState
+        expect "Should be equal" server.State id client.State
       }
       |> noError
 
@@ -191,14 +183,13 @@ module ApiTests =
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
-        use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
+        use ctx = new ZContext()
         let state = mkState ()
 
         let mem = Member.create (Id.Create())
 
         let srvr : IrisServer =
-          { Port = port mem.ApiPort
+          { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
@@ -209,7 +200,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let! server = ApiServer.create mem state.Project.Id
+        use! server = ApiServer.create ctx mem state.Project.Id
 
         let check = ref 0
 
@@ -225,10 +216,9 @@ module ApiTests =
         use clientSnapshot = new AutoResetEvent(false)
         use clientUpdate = new AutoResetEvent(false)
 
-        let! client = ApiClient.create srvr clnt
+        use client = ApiClient.create ctx srvr clnt
 
-        let clientHandler (ev: ClientEvent) =
-          match ev with
+        let clientHandler = function
           | ClientEvent.Registered -> clientRegistered.Set() |> ignore
           | ClientEvent.Snapshot -> clientSnapshot.Set() |> ignore
           | ClientEvent.Update _ -> clientUpdate.Set() |> ignore
@@ -237,81 +227,105 @@ module ApiTests =
         use obs3 = client.Subscribe(clientHandler)
 
         do! server.Start()
-        do! server.SetState state
+        server.State <- state
 
         do! client.Start()
 
-        clientRegistered.WaitOne() |> ignore
-        clientSnapshot.WaitOne() |> ignore
+        do! waitOrDie "clientRegisterd" clientRegistered
+        do! waitOrDie "clientSnaphot" clientSnapshot
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
         let cuelist = mkCueList()
 
-        do! client.AddPin pin
+        client.AddPin pin
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        do! client.AddCue cue
+        client.AddCue cue
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        do! client.AddCueList cuelist
+        client.AddCueList cuelist
 
-        clientUpdate.WaitOne() |> ignore
-
-        let! serverState = server.State
-        let! clientState = client.State
+        do! waitOrDie "clientUpdate" clientUpdate
 
         let len m = m |> Map.toArray |> Array.length
 
-        expect "Should be equal" serverState id clientState
-        expect "Server should have one cue" 1 len serverState.Cues
-        expect "Client should have one cue" 1 len clientState.Cues
-        expect "Server should have one cuelist" 1 len serverState.CueLists
-        expect "Client should have one cuelist" 1 len clientState.CueLists
+        expect "Should be equal" server.State id client.State
+        expect "Server should have one cue" 1 len server.State.Cues
+        expect "Client should have one cue" 1 len client.State.Cues
+        expect "Server should have one cuelist" 1 len server.State.CueLists
+        expect "Client should have one cuelist" 1 len client.State.CueLists
 
-        do! client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
+        client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        do! client.UpdateCue { cue with Slices = mkSlices() }
+        client.UpdateCue { cue with Slices = mkSlices() }
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        do! client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
+        client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
 
-        clientUpdate.WaitOne() |> ignore
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        let! serverState = server.State
-        let! clientState = client.State
+        expect "Should be equal" server.State id client.State
 
-        expect "Should be equal" serverState id clientState
+        client.RemovePin pin
 
-        do! client.RemovePin pin
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        clientUpdate.WaitOne() |> ignore
+        client.RemoveCue cue
 
-        do! client.RemoveCue cue
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        clientUpdate.WaitOne() |> ignore
+        client.RemoveCueList cuelist
 
-        do! client.RemoveCueList cuelist
+        do! waitOrDie "clientUpdate" clientUpdate
 
-        clientUpdate.WaitOne() |> ignore
+        expect "Server should have zero cues" 0 len server.State.Cues
+        expect "Client should have zero cues" 0 len client.State.Cues
+        expect "Server should have zero cuelists" 0 len server.State.CueLists
+        expect "Client should have zero cuelists" 0 len client.State.CueLists
 
-        let! serverState = server.State
-        let! clientState = client.State
+        expect "Should be equal" server.State id client.State
+      }
+      |> noError
 
-        expect "Server should have zero cues" 0 len serverState.Cues
-        expect "Client should have zero cues" 0 len clientState.Cues
-        expect "Server should have zero cuelists" 0 len serverState.CueLists
-        expect "Client should have zero cuelists" 0 len clientState.CueLists
+  let test_server_should_dispose_properly =
+    testCase "server should dispose properly" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+        let state = mkState ()
+        let mem = Member.create (Id.Create())
 
-        expect "Should be equal" serverState id clientState
+        use! server = ApiServer.create ctx mem state.Project.Id
+        do! server.Start()
+      }
+      |> noError
 
-        dispose server
-        dispose client
+  let test_client_should_dispose_properly =
+    testCase "client should dispose properly" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+
+        let mem = Member.create (Id.Create())
+
+        let srvr : IrisServer =
+          { Port = mem.ApiPort
+            IpAddress = mem.IpAddr }
+
+        let clnt : IrisClient =
+          { Id = Id.Create()
+            Name = "client cool"
+            Role = Role.Renderer
+            Status = ServiceStatus.Starting
+            IpAddress = mem.IpAddr
+            Port = port (unwrap mem.ApiPort + 1us) }
+
+        use client = ApiClient.create ctx srvr clnt
+        do! client.Start()
       }
       |> noError
 
@@ -326,4 +340,6 @@ module ApiTests =
       test_server_should_replicate_state_snapshot_to_client
       test_server_should_replicate_state_machine_commands_to_client
       test_client_should_replicate_state_machine_commands_to_server
+      test_server_should_dispose_properly
+      test_client_should_dispose_properly
     ] |> testSequenced

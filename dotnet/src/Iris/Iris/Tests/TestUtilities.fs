@@ -3,11 +3,23 @@ namespace Iris.Tests
 open Expecto
 open System
 open System.IO
+open System.Threading
 open Iris.Raft
 open Iris.Core
+open SharpYaml.Serialization
 
 [<AutoOpen>]
 module TestUtilities =
+
+  let waitOrDie (tag: string) (are: AutoResetEvent) =
+    let timeout = 3000.0
+    if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
+      Either.succeed()
+    else
+      sprintf "Timout after %f waiting for %s" timeout tag
+      |> Error.asOther "test"
+      |> Either.fail
+
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
@@ -325,10 +337,16 @@ module TestData =
       path |> unwrap |> LibGit2Sharp.Repository.Init |> ignore
       new LibGit2Sharp.Repository(unwrap path)
 
-  let inline binaryEncDec (thing: ^t) =
+  let inline binaryEncDec< ^t when ^t : (member ToBytes: unit -> byte[])
+                              and ^t : (static member FromBytes: byte[] -> Either<IrisError, ^t>)
+                              and ^t : equality>
+                              (thing: ^t) =
     let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get
     expect "Should be equal" thing id rething
 
-  let inline yamlEncDec (thing: ^t) =
+  let inline yamlEncDec< ^t when ^t : (member ToYaml: Serializer -> string)
+                            and ^t : (static member FromYaml: string -> Either<IrisError, ^t>)
+                            and ^t : equality>
+                            (thing: ^t) =
     let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Either.get
     expect "Should be equal" thing id rething

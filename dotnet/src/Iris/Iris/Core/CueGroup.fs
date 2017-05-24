@@ -73,7 +73,11 @@ type CueGroup =
   static member FromFB(fb: CueGroupFB) : Either<IrisError,CueGroup> =
     either {
       let! cues =
-        EitherExt.bindGeneratorToArray "CueGroup.FromFB" fb.CueRefsLength fb.CueRefs CueReference.FromFB
+        EitherExt.bindGeneratorToArray
+          "CueGroup.FromFB"
+          fb.CueRefsLength
+          fb.CueRefs
+          CueReference.FromFB
       return { Id = Id fb.Id
                Name = name fb.Name
                CueRefs = cues }
@@ -83,12 +87,12 @@ type CueGroup =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueGroupFB> =
     let id = self.Id |> string |> builder.CreateString
-    let name = self.Name |> unwrap |> builder.CreateString
-    let cueoffsets = Array.map (fun (cue: CueReference)  -> cue.ToOffset(builder)) self.CueRefs
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let cueoffsets = Array.map (Binary.toOffset builder) self.CueRefs
     let cuesvec = CueGroupFB.CreateCueRefsVector(builder, cueoffsets)
     CueGroupFB.StartCueGroupFB(builder)
     CueGroupFB.AddId(builder, id)
-    CueGroupFB.AddName(builder, name)
+    Option.iter (fun value -> CueGroupFB.AddName(builder,value)) name
     CueGroupFB.AddCueRefs(builder, cuesvec)
     CueGroupFB.EndCueGroupFB(builder)
 

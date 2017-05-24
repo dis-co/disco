@@ -246,10 +246,10 @@ module CommandLine =
       let mem =
         { Member.create(machine.MachineId) with
             IpAddr  = bind
-            GitPort = git
-            WsPort  = ws
-            Port    = raft
-            ApiPort = api }
+            GitPort = port git
+            WsPort  = port ws
+            Port    = port raft
+            ApiPort = port api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -264,11 +264,10 @@ module CommandLine =
   // | |__| (_) | (_) | |_) |
   // |_____\___/ \___/| .__/ s
   //                  |_|
-  let registerExitHandlers (context: IIrisServer) (httpServer: IHttpServer) =
+  let registerExitHandlers (context: IIris) =
     Console.CancelKeyPress.Add (fun _ ->
       printfn "Disposing context..."
       dispose context
-      dispose httpServer
       exit 0)
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
@@ -289,19 +288,25 @@ module CommandLine =
 
       use _ = Logger.subscribe Logger.stdout
 
-      let! irisService = IrisService.create machine post
-
-      let! httpServer = HttpServer.create machine frontend post
-      do! httpServer.Start()
+      let! irisService = Iris.create post {
+        Machine = machine
+        FrontendPath = frontend
+        ProjectPath = projectDir
+      }
 
       agentRef := CommandActions.startAgent machine irisService |> Some
 
-      registerExitHandlers irisService httpServer
+      registerExitHandlers irisService
 
       do!
         match projectDir with
         | Some projectDir ->
-          Commands.Command.LoadProject(unwrap projectDir, "admin", password "Nsynk", None)
+          let name, user, password, site =
+            name (unwrap projectDir),
+            name "admin",
+            password "Nsynk",
+            None
+          Commands.Command.LoadProject(name, user, password, site)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
           |> Either.map ignore
@@ -521,11 +526,11 @@ module CommandLine =
 
       let mem =
         { Member.create id with
-            HostName = hn
+            HostName = name hn
             IpAddr   = ip
-            Port     = raft
-            WsPort   = ws
-            GitPort  = git }
+            Port     = port raft
+            WsPort   = port ws
+            GitPort  = port git }
 
       let! _ =
         Asset.saveWithCommit

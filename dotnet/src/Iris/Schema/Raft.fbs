@@ -204,6 +204,7 @@ table ArrivederciFB {
 }
 
 table ErrorResponseFB {
+      MemberId: string;
       Error: ErrorFB;
 }
 

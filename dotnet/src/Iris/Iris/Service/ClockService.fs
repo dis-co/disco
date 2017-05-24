@@ -8,6 +8,7 @@ open System.Diagnostics
 open System.Collections.Concurrent
 open Iris.Zmq
 open Iris.Core
+open ZeroMQ
 
 // * Types
 
@@ -30,7 +31,7 @@ module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<Guid, IObserver<ClockEvent>>
+  type private Subscriptions = Subscriptions<ClockEvent>
 
   // ** Listener
 
@@ -85,14 +86,14 @@ module Clock =
 
   // ** ClockState
 
-  type private ClockState(ip: IpAddress) =
+  type private ClockState(ip: IpAddress, ctx: ZContext) =
     let addr =
       Uri.epgmUri
         ip
         (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
         (port Constants.CLOCK_MCAST_PORT)
 
-    let socket = new Pub(addr, Constants.CLOCK_MCAST_PREFIX)
+    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX, ctx)
 
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()
@@ -159,12 +160,6 @@ module Clock =
         tryDispose socket ignore
         subscriptions.Clear()
 
-  // ** notify
-
-  let private notify (state: ClockState) (ev: ClockEvent) =
-    for KeyValue(_,obs) in state.Subscriptions do
-      obs.OnNext(ev)
-
   // ** worker
 
   let private worker (state: ClockState) () =
@@ -179,7 +174,9 @@ module Clock =
           let ev = { Frame = state.Frame
                      Deviation = (diff / μsPerTick) * 1L<ns> }
 
-          notify state ev
+          let subscriptions = state.Subscriptions.ToArray()
+          for KeyValue(_,obs) in subscriptions do
+            obs.OnNext(ev)
 
           state.Frame
           |> uint32
@@ -193,8 +190,8 @@ module Clock =
 
   // ** create
 
-  let create (ip: IpAddress) =
-    let state = new ClockState(ip)
+  let create ctx (ip: IpAddress) =
+    let state = new ClockState(ip, ctx)
 
     if not Stopwatch.IsHighResolution then
       Logger.warn "Clock" "internal timer is not using high resolution clock"
@@ -231,5 +228,6 @@ module Clock =
           |> listener.Subscribe
 
         member clock.Dispose() =
-          dispose state
+          if not state.Disposed then
+            dispose state
       }

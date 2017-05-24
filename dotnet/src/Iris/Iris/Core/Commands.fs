@@ -30,9 +30,9 @@ type Command =
   | MachineStatus
   | MachineConfig
   | CreateProject of CreateProjectOptions
-  | CloneProject of projectName:string * uri:string
-  | PullProject of projectId:string * projectName:string * uri:string
-  | LoadProject of projectName:string * username:string * password:Password * site:string option
-  | GetProjectSites of projectName:string * username:string * password:string
+  | CloneProject of projectName:Name * uri:Url
+  | PullProject of projectId:Id * projectName:Name * uri:Url
+  | LoadProject of projectName:Name * username:UserName * password:Password * site:Id option
+  | GetProjectSites of projectName:Name * username:UserName * password:Password
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

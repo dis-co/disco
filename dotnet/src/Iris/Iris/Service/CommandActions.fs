@@ -28,18 +28,19 @@ let private serializeJson =
 //      -d '"GetServiceInfo"' \
 //      http://localhost:7000/api/comman
 
-let getServiceInfo (iris: IIrisServer): Either<IrisError,string> =
-    match iris.Config with
-    | Left _ -> null |> serializeJson
-    | Right cfg ->
-        match Config.findMember cfg cfg.Machine.MachineId with
-        | Right mem ->
-          { webSocket = sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
-            version = Build.VERSION
-            buildNumber = Build.BUILD_NUMBER }
-          |> serializeJson
-        | Left _ -> null |> serializeJson
-    |> Either.succeed
+let getServiceInfo (iris: IIris): Either<IrisError,string> =
+  let notLoaded () = null |> serializeJson |> Either.succeed
+  match iris.IrisService with
+  | Some service ->
+    match Config.findMember service.Config iris.Machine.MachineId with
+    | Right mem ->
+      { webSocket = sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
+        version = Build.VERSION
+        buildNumber = Build.BUILD_NUMBER }
+      |> serializeJson
+      |> Either.succeed
+    | Left _ -> notLoaded()
+  | None -> notLoaded()
 
 // Command to test:
 // curl -H "Content-Type: application/json" \
@@ -125,10 +126,10 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     let mem =
       { Member.create(machine.MachineId) with
           IpAddr  = IpAddress.Parse opts.ipAddr
-          GitPort = opts.gitPort
-          WsPort  = opts.wsPort
-          ApiPort = opts.apiPort
-          Port    = opts.port }
+          GitPort = port opts.gitPort
+          WsPort  = port opts.wsPort
+          ApiPort = port opts.apiPort
+          Port    = port opts.port }
 
     let! project = buildProject machine opts.name dir raftDir mem
 
@@ -151,10 +152,12 @@ let getProjectSites machine projectName username password =
 //      -d '"MachineStatus"' \
 //      http://localhost:7000/api/comman
 
-let machineStatus (iris: IIrisServer) =
-  match iris.MachineStatus with
-  | Right status -> status |> serializeJson |> Either.succeed
-  | Left error -> Left error
+let machineStatus (iris: IIris) =
+  match iris.IrisService with
+  | Some service -> Busy(service.Project.Id, service.Project.Name)
+  | None -> MachineStatus.Idle
+  |> serializeJson
+  |> Either.succeed
 
 // Command to test:
 // curl -H "Content-Type: application/json" \
@@ -173,11 +176,11 @@ let machineConfig () =
 //      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
-let cloneProject (name: string) (uri: string) =
+let cloneProject (name: Name) (uri: Url) =
   let machine = MachineConfig.get()
-  let target = machine.WorkSpace </> filepath name
+  let target = machine.WorkSpace </> filepath (unwrap name)
   let success = sprintf "Successfully cloned project from: %A" uri
-  Git.Repo.clone target uri
+  Git.Repo.clone target (unwrap uri)
   |> Either.map (konst (serializeJson success))
 
 // Command to test:
@@ -186,9 +189,9 @@ let cloneProject (name: string) (uri: string) =
 //      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
-let pullProject (id: string) (name: string) (uri: string) = either {
+let pullProject (id: Id) (name: Name) (uri: Url) = either {
     let machine = MachineConfig.get()
-    let target = machine.WorkSpace </> filepath name
+    let target = machine.WorkSpace </> filepath (unwrap name)
     let! repo = Git.Repo.repository target
 
     let! remote =
@@ -201,20 +204,19 @@ let pullProject (id: string) (name: string) (uri: string) = either {
     match result.Status with
     | LibGit2Sharp.MergeStatus.Conflicts ->
       return!
-        "Clonflict while pulling from " + uri
+        "Clonflict while pulling from " + unwrap uri
         |> Error.asGitError "pullProject"
         |> Either.fail
     | _ ->
       return
-        sprintf "Successfully pulled changes from: %A" uri
+        sprintf "Successfully pulled changes from: %A" url
         |> serializeJson
   }
 
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
-let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
-  let fail cmd msg =
-    IrisError.Other (tag cmd, msg) |> Either.fail
+let startAgent (cfg: IrisMachine) (iris: IIris) =
+  let fail cmd msg = IrisError.Other (tag cmd, msg) |> Either.fail
   MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
@@ -230,10 +232,7 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
             exit 0
           }
           Right msg
-        | Command.UnloadProject ->
-          // TODO: Check if a project is actually loaded
-          iris.UnloadProject()
-          |> Either.map (fun () -> "Project unloaded")
+        | Command.UnloadProject -> iris.UnloadProject() |> Either.map (konst "Project unloaded")
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
         | MachineStatus -> machineStatus iris
@@ -242,8 +241,8 @@ let startAgent (cfg: IrisMachine) (iris: IIrisServer) =
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
         | LoadProject(projectName, username, password, site) ->
-          iris.LoadProject(projectName, username, password, ?site=site)
-          |> Either.map (fun _ -> "Loaded project " + projectName)
+          iris.LoadProject(projectName, username, password, site)
+          |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
         | GetProjectSites(projectName, username, password) ->
           getProjectSites cfg projectName username password
 

@@ -1569,18 +1569,18 @@ type StateMachine =
 
     | StateMachinePayloadFB.ProjectFB ->
       either {
-        let! project =
-          let projectish = fb.Payload<ProjectFB>()
-          if projectish.HasValue then
-            projectish.Value
-            |> IrisProject.FromFB
-          else
-            "Could not parse empty project payload"
-            |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
-
         match fb.Action with
-        | StateMachineActionFB.UpdateFB -> return (UpdateProject project)
+        | StateMachineActionFB.UpdateFB ->
+          let projectish = fb.Payload<ProjectFB>()
+          return!
+            if projectish.HasValue then
+              projectish.Value
+              |> IrisProject.FromFB
+              |> Either.map UpdateProject
+            else
+              "Could not parse empty project payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
         | StateMachineActionFB.RemoveFB -> return UnloadProject
         | x ->
           return!

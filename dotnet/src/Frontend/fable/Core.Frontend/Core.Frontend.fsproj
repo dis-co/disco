@@ -13,6 +13,7 @@
     <Compile Include="../../../Iris/Iris/Core/Error.fs" />
     <Compile Include="../../../Iris/Iris/Core/Serialization.fs" />
     <Compile Include="../../../Iris/Iris/Core/Id.fs" />
+    <Compile Include="../../../Iris/Iris/Core/Util.fs" />
     <Compile Include="../../../Iris/Iris/Core/Property.fs" />
     <Compile Include="../../../Iris/Iris/Core/IpAddress.fs" />
     <Compile Include="../../../Iris/Iris/Core/Aliases.fs" />
@@ -24,7 +25,6 @@
     <Compile Include="../../../Iris/Iris/Core/Client.fs" />
     <Compile Include="../../../Iris/Iris/Core/Session.fs" />
     <Compile Include="../../../Iris/Iris/Core/Color.fs" />
-    <Compile Include="../../../Iris/Iris/Core/Util.fs" />
     <Compile Include="../../../Iris/Iris/Core/Logging.fs" />
     <Compile Include="../../../Iris/Iris/Core/Tracing.fs" />
     <Compile Include="../../../Iris/Iris/Raft/Member.fs" />

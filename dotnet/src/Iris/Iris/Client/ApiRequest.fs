@@ -2,6 +2,7 @@ namespace Iris.Client
 
 // * Imports
 
+open System
 open Iris.Core
 open Iris.Raft
 open FlatBuffers
@@ -14,6 +15,12 @@ type ApiError =
   | Internal         of string
   | UnknownCommand   of string
   | MalformedRequest of string
+
+  override error.ToString() =
+    match error with
+    | Internal         str -> String.Format("Internal: {0}", str)
+    | UnknownCommand   str -> String.Format("UnknownCommand: {0}", str)
+    | MalformedRequest str -> String.Format("MalformedRequest: {0}", str)
 
   member error.ToOffset(builder: FlatBufferBuilder) =
     match error with
@@ -61,272 +68,228 @@ type ClientApiRequest =
   | Update   of StateMachine
   | Ping
 
+  // ** ToOffset
+
   member request.ToOffset(builder: FlatBufferBuilder) =
-    match request with
-    | Ping ->
+    let inline withPayload builder cmd tipe (value: Offset<'a>) =
       ClientApiRequestFB.StartClientApiRequestFB(builder)
-      ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
+      ClientApiRequestFB.AddCommand(builder, cmd)
+      ClientApiRequestFB.AddParameterType(builder, tipe)
+      ClientApiRequestFB.AddParameter(builder, value.Value)
+      ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+    let withoutPayload builder cmd =
+      ClientApiRequestFB.StartClientApiRequestFB(builder)
+      ClientApiRequestFB.AddCommand(builder, cmd)
       ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
       ClientApiRequestFB.EndClientApiRequestFB(builder)
+
+    match request with
+    | Ping -> withoutPayload builder ClientApiCommandFB.PingFB
     | Snapshot state ->
-      let offset = state.ToOffset(builder)
-      ClientApiRequestFB.StartClientApiRequestFB(builder)
-      ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.SnapshotFB)
-      ClientApiRequestFB.AddParameterType(builder, ParameterFB.StateFB)
-      ClientApiRequestFB.AddParameter(builder, offset.Value)
-      ClientApiRequestFB.EndClientApiRequestFB(builder)
+      state.ToOffset(builder)
+      |> withPayload builder ClientApiCommandFB.SnapshotFB ParameterFB.StateFB
+
     | Update sm ->
       match sm with
       // Project
+      | UnloadProject -> withoutPayload builder ClientApiCommandFB.UnloadProjectFB
+
       | UpdateProject project ->
-        let offset = project.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateProjectFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.ProjectFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        project
+        |> Binary.toOffset builder
+        |> withPayload builder ClientApiCommandFB.UpdateProjectFB ParameterFB.ProjectFB
 
-      // Client
-      | AddClient    client ->
-        let offset = client.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddClientFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // CuePlayer
+      | AddCuePlayer player
+      | UpdateCuePlayer player
+      | RemoveCuePlayer player as cmd ->
+        match cmd with
+        | AddCuePlayer    _ -> ClientApiCommandFB.AddCuePlayerFB
+        | UpdateCuePlayer _ -> ClientApiCommandFB.UpdateCuePlayerFB
+        | RemoveCuePlayer _ -> ClientApiCommandFB.RemoveCuePlayerFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          player
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.CuePlayerFB
 
-      | UpdateClient client ->
-        let offset = client.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateClientFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // CLIENT
+      | AddClient client
+      | UpdateClient client
+      | RemoveClient client as cmd ->
+        match cmd with
+        | AddClient    _ -> ClientApiCommandFB.AddClientFB
+        | UpdateClient _ -> ClientApiCommandFB.UpdateClientFB
+        | RemoveClient _ -> ClientApiCommandFB.RemoveClientFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          client
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.IrisClientFB
 
-      | RemoveClient client ->
-        let offset = client.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveClientFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.IrisClientFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      // Member
-      | AddMember    mem ->
-        let offset = mem.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddMemberFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | UpdateMember mem ->
-        let offset = mem.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateMemberFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemoveMember mem ->
-        let offset = mem.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveMemberFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.RaftMemberFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // MEMBER
+      | AddMember mem
+      | UpdateMember mem
+      | RemoveMember mem as cmd ->
+        match cmd with
+        | AddMember    _ -> ClientApiCommandFB.AddMemberFB
+        | UpdateMember _ -> ClientApiCommandFB.UpdateMemberFB
+        | RemoveMember _ -> ClientApiCommandFB.RemoveMemberFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          mem
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.RaftMemberFB
 
       // GROUP
-      | AddPinGroup    group ->
-        let offset = group.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPinGroupFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | UpdatePinGroup group ->
-        let offset = group.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePinGroupFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemovePinGroup group ->
-        let offset = group.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePinGroupFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinGroupFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      | AddPinGroup group
+      | UpdatePinGroup group
+      | RemovePinGroup group as cmd ->
+        match cmd with
+        | AddPinGroup    _ -> ClientApiCommandFB.AddPinGroupFB
+        | UpdatePinGroup _ -> ClientApiCommandFB.UpdatePinGroupFB
+        | RemovePinGroup _ -> ClientApiCommandFB.RemovePinGroupFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          group
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.PinGroupFB
 
       // PIN
-      | AddPin pin ->
-        let offset = pin.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddPinFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | UpdatePin pin ->
-        let offset = pin.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdatePinFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemovePin pin ->
-        let offset = pin.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemovePinFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.PinFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      | AddPin pin
+      | UpdatePin pin
+      | RemovePin pin as cmd ->
+        match cmd with
+        | AddPin    _ -> ClientApiCommandFB.AddPinFB
+        | UpdatePin _ -> ClientApiCommandFB.UpdatePinFB
+        | RemovePin _ -> ClientApiCommandFB.RemovePinFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          pin
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.PinFB
 
       // CUE
-      | AddCue cue ->
-        let offset = cue.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddCueFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      | AddCue cue
+      | UpdateCue cue
+      | RemoveCue cue as cmd ->
+        match cmd with
+        | AddCue    _ -> ClientApiCommandFB.AddCueFB
+        | UpdateCue _ -> ClientApiCommandFB.UpdateCueFB
+        | RemoveCue _ -> ClientApiCommandFB.RemoveCueFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          cue
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.CueFB
 
-      | UpdateCue cue ->
-        let offset = cue.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateCueFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemoveCue cue ->
-        let offset = cue.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveCueFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      // CUE
-      | AddCueList cuelist ->
-        let offset = cuelist.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddCueListFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | UpdateCueList cuelist ->
-        let offset = cuelist.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateCueListFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemoveCueList cuelist ->
-        let offset = cuelist.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveCueListFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueListFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // CUELIST
+      | AddCueList cuelist
+      | UpdateCueList cuelist
+      | RemoveCueList cuelist as cmd ->
+        match cmd with
+        | AddCueList    _ -> ClientApiCommandFB.AddCueListFB
+        | UpdateCueList _ -> ClientApiCommandFB.UpdateCueListFB
+        | RemoveCueList _ -> ClientApiCommandFB.RemoveCueListFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          cuelist
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.CueListFB
 
       // User
-      | AddUser user ->
-        let offset = user.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddUserFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      | AddUser user
+      | UpdateUser user
+      | RemoveUser user as cmd ->
+        match cmd with
+        | AddUser    _ -> ClientApiCommandFB.AddUserFB
+        | UpdateUser _ -> ClientApiCommandFB.UpdateUserFB
+        | RemoveUser _ -> ClientApiCommandFB.RemoveUserFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          user
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.UserFB
 
-      | UpdateUser user ->
-        let offset = user.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateUserFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // SESSION
+      | AddSession session
+      | UpdateSession session
+      | RemoveSession session as cmd ->
+        match cmd with
+        | AddSession    _ -> ClientApiCommandFB.AddSessionFB
+        | UpdateSession _ -> ClientApiCommandFB.UpdateSessionFB
+        | RemoveSession _ -> ClientApiCommandFB.RemoveSessionFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          session
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.SessionFB
 
-      | RemoveUser user ->
-        let offset = user.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveUserFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.UserFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+      // DISCOVERED SERVICES
+      | AddDiscoveredService service
+      | UpdateDiscoveredService service
+      | RemoveDiscoveredService service as cmd ->
+        match cmd with
+        | AddDiscoveredService    _ -> ClientApiCommandFB.AddDiscoveredServiceFB
+        | UpdateDiscoveredService _ -> ClientApiCommandFB.UpdateDiscoveredServiceFB
+        | RemoveDiscoveredService _ -> ClientApiCommandFB.RemoveDiscoveredServiceFB
+        | _ -> failwith "the impossible happened"
+        |> fun cmd ->
+          service
+          |> Binary.toOffset builder
+          |> withPayload builder cmd ParameterFB.DiscoveredServiceFB
 
-      // Session
-      | AddSession session ->
-        let offset = session.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.AddSessionFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | UpdateSession session ->
-        let offset = session.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateSessionFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
-      | RemoveSession session ->
-        let offset = session.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RemoveSessionFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SessionFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
-
+      // SLICES
       | UpdateSlices slices ->
-        let offset = slices.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UpdateSlicesFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.SlicesFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        slices
+        |> Binary.toOffset builder
+        |> withPayload builder ClientApiCommandFB.UpdateSlicesFB ParameterFB.SlicesFB
 
+      // CLOCK
+      | UpdateClock tick ->
+        ClockFB.CreateClockFB(builder, tick)
+        |> withPayload builder ClientApiCommandFB.UpdateClockFB ParameterFB.ClockFB
+
+      // SNAPSHOT
+      | DataSnapshot state ->
+        state
+        |> Binary.toOffset builder
+        |> withPayload builder ClientApiCommandFB.DataSnapshotFB ParameterFB.StateFB
+
+      // LOG
+      | LogMsg log ->
+        log
+        |> Binary.toOffset builder
+        |> withPayload builder ClientApiCommandFB.LogEventFB ParameterFB.LogEventFB
+
+      // SET LOG LEVEL
+      | SetLogLevel level ->
+        let offset = string level |> builder.CreateString
+        StringFB.CreateStringFB(builder, offset)
+        |> withPayload builder ClientApiCommandFB.SetLogLevelFB ParameterFB.StringFB
+
+      // CALL CUE
       | CallCue cue ->
-        let offset = cue.ToOffset(builder)
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.CallCueFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.CueFB)
-        ClientApiRequestFB.AddParameter(builder, offset.Value)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        cue
+        |> Binary.toOffset builder
+        |> withPayload builder ClientApiCommandFB.CallCueFB ParameterFB.CueFB
 
       | Command AppCommand.Undo ->
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.UndoFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        withoutPayload builder ClientApiCommandFB.UndoFB
 
       | Command AppCommand.Redo ->
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.RedoFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        withoutPayload builder ClientApiCommandFB.RedoFB
 
       | Command AppCommand.Reset ->
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.ResetFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        withoutPayload builder ClientApiCommandFB.ResetFB
 
       | _ ->
         // OK OK, this is not really good, but for now its better to have slightly more traffic than
         // failures or more complex solution
-        ClientApiRequestFB.StartClientApiRequestFB(builder)
-        ClientApiRequestFB.AddCommand(builder, ClientApiCommandFB.PingFB)
-        ClientApiRequestFB.AddParameterType(builder, ParameterFB.NONE)
-        ClientApiRequestFB.EndClientApiRequestFB(builder)
+        withoutPayload builder ClientApiCommandFB.PingFB
+
+  // ** FromFB
 
   static member FromFB(fb: ClientApiRequestFB) =
     match fb.Command with
@@ -352,6 +315,10 @@ type ClientApiRequest =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
 
+    | ClientApiCommandFB.UnloadProjectFB ->
+      ClientApiRequest.Update UnloadProject
+      |> Either.succeed
+
     | ClientApiCommandFB.UpdateProjectFB ->
       either {
         let! project =
@@ -364,6 +331,53 @@ type ClientApiRequest =
             |> Error.asParseError "ClientApiRequest.FromFB"
             |> Either.fail
         return ClientApiRequest.Update (UpdateProject project)
+      }
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | ClientApiCommandFB.AddCuePlayerFB ->
+      either {
+        let! player =
+          let playerish = fb.Parameter<CuePlayerFB>()
+          if playerish.HasValue then
+            let value = playerish.Value
+            CuePlayer.FromFB value
+          else
+            "Empty CuePlayer payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (AddCuePlayer player)
+      }
+    | ClientApiCommandFB.UpdateCuePlayerFB ->
+      either {
+        let! player =
+          let playerish = fb.Parameter<CuePlayerFB>()
+          if playerish.HasValue then
+            let value = playerish.Value
+            CuePlayer.FromFB value
+          else
+            "Empty CuePlayer payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateCuePlayer player)
+      }
+    | ClientApiCommandFB.RemoveCuePlayerFB ->
+      either {
+        let! player =
+          let playerish = fb.Parameter<CuePlayerFB>()
+          if playerish.HasValue then
+            let value = playerish.Value
+            CuePlayer.FromFB value
+          else
+            "Empty CuePlayer payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (RemoveCuePlayer player)
       }
 
     //   ____ _ _            _
@@ -760,6 +774,116 @@ type ClientApiRequest =
         return ClientApiRequest.Update (RemoveSession session)
       }
 
+    //  ____        _        ____                        _           _
+    // |  _ \  __ _| |_ __ _/ ___| _ __   __ _ _ __  ___| |__   ___ | |_
+    // | | | |/ _` | __/ _` \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+    // | |_| | (_| | || (_| |___) | | | | (_| | |_) \__ \ | | | (_) | |_
+    // |____/ \__,_|\__\__,_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+    //                                        |_|
+
+    | ClientApiCommandFB.DataSnapshotFB ->
+      either {
+        let! state =
+          let stateish = fb.Parameter<StateFB>()
+          if stateish.HasValue then
+            let value = stateish.Value
+            State.FromFB value
+          else
+            "Empty StateFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (DataSnapshot state)
+      }
+
+    //  ____  _                                     _
+    // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+    // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+    // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+    // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
+
+    | ClientApiCommandFB.AddDiscoveredServiceFB
+    | ClientApiCommandFB.UpdateDiscoveredServiceFB
+    | ClientApiCommandFB.RemoveDiscoveredServiceFB as cmd ->
+      either {
+        let! service =
+          let serviceish = fb.Parameter<DiscoveredServiceFB>()
+          if serviceish.HasValue then
+            let value = serviceish.Value
+            DiscoveredService.FromFB value
+          else
+            "Empty DiscoveredServiceFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        let mapper =
+          match cmd with
+          | ClientApiCommandFB.AddDiscoveredServiceFB    -> AddDiscoveredService
+          | ClientApiCommandFB.UpdateDiscoveredServiceFB -> UpdateDiscoveredService
+          | ClientApiCommandFB.RemoveDiscoveredServiceFB -> RemoveDiscoveredService
+          | _ -> failwith "the impossible happened"
+        return ClientApiRequest.Update (mapper service)
+      }
+
+    //  _
+    // | |    ___   __ _
+    // | |   / _ \ / _` |
+    // | |__| (_) | (_| |
+    // |_____\___/ \__, |
+    //             |___/
+
+    | ClientApiCommandFB.LogEventFB ->
+      either {
+        let! log =
+          let logish = fb.Parameter<LogEventFB>()
+          if logish.HasValue then
+            let value = logish.Value
+            LogEvent.FromFB value
+          else
+            "Empty LogEventFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (LogMsg log)
+      }
+
+    | ClientApiCommandFB.SetLogLevelFB ->
+      either {
+        let! level =
+          let levelish = fb.Parameter<StringFB>()
+          if levelish.HasValue then
+            let value = levelish.Value
+            LogLevel.TryParse value.Value
+          else
+            "Empty StringFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (SetLogLevel level)
+      }
+
+    //   ____ _            _
+    //  / ___| | ___   ___| | __
+    // | |   | |/ _ \ / __| |/ /
+    // | |___| | (_) | (__|   <
+    //  \____|_|\___/ \___|_|\_\
+
+    | ClientApiCommandFB.UpdateClockFB ->
+      either {
+        let! clock =
+          let clockish = fb.Parameter<ClockFB>()
+          if clockish.HasValue then
+            let value = clockish.Value
+            Right value.Value
+          else
+            "Empty ClockFB payload"
+            |> Error.asParseError "ClientApiRequest.FromFB"
+            |> Either.fail
+        return ClientApiRequest.Update (UpdateClock clock)
+      }
+
+    //   ____               _
+    //  / ___|_ __ ___   __| |
+    // | |   | '_ ` _ \ / _` |
+    // | |___| | | | | | (_| |
+    //  \____|_| |_| |_|\__,_|
+
     | ClientApiCommandFB.UndoFB ->
       AppCommand.Undo
       |> Command
@@ -783,8 +907,12 @@ type ClientApiRequest =
       |> Error.asClientError "ClientApiRequest.FromFB"
       |> Either.fail
 
+  // ** ToBytes
+
   member request.ToBytes() =
     Binary.buildBuffer request
+
+  // ** FromBytes
 
   static member FromBytes(raw: byte array) =
     raw
@@ -1299,6 +1427,8 @@ type ServerApiRequest =
 type ApiResponse =
   | Pong
   | OK
+  | Registered
+  | Unregistered
   | NOK of ApiError
 
   member response.ToOffset(builder: FlatBufferBuilder) =
@@ -1311,6 +1441,14 @@ type ApiResponse =
       ApiResponseFB.StartApiResponseFB(builder)
       ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
       ApiResponseFB.EndApiResponseFB(builder)
+    | Registered ->
+      ApiResponseFB.StartApiResponseFB(builder)
+      ApiResponseFB.AddStatus(builder, StatusFB.RegisteredFB)
+      ApiResponseFB.EndApiResponseFB(builder)
+    | Unregistered ->
+      ApiResponseFB.StartApiResponseFB(builder)
+      ApiResponseFB.AddStatus(builder, StatusFB.UnregisteredFB)
+      ApiResponseFB.EndApiResponseFB(builder)
     | NOK error ->
       let err = error.ToOffset(builder)
       ApiResponseFB.StartApiResponseFB(builder)
@@ -1320,8 +1458,10 @@ type ApiResponse =
 
   static member FromFB(fb: ApiResponseFB) =
     match fb.Status with
-    | StatusFB.PongFB -> Right Pong
-    | StatusFB.OKFB   -> Right OK
+    | StatusFB.PongFB         -> Right Pong
+    | StatusFB.OKFB           -> Right OK
+    | StatusFB.RegisteredFB   -> Right Registered
+    | StatusFB.UnregisteredFB -> Right Unregistered
     | StatusFB.NOKFB  ->
       either {
         let! error =
@@ -1344,5 +1484,6 @@ type ApiResponse =
     Binary.buildBuffer request
 
   static member FromBytes(raw: byte array) =
-    ApiResponseFB.GetRootAsApiResponseFB(Binary.createBuffer raw)
+    Binary.createBuffer raw
+    |> ApiResponseFB.GetRootAsApiResponseFB
     |> ApiResponse.FromFB

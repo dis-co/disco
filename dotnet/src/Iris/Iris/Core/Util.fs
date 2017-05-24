@@ -544,22 +544,6 @@ module Functional =
 
 #endif
 
-// * Async
-
-#if !FABLE_COMPILER
-
-[<AutoOpen>]
-module Async =
-
-  let asynchronously (f: unit -> unit) =
-    #if IRIS_NODES
-    async { f() } |> Async.Start
-    #else
-    job { f() } |> Hopac.queue
-    #endif
-
-#endif
-
 // * Tuple
 
 module Tuple =
@@ -578,3 +562,17 @@ module Tuple =
 
   let inline mapThrd3 (f: 'c -> 'd) (a, b, c) =
     (a, b, f c)
+
+// * Option
+
+module Option =
+
+  let inline ofNull (f: ^a -> ^b option) (value: ^a) =
+    match value with
+    | null -> None
+    | _ -> f value
+
+  let inline mapNull< ^a, ^b when ^a : null > (f: ^a -> ^b) (value: ^a) =
+    match value with
+    | null -> None
+    | _ -> Some (f value)

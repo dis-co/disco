@@ -18,9 +18,7 @@ module JointConsensus =
     testCase "periodic executes all cfg changes" <| fun _ ->
       let trm = term 1
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendRequestVote = fun _ _ -> Some { Term = trm; Granted = true; Reason = None } }
+      let response = { Term = trm; Granted = true; Reason = None }
 
       let mem1 = Member.create (Id.Create())
       let mem2 = Member.create (Id.Create())
@@ -60,11 +58,14 @@ module JointConsensus =
         Configuration(Id.Create(), index 1, term, mems , None)
 
       let ci = ref (index 0)
-      let state = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendAppendEntries = fun _ _ ->
-                      Some { Term = term 0; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-                  } :> IRaftCallbacks
+      let state = defaultServer()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      let makeResponse() =
+        { Term = term 0
+          Success = true
+          CurrentIndex = !ci
+          FirstIndex = index 1 }
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -78,10 +79,18 @@ module JointConsensus =
         ci := idx                       // otherwise we get a StaleResponse error
         let! one = Raft.receiveEntry (Log.make term defSM)
 
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
         // Add another entry
         let! idx = Raft.currentIndexM ()
         ci := idx
         let! two = Raft.receiveEntry (Log.make term defSM)
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! r1 = Raft.responseCommitted one
         let! r2 = Raft.responseCommitted two
@@ -93,6 +102,11 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         let! three = Raft.receiveEntry (mkjc term)
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
         let! r3 = Raft.responseCommitted three
         do! expectM "'three' should be committed" true (konst r3)
 
@@ -110,6 +124,11 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         let! four = Raft.receiveEntry (Log.make term defSM)
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
         let! r4 = Raft.responseCommitted four
         do! expectM "'four' should not be committed" false (konst r4)
 
@@ -117,6 +136,11 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         let! five  = Raft.receiveEntry (Log.make term defSM)
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
         let! r5 = Raft.responseCommitted five
         do! expectM "'five' should not be committed" false (konst r5)
 
@@ -126,6 +150,10 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx + index 1
         do! Raft.periodic 1000<ms>
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         // when the server notices that all mems are up-to-date it will atomatically append
         // a Configuration entry to exit the JointConsensus
@@ -160,12 +188,13 @@ module JointConsensus =
       let lokk = new System.Object()
       let vote = { Granted = true; Term = !trm; Reason = None }
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ req ->
-              lock lokk <| fun _ ->
-                Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-          } :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      let makeResponse() =
+        { Term = !trm
+          Success = true
+          CurrentIndex = !ci
+          FirstIndex = index 1 }
 
       raft {
         let me = snd mems.[0]
@@ -220,21 +249,27 @@ module JointConsensus =
         ci := idx
 
         let! response = Raft.receiveEntry entry
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! idx = Raft.currentIndexM ()
         ci := idx
 
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! committed = Raft.responseCommitted response
         do! expectM "Should have committed the config change" true (konst committed)
 
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
-        do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
-        do! expectM "Should still have correct mem count for old configuration" n Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "(1) Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
+        do! expectM "(1) Should still have correct logical mem count" n Raft.numLogicalPeers
+        do! expectM "(1) Should still have correct mem count for old configuration" n Raft.numOldPeers
+        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   |___ \
@@ -302,6 +337,8 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         // when configuration entry is considered committed, joint-consensus is over
         let! t = Raft.currentTermM ()
@@ -309,6 +346,13 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! Raft.periodic 1000<ms>
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should only have half the mems" (n / 2) Raft.numMembers
         do! expectM "Should have None as ConfigChange" None Raft.lastConfigChange
@@ -355,16 +399,24 @@ module JointConsensus =
         ci := idx
 
         let! response = Raft.receiveEntry entry
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! idx = Raft.currentIndexM ()
         ci := idx
 
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should still have correct mem count for new configuration 2" n Raft.numPeers
-        do! expectM "Should still have correct logical mem count 2" n Raft.numLogicalPeers
-        do! expectM "Should still have correct mem count for old configuration 2" (n / 2) Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange 2" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! expectM "(2) Should still have correct mem count for new configuration 2" n Raft.numPeers
+        do! expectM "(2) Should still have correct logical mem count 2" n Raft.numLogicalPeers
+        do! expectM "(2) Should still have correct mem count for old configuration 2" (n / 2) Raft.numOldPeers
+        do! expectM "(2) Should have JointConsensus entry as ConfigChange 2" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   | ___|
@@ -412,7 +464,7 @@ module JointConsensus =
             | Some mem ->
               // the mems are not able to vote at first, because they will need
               // to be up to date to do that
-              // do! updateMemberM { mem with State = Running; Voting = true }
+              do! Raft.updateMemberM { mem with State = Running; Voting = true }
               do! Raft.receiveVoteResponse nid { vote with Term = !trm }
             | _ -> failwith "Member not found. :("
 
@@ -431,6 +483,8 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         // make sure Configuration is committed
         let! t = Raft.currentTermM ()
@@ -438,6 +492,12 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should have all the mems" n Raft.numMembers
         do! expectM "Should have None as ConfigChange" None Raft.lastConfigChange
@@ -460,12 +520,13 @@ module JointConsensus =
 
       let vote = { Granted = true; Term = !trm; Reason = None }
 
-      let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ req ->
-              lock lokk <| fun _ ->
-                Some { Term = !trm; Success = true; CurrentIndex = !ci; FirstIndex = index 1 }
-          } :> IRaftCallbacks
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
+
+      let makeResponse() =
+        { Term = !trm
+          Success = true
+          CurrentIndex = !ci
+          FirstIndex = index 1 }
 
       raft {
         let self = snd mems.[0]        //
@@ -521,11 +582,19 @@ module JointConsensus =
           |> Log.mkConfigChange !trm
 
         let! response = Raft.receiveEntry entry
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! idx = Raft.currentIndexM ()
         ci := idx
 
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
@@ -546,6 +615,8 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1001<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         // finalizes the joint-consensus mode
         let! t = Raft.currentTermM ()
@@ -553,6 +624,13 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1001<ms>
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! Raft.periodic 1001<ms>
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        for peer in peers do
+          do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should only have half one mem (myself)" 1 Raft.numMembers
         do! expectM "Should have None as ConfigChange" None Raft.lastConfigChange
@@ -566,13 +644,12 @@ module JointConsensus =
       let count = ref 0
       let ci = ref (index 0)
       let trm = ref (term 1)
-      let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendAppendEntries = fun _ _ ->
-                      lock lokk <| fun _ ->
-                        count := 1 + !count
-                        Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
+      let init = defaultServer()
+      let cbs = { Callbacks.Create (ref defSM)
+                    with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
+
+      // let response = Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
 
       let n = 10                       // we want ten mems overall
 
@@ -640,13 +717,12 @@ module JointConsensus =
       let lokk = new System.Object()
       let count = ref 0
       let trm = ref (term 1)
-      let init = Raft.mkRaft (Member.create (Id.Create()))
-      let cbs = { mkcbs (ref defSM) with
-                    SendRequestVote = fun _ _ ->
-                      lock lokk <| fun _ ->
-                        count := 1 + !count
-                        Some { Granted = true; Term = !trm; Reason = None } }
+      let init = defaultServer()
+      let cbs = { Callbacks.Create (ref defSM) with
+                    SendRequestVote = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
+
+      // let response = Some { Granted = true; Term = !trm; Reason = None } }
 
       let n = 10                       // we want ten mems overall
 
@@ -715,20 +791,29 @@ module JointConsensus =
       let ci = ref (index 0)
       let trm = ref (term 1)
       let count = ref 0
-      let init = Raft.mkRaft self
+      let init = Raft.create self
       let cbs =
-        { mkcbs (ref defSM) with
-            SendAppendEntries = fun _ _ ->
-              lock lokk <| fun _ ->
-                count := 1 + !count
-                Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
+        { Callbacks.Create (ref defSM) with
+            SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
         :> IRaftCallbacks
+
+      let makeResponse() =
+        { Success = true
+          Term = !trm
+          CurrentIndex = !ci
+          FirstIndex = index 1 }
 
       raft {
         do! Raft.setPeersM (mems |> Map.ofArray)
         do! Raft.setStateM Candidate
         do! Raft.setTermM !trm
+
         do! Raft.becomeLeader ()          // increases term!
+
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! t = Raft.currentTermM ()
         trm := t
@@ -756,6 +841,9 @@ module JointConsensus =
 
         let! response = Raft.receiveEntry entry
 
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
+
         let! idx = Raft.currentIndexM ()
         ci := idx
 
@@ -764,13 +852,23 @@ module JointConsensus =
         let! committed = Raft.responseCommitted response
         do! expectM "should not have been committed" false (konst committed)
 
-        do! Raft.periodic 1000<ms>             // now the new configuration should be committed
+        // this periodic call will mark the config change as done
+        // and append a JointConsensus entry
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
-        do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
-        do! expectM "Should still have correct mem count for old configuration" n Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
-        do! expectM "Should be in joint consensus configuration" true Raft.inJointConsensus
+        // now the new configuration should be committed, since the previously
+        // apppended JointConsensus is now also marked comitted
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! expectM "(1) Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
+        do! expectM "(1) Should still have correct logical mem count" n Raft.numLogicalPeers
+        do! expectM "(1) Should still have correct mem count for old configuration" n Raft.numOldPeers
+        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "(1) Should be in joint consensus configuration" true Raft.inJointConsensus
 
         let! committed = Raft.responseCommitted response
         do! expectM "should have been committed" true (konst committed)
@@ -785,13 +883,23 @@ module JointConsensus =
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! idx = Raft.currentIndexM ()
         ci := idx
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should only have half the mems" (n / 2) Raft.numMembers
-        do! expectM "Should have None as ConfigChange" None Raft.lastConfigChange
+        // after this periodic, the new cluster configuraion is applied
+        let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! expectM "(2) Should only have half the mems" (n / 2) Raft.numMembers
+        do! expectM "(2) Should have None as ConfigChange" None Raft.lastConfigChange
 
         //            _     _                   _
         //   __ _  __| | __| |  _ __   ___   __| | ___  ___
@@ -809,7 +917,10 @@ module JointConsensus =
           |> Log.calculateChanges peers
           |> Log.mkConfigChange (term 1)
 
+
         let! response = Raft.receiveEntry entry
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
         let! idx = Raft.currentIndexM ()
         ci := idx
@@ -818,6 +929,12 @@ module JointConsensus =
         do! expectM "Should not be committed" false (konst result)
 
         do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
+
+        do! Raft.periodic 1000<ms>
+        for peer in peers do
+          do! makeResponse () |> Raft.receiveAppendEntriesResponse peer.Id
 
         do! expectM "Should still have correct mem count for new configuration" n Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers

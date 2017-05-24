@@ -3,11 +3,14 @@ namespace Iris.Zmq
 // * Imports
 
 open ZeroMQ
+open System.Threading
 
 // * Common
 
 [<AutoOpen>]
 module Common =
+
+  // ** setOption
 
   /// ## setOption
   ///
@@ -23,6 +26,8 @@ module Common =
     sock.SetOption(option, value)
     |> ignore
 
+  // ** ingoreErr
+
   /// ## ignoreErr
   ///
   /// Determine if the error number passed is worth ignoring or not.
@@ -37,6 +42,8 @@ module Common =
     | x when x = ZError.EAGAIN.Number    -> true
     | _ -> false
 
+  // ** bind
+
   /// ## bind
   ///
   /// Bind a ZSocket to an address.
@@ -48,6 +55,8 @@ module Common =
   /// Returns: unit
   let bind (sock: ZSocket) (addr: string) =
     sock.Bind(addr)
+
+  // ** tryUnbind
 
   /// ## tryUnbind
   ///
@@ -64,6 +73,8 @@ module Common =
     with
       | _ -> () // throws ENOENT on failure. We ignore that.
 
+  // ** tryClose
+
   /// ## tryClose
   ///
   /// Attempt to close a ZSocket safely.
@@ -78,6 +89,7 @@ module Common =
     with
       | _ -> () // ....at least we tried!
 
+  // ** tryDispose
 
   /// ## tryDispose
   ///
@@ -92,3 +104,11 @@ module Common =
       sock.Dispose()
     with
       | _ -> () // ....at least we tried!
+
+// * RequestCount module
+
+[<RequireQualifiedAccess>]
+module private RequestCount =
+  let mutable private id = 0L
+  let increment () = Interlocked.Increment &id |> ignore
+  let current () = id

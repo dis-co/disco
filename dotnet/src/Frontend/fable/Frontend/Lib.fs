@@ -124,6 +124,7 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
     else res.text() |> Promise.bind onSuccess)
 
 /// Posts a command, parses the JSON response returns a promise (can fail)
+[<PassGenerics>]
 let postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
   postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
@@ -188,15 +189,13 @@ let addMember(info: obj) =
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
       match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p -> PullProject(string p.Id, unwrap latestState.Project.Name, projectGitUri)
-      | None   -> CloneProject(unwrap latestState.Project.Name, projectGitUri)
+      | Some p -> PullProject(p.Id, latestState.Project.Name, projectGitUri)
+      | None   -> CloneProject(latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
 
     notify commandMsg
 
-    let active =
-      latestState.Project.Config.ActiveSite
-      |> Option.map string
+    let active = latestState.Project.Config.ActiveSite
 
     // Load active project in machine B
     // Note that we don't use loadProject from below, since that function
@@ -204,7 +203,7 @@ let addMember(info: obj) =
 
     // TODO: Using the admin user for now, should it be the same user as leader A?
     let! loadResult =
-      LoadProject(unwrap latestState.Project.Name, "admin", password "Nsynk", active)
+      LoadProject(latestState.Project.Name, name "admin", password "Nsynk", active)
       |> postCommandPrivate memberIpAndPort
 
     printfn "response: %A" loadResult
@@ -212,7 +211,7 @@ let addMember(info: obj) =
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
         HostName = machine.HostName
-        IpAddr   = IPv4Address machine.WebIP
+        IpAddr   = machine.BindAddress
         Port     = machine.RaftPort
         WsPort   = machine.WsPort
         GitPort  = machine.GitPort
@@ -232,8 +231,8 @@ let unloadProject() =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: string, username: string, pass: string, site: string option, ipAndPort: string option): JS.Promise<string option> =
-  LoadProject(project, username, password pass, site)
+let rec loadProject(project: Name, username: UserName, pass: Password, site: Id option, ipAndPort: string option): JS.Promise<string option> =
+  LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
@@ -261,11 +260,11 @@ let createProject(info: obj) =
     let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
 
     do! { name     = !!info?name
-        ; ipAddr   = machine.WebIP
-        ; port     = machine.RaftPort
-        ; apiPort  = machine.ApiPort
-        ; wsPort   = machine.WsPort
-        ; gitPort  = machine.GitPort }
+        ; ipAddr   = string machine.BindAddress
+        ; port     = unwrap machine.RaftPort
+        ; apiPort  = unwrap machine.ApiPort
+        ; wsPort   = unwrap machine.WsPort
+        ; gitPort  = unwrap machine.GitPort }
         |> CreateProject
         |> postCommand (fun _ -> notify "The project has been created successfully") notify
   })
@@ -309,4 +308,3 @@ let project2tree (p: IrisProject) =
   ;  leaf ("Author: " + defaultArg p.Author "unknown")
   ;  cfg2tree p.Config
   |] |> node "Project"
-

@@ -85,7 +85,7 @@ type MemberNode() =
             let mem = self.InMember.[n]
 
             self.OutId.[n] <- string mem.Id
-            self.OutHostName.[n] <- mem.HostName
+            self.OutHostName.[n] <- unwrap mem.HostName
             self.OutIpAddress.[n] <- string mem.IpAddr
             self.OutStatus.[n] <- string mem.State
             self.OutRaftPort.[n] <- int mem.Port

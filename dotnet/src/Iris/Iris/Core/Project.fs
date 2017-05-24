@@ -53,17 +53,17 @@ type RaftConfig =
     MaxLogDepth:      int
     LogLevel:         Iris.Core.LogLevel
     DataDir:          FilePath
-    MaxRetries:       uint8
-    PeriodicInterval: uint8 }
+    MaxRetries:       int
+    PeriodicInterval: Timeout }
 
   // ** Default
 
   static member Default =
-    { RequestTimeout   = 500<ms>
-      ElectionTimeout  = 6000<ms>
-      MaxLogDepth      = 20
-      MaxRetries       = 10uy
-      PeriodicInterval = 50uy
+    { RequestTimeout   = Constants.RAFT_REQUEST_TIMEOUT * 1<ms>
+      ElectionTimeout  = Constants.RAFT_ELECTION_TIMEOUT * 1<ms>
+      PeriodicInterval = Constants.RAFT_PERIODIC_INTERVAL * 1<ms>
+      MaxLogDepth      = Constants.RAFT_MAX_LOGDEPTH
+      MaxRetries       = 10
       LogLevel         = LogLevel.Err
       DataDir          = filepath "" }
 
@@ -71,16 +71,16 @@ type RaftConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let lvl = self.LogLevel |> string |> builder.CreateString
-    let dir = self.DataDir |> unwrap |> builder.CreateString
+    let dir = self.DataDir |> unwrap |> Option.mapNull builder.CreateString
 
     RaftConfigFB.StartRaftConfigFB(builder)
     RaftConfigFB.AddRequestTimeout(builder, int self.RequestTimeout)
     RaftConfigFB.AddElectionTimeout(builder, int self.ElectionTimeout)
     RaftConfigFB.AddMaxLogDepth(builder, self.MaxLogDepth)
     RaftConfigFB.AddLogLevel(builder, lvl)
-    RaftConfigFB.AddDataDir(builder, dir)
-    RaftConfigFB.AddMaxRetries(builder, uint16 self.MaxRetries)
-    RaftConfigFB.AddPeriodicInterval(builder, uint16 self.PeriodicInterval)
+    Option.iter (fun value -> RaftConfigFB.AddDataDir(builder,value)) dir
+    RaftConfigFB.AddMaxRetries(builder, self.MaxRetries)
+    RaftConfigFB.AddPeriodicInterval(builder, int self.PeriodicInterval)
     RaftConfigFB.EndRaftConfigFB(builder)
 
   // ** FromFB
@@ -94,8 +94,8 @@ type RaftConfig =
           MaxLogDepth      = fb.MaxLogDepth
           LogLevel         = level
           DataDir          = filepath fb.DataDir
-          MaxRetries       = uint8 fb.MaxRetries
-          PeriodicInterval = uint8 fb.PeriodicInterval }
+          MaxRetries       = fb.MaxRetries
+          PeriodicInterval = fb.PeriodicInterval * 1<ms> }
     }
 
 // * VvvvConfig
@@ -230,14 +230,14 @@ type TimingConfig =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let input = builder.CreateString self.Input
+    let input = Option.mapNull builder.CreateString self.Input
     let servers =
       Array.map (string >> builder.CreateString) self.Servers
       |> fun offsets -> TimingConfigFB.CreateServersVector(builder,offsets)
 
     TimingConfigFB.StartTimingConfigFB(builder)
     TimingConfigFB.AddFramebase(builder,self.Framebase)
-    TimingConfigFB.AddInput(builder, input)
+    Option.iter (fun value -> TimingConfigFB.AddInput(builder,value)) input
     TimingConfigFB.AddServers(builder, servers)
     TimingConfigFB.AddUDPPort(builder, self.UDPPort)
     TimingConfigFB.AddTCPPort(builder, self.TCPPort)
@@ -328,14 +328,14 @@ type HostGroup =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
 
     let members =
       Array.map (string >> builder.CreateString) self.Members
       |> fun offsets -> HostGroupFB.CreateMembersVector(builder, offsets)
 
     HostGroupFB.StartHostGroupFB(builder)
-    HostGroupFB.AddName(builder,name)
+    Option.iter (fun value -> HostGroupFB.AddName(builder,value)) name
     HostGroupFB.AddMembers(builder,members)
     HostGroupFB.EndHostGroupFB(builder)
 
@@ -399,7 +399,7 @@ type ClusterConfig =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string self.Id)
-    let name = self.Name |> unwrap |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
 
     let members =
       self.Members
@@ -413,7 +413,7 @@ type ClusterConfig =
 
     ClusterConfigFB.StartClusterConfigFB(builder)
     ClusterConfigFB.AddId(builder, id)
-    ClusterConfigFB.AddName(builder, name)
+    Option.iter (fun value -> ClusterConfigFB.AddName(builder,value)) name
     ClusterConfigFB.AddMembers(builder, members)
     ClusterConfigFB.AddGroups(builder, groups)
     ClusterConfigFB.EndClusterConfigFB(builder)
@@ -540,18 +540,17 @@ type IrisConfig =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let version = builder.CreateString self.Version
+    let version = Option.mapNull builder.CreateString self.Version
     let audio = Binary.toOffset builder self.Audio
     let vvvv = Binary.toOffset builder self.Vvvv
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
-
     let machine = Binary.toOffset builder self.Machine
 
     let site =
       match self.ActiveSite with
-      | Some id -> id |> string |> builder.CreateString
-      | None -> "" |> builder.CreateString
+      | Some id -> id |> string |> builder.CreateString |> Some
+      | None -> None
 
     let sites =
       Array.map (Binary.toOffset builder) self.Sites
@@ -570,9 +569,9 @@ type IrisConfig =
       |> fun tasks -> ConfigFB.CreateTasksVector(builder, tasks)
 
     ConfigFB.StartConfigFB(builder)
-    ConfigFB.AddVersion(builder, version)
+    Option.iter (fun value -> ConfigFB.AddVersion(builder,value)) version
+    Option.iter (fun value -> ConfigFB.AddActiveSite(builder, value)) site
     ConfigFB.AddMachine(builder, machine)
-    ConfigFB.AddActiveSite(builder, site)
     ConfigFB.AddAudioConfig(builder, audio)
     ConfigFB.AddVvvvConfig(builder, vvvv)
     ConfigFB.AddRaftConfig(builder, raft)
@@ -590,7 +589,7 @@ type IrisConfig =
       let version = fb.Version
 
       let site =
-        if isNull fb.ActiveSite || fb.ActiveSite = "" then
+        if isNull fb.ActiveSite then
           None
         else
           Some (Id fb.ActiveSite)
@@ -1106,8 +1105,8 @@ Project:
             MaxLogDepth      = engine.MaxLogDepth
             LogLevel         = loglevel
             DataDir          = filepath engine.DataDir
-            MaxRetries       = uint8 engine.MaxRetries
-            PeriodicInterval = uint8 engine.PeriodicInterval }
+            MaxRetries       = engine.MaxRetries
+            PeriodicInterval = engine.PeriodicInterval * 1<ms> }
       with
         | exn ->
           return!
@@ -1522,13 +1521,7 @@ Project:
   /// Returns: Either<IrisError, string * string>
   let internal parseArgument (argument: ArgumentYaml) =
     either {
-      if (argument.Key.Length > 0) && (argument.Value.Length > 0) then
-        return (argument.Key, argument.Value)
-      else
-        return!
-          sprintf "Could not parse Argument: %A" argument
-          |> Error.asParseError "Config.parseArgument"
-          |> Either.fail
+      return (argument.Key, argument.Value)
     }
 
   // ** parseArguments
@@ -1668,12 +1661,12 @@ Project:
 
       try
         return { Id         = Id mem.Id
-                 HostName   = mem.HostName
+                 HostName   = name mem.HostName
                  IpAddr     = ip
-                 Port       = uint16 mem.Port
-                 WsPort     = uint16 mem.WsPort
-                 GitPort    = uint16 mem.GitPort
-                 ApiPort    = uint16 mem.ApiPort
+                 Port       = mem.Port    |> uint16 |> port
+                 WsPort     = mem.WsPort  |> uint16 |> port
+                 GitPort    = mem.GitPort |> uint16 |> port
+                 ApiPort    = mem.ApiPort |> uint16 |> port
                  State      = state
                  Voting     = true
                  VotedForMe = false
@@ -1716,16 +1709,9 @@ Project:
 
   let internal parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
-      if group.Name.Length > 0 then
-        let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
-
-        return { Name    = name group.Name
-                 Members = ids }
-      else
-        return!
-          "Invalid HostGroup setting (Name must be given)"
-          |> Error.asParseError "Config.parseGroup"
-          |> Either.fail
+      let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
+      return { Name = name group.Name
+               Members = ids }
     }
 
   // ** parseGroups
@@ -1820,7 +1806,7 @@ Project:
         let n = new MemberYaml()
         n.Id       <- string memId
         n.Ip       <- string mem.IpAddr
-        n.HostName <- mem.HostName
+        n.HostName <- unwrap mem.HostName
         n.Port     <- int mem.Port
         n.WsPort   <- int mem.WsPort
         n.GitPort  <- int mem.GitPort
@@ -2331,32 +2317,29 @@ Config: %A
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
+    let strornull (str: string) =
+      let nll = sprintf "%A" null
+      match str with
+      | null -> nll |> builder.CreateString
+      | str -> str |> builder.CreateString
     let id = builder.CreateString (string self.Id)
-    let name = self.Name |> unwrap |> builder.CreateString
-    let path = self.Path |> unwrap |> builder.CreateString
-    let created = builder.CreateString (string self.CreatedOn)
-    let lastsaved = Option.map builder.CreateString self.LastSaved
-    let copyright = Option.map builder.CreateString self.Copyright
-    let author = Option.map builder.CreateString self.Author
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let path = self.Path |> unwrap |> Option.mapNull builder.CreateString
+    let created = Option.mapNull builder.CreateString self.CreatedOn
+    let lastsaved = Option.map strornull self.LastSaved
+    let copyright = Option.map strornull self.Copyright
+    let author = Option.map strornull self.Author
     let config = Binary.toOffset builder self.Config
 
     ProjectFB.StartProjectFB(builder)
     ProjectFB.AddId(builder, id)
-    ProjectFB.AddName(builder, name)
-    ProjectFB.AddPath(builder, path)
-    ProjectFB.AddCreatedOn(builder, created)
 
-    match lastsaved with
-    | Some offset -> ProjectFB.AddLastSaved(builder,offset)
-    | _ -> ()
-
-    match copyright with
-    | Some offset -> ProjectFB.AddCopyright(builder,offset)
-    | _ -> ()
-
-    match author with
-    | Some offset -> ProjectFB.AddAuthor(builder,offset)
-    | _ -> ()
+    Option.iter (fun value -> ProjectFB.AddPath(builder,value)) path
+    Option.iter (fun value -> ProjectFB.AddName(builder,value)) name
+    Option.iter (fun value -> ProjectFB.AddCreatedOn(builder,value)) created
+    Option.iter (fun offset -> ProjectFB.AddLastSaved(builder,offset)) lastsaved
+    Option.iter (fun offset -> ProjectFB.AddCopyright(builder,offset)) copyright
+    Option.iter (fun offset -> ProjectFB.AddAuthor(builder,offset)) author
 
     ProjectFB.AddConfig(builder, config)
     ProjectFB.EndProjectFB(builder)
@@ -2377,19 +2360,24 @@ Config: %A
 
   static member FromFB(fb: ProjectFB) =
     either {
+      let nll = sprintf "%A" null
+
       let! lastsaved =
         match fb.LastSaved with
         | null    -> Right None
+        | value when value = nll -> Right (Some null)
         | date -> Right (Some date)
 
       let! copyright =
         match fb.Copyright with
         | null   -> Right None
+        | value when value = nll -> Right (Some null)
         | str -> Right (Some str)
 
       let! author =
         match fb.Author with
         | null   -> Right None
+        | value when value = nll -> Right (Some null)
         | str -> Right (Some str)
 
       let! config =
@@ -2548,10 +2536,11 @@ module Project =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let checkPath (machine: IrisMachine) projectName =
-    let path = machine.WorkSpace </> (projectName <.> PROJECT_FILENAME + ASSET_EXTENSION)
+  let checkPath (machine: IrisMachine) (projectName: Name) =
+    let file = PROJECT_FILENAME + ASSET_EXTENSION
+    let path = machine.WorkSpace </> (unwrap projectName <.> file)
     if File.exists path |> not then
-      sprintf "Project Not Found: %s" projectName
+      sprintf "Project Not Found: %O" projectName
       |> Error.asProjectError "Project.checkPath"
       |> Either.fail
     else

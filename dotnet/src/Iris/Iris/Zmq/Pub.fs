@@ -17,7 +17,7 @@ open Iris.Core
 /// - addr: Address to connect to
 ///
 /// Returns: instance of Pub
-type Pub (addr: string, prefix: string) =
+type Pub (addr: string, prefix: string, ctx: ZContext) =
 
   let tag (str: string) = String.Format("Pub.{0}", str)
 
@@ -39,7 +39,6 @@ type Pub (addr: string, prefix: string) =
 
   let mutable thread = Unchecked.defaultof<Thread>
   let mutable sock = Unchecked.defaultof<ZSocket>
-  let mutable ctx = Unchecked.defaultof<ZContext>
 
   // ** worker
 
@@ -49,7 +48,6 @@ type Pub (addr: string, prefix: string) =
         "initializing context and socket"
         |> Logger.debug (tag "worker")
 
-        ctx <- new ZContext()
         sock <- new ZSocket(ctx, ZSocketType.PUB)                // initialise the socket
 
         sprintf "connecting to %A" addr
@@ -104,10 +102,9 @@ type Pub (addr: string, prefix: string) =
     "exited loop. disposing."
     |> Logger.debug (tag "worker")
 
-    sock.SetOption(ZSocketOption.LINGER, 0) |> ignore  // set linger to 0 to close socket quickly
+    sock.Linger <- TimeSpan.FromMilliseconds 1.0      // set linger to 0 to close socket quickly
     sock.Close()                                      // close the socket
     tryDispose sock ignore                            // dispose of it
-    tryDispose ctx  ignore
     disposed <- true                                   // this socket is disposed
     started <- false                                   // and not running anymore
     stopper.Set() |> ignore                            // signal that everything was cleaned up now

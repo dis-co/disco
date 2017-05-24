@@ -7,7 +7,12 @@ SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
 SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
+FRONTEND_IP := 10.0.0.1
+FRONTEND_PORT := 7000
+
 export MONO_THREADS_PER_CPU
+export FRONTEND_IP
+export FRONTEND_PORT
 
 #              _   _
 #  _ __   __ _| |_(_)_   _____
@@ -16,7 +21,7 @@ export MONO_THREADS_PER_CPU
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTestsFast"
 
 tests:
 	${BUILD} BuildTests
@@ -58,7 +63,7 @@ run.client:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
 
 run.frontend:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR)/src/Frontend && npm run start"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && dotnet fable npm-run start"
 
 run.service.1:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one"
@@ -79,7 +84,10 @@ run.service.3.project:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTestsFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast"
+
+run.service.1.project.profile:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
@@ -88,13 +96,16 @@ run.web.tests:
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
 frontend:
-	${BUILD} BuildFrontendFast
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast"
 
 frontend.full:
-	${BUILD} BuildFrontend
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend"
+
+frontend.watch:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && dotnet fable npm-run start"
 
 web.tests:
-	${BUILD} BuildWebTestsFast
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast"
 
 #      _
 #   __| | ___   ___ ___
@@ -118,8 +129,7 @@ debug.all:
 	${BUILD} DebugAll
 
 clean:
-	${BUILD} Clean
-
+	@git clean -fdX
 
 #           _
 #  _ __ ___| | ___  __ _ ___  ___
@@ -212,15 +222,18 @@ enter:
 		-e COMMAND=shell \
 		${IMAGE}
 
-fsi:
-	@cd dotnet/src/Iris; fsharpi --use:bin/Debug/Core/interactive.fsx
-
 #              _        _
 #  _ __   __ _| | _____| |_
 # | '_ \ / _` | |/ / _ \ __|
 # | |_) | (_| |   <  __/ |_
 # | .__/ \__,_|_|\_\___|\__|
 # |_|
+
+restore: paket.restore
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap"
+
+paket.generate:
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
 
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore

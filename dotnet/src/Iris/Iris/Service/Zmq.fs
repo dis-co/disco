@@ -26,22 +26,11 @@ module ZmqUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: IClient) (req: RaftRequest) : Either<IrisError,RaftResponse> =
-    req |> Binary.encode |> sock.Request |> Either.bind Binary.decode
-
-  // ** mkReqSocket
-
-  /// ## Make a new client socket with correct settings
-  ///
-  /// Creates a new req type socket with correct settings, connects and returns it.
-  ///
-  /// ### Signature:
-  /// - uri: string uri of peer to connect to
-  /// - state: current app state
-  ///
-  /// Returns: fszmq.Socket
-  let mkReqSocket (mem: RaftMember) =
-    Client.create (Id.Create()) (Uri.raftUri mem) Constants.REQ_TIMEOUT
+  let request (sock: IClient) (req: RaftRequest) =
+    req
+    |> Binary.encode
+    |> RawClientRequest.create
+    |> sock.Request
 
   // ** getSocket
 
@@ -87,11 +76,11 @@ module ZmqUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: IClient) : Either<IrisError,RaftResponse> =
+  let rawRequest (request: RaftRequest) (client: IClient) =
     request
     |> Binary.encode
+    |> RawClientRequest.create
     |> client.Request
-    |> Either.bind Binary.decode<RaftResponse>
 
   // ** performRequest
 
@@ -106,21 +95,16 @@ module ZmqUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (client: IClient) (request: RaftRequest) =
-    either {
-      try
-        let! response = rawRequest request client
-        return response
-      with
-        | :? TimeoutException ->
-          return!
-            "Operation timed out"
-            |> Error.asSocketError "ZmqUtils.performRequest"
-            |> Either.fail
-        | exn ->
-          return!
-            exn.Message
-            |> sprintf "performRequest encountered an exception: %s"
-            |> Error.asSocketError "ZmqUtils.performRequest"
-            |> Either.fail
-    }
+  let performRequest (request: RaftRequest) (client: IClient) =
+    try
+      rawRequest request client
+      |> Either.mapError (string >> Logger.err "performRequest")
+      |> ignore
+    with
+      | :? TimeoutException ->
+        "Operation timed out"
+        |> Logger.err "performRequest"
+      | exn ->
+        exn.Message
+        |> sprintf "Encountered an exception: %s"
+        |> Logger.err "performRequest"

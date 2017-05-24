@@ -4,7 +4,18 @@ with pkgs;
 let
   mono = mono46;
 
-  inputs = [ stdenv stdenv.cc.cc.lib curl openssl zlib phantomjs2 e2fsprogs libidn keyutils ];
+  inputs = [
+    stdenv
+    stdenv.cc.cc.lib
+    curl
+    openssl
+    zlib
+    phantomjs2
+    e2fsprogs
+    libidn
+    keyutils
+    yarn
+  ];
 
   libpath= lib.makeLibraryPath inputs;
 

@@ -39,7 +39,7 @@ module Persistence =
       let! mems = Config.getMembers options
       let state =
         mem
-        |> Raft.mkRaft
+        |> Raft.create
         |> Raft.addMembers mems
         |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
         |> Raft.setRequestTimeout options.Raft.RequestTimeout
@@ -199,7 +199,7 @@ module Persistence =
       |> Logger.debug (tag "getRemote")
       Git.Config.addRemote repo (string leader.Id) uri
 
-    | Some remote when remote.Url <> uri ->
+    | Some remote when remote.Url <> unwrap uri ->
       leader.Id
       |> string
       |> sprintf "Updating remote section for %A to point to %A" uri

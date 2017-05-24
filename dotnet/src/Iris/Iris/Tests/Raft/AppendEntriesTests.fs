@@ -155,8 +155,8 @@ module AppendEntries =
 
   let follower_recv_appendentries_delete_entries_if_conflict_with_new_entries =
     testCase "follower recv appendentries delete entries if conflict with new entries" <| fun _ ->
-      let raft' = defaultServer "string tango"
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         let getNth n =
@@ -208,8 +208,8 @@ module AppendEntries =
         |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
 
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "string tango"
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         do! Raft.addMemberM peer
@@ -275,9 +275,8 @@ module AppendEntries =
         ; Entries = Some entry
         }
 
-      let raft' = defaultServer "server"
-
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         do! Raft.addMemberM peer
