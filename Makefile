@@ -7,7 +7,12 @@ SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
 SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
+FRONTEND_IP := 10.0.0.1
+FRONTEND_PORT := 7000
+
 export MONO_THREADS_PER_CPU
+export FRONTEND_IP
+export FRONTEND_PORT
 
 #              _   _
 #  _ __   __ _| |_(_)_   _____
@@ -95,6 +100,9 @@ frontend:
 
 frontend.full:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend"
+
+frontend.watch:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && dotnet fable npm-run start"
 
 web.tests:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast"
@@ -222,7 +230,7 @@ enter:
 # |_|
 
 restore: paket.restore
-	@cd $(VVVV_BASEDIR) && ./build.sh Bootstrap
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap"
 
 paket.generate:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx

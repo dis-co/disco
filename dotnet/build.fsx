@@ -346,11 +346,15 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpmNoErrors "install" frontendDir ()
-  runExec DotNet.dotnetExePath "restore" frontendDir false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
 )
 
 //     _                           _     _       ___        __
@@ -680,7 +684,7 @@ Target "BuildWebTests" (fun _ ->
 )
 
 Target "BuildWebTestsFast" (fun _ ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
