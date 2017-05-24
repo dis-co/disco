@@ -133,49 +133,4 @@ type CueGroup =
     serializer.Deserialize<CueGroupYaml>(str)
     |> Yaml.fromYaml
 
-  // ** AssetPath
-
-  //     _                 _   ____       _   _
-  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
-  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
-  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
-  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
-
-  member self.AssetPath
-    with get () =
-      let path =
-        sprintf "%s_%s%s"
-          (self.Name |> unwrap |> String.sanitize)
-          (string self.Id)
-          ASSET_EXTENSION
-      CUEGROUP_DIR <.> path
-
-  // ** Load
-
-  //  _                    _
-  // | |    ___   __ _  __| |
-  // | |   / _ \ / _` |/ _` |
-  // | |__| (_) | (_| | (_| |
-  // |_____\___/ \__,_|\__,_|
-
-  static member Load(path: FilePath) : Either<IrisError, CueGroup> =
-    IrisData.load path
-
-  // ** LoadAll
-
-  static member LoadAll(basePath: FilePath) : Either<IrisError, CueGroup array> =
-    basePath </> filepath CUE_DIR
-    |> IrisData.loadAll
-
-  // ** Save
-
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
-  member cue.Save (basePath: FilePath) =
-    IrisData.save basePath cue
-
   #endif

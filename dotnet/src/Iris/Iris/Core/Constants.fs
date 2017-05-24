@@ -144,12 +144,6 @@ module Constants =
   let CUE_DIR = "cues"
 
   [<Literal>]
-  let CUEREF_DIR = "cuerefs"
-
-  [<Literal>]
-  let CUEGROUP_DIR = "cuegroups"
-
-  [<Literal>]
   let CUELIST_DIR = "cuelists"
 
   [<Literal>]

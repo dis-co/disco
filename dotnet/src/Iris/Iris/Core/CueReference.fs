@@ -140,45 +140,4 @@ type CueReference =
     serializer.Deserialize<CueReferenceYaml>(str)
     |> Yaml.fromYaml
 
-  // ** AssetPath
-
-  //     _                 _   ____       _   _
-  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
-  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
-  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
-  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
-
-  member self.AssetPath
-    with get () =
-      let path = (string self.Id) + ASSET_EXTENSION
-      CUEREF_DIR <.> path
-
-  // ** Load
-
-  //  _                    _
-  // | |    ___   __ _  __| |
-  // | |   / _ \ / _` |/ _` |
-  // | |__| (_) | (_| | (_| |
-  // |_____\___/ \__,_|\__,_|
-
-  static member Load(path: FilePath) : Either<IrisError, CueReference> =
-    IrisData.load path
-
-  // ** LoadAll
-
-  static member LoadAll(basePath: FilePath) : Either<IrisError, CueReference array> =
-    basePath </> filepath CUE_DIR
-    |> IrisData.loadAll
-
-  // ** Save
-
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
-  member cue.Save (basePath: FilePath) =
-    IrisData.save basePath cue
-
   #endif
