@@ -124,7 +124,7 @@ let postCommandAndBind onSuccess onFail (cmd: Command) =
     else res.text() |> Promise.bind onSuccess)
 
 /// Posts a command, parses the JSON response returns a promise (can fail)
-let inline postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
+let postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
   postCommandPrivate ipAndPort cmd
   |> Promise.bind (fun res ->
     if res.Ok

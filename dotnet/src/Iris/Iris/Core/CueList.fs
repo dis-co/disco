@@ -23,33 +23,33 @@ open SharpYaml.Serialization
 type CueListYaml() =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Cues : CueYaml array
+  [<DefaultValue>] val mutable Groups : CueGroupYaml array
 
   static member From(cuelist: CueList) =
     let yaml = CueListYaml()
     yaml.Id   <- string cuelist.Id
     yaml.Name <- unwrap cuelist.Name
-    yaml.Cues <- Array.map Yaml.toYaml cuelist.Cues
+    yaml.Groups <- Array.map Yaml.toYaml cuelist.Groups
     yaml
 
   member yaml.ToCueList() =
     either {
-      let! cues =
-        let arr = Array.zeroCreate yaml.Cues.Length
+      let! groups =
+        let arr = Array.zeroCreate yaml.Groups.Length
         Array.fold
-          (fun (m: Either<IrisError,int * Cue array>) cueish -> either {
+          (fun (m: Either<IrisError,int * CueGroup array>) cueish -> either {
             let! (i, arr) = m
-            let! (cue: Cue) = Yaml.fromYaml cueish
-            arr.[i] <- cue
+            let! (group: CueGroup) = Yaml.fromYaml cueish
+            arr.[i] <- group
             return (i + 1, arr)
           })
           (Right (0, arr))
-          yaml.Cues
+          yaml.Groups
         |> Either.map snd
 
       return { Id = Id yaml.Id
                Name = name yaml.Name
-               Cues = cues }
+               Groups = groups }
     }
 
 #endif
@@ -57,9 +57,9 @@ type CueListYaml() =
 // * CueList
 
 type CueList =
-  { Id   : Id
-    Name : Name
-    Cues : Cue array }
+  { Id     : Id
+    Name   : Name
+    Groups : CueGroup array }
 
   // ** ToOffset
 
@@ -73,12 +73,12 @@ type CueList =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = self.Id |> string |> builder.CreateString
     let name = self.Name |> unwrap |> builder.CreateString
-    let cueoffsets = Array.map (fun (cue: Cue)  -> cue.ToOffset(builder)) self.Cues
-    let cuesvec = CueListFB.CreateCuesVector(builder, cueoffsets)
+    let groupoffsets = Array.map (fun (cue: CueGroup)  -> cue.ToOffset(builder)) self.Groups
+    let groupsvec = CueListFB.CreateGroupsVector(builder, groupoffsets)
     CueListFB.StartCueListFB(builder)
     CueListFB.AddId(builder, id)
     CueListFB.AddName(builder, name)
-    CueListFB.AddCues(builder, cuesvec)
+    CueListFB.AddGroups(builder, groupsvec)
     CueListFB.EndCueListFB(builder)
 
   // ** ToBytes
@@ -89,33 +89,33 @@ type CueList =
 
   static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
     either {
-      let! cues =
-        let arr = Array.zeroCreate fb.CuesLength
+      let! groups =
+        let arr = Array.zeroCreate fb.GroupsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Cue array>) _ -> either {
-            let! (i, cues) = m
+          (fun (m: Either<IrisError,int * CueGroup array>) _ -> either {
+            let! (i, groups) = m
 
             #if FABLE_COMPILER
 
-            let! cue =
-              fb.Cues(i)
-              |> Cue.FromFB
+            let! group =
+              fb.Groups(i)
+              |> CueGroup.FromFB
             #else
 
-            let! cue =
-              let value = fb.Cues(i)
+            let! group =
+              let value = fb.Groups(i)
               if value.HasValue then
                 value.Value
-                |> Cue.FromFB
+                |> CueGroup.FromFB
               else
-                "Could not parse empty CueFB"
+                "Could not parse empty CueGroupFB"
                 |> Error.asParseError "CueList.FromFB"
                 |> Either.fail
 
             #endif
 
-            cues.[i] <- cue
-            return (i + 1, cues)
+            groups.[i] <- group
+            return (i + 1, groups)
           })
           (Right (0, arr))
           arr
@@ -123,7 +123,7 @@ type CueList =
 
       return { Id = Id fb.Id
                Name = name fb.Name
-               Cues = cues }
+               Groups = groups }
     }
 
   // ** FromBytes

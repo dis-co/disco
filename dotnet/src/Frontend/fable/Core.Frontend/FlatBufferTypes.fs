@@ -738,6 +738,45 @@ type CueFBConstructor =
 
 let CueFB : CueFBConstructor = failwith "JS only"
 
+type CueReferenceFB =
+  abstract Id: string
+  abstract CueId: string
+  abstract AutoFollow: int
+  abstract Duration: int
+  abstract Prewait: int
+
+type CueReferenceFBConstructor =
+  abstract prototype: CueReferenceFB with get, set
+  abstract StartCueReferenceFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddCueId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddAutoFollow: builder: FlatBufferBuilder * value: int -> unit
+  abstract AddDuration: builder: FlatBufferBuilder * value: int -> unit
+  abstract AddPrewait: builder: FlatBufferBuilder * value: int -> unit
+  abstract EndCueReferenceFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCueReferenceFB: buffer: ByteBuffer -> CueReferenceFB
+  abstract Create: unit -> CueReferenceFB
+
+let CueReferenceFB : CueReferenceFBConstructor = failwith "JS only"
+
+type CueGroupFB =
+  abstract Id: string
+  abstract Name: string
+  abstract CueRefsLength: int
+  abstract CueRefs: int -> CueReferenceFB
+
+type CueGroupFBConstructor =
+  abstract prototype: CueGroupFB with get, set
+  abstract StartCueGroupFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddCueRefs: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
+  abstract EndCueGroupFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCueGroupFB: buffer: ByteBuffer -> CueGroupFB
+  abstract CreateCueRefsVector: builder: FlatBufferBuilder * Offset<CueReferenceFB> array -> Offset<'a>
+
+let CueGroupFB : CueGroupFBConstructor = failwith "JS only"
+
 //  ____       _       _     _____ ____
 // |  _ \ __ _| |_ ___| |__ |  ___| __ )
 // | |_) / _` | __/ __| '_ \| |_  |  _ \
@@ -773,18 +812,18 @@ let PinGroupFB : PinGroupFBConstructor = failwith "JS only"
 type CueListFB =
   abstract Id: string
   abstract Name: string
-  abstract CuesLength: int
-  abstract Cues: int -> CueFB
+  abstract GroupsLength: int
+  abstract Groups: int -> CueGroupFB
 
 type CueListFBConstructor =
   abstract prototype: CueListFB with get, set
   abstract StartCueListFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
+  abstract AddGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
   abstract EndCueListFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueListFB: buffer: ByteBuffer -> CueListFB
-  abstract CreateCuesVector: builder: FlatBufferBuilder * Offset<CueFB> array -> Offset<'a>
+  abstract CreateGroupsVector: builder: FlatBufferBuilder * Offset<CueGroupFB> array -> Offset<'a>
 
 let CueListFB : CueListFBConstructor = failwith "JS only"
 

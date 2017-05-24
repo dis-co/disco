@@ -67,6 +67,9 @@ module TestData =
     |> uint16
     |> port
 
+  let rndint() =
+    rand.Next()
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -101,6 +104,9 @@ module TestData =
 
   let mkPin() =
     Pin.toggle (mk()) (rndstr()) (mk()) (mkTags()) [| true |]
+
+  let mkOptional(f:unit->'T): 'T option =
+    if rand.Next(0,2) > 0 then f() |> Some else None
 
   let mkDiscoveredService() =
     { Id = Id.Create()
@@ -198,10 +204,22 @@ module TestData =
         yield mkUser() |]
 
   let mkCue () : Cue =
-    { Id = Id.Create(); Name = rndstr(); Slices = mkSlices() }
+    { Id = Id.Create(); Name = rndname(); Slices = mkSlices() }
 
   let mkCues () =
     [| for n in 0 .. rand.Next(1,20) -> mkCue() |]
+
+  let mkCueRef () : CueReference =
+    { Id = Id.Create(); CueId = Id.Create(); AutoFollow = rndint(); Duration = rndint(); Prewait = rndint() }
+
+  let mkCueRefs () : CueReference array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
+
+  let mkCueGroup () : CueGroup =
+    { Id = Id.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+
+  let mkCueGroups () : CueGroup array =
+    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
@@ -219,7 +237,7 @@ module TestData =
         yield mkPinGroup() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Cues = mkCues() }
+    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do

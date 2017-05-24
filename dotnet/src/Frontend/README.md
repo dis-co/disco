@@ -2,22 +2,20 @@
 
 ## BUILDING
 
-All of these will be executed if you run a full build. All commands must be run from this directory.
+All of these will be executed if you run a full build. All commands must be run from `dotnet` directory.
 
 - Install dependencies:
 
 ```shell
-npm install        # Installs npm dependencies
-dotnet restore     # Installs Fable CLI tool
-dotnet restore fable/Core.Frontend
-dotnet restore fable/Frontend
+yarn install                  # Installs npm dependencies
+dotnet restore Fable.proj     # Installs Fable CLI tool
+dotnet restore src/Frontend/fable/Iris.Frontend
 ```
 
 - Build Fable plugin:
 
 ```shell
-dotnet restore fable/plugins
-dotnet build -c Release fable/plugins
+dotnet build -c Release src/Frontend/fable/plugins
 ```
 
 - Build Worker & Frontend (not necessary in development, see Watching below):

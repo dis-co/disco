@@ -56,6 +56,21 @@ module DotNet =
   let dotnetcliVersion = "1.0.1"
   let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
 
+  let restore workdir project =
+    ExecProcess (fun info ->
+          info.FileName <- dotnetExePath
+          info.Arguments <- "restore " + project
+          info.UseShellExecute <- false
+          info.WorkingDirectory <- workdir)
+      TimeSpan.MaxValue
+    |> function
+      | 0    -> ()
+      | code -> failwithf "Restore %s failed with exit code %d" project code
+
+  let restoreMultiple workdir (projects: string list) =
+    for project in projects do
+      restore workdir project
+
   let installDotnetSdk () =
     let dotnetSDKPath = FullName "./dotnetsdk"
 
@@ -618,20 +633,24 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
-  runNpmNoErrors "install" frontendDir ()
-  runExec DotNet.dotnetExePath "restore" frontendDir false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Core.Frontend") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Frontend") false
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
-  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  // runExec DotNet.dotnetExePath "fable npm-run build-worker" frontendDir false
-  runExec DotNet.dotnetExePath "fable npm-run build" frontendDir false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  // runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
+  runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
 
@@ -643,26 +662,31 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
-  runNpmNoErrors "install" frontendDir ()
-  runExec DotNet.dotnetExePath "restore" frontendDir false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "restore" (frontendDir @@ "fable" @@ "Tests.Frontend") false
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
+  // Restoring a solution seems to be causing problems in Linux, so restore each project individually
+  DotNet.restoreMultiple (frontendDir @@ "fable") [
+    "Frontend/Frontend.fsproj"
+    "Worker/Worker.fsproj"
+    "Tests.Frontend/Tests.Frontend.fsproj"
+    "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
+  ]
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
 Target "BuildWebTestsFast" (fun _ ->
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "plugins") false
-  runExec DotNet.dotnetExePath "fable npm-run build-test" frontendDir false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable npm-run build-test" __SOURCE_DIRECTORY__ false
 )
 
 let runWebTests = (fun _ ->
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
-    runExec phantomJsPath "src/Frontend/node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
+    runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
-    runNpm "test" frontendDir ()
+    runNpm "test" __SOURCE_DIRECTORY__ ()
 )
 
 Target "RunWebTests" runWebTests

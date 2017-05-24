@@ -29,9 +29,16 @@ group Main
   nuget VVVV.Utils3rdParty
   nuget VVVV.UtilsIL
   nuget Newtonsoft.Json
-  nuget Fable.JsonConverter
-  nuget Fable.Core
   nuget Hopac >= 0.3.23
+
+  # Keep this pinned to dotnet-fable version in src/Frontend/Fable.proj
+  nuget Fable.Core 1.0.4
+
+  # Other Fable libraries
+  nuget Fable.JsonConverter
+  nuget Fable.PowerPack
+  nuget Fable.React
+  
 
 group Build
   source https://nuget.org/api/v2

@@ -119,7 +119,7 @@ module Log =
 
   let log_resFold_short_circuit_test =
     testCase "Should short-circuit when folder fails" <| fun _ ->
-      let sm = AddCue { Id = Id.Create(); Name = "Wonderful"; Slices = [| |] }
+      let sm = AddCue { Id = Id.Create(); Name = name "Wonderful"; Slices = [| |] }
       let log =
         Log.empty
         |> Log.append (Log.make (term 1) defSM)
@@ -178,7 +178,7 @@ module Log =
     testCase "Get all entries until (and including) a given index" <| fun _ ->
       let cues : Cue array =
         [| "one"; "two"; "three"; "four"; "five"; "six" |]
-        |> Array.map (fun name -> { Id = Id.Create(); Name = name; Slices = [| |] })
+        |> Array.map (fun name' -> { Id = Id.Create(); Name = name name'; Slices = [| |] })
 
       let getData log =
         LogEntry.map
@@ -288,12 +288,12 @@ module Log =
       let num = 30
 
       [ for n in 1 .. num do
-          yield AddCue { Id = Id (string n); Name = string n; Slices = [| |] } ]
+          yield AddCue { Id = Id (string n); Name = name (string n); Slices = [| |] } ]
       |> List.fold (fun m s -> Log.append (Log.make (term 0) s) m) Log.empty
       |> assume "Should be at correct index" num Log.length
       |> assume "Should pick correct item"  (index 16) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.getIndex)
-      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
-      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = "15"; Slices = [| |] } |> Some) (Log.until (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = name "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = name "15"; Slices = [| |] } |> Some) (Log.until (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
       |> ignore
 
   let log_append_should_work_with_snapshots_too =
