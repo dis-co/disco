@@ -1,6 +1,7 @@
 module rec Iris.Web.Widgets.CuePlayer
 
 open System
+open System.Collections.Generic
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
@@ -16,30 +17,41 @@ importAll "../../../css/cuePlayer.css"
 module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
-  // let SpreadView: RCom = importMember "../../../src/widgets/Spread"
-  // let SpreadCons: JsConstructor<Pin,ISpread> = importDefault "../../../src/widgets/Spread"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
   let inline CustomKeyValue(k:string, v: obj):'a = !!(k,v)
   let inline (~%) x = createObj x
 
-  // TODO: Create a cache to speed up look-ups
-  let findPin (pinId: Id) (state: IGlobalState) =
-    match Map.tryFindPin pinId state.pinGroups with
-    | Some pin -> pin
-    | None -> failwithf "Cannot find pind with Id %O in GlobalState" pinId
+  let findPin =
+    let cache = Dictionary<string, Pin>()
+    fun (pinId: Id) (state: IGlobalState) ->
+      let pinIdStr = string pinId
+      match cache.TryGetValue(pinIdStr) with
+      | true, pin -> pin
+      | false, _ ->
+        match Map.tryFindPin pinId state.pinGroups with
+        // TODO: Clear cache when it reaches a limit?
+        | Some pin -> cache.Add(pinIdStr, pin); pin
+        | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+
+  let findCue =
+    let cache = Dictionary<string, Cue>()
+    fun (cueId: Id) (state: IGlobalState) ->
+      let cueIdStr = string cueId
+      match cache.TryGetValue(cueIdStr) with
+      | true, pin -> pin
+      | false, _ ->
+        match Map.tryFind cueId state.cues with
+        // TODO: Clear cache when it reaches a limit?
+        | Some cue -> cache.Add(cueIdStr, cue); cue
+        | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueMockup() =
-    let group: CueGroup =
-      failwith "TODO"
-      // { Id = Id.Create()
-      //   Name = name "MockCue"
-      //   Slices = [||] }
     let cueList: CueList =
       { Id = Id.Create()
         Name = name "MockCueList"
-        Groups = [|group|] }
+        Groups = [||] }
     let cuePlayer =
       CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
     cueList, cuePlayer
@@ -54,12 +66,11 @@ module private Helpers =
     | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
 
   module Array =
-    // TODO: Fable is not able to resolve this, check
-    // let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
-    //   Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
+    let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
+      Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
 
-    let inline replaceById (newItem : CueGroup) (ar: CueGroup[]) =
-      Array.map (fun (x: CueGroup) -> if newItem.Id = x.Id then newItem else x) ar
+    // let inline replaceById (newItem : CueGroup) (ar: CueGroup[]) =
+    //   Array.map (fun (x: CueGroup) -> if newItem.Id = x.Id then newItem else x) ar
 
 
 type [<Pojo>] private CueState =
@@ -71,6 +82,8 @@ type [<Pojo>] private CueState =
 type [<Pojo>] private CueProps =
   { Global: GlobalModel
   ; Cue: Cue
+  ; CueRef: CueReference
+  ; CueGroup: CueGroup
   ; CueList: CueList
   ; Index: int
   ; SelectedIndex: int
@@ -83,7 +96,7 @@ type private CueView(props) =
   do base.setInitState({IsOpen = false; Name = props.Cue.Name; Offset = "0000"; Time = "00:00:00" })
 
   member this.componentDidMount() =
-    disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) ->
+    disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) _ ->
         if selfRef <> null then
           let mutable highlight = false
           if touchesElement(selfRef, ev.x, ev.y) then
@@ -91,10 +104,8 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              // let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
-              let newGroup = failwith "TODO"
-              let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
-              UpdateCueList newCueList |> ClientContext.Singleton.Post
+              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|ev.model.pin.Slices|] }
+              UpdateCue newCue |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
           then selfRef.classList.add("iris-highlight-blue")
@@ -150,9 +161,7 @@ type private CueView(props) =
                 Value !^(unwrap this.state.Name: string)
                 OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
                 OnBlur (fun _ ->
-                  let newGroup = failwith "TODO" // { this.props.Cue with Name = this.state.Name }
-                  let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
-                  UpdateCueList newCueList |> ClientContext.Singleton.Post)
+                  { this.props.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
                 OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
               br []
@@ -181,9 +190,10 @@ type private CueView(props) =
             div [
               Class "cueplayer-button iris-icon cueplayer-close level-item"
               OnClick (fun _ ->
-                // let cueList2 = { this.props.CueList with Groups = this.props.CueList.Groups |> Array.filter (fun c -> c.Id <> this.props.Cue.Id) }
-                let cueList2 = failwith "TODO"
-                UpdateCueList cueList2 |> ClientContext.Singleton.Post)
+                let id = this.props.CueRef.Id
+                let cueGroup2 = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
+                let msg = failwith "TODO" // UpdateCueGroup(this.props.CueList.Id, cueGroup2)
+                ClientContext.Singleton.Post(msg))
             ] [
               span [Class "iris-icon iris-icon-close"] []
             ]
@@ -204,10 +214,50 @@ type private CueView(props) =
     let newSlices =
       this.props.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
-    // let newCue = { this.props.Cue with Slices = newSlices }
-    let newGroup = failwith "TODO"
-    let newCueList = { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups }
-    UpdateCueList newCueList |> ClientContext.Singleton.Post
+    { this.props.Cue with Slices = newSlices } |> UpdateCue |> ClientContext.Singleton.Post
+
+type [<Pojo>] private CueGroupState =
+  { IsOpen: bool
+  ; Name: Name }
+
+type [<Pojo>] private CueGroupProps =
+  { Global: GlobalModel
+  ; CueGroup: CueGroup
+  ; CueList: CueList
+  ; Index: int }
+
+type private CueGroupView(props) =
+  inherit React.Component<CueGroupProps, CueGroupState>(props)
+  let disposables = ResizeArray<IDisposable>()
+  do base.setInitState({IsOpen = true; Name = props.CueGroup.Name })
+
+  member this.componentDidMount() =
+    disposables.Add(this.props.Global.Subscribe(!^"cueGroups", fun _ _ ->
+      // failwith "TODO"
+      ()
+    ))
+
+  member this.componentWillUnmount() =
+    for d in disposables do
+      d.Dispose()
+
+  member this.render() =
+    div [] [
+      if this.state.IsOpen then
+        for i=0 to this.props.CueGroup.CueRefs.Length - 1 do
+          let cueRef = this.props.CueGroup.CueRefs.[i]
+          let cue = findCue cueRef.CueId this.props.Global.State
+          yield com<CueView,_,_>
+            { Global = this.props.Global
+            ; Cue = cue
+            ; CueRef = cueRef
+            ; CueGroup = this.props.CueGroup
+            ; CueList = this.props.CueList
+            ; Index = i
+            ; SelectedIndex = -1 // failwith "TODO"
+            ; Select = fun i -> failwith "TODO" } // this.setState({selectedIndex = i}) }
+            []
+    ]
 
 type CuePlayerModel() =
   interface IWidgetModel with
@@ -238,7 +288,7 @@ type CuePlayerView(props) =
 
   member this.componentDidMount() =
     let state = globalModel.State
-    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ -> this.forceUpdate()))
+    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ _ -> this.forceUpdate()))
 
   member this.componentWillUnmount() =
     for d in disposables do
@@ -272,10 +322,12 @@ type CuePlayerView(props) =
               match cueList with
               | None -> printfn "There is no cue list available to add the cue"
               | Some cueList ->
-                // let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-                let newGroup = failwith "TODO"
-                let cueList2 = { cueList with Groups = Array.append cueList.Groups [|newGroup|] }
-                UpdateCueList cueList2 |> ClientContext.Singleton.Post)
+                failwith "TODO: Check selected group"
+                // // let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
+                // let newGroup = failwith "TODO"
+                // let cueList2 = { cueList with Groups = Array.append cueList.Groups [|newGroup|] }
+                // UpdateCueList cueList2 |> ClientContext.Singleton.Post
+              )
           ] [str "Add Cue"]
           div [Class "cueplayer-button"] [str "Add Group"]
           div [Style [Clear "both"]] []
@@ -288,6 +340,8 @@ type CuePlayerView(props) =
           yield com<CueView,_,_>
             { Global = globalModel
             ; Cue = failwith "TODO" //cueList.Groups.[i]
+            ; CueRef = failwith "TODO"
+            ; CueGroup = failwith "TODO"
             ; CueList = cueList
             ; Index = i
             ; SelectedIndex = this.state.selectedIndex

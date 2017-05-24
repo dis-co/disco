@@ -10,8 +10,8 @@ open Fable.PowerPack
 open Iris.Core
 open Iris.Core.Commands
 
-type ISubscriber = obj -> unit
-type ISubscriber<'T> = 'T -> unit
+type ISubscriber = obj -> IDictionary<string,obj> -> unit
+type ISubscriber<'T> = 'T -> IDictionary<string,obj> -> unit
 type IWidget = interface end
 type ITab = interface end
 
@@ -103,16 +103,19 @@ type GlobalModel() =
   let eventSubscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
 
   // Private methods
-  let notify key (newValue: obj) =
+  let notify key (newValue: obj) keyValuePairs =
     match subscribers.TryGetValue(key) with
-    | true, keySubscribers -> for s in keySubscribers.Values do s(newValue)
+    | true, keySubscribers ->
+      let dic = dict keyValuePairs
+      for s in keySubscribers.Values do s newValue dic
     | false, _ -> ()
 
   let notifyAll () =
+    let dic = dict []
     for KeyValue(key, keySubscribers) in subscribers do
       let value = stateMutable?(key)
       for subscriber in keySubscribers.Values do
-        subscriber(value)
+        subscriber value dic
 
   let addLogPrivate (log: string) =
     let length = stateMutable.Logs.Count
@@ -120,7 +123,7 @@ type GlobalModel() =
       let diff = LOG_MAX / 10
       removeRange (length - diff) diff stateMutable.Logs
     stateMutable.Logs.Insert(0, log)
-    notify (nameof(stateImmutable.logs)) stateImmutable.logs
+    notify (nameof(stateImmutable.logs)) stateImmutable.logs []
 
   // Constructor
   do context.Start()
@@ -134,7 +137,7 @@ type GlobalModel() =
         | DataSnapshot _ -> notifyAll()
         | StateMachine.UnloadProject -> notifyAll()
         | UpdateProject _ ->
-          notify (nameof(stateImmutable.project)) stateImmutable.project
+          notify (nameof(stateImmutable.project)) stateImmutable.project []
         | AddPinGroup _
         | UpdatePinGroup _
         | RemovePinGroup _
@@ -142,20 +145,20 @@ type GlobalModel() =
         | UpdatePin _
         | RemovePin _
         | UpdateSlices _ ->
-          notify (nameof(stateImmutable.pinGroups)) stateImmutable.pinGroups
+          notify (nameof(stateImmutable.pinGroups)) stateImmutable.pinGroups []
         | AddCue _
         | UpdateCue _
         | RemoveCue _
         | CallCue _ ->
-          notify (nameof(stateImmutable.cues)) stateImmutable.cues
+          notify (nameof(stateImmutable.cues)) stateImmutable.cues []
         | AddCueList _
         | UpdateCueList _
         | RemoveCueList _ ->
-          notify (nameof(stateImmutable.cueLists)) stateImmutable.cueLists
+          notify (nameof(stateImmutable.cueLists)) stateImmutable.cueLists []
         | AddCuePlayer    _
         | UpdateCuePlayer _
         | RemoveCuePlayer _ ->
-          notify (nameof(stateImmutable.cuePlayers)) stateImmutable.cuePlayers
+          notify (nameof(stateImmutable.cuePlayers)) stateImmutable.cuePlayers []
         // TODO: Add members to global state for cluster widget
         // | AddMember _
         // | UpdateMember _
@@ -192,34 +195,36 @@ type GlobalModel() =
 
   member this.UseRightClick(value: bool) =
     stateMutable.UseRightClick <- value
-    notify (nameof(this.State.useRightClick)) value
+    notify (nameof(this.State.useRightClick)) value []
 
   member this.AddWidget(widget: IWidget, ?id: Guid) =
     let id = match id with Some id -> id | None -> Guid.NewGuid()
     stateMutable.Widgets.Add(id, widget)
-    notify (nameof(this.State.widgets)) this.State.widgets
+    notify (nameof(this.State.widgets)) this.State.widgets []
     id
 
   member this.RemoveWidget(id: Guid) =
     stateMutable.Widgets.Remove(id) |> ignore
-    notify (nameof(this.State.widgets)) this.State.widgets
+    notify (nameof(this.State.widgets)) this.State.widgets []
 
   member this.AddTab(tab: ITab, ?id: Guid) =
     let id = match id with Some id -> id | None -> Guid.NewGuid()
     stateMutable.Tabs.Add(id, tab)
-    notify (nameof(this.State.tabs)) this.State.tabs
+    notify (nameof(this.State.tabs)) this.State.tabs []
     id
 
   member this.RemoveTab(id: Guid) =
     stateMutable.Tabs.Remove(id) |> ignore
-    notify (nameof(this.State.tabs)) this.State.tabs
+    notify (nameof(this.State.tabs)) this.State.tabs []
 
   member this.AddLog(log: string) =
     addLogPrivate log
 
   member this.TriggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with
-    | true, subscribers -> for s in subscribers.Values do s(data)
+    | true, subscribers ->
+      let dic = dict []
+      for s in subscribers.Values do s data dic
     | false, _ -> ()
 
   interface IGlobalModel with

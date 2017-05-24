@@ -46,6 +46,7 @@ module.exports = {
     ]
   },
   devServer: {
+    contentBase: resolve("."),
     host: irisHost,
     port: 3000,
     historyApiFallback: true, // respond to 404s with index.html
