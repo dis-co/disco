@@ -709,7 +709,7 @@ module Generators =
 
   let cueGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! slcs = Gen.arrayOfLength 2 slicesGen
       return
         { Id = id
@@ -723,14 +723,38 @@ module Generators =
   // | |__| |_| |  __/ |___| \__ \ |_
   //  \____\__,_|\___|_____|_|___/\__|
 
-  let cuelistGen = gen {
+  let cueReferenceGen = gen {
+      let! id = idGen
+      let! cue = idGen
+      let! af = intGen
+      let! dur = intGen
+      let! pw = intGen
+      return
+        { Id = id
+          CueId = cue
+          AutoFollow = af
+          Duration = dur
+          Prewait = pw }
+    }
+
+  let cueGroupGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! cues = Gen.arrayOf cueGen
+      let! refs = Gen.arrayOf cueReferenceGen
       return
         { Id = id
           Name = nm
-          Cues = cues }
+          CueRefs = refs }
+    }
+
+  let cuelistGen = gen {
+      let! id = idGen
+      let! nm = nameGen
+      let! groups = Gen.arrayOf cueGroupGen
+      return
+        { Id = id
+          Name = nm
+          Groups = groups }
     }
 
   //   ____           ____  _

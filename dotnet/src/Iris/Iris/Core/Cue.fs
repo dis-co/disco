@@ -124,7 +124,7 @@ type Cue =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)
     CueFB.StartCueFB(builder)
