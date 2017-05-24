@@ -79,7 +79,7 @@ run.service.3.project:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh RunWebTestsFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast"
 
 run.service.1.project.profile:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
@@ -91,13 +91,13 @@ run.service.1.project.profile:
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
 frontend:
-	${BUILD} BuildFrontendFast
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast"
 
 frontend.full:
-	${BUILD} BuildFrontend
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend"
 
 web.tests:
-	${BUILD} BuildWebTestsFast
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast"
 
 #      _
 #   __| | ___   ___ ___
