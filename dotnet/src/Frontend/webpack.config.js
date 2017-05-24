@@ -55,6 +55,7 @@ module.exports = {
         target: 'http://' + irisHost + ':' + irisPort
       }
     },
+    contentBase: resolve("."),
     headers: {
       "Access-Control-Allow-Origin": "*"
     }
