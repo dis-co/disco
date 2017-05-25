@@ -70,6 +70,12 @@ module private Helpers =
     | EnumSlices  (id, arr) -> EnumSlices  (id, Array.mapi (fun i el -> if i = index then value :?> Property   else el) arr)
     | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
 
+  let printCueList (cueList: CueList) =
+    for group in cueList.Groups do
+      printfn "CueGroup: %O" group.Id
+      for cueRef in group.CueRefs do
+        printfn "    CueRef: %O" cueRef.Id
+
   module Array =
     let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
       Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
@@ -132,17 +138,20 @@ type private CueView(props) =
       d.Dispose()
 
   member this.render() =
-    let leftIconClass =
+    let arrowIconClass =
       if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
-    div [Ref (fun el -> selfRef <- el)] [
+    div [
+      Ref (fun el -> selfRef <- el)
+      Style [MarginLeft 20.]
+    ] [
       yield
         div [Class "cueplayer-list-header cueplayer-cue level"] [
           div [Class "level-left"] [
             div [Class "level-item"] [
               span [
-                Class leftIconClass
+                Class arrowIconClass
                 OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
               ] []]
             div [Class "level-item"] [
@@ -252,7 +261,47 @@ type private CueGroupView(props) =
   do base.setInitState({IsOpen = true; Name = props.CueGroup.Name })
 
   member this.render() =
+    let arrowIconClass =
+      if this.state.IsOpen
+      then "iris-icon iris-icon-caret-down-two"
+      else "iris-icon iris-icon-caret-right"
     div [] [
+      yield
+        div [Class "cueplayer-list-header cueplayer-cue level"] [
+          div [Class "level-left"] [
+            div [Class "level-item"] [
+              span [
+                Class arrowIconClass
+                OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
+              ] []]
+            div [Class "level-item"] [
+              div [
+                Class "cueplayer-button iris-icon cueplayer-player"
+                // TODO: Call all cues in the group
+                OnClick (fun _ -> ())
+              ] [
+                span [Class "iris-icon iris-icon-play"] []
+              ]
+            ]
+            div [Class "level-item"] [
+              form [OnSubmit (fun ev -> ev.preventDefault())] [
+                input [
+                  Class "cueplayer-cueDesc"
+                  Type "text"
+                  Name "cuegroupname"
+                  Value !^(unwrap this.state.Name: string)
+                  OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
+                  OnBlur (fun _ ->
+                    let newGroup = { this.props.CueGroup with Name = this.state.Name }
+                    { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups  }
+                    |> UpdateCueList |> ClientContext.Singleton.Post)
+                  OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
+                ]
+                br []
+              ]
+            ]
+          ]
+        ]
       if this.state.IsOpen then
         for i=0 to this.props.CueGroup.CueRefs.Length - 1 do
           let cueRef = this.props.CueGroup.CueRefs.[i]
@@ -280,35 +329,49 @@ type CuePlayerModel() =
         minH = 1; maxH = 10; }
 
 type [<Pojo>] CuePlayerState =
-  { selectedCueGroupIndex: int
-    selectedCueIndex: int }
+  { CueList: CueList option
+    SelectedCueGroupIndex: int
+    SelectedCueIndex: int }
 
 type CuePlayerView(props) =
   inherit React.Component<IWidgetProps<CuePlayerModel>, CuePlayerState>(props)
   let disposables = ResizeArray<IDisposable>()
   let globalModel = props.``global`` :?> GlobalModel
   do
-    base.setInitState({ selectedCueGroupIndex = 0; selectedCueIndex = 0 })
     // TODO: Mock code, create player if it doesn't exist
     if Map.count globalModel.State.cuePlayers = 0 then
       let cueList, cuePlayer = cueMockup()
       AddCueList cueList |> ClientContext.Singleton.Post
       AddCuePlayer cuePlayer |> ClientContext.Singleton.Post
+      base.setInitState({ CueList = Some cueList; SelectedCueGroupIndex = 0; SelectedCueIndex = 0 })
+    else
+      // TODO: Use a dropdown to choose the player/list
+      let cueList =
+        Seq.tryHead globalModel.State.cuePlayers
+        |> Option.bind (fun kv -> kv.Value.CueList)
+        |> Option.bind (fun id -> Map.tryFind id globalModel.State.cueLists)
+      base.setInitState({ CueList = cueList; SelectedCueGroupIndex = 0; SelectedCueIndex = 0 })
 
   member this.componentDidMount() =
     let state = globalModel.State
-    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ _ -> this.forceUpdate()))
+    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ dic ->
+      printfn "Received event"
+      match this.state.CueList with
+      | Some cueList ->
+        if tryDic (nameof cueList.Id) cueList.Id dic then
+          printfn "Ids match"
+          let cueList = Map.find cueList.Id globalModel.State.cueLists
+          this.setState({this.state with CueList=Some cueList})
+      | None -> ()))
 
   member this.componentWillUnmount() =
     for d in disposables do
       d.Dispose()
 
   member this.render() =
-    let cueList =
-      // TODO: Use a dropdown to choose the player
-      Seq.tryHead globalModel.State.cuePlayers
-      |> Option.bind (fun kv -> kv.Value.CueList)
-      |> Option.bind (fun id -> Map.tryFind id globalModel.State.cueLists)
+    #if DEBUG
+    Option.iter printCueList this.state.CueList
+    #endif
     div [Class "cueplayer-container"] [
       // HEADER
       yield
@@ -328,10 +391,10 @@ type CuePlayerView(props) =
           div [
             Class "cueplayer-button"
             OnClick (fun _ ->
-              match cueList with
+              match this.state.CueList with
               | None -> printfn "There is no cue list available to add the cue"
               | Some cueList ->
-                let cueGroup = cueList.Groups.[this.state.selectedCueGroupIndex]
+                let cueGroup = cueList.Groups.[this.state.SelectedCueGroupIndex]
                 let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
                 let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
                 // TODO: Add CueRef after selected cue
@@ -344,7 +407,7 @@ type CuePlayerView(props) =
           div [
             Class "cueplayer-button"
             OnClick (fun _ ->
-              match cueList with
+              match this.state.CueList with
               | None -> printfn "There is no cue list available to add the group"
               | Some cueList ->
                 let newCueGroup = { Id = Id.Create(); Name = name "Untitled"; CueRefs = [||] }
@@ -356,7 +419,7 @@ type CuePlayerView(props) =
           div [Style [Clear "both"]] []
         ]
       // CUE GROUPS
-      match cueList with
+      match this.state.CueList with
       | None -> ()
       | Some cueList ->
         for i=0 to (cueList.Groups.Length-1) do
@@ -367,9 +430,9 @@ type CuePlayerView(props) =
               CueGroup = cueGroup
               CueList = cueList
               CueGroupIndex = i
-              SelectedCueGroupIndex = this.state.selectedCueGroupIndex
-              SelectedCueIndex = this.state.selectedCueIndex
-              SelectCueGroup = fun i -> this.setState({this.state with selectedCueGroupIndex = i})
-              SelectCue = fun i -> this.setState({this.state with selectedCueIndex = i}) }
+              SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+              SelectedCueIndex = this.state.SelectedCueIndex
+              SelectCueGroup = fun i -> this.setState({this.state with SelectedCueGroupIndex = i})
+              SelectCue = fun i -> this.setState({this.state with SelectedCueIndex = i}) }
             []
     ]

@@ -93,37 +93,14 @@ type private GlobalStateMutable(readState: unit->State option) =
 
 /// To prevent duplication, this is the model all other views have access to.
 /// It manages the information coming from backend/shared worker.
-type GlobalModel() =
+type GlobalModel() as this =
   // Private fields
   let context = ClientContext.Singleton
-  let stateMutable: GlobalStateMutable = GlobalStateMutable(fun () ->
+  let stateMutable = GlobalStateMutable(fun () ->
     context.Store |> Option.map (fun x -> x.State))
   let stateImmutable: IGlobalState = upcast stateMutable
   let subscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
   let eventSubscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
-
-  // Private methods
-  let notify key (newValue: obj) keyValuePairs =
-    match subscribers.TryGetValue(key) with
-    | true, keySubscribers ->
-      let dic = dict keyValuePairs
-      for s in keySubscribers.Values do s newValue dic
-    | false, _ -> ()
-
-  let notifyAll () =
-    let dic = dict []
-    for KeyValue(key, keySubscribers) in subscribers do
-      let value = stateMutable?(key)
-      for subscriber in keySubscribers.Values do
-        subscriber value dic
-
-  let addLogPrivate (log: string) =
-    let length = stateMutable.Logs.Count
-    if length > LOG_MAX then
-      let diff = LOG_MAX / 10
-      removeRange (length - diff) diff stateMutable.Logs
-    stateMutable.Logs.Insert(0, log)
-    notify (nameof(stateImmutable.logs)) stateImmutable.logs []
 
   // Constructor
   do context.Start()
@@ -131,13 +108,13 @@ type GlobalModel() =
     context.OnMessage
     |> Observable.add (function
       | ClientMessage.Initialized _ ->
-        notifyAll()
+        this.NotifyAll()
       | ClientMessage.Event(_, ev) ->
         match ev with
-        | DataSnapshot _ -> notifyAll()
-        | StateMachine.UnloadProject -> notifyAll()
+        | DataSnapshot _ -> this.NotifyAll()
+        | StateMachine.UnloadProject -> this.NotifyAll()
         | UpdateProject _ ->
-          notify (nameof(stateImmutable.project)) stateImmutable.project []
+          this.Notify(nameof(stateImmutable.project), stateImmutable.project, [])
         | AddPinGroup _
         | UpdatePinGroup _
         | RemovePinGroup _
@@ -145,20 +122,20 @@ type GlobalModel() =
         | UpdatePin _
         | RemovePin _
         | UpdateSlices _ ->
-          notify (nameof(stateImmutable.pinGroups)) stateImmutable.pinGroups []
+          this.Notify(nameof(stateImmutable.pinGroups), stateImmutable.pinGroups, [])
         | AddCue cue
         | UpdateCue cue
         | RemoveCue cue
         | CallCue cue ->
-          notify (nameof(stateImmutable.cues)) stateImmutable.cues [nameof cue.Id ==> cue.Id]
-        | AddCueList _
-        | UpdateCueList _
-        | RemoveCueList _ ->
-          notify (nameof(stateImmutable.cueLists)) stateImmutable.cueLists []
+          this.Notify(nameof(stateImmutable.cues), stateImmutable.cues, [nameof cue.Id, box cue.Id])
+        | AddCueList cueList
+        | UpdateCueList cueList
+        | RemoveCueList cueList ->
+          this.Notify(nameof(stateImmutable.cueLists), stateImmutable.cueLists, [(nameof cueList.Id), box cueList.Id])
         | AddCuePlayer    _
         | UpdateCuePlayer _
         | RemoveCuePlayer _ ->
-          notify (nameof(stateImmutable.cuePlayers)) stateImmutable.cuePlayers []
+          this.Notify(nameof(stateImmutable.cuePlayers), stateImmutable.cuePlayers, [])
         // TODO: Add members to global state for cluster widget
         // | AddMember _
         // | UpdateMember _
@@ -166,6 +143,21 @@ type GlobalModel() =
         | _ -> ()
       | _ -> ())
   )
+
+  // Private methods
+  member private this.Notify(key, newValue: obj, keyValuePairs) =
+    match subscribers.TryGetValue(key) with
+    | true, keySubscribers ->
+      let dic = dict keyValuePairs
+      for s in keySubscribers.Values do s newValue dic
+    | false, _ -> ()
+
+  member private this.NotifyAll() =
+    let dic = dict []
+    for KeyValue(key, keySubscribers) in subscribers do
+      let value = stateMutable?(key)
+      for subscriber in keySubscribers.Values do
+        subscriber value dic
 
   // Public methods
   member this.State: IGlobalState = stateImmutable
@@ -195,30 +187,35 @@ type GlobalModel() =
 
   member this.UseRightClick(value: bool) =
     stateMutable.UseRightClick <- value
-    notify (nameof(this.State.useRightClick)) value []
+    this.Notify(nameof(this.State.useRightClick), value, [])
 
   member this.AddWidget(widget: IWidget, ?id: Guid) =
     let id = match id with Some id -> id | None -> Guid.NewGuid()
     stateMutable.Widgets.Add(id, widget)
-    notify (nameof(this.State.widgets)) this.State.widgets []
+    this.Notify(nameof(this.State.widgets), this.State.widgets, [])
     id
 
   member this.RemoveWidget(id: Guid) =
     stateMutable.Widgets.Remove(id) |> ignore
-    notify (nameof(this.State.widgets)) this.State.widgets []
+    this.Notify(nameof(this.State.widgets), this.State.widgets, [])
 
   member this.AddTab(tab: ITab, ?id: Guid) =
     let id = match id with Some id -> id | None -> Guid.NewGuid()
     stateMutable.Tabs.Add(id, tab)
-    notify (nameof(this.State.tabs)) this.State.tabs []
+    this.Notify(nameof(this.State.tabs), this.State.tabs, [])
     id
 
   member this.RemoveTab(id: Guid) =
     stateMutable.Tabs.Remove(id) |> ignore
-    notify (nameof(this.State.tabs)) this.State.tabs []
+    this.Notify(nameof(this.State.tabs), this.State.tabs, [])
 
   member this.AddLog(log: string) =
-    addLogPrivate log
+    let length = stateMutable.Logs.Count
+    if length > LOG_MAX then
+      let diff = LOG_MAX / 10
+      removeRange (length - diff) diff stateMutable.Logs
+    stateMutable.Logs.Insert(0, log)
+    this.Notify(nameof(stateImmutable.logs), stateImmutable.logs, [])
 
   member this.TriggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with
