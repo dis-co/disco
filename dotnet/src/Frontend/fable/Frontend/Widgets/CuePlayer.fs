@@ -72,7 +72,7 @@ module private Helpers =
 
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do
-      printfn "CueGroup: %O" group.Id
+      printfn "CueGroup: %O (%O)" group.Name group.Id
       for cueRef in group.CueRefs do
         printfn "    CueRef: %O" cueRef.Id
 
@@ -154,74 +154,62 @@ type private CueView(props) =
                 Class arrowIconClass
                 OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
               ] []]
-            div [Class "level-item"] [
-              div [
-                Class "cueplayer-button iris-icon cueplayer-player"
-                OnClick (fun _ ->
-                  // TODO: Edit the value of the pin directly
-                  CallCue this.state.Cue |> ClientContext.Singleton.Post)
-              ] [
-                span [Class "iris-icon iris-icon-play"] []
-              ]
+            div [
+              Class "cueplayer-button iris-icon cueplayer-player level-item"
+              OnClick (fun _ ->
+                // TODO: Edit the value of the pin directly
+                CallCue this.state.Cue |> ClientContext.Singleton.Post)
+            ] [
+              span [Class "iris-icon iris-icon-play"] []
             ]
           ]
-          div [Class "level-item"] [
-            form [OnSubmit (fun ev -> ev.preventDefault())] [
-              input [
-                Class "cueplayer-cueDesc"
-                Type "text"
-                Name "cueoffset"
-                Value !^this.state.Offset
-                OnChange (fun ev -> this.setState({this.state with Offset = !!ev.target?value}))
-              ]
-              br []
+          form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
+            input [
+              Class "cueplayer-cueDesc"
+              Type "text"
+              Name "cueoffset"
+              Value !^this.state.Offset
+              OnChange (fun ev -> this.setState({this.state with Offset = !!ev.target?value}))
             ]
+            br []
           ]
-          div [Class "level-item"] [
-            form [OnSubmit (fun ev -> ev.preventDefault())] [
-              input [
-                Class "cueplayer-cueDesc"
-                Type "text"
-                Name "cuename"
-                Value !^(unwrap this.state.Name: string)
-                OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
-                OnBlur (fun _ ->
-                  { this.state.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
-                OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
-              ]
-              br []
+          form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
+            input [
+              Class "cueplayer-cueDesc"
+              Type "text"
+              Name "cuename"
+              Value !^(unwrap this.state.Name: string)
+              OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
+              OnBlur (fun _ ->
+                { this.state.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
+              OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
             ]
+            br []
           ]
-          div [Class "level-item"] [
-            form [OnSubmit (fun ev -> ev.preventDefault())] [
-              input [
-                Class "cueplayer-cueDesc"
-                Style [
-                  CSSProp.Width 60.
-                  MarginRight 5.
-                ]
-                Type "text"
-                Name "cuetime"
-                Value !^this.state.Time
-                OnChange (fun ev -> this.setState({this.state with Time = !!ev.target?value}))
+          form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
+            input [
+              Class "cueplayer-cueDesc"
+              Style [
+                CSSProp.Width 60.
+                MarginRight 5.
               ]
-              br []
+              Type "text"
+              Name "cuetime"
+              Value !^this.state.Time
+              OnChange (fun ev -> this.setState({this.state with Time = !!ev.target?value}))
             ]
+            br []
           ]
           div [Class "level-right"] [
             div [Class "cueplayer-button iris-icon level-item"] [
               span [Class "iris-icon iris-icon-duplicate"] []
             ]
-            div [
-              Class "cueplayer-button iris-icon cueplayer-close level-item"
-              OnClick (fun _ ->
-                let id = this.props.CueRef.Id
-                let cueGroup2 = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
-                let msg = failwith "TODO" // UpdateCueGroup(this.props.CueList.Id, cueGroup2)
-                ClientContext.Singleton.Post(msg))
-            ] [
-              span [Class "iris-icon iris-icon-close"] []
-            ]
+            div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun _ ->
+              let id = this.props.CueRef.Id
+              let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
+              { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
+              |> UpdateCueList |> ClientContext.Singleton.Post)
+            ] [span [Class "iris-icon iris-icon-close"] []]
           ]
         ]
       if this.state.IsOpen then
@@ -274,32 +262,35 @@ type private CueGroupView(props) =
                 Class arrowIconClass
                 OnClick (fun _ -> this.setState({this.state with IsOpen = not this.state.IsOpen}))
               ] []]
-            div [Class "level-item"] [
-              div [
-                Class "cueplayer-button iris-icon cueplayer-player"
-                // TODO: Call all cues in the group
-                OnClick (fun _ -> ())
-              ] [
-                span [Class "iris-icon iris-icon-play"] []
-              ]
+            div [
+              Class "cueplayer-button iris-icon cueplayer-player level-item"
+              // TODO: Call all cues in the group
+              OnClick (fun _ -> ())
+            ] [
+              span [Class "iris-icon iris-icon-play"] []
             ]
-            div [Class "level-item"] [
-              form [OnSubmit (fun ev -> ev.preventDefault())] [
-                input [
-                  Class "cueplayer-cueDesc"
-                  Type "text"
-                  Name "cuegroupname"
-                  Value !^(unwrap this.state.Name: string)
-                  OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
-                  OnBlur (fun _ ->
-                    let newGroup = { this.props.CueGroup with Name = this.state.Name }
-                    { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups  }
-                    |> UpdateCueList |> ClientContext.Singleton.Post)
-                  OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
-                ]
-                br []
+            form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
+              input [
+                Class "cueplayer-cueDesc"
+                Type "text"
+                Name "cuegroupname"
+                Value !^(unwrap this.state.Name: string)
+                OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
+                OnBlur (fun _ ->
+                  let newGroup = { this.props.CueGroup with Name = this.state.Name }
+                  { this.props.CueList with Groups = Array.replaceById newGroup this.props.CueList.Groups  }
+                  |> UpdateCueList |> ClientContext.Singleton.Post)
+                OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
               ]
+              br []
             ]
+          ]
+          div [Class "level-right"] [
+            div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun _ ->
+              let id = this.props.CueGroup.Id
+              { this.props.CueList with Groups = this.props.CueList.Groups |> Array.filter (fun c -> c.Id <> id) }
+              |> UpdateCueList |> ClientContext.Singleton.Post)
+            ] [span [Class "iris-icon iris-icon-close"] []]
           ]
         ]
       if this.state.IsOpen then
@@ -355,11 +346,9 @@ type CuePlayerView(props) =
   member this.componentDidMount() =
     let state = globalModel.State
     disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ dic ->
-      printfn "Received event"
       match this.state.CueList with
       | Some cueList ->
         if tryDic (nameof cueList.Id) cueList.Id dic then
-          printfn "Ids match"
           let cueList = Map.find cueList.Id globalModel.State.cueLists
           this.setState({this.state with CueList=Some cueList})
       | None -> ()))
@@ -369,9 +358,9 @@ type CuePlayerView(props) =
       d.Dispose()
 
   member this.render() =
-    #if DEBUG
-    Option.iter printCueList this.state.CueList
-    #endif
+    // #if DEBUG
+    // Option.iter printCueList this.state.CueList
+    // #endif
     div [Class "cueplayer-container"] [
       // HEADER
       yield
@@ -425,7 +414,7 @@ type CuePlayerView(props) =
         for i=0 to (cueList.Groups.Length-1) do
           let cueGroup = cueList.Groups.[i]
           yield com<CueGroupView,_,_>
-            { key = string cueGroup.Id
+            { key = (string cueGroup.Id) + ":" + (unwrap cueGroup.Name)
               Global = globalModel
               CueGroup = cueGroup
               CueList = cueList
