@@ -232,7 +232,19 @@ type private CueView(props) =
             br []
           ]
           div [Class "level-right"] [
-            div [Class "cueplayer-button iris-icon level-item"] [
+            div [Class "cueplayer-button iris-icon level-item"; OnClick (fun _ ->
+                // Create new Cue and CueReference
+                let newCue = { this.state.Cue with Id = Id.Create() }
+                let newCueRef = { this.props.CueRef with Id = Id.Create(); CueId = newCue.Id }
+                // Insert new CueRef in the selected CueGroup after the selected cue
+                let cueGroup = this.props.CueList.Groups.[this.props.CueGroupIndex]
+                let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.props.CueIndex newCueRef cueGroup.CueRefs }
+                // Update the CueList
+                let newCueList = { this.props.CueList with Groups = Array.replaceById newCueGroup this.props.CueList.Groups }
+                // Send messages to backend
+                AddCue newCue |>  ClientContext.Singleton.Post
+                UpdateCueList newCueList |> ClientContext.Singleton.Post
+            )] [
               span [Class "iris-icon iris-icon-duplicate"] []
             ]
             div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun _ ->
