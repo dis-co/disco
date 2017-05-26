@@ -30,29 +30,20 @@ module private Helpers =
     | true, v when v = value -> true
     | _ -> false
 
-  let findPin =
-    let cache = Dictionary<string, Pin>()
-    fun (pinId: Id) (state: IGlobalState) ->
-      let pinIdStr = string pinId
-      match cache.TryGetValue(pinIdStr) with
-      | true, pin -> pin
-      | false, _ ->
-        match Map.tryFindPin pinId state.pinGroups with
-        // TODO: Clear cache when it reaches a limit?
-        | Some pin -> cache.Add(pinIdStr, pin); pin
-        | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+  let findPin (pinId: Id) (state: IGlobalState) =
+      match Map.tryFindPin pinId state.pinGroups with
+      | Some pin -> pin
+      | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
 
-  let findCue =
-    let cache = Dictionary<string, Cue>()
-    fun (cueId: Id) (state: IGlobalState) ->
-      let cueIdStr = string cueId
-      match cache.TryGetValue(cueIdStr) with
-      | true, pin -> pin
-      | false, _ ->
-        match Map.tryFind cueId state.cues with
-        // TODO: Clear cache when it reaches a limit?
-        | Some cue -> cache.Add(cueIdStr, cue); cue
-        | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
+  let findPinGroup (pinGroupId: Id) (state: IGlobalState) =
+      match Map.tryFind pinGroupId state.pinGroups with
+      | Some pinGroup -> pinGroup
+      | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+
+  let findCue (cueId: Id) (state: IGlobalState) =
+      match Map.tryFind cueId state.cues with
+      | Some cue -> cue
+      | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueMockup() =
     let cueList: CueList =
@@ -71,6 +62,21 @@ module private Helpers =
     | ByteSlices  (id, arr) -> ByteSlices  (id, Array.mapi (fun i el -> if i = index then value :?> byte[]     else el) arr)
     | EnumSlices  (id, arr) -> EnumSlices  (id, Array.mapi (fun i el -> if i = index then value :?> Property   else el) arr)
     | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
+
+
+  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the backend
+  let updatePins (cue: Cue) (state: IGlobalState) =
+    for slices in cue.Slices do
+      let pin = findPin slices.Id state
+      match slices, pin with
+      | StringSlices (_, values), StringPin pin -> StringPin { pin with Values = values }
+      | NumberSlices (_, values), NumberPin pin -> NumberPin { pin with Values = values }
+      | BoolSlices   (_, values), BoolPin pin   -> BoolPin   { pin with Values = values }
+      | ByteSlices   (_, values), BytePin pin   -> BytePin   { pin with Values = values }
+      | EnumSlices   (_, values), EnumPin pin   -> EnumPin   { pin with Values = values }
+      | ColorSlices  (_, values), ColorPin pin  -> ColorPin  { pin with Values = values }
+      | _ -> failwithf "Slices and pin types don't match\nSlices: %A\nPin: %A\nCue Id: %O" slices pin cue.Id
+      |> UpdatePin |> ClientContext.Singleton.Post
 
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do
@@ -146,6 +152,8 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
+              if this.state.Cue.Slices |> Array.exists (fun slices -> slices.Id = ev.model.pin.Id) then
+                failwith "The cue already contains this pin"
               let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.pin.Slices|] }
               UpdateCue newCue |> ClientContext.Singleton.Post
             | _ -> ()
@@ -190,7 +198,7 @@ type private CueView(props) =
               Class "cueplayer-button iris-icon cueplayer-player level-item"
               OnClick (fun ev ->
                 ev.stopPropagation()
-                this.UpdateSources()) // TODO: Send CallCue event instead
+                updatePins this.state.Cue this.props.Global.State) // TODO: Send CallCue event instead
             ] [
               span [Class "iris-icon iris-icon-play"] []
             ]
@@ -263,14 +271,30 @@ type private CueView(props) =
         ]
       div [] [
         if this.state.IsOpen then
-          for i=0 to this.state.Cue.Slices.Length - 1 do
-            let slices = this.state.Cue.Slices.[i]
-            let pin = findPin slices.Id this.props.Global.State
-            yield com<SpreadView,_,_>
-              { key = string i
-                model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
-                ``global`` = this.props.Global
-                onDragStart = None } []
+          let pinGroups =
+            this.state.Cue.Slices
+            |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.Global.State, slices)
+            |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
+          for (pinGroupId, pinAndSlices) in pinGroups do
+            let pinGroup = findPinGroup pinGroupId this.props.Global.State
+            yield
+              div [
+                Key (string pinGroupId)
+                Style [
+                  Display "flex"
+                  FlexDirection "column"
+                ]
+              ] [
+                p [] [str (unwrap pinGroup.Name)]
+                div [] [
+                  for i, pin, slices in pinAndSlices do
+                    yield com<SpreadView,_,_>
+                      { key = string pin.Id
+                        model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
+                        ``global`` = this.props.Global
+                        onDragStart = None } []
+                ]
+              ]
       ]
     ]
 
@@ -279,20 +303,6 @@ type private CueView(props) =
       this.state.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
     { this.state.Cue with Slices = newSlices } |> UpdateCue |> ClientContext.Singleton.Post
-
-  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the backend
-  member this.UpdateSources() =
-    for slices in this.state.Cue.Slices do
-      let pin = findPin slices.Id this.props.Global.State
-      match slices, pin with
-      | StringSlices (_, values), StringPin pin -> StringPin { pin with Values = values }
-      | NumberSlices (_, values), NumberPin pin -> NumberPin { pin with Values = values }
-      | BoolSlices   (_, values), BoolPin pin   -> BoolPin   { pin with Values = values }
-      | ByteSlices   (_, values), BytePin pin   -> BytePin   { pin with Values = values }
-      | EnumSlices   (_, values), EnumPin pin   -> EnumPin   { pin with Values = values }
-      | ColorSlices  (_, values), ColorPin pin  -> ColorPin  { pin with Values = values }
-      | _ -> failwithf "Slices and pin types don't match\nSlices: %A\nPin: %A\nCue Id: %O" slices pin this.state.Cue.Id
-      |> UpdatePin |> ClientContext.Singleton.Post
 
 type [<Pojo>] private CueGroupState =
   { IsOpen: bool
@@ -340,7 +350,10 @@ type private CueGroupView(props) =
             Class "cueplayer-button iris-icon cueplayer-player level-item"
             OnClick (fun ev ->
               ev.stopPropagation()
-              // TODO: Call all cues in the group
+              // Fire all cues in the group
+              for cueRef in this.props.CueGroup.CueRefs do
+                let cue = findCue cueRef.CueId this.props.Global.State
+                updatePins cue this.props.Global.State
             )
           ] [
             span [Class "iris-icon iris-icon-play"] []
@@ -494,7 +507,7 @@ type CuePlayerView(props) =
               | Some cueList ->
                 // Create new CueGroup and insert it after the selected one
                 let newCueGroup = { Id = Id.Create(); Name = name "Untitled"; CueRefs = [||] }
-                let newCueList = { cueList with Groups = Array.insertAfter this.state.SelectedCueIndex newCueGroup cueList.Groups }
+                let newCueList = { cueList with Groups = Array.insertAfter this.state.SelectedCueGroupIndex newCueGroup cueList.Groups }
                 // Send messages to backend
                 UpdateCueList newCueList |> ClientContext.Singleton.Post
               )
