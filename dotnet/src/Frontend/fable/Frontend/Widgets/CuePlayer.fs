@@ -14,6 +14,8 @@ open Helpers
 
 importAll "../../../css/cuePlayer.css"
 
+let [<Literal>] SELECTION_COLOR = "lightblue"
+
 module private Helpers =
   type RCom = React.ComponentClass<obj>
   let Clock: RCom = importDefault "../../../src/widgets/Clock"
@@ -83,6 +85,24 @@ module private Helpers =
     // let inline replaceById (newItem : CueGroup) (ar: CueGroup[]) =
     //   Array.map (fun (x: CueGroup) -> if newItem.Id = x.Id then newItem else x) ar
 
+    let insertAfter (i: int) (x: 't) (xs: 't[]) =
+      let len = xs.Length
+      if len = 0 (* && i = 0 *) then
+        [|x|]
+      elif i >= len then
+        failwith "Index out of array bounds"
+      elif i = (len - 1) then
+        Array.append xs [|x|]
+      else
+        let xs2 = Array.zeroCreate<'t> (len + 1)
+        for j = 0 to len do
+          if j <= i then
+            xs2.[j] <- xs.[j]
+          elif j = (i + 1) then
+            xs2.[j] <- x
+          else
+            xs2.[j] <- xs.[j - 1]
+        xs2
 
 type [<Pojo>] private CueState =
   { Cue: Cue
@@ -97,10 +117,11 @@ type [<Pojo>] private CueProps =
     CueRef: CueReference
     CueGroup: CueGroup
     CueList: CueList
-    Index: int
-    SelectedCueGroupIndex: int
+    CueIndex: int
+    CueGroupIndex: int
     SelectedCueIndex: int
-    SelectCue: int -> unit }
+    SelectedCueGroupIndex: int
+    SelectCue: int -> int -> unit }
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
@@ -142,12 +163,22 @@ type private CueView(props) =
       if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
+    let isSelected =
+      this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+      && this.props.CueIndex = this.props.SelectedCueIndex
     div [
       Ref (fun el -> selfRef <- el)
       Style [MarginLeft 20.]
     ] [
       yield
-        div [Class "cueplayer-list-header cueplayer-cue level"] [
+        div [
+          Class "cueplayer-list-header cueplayer-cue level"
+          Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+          OnClick (fun _ ->
+            if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
+              || this.props.CueIndex <> this.props.SelectedCueIndex then
+              this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
+        ] [
           div [Class "level-left"] [
             div [Class "level-item"] [
               span [
@@ -206,6 +237,9 @@ type private CueView(props) =
             ]
             div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun _ ->
               let id = this.props.CueRef.Id
+              // Change selection if this item was selected
+              if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+                this.props.SelectCue this.props.CueGroupIndex 0
               let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
               { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
               |> UpdateCueList |> ClientContext.Singleton.Post)
@@ -242,7 +276,7 @@ type [<Pojo>] private CueGroupProps =
     SelectedCueGroupIndex: int
     SelectedCueIndex: int
     SelectCueGroup: int -> unit
-    SelectCue: int -> unit }
+    SelectCue: int -> int -> unit }
 
 type private CueGroupView(props) =
   inherit React.Component<CueGroupProps, CueGroupState>(props)
@@ -253,9 +287,17 @@ type private CueGroupView(props) =
       if this.state.IsOpen
       then "iris-icon iris-icon-caret-down-two"
       else "iris-icon iris-icon-caret-right"
+    let isSelected =
+      this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
     div [] [
       yield
-        div [Class "cueplayer-list-header cueplayer-cue level"] [
+        div [
+          Class "cueplayer-list-header cueplayer-cue level"
+          Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+          OnClick (fun _ ->
+            if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex then
+              this.props.SelectCueGroup this.props.CueGroupIndex)
+        ] [
           div [Class "level-left"] [
             div [Class "level-item"] [
               span [
@@ -288,6 +330,9 @@ type private CueGroupView(props) =
           div [Class "level-right"] [
             div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun _ ->
               let id = this.props.CueGroup.Id
+              // Change selection if this item was selected
+              if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+                this.props.SelectCueGroup 0
               { this.props.CueList with Groups = this.props.CueList.Groups |> Array.filter (fun c -> c.Id <> id) }
               |> UpdateCueList |> ClientContext.Singleton.Post)
             ] [span [Class "iris-icon iris-icon-close"] []]
@@ -302,7 +347,8 @@ type private CueGroupView(props) =
               CueRef = cueRef
               CueGroup = this.props.CueGroup
               CueList = this.props.CueList
-              Index = i
+              CueIndex = i
+              CueGroupIndex = this.props.CueGroupIndex
               SelectedCueIndex = this.props.SelectedCueIndex
               SelectedCueGroupIndex = this.props.SelectedCueGroupIndex
               SelectCue = this.props.SelectCue }
@@ -381,14 +427,19 @@ type CuePlayerView(props) =
             Class "cueplayer-button"
             OnClick (fun _ ->
               match this.state.CueList with
-              | None -> printfn "There is no cue list available to add the cue"
+              | None -> failwith "There is no cue list available to add the cue"
               | Some cueList ->
-                let cueGroup = cueList.Groups.[this.state.SelectedCueGroupIndex]
+                if cueList.Groups.Length = 0 then
+                  failwith "A Cue Group must be added first"
+                // Create new Cue and CueReference
                 let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
                 let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-                // TODO: Add CueRef after selected cue
-                let newCueGroup = { cueGroup with CueRefs = Array.append cueGroup.CueRefs [| newCueRef |] }
-                let newCueList = { cueList with Groups = Array.append cueList.Groups [|newCueGroup|] }
+                // Insert new CueRef in the selected CueGroup after the selected cue
+                let cueGroup = cueList.Groups.[this.state.SelectedCueGroupIndex]
+                let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.state.SelectedCueIndex newCueRef cueGroup.CueRefs }
+                // Update the CueList
+                let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
+                // Send messages to backend
                 AddCue newCue |>  ClientContext.Singleton.Post
                 UpdateCueList newCueList |> ClientContext.Singleton.Post
               )
@@ -397,11 +448,12 @@ type CuePlayerView(props) =
             Class "cueplayer-button"
             OnClick (fun _ ->
               match this.state.CueList with
-              | None -> printfn "There is no cue list available to add the group"
+              | None -> failwith "There is no cue list available to add the group"
               | Some cueList ->
+                // Create new CueGroup and insert it after the selected one
                 let newCueGroup = { Id = Id.Create(); Name = name "Untitled"; CueRefs = [||] }
-                // TODO: Add CueGroup after selected group
-                let newCueList = { cueList with Groups = Array.append cueList.Groups [|newCueGroup|] }
+                let newCueList = { cueList with Groups = Array.insertAfter this.state.SelectedCueIndex newCueGroup cueList.Groups }
+                // Send messages to backend
                 UpdateCueList newCueList |> ClientContext.Singleton.Post
               )
           ] [str "Add Group"]
@@ -421,7 +473,7 @@ type CuePlayerView(props) =
               CueGroupIndex = i
               SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
               SelectedCueIndex = this.state.SelectedCueIndex
-              SelectCueGroup = fun i -> this.setState({this.state with SelectedCueGroupIndex = i})
-              SelectCue = fun i -> this.setState({this.state with SelectedCueIndex = i}) }
+              SelectCueGroup = fun g -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = 0})
+              SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
             []
     ]
