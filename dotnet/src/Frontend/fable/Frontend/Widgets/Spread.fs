@@ -112,7 +112,7 @@ type SpreadView(props) =
         match this.props.onDragStart with
         | Some onDragStart -> onDragStart()
         | None -> ())
-    ] [str model.Pin.Name]
+    ] [str <| if String.IsNullOrEmpty(model.Pin.Name) then "--" else model.Pin.Name]
     for i=0 to model.Length - 1 do
       let label =
         // The Labels array can be shorter than Values'
