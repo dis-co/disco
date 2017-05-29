@@ -538,17 +538,7 @@ module IrisService =
   // ** handleRaftEvent
 
   let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: RaftEvent) =
-    ev |> IrisEvent.Raft |> Msg.Notify |> agent.Post
-    Tracing.trace (tag "handleRaftEvent") <| fun () ->
-      match ev with
-      | RaftEvent.ApplyLog sm             -> onApplyLog         state sm
-      | RaftEvent.MemberAdded mem         -> onMemberAdded      state mem
-      | RaftEvent.MemberRemoved mem       -> onMemberRemoved    state mem
-      | RaftEvent.MemberUpdated mem       -> onMemberUpdated    state mem
-      | RaftEvent.Configured mems         -> onConfigured       state mems
-      | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
-      | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst agent
-      | _ -> state
+    ev |> IrisEvent.Raft |> Msg.Event |> agent.Post
 
   // ** handleApiEvent
 
@@ -736,15 +726,6 @@ module IrisService =
       state.RaftServer.RemoveMember id
       state
 
-  // ** handleClock
-
-  let private handleClock (state: IrisState) (clock: ClockEvent) =
-    Tracing.trace (tag "handleClock") <| fun () ->
-      let sm = clock.Frame |> uint32 |> UpdateClock
-      broadcastMsg state sm
-      state.ApiServer.Update sm
-      state
-
   // ** handleClientResponse
 
   let private handleClientResponse (state: IrisState) (response: RawClientResponse) =
@@ -787,6 +768,24 @@ module IrisService =
 
   let private ignoreEvent (state: IrisState) _ = state
 
+  // Tracing.trace (tag "handleRaftEvent") <| fun () ->
+  //   match ev with
+  //   | RaftEvent.ApplyLog sm             -> onApplyLog         state sm
+  //   | RaftEvent.MemberAdded mem         -> onMemberAdded      state mem
+  //   | RaftEvent.MemberRemoved mem       -> onMemberRemoved    state mem
+  //   | RaftEvent.MemberUpdated mem       -> onMemberUpdated    state mem
+  //   | RaftEvent.Configured mems         -> onConfigured       state mems
+  //   | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
+  //   | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst agent
+  //   | _ -> state
+
+  // let private handleClock (state: IrisState) (clock: ClockEvent) =
+  //   Tracing.trace (tag "handleClock") <| fun () ->
+  //     let sm = clock.Frame |> uint32 |> UpdateClock
+  //     broadcastMsg state sm
+  //     state.ApiServer.Update sm
+  //     state
+
   // ** dispatchEvent
 
   let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
@@ -813,8 +812,6 @@ module IrisService =
             | Msg.Event              ev  -> dispatchEvent        state inbox ev
             | Msg.ForceElection          -> handleForceElection  state
             | Msg.Periodic               -> handlePeriodic       state
-            | Msg.AddMember          mem -> handleAddMember      state       mem
-            | Msg.RemoveMember        id -> handleRemoveMember   state       id
             | Msg.RawClientResponse resp -> handleClientResponse state       resp
           store.Update newstate
         with
