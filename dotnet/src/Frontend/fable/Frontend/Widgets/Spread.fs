@@ -17,7 +17,8 @@ let [<Literal>] ROW_HEIGHT = 17
 
 type [<Pojo>] InputState =
   { editIndex: int
-  ; editText: string }
+    editText: string
+    isOpen: bool }
 
 let addInputView
   ( index: int
@@ -28,7 +29,10 @@ let addInputView
   , generate: obj -> obj -> React.ReactElement
   ): React.ReactElement = importMember "../../../src/behaviors/input.tsx"
 
-let [<Global>] jQuery(el: obj): obj = jsNative
+let formatValue(value: obj): string = importMember "../../../src/behaviors/input.tsx"
+
+[<Global>]
+let jQuery(el: obj): obj = jsNative
 
 [<Import("createElement", from="react")>]
 let private createEl(rcom: obj, props: obj, child: obj): React.ReactElement = jsNative
@@ -61,37 +65,62 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-type Spread(pin: Pin, ?slices: Slices, ?update: int->obj->unit) =
-  let length =
-    match slices with
-    | Some slices -> slices.Length
-    | None -> pin.Values.Length
-  member val IsOpen = false with get, set
-  member __.Pin = pin
-  member __.Length = length
-  member __.ValueAt(i) =
-    match slices with
-    | Some slices -> slices.[index i].Value
-    | None -> pin.Values.[index i].Value
-
-  member __.Update(index: int, value: obj) =
-    match update with
-    | Some update -> update index value
-    | None -> updatePinValue(pin, index, value)
-
-
 type [<Pojo>] SpreadProps =
   { key: string
-  ; model: Spread
-  ; ``global``: IGlobalModel
-  ; onDragStart: (unit -> unit) option }
+    ``global``: IGlobalModel
+    pin: Pin
+    slices: Slices option
+    update: (int->obj->unit) option
+    onDragStart: (unit -> unit) option }
 
 type SpreadView(props) =
   inherit React.Component<SpreadProps, InputState>(props)
-  do base.setInitState({ editIndex = -1; editText = "" })
+  do base.setInitState({ editIndex = -1; editText = ""; isOpen = false })
 
-  member this.recalculateHeight(rowCount: int) =
+  member this.RecalculateHeight(rowCount: int) =
     BASE_HEIGHT + (ROW_HEIGHT * rowCount)
+
+  member this.ValueAt(i) =
+    match this.props.slices with
+    | Some slices -> slices.[index i].Value
+    | None -> this.props.pin.Values.[index i].Value
+
+  member this.UpdateValue(index: int, value: obj) =
+    match this.props.update with
+    | Some update -> update index value
+    | None -> updatePinValue(this.props.pin, index, value)
+
+  member this.RenderRowLabels(rowCount: int) = [
+    yield span [
+      Key "-1"
+      Style [!!("cursor", "move")]
+      OnMouseDown (fun ev ->
+        ev.stopPropagation()
+        match this.props.onDragStart with
+        | Some onDragStart -> onDragStart()
+        | None -> ())
+    ] [str <| if String.IsNullOrEmpty(this.props.pin.Name) then "--" else this.props.pin.Name]
+    for i=0 to rowCount - 1 do
+      let label =
+        // The Labels array can be shorter than Values'
+        match Array.tryItem i this.props.pin.Labels with
+        | None | Some(NullOrEmpty) -> "Label"
+        | Some label -> label
+      yield span [Key (string i)] [str label]
+  ]
+
+  member this.RenderRowValues(rowCount: int, useRightClick: bool) = [
+    yield span [
+      Key "-1"
+    ] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+    let mutable i = 0
+    for i=0 to rowCount - 1 do
+      let value = this.ValueAt(0)
+      yield addInputView
+        (i, value, useRightClick, this,
+         (fun i v -> this.UpdateValue(i,v)),
+         (fun value props -> createEl("span", props, value)))
+  ]
 
   member this.onMounted(el: Browser.Element) =
     if el <> null then
@@ -103,42 +132,13 @@ type SpreadView(props) =
               !!ui?size?height = !!ui?originalSize?height
         ])
 
-  member this.renderRowLabels(model: Spread) = [
-    yield span [
-      Key "-1"
-      Style [!!("cursor", "move")]
-      OnMouseDown (fun ev ->
-        ev.stopPropagation()
-        match this.props.onDragStart with
-        | Some onDragStart -> onDragStart()
-        | None -> ())
-    ] [str <| if String.IsNullOrEmpty(model.Pin.Name) then "--" else model.Pin.Name]
-    for i=0 to model.Length - 1 do
-      let label =
-        // The Labels array can be shorter than Values'
-        match Array.tryItem i model.Pin.Labels with
-        | None | Some(NullOrEmpty) -> "Label"
-        | Some label -> label
-      yield span [Key (string i)] [str label]
-  ]
-
-  member this.renderRowValues(model: Spread, useRightClick: bool) = [
-    yield span [
-      Key "-1"
-    ] [str (sprintf "%O (%d)" (model.ValueAt(0)) model.Length)]
-    let mutable i = 0
-    for i=0 to model.Length - 1 do
-      let value = model.ValueAt(0)
-      yield addInputView
-        (i, value, useRightClick, this,
-         (fun i v -> model.Update(i,v)),
-         (fun value props -> createEl("span", props, value)))
-  ]
-
   member this.render() =
-    let model = this.props.model
-    let arrowRotation = if model.IsOpen then 90 else 0
-    let height = if model.IsOpen then this.recalculateHeight(model.Length) else BASE_HEIGHT
+    let rowCount =
+      match this.props.slices with
+      | Some slices -> slices.Length
+      | None -> this.props.pin.Values.Length
+    let arrowRotation = if this.state.isOpen then 90 else 0
+    let height = if this.state.isOpen then this.RecalculateHeight(rowCount) else BASE_HEIGHT
     div [
       ClassName "iris-spread"
       Ref (fun el -> this.onMounted(el))
@@ -146,11 +146,11 @@ type SpreadView(props) =
       div [
         ClassName "iris-spread-child iris-flex-1"
         Style [Height height]
-      ] (this.renderRowLabels(model))
+      ] (this.RenderRowLabels(rowCount))
       div [
         ClassName "iris-spread-child iris-flex-2"
         Style [Height height]
-      ] (this.renderRowValues(model, this.props.``global``.state.useRightClick))
+      ] (this.RenderRowValues(rowCount, this.props.``global``.state.useRightClick))
       div [
         ClassName "iris-spread-child iris-spread-end"
         Style [Height height]
@@ -160,8 +160,7 @@ type SpreadView(props) =
           Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
           OnClick (fun ev ->
             ev.stopPropagation()
-            model.IsOpen <- not model.IsOpen
-            this.forceUpdate())
+            this.setState({ this.state with isOpen = not this.state.isOpen}))
         ]
       ]
     ]

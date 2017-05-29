@@ -13,10 +13,6 @@ type [<Pojo>] Layout =
     minH: int; maxH: int;
   }
 
-type ISpread =
-  abstract member pin: Pin
-  abstract member rows: (string*obj)[]
-
 type IWidgetModel =
   abstract name: string
   abstract layout: Layout
@@ -27,9 +23,9 @@ type [<Pojo>] IWidgetProps<'T> =
   abstract model: 'T
   abstract ``global``: IGlobalModel
 
-type IDragEvent =
+type IDragEvent<'T> =
   abstract origin: int
   abstract x: float
   abstract y: float
   abstract ``type``: string
-  abstract model: ISpread
+  abstract model: 'T

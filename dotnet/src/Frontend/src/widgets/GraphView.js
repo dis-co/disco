@@ -9,9 +9,9 @@ class View extends Component {
     this.childNodes = new Map();
   }
 
-  startDragging(model, index) {
+  startDragging(key, pin) {
     const _this = this;
-    const node = _this.childNodes.get(index);
+    const node = _this.childNodes.get(key);
     if (node == null) { return; }
 
     domtoimage.toPng(node)
@@ -24,7 +24,7 @@ class View extends Component {
             $(img).css({left:e.pageX, top:e.pageY});
             _this.props.global.triggerEvent("drag", {
               type: "move",
-              model: model,
+              model: pin,
               origin: _this.props.id,
               x: e.clientX,
               y: e.clientY
@@ -35,14 +35,10 @@ class View extends Component {
             img.css({display: "none"});
             _this.props.global.triggerEvent("drag", {
               type: "stop",
-              model: model,
+              model: pin,
               origin: _this.props.id,
               x: e.clientX,
-              y: e.clientY,
-              removeModelFromOrigin() {
-                _this.props.model.elements.splice(index, 1);
-                _this.forceUpdate();
-              }
+              y: e.clientY
             });
             $(document).off("mousemove.drag mouseup.drag");
           })
@@ -54,25 +50,6 @@ class View extends Component {
 
   componentDidMount() {
     this.disposables = [];
-
-    // this.disposables.push(
-    //   this.props.global.subscribeToEvent("drag", ev => {
-    //     if (this.el != null && ev.origin !== this.props.id) {
-    //       if (touchesElement(this.el, ev.x, ev.y)) {
-    //         switch (ev.type) {
-    //           case "move":
-    //             this.el.classList.add("iris-highlight-blue");
-    //             return;
-    //           case "stop":
-    //             ev.removeModelFromOrigin();
-    //             this.props.model.elements.push(ev.model);
-    //             this.forceUpdate();
-    //         }
-    //       }
-    //       this.el.classList.remove("iris-highlight-blue")
-    //     }
-    //   })
-    // );
 
     this.disposables.push(
       this.props.global.subscribe(["pinGroups", "useRightClick"], () => {
@@ -94,17 +71,14 @@ class View extends Component {
           <div key={i} className="iris-pingroup">
             <h3 className="title is-3">{pinGroup[1].Name}</h3>
             {map(pinGroup[1].Pins, (kv,i) => {
-              var pin = kv[1];
-              var model = new Spread(pin);
-              return (
-                <div key={i}
-                  ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-                  <SpreadView
-                    model={model}
-                    global={this.props.global}
-                    onDragStart={() => this.startDragging(model, i)} />
-                </div>
-              )})}
+              const pin = kv[1], key = IrisLib.toString(pin.Id);
+              return <SpreadView
+                key={key}
+                ref={el => { if (el != null) this.childNodes.set(key, el) }}
+                pin={pin}
+                global={this.props.global}
+                onDragStart={() => this.startDragging(key, pin)} />
+            })}
           </div>
         ))}
       </div>
