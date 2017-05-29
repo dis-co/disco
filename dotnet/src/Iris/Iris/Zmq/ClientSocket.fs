@@ -205,10 +205,12 @@ module Client =
 
         while state.Socket.PollIn(poll, &incoming, &error, timeout) do
           try
-            { RequestId = Guid (incoming.[1].Read())
+            let reqid = Guid (incoming.[1].Read())
+            { RequestId = reqid
               PeerId = state.Id
               Body = Right (incoming.[2].Read()) }
             |> Observable.notify state.Subscriptions
+            state.Pending.TryRemove(reqid) |> ignore
           with
             | exn ->
               exn.Message
@@ -223,12 +225,14 @@ module Client =
         // |_|   \___|_| |_|\__,_|_|_| |_|\__, |
         //                                |___/
         let pending = state.Pending.ToArray()
-        for KeyValue(reqid, ts) in pending do
-          if (state.Stopwatch.ElapsedMilliseconds - ts) > int64 Constants.REQ_TIMEOUT then
+        for KeyValue(reqid, reqtime) in pending do
+          let elapsed = state.Stopwatch.ElapsedMilliseconds - reqtime
+          let timedout = elapsed > int64 Constants.REQ_TIMEOUT
+          if timedout then
             // PENDING REQUEST TIMED OUT
             { RequestId = reqid; PeerId = state.Id; Body = toerror }
             |> Observable.notify state.Subscriptions
-            state.Pending.TryRemove(reqid) |> ignore // its save, because this collection is only
+            state.Pending.TryRemove(reqid) |> ignore // its safe, because this collection is only
                                                     // ever modified in one place
 
     with
