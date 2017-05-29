@@ -70,15 +70,17 @@ class View extends Component {
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
             <h3 className="title is-3">{pinGroup[1].Name}</h3>
-            {map(pinGroup[1].Pins, (kv,i) => {
-              const pin = kv[1], key = IrisLib.toString(pin.Id);
-              return <SpreadView
-                key={key}
-                ref={el => { if (el != null) this.childNodes.set(key, el) }}
-                pin={pin}
-                global={this.props.global}
-                onDragStart={() => this.startDragging(key, pin)} />
-            })}
+            <div>
+              {map(pinGroup[1].Pins, (kv,i) => {
+                const pin = kv[1], key = IrisLib.toString(pin.Id);
+                return <SpreadView
+                  key={key}
+                  ref={el => { if (el != null) this.childNodes.set(key, el) }}
+                  pin={pin}
+                  global={this.props.global}
+                  onDragStart={() => this.startDragging(key, pin)} />
+              })}
+            </div>
           </div>
         ))}
       </div>

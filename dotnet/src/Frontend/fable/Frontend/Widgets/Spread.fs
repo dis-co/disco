@@ -14,6 +14,7 @@ importAll "../../../css/cuePlayer.css"
 
 let [<Literal>] BASE_HEIGHT = 25
 let [<Literal>] ROW_HEIGHT = 17
+let [<Literal>] MIN_WIDTH = 100
 
 type [<Pojo>] InputState =
   { editIndex: int
@@ -100,19 +101,21 @@ type SpreadView(props) =
         | Some onDragStart -> onDragStart()
         | None -> ())
     ] [str <| if String.IsNullOrEmpty(this.props.pin.Name) then "--" else this.props.pin.Name]
-    for i=0 to rowCount - 1 do
-      let label =
-        // The Labels array can be shorter than Values'
-        match Array.tryItem i this.props.pin.Labels with
-        | None | Some(NullOrEmpty) -> "Label"
-        | Some label -> label
-      yield span [Key (string i)] [str label]
+    if rowCount > 1 then
+      for i=0 to rowCount - 1 do
+        let label =
+          // The Labels array can be shorter than Values'
+          match Array.tryItem i this.props.pin.Labels with
+          | None | Some(NullOrEmpty) -> "Label"
+          | Some label -> label
+        yield span [Key (string i)] [str label]
   ]
 
   member this.RenderRowValues(rowCount: int, useRightClick: bool) = [
-    yield span [
-      Key "-1"
-    ] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+    if rowCount > 1 then
+      yield span [
+        Key "-1"
+      ] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
     let mutable i = 0
     for i=0 to rowCount - 1 do
       let value = this.ValueAt(0)
@@ -122,11 +125,21 @@ type SpreadView(props) =
          (fun value props -> createEl("span", props, value)))
   ]
 
+  member this.RenderArrow() =
+    let arrowRotation = if this.state.isOpen then 90 else 0
+    img [
+      Src "/img/more.png"
+      Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
+      OnClick (fun ev ->
+        ev.stopPropagation()
+        this.setState({ this.state with isOpen = not this.state.isOpen}))
+    ]
+
   member this.onMounted(el: Browser.Element) =
     if el <> null then
       !!jQuery(el)?resizable(
         createObj [
-          "minWidth" ==> 150
+          "minWidth" ==> MIN_WIDTH
           "handles" ==> "e"
           "resize" ==> fun event ui ->
               !!ui?size?height = !!ui?originalSize?height
@@ -137,7 +150,6 @@ type SpreadView(props) =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
-    let arrowRotation = if this.state.isOpen then 90 else 0
     let height = if this.state.isOpen then this.RecalculateHeight(rowCount) else BASE_HEIGHT
     div [
       ClassName "iris-spread"
@@ -154,15 +166,7 @@ type SpreadView(props) =
       div [
         ClassName "iris-spread-child iris-spread-end"
         Style [Height height]
-      ] [
-        img [
-          Src "/img/more.png"
-          Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
-          OnClick (fun ev ->
-            ev.stopPropagation()
-            this.setState({ this.state with isOpen = not this.state.isOpen}))
-        ]
-      ]
+      ] (if rowCount > 1 then [this.RenderArrow()] else [])
     ]
 
 
