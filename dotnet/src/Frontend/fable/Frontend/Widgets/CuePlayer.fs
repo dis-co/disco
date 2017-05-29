@@ -371,6 +371,7 @@ type private CueGroupView(props) =
                 |> UpdateCueList |> ClientContext.Singleton.Post)
               OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
             ]
+            span [] [str (sprintf "(%i)" this.props.CueGroup.CueRefs.Length)]
             br []
           ]
         ]
