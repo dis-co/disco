@@ -12,10 +12,6 @@ open ZeroMQ
 
 // * Types
 
-type ClockEvent =
-  { Frame: int64<frame>
-    Deviation: int64<ns> }
-
 type IClock =
   inherit IDisposable
   abstract Subscribe: (ClockEvent -> unit) -> IDisposable

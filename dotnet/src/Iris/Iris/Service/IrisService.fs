@@ -148,16 +148,9 @@ module IrisService =
     | Start
     | Stop              of AutoResetEvent
     | Notify            of IrisEvent
+    | Event             of IrisEvent
     | Append            of StateMachine
-    | Git               of GitEvent
-    | Socket            of WebSocketEvent
-    | Raft              of RaftEvent
-    | Api               of ApiEvent
-    | Log               of LogEvent
-    | Clock             of ClockEvent
     | SetConfig         of IrisConfig
-    | AddMember         of RaftMember
-    | RemoveMember      of Id
     | RawClientResponse of RawClientResponse
     | ForceElection
     | Periodic
@@ -591,8 +584,8 @@ module IrisService =
 
   // ** forwardEvent
 
-  let inline private forwardEvent (constr: ^a -> Msg) (agent: IrisAgent) =
-    constr >> agent.Post
+  let inline private forwardEvent (constr: ^a -> IrisEvent) (agent: IrisAgent) =
+    constr >> Msg.Event >> agent.Post
 
   // ** restartGitServer
 
@@ -611,7 +604,7 @@ module IrisService =
           let gitserver = GitServer.create mem state.Store.State.Project.Path
           let disposable =
             agent
-            |> forwardEvent Msg.Git
+            |> forwardEvent IrisEvent.Git
             |> gitserver.Subscribe
           match gitserver.Start() with
           | Right () ->
@@ -778,6 +771,30 @@ module IrisService =
     state.RaftServer.Append cmd
     state
 
+  // ** publishEvent
+
+  let private publishEvent (state: IrisState) (ev: IrisEvent) =
+    // broadcastMsg state sm
+    // state.ApiServer.Update sm
+    state
+
+  // ** replicateEvent
+
+  let private replicateEvent (state: IrisState) (ev: IrisEvent) =
+    state
+
+  // ** ignoreEvent
+
+  let private ignoreEvent (state: IrisState) _ = state
+
+  // ** dispatchEvent
+
+  let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
+    match ev.DispatchStrategy with
+    | Publish   -> publishEvent   state ev
+    | Replicate -> replicateEvent state ev
+    | Ignore    -> ignoreEvent    state ev
+
   // ** loop
 
   let private loop (store: IAgentStore<IrisState>) (inbox: IrisAgent) =
@@ -793,16 +810,11 @@ module IrisService =
             | Msg.Notify              ev -> handleNotify         state       ev
             | Msg.Append             cmd -> handleAppend         state       cmd
             | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
-            | Msg.Git                 ev -> handleGitEvent       state inbox ev
-            | Msg.Socket              ev -> handleSocketEvent    state       ev
-            | Msg.Raft                ev -> handleRaftEvent      state inbox ev
-            | Msg.Api                 ev -> handleApiEvent       state inbox ev
-            | Msg.Log                log -> handleLogEvent       state       log
+            | Msg.Event              ev  -> dispatchEvent        state inbox ev
             | Msg.ForceElection          -> handleForceElection  state
             | Msg.Periodic               -> handlePeriodic       state
             | Msg.AddMember          mem -> handleAddMember      state       mem
             | Msg.RemoveMember        id -> handleRemoveMember   state       id
-            | Msg.Clock clock            -> handleClock          state       clock
             | Msg.RawClientResponse resp -> handleClientResponse state       resp
           store.Update newstate
         with
@@ -914,12 +926,12 @@ module IrisService =
 
                 // set up event forwarding of various services to the actor
                 let disposables =
-                  [ (LOG_HANDLER,   forwardEvent Msg.Log    agent |> Logger.subscribe)
-                    (RAFT_SERVER,   forwardEvent Msg.Raft   agent |> raftServer.Subscribe)
-                    (WS_SERVER,     forwardEvent Msg.Socket agent |> socketServer.Subscribe)
-                    (API_SERVER,    forwardEvent Msg.Api    agent |> apiServer.Subscribe)
-                    (GIT_SERVER,    forwardEvent Msg.Git    agent |> gitServer.Subscribe)
-                    (CLOCK_SERVICE, forwardEvent Msg.Clock  agent |> clockService.Subscribe) ]
+                  [ (LOG_HANDLER,   forwardEvent IrisEvent.Log    agent |> Logger.subscribe)
+                    (RAFT_SERVER,   forwardEvent IrisEvent.Raft   agent |> raftServer.Subscribe)
+                    (WS_SERVER,     forwardEvent IrisEvent.Socket agent |> socketServer.Subscribe)
+                    (API_SERVER,    forwardEvent IrisEvent.Api    agent |> apiServer.Subscribe)
+                    (GIT_SERVER,    forwardEvent IrisEvent.Git    agent |> gitServer.Subscribe)
+                    (CLOCK_SERVICE, forwardEvent IrisEvent.Clock  agent |> clockService.Subscribe) ]
                   |> Map.ofList
 
                 // set up the agent state
@@ -979,10 +991,10 @@ module IrisService =
           member self.Periodic () = agent.Post(Msg.Periodic)
 
           member self.AddMember mem =
-            mem |> Msg.AddMember |> agent.Post
+            mem |> IrisEvent.AddMember |> Msg.Event |> agent.Post
 
           member self.RemoveMember id =
-            id |> Msg.RemoveMember |> agent.Post
+            id |> IrisEvent.RemoveMember |> Msg.Event |> agent.Post
 
           member self.Append cmd =
             cmd |> Msg.Append |> agent.Post
