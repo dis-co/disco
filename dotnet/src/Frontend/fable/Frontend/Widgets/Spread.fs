@@ -118,7 +118,7 @@ type SpreadView(props) =
       ] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
     let mutable i = 0
     for i=0 to rowCount - 1 do
-      let value = this.ValueAt(0)
+      let value = this.ValueAt(i)
       yield addInputView
         (i, value, useRightClick, this,
          (fun i v -> this.UpdateValue(i,v)),
