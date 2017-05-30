@@ -73,12 +73,16 @@ class View extends Component {
             <div>
               {map(pinGroup[1].Pins, (kv,i) => {
                 const pin = kv[1], key = IrisLib.toString(pin.Id);
-                return <SpreadView
-                  key={key}
-                  ref={el => { if (el != null) this.childNodes.set(key, el) }}
-                  pin={pin}
-                  global={this.props.global}
-                  onDragStart={() => this.startDragging(key, pin)} />
+                return (
+                  // We need to wrap the SpreadView in a div to get the actual HTML element in `ref`
+                  <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
+                    <SpreadView
+                      key={key}
+                      pin={pin}
+                      global={this.props.global}
+                      onDragStart={() => this.startDragging(key, pin)} />
+                  </div>
+                )
               })}
             </div>
           </div>
