@@ -311,8 +311,8 @@ module TestData =
 
   let mkChange _ =
     match rand.Next(0,2) with
-    | n when n > 0 -> MemberAdded(mkMember ())
-    |          _   -> MemberRemoved(mkMember ())
+    | n when n > 0 -> ConfigChange.MemberAdded(mkMember ())
+    |          _   -> ConfigChange.MemberRemoved(mkMember ())
 
   let mkChanges _ =
     let n = rand.Next(1, 6)

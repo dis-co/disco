@@ -122,7 +122,7 @@ module IrisServiceTests =
         use oobs =
           (fun ev ->
             match ev with
-            | Git (Started _) -> checkGitStarted.Set() |> ignore
+            | Git (GitEvent.Started _) -> checkGitStarted.Set() |> ignore
             | _ -> ())
           |> service.Subscribe
 
@@ -181,7 +181,7 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
+            | Git (GitEvent.Started _)                     -> checkGitStarted.Set() |> ignore
             | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
             | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
             | _                                            -> ())
@@ -216,7 +216,7 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
+            | Git (GitEvent.Started _)                     -> checkGitStarted.Set() |> ignore
             | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
             | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
             | _                                            -> ())

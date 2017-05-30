@@ -149,7 +149,6 @@ module IrisService =
     | Stop              of AutoResetEvent
     | Notify            of IrisEvent
     | Event             of IrisEvent
-    | Append            of StateMachine
     | SetConfig         of IrisConfig
     | RawClientResponse of RawClientResponse
     | ForceElection
@@ -189,100 +188,26 @@ module IrisService =
   // ** appendCmd
 
   let private appendCmd (state: IrisState) (cmd: StateMachine) =
-    Tracing.trace (tag "appendCmd") <| fun () ->
-      if state.RaftServer.IsLeader then
-        cmd |> state.RaftServer.Append
-      else
-        "ignoring append request, not leader"
-        |> Logger.debug (tag "appendCmd")
+    if state.RaftServer.IsLeader then
+      match cmd with
+      | AddMember mem -> state.RaftServer.AddMember mem
+      | RemoveMember mem -> state.RaftServer.RemoveMember mem.Id
+      | other -> state.RaftServer.Append other
+    else
+      "ignoring append request, not leader"
+      |> Logger.debug (tag "appendCmd")
 
-  // ** onOpen
 
-  // __        __   _    ____             _        _
-  // \ \      / /__| |__/ ___|  ___   ___| | _____| |_ ___
-  //  \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __/ __|
-  //   \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_\__ \
-  //    \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|___/
+  // ** publishCmd
 
-  /// ## OnOpen
-  ///
-  /// Register a callback with the WebSocket server that is run when new browser session has
-  /// contacted this IrisSerivce. First, we send a `DataSnapshot` to the client to initialize it
-  /// with the current state. Then, we append the newly created Session value to the Raft log to
-  /// replicate it throughout the cluster.
+  let private publishCmd (state: IrisState) cmd =
+    state.ApiServer.Update cmd
+    state.Store.Dispatch cmd
+    broadcastMsg state cmd
 
-  let private onOpen (state: IrisState) (session: Id) =
-    sendMsg state session (DataSnapshot state.Store.State)
+  // ** ignoreEvent
 
-    // FIXME: need to check this bit for proper session handling
-    // match appendCmd state (AddSession session) with
-    // | Right entry ->
-    //   entry
-    //   |> Reply.Entry
-    //   |> Either.succeed
-    //   |> chan.Reply
-    // | Left error ->
-    //   error
-    //   |> Either.fail
-    //   |> chan.Reply
-
-  // ** onClose
-
-  /// ## OnClose
-  ///
-  /// Register a callback to be run when a browser as exited a session in an orderly fashion. The
-  /// session is removed from the global state by appending a `RemoveSession`
-  let private onClose (state: IrisState) (id: Id) =
-    match Map.tryFind id state.Store.State.Sessions with
-    | Some session -> session |> RemoveSession |> appendCmd state
-    | _ -> ()
-
-  // ** onError
-
-  /// ## OnError
-  ///
-  /// Register a callback to be run if the client connection unexpectectly fails. In that case the
-  /// Session is retrieved and removed from global state.
-  let private onError (state: IrisState) (sessionid: Id) (err: Exception) =
-    match Map.tryFind sessionid state.Store.State.Sessions with
-    | Some session -> session |> RemoveSession |> appendCmd state
-    | _ -> ()
-
-  // ** onMessage
-
-  /// ## OnMessage
-  ///
-  /// Register a handler to process messages coming from the browser client. The current handling
-  /// mechanism is that incoming message get appended to the `Raft` log immediately, and a log
-  /// message is sent back to the client. Once the new command has been replicated throughout the
-  /// system, it will be applied to the server-side global state, then pushed over the socket to
-  /// be applied to all client-side global state atoms.
-  let private onMessage (state: IrisState) (id: Id) (cmd: StateMachine) =
-    match cmd with
-    // If its something that appeared via the fast-lane, dispatch it on the Store and via the
-    // WebSockets right away. Evertything else needs to be logged via raft.
-    | UpdateSlices _ | CallCue _ ->
-      state.ApiServer.Update cmd
-      state.Store.Dispatch cmd
-      broadcastMsg state cmd
-    | AddSession session ->
-      session
-      |> state.SocketServer.BuildSession id
-      |> Either.map AddSession
-      |> Either.iter (appendCmd state)
-    | AddMember mem -> state.RaftServer.AddMember mem
-    | RemoveMember mem -> state.RaftServer.RemoveMember mem.Id
-    | cmd -> appendCmd state cmd
-
-  // ** handleSocketEvent
-
-  let private handleSocketEvent (state: IrisState) ev =
-    match ev with
-    | SessionAdded id   -> onOpen    state id
-    | SessionRemoved id -> onClose   state id
-    | OnMessage (id,sm) -> onMessage state id sm
-    | OnError (id,err)  -> onError   state id err
-    state
+  let private ignoreEvent (state: IrisState) _ = state
 
   // ** onConfigured
 
@@ -292,62 +217,9 @@ module IrisService =
   // |  _ < (_| |  _| |_
   // |_| \_\__,_|_|  \__|
 
-  /// ## OnConfigured
-  ///
-  /// Register a callback to run when a new cluster configuration has been committed, and the
-  /// joint-consensus mode has been concluded.
-  let private onConfigured (state: IrisState) (mems: RaftMember array) =
-    either {
-      mems
-      |> Array.map (Member.getId >> string)
-      |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-      |> Logger.debug (tag "onConfigured")
-    }
-    |> konst state
+  // ** persistLog
 
-  // ** onMemberAdded
-
-  /// ## OnMemberAdded
-  ///
-  /// Register a callback to be run when the user has added a new mem to the `Raft` cluster. This
-  /// commences the joint-consensus mode until the new mem has been caught up and is ready be a
-  /// full member of the cluster.
-
-  let private onMemberAdded (state: IrisState) (mem: RaftMember) =
-    let cmd = AddMember mem
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
-    state
-
-  // ** onMemberUpdated
-
-  /// ## OnMemberUpdated
-  ///
-  /// Register a callback to be called when a cluster mem's properties such as e.g. its mem
-  /// state.
-
-  let private onMemberUpdated (state: IrisState) (mem: RaftMember) =
-    let cmd = UpdateMember mem
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
-    state
-
-  // ** onMemberRemoved
-
-  /// ## OnMemberRemoved
-  ///
-  /// Register a callback to be run when a mem was removed from the cluster, resulting into
-  /// the cluster entering into joint-consensus mode until the mem was successfully removed.
-
-  let private onMemberRemoved (state: IrisState) (mem: RaftMember) =
-    let cmd = RemoveMember mem
-    state.Store.Dispatch cmd
-    broadcastMsg state cmd
-    state
-
-  // ** onApplyLog
-
-  /// ## onApplyLog
+  /// ## persistLog
   ///
   /// Register a callback to be run when an appended entry is considered safely appended to a
   /// majority of servers logs. The entry then is regarded as applied.
@@ -358,20 +230,16 @@ module IrisService =
   ///   - the state machine command is broadcast to all clients
   ///   - the state machine command is persisted to disk (potentially recorded in a git commit)
 
-  let private onApplyLog (state: IrisState) (sm: StateMachine) =
-    state.Store.Dispatch sm
-    broadcastMsg state sm
-    state.ApiServer.Update sm
-
+  let private persistLog (state: IrisState) (sm: StateMachine) =
     if state.RaftServer.IsLeader then
       match persistEntry state.Store.State sm with
       | Right commit ->
         sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
-        |> Logger.debug (tag "onApplyLog")
+        |> Logger.debug (tag "persistLog")
         state
       | Left error ->
         sprintf "Error persisting command: %A" error
-        |> Logger.err (tag "onApplyLog")
+        |> Logger.err (tag "persistLog")
         state
     else
       let raft = state.RaftServer.Raft
@@ -387,7 +255,7 @@ module IrisService =
         | Left error ->
           error
           |> string
-          |> Logger.err (tag "onApplyLog")
+          |> Logger.err (tag "persistLog")
       | None -> ()
       state
 
@@ -411,14 +279,15 @@ module IrisService =
       |> Logger.err (tag "makeLeader")
       None
 
-  // ** onStateChanged
+  // ** stateChanged
 
-  let private onStateChanged (state: IrisState)
-                             (oldstate: RaftState)
-                             (newstate: RaftState)
-                             (agent: IrisAgent) =
-    sprintf "Raft state changed from %A to %A" oldstate newstate
-    |> Logger.debug (tag "onStateChanged")
+  let private stateChanged (state: IrisState)
+                           (oldstate: RaftState)
+                           (newstate: RaftState)
+                           (agent: IrisAgent) =
+    newstate
+    |> sprintf "Raft state changed from %A to %A" oldstate
+    |> Logger.debug (tag "stateChanged")
     // create redirect socket
     match oldstate, newstate with
     | _, Follower ->
@@ -429,7 +298,7 @@ module IrisService =
         { state with Leader = makeLeader leader makePeerSocket agent }
       | None ->
         "Could not start re-direct socket: no leader"
-        |> Logger.debug (tag "onStateChanged")
+        |> Logger.debug (tag "stateChanged")
         state
     | _, Leader ->
       Option.iter dispose state.Leader
@@ -473,11 +342,11 @@ module IrisService =
       |> Logger.err (tag "retrieveSnapshot")
       None
 
-  // ** onPersistSnapshot
+  // ** persistSnapshot
 
-  let private onPersistSnapshot (state: IrisState) (log: RaftLogEntry) =
+  let private persistSnapshot (state: IrisState) (log: RaftLogEntry) =
     match persistSnapshot state.Store.State log with
-    | Left error -> Logger.err (tag "onPersistSnapshot") (string error)
+    | Left error -> Logger.err (tag "persistSnapshot") (string error)
     | _ -> ()
     state
 
@@ -540,38 +409,6 @@ module IrisService =
   let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: RaftEvent) =
     ev |> IrisEvent.Raft |> Msg.Event |> agent.Post
 
-  // ** handleApiEvent
-
-  let private handleApiEvent (state: IrisState) agent (ev: ApiEvent) =
-    Tracing.trace (tag "handleApiEvent") <| fun () ->
-      match ev with
-      | ApiEvent.Update sm ->
-        // ApiEvents:
-        // If its something that appeared via the fast-lane, dispatch it on the Store and via the
-        // WebSockets right away. Evertything else needs to be logged via raft.
-        match sm with
-        | UpdateSlices _ | CallCue _ ->
-          state.Store.Dispatch sm
-          state.SocketServer.Broadcast sm
-          |> Either.mapError (string >> Logger.err (tag "handleApiEvent"))
-          |> ignore
-          state
-        | other ->
-          if state.RaftServer.IsLeader then
-            state.RaftServer.Append other
-            state
-          else
-            forwardCommand state other agent
-      | ApiEvent.Register client ->
-        state.RaftServer.Append (AddClient client)
-        state
-      | ApiEvent.UnRegister client ->
-        state.RaftServer.Append (RemoveClient client)
-        state
-      | _ -> // Status events
-        IrisEvent.Api ev |> Msg.Notify |> agent.Post
-        state
-
   // ** forwardEvent
 
   let inline private forwardEvent (constr: ^a -> IrisEvent) (agent: IrisAgent) =
@@ -613,33 +450,6 @@ module IrisService =
         error
         |> string
         |> Logger.err (tag "restartGitServer")
-        state
-
-  // ** handleGitEvent
-
-  let private handleGitEvent (state: IrisState) (agent: IrisAgent) (ev: GitEvent) =
-    Tracing.trace (tag "handleGitEvent") <| fun () ->
-      ev |> IrisEvent.Git |> Msg.Notify |> agent.Post
-      match ev with
-      | Started pid ->
-        sprintf "Git daemon started with PID: %d" pid
-        |> Logger.debug (tag "handleGitEvent")
-        state
-
-      | Exited _ ->
-        "Git daemon exited. Attempting to restart."
-        |> Logger.debug (tag "handleGitEvent")
-        restartGitServer state agent
-
-      | Failed reason ->
-        reason
-        |> sprintf "Git daemon failed. %A Attempting to restart."
-        |> Logger.debug (tag "handleGitEvent")
-        restartGitServer state agent
-
-      | Pull (_, addr, port) ->
-        sprintf "Client %s:%d pulled updates from me" addr port
-        |> Logger.debug (tag "handleGitEvent")
         state
 
   //  _
@@ -712,20 +522,6 @@ module IrisService =
   //           |> chan.Reply
   //     state
 
-  // ** handleAddMember
-
-  let private handleAddMember (state: IrisState) (mem: RaftMember) =
-    Tracing.trace (tag "handleAddMember") <| fun () ->
-      state.RaftServer.AddMember mem
-      state
-
-  // ** handleRemoveMember
-
-  let private handleRemoveMember (state: IrisState) (id: Id) =
-    Tracing.trace (tag "handleRemoveMember") <| fun () ->
-      state.RaftServer.RemoveMember id
-      state
-
   // ** handleClientResponse
 
   let private handleClientResponse (state: IrisState) (response: RawClientResponse) =
@@ -746,53 +542,201 @@ module IrisService =
     are.Set() |> ignore
     { state with Status = status }
 
-  // ** handleAppend
-
-  let private handleAppend (state: IrisState) cmd =
-    state.RaftServer.Append cmd
-    state
-
   // ** publishEvent
 
-  let private publishEvent (state: IrisState) (ev: IrisEvent) =
-    // broadcastMsg state sm
-    // state.ApiServer.Update sm
-    state
+  let private publishEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
+    match ev with
+    //     _          _
+    //    / \   _ __ (_)
+    //   / _ \ | '_ \| |
+    //  / ___ \| |_) | |
+    // /_/   \_\ .__/|_|
+    //         |_|
+    | Api (ApiEvent.Update cmd) ->
+      publishCmd state cmd
+      state
+
+    //   ____ _ _
+    //  / ___(_) |_
+    // | |  _| | __|
+    // | |_| | | |_
+    //  \____|_|\__|
+
+    | Git (GitEvent.Started pid) ->
+      sprintf "Git daemon started with PID: %d" pid
+      |> Logger.debug (tag "handleGitEvent")
+      state
+
+    | Git (GitEvent.Exited _) ->
+      "Git daemon exited. Attempting to restart."
+      |> Logger.debug (tag "handleGitEvent")
+      restartGitServer state agent
+
+    | Git (GitEvent.Failed reason) ->
+      reason
+      |> sprintf "Git daemon failed. %A Attempting to restart."
+      |> Logger.debug (tag "handleGitEvent")
+      restartGitServer state agent
+
+    | Git (GitEvent.Pull (_, addr, port)) ->
+      sprintf "Client %s:%d pulled updates from me" addr port
+      |> Logger.debug (tag "handleGitEvent")
+      state
+
+    //  ____             _        _
+    // / ___|  ___   ___| | _____| |_
+    // \___ \ / _ \ / __| |/ / _ \ __|
+    //  ___) | (_) | (__|   <  __/ |_
+    // |____/ \___/ \___|_|\_\___|\__|
+
+    | Socket (OnMessage(_, cmd)) ->
+      publishCmd state cmd
+      state
+
+    //  ____        __ _
+    // |  _ \ __ _ / _| |_
+    // | |_) / _` | |_| __|
+    // |  _ < (_| |  _| |_
+    // |_| \_\__,_|_|  \__|
+
+    | Raft (ApplyLog sm) ->
+      publishCmd state sm
+      persistLog state sm
+
+    | Raft (MemberAdded mem) ->
+      mem |> AddMember    |> publishCmd state
+      state
+
+    | Raft (MemberRemoved mem) ->
+      mem |> RemoveMember |> publishCmd state
+      state
+
+    | Raft (MemberUpdated mem) ->
+      mem |> UpdateMember |> publishCmd state
+      state
+
+    | Raft (Configured mems) ->
+      mems
+      |> Array.map (Member.getId >> string)
+      |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+      |> Logger.debug (tag "publishEvent")
+      state
+
+    | Raft (PersistSnapshot log) ->
+      persistSnapshot  state log
+
+    | Raft (StateChanged (ost, nst)) ->
+      stateChanged     state ost nst agent
+
+    //   ____ _            _
+    //  / ___| | ___   ___| | __
+    // | |   | |/ _ \ / __| |/ /
+    // | |___| | (_) | (__|   <
+    //  \____|_|\___/ \___|_|\_\
+
+    | Clock clock ->
+      clock.Frame |> uint32 |> UpdateClock |>  publishCmd state
+      state
+
+    | Log log ->                         // ?
+      state
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | other ->
+      ignore other
+      state
 
   // ** replicateEvent
 
   let private replicateEvent (state: IrisState) (ev: IrisEvent) =
+    match ev with
+    //     _          _
+    //    / \   _ __ (_)
+    //   / _ \ | '_ \| |
+    //  / ___ \| |_) | |
+    // /_/   \_\ .__/|_|
+    //         |_|
+    | Api (ApiEvent.Register client)     -> client |> AddClient    |> appendCmd state
+    | Api (ApiEvent.ClientStatus client) -> client |> UpdateClient |> appendCmd state
+    | Api (ApiEvent.UnRegister client)   -> client |> RemoveClient |> appendCmd state
+    | Api (ApiEvent.Update cmd)          -> cmd    |> appendCmd state
+
+    //  ____             _        _
+    // / ___|  ___   ___| | _____| |_
+    // \___ \ / _ \ / __| |/ / _ \ __|
+    //  ___) | (_) | (__|   <  __/ |_
+    // |____/ \___/ \___|_|\_\___|\__|
+
+    // first, send a snapshot to the new browser session to bootstrap it
+    | Socket (SessionAdded id) ->
+      sendMsg state id (DataSnapshot state.Store.State)
+
+    // next, replicate AddSession to other Raft nodes
+    | Socket (OnMessage(id, AddSession session)) ->
+      session
+      |> state.SocketServer.BuildSession id
+      |> Either.map AddSession
+      |> Either.iter (appendCmd state)
+
+    // replicate a RemoveSession command if the session exists
+    | Socket (SessionRemoved id) ->
+      state.Store.State.Sessions
+      |> Map.tryFind id
+      |> Option.iter (RemoveSession >> appendCmd state)
+
+    // log error and replicate RemoveSession if the session exists
+    | Socket (OnError(id, exn)) ->
+      exn
+      |> String.format "Error on WebSocket connection: {0}"
+      |> Logger.err (tag "replicateEvent")
+
+      state.Store.State.Sessions
+      |> Map.tryFind id
+      |> Option.iter (RemoveSession >> appendCmd state)
+
+    // Execute the AddMember request on the RaftServer. This will internally resolve
+    | Socket (OnMessage(_, AddMember mem)) ->
+      mem |> AddMember |> appendCmd state
+
+    // replicate command via Raft
+    | Socket (OnMessage(_, RemoveMember mem)) ->
+      mem |> RemoveMember |> appendCmd state
+
+    // replicate command via Raft
+    | Socket (OnMessage(_, cmd)) -> appendCmd state cmd
+
+    //     _                               _
+    //    / \   _ __  _ __   ___ _ __   __| |
+    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
+    //  / ___ \| |_) | |_) |  __/ | | | (_| |
+    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
+    //         |_|   |_|
+
+    | Append cmd -> appendCmd state cmd
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | other -> ignore other
+
     state
-
-  // ** ignoreEvent
-
-  let private ignoreEvent (state: IrisState) _ = state
-
-  // Tracing.trace (tag "handleRaftEvent") <| fun () ->
-  //   match ev with
-  //   | RaftEvent.ApplyLog sm             -> onApplyLog         state sm
-  //   | RaftEvent.MemberAdded mem         -> onMemberAdded      state mem
-  //   | RaftEvent.MemberRemoved mem       -> onMemberRemoved    state mem
-  //   | RaftEvent.MemberUpdated mem       -> onMemberUpdated    state mem
-  //   | RaftEvent.Configured mems         -> onConfigured       state mems
-  //   | RaftEvent.PersistSnapshot log     -> onPersistSnapshot  state log
-  //   | RaftEvent.StateChanged (ost, nst) -> onStateChanged     state ost nst agent
-  //   | _ -> state
-
-  // let private handleClock (state: IrisState) (clock: ClockEvent) =
-  //   Tracing.trace (tag "handleClock") <| fun () ->
-  //     let sm = clock.Frame |> uint32 |> UpdateClock
-  //     broadcastMsg state sm
-  //     state.ApiServer.Update sm
-  //     state
 
   // ** dispatchEvent
 
   let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
+    ev |> Msg.Notify |> agent.Post
     match ev.DispatchStrategy with
-    | Publish   -> publishEvent   state ev
-    | Replicate -> replicateEvent state ev
-    | Ignore    -> ignoreEvent    state ev
+    | Publish   -> publishEvent   state agent ev
+    | Replicate -> replicateEvent state       ev
+    | Ignore    -> ignoreEvent    state       ev
 
   // ** loop
 
@@ -807,7 +751,6 @@ module IrisService =
             | Msg.Start                  -> handleStart          state inbox
             | Msg.Stop               are -> handleStop           state inbox are
             | Msg.Notify              ev -> handleNotify         state       ev
-            | Msg.Append             cmd -> handleAppend         state       cmd
             | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
             | Msg.Event              ev  -> dispatchEvent        state inbox ev
             | Msg.ForceElection          -> handleForceElection  state
@@ -988,13 +931,15 @@ module IrisService =
           member self.Periodic () = agent.Post(Msg.Periodic)
 
           member self.AddMember mem =
-            mem |> IrisEvent.AddMember |> Msg.Event |> agent.Post
+            mem |> AddMember |> IrisEvent.Append |> Msg.Event |> agent.Post
 
           member self.RemoveMember id =
-            id |> IrisEvent.RemoveMember |> Msg.Event |> agent.Post
+            store.State.RaftServer.Raft.Peers
+            |> Map.tryFind id
+            |> Option.iter (RemoveMember >> IrisEvent.Append >> Msg.Event >> agent.Post)
 
           member self.Append cmd =
-            cmd |> Msg.Append |> agent.Post
+            cmd |> IrisEvent.Append |> Msg.Event |> agent.Post
 
           member self.GitServer
             with get () = store.State.GitServer

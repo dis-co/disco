@@ -208,7 +208,7 @@ module Git =
   let private parseLog (line: string) =
     match line with
     | Ready pid ->
-      Started pid
+      GitEvent.Started pid
       |> Either.succeed
 
     | Connection (pid, ip, prt) ->
@@ -243,7 +243,7 @@ module Git =
       msg |> Msg.Notify |> agent.Post
       // handle
       match msg with
-      | Started pid ->
+      | GitEvent.Started pid ->
         Msg.Started |> agent.Post
         { state with
             Status = ServiceStatus.Running

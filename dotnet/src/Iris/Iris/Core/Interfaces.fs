@@ -49,7 +49,7 @@ type GitEvent =
 
 // * RaftEvent
 
-[<RequireQualifiedAccess;NoComparison;NoEquality>]
+[<NoComparison;NoEquality>]
 type RaftEvent =
   | Started
   | JoinedCluster
@@ -140,7 +140,7 @@ type ApiEvent =
   member ev.DispatchStrategy
     with get () =
       match ev with
-      | ServiceStatus _                    -> Publish
+      | ServiceStatus _                    -> Ignore
       | ClientStatus  _                    -> Replicate
       | Register      _                    -> Replicate
       | UnRegister    _                    -> Replicate
