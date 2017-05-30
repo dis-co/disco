@@ -89,9 +89,7 @@ module ApiServer =
     | SetClientStatus   of id:Id * status:ServiceStatus
     | SetState          of state:State
     | InstallSnapshot   of id:Id
-    | LocalUpdate       of sm:StateMachine
-    | RemoteUpdate      of service:Id * sm:StateMachine
-    | ClientUpdate      of client:Id * sm:StateMachine
+    | Update            of origin:Origin * sm:StateMachine
     | RawServerRequest  of req:RawServerRequest
     | RawClientResponse of req:RawClientResponse
 
@@ -258,15 +256,11 @@ module ApiServer =
   // ** maybePublish
 
   let private maybePublish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    match sm with
-    | UpdateSlices _ | CallCue _ ->
-      Tracing.trace (tag "maybePublish") <| fun () ->
-        sm
-        |> Binary.encode
-        |> state.Publisher.Publish
-        |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
-        |> ignore
-    | _ -> ()
+    sm
+    |> Binary.encode
+    |> state.Publisher.Publish
+    |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
+    |> ignore
 
   // ** maybeDispatch
 
@@ -333,18 +327,20 @@ module ApiServer =
     Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
       maybeDispatch state sm             // we need to send these request synchronously
       updateClients state sm agent       // in order to preserve ordering of the messages
-      sm
-      |> IrisEvent.Update |> Observable.notify state.Subscriptions
+      IrisEvent.Append(Origin.Api, sm)
+      |> Observable.notify state.Subscriptions
       state
 
   // ** handleLocalUpdate
 
-  let private handleLocalUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleLocalUpdate") <| fun () ->
-      state.Store.Dispatch sm            // we need to send these request synchronously
-      maybePublish state sm agent        // in order to preserve ordering of the messages
-      updateClients state sm agent
-      state
+  let private handleLocalUpdate (state: ServerState)
+                                (origin: Origin option)
+                                (sm: StateMachine)
+                                (agent: ApiAgent) =
+    state.Store.Dispatch sm            // we need to send these request synchronously
+    maybePublish state sm agent        // in order to preserve ordering of the messages
+    updateClients state sm agent
+    state
 
   // ** handleServerRequest
 
@@ -369,7 +365,7 @@ module ApiServer =
 
       | Right (Update sm) ->
         let id = req.From |> string |> Id
-        sm |> Msg.ClientUpdate |> agent.Post
+        (id, sm) |> Msg.ClientUpdate |> agent.Post
         OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Left error ->
@@ -440,9 +436,9 @@ module ApiServer =
             | Msg.SetState(newstate)          -> handleSetState state newstate inbox
             | Msg.SetStatus(status)           -> handleSetStatus state status
             | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-            | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
+            | Msg.LocalUpdate(origin,sm)      -> handleLocalUpdate state origin sm inbox
             | Msg.ClientUpdate(id,sm)         -> handleClientUpdate state id sm inbox
-            | Msg.RemoteUpdate(id,sm)         -> handleRemoteUpdate state id sm inbox
+            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state sm inbox
             | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
             | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
           with
@@ -559,14 +555,14 @@ module ApiServer =
 
               // **** Update
 
-              member self.Update (sm: StateMachine) =
-                agent.Post(Msg.LocalUpdate sm)
+              member self.Update (origin: Origin option) (sm: StateMachine) =
+                Msg.LocalUpdate(origin, sm) |> agent.Post
 
               // **** Subscribe
 
-              member self.Subscribe (callback: ApiEvent -> unit) =
+              member self.Subscribe (callback: IrisEvent -> unit) =
                 let listener = Observable.createListener store.State.Subscriptions
-                { new IObserver<ApiEvent> with
+                { new IObserver<IrisEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }

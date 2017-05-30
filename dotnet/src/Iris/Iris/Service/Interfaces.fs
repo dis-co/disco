@@ -83,7 +83,7 @@ type IApiServer =
   abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
   abstract State: State with get, set
-  abstract Update: sm:StateMachine -> unit
+  abstract Update: origin:Origin option -> sm:StateMachine -> unit
 
 // * IrisServiceOptions
 

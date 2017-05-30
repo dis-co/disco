@@ -200,16 +200,14 @@ module IrisService =
 
   // ** publishCmd
 
-  let private publishCmd (state: IrisState) cmd =
-    state.ApiServer.Update cmd
+  let private publishCmd (state: IrisState) (origin: Origin option) cmd =
+    state.ApiServer.Update origin cmd
+    broadcastMsg state origin cmd
     state.Store.Dispatch cmd
-    broadcastMsg state cmd
 
   // ** ignoreEvent
 
   let private ignoreEvent (state: IrisState) _ = state
-
-  // ** onConfigured
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -406,8 +404,8 @@ module IrisService =
 
   // ** handleRaftEvent
 
-  let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: RaftEvent) =
-    ev |> IrisEvent.Raft |> Msg.Event |> agent.Post
+  let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
+    ev |> Msg.Event |> agent.Post
 
   // ** forwardEvent
 
@@ -542,20 +540,10 @@ module IrisService =
     are.Set() |> ignore
     { state with Status = status }
 
-  // ** publishEvent
+  // ** processEvent
 
-  let private publishEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
+  let private processEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
     match ev with
-    //     _          _
-    //    / \   _ __ (_)
-    //   / _ \ | '_ \| |
-    //  / ___ \| |_) | |
-    // /_/   \_\ .__/|_|
-    //         |_|
-    | Api (ApiEvent.Update cmd) ->
-      publishCmd state cmd
-      state
-
     //   ____ _ _
     //  / ___(_) |_
     // | |  _| | __|
@@ -583,15 +571,7 @@ module IrisService =
       |> Logger.debug (tag "handleGitEvent")
       state
 
-    //  ____             _        _
-    // / ___|  ___   ___| | _____| |_
-    // \___ \ / _ \ / __| |/ / _ \ __|
-    //  ___) | (_) | (__|   <  __/ |_
-    // |____/ \___/ \___|_|\_\___|\__|
-
-    | Socket (OnMessage(_, cmd)) ->
-      publishCmd state cmd
-      state
+    | Status status -> state
 
     //  ____        __ _
     // |  _ \ __ _ / _| |_
@@ -599,47 +579,31 @@ module IrisService =
     // |  _ < (_| |  _| |_
     // |_| \_\__,_|_|  \__|
 
-    | Raft (ApplyLog sm) ->
-      publishCmd state sm
-      persistLog state sm
-
-    | Raft (MemberAdded mem) ->
-      mem |> AddMember    |> publishCmd state
-      state
-
-    | Raft (MemberRemoved mem) ->
-      mem |> RemoveMember |> publishCmd state
-      state
-
-    | Raft (MemberUpdated mem) ->
-      mem |> UpdateMember |> publishCmd state
-      state
-
-    | Raft (Configured mems) ->
+    | Configured mems ->
       mems
       |> Array.map (Member.getId >> string)
       |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
-      |> Logger.debug (tag "publishEvent")
+      |> Logger.debug (tag "processEvent")
       state
 
-    | Raft (PersistSnapshot log) ->
-      persistSnapshot  state log
+    | PersistSnapshot log ->
+      persistSnapshot state log
 
-    | Raft (StateChanged (ost, nst)) ->
-      stateChanged     state ost nst agent
+    | StateChanged (ost, nst) ->
+      stateChanged state ost nst agent
 
-    //   ____ _            _
-    //  / ___| | ___   ___| | __
-    // | |   | |/ _ \ / __| |/ /
-    // | |___| | (_) | (__|   <
-    //  \____|_|\___/ \___|_|\_\
+    | RaftError _ -> state               // ?
 
-    | Clock clock ->
-      clock.Frame |> uint32 |> UpdateClock |>  publishCmd state
-      state
+    //     _                               _
+    //    / \   _ __  _ __   ___ _ __   __| |
+    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
+    //  / ___ \| |_) | |_) |  __/ | | | (_| |
+    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
+    //         |_|   |_|
 
-    | Log log ->                         // ?
-      state
+    | Append _ ->
+      publishCmd state ev
+      persistLog state ev
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
@@ -734,7 +698,7 @@ module IrisService =
   let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
     ev |> Msg.Notify |> agent.Post
     match ev.DispatchStrategy with
-    | Publish   -> publishEvent   state agent ev
+    | Process   -> processEvent   state agent ev
     | Replicate -> replicateEvent state       ev
     | Ignore    -> ignoreEvent    state       ev
 
