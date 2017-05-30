@@ -45,6 +45,10 @@ function handleKeyDown(index: number, keyCode: number, value: string, update: Up
     }
 }
 
+export function formatValue(value: any) {
+    return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
+}
+
 export function addInputView(
         index: number, value: any, useRightClick: boolean,
         parent: React.Component<{},InputState>,
@@ -68,10 +72,9 @@ export function addInputView(
           />)
     }
     else {
-        let props: any = { key: index }, formattedValue = value;
+        let props: any = { key: index }, formattedValue = formatValue(value);
         switch (typeof value) {
             case "number":
-                formattedValue = value.toFixed(DECIMAL_DIGITS);
                 props.onDoubleClick = () =>
                     parent.setState({ editIndex: index, editText: String(value) });
                 props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
@@ -85,7 +88,6 @@ export function addInputView(
                 }
                 break;
             case "boolean":
-                formattedValue = value.toString();
                 if (useRightClick) {
                     props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
                         ev.preventDefault();
@@ -101,7 +103,6 @@ export function addInputView(
                 break;
             case "string":
             default:
-                formattedValue = String(value);
                 Object.assign(props, {
                     onDoubleClick: () => parent.setState({ editIndex: index, editText: String(value) })
                 })

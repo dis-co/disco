@@ -1,20 +1,11 @@
 import * as React from "react"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
-import GlobalModel from "../GlobalModel"
+import { GlobalModel } from "../../fable/Frontend/GlobalModel.fs"
 import { touchesElement, map, first } from "../Util"
 import { showModal } from "../App"
 import AddMember from "../modals/AddMember"
 
-declare var IrisLib: IIris;
-
-interface ClusterProps {
-  global: GlobalModel
-}
-
-class ClusterView extends React.Component<ClusterProps,any> {
-  disposables: IDisposable[];
-  el: HTMLElement;
-
+class ClusterView extends React.Component {
   constructor(props) {
     super(props);
   }
@@ -54,7 +45,7 @@ class ClusterView extends React.Component<ClusterProps,any> {
 
   render() {
     const config = this.props.global.state.project.Config;
-    let site = first(config.Sites, (site: any) => site.Id = config.ActiveSite);
+    let site = first(config.Sites, site => site.Id = config.ActiveSite);
     return (
       <div className="iris-cluster"  ref={el => this.el = el}>
         <table className="table is-striped is-narrow" >
@@ -94,10 +85,6 @@ class ClusterView extends React.Component<ClusterProps,any> {
 }
 
 export default class Cluster {
-  view: typeof ClusterView;
-  name: string;
-  layout: ILayout;
-
   constructor() {
     this.view = ClusterView;
     this.name = "Cluster";

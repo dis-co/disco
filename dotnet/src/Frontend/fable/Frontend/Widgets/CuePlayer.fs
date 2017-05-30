@@ -18,7 +18,6 @@ let [<Literal>] SELECTION_COLOR = "lightblue"
 
 module private Helpers =
   type RCom = React.ComponentClass<obj>
-  let Clock: RCom = importDefault "../../../src/widgets/Clock"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
@@ -144,7 +143,7 @@ type private CueView(props) =
         let cue = Map.find this.state.Cue.Id globalModel.State.cues
         this.setState({this.state with Cue=cue; Name=cue.Name})
     ))
-    disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent) _ ->
+    disposables.Add(this.props.Global.SubscribeToEvent("drag", fun (ev: IDragEvent<Pin>) _ ->
         if selfRef <> null then
           let mutable highlight = false
           if touchesElement(selfRef, ev.x, ev.y) then
@@ -152,9 +151,9 @@ type private CueView(props) =
             | "move" ->
               highlight <- true
             | "stop" ->
-              if this.state.Cue.Slices |> Array.exists (fun slices -> slices.Id = ev.model.pin.Id) then
+              if this.state.Cue.Slices |> Array.exists (fun slices -> slices.Id = ev.model.Id) then
                 failwith "The cue already contains this pin"
-              let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.pin.Slices|] }
+              let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.Slices|] }
               UpdateCue newCue |> ClientContext.Singleton.Post
             | _ -> ()
           if highlight
@@ -290,8 +289,10 @@ type private CueView(props) =
                   for i, pin, slices in pinAndSlices do
                     yield com<SpreadView,_,_>
                       { key = string pin.Id
-                        model = Spread(pin, slices, (fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value)))
                         ``global`` = this.props.Global
+                        pin = pin
+                        slices = Some slices
+                        update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
                         onDragStart = None } []
                 ]
               ]
