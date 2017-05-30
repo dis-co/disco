@@ -37,7 +37,7 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<ApiEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** Client
 
@@ -90,8 +90,8 @@ module ApiServer =
     | SetState          of state:State
     | InstallSnapshot   of id:Id
     | LocalUpdate       of sm:StateMachine
-    | RemoteUpdate      of sm:StateMachine
-    | ClientUpdate      of sm:StateMachine
+    | RemoteUpdate      of service:Id * sm:StateMachine
+    | ClientUpdate      of client:Id * sm:StateMachine
     | RawServerRequest  of req:RawServerRequest
     | RawClientResponse of req:RawClientResponse
 
@@ -191,8 +191,7 @@ module ApiServer =
       | None -> ()
       | Some client ->
         dispose client
-        client.Meta
-        |> ApiEvent.UnRegister
+        IrisEvent.Append (Origin.Service state.Id, RemoveClient client.Meta)
         |> Observable.notify state.Subscriptions
 
       // construct a new client value
@@ -213,7 +212,10 @@ module ApiServer =
             Timer = pingTimer socket agent }
 
         meta.Id |> Msg.InstallSnapshot |> agent.Post
-        meta |> ApiEvent.Register |> Observable.notify state.Subscriptions
+
+        IrisEvent.Append (Origin.Service state.Id, AddClient meta)
+        |> Observable.notify state.Subscriptions
+
         { state with Clients = Map.add meta.Id client state.Clients }
       | Left error ->
         error
@@ -228,7 +230,8 @@ module ApiServer =
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
         dispose client
-        peer |> ApiEvent.UnRegister |> Observable.notify state.Subscriptions
+        IrisEvent.Append (Origin.Service state.Id, RemoveClient peer)
+        |> Observable.notify state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
 
@@ -276,7 +279,9 @@ module ApiServer =
 
   let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
     Tracing.trace (tag "handleSetStatus") <| fun () ->
-      status |> ApiEvent.ServiceStatus |> Observable.notify state.Subscriptions
+      status
+      |> IrisEvent.Status
+      |> Observable.notify state.Subscriptions
       { state with Status = status }
 
   // ** handleSetClientStatus
@@ -290,7 +295,8 @@ module ApiServer =
         | oldst, newst ->
           if oldst <> newst then
             let updated = { client with Meta = { client.Meta with Status = status } }
-            updated.Meta |> ApiEvent.ClientStatus |> Observable.notify state.Subscriptions
+            IrisEvent.Append(Origin.Service state.Id, UpdateClient updated.Meta)
+            |> Observable.notify state.Subscriptions
             { state with Clients = Map.add id updated state.Clients }
           else state
       | None -> state
@@ -313,11 +319,12 @@ module ApiServer =
 
   // ** handleClientUpdate
 
-  let private handleClientUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+  let private handleClientUpdate (state: ServerState) id (sm: StateMachine) (agent: ApiAgent) =
     Tracing.trace (tag "handleClientUpdate") <| fun () ->
       maybeDispatch state sm
       maybePublish state sm agent
-      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
+      IrisEvent.Append (Origin.Client id, sm)
+      |> Observable.notify state.Subscriptions
       state
 
   // ** handleRemoteUpdate
@@ -326,7 +333,8 @@ module ApiServer =
     Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
       maybeDispatch state sm             // we need to send these request synchronously
       updateClients state sm agent       // in order to preserve ordering of the messages
-      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
+      sm
+      |> IrisEvent.Update |> Observable.notify state.Subscriptions
       state
 
   // ** handleLocalUpdate
@@ -360,6 +368,7 @@ module ApiServer =
         Unregistered |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Right (Update sm) ->
+        let id = req.From |> string |> Id
         sm |> Msg.ClientUpdate |> agent.Post
         OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
@@ -432,8 +441,8 @@ module ApiServer =
             | Msg.SetStatus(status)           -> handleSetStatus state status
             | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
             | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
-            | Msg.ClientUpdate(sm)            -> handleClientUpdate state sm inbox
-            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state sm inbox
+            | Msg.ClientUpdate(id,sm)         -> handleClientUpdate state id sm inbox
+            | Msg.RemoteUpdate(id,sm)         -> handleRemoteUpdate state id sm inbox
             | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
             | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
           with

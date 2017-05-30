@@ -48,7 +48,7 @@ type IRaftServer =
   abstract Append        : StateMachine -> unit
   abstract ForceElection : unit -> unit
   abstract Status        : ServiceStatus
-  abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
+  abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
   abstract AddMember     : RaftMember -> unit
   abstract RemoveMember  : Id -> unit
@@ -66,7 +66,7 @@ type IWebSocketServer =
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-  abstract Subscribe    : (WebSocketEvent -> unit) -> System.IDisposable
+  abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
 // * IHttpServer
@@ -80,7 +80,7 @@ type IHttpServer =
 type IApiServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
   abstract State: State with get, set
   abstract Update: sm:StateMachine -> unit

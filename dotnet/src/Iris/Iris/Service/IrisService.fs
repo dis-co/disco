@@ -759,10 +759,8 @@ module IrisService =
           store.Update newstate
         with
           | exn ->
-            let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
-            String.Format(format,
-                          exn.Message, exn.StackTrace,
-                          exn.InnerException.Message, exn.InnerException.StackTrace)
+            let format = "Message: {0}\nStackTrace: {1}"
+            String.Format(format, exn.Message, exn.StackTrace)
             |> Logger.err (tag "loop")
         if Service.isStopping store.State.Status then
           return ()

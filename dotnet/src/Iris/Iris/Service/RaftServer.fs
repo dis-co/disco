@@ -33,7 +33,7 @@ module Raft =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<RaftEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** RaftServerState
 
@@ -61,7 +61,7 @@ module Raft =
     | Started
     | Stop
     | Stopped
-    | Notify            of RaftEvent
+    | Notify            of IrisEvent
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
     | RawClientResponse of response:RawClientResponse
@@ -208,7 +208,7 @@ module Raft =
 
   // ** handleNotify
 
-  let private handleNotify (state: RaftServerState) (ev: RaftEvent) =
+  let private handleNotify (state: RaftServerState) (ev: IrisEvent) =
     Observable.notify state.Subscriptions ev
     state
 
@@ -263,49 +263,45 @@ module Raft =
         member self.PersistSnapshot log =
           Tracing.trace (tag "persistSnapshot") <| fun () ->
             log
-            |> RaftEvent.PersistSnapshot
+            |> IrisEvent.PersistSnapshot
             |> Msg.Notify
             |> agent.Post
 
         member self.ApplyLog cmd =
           Tracing.trace (tag "applyLog") <| fun () ->
-            cmd
-            |> RaftEvent.ApplyLog
+            IrisEvent.Append (Origin.Raft, cmd)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberAdded mem =
           Tracing.trace (tag "memberAdded") <| fun () ->
-            mem
-            |> RaftEvent.MemberAdded
+            IrisEvent.Append (Origin.Raft, AddMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberUpdated mem =
           Tracing.trace (tag "memberUpdated") <| fun () ->
-            mem
-            |> RaftEvent.MemberUpdated
+            IrisEvent.Append (Origin.Raft, UpdateMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberRemoved mem =
           Tracing.trace (tag "memberRemoved") <| fun () ->
-            mem
-            |> RaftEvent.MemberRemoved
+            IrisEvent.Append (Origin.Raft, RemoveMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
             mems
-            |> RaftEvent.Configured
+            |> IrisEvent.Configured
             |> Msg.Notify
             |> agent.Post
 
         member self.StateChanged oldstate newstate =
           Tracing.trace (tag "stateChanged") <| fun () ->
             (oldstate, newstate)
-            |> RaftEvent.StateChanged
+            |> IrisEvent.StateChanged
             |> Msg.Notify
             |> agent.Post
 
@@ -703,7 +699,7 @@ module Raft =
     | Right (_, newstate)  -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> RaftEvent.RaftError
+      |> IrisEvent.RaftError
       |> Msg.Notify
       |> agent.Post
       updateRaft state newstate
@@ -722,7 +718,7 @@ module Raft =
     | Right (_, newstate) -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> RaftEvent.RaftError
+      |> IrisEvent.RaftError
       |> Msg.Notify
       |> agent.Post
       updateRaft state newstate
@@ -1008,11 +1004,11 @@ module Raft =
     Tracing.trace (tag "handleJoin") <| fun () ->
       match tryJoinCluster state ip port with
       | Right (_, newstate) ->
-        notify state.Subscriptions RaftEvent.JoinedCluster
+        notify state.Subscriptions IrisEvent.JoinedCluster
         updateRaft state newstate
       | Left (error, newstate) ->
         error
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
   *)
@@ -1025,7 +1021,7 @@ module Raft =
     Tracing.trace (tag "handleLeave") <| fun () ->
       match tryLeaveCluster state with
       | Right (_, newstate) ->
-        notify state.Subscriptions RaftEvent.LeftCluster
+        notify state.Subscriptions IrisEvent.LeftCluster
         updateRaft state newstate
 
       | Left (error, newstate) ->
@@ -1033,7 +1029,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleLeave")
         error
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
   *)
@@ -1050,7 +1046,7 @@ module Raft =
         |> Logger.err (tag "handleForceElection")
 
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
 
@@ -1072,7 +1068,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleAddCmd")
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1105,7 +1101,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleAddMember")
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1138,7 +1134,7 @@ module Raft =
         |> Logger.err (tag "handleRemoveMember")
 
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1394,7 +1390,6 @@ module Raft =
       // periodic function
       let interval = int state.Options.Raft.PeriodicInterval
       let periodic = startPeriodic interval agent
-      RaftEvent.Started |> Msg.Notify |> agent.Post
       agent.Post Msg.Started
       { state with
           Status = ServiceStatus.Running
@@ -1470,7 +1465,7 @@ module Raft =
 
     let private createListener (subscriptions: Subscriptions) =
       let guid = Guid.NewGuid()
-      { new IObservable<RaftEvent> with
+      { new IObservable<IrisEvent> with
           member self.Subscribe(obs) =
             subscriptions.TryAdd(guid, obs) |> ignore
             { new IDisposable with
@@ -1612,9 +1607,9 @@ module Raft =
               member self.RemoveMember id =
                 id |> Msg.RemoveMember |> agent.Post
 
-              member self.Subscribe (callback: RaftEvent -> unit) =
+              member self.Subscribe (callback: IrisEvent -> unit) =
                 let listener = createListener store.State.Subscriptions
-                { new IObserver<RaftEvent> with
+                { new IObserver<IrisEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }

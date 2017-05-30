@@ -27,6 +27,14 @@ module AgentStore =
           Interlocked.CompareExchange<'t>(&state, update, state)
           |> ignore }
 
+// * Origin
+
+type Origin =
+  | Raft
+  | Web     of session:Id
+  | Service of service:Id
+  | Client  of client:Id
+
 // * DispatchStrategy
 
 type DispatchStrategy =
@@ -51,138 +59,11 @@ type GitEvent =
 
 [<NoComparison;NoEquality>]
 type RaftEvent =
-  | Started
-  | JoinedCluster
-  | LeftCluster
-  | ApplyLog         of StateMachine
-  | MemberAdded      of RaftMember
-  | MemberRemoved    of RaftMember
-  | MemberUpdated    of RaftMember
-  | Configured       of RaftMember array
-  | StateChanged     of RaftState * RaftState
-  | PersistSnapshot  of RaftLogEntry
-  | RaftError        of IrisError
 
   // ** DispatchStrategy
 
   member ev.DispatchStrategy
     with get () = Publish
-
-// * SocketEvent
-
-[<NoComparison;NoEquality>]
-type WebSocketEvent =
-  | SessionAdded    of Id
-  | SessionRemoved  of Id
-  | OnMessage       of Id * StateMachine
-  | OnError         of Id * Exception
-
-  // ** DispatchStrategy
-
-  member ev.DispatchStrategy
-    with get () =
-      match ev with
-      | SessionAdded               _            -> Replicate
-      | SessionRemoved             _            -> Replicate
-      | OnError                    _            -> Replicate
-      | OnMessage (_,UnloadProject)             -> Replicate
-      | OnMessage (_,UpdateProject _)           -> Replicate
-      | OnMessage (_,AddMember _)               -> Replicate
-      | OnMessage (_,UpdateMember _)            -> Replicate
-      | OnMessage (_,RemoveMember _)            -> Replicate
-      | OnMessage (_,AddClient _)               -> Ignore
-      | OnMessage (_,UpdateClient _)            -> Ignore
-      | OnMessage (_,RemoveClient _)            -> Ignore
-      | OnMessage (_,AddPinGroup _)             -> Ignore
-      | OnMessage (_,UpdatePinGroup _)          -> Ignore
-      | OnMessage (_,RemovePinGroup _)          -> Ignore
-      | OnMessage (_,AddPin _)                  -> Replicate
-      | OnMessage (_,UpdatePin _)               -> Replicate
-      | OnMessage (_,RemovePin _)               -> Replicate
-      | OnMessage (_,AddCue _)                  -> Replicate
-      | OnMessage (_,UpdateCue _)               -> Replicate
-      | OnMessage (_,RemoveCue _)               -> Replicate
-      | OnMessage (_,AddCueList _)              -> Replicate
-      | OnMessage (_,UpdateCueList _)           -> Replicate
-      | OnMessage (_,RemoveCueList _)           -> Replicate
-      | OnMessage (_,AddCuePlayer _)            -> Replicate
-      | OnMessage (_,UpdateCuePlayer _)         -> Replicate
-      | OnMessage (_,RemoveCuePlayer _)         -> Replicate
-      | OnMessage (_,AddUser _)                 -> Replicate
-      | OnMessage (_,UpdateUser _)              -> Replicate
-      | OnMessage (_,RemoveUser _)              -> Replicate
-      | OnMessage (_,AddSession _)              -> Ignore
-      | OnMessage (_,UpdateSession _)           -> Ignore
-      | OnMessage (_,RemoveSession _)           -> Ignore
-      | OnMessage (_,AddDiscoveredService _)    -> Ignore
-      | OnMessage (_,UpdateDiscoveredService _) -> Ignore
-      | OnMessage (_,RemoveDiscoveredService _) -> Ignore
-      | OnMessage (_,UpdateClock _)             -> Ignore
-      | OnMessage (_,Command _)                 -> Replicate
-      | OnMessage (_,DataSnapshot _)            -> Ignore
-      | OnMessage (_,SetLogLevel _)             -> Replicate
-      | OnMessage (_,LogMsg _)                  -> Publish
-      | OnMessage (_,UpdateSlices _)            -> Publish
-      | OnMessage (_,CallCue _)                 -> Publish
-
-// * ApiEvent
-
-[<RequireQualifiedAccess>]
-type ApiEvent =
-  | Update        of StateMachine
-  | ServiceStatus of ServiceStatus
-  | ClientStatus  of IrisClient
-  | Register      of IrisClient
-  | UnRegister    of IrisClient
-
-  // ** DispatchStrategy
-
-  member ev.DispatchStrategy
-    with get () =
-      match ev with
-      | ServiceStatus _                    -> Ignore
-      | ClientStatus  _                    -> Replicate
-      | Register      _                    -> Replicate
-      | UnRegister    _                    -> Replicate
-      | Update (UnloadProject)             -> Ignore
-      | Update (UpdateProject _)           -> Ignore
-      | Update (AddMember _)               -> Ignore
-      | Update (UpdateMember _)            -> Ignore
-      | Update (RemoveMember _)            -> Ignore
-      | Update (AddClient _)               -> Ignore
-      | Update (UpdateClient _)            -> Ignore
-      | Update (RemoveClient _)            -> Ignore
-      | Update (AddPinGroup _)             -> Replicate
-      | Update (UpdatePinGroup _)          -> Replicate
-      | Update (RemovePinGroup _)          -> Replicate
-      | Update (AddPin _)                  -> Replicate
-      | Update (UpdatePin _)               -> Replicate
-      | Update (RemovePin _)               -> Replicate
-      | Update (AddCue _)                  -> Replicate
-      | Update (UpdateCue _)               -> Replicate
-      | Update (RemoveCue _)               -> Replicate
-      | Update (AddCueList _)              -> Replicate
-      | Update (UpdateCueList _)           -> Replicate
-      | Update (RemoveCueList _)           -> Replicate
-      | Update (AddCuePlayer _)            -> Replicate
-      | Update (UpdateCuePlayer _)         -> Replicate
-      | Update (RemoveCuePlayer _)         -> Replicate
-      | Update (AddUser _)                 -> Ignore
-      | Update (UpdateUser _)              -> Ignore
-      | Update (RemoveUser _)              -> Ignore
-      | Update (AddSession _)              -> Ignore
-      | Update (UpdateSession _)           -> Ignore
-      | Update (RemoveSession _)           -> Ignore
-      | Update (AddDiscoveredService _)    -> Ignore
-      | Update (UpdateDiscoveredService _) -> Ignore
-      | Update (RemoveDiscoveredService _) -> Ignore
-      | Update (UpdateClock _)             -> Ignore
-      | Update (Command _)                 -> Ignore
-      | Update (DataSnapshot _)            -> Ignore
-      | Update (SetLogLevel _)             -> Ignore
-      | Update (LogMsg _)                  -> Publish
-      | Update (UpdateSlices _)            -> Publish
-      | Update (CallCue _)                 -> Publish
 
 // * DiscoveryEvent
 
@@ -221,63 +102,156 @@ type ClockEvent =
 
 [<NoComparison;NoEquality>]
 type IrisEvent =
-  | Git          of GitEvent
-  | Socket       of WebSocketEvent
-  | Raft         of RaftEvent
-  | Log          of LogEvent
-  | Api          of ApiEvent
-  | Clock        of ClockEvent
-  | Status       of ServiceStatus
-  | Append       of StateMachine
+  | Configured      of members:RaftMember array
+  | StateChanged    of oldstate:RaftState * newstate:RaftState
+  | PersistSnapshot of log:RaftLogEntry
+  | RaftError       of error:IrisError
+  | Status          of ServiceStatus
+  | Append          of origin:Origin * cmd:StateMachine
+  | SessionOpened   of session:Id
+  | SessionClosed   of session:Id
+  | Git             of ev:GitEvent
 
   // ** DispatchStrategy
 
   member ev.DispatchStrategy
     with get () =
       match ev with
-      | Git    ev                          -> ev.DispatchStrategy
-      | Socket ev                          -> ev.DispatchStrategy
-      | Raft   ev                          -> ev.DispatchStrategy
-      | Api    ev                          -> ev.DispatchStrategy
-      | Clock  ev                          -> ev.DispatchStrategy
-      | Log    _                           -> Publish
-      | Status _                           -> Publish
-      | Append (UnloadProject)             -> Replicate
-      | Append (UpdateProject _)           -> Replicate
-      | Append (AddMember _)               -> Replicate
-      | Append (UpdateMember _)            -> Ignore
-      | Append (RemoveMember _)            -> Replicate
-      | Append (AddClient _)               -> Ignore
-      | Append (UpdateClient _)            -> Ignore
-      | Append (RemoveClient _)            -> Ignore
-      | Append (AddPinGroup _)             -> Ignore
-      | Append (UpdatePinGroup _)          -> Ignore
-      | Append (RemovePinGroup _)          -> Ignore
-      | Append (AddPin _)                  -> Ignore
-      | Append (UpdatePin _)               -> Ignore
-      | Append (RemovePin _)               -> Ignore
-      | Append (AddCue _)                  -> Replicate
-      | Append (UpdateCue _)               -> Replicate
-      | Append (RemoveCue _)               -> Replicate
-      | Append (AddCueList _)              -> Replicate
-      | Append (UpdateCueList _)           -> Replicate
-      | Append (RemoveCueList _)           -> Replicate
-      | Append (AddCuePlayer _)            -> Replicate
-      | Append (UpdateCuePlayer _)         -> Replicate
-      | Append (RemoveCuePlayer _)         -> Replicate
-      | Append (AddUser _)                 -> Replicate
-      | Append (UpdateUser _)              -> Replicate
-      | Append (RemoveUser _)              -> Replicate
-      | Append (AddSession _)              -> Ignore
-      | Append (UpdateSession _)           -> Ignore
-      | Append (RemoveSession _)           -> Ignore
-      | Append (AddDiscoveredService _)    -> Replicate
-      | Append (UpdateDiscoveredService _) -> Replicate
-      | Append (RemoveDiscoveredService _) -> Replicate
-      | Append (UpdateClock _)             -> Ignore
-      | Append (Command _)                 -> Replicate
-      | Append (DataSnapshot _)            -> Ignore
-      | Append (SetLogLevel _)             -> Replicate
-      | Append (LogMsg _)                  -> Publish
-      | Append (UpdateSlices _)            -> Publish
-      | Append (CallCue _)                 -> Publish
+      | Status _                                             -> Publish
+
+      | Git _                                                -> Ignore
+
+      | Configured      _
+      | StateChanged    _                                    -> Publish
+      | PersistSnapshot _
+      | RaftError       _                                    -> Ignore
+
+      | SessionOpened   _
+      | SessionClosed   _                                    -> Replicate
+
+      | Append (Origin.Raft, _)                              -> Publish // all raft events get published
+
+      | Append (Origin.Web _, UnloadProject)                 -> Replicate
+      | Append (Origin.Client _, UnloadProject)              -> Ignore
+      | Append (Origin.Service _, UnloadProject)             -> Replicate
+
+      | Append (Origin.Web _, UpdateProject _)
+      | Append (Origin.Client _, UpdateProject _)
+      | Append (Origin.Service _, UpdateProject _)           -> Replicate
+
+      | Append (Origin.Web _, AddMember _)                   -> Replicate
+      | Append (Origin.Web _, UpdateMember _)                -> Ignore
+      | Append (Origin.Web _, RemoveMember _)                -> Replicate
+      | Append (Origin.Client _, AddMember _)
+      | Append (Origin.Client _, UpdateMember _)
+      | Append (Origin.Client _, RemoveMember _)             -> Ignore // ignore all member ops from clients
+      | Append (Origin.Service _, AddMember _)
+      | Append (Origin.Service _, UpdateMember _)
+      | Append (Origin.Service _, RemoveMember _)            -> Replicate
+
+      | Append (Origin.Web _, AddClient _)
+      | Append (Origin.Web _, UpdateClient _)
+      | Append (Origin.Web _, RemoveClient _)
+      | Append (Origin.Client _, AddClient _)
+      | Append (Origin.Client _, UpdateClient _)
+      | Append (Origin.Client _, RemoveClient _)             -> Ignore
+      | Append (Origin.Service _, AddClient _)
+      | Append (Origin.Service _, UpdateClient _)
+      | Append (Origin.Service _, RemoveClient _)            -> Replicate
+
+      | Append (Origin.Web _, AddPinGroup _)
+      | Append (Origin.Web _, UpdatePinGroup _)
+      | Append (Origin.Web _, RemovePinGroup _)              -> Ignore // ignore modifications from web
+      | Append (Origin.Client _, AddPinGroup _)
+      | Append (Origin.Client _, UpdatePinGroup _)
+      | Append (Origin.Client _, RemovePinGroup _)           -> Replicate // replicate modifications
+      | Append (Origin.Service _, AddPinGroup _)
+      | Append (Origin.Service _, UpdatePinGroup _)
+      | Append (Origin.Service _, RemovePinGroup _)          -> Ignore
+
+      | Append (Origin.Web _, AddPin _)                      -> Ignore
+      | Append (Origin.Web _, UpdatePin _)                   -> Replicate
+      | Append (Origin.Web _, RemovePin _)                   -> Ignore
+      | Append (Origin.Client _, AddPin _)
+      | Append (Origin.Client _, UpdatePin _)
+      | Append (Origin.Client _, RemovePin _)                -> Replicate
+      | Append (Origin.Service _, AddPin _)
+      | Append (Origin.Service _, UpdatePin _)
+      | Append (Origin.Service _, RemovePin _)               -> Ignore
+
+      | Append (Origin.Web _, AddCue _)
+      | Append (Origin.Web _, UpdateCue _)
+      | Append (Origin.Web _, RemoveCue _)
+      | Append (Origin.Client _, AddCue _)
+      | Append (Origin.Client _, UpdateCue _)
+      | Append (Origin.Client _, RemoveCue _)                -> Replicate
+      | Append (Origin.Service _, AddCue _)
+      | Append (Origin.Service _, UpdateCue _)
+      | Append (Origin.Service _, RemoveCue _)               -> Ignore
+
+
+      | Append (Origin.Web _, AddCueList _)
+      | Append (Origin.Web _, UpdateCueList _)
+      | Append (Origin.Web _, RemoveCueList _)
+      | Append (Origin.Client _, AddCueList _)
+      | Append (Origin.Client _, UpdateCueList _)
+      | Append (Origin.Client _, RemoveCueList _)            -> Replicate
+      | Append (Origin.Service _, AddCueList _)
+      | Append (Origin.Service _, UpdateCueList _)
+      | Append (Origin.Service _, RemoveCueList _)           -> Ignore
+
+      | Append (Origin.Web _, AddCuePlayer _)
+      | Append (Origin.Web _, UpdateCuePlayer _)
+      | Append (Origin.Web _, RemoveCuePlayer _)
+      | Append (Origin.Client _, AddCuePlayer _)
+      | Append (Origin.Client _, UpdateCuePlayer _)
+      | Append (Origin.Client _, RemoveCuePlayer _)          -> Replicate
+      | Append (Origin.Service _, AddCuePlayer _)
+      | Append (Origin.Service _, UpdateCuePlayer _)
+      | Append (Origin.Service _, RemoveCuePlayer _)         -> Ignore
+
+      | Append (Origin.Web _, AddUser _)
+      | Append (Origin.Web _, UpdateUser _)
+      | Append (Origin.Web _, RemoveUser _)                  -> Replicate
+      | Append (Origin.Client _, AddUser _)
+      | Append (Origin.Client _, UpdateUser _)
+      | Append (Origin.Client _, RemoveUser _)
+      | Append (Origin.Service _, AddUser _)
+      | Append (Origin.Service _, UpdateUser _)
+      | Append (Origin.Service _, RemoveUser _)              -> Ignore
+
+      | Append (Origin.Web _, AddSession _)
+      | Append (Origin.Web _, UpdateSession _)
+      | Append (Origin.Web _, RemoveSession _)               -> Replicate
+      | Append (Origin.Client _, AddSession _)
+      | Append (Origin.Client _, UpdateSession _)
+      | Append (Origin.Client _, RemoveSession _)
+      | Append (Origin.Service _, AddSession _)
+      | Append (Origin.Service _, UpdateSession _)
+      | Append (Origin.Service _, RemoveSession _)           -> Ignore
+
+      | Append (Origin.Web _, AddDiscoveredService _)
+      | Append (Origin.Web _, UpdateDiscoveredService _)
+      | Append (Origin.Web _, RemoveDiscoveredService _)
+      | Append (Origin.Client _, AddDiscoveredService _)
+      | Append (Origin.Client _, UpdateDiscoveredService _)
+      | Append (Origin.Client _, RemoveDiscoveredService _)  -> Ignore
+      | Append (Origin.Service _, AddDiscoveredService _)
+      | Append (Origin.Service _, UpdateDiscoveredService _)
+      | Append (Origin.Service _, RemoveDiscoveredService _) -> Replicate
+
+      | Append (Origin.Service _, UpdateClock _)             -> Publish
+      | Append (_, UpdateClock _)                            -> Ignore
+
+      | Append (Origin.Web _, Command _)
+      | Append (Origin.Client _, Command _)
+      | Append (Origin.Service _, Command _)                 -> Replicate
+
+      | Append (Origin.Web _, DataSnapshot _)
+      | Append (Origin.Client _, DataSnapshot _)
+      | Append (Origin.Service _, DataSnapshot _)            -> Ignore
+
+      | Append (_, SetLogLevel _)                            -> Replicate
+      | Append (_, LogMsg _)                                 -> Publish
+      | Append (_, UpdateSlices _)                           -> Publish
+      | Append (_, CallCue _)                                -> Publish
