@@ -33,13 +33,28 @@ export default class ContentEditable extends React.Component {
             }
             else if (ev.which === ESCAPE_KEY) {
                 ev.preventDefault();
-                this.setState({disabled: true})
+              this.setState({disabled: true})
             }
           }
         },
         onDoubleClick: ev => {
           if (this.state.disabled) {
-            this.setState({disabled: false})
+            // Capture htmlEl as React may reuse the event
+            var htmlEl = ev.target;
+            this.setState({disabled: false}, () => {
+              try {
+                var range = document.createRange();
+                // We actually need to select the child text element
+                range.selectNode(htmlEl.childNodes[0]);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+              }
+              catch (err) {
+                console.log("Error when selecting range", err);
+                htmlEl.focus();
+              }
+
+            });
           }
         },
         contentEditable: !this.state.disabled,
