@@ -233,15 +233,29 @@ module IrisService =
 
   let private persistLog (state: IrisState) (sm: StateMachine) =
     if state.RaftServer.IsLeader then
-      match persistEntry state.Store.State sm with
-      | Right commit ->
-        sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
-        |> Logger.debug (tag "persistLog")
-        state
-      | Left error ->
-        sprintf "Error persisting command: %A" error
-        |> Logger.err (tag "persistLog")
-        state
+      match sm.PersistenceStrategy with
+      | PersistenceStrategy.Save ->
+        // FIXME: should only save, but not commit at this point
+        match persistEntry state.Store.State sm with
+        | Right commit ->
+          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
+          |> Logger.debug (tag "persistLog")
+          state
+        | Left error ->
+          sprintf "Error persisting command: %A" error
+          |> Logger.err (tag "persistLog")
+          state
+      | PersistenceStrategy.Commit ->
+        match persistEntry state.Store.State sm with
+        | Right commit ->
+          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
+          |> Logger.debug (tag "persistLog")
+          state
+        | Left error ->
+          sprintf "Error persisting command: %A" error
+          |> Logger.err (tag "persistLog")
+          state
+      | PersistenceStrategy.Ignore -> state
     else
       let raft = state.RaftServer.Raft
       let mem =
