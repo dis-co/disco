@@ -112,7 +112,7 @@ module RaftIntegrationTests =
           }
 
         let handle = function
-          | RaftEvent.Started -> started.Set() |> ignore
+          | IrisEvent.Started ServiceType.Raft -> started.Set() |> ignore
           | _ -> ()
 
         use sobs = leader.Subscribe(handle)
@@ -145,12 +145,12 @@ module RaftIntegrationTests =
         use check2 = new AutoResetEvent(false)
 
         let setState (id: Id) (are: AutoResetEvent) = function
-          | RaftEvent.StateChanged (_,Leader) ->
+          | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
             |> Logger.debug "test"
             are.Set() |> ignore
-          | RaftEvent.StateChanged (_,Follower) ->
+          | IrisEvent.StateChanged (_,Follower) ->
             id
             |> sprintf "%O became follower"
             |> Logger.debug "test"
@@ -249,9 +249,8 @@ module RaftIntegrationTests =
 
         let expected = int leadercfg.Raft.MaxLogDepth * 2
 
-        let evHandler (ev: RaftEvent) =
-          match ev with
-          | RaftEvent.ApplyLog sm ->
+        let evHandler = function
+          | IrisEvent.Append(Origin.Raft, sm) ->
             store.Dispatch sm
             if store.State.Users.Count = expected then
               expectedCheck.Set() |> ignore
@@ -282,22 +281,22 @@ module RaftIntegrationTests =
         use check2 = new AutoResetEvent(false)
 
         let setState (id: Id) (are: AutoResetEvent) = function
-          | RaftEvent.StateChanged (_,Leader) ->
+          | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
             |> Logger.debug "test"
             are.Set() |> ignore
-          | RaftEvent.StateChanged (_,Follower) ->
+          | IrisEvent.StateChanged (_,Follower) ->
             id
             |> sprintf "%O became follower"
             |> Logger.debug "test"
             are.Set() |> ignore
-          | RaftEvent.MemberAdded mem ->
+          | IrisEvent.Append(Origin.Raft, AddMember mem) ->
             mem.Id
             |> sprintf "%O was added"
             |> Logger.debug "test"
             added.Set() |> ignore
-          | RaftEvent.Configured mems ->
+          | IrisEvent.Configured mems ->
             Array.length mems
             |> sprintf "new cluster configuration active with %d members"
             |> Logger.debug "test"

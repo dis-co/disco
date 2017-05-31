@@ -20,7 +20,6 @@ module TestUtilities =
       |> Error.asOther "test"
       |> Either.fail
 
-
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
     Expect.equal (b t) a msg // apply t to b

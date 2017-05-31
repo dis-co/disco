@@ -103,8 +103,9 @@ module IrisServiceTests =
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
   let test_ensure_gitserver_restart_on_premature_exit =
-    testCase "ensure gitserver restart on premature exit" <| fun _ ->
+    ftestCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
         use checkGitStarted = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
@@ -128,7 +129,7 @@ module IrisServiceTests =
 
         do! service.Start()
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitOrDie "checkGitStarted (1)" checkGitStarted
 
         let gitserver = service.GitServer
 
@@ -140,7 +141,7 @@ module IrisServiceTests =
 
         expect "Git should be running" false Process.isRunning pid
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitOrDie "checkGitStarted (2)" checkGitStarted
 
         let gitserver = service.GitServer
         let newpid = gitserver.Pid
@@ -181,14 +182,13 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | Git (GitEvent.Started _)                     -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-
         do! waitOrDie "checkGitStarted" checkGitStarted
 
         //  ____
@@ -216,10 +216,10 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | Git (GitEvent.Started _)                     -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service2.Subscribe
 
         do! service2.Start()

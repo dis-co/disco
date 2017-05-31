@@ -103,6 +103,7 @@ type ClockEvent =
 
 [<NoComparison;NoEquality>]
 type IrisEvent =
+  | Started         of tipe:ServiceType
   | Configured      of members:RaftMember array
   | StateChanged    of oldstate:RaftState * newstate:RaftState
   | PersistSnapshot of log:RaftLogEntry
@@ -118,6 +119,7 @@ type IrisEvent =
   member ev.Origin
     with get () =
       match ev with
+      | Started         _
       | Configured      _
       | StateChanged    _
       | PersistSnapshot _
@@ -133,6 +135,7 @@ type IrisEvent =
   member ev.DispatchStrategy
     with get () =
       match ev with
+      | Started _                                            -> Ignore
       | Status _                                             -> Process
       | Git _                                                -> Ignore
 

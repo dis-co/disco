@@ -86,6 +86,11 @@ type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
 
+// * IApiServerCallbacks
+
+type IApiServerCallbacks =
+  abstract PrepareSnapshot: unit -> State
+
 // * IApiServer
 
 type IApiServer =
@@ -93,7 +98,7 @@ type IApiServer =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
-  abstract State: State with get, set
+  abstract SendSnapshot: unit -> unit
   abstract Update: origin:Origin -> sm:StateMachine -> unit
 
 // * IrisServiceOptions

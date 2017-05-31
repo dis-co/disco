@@ -777,7 +777,10 @@ module IrisService =
                       member self.RetrieveSnapshot () = retrieveSnapshot store.State
                   }
                 let! socketServer = WebSocketServer.create mem
-                let! apiServer = ApiServer.create context mem state.Project.Id
+                let! apiServer = ApiServer.create context mem state.Project.Id {
+                    new IApiServerCallbacks with
+                      member self.PrepareSnapshot () = store.State.Store.State
+                  }
                 let gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the
                                                                         // projects path here, not
                                                                         // the path to project.yml

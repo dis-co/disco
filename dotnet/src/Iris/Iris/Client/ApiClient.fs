@@ -53,6 +53,8 @@ module ApiClient =
       Disposables: IDisposable list
       Stopper: AutoResetEvent }
 
+    // *** Dispose
+
     interface IDisposable with
       member self.Dispose() =
         List.iter dispose self.Disposables
@@ -177,15 +179,13 @@ module ApiClient =
   // ** handlePing
 
   let private handlePing (state: ClientState) =
-    Tracing.trace (tag "handlePing") <| fun () ->
-      { state with Elapsed = 0<ms> }
+    { state with Elapsed = 0<ms> }
 
   // ** handleSetState
 
   let private handleSetState (state: ClientState) (newstate: State) (agent: ApiAgent) =
-    Tracing.trace (tag "handleSetState") <| fun () ->
-      ClientEvent.Snapshot |> Msg.Notify |> agent.Post
-      { state with Store = new Store(newstate) }
+    ClientEvent.Snapshot |> Msg.Notify |> agent.Post
+    { state with Store = new Store(newstate) }
 
   // ** handleUpdate
 

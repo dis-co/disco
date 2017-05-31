@@ -1378,6 +1378,7 @@ module Raft =
       // periodic function
       let interval = int state.Options.Raft.PeriodicInterval
       let periodic = startPeriodic interval agent
+      ServiceType.Raft |> IrisEvent.Started |> Msg.Notify |> agent.Post
       agent.Post Msg.Started
       { state with
           Status = ServiceStatus.Running
@@ -1449,7 +1450,7 @@ module Raft =
   [<RequireQualifiedAccess>]
   module RaftServer =
 
-    // ** createListener
+    // *** createListener
 
     let private createListener (subscriptions: Subscriptions) =
       let guid = Guid.NewGuid()
@@ -1460,7 +1461,7 @@ module Raft =
                 member self.Dispose () =
                   subscriptions.TryRemove(guid) |> ignore } }
 
-    // ** create
+    // *** create
 
     let create ctx (config: IrisConfig) callbacks =
       either {
