@@ -167,10 +167,7 @@ module ApiServer =
     match Binary.decode bytes with
     | Right command ->
       match command with
-      | UpdateSlices _ | CallCue _ ->
-        command
-        |> Msg.RemoteUpdate
-        |> agent.Post
+      | UpdateSlices _ | CallCue _ -> Msg.Update(Origin.Api, command) |> agent.Post
       | _ -> ()
     | _ -> ()
 
@@ -189,7 +186,8 @@ module ApiServer =
       | None -> ()
       | Some client ->
         dispose client
-        IrisEvent.Append (Origin.Service state.Id, RemoveClient client.Meta)
+        (Origin.Service, RemoveClient client.Meta)
+        |> IrisEvent.Append
         |> Observable.notify state.Subscriptions
 
       // construct a new client value
@@ -211,7 +209,8 @@ module ApiServer =
 
         meta.Id |> Msg.InstallSnapshot |> agent.Post
 
-        IrisEvent.Append (Origin.Service state.Id, AddClient meta)
+        (Origin.Service, AddClient meta)
+        |> IrisEvent.Append
         |> Observable.notify state.Subscriptions
 
         { state with Clients = Map.add meta.Id client state.Clients }
@@ -228,7 +227,8 @@ module ApiServer =
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
         dispose client
-        IrisEvent.Append (Origin.Service state.Id, RemoveClient peer)
+        (Origin.Service, RemoveClient peer)
+        |> IrisEvent.Append
         |> Observable.notify state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
@@ -289,7 +289,8 @@ module ApiServer =
         | oldst, newst ->
           if oldst <> newst then
             let updated = { client with Meta = { client.Meta with Status = status } }
-            IrisEvent.Append(Origin.Service state.Id, UpdateClient updated.Meta)
+            (Origin.Service, UpdateClient updated.Meta)
+            |> IrisEvent.Append
             |> Observable.notify state.Subscriptions
             { state with Clients = Map.add id updated state.Clients }
           else state
@@ -311,38 +312,43 @@ module ApiServer =
       | None -> ()
       state
 
-  // ** handleClientUpdate
+  // ** handleUpdate
 
-  let private handleClientUpdate (state: ServerState) id (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleClientUpdate") <| fun () ->
-      maybeDispatch state sm
-      maybePublish state sm agent
-      IrisEvent.Append (Origin.Client id, sm)
+  let private handleUpdate (state: ServerState)
+                           (origin: Origin)
+                           (cmd: StateMachine)
+                           (agent: ApiAgent) =
+    match origin with
+    | Origin.Api ->
+      maybeDispatch state cmd             // we need to send these request synchronously
+      updateClients state cmd agent       // in order to preserve ordering of the messages
+      (origin, cmd)
+      |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
-      state
 
-  // ** handleRemoteUpdate
+    | Origin.Raft ->
+      maybeDispatch state cmd             // we need to send these request synchronously
+      updateClients state cmd agent       // in order to preserve ordering of the messages
 
-  let private handleRemoteUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
-      maybeDispatch state sm             // we need to send these request synchronously
-      updateClients state sm agent       // in order to preserve ordering of the messages
-      IrisEvent.Append(Origin.Api, sm)
+    | Origin.Client id ->
+      maybeDispatch state cmd
+      maybePublish state cmd agent
+      (origin, cmd)
+      |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
-      state
 
-  // ** handleLocalUpdate
+    | Origin.Web id ->
+      maybeDispatch state cmd             // we need to send these request synchronously
+      maybePublish state cmd agent
+      updateClients state cmd agent       // in order to preserve ordering of the messages
 
-  let private handleLocalUpdate (state: ServerState)
-                                (origin: Origin option)
-                                (sm: StateMachine)
-                                (agent: ApiAgent) =
-    state.Store.Dispatch sm            // we need to send these request synchronously
-    maybePublish state sm agent        // in order to preserve ordering of the messages
-    updateClients state sm agent
+    | Origin.Service _ ->
+      (origin, cmd)
+      |> IrisEvent.Append
+      |> Observable.notify state.Subscriptions
     state
 
-  // ** handleServerRequest
+// ** handleServerRequest
 
   let private handleServerRequest (state: ServerState) (req: RawServerRequest) (agent: ApiAgent) =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
@@ -365,7 +371,9 @@ module ApiServer =
 
       | Right (Update sm) ->
         let id = req.From |> string |> Id
-        (id, sm) |> Msg.ClientUpdate |> agent.Post
+        (Origin.Client id, sm)
+        |> Msg.Update
+        |> agent.Post
         OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Left error ->
@@ -436,9 +444,7 @@ module ApiServer =
             | Msg.SetState(newstate)          -> handleSetState state newstate inbox
             | Msg.SetStatus(status)           -> handleSetStatus state status
             | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-            | Msg.LocalUpdate(origin,sm)      -> handleLocalUpdate state origin sm inbox
-            | Msg.ClientUpdate(id,sm)         -> handleClientUpdate state id sm inbox
-            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state sm inbox
+            | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
             | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
             | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
           with
@@ -555,8 +561,8 @@ module ApiServer =
 
               // **** Update
 
-              member self.Update (origin: Origin option) (sm: StateMachine) =
-                Msg.LocalUpdate(origin, sm) |> agent.Post
+              member self.Update (origin: Origin) (sm: StateMachine) =
+                (origin, sm) |> Msg.Update |> agent.Post
 
               // **** Subscribe
 

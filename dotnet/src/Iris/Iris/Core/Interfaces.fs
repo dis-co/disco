@@ -32,8 +32,8 @@ module AgentStore =
 type Origin =
   | Raft
   | Api
+  | Service
   | Web     of session:Id
-  | Service of service:Id
   | Client  of client:Id
 
 // * DispatchStrategy
@@ -41,7 +41,6 @@ type Origin =
 type DispatchStrategy =
   | Replicate
   | Process
-  | FastProcess
   | Ignore
 
 // * GitEvent
@@ -144,9 +143,9 @@ type IrisEvent =
       // |_| \_\__,_|_|  \__|
 
       | Configured      _
-      | StateChanged    _                                    -> Process
+      | StateChanged    _
       | PersistSnapshot _
-      | RaftError       _                                    -> Ignore
+      | RaftError       _                                    -> Process
 
       // __        __   _    ____             _        _
       // \ \      / /__| |__/ ___|  ___   ___| | _____| |_
@@ -374,8 +373,8 @@ type IrisEvent =
       // |  _| (_| \__ \ |_|  __/| | | (_) | (_|  __/\__ \__ \
       // |_|  \__,_|___/\__|_|   |_|  \___/ \___\___||___/___/
 
-      | Append (_, UpdateSlices _)                           -> FastProcess
-      | Append (_, CallCue      _)                           -> FastProcess
+      | Append (_, UpdateSlices _)                           -> Process
+      | Append (_, CallCue      _)                           -> Process
 
       //  __  __ _
       // |  \/  (_)___  ___

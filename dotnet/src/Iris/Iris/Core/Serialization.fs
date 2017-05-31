@@ -1,5 +1,3 @@
-
-
 namespace Iris.Core
 
 #if FABLE_COMPILER

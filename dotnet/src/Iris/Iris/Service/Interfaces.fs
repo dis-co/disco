@@ -23,6 +23,17 @@ type IDiscoveryService =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Register: service:DiscoverableService -> IDisposable
 
+// * IClock
+
+type IClock =
+  inherit IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+  abstract Start: unit -> unit
+  abstract Stop: unit -> unit
+  abstract Running: bool with get
+  abstract Fps: int16<fps>  with get, set
+  abstract Frame: int64<frame>
+
 // * IGitServer
 
 type IGitServer =
@@ -83,7 +94,7 @@ type IApiServer =
   abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
   abstract State: State with get, set
-  abstract Update: origin:Origin option -> sm:StateMachine -> unit
+  abstract Update: origin:Origin -> sm:StateMachine -> unit
 
 // * IrisServiceOptions
 
