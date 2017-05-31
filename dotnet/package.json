@@ -3,8 +3,6 @@
   "scripts": {
     "start": "webpack-dev-server --config src/Frontend/webpack.config.js",
     "build": "webpack            --config src/Frontend/webpack.config.js              -p",
-    "build-worker": "webpack     --config src/Frontend/fable/Worker/webpack.config.js -p",
-    "watch-worker": "webpack     --config src/Frontend/fable/Worker/webpack.config.js -w",
     "build-test": "webpack       --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap"
   },

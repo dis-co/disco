@@ -651,13 +651,11 @@ Target "BuildFrontend" (fun () ->
     "FlatBuffersPlugin/FlatBuffersPlugin.fsproj"
   ]
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
 Target "BuildFrontendFast" (fun () ->
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable npm-run build-worker" __SOURCE_DIRECTORY__ false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
 
