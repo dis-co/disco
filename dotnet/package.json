@@ -40,7 +40,6 @@
     "js-tree": "^1.1.0",
     "muicss": "^0.9.15",
     "react": "^15.4.2",
-    "react-contenteditable": "^2.0.2",
     "react-dom": "^15.4.2",
     "react-grid-layout": "^0.14.1",
     "react-skylight": "^0.4.1"
