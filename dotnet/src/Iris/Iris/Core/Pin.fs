@@ -1832,6 +1832,9 @@ type NumberPinD =
       (self :> System.IEquatable<NumberPinD>).Equals(pin)
     | _ -> false
 
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
+
   // ** Equals<NumberPinD>
 
   interface System.IEquatable<NumberPinD> with
@@ -2067,6 +2070,9 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     | :? BytePinD as pin ->
       (self :> System.IEquatable<BytePinD>).Equals(pin)
     | _ -> false
+
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
 
   // ** Equals<ByteSliceD>
 
@@ -2420,6 +2426,15 @@ type Slice =
     match other with
     | :? Slice as slice -> (self :> System.IEquatable<Slice>).Equals(slice)
     | _ -> false
+
+  override self.GetHashCode() =
+      match self with
+      | StringSlice  _ -> 0
+      | NumberSlice  _ -> 1
+      | BoolSlice    _ -> 2
+      | ByteSlice    _ -> 3
+      | EnumSlice    _ -> 4
+      | ColorSlice   _ -> 5
 
   // ** CompareTo
 
@@ -3399,6 +3414,9 @@ type Slices =
     match other with
     | :? Slices as slices -> (self :> System.IEquatable<Slices>).Equals(slices)
     | _ -> false
+
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
 
   // ** Equals<Slices>
 

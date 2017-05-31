@@ -454,7 +454,6 @@ module Raft =
           |> Raft.getMember id
 
         match potentialChange with
-
         | Some mem -> removeMembers state [| mem |]
         | None ->
           let msg = sprintf "Unable to remove member. Not found:  %A" (string id)
@@ -1110,17 +1109,6 @@ module Raft =
 
   let private handleRemoveMember (state: RaftServerState) (id: Id) (agent: RaftAgent) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
-      if state.Connections.ContainsKey id then
-        let result, socket = state.Connections.TryRemove id
-        if result then                // re-try once!
-          let result, socket = state.Connections.TryRemove id
-          if result then
-            dispose socket
-          else
-            Logger.err (tag "handleRemoveMember") "Unable to remove member"
-        else
-          dispose socket
-
       match removeMember state id with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
@@ -1529,7 +1517,7 @@ module Raft =
                     match result with
                     | Right server ->
                       backend
-                      |> sprintf "successfullly started broker on: %O"
+                      |> sprintf "successfullly started server on: %O"
                       |> Logger.debug (tag "Start")
 
                       let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)

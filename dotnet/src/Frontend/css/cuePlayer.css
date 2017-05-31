@@ -28,7 +28,6 @@
   padding: 0px;
 }
 
-
 .cueplayer-button {
   margin-top: 5px;
   margin-bottom: 5px;
@@ -39,6 +38,11 @@
   margin-right: 5px;
   padding: 0px 5px 0px 5px;
   height: 20px;
+}
+
+.cueplayer-list-header {
+  /* Override the margin set by Bulma.css */
+  margin-bottom: 0 !important;
 }
 
 .cueplayer-list-header.cueplayer-cue .cueplayer-button.cueplayer-player {

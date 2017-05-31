@@ -1,19 +1,10 @@
 import * as React from "react"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
-import GlobalModel from "../GlobalModel"
+import { GlobalModel } from "../../fable/Frontend/GlobalModel.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map, first } from "../Util"
 
-declare var IrisLib: IIris;
-
-interface DiscoveryProps {
-  global: GlobalModel
-}
-
-class DiscoveryView extends React.Component<DiscoveryProps,any> {
-  disposable: IDisposable;
-  childNodes: Map<string, HTMLElement>;
-
+class DiscoveryView extends React.Component {
   constructor(props) {
     super(props);
     this.state = { tooltip: {} };
@@ -70,7 +61,7 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
     }
   }
 
-  displayTooltip(ev: React.MouseEvent<HTMLElement>, info: any) {
+  displayTooltip(ev, info) {
     // console.log("left", ev.clientX, "top", ev.clientY)
     this.setState({
       tooltip: {
@@ -161,10 +152,6 @@ class DiscoveryView extends React.Component<DiscoveryProps,any> {
 }
 
 export default class Discovery {
-  view: typeof DiscoveryView;
-  name: string;
-  layout: ILayout;
-
   constructor() {
     this.view = DiscoveryView;
     this.name = "Discovered Services";
