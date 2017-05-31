@@ -26,7 +26,7 @@ var babelOptions = {
   plugins: ["transform-runtime"]
 }
 
-module.exports = {
+var frontendConfig = {
   devtool: isProduction ? false : 'inline-source-map',
   entry: resolve('./fable/Frontend/Frontend.fsproj'),
   output: {
@@ -56,7 +56,6 @@ module.exports = {
         target: 'http://' + irisHost + ':' + irisPort
       }
     },
-    contentBase: resolve("."),
     headers: {
       "Access-Control-Allow-Origin": "*"
     }
@@ -71,6 +70,9 @@ module.exports = {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
             plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            extra: {
+              useCache: false
+            }
           }
         }
       },
@@ -101,3 +103,5 @@ module.exports = {
     ],
   },
 };
+
+module.exports = [frontendConfig, require("./fable/Worker/webpack.config.js")]

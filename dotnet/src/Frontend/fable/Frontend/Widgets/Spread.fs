@@ -17,26 +17,16 @@ let [<Literal>] ROW_HEIGHT = 17
 let [<Literal>] MIN_WIDTH = 100
 
 type [<Pojo>] InputState =
-  { editIndex: int
-    editText: string
-    isOpen: bool }
+  { isOpen: bool }
 
-let addInputView
-  ( index: int
-  , value: obj
-  , useRigthClick: bool
-  , parent: React.Component<#obj, InputState>
-  , update: int -> obj -> unit
-  , generate: obj -> obj -> React.ReactElement
-  ): React.ReactElement = importMember "../../../src/behaviors/input.tsx"
+let addInputView(index: int, value: obj, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
+  importMember "../../../src/behaviors/input.tsx"
 
-let formatValue(value: obj): string = importMember "../../../src/behaviors/input.tsx"
+let formatValue(value: obj): string =
+  importMember "../../../src/behaviors/input.tsx"
 
 [<Global>]
 let jQuery(el: obj): obj = jsNative
-
-[<Import("createElement", from="react")>]
-let private createEl(rcom: obj, props: obj, child: obj): React.ReactElement = jsNative
 
 let private updatePinValue(pin: Pin, index: int, value: obj) =
   let updateArray (i: int) (v: obj) (ar: 'T[]) =
@@ -76,7 +66,7 @@ type [<Pojo>] SpreadProps =
 
 type SpreadView(props) =
   inherit React.Component<SpreadProps, InputState>(props)
-  do base.setInitState({ editIndex = -1; editText = ""; isOpen = false })
+  do base.setInitState({ isOpen = false })
 
   member this.RecalculateHeight(rowCount: int) =
     BASE_HEIGHT + (ROW_HEIGHT * rowCount)
@@ -119,10 +109,7 @@ type SpreadView(props) =
     let mutable i = 0
     for i=0 to rowCount - 1 do
       let value = this.ValueAt(i)
-      yield addInputView
-        (i, value, useRightClick, this,
-         (fun i v -> this.UpdateValue(i,v)),
-         (fun value props -> createEl("span", props, value)))
+      yield addInputView(i, value, useRightClick, (fun i v -> this.UpdateValue(i,v)))
   ]
 
   member this.RenderArrow() =
@@ -168,5 +155,3 @@ type SpreadView(props) =
         Style [Height height]
       ] (if rowCount > 1 then [this.RenderArrow()] else [])
     ]
-
-
