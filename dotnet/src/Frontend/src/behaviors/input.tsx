@@ -1,5 +1,6 @@
 import * as React from "react"
 import * as $ from "jquery"
+import ContentEditable from "react-contenteditable"
 import { xand } from "../Util"
 
 const ESCAPE_KEY = 27;
@@ -7,12 +8,6 @@ const ENTER_KEY = 13;
 const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
-interface InputState {
-    editIndex: number,
-    editText: string
-}
-
-type GenerateFn = (formattedValue: any, props: {}) => JSX.Element
 type UpdateFn = (index: number, value: any) => void
 
 function startDragging(posY: number, index: number, value: number, update: UpdateFn) {
@@ -35,80 +30,70 @@ function startDragging(posY: number, index: number, value: number, update: Updat
         })
 }
 
-function handleKeyDown(index: number, keyCode: number, value: string, update: UpdateFn) {
-    if (keyCode === ESCAPE_KEY) {
-        this.setState({editIndex: -1});
-    }
-    else if (keyCode === ENTER_KEY) {
-        update(index, value);
-        this.setState({editIndex: -1});
-    }
-}
-
 export function formatValue(value: any) {
     return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
 }
 
-export function addInputView(
-        index: number, value: any, useRightClick: boolean,
-        parent: React.Component<{},InputState>,
-        update: UpdateFn, generate: GenerateFn) {
-    if (parent.state.editIndex === index) {
-        return (<input
-            key={index}
-            ref={el => el != null ? el.focus() : void 0}
-            value={parent.state.editText}
-            onBlur={ev => parent.setState({editIndex: -1})}
-            onChange={ev => parent.setState({editText: ev.target.value})}
-            onKeyDown={ev => {
-                if (ev.which === ESCAPE_KEY) {
-                    parent.setState({editIndex: -1});
-                }
-                else if (ev.which === ENTER_KEY) {
-                    update(index, (ev.target as any).value);
-                    parent.setState({editIndex: -1});
-                }
-            }}
-          />)
-    }
-    else {
-        let props: any = { key: index }, formattedValue = formatValue(value);
-        switch (typeof value) {
-            case "number":
-                props.onDoubleClick = () =>
-                    parent.setState({ editIndex: index, editText: String(value) });
-                props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
-                    if (xand(ev.button === RIGHT_BUTTON, useRightClick))
-                        startDragging(ev.clientY, index, value, update);
-                }
-                if (useRightClick) {
-                    props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
-                        ev.preventDefault();
-                    }
-                }
-                break;
-            case "boolean":
-                if (useRightClick) {
-                    props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
-                        ev.preventDefault();
-                        update(index, !value);
-                    }
-                }
-                else {
-                    props.onClick = (ev: React.MouseEvent<HTMLElement>) => {
-                        if (ev.button !== RIGHT_BUTTON)
-                            update(index, !value);
-                    }
-                }
-                break;
-            case "string":
-            default:
-                Object.assign(props, {
-                    onDoubleClick: () => parent.setState({ editIndex: index, editText: String(value) })
-                })
-                break;
+export function addInputView(index: number, value: any, useRightClick: boolean, update: UpdateFn) {
+
+    let tagName = "span", // TODO: Pass tag name as parameter
+        typeofValue = typeof value,
+        props = { key: index } as any,
+        formattedValue = formatValue(value);
+
+    // Boolean values, not editable
+    if (typeofValue === "boolean") {
+        if (useRightClick) {
+            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+                ev.preventDefault();
+                update(index, !value);
+            }
+        }
+        else {
+            props.onClick = (ev: React.MouseEvent<HTMLElement>) => {
+                if (ev.button !== RIGHT_BUTTON)
+                    update(index, !value);
+            }
         }
 
-        return generate(formattedValue, props);
+        return React.createElement(tagName, props, formattedValue);
     }
+
+    // Numeric values, draggable
+    if (typeofValue === "number") {
+        props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
+            if (xand(ev.button === RIGHT_BUTTON, useRightClick))
+                startDragging(ev.clientY, index, value, update);
+        }
+        if (useRightClick) {
+            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+                ev.preventDefault();
+            }
+        }
+    }
+
+    let view;
+    return <ContentEditable
+            ref={el => el != null ? view = el : null}
+            tagName={tagName}
+            html={formattedValue}
+            disabled={false}
+            onKeyDown={ev => {
+                if (ev.which === ENTER_KEY) {
+                    ev.preventDefault();
+                    update(index, ev.target.textContent);
+                    ev.target.blur();
+                }
+                else if (ev.which === ESCAPE_KEY && view != null) {
+                    ev.preventDefault();
+                    ev.target.blur();
+                    // TODO: Best way to revert change
+                    update(index, formattedValue);
+                }
+            }}
+            onBlur={ev => {
+                update(index, ev.target.textContent);
+            }}
+            {...props}
+            />
 }
