@@ -784,7 +784,7 @@ module IrisService =
 
                 let context = new ZContext()
 
-                let clockService = Clock.create context mem.IpAddr
+                let clockService = Clock.create ()
                 let! raftServer = RaftServer.create context state.Project.Config {
                     new IRaftSnapshotCallbacks with
                       member self.PrepareSnapshot () = Some store.State.Store.State

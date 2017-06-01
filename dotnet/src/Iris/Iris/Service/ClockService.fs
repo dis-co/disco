@@ -71,15 +71,7 @@ module Clock =
 
   // ** ClockState
 
-  type private ClockState(ip: IpAddress, ctx: ZContext) =
-    let addr =
-      Uri.epgmUri
-        ip
-        (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
-        (port Constants.CLOCK_MCAST_PORT)
-
-    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX, ctx)
-
+  type private ClockState() =
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()
 
@@ -90,11 +82,6 @@ module Clock =
     let mutable frame = 0L<frame>
     let mutable fps = 60s<fps>
     let mutable timeout = calculateTimeout fps
-
-    do
-      socket.Start()
-      |> Either.mapError (string >> failwith)
-      |> ignore
 
     member state.Run
       with get ()  = run && not disposed
@@ -107,9 +94,6 @@ module Clock =
     member state.Publish
       with get ()  = publish && not disposed
       and set pub  = publish <- pub
-
-    member state.Socket
-      with get () = socket
 
     member state.Timeout
       with get () = timeout
@@ -142,7 +126,6 @@ module Clock =
     interface IDisposable with
       member self.Dispose() =
         disposed <- true
-        tryDispose socket ignore
         subscriptions.Clear()
 
   // ** worker
@@ -163,20 +146,12 @@ module Clock =
           for KeyValue(_,obs) in subscriptions do
             (Origin.Service, ev) |> IrisEvent.Append |> obs.OnNext
 
-          state.Frame
-          |> uint32
-          |> UpdateClock
-          |> Binary.encode
-          |> state.Socket.Publish
-          |> Either.mapError (string >> Logger.err "Clock")
-          |> ignore
-
       Thread.Sleep state.Timeout
 
   // ** create
 
-  let create ctx (ip: IpAddress) =
-    let state = new ClockState(ip, ctx)
+  let create () =
+    let state = new ClockState()
 
     if not Stopwatch.IsHighResolution then
       Logger.warn "Clock" "internal timer is not using high resolution clock"
