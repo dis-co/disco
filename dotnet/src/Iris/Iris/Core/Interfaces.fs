@@ -137,7 +137,7 @@ type IrisEvent =
       match ev with
       | Started _                                            -> Ignore
       | Status _                                             -> Process
-      | Git _                                                -> Ignore
+      | Git _                                                -> Process
 
       //  ____        __ _
       // |  _ \ __ _ / _| |_

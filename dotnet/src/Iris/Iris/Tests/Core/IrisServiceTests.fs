@@ -103,9 +103,8 @@ module IrisServiceTests =
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
   let test_ensure_gitserver_restart_on_premature_exit =
-    ftestCase "ensure gitserver restart on premature exit" <| fun _ ->
+    testCase "ensure gitserver restart on premature exit" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
         use checkGitStarted = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
