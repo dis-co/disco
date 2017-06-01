@@ -25,6 +25,33 @@ open LibGit2Sharp
 module Git =
   open Path
 
+  // ** tag
+
+  let private tag (str: string) = String.format "Git.{0}" str
+
+  // ** lsRemote
+
+  /// ## lsRemote
+  ///
+  /// List all remote references and return a sequence of them.
+  ///
+  /// ### Signature:
+  /// - url: string
+  ///
+  /// Returns: seq<Reference>
+
+  let lsRemote (url: string) =
+    try
+      url
+      |> Repository.ListRemoteReferences
+      |> Seq.cast<Reference>
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asGitError (tag "lsRemote")
+        |> Either.fail
+
   // ** Branch module
 
   //  ____                       _
@@ -41,7 +68,7 @@ module Git =
 
     // *** tag
 
-    let private tag (str:string) = sprintf "Git.Branch.%s" str
+    let private tag (str:string) = String.format "Git.Branch.{0}" str
 
     // *** create
 
@@ -235,11 +262,8 @@ module Git =
     /// - branch: Branch to get commits for
     ///
     /// Returns: ICommitLog
-    let commits (branch: Branch) =
-      let commits = ref []
-      for commit in branch.Commits.Reverse() do
-        commits := commit :: !commits
-      !commits
+    let commits (branch: Branch) : seq<Commit> =
+      branch.Commits |> Seq.cast<Commit>
 
     // *** setTracked
 
@@ -283,7 +307,7 @@ module Git =
 
     // *** tag
 
-    let private tag (str: string) = sprintf "Git.Repo.%s" str
+    let private tag (str: string) = String.format "Git.Repo.{0}" str
 
     // *** path
 
@@ -314,11 +338,8 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: TagsCollection
-    let tags (repo: Repository) =
-      let tags = ref []
-      for tag in repo.Tags.Reverse() do
-        tags := tag :: !tags
-      !tags
+    let tags (repo: Repository) : seq<Tag> =
+      repo.Tags |> Seq.cast<Tag>
 
     // *** submodules
 
@@ -330,11 +351,8 @@ module Git =
     /// - repo: Repository to get submodules for
     ///
     /// Returns: SubmoduleCollection
-    let submodules (repo: Repository) =
-      let modewls = ref []
-      for modewl in repo.Submodules do
-        modewls := modewl :: !modewls
-      !modewls
+    let submodules (repo: Repository) : seq<Submodule> =
+      repo.Submodules |> Seq.cast<Submodule>
 
     // *** clone
 
@@ -365,11 +383,8 @@ module Git =
     /// - repo: Repository to get branches for
     ///
     /// Returns: Branch list
-    let branches (repo: Repository) =
-      let branches = ref []
-      for branch in repo.Branches do
-        branches := branch :: !branches
-      !branches
+    let branches (repo: Repository) : seq<Branch> =
+      repo.Branches |> Seq.cast<Branch>
 
     // *** stashes
 
@@ -381,11 +396,8 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: Stash list
-    let stashes (repo: Repository) =
-      let stashes = ref []
-      for stash in repo.Stashes do
-        stashes := stash :: !stashes
-      !stashes
+    let stashes (repo: Repository) : seq<Stash> =
+      repo.Stashes |> Seq.cast<Stash>
 
     // *** revert
 
@@ -467,11 +479,8 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: Reference list
-    let refs (repo: Repository) =
-      let refs = ref []
-      for rev in repo.Refs do
-        refs := rev :: !refs
-      !refs
+    let refs (repo: Repository) : seq<Reference> =
+      repo.Refs |> Seq.cast<Reference>
 
     // *** database
 
@@ -560,7 +569,8 @@ module Git =
     let checkout (spec: string) (repo: Repository) =
       match LibGit2Sharp.Commands.Checkout(repo, spec) with
       | null      ->
-        sprintf "%s not found" spec
+        spec
+        |> String.format "{0} not found"
         |> Error.asGitError (tag "checkout")
         |> Either.fail
       | branch -> Either.succeed branch
@@ -587,7 +597,8 @@ module Git =
         |> Either.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
-          sprintf "%s: %s" exn.Message (unwrap path)
+          exn.Message
+          |> String.format (unwrap path + ": {0}")
           |> Error.asGitError (tag "repository")
           |> Either.fail
         | exn ->
@@ -621,7 +632,7 @@ module Git =
       try
         if Path.isPathRooted path then
           path
-          |> sprintf "Path must be relative to the project root: %O"
+          |> String.format "Path must be relative to the project root: {0}"
           |> Error.asGitError (tag "add")
           |> Either.fail
         else
@@ -643,7 +654,8 @@ module Git =
           |> Path.map (fun path -> Commands.Stage(repo, path))
           |> Either.succeed
         else
-          sprintf "Paths must be absolute: %O" path
+          path
+          |> String.format "Paths must be absolute: {0}"
           |> Error.asGitError (tag "stage")
           |> Either.fail
       with
@@ -836,10 +848,11 @@ module Git =
 
     // *** remotes
 
-    let remotes (repo: Repository) =
+    let remotes (repo: Repository) : Map<string,Remote> =
       repo.Network.Remotes
-      |> Seq.fold (fun lst (remote: Remote) -> (remote.Name,remote) :: lst) []
-      |> Map.ofList
+      |> Seq.cast<Remote>
+      |> Seq.map (fun (remote: Remote) -> remote.Name,remote)
+      |> Map.ofSeq
 
     // *** addRemote
 
