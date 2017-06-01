@@ -202,6 +202,11 @@ module ApiTests =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
         use ctx = new ZContext()
+
+        use clientRegistered = new AutoResetEvent(false)
+        use clientSnapshot = new AutoResetEvent(false)
+        use clientUpdate = new AutoResetEvent(false)
+
         let store = Store(mkState ())
 
         let mem = Member.create (Id.Create())
@@ -226,16 +231,21 @@ module ApiTests =
         let check = ref 0
 
         let apiHandler = function
-          | IrisEvent.Append(_, sm) ->
+          | IrisEvent.Append(_, (AddPin _ as sm))
+          | IrisEvent.Append(_, (AddCue _ as sm))
+          | IrisEvent.Append(_, (AddCueList _ as sm))
+          | IrisEvent.Append(_, (UpdatePin _ as sm))
+          | IrisEvent.Append(_, (UpdateCue _ as sm))
+          | IrisEvent.Append(_, (UpdateCueList _ as sm))
+          | IrisEvent.Append(_, (RemovePin _ as sm))
+          | IrisEvent.Append(_, (RemoveCue _ as sm))
+          | IrisEvent.Append(_, (RemoveCueList _ as sm)) ->
             check := !check + 1
             store.Dispatch sm
             server.Update Origin.Raft sm
           | _ -> ()
 
         use obs2 = server.Subscribe(apiHandler) //
-        use clientRegistered = new AutoResetEvent(false)
-        use clientSnapshot = new AutoResetEvent(false)
-        use clientUpdate = new AutoResetEvent(false)
 
         use client = ApiClient.create ctx srvr clnt
 
