@@ -1,4 +1,6 @@
-namespace Iris.Raft
+namespace rec Iris.Raft
+
+// * Imports
 
 open Iris.Core
 
@@ -16,16 +18,14 @@ open Iris.Serialization
 
 #endif
 
-//  _   _           _      ____  _        _
-// | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___
-// |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \
-// | |\  | (_) | (_| |  __/___) | || (_| | ||  __/
-// |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|
+// * RaftMemberState
 
 type RaftMemberState =
   | Joining                             // excludes mem from voting
   | Running                             // normal execution state
   | Failed                              // mem has failed for some reason
+
+  // ** ToString
 
   override self.ToString() =
     match self with
@@ -33,12 +33,16 @@ type RaftMemberState =
     | Running -> "Running"
     | Failed  -> "Failed"
 
+  // ** Parse
+
   static member Parse (str: string) =
     match str with
     | "Joining" -> Joining
     | "Running" -> Running
     | "Failed"  -> Failed
     | _         -> failwithf "MemberState: failed to parse %s" str
+
+  // ** TryParse
 
   static member TryParse (str: string) =
     try
@@ -49,12 +53,7 @@ type RaftMemberState =
         |> Error.asParseError "RaftMemberState.TryParse"
         |> Either.fail
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  // ** ToOffset
 
   member self.ToOffset () =
     match self with
@@ -62,8 +61,10 @@ type RaftMemberState =
       | Joining -> RaftMemberStateFB.JoiningFB
       | Failed  -> RaftMemberStateFB.FailedFB
 
+  // ** FromFB
+
   static member FromFB (fb: RaftMemberStateFB) =
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     match fb with
       | x when x = RaftMemberStateFB.JoiningFB -> Right Joining
       | x when x = RaftMemberStateFB.RunningFB -> Right Running
@@ -72,7 +73,7 @@ type RaftMemberState =
         sprintf "Could not parse RaftMemberState: %A" x
         |> Error.asParseError "RaftMemberState.FromFB"
         |> Either.fail
-#else
+    #else
     match fb with
       | RaftMemberStateFB.JoiningFB -> Right Joining
       | RaftMemberStateFB.RunningFB -> Right Running
@@ -81,8 +82,9 @@ type RaftMemberState =
         sprintf "Could not parse RaftMemberState: %A" x
         |> Error.asParseError "RaftMemberState.FromFB"
         |> Either.fail
+    #endif
 
-#endif
+// * RaftMembeYaml
 
 type RaftMemberYaml() =
   [<DefaultValue>] val mutable Id         : string
@@ -99,13 +101,9 @@ type RaftMemberYaml() =
   [<DefaultValue>] val mutable Voting     : bool
   [<DefaultValue>] val mutable VotedForMe : bool
 
-//  _   _           _
-// | \ | | ___   __| | ___
-// |  \| |/ _ \ / _` |/ _ \
-// | |\  | (_) | (_| |  __/
-// |_| \_|\___/ \__,_|\___|
+// * RaftMember
 
-and RaftMember =
+type RaftMember =
   { Id         : MemberId
     HostName   : Name
     IpAddr     : IpAddress
@@ -119,6 +117,8 @@ and RaftMember =
     NextIndex  : Index
     MatchIndex : Index }
 
+  // ** ToString
+
   override self.ToString() =
     sprintf "%s on %s (%s:%d) %s %s %s"
       (string self.Id)
@@ -129,7 +129,9 @@ and RaftMember =
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
-#if !FABLE_COMPILER
+  // ** ToYamlObject
+
+  #if !FABLE_COMPILER
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -138,7 +140,7 @@ and RaftMember =
   //   |_|\__,_|_| |_| |_|_|
 
   member self.ToYamlObject () =
-    let yaml = new RaftMemberYaml()
+    let yaml = RaftMemberYaml()
     yaml.Id         <- string self.Id
     yaml.HostName   <- unwrap self.HostName
     yaml.IpAddr     <- string self.IpAddr
@@ -152,6 +154,8 @@ and RaftMember =
     yaml.Voting     <- self.Voting
     yaml.VotedForMe <- self.VotedForMe
     yaml
+
+  // ** FromYamlObject
 
   static member FromYamlObject (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
@@ -171,14 +175,9 @@ and RaftMember =
              ; State      = state }
     }
 
-#endif
+  #endif
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  // ** ToOffset
 
   member mem.ToOffset (builder: FlatBufferBuilder) =
     let id = string mem.Id |> builder.CreateString
@@ -212,6 +211,8 @@ and RaftMember =
     RaftMemberFB.AddMatchIndex(builder, int mem.MatchIndex)
     RaftMemberFB.EndRaftMemberFB(builder)
 
+  // ** FromFB
+
   static member FromFB (fb: RaftMemberFB) : Either<IrisError, RaftMember> =
     either {
       let! state = RaftMemberState.FromFB fb.State
@@ -229,23 +230,24 @@ and RaftMember =
                MatchIndex = index fb.MatchIndex }
     }
 
+  // ** ToBytes
+
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> RaftMemberFB.GetRootAsRaftMemberFB
     |> RaftMember.FromFB
 
-// __   __              _   _____
-// \ \ / /_ _ _ __ ___ | | |_   _|   _ _ __   ___
-//  \ V / _` | '_ ` _ \| |   | || | | | '_ \ / _ \
-//   | | (_| | | | | | | |   | || |_| | |_) |  __/
-//   |_|\__,_|_| |_| |_|_|   |_| \__, | .__/ \___|
-//                               |___/|_|
+// * ConfigChangeYaml
 
 type ConfigChangeYaml() =
   [<DefaultValue>] val mutable ChangeType : string
   [<DefaultValue>] val mutable Member       : RaftMemberYaml
+
+  // ** MemberAdded
 
   static member MemberAdded (mem: RaftMemberYaml) =
     let yaml = new ConfigChangeYaml()
@@ -253,34 +255,28 @@ type ConfigChangeYaml() =
     yaml.Member <- mem
     yaml
 
+  // ** MemberRemoved
+
   static member MemberRemoved (mem: RaftMemberYaml) =
     let yaml = new ConfigChangeYaml()
     yaml.ChangeType <- "MemberRemoved"
     yaml.Member <- mem
     yaml
 
-//   ____             __ _        ____ _
-//  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
-// | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
-// | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
-//  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
-//                         |___/                         |___/
+// * ConfigChange
 
-and ConfigChange =
+type ConfigChange =
   | MemberAdded   of RaftMember
   | MemberRemoved of RaftMember
+
+  // ** ToString
 
   override self.ToString() =
     match self with
     | MemberAdded   n -> sprintf "MemberAdded (%s)"   (string n.Id)
     | MemberRemoved n ->sprintf "MemberRemoved (%s)" (string n.Id)
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     match self with
@@ -297,10 +293,11 @@ and ConfigChange =
         ConfigChangeFB.AddMember(builder, mem)
         ConfigChangeFB.EndConfigChangeFB(builder)
 
+  // ** FromFB
+
   static member FromFB (fb: ConfigChangeFB) : Either<IrisError,ConfigChange> =
     either {
-
-#if FABLE_COMPILER
+      #if FABLE_COMPILER
       let! mem = fb.Member |> RaftMember.FromFB
       match fb.Type with
       | x when x = ConfigChangeTypeFB.MemberAdded   -> return (MemberAdded   mem)
@@ -310,7 +307,7 @@ and ConfigChange =
           sprintf "Could not parse ConfigChangeTypeFB %A" x
           |> Error.asParseError "ConfigChange.FromFB"
           |> Either.fail
-#else
+      #else
       let nullable = fb.Member
       if nullable.HasValue then
         let! mem = RaftMember.FromFB nullable.Value
@@ -327,30 +324,30 @@ and ConfigChange =
           "Could not parse empty ConfigChangeFB payload"
           |> Error.asParseError "ConfigChange.FromFB"
           |> Either.fail
-#endif
+      #endif
     }
 
+  // ** ToBytes
 
   member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
 
   static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
-#if !FABLE_COMPILER
+  // ** ToYamlObject
 
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
+  #if !FABLE_COMPILER
 
   member self.ToYamlObject() =
     match self with
     | MemberAdded mem   -> mem |> Yaml.toYaml |> ConfigChangeYaml.MemberAdded
     | MemberRemoved mem -> mem |> Yaml.toYaml |> ConfigChangeYaml.MemberRemoved
+
+  // ** FromYamlObject
 
   static member FromYamlObject (yml: ConfigChangeYaml) =
     match yml.ChangeType with
@@ -367,17 +364,21 @@ and ConfigChange =
       |> Error.asParseError "ConfigChange.FromYamlObject"
       |> Either.fail
 
-#endif
+  #endif
+
+// * Member module
 
 [<RequireQualifiedAccess>]
 module Member =
 
+  // ** create
+
   let create id =
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     let hostname = Fable.Import.Browser.window.location.host
-#else
+    #else
     let hostname = Network.getHostName ()
-#endif
+    #endif
     { Id         = id
       HostName   = name hostname
       IpAddr     = IPv4Address "127.0.0.1"
@@ -391,40 +392,73 @@ module Member =
       NextIndex  = index 1
       MatchIndex = index 0 }
 
+  // ** isVoting
+
   let isVoting (mem : RaftMember) : bool =
     match mem.State, mem.Voting with
     | Running, true -> true
     | _ -> false
 
+  // ** setVoting
+
   let setVoting mem voting =
     { mem with Voting = voting }
+
+  // ** voteForMe
 
   let voteForMe mem vote =
     { mem with VotedForMe = vote }
 
+  // ** hasVotedForMe
+
   let hasVoteForMe mem = mem.VotedForMe
+
+  // ** setHasSufficientLogs
 
   let setHasSufficientLogs mem =
     { mem with
         State = Running
         Voting = true }
 
+  // ** hasSufficientLogs
+
   let hasSufficientLogs mem =
     mem.State = Running
 
+  // ** hostName
+
   let hostName mem = mem.HostName
+
+  // ** ipAddr
 
   let ipAddr mem = mem.IpAddr
 
-  let port mem = mem.Port
+  // ** port
+
+  let port (mem:RaftMember) = mem.Port
+
+  // ** canVote
 
   let canVote peer =
     isVoting peer && hasVoteForMe peer
 
+  // ** getId
+
   let getId mem = mem.Id
+
+  // ** getState
+
   let getState mem = mem.State
+
+  // ** getNextIndex
+
   let getNextIndex  mem = mem.NextIndex
+
+  // ** getMatchIndex
+
   let getMatchIndex mem = mem.MatchIndex
+
+  // ** added
 
   let private added oldmems newmems =
     let folder changes (mem: RaftMember) =
@@ -433,6 +467,8 @@ module Member =
         | _ -> MemberAdded(mem) :: changes
     Array.fold folder [] newmems
 
+  // ** removed
+
   let private removed oldmems newmems =
     let folder changes (mem: RaftMember) =
       match Array.tryFind (getId >> ((=) mem.Id)) newmems with
@@ -440,17 +476,25 @@ module Member =
         | _ -> MemberAdded(mem) :: changes
     Array.fold folder [] oldmems
 
+  // ** changes
+
   let changes (oldmems: RaftMember array) (newmems: RaftMember array) =
     []
     |> List.append (added oldmems newmems)
     |> List.append (removed oldmems newmems)
     |> Array.ofList
 
+  // ** setPort
+
   let setPort (port: Port) (mem: RaftMember) =
     { mem with Port = port }
 
+  // ** setGitPort
+
   let setGitPort (port: Port) (mem: RaftMember) =
     { mem with GitPort = port }
+
+  // ** setWsPort
 
   let setWsPort (port: Port) (mem: RaftMember) =
     { mem with WsPort = port }

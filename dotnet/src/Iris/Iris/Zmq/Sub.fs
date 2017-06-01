@@ -1,10 +1,14 @@
 namespace Iris.Zmq
 
+// * Imports
+
 open System
 open System.Threading
 open System.Collections.Concurrent
 open ZeroMQ
 open Iris.Core
+
+// * Sub
 
 [<AutoOpen>]
 module Sub =
@@ -16,6 +20,8 @@ module Sub =
   // ** Subscriptions
 
   type private Subscriptions = Subscriptions<byte array>
+
+  // ** Sub (type)
 
   /// ## Sub
   ///
@@ -41,6 +47,8 @@ module Sub =
     let mutable stopper: AutoResetEvent = new AutoResetEvent(false)
 
     let mutable subscriptions = Subscriptions()
+
+    // *** worker
 
     /// ## worker
     ///
@@ -127,14 +135,20 @@ module Sub =
 
       stopper.Set() |> ignore
 
+    // *** Status
+
     member self.Status
       with get () = status
+
+    // *** Stop
 
     member private self.Stop () =
       if not disposed then
         run <- false                                   // break loop by setting to false
         stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
                                                       // and return to caller
+
+    // *** Start
 
     member self.Start () : Either<IrisError,unit> =
       if not disposed then
@@ -154,6 +168,8 @@ module Sub =
         |> Error.asSocketError (tag "Start")
         |> Either.fail
 
+    // *** Subscribe
+
     member self.Subscribe (callback: byte array -> unit) =
       let listener = Observable.createListener subscriptions
       { new IObserver<byte array> with
@@ -161,6 +177,8 @@ module Sub =
           member self.OnError(error) = ()
           member self.OnNext(value) = callback value }
       |> listener.Subscribe
+
+    // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
