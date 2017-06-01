@@ -180,6 +180,7 @@ module Scenarios =
               ; MemberRemoved       = ignore
               ; Configured          = ignore
               ; StateChanged        = fun _ -> ignore
+              ; LeaderChanged       = ignore
               ; PersistVote         = ignore
               ; PersistTerm         = ignore
               ; PersistLog          = ignore

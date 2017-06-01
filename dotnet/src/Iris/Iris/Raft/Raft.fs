@@ -673,8 +673,9 @@ module rec Raft =
   // ** setLeader
 
   /// Set States CurrentLeader field to supplied MemberId.
-  let setLeader (leader : MemberId option) (state: RaftValue) =
+  let setLeader (leader : MemberId option) (cbs: IRaftCallbacks) (state: RaftValue) =
     if leader <> state.CurrentLeader then
+      cbs.LeaderChanged leader
       { state with CurrentLeader = leader }
     else state
 
@@ -682,7 +683,9 @@ module rec Raft =
 
   /// Set States CurrentLeader field to supplied MemberId. Monadic action.
   let setLeaderM (leader : MemberId option) =
-    setLeader leader |> modify
+    read >>= fun cbs ->
+      setLeader leader cbs
+      |> modify
 
   // ** setNextIndex
 

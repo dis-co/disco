@@ -105,6 +105,7 @@ type ClockEvent =
 type IrisEvent =
   | Started         of tipe:ServiceType
   | Configured      of members:RaftMember array
+  | LeaderChanged   of leader:MemberId option
   | StateChanged    of oldstate:RaftState * newstate:RaftState
   | PersistSnapshot of log:RaftLogEntry
   | RaftError       of error:IrisError
@@ -121,6 +122,7 @@ type IrisEvent =
       match ev with
       | Started         _
       | Configured      _
+      | LeaderChanged   _
       | StateChanged    _
       | PersistSnapshot _
       | RaftError       _
@@ -147,6 +149,7 @@ type IrisEvent =
 
       | Configured      _
       | StateChanged    _
+      | LeaderChanged   _
       | PersistSnapshot _
       | RaftError       _                                    -> Process
 

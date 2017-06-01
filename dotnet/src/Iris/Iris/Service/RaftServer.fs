@@ -305,9 +305,16 @@ module Raft =
             |> Msg.Notify
             |> agent.Post
 
+        member self.LeaderChanged newleader =
+          Tracing.trace (tag "leaderChanged") <| fun () ->
+            newleader
+            |> IrisEvent.LeaderChanged
+            |> Msg.Notify
+            |> agent.Post
+
         member self.PersistVote mem =
           Tracing.trace (tag "persistVote") <| fun () ->
-            printfn "PersistVote"
+            ignore mem
 
   //     try
   //       self.State
@@ -325,7 +332,8 @@ module Raft =
 
         member self.PersistTerm term =
           Tracing.trace (tag "persistTerm") <| fun () ->
-            printfn "PersistTerm"
+            ignore term
+
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -342,12 +350,11 @@ module Raft =
 
         member self.PersistLog log =
           Tracing.trace (tag "persistLog") <| fun () ->
-            printfn "PersistLog"
+            ignore log
 
         member self.DeleteLog log =
           Tracing.trace (tag "deleteLog") <| fun () ->
-            printfn "DeleteLog"
-
+            ignore log
         }
 
   //  ____        __ _

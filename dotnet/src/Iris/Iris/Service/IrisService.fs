@@ -285,7 +285,7 @@ module IrisService =
       Some { Member = leader; Socket = socket }
     | Left error ->
       error
-      |> sprintf "error creating connection for leader: %O"
+      |> String.format "error creating connection for leader: {0}"
       |> Logger.err (tag "makeLeader")
       None
 
@@ -322,6 +322,34 @@ module IrisService =
     Async.Start(loop(), cts.Token)
     Some (cts :> IDisposable)
 
+  // ** leaderChanged
+
+  let private leaderChanged (state: IrisState) (leader: MemberId option) (agent: IrisAgent) =
+    leader
+    |> String.format "Leader changed to {0}"
+    |> Logger.debug (tag "leaderChanged")
+
+    Option.iter dispose state.Leader
+    Option.iter dispose state.GitPoller
+
+    // create redirect socket
+    if Option.isSome leader then
+      match state.RaftServer.Leader with
+      | Some leader ->
+        let makePeerSocket = Client.create state.Context
+        { state with
+            Leader = makeLeader leader makePeerSocket agent
+            GitPoller = makeGitPoller state leader agent }
+      | None ->
+        "Could not start re-direct socket: no leader"
+        |> Logger.debug (tag "leaderChanged")
+        { state with
+            Leader = None
+            GitPoller = None }
+    else
+      { state with
+          Leader = None
+          GitPoller = None }
 
   // ** stateChanged
 
@@ -332,27 +360,7 @@ module IrisService =
     newstate
     |> sprintf "Raft state changed from %A to %A" oldstate
     |> Logger.debug (tag "stateChanged")
-    // create redirect socket
-    match oldstate, newstate with
-    | _, Follower ->
-      Option.iter dispose state.Leader
-      match state.RaftServer.Leader with
-      | Some leader ->
-        let makePeerSocket = Client.create state.Context
-        { state with
-            Leader = makeLeader leader makePeerSocket agent
-            GitPoller = makeGitPoller state leader agent }
-      | None ->
-        "Could not start re-direct socket: no leader"
-        |> Logger.debug (tag "stateChanged")
-        state
-    | _, Leader ->
-      Option.iter dispose state.Leader
-      Option.iter dispose state.GitPoller
-      { state with
-          Leader = None
-          GitPoller = None }
-    | _ -> state
+    state
 
   // ** retrieveSnapshot
 
@@ -406,7 +414,7 @@ module IrisService =
     |> Binary.encode
     |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
     |> leader.Socket.Request
-    |> Either.mapError (sprintf "request error: %O" >> Logger.err (tag "requestAppend"))
+    |> Either.mapError (String.format "request error: {0}" >> Logger.err (tag "requestAppend"))
     |> ignore
 
     //   match result with
@@ -419,12 +427,12 @@ module IrisService =
     //       impl newleader (count + 1)
     //     else
     //       max
-    //       |> sprintf "Maximum re-direct count reached (%d). Appending failed"
+    //       |> String.format "Maximum re-direct count reached ({0}). Appending failed"
     //       |> Error.asRaftError (tag "requestAppend")
     //       |> Either.fail
     //   | Right other ->
     //     other
-    //     |> sprintf "Received unexpected response from server: %A"
+    //     |> String.format "Received unexpected response from server: {0}"
     //     |> Error.asRaftError (tag "requestAppend")
     //     |> Either.fail
     //   | Left error ->
@@ -587,7 +595,7 @@ module IrisService =
     //  \____|_|\__|
 
     | Git (GitEvent.Started pid) ->
-      sprintf "Git daemon started with PID: %d" pid
+      String.format "Git daemon started with PID: {0}" pid
       |> Logger.debug (tag "handleGitEvent")
       state
 
@@ -598,7 +606,7 @@ module IrisService =
 
     | Git (GitEvent.Failed reason) ->
       reason
-      |> sprintf "Git daemon failed. %A Attempting to restart."
+      |> String.format "Git daemon failed. {0} Attempting to restart."
       |> Logger.debug (tag "handleGitEvent")
       restartGitServer state agent
 
@@ -618,7 +626,7 @@ module IrisService =
     | Configured mems ->
       mems
       |> Array.map (Member.getId >> string)
-      |> Array.fold (fun s id -> sprintf "%s %s" s  id) "New Configuration with: "
+      |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
       |> Logger.debug (tag "processEvent")
       state
 
@@ -627,6 +635,9 @@ module IrisService =
 
     | StateChanged (ost, nst) ->
       stateChanged state ost nst agent
+
+    | LeaderChanged leader ->
+      leaderChanged state leader agent
 
     | RaftError _ -> state               // ?
 
@@ -768,7 +779,7 @@ module IrisService =
       let agent = new IrisAgent(loop store, cts.Token)
 
       // set up the error handler so we can address any problems properly
-      agent.Error.Add (sprintf "error on agent loop: %O" >> Logger.err (tag "loop"))
+      agent.Error.Add (String.format "error on agent loop: {0}" >> Logger.err (tag "loop"))
 
       agent.Start()                     // start the agent
 
@@ -966,7 +977,7 @@ module IrisService =
           //     | Right Reply.Ok -> Right ()
           //     | Left error -> Left error
           //     | Right other ->
-          //       sprintf "Unexpected response from IrisAgent: %A" other
+          //       String.format "Unexpected response from IrisAgent: {0}" other
           //       |> Error.asOther (tag "LeaveCluster")
           //       |> Either.fail
 
@@ -976,7 +987,7 @@ module IrisService =
           //     | Right Reply.Ok -> Right ()
           //     | Left error  -> Left error
           //     | Right other ->
-          //       sprintf "Unexpected response from IrisAgent: %A" other
+          //       String.format "Unexpected response from IrisAgent: {0}" other
           //       |> Error.asOther (tag "JoinCluster")
           //       |> Either.fail
 
