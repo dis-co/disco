@@ -588,14 +588,11 @@ module rec Raft =
   // ** setState
 
   /// Set current RaftState to supplied state.
-  let setState (rs : RaftState) (env: IRaftCallbacks) (state: RaftValue) =
-    env.StateChanged state.State rs
-    { state with
-        State = rs
-        CurrentLeader =
-          if rs = Leader
-          then Some(state.Member.Id)
-          else state.CurrentLeader }
+  let setState (newstate: RaftState) (env: IRaftCallbacks) (state: RaftValue) =
+    if newstate <> state.State then
+      env.StateChanged state.State newstate
+      { state with State = newstate }
+    else state
 
   // ** setStateM
 
@@ -677,7 +674,9 @@ module rec Raft =
 
   /// Set States CurrentLeader field to supplied MemberId.
   let setLeader (leader : MemberId option) (state: RaftValue) =
-    { state with CurrentLeader = leader }
+    if leader <> state.CurrentLeader then
+      { state with CurrentLeader = leader }
+    else state
 
   // ** setLeaderM
 
@@ -1238,7 +1237,7 @@ module rec Raft =
   /////////////////////////////////////////////////////////////////////////////
 
   /// Preliminary Checks on the AppendEntry value
-  let private makeResponse (msg : AppendEntries) =
+  let private makeResponse (nid: MemberId option) (msg: AppendEntries) =
     raft {
       let! state = get
 
@@ -1261,12 +1260,14 @@ module rec Raft =
       let newLeader = isLeader state && numMembers state = 1
       if (candidate || newLeader) && currentTerm state = msg.Term then
         do! voteFor None
+        do! setLeaderM nid
         do! becomeFollower ()
         return Right resp
       // 2) Else, if the current mem's term value is lower than the requests
       // term, we take become follower and set our own term to higher value.
       elif currentTerm state < msg.Term then
         do! setTermM msg.Term
+        do! setLeaderM nid
         do! becomeFollower ()
         return Right { resp with Term = msg.Term }
       // 3) Else, finally, if the msg's Term is lower than our own we reject the
@@ -1475,7 +1476,7 @@ module rec Raft =
                      (Option.get msg.Entries |> LogEntry.depth)    // let the world know
         do! debug "receiveAppendEntries" str
 
-      let! result = makeResponse msg  // check terms et al match, fail otherwise
+      let! result = makeResponse nid msg  // check terms et al match, fail otherwise
 
       match result with
       | Right resp ->
@@ -1532,6 +1533,7 @@ module rec Raft =
               let str = sprintf "Failed: (term: %d) < (resp.Term: %d)" term resp.Term
               do! error "receiveAppendEntriesResponse" str
               do! setTermM resp.Term
+              do! setLeaderM (Some nid)
               do! becomeFollower ()
             elif term <> resp.Term then
               let str = sprintf "Failed: (term: %d) != (resp.Term: %d)" term resp.Term
@@ -1900,6 +1902,7 @@ module rec Raft =
                 string state.Member.Id
                 |> sprintf "self (%s) not included in new configuration"
               do! debug "applyEntries" str
+              do! setLeaderM None
               do! becomeFollower ()
 
           let! state = get
@@ -2141,6 +2144,7 @@ module rec Raft =
       do! info "becomeLeader" "becoming leader"
       let nextidx = currentIndex state + 1<index>
       do! setStateM Leader
+      do! setLeaderM (Some state.Member.Id)
       do! maybeSetIndex state.Member.Id nextidx (index 0)
       do! sendAllAppendEntriesM ()
     }
@@ -2217,6 +2221,7 @@ module rec Raft =
                 state.CurrentTerm
               |> debug "receiveVoteResponse"
           do! setTermM vote.Term
+          do! setLeaderM (Some nid)
           do! becomeFollower ()
 
         /// If the vote term is smaller than current term it is considered an
@@ -2431,12 +2436,13 @@ module rec Raft =
   //                                   |_|                     //
   ///////////////////////////////////////////////////////////////
 
-  let private maybeResetFollower (vote : VoteRequest) =
+  let private maybeResetFollower (nid: MemberId) (vote : VoteRequest) =
     raft {
       let! term = currentTermM ()
       if term < vote.Term then
         do! debug "maybeResetFollower" "term < vote.Term resetting"
         do! setTermM vote.Term
+        do! setLeaderM (Some nid)
         do! becomeFollower ()
         do! voteFor None
     }
@@ -2452,7 +2458,6 @@ module rec Raft =
           let! candidate = isCandidateM ()
           if not leader && not candidate then
             do! voteForId vote.Candidate.Id
-            do! setLeaderM None
             do! setTimeoutElapsedM 0<ms>
             let! term = currentTermM ()
             return { Term    = term
@@ -2477,24 +2482,24 @@ module rec Raft =
     raft {
       let! mem = getMemberM nid
       match mem with
-        | Some _ ->
-          do! maybeResetFollower vote
-          let! result = processVoteRequest vote
+      | Some _ ->
+        do! maybeResetFollower nid vote
+        let! result = processVoteRequest vote
 
-          let str = sprintf "mem %s requested vote. granted: %b"
-                      (string nid)
-                      result.Granted
-          do! info "receiveVoteRequest" str
+        let str = sprintf "mem %s requested vote. granted: %b"
+                    (string nid)
+                    result.Granted
+        do! info "receiveVoteRequest" str
 
-          return result
-        | _ ->
-          do! info "receiveVoteRequest" <| sprintf "requested denied. NoMember %s" (string nid)
+        return result
+      | _ ->
+        do! info "receiveVoteRequest" <| sprintf "requested denied. NoMember %s" (string nid)
 
-          let! term = currentTermM ()
-          let err = RaftError (tag "processVoteRequest", "Not Voting State")
-          return { Term    = term
-                   Granted = false
-                   Reason  = Some err }
+        let! trm = currentTermM ()
+        let err = RaftError (tag "processVoteRequest", "Not Voting State")
+        return { Term    = trm
+                 Granted = false
+                 Reason  = Some err }
     }
 
   // ** startElection

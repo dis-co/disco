@@ -151,8 +151,10 @@ module IrisServiceTests =
       |> noError
 
   let test_ensure_iris_server_clones_changes_from_leader =
-    testCase "ensure iris server clones changes from leader" <| fun _ ->
+    ftestCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
+
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
@@ -245,6 +247,14 @@ module IrisServiceTests =
 
         mkCue()
         |> AddCue
+        |> leader.Append
+
+        do! waitOrDie "appendDone" appendDone
+        appendDone.Reset() |> ignore
+        do! waitOrDie "appendDone" appendDone
+
+        AppCommand.SaveProject
+        |> Command
         |> leader.Append
 
         do! waitOrDie "appendDone" appendDone

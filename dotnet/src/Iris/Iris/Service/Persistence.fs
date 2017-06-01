@@ -131,48 +131,133 @@ module Persistence =
   /// - project: IrisProject to work on
   /// - sm: StateMachine command
   ///
-  /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
+  /// Returns: Either<IrisError, FileInfo * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
-    let path = state.Project.Path
     match sm with
-    | AddCue            cue  -> Asset.saveWithCommit   path signature cue
-    | UpdateCue         cue  -> Asset.saveWithCommit   path signature cue
-    | RemoveCue         cue  -> Asset.deleteWithCommit path signature cue
-    | AddCueList    cuelist  -> Asset.saveWithCommit   path signature cuelist
-    | UpdateCueList cuelist  -> Asset.saveWithCommit   path signature cuelist
-    | RemoveCueList cuelist  -> Asset.deleteWithCommit path signature cuelist
-    | AddCuePlayer    player -> Asset.saveWithCommit   path signature player
-    | UpdateCuePlayer player -> Asset.saveWithCommit   path signature player
-    | RemoveCuePlayer player -> Asset.deleteWithCommit path signature player
-    | AddPinGroup     group  -> Asset.saveWithCommit   path signature group
-    | UpdatePinGroup  group  -> Asset.saveWithCommit   path signature group
-    | RemovePinGroup  group  -> Asset.deleteWithCommit path signature group
-    | AddUser          user  -> Asset.saveWithCommit   path signature user
-    | UpdateUser       user  -> Asset.saveWithCommit   path signature user
-    | RemoveUser       user  -> Asset.deleteWithCommit path signature user
-    | AddMember           _  -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember        _  -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember        _  -> Asset.deleteWithCommit path signature state.Project
-    | UpdateProject project  -> Asset.saveWithCommit   path signature project
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
+
+    | AddCue    cue
+    | UpdateCue cue -> Asset.save state.Project.Path cue
+    | RemoveCue cue ->
+      cue
+      |> Asset.path
+      |> Asset.delete
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | AddCueList    cuelist
+    | UpdateCueList cuelist  -> Asset.save state.Project.Path cuelist
+    | RemoveCueList cuelist ->
+      cuelist
+      |> Asset.path
+      |> Asset.delete
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | AddCuePlayer    player
+    | UpdateCuePlayer player -> Asset.save state.Project.Path player
+    | RemoveCuePlayer player ->
+      player
+      |> Asset.path
+      |> Asset.delete
+
+    //  ____  _        ____
+    // |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+    // | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+    // |  __/| | | | | |_| | | | (_) | |_| | |_) |
+    // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+    //                                     |_|
+
+    | AddPinGroup    group
+    | UpdatePinGroup group -> Asset.save state.Project.Path group
+    | RemovePinGroup group ->
+      group
+      |> Asset.path
+      |> Asset.delete
+
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | AddUser    user
+    | UpdateUser user -> Asset.save state.Project.Path user
+    | RemoveUser user ->
+      user
+      |> Asset.path
+      |> Asset.delete
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+    | AddMember     _
+    | RemoveMember  _
+    | UpdateProject _ -> Asset.save state.Project.Path state.Project
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
+
     | AddPin    pin
     | UpdatePin pin -> either {
         let! group =
           State.tryFindPinGroup pin.PinGroup state
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.saveWithCommit path signature group
+        return! Asset.save state.Project.Path group
       }
     | RemovePin pin -> either {
         let! group =
           State.tryFindPinGroup pin.PinGroup state
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.saveWithCommit path signature group
+        return! Asset.save state.Project.Path group
       }
-    | _ -> either {
-        let! repo = state.Project |> Project.repository
-        let commits = Git.Repo.commits repo
-        return! Git.Repo.elementAt 0 commits
-      }
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | _ -> Either.nothing
+
+  // ** commitChanges
+
+  /// ## commitChanges
+  ///
+  /// Commit all changes to disk
+  ///
+  /// ### Signature:
+  /// - project: IrisProject to work on
+  /// - sm: StateMachine command
+  ///
+  /// Returns: Either<IrisError, Commit>
+  let commitChanges (state: State) =
+    either {
+      let signature = User.Admin.Signature
+      let! repo = state.Project |> Project.repository
+      do! Git.Repo.stageAll repo
+      return! Git.Repo.commit repo "Project changes committed." signature
+    }
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
@@ -242,10 +327,23 @@ module Persistence =
         | MergeStatus.Conflicts ->
           "Automatic merge failed with conflicts. Please resolve conflicts manually."
           |> Logger.err (tag "updateRepo")
-        | _ ->
-          merge.Commit.Sha
-          |> sprintf "Automatic merge successful: %s"
+        | MergeStatus.UpToDate ->
+          "Repository already up-to-date"
           |> Logger.debug (tag "updateRepo")
+        | MergeStatus.FastForward
+        | MergeStatus.NonFastForward as status ->
+          if isNull merge.Commit then
+            status
+            |> sprintf "Automatic merge successful: %O"
+            |> Logger.debug (tag "updateRepo")
+          else
+            merge.Commit.Sha
+            |> sprintf "Automatic merge successful: %s"
+            |> Logger.debug (tag "updateRepo")
+        | other ->
+          other
+          |> String.format "unknown merge status: %A"
+          |> Logger.err (tag "updateRepo")
       | Left error ->
         error
         |> string

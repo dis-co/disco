@@ -118,6 +118,7 @@ module IrisService =
       Status         : ServiceStatus
       Store          : Store
       Leader         : Leader option
+      GitPoller      : IDisposable option
       ApiServer      : IApiServer
       GitServer      : IGitServer
       RaftServer     : IRaftServer
@@ -134,6 +135,7 @@ module IrisService =
         self.Subscriptions.Clear()
         disposeAll self.Disposables
         Option.iter dispose self.Leader
+        Option.iter dispose self.GitPoller
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
@@ -235,44 +237,37 @@ module IrisService =
     if state.RaftServer.IsLeader then
       match sm.PersistenceStrategy with
       | PersistenceStrategy.Save ->
-        // FIXME: should only save, but not commit at this point
         match persistEntry state.Store.State sm with
-        | Right commit ->
-          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
+        | Right () ->
+          string sm
+          |> String.format "Successfully persisted command {0} disc"
           |> Logger.debug (tag "persistLog")
-          state
         | Left error ->
-          sprintf "Error persisting command: %A" error
+          error |> String.format "Error persisting command: {0}"
           |> Logger.err (tag "persistLog")
-          state
+        state
       | PersistenceStrategy.Commit ->
         match persistEntry state.Store.State sm with
-        | Right commit ->
-          sprintf "Persisted command %s in commit: %s" (string sm) commit.Sha
+        | Right () ->
+          string sm
+          |> String.format "Successfully persisted command {0} disc"
           |> Logger.debug (tag "persistLog")
-          state
-        | Left error ->
-          sprintf "Error persisting command: %A" error
-          |> Logger.err (tag "persistLog")
-          state
-      | PersistenceStrategy.Ignore -> state
-    else
-      let raft = state.RaftServer.Raft
-      let mem =
-        raft
-        |> Raft.currentLeader
-        |> Option.bind (flip Raft.getMember raft)
-
-      match mem with
-      | Some leader ->
-        match updateRepo state.Store.State.Project leader with
-        | Right () -> ()
         | Left error ->
           error
-          |> string
+          |> String.format "Error persisting command: {0}"
           |> Logger.err (tag "persistLog")
-      | None -> ()
-      state
+        match commitChanges state.Store.State with
+        | Right commit ->
+          commit.Sha
+          |> String.format "Successfully committed changes in {0}"
+          |> Logger.debug (tag "persistLog")
+        | Left error ->
+          error
+          |> String.format "Error committing changes to disk: {0}"
+          |> Logger.err (tag "persistLog")
+        state
+      | PersistenceStrategy.Ignore -> state
+    else state                          // pulling is done by polling (no pun intended ;))
 
   // ** makeLeader
 
@@ -294,6 +289,40 @@ module IrisService =
       |> Logger.err (tag "makeLeader")
       None
 
+  // ** makeGitPoller
+
+  let private makeGitPoller (state: IrisState) (leader: RaftMember) (agent: IrisAgent) =
+    let project = state.Store.State.Project
+    // resonably safe, because we already established that the project exits
+    let repo = Project.repository project |> Either.get
+    let uri = Uri.localGitUri (unwrap project.Name) leader
+    let cts = new CancellationTokenSource()
+
+    let rec loop () =
+      async {
+        do! Async.Sleep 500
+
+        do! either {
+              let local = Git.Repo.refs repo
+              let! remote = Git.lsRemote (unwrap uri)
+              printfn "local: %O" local
+              printfn "remote: %O" remote
+              return ()
+            }
+            |> Either.mapError (string >> Logger.err (tag "makeGitPoller"))
+            |> ignore
+            |> async.Return
+
+        return! loop()
+      }
+
+    uri
+    |> String.format "starting git repository synchronization task: {0}"
+    |> Logger.info (tag "makeGitPoller")
+    Async.Start(loop(), cts.Token)
+    Some (cts :> IDisposable)
+
+
   // ** stateChanged
 
   let private stateChanged (state: IrisState)
@@ -310,14 +339,19 @@ module IrisService =
       match state.RaftServer.Leader with
       | Some leader ->
         let makePeerSocket = Client.create state.Context
-        { state with Leader = makeLeader leader makePeerSocket agent }
+        { state with
+            Leader = makeLeader leader makePeerSocket agent
+            GitPoller = makeGitPoller state leader agent }
       | None ->
         "Could not start re-direct socket: no leader"
         |> Logger.debug (tag "stateChanged")
         state
     | _, Leader ->
       Option.iter dispose state.Leader
-      { state with Leader = None }
+      Option.iter dispose state.GitPoller
+      { state with
+          Leader = None
+          GitPoller = None }
     | _ -> state
 
   // ** retrieveSnapshot
@@ -814,6 +848,7 @@ module IrisService =
                 { Member         = mem
                   Machine        = iris.Machine
                   Leader         = None
+                  GitPoller      = None
                   Status         = ServiceStatus.Starting
                   Store          = Store(state)
                   Context        = context
