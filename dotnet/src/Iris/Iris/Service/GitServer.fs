@@ -212,7 +212,7 @@ module Git =
       |> Either.succeed
 
     | Connection (pid, ip, prt) ->
-      Pull(pid, ip, port prt)
+      GitEvent.Connection(pid, ip, port prt)
       |> Either.succeed
 
     | Fatal reason ->

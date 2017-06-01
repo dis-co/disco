@@ -6,6 +6,7 @@ module Iris.Core.Interfaces
 open System
 open Iris.Core
 open Iris.Raft
+open LibGit2Sharp
 
 // * IAgentStore
 
@@ -45,11 +46,13 @@ type DispatchStrategy =
 
 // * GitEvent
 
+[<NoEquality;NoComparison>]
 type GitEvent =
-  | Started of pid:int
-  | Exited  of code:int
-  | Failed  of reason:string
-  | Pull    of pid:int * address:string * port:Port
+  | Started    of pid:int
+  | Exited     of code:int
+  | Failed     of reason:string
+  | Connection of pid:int * address:string * port:Port
+  | Pull       of MergeStatus * Commit option
 
   // ** DispatchEvent
 

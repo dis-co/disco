@@ -313,7 +313,7 @@ module Persistence =
   /// - leader: RaftMember who is currently leader of the cluster
   ///
   /// Returns: Either<IrisError, unit>
-  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
+  let updateRepo (project: IrisProject) (leader: RaftMember) =
     either {
       let! repo = Project.repository project
       let! remote = getRemote project repo leader
@@ -323,31 +323,18 @@ module Persistence =
       let result = Git.Repo.pull repo remote User.Admin.Signature
       match result with
       | Right merge ->
-        match merge.Status with
-        | MergeStatus.Conflicts ->
-          "Automatic merge failed with conflicts. Please resolve conflicts manually."
-          |> Logger.err (tag "updateRepo")
-        | MergeStatus.UpToDate ->
-          "Repository already up-to-date"
-          |> Logger.debug (tag "updateRepo")
-        | MergeStatus.FastForward
-        | MergeStatus.NonFastForward as status ->
-          if isNull merge.Commit then
-            status
-            |> sprintf "Automatic merge successful: %O"
-            |> Logger.debug (tag "updateRepo")
-          else
-            merge.Commit.Sha
-            |> sprintf "Automatic merge successful: %s"
-            |> Logger.debug (tag "updateRepo")
-        | other ->
-          other
-          |> String.format "unknown merge status: %A"
-          |> Logger.err (tag "updateRepo")
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "updateRepo")
+        return
+          match merge.Status with
+          | MergeStatus.Conflicts -> merge.Status, None
+          | MergeStatus.UpToDate  -> merge.Status, None
+          | MergeStatus.FastForward
+          | MergeStatus.NonFastForward as status ->
+            if isNull merge.Commit then
+              merge.Status, None
+            else
+              merge.Status, Some merge.Commit
+          | other -> merge.Status, None
+      | Left error -> return! Either.fail error
     }
 
 #endif

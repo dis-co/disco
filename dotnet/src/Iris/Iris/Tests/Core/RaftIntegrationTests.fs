@@ -37,12 +37,12 @@ module RaftIntegrationTests =
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort (port 8000us)
+          |> Member.setRaftPort (port 8000us)
 
         let mem2 =
           machine2.MachineId
           |> Member.create
-          |> Member.setPort (port 8001us)
+          |> Member.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
@@ -94,7 +94,7 @@ module RaftIntegrationTests =
         let mem =
           machine.MachineId
           |> Member.create
-          |> Member.setPort port
+          |> Member.setRaftPort port
 
         let site =
           { ClusterConfig.Default with
@@ -163,12 +163,12 @@ module RaftIntegrationTests =
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort (port 8000us)
+          |> Member.setRaftPort (port 8000us)
 
         let mem2 =
           machine2.MachineId
           |> Member.create
-          |> Member.setPort (port 8001us)
+          |> Member.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
@@ -227,7 +227,7 @@ module RaftIntegrationTests =
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort (port 8000us)
+          |> Member.setRaftPort (port 8000us)
 
         let site =
           { ClusterConfig.Default with
@@ -309,12 +309,12 @@ module RaftIntegrationTests =
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort (port 8000us)
+          |> Member.setRaftPort (port 8000us)
 
         let mem2 =
           machine2.MachineId
           |> Member.create
-          |> Member.setPort (port 8001us)
+          |> Member.setRaftPort (port 8001us)
 
         let site1 =
           { ClusterConfig.Default with

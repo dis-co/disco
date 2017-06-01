@@ -429,14 +429,6 @@ module Member =
 
   let hostName mem = mem.HostName
 
-  // ** ipAddr
-
-  let ipAddr mem = mem.IpAddr
-
-  // ** port
-
-  let port (mem:RaftMember) = mem.Port
-
   // ** canVote
 
   let canVote peer =
@@ -484,9 +476,17 @@ module Member =
     |> List.append (removed oldmems newmems)
     |> Array.ofList
 
-  // ** setPort
+  // ** ipAddr
 
-  let setPort (port: Port) (mem: RaftMember) =
+  let ipAddr mem = mem.IpAddr
+
+  // ** raftPort
+
+  let raftPort (mem:RaftMember) = mem.Port
+
+  // ** setRaftPort
+
+  let setRaftPort (port: Port) (mem: RaftMember) =
     { mem with Port = port }
 
   // ** setGitPort

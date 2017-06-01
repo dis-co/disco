@@ -158,6 +158,7 @@ module IrisServiceTests =
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
+        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -184,6 +185,7 @@ module IrisServiceTests =
         use oobs1 =
           (function
             | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -218,6 +220,7 @@ module IrisServiceTests =
         use oobs2 =
           (function
             | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -260,6 +263,8 @@ module IrisServiceTests =
         do! waitOrDie "appendDone" appendDone
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
+
+        do! waitOrDie "pullDone" pullDone
 
         dispose service1
         dispose service2

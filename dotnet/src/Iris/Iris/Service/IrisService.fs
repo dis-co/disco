@@ -303,10 +303,51 @@ module IrisService =
         do! Async.Sleep 500
 
         do! either {
-              let local = Git.Repo.refs repo
-              let! remote = Git.lsRemote (unwrap uri)
-              printfn "local: %O" local
-              printfn "remote: %O" remote
+              let localRefs = Git.Repo.refs repo
+              let! remoteRefs = Git.lsRemote (unwrap uri)
+
+              let currentBranch =
+                repo
+                |> Git.Branch.current
+                |> Git.Branch.canonicalName
+
+              let local =
+                localRefs
+                |> Seq.filter (fun (ref: Reference) -> ref.CanonicalName = currentBranch)
+                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
+                |> Seq.tryHead
+
+              let remote =
+                remoteRefs
+                |> Seq.filter
+                  (fun (ref: Reference) ->
+                    ref.IsLocalBranch && ref.CanonicalName = currentBranch)
+                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
+                |> Seq.tryHead
+
+              do! match local, remote with
+                  | Some localRef, Some remoteRef when localRef <> remoteRef ->
+                    match updateRepo project leader with
+                    | Right (status, commit) ->
+                      GitEvent.Pull(status, commit)
+                      |> IrisEvent.Git
+                      |> Msg.Event
+                      |> agent.Post
+                    | Left error ->
+                      error
+                      |> string
+                      |> Logger.err (tag "makeGitPoller")
+                  | None, _ ->
+                    currentBranch
+                    |> String.format "current local branch ({0}) has no refs"
+                    |> Logger.err (tag "makeGitPoller")
+                  | _, None ->
+                    currentBranch
+                    |> String.format "remote has has no refs for current branch ({0}) "
+                    |> Logger.err (tag "makeGitPoller")
+                  | _ -> ()                  // remote and local branches are at the same refs
+                  |> Either.ignore
+
               return ()
             }
             |> Either.mapError (string >> Logger.err (tag "makeGitPoller"))
@@ -319,8 +360,14 @@ module IrisService =
     uri
     |> String.format "starting git repository synchronization task: {0}"
     |> Logger.info (tag "makeGitPoller")
+
     Async.Start(loop(), cts.Token)
-    Some (cts :> IDisposable)
+    Some ({ new IDisposable with
+              member self.Dispose() =
+                try
+                  cts.Cancel()
+                  dispose cts
+                with | _ -> () })
 
   // ** leaderChanged
 
@@ -595,24 +642,53 @@ module IrisService =
     //  \____|_|\__|
 
     | Git (GitEvent.Started pid) ->
-      String.format "Git daemon started with PID: {0}" pid
+      String.format "git-daemon started with PID: {0}" pid
       |> Logger.debug (tag "handleGitEvent")
       state
 
     | Git (GitEvent.Exited _) ->
-      "Git daemon exited. Attempting to restart."
+      "git-daemon exited. Attempting to restart."
       |> Logger.debug (tag "handleGitEvent")
       restartGitServer state agent
 
     | Git (GitEvent.Failed reason) ->
       reason
-      |> String.format "Git daemon failed. {0} Attempting to restart."
+      |> String.format "git-daemon failed. {0} Attempting to restart."
       |> Logger.debug (tag "handleGitEvent")
       restartGitServer state agent
 
-    | Git (GitEvent.Pull (_, addr, port)) ->
-      sprintf "Client %s:%d pulled updates from me" addr port
+    | Git (GitEvent.Connection(_, addr, port)) ->
+      sprintf "git-daemon connection from %s:%d" addr port
       |> Logger.debug (tag "handleGitEvent")
+      state
+
+    | Git (GitEvent.Pull(MergeStatus.UpToDate, _)) ->
+      "Repository already up-to-date"
+      |> Logger.debug (tag "handleGitEvent")
+      state
+
+    | Git (GitEvent.Pull(MergeStatus.Conflicts, _)) ->
+      "Automatic merge failed with conflicts. Please resolve conflicts manually."
+      |> Logger.err (tag "handleGitEvent")
+      state
+
+    | Git (GitEvent.Pull((MergeStatus.NonFastForward as status), commit))
+    | Git (GitEvent.Pull((MergeStatus.FastForward    as status), commit)) ->
+      match commit with
+      | Some commit ->
+        commit.Sha
+        |> sprintf "Automatic merge successful in: %s"
+        |> Logger.debug (tag "handleGitEvent")
+      | None ->
+        status
+        |> sprintf "Automatic merge successful: %O"
+        |> Logger.debug (tag "handleGitEvent")
+      state
+
+    | Git (GitEvent.Pull(other, _)) ->
+      other
+      |> String.format "unknown merge status: %A"
+      |> Logger.err (tag "handleGitEvent")
       state
 
     | Status status -> state
