@@ -928,18 +928,18 @@ module IrisService =
                       member self.PrepareSnapshot () = Some store.State.Store.State
                       member self.RetrieveSnapshot () = retrieveSnapshot store.State
                   }
+
                 let! socketServer = WebSocketServer.create mem
                 let! apiServer = ApiServer.create context mem state.Project.Id {
                     new IApiServerCallbacks with
                       member self.PrepareSnapshot () = store.State.Store.State
                   }
-                let gitServer = GitServer.create mem state.Project.Path // IMPORTANT: use the
-                                                                        // projects path here, not
-                                                                        // the path to project.yml
+
+                // IMPORTANT: use the projects path here, not the path to project.yml
+                let gitServer = GitServer.create mem state.Project.Path
 
                 // set up event forwarding of various services to the actor
                 let disposables =
-                  let mklog log = IrisEvent.Append(Origin.Service, LogMsg log)
                   [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
                     (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
                     (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)

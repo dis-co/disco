@@ -277,7 +277,7 @@ module WebSockets =
                 broadcast connections cmd
 
               member self.Multicast (except: Id) (cmd: StateMachine) =
-                multicast connections id cmd
+                multicast connections except cmd
 
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session
