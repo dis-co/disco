@@ -15,7 +15,7 @@ group Main
   nuget FsControl
   nuget Suave
   nuget Fleck
-  nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
+  nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
   nuget ZeroMQ
