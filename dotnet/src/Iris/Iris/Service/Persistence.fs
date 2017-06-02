@@ -134,6 +134,9 @@ module Persistence =
   /// Returns: Either<IrisError, FileInfo * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
+    let basePath = state.Project.Path
+    let inline save t = Asset.save basePath t
+    let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete
     match sm with
     //   ____
     //  / ___|   _  ___
@@ -142,11 +145,8 @@ module Persistence =
     //  \____\__,_|\___|
 
     | AddCue    cue
-    | UpdateCue cue -> Asset.save state.Project.Path cue
-    | RemoveCue cue ->
-      cue
-      |> Asset.path
-      |> Asset.delete
+    | UpdateCue cue -> save cue
+    | RemoveCue cue -> delete cue
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -155,11 +155,8 @@ module Persistence =
     //  \____\__,_|\___|_____|_|___/\__|
 
     | AddCueList    cuelist
-    | UpdateCueList cuelist  -> Asset.save state.Project.Path cuelist
-    | RemoveCueList cuelist ->
-      cuelist
-      |> Asset.path
-      |> Asset.delete
+    | UpdateCueList cuelist -> save cuelist
+    | RemoveCueList cuelist -> delete cuelist
 
     //   ____           ____  _
     //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
@@ -169,11 +166,8 @@ module Persistence =
     //                                |___/
 
     | AddCuePlayer    player
-    | UpdateCuePlayer player -> Asset.save state.Project.Path player
-    | RemoveCuePlayer player ->
-      player
-      |> Asset.path
-      |> Asset.delete
+    | UpdateCuePlayer player -> save player
+    | RemoveCuePlayer player -> delete player
 
     //  ____  _        ____
     // |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
@@ -183,11 +177,8 @@ module Persistence =
     //                                     |_|
 
     | AddPinGroup    group
-    | UpdatePinGroup group -> Asset.save state.Project.Path group
-    | RemovePinGroup group ->
-      group
-      |> Asset.path
-      |> Asset.delete
+    | UpdatePinGroup group -> save group
+    | RemovePinGroup group -> delete group
 
     //  _   _
     // | | | |___  ___ _ __
@@ -196,11 +187,8 @@ module Persistence =
     //  \___/|___/\___|_|
 
     | AddUser    user
-    | UpdateUser user -> Asset.save state.Project.Path user
-    | RemoveUser user ->
-      user
-      |> Asset.path
-      |> Asset.delete
+    | UpdateUser user -> save user
+    | RemoveUser user -> delete user
 
     //  __  __                _
     // |  \/  | ___ _ __ ___ | |__   ___ _ __
@@ -210,7 +198,7 @@ module Persistence =
 
     | AddMember     _
     | RemoveMember  _
-    | UpdateProject _ -> Asset.save state.Project.Path state.Project
+    | UpdateProject _ -> save state.Project
 
     //  ____  _
     // |  _ \(_)_ __
@@ -221,15 +209,17 @@ module Persistence =
     | AddPin    pin
     | UpdatePin pin -> either {
         let! group =
-          State.tryFindPinGroup pin.PinGroup state
+          state
+          |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.save state.Project.Path group
+        return! save group
       }
     | RemovePin pin -> either {
         let! group =
-          State.tryFindPinGroup pin.PinGroup state
+          state
+          |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.save state.Project.Path group
+        return! save group
       }
 
     //   ___  _   _
@@ -274,7 +264,7 @@ module Persistence =
 
   // ** getRemote
 
-  let private getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
+  let getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
     let uri = Uri.localGitUri (unwrap project.Name) leader
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
@@ -296,7 +286,7 @@ module Persistence =
 
   // ** ensureTracking
 
-  let private ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
+  let ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
     if not (Git.Branch.isTracking branch) then
       Git.Branch.setTracked repo branch remote
     else

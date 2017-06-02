@@ -385,6 +385,15 @@ type IrisEvent =
       | Append (_, UpdateSlices _)                           -> Process
       | Append (_, CallCue      _)                           -> Process
 
+      //  _                __  __
+      // | |    ___   __ _|  \/  |___  __ _
+      // | |   / _ \ / _` | |\/| / __|/ _` |
+      // | |__| (_) | (_| | |  | \__ \ (_| |
+      // |_____\___/ \__, |_|  |_|___/\__, |
+      //             |___/            |___/
+
+      | Append (_, LogMsg _)                                 -> Ignore
+
       //  __  __ _
       // |  \/  (_)___  ___
       // | |\/| | / __|/ __|
@@ -392,4 +401,3 @@ type IrisEvent =
       // |_|  |_|_|___/\___|
 
       | Append (_, SetLogLevel  _)                           -> Replicate
-      | Append (_, LogMsg       _)                           -> Process

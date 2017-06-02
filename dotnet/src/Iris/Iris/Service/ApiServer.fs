@@ -166,7 +166,8 @@ module ApiServer =
     match Binary.decode bytes with
     | Right command ->
       match command with
-      | UpdateSlices _ | CallCue _ -> Msg.Update(Origin.Api, command) |> agent.Post
+      | LogMsg _ | CallCue _ | UpdateSlices _ ->
+        Msg.Update(Origin.Api, command) |> agent.Post
       | _ -> ()
     | _ -> ()
 
@@ -252,9 +253,9 @@ module ApiServer =
       |> Array.Parallel.map (snd >> updateClient sm)
       |> ignore
 
-  // ** maybePublish
+  // ** publish
 
-  let private maybePublish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+  let private publish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
     sm
     |> Binary.encode
     |> state.Publisher.Publish
@@ -300,27 +301,35 @@ module ApiServer =
                            (origin: Origin)
                            (cmd: StateMachine)
                            (agent: ApiAgent) =
-    match origin with
-    | Origin.Api ->
+    match origin, cmd with
+    | Origin.Api, _ ->
       updateClients state cmd agent       // in order to preserve ordering of the messages
       (origin, cmd)
       |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
 
-    | Origin.Raft ->
+    | Origin.Raft, _ ->
       updateClients state cmd agent       // in order to preserve ordering of the messages
 
-    | Origin.Client id ->
-      maybePublish state cmd agent
-      (origin, cmd)
-      |> IrisEvent.Append
-      |> Observable.notify state.Subscriptions
+    | Origin.Client id, LogMsg       _
+    | Origin.Client id, CallCue      _
+    | Origin.Client id, UpdateSlices _ ->
+      publish state cmd agent
+      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
 
-    | Origin.Web id ->
-      maybePublish state cmd agent
+    | Origin.Client id, _ ->
+      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
+
+    | Origin.Web id, LogMsg       _
+    | Origin.Web id, CallCue      _
+    | Origin.Web id, UpdateSlices _ ->
+      publish state cmd agent
       updateClients state cmd agent       // in order to preserve ordering of the messages
 
-    | Origin.Service _ ->
+    | Origin.Web id, _ ->
+      updateClients state cmd agent       // in order to preserve ordering of the messages
+
+    | Origin.Service _, _ ->
       (origin, cmd)
       |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
@@ -409,29 +418,41 @@ module ApiServer =
   let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
     let rec act () =
       async {
-        let! msg = inbox.Receive()
-        let state = store.State
-        let newstate =
-          try
-            match msg with
-            | Msg.Start                       -> handleStart state inbox
-            | Msg.Stop                        -> handleStop state
-            | Msg.AddClient(client)           -> handleAddClient state client inbox
-            | Msg.RemoveClient(client)        -> handleRemoveClient state client
-            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
-            | Msg.SetStatus(status)           -> handleSetStatus state status
-            | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-            | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
-            | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
-            | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
-          with
-            | exn ->
-              exn.Message + exn.StackTrace
-              |> String.format "Error in loop: {0}"
-              |> Logger.err (tag "loop")
-              state
-        if not (Service.isStopping newstate.Status) then
-          store.Update newstate
+        try
+          let! msg = inbox.Receive()
+          // warn if the queue length surpasses threshold
+          let count = inbox.CurrentQueueLength
+          if count > Constants.QUEUE_LENGTH_THRESHOLD then
+            count
+            |> String.format "Queue length threshold was reached: {0}"
+            |> Logger.warn (tag "loop")
+
+          let state = store.State
+          let newstate =
+            try
+              match msg with
+              | Msg.Start                       -> handleStart state inbox
+              | Msg.Stop                        -> handleStop state
+              | Msg.AddClient(client)           -> handleAddClient state client inbox
+              | Msg.RemoveClient(client)        -> handleRemoveClient state client
+              | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+              | Msg.SetStatus(status)           -> handleSetStatus state status
+              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
+              | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
+              | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
+              | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
+            with
+              | exn ->
+                exn.Message + exn.StackTrace
+                |> String.format "Error in loop: {0}"
+                |> Logger.err (tag "loop")
+                state
+          if not (Service.isStopping newstate.Status) then
+            store.Update newstate
+        with
+          | exn ->
+            exn.Message
+            |> Logger.err (tag "loop")
         return! act ()
       }
     act ()

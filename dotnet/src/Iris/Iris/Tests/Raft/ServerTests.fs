@@ -1949,22 +1949,24 @@ module ServerTests =
       let peer = Member.create (Id.Create())
       let ae =
         { Term = term 6
-        ; PrevLogIdx = index 6
-        ; PrevLogTerm = term 5
-        ; LeaderCommit = index 0
-        ; Entries = None
-        }
+          PrevLogIdx = index 6
+          PrevLogTerm = term 5
+          LeaderCommit = index 0
+          Entries = None }
+
       raft {
         let! raft' = get
         let nid = Some raft'.Member.Id
+        let pid = Some peer.Id
         do! Raft.addMemberM peer
         do! Raft.setStateM Leader
+        do! Raft.setLeaderM (Some raft'.Member.Id)
         do! Raft.setTermM (term 5)
         do! expectM "Should be leader" true Raft.isLeader
         do! expectM "Should be leader" true (Raft.currentLeader >> ((=) nid))
         let! response = Raft.receiveAppendEntries (Some peer.Id) ae
         do! expectM "Should be follower" true Raft.isFollower
-        do! expectM "Should follow peer" true (Raft.currentLeader >> ((=) nid))
+        do! expectM "Should follow peer" true (Raft.currentLeader >> ((=) pid))
       }
       |> runWithDefaults
       |> noError

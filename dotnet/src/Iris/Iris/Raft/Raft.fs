@@ -1487,11 +1487,12 @@ module rec Raft =
         if msg.PrevLogIdx > index 0 then
           let! entry = getEntryAtM msg.PrevLogIdx
           match entry with
-            | Some log -> return! checkAndProcess log nid msg resp
-            | _        ->
-              let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
-              do! error "receiveAppendEntries" str
-              return resp
+          | Some log ->
+            return! checkAndProcess log nid msg resp
+          | _ ->
+            let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
+            do! error "receiveAppendEntries" str
+            return resp
         else
           return! processEntry nid msg resp
       | Left err -> return err

@@ -379,8 +379,8 @@ module IrisService =
     Option.iter dispose state.Leader
     Option.iter dispose state.GitPoller
 
-    // create redirect socket
-    if Option.isSome leader then
+    // create redirect socket if we have new leader other than this current node
+    if Option.isSome leader && leader <> (Some state.Member.Id) then
       match state.RaftServer.Leader with
       | Some leader ->
         let makePeerSocket = Client.create state.Context
@@ -800,18 +800,27 @@ module IrisService =
       async {
         try
           let! msg = inbox.Receive()
-          let state = store.State
-          let newstate =
-            match msg with
-            | Msg.Start                  -> handleStart          state inbox
-            | Msg.Stop               are -> handleStop           state inbox are
-            | Msg.Notify              ev -> handleNotify         state       ev
-            | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
-            | Msg.Event              ev  -> dispatchEvent        state inbox ev
-            | Msg.ForceElection          -> handleForceElection  state
-            | Msg.Periodic               -> handlePeriodic       state
-            | Msg.RawClientResponse resp -> handleClientResponse state       resp
-          store.Update newstate
+
+          // warn if the queue length surpasses threshold
+          let count = inbox.CurrentQueueLength
+          if count > Constants.QUEUE_LENGTH_THRESHOLD then
+            count
+            |> String.format "Queue length threshold was reached: {0}"
+            |> Logger.warn (tag "loop")
+
+          Tracing.trace (tag (sprintf "loop (%d msgs)" inbox.CurrentQueueLength)) <| fun () ->
+            let state = store.State
+            let newstate =
+              match msg with
+              | Msg.Start                  -> handleStart          state inbox
+              | Msg.Stop               are -> handleStop           state inbox are
+              | Msg.Notify              ev -> handleNotify         state       ev
+              | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
+              | Msg.Event              ev  -> dispatchEvent        state inbox ev
+              | Msg.ForceElection          -> handleForceElection  state
+              | Msg.Periodic               -> handlePeriodic       state
+              | Msg.RawClientResponse resp -> handleClientResponse state       resp
+            store.Update newstate
         with
           | exn ->
             let format = "Message: {0}\nStackTrace: {1}"
@@ -906,6 +915,8 @@ module IrisService =
                 let context = new ZContext()
 
                 let clockService = Clock.create ()
+                clockService.Stop()
+
                 let! raftServer = RaftServer.create context state.Project.Config {
                     new IRaftSnapshotCallbacks with
                       member self.PrepareSnapshot () = Some store.State.Store.State
@@ -923,8 +934,7 @@ module IrisService =
                 // set up event forwarding of various services to the actor
                 let disposables =
                   let mklog log = IrisEvent.Append(Origin.Service, LogMsg log)
-                  [ (LOG_HANDLER,   forwardEvent mklog         agent |> Logger.subscribe)
-                    (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
+                  [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
                     (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
                     (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)
                     (GIT_SERVER,    forwardEvent IrisEvent.Git agent |> gitServer.Subscribe)

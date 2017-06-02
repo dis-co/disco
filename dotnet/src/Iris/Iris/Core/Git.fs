@@ -21,7 +21,6 @@ open LibGit2Sharp
 ///
 /// Provides a more functional API over LibGit2Sharp.
 ///
-[<RequireQualifiedAccess>]
 module Git =
   open Path
 
@@ -825,6 +824,20 @@ module Git =
           |> Error.asGitError (tag "pull")
           |> Either.fail
 
+    // *** lsRemote
+
+    let lsRemote (repo: Repository) (remote: Remote) =
+      try
+        remote
+        |> repo.Network.ListReferences
+        |> Seq.cast<Reference>
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "lsRemote")
+          |> Either.fail
+
   // ** Config
 
   //   ____             __ _
@@ -887,7 +900,7 @@ module Git =
       repo.Network.Remotes.Remove name
       |> Either.succeed
 
-#endif
+  #endif
 
 // * Playground
 

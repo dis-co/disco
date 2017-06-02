@@ -151,10 +151,8 @@ module IrisServiceTests =
       |> noError
 
   let test_ensure_iris_server_clones_changes_from_leader =
-    ftestCase "ensure iris server clones changes from leader" <| fun _ ->
+    testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
@@ -273,7 +271,6 @@ module IrisServiceTests =
         expect "Instance 2 should have same commit count" (num2 + 1) Git.Repo.commitCount repo2
       }
       |> noError
-
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___

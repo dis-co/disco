@@ -25,7 +25,7 @@ module Raft =
 
   // ** tag
 
-  let private tag (str: string) = String.Format("RaftServer.{0}", str)
+  let private tag (str: string) = String.format "RaftServer.{0}" str
 
   // ** Connections
 
@@ -1410,31 +1410,40 @@ module Raft =
       async {
         try
           let! cmd = inbox.Receive()
-          let state = store.State
-          let newstate =
-            match cmd with
-            | Msg.Start                         -> handleStart          state              inbox
-            | Msg.Started                       -> handleStarted        state
-            | Msg.Stop                          -> handleStop           state              inbox
-            | Msg.Stopped                       -> handleStopped        state
-            | Msg.Notify             ev         -> handleNotify         state ev
-            | Msg.Periodic                      -> handlePeriodic       state
-            | Msg.ForceElection                 -> handleForceElection  state              inbox
-            | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
-            | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
-            | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
-            | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
-            | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
-            | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
-            | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
-            // | Msg.Join        (ip, port)        -> handleJoin          state ip port
-            // | Msg.Leave                         -> handleLeave         state
 
-          // once we received the signal to stop we don't allow any more updates to the state to get
-          // a consistent result in the Dispose method (due to possibly queued up messages on the
-          // actors queue)
-          if not (Service.isStopping newstate.Status) then
-            store.Update newstate
+          // warn if the queue length surpasses threshold
+          let count = inbox.CurrentQueueLength
+          if count > Constants.QUEUE_LENGTH_THRESHOLD then
+            count
+            |> String.format "Queue length threshold was reached: {0}"
+            |> Logger.warn (tag "loop")
+
+          Tracing.trace (tag (sprintf "loop (%d msgs)" inbox.CurrentQueueLength)) <| fun () ->
+            let state = store.State
+            let newstate =
+              match cmd with
+              | Msg.Start                         -> handleStart          state              inbox
+              | Msg.Started                       -> handleStarted        state
+              | Msg.Stop                          -> handleStop           state              inbox
+              | Msg.Stopped                       -> handleStopped        state
+              | Msg.Notify             ev         -> handleNotify         state ev
+              | Msg.Periodic                      -> handlePeriodic       state
+              | Msg.ForceElection                 -> handleForceElection  state              inbox
+              | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
+              | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
+              | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
+              | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
+              | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
+              | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
+              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
+              // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+              // | Msg.Leave                         -> handleLeave         state
+
+            // once we received the signal to stop we don't allow any more updates to the state to get
+            // a consistent result in the Dispose method (due to possibly queued up messages on the
+            // actors queue)
+            if not (Service.isStopping newstate.Status) then
+              store.Update newstate
         with
           | exn ->
             let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
