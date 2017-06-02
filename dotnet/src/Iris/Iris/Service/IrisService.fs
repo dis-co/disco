@@ -119,6 +119,7 @@ module IrisService =
       Store          : Store
       Leader         : Leader option
       GitPoller      : IDisposable option
+      LogForwarder   : IDisposable
       ApiServer      : IApiServer
       GitServer      : IGitServer
       RaftServer     : IRaftServer
@@ -136,6 +137,7 @@ module IrisService =
         disposeAll self.Disposables
         Option.iter dispose self.Leader
         Option.iter dispose self.GitPoller
+        dispose self.LogForwarder
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
@@ -935,6 +937,16 @@ module IrisService =
                       member self.PrepareSnapshot () = store.State.Store.State
                   }
 
+                let logForwarder =
+                  let lobs =
+                    Logger.subscribe
+                      (fun log ->
+                        apiServer.Update Origin.Service (LogMsg log)
+                        socketServer.Broadcast (LogMsg log) |> ignore)
+                  { new IDisposable with
+                      member self.Dispose () =
+                        dispose lobs }
+
                 // IMPORTANT: use the projects path here, not the path to project.yml
                 let gitServer = GitServer.create mem state.Project.Path
 
@@ -952,6 +964,7 @@ module IrisService =
                   Machine        = iris.Machine
                   Leader         = None
                   GitPoller      = None
+                  LogForwarder   = logForwarder
                   Status         = ServiceStatus.Starting
                   Store          = Store(state)
                   Context        = context

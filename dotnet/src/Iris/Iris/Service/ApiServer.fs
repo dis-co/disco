@@ -244,11 +244,21 @@ module ApiServer =
     |> Either.mapError (string >> Logger.err (tag "updateClient"))
     |> ignore
 
-  // ** updateClients
+  // ** updateAllClients
 
-  let private updateClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "updateClients") <| fun () ->
+  let private updateAllClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "updateAllClients") <| fun () ->
       state.Clients
+      |> Map.toArray
+      |> Array.Parallel.map (snd >> updateClient sm)
+      |> ignore
+
+  // ** multicastClients
+
+  let private multicastClients (state: ServerState) except (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "multicastClients") <| fun () ->
+      state.Clients
+      |> Map.filter (fun id _ -> except <> id)
       |> Map.toArray
       |> Array.Parallel.map (snd >> updateClient sm)
       |> ignore
@@ -303,36 +313,46 @@ module ApiServer =
                            (agent: ApiAgent) =
     match origin, cmd with
     | Origin.Api, _ ->
-      updateClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd agent       // in order to preserve ordering of the messages
       (origin, cmd)
       |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
 
     | Origin.Raft, _ ->
-      updateClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd agent       // in order to preserve ordering of the messages
 
     | Origin.Client id, LogMsg       _
     | Origin.Client id, CallCue      _
     | Origin.Client id, UpdateSlices _ ->
       publish state cmd agent
+      multicastClients state id cmd agent       // in order to preserve ordering of the messages
       (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
 
     | Origin.Client id, _ ->
       (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
 
-    | Origin.Web id, LogMsg       _
-    | Origin.Web id, CallCue      _
-    | Origin.Web id, UpdateSlices _ ->
+    | Origin.Web _, LogMsg       _
+    | Origin.Web _, CallCue      _
+    | Origin.Web _, UpdateSlices _ ->
       publish state cmd agent
-      updateClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd agent
 
     | Origin.Web id, _ ->
-      updateClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd agent
 
-    | Origin.Service _, _ ->
+    | Origin.Service, AddClient    _
+    | Origin.Service, UpdateClient _
+    | Origin.Service, RemoveClient _ ->
       (origin, cmd)
       |> IrisEvent.Append
       |> Observable.notify state.Subscriptions
+
+    | Origin.Service, LogMsg _ ->
+      publish state cmd agent
+      updateAllClients state cmd agent
+
+    | other -> ignore other
+
     state
 
   // ** handleServerRequest
