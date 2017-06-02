@@ -175,9 +175,15 @@ module IrisService =
   // ** broadcastMsg
 
   let private broadcastMsg (state: IrisState) (origin: Origin) (cmd: StateMachine) =
-    cmd
-    |> state.SocketServer.Broadcast
-    |> ignore
+    match origin with
+    | Origin.Web id ->
+      cmd
+      |> state.SocketServer.Multicast id
+      |> ignore
+    | _ ->
+      cmd
+      |> state.SocketServer.Broadcast
+      |> ignore
 
   // ** sendMsg
 

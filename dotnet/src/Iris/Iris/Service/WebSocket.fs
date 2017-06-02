@@ -11,8 +11,6 @@ open Iris.Service
 open FSharpx.Functional
 open Fleck
 open Iris.Service.Interfaces
-open Hopac
-open Hopac.Infixes
 
 // * WebSockets
 
@@ -111,7 +109,7 @@ module WebSockets =
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
 
-    let sendAsync (id: Id) = job {
+    let sendAsync (id: Id) = async {
         let result = send connections id msg
         return result
       }
@@ -119,9 +117,47 @@ module WebSockets =
     let result : IrisError list =
       connections.Keys
       |> Seq.map sendAsync
-      |> Job.conCollect
-      |> Hopac.run
-      |> fun arr -> arr.ToArray()
+      |> Async.Parallel
+      |> Async.RunSynchronously
+      |> Array.fold
+        (fun lst (result: Either<IrisError,unit>) ->
+          match result with
+          | Right _ -> lst
+          | Left error -> error :: lst)
+        []
+
+    match result with
+    | [ ] -> Right ()
+    | _   -> Left result
+
+  // ** multicast
+
+  /// ## multicast
+  ///
+  /// Send a `StateMachine` command to all open connections except the one that matches the passed
+  /// session id.
+  ///
+  /// ### Signature:
+  /// - id: Id to exclude
+  /// - msg: StateMachine command to send
+  ///
+  /// Returns: unit
+  let private multicast (connections: Connections)
+                        (id: Id)
+                        (msg: StateMachine) :
+                        Either<IrisError list, unit> =
+
+    let sendAsync (id: Id) = async {
+        let result = send connections id msg
+        return result
+      }
+
+    let result : IrisError list =
+      connections.Keys
+      |> Seq.filter (fun sid -> id <> sid)
+      |> Seq.map sendAsync
+      |> Async.Parallel
+      |> Async.RunSynchronously
       |> Array.fold
         (fun lst (result: Either<IrisError,unit>) ->
           match result with
@@ -239,6 +275,9 @@ module WebSockets =
 
               member self.Broadcast (cmd: StateMachine) =
                 broadcast connections cmd
+
+              member self.Multicast (except: Id) (cmd: StateMachine) =
+                multicast connections id cmd
 
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session

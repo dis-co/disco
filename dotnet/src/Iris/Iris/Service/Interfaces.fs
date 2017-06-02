@@ -70,12 +70,13 @@ type IRaftServer =
   // abstract JoinCluster   : IpAddress -> uint16 -> unit
   // abstract LeaveCluster  : unit -> unit
 
-// * IWsServer
+// * IWebSocketServer
 
 type IWebSocketServer =
   inherit System.IDisposable
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
+  abstract Multicast    : except:Id -> StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
   abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
