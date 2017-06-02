@@ -36,12 +36,8 @@ let all =
 
 [<EntryPoint>]
 let main _ =
-  // // Tracing.enable()
-  // use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
-
-  // use lobs = Logger.subscribe Logger.stdout
-
   // Tracing.enable()
+  use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
 
   Id.Create ()
   |> Logger.initialize

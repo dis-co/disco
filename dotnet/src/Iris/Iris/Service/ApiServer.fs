@@ -162,15 +162,28 @@ module ApiServer =
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (agent: ApiAgent) (bytes: byte array) =
+  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer: Id) (bytes: byte array) =
     match Binary.decode bytes with
     | Right command ->
       match command with
-      | LogMsg _ | CallCue _ | UpdateSlices _ ->
+      // Special case for tests:
+      //
+      // In tests, the Logger singleton won't have the correct Id (because they run in the same
+      // process). Hence, we look at the peer Id as supplied from the Sub socket, compare and
+      // substitute if necessary. This goes in conjunction with only publishing logs on the Api that
+      // are from that service.
+      | LogMsg log when log.Tier = Tier.Service && log.Id <> mem ->
+        Logger.append { log with Id = peer }
+
+      // Base case for logs:
+      //
+      // Append logs to the current Logger singleton, to be forwarded to the frontend.
+      | LogMsg log -> Logger.append log
+
+      | CallCue _ | UpdateSlices _ ->
         Msg.Update(Origin.Api, command) |> agent.Post
       | _ -> ()
-    | _ -> ()
-
+    | _ -> () // not sure if I should log here..
 
   // ** handleStart
 
@@ -541,7 +554,7 @@ module ApiServer =
                     match publisher.Start(), subscriber.Start() with
                     | Right (), Right () ->
                       let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                      let sub = subscriber.Subscribe(processSubscriptionEvent agent)
+                      let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
 
                       let updated =
                         { store.State with

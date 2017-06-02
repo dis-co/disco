@@ -941,11 +941,15 @@ module IrisService =
                   let lobs =
                     Logger.subscribe
                       (fun log ->
-                        apiServer.Update Origin.Service (LogMsg log)
+                        // Explanation:
+                        //
+                        // To prevent logs from other hosts being looped around endlessly, we only
+                        // publish messages on the on api that emenate either from this service or
+                        // any connected sessions.
+                        if not (log.Tier = Tier.Service && log.Id <> iris.Machine.MachineId) then
+                          apiServer.Update Origin.Service (LogMsg log)
                         socketServer.Broadcast (LogMsg log) |> ignore)
-                  { new IDisposable with
-                      member self.Dispose () =
-                        dispose lobs }
+                  { new IDisposable with member self.Dispose () = dispose lobs }
 
                 // IMPORTANT: use the projects path here, not the path to project.yml
                 let gitServer = GitServer.create mem state.Project.Path

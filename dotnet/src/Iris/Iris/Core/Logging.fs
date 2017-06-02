@@ -398,6 +398,12 @@ module Logger =
       LogLevel = level
       Message  = msg }
 
+  // ** append
+
+  let append (log: LogEvent) = agent.Post log
+
+  // ** log
+
   /// ## log
   ///
   /// Log the given string.
@@ -411,7 +417,7 @@ module Logger =
   let log (level: LogLevel) (callsite: CallSite) (msg: string) =
     msg
     |> create level callsite
-    |> agent.Post
+    |> append
 
   // ** trace
 
@@ -427,7 +433,7 @@ module Logger =
   let trace (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Trace callsite
-    |> agent.Post
+    |> append
 
   // ** debug
 
@@ -443,7 +449,7 @@ module Logger =
   let debug (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Debug callsite
-    |> agent.Post
+    |> append
 
   // ** info
 
@@ -459,7 +465,7 @@ module Logger =
   let info (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Info callsite
-    |> agent.Post
+    |> append
 
   // ** warn
 
@@ -475,7 +481,7 @@ module Logger =
   let warn (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Warn callsite
-    |> agent.Post
+    |> append
 
   // ** err
 
@@ -491,4 +497,4 @@ module Logger =
   let err (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Err callsite
-    |> agent.Post
+    |> append

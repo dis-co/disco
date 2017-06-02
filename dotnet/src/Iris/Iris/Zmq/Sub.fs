@@ -19,7 +19,7 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<byte array>
+  type private Subscriptions = Subscriptions<Id * byte array>
 
   // ** Sub (type)
 
@@ -95,16 +95,16 @@ module Sub =
       /// Inner Loop
       while run do
         try
-          let msg = sock.ReceiveMessage()
+          use msg = sock.ReceiveMessage()
           let addr = msg.[0].ReadString()
           let bytes = msg.[1].Read()
 
-          bytes
-          |> Array.length
-          |> sprintf "[%s] Got %d bytes long message on " addr
-          |> Logger.debug (tag "worker")
+          // printfn "sub: parts %d" msg.Count
+          // printfn "sub: addr  %s" addr
+          // System.Text.Encoding.UTF8.GetString(bytes)
+          // |> printfn "sub: msg   %s"
 
-          Observable.notify subscriptions bytes
+          Observable.notify subscriptions (Id addr, bytes)
 
           dispose msg
 
@@ -170,12 +170,12 @@ module Sub =
 
     // *** Subscribe
 
-    member self.Subscribe (callback: byte array -> unit) =
+    member self.Subscribe (callback: Id -> byte array -> unit) =
       let listener = Observable.createListener subscriptions
-      { new IObserver<byte array> with
+      { new IObserver<Id * byte array> with
           member self.OnCompleted() = ()
           member self.OnError(error) = ()
-          member self.OnNext(value) = callback value }
+          member self.OnNext((id,value)) = callback id value }
       |> listener.Subscribe
 
     // *** Dispose
