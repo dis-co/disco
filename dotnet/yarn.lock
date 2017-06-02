@@ -1903,9 +1903,9 @@ extsprintf@1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.0.2.tgz#e1080e0658e300b06294990cc70e1502235fd550"
 
-fable-loader@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.0.tgz#1a866d500145eaa078e30b8eeef20d6f45e5206e"
+fable-loader@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.2.tgz#26e5e9ecb5df7e76ce7c2c1ab25388b92e0325f0"
   dependencies:
     fable-utils "^1.0.0"
 
