@@ -21,6 +21,24 @@ open System.Linq
 [<AutoOpen>]
 module Path =
 
+  // ** combine
+
+  let combine (p1: string) (p2: string) : FilePath =
+    #if FABLE_COMPILER
+    sprintf "%s/%s" p1 p2 |> filepath
+    #else
+    Path.Combine(p1, p2) |> filepath
+    #endif
+
+  // ** concat
+
+  let concat (p1: FilePath) (p2: FilePath) : FilePath =
+    #if FABLE_COMPILER
+    sprintf "%O/%O" p1 p2 |> filepath
+    #else
+    combine (unwrap p1) (unwrap p2)
+    #endif
+
   // ** </>
 
   /// ## </>
@@ -33,50 +51,66 @@ module Path =
   ///
   /// Returns: FilePath (string)
   let (</>) (p1: FilePath) (p2: FilePath) : FilePath =
-    #if FABLE_COMPILER
-    sprintf "%O/%O" p1 p2 |> filepath
-    #else
-    Path.Combine(unwrap p1, unwrap p2) |> filepath
-    #endif
+    concat p1 p2
+
+  // ** <.>
 
   let (<.>) (p1: string) (p2: string) : FilePath =
-    #if FABLE_COMPILER
-    sprintf "%s/%s" p1 p2 |> filepath
-    #else
-    Path.Combine(p1, p2) |> filepath
-    #endif
+    combine p1 p2
+
+  // ** pmap
 
   let pmap (f: string -> string) (path: FilePath) =
     path |> unwrap |> f |> filepath
 
+  // ** map
+
   let inline map (f: string -> 'a) (path: FilePath) =
     path |> unwrap |> f
 
+  // ** endsWith
+
   let endsWith (suffix: string) (path: FilePath) =
     (unwrap path : string).EndsWith suffix
+
+  // ** baseName
 
   #if !FABLE_COMPILER
 
   let baseName (path: FilePath) =
     pmap Path.GetFileName path
 
+  // ** dirName
+
   let dirName (path: FilePath) =
     pmap Path.GetDirectoryName path
+
+  // ** getRandomFileName
 
   let getRandomFileName () =
     Path.GetRandomFileName() |> filepath
 
+  // ** getTempPath
+
   let getTempPath () =
     Path.GetTempPath() |> filepath
+
+  // ** getDirectoryName
 
   let getDirectoryName (path: FilePath) =
     pmap Path.GetDirectoryName path
 
+  // ** isPathRooted
+
   let isPathRooted (path: FilePath) =
     map Path.IsPathRooted path
 
+  // ** getFullPath
+
   let getFullPath (path: FilePath) =
     pmap Path.GetFullPath path
+
+  // ** getFileName
 
   let getFileName (path: FilePath) =
     pmap Path.GetFileName path
@@ -89,22 +123,34 @@ module Path =
 
 module File =
 
+  // ** writeText
+
   let writeText (payload: string) (encoding: Text.Encoding option) (location: FilePath) =
     match encoding with
     | Some encoding -> File.WriteAllText(unwrap location, payload, encoding)
     | None -> File.WriteAllText(unwrap location, payload)
 
+  // ** writeBytes
+
   let writeBytes (payload: byte array) (location: FilePath) =
     File.WriteAllBytes(unwrap location, payload)
+
+  // ** writeLines
 
   let writeLines (payload: string array) (location: FilePath) =
     File.WriteAllLines(unwrap location, payload)
 
+  // ** readText
+
   let readText (location: FilePath) =
     location |> unwrap |> File.ReadAllText
 
+  // ** readBytes
+
   let readBytes (location: FilePath) =
     location |> unwrap |> File.ReadAllBytes
+
+  // ** readLines
 
   let readLines (location: FilePath) =
     location |> unwrap |> File.ReadAllLines
@@ -163,6 +209,8 @@ module Directory =
     Directory.GetFiles(unwrap dir, pattern)
     |> Array.map filepath
 
+  // ** getDirectories
+
   let getDirectories (path: FilePath) =
     path
     |> unwrap
@@ -201,7 +249,7 @@ module FileSystem =
   /// Returns: unit
   let moveFile (source: FilePath) (dest: FilePath) =
     try
-      let info = new FileInfo(unwrap source)
+      let info = FileInfo(unwrap source)
       let attrs = info.Attributes
       if attrs.HasFlag(FileAttributes.Directory) then
         Directory.Move(unwrap source,unwrap dest)

@@ -1,5 +1,8 @@
 namespace Iris.Tests
 
+#nowarn "21"
+#nowarn "40"
+
 open Expecto
 open Expecto.Helpers
 open FsCheck

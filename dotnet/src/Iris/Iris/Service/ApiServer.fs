@@ -11,8 +11,6 @@ open Iris.Client
 open Iris.Zmq
 open Iris.Service.Interfaces
 open Iris.Serialization
-open Hopac
-open Hopac.Infixes
 
 // * ApiServer module
 
@@ -37,7 +35,7 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<ApiEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** Client
 
@@ -58,15 +56,17 @@ module ApiServer =
   type private ServerState =
     { Id: Id
       Status: ServiceStatus
-      Store: Store
       Server: IServer
       Publisher: Pub
       Subscriber: Sub
       Clients: Map<Id,Client>
       Context: ZContext
+      Callbacks: IApiServerCallbacks
       Subscriptions: Subscriptions
       Disposables: IDisposable list
       Stopper: AutoResetEvent }
+
+    // *** Dispose
 
     interface IDisposable with
       member data.Dispose() =
@@ -87,11 +87,8 @@ module ApiServer =
     | AddClient         of client:IrisClient
     | RemoveClient      of client:IrisClient
     | SetClientStatus   of id:Id * status:ServiceStatus
-    | SetState          of state:State
     | InstallSnapshot   of id:Id
-    | LocalUpdate       of sm:StateMachine
-    | RemoteUpdate      of sm:StateMachine
-    | ClientUpdate      of sm:StateMachine
+    | Update            of origin:Origin * sm:StateMachine
     | RawServerRequest  of req:RawServerRequest
     | RawClientResponse of req:RawClientResponse
 
@@ -102,7 +99,7 @@ module ApiServer =
   // ** requestInstallSnapshot
 
   let private requestInstallSnapshot (state: ServerState) (client: Client) (agent: ApiAgent) =
-    state.Store.State
+    state.Callbacks.PrepareSnapshot()
     |> ClientApiRequest.Snapshot
     |> Binary.encode
     |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
@@ -165,17 +162,28 @@ module ApiServer =
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (agent: ApiAgent) (bytes: byte array) =
+  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer: Id) (bytes: byte array) =
     match Binary.decode bytes with
     | Right command ->
       match command with
-      | UpdateSlices _ | CallCue _ ->
-        command
-        |> Msg.RemoteUpdate
-        |> agent.Post
-      | _ -> ()
-    | _ -> ()
+      // Special case for tests:
+      //
+      // In tests, the Logger singleton won't have the correct Id (because they run in the same
+      // process). Hence, we look at the peer Id as supplied from the Sub socket, compare and
+      // substitute if necessary. This goes in conjunction with only publishing logs on the Api that
+      // are from that service.
+      | LogMsg log when log.Tier = Tier.Service && log.Id <> mem ->
+        Logger.append { log with Id = peer }
 
+      // Base case for logs:
+      //
+      // Append logs to the current Logger singleton, to be forwarded to the frontend.
+      | LogMsg log -> Logger.append log
+
+      | CallCue _ | UpdateSlices _ ->
+        Msg.Update(Origin.Api, command) |> agent.Post
+      | _ -> ()
+    | _ -> () // not sure if I should log here..
 
   // ** handleStart
 
@@ -191,8 +199,8 @@ module ApiServer =
       | None -> ()
       | Some client ->
         dispose client
-        client.Meta
-        |> ApiEvent.UnRegister
+        (Origin.Service, RemoveClient client.Meta)
+        |> IrisEvent.Append
         |> Observable.notify state.Subscriptions
 
       // construct a new client value
@@ -213,7 +221,11 @@ module ApiServer =
             Timer = pingTimer socket agent }
 
         meta.Id |> Msg.InstallSnapshot |> agent.Post
-        meta |> ApiEvent.Register |> Observable.notify state.Subscriptions
+
+        (Origin.Service, AddClient meta)
+        |> IrisEvent.Append
+        |> Observable.notify state.Subscriptions
+
         { state with Clients = Map.add meta.Id client state.Clients }
       | Left error ->
         error
@@ -228,7 +240,9 @@ module ApiServer =
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
         dispose client
-        peer |> ApiEvent.UnRegister |> Observable.notify state.Subscriptions
+        (Origin.Service, RemoveClient peer)
+        |> IrisEvent.Append
+        |> Observable.notify state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
 
@@ -243,100 +257,116 @@ module ApiServer =
     |> Either.mapError (string >> Logger.err (tag "updateClient"))
     |> ignore
 
-  // ** updateClients
+  // ** updateAllClients
 
-  let private updateClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "updateClients") <| fun () ->
+  let private updateAllClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "updateAllClients") <| fun () ->
       state.Clients
       |> Map.toArray
       |> Array.Parallel.map (snd >> updateClient sm)
       |> ignore
 
-  // ** maybePublish
+  // ** multicastClients
 
-  let private maybePublish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    match sm with
-    | UpdateSlices _ | CallCue _ ->
-      Tracing.trace (tag "maybePublish") <| fun () ->
-        sm
-        |> Binary.encode
-        |> state.Publisher.Publish
-        |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
-        |> ignore
-    | _ -> ()
+  let private multicastClients (state: ServerState) except (sm: StateMachine) (agent: ApiAgent) =
+    Tracing.trace (tag "multicastClients") <| fun () ->
+      state.Clients
+      |> Map.filter (fun id _ -> except <> id)
+      |> Map.toArray
+      |> Array.Parallel.map (snd >> updateClient sm)
+      |> ignore
 
-  // ** maybeDispatch
+  // ** publish
 
-  let private maybeDispatch (state: ServerState) (sm: StateMachine) =
-    match sm with
-    | UpdateSlices _ | CallCue _ -> state.Store.Dispatch sm
-    | _ -> ()
+  let private publish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+    sm
+    |> Binary.encode
+    |> state.Publisher.Publish
+    |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
+    |> ignore
 
   // ** handleSetStatus
 
   let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
-    Tracing.trace (tag "handleSetStatus") <| fun () ->
-      status |> ApiEvent.ServiceStatus |> Observable.notify state.Subscriptions
-      { state with Status = status }
+    status
+    |> IrisEvent.Status
+    |> Observable.notify state.Subscriptions
+    { state with Status = status }
 
   // ** handleSetClientStatus
 
   let private handleSetClientStatus (state: ServerState) (id: Id) (status: ServiceStatus) =
-    Tracing.trace (tag "handleSetClientStatus") <| fun () ->
-      match Map.tryFind id state.Clients with
-      | Some client ->
-        match client.Meta.Status, status with
-        | ServiceStatus.Running, ServiceStatus.Running -> state
-        | oldst, newst ->
-          if oldst <> newst then
-            let updated = { client with Meta = { client.Meta with Status = status } }
-            updated.Meta |> ApiEvent.ClientStatus |> Observable.notify state.Subscriptions
-            { state with Clients = Map.add id updated state.Clients }
-          else state
-      | None -> state
-
-  // ** handleSetState
-
-  let private handleSetState (state: ServerState) (newstate: State) (agent: ApiAgent) =
-    Tracing.trace (tag "handleSetState") <| fun () ->
-      Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) state.Clients
-      { state with Store = new Store(newstate) }
+    match Map.tryFind id state.Clients with
+    | Some client ->
+      match client.Meta.Status, status with
+      | ServiceStatus.Running, ServiceStatus.Running -> state
+      | oldst, newst ->
+        if oldst <> newst then
+          let updated = { client with Meta = { client.Meta with Status = status } }
+          (Origin.Service, UpdateClient updated.Meta)
+          |> IrisEvent.Append
+          |> Observable.notify state.Subscriptions
+          { state with Clients = Map.add id updated state.Clients }
+        else state
+    | None -> state
 
   // ** handleInstallSnapshot
 
   let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
-    Tracing.trace (tag "handleInstallSnapshot") <| fun () ->
-      match Map.tryFind id state.Clients with
-      | Some client -> requestInstallSnapshot state client agent
-      | None -> ()
-      state
+    match Map.tryFind id state.Clients with
+    | Some client -> requestInstallSnapshot state client agent
+    | None -> ()
+    state
 
-  // ** handleClientUpdate
+  // ** handleUpdate
 
-  let private handleClientUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleClientUpdate") <| fun () ->
-      maybeDispatch state sm
-      maybePublish state sm agent
-      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
-      state
+  let private handleUpdate (state: ServerState)
+                           (origin: Origin)
+                           (cmd: StateMachine)
+                           (agent: ApiAgent) =
+    match origin, cmd with
+    | Origin.Api, _ ->
+      updateAllClients state cmd agent       // in order to preserve ordering of the messages
+      (origin, cmd)
+      |> IrisEvent.Append
+      |> Observable.notify state.Subscriptions
 
-  // ** handleRemoteUpdate
+    | Origin.Raft, _ ->
+      updateAllClients state cmd agent       // in order to preserve ordering of the messages
 
-  let private handleRemoteUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleRemoteUpdate") <| fun () ->
-      maybeDispatch state sm             // we need to send these request synchronously
-      updateClients state sm agent       // in order to preserve ordering of the messages
-      sm |> ApiEvent.Update |> Observable.notify state.Subscriptions
-      state
+    | Origin.Client id, LogMsg       _
+    | Origin.Client id, CallCue      _
+    | Origin.Client id, UpdateSlices _ ->
+      publish state cmd agent
+      multicastClients state id cmd agent       // in order to preserve ordering of the messages
+      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
 
-  // ** handleLocalUpdate
+    | Origin.Client id, _ ->
+      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
 
-  let private handleLocalUpdate (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleLocalUpdate") <| fun () ->
-      state.Store.Dispatch sm            // we need to send these request synchronously
-      maybePublish state sm agent        // in order to preserve ordering of the messages
-      updateClients state sm agent
-      state
+    | Origin.Web _, LogMsg       _
+    | Origin.Web _, CallCue      _
+    | Origin.Web _, UpdateSlices _ ->
+      publish state cmd agent
+      updateAllClients state cmd agent
+
+    | Origin.Web id, _ ->
+      updateAllClients state cmd agent
+
+    | Origin.Service, AddClient    _
+    | Origin.Service, UpdateClient _
+    | Origin.Service, RemoveClient _ ->
+      (origin, cmd)
+      |> IrisEvent.Append
+      |> Observable.notify state.Subscriptions
+
+    | Origin.Service, LogMsg _ ->
+      publish state cmd agent
+      updateAllClients state cmd agent
+
+    | other -> ignore other
+
+    state
 
   // ** handleServerRequest
 
@@ -360,7 +390,10 @@ module ApiServer =
         Unregistered |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Right (Update sm) ->
-        sm |> Msg.ClientUpdate |> agent.Post
+        let id = req.From |> string |> Id
+        (Origin.Client id, sm)
+        |> Msg.Update
+        |> agent.Post
         OK |> Binary.encode |> RawServerResponse.fromRequest req |> state.Server.Respond
 
       | Left error ->
@@ -418,32 +451,37 @@ module ApiServer =
   let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
     let rec act () =
       async {
-        let! msg = inbox.Receive()
-        let state = store.State
-        let newstate =
-          try
-            match msg with
-            | Msg.Start                       -> handleStart state inbox
-            | Msg.Stop                        -> handleStop state
-            | Msg.AddClient(client)           -> handleAddClient state client inbox
-            | Msg.RemoveClient(client)        -> handleRemoveClient state client
-            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
-            | Msg.SetState(newstate)          -> handleSetState state newstate inbox
-            | Msg.SetStatus(status)           -> handleSetStatus state status
-            | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-            | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
-            | Msg.ClientUpdate(sm)            -> handleClientUpdate state sm inbox
-            | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state sm inbox
-            | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
-            | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
-          with
-            | exn ->
-              exn.Message + exn.StackTrace
-              |> sprintf "Error in loop: %O"
-              |> Logger.err (tag "loop")
-              state
-        if not (Service.isStopping newstate.Status) then
-          store.Update newstate
+        try
+          let! msg = inbox.Receive()
+
+          Actors.warnQueueLength (tag "loop") inbox
+
+          let state = store.State
+          let newstate =
+            try
+              match msg with
+              | Msg.Start                       -> handleStart state inbox
+              | Msg.Stop                        -> handleStop state
+              | Msg.AddClient(client)           -> handleAddClient state client inbox
+              | Msg.RemoveClient(client)        -> handleRemoveClient state client
+              | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+              | Msg.SetStatus(status)           -> handleSetStatus state status
+              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
+              | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
+              | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
+              | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox
+            with
+              | exn ->
+                exn.Message + exn.StackTrace
+                |> String.format "Error in loop: {0}"
+                |> Logger.err (tag "loop")
+                state
+          if not (Service.isStopping newstate.Status) then
+            store.Update newstate
+        with
+          | exn ->
+            exn.Message
+            |> Logger.err (tag "loop")
         return! act ()
       }
     act ()
@@ -461,14 +499,15 @@ module ApiServer =
 
     // *** create
 
-    let create ctx (mem: RaftMember) (projectId: Id) =
+    let create ctx (mem: RaftMember) (projectId: Id) callbacks =
       either {
         let cts = new CancellationTokenSource()
 
-        let state = {
+        let store = AgentStore.create ()
+
+        store.Update {
           Id = mem.Id
           Status = ServiceStatus.Stopped
-          Store = Store(State.Empty)
           Server = Unchecked.defaultof<IServer>
           Publisher = Unchecked.defaultof<Pub>
           Subscriber = Unchecked.defaultof<Sub>
@@ -476,11 +515,9 @@ module ApiServer =
           Subscriptions = Subscriptions()
           Context = ctx
           Disposables = []
+          Callbacks = callbacks
           Stopper = new AutoResetEvent(false)
         }
-
-        let store = AgentStore.create ()
-        store.Update state
 
         let agent = new ApiAgent(loop store, cts.Token)
         agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
@@ -513,7 +550,7 @@ module ApiServer =
                     match publisher.Start(), subscriber.Start() with
                     | Right (), Right () ->
                       let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                      let sub = subscriber.Subscribe(processSubscriptionEvent agent)
+                      let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
 
                       let updated =
                         { store.State with
@@ -542,22 +579,21 @@ module ApiServer =
               member self.Clients
                 with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
 
-              // **** State
+              // **** SendSnapshot
 
-              member self.State
-                with get () = store.State.Store.State
-                 and set state = state |> Msg.SetState |> agent.Post
+              member self.SendSnapshot () =
+                Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) store.State.Clients
 
               // **** Update
 
-              member self.Update (sm: StateMachine) =
-                agent.Post(Msg.LocalUpdate sm)
+              member self.Update (origin: Origin) (sm: StateMachine) =
+                (origin, sm) |> Msg.Update |> agent.Post
 
               // **** Subscribe
 
-              member self.Subscribe (callback: ApiEvent -> unit) =
+              member self.Subscribe (callback: IrisEvent -> unit) =
                 let listener = Observable.createListener store.State.Subscriptions
-                { new IObserver<ApiEvent> with
+                { new IObserver<IrisEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }

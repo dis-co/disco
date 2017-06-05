@@ -122,13 +122,13 @@ module IrisServiceTests =
         use oobs =
           (fun ev ->
             match ev with
-            | Git (Started _) -> checkGitStarted.Set() |> ignore
+            | Git (GitEvent.Started _) -> checkGitStarted.Set() |> ignore
             | _ -> ())
           |> service.Subscribe
 
         do! service.Start()
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitOrDie "checkGitStarted (1)" checkGitStarted
 
         let gitserver = service.GitServer
 
@@ -140,7 +140,7 @@ module IrisServiceTests =
 
         expect "Git should be running" false Process.isRunning pid
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitOrDie "checkGitStarted (2)" checkGitStarted
 
         let gitserver = service.GitServer
         let newpid = gitserver.Pid
@@ -156,6 +156,7 @@ module IrisServiceTests =
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
+        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -181,14 +182,14 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-
         do! waitOrDie "checkGitStarted" checkGitStarted
 
         //  ____
@@ -216,10 +217,11 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service2.Subscribe
 
         do! service2.Start()
@@ -252,6 +254,16 @@ module IrisServiceTests =
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
 
+        AppCommand.SaveProject
+        |> Command
+        |> leader.Append
+
+        do! waitOrDie "appendDone" appendDone
+        appendDone.Reset() |> ignore
+        do! waitOrDie "appendDone" appendDone
+
+        do! waitOrDie "pullDone" pullDone
+
         dispose service1
         dispose service2
 
@@ -259,7 +271,6 @@ module IrisServiceTests =
         expect "Instance 2 should have same commit count" (num2 + 1) Git.Repo.commitCount repo2
       }
       |> noError
-
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___

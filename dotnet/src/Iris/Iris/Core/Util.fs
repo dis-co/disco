@@ -305,6 +305,11 @@ module String =
     Convert.FromBase64String(buffer)
     #endif
 
+  // *** format
+
+  let format (format: string) (o: obj) =
+    String.Format(format, o)
+
 // * Time
 
 //  _____ _

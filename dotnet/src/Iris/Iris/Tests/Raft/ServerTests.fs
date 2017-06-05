@@ -296,7 +296,7 @@ module ServerTests =
     testCase "Receive entry fails if there is already a voting change" <| fun _ ->
       let mem = Member.create (Id.Create())
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| MemberAdded(mem) |] , None)
+        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -314,14 +314,14 @@ module ServerTests =
         return! Raft.receiveEntry (mklog term)
       }
       |> runWithDefaults
-      |> expectError (RaftError ("Raft.receiveEntry","Unexpected Voting Change"))
+      |> expectError (IrisError.RaftError ("Raft.receiveEntry","Unexpected Voting Change"))
 
   let server_recv_entry_adds_missing_mem_on_addmem =
     testCase "recv entry adds missing mem on addmem" <| fun _ ->
       let mem = Member.create (Id.Create())
 
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| MemberAdded(mem) |] , None)
+        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -341,7 +341,7 @@ module ServerTests =
       let nid = Id.Create()
       let mem = Member.create nid
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| MemberAdded(mem) |] , None)
+        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -366,7 +366,7 @@ module ServerTests =
       let mem = Member.create (Id.Create())
 
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| MemberRemoved mem |] , None)
+        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberRemoved mem |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -464,7 +464,7 @@ module ServerTests =
         return! Raft.receiveVoteResponse mem.Id response
       }
       |> runWithDefaults
-      |> expectError (RaftError("Raft.receiveVoteResponse", "Vote Term Mismatch"))
+      |> expectError (IrisError.RaftError("Raft.receiveVoteResponse", "Vote Term Mismatch"))
 
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
@@ -1949,22 +1949,24 @@ module ServerTests =
       let peer = Member.create (Id.Create())
       let ae =
         { Term = term 6
-        ; PrevLogIdx = index 6
-        ; PrevLogTerm = term 5
-        ; LeaderCommit = index 0
-        ; Entries = None
-        }
+          PrevLogIdx = index 6
+          PrevLogTerm = term 5
+          LeaderCommit = index 0
+          Entries = None }
+
       raft {
         let! raft' = get
         let nid = Some raft'.Member.Id
+        let pid = Some peer.Id
         do! Raft.addMemberM peer
         do! Raft.setStateM Leader
+        do! Raft.setLeaderM (Some raft'.Member.Id)
         do! Raft.setTermM (term 5)
         do! expectM "Should be leader" true Raft.isLeader
         do! expectM "Should be leader" true (Raft.currentLeader >> ((=) nid))
         let! response = Raft.receiveAppendEntries (Some peer.Id) ae
         do! expectM "Should be follower" true Raft.isFollower
-        do! expectM "Should follow peer" true (Raft.currentLeader >> ((=) nid))
+        do! expectM "Should follow peer" true (Raft.currentLeader >> ((=) pid))
       }
       |> runWithDefaults
       |> noError
@@ -2275,13 +2277,13 @@ module ServerTests =
 
         do! Raft.setStateM Leader
 
-        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| MemberAdded(mem)|] ,None)) >>= ignoreM
+        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| ConfigChange.MemberAdded(mem)|] ,None)) >>= ignoreM
         do! Raft.setCommitIndexM (index 1)
         do! Raft.applyEntries ()
 
         expect "Should have count 1" 1 id !count
 
-        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| MemberRemoved mem |] ,None)) >>= ignoreM
+        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| ConfigChange.MemberRemoved mem |] ,None)) >>= ignoreM
         do! Raft.setCommitIndexM (index 3)
         do! Raft.applyEntries ()
 

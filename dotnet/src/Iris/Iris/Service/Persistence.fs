@@ -131,48 +131,123 @@ module Persistence =
   /// - project: IrisProject to work on
   /// - sm: StateMachine command
   ///
-  /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
+  /// Returns: Either<IrisError, FileInfo * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
     let signature = User.Admin.Signature
-    let path = state.Project.Path
+    let basePath = state.Project.Path
+    let inline save t = Asset.save basePath t
+    let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete
     match sm with
-    | AddCue            cue  -> Asset.saveWithCommit   path signature cue
-    | UpdateCue         cue  -> Asset.saveWithCommit   path signature cue
-    | RemoveCue         cue  -> Asset.deleteWithCommit path signature cue
-    | AddCueList    cuelist  -> Asset.saveWithCommit   path signature cuelist
-    | UpdateCueList cuelist  -> Asset.saveWithCommit   path signature cuelist
-    | RemoveCueList cuelist  -> Asset.deleteWithCommit path signature cuelist
-    | AddCuePlayer    player -> Asset.saveWithCommit   path signature player
-    | UpdateCuePlayer player -> Asset.saveWithCommit   path signature player
-    | RemoveCuePlayer player -> Asset.deleteWithCommit path signature player
-    | AddPinGroup     group  -> Asset.saveWithCommit   path signature group
-    | UpdatePinGroup  group  -> Asset.saveWithCommit   path signature group
-    | RemovePinGroup  group  -> Asset.deleteWithCommit path signature group
-    | AddUser          user  -> Asset.saveWithCommit   path signature user
-    | UpdateUser       user  -> Asset.saveWithCommit   path signature user
-    | RemoveUser       user  -> Asset.deleteWithCommit path signature user
-    | AddMember           _  -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember        _  -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember        _  -> Asset.deleteWithCommit path signature state.Project
-    | UpdateProject project  -> Asset.saveWithCommit   path signature project
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
+
+    | AddCue    cue
+    | UpdateCue cue -> save cue
+    | RemoveCue cue -> delete cue
+
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | AddCueList    cuelist
+    | UpdateCueList cuelist -> save cuelist
+    | RemoveCueList cuelist -> delete cuelist
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | AddCuePlayer    player
+    | UpdateCuePlayer player -> save player
+    | RemoveCuePlayer player -> delete player
+
+    //  ____  _        ____
+    // |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+    // | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+    // |  __/| | | | | |_| | | | (_) | |_| | |_) |
+    // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+    //                                     |_|
+
+    | AddPinGroup    group
+    | UpdatePinGroup group -> save group
+    | RemovePinGroup group -> delete group
+
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | AddUser    user
+    | UpdateUser user -> save user
+    | RemoveUser user -> delete user
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+    | AddMember     _
+    | RemoveMember  _
+    | UpdateProject _ -> save state.Project
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
+
     | AddPin    pin
     | UpdatePin pin -> either {
         let! group =
-          State.tryFindPinGroup pin.PinGroup state
+          state
+          |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.saveWithCommit path signature group
+        return! save group
       }
     | RemovePin pin -> either {
         let! group =
-          State.tryFindPinGroup pin.PinGroup state
+          state
+          |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        return! Asset.saveWithCommit path signature group
+        return! save group
       }
-    | _ -> either {
-        let! repo = state.Project |> Project.repository
-        let commits = Git.Repo.commits repo
-        return! Git.Repo.elementAt 0 commits
-      }
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | _ -> Either.nothing
+
+  // ** commitChanges
+
+  /// ## commitChanges
+  ///
+  /// Commit all changes to disk
+  ///
+  /// ### Signature:
+  /// - project: IrisProject to work on
+  /// - sm: StateMachine command
+  ///
+  /// Returns: Either<IrisError, Commit>
+  let commitChanges (state: State) =
+    either {
+      let signature = User.Admin.Signature
+      let! repo = state.Project |> Project.repository
+      do! Git.Repo.stageAll repo
+      return! Git.Repo.commit repo "Project changes committed." signature
+    }
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
@@ -189,7 +264,7 @@ module Persistence =
 
   // ** getRemote
 
-  let private getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
+  let getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
     let uri = Uri.localGitUri (unwrap project.Name) leader
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
@@ -211,7 +286,7 @@ module Persistence =
 
   // ** ensureTracking
 
-  let private ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
+  let ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
     if not (Git.Branch.isTracking branch) then
       Git.Branch.setTracked repo branch remote
     else
@@ -228,7 +303,7 @@ module Persistence =
   /// - leader: RaftMember who is currently leader of the cluster
   ///
   /// Returns: Either<IrisError, unit>
-  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
+  let updateRepo (project: IrisProject) (leader: RaftMember) =
     either {
       let! repo = Project.repository project
       let! remote = getRemote project repo leader
@@ -238,18 +313,18 @@ module Persistence =
       let result = Git.Repo.pull repo remote User.Admin.Signature
       match result with
       | Right merge ->
-        match merge.Status with
-        | MergeStatus.Conflicts ->
-          "Automatic merge failed with conflicts. Please resolve conflicts manually."
-          |> Logger.err (tag "updateRepo")
-        | _ ->
-          merge.Commit.Sha
-          |> sprintf "Automatic merge successful: %s"
-          |> Logger.debug (tag "updateRepo")
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "updateRepo")
+        return
+          match merge.Status with
+          | MergeStatus.Conflicts -> merge.Status, None
+          | MergeStatus.UpToDate  -> merge.Status, None
+          | MergeStatus.FastForward
+          | MergeStatus.NonFastForward as status ->
+            if isNull merge.Commit then
+              merge.Status, None
+            else
+              merge.Status, Some merge.Commit
+          | other -> merge.Status, None
+      | Left error -> return! Either.fail error
     }
 
 #endif

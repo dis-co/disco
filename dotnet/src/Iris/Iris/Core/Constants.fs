@@ -6,6 +6,9 @@ open System
 module Constants =
 
   [<Literal>]
+  let QUEUE_LENGTH_THRESHOLD = 100      // number messages in queus to trigger warning
+
+  [<Literal>]
   let WEP_API_COMMAND = "/api/command"
 
   //  _____
@@ -210,7 +213,6 @@ module Constants =
 
   [<Literal>]
   let IRIS_CLIENT_ID_ENV_VAR = "IRIS_CLIENT_ID"
-
 
   module ErrorMessages =
     [<Literal>]

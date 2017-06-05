@@ -5,6 +5,7 @@ module Tracing =
   open System.Diagnostics
 
   let mutable private on = false
+  let private lockobj = Object()
 
   let enable() = on <- true
   let disable() = on <- false
@@ -17,11 +18,12 @@ module Tracing =
       | _ -> false
 
     if on || env then
-      let stop = new Stopwatch()
+      let stop = Stopwatch()
       stop.Start()
       let result = f()
       stop.Stop()
-      Logger.trace tag (sprintf "took %dms" stop.ElapsedMilliseconds)
+      lock lockobj <| fun _ ->
+        printfn "[%s] %s" tag (sprintf "took %dms" stop.ElapsedMilliseconds)
       result
     else f()
     #else

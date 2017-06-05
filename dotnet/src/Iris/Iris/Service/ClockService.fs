@@ -10,32 +10,17 @@ open Iris.Zmq
 open Iris.Core
 open ZeroMQ
 
-// * Types
-
-type ClockEvent =
-  { Frame: int64<frame>
-    Deviation: int64<ns> }
-
-type IClock =
-  inherit IDisposable
-  abstract Subscribe: (ClockEvent -> unit) -> IDisposable
-  abstract Start: unit -> unit
-  abstract Stop: unit -> unit
-  abstract Running: bool with get
-  abstract Fps: int16<fps>  with get, set
-  abstract Frame: int64<frame>
-
 // * Clock module
 
 module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<ClockEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** Listener
 
-  type private Listener = IObservable<ClockEvent>
+  type private Listener = IObservable<IrisEvent>
 
   // ** createListener
 
@@ -86,15 +71,7 @@ module Clock =
 
   // ** ClockState
 
-  type private ClockState(ip: IpAddress, ctx: ZContext) =
-    let addr =
-      Uri.epgmUri
-        ip
-        (IPv4Address Constants.CLOCK_MCAST_ADDRESS)
-        (port Constants.CLOCK_MCAST_PORT)
-
-    let socket = new Pub(unwrap addr, Constants.CLOCK_MCAST_PREFIX, ctx)
-
+  type private ClockState() =
     let subscriptions = Subscriptions()
     let stopwatch = Stopwatch.StartNew()
 
@@ -105,11 +82,6 @@ module Clock =
     let mutable frame = 0L<frame>
     let mutable fps = 60s<fps>
     let mutable timeout = calculateTimeout fps
-
-    do
-      socket.Start()
-      |> Either.mapError (string >> failwith)
-      |> ignore
 
     member state.Run
       with get ()  = run && not disposed
@@ -122,9 +94,6 @@ module Clock =
     member state.Publish
       with get ()  = publish && not disposed
       and set pub  = publish <- pub
-
-    member state.Socket
-      with get () = socket
 
     member state.Timeout
       with get () = timeout
@@ -157,7 +126,6 @@ module Clock =
     interface IDisposable with
       member self.Dispose() =
         disposed <- true
-        tryDispose socket ignore
         subscriptions.Clear()
 
   // ** worker
@@ -171,27 +139,19 @@ module Clock =
           state.Previous <- elapsed
           state.Tick()
 
-          let ev = { Frame = state.Frame
-                     Deviation = (diff / μsPerTick) * 1L<ns> }
+          // let deviation = (diff / μsPerTick) * 1L<ns>
+          let ev = state.Frame |> uint32 |> UpdateClock
 
           let subscriptions = state.Subscriptions.ToArray()
           for KeyValue(_,obs) in subscriptions do
-            obs.OnNext(ev)
-
-          state.Frame
-          |> uint32
-          |> UpdateClock
-          |> Binary.encode
-          |> state.Socket.Publish
-          |> Either.mapError (string >> Logger.err "Clock")
-          |> ignore
+            (Origin.Service, ev) |> IrisEvent.Append |> obs.OnNext
 
       Thread.Sleep state.Timeout
 
   // ** create
 
-  let create ctx (ip: IpAddress) =
-    let state = new ClockState(ip, ctx)
+  let create () =
+    let state = new ClockState()
 
     if not Stopwatch.IsHighResolution then
       Logger.warn "Clock" "internal timer is not using high resolution clock"
@@ -218,10 +178,10 @@ module Clock =
           with get () = state.Fps
           and set fps = if not state.Disposed then state.Fps <- fps
 
-        member clock.Subscribe (callback: ClockEvent -> unit) =
+        member clock.Subscribe (callback: IrisEvent -> unit) =
           let guid = Guid.NewGuid()
           let listener = createListener guid state.Subscriptions
-          { new IObserver<ClockEvent> with
+          { new IObserver<IrisEvent> with
               member self.OnCompleted() = ()
               member self.OnError(error) = ()
               member self.OnNext(value) = callback value }

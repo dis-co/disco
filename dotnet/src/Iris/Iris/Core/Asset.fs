@@ -77,9 +77,9 @@ module Asset =
       try
         if File.exists location then
           Path.map File.Delete location
-          return true
+          return ()
         else
-          return false
+          return ()
       with
         | exn ->
           return!

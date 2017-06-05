@@ -15,7 +15,7 @@ group Main
   nuget FsControl
   nuget Suave
   nuget Fleck
-  nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
+  nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
   nuget ZeroMQ
@@ -32,7 +32,7 @@ group Main
   nuget Hopac >= 0.3.23
 
   # Keep this pinned to dotnet-fable version in src/Frontend/Fable.proj
-  nuget Fable.Core 1.0.6
+  nuget Fable.Core 1.0.8
 
   # Other Fable libraries
   nuget Fable.JsonConverter
