@@ -273,11 +273,10 @@ module String =
   ///
   /// Returns: string
   let sanitize (payload: string) =
-    let regex = new Regex("(\.|\ |\*|\^)")
+    let regex = Regex("(\\\|\/|\.|\ |\*|\^)")
     if regex.IsMatch(payload)
     then regex.Replace(payload, "_")
     else payload
-
 
   /// *** encodeBase64
 
