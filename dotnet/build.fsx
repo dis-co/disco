@@ -641,8 +641,7 @@ Target "BuildReleaseZeroconf"
 
 Target "BuildFrontend" (fun () ->
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  // Build LESS files
-  runNpm (@"run lessc -- .\src\Frontend\css\main.less .\src\Frontend\css\Iris_generated.css") __SOURCE_DIRECTORY__ ()
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
 
   DotNet.installDotnetSdk ()
   DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
@@ -658,6 +657,8 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )
