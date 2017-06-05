@@ -2319,24 +2319,17 @@ module rec Raft =
       let! state = get
       let! cbs = read
 
-      if mem.State = Running || mem.State = Failed then
-        let vote =
-          { Term         = state.CurrentTerm
-            Candidate    = state.Member
-            LastLogIndex = Log.getIndex state.Log
-            LastLogTerm  = Log.getTerm state.Log }
+      let vote =
+        { Term         = state.CurrentTerm
+          Candidate    = state.Member
+          LastLogIndex = Log.getIndex state.Log
+          LastLogTerm  = Log.getTerm state.Log }
 
-        do! mem.State
-            |> sprintf "(to: %s) (state: %A)" (string mem.Id)
-            |> debug "sendVoteRequest"
+      do! mem.State
+          |> sprintf "(to: %s) (state: %A)" (string mem.Id)
+          |> debug "sendVoteRequest"
 
-        cbs.SendRequestVote mem vote
-      else
-        do! sprintf "not requesting vote from %s: (voting: %b) (state: %A)"
-              (string mem.Id)
-              (Member.isVoting mem)
-              mem.State
-            |> debug "sendVoteRequest"
+      cbs.SendRequestVote mem vote
     }
 
   // ** requestAllVotes
@@ -2402,16 +2395,16 @@ module rec Raft =
 
   // ** shouldGrantVote
 
-  let shouldGrantVote (vote : VoteRequest) =
+  let shouldGrantVote (vote: VoteRequest) =
     raft {
       let err = RaftError(tag "shouldGrantVote","Log Incomplete")
       let! state = get
       let result =
         validation {       // predicate               result  input
           return! validate (validateTerm vote)        false   state
-          return! validate alreadyVoted               false   state
+          return! validate  alreadyVoted              false   state
           return! validate (validateCandidate vote)   false   state
-          return! validate validateCurrentIdx         true    state
+          return! validate  validateCurrentIdx        true    state
           return! validate (validateLastLogTerm vote) true    state
           return! validate (validateLastLog vote)     true    state
           return (false, err)
@@ -2419,13 +2412,13 @@ module rec Raft =
         |> runValidation
 
       if fst result then
-        let str = sprintf "granted vote to %s" (string vote.Candidate.Id)
-        do! debug "shouldGrantVote" str
+        do! vote.Candidate.Id
+            |> sprintf "granted vote to %O"
+            |> debug "shouldGrantVote"
       else
-        let str = sprintf "did not grant vote to %s. reason: %A"
-                    (string vote.Candidate.Id)
-                    (snd result)
-        do! debug "shouldGrantVote" str
+        do! snd result
+            |> sprintf "did not grant vote to %O. reason: %A" vote.Candidate.Id
+            |> debug "shouldGrantVote"
       return result
     }
 
@@ -2444,7 +2437,7 @@ module rec Raft =
     raft {
       let! term = currentTermM ()
       if term < vote.Term then
-        do! debug "maybeResetFollower" "term < vote.Term resetting"
+        do! debug "maybeResetFollower" "current term < vote Term, resetting to follower state"
         do! setTermM vote.Term
         do! setLeaderM (Some nid)
         do! becomeFollower ()

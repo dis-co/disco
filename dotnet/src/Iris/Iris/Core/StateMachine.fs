@@ -1352,7 +1352,7 @@ type StateMachine =
       // Member
       | AddMember               _
       | UpdateMember            _
-      | RemoveMember            _      -> Save
+      | RemoveMember            _      -> Commit
 
       // Client
       | AddClient               _

@@ -248,26 +248,26 @@ module IrisService =
         match persistEntry state.Store.State sm with
         | Right () ->
           string sm
-          |> String.format "Successfully persisted command {0} disc"
+          |> String.format "Successfully persisted command {0} to disk"
           |> Logger.debug (tag "persistLog")
         | Left error ->
-          error |> String.format "Error persisting command: {0}"
+          error |> String.format "Error persisting command to disk: {0}"
           |> Logger.err (tag "persistLog")
         state
       | PersistenceStrategy.Commit ->
         match persistEntry state.Store.State sm with
         | Right () ->
           string sm
-          |> String.format "Successfully persisted command {0} disc"
+          |> String.format "Successfully persisted command {0} to disk"
           |> Logger.debug (tag "persistLog")
         | Left error ->
           error
-          |> String.format "Error persisting command: {0}"
+          |> String.format "Error persisting command to disk: {0}"
           |> Logger.err (tag "persistLog")
         match commitChanges state.Store.State with
         | Right commit ->
           commit.Sha
-          |> String.format "Successfully committed changes in {0}"
+          |> String.format "Successfully committed changes in: {0}"
           |> Logger.debug (tag "persistLog")
         | Left error ->
           error

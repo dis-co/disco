@@ -344,7 +344,7 @@ type IrisEvent =
       | Append (Origin.Client  _, RemoveDiscoveredService _) -> Ignore
       | Append (Origin.Service _, AddDiscoveredService    _)
       | Append (Origin.Service _, UpdateDiscoveredService _)
-      | Append (Origin.Service _, RemoveDiscoveredService _) -> Replicate
+      | Append (Origin.Service _, RemoveDiscoveredService _) -> Process
 
       //   ____ _            _
       //  / ___| | ___   ___| | __
