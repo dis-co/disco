@@ -8,34 +8,44 @@
   border: 2px solid blue;
 }
 
-.iris-dropdown {
-  display: inline-block;
-  font-size: 1.3em;
-  user-select: none;
-  cursor: pointer;
-
-  .iris-dropdown-options {
-    position: absolute;
-    z-index: 100;
-    background: white;
-    border: 1px solid gray;
-    margin: 0;
-    padding: 0;
-
-    li {
-      list-style: none;
-      margin-left: 0;
-      padding: 10px;
-      background: white;
-
-      &:hover {
-        background-color: lightgray;
-        /*cursor: text;*/
-        transition: 0.1s;
-      }
-    }
-  }
+.dropdown {
+  box-shadow: 0 0 8px #777;
+  display: block;
+  left: 0;
+  top: -1000px;
+  position: absolute;
+  top: 100%;
+  z-index: 1000;
 }
+
+// .iris-dropdown {
+//   display: inline-block;
+//   font-size: 1.3em;
+//   user-select: none;
+//   cursor: pointer;
+
+//   .iris-dropdown-options {
+//     position: absolute;
+//     z-index: 100;
+//     background: white;
+//     border: 1px solid gray;
+//     margin: 0;
+//     padding: 0;
+
+//     li {
+//       list-style: none;
+//       margin-left: 0;
+//       padding: 10px;
+//       background: white;
+
+//       &:hover {
+//         background-color: lightgray;
+//         /*cursor: text;*/
+//         transition: 0.1s;
+//       }
+//     }
+//   }
+// }
 
 .iris-widget {
   height: 100%;
