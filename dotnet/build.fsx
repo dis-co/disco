@@ -640,8 +640,11 @@ Target "BuildReleaseZeroconf"
 
 
 Target "BuildFrontend" (fun () ->
-  DotNet.installDotnetSdk ()
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  // Build LESS files
+  runNpm (@"run lessc -- .\src\Frontend\css\main.less .\src\Frontend\css\Iris_generated.css") __SOURCE_DIRECTORY__ ()
+
+  DotNet.installDotnetSdk ()
   DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
   // Restoring a solution seems to be causing problems in Linux, so restore each project individually
   DotNet.restoreMultiple (frontendDir @@ "fable") [

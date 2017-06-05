@@ -4,7 +4,8 @@
     "start": "webpack-dev-server --config src/Frontend/webpack.config.js",
     "build": "webpack            --config src/Frontend/webpack.config.js              -p",
     "build-test": "webpack       --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
-    "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap"
+    "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
+    "lessc": "lessc"
   },
   "devDependencies": {
     "@types/jquery": "^2.0.41",
