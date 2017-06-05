@@ -229,11 +229,7 @@ module PinGroup =
   // ** assetPath
 
   let assetPath (group: PinGroup) =
-    let path =
-      sprintf "%s_%s%s"
-        (group.Name |> unwrap |> String.sanitize)
-        (string group.Id)
-        ASSET_EXTENSION
+    let path = (string group.Id |> String.sanitize) + ASSET_EXTENSION
     PINGROUP_DIR <.> path
 
   // ** hasPin
