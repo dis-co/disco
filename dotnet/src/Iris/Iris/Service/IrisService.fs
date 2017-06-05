@@ -809,12 +809,7 @@ module IrisService =
         try
           let! msg = inbox.Receive()
 
-          // warn if the queue length surpasses threshold
-          let count = inbox.CurrentQueueLength
-          if count > Constants.QUEUE_LENGTH_THRESHOLD then
-            count
-            |> String.format "Queue length threshold was reached: {0}"
-            |> Logger.warn (tag "loop")
+          Actors.warnQueueLength (tag "loop") inbox
 
           Tracing.trace (tag (sprintf "loop (%d msgs)" inbox.CurrentQueueLength)) <| fun () ->
             let state = store.State

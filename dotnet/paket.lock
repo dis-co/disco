@@ -14,7 +14,7 @@ NUGET
       Expecto (>= 1.0.12)
       FSharp.Core (>= 3.1.2.5)
       PerfUtil (>= 0.1.8)
-    Fable.Core (1.0.6)
+    Fable.Core (1.0.8)
       FSharp.Core (>= 4.1.17) - restriction: >= netstandard16
       NETStandard.Library (>= 1.6.1) - restriction: >= netstandard16
     Fable.JsonConverter (0.1.1)
