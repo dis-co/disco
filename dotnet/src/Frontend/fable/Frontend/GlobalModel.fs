@@ -15,8 +15,8 @@ type ISubscriber<'T> = 'T -> IDictionary<string,obj> -> unit
 type IWidget = interface end
 type ITab = interface end
 
-[<Literal>]
-let private LOG_MAX = 100
+let [<Literal>] private LOG_MAX = 100
+let [<Literal>] private LOG_DIFF = 10
 
 // Polyfill, Fable doesn't support RemoveRange yet
 [<Emit("$2.splice($0,$1)")>]
@@ -34,7 +34,7 @@ type IGlobalState =
   abstract logs: IEnumerable<string>
   abstract tabs: IDictionary<Guid,ITab>
   abstract widgets: IDictionary<Guid,IWidget>
-  abstract clock: int
+  abstract clock: uint32
   abstract useRightClick: bool
   abstract serviceInfo: ServiceInfo
   abstract project: IrisProject option
@@ -71,7 +71,7 @@ type private GlobalStateMutable(readState: unit->State option) =
   member val Logs = ResizeArray()
   member val Tabs = Dictionary()
   member val Widgets = Dictionary()
-  member val Clock = 0 with get, set
+  member val Clock = 0ul with get, set
   member val UseRightClick = false with get, set
   member val ServiceInfo =
       { webSocket = "0"
@@ -140,6 +140,10 @@ type GlobalModel() as this =
         // | AddMember _
         // | UpdateMember _
         // | RemoveMember _
+        | LogMsg log -> this.AddLog(log.Message)
+        | UpdateClock frames ->
+          stateMutable.Clock <- frames
+          this.Notify(nameof(stateImmutable.clock), stateImmutable.clock, [])
         | _ -> ()
       | _ -> ())
   )
@@ -212,8 +216,7 @@ type GlobalModel() as this =
   member this.AddLog(log: string) =
     let length = stateMutable.Logs.Count
     if length > LOG_MAX then
-      let diff = LOG_MAX / 10
-      removeRange (length - diff) diff stateMutable.Logs
+      removeRange (length - LOG_DIFF) LOG_DIFF stateMutable.Logs
     stateMutable.Logs.Insert(0, log)
     this.Notify(nameof(stateImmutable.logs), stateImmutable.logs, [])
 
