@@ -228,7 +228,12 @@ module Api =
   // ** processInputs
 
   let private processInputs (state: PluginState) =
-    if state.InUpdate.[0] && state.Initialized then
+    if state.InReconnect.[0] then
+      while state.Events.TryDequeue() |> fst do
+        ignore "purging event"
+      dispose state.ApiClient
+      startClient state
+    elif state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
