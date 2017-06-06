@@ -229,8 +229,9 @@ module PinGroup =
   // ** assetPath
 
   let assetPath (group: PinGroup) =
-    let path = (string group.Id |> String.sanitize) + ASSET_EXTENSION
-    PINGROUP_DIR <.> path
+    let fn = (string group.Id |> String.sanitize) + ASSET_EXTENSION
+    let path = (string group.Client) <.> fn
+    filepath PINGROUP_DIR </> path
 
   // ** hasPin
 

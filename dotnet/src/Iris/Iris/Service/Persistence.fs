@@ -121,6 +121,14 @@ module Persistence =
         |> Error.asProjectError "Persistence.saveRaft"
         |> Either.fail
 
+  // ** ensureDirectory
+
+  let private ensureDirectory (path: FilePath) =
+    path
+    |> Path.getDirectoryName
+    |> Directory.createDirectory
+    |> ignore
+
   // ** persistEntry
 
   /// ## persistEntry
@@ -212,6 +220,8 @@ module Persistence =
           state
           |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        let path = Asset.path group
+        ensureDirectory path
         return! save group
       }
     | RemovePin pin -> either {
@@ -219,6 +229,8 @@ module Persistence =
           state
           |> State.tryFindPinGroup pin.PinGroup
           |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        let path = Asset.path group
+        ensureDirectory path
         return! save group
       }
 
