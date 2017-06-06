@@ -1,7 +1,5 @@
 import React, { Component } from 'react'
-import css from "../css/PanelLeft.less"
 import Log from "./widgets/Log"
-import Manager from "./widgets/Manager"
 import GraphView from "./widgets/GraphView"
 import ProjectView from "./widgets/ProjectView"
 import Cluster from "./widgets/Cluster"
@@ -12,9 +10,6 @@ function cardClicked(title, global) {
   switch (title.toUpperCase()) {
     case "LOG":
       global.addWidget(new Log());
-      break;
-    case "MANAGER":
-      global.addWidget(new Manager());
       break;
     case "GRAPH VIEW":
       global.addWidget(new GraphView());

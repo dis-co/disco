@@ -499,7 +499,7 @@ Target "CopyAssets"
     ] |> List.iter (CopyFile "bin/")
     FileUtils.cp (docsDir @@ "md/04_test_package.md") "bin/README.md"
     // Frontend
-    SilentCopyDir "bin/Frontend/img" (baseDir @@ "../Frontend/img") withoutNodeModules
+    SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
     SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
     FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
@@ -640,8 +640,10 @@ Target "BuildReleaseZeroconf"
 
 
 Target "BuildFrontend" (fun () ->
-  DotNet.installDotnetSdk ()
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
+
+  DotNet.installDotnetSdk ()
   DotNet.restore __SOURCE_DIRECTORY__ "Fable.proj"
   // Restoring a solution seems to be causing problems in Linux, so restore each project individually
   DotNet.restoreMultiple (frontendDir @@ "fable") [
@@ -655,6 +657,8 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
+  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-run build" __SOURCE_DIRECTORY__ false
 )

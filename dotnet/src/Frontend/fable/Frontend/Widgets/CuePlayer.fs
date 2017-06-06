@@ -9,10 +9,8 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Spread
+open PinView
 open Helpers
-
-importAll "../../../css/cuePlayer.css"
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
 
@@ -277,24 +275,16 @@ type private CueView(props) =
           for (pinGroupId, pinAndSlices) in pinGroups do
             let pinGroup = findPinGroup pinGroupId this.props.Global.State
             yield
-              div [
-                Key (string pinGroupId)
-                Style [
-                  Display "flex"
-                  FlexDirection "column"
-                ]
-              ] [
-                p [] [str (unwrap pinGroup.Name)]
-                div [] [
-                  for i, pin, slices in pinAndSlices do
-                    yield com<SpreadView,_,_>
-                      { key = string pin.Id
-                        ``global`` = this.props.Global
-                        pin = pin
-                        slices = Some slices
-                        update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
-                        onDragStart = None } []
-                ]
+              div [Key (string pinGroupId); Class "iris-pingroup"] [
+                yield div [Class "iris-pingroup-name"] [str (unwrap pinGroup.Name + ":")]
+                for i, pin, slices in pinAndSlices do
+                  yield com<PinView,_,_>
+                    { key = string pin.Id
+                      ``global`` = this.props.Global
+                      pin = pin
+                      slices = Some slices
+                      update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
+                      onDragStart = None } []
               ]
       ]
     ]

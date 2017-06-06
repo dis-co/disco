@@ -1,8 +1,26 @@
+import * as $ from "jquery"
 import { showModal } from "./App"
 import LoadProject from './modals/LoadProject'
 import ProjectConfig from './modals/ProjectConfig'
 
 declare var IrisLib: any;
+
+export function jQueryEventAsPromise(selector: any, events: string) {
+  return new Promise<JQueryEventObject>(resolve => {
+    $(selector).on(events, e => {
+      $(events).off(events);
+      resolve(e);
+    });
+  })
+}
+
+export function raceIndexed(...promises: Promise<any>[]) {
+  return new Promise<[number, any]>(resolve => {
+    for (let i = 0; i < promises.length; i++) {
+      promises[i].then(x => resolve([i, x]));
+    }
+  })
+}
 
 export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   let ar = [];

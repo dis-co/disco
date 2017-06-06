@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import Tree from "../../lib/react-ui-tree/react-ui-tree"
-import "../../lib/react-ui-tree/react-ui-tree.less"
+import "../../lib/react-ui-tree/react-ui-tree.css"
 
 class ProjectView extends Component {
   constructor(props) {

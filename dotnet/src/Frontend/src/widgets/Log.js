@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-import css from "../../css/Log.less"
 import { map } from "../Util.ts"
 
 class View extends Component {

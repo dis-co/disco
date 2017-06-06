@@ -1903,9 +1903,9 @@ extsprintf@1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.0.2.tgz#e1080e0658e300b06294990cc70e1502235fd550"
 
-fable-loader@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.0.tgz#1a866d500145eaa078e30b8eeef20d6f45e5206e"
+fable-loader@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.2.tgz#26e5e9ecb5df7e76ce7c2c1ab25388b92e0325f0"
   dependencies:
     fable-utils "^1.0.0"
 
@@ -2746,12 +2746,6 @@ lcid@^1.0.0:
   resolved "https://registry.yarnpkg.com/lcid/-/lcid-1.0.0.tgz#308accafa0bc483a3867b4b6f2b9506251d1b835"
   dependencies:
     invert-kv "^1.0.0"
-
-less-loader@^2.2.3:
-  version "2.2.3"
-  resolved "https://registry.yarnpkg.com/less-loader/-/less-loader-2.2.3.tgz#b6d8f8139c8493df09d992a93a00734b08f84528"
-  dependencies:
-    loader-utils "^0.2.5"
 
 less@^2.7.2:
   version "2.7.2"

@@ -89,14 +89,6 @@ var frontendConfig = {
         use: [ 'style-loader', 'css-loader' ]
       },
       {
-        test: /\.less$/,
-        use: [
-          'style-loader',
-          { loader: 'css-loader', options: { importLoaders: 1 } },
-          'less-loader'
-        ]
-      },
-      {
         test: /\.tsx?$/,
         loader: "awesome-typescript-loader"
       },
