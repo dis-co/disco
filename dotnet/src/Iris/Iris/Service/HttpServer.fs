@@ -135,6 +135,20 @@ module Http =
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
+  let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
+    let msg = sprintf "Network interface for %A could not be found. Check machinecfg.yaml" ip
+    List.fold
+      (fun result (iface: NetworkInterface) ->
+        match result with
+        | Right () -> result
+        | Left _ as error ->
+          if List.contains ip iface.IpAddresses then
+            Either.succeed ()
+          else
+            result)
+      (Left (Error.asSocketError (tag "checkIpAddress") msg))
+      ifaces
+
   let private mkConfig (config: IrisMachine)
                        (basePath: FilePath)
                        (cts: CancellationTokenSource) :
@@ -166,10 +180,14 @@ module Http =
                 [|"iris"|] }
 
         let machine = MachineConfig.get()
+
+        do! Network.getInterfaces() |> checkIpAddress machine.BindAddress
+
         let addr = machine.BindAddress |> string |> IPAddress.Parse
         let port = Sockets.Port.Parse (string machine.WebPort)
 
-        sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port basePath
+        basePath
+        |> sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port
         |> Logger.info (tag "mkConfig")
 
         return
@@ -197,7 +215,12 @@ module Http =
     let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
       either {
         let status = ref ServiceStatus.Stopped
-        let basePath = defaultArg frontend <| getDefaultBasePath() |> Path.getFullPath
+
+        let basePath =
+          getDefaultBasePath()
+          |> defaultArg frontend
+          |> Path.getFullPath
+
         let cts = new CancellationTokenSource()
         let! webConfig = mkConfig config basePath cts
 
