@@ -105,20 +105,11 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  let private broadcast (connections: Connections)
-                        (msg: StateMachine) :
-                        Either<IrisError list, unit> =
-
-    let sendAsync (id: Id) = async {
-        let result = send connections id msg
-        return result
-      }
-
+  let private broadcast (connections: Connections) (msg: StateMachine) =
     let result : IrisError list =
       connections.Keys
-      |> Seq.map sendAsync
-      |> Async.Parallel
-      |> Async.RunSynchronously
+      |> Seq.toArray
+      |> Array.map (fun id -> send connections id msg)
       |> Array.fold
         (fun lst (result: Either<IrisError,unit>) ->
           match result with
