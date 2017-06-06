@@ -12,8 +12,6 @@ open Fable.Helpers.React.Props
 open Spread
 open Helpers
 
-importAll "../../../css/cuePlayer.css"
-
 let [<Literal>] SELECTION_COLOR = "lightblue"
 
 module private Helpers =

@@ -1,5 +1,3 @@
-import "bulma/css/bulma.css"
-import "../css/main.less"
 import "react-grid-layout/css/styles.css"
 
 import values from "./values"

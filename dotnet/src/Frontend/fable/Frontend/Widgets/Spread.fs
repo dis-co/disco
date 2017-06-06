@@ -9,9 +9,6 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-importAll "../../../css/Spread.less"
-importAll "../../../css/cuePlayer.css"
-
 let [<Literal>] BASE_HEIGHT = 25
 let [<Literal>] ROW_HEIGHT = 17
 let [<Literal>] MIN_WIDTH = 100

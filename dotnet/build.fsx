@@ -499,7 +499,7 @@ Target "CopyAssets"
     ] |> List.iter (CopyFile "bin/")
     FileUtils.cp (docsDir @@ "md/04_test_package.md") "bin/README.md"
     // Frontend
-    SilentCopyDir "bin/Frontend/img" (baseDir @@ "../Frontend/img") withoutNodeModules
+    SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
     SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
     FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"

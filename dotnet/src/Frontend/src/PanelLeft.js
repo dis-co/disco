@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-import css from "../css/PanelLeft.less"
 import Log from "./widgets/Log"
 import GraphView from "./widgets/GraphView"
 import ProjectView from "./widgets/ProjectView"
