@@ -126,6 +126,13 @@ module Utils =
 [<RequireQualifiedAccess>]
 module String =
 
+  // ** endsWith
+
+  let endsWith (suffix: string) (str: string) =
+    str.EndsWith suffix
+
+  // ** replace
+
   /// ## replace
   ///
   /// Replace `oldchar` with `newchar` in `str`.
@@ -139,7 +146,7 @@ module String =
   let replace (oldchar: char) (newchar: char) (str: string) =
     str.Replace(oldchar, newchar)
 
-  // *** join
+  // ** join
 
   /// ## join
   ///
@@ -152,7 +159,7 @@ module String =
   /// Returns: string
   let join sep (arr: string array) = String.Join(sep, arr)
 
-  // *** toLower
+  // ** toLower
 
   /// ## toLower
   ///
@@ -174,7 +181,7 @@ module String =
 
   #endif
 
-  // *** trim
+  // ** trim
 
   #if !FABLE_COMPILER
 
@@ -191,7 +198,7 @@ module String =
 
   #endif
 
-  // *** toUpper
+  // ** toUpper
 
   #if !FABLE_COMPILER
 
@@ -208,7 +215,7 @@ module String =
 
   #endif
 
-  // *** split
+  // ** split
 
   /// ## split
   ///
@@ -222,7 +229,7 @@ module String =
   let split (chars: char array) (str: string) =
     str.Split(chars)
 
-  // *** indent
+  // ** indent
 
   #if !FABLE_COMPILER
 
@@ -243,7 +250,7 @@ module String =
 
   #endif
 
-  // *** subString
+  // ** subString
 
   /// ## subString
   ///
@@ -261,7 +268,7 @@ module String =
       str.Substring(index, length)
     else
       ""
-  // *** santitize
+  // ** santitize
 
   /// ## sanitize
   ///
@@ -304,7 +311,7 @@ module String =
     Convert.FromBase64String(buffer)
     #endif
 
-  // *** format
+  // ** format
 
   let format (format: string) (o: obj) =
     String.Format(format, o)

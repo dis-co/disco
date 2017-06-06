@@ -1,0 +1,1 @@
+#r "../../../packages/xunit.abstractions/lib/portable-net45+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS/xunit.abstractions.dll" 

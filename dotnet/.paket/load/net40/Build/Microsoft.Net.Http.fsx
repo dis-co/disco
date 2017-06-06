@@ -1,0 +1,5 @@
+#load @"Microsoft.Bcl.fsx" 
+#r "../../../../packages/build/Microsoft.Net.Http/lib/net40/System.Net.Http.Primitives.dll" 
+#r "../../../../packages/build/Microsoft.Net.Http/lib/net40/System.Net.Http.Extensions.dll" 
+#r "../../../../packages/build/Microsoft.Net.Http/lib/net40/System.Net.Http.dll" 
+#r "../../../../packages/build/Microsoft.Net.Http/lib/net40/System.Net.Http.WebRequest.dll" 

@@ -205,9 +205,21 @@ module Directory =
 
   // ** getFiles
 
-  let getFiles (pattern: string) (dir: FilePath) =
-    Directory.GetFiles(unwrap dir, pattern)
-    |> Array.map filepath
+  let rec getFiles (recursive: bool) (pattern: string) (dir: FilePath) : FilePath[] =
+    let current =
+      Directory.GetFiles(unwrap dir, pattern)
+      |> Array.map (filepath >> Path.getFullPath)
+    if recursive then
+      (unwrap dir)
+      |> Directory.GetDirectories
+      |> Array.fold
+          (fun m dir ->
+            filepath dir
+            |> getFiles recursive pattern
+            |> Array.append m)
+          Array.empty
+      |> Array.append current
+    else current
 
   // ** getDirectories
 

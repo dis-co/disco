@@ -1,0 +1,1 @@
+#load @"xunit.core.fsx" 
