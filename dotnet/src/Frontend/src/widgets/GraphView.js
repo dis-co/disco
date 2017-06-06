@@ -2,7 +2,7 @@
 /* @ts-check */
 
 import * as React from 'react'
-import { Spread, SpreadView } from "../../fable/Frontend/Widgets/Spread.fs"
+import { PinView } from "../../fable/Frontend/Widgets/PinView.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map, jQueryEventAsPromise, raceIndexed } from "../Util"
 
@@ -77,7 +77,7 @@ class View extends React.Component {
 
   render() {
     return (
-      <div className="iris-grapview" ref={el => this.el = el}>
+      <div className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
             <h3 className="title is-3">{pinGroup[1].Name}</h3>
@@ -85,9 +85,9 @@ class View extends React.Component {
               {map(pinGroup[1].Pins, (kv,i) => {
                 const pin = kv[1], key = IrisLib.toString(pin.Id);
                 return (
-                  // We need to wrap the SpreadView in a div to get the actual HTML element in `ref`
+                  // We need to wrap the PinView in a div to get the actual HTML element in `ref`
                   <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
-                    <SpreadView
+                    <PinView
                       key={key}
                       pin={pin}
                       global={this.props.global}

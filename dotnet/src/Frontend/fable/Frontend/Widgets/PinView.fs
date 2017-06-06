@@ -1,4 +1,4 @@
-module rec Iris.Web.Widgets.Spread
+module rec Iris.Web.Widgets.PinView
 
 open System
 open Iris.Core
@@ -53,7 +53,7 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-type [<Pojo>] SpreadProps =
+type [<Pojo>] PinProps =
   { key: string
     ``global``: IGlobalModel
     pin: Pin
@@ -61,8 +61,8 @@ type [<Pojo>] SpreadProps =
     update: (int->obj->unit) option
     onDragStart: (unit -> unit) option }
 
-type SpreadView(props) =
-  inherit React.Component<SpreadProps, InputState>(props)
+type PinView(props) =
+  inherit React.Component<PinProps, InputState>(props)
   do base.setInitState({ isOpen = false })
 
   member this.RecalculateHeight(rowCount: int) =
@@ -136,19 +136,25 @@ type SpreadView(props) =
       | None -> this.props.pin.Values.Length
     let height = if this.state.isOpen then this.RecalculateHeight(rowCount) else BASE_HEIGHT
     div [
-      ClassName "iris-spread"
+      ClassName "iris-pin"
       Ref (fun el -> this.onMounted(el))
     ] [
       div [
-        ClassName "iris-spread-child iris-flex-1"
+        ClassName "iris-pin-child iris-flex-1"
         Style [Height height]
       ] (this.RenderRowLabels(rowCount))
       div [
-        ClassName "iris-spread-child iris-flex-2"
+        ClassName "iris-pin-child iris-flex-2"
         Style [Height height]
       ] (this.RenderRowValues(rowCount, this.props.``global``.state.useRightClick))
       div [
-        ClassName "iris-spread-child iris-spread-end"
+        ClassName "iris-pin-child iris-pin-end"
         Style [Height height]
       ] (if rowCount > 1 then [this.RenderArrow()] else [])
     ]
+
+type [<Pojo>] PinGroupProps =
+  { ``global``: IGlobalModel
+    pinGroup: PinGroup
+    pinAndSlices: (int * Pin * Slices)[]
+    update: (int->int->obj->unit) option }

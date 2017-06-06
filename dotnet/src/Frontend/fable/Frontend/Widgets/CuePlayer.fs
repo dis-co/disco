@@ -9,7 +9,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Spread
+open PinView
 open Helpers
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
@@ -285,7 +285,7 @@ type private CueView(props) =
                 p [] [str (unwrap pinGroup.Name)]
                 div [] [
                   for i, pin, slices in pinAndSlices do
-                    yield com<SpreadView,_,_>
+                    yield com<PinView,_,_>
                       { key = string pin.Id
                         ``global`` = this.props.Global
                         pin = pin
