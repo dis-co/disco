@@ -112,7 +112,7 @@ type PinView(props) =
   member this.RenderArrow() =
     let arrowRotation = if this.state.isOpen then 90 else 0
     img [
-      Src "/img/more.png"
+      Src "/lib/img/more.png"
       Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
       OnClick (fun ev ->
         ev.stopPropagation()
