@@ -1,0 +1,6 @@
+#load @"Microsoft.CSharp.fsx" 
+#load @"System.Dynamic.Runtime.fsx" 
+#load @"System.Linq.Expressions.fsx" 
+#load @"System.Xml.ReaderWriter.fsx" 
+#load @"System.Xml.XDocument.fsx" 
+#r "../../../packages/Newtonsoft.Json/lib/netstandard1.0/Newtonsoft.Json.dll" 

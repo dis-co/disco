@@ -1,0 +1,7 @@
+#load @"Microsoft.Win32.Primitives.fsx" 
+#load @"Microsoft.Win32.Registry.fsx" 
+#load @"System.IO.FileSystem.fsx" 
+#load @"System.IO.FileSystem.Primitives.fsx" 
+#load @"System.Threading.Thread.fsx" 
+#load @"System.Threading.ThreadPool.fsx" 
+#r "../../../packages/System.Diagnostics.Process/lib/net461/System.Diagnostics.Process.dll" 
