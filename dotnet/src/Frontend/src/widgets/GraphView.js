@@ -80,22 +80,20 @@ class View extends React.Component {
       <div className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
-            <h3 className="title is-3">{pinGroup[1].Name}</h3>
-            <div>
-              {map(pinGroup[1].Pins, (kv,i) => {
-                const pin = kv[1], key = IrisLib.toString(pin.Id);
-                return (
-                  // We need to wrap the PinView in a div to get the actual HTML element in `ref`
-                  <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
-                    <PinView
-                      key={key}
-                      pin={pin}
-                      global={this.props.global}
-                      onDragStart={() => this.startDragging(key, pin)} />
-                  </div>
-                )
-              })}
-            </div>
+            <div className="iris-pingroup-name">{pinGroup[1].Name + ":"}</div>
+            {map(pinGroup[1].Pins, (kv,i) => {
+              const pin = kv[1], key = IrisLib.toString(pin.Id);
+              return (
+                // We need to wrap the PinView in a div to get the actual HTML element in `ref`
+                <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
+                  <PinView
+                    key={key}
+                    pin={pin}
+                    global={this.props.global}
+                    onDragStart={() => this.startDragging(key, pin)} />
+                </div>
+              )
+            })}
           </div>
         ))}
       </div>

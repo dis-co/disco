@@ -2,6 +2,17 @@
 @row-height: 17px;
 @pin-width: 120px;
 
+.iris-pingroup {
+  margin: 5px;
+  padding: 5px;
+  border: 1px solid black;
+  display: flex;
+  flex-wrap: wrap;
+  .iris-pingroup-name {
+    margin: 5px;
+  }  
+}
+
 .iris-pin {
   display: flex;
   flex-direction: row;
@@ -10,8 +21,9 @@
   justify-content: flex-start;
   align-content: stretch;
   align-items: stretch;
-  margin-left: 5px;
-  margin-bottom: 5px;
+  margin: 2px;
+  // margin-left: 5px;
+  // margin-bottom: 5px;
   width: @pin-width;
 }
 
