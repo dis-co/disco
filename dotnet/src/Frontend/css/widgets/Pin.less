@@ -1,8 +1,19 @@
 @base-height: 25px;
 @row-height: 17px;
-@spread-width: 120px;
+@pin-width: 120px;
 
-.iris-spread {
+.iris-pingroup {
+  margin: 5px;
+  padding: 5px;
+  border: 1px solid black;
+  display: flex;
+  flex-wrap: wrap;
+  .iris-pingroup-name {
+    margin: 5px;
+  }  
+}
+
+.iris-pin {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -10,12 +21,13 @@
   justify-content: flex-start;
   align-content: stretch;
   align-items: stretch;
-  margin-left: 5px;
-  margin-bottom: 5px;
-  width: @spread-width;
+  margin: 2px;
+  // margin-left: 5px;
+  // margin-bottom: 5px;
+  width: @pin-width;
 }
 
-.iris-spread-child {
+.iris-pin-child {
   padding: 0px;
   background: #555;
   color:#fff;
@@ -32,7 +44,7 @@
     border: none;
   }
 
-  /*.iris-spread-child:nth-child(2):hover{
+  /*.iris-pin-child:nth-child(2):hover{
     cursor: move;
   }*/
 
@@ -62,7 +74,7 @@
   }
 }
 
-.iris-spread-end {
+.iris-pin-end {
   padding: 0px;
   background: none;
   border: 1px #555 solid;

@@ -32,7 +32,7 @@ group Main
   nuget Hopac >= 0.3.23
   nuget System.ValueTuple
 
-  # Keep this pinned to dotnet-fable version in src/Frontend/Fable.proj
+  # Keep this pinned to dotnet-fable version in Fable.proj
   nuget Fable.Core 1.0.8
 
   # Other Fable libraries

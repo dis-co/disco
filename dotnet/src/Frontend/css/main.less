@@ -1,5 +1,11 @@
 @import "values";
 @import "classes";
+@import "icons.css";
+
+@import "widgets/CuePlayer.css";
+@import "widgets/PanelLeft";
+@import "widgets/Log";
+@import "widgets/Pin";
 
 html, body {
   /*width: 100%;
@@ -31,20 +37,7 @@ button {
 
 #app-header {
   background: @iris-grey;
-  height: @header-height;
-  display: flex;
-  align-items: center;
-  .separator {
-    flex: 1;
-  }
-  :last-child {
-    margin-right: 10px;
-  }
-  h1 {
-    font-size: 2em;
-    margin: 5px 10px;
-    display: inline-block;
-  }
+  // height: @header-height;
 }
 
 #app-footer {
