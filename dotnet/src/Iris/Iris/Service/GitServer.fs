@@ -423,3 +423,205 @@ module Git =
               dispose agent
               store.Update { state with Status = ServiceStatus.Disposed }
         }
+
+// * Playground
+
+module Playground =
+
+  open Suave
+  open Suave.Http
+  open Suave.Files
+  open Suave.Filters
+  open Suave.Operators
+  open Suave.Successful
+  open Suave.Writers
+  open Suave.Logging
+  open Suave.Logging.Log
+  open Suave.CORS
+  open Suave.Web
+
+  open System
+  open System.IO
+  open System.Text
+  open System.Threading
+  open System.Diagnostics
+
+  let cts = new CancellationTokenSource()
+
+  let repository = "/home/k/tmp/gittests/remote/.git"
+
+  type Service =
+    | UploadPack
+    | ReceivePack
+
+    static member Parse = function
+      | "upload-pack"
+      | "git-upload-pack"  -> UploadPack
+      | "receive-pack"
+      | "git-receive-pack" -> ReceivePack
+      | other -> failwithf "unrecognized service: %s" other
+
+    override self.ToString() =
+      match self with
+      | UploadPack  -> "upload-pack"
+      | ReceivePack -> "receive-pack"
+
+  let rec (^^) (lst: (string * string option) list) name =
+    match lst with
+    | [] -> None
+    | (hdk, v) :: _ when hdk = name -> v
+    | _ :: rest -> rest ^^ name
+
+  let getReceivePackCmd () =
+    use proc = new Process()
+    proc.StartInfo.FileName <- "git"
+    proc.StartInfo.Arguments <- "receive-pack --stateless-rpc --advertise-refs " + repository
+    proc.StartInfo.CreateNoWindow <- true
+    proc.StartInfo.UseShellExecute <- false
+    proc.StartInfo.RedirectStandardOutput <- true
+    proc.StartInfo.RedirectStandardError <- true
+
+    if proc.Start() then
+      let mutable lines = []
+      while not proc.StandardOutput.EndOfStream do
+        lines <- proc.StandardOutput.ReadLine() :: lines
+      proc.WaitForExit()
+      lines
+      |> List.reverse
+      |> Array.ofList
+      |> String.join "\n"
+    else
+      proc.WaitForExit()
+      proc.StandardError.ReadToEnd()
+      |> failwithf "Error: %s"
+
+  let postReceivePackCmd (data: byte array) =
+    use proc = new Process()
+    proc.StartInfo.FileName <- "git"
+    proc.StartInfo.Arguments <- "receive-pack --stateless-rpc " + repository
+    proc.StartInfo.CreateNoWindow <- true
+    proc.StartInfo.UseShellExecute <- false
+    proc.StartInfo.RedirectStandardInput <- true
+    proc.StartInfo.RedirectStandardOutput <- true
+    proc.StartInfo.RedirectStandardError <- true
+
+    if proc.Start() then
+      data
+      |> Encoding.UTF8.GetString
+      |> proc.StandardInput.Write
+      proc.StandardInput.Flush()
+      proc.WaitForExit()
+      let mutable lines = []
+      if proc.ExitCode = 0 then
+        while not proc.StandardOutput.EndOfStream do
+          lines <- proc.StandardOutput.ReadLine() :: lines
+        lines
+        |> List.reverse
+        |> Array.ofList
+        |> String.join "\n"
+      else
+        while not proc.StandardError.EndOfStream do
+          lines <- proc.StandardError.ReadLine() :: lines
+        lines
+        |> List.reverse
+        |> Array.ofList
+        |> String.join "\n"
+        |> failwithf "ERROR: %s"
+    else
+      proc.WaitForExit()
+      proc.StandardError.ReadToEnd()
+      |> failwithf "Error: %s"
+
+  let makePacketHeader (cmd: string) =
+    let hexchars = "0123456789abcdef"
+    let length = cmd.Length + 4      // 4 hex digits
+
+    let toHex (idx: int) = hexchars.Chars(idx &&& 15)
+
+    let builder = StringBuilder()
+    [| toHex (length >>> 12)
+       toHex (length >>> 8)
+       toHex (length >>> 4)
+       toHex  length |]
+    |> Array.iter (builder.Append >> ignore)
+    string builder
+
+  let makePacket (cmd: Service) =
+    let packet =
+      cmd
+      |> string
+      |> String.format "# service=git-{0}\n"
+
+    let header = makePacketHeader packet
+    String.Format("{0}{1}0000", header, packet)
+
+  let makeContentType (noun: string) (cmd: Service) =
+    cmd
+    |> string
+    |> String.format ("application/x-git-{0}-" + noun)
+
+  let makeHttpHeaders (contentType: string) =
+    setHeader "Cache-Control" "no-cache, no-store, max-age=0, must-revalidate"
+    >=> setHeader "If-You-Need-Help" "k@ioct.it"
+    >=> setHeader "Pragma" "no-cache"
+    >=> setHeader "Expires" "Fri, 01 Jan 1980 00:00:00 GMT"
+    >=> setHeader "Content-Type" contentType
+
+  let parseService q = q ^^ "service" |> Option.map Service.Parse
+
+  let getReceivePack () =
+    let result = getReceivePackCmd()
+    let headers =
+      ReceivePack
+      |> makeContentType "advertisement"
+      |> makeHttpHeaders
+
+    let body = StringBuilder()
+
+    makePacket ReceivePack |> body.Append |> ignore
+    result |> body.Append |> ignore
+
+    headers >=> OK (string body)
+
+  let getInfoRefs (req: HttpRequest) =
+    printfn "getInfoRefs: %A" req
+    match parseService req.query with
+    | Some ReceivePack -> getReceivePack()
+    | Some UploadPack -> failwith "todo"
+    | None -> failwith "todo"
+
+  let handleReceivePack (req: HttpRequest) =
+    let result = req.rawForm |> postReceivePackCmd
+    printfn "result: %s" result
+    let headers =
+      ReceivePack
+      |> makeContentType "result"
+      |> makeHttpHeaders
+    headers >=> OK result
+
+  let app =
+    choose [
+        Filters.path "/info/refs" >=>
+          (choose [
+            Filters.GET  >=> request getInfoRefs
+          ])
+        Filters.path "/git-receive-pack" >=>
+          (choose [
+            Filters.POST >=> request handleReceivePack
+          ])
+        RequestErrors.NOT_FOUND "Stuff not found mate"
+      ]
+
+  let cfg =
+    { defaultConfig with
+        cancellationToken = cts.Token
+        homeFolder = Some repository
+        bindings = [ HttpBinding.create HTTP Net.IPAddress.Loopback 7000us ]
+        mimeTypesMap = defaultMimeTypesMap }
+
+  let srv =
+    startWebServerAsync cfg app
+    |> fun (_, srv) -> Async.Start(srv, cts.Token)
+
+  cts.Cancel()
+  cts.Dispose()
