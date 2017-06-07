@@ -16,10 +16,7 @@ if (irisHost == null && isDevServer) {
   throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
 }
 
-var irisPort = process.env.FRONTEND_PORT;
-if (irisPort == null && isDevServer) {
-  throw new Error("Please specify the Iris service Port with the FRONTEND_PORT env var");
-}
+var irisPort = process.env.FRONTEND_PORT || "3000";
 
 var babelOptions = {
   presets: [["es2015", { "modules": false }], "stage-2", "react"],
