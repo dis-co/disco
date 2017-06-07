@@ -68,6 +68,8 @@ type NetworkInterface =
 [<RequireQualifiedAccess>]
 module Network =
 
+  #if !FABLE_COMPILER
+
   // ** parseInterfaceType
 
   let private parseInterfaceType (iface: NetworkInformation.NetworkInterface) =
@@ -121,6 +123,7 @@ module Network =
         else lst)
       []
 
+  #endif
 
   // ** getHostName
 

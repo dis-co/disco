@@ -1,7 +1,9 @@
 namespace Iris.Service
 
+// * Imports
+
 open Suave
-open Suave.Http;
+open Suave.Http
 open Suave.Files
 open Suave.Filters
 open Suave.Operators
@@ -22,16 +24,30 @@ open Iris.Core
 open Iris.Core.Commands
 open Iris.Service.Interfaces
 
+// * Http
+
 module Http =
+
+  // ** tag
+
   let private tag (str: string) = "HttpServer." + str
 
+  // ** Actions
+
   module private Actions =
+
+    // *** deserializeJson
+
     let deserializeJson<'T> =
       let converter = Fable.JsonConverter()
       fun json -> Newtonsoft.Json.JsonConvert.DeserializeObject<'T>(json, converter)
 
+    // *** getString
+
     let getString rawForm =
       System.Text.Encoding.UTF8.GetString(rawForm)
+
+    // *** mapJsonWith
 
     let mapJsonWith<'T> (f: 'T->string) =
       request(fun r ->
@@ -39,6 +55,8 @@ module Http =
         |> Encoding.UTF8.GetBytes
         |> Successful.ok
         >=> Writers.setMimeType "text/plain")
+
+    // *** respondWithCors
 
     let respondWithCors ctx status (txt: string) =
       let res =
@@ -50,23 +68,31 @@ module Http =
             content = Encoding.UTF8.GetBytes txt |> Bytes }
       Some { ctx with response = res }
 
+  // ** noCache
+
   let private noCache =
     setHeader "Cache-Control" "no-cache, no-store, must-revalidate"
     >=> setHeader "Need-Help" "k@ioct.it"
     >=> setHeader "Pragma" "no-cache"
     >=> setHeader "Expires" "0"
 
+  // ** locate
+
   let private locate dir str =
     noCache >=> (dir </> filepath str |> unwrap |> file)
 
+  // ** getDefaultBasePath
+
   let getDefaultBasePath() =
-  #if INTERACTIVE
+    #if INTERACTIVE
     Path.GetFullPath(".") </> "assets" </> "frontend"
-  #else
+    #else
     let asm = System.Reflection.Assembly.GetExecutingAssembly()
     let dir = Path.GetDirectoryName(asm.Location)
     dir <.> "assets"
-  #endif
+    #endif
+
+  // ** pathWithArgs
 
   let pathWithArgs (pattern: string) (f: Map<string,string>->WebPart) =
     let prefix = pattern.Substring(0, pattern.IndexOf(":"))
@@ -82,25 +108,13 @@ module Http =
         |> Map
       f args ctx)
 
-//  let private widgetPath = basePath </> "widgets"
-//
-//  let private listFiles (path: FilePath) : FileName list =
-//    DirectoryInfo(widgetPath).EnumerateFiles()
-//    |> Seq.map (fun file -> file.Name)
-//    |> Seq.toList
-//
-//  let private importStmt (name: FileName) =
-//    sprintf """<link rel="import" href="widgets/%s" />""" name
-//
-//  let private indexHtml () =
-//    listFiles widgetPath
-//    |> List.map importStmt
-//    |> List.fold (+) ""
-//    |> sprintf "%s"
+  // ** mimeTypes
 
   // Add more mime-types here if necessary
   // the following are for fonts, source maps etc.
   let private mimeTypes = defaultMimeTypesMap
+
+  // ** app
 
   // our application only needs to serve files off the disk
   // but we do need to specify what to do in the base case, i.e. "/"
@@ -135,8 +149,10 @@ module Http =
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
+  // ** checkIpAddress
+
   let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
-    let msg = sprintf "Network interface for %A could not be found. Check machinecfg.yaml" ip
+    let msg = sprintf "Network interface for %A could not found. Check machinecfg.yaml" ip
     List.fold
       (fun result (iface: NetworkInterface) ->
         match result with
@@ -149,7 +165,9 @@ module Http =
       (Left (Error.asSocketError (tag "checkIpAddress") msg))
       ifaces
 
-  let private mkConfig (config: IrisMachine)
+  // ** makeConfig
+
+  let private makeConfig (config: IrisMachine)
                        (basePath: FilePath)
                        (cts: CancellationTokenSource) :
                        Either<IrisError,SuaveConfig> =
@@ -188,7 +206,7 @@ module Http =
 
         basePath
         |> sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port
-        |> Logger.info (tag "mkConfig")
+        |> Logger.info (tag "makeConfig")
 
         return
           { defaultConfig with
@@ -201,7 +219,7 @@ module Http =
         | exn ->
           return!
             exn.Message
-            |> Error.asSocketError (tag "mkConfig")
+            |> Error.asSocketError (tag "makeConfig")
             |> Error.exitWith
     }
 
@@ -222,7 +240,7 @@ module Http =
           |> Path.getFullPath
 
         let cts = new CancellationTokenSource()
-        let! webConfig = mkConfig config basePath cts
+        let! webConfig = makeConfig config basePath cts
 
         return
           { new IHttpServer with
