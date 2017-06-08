@@ -446,9 +446,12 @@ module Playground =
   open System.Threading
   open System.Diagnostics
 
+  // IMPORTANT CONFIG
+  // git config --local receive.denyCurrentBranch updateInstead
+
   let cts = new CancellationTokenSource()
 
-  let repository = "/home/k/tmp/gittests/remote/.git"
+  let repository = "/home/k/tmp/gittests/remote"
 
   type Service =
     | UploadPack
@@ -506,10 +509,12 @@ module Playground =
     proc.StartInfo.RedirectStandardError <- true
 
     if proc.Start() then
-      data
-      |> Encoding.UTF8.GetString
-      |> proc.StandardInput.Write
-      proc.StandardInput.Flush()
+      use bw = new BinaryWriter(proc.StandardInput.BaseStream)
+
+      bw.Write data
+      bw.Flush()
+      bw.Close()
+
       proc.WaitForExit()
       let mutable lines = []
       if proc.ExitCode = 0 then
@@ -584,15 +589,13 @@ module Playground =
     headers >=> OK (string body)
 
   let getInfoRefs (req: HttpRequest) =
-    printfn "getInfoRefs: %A" req
     match parseService req.query with
     | Some ReceivePack -> getReceivePack()
     | Some UploadPack -> failwith "todo"
     | None -> failwith "todo"
 
   let handleReceivePack (req: HttpRequest) =
-    let result = req.rawForm |> postReceivePackCmd
-    printfn "result: %s" result
+    let result = postReceivePackCmd req.rawForm
     let headers =
       ReceivePack
       |> makeContentType "result"
