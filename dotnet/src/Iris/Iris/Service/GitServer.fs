@@ -475,10 +475,10 @@ module Playground =
     | (hdk, v) :: _ when hdk = name -> v
     | _ :: rest -> rest ^^ name
 
-  let getReceivePackCmd () =
+  let getAdvertisement (srvc: Service) =
     use proc = new Process()
     proc.StartInfo.FileName <- "git"
-    proc.StartInfo.Arguments <- "receive-pack --stateless-rpc --advertise-refs " + repository
+    proc.StartInfo.Arguments <- (string srvc) + " --stateless-rpc --advertise-refs " + repository
     proc.StartInfo.CreateNoWindow <- true
     proc.StartInfo.UseShellExecute <- false
     proc.StartInfo.RedirectStandardOutput <- true
@@ -509,6 +509,8 @@ module Playground =
     proc.StartInfo.RedirectStandardError <- true
 
     if proc.Start() then
+      // We want to write the bytes unparsed to the processes stdin, so we need to wire up a
+      // BinaryWriter to the underlying Stream and write to that.
       use bw = new BinaryWriter(proc.StandardInput.BaseStream)
 
       bw.Write data
@@ -574,25 +576,25 @@ module Playground =
 
   let parseService q = q ^^ "service" |> Option.map Service.Parse
 
-  let getReceivePack () =
-    let result = getReceivePackCmd()
+  let handleServiceRequest (cmd: Service) =
+    let result = getAdvertisement cmd
+
     let headers =
-      ReceivePack
+      cmd
       |> makeContentType "advertisement"
       |> makeHttpHeaders
 
     let body = StringBuilder()
 
-    makePacket ReceivePack |> body.Append |> ignore
+    makePacket cmd |> body.Append |> ignore
     result |> body.Append |> ignore
 
     headers >=> OK (string body)
 
   let getInfoRefs (req: HttpRequest) =
-    match parseService req.query with
-    | Some ReceivePack -> getReceivePack()
-    | Some UploadPack -> failwith "todo"
-    | None -> failwith "todo"
+    match req.query |> parseService with
+    | Some cmd -> handleServiceRequest cmd
+    | None -> RequestErrors.FORBIDDEN "missing or malformed git service request"
 
   let handleReceivePack (req: HttpRequest) =
     let result = postReceivePackCmd req.rawForm
