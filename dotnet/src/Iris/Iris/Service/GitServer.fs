@@ -498,10 +498,10 @@ module Playground =
       proc.StandardError.ReadToEnd()
       |> failwithf "Error: %s"
 
-  let postReceivePackCmd (data: byte array) =
+  let postData (srvc: Service) (data: byte array) =
     use proc = new Process()
     proc.StartInfo.FileName <- "git"
-    proc.StartInfo.Arguments <- "receive-pack --stateless-rpc " + repository
+    proc.StartInfo.Arguments <- (string srvc) + " --stateless-rpc " + repository
     proc.StartInfo.CreateNoWindow <- true
     proc.StartInfo.UseShellExecute <- false
     proc.StartInfo.RedirectStandardInput <- true
@@ -518,15 +518,18 @@ module Playground =
       bw.Close()
 
       proc.WaitForExit()
-      let mutable lines = []
       if proc.ExitCode = 0 then
-        while not proc.StandardOutput.EndOfStream do
-          lines <- proc.StandardOutput.ReadLine() :: lines
-        lines
-        |> List.reverse
-        |> Array.ofList
-        |> String.join "\n"
+        let mutable bytes = ResizeArray()
+        use br = new BinaryReader(proc.StandardOutput.BaseStream)
+        let mutable run = true
+        while run do
+          try
+            br.ReadByte() |> bytes.Add
+          with
+            | :? EndOfStreamException -> run <- false
+        bytes.ToArray()
       else
+        let mutable lines = []
         while not proc.StandardError.EndOfStream do
           lines <- proc.StandardError.ReadLine() :: lines
         lines
@@ -576,7 +579,7 @@ module Playground =
 
   let parseService q = q ^^ "service" |> Option.map Service.Parse
 
-  let handleServiceRequest (cmd: Service) =
+  let getData (cmd: Service) =
     let result = getAdvertisement cmd
 
     let headers =
@@ -591,28 +594,28 @@ module Playground =
 
     headers >=> OK (string body)
 
-  let getInfoRefs (req: HttpRequest) =
+  let handleGetRequest (req: HttpRequest) =
     match req.query |> parseService with
-    | Some cmd -> handleServiceRequest cmd
+    | Some cmd -> getData cmd
     | None -> RequestErrors.FORBIDDEN "missing or malformed git service request"
 
-  let handleReceivePack (req: HttpRequest) =
-    let result = postReceivePackCmd req.rawForm
+  let handlePostRequest (cmd: Service) (req: HttpRequest) =
+    let result = postData cmd req.rawForm
     let headers =
-      ReceivePack
+      cmd
       |> makeContentType "result"
       |> makeHttpHeaders
-    headers >=> OK result
+    headers >=> ok result
+
+  let post (cmd: Service) = cmd |> handlePostRequest |> request
 
   let app =
     choose [
-        Filters.path "/info/refs" >=>
+        Filters.path "/info/refs" >=> Filters.GET >=> request handleGetRequest
+        Filters.POST >=>
           (choose [
-            Filters.GET  >=> request getInfoRefs
-          ])
-        Filters.path "/git-receive-pack" >=>
-          (choose [
-            Filters.POST >=> request handleReceivePack
+            Filters.path "/git-receive-pack" >=> post ReceivePack
+            Filters.path "/git-upload-pack"  >=> post UploadPack
           ])
         RequestErrors.NOT_FOUND "Stuff not found mate"
       ]
