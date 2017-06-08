@@ -3,12 +3,10 @@
 open System
 open System.IO
 open System.Linq
-open System.Threading
 open Expecto
 open Iris.Core
 open Iris.Raft
 open LibGit2Sharp
-open FSharpx.Functional
 
 [<AutoOpen>]
 module ProjectTests =

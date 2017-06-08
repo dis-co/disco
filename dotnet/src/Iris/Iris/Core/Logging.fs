@@ -11,9 +11,12 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open SharpYaml.Serialization
 open Iris.Serialization
 
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+open SharpYaml.Serialization
 #endif
 
 // * LogLevel
@@ -88,7 +91,7 @@ type Tier =
 
 // * LogEventYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 type LogEventYaml() =
   [<DefaultValue>] val mutable Time      : uint32
@@ -188,7 +191,7 @@ type LogEvent =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     let yaml = LogEventYaml()

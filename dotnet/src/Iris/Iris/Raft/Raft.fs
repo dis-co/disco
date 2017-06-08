@@ -3,7 +3,6 @@ namespace Iris.Raft
 // * Imports
 
 open System
-open FSharpx.Functional
 open Iris.Core
 
 // * RaftMonad

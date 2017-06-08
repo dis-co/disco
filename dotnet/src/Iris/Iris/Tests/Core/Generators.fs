@@ -3,25 +3,16 @@ namespace Iris.Tests
 #nowarn "21"
 #nowarn "40"
 
-open Expecto
-open Expecto.Helpers
 open FsCheck
 open FsCheck.GenBuilder
 open Iris.Core
 open Iris.Raft
 open Iris.Client
 open Iris.Service
-open Iris.Serialization
-open Iris.Service.Utilities
-open Iris.Service.Persistence
 open System
-open System.Net
-open FlatBuffers
-open FSharpx.Functional
 open System.Text
 
 module Generators =
-  open System.Net
 
   //  ___         _       _     _
   // |_ _|_ __   / \   __| | __| |_ __ ___  ___ ___

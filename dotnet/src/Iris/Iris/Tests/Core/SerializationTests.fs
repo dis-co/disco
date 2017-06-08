@@ -1,21 +1,12 @@
 namespace Iris.Tests
 
 open Expecto
-open Expecto.Helpers
 open FsCheck
-open FsCheck.GenBuilder
 open Iris.Core
 open Iris.Raft
 open Iris.Client
 open Iris.Service
-open Iris.Serialization
-open Iris.Service.Utilities
 open Iris.Service.Persistence
-open System
-open System.Net
-open FlatBuffers
-open FSharpx.Functional
-
 
 
 [<AutoOpen>]

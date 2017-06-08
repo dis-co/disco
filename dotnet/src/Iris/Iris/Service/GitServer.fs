@@ -5,20 +5,15 @@ namespace Iris.Service
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Service.Utilities
 open Iris.Service.Interfaces
 
 open System
 open System.IO
 open System.Threading
 open System.Diagnostics
-open System.Management
 open System.Collections.Concurrent
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Control
-open FSharpx.Functional
-open Hopac
-open Hopac.Infixes
 
 // * GitServer
 

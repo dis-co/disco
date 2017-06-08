@@ -92,8 +92,7 @@ module Binary =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if FABLE_COMPILER
-#else
+#if !FABLE_COMPILER && !IRIS_NODES
 
 [<RequireQualifiedAccess>]
 module Yaml =

@@ -14,6 +14,11 @@ open Iris.Core.FlatBuffers
 #else
 
 open FlatBuffers
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml
 open SharpYaml.Serialization
 
@@ -566,6 +571,8 @@ type RaftLogEntry =
   //  / ___ \\__ \__ \  __/ |_
   // /_/   \_\___/___/\___|\__|
 
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   member log.AssetPath
     with get () =
       Constants.RAFT_DIRECTORY <.> Constants.SNAPSHOT_FILENAME + Constants.ASSET_EXTENSION
@@ -594,6 +601,8 @@ type RaftLogEntry =
       "Only snapshots can be saved"
       |> Error.asAssetError "LogEntry.Save"
       |> Either.fail
+
+  #endif
 
 // * LogEntry Module
 

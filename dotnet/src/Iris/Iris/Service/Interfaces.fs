@@ -6,13 +6,9 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
-open Iris.Core.Commands
-open Iris.Core.Discovery
 open Iris.Raft
-open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
-open Hopac
 
 // * IDiscoveryService
 

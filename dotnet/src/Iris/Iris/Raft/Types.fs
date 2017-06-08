@@ -6,7 +6,12 @@ open System.Net
 open Iris.Core
 open Iris.Serialization
 open FlatBuffers
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
+
+#endif
 
 // * RaftSate
 
@@ -581,6 +586,9 @@ ConfigChangeEntry = %s
   //   |_|\__,_|_| |_| |_|_|
 
   // *** ToYaml
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   member self.ToYaml(serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
 
@@ -643,6 +651,8 @@ ConfigChangeEntry = %s
     let serializer = new Serializer()
     serializer.Deserialize<RaftValueYaml>(str)
     |> Yaml.fromYaml
+
+#endif
 
 // * State Monad
 

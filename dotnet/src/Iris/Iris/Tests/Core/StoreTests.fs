@@ -3,10 +3,6 @@ namespace Iris.Tests
 open System
 open Expecto
 open Iris.Core
-open Iris.Raft
-open System.Net
-open FSharpx.Functional
-open Iris.Core
 
 [<AutoOpen>]
 module StoreTests =

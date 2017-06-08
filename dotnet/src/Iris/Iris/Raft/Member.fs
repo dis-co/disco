@@ -86,6 +86,8 @@ type RaftMemberState =
 
 // * RaftMembeYaml
 
+#if !FABLE_COMPILER && !IRIS_NODES
+
 type RaftMemberYaml() =
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable HostName   : string
@@ -100,6 +102,8 @@ type RaftMemberYaml() =
   [<DefaultValue>] val mutable MatchIndex : Index
   [<DefaultValue>] val mutable Voting     : bool
   [<DefaultValue>] val mutable VotedForMe : bool
+
+#endif
 
 // * RaftMember
 
@@ -131,7 +135,7 @@ type RaftMember =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -243,6 +247,8 @@ type RaftMember =
 
 // * ConfigChangeYaml
 
+#if !FABLE_COMPILER && !IRIS_NODES
+
 type ConfigChangeYaml() =
   [<DefaultValue>] val mutable ChangeType : string
   [<DefaultValue>] val mutable Member       : RaftMemberYaml
@@ -262,6 +268,8 @@ type ConfigChangeYaml() =
     yaml.ChangeType <- "MemberRemoved"
     yaml.Member <- mem
     yaml
+
+#endif
 
 // * ConfigChange
 
@@ -340,7 +348,7 @@ type ConfigChange =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     match self with

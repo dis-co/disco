@@ -17,8 +17,6 @@ open VVVV.Core.Logging
 open Iris.Raft
 open Iris.Core
 open Iris.Nodes
-open Newtonsoft.Json
-open FSharpx.Functional
 
 // * Graph
 
