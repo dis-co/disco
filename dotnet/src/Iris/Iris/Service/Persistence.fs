@@ -277,7 +277,7 @@ module Persistence =
   // ** getRemote
 
   let getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
-    let uri = Uri.localGitUri (unwrap project.Name) leader
+    let uri = Uri.gitUri project.Name leader
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
       leader.Id

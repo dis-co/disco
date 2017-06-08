@@ -68,9 +68,13 @@ type NetworkInterface =
 [<RequireQualifiedAccess>]
 module Network =
 
-  #if !FABLE_COMPILER
+  // ** tag
+
+  let private tag (str: string) = String.Format("Network.{0}",str)
 
   // ** parseInterfaceType
+
+  #if !FABLE_COMPILER
 
   let private parseInterfaceType (iface: NetworkInformation.NetworkInterface) =
     match iface.NetworkInterfaceType with
@@ -109,8 +113,8 @@ module Network =
     |> Seq.fold
       (fun lst (iface: NetworkInformation.NetworkInterface) ->
         if ( iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Ethernet
+           || iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Loopback
            || iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Wireless80211 )
-           && iface.OperationalStatus    = OperationalStatus.Up
         then
           let parsed =
             { Name = iface.Id
@@ -124,6 +128,27 @@ module Network =
       []
 
   #endif
+
+  // ** checkIpAddress
+
+  let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
+    let msg = sprintf "Network interface for %A could not found. Check machinecfg.yaml" ip
+    List.fold
+      (fun result (iface: NetworkInterface) ->
+        match result with
+        | Right () -> result
+        | Left _ as error ->
+          if List.contains ip iface.IpAddresses then
+            Either.succeed ()
+          else
+            result)
+      (Left (Error.asSocketError (tag "checkIpAddress") msg))
+      ifaces
+
+  // ** ensureIpAddress
+
+  let ensureIpAddress (ip: IpAddress) =
+    getInterfaces() |> checkIpAddress ip
 
   // ** getHostName
 

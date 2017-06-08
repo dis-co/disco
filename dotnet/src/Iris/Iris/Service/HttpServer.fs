@@ -149,22 +149,6 @@ module Http =
       RequestErrors.NOT_FOUND "Page not found."
     ]
 
-  // ** checkIpAddress
-
-  let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
-    let msg = sprintf "Network interface for %A could not found. Check machinecfg.yaml" ip
-    List.fold
-      (fun result (iface: NetworkInterface) ->
-        match result with
-        | Right () -> result
-        | Left _ as error ->
-          if List.contains ip iface.IpAddresses then
-            Either.succeed ()
-          else
-            result)
-      (Left (Error.asSocketError (tag "checkIpAddress") msg))
-      ifaces
-
   // ** makeConfig
 
   let private makeConfig (config: IrisMachine)
@@ -199,7 +183,7 @@ module Http =
 
         let machine = MachineConfig.get()
 
-        do! Network.getInterfaces() |> checkIpAddress machine.BindAddress
+        do! Network.ensureIpAddress machine.BindAddress
 
         let addr = machine.BindAddress |> string |> IPAddress.Parse
         let port = Sockets.Port.Parse (string machine.WebPort)

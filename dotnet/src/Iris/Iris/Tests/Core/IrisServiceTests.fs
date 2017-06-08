@@ -102,54 +102,6 @@ module IrisServiceTests =
   //  | || |  | \__ \___) |  __/ |   \ V /| | (_|  __/   | |  __/\__ \ |_\__ \
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
-  let test_ensure_gitserver_restart_on_premature_exit =
-    testCase "ensure gitserver restart on premature exit" <| fun _ ->
-      either {
-        use checkGitStarted = new AutoResetEvent(false)
-
-        let! (project, zipped) = mkCluster 1
-
-        let mem, machine = List.head zipped
-
-        use service = IrisService.create {
-          Machine = machine
-          ProjectName = project.Name
-          UserName = User.Admin.UserName
-          Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteId = None
-        }
-
-        use oobs =
-          (fun ev ->
-            match ev with
-            | Git (GitEvent.Started _) -> checkGitStarted.Set() |> ignore
-            | _ -> ())
-          |> service.Subscribe
-
-        do! service.Start()
-
-        do! waitOrDie "checkGitStarted (1)" checkGitStarted
-
-        let gitserver = service.GitServer
-
-        let pid = gitserver.Pid
-
-        expect "Git should be running" true Process.isRunning pid
-
-        Process.kill pid
-
-        expect "Git should be running" false Process.isRunning pid
-
-        do! waitOrDie "checkGitStarted (2)" checkGitStarted
-
-        let gitserver = service.GitServer
-        let newpid = gitserver.Pid
-
-        expect "Should be a different pid" false ((=) pid) newpid
-        expect "Git should be running" true Process.isRunning newpid
-      }
-      |> noError
-
   let test_ensure_iris_server_clones_changes_from_leader =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
@@ -280,6 +232,5 @@ module IrisServiceTests =
 
   let irisServiceTests =
     testList "IrisService Tests" [
-      test_ensure_gitserver_restart_on_premature_exit
       test_ensure_iris_server_clones_changes_from_leader
     ] |> testSequenced

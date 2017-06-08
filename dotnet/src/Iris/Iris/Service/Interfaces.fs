@@ -39,7 +39,6 @@ type IClock =
 type IGitServer =
   inherit IDisposable
   abstract Status    : ServiceStatus
-  abstract Pid       : int
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 

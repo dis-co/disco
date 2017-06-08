@@ -2500,7 +2500,7 @@ module Project =
   let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (project.Name |> unwrap |> Uri.localGitUri)
+    |> Option.map (Uri.gitUri project.Name)
 
   // ** currentBranch
 
