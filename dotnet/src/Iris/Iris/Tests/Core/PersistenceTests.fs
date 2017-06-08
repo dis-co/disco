@@ -1,12 +1,8 @@
 namespace Iris.Tests
 
-open System
-open System.IO
 open Expecto
 open Iris.Core
 open Iris.Raft
-open System.Net
-open FSharpx.Functional
 open Iris.Core
 open Iris.Service
 

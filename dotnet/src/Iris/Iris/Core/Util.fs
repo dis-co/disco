@@ -548,6 +548,8 @@ module Crypto =
 [<AutoOpen>]
 module Functional =
 
+  let konst (a: 'a) = fun _ -> a
+
   let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
 
 // * Tuple

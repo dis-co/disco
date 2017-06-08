@@ -2,12 +2,7 @@ namespace Iris.Service
 
 module Utilities =
 
-  open System
-  open System.IO
   open System.Threading
-  open FSharpx.Functional
-  open Iris.Raft
-  open Iris.Core
 
   /// ## cancelToken
   ///

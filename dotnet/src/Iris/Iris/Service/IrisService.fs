@@ -12,15 +12,12 @@ open Iris.Raft
 open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Core.Commands
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open Iris.Service.Git
 open Iris.Service.WebSockets
 open Iris.Service.Raft
-open Iris.Service.Http
 open Microsoft.FSharp.Control
-open FSharpx.Functional
 open LibGit2Sharp
 open SharpYaml.Serialization
 open ZeroMQ

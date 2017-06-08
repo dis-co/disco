@@ -1,6 +1,5 @@
 FSharp.Core
 Argu
-FSharpx.Extras
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
 FSharp.Configuration
@@ -9,4 +8,3 @@ Suave
 ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
-Hopac

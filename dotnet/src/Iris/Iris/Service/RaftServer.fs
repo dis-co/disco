@@ -6,17 +6,13 @@ namespace Iris.Service
 
 open System
 open System.Threading
-open System.Collections
 open System.Collections.Concurrent
 open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Raft
-open FSharpx.Functional
-open Utilities
 open Persistence
-open ZeroMQ
 
 // * Raft
 

@@ -6,13 +6,8 @@ open Iris.Core
 open Iris.Raft
 open Iris.Service
 open Iris.Service.Git
-open Iris.Serialization
-open System.Net
 open System.Threading
-open FlatBuffers
-open FSharpx.Functional
 open LibGit2Sharp
-open System.IO
 
 [<AutoOpen>]
 module GitTests =

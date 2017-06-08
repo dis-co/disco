@@ -5,16 +5,10 @@ namespace Iris.Service
 #if !IRIS_NODES
 
 open System
-open System.IO
-open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
-open Iris.Core.Utils
 open Iris.Service
 open LibGit2Sharp
-open ZeroMQ
-open FSharpx.Functional
-open SharpYaml.Serialization
 
 // * Persistence
 

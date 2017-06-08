@@ -3,12 +3,10 @@ namespace Iris.Service
 // * Imports
 
 open System
-open System.Threading
 open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Service
-open FSharpx.Functional
 open Fleck
 open Iris.Service.Interfaces
 

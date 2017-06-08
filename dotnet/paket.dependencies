@@ -8,11 +8,6 @@ group Main
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
   nuget FsCheck
-  nuget XUnit
-  nuget NUnit
-  nuget Gallio
-  nuget FSharpx.Extras
-  nuget FsControl
   nuget Suave
   nuget Fleck
   nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
@@ -29,7 +24,6 @@ group Main
   nuget VVVV.Utils3rdParty
   nuget VVVV.UtilsIL
   nuget Newtonsoft.Json
-  nuget Hopac >= 0.3.23
   nuget System.ValueTuple
 
   # Keep this pinned to dotnet-fable version in Fable.proj
@@ -39,7 +33,7 @@ group Main
   nuget Fable.JsonConverter
   nuget Fable.PowerPack
   nuget Fable.React
-  
+
 
 group Build
   source https://nuget.org/api/v2
@@ -48,9 +42,6 @@ group Build
   nuget FAKE
   nuget FSharp.Formatting
   nuget FSharp.Core redirects:force
-  nuget FSharpx.Extras
-  nuget FSharpPlus
-  nuget FsControl
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
@@ -61,9 +52,3 @@ group Test
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
-  nuget XUnit
-  nuget NUnit
-  nuget Gallio
-  nuget FSharpx.Extras
-  nuget FSharpPlus
-  nuget FsControl
