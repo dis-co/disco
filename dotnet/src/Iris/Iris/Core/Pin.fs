@@ -15,8 +15,11 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+open SharpYaml.Serialization
 #endif
 
 // * Behavior
@@ -235,7 +238,7 @@ type VecSize =
 
 // * SliceYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 //  ____  _ _        __   __              _
 // / ___|| (_) ___ __\ \ / /_ _ _ __ ___ | |
@@ -770,7 +773,7 @@ type Pin =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     let yaml = new PinYaml()
@@ -1077,7 +1080,7 @@ type Pin =
 
   // ** FromYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member FromYamlObject(yml: PinYaml) =
     try
@@ -2755,7 +2758,7 @@ type Slice =
 
   // ** ToYaml
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYaml(serializer: Serializer) =
     let yaml =
@@ -2994,7 +2997,7 @@ type Slices =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     match self with
@@ -3036,7 +3039,6 @@ type Slices =
   //                           |___/
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
-    let idx = index
     match slices with
     | StringSlices (id,arr) ->
       let id = id |> string |> builder.CreateString

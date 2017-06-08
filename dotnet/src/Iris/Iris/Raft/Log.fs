@@ -7,7 +7,6 @@ open System.Collections
 open FlatBuffers
 open Iris.Core
 open Iris.Serialization
-open SharpYaml.Serialization
 
 // * RaftLog
 

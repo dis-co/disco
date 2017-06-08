@@ -20,7 +20,6 @@ open Iris.Web.Core.FlatBufferTypes
 
 open System.Linq
 open System.Net
-open FSharpx.Functional
 open FlatBuffers
 open Iris.Serialization
 

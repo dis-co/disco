@@ -325,17 +325,23 @@ module Persistence =
       let result = Git.Repo.pull repo remote User.Admin.Signature
       match result with
       | Right merge ->
-        return
+        return!
           match merge.Status with
-          | MergeStatus.Conflicts -> merge.Status, None
-          | MergeStatus.UpToDate  -> merge.Status, None
-          | MergeStatus.FastForward
+          | MergeStatus.Conflicts ->
+            (GitMergeStatus.Conflicts, None)
+            |> Either.succeed
+          | MergeStatus.UpToDate  ->
+            (GitMergeStatus.UpToDate, None)
+            |> Either.succeed
+          | MergeStatus.FastForward ->
+            (GitMergeStatus.FastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
+            |> Either.succeed
           | MergeStatus.NonFastForward as status ->
-            if isNull merge.Commit then
-              merge.Status, None
-            else
-              merge.Status, Some merge.Commit
-          | other -> merge.Status, None
+            (GitMergeStatus.NonFastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
+            |> Either.succeed
+          | other ->
+            String.format "unknown merge status: %A" other
+            |> Error.asGitError (tag "updateRepo") |> Either.fail
       | Left error -> return! Either.fail error
     }
 
