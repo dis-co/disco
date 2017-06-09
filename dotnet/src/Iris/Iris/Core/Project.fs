@@ -2600,6 +2600,8 @@ module Project =
 
   // ** setReceivePackConfig
 
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   let setReceivePackConfig (repo: Repository) =
     try
       repo.Config.Set("receive.denyCurrentBranch", "updateInstead")
@@ -2609,6 +2611,8 @@ module Project =
         exn.Message
         |> Error.asGitError (tag "setReceivePackConfig")
         |> Either.fail
+
+  #endif
 
   // ** createAssetDir (private)
 
