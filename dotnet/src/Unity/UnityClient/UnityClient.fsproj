@@ -57,6 +57,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Main.fsi" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
