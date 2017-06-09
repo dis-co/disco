@@ -7,6 +7,14 @@ open Iris.Client
 open ZeroMQ
 open System.Threading
 
+type OptionBuilder() =
+    member x.Bind(v,f) = Option.bind f v
+    member x.Return v = Some v
+    member x.ReturnFrom o = o
+    member x.Zero() = Some ()
+
+let option = OptionBuilder()
+
 type ObjectId = int
 
 type State =
@@ -16,7 +24,7 @@ type State =
 type Msg =
   | IrisEvent of ClientEvent
   | UpdateState of State
-  | RegisterObject of objectId: int * callback: Action<float>
+  | RegisterObject of objectId: int * callback: Action<double>
 
 type Actor = MailboxProcessor<Msg>
 
@@ -67,31 +75,40 @@ let startApiClientAndActor (serverIp, serverPort: uint16) =
     let rec loop state = async {
       let! msg = inbox.Receive()
       let newState =
-        match msg with
-        | UpdateState state -> Some state
-        | IrisEvent ev ->
-          withState state <| fun state ->
-            match ev with
-            | ClientEvent.Update(UpdatePinGroup pinGroup) when pinGroup.Id = state.PinGroup.Id ->
-              failwith "TODO"
-            | ClientEvent.Update(UpdatePin pin) when pin.PinGroup = state.PinGroup.Id ->
-              failwith "TODO"
-            | _ -> state
-        | RegisterObject(objectId, callback) ->
-          // TODO: Batch pin creation
-          withState state <| fun state ->
-            let pinGroup =
-              let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
-              if not(Map.containsKey id state.PinGroup.Pins)
-              then
-                let pin = Pin.number id "unity" state.PinGroup.Id (mkTags()) (mkNumbers())
-                let pinGroup = state.PinGroup.Pins |> Map.add id pin
-                // TODO: UpdatePinGroup or AddPin?
-                client.UpdatePinGroup(pinGroup)
-                pinGroup
-              else state.PinGroup
-            // Update allways the internal map in case the callback has changed
-            { PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
+        try
+          match msg with
+          | UpdateState state -> Some state
+          | IrisEvent ev ->
+            withState state <| fun state ->
+              match ev with
+              //| ClientEvent.Update(UpdatePinGroup pinGroup) when pinGroup.Id = state.PinGroup.Id ->
+              | ClientEvent.Update(UpdatePin pin) when pin.PinGroup = state.PinGroup.Id ->
+                let objectId =
+                  let id = string pin.Id
+                  id.Substring(id.IndexOf('/') + 1) |> int
+                option {
+                  let! callback = Map.tryFind objectId state.GameObjects
+                  let! value = pin.Values.At(index 0).NumberValue
+                  callback.Invoke(value)
+                } |> function
+                  | Some () -> state // Update state.PinGroup?
+                  | None -> state
+              | _ -> state
+          | RegisterObject(objectId, callback) ->
+            // TODO: Batch pin creation
+            withState state <| fun state ->
+              let pinGroup =
+                let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
+                if not(Map.containsKey id state.PinGroup.Pins)
+                then
+                  let pin = Pin.number id (string objectId) state.PinGroup.Id [|astag "Scale"|] [|1.|]
+                  client.AddPin(pin)
+                  { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
+                else state.PinGroup
+              // Update allways the internal map in case the callback has changed
+              { PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
+        with
+        | ex -> Logger.err "Iris.Unity.actorLoop" ex.Message; state
       return! loop state
     }
     return! loop None
@@ -109,11 +126,12 @@ let startApiClientAndActor (serverIp, serverPort: uint16) =
 
   client, actor
 
+let private myLock = obj()
+let mutable private client = None
+
 [<CompiledName("GetIrisClient")>]
-let getIrisClient() =
-  let mutable client = None
-  fun (serverIp, serverPort) ->
-    lock (fun () ->
+let getIrisClient(serverIp, serverPort) =
+    lock myLock (fun () ->
       match client with
       | Some client -> client
       | None ->
@@ -125,7 +143,7 @@ let getIrisClient() =
               member this.Dispose() =
                 apiobs.Dispose()
                 (actor :> IDisposable).Dispose()
-              member this.RegisterGameObject(objectId: int, callback: Action<float>) =
+              member this.RegisterGameObject(objectId: int, callback: Action<double>) =
                 RegisterObject(objectId, callback) |> actor.Post }
         client <- Some client2
         client2

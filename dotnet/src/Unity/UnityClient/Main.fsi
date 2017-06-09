@@ -3,5 +3,9 @@ module Iris.Unity
  
 open System
 
-val registerObject: objectId: int * callback: Action<float> -> unit
+type IIrisClient =
+  inherit IDisposable
+  abstract member RegisterGameObject: objectId: int * callback: Action<double> -> unit
 
+[<CompiledName("GetIrisClient")>]
+val getIrisClient: serverIp: string * serverPort: uint16 -> IIrisClient
