@@ -101,13 +101,23 @@ module Uri =
   /// Format a git remote string
   ///
   /// ### Signature:
-  /// - project: IrisProject
+  /// - name: project name
   /// - mem: RaftMember
   ///
   /// Returns: string
 
-  let localGitUri (path: string) (mem: RaftMember) =
-    toUri LOCALGIT None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
+  let gitUri (name: Name) (mem: RaftMember) =
+    let path =
+      #if FABLE_COMPILER
+      name
+      |> unwrap
+      |> Fable.Import.JS.encodeURI
+      #else
+      name
+      |> unwrap
+      |> System.Web.HttpUtility.UrlEncode
+      #endif
+    toUri HTTP None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
 
   // ** pgmUri
 

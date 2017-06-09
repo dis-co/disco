@@ -85,3 +85,12 @@ type IpAddress =
     | _ -> IPv4Address "0.0.0.0"
 
   #endif
+
+  // ** toIPAddress
+
+  #if !FABLE_COMPILER
+
+  member self.toIPAddress () =
+    self |> string |> IPAddress.Parse
+
+  #endif

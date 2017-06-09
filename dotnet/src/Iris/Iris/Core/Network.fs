@@ -4,6 +4,7 @@ namespace Iris.Core
 
 #if FABLE_COMPILER
 
+open System
 open Fable.Core
 open Fable.Import
 
@@ -14,29 +15,6 @@ open System.Net
 open System.Net.NetworkInformation
 
 #endif
-
-(*
-
-type NetworkInterfaceStatus =
-  | Up
-  | Down
-  | Unknown
-
-type NetworkInterfaceType =
-  | Ethernet
-  | Wireless
-  | Loopback
-  | Unknown
-
-type NetworkInterface =
-  { Name: string
-    Type: NetworkInterfaceType
-    Status: NetworkInterfaceStatus
-    Speed: int64
-    SupportsMulticast: bool
-    IpAddress: IpAddress }
-
-*)
 
 // * NetworkInterfaceStatus
 
@@ -68,9 +46,13 @@ type NetworkInterface =
 [<RequireQualifiedAccess>]
 module Network =
 
-  #if !FABLE_COMPILER
+  // ** tag
+
+  let private tag (str: string) = String.Format("Network.{0}",str)
 
   // ** parseInterfaceType
+
+  #if !FABLE_COMPILER
 
   let private parseInterfaceType (iface: NetworkInformation.NetworkInterface) =
     match iface.NetworkInterfaceType with
@@ -109,8 +91,8 @@ module Network =
     |> Seq.fold
       (fun lst (iface: NetworkInformation.NetworkInterface) ->
         if ( iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Ethernet
+           || iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Loopback
            || iface.NetworkInterfaceType = NetworkInformation.NetworkInterfaceType.Wireless80211 )
-           && iface.OperationalStatus    = OperationalStatus.Up
         then
           let parsed =
             { Name = iface.Id
@@ -122,6 +104,51 @@ module Network =
           in parsed :: lst
         else lst)
       []
+
+  // ** checkIpAddress
+
+  let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
+    let msg = sprintf "Network interface for %A could not found. Check machinecfg.yaml" ip
+    List.fold
+      (fun result (iface: NetworkInterface) ->
+        match result with
+        | Right () -> result
+        | Left _ as error ->
+          if List.contains ip iface.IpAddresses then
+            Either.succeed ()
+          else
+            result)
+      (Left (Error.asSocketError (tag "checkIpAddress") msg))
+      ifaces
+
+  // ** ensureIpAddress
+
+  let ensureIpAddress (ip: IpAddress) =
+    getInterfaces() |> checkIpAddress ip
+
+  // ** portAvailable
+
+  let portAvailable (ip: IpAddress) (port: Port) =
+    let addr = ip.toIPAddress()
+    let props = IPGlobalProperties.GetIPGlobalProperties()
+    props.GetActiveTcpListeners()
+    |> Array.fold
+      (fun m (info: IPEndPoint) ->
+        if m
+        then info.Address <> addr || info.Port <> int port
+        else m)
+      true
+
+  // ** ensureAvailability
+
+  let ensureAvailability (ip: IpAddress) (port: Port) =
+    if portAvailable ip port then
+      Either.succeed ()
+    else
+      unwrap port
+      |> sprintf "%O:%d is unavailable" ip
+      |> Error.asSocketError (tag "ensureAvailability")
+      |> Either.fail
 
   #endif
 

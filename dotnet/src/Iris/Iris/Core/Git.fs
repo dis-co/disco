@@ -353,6 +353,22 @@ module Git =
     let submodules (repo: Repository) : seq<Submodule> =
       repo.Submodules |> Seq.cast<Submodule>
 
+    // *** setReceivePackConfig
+
+    #if !FABLE_COMPILER && !IRIS_NODES
+
+    let setReceivePackConfig (repo: Repository) =
+      try
+        repo.Config.Set("receive.denyCurrentBranch", "updateInstead")
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "setReceivePackConfig")
+          |> Either.fail
+
+    #endif
+
     // *** clone
 
     /// ## clone
@@ -366,11 +382,16 @@ module Git =
     /// Returns: Either<IrisError, Respository>
     let clone (target: FilePath) (remote: string) =
       try
-        new Repository(Repository.Clone(remote, unwrap target))
-        |> Either.succeed
+        either {
+          let path = Repository.Clone(remote, unwrap target)
+          let repo = new Repository(path)
+          do! setReceivePackConfig repo
+        }
       with
         | exn ->
-          Left (Error.asGitError (tag "clone") exn.Message)
+          exn.Message
+          |> Error.asGitError (tag "clone")
+          |> Either.fail
 
     // *** branches
 

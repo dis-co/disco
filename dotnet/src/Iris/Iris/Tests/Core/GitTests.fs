@@ -32,7 +32,7 @@ module GitTests =
         |> Either.get
       in { p with Config = config }
 
-    machine, tmpdir, project, mem, project.Path
+    machine, tmpdir, project, mem, project
 
   //  ____                      _
   // |  _ \ ___ _ __ ___   ___ | |_ ___  ___
@@ -117,7 +117,7 @@ module GitTests =
             | Right ()   -> Left (Other("test","Should have failed to start"))
             | Left error -> Right ()
 
-        expect "Should be disposed" true Service.isDisposed gitserver2.Status
+        expect "Should not be runnning" true Service.isStopped gitserver2.Status
       }
       |> noError
 
@@ -125,59 +125,33 @@ module GitTests =
     testCase "Server availability" <| fun _ ->
       either {
         let port = 10002us
+        let started = new AutoResetEvent(false)
+
+        let handleStarted = function
+          | GitEvent.Started _ -> started.Set() |> ignore
+          | _ -> ()
 
         let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
         use gitserver = GitServer.create mem path
+        use gobs1 = gitserver.Subscribe(handleStarted)
+
         do! gitserver.Start()
+
+        do! waitOrDie "started" started
 
         expect "Should be running" true Service.isRunning gitserver.Status
 
         let target = mkTmpDir ()
 
         let repo =
-          tmpdir
-          |> Path.baseName
-          |> sprintf "git://localhost:%O/%O/.git" port
+          mem
+          |> Uri.gitUri path.Name
+          |> unwrap
           |> Git.Repo.clone target
 
         expect "Should have successfully clone project" true Either.isSuccess repo
-      }
-      |> noError
-
-  let test_server_cleanup =
-    testCase "Should cleanup processes correctly" <| fun _ ->
-      either {
-        let port = 10003us
-
-        let uuid, tmpdir, project, mem, path =
-          mkEnvironment port
-
-        let gitserver1 = GitServer.create mem path
-        do! gitserver1.Start()
-
-        expect "Should be running" true Service.isRunning gitserver1.Status
-
-        let gitserver2 = GitServer.create mem path
-
-        do! match gitserver2.Start() with
-            | Right () -> Left (Other("test","Should have failed but didn't"))
-            | Left error -> Right ()
-
-        expect "Should be disposed" true Service.isDisposed gitserver2.Status
-
-        let pid1 = gitserver1.Pid
-        let pid2 = gitserver2.Pid
-
-        dispose gitserver1
-        dispose gitserver2
-
-        expect "1 should be disposed" true Service.isDisposed gitserver1.Status
-        expect "2 should be disposed" true Service.isDisposed gitserver2.Status
-
-        expect "1 should leave no dangling process" false Process.isRunning pid1
-        expect "2 should leave no dangling process" false Process.isRunning pid2
       }
       |> noError
 
@@ -197,5 +171,4 @@ module GitTests =
       test_server_startup
       test_server_availability
       test_server_startup_should_error_on_eaddrinuse
-      test_server_cleanup
     ] |> testSequenced

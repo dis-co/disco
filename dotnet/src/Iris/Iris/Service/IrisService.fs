@@ -294,7 +294,7 @@ module IrisService =
     let project = state.Store.State.Project
     // resonably safe, because we already established that the project exits
     let repo = Project.repository project |> Either.get
-    let uri = Uri.localGitUri (unwrap project.Name) leader
+    let uri = Uri.gitUri project.Name leader
     let cts = new CancellationTokenSource()
 
     let rec loop () =
@@ -531,7 +531,7 @@ module IrisService =
       let result =
         either {
           let mem = state.RaftServer.Member
-          let gitserver = GitServer.create mem state.Store.State.Project.Path
+          let gitserver = GitServer.create mem state.Store.State.Project
           let disposable =
             agent
             |> forwardEvent IrisEvent.Git
@@ -639,22 +639,6 @@ module IrisService =
     // | |  _| | __|
     // | |_| | | |_
     //  \____|_|\__|
-
-    | Git (GitEvent.Started pid) ->
-      String.format "git-daemon started with PID: {0}" pid
-      |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Exited _) ->
-      "git-daemon exited. Attempting to restart."
-      |> Logger.debug (tag "handleGitEvent")
-      restartGitServer state agent
-
-    | Git (GitEvent.Failed reason) ->
-      reason
-      |> String.format "git-daemon failed. {0} Attempting to restart."
-      |> Logger.debug (tag "handleGitEvent")
-      restartGitServer state agent
 
     | Git (GitEvent.Connection(_, addr, port)) ->
       sprintf "git-daemon connection from %s:%d" addr port
@@ -932,7 +916,7 @@ module IrisService =
                   { new IDisposable with member self.Dispose () = dispose lobs }
 
                 // IMPORTANT: use the projects path here, not the path to project.yml
-                let gitServer = GitServer.create mem state.Project.Path
+                let gitServer = GitServer.create mem state.Project
 
                 // set up event forwarding of various services to the actor
                 let disposables =

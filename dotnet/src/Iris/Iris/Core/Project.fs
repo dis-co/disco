@@ -2479,6 +2479,10 @@ Config: %A
 [<RequireQualifiedAccess>]
 module Project =
 
+  // ** tag
+
+  let private tag (str: string) = String.format "Project.{0}" str
+
   // ** repository
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -2499,7 +2503,7 @@ module Project =
   let localRemote (project: IrisProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (project.Name |> unwrap |> Uri.localGitUri)
+    |> Option.map (Uri.gitUri project.Name)
 
   // ** currentBranch
 
@@ -2540,7 +2544,7 @@ module Project =
     let path = machine.WorkSpace </> (unwrap projectName <.> file)
     if File.exists path |> not then
       sprintf "Project Not Found: %O" projectName
-      |> Error.asProjectError "Project.checkPath"
+      |> Error.asProjectError (tag "checkPath")
       |> Either.fail
     else
       Either.succeed path
@@ -2566,12 +2570,6 @@ module Project =
 
   let cuelistDir (project: IrisProject) : FilePath =
     unwrap project.Path <.> CUELIST_DIR
-
-  //   ____                _
-  //  / ___|_ __ ___  __ _| |_ ___
-  // | |   | '__/ _ \/ _` | __/ _ \
-  // | |___| | |  __/ (_| | ||  __/
-  //  \____|_|  \___|\__,_|\__\___|
 
   // ** writeDaemonExportFile (private)
 
@@ -2760,6 +2758,7 @@ module Project =
     either {
       let! repo = Git.Repo.init project.Path
       do! writeDaemonExportFile repo
+      do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
       do! createAssetDir repo (filepath CUE_DIR)
       do! createAssetDir repo (filepath USER_DIR)
@@ -2804,21 +2803,6 @@ module Project =
       let! _ = Asset.saveWithCommit path User.Admin.Signature project
       return project
     }
-
-  #endif
-
-  // ** clone
-
-  #if !FABLE_COMPILER && !IRIS_NODES
-
-  let clone (host : string) (name : string) (destination: FilePath) : FilePath option =
-    let url = sprintf "git://%s/%s/.git" host name
-    try
-      let path = destination </> filepath name
-      Repository.Clone(url, unwrap path) |> ignore
-      Some path
-    with
-      | _ -> None
 
   #endif
 

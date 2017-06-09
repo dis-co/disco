@@ -54,9 +54,7 @@ type GitMergeStatus =
 
 [<NoEquality;NoComparison>]
 type GitEvent =
-  | Started    of pid:int
-  | Exited     of code:int
-  | Failed     of reason:string
+  | Started
   | Connection of pid:int * address:string * port:Port
   | Pull       of GitMergeStatus * commitSha: string option
 

@@ -3,7 +3,7 @@ source https://nuget.org/api/v2
 
 group Main
   source https://nuget.org/api/v2
-  nuget FSharp.Core redirects:force
+  nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
@@ -34,21 +34,20 @@ group Main
   nuget Fable.PowerPack
   nuget Fable.React
 
-
 group Build
   source https://nuget.org/api/v2
 
   nuget SourceLink.Fake
   nuget FAKE
   nuget FSharp.Formatting
-  nuget FSharp.Core redirects:force
+  nuget FSharp.Core = 4.1.17 redirects:force
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
 group Test
   source https://nuget.org/api/v2
 
-  nuget FSharp.Core redirects:force
+  nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
