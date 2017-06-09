@@ -864,7 +864,7 @@ NUGET
   remote: https://www.nuget.org/api/v2
     FAKE (4.50)
     FSharp.Compiler.Service (2.0.0.6)
-    FSharp.Core (4.2) - redirects: force
+    FSharp.Core (4.1.17) - redirects: force
       System.Collections (>= 4.0.11) - restriction: >= netstandard16
       System.Console (>= 4.0) - restriction: >= netstandard16
       System.Diagnostics.Debug (>= 4.0.11) - restriction: >= netstandard16
@@ -888,6 +888,7 @@ NUGET
       System.Threading.Thread (>= 4.0) - restriction: >= netstandard16
       System.Threading.ThreadPool (>= 4.0.10) - restriction: >= netstandard16
       System.Threading.Timer (>= 4.0.1) - restriction: >= netstandard16
+      System.ValueTuple (>= 4.3) - restriction: < netstandard16
     FSharp.Formatting (2.14.4)
       FSharp.Compiler.Service (2.0.0.6)
       FSharpVSPowerTools.Core (>= 2.3 < 2.4)
@@ -899,8 +900,8 @@ NUGET
     Microsoft.Net.Http (2.2.29) - restriction: && (< net45) (< win8) (< portable-win81+wpa81)
       Microsoft.Bcl (>= 1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
-    Microsoft.NETCore.Platforms (1.1) - redirects: force, restriction: >= netstandard16
-    Microsoft.NETCore.Targets (1.1) - redirects: force, restriction: >= netstandard16
+    Microsoft.NETCore.Platforms (1.1) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
+    Microsoft.NETCore.Targets (1.1) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
     Octokit (0.24)
       Microsoft.Net.Http  - restriction: && (< net45) (< win8) (< portable-win81+wpa81)
     runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
@@ -934,7 +935,7 @@ NUGET
     runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
     runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
     SourceLink.Fake (1.1)
-    System.Collections (4.3) - redirects: force, restriction: >= netstandard16
+    System.Collections (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -973,7 +974,7 @@ NUGET
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
-    System.Globalization (4.3) - redirects: force, restriction: >= netstandard16
+    System.Globalization (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -989,7 +990,7 @@ NUGET
       System.Runtime (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Runtime.Extensions (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Runtime.InteropServices (>= 4.3) - restriction: && (< net46) (>= netstandard13)
-    System.IO (4.3) - redirects: force, restriction: >= netstandard16
+    System.IO (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
@@ -1096,7 +1097,7 @@ NUGET
       System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Threading (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
-    System.Reflection (4.3) - redirects: force, restriction: >= netstandard16
+    System.Reflection (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.IO (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
@@ -1122,20 +1123,20 @@ NUGET
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Reflection (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
-    System.Reflection.Primitives (4.3) - redirects: force, restriction: >= netstandard16
+    System.Reflection.Primitives (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
     System.Reflection.TypeExtensions (4.3) - redirects: force, restriction: >= netstandard16
       System.Reflection (>= 4.3) - restriction: || (&& (< net46) (>= netstandard13) (< netstandard15)) (&& (< net46) (>= netstandard15)) (>= net462) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net46) (>= netstandard13) (< netstandard15)) (&& (< net46) (>= netstandard15)) (>= dnxcore50)
-    System.Resources.ResourceManager (4.3) - redirects: force, restriction: >= netstandard16
+    System.Resources.ResourceManager (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Globalization (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Reflection (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
-    System.Runtime (4.3) - redirects: force, restriction: >= netstandard16
+    System.Runtime (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
     System.Runtime.Extensions (4.3) - redirects: force, restriction: >= netstandard16
@@ -1260,7 +1261,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
       System.Text.Encoding (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
       System.Threading (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
-    System.Text.Encoding (4.3) - redirects: force, restriction: >= netstandard16
+    System.Text.Encoding (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1274,7 +1275,7 @@ NUGET
     System.Threading (4.3) - redirects: force, restriction: >= netstandard16
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Threading.Tasks (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
-    System.Threading.Tasks (4.3) - redirects: force, restriction: >= netstandard16
+    System.Threading.Tasks (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1296,6 +1297,10 @@ NUGET
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
+    System.ValueTuple (4.3.1) - redirects: force, restriction: < netstandard16
+      System.Collections (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
+      System.Resources.ResourceManager (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
+      System.Runtime (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
 GITHUB
   remote: fsharp/FAKE
     modules/Octokit/Octokit.fsx (ad65548e62c35ad64ad1f9db6f5768330bc06594)
@@ -1318,7 +1323,7 @@ NUGET
       PerfUtil (>= 0.1.8)
     FsCheck (2.7)
       FSharp.Core (>= 3.1.2.5)
-    FSharp.Core (4.2) - redirects: force
+    FSharp.Core (4.1.17) - redirects: force
       System.Collections (>= 4.0.11) - restriction: >= netstandard16
       System.Console (>= 4.0) - restriction: >= netstandard16
       System.Diagnostics.Debug (>= 4.0.11) - restriction: >= netstandard16
@@ -1342,8 +1347,9 @@ NUGET
       System.Threading.Thread (>= 4.0) - restriction: >= netstandard16
       System.Threading.ThreadPool (>= 4.0.10) - restriction: >= netstandard16
       System.Threading.Timer (>= 4.0.1) - restriction: >= netstandard16
-    Microsoft.NETCore.Platforms (1.1) - redirects: force, restriction: >= netstandard16
-    Microsoft.NETCore.Targets (1.1) - redirects: force, restriction: >= netstandard16
+      System.ValueTuple (>= 4.3) - restriction: < netstandard16
+    Microsoft.NETCore.Platforms (1.1) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
+    Microsoft.NETCore.Targets (1.1) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
     Mono.Cecil (0.9.6.4)
     PerfUtil (0.1.8)
     runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
@@ -1376,7 +1382,7 @@ NUGET
     runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
     runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
     runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - redirects: force, restriction: >= netstandard16
-    System.Collections (4.3) - redirects: force, restriction: >= netstandard16
+    System.Collections (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1415,7 +1421,7 @@ NUGET
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard11) (< netstandard12) (< win8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
-    System.Globalization (4.3) - redirects: force, restriction: >= netstandard16
+    System.Globalization (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1431,7 +1437,7 @@ NUGET
       System.Runtime (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Runtime.Extensions (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Runtime.InteropServices (>= 4.3) - restriction: && (< net46) (>= netstandard13)
-    System.IO (4.3) - redirects: force, restriction: >= netstandard16
+    System.IO (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
@@ -1538,7 +1544,7 @@ NUGET
       System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Threading (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
-    System.Reflection (4.3) - redirects: force, restriction: >= netstandard16
+    System.Reflection (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       System.IO (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
@@ -1564,20 +1570,20 @@ NUGET
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Reflection (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
-    System.Reflection.Primitives (4.3) - redirects: force, restriction: >= netstandard16
+    System.Reflection.Primitives (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
     System.Reflection.TypeExtensions (4.3) - redirects: force, restriction: >= netstandard16
       System.Reflection (>= 4.3) - restriction: || (&& (< net46) (>= netstandard13) (< netstandard15)) (&& (< net46) (>= netstandard15)) (>= net462) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net46) (>= netstandard13) (< netstandard15)) (&& (< net46) (>= netstandard15)) (>= dnxcore50)
-    System.Resources.ResourceManager (4.3) - redirects: force, restriction: >= netstandard16
+    System.Resources.ResourceManager (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Globalization (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Reflection (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (>= dnxcore50)
-    System.Runtime (4.3) - redirects: force, restriction: >= netstandard16
+    System.Runtime (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (>= dnxcore50) (>= netstandard10)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (>= dnxcore50)
     System.Runtime.Extensions (4.3) - redirects: force, restriction: >= netstandard16
@@ -1702,7 +1708,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
       System.Text.Encoding (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
       System.Threading (>= 4.3) - restriction: || (>= dnxcore50) (>= netstandard16)
-    System.Text.Encoding (4.3) - redirects: force, restriction: >= netstandard16
+    System.Text.Encoding (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1716,7 +1722,7 @@ NUGET
     System.Threading (4.3) - redirects: force, restriction: >= netstandard16
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Threading.Tasks (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
-    System.Threading.Tasks (4.3) - redirects: force, restriction: >= netstandard16
+    System.Threading.Tasks (4.3) - redirects: force, restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< netstandard15) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net45) (>= netstandard10) (< netstandard13) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
@@ -1738,3 +1744,7 @@ NUGET
       Microsoft.NETCore.Platforms (>= 1.1) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
       Microsoft.NETCore.Targets (>= 1.1) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
       System.Runtime (>= 4.3) - restriction: || (&& (< net451) (>= netstandard12) (< win81) (< wpa81)) (>= dnxcore50)
+    System.ValueTuple (4.3.1) - redirects: force, restriction: < netstandard16
+      System.Collections (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
+      System.Resources.ResourceManager (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
+      System.Runtime (>= 4.3) - restriction: && (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)
