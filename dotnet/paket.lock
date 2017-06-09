@@ -32,7 +32,7 @@ NUGET
     FsCheck (2.7)
       FSharp.Core (>= 3.1.2.5)
     FSharp.Configuration (0.6.4)
-    FSharp.Core (4.2) - redirects: force
+    FSharp.Core (4.1.17) - redirects: force
       System.Collections (>= 4.0.11) - restriction: >= netstandard16
       System.Console (>= 4.0) - restriction: >= netstandard16
       System.Diagnostics.Debug (>= 4.0.11) - restriction: >= netstandard16
@@ -56,6 +56,7 @@ NUGET
       System.Threading.Thread (>= 4.0) - restriction: >= netstandard16
       System.Threading.ThreadPool (>= 4.0.10) - restriction: >= netstandard16
       System.Threading.Timer (>= 4.0.1) - restriction: >= netstandard16
+      System.ValueTuple (>= 4.3) - restriction: < netstandard16
     LibGit2Sharp (0.24.0-pre20170124092542)
       LibGit2Sharp.NativeBinaries (1.0.165)
     LibGit2Sharp.NativeBinaries (1.0.165)
