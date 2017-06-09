@@ -44,7 +44,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MockClient", "src\Iris\Proj
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sdk", "src\Iris\Projects\Sdk\Sdk.fsproj", "{845E1258-3D82-441F-A360-A3140873B9B4}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "UnityClient", "src\Unity\UnityClient\UnityClient.fsproj", "{85E871AD-0799-46F9-A613-7EE3A834E331}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "UnityClient", "src\Unity\UnityClient.fsproj", "{85E871AD-0799-46F9-A613-7EE3A834E331}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
