@@ -111,11 +111,11 @@ module Uri =
       #if FABLE_COMPILER
       name
       |> unwrap
-      |> System.Web.HttpUtility.UrlEncode
+      |> Fable.Import.JS.encodeURI
       #else
       name
       |> unwrap
-      |> Fable.Import.JS.encodeURI
+      |> System.Web.HttpUtility.UrlEncode
       #endif
     toUri HTTP None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
 
