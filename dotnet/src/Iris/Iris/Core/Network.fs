@@ -4,6 +4,7 @@ namespace Iris.Core
 
 #if FABLE_COMPILER
 
+open System
 open Fable.Core
 open Fable.Import
 

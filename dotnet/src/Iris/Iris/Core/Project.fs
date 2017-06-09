@@ -2598,22 +2598,6 @@ module Project =
 
   #endif
 
-  // ** setReceivePackConfig
-
-  #if !FABLE_COMPILER && !IRIS_NODES
-
-  let setReceivePackConfig (repo: Repository) =
-    try
-      repo.Config.Set("receive.denyCurrentBranch", "updateInstead")
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asGitError (tag "setReceivePackConfig")
-        |> Either.fail
-
-  #endif
-
   // ** createAssetDir (private)
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -2774,7 +2758,7 @@ module Project =
     either {
       let! repo = Git.Repo.init project.Path
       do! writeDaemonExportFile repo
-      do! setReceivePackConfig repo
+      do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
       do! createAssetDir repo (filepath CUE_DIR)
       do! createAssetDir repo (filepath USER_DIR)
