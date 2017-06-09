@@ -16,29 +16,6 @@ open System.Net.NetworkInformation
 
 #endif
 
-(*
-
-type NetworkInterfaceStatus =
-  | Up
-  | Down
-  | Unknown
-
-type NetworkInterfaceType =
-  | Ethernet
-  | Wireless
-  | Loopback
-  | Unknown
-
-type NetworkInterface =
-  { Name: string
-    Type: NetworkInterfaceType
-    Status: NetworkInterfaceStatus
-    Speed: int64
-    SupportsMulticast: bool
-    IpAddress: IpAddress }
-
-*)
-
 // * NetworkInterfaceStatus
 
 type NetworkInterfaceStatus =
