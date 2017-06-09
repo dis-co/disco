@@ -264,11 +264,8 @@ module Git =
   // ** route
 
   let private route (name: Name) path =
-    let encoded: string =
-      name
-      |> unwrap
-      |> System.Web.HttpUtility.UrlEncode
-    String.Format("/{0}{1}", encoded, path)
+    let unwrapped:string = unwrap name
+    String.Format("/{0}{1}", unwrapped, path)
 
   // ** makeRoutes
 
@@ -317,15 +314,19 @@ module Git =
 
           member self.Start () = either {
               do! Network.ensureIpAddress mem.IpAddr
+              do! Network.ensureAvailability mem.IpAddr mem.GitPort
+
               status <- ServiceStatus.Starting
               let config = makeConfig mem.IpAddr (unwrap mem.GitPort) cts
 
-              makeRoutes subscriptions project.Name project.Path
+              project.Path
+              |> makeRoutes subscriptions project.Name
               |> startWebServerAsync config
               |> (fun (_, server) -> Async.Start(server, cts.Token))
 
-              Observable.notify subscriptions GitEvent.Started
+              Thread.Sleep(150)
 
+              Observable.notify subscriptions GitEvent.Started
               status <- ServiceStatus.Running
            }
 

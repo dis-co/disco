@@ -150,6 +150,30 @@ module Network =
   let ensureIpAddress (ip: IpAddress) =
     getInterfaces() |> checkIpAddress ip
 
+  // ** portAvailable
+
+  let portAvailable (ip: IpAddress) (port: Port) =
+    let addr = ip.toIPAddress()
+    let props = IPGlobalProperties.GetIPGlobalProperties()
+    props.GetActiveTcpListeners()
+    |> Array.fold
+      (fun m (info: IPEndPoint) ->
+        if m
+        then info.Address <> addr || info.Port <> int port
+        else m)
+      true
+
+  // ** ensureAvailability
+
+  let ensureAvailability (ip: IpAddress) (port: Port) =
+    if portAvailable ip port then
+      Either.succeed ()
+    else
+      unwrap port
+      |> sprintf "%O:%d is unavailable" ip
+      |> Error.asSocketError (tag "ensureAvailability")
+      |> Either.fail
+
   // ** getHostName
 
   /// ## Get the current machine's host name

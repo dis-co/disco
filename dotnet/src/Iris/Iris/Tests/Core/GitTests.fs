@@ -122,7 +122,7 @@ module GitTests =
             | Right ()   -> Left (Other("test","Should have failed to start"))
             | Left error -> Right ()
 
-        expect "Should be disposed" true Service.isDisposed gitserver2.Status
+        expect "Should not be runnning" true Service.isStopped gitserver2.Status
       }
       |> noError
 
@@ -130,21 +130,30 @@ module GitTests =
     testCase "Server availability" <| fun _ ->
       either {
         let port = 10002us
+        let started = new AutoResetEvent(false)
+
+        let handleStarted = function
+          | GitEvent.Started _ -> started.Set() |> ignore
+          | _ -> ()
 
         let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
         use gitserver = GitServer.create mem path
+        use gobs1 = gitserver.Subscribe(handleStarted)
+
         do! gitserver.Start()
+
+        do! waitOrDie "started" started
 
         expect "Should be running" true Service.isRunning gitserver.Status
 
         let target = mkTmpDir ()
 
         let repo =
-          tmpdir
-          |> Path.baseName
-          |> sprintf "git://localhost:%O/%O/.git" port
+          mem
+          |> Uri.gitUri path.Name
+          |> unwrap
           |> Git.Repo.clone target
 
         expect "Should have successfully clone project" true Either.isSuccess repo
@@ -158,7 +167,7 @@ module GitTests =
   //   |_|\___||___/\__| |_____|_|___/\__|
 
   let gitTests =
-    ftestList "Git Tests" [
+    testList "Git Tests" [
       // REMOTES
       test_correct_remote_list
       test_remove_remote

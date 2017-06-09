@@ -370,7 +370,9 @@ module Git =
         |> Either.succeed
       with
         | exn ->
-          Left (Error.asGitError (tag "clone") exn.Message)
+          exn.Message
+          |> Error.asGitError (tag "clone")
+          |> Either.fail
 
     // *** branches
 

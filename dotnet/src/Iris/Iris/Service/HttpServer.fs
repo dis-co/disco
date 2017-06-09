@@ -184,6 +184,7 @@ module Http =
         let machine = MachineConfig.get()
 
         do! Network.ensureIpAddress machine.BindAddress
+        do! Network.ensureAvailability machine.BindAddress machine.WebPort
 
         let addr = machine.BindAddress |> string |> IPAddress.Parse
         let port = Sockets.Port.Parse (string machine.WebPort)
