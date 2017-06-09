@@ -127,8 +127,6 @@ module Network =
         else lst)
       []
 
-  #endif
-
   // ** checkIpAddress
 
   let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
@@ -173,6 +171,8 @@ module Network =
       |> sprintf "%O:%d is unavailable" ip
       |> Error.asSocketError (tag "ensureAvailability")
       |> Either.fail
+
+  #endif
 
   // ** getHostName
 

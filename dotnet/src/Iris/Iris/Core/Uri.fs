@@ -108,9 +108,15 @@ module Uri =
 
   let gitUri (name: Name) (mem: RaftMember) =
     let path =
+      #if FABLE_COMPILER
       name
       |> unwrap
       |> System.Web.HttpUtility.UrlEncode
+      #else
+      name
+      |> unwrap
+      |> Fable.Import.JS.encodeURI
+      #endif
     toUri HTTP None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
 
   // ** pgmUri

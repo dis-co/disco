@@ -88,5 +88,9 @@ type IpAddress =
 
   // ** toIPAddress
 
+  #if !FABLE_COMPILER
+
   member self.toIPAddress () =
     self |> string |> IPAddress.Parse
+
+  #endif
