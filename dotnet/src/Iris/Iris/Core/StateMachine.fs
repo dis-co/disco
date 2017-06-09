@@ -20,6 +20,10 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
 
 #endif

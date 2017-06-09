@@ -17,7 +17,6 @@ open System
 open System.IO
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
 
@@ -25,6 +24,7 @@ open SharpYaml.Serialization
 
 #if !FABLE_COMPILER && !IRIS_NODES
 
+open SharpYaml.Serialization
 open LibGit2Sharp
 
 // __   __              _

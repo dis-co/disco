@@ -20,7 +20,6 @@ open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
 open System.Runtime.CompilerServices
-open Hopac
 
 #endif
 
@@ -366,7 +365,7 @@ module Time =
 
 // * Process
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 ///////////////////////////////////////////////////
 //  ____                                         //
@@ -546,14 +545,12 @@ module Crypto =
 
 // * Functional
 
-#if FABLE_COMPILER
-
 [<AutoOpen>]
 module Functional =
 
-  let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
+  let konst (a: 'a) = fun _ -> a
 
-#endif
+  let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
 
 // * Tuple
 

@@ -12,9 +12,14 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
+
+#endif
 
 // * Color Yaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
   [<DefaultValue>] val mutable ColorType : string
@@ -279,7 +284,7 @@ type ColorSpace =
 
   // ** ToYamlObject
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     match self with

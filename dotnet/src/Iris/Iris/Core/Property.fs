@@ -14,13 +14,12 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
 
 // * PropertyYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml.Serialization
 
@@ -66,7 +65,7 @@ type Property =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     PropertyYaml(self.Key, self.Value)

@@ -15,14 +15,10 @@ module CommandLine =
   open Iris.Service.Iris
   open Iris.Service.CommandActions
   open Iris.Service.Interfaces
-  open FSharpx.Functional
   open System
-  open System.IO
   open System.Linq
   open System.Collections.Generic
   open System.Text.RegularExpressions
-  open Http
-  open Iris.Core.Discovery
 
   // ** Command Line Argument Parser
 

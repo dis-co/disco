@@ -1,10 +1,7 @@
 ﻿namespace Iris.Tests
 
-open System
-open System.IO
 open Expecto
 open Iris.Core
-open FSharpx.Functional
 
 [<AutoOpen>]
 module ConfigTests =

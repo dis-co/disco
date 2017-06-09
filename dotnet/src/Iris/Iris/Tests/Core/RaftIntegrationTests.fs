@@ -1,20 +1,12 @@
 namespace Iris.Tests
 
-open System
 open System.Threading
-open System.Text
 open Expecto
 
 open Iris.Core
-open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
 open Iris.Service.Interfaces
 open Iris.Raft
-open Iris.Zmq
 open Iris.Service.Raft
-open FSharpx.Functional
-open Microsoft.FSharp.Control
 open ZeroMQ
 
 [<AutoOpen>]

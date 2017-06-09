@@ -13,13 +13,14 @@ open Iris.Web.Core.FlatBufferTypes
 open System
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
 
 // * SessionYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
@@ -104,7 +105,7 @@ type Session =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |

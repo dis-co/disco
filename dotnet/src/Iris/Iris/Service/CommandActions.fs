@@ -3,8 +3,6 @@ module Iris.Service.CommandActions
 #if !IRIS_NODES
 
 open System
-open System.IO
-open FSharpx.Functional
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Commands
@@ -12,7 +10,6 @@ open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open System.Collections.Concurrent
-open Iris.Core
 
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 

@@ -1,8 +1,6 @@
 namespace Iris.Tests.Raft
 
-open System.Net
 open Expecto
-open Hopac
 open Iris.Raft
 open Iris.Core
 

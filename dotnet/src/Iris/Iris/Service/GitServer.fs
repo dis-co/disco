@@ -5,7 +5,6 @@ namespace Iris.Service
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Service.Utilities
 open Iris.Service.Interfaces
 
 open Suave
@@ -28,9 +27,30 @@ open System.Diagnostics
 
 open System.Collections.Concurrent
 open Microsoft.FSharp.Control
-open FSharpx.Functional
 
-// * Git
+// * GitServer
+
+//   ____ _ _   ____
+//  / ___(_) |_/ ___|  ___ _ ____   _____ _ __
+// | |  _| | __\___ \ / _ \ '__\ \ / / _ \ '__|
+// | |_| | | |_ ___) |  __/ |   \ V /  __/ |
+//  \____|_|\__|____/ \___|_|    \_/ \___|_|
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+//
+// EXAMPLE CLONES
+//
+// [10422] Ready to rumble
+// [11331] Connection from 127.0.0.1:43218
+// [11331] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11331] Request upload-pack for '/gittest/.git'
+// [10422] [11331] Disconnected
+// [11921] Connection from 127.0.0.1:43224
+// [11921] Extended attributes (21 bytes) exist <host=localhost:6000>
+// [11921] Request upload-pack for '/gittest/.git'
+// [10422] [11921] Disconnected
+//
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
 module Git =
 

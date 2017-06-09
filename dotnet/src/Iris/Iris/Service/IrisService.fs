@@ -12,15 +12,12 @@ open Iris.Raft
 open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
-open Iris.Core.Commands
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open Iris.Service.Git
 open Iris.Service.WebSockets
 open Iris.Service.Raft
-open Iris.Service.Http
 open Microsoft.FSharp.Control
-open FSharpx.Functional
 open LibGit2Sharp
 open SharpYaml.Serialization
 open ZeroMQ
@@ -330,8 +327,8 @@ module IrisService =
               do! match local, remote with
                   | Some localRef, Some remoteRef when localRef <> remoteRef ->
                     match updateRepo project leader with
-                    | Right (status, commit) ->
-                      GitEvent.Pull(status, commit)
+                    | Right (status, commitSha) ->
+                      GitEvent.Pull(status, commitSha)
                       |> IrisEvent.Git
                       |> Msg.Event
                       |> agent.Post
@@ -648,33 +645,27 @@ module IrisService =
       |> Logger.debug (tag "handleGitEvent")
       state
 
-    | Git (GitEvent.Pull(MergeStatus.UpToDate, _)) ->
+    | Git (GitEvent.Pull(GitMergeStatus.UpToDate, _)) ->
       "Repository already up-to-date"
       |> Logger.debug (tag "handleGitEvent")
       state
 
-    | Git (GitEvent.Pull(MergeStatus.Conflicts, _)) ->
+    | Git (GitEvent.Pull(GitMergeStatus.Conflicts, _)) ->
       "Automatic merge failed with conflicts. Please resolve conflicts manually."
       |> Logger.err (tag "handleGitEvent")
       state
 
-    | Git (GitEvent.Pull((MergeStatus.NonFastForward as status), commit))
-    | Git (GitEvent.Pull((MergeStatus.FastForward    as status), commit)) ->
-      match commit with
-      | Some commit ->
-        commit.Sha
+    | Git (GitEvent.Pull((GitMergeStatus.NonFastForward as status), commitSha))
+    | Git (GitEvent.Pull((GitMergeStatus.FastForward    as status), commitSha)) ->
+      match commitSha with
+      | Some commitSha ->
+        commitSha
         |> sprintf "Automatic merge successful in: %s"
         |> Logger.debug (tag "handleGitEvent")
       | None ->
         status
         |> sprintf "Automatic merge successful: %O"
         |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull(other, _)) ->
-      other
-      |> String.format "unknown merge status: %A"
-      |> Logger.err (tag "handleGitEvent")
       state
 
     | Status status -> state

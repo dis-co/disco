@@ -9,7 +9,6 @@ open Iris.Core
 open Iris.Raft
 open Iris.Service.Http
 open Iris.Service.Discovery
-open FSharpx.Functional
 
 // * Iris
 

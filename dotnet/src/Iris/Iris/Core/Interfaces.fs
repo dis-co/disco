@@ -6,7 +6,6 @@ module Iris.Core.Interfaces
 open System
 open Iris.Core
 open Iris.Raft
-open LibGit2Sharp
 
 // * IAgentStore
 
@@ -46,11 +45,18 @@ type DispatchStrategy =
 
 // * GitEvent
 
+[<RequireQualifiedAccess>]
+type GitMergeStatus =
+  | UpToDate
+  | FastForward
+  | NonFastForward
+  | Conflicts
+
 [<NoEquality;NoComparison>]
 type GitEvent =
   | Started
   | Connection of pid:int * address:string * port:Port
-  | Pull       of MergeStatus * Commit option
+  | Pull       of GitMergeStatus * commitSha: string option
 
   // ** DispatchEvent
 
