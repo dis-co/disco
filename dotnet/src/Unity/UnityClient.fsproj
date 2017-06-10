@@ -67,12 +67,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Iris\Projects\Sdk\Sdk.fsproj">
+    <ProjectReference Include="..\Iris\Projects\Sdk\Sdk.fsproj">
       <Name>Sdk</Name>
       <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\..\Iris\Serialization.csproj">
+    <ProjectReference Include="..\Iris\Serialization.csproj">
       <Name>Serialization</Name>
       <Project>{28c00774-1e73-4a75-ad8f-844cd21a064d}</Project>
       <Private>True</Private>

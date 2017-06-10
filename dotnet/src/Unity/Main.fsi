@@ -8,4 +8,4 @@ type IIrisClient =
   abstract member RegisterGameObject: objectId: int * callback: Action<double> -> unit
 
 [<CompiledName("GetIrisClient")>]
-val getIrisClient: serverIp: string * serverPort: uint16 -> IIrisClient
+val getIrisClient: serverIp: string * serverPort: uint16 * print: Action<string> -> IIrisClient

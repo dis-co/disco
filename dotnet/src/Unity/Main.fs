@@ -32,14 +32,14 @@ type IIrisClient =
   inherit IDisposable
   abstract member RegisterGameObject: objectId: int * callback: Action<float> -> unit
  
-let startApiClient(serverIp, serverPort: uint16) =
+let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
     let myself: IrisClient =
       { Id = Id.Create()
         Name = "Unity Client"
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IPv4Address "127.0.0.1"
-        Port = port Constants.DEFAULT_API_CLIENT_PORT }
+        Port = port 10500us }
 
     let server : IrisServer =
       let ip =
@@ -52,12 +52,17 @@ let startApiClient(serverIp, serverPort: uint16) =
           IPv4Address "127.0.0.1"
       { Port = port serverPort; IpAddress = ip }
 
-    let client = ApiClient.create (new ZContext()) server myself
+    sprintf "Unity client at %O:%O connecting to Iris at %O:%O..."
+      myself.IpAddress myself.Port server.IpAddress server.Port |> print
+    
+    let zcontext = new ZContext()
+    let client = ApiClient.create zcontext server myself
 
     match client.Start() with
     | Right () ->
-      Logger.info "startClient" "successfully started ApiClient"
-      myself.Id, client
+      Logger.info "startClient" "Successfully started ApiClient"
+      print "Successfully started ApiClient"
+      myself.Id, zcontext, client
     | Left error ->
       let msg = string error
       Logger.err "startClient" msg
@@ -69,8 +74,8 @@ let withState (state: State option) (f: State->State) =
   // TODO: Log/throw exception if state it's not initialized
   | None -> state
 
-let startApiClientAndActor (serverIp, serverPort: uint16) =
-  let clientId, client = startApiClient(serverIp, serverPort) 
+let startApiClientAndActor (serverIp, serverPort: uint16, print) =
+  let clientId, zcontext, client = startApiClient(serverIp, serverPort, print) 
   let actor = Actor.Start(fun inbox -> async {
     let rec loop state = async {
       let! msg = inbox.Receive()
@@ -101,6 +106,7 @@ let startApiClientAndActor (serverIp, serverPort: uint16) =
                 let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
                 if not(Map.containsKey id state.PinGroup.Pins)
                 then
+                  sprintf "Registering pin %O to Iris" id |> print
                   let pin = Pin.number id (string objectId) state.PinGroup.Id [|astag "Scale"|] [|1.|]
                   client.AddPin(pin)
                   { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
@@ -124,24 +130,27 @@ let startApiClientAndActor (serverIp, serverPort: uint16) =
   { PinGroup = pinGroup; GameObjects = Map.empty }
   |> UpdateState |> actor.Post
 
-  client, actor
+  zcontext, client, actor
 
 let private myLock = obj()
 let mutable private client = None
 
 [<CompiledName("GetIrisClient")>]
-let getIrisClient(serverIp, serverPort) =
+let getIrisClient(serverIp, serverPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
-      | Some client -> client
+      | Some client ->
+        print.Invoke("Reciclying client instance")
+        client
       | None ->
-        let apiClient, actor = startApiClientAndActor(serverIp, serverPort)
+        let zcontext, apiClient, actor = startApiClientAndActor(serverIp, serverPort, print.Invoke)
         // Subscribe to API client events
         let apiobs = apiClient.Subscribe(fun ev -> actor.Post(IrisEvent ev))
         let client2: IIrisClient =
           { new IIrisClient with
               member this.Dispose() =
                 apiobs.Dispose()
+                zcontext.Dispose()
                 (actor :> IDisposable).Dispose()
               member this.RegisterGameObject(objectId: int, callback: Action<double>) =
                 RegisterObject(objectId, callback) |> actor.Post }
