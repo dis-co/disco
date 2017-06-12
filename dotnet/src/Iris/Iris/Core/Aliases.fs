@@ -58,6 +58,7 @@ type Salt       = string<checksum>
 type Port       = uint16<port>
 type Timeout    = int<ms>
 type Url        = string<uri>
+type Frame      = int<frame>
 
 // * Measure module
 

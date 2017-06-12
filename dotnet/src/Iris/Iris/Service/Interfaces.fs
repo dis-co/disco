@@ -19,6 +19,14 @@ type IDiscoveryService =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Register: service:DiscoverableService -> IDisposable
 
+// * IResolver
+
+type IResolver =
+  inherit IDisposable
+  abstract Pending: Map<Frame,Cue>
+  abstract Update: IrisEvent -> unit
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+
 // * IClock
 
 type IClock =
