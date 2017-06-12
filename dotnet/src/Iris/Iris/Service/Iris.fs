@@ -7,6 +7,7 @@ namespace Iris.Service
 open System
 open Iris.Core
 open Iris.Raft
+open ZeroMQ
 
 // * Iris
 
@@ -78,6 +79,7 @@ module Iris =
   // ** create
 
   let create post (options: IrisOptions) = either {
+      let ctx = new ZContext()
       let status = ref ServiceStatus.Stopped
       let iris = ref None
       let registration = ref None
@@ -113,7 +115,7 @@ module Iris =
                 Option.iter dispose !iris              // in case there was already something loaded
                 Option.iter dispose !eventSubscription // and its subscription as well
                 Option.iter dispose !registration      // and any registered service
-                let irisService = IrisService.create {
+                let irisService = IrisService.create ctx {
                   Machine = options.Machine
                   ProjectName = name
                   UserName = username
@@ -158,6 +160,7 @@ module Iris =
                 Option.iter dispose !iris
                 dispose httpServer
                 Option.iter dispose discovery
+                dispose ctx
                 status := ServiceStatus.Disposed
           }
     }

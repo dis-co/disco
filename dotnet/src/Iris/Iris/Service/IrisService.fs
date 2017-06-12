@@ -141,7 +141,6 @@ module IrisService =
         dispose self.RaftServer
         dispose self.ClockService
         dispose self.SocketServer
-        dispose self.Context
 
   // ** Msg
 
@@ -866,7 +865,8 @@ module IrisService =
 
   // ** start
 
-  let private start (iris: IrisServiceOptions)
+  let private start (context: ZContext)
+                    (iris: IrisServiceOptions)
                     (store: IAgentStore<IrisState>)
                     (agent: IrisAgent)
                     (cts: CancellationTokenSource)
@@ -912,8 +912,6 @@ module IrisService =
         // This will fail if there's no ActiveSite set up in state.Project.Config
         // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
-
-        let context = new ZContext()
 
         let clockService = Clock.create ()
         clockService.Stop()
@@ -1026,9 +1024,9 @@ module IrisService =
 
   // ** makeService
 
-  let private makeService iris store agent subscriptions cts =
+  let private makeService ctx iris store agent subscriptions cts =
     { new IIrisService with
-        member self.Start() = start iris store agent cts subscriptions
+        member self.Start() = start ctx iris store agent cts subscriptions
 
         member self.Project
           with get () = store.State.Store.State.Project // :D
@@ -1091,7 +1089,7 @@ module IrisService =
 
   // ** create
 
-  let create (iris: IrisServiceOptions) =
+  let create ctx (iris: IrisServiceOptions) =
     let subscriptions = new Subscriptions()
     let cts = new CancellationTokenSource()
     let store = AgentStore.create()
@@ -1099,6 +1097,6 @@ module IrisService =
     // set up the error handler so we can address any problems properly
     agent.Error.Add (String.format "error on agent loop: {0}" >> Logger.err (tag "loop"))
     agent.Start()                       // start the agent
-    makeService iris store agent subscriptions cts
+    makeService ctx iris store agent subscriptions cts
 
 #endif
