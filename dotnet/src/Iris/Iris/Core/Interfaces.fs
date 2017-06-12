@@ -264,10 +264,10 @@ type IrisEvent =
       | Append (Origin.Web     _, RemoveCue _)
       | Append (Origin.Client  _, AddCue    _)
       | Append (Origin.Client  _, UpdateCue _)
-      | Append (Origin.Client  _, RemoveCue _)               -> Replicate
+      | Append (Origin.Client  _, RemoveCue _)
       | Append (Origin.Service _, AddCue    _)
       | Append (Origin.Service _, UpdateCue _)
-      | Append (Origin.Service _, RemoveCue _)               -> Ignore
+      | Append (Origin.Service _, RemoveCue _)               -> Replicate
 
       //   ____           _     _     _
       //  / ___|   _  ___| |   (_)___| |_
@@ -280,10 +280,10 @@ type IrisEvent =
       | Append (Origin.Web     _, RemoveCueList _)
       | Append (Origin.Client  _, AddCueList    _)
       | Append (Origin.Client  _, UpdateCueList _)
-      | Append (Origin.Client  _, RemoveCueList _)           -> Replicate
+      | Append (Origin.Client  _, RemoveCueList _)
       | Append (Origin.Service _, AddCueList    _)
       | Append (Origin.Service _, UpdateCueList _)
-      | Append (Origin.Service _, RemoveCueList _)           -> Ignore
+      | Append (Origin.Service _, RemoveCueList _)           -> Replicate
 
       //   ____           ____  _
       //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
@@ -297,10 +297,10 @@ type IrisEvent =
       | Append (Origin.Web     _, RemoveCuePlayer _)
       | Append (Origin.Client  _, AddCuePlayer    _)
       | Append (Origin.Client  _, UpdateCuePlayer _)
-      | Append (Origin.Client  _, RemoveCuePlayer _)         -> Replicate
+      | Append (Origin.Client  _, RemoveCuePlayer _)
       | Append (Origin.Service _, AddCuePlayer    _)
       | Append (Origin.Service _, UpdateCuePlayer _)
-      | Append (Origin.Service _, RemoveCuePlayer _)         -> Ignore
+      | Append (Origin.Service _, RemoveCuePlayer _)         -> Replicate
 
       //  _   _
       // | | | |___  ___ _ __
