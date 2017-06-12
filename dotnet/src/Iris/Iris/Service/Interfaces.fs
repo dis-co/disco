@@ -11,6 +11,8 @@ open Iris.Zmq
 open Mono.Zeroconf
 open Disruptor
 
+// * PipelineEvent
+
 type PipelineEvent<'t>() =
   let mutable cell: 't option = None
 
@@ -20,6 +22,13 @@ type PipelineEvent<'t>() =
 
   member ev.Clear() =
     cell <- None
+
+// * ISink
+
+type ISink<'a> =
+  abstract Publish: origin:Origin -> update:'a -> unit
+
+// * IDiscoveryService
 
 type IDiscoveryService =
   inherit IDisposable
@@ -86,24 +95,6 @@ type IWebSocketServer =
   abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
-// * IApiServer
-
-type IApiServer =
-  inherit IDisposable
-  inherit ISink<IrisEvent>
-  abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
-  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
-  abstract State: Either<IrisError,State>
-  abstract Update: sm:StateMachine -> unit
-  abstract SetState: state:State -> Either<IrisError,unit>
-
-// * IHttpServer
-
-type IHttpServer =
-  inherit System.IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-
 // * IApiServerCallbacks
 
 type IApiServerCallbacks =
@@ -113,11 +104,18 @@ type IApiServerCallbacks =
 
 type IApiServer =
   inherit IDisposable
+  inherit ISink<IrisEvent>
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
   abstract SendSnapshot: unit -> unit
   abstract Update: origin:Origin -> sm:StateMachine -> unit
+
+// * IHttpServer
+
+type IHttpServer =
+  inherit System.IDisposable
+  abstract Start: unit -> Either<IrisError,unit>
 
 // * IrisServiceOptions
 

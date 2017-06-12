@@ -1620,24 +1620,6 @@ module Raft =
               member self.Leader
                 with get () = Raft.getLeader store.State.Raft
 
-              member self.Publish(cmd: IrisEvent) =
-                let append = addCmd agent >> ignore
-                match cmd with
-                | Api       (Register client)      -> client  |> AddClient               |> append
-                | Api       (ClientStatus client)  -> client  |> UpdateClient            |> append
-                | Api       (UnRegister client)    -> client  |> RemoveClient            |> append
-                | Api       (Update sm)            -> sm      |> append
-                | Discovery (Appeared service)     -> service |> AddDiscoveredService    |> append
-                | Discovery (Updated service)      -> service |> UpdateDiscoveredService |> append
-                | Discovery (Vanished service)     -> service |> RemoveDiscoveredService |> append
-                | Socket    (OnClose id)           -> failwith "Socket.OnClose Id in Raft Publish"
-                | Socket    (OnError (id,_))       -> failwith "Socket.OnError Id in Raft Publish"
-                | Socket    (OnMessage (id,sm))    -> sm      |> append
-                | Socket    (OnOpen id)            -> failwith "Socket.OnOpen Id in Raft Publish"
-                | Status     status                -> failwith "status"
-                | other                            -> ignore other
-                // appendCmd cmd
-
               member self.Dispose () =
                 if not (Service.isDisposed store.State.Status) then
                   // tell the loop to settle and eventually stop processing state updates
