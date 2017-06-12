@@ -5,6 +5,7 @@ LibGit2Sharp.NativeBinaries
 FSharp.Configuration
 Fleck
 Suave
+Suave.Git
 ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter

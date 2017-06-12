@@ -5,7 +5,6 @@ open Expecto
 open Iris.Core
 open Iris.Raft
 open Iris.Service
-open Iris.Service.Git
 open System.Threading
 open LibGit2Sharp
 

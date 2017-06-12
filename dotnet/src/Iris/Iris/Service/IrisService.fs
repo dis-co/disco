@@ -14,7 +14,6 @@ open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
-open Iris.Service.Git
 open Iris.Service.WebSockets
 open Iris.Service.Raft
 open Microsoft.FSharp.Control
