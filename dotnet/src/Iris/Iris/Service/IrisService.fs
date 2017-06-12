@@ -52,6 +52,9 @@ module IrisService =
   let private WS_SERVER = "ws"
 
   [<Literal>]
+  let private RESOLVER = "resolver"
+
+  [<Literal>]
   let private CLOCK_SERVICE = "clock"
 
   // ** Subscriptions
@@ -118,6 +121,7 @@ module IrisService =
       RaftServer     : IRaftServer
       SocketServer   : IWebSocketServer
       ClockService   : IClock
+      Resolver       : IResolver
       Subscriptions  : Subscriptions
       Disposables    : Map<string,IDisposable>
       Context        : ZContext }
@@ -130,6 +134,7 @@ module IrisService =
         disposeAll self.Disposables
         Option.iter dispose self.Leader
         Option.iter dispose self.GitPoller
+        dispose self.Resolver
         dispose self.LogForwarder
         dispose self.ApiServer
         dispose self.GitServer
@@ -204,6 +209,13 @@ module IrisService =
     state.ApiServer.Update origin cmd
     broadcastMsg state origin cmd
     state.Store.Dispatch cmd
+
+  // ** resolveCmd
+
+  let private resolveCmd (state: IrisState) cmd =
+    match cmd with
+    | UpdateClock _ | CallCue _ -> state.Resolver.Update cmd
+    | _ -> ()
 
   // ** ignoreEvent
 
@@ -698,6 +710,7 @@ module IrisService =
     //         |_|   |_|
 
     | Append (origin, cmd) ->
+      resolveCmd state        cmd
       publishCmd state origin cmd
       persistLog state cmd
 
@@ -898,12 +911,15 @@ module IrisService =
               // IMPORTANT: use the projects path here, not the path to project.yml
               let gitServer = GitServer.create mem state.Project
 
+              let cueResolver = Resolver.create ()
+
               // set up event forwarding of various services to the actor
               let disposables =
                 [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
                   (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
                   (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)
                   (GIT_SERVER,    forwardEvent IrisEvent.Git agent |> gitServer.Subscribe)
+                  (RESOLVER,      forwardEvent id            agent |> cueResolver.Subscribe)
                   (CLOCK_SERVICE, forwardEvent id            agent |> clockService.Subscribe) ]
                 |> Map.ofList
 
@@ -921,6 +937,7 @@ module IrisService =
                 RaftServer     = raftServer
                 SocketServer   = socketServer
                 ClockService   = clockService
+                Resolver       = cueResolver
                 Subscriptions  = subscriptions
                 Disposables    = disposables }
               |> store.Update          // and feed it to the store, before we start the services

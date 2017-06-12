@@ -24,7 +24,7 @@ type IDiscoveryService =
 type IResolver =
   inherit IDisposable
   abstract Pending: Map<Frame,Cue>
-  abstract Update: IrisEvent -> unit
+  abstract Update: StateMachine -> unit
   abstract Subscribe: (IrisEvent -> unit) -> IDisposable
 
 // * IClock

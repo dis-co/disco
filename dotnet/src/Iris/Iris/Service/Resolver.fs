@@ -21,7 +21,7 @@ module Resolver =
 
   // ** ResolverAgent
 
-  type private ResolverAgent = MailboxProcessor<IrisEvent>
+  type private ResolverAgent = MailboxProcessor<StateMachine>
 
   // ** ResolverState
 
@@ -64,13 +64,13 @@ module Resolver =
 
   // ** handleMessage
 
-  let private handleMessage (msg: IrisEvent) (state: ResolverState) =
+  let private handleMessage (msg: StateMachine) (state: ResolverState) =
     match msg with
-    | Append (_, CallCue cue) ->
-      { state with Pending = Map.add state.Current cue state.Pending }
-      |> maybeDispatch state.Current
-    | Append (_, UpdateClock tick) ->
-      maybeDispatch (int tick * 1<frame>) state
+    | UpdateClock tick -> maybeDispatch (int tick * 1<frame>) state
+    | CallCue cue ->
+      maybeDispatch state.Current {
+        state with Pending = Map.add state.Current cue state.Pending
+      }
     | _ -> state
 
   // ** loop
@@ -111,8 +111,8 @@ module Resolver =
         member resolver.Pending
           with get () = store.State.Pending
 
-        member resolver.Update (ev: IrisEvent) =
-          agent.Post ev
+        member resolver.Update (cmd: StateMachine) =
+          agent.Post cmd
 
         member resolver.Subscribe callback =
           let listener = Observable.createListener subscriptions
