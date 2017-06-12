@@ -7,8 +7,6 @@ namespace Iris.Service
 open System
 open Iris.Core
 open Iris.Raft
-open Iris.Service.Http
-open Iris.Service.Discovery
 
 // * Iris
 

@@ -16,8 +16,7 @@ open Persistence
 
 // * Raft
 
-[<AutoOpen>]
-module Raft =
+module RaftServer =
 
   // ** tag
 
@@ -352,12 +351,6 @@ module Raft =
           Tracing.trace (tag "deleteLog") <| fun () ->
             ignore log
         }
-
-  //  ____        __ _
-  // |  _ \ __ _ / _| |_
-  // | |_) / _` | |_| __|
-  // |  _ < (_| |  _| |_
-  // |_| \_\__,_|_|  \__|
 
   // ** appendEntry
 
@@ -1446,217 +1439,195 @@ module Raft =
       }
     act ()
 
-  // ** RaftServer module
+  // ** create
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
+  let create ctx (config: IrisConfig) callbacks =
+    either {
+      let cts = new CancellationTokenSource()
+      let connections = new Connections()
+      let store = AgentStore.create()
 
-  [<RequireQualifiedAccess>]
-  module RaftServer =
+      let agent = new RaftAgent(loop store, cts.Token)
+      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
-    // *** createListener
+      let! raftState = Persistence.getRaft config
+      let callbacks =
+        makeCallbacks
+          raftState.Member.Id
+          (Client.create ctx)
+          connections
+          callbacks
+          agent
 
-    let private createListener (subscriptions: Subscriptions) =
-      let guid = Guid.NewGuid()
-      { new IObservable<IrisEvent> with
-          member self.Subscribe(obs) =
-            subscriptions.TryAdd(guid, obs) |> ignore
-            { new IDisposable with
-                member self.Dispose () =
-                  subscriptions.TryRemove(guid) |> ignore } }
+      store.Update
+        { Status = ServiceStatus.Stopped
+          Server = Unchecked.defaultof<IServer>
+          MakePeerSocket = Client.create ctx
+          Raft = raftState
+          Options = config
+          Callbacks = callbacks
+          Disposables = []
+          Connections = connections
+          Subscriptions = new Subscriptions()
+          Started = new AutoResetEvent(false)
+          Stopped = new AutoResetEvent(false) }
 
-    // *** create
+      return
+        { new IRaftServer with
+            member self.Start () =
+              Tracing.trace (tag "Start") <| fun () ->
+                if store.State.Status = ServiceStatus.Stopped then
+                  let frontend = Uri.raftUri raftState.Member
 
-    let create ctx (config: IrisConfig) callbacks =
-      either {
-        let cts = new CancellationTokenSource()
-        let connections = new Connections()
-        let store = AgentStore.create()
+                  let backend =
+                    raftState.Member.Id
+                    |> string
+                    |> Some
+                    |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
 
-        let agent = new RaftAgent(loop store, cts.Token)
-        agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+                  let result = Server.create ctx {
+                      Id = raftState.Member.Id
+                      Listen = frontend
+                    }
 
-        let! raftState = Persistence.getRaft config
-        let callbacks =
-          makeCallbacks
-            raftState.Member.Id
-            (Client.create ctx)
-            connections
-            callbacks
-            agent
+                  agent.Start()       // we must start the agent, so the dispose logic will work
+                                      // as expected
 
-        store.Update
-          { Status = ServiceStatus.Stopped
-            Server = Unchecked.defaultof<IServer>
-            MakePeerSocket = Client.create ctx
-            Raft = raftState
-            Options = config
-            Callbacks = callbacks
-            Disposables = []
-            Connections = connections
-            Subscriptions = new Subscriptions()
-            Started = new AutoResetEvent(false)
-            Stopped = new AutoResetEvent(false) }
+                  match result with
+                  | Right server ->
+                    backend
+                    |> sprintf "successfullly started server on: %O"
+                    |> Logger.debug (tag "Start")
 
-        return
-          { new IRaftServer with
-              member self.Start () =
-                Tracing.trace (tag "Start") <| fun () ->
-                  if store.State.Status = ServiceStatus.Stopped then
-                    let frontend = Uri.raftUri raftState.Member
+                    let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)
 
-                    let backend =
-                      raftState.Member.Id
-                      |> string
-                      |> Some
-                      |> Uri.inprocUri Constants.RAFT_BACKEND_PREFIX
+                    Map.iter
+                      (fun _ (peer: RaftMember) ->
+                        if peer.Id <> raftState.Member.Id then
+                          peer.Id
+                          |> sprintf "adding peer socket for %O"
+                          |> Logger.debug (tag "Start")
+                          makePeerSocket peer store.State.MakePeerSocket
+                          |> Option.map (registerPeerSocket agent)
+                          |> Option.iter (addPeerSocket connections))
+                      raftState.Peers
 
-                    let result = Server.create ctx {
-                        Id = raftState.Member.Id
-                        Listen = frontend
-                      }
+                    store.Update
+                      { store.State with
+                          Server = server
+                          Disposables = [ srvobs ] }
 
-                    agent.Start()       // we must start the agent, so the dispose logic will work
-                                        // as expected
+                    agent.Post Msg.Start // kick it off
 
-                    match result with
-                    | Right server ->
-                      backend
-                      |> sprintf "successfullly started server on: %O"
-                      |> Logger.debug (tag "Start")
+                    let result = store.State.Started.WaitOne(TimeSpan.FromMilliseconds 1000.0)
 
-                      let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)
+                    if result then
+                      match store.State.Status with
+                      | ServiceStatus.Failed error ->
+                        Either.fail error
+                      | _ -> Either.succeed ()
+                    else
+                      "Timeout waiting for started signal"
+                      |> Error.asRaftError (tag "Start")
+                      |> Either.fail
+                  | Left error ->
+                    error
+                    |> sprintf "error starting broker: %O"
+                    |> Logger.err (tag "Start")
+                    store.Update { store.State with Status = ServiceStatus.Failed error }
+                    Either.fail error
+                else
+                  sprintf "Status error. %O" store.State.Status
+                  |> Error.asRaftError (tag "Start")
+                  |> Either.fail
 
-                      Map.iter
-                        (fun _ (peer: RaftMember) ->
-                          if peer.Id <> raftState.Member.Id then
-                            peer.Id
-                            |> sprintf "adding peer socket for %O"
-                            |> Logger.debug (tag "Start")
-                            makePeerSocket peer store.State.MakePeerSocket
-                            |> Option.map (registerPeerSocket agent)
-                            |> Option.iter (addPeerSocket connections))
-                        raftState.Peers
+            member self.Raft
+              with get () = store.State.Raft
 
-                      store.Update
-                        { store.State with
-                            Server = server
-                            Disposables = [ srvobs ] }
+            member self.Member
+              with get () = store.State.Raft.Member
 
-                      agent.Post Msg.Start // kick it off
+            member self.MemberId
+              with get () = store.State.Raft.Member.Id
 
-                      let result = store.State.Started.WaitOne(TimeSpan.FromMilliseconds 1000.0)
+            member self.Append cmd =
+              cmd |> Msg.AddCmd |> agent.Post
 
-                      if result then
-                        match store.State.Status with
-                        | ServiceStatus.Failed error ->
-                          Either.fail error
-                        | _ -> Either.succeed ()
-                      else
-                        "Timeout waiting for started signal"
-                        |> Error.asRaftError (tag "Start")
-                        |> Either.fail
-                    | Left error ->
-                      error
-                      |> sprintf "error starting broker: %O"
-                      |> Logger.err (tag "Start")
-                      store.Update { store.State with Status = ServiceStatus.Failed error }
-                      Either.fail error
-                  else
-                    sprintf "Status error. %O" store.State.Status
-                    |> Error.asRaftError (tag "Start")
-                    |> Either.fail
+            member self.Status
+              with get () = store.State.Status
 
-              member self.Raft
-                with get () = store.State.Raft
+            member self.ForceElection () =
+              agent.Post Msg.ForceElection
 
-              member self.Member
-                with get () = store.State.Raft.Member
+            member self.Periodic () =
+              agent.Post Msg.Periodic
 
-              member self.MemberId
-                with get () = store.State.Raft.Member.Id
+            // member self.JoinCluster ip port =
+            //   (ip, port) |> Msg.Join |> agent.Post
 
-              member self.Append cmd =
-                cmd |> Msg.AddCmd |> agent.Post
+            // member self.LeaveCluster () =
+            //   agent.Post Msg.Leave
 
-              member self.Status
-                with get () = store.State.Status
+            member self.AddMember mem =
+              mem |> Msg.AddMember |> agent.Post
 
-              member self.ForceElection () =
-                agent.Post Msg.ForceElection
+            member self.RemoveMember id =
+              id |> Msg.RemoveMember |> agent.Post
 
-              member self.Periodic () =
-                agent.Post Msg.Periodic
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              let listener = Observable.createListener store.State.Subscriptions
+              { new IObserver<IrisEvent> with
+                  member self.OnCompleted() = ()
+                  member self.OnError(error) = ()
+                  member self.OnNext(value) = callback value }
+              |> listener.Subscribe
 
-              // member self.JoinCluster ip port =
-              //   (ip, port) |> Msg.Join |> agent.Post
+            member self.Connections
+              with get () = store.State.Connections
 
-              // member self.LeaveCluster () =
-              //   agent.Post Msg.Leave
+            member self.IsLeader
+              with get () = Raft.isLeader store.State.Raft
 
-              member self.AddMember mem =
-                mem |> Msg.AddMember |> agent.Post
+            member self.Leader
+              with get () = Raft.getLeader store.State.Raft
 
-              member self.RemoveMember id =
-                id |> Msg.RemoveMember |> agent.Post
+            member self.Dispose () =
+              if not (Service.isDisposed store.State.Status) then
+                // tell the loop to settle and eventually stop processing state updates
+                agent.Post Msg.Stop
 
-              member self.Subscribe (callback: IrisEvent -> unit) =
-                let listener = createListener store.State.Subscriptions
-                { new IObserver<IrisEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
+                // dispose periodic functions
+                for disp in store.State.Disposables do
+                  dispose disp
 
-              member self.Connections
-                with get () = store.State.Connections
+                let result = store.State.Stopped.WaitOne(TimeSpan.FromMilliseconds 3000.0)
 
-              member self.IsLeader
-                with get () = Raft.isLeader store.State.Raft
+                if not result then
+                  Logger.err (tag "Dispose") "timeout waiting for stop to complete"
 
-              member self.Leader
-                with get () = Raft.getLeader store.State.Raft
+                // clear all listener subscriptions
+                store.State.Subscriptions.Clear()
 
-              member self.Dispose () =
-                if not (Service.isDisposed store.State.Status) then
-                  // tell the loop to settle and eventually stop processing state updates
-                  agent.Post Msg.Stop
+                for KeyValue(_,client) in store.State.Connections do
+                  dispose client
 
-                  // dispose periodic functions
-                  for disp in store.State.Disposables do
-                    dispose disp
+                // stop the actor
+                try cts.Cancel()
+                with | exn -> Logger.err (tag "Dispose") exn.Message
+                tryDispose agent ignore // then stop the actor so it doesn't keep processing
+                tryDispose cts ignore   // buffered msgs
 
-                  let result = store.State.Stopped.WaitOne(TimeSpan.FromMilliseconds 3000.0)
+                // clear connections
+                self.Connections.Clear()
 
-                  if not result then
-                    Logger.err (tag "Dispose") "timeout waiting for stop to complete"
+                tryDispose store.State.Server <| fun exn ->
+                  exn.Message
+                  |> sprintf "error disposing server: %s"
+                  |> Logger.err (tag "Dispose")
 
-                  // clear all listener subscriptions
-                  store.State.Subscriptions.Clear()
-
-                  for KeyValue(_,client) in store.State.Connections do
-                    dispose client
-
-                  // stop the actor
-                  try cts.Cancel()
-                  with | exn -> Logger.err (tag "Dispose") exn.Message
-                  tryDispose agent ignore // then stop the actor so it doesn't keep processing
-                  tryDispose cts ignore   // buffered msgs
-
-                  // clear connections
-                  self.Connections.Clear()
-
-                  tryDispose store.State.Server <| fun exn ->
-                    exn.Message
-                    |> sprintf "error disposing server: %s"
-                    |> Logger.err (tag "Dispose")
-
-                  // mark as disposed
-                  store.Update { store.State with Status = ServiceStatus.Disposed }
-            }
-      }
+                // mark as disposed
+                store.Update { store.State with Status = ServiceStatus.Disposed }
+          }
+    }
 
 #endif

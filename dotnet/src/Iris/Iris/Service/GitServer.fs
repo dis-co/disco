@@ -37,27 +37,9 @@ module GitServer =
 
   let private tag (str: string) = sprintf "GitServer.%s" str
 
-  // ** Listener
-
-  type private Listener = IObservable<GitEvent>
-
   // ** Subscriptions
 
   type private Subscriptions = Subscriptions<GitEvent>
-
-  // ** createListener
-
-  let private createListener (subscriptions: Subscriptions) =
-    let guid = Guid.NewGuid()
-    { new Listener with
-        member self.Subscribe(obs) =
-          subscriptions.TryAdd(guid,obs) |> ignore
-
-          { new IDisposable with
-              member self.Dispose () =
-                lock subscriptions <| fun _ ->
-                  subscriptions.TryRemove(guid)
-                  |> ignore } }
 
   // ** makeConfig
 
@@ -80,7 +62,7 @@ module GitServer =
           with get () = status
 
         member self.Subscribe(callback: GitEvent -> unit) =
-          let listener = createListener subscriptions
+          let listener = Observable.createListener subscriptions
           { new IObserver<GitEvent> with
               member self.OnCompleted() = ()
               member self.OnError(error) = ()
