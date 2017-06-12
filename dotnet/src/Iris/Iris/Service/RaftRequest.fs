@@ -1,5 +1,7 @@
 namespace Iris.Service
 
+// * Imports
+
 open Argu
 open FlatBuffers
 open Iris.Raft
@@ -7,10 +9,16 @@ open Iris.Serialization
 open Iris.Core
 open Iris.Raft
 
+// * RaftMsg module
+
 [<RequireQualifiedAccess>]
 module RaftMsg =
 
+  // ** getValue
+
   let getValue (t : Offset<'a>) : int = t.Value
+
+  // ** build
 
   let inline build< ^t when ^t : struct and ^t :> System.ValueType and ^t : (new : unit -> ^t) >
                 builder
@@ -21,37 +29,55 @@ module RaftMsg =
     RaftMsgFB.AddMsg(builder, offset.Value)
     RaftMsgFB.EndRaftMsgFB(builder)
 
+  // ** createAppendEntriesFB
+
   let createAppendEntriesFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendEntries) =
     let sid = string nid |> builder.CreateString
     RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, sid, ar.ToOffset builder)
+
+  // ** createAppendResponseFB
 
   let createAppendResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
     let id = string nid |> builder.CreateString
     RespondAppendEntriesFB.CreateRespondAppendEntriesFB(builder, id, ar.ToOffset builder)
 
+  // ** createRequestVoteFB
+
   let createRequestVoteFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteRequest) =
     let id = string nid |> builder.CreateString
     RequestVoteFB.CreateRequestVoteFB(builder, id, vr.ToOffset builder)
+
+  // ** createRequestVoteResponseFB
 
   let createRequestVoteResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteResponse) =
     let id = string nid |> builder.CreateString
     RespondVoteFB.CreateRespondVoteFB(builder, id, vr.ToOffset builder)
 
+  // ** createInstallSnapshotFB
+
   let createInstallSnapshotFB (builder: FlatBufferBuilder) (nid: MemberId) (is: InstallSnapshot) =
     let id = string nid |> builder.CreateString
     RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, id, is.ToOffset builder)
+
+  // ** createSnapshotResponseFB
 
   let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
     let id = string nid |> builder.CreateString
     RespondInstallSnapshotFB.CreateRespondInstallSnapshotFB(builder, id, ar.ToOffset builder)
 
+  // ** createAppendEntryFB
+
   let createAppendEntryFB (builder: FlatBufferBuilder) (sm: StateMachine) =
     let offset = sm.ToOffset(builder)
     RequestAppendEntryFB.CreateRequestAppendEntryFB(builder, offset)
 
+  // ** createAppendEntryResponseFB
+
   let createAppendEntryResponseFB (builder: FlatBufferBuilder) (entry: EntryResponse) =
     let offset = entry.ToOffset(builder)
     RespondAppendEntryFB.CreateRespondAppendEntryFB(builder, offset)
+
+// * RaftRequest
 
 //  ____        __ _     ____                            _
 // |  _ \ __ _ / _| |_  |  _ \ ___  __ _ _   _  ___  ___| |_
@@ -67,6 +93,8 @@ type RaftRequest =
   | AppendEntry     of entry:StateMachine
   // | HandShake       of sender:RaftMember
   // | HandWaive       of sender:RaftMember
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<RaftMsgFB> =
     match self with
@@ -95,21 +123,11 @@ type RaftRequest =
     //   |> RaftMsg.build builder RaftMsgTypeFB.HandWaiveFB
 
 
-  //  _____     ____        _
-  // |_   _|__ | __ ) _   _| |_ ___  ___
-  //   | |/ _ \|  _ \| | | | __/ _ \/ __|
-  //   | | (_) | |_) | |_| | ||  __/\__ \
-  //   |_|\___/|____/ \__, |\__\___||___/
-  //                  |___/
+  // ** ToBytes
 
   member self.ToBytes () : byte array = Binary.buildBuffer self
 
-  //  _____                    ____        _
-  // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___
-  // | |_ | '__/ _ \| '_ ` _ \|  _ \| | | | __/ _ \/ __|
-  // |  _|| | | (_) | | | | | | |_) | |_| | ||  __/\__ \
-  // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
-  //                                 |___/
+  // ** FromBytes
 
   static member FromBytes (bytes: byte array) : Either<IrisError, RaftRequest> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
@@ -239,6 +257,8 @@ type RaftRequest =
       |> Error.asParseError "RaftRequest.FromBytes"
       |> Either.fail
 
+// * RaftResponse
+
 //  ____        __ _     ____
 // |  _ \ __ _ / _| |_  |  _ \ ___  ___ _ __   ___  _ __  ___  ___
 // | |_) / _` | |_| __| | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
@@ -256,11 +276,7 @@ type RaftResponse =
   // | Welcome                 of leader:RaftMember
   // | Arrivederci
 
-  //  _____      ___   __  __          _
-  // |_   _|__  / _ \ / _|/ _|___  ___| |_
-  //   | |/ _ \| | | | |_| |_/ __|/ _ \ __|
-  //   | | (_) | |_| |  _|  _\__ \  __/ |_
-  //   |_|\___/ \___/|_| |_| |___/\___|\__|
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     match self with
@@ -298,11 +314,7 @@ type RaftResponse =
     //   ArrivederciFB.EndArrivederciFB(builder)
     //   |> RaftMsg.build builder RaftMsgTypeFB.ArrivederciFB
 
-  //  _____                    _____ ____
-  // |  ___| __ ___  _ __ ___ |  ___| __ )
-  // | |_ | '__/ _ \| '_ ` _ \| |_  |  _ \
-  // |  _|| | | (_) | | | | | |  _| | |_) |
-  // |_|  |_|  \___/|_| |_| |_|_|   |____/
+  // ** FromFB
 
   static member FromFB(msg: RaftMsgFB) : Either<IrisError,RaftResponse> =
     match msg.MsgType with
@@ -454,21 +466,11 @@ type RaftResponse =
       |> Error.asParseError "RaftResponse.FromFB"
       |> Either.fail
 
-  //  _____     ____        _
-  // |_   _|__ | __ ) _   _| |_ ___  ___
-  //   | |/ _ \|  _ \| | | | __/ _ \/ __|
-  //   | | (_) | |_) | |_| | ||  __/\__ \
-  //   |_|\___/|____/ \__, |\__\___||___/
-  //                  |___/
+  // ** ToBytes
 
   member self.ToBytes () : byte array = Binary.buildBuffer self
 
-  //  _____                    ____        _
-  // |  ___| __ ___  _ __ ___ | __ ) _   _| |_ ___  ___
-  // | |_ | '__/ _ \| '_ ` _ \|  _ \| | | | __/ _ \/ __|
-  // |  _|| | | (_) | | | | | | |_) | |_| | ||  __/\__ \
-  // |_|  |_|  \___/|_| |_| |_|____/ \__, |\__\___||___/
-  //                                 |___/
+  // ** FromBytes
 
   static member FromBytes (bytes: byte array) : Either<IrisError,RaftResponse> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(ByteBuffer(bytes))

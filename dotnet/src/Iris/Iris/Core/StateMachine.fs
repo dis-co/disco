@@ -20,9 +20,20 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
 
 #endif
+
+// * PersistenceStrategy
+
+type PersistenceStrategy =
+  | Commit
+  | Save
+  | Ignore
 
 // * AppCommand
 
@@ -1332,6 +1343,78 @@ type StateMachine =
     | LogMsg                  _ -> "LogMsg"
 
     | UpdateClock             _ -> "UpdateClock"
+
+  // ** PersistenceStrategy
+
+  member cmd.PersistenceStrategy
+    with get () =
+      match cmd with
+      // Project
+      | UpdateProject           _      -> Save
+      | UnloadProject           _      -> Ignore
+
+      // Member
+      | AddMember               _
+      | UpdateMember            _
+      | RemoveMember            _      -> Commit
+
+      // Client
+      | AddClient               _
+      | UpdateClient            _
+      | RemoveClient            _      -> Ignore
+
+      // GROUP
+      | AddPinGroup             _
+      | UpdatePinGroup          _
+      | RemovePinGroup          _      -> Save
+
+      // PIN
+      | AddPin                  _
+      | UpdatePin               _
+      | RemovePin               _      -> Save
+      | UpdateSlices            _      -> Ignore
+
+      // CUE
+      | AddCue                  _
+      | UpdateCue               _
+      | RemoveCue               _      -> Save
+      | CallCue                 _      -> Ignore
+
+      // CUELIST
+      | AddCueList              _
+      | UpdateCueList           _
+      | RemoveCueList           _      -> Save
+
+      // CUEPLAYER
+      | AddCuePlayer            _
+      | UpdateCuePlayer         _
+      | RemoveCuePlayer         _      -> Save
+
+      // User
+      | AddUser                 _
+      | UpdateUser              _
+      | RemoveUser              _      -> Save
+
+      // Session
+      | AddSession              _
+      | UpdateSession           _
+      | RemoveSession           _      -> Ignore
+
+      // Discovery
+      | AddDiscoveredService    _
+      | UpdateDiscoveredService _
+      | RemoveDiscoveredService _      -> Ignore
+
+      | UpdateClock             _      -> Ignore
+
+      | Command AppCommand.SaveProject -> Commit
+      | Command                 _      -> Ignore
+
+      | DataSnapshot            _      -> Ignore
+
+      | SetLogLevel             _      -> Ignore
+
+      | LogMsg                  _      -> Ignore
 
   // ** FromFB (JavaScript)
 

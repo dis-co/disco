@@ -1,0 +1,1 @@
+#r "../../../packages/Microsoft.Win32.Registry/lib/net46/Microsoft.Win32.Registry.dll" 

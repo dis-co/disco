@@ -15,8 +15,11 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+open SharpYaml.Serialization
 #endif
 
 // * Behavior
@@ -235,7 +238,7 @@ type VecSize =
 
 // * SliceYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 //  ____  _ _        __   __              _
 // / ___|| (_) ___ __\ \ / /_ _ _ __ ___ | |
@@ -770,7 +773,7 @@ type Pin =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     let yaml = new PinYaml()
@@ -1077,7 +1080,7 @@ type Pin =
 
   // ** FromYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   static member FromYamlObject(yml: PinYaml) =
     try
@@ -1832,6 +1835,9 @@ type NumberPinD =
       (self :> System.IEquatable<NumberPinD>).Equals(pin)
     | _ -> false
 
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
+
   // ** Equals<NumberPinD>
 
   interface System.IEquatable<NumberPinD> with
@@ -2067,6 +2073,9 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     | :? BytePinD as pin ->
       (self :> System.IEquatable<BytePinD>).Equals(pin)
     | _ -> false
+
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
 
   // ** Equals<ByteSliceD>
 
@@ -2421,6 +2430,15 @@ type Slice =
     | :? Slice as slice -> (self :> System.IEquatable<Slice>).Equals(slice)
     | _ -> false
 
+  override self.GetHashCode() =
+      match self with
+      | StringSlice  _ -> 0
+      | NumberSlice  _ -> 1
+      | BoolSlice    _ -> 2
+      | ByteSlice    _ -> 3
+      | EnumSlice    _ -> 4
+      | ColorSlice   _ -> 5
+
   // ** CompareTo
 
   interface System.IComparable with
@@ -2740,7 +2758,7 @@ type Slice =
 
   // ** ToYaml
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYaml(serializer: Serializer) =
     let yaml =
@@ -2979,7 +2997,7 @@ type Slices =
 
   // ** ToYamlObject
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     match self with
@@ -3021,7 +3039,6 @@ type Slices =
   //                           |___/
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
-    let idx = index
     match slices with
     | StringSlices (id,arr) ->
       let id = id |> string |> builder.CreateString
@@ -3399,6 +3416,9 @@ type Slices =
     match other with
     | :? Slices as slices -> (self :> System.IEquatable<Slices>).Equals(slices)
     | _ -> false
+
+  override self.GetHashCode() =
+    self.Id.ToString().GetHashCode()
 
   // ** Equals<Slices>
 

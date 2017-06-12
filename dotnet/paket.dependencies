@@ -3,19 +3,14 @@ source https://nuget.org/api/v2
 
 group Main
   source https://nuget.org/api/v2
-  nuget FSharp.Core redirects:force
+  nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
   nuget FsCheck
-  nuget XUnit
-  nuget NUnit
-  nuget Gallio
-  nuget FSharpx.Extras
-  nuget FsControl
   nuget Suave
   nuget Fleck
-  nuget LibGit2Sharp >= 0.22.0-pre20151023210959 prerelease
+  nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
   nuget LibGit2Sharp.NativeBinaries
   nuget FSharp.Configuration
   nuget ZeroMQ
@@ -29,17 +24,16 @@ group Main
   nuget VVVV.Utils3rdParty
   nuget VVVV.UtilsIL
   nuget Newtonsoft.Json
-  nuget Hopac >= 0.3.23
+  nuget System.ValueTuple
   nuget Disruptor >= 3.3.6 
 
-  # Keep this pinned to dotnet-fable version in src/Frontend/Fable.proj
-  nuget Fable.Core 1.0.4
+  # Keep this pinned to dotnet-fable version in Fable.proj
+  nuget Fable.Core 1.0.8
 
   # Other Fable libraries
   nuget Fable.JsonConverter
   nuget Fable.PowerPack
   nuget Fable.React
-  
 
 group Build
   source https://nuget.org/api/v2
@@ -47,23 +41,14 @@ group Build
   nuget SourceLink.Fake
   nuget FAKE
   nuget FSharp.Formatting
-  nuget FSharp.Core redirects:force
-  nuget FSharpx.Extras
-  nuget FSharpPlus
-  nuget FsControl
+  nuget FSharp.Core = 4.1.17 redirects:force
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
 group Test
   source https://nuget.org/api/v2
 
-  nuget FSharp.Core redirects:force
+  nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
-  nuget XUnit
-  nuget NUnit
-  nuget Gallio
-  nuget FSharpx.Extras
-  nuget FSharpPlus
-  nuget FsControl

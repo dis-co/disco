@@ -1,22 +1,13 @@
 namespace Iris.Tests
 
-open System
 open System.IO
 open System.Threading
-open System.Text
 open Expecto
 
 open Iris.Core
 open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
 open Iris.Service.Interfaces
 open Iris.Raft
-open Iris.Service.Git
-open Iris.Service.Iris
-open FSharpx.Functional
-open Microsoft.FSharp.Control
-open ZeroMQ
 
 [<AutoOpen>]
 module IrisServiceTests =
@@ -103,60 +94,13 @@ module IrisServiceTests =
   //  | || |  | \__ \___) |  __/ |   \ V /| | (_|  __/   | |  __/\__ \ |_\__ \
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
-  let test_ensure_gitserver_restart_on_premature_exit =
-    testCase "ensure gitserver restart on premature exit" <| fun _ ->
-      either {
-        use checkGitStarted = new AutoResetEvent(false)
-
-        let! (project, zipped) = mkCluster 1
-
-        let mem, machine = List.head zipped
-
-        use service = IrisService.create {
-          Machine = machine
-          ProjectName = project.Name
-          UserName = User.Admin.UserName
-          Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteId = None
-        }
-
-        use oobs =
-          (fun ev ->
-            match ev with
-            | Git (Started _) -> checkGitStarted.Set() |> ignore
-            | _ -> ())
-          |> service.Subscribe
-
-        do! service.Start()
-
-        do! waitOrDie "checkGitStarted" checkGitStarted
-
-        let gitserver = service.GitServer
-
-        let pid = gitserver.Pid
-
-        expect "Git should be running" true Process.isRunning pid
-
-        Process.kill pid
-
-        expect "Git should be running" false Process.isRunning pid
-
-        do! waitOrDie "checkGitStarted" checkGitStarted
-
-        let gitserver = service.GitServer
-        let newpid = gitserver.Pid
-
-        expect "Should be a different pid" false ((=) pid) newpid
-        expect "Git should be running" true Process.isRunning newpid
-      }
-      |> noError
-
   let test_ensure_iris_server_clones_changes_from_leader =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
+        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -182,14 +126,14 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-
         do! waitOrDie "checkGitStarted" checkGitStarted
 
         //  ____
@@ -217,10 +161,11 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | Git (Started _)                              -> checkGitStarted.Set() |> ignore
-            | Raft (RaftEvent.StateChanged(oldst, Leader)) -> electionDone.Set() |> ignore
-            | Raft (RaftEvent.ApplyLog _)                  -> appendDone.Set() |> ignore
-            | _                                            -> ())
+            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
+            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
           |> service2.Subscribe
 
         do! service2.Start()
@@ -253,6 +198,16 @@ module IrisServiceTests =
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
 
+        AppCommand.SaveProject
+        |> Command
+        |> leader.Append
+
+        do! waitOrDie "appendDone" appendDone
+        appendDone.Reset() |> ignore
+        do! waitOrDie "appendDone" appendDone
+
+        do! waitOrDie "pullDone" pullDone
+
         dispose service1
         dispose service2
 
@@ -260,7 +215,6 @@ module IrisServiceTests =
         expect "Instance 2 should have same commit count" (num2 + 1) Git.Repo.commitCount repo2
       }
       |> noError
-
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -270,6 +224,5 @@ module IrisServiceTests =
 
   let irisServiceTests =
     testList "IrisService Tests" [
-      test_ensure_gitserver_restart_on_premature_exit
       test_ensure_iris_server_clones_changes_from_leader
     ] |> testSequenced

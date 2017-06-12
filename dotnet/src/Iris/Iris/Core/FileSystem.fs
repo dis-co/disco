@@ -21,6 +21,24 @@ open System.Linq
 [<AutoOpen>]
 module Path =
 
+  // ** combine
+
+  let combine (p1: string) (p2: string) : FilePath =
+    #if FABLE_COMPILER
+    sprintf "%s/%s" p1 p2 |> filepath
+    #else
+    Path.Combine(p1, p2) |> filepath
+    #endif
+
+  // ** concat
+
+  let concat (p1: FilePath) (p2: FilePath) : FilePath =
+    #if FABLE_COMPILER
+    sprintf "%O/%O" p1 p2 |> filepath
+    #else
+    combine (unwrap p1) (unwrap p2)
+    #endif
+
   // ** </>
 
   /// ## </>
@@ -33,20 +51,16 @@ module Path =
   ///
   /// Returns: FilePath (string)
   let (</>) (p1: FilePath) (p2: FilePath) : FilePath =
-    #if FABLE_COMPILER
-    sprintf "%O/%O" p1 p2 |> filepath
-    #else
-    Path.Combine(unwrap p1, unwrap p2) |> filepath
-    #endif
+    concat p1 p2
+
+  // ** <.>
 
   // ** <.>
 
   let (<.>) (p1: string) (p2: string) : FilePath =
-    #if FABLE_COMPILER
-    sprintf "%s/%s" p1 p2 |> filepath
-    #else
-    Path.Combine(p1, p2) |> filepath
-    #endif
+    combine p1 p2
+
+  // ** pmap
 
   // ** pmap
 
@@ -195,9 +209,23 @@ module Directory =
 
   // ** getFiles
 
-  let getFiles (pattern: string) (dir: FilePath) =
-    Directory.GetFiles(unwrap dir, pattern)
-    |> Array.map filepath
+  let rec getFiles (recursive: bool) (pattern: string) (dir: FilePath) : FilePath[] =
+    let current =
+      Directory.GetFiles(unwrap dir, pattern)
+      |> Array.map (filepath >> Path.getFullPath)
+    if recursive then
+      (unwrap dir)
+      |> Directory.GetDirectories
+      |> Array.fold
+          (fun m dir ->
+            filepath dir
+            |> getFiles recursive pattern
+            |> Array.append m)
+          Array.empty
+      |> Array.append current
+    else current
+
+  // ** getDirectories
 
   // ** getDirectories
 
@@ -239,7 +267,7 @@ module FileSystem =
   /// Returns: unit
   let moveFile (source: FilePath) (dest: FilePath) =
     try
-      let info = new FileInfo(unwrap source)
+      let info = FileInfo(unwrap source)
       let attrs = info.Attributes
       if attrs.HasFlag(FileAttributes.Directory) then
         Directory.Move(unwrap source,unwrap dest)

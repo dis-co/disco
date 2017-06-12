@@ -1,0 +1,1 @@
+#r "../../../packages/System.Runtime.Serialization.Primitives/lib/net46/System.Runtime.Serialization.Primitives.dll" 

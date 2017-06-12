@@ -11,7 +11,7 @@
     <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
     <Compile Include="Widgets/Interfaces.fs" />
-    <Compile Include="Widgets/Spread.fs" />
+    <Compile Include="Widgets/PinView.fs" />
     <Compile Include="Widgets/CuePlayer.fs" />
     <Compile Include="Lib.fs" />
   </ItemGroup>

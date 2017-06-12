@@ -14,7 +14,6 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
-open Mono.Zeroconf
 
 #endif
 
@@ -346,7 +345,9 @@ type DiscoveredService =
 
 // * Discovery module
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open Mono.Zeroconf
 
 module Discovery =
 

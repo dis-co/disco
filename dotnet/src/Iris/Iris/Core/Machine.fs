@@ -12,7 +12,6 @@ open Iris.Web.Core.FlatBufferTypes
 
 open System
 open System.IO
-open SharpYaml.Serialization
 open FlatBuffers
 open Iris.Serialization
 open System.Reflection
@@ -201,7 +200,7 @@ module MachineConfig =
 
   let get() = singleton
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // ** getLocation
 
@@ -217,6 +216,8 @@ module MachineConfig =
       |> Path.GetDirectoryName
       <.> MACHINECONFIG_DEFAULT_PATH
       </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
+
+  open SharpYaml.Serialization
 
   // ** MachineConfigYaml (private)
 

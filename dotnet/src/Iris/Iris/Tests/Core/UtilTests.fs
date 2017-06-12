@@ -1,17 +1,8 @@
 namespace Iris.Tests
 
-open System
 open System.IO
-open System.Threading
 open Expecto
 open Iris.Core
-open Iris.Raft
-open Iris.Client
-open Iris.Service
-open Iris.Service.Interfaces
-open System.Net
-open FSharpx.Control
-open FSharpx.Functional
 
 [<AutoOpen>]
 module UtilTests =

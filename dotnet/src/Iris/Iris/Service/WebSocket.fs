@@ -3,16 +3,12 @@ namespace Iris.Service
 // * Imports
 
 open System
-open System.Threading
 open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Service
-open FSharpx.Functional
 open Fleck
 open Iris.Service.Interfaces
-open Hopac
-open Hopac.Infixes
 
 // * WebSockets
 
@@ -29,11 +25,11 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<WebSocketEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<WebSocketEvent>
+  type private SocketEventProcessor = MailboxProcessor<IrisEvent>
 
   // ** getConnectionId
 
@@ -44,10 +40,8 @@ module WebSockets =
 
   let private buildSession (connections: Connections)
                            (socketId: Id)
-                           (session: Session) :
-                           Either<IrisError,Session> =
-
-    match connections.TryGetValue socketId with
+                           (session: Session) =
+    match connections.TryGetValue(socketId) with
     | true, socket ->
       let ua =
         if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
@@ -59,7 +53,8 @@ module WebSockets =
           UserAgent = ua }
       |> Either.succeed
     | false, _ ->
-      sprintf "No socket open with id %O" socketId
+      socketId
+      |> String.format "No connection found for {0}"
       |> Error.asSocketError (tag "buildSession")
       |> Either.fail
 
@@ -108,21 +103,50 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  let private broadcast (connections: Connections)
+  let private broadcast (connections: Connections) (msg: StateMachine) =
+    let result : IrisError list =
+      connections.Keys
+      |> Seq.toArray
+      |> Array.map (fun id -> send connections id msg)
+      |> Array.fold
+        (fun lst (result: Either<IrisError,unit>) ->
+          match result with
+          | Right _ -> lst
+          | Left error -> error :: lst)
+        []
+
+    match result with
+    | [ ] -> Right ()
+    | _   -> Left result
+
+  // ** multicast
+
+  /// ## multicast
+  ///
+  /// Send a `StateMachine` command to all open connections except the one that matches the passed
+  /// session id.
+  ///
+  /// ### Signature:
+  /// - id: Id to exclude
+  /// - msg: StateMachine command to send
+  ///
+  /// Returns: unit
+  let private multicast (connections: Connections)
+                        (id: Id)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
 
-    let sendAsync (id: Id) = job {
+    let sendAsync (id: Id) = async {
         let result = send connections id msg
         return result
       }
 
     let result : IrisError list =
       connections.Keys
+      |> Seq.filter (fun sid -> id <> sid)
       |> Seq.map sendAsync
-      |> Job.conCollect
-      |> Hopac.run
-      |> fun arr -> arr.ToArray()
+      |> Async.Parallel
+      |> Async.RunSynchronously
       |> Array.fold
         (fun lst (result: Either<IrisError,unit>) ->
           match result with
@@ -154,7 +178,9 @@ module WebSockets =
       connections.TryAdd(sid, socket)
       |> ignore
 
-      agent.Post(SessionAdded sid)
+      sid
+      |> SessionOpened
+      |> agent.Post
 
       sid
       |> string
@@ -164,32 +190,38 @@ module WebSockets =
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(SessionRemoved sid)
+
+      sid
+      |> SessionClosed
+      |> agent.Post
 
       sid
       |> string
       |> sprintf "Connection closed: %s"
-      |> Logger.info (tag "onNewSocket")
+      |> Logger.info (tag "onCloseSocket")
 
     socket.OnBinary <- fun bytes ->
       let sid = getConnectionId socket
       match Binary.decode bytes with
-      | Right cmd -> agent.Post(OnMessage(sid, cmd))
+      | Right cmd -> IrisEvent.Append(Origin.Web sid, cmd) |> agent.Post
       | Left err  ->
         err
         |> string
         |> sprintf "Could not decode message: %s"
-        |> Logger.err (tag "onNewSocket")
+        |> Logger.err (tag "onSocketMessage")
 
     socket.OnError <- fun exn ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(OnError(sid, exn))
+
+      sid
+      |> SessionClosed
+      |> agent.Post
 
       sid
       |> string
       |> sprintf "Error %A on websocket: %s" exn.Message
-      |> Logger.err (tag "onNewSocket")
+      |> Logger.err (tag "onSocketError")
 
   // ** loop
 
@@ -233,12 +265,15 @@ module WebSockets =
               member self.Broadcast (cmd: StateMachine) =
                 broadcast connections cmd
 
+              member self.Multicast (except: Id) (cmd: StateMachine) =
+                multicast connections except cmd
+
               member self.BuildSession (id: Id) (session: Session) =
                 buildSession connections id session
 
-              member self.Subscribe (callback: WebSocketEvent -> unit) =
+              member self.Subscribe (callback: IrisEvent -> unit) =
                 let listener = Observable.createListener subscriptions
-                { new IObserver<WebSocketEvent> with
+                { new IObserver<IrisEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value

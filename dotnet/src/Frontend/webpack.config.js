@@ -16,17 +16,14 @@ if (irisHost == null && isDevServer) {
   throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
 }
 
-var irisPort = process.env.FRONTEND_PORT;
-if (irisPort == null && isDevServer) {
-  throw new Error("Please specify the Iris service Port with the FRONTEND_PORT env var");
-}
+var irisPort = process.env.FRONTEND_PORT || "3000";
 
 var babelOptions = {
   presets: [["es2015", { "modules": false }], "stage-2", "react"],
   plugins: ["transform-runtime"]
 }
 
-module.exports = {
+var frontendConfig = {
   devtool: isProduction ? false : 'inline-source-map',
   entry: resolve('./fable/Frontend/Frontend.fsproj'),
   output: {
@@ -46,6 +43,7 @@ module.exports = {
     ]
   },
   devServer: {
+    contentBase: resolve("."),
     host: irisHost,
     port: 3000,
     historyApiFallback: true, // respond to 404s with index.html
@@ -55,7 +53,6 @@ module.exports = {
         target: 'http://' + irisHost + ':' + irisPort
       }
     },
-    contentBase: resolve("."),
     headers: {
       "Access-Control-Allow-Origin": "*"
     }
@@ -70,6 +67,9 @@ module.exports = {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
             plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            extra: {
+              useCache: false
+            }
           }
         }
       },
@@ -86,17 +86,11 @@ module.exports = {
         use: [ 'style-loader', 'css-loader' ]
       },
       {
-        test: /\.less$/,
-        use: [
-          'style-loader',
-          { loader: 'css-loader', options: { importLoaders: 1 } },
-          'less-loader'
-        ]
-      },
-      {
         test: /\.tsx?$/,
         loader: "awesome-typescript-loader"
       },
     ],
   },
 };
+
+module.exports = [frontendConfig, require("./fable/Worker/webpack.config.js")]

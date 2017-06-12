@@ -1,19 +1,8 @@
 namespace Iris.Tests
 
-open System
-open System.Threading
-open System.Text
 open Expecto
-
 open Iris.Core
 open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
-open Iris.Zmq
-open Iris.Raft
-open Iris.Service
-open FSharpx.Functional
-open Microsoft.FSharp.Control
 
 [<AutoOpen>]
 module PinTests =

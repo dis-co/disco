@@ -35,10 +35,10 @@ module Validation =
     member x.Run(f) = f()               // evaluate the delayed function above
     member x.Combine(a,b) =
       match a with
-        | ContinueValidation _ -> b()             // the predicate failed, so continue
-        | ValidationResult _   -> a               // return a itself, as the validation passed
+      | ContinueValidation _ -> b()             // the predicate failed, so continue
+      | ValidationResult _   -> a               // return a itself, as the validation passed
 
-  let validation = new ValidationBuilder()
+  let validation = ValidationBuilder()
 
   let rec runValidation = function
     | ContinueValidation _ as cont -> runValidation cont

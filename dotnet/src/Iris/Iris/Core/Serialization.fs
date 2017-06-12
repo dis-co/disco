@@ -1,5 +1,3 @@
-
-
 namespace Iris.Core
 
 #if FABLE_COMPILER
@@ -65,8 +63,6 @@ module Binary =
       (^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>) bytes)
     with
       | exn ->
-        printfn "exn: %s" exn.Message
-        printfn "st: %s" exn.StackTrace
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
         |> ParseError
         |> Either.fail
@@ -96,8 +92,7 @@ module Binary =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if FABLE_COMPILER
-#else
+#if !FABLE_COMPILER && !IRIS_NODES
 
 [<RequireQualifiedAccess>]
 module Yaml =

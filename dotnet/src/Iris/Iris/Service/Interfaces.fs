@@ -6,13 +6,9 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
-open Iris.Core.Commands
-open Iris.Core.Discovery
 open Iris.Raft
-open Iris.Client
 open Iris.Zmq
 open Mono.Zeroconf
-open Hopac
 open Disruptor
 
 type PipelineEvent<'t>() =
@@ -32,12 +28,22 @@ type IDiscoveryService =
   abstract Start: unit -> Either<IrisError,unit>
   abstract Register: service:DiscoverableService -> IDisposable
 
-  // ** DispatchStrategy
+// * IClock
+
+type IClock =
+  inherit IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+  abstract Start: unit -> unit
+  abstract Stop: unit -> unit
+  abstract Running: bool with get
+  abstract Fps: int16<fps>  with get, set
+  abstract Frame: int64<frame>
+
+// * IGitServer
 
 type IGitServer =
   inherit IDisposable
   abstract Status    : ServiceStatus
-  abstract Pid       : int
   abstract Subscribe : (GitEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
@@ -57,7 +63,7 @@ type IRaftServer =
   abstract Append        : StateMachine -> unit
   abstract ForceElection : unit -> unit
   abstract Status        : ServiceStatus
-  abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
+  abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
   abstract AddMember     : RaftMember -> unit
   abstract RemoveMember  : Id -> unit
@@ -68,15 +74,16 @@ type IRaftServer =
   // abstract JoinCluster   : IpAddress -> uint16 -> unit
   // abstract LeaveCluster  : unit -> unit
 
-// * IWsServer
+// * IWebSocketServer
 
 type IWebSocketServer =
   inherit IDisposable
   inherit ISink<IrisEvent>
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
+  abstract Multicast    : except:Id -> StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-  abstract Subscribe    : (WebSocketEvent -> unit) -> System.IDisposable
+  abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
 // * IApiServer
@@ -97,15 +104,20 @@ type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
 
+// * IApiServerCallbacks
+
+type IApiServerCallbacks =
+  abstract PrepareSnapshot: unit -> State
+
 // * IApiServer
 
 type IApiServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Clients: Map<Id,IrisClient>
-  abstract State: State with get, set
-  abstract Update: sm:StateMachine -> unit
+  abstract SendSnapshot: unit -> unit
+  abstract Update: origin:Origin -> sm:StateMachine -> unit
 
 // * IrisServiceOptions
 

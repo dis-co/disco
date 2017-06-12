@@ -6,17 +6,13 @@ namespace Iris.Service
 
 open System
 open System.Threading
-open System.Collections
 open System.Collections.Concurrent
 open Iris.Zmq
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Raft
-open FSharpx.Functional
-open Utilities
 open Persistence
-open ZeroMQ
 
 // * Raft
 
@@ -25,7 +21,7 @@ module Raft =
 
   // ** tag
 
-  let private tag (str: string) = String.Format("RaftServer.{0}", str)
+  let private tag (str: string) = String.format "RaftServer.{0}" str
 
   // ** Connections
 
@@ -33,7 +29,7 @@ module Raft =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<RaftEvent>
+  type private Subscriptions = Subscriptions<IrisEvent>
 
   // ** RaftServerState
 
@@ -61,7 +57,7 @@ module Raft =
     | Started
     | Stop
     | Stopped
-    | Notify            of RaftEvent
+    | Notify            of IrisEvent
     | RawServerRequest  of request:RawServerRequest
     | RawServerResponse of response:RawServerResponse
     | RawClientResponse of response:RawClientResponse
@@ -208,7 +204,7 @@ module Raft =
 
   // ** handleNotify
 
-  let private handleNotify (state: RaftServerState) (ev: RaftEvent) =
+  let private handleNotify (state: RaftServerState) (ev: IrisEvent) =
     Observable.notify state.Subscriptions ev
     state
 
@@ -263,55 +259,58 @@ module Raft =
         member self.PersistSnapshot log =
           Tracing.trace (tag "persistSnapshot") <| fun () ->
             log
-            |> RaftEvent.PersistSnapshot
+            |> IrisEvent.PersistSnapshot
             |> Msg.Notify
             |> agent.Post
 
         member self.ApplyLog cmd =
           Tracing.trace (tag "applyLog") <| fun () ->
-            cmd
-            |> RaftEvent.ApplyLog
+            IrisEvent.Append (Origin.Raft, cmd)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberAdded mem =
           Tracing.trace (tag "memberAdded") <| fun () ->
-            mem
-            |> RaftEvent.MemberAdded
+            IrisEvent.Append (Origin.Raft, AddMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberUpdated mem =
           Tracing.trace (tag "memberUpdated") <| fun () ->
-            mem
-            |> RaftEvent.MemberUpdated
+            IrisEvent.Append (Origin.Raft, UpdateMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberRemoved mem =
           Tracing.trace (tag "memberRemoved") <| fun () ->
-            mem
-            |> RaftEvent.MemberRemoved
+            IrisEvent.Append (Origin.Raft, RemoveMember mem)
             |> Msg.Notify
             |> agent.Post
 
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
             mems
-            |> RaftEvent.Configured
+            |> IrisEvent.Configured
             |> Msg.Notify
             |> agent.Post
 
         member self.StateChanged oldstate newstate =
           Tracing.trace (tag "stateChanged") <| fun () ->
             (oldstate, newstate)
-            |> RaftEvent.StateChanged
+            |> IrisEvent.StateChanged
+            |> Msg.Notify
+            |> agent.Post
+
+        member self.LeaderChanged newleader =
+          Tracing.trace (tag "leaderChanged") <| fun () ->
+            newleader
+            |> IrisEvent.LeaderChanged
             |> Msg.Notify
             |> agent.Post
 
         member self.PersistVote mem =
           Tracing.trace (tag "persistVote") <| fun () ->
-            printfn "PersistVote"
+            ignore mem
 
   //     try
   //       self.State
@@ -329,7 +328,8 @@ module Raft =
 
         member self.PersistTerm term =
           Tracing.trace (tag "persistTerm") <| fun () ->
-            printfn "PersistTerm"
+            ignore term
+
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -346,12 +346,11 @@ module Raft =
 
         member self.PersistLog log =
           Tracing.trace (tag "persistLog") <| fun () ->
-            printfn "PersistLog"
+            ignore log
 
         member self.DeleteLog log =
           Tracing.trace (tag "deleteLog") <| fun () ->
-            printfn "DeleteLog"
-
+            ignore log
         }
 
   //  ____        __ _
@@ -458,7 +457,6 @@ module Raft =
           |> Raft.getMember id
 
         match potentialChange with
-
         | Some mem -> removeMembers state [| mem |]
         | None ->
           let msg = sprintf "Unable to remove member. Not found:  %A" (string id)
@@ -703,7 +701,7 @@ module Raft =
     | Right (_, newstate)  -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> RaftEvent.RaftError
+      |> IrisEvent.RaftError
       |> Msg.Notify
       |> agent.Post
       updateRaft state newstate
@@ -722,7 +720,7 @@ module Raft =
     | Right (_, newstate) -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> RaftEvent.RaftError
+      |> IrisEvent.RaftError
       |> Msg.Notify
       |> agent.Post
       updateRaft state newstate
@@ -1008,11 +1006,11 @@ module Raft =
     Tracing.trace (tag "handleJoin") <| fun () ->
       match tryJoinCluster state ip port with
       | Right (_, newstate) ->
-        notify state.Subscriptions RaftEvent.JoinedCluster
+        notify state.Subscriptions IrisEvent.JoinedCluster
         updateRaft state newstate
       | Left (error, newstate) ->
         error
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
   *)
@@ -1025,7 +1023,7 @@ module Raft =
     Tracing.trace (tag "handleLeave") <| fun () ->
       match tryLeaveCluster state with
       | Right (_, newstate) ->
-        notify state.Subscriptions RaftEvent.LeftCluster
+        notify state.Subscriptions IrisEvent.LeftCluster
         updateRaft state newstate
 
       | Left (error, newstate) ->
@@ -1033,7 +1031,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleLeave")
         error
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> notify state.Subscriptions
         updateRaft state newstate
   *)
@@ -1050,7 +1048,7 @@ module Raft =
         |> Logger.err (tag "handleForceElection")
 
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
 
@@ -1072,7 +1070,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleAddCmd")
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1105,7 +1103,7 @@ module Raft =
         |> string
         |> Logger.err (tag "handleAddMember")
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1114,17 +1112,6 @@ module Raft =
 
   let private handleRemoveMember (state: RaftServerState) (id: Id) (agent: RaftAgent) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
-      if state.Connections.ContainsKey id then
-        let result, socket = state.Connections.TryRemove id
-        if result then                // re-try once!
-          let result, socket = state.Connections.TryRemove id
-          if result then
-            dispose socket
-          else
-            Logger.err (tag "handleRemoveMember") "Unable to remove member"
-        else
-          dispose socket
-
       match removeMember state id with
       | Right (entry, newstate) ->
         // (DateTime.Now, entry)
@@ -1138,7 +1125,7 @@ module Raft =
         |> Logger.err (tag "handleRemoveMember")
 
         err
-        |> RaftEvent.RaftError
+        |> IrisEvent.RaftError
         |> Msg.Notify
         |> agent.Post
         newstate
@@ -1394,7 +1381,7 @@ module Raft =
       // periodic function
       let interval = int state.Options.Raft.PeriodicInterval
       let periodic = startPeriodic interval agent
-      RaftEvent.Started |> Msg.Notify |> agent.Post
+      ServiceType.Raft |> IrisEvent.Started |> Msg.Notify |> agent.Post
       agent.Post Msg.Started
       { state with
           Status = ServiceStatus.Running
@@ -1419,31 +1406,35 @@ module Raft =
       async {
         try
           let! cmd = inbox.Receive()
-          let state = store.State
-          let newstate =
-            match cmd with
-            | Msg.Start                         -> handleStart          state              inbox
-            | Msg.Started                       -> handleStarted        state
-            | Msg.Stop                          -> handleStop           state              inbox
-            | Msg.Stopped                       -> handleStopped        state
-            | Msg.Notify             ev         -> handleNotify         state ev
-            | Msg.Periodic                      -> handlePeriodic       state
-            | Msg.ForceElection                 -> handleForceElection  state              inbox
-            | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
-            | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
-            | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
-            | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
-            | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
-            | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
-            | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
-            // | Msg.Join        (ip, port)        -> handleJoin          state ip port
-            // | Msg.Leave                         -> handleLeave         state
 
-          // once we received the signal to stop we don't allow any more updates to the state to get
-          // a consistent result in the Dispose method (due to possibly queued up messages on the
-          // actors queue)
-          if not (Service.isStopping newstate.Status) then
-            store.Update newstate
+          Actors.warnQueueLength (tag "loop") inbox
+
+          Tracing.trace (tag "loop") <| fun () ->
+            let state = store.State
+            let newstate =
+              match cmd with
+              | Msg.Start                         -> handleStart          state              inbox
+              | Msg.Started                       -> handleStarted        state
+              | Msg.Stop                          -> handleStop           state              inbox
+              | Msg.Stopped                       -> handleStopped        state
+              | Msg.Notify             ev         -> handleNotify         state ev
+              | Msg.Periodic                      -> handlePeriodic       state
+              | Msg.ForceElection                 -> handleForceElection  state              inbox
+              | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
+              | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
+              | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
+              | Msg.RawServerRequest     request  -> handleServerRequest  state request      inbox
+              | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
+              | Msg.RawClientResponse   response  -> handleClientResponse state response     inbox
+              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
+              // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+              // | Msg.Leave                         -> handleLeave         state
+
+            // once we received the signal to stop we don't allow any more updates to the state to get
+            // a consistent result in the Dispose method (due to possibly queued up messages on the
+            // actors queue)
+            if not (Service.isStopping newstate.Status) then
+              store.Update newstate
         with
           | exn ->
             let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
@@ -1466,18 +1457,18 @@ module Raft =
   [<RequireQualifiedAccess>]
   module RaftServer =
 
-    // ** createListener
+    // *** createListener
 
     let private createListener (subscriptions: Subscriptions) =
       let guid = Guid.NewGuid()
-      { new IObservable<RaftEvent> with
+      { new IObservable<IrisEvent> with
           member self.Subscribe(obs) =
             subscriptions.TryAdd(guid, obs) |> ignore
             { new IDisposable with
                 member self.Dispose () =
                   subscriptions.TryRemove(guid) |> ignore } }
 
-    // ** create
+    // *** create
 
     let create ctx (config: IrisConfig) callbacks =
       either {
@@ -1534,7 +1525,7 @@ module Raft =
                     match result with
                     | Right server ->
                       backend
-                      |> sprintf "successfullly started broker on: %O"
+                      |> sprintf "successfullly started server on: %O"
                       |> Logger.debug (tag "Start")
 
                       let srvobs = server.Subscribe(Msg.RawServerRequest >> agent.Post)
@@ -1612,9 +1603,9 @@ module Raft =
               member self.RemoveMember id =
                 id |> Msg.RemoveMember |> agent.Post
 
-              member self.Subscribe (callback: RaftEvent -> unit) =
+              member self.Subscribe (callback: IrisEvent -> unit) =
                 let listener = createListener store.State.Subscriptions
-                { new IObserver<RaftEvent> with
+                { new IObserver<IrisEvent> with
                     member self.OnCompleted() = ()
                     member self.OnError(error) = ()
                     member self.OnNext(value) = callback value }

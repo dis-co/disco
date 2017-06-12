@@ -46,6 +46,7 @@ module RaftTestUtils =
       MemberRemoved       : RaftMember        -> unit
       Configured          : RaftMember array  -> unit
       StateChanged        : RaftState         -> RaftState -> unit
+      LeaderChanged       : MemberId option   -> unit
       PersistVote         : RaftMember option -> unit
       PersistTerm         : Term              -> unit
       PersistLog          : RaftLogEntry      -> unit
@@ -65,6 +66,7 @@ module RaftTestUtils =
       member self.MemberRemoved mem          = self.MemberRemoved mem
       member self.Configured mems            = self.Configured mems
       member self.StateChanged olds news     = self.StateChanged olds news
+      member self.LeaderChanged leader       = self.LeaderChanged leader
       member self.PersistVote mem            = self.PersistVote mem
       member self.PersistTerm mem            = self.PersistTerm mem
       member self.PersistLog log             = self.PersistLog log
@@ -107,6 +109,9 @@ module RaftTestUtils =
 
         StateChanged = fun _ _ ->
           sprintf "state changed" |> Logger.debug "StateChanged"
+
+        LeaderChanged = fun _ ->
+          sprintf "leader changed" |> Logger.debug "LeaderChanged"
 
         PersistVote = fun n ->
           sprintf "%A" n |> Logger.debug "PeristVote"

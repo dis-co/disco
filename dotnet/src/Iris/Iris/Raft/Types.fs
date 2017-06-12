@@ -6,7 +6,12 @@ open System.Net
 open Iris.Core
 open Iris.Serialization
 open FlatBuffers
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
+
+#endif
 
 // * RaftSate
 
@@ -419,58 +424,61 @@ type InstallSnapshot =
 type IRaftCallbacks =
 
   /// Request a vote from given Raft server
-  abstract member SendRequestVote:     RaftMember   -> VoteRequest     -> unit
+  abstract member SendRequestVote: peer:RaftMember -> request:VoteRequest -> unit
 
   /// Send AppendEntries message to given server
-  abstract member SendAppendEntries:   RaftMember   -> AppendEntries   -> unit
+  abstract member SendAppendEntries: peer:RaftMember -> request:AppendEntries -> unit
 
   /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: RaftMember   -> InstallSnapshot -> unit
+  abstract member SendInstallSnapshot: peer:RaftMember -> request:InstallSnapshot -> unit
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot:     RaftValue    -> RaftLog option
+  abstract member PrepareSnapshot: current:RaftValue -> RaftLog option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
-  abstract member PersistSnapshot:     RaftLogEntry -> unit
+  abstract member PersistSnapshot: snapshot:RaftLogEntry -> unit
 
   /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot:    unit         -> RaftLogEntry option
+  abstract member RetrieveSnapshot: unit  -> RaftLogEntry option
 
   /// apply the given command to state machine
-  abstract member ApplyLog:            StateMachine -> unit
+  abstract member ApplyLog: command:StateMachine -> unit
 
   /// a new server was added to the configuration
-  abstract member MemberAdded:         RaftMember   -> unit
+  abstract member MemberAdded: peer:RaftMember -> unit
 
   /// a new server was added to the configuration
-  abstract member MemberUpdated:       RaftMember   -> unit
+  abstract member MemberUpdated: peer:RaftMember -> unit
 
   /// a server was removed from the configuration
-  abstract member MemberRemoved:       RaftMember   -> unit
+  abstract member MemberRemoved: peer:RaftMember -> unit
 
   /// a cluster configuration transition was successfully applied
-  abstract member Configured:          RaftMember array  -> unit
+  abstract member Configured: members:RaftMember array  -> unit
 
   /// the state of Raft itself has changed from old state to new given state
-  abstract member StateChanged:        RaftState       -> RaftState              -> unit
+  abstract member StateChanged: oldstate:RaftState -> newstate:RaftState -> unit
+
+  /// the leader node changed
+  abstract member LeaderChanged: leader:MemberId option -> unit
 
   /// persist vote data to disk. For safety reasons this callback MUST flush
   /// the change to disk.
-  abstract member PersistVote:         RaftMember option -> unit
+  abstract member PersistVote: peer:RaftMember option -> unit
 
   /// persist term data to disk. For safety reasons this callback MUST flush
   /// the change to disk>
-  abstract member PersistTerm:         Term            -> unit
+  abstract member PersistTerm: term:Term -> unit
 
   /// persist an entry added to the log to disk. For safety reasons this
   /// callback MUST flush the change to disk.
-  abstract member PersistLog:          RaftLogEntry        -> unit
+  abstract member PersistLog: log:RaftLogEntry -> unit
 
   /// persist the removal of the passed entry from the log to disk. For safety
   /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog:           RaftLogEntry        -> unit
+  abstract member DeleteLog: log:RaftLogEntry -> unit
 
 // * RaftValueYaml
 
@@ -578,6 +586,9 @@ ConfigChangeEntry = %s
   //   |_|\__,_|_| |_| |_|_|
 
   // *** ToYaml
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   member self.ToYaml(serializer: Serializer) =
     self |> Yaml.toYaml |> serializer.Serialize
 
@@ -640,6 +651,8 @@ ConfigChangeEntry = %s
     let serializer = new Serializer()
     serializer.Deserialize<RaftValueYaml>(str)
     |> Yaml.fromYaml
+
+#endif
 
 // * State Monad
 

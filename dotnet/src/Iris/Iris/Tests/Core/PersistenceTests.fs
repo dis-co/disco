@@ -1,12 +1,8 @@
 namespace Iris.Tests
 
-open System
-open System.IO
 open Expecto
 open Iris.Core
 open Iris.Raft
-open System.Net
-open FSharpx.Functional
 open Iris.Core
 open Iris.Service
 
@@ -102,7 +98,7 @@ module PersistenceTests =
         let! _ = Persistence.persistEntry state (RemoveCuePlayer player)
         let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
-        expect "state should contain CuePlayer" true (Map.containsKey player.Id >> not)  updated.CuePlayers
+        expect "state should not contain CuePlayer" false (Map.containsKey player.Id) updated.CuePlayers
         expect "Cueplayers should be the same" updated.CuePlayers id loaded.CuePlayers
       }
       |> noError

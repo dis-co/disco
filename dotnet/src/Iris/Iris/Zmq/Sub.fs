@@ -1,10 +1,14 @@
 namespace Iris.Zmq
 
+// * Imports
+
 open System
 open System.Threading
 open System.Collections.Concurrent
 open ZeroMQ
 open Iris.Core
+
+// * Sub
 
 [<AutoOpen>]
 module Sub =
@@ -15,7 +19,9 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<byte array>
+  type private Subscriptions = Subscriptions<Id * byte array>
+
+  // ** Sub (type)
 
   /// ## Sub
   ///
@@ -41,6 +47,8 @@ module Sub =
     let mutable stopper: AutoResetEvent = new AutoResetEvent(false)
 
     let mutable subscriptions = Subscriptions()
+
+    // *** worker
 
     /// ## worker
     ///
@@ -87,16 +95,16 @@ module Sub =
       /// Inner Loop
       while run do
         try
-          let msg = sock.ReceiveMessage()
+          use msg = sock.ReceiveMessage()
           let addr = msg.[0].ReadString()
           let bytes = msg.[1].Read()
 
-          bytes
-          |> Array.length
-          |> sprintf "[%s] Got %d bytes long message on " addr
-          |> Logger.debug (tag "worker")
+          // printfn "sub: parts %d" msg.Count
+          // printfn "sub: addr  %s" addr
+          // System.Text.Encoding.UTF8.GetString(bytes)
+          // |> printfn "sub: msg   %s"
 
-          Observable.notify subscriptions bytes
+          Observable.notify subscriptions (Id addr, bytes)
 
           dispose msg
 
@@ -127,14 +135,20 @@ module Sub =
 
       stopper.Set() |> ignore
 
+    // *** Status
+
     member self.Status
       with get () = status
+
+    // *** Stop
 
     member private self.Stop () =
       if not disposed then
         run <- false                                   // break loop by setting to false
         stopper.WaitOne() |> ignore                    // wait for signal that stopping is done
                                                       // and return to caller
+
+    // *** Start
 
     member self.Start () : Either<IrisError,unit> =
       if not disposed then
@@ -154,13 +168,17 @@ module Sub =
         |> Error.asSocketError (tag "Start")
         |> Either.fail
 
-    member self.Subscribe (callback: byte array -> unit) =
+    // *** Subscribe
+
+    member self.Subscribe (callback: Id -> byte array -> unit) =
       let listener = Observable.createListener subscriptions
-      { new IObserver<byte array> with
+      { new IObserver<Id * byte array> with
           member self.OnCompleted() = ()
           member self.OnError(error) = ()
-          member self.OnNext(value) = callback value }
+          member self.OnNext((id,value)) = callback id value }
       |> listener.Subscribe
+
+    // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =

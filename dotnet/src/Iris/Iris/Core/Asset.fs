@@ -77,9 +77,9 @@ module Asset =
       try
         if File.exists location then
           Path.map File.Delete location
-          return true
+          return ()
         else
-          return false
+          return ()
       with
         | exn ->
           return!
@@ -244,7 +244,7 @@ module IrisData =
   let inline loadAll (basePath: FilePath) =
     either {
       try
-        let files = Directory.getFiles (sprintf "*%s" ASSET_EXTENSION) basePath
+        let files = Directory.getFiles true ("*" + Constants.ASSET_EXTENSION) basePath
         let! (_,groups) =
           let arr =
             files

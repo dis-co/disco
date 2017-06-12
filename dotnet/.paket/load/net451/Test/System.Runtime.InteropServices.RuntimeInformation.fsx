@@ -1,0 +1,1 @@
+#r "../../../../packages/test/System.Runtime.InteropServices.RuntimeInformation/lib/net45/System.Runtime.InteropServices.RuntimeInformation.dll" 

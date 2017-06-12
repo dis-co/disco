@@ -1,16 +1,16 @@
 import React, { Component } from 'react'
-import css from "../../css/Log.less"
 import { map } from "../Util.ts"
 
 class View extends Component {
   constructor(props) {
     super(props);
+    this.state = { logs: [] };
   }
 
   componentDidMount() {
     this.disposable =
-      this.props.global.subscribe("logs", () => {
-        this.forceUpdate();
+      this.props.global.subscribe("logs", logs => {
+        this.setState({logs});
       });
   }
 
@@ -21,10 +21,9 @@ class View extends Component {
   }
 
   render() {
-    const logs = this.props.global.state.logs;
     return (
       <div className="iris-log">
-        {map(logs, (log, i) => <p key={i}>{log}</p>)}
+        {map(this.state.logs, (log, i) => <p key={i}>{log}</p>)}
       </div>
     )
   }

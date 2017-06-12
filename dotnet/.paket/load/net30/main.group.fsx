@@ -1,0 +1,8 @@
+#r "../../../packages/NUnit/lib/net20/NUnit.System.Linq.dll" 
+#r "../../../packages/Newtonsoft.Json/lib/net20/Newtonsoft.Json.dll" 
+#r "../../../packages/Gallio/lib/NET20/Gallio.dll" 
+#r "../../../packages/Mono.Cecil/lib/net20/Mono.Cecil.dll" 
+#r "../../../packages/NUnit/lib/net20/nunit.framework.dll" 
+#r "../../../packages/Gallio/lib/NET20/MbUnit.dll" 
+#r "../../../packages/Mono.Cecil/lib/net20/Mono.Cecil.Pdb.dll" 
+#r "../../../packages/Mono.Cecil/lib/net20/Mono.Cecil.Mdb.dll" 

@@ -1,0 +1,7 @@
+#r "../../../../packages/test/NUnit/lib/net20/NUnit.System.Linq.dll" 
+#r "../../../../packages/test/Gallio/lib/NET20/Gallio.dll" 
+#r "../../../../packages/test/Mono.Cecil/lib/net20/Mono.Cecil.dll" 
+#r "../../../../packages/test/NUnit/lib/net20/nunit.framework.dll" 
+#r "../../../../packages/test/Gallio/lib/NET20/MbUnit.dll" 
+#r "../../../../packages/test/Mono.Cecil/lib/net20/Mono.Cecil.Pdb.dll" 
+#r "../../../../packages/test/Mono.Cecil/lib/net20/Mono.Cecil.Mdb.dll" 

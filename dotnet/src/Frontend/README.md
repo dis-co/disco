@@ -21,7 +21,6 @@ dotnet build -c Release src/Frontend/fable/plugins
 - Build Worker & Frontend (not necessary in development, see Watching below):
 
 ```shell
-dotnet fable npm-run build-worker
 dotnet fable npm-run build
 ```
 
@@ -35,11 +34,3 @@ Make sure you have installed dependencies and built the plugin (see Building abo
 ```shell
 dotnet fable npm-run start
 ```
-
-To watch also the worker files you must run in a different terminal:
-
-```shell
-dotnet fable npm-run watch-worker --port free
-```
-
-> The `--port free` argument is necessary to prevent conflicts with the other Fable server

@@ -1,6 +1,4 @@
 FSharp.Core
-FSharpx.Extras
-FSharp.Configuration
 ZeroMQ
 VVVV.Core
 VVVV.Hosting
@@ -10,5 +8,3 @@ VVVV.System.ComponentModel.Composition.Codeplex
 VVVV.Utils
 VVVV.Utils3rdParty
 VVVV.UtilsIL
-Newtonsoft.Json
-Hopac

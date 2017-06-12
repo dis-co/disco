@@ -11,9 +11,12 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open SharpYaml.Serialization
 open Iris.Serialization
 
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+open SharpYaml.Serialization
 #endif
 
 // * LogLevel
@@ -88,7 +91,7 @@ type Tier =
 
 // * LogEventYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 type LogEventYaml() =
   [<DefaultValue>] val mutable Time      : uint32
@@ -188,7 +191,7 @@ type LogEvent =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     let yaml = LogEventYaml()
@@ -398,6 +401,12 @@ module Logger =
       LogLevel = level
       Message  = msg }
 
+  // ** append
+
+  let append (log: LogEvent) = agent.Post log
+
+  // ** log
+
   /// ## log
   ///
   /// Log the given string.
@@ -411,7 +420,7 @@ module Logger =
   let log (level: LogLevel) (callsite: CallSite) (msg: string) =
     msg
     |> create level callsite
-    |> agent.Post
+    |> append
 
   // ** trace
 
@@ -427,7 +436,7 @@ module Logger =
   let trace (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Trace callsite
-    |> agent.Post
+    |> append
 
   // ** debug
 
@@ -443,7 +452,7 @@ module Logger =
   let debug (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Debug callsite
-    |> agent.Post
+    |> append
 
   // ** info
 
@@ -459,7 +468,7 @@ module Logger =
   let info (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Info callsite
-    |> agent.Post
+    |> append
 
   // ** warn
 
@@ -475,7 +484,7 @@ module Logger =
   let warn (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Warn callsite
-    |> agent.Post
+    |> append
 
   // ** err
 
@@ -491,4 +500,4 @@ module Logger =
   let err (callsite: CallSite) (msg: string) =
     msg
     |> create LogLevel.Err callsite
-    |> agent.Post
+    |> append

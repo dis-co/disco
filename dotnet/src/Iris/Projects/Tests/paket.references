@@ -1,5 +1,4 @@
 FSharp.Core
-FSharpx.Extras
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
 FSharp.Configuration
@@ -9,11 +8,7 @@ Expecto
 Expecto.PerfUtil
 Expecto.FsCheck
 FsCheck
-XUnit
-NUnit
-Gallio
 ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
-Hopac
 Disruptor

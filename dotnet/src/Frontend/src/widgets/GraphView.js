@@ -1,78 +1,66 @@
-import React, { Component } from 'react'
-import { Spread, SpreadView } from "../../fable/Frontend/Widgets/Spread.fs"
-import domtoimage from "dom-to-image"
-import { touchesElement, map } from "../Util.ts"
+// Change to triple-slash comment to activate TS check
+/* @ts-check */
 
-class View extends Component {
+import * as React from 'react'
+import { PinView } from "../../fable/Frontend/Widgets/PinView.fs"
+import domtoimage from "dom-to-image"
+import { touchesElement, map, jQueryEventAsPromise, raceIndexed } from "../Util"
+
+class View extends React.Component {
   constructor(props) {
     super(props);
     this.childNodes = new Map();
   }
 
-  startDragging(model, index) {
-    const _this = this;
-    const node = _this.childNodes.get(index);
+  continueDragging(dataUrl, pin) {
+    const __this = this;
+    // console.log("drag start")
+    const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
+    $(document)
+      .on("mousemove.drag", e => {
+        // console.log("drag move", {x: e.clientX, y: e.clientY})
+        $(img).css({left:e.pageX, top:e.pageY});
+        __this.props.global.triggerEvent("drag", {
+          type: "move",
+          model: pin,
+          origin: __this.props.id,
+          x: e.clientX,
+          y: e.clientY
+        });
+      })
+      .on("mouseup.drag", e => {
+        // console.log("drag stop")
+        img.css({display: "none"});
+        __this.props.global.triggerEvent("drag", {
+          type: "stop",
+          model: pin,
+          origin: __this.props.id,
+          x: e.clientX,
+          y: e.clientY
+        });
+        $(document).off("mousemove.drag mouseup.drag");
+      })
+  }
+
+  startDragging(key, pin) {
+    const node = this.childNodes.get(key);
     if (node == null) { return; }
 
-    domtoimage.toPng(node)
-      .then(dataUrl => {
-        // console.log("drag start")
-        const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
-        $(document)
-          .on("mousemove.drag", e => {
-            // console.log("drag move", {x: e.clientX, y: e.clientY})
-            $(img).css({left:e.pageX, top:e.pageY});
-            _this.props.global.triggerEvent("drag", {
-              type: "move",
-              model: model,
-              origin: _this.props.id,
-              x: e.clientX,
-              y: e.clientY
-            });
-          })
-          .on("mouseup.drag", e => {
-            // console.log("drag stop")
-            img.css({display: "none"});
-            _this.props.global.triggerEvent("drag", {
-              type: "stop",
-              model: model,
-              origin: _this.props.id,
-              x: e.clientX,
-              y: e.clientY,
-              removeModelFromOrigin() {
-                _this.props.model.elements.splice(index, 1);
-                _this.forceUpdate();
-              }
-            });
-            $(document).off("mousemove.drag mouseup.drag");
-          })
-      })
-      .catch(error => {
-          console.error('Error when generating image:', error);
-      });
+    var date1 = new Date();
+    raceIndexed(domtoimage.toPng(node, {}), jQueryEventAsPromise(document, "mouseup.domtoimage"))
+    .then(([i, data]) => {
+      if (i === 0) {
+        this.continueDragging(data, pin);
+      }
+      // If the mouseup event happens before the image is finished, do nothing
+    })
+    .catch(error => {
+        console.error('Error when generating image:', error);
+    });
   }
 
   componentDidMount() {
     this.disposables = [];
-
-    // this.disposables.push(
-    //   this.props.global.subscribeToEvent("drag", ev => {
-    //     if (this.el != null && ev.origin !== this.props.id) {
-    //       if (touchesElement(this.el, ev.x, ev.y)) {
-    //         switch (ev.type) {
-    //           case "move":
-    //             this.el.classList.add("iris-highlight-blue");
-    //             return;
-    //           case "stop":
-    //             ev.removeModelFromOrigin();
-    //             this.props.model.elements.push(ev.model);
-    //             this.forceUpdate();
-    //         }
-    //       }
-    //       this.el.classList.remove("iris-highlight-blue")
-    //     }
-    //   })
-    // );
 
     this.disposables.push(
       this.props.global.subscribe(["pinGroups", "useRightClick"], () => {
@@ -89,22 +77,23 @@ class View extends Component {
 
   render() {
     return (
-      <div className="iris-grapview" ref={el => this.el = el}>
+      <div className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <div key={i} className="iris-pingroup">
-            <h3 className="title is-3">{pinGroup[1].Name}</h3>
+            <div className="iris-pingroup-name">{pinGroup[1].Name + ":"}</div>
             {map(pinGroup[1].Pins, (kv,i) => {
-              var pin = kv[1];
-              var model = new Spread(pin);
+              const pin = kv[1], key = IrisLib.toString(pin.Id);
               return (
-                <div key={i}
-                  ref={el => { if (el != null) this.childNodes.set(i, el.childNodes[0]) }}>
-                  <SpreadView
-                    model={model}
+                // We need to wrap the PinView in a div to get the actual HTML element in `ref`
+                <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
+                  <PinView
+                    key={key}
+                    pin={pin}
                     global={this.props.global}
-                    onDragStart={() => this.startDragging(model, i)} />
+                    onDragStart={() => this.startDragging(key, pin)} />
                 </div>
-              )})}
+              )
+            })}
           </div>
         ))}
       </div>

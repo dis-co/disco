@@ -12,14 +12,13 @@ open SharpYaml.Serialization
 module TestUtilities =
 
   let waitOrDie (tag: string) (are: AutoResetEvent) =
-    let timeout = 3000.0
+    let timeout = 30000.0
     if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
       Either.succeed()
     else
       sprintf "Timout after %f waiting for %s" timeout tag
       |> Error.asOther "test"
       |> Either.fail
-
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
@@ -311,8 +310,8 @@ module TestData =
 
   let mkChange _ =
     match rand.Next(0,2) with
-    | n when n > 0 -> MemberAdded(mkMember ())
-    |          _   -> MemberRemoved(mkMember ())
+    | n when n > 0 -> ConfigChange.MemberAdded(mkMember ())
+    |          _   -> ConfigChange.MemberRemoved(mkMember ())
 
   let mkChanges _ =
     let n = rand.Next(1, 6)

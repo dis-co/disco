@@ -20,7 +20,6 @@ open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
 open System.Runtime.CompilerServices
-open Hopac
 
 #endif
 
@@ -126,6 +125,13 @@ module Utils =
 [<RequireQualifiedAccess>]
 module String =
 
+  // ** endsWith
+
+  let endsWith (suffix: string) (str: string) =
+    str.EndsWith suffix
+
+  // ** replace
+
   /// ## replace
   ///
   /// Replace `oldchar` with `newchar` in `str`.
@@ -139,7 +145,7 @@ module String =
   let replace (oldchar: char) (newchar: char) (str: string) =
     str.Replace(oldchar, newchar)
 
-  // *** join
+  // ** join
 
   /// ## join
   ///
@@ -152,7 +158,7 @@ module String =
   /// Returns: string
   let join sep (arr: string array) = String.Join(sep, arr)
 
-  // *** toLower
+  // ** toLower
 
   /// ## toLower
   ///
@@ -174,7 +180,7 @@ module String =
 
   #endif
 
-  // *** trim
+  // ** trim
 
   #if !FABLE_COMPILER
 
@@ -191,7 +197,7 @@ module String =
 
   #endif
 
-  // *** toUpper
+  // ** toUpper
 
   #if !FABLE_COMPILER
 
@@ -208,7 +214,7 @@ module String =
 
   #endif
 
-  // *** split
+  // ** split
 
   /// ## split
   ///
@@ -222,7 +228,7 @@ module String =
   let split (chars: char array) (str: string) =
     str.Split(chars)
 
-  // *** indent
+  // ** indent
 
   #if !FABLE_COMPILER
 
@@ -243,7 +249,7 @@ module String =
 
   #endif
 
-  // *** subString
+  // ** subString
 
   /// ## subString
   ///
@@ -261,7 +267,7 @@ module String =
       str.Substring(index, length)
     else
       ""
-  // *** santitize
+  // ** santitize
 
   /// ## sanitize
   ///
@@ -273,11 +279,10 @@ module String =
   ///
   /// Returns: string
   let sanitize (payload: string) =
-    let regex = new Regex("(\.|\ |\*|\^)")
+    let regex = Regex("(\\\|\/|\.|\ |\*|\^)")
     if regex.IsMatch(payload)
     then regex.Replace(payload, "_")
     else payload
-
 
   /// *** encodeBase64
 
@@ -304,6 +309,11 @@ module String =
     #else
     Convert.FromBase64String(buffer)
     #endif
+
+  // ** format
+
+  let format (format: string) (o: obj) =
+    String.Format(format, o)
 
 // * Time
 
@@ -355,7 +365,7 @@ module Time =
 
 // * Process
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 ///////////////////////////////////////////////////
 //  ____                                         //
@@ -535,14 +545,12 @@ module Crypto =
 
 // * Functional
 
-#if FABLE_COMPILER
-
 [<AutoOpen>]
 module Functional =
 
-  let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
+  let konst (a: 'a) = fun _ -> a
 
-#endif
+  let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
 
 // * Tuple
 
