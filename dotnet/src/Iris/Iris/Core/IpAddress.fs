@@ -94,3 +94,8 @@ type IpAddress =
     self |> string |> IPAddress.Parse
 
   #endif
+
+  // ** Localhost
+
+  static member Localhost
+    with get () = IPv4Address "127.0.0.1"

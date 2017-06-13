@@ -10,10 +10,9 @@ open Iris.Service
 open Fleck
 open Iris.Service.Interfaces
 
-// * WebSockets
+// * WebSocketServer
 
-[<AutoOpen>]
-module WebSockets =
+module WebSocketServer =
 
   // ** tag
 
@@ -25,7 +24,7 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** SocketEventProcessor
 
@@ -58,9 +57,9 @@ module WebSockets =
       |> Error.asSocketError (tag "buildSession")
       |> Either.fail
 
-  // ** send
+  // ** ucast
 
-  /// ## send
+  /// ## ucast
   ///
   /// Send a `StateMachine` command to the requested session.
   ///
@@ -69,7 +68,7 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: Either<IrisError,unit>
-  let private send (connections: Connections) (sid: Id) (msg: StateMachine) =
+  let private ucast (connections: Connections) (sid: Id) (msg: StateMachine) =
     match connections.TryGetValue(sid) with
     | true, socket ->
       try
@@ -93,7 +92,7 @@ module WebSockets =
       |> Error.asSocketError (tag "send")
       |> Either.fail
 
-  // ** broadcast
+  // ** bcast
 
   /// ## Broadcast
   ///
@@ -103,11 +102,11 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  let private broadcast (connections: Connections) (msg: StateMachine) =
+  let private bcast (connections: Connections) (msg: StateMachine) =
     let result : IrisError list =
       connections.Keys
       |> Seq.toArray
-      |> Array.map (fun id -> send connections id msg)
+      |> Array.map (fun id -> ucast connections id msg)
       |> Array.fold
         (fun lst (result: Either<IrisError,unit>) ->
           match result with
@@ -119,9 +118,9 @@ module WebSockets =
     | [ ] -> Right ()
     | _   -> Left result
 
-  // ** multicast
+  // ** mcast
 
-  /// ## multicast
+  /// ## mcast
   ///
   /// Send a `StateMachine` command to all open connections except the one that matches the passed
   /// session id.
@@ -131,13 +130,13 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  let private multicast (connections: Connections)
+  let private mcast (connections: Connections)
                         (id: Id)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
 
     let sendAsync (id: Id) = async {
-        let result = send connections id msg
+        let result = ucast connections id msg
         return result
       }
 
@@ -228,95 +227,79 @@ module WebSockets =
   let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
     let rec act () = async {
         let! msg = inbox.Receive()
-        Observable.notify subscriptions msg
+        Observable.onNext subscriptions msg
         return! act ()
       }
     act()
 
-  // ** WebSocketServer
+  // ** broadcast
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
+  let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
+    server.Broadcast cmd
 
-  [<RequireQualifiedAccess>]
-  module WebSocketServer =
+  // ** send
 
-    let create (mem: RaftMember) =
-      either {
-        let status = ref ServiceStatus.Stopped
-        let connections = Connections()
-        let subscriptions = Subscriptions()
+  let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
+    server.Send id cmd
 
-        let agent = new SocketEventProcessor(loop subscriptions)
+  // ** create
 
-        let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
+  let create (mem: RaftMember) =
+    either {
+      let status = ref ServiceStatus.Stopped
+      let connections = Connections()
+      let subscriptions = Subscriptions()
 
-        let handler = onNewSocket mem.Id connections agent
-        let server = new WebSocketServer(uri)
+      let agent = new SocketEventProcessor(loop subscriptions)
 
-        return
-          { new IWebSocketServer with
-              member self.Send (id: Id) (cmd: StateMachine) =
-                send connections id cmd
+      let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-              member self.Broadcast (cmd: StateMachine) =
-                broadcast connections cmd
+      let handler = onNewSocket mem.Id connections agent
+      let server = new WebSocketServer(uri)
 
-              member self.Multicast (except: Id) (cmd: StateMachine) =
-                multicast connections except cmd
+      return
+        { new IWebSocketServer with
+            member self.Send (id: Id) (cmd: StateMachine) =
+              ucast connections id cmd
 
-              member self.BuildSession (id: Id) (session: Session) =
-                buildSession connections id session
+            member self.Broadcast (cmd: StateMachine) =
+              bcast connections cmd
 
-              member self.Subscribe (callback: IrisEvent -> unit) =
-                let listener = Observable.createListener subscriptions
-                { new IObserver<IrisEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value
-                  }
-                |> listener.Subscribe
+            member self.Multicast (except: Id) (cmd: StateMachine) =
+              mcast connections except cmd
 
-              member self.Start () =
-                status := ServiceStatus.Starting
-                try
-                  uri
-                  |> sprintf "Starting WebSocketServer on: %s"
-                  |> Logger.debug (tag "Start")
+            member self.BuildSession (id: Id) (session: Session) =
+              buildSession connections id session
 
-                  agent.Start()
-                  server.Start(new Action<IWebSocketConnection>(handler))
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              Observable.subscribe callback subscriptions
 
-                  status := ServiceStatus.Running
-                  "WebSocketServer successfully started"
-                  |> Logger.debug (tag "Start")
-                  |> Either.succeed
-                with
-                  | exn ->
-                    exn.Message
-                    |> Error.asSocketError (tag "Start")
-                    |> Either.fail
+            member self.Start () =
+              status := ServiceStatus.Starting
+              try
+                uri
+                |> sprintf "Starting WebSocketServer on: %s"
+                |> Logger.debug (tag "Start")
 
-              member self.Publish(cmd: IrisEvent) =
-                // broadcast connections cmd
-                // |> ignore
-                printfn "broadcast ye event"
+                agent.Start()
+                server.Start(new Action<IWebSocketConnection>(handler))
 
-              member self.Dispose () =
-                if Service.isRunning !status then
-                  for KeyValue(_, connection) in connections do
-                    connection.Close()
-                  connections.Clear()
-                  subscriptions.Clear()
-                  dispose server
-                  status := ServiceStatus.Disposed }
-      }
+                status := ServiceStatus.Running
+                "WebSocketServer successfully started"
+                |> Logger.debug (tag "Start")
+                |> Either.succeed
+              with
+                | exn ->
+                  exn.Message
+                  |> Error.asSocketError (tag "Start")
+                  |> Either.fail
 
-    let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
-      server.Broadcast cmd
-
-    let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
-      server.Send id cmd
+            member self.Dispose () =
+              if Service.isRunning !status then
+                for KeyValue(_, connection) in connections do
+                  connection.Close()
+                connections.Clear()
+                subscriptions.Clear()
+                dispose server
+                status := ServiceStatus.Disposed }
+    }

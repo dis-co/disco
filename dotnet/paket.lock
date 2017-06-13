@@ -78,30 +78,6 @@ NUGET
       System.Runtime.Extensions (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Runtime.InteropServices (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
       System.Threading (>= 4.3) - restriction: || (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (>= dnxcore50)
-    Microsoft.FSharp.Core.netcore (1.0.0-alpha-161205) - restriction: >= netstandard16
-      System.Collections (>= 4.0.11)
-      System.Console (>= 4.0)
-      System.Diagnostics.Debug (>= 4.0.11)
-      System.Diagnostics.Tools (>= 4.0.1)
-      System.Globalization (>= 4.0.11)
-      System.IO (>= 4.1)
-      System.Linq (>= 4.1)
-      System.Linq.Expressions (>= 4.1)
-      System.Linq.Queryable (>= 4.0.1)
-      System.Net.Requests (>= 4.0.11)
-      System.Reflection (>= 4.1)
-      System.Reflection.Extensions (>= 4.0.1)
-      System.Resources.ResourceManager (>= 4.0.1)
-      System.Runtime (>= 4.1)
-      System.Runtime.Extensions (>= 4.1)
-      System.Runtime.Numerics (>= 4.0.1)
-      System.Text.RegularExpressions (>= 4.1)
-      System.Threading (>= 4.0.11)
-      System.Threading.Tasks (>= 4.0.11)
-      System.Threading.Tasks.Parallel (>= 4.0.1)
-      System.Threading.Thread (>= 4.0)
-      System.Threading.ThreadPool (>= 4.0.10)
-      System.Threading.Timer (>= 4.0.1)
     Microsoft.NETCore.Platforms (1.1) - restriction: || (&& (< net20) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net20) (< netstandard12) (>= netstandard13) (< win8)) (&& (< net20) (>= netstandard13) (< win8) (< wpa81)) (&& (< net20) (>= netstandard15)) (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard11)) (&& (>= dnxcore50) (>= netstandard12)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
     Microsoft.NETCore.Targets (1.1) - restriction: || (&& (< net20) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net20) (< netstandard12) (>= netstandard13) (< win8)) (&& (< net20) (>= netstandard13) (< win8) (< wpa81)) (&& (< net20) (>= netstandard15)) (&& (< net45) (>= netstandard10) (< netstandard12) (< win8) (< wp8)) (&& (< net45) (>= netstandard10) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard12) (< netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard13) (< win8) (< wpa81)) (&& (< net45) (>= netstandard15)) (&& (>= dnxcore50) (>= netstandard10)) (&& (>= dnxcore50) (>= netstandard11)) (&& (>= dnxcore50) (>= netstandard12)) (&& (>= dnxcore50) (>= netstandard13)) (&& (>= dnxcore50) (>= netstandard15)) (>= netstandard16)
     Microsoft.Win32.Primitives (4.3) - restriction: >= netstandard16
@@ -224,17 +200,20 @@ NUGET
     runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - restriction: >= netstandard16
     runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - restriction: >= netstandard16
     runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl (4.3.1) - restriction: >= netstandard16
-    Suave (2.0.2)
+    Suave (2.1)
       FSharp.Core (>= 4.0.0.1) - restriction: < netstandard16
-      Microsoft.FSharp.Core.netcore (>= 1.0.0-alpha-161205) - restriction: >= netstandard16
-      NETStandard.Library (>= 1.6) - restriction: >= netstandard16
+      FSharp.Core (>= 4.1.2) - restriction: >= netstandard16
+      NETStandard.Library (>= 1.6.1) - restriction: >= netstandard16
       System.Data.Common (>= 4.1) - restriction: >= netstandard16
       System.Diagnostics.Process (>= 4.1) - restriction: >= netstandard16
-      System.Globalization.Extensions (>= 4.0.1) - restriction: >= netstandard16
+      System.Globalization.Extensions (>= 4.3) - restriction: >= netstandard16
       System.Net.Security (>= 4.0) - restriction: >= netstandard16
       System.Runtime.Serialization.Json (>= 4.0.2) - restriction: >= netstandard16
       System.Security.Claims (>= 4.0.1) - restriction: >= netstandard16
-      System.Security.Cryptography.Primitives (>= 4.0) - restriction: >= netstandard16
+      System.Security.Cryptography.Primitives (>= 4.3) - restriction: >= netstandard16
+    Suave.Git (1.0.1)
+      FSharp.Core (>= 4.1.17 < 4.2)
+      Suave (>= 2.1 < 3.0)
     System.AppContext (4.3) - restriction: >= netstandard16
       System.Runtime (>= 4.3) - restriction: || (&& (< net46) (>= netstandard13)) (>= dnxcore50) (>= netstandard16)
     System.Buffers (4.3) - restriction: >= netstandard16
@@ -679,7 +658,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Text.Encoding (>= 4.3) - restriction: && (< net46) (>= netstandard13)
     System.Security.Cryptography.OpenSsl (4.3) - restriction: >= netstandard16
-      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16) (>= monoandroid) (>= monotouch) (>= xamarinios) (>= xamarinmac)
+      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Collections (>= 4.3) - restriction: >= netstandard16
       System.IO (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Resources.ResourceManager (>= 4.3) - restriction: >= netstandard16
@@ -1215,7 +1194,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Text.Encoding (>= 4.3) - restriction: && (< net46) (>= netstandard13)
     System.Security.Cryptography.OpenSsl (4.3) - redirects: force, restriction: >= netstandard16
-      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16) (>= monoandroid) (>= monotouch) (>= xamarinios) (>= xamarinmac)
+      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Collections (>= 4.3) - restriction: >= netstandard16
       System.IO (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Resources.ResourceManager (>= 4.3) - restriction: >= netstandard16
@@ -1662,7 +1641,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3) - restriction: && (< net46) (>= netstandard13)
       System.Text.Encoding (>= 4.3) - restriction: && (< net46) (>= netstandard13)
     System.Security.Cryptography.OpenSsl (4.3) - redirects: force, restriction: >= netstandard16
-      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16) (>= monoandroid) (>= monotouch) (>= xamarinios) (>= xamarinmac)
+      runtime.native.System.Security.Cryptography.OpenSsl (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Collections (>= 4.3) - restriction: >= netstandard16
       System.IO (>= 4.3) - restriction: || (>= net463) (>= netstandard16)
       System.Resources.ResourceManager (>= 4.3) - restriction: >= netstandard16

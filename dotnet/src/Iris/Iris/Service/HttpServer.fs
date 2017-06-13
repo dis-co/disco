@@ -24,9 +24,9 @@ open Iris.Core
 open Iris.Core.Commands
 open Iris.Service.Interfaces
 
-// * Http
+// * HttpServer
 
-module Http =
+module HttpServer =
 
   // ** tag
 
@@ -83,7 +83,7 @@ module Http =
 
   // ** getDefaultBasePath
 
-  let getDefaultBasePath() =
+  let private getDefaultBasePath() =
     #if INTERACTIVE
     Path.GetFullPath(".") </> "assets" </> "frontend"
     #else
@@ -94,7 +94,7 @@ module Http =
 
   // ** pathWithArgs
 
-  let pathWithArgs (pattern: string) (f: Map<string,string>->WebPart) =
+  let private pathWithArgs (pattern: string) (f: Map<string,string>->WebPart) =
     let prefix = pattern.Substring(0, pattern.IndexOf(":"))
     let patternParts = pattern.Split('/')
     Filters.pathStarts prefix >=> (fun ctx ->
@@ -208,50 +208,44 @@ module Http =
             |> Error.exitWith
     }
 
-  // ** HttpServer
+  // ** create
 
-  [<RequireQualifiedAccess>]
-  module HttpServer =
+  let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
+    either {
+      let status = ref ServiceStatus.Stopped
 
-    // *** create
+      let basePath =
+        getDefaultBasePath()
+        |> defaultArg frontend
+        |> Path.getFullPath
 
-    let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
-      either {
-        let status = ref ServiceStatus.Stopped
+      let cts = new CancellationTokenSource()
+      let! webConfig = makeConfig config basePath cts
 
-        let basePath =
-          getDefaultBasePath()
-          |> defaultArg frontend
-          |> Path.getFullPath
+      return
+        { new IHttpServer with
+            member self.Start () = either {
+                try
+                  let _, server =
+                    basePath </> filepath "index.html"
+                    |> app postCommand
+                    |> startWebServerAsync webConfig
+                  Async.Start server
+                  status := ServiceStatus.Running
+                  return ()
+                with
+                  | exn ->
+                    return!
+                      exn.Message
+                      |> Error.asSocketError (tag "create")
+                      |> Either.fail
+              }
 
-        let cts = new CancellationTokenSource()
-        let! webConfig = makeConfig config basePath cts
-
-        return
-          { new IHttpServer with
-              member self.Start () = either {
-                  try
-                    let _, server =
-                      basePath </> filepath "index.html"
-                      |> app postCommand
-                      |> startWebServerAsync webConfig
-                    Async.Start server
-                    status := ServiceStatus.Running
-                    return ()
-                  with
-                    | exn ->
-                      return!
-                        exn.Message
-                        |> Error.asSocketError (tag "create")
-                        |> Either.fail
-                }
-
-              member self.Dispose () =
-                if Service.isRunning !status then
-                  try
-                    cts.Cancel ()
-                    cts.Dispose ()
-                    status := ServiceStatus.Disposed
-                  with
-                    | _ -> () }
-      }
+            member self.Dispose () =
+              if Service.isRunning !status then
+                try
+                  cts.Cancel ()
+                  cts.Dispose ()
+                  status := ServiceStatus.Disposed
+                with | _ -> ()
+          } }

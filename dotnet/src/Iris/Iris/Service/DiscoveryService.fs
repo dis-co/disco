@@ -10,11 +10,10 @@ open System
 open System.IO
 open System.Threading
 open System.Collections.Concurrent
-open Microsoft.FSharp.Control
 
 open Mono.Zeroconf
 
-// * Discovery module
+// * DiscoveryService
 
 //  ____  _
 // |  _ \(_)___  ___ _____   _____ _ __ _   _
@@ -23,21 +22,16 @@ open Mono.Zeroconf
 // |____/|_|___/\___\___/ \_/ \___|_|   \__, |
 //                                      |___/
 
-[<AutoOpen>]
-module Discovery =
+module DiscoveryService =
   open Iris.Core.Discovery
 
   // ** tag
 
   let private tag (str: string) = String.Format("DiscoveryService.{0}", str)
 
-  // ** Listener
-
-  type private Listener = IObservable<DiscoveryEvent>
-
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<DiscoveryEvent>
+  type private Subscriptions = Observable.Subscriptions<DiscoveryEvent>
 
   // ** DiscoveryState
 
@@ -76,7 +70,7 @@ module Discovery =
   // ** handleNotify
 
   let private handleNotify (state: DiscoveryState) (ev: DiscoveryEvent) =
-    Observable.notify state.Subscriptions ev
+    Observable.onNext state.Subscriptions ev
     state
 
   // ** addResolved
@@ -287,77 +281,69 @@ module Discovery =
       }
     act ()
 
-  // ** DiscoveryService module
+  // ** create
 
-  [<RequireQualifiedAccess>]
-  module DiscoveryService =
+  let create (config: IrisMachine) =
+    let source = new CancellationTokenSource()
 
-    let create (config: IrisMachine) =
-      let source = new CancellationTokenSource()
+    let state = {
+      Status = ServiceStatus.Stopped
+      Machine = config
+      Browser = Unchecked.defaultof<ServiceBrowser>
+      Subscriptions = Subscriptions()
+      RegisteredServices = Map.empty
+      ResolvedServices = Map.empty
+    }
 
-      let state = {
-        Status = ServiceStatus.Stopped
-        Machine = config
-        Browser = Unchecked.defaultof<ServiceBrowser>
-        Subscriptions = new Subscriptions()
-        RegisteredServices = Map.empty
-        ResolvedServices = Map.empty
+    let store = AgentStore.create()
+
+    let agent = DiscoveryAgent.Start(loop store, source.Token)
+
+    { new IDiscoveryService with
+        member self.Start() = either {
+            let! browser = makeBrowser agent
+            store.Update { state with Browser = browser }
+
+            do! try
+                  browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
+                  |> Either.succeed
+                with
+                  | exn ->
+                    tryDispose browser ignore
+                    source.Cancel()
+                    dispose source
+                    dispose agent
+                    let msg = exn.Message |> sprintf "error starting browser: %s"
+                    Logger.err (tag "Start") msg
+                    msg
+                    |> Error.asOther (tag "Start")
+                    |> Either.fail
+
+            agent.Post Msg.Start
+            return ()
+          }
+
+        member self.Services
+          with get () = store.State.RegisteredServices, store.State.ResolvedServices
+
+        member self.Subscribe (callback: DiscoveryEvent -> unit) =
+          Observable.subscribe callback store.State.Subscriptions
+
+        member self.Register (service: DiscoverableService) =
+          service |> Msg.Register |> agent.Post
+          { new IDisposable with
+              member self.Dispose () =
+                service |> Msg.UnRegister |> agent.Post }
+
+        member self.Dispose() =
+          if not (Service.isDisposed store.State.Status) then
+            use are = new AutoResetEvent(false)
+            are |> Msg.Stop |> agent.Post
+            if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+              Logger.debug (tag "Dispose") "timeout: attempt to dispose discovery service failed"
+            dispose store.State
+            source.Cancel()
+            dispose source
+            dispose agent
+            store.Update { state with Status = ServiceStatus.Disposed }
       }
-
-      let store = AgentStore.create()
-
-      let agent = DiscoveryAgent.Start(loop store, source.Token)
-
-      { new IDiscoveryService with
-          member self.Start() = either {
-              let! browser = makeBrowser agent
-              store.Update { state with Browser = browser }
-
-              do! try
-                    browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
-                    |> Either.succeed
-                  with
-                    | exn ->
-                      tryDispose browser ignore
-                      source.Cancel()
-                      dispose source
-                      dispose agent
-                      let msg = exn.Message |> sprintf "error starting browser: %s"
-                      Logger.err (tag "Start") msg
-                      msg
-                      |> Error.asOther (tag "Start")
-                      |> Either.fail
-
-              agent.Post Msg.Start
-              return ()
-            }
-
-          member self.Services
-            with get () = store.State.RegisteredServices, store.State.ResolvedServices
-
-          member self.Subscribe (callback: DiscoveryEvent -> unit) =
-            let listener = Observable.createListener store.State.Subscriptions
-            { new IObserver<DiscoveryEvent> with
-                member self.OnCompleted() = ()
-                member self.OnError(error) = ()
-                member self.OnNext(value) = callback value }
-            |> listener.Subscribe
-
-          member self.Register (service: DiscoverableService) =
-            service |> Msg.Register |> agent.Post
-            { new IDisposable with
-                member self.Dispose () =
-                  service |> Msg.UnRegister |> agent.Post }
-
-          member self.Dispose() =
-            if not (Service.isDisposed store.State.Status) then
-              use are = new AutoResetEvent(false)
-              are |> Msg.Stop |> agent.Post
-              if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-                Logger.debug (tag "Dispose") "timeout: attempt to dispose discovery service failed"
-              dispose store.State
-              source.Cancel()
-              dispose source
-              dispose agent
-              store.Update { state with Status = ServiceStatus.Disposed }
-        }

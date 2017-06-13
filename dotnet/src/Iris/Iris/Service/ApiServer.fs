@@ -14,7 +14,6 @@ open Iris.Serialization
 
 // * ApiServer module
 
-[<AutoOpen>]
 module ApiServer =
   open ZeroMQ
 
@@ -35,7 +34,7 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** Client
 
@@ -162,7 +161,7 @@ module ApiServer =
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer: Id) (bytes: byte array) =
+  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer:Id, bytes:byte array) =
     match Binary.decode bytes with
     | Right command ->
       match command with
@@ -201,7 +200,7 @@ module ApiServer =
         dispose client
         (Origin.Service, RemoveClient client.Meta)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
 
       // construct a new client value
       let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
@@ -224,7 +223,7 @@ module ApiServer =
 
         (Origin.Service, AddClient meta)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
 
         { state with Clients = Map.add meta.Id client state.Clients }
       | Left error ->
@@ -242,7 +241,7 @@ module ApiServer =
         dispose client
         (Origin.Service, RemoveClient peer)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
 
@@ -290,7 +289,7 @@ module ApiServer =
   let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
     status
     |> IrisEvent.Status
-    |> Observable.notify state.Subscriptions
+    |> Observable.onNext state.Subscriptions
     { state with Status = status }
 
   // ** handleSetClientStatus
@@ -305,7 +304,7 @@ module ApiServer =
           let updated = { client with Meta = { client.Meta with Status = status } }
           (Origin.Service, UpdateClient updated.Meta)
           |> IrisEvent.Append
-          |> Observable.notify state.Subscriptions
+          |> Observable.onNext state.Subscriptions
           { state with Clients = Map.add id updated state.Clients }
         else state
     | None -> state
@@ -329,7 +328,7 @@ module ApiServer =
       updateAllClients state cmd agent       // in order to preserve ordering of the messages
       (origin, cmd)
       |> IrisEvent.Append
-      |> Observable.notify state.Subscriptions
+      |> Observable.onNext state.Subscriptions
 
     | Origin.Raft, _ ->
       updateAllClients state cmd agent       // in order to preserve ordering of the messages
@@ -339,10 +338,10 @@ module ApiServer =
     | Origin.Client id, UpdateSlices _ ->
       publish state cmd agent
       multicastClients state id cmd agent       // in order to preserve ordering of the messages
-      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
     | Origin.Client id, _ ->
-      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
     | Origin.Web _, LogMsg       _
     | Origin.Web _, CallCue      _
@@ -358,9 +357,10 @@ module ApiServer =
     | Origin.Service, RemoveClient _ ->
       (origin, cmd)
       |> IrisEvent.Append
-      |> Observable.notify state.Subscriptions
+      |> Observable.onNext state.Subscriptions
 
-    | Origin.Service, LogMsg _ ->
+    | Origin.Service, LogMsg _
+    | Origin.Service, UpdateSlices _ ->
       publish state cmd agent
       updateAllClients state cmd agent
 
@@ -486,125 +486,109 @@ module ApiServer =
       }
     act ()
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
+  // ** create
 
-  // ** ApiServer module
+  let create ctx (mem: RaftMember) (projectId: Id) callbacks =
+    either {
+      let cts = new CancellationTokenSource()
 
-  [<RequireQualifiedAccess>]
-  module ApiServer =
+      let store = AgentStore.create ()
 
-    // *** create
+      store.Update {
+        Id = mem.Id
+        Status = ServiceStatus.Stopped
+        Server = Unchecked.defaultof<IServer>
+        Publisher = Unchecked.defaultof<Pub>
+        Subscriber = Unchecked.defaultof<Sub>
+        Clients = Map.empty
+        Subscriptions = Subscriptions()
+        Context = ctx
+        Disposables = []
+        Callbacks = callbacks
+        Stopper = new AutoResetEvent(false)
+      }
 
-    let create ctx (mem: RaftMember) (projectId: Id) callbacks =
-      either {
-        let cts = new CancellationTokenSource()
+      let agent = new ApiAgent(loop store, cts.Token)
+      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
-        let store = AgentStore.create ()
+      return
+        { new IApiServer with
 
-        store.Update {
-          Id = mem.Id
-          Status = ServiceStatus.Stopped
-          Server = Unchecked.defaultof<IServer>
-          Publisher = Unchecked.defaultof<Pub>
-          Subscriber = Unchecked.defaultof<Sub>
-          Clients = Map.empty
-          Subscriptions = Subscriptions()
-          Context = ctx
-          Disposables = []
-          Callbacks = callbacks
-          Stopper = new AutoResetEvent(false)
-        }
+            // *** Start
 
-        let agent = new ApiAgent(loop store, cts.Token)
-        agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+            member self.Start () = either {
+                let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
+                let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
 
-        return
-          { new IApiServer with
+                let pubSubAddr =
+                  Uri.epgmUri
+                    mem.IpAddr
+                    (IPv4Address Constants.MCAST_ADDRESS)
+                    (port Constants.MCAST_PORT)
 
-              // **** Start
+                let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
+                let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
 
-              member self.Start () = either {
-                  let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
-                  let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
-
-                  let pubSubAddr =
-                    Uri.epgmUri
-                      mem.IpAddr
-                      (IPv4Address Constants.MCAST_ADDRESS)
-                      (port Constants.MCAST_PORT)
-
-                  let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
-                  let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
-
-                  let result = Server.create ctx {
-                    Id = mem.Id
-                    Listen = frontend
-                  }
-
-                  match result  with
-                  | Right server ->
-                    match publisher.Start(), subscriber.Start() with
-                    | Right (), Right () ->
-                      let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                      let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
-
-                      let updated =
-                        { store.State with
-                            Status = ServiceStatus.Running
-                            Publisher = publisher
-                            Subscriber = subscriber
-                            Server = server
-                            Disposables = [ srv; sub ] }
-
-                      store.Update updated
-                      agent.Start()
-                      agent.Post Msg.Start
-
-                    | Left error, _ | _, Left error ->
-                      dispose server
-                      dispose publisher
-                      dispose subscriber
-                      return! Either.fail error
-
-                  | Left error ->
-                    return! Either.fail error
+                let result = Server.create ctx {
+                  Id = mem.Id
+                  Listen = frontend
                 }
 
-              // **** Clients
+                match result  with
+                | Right server ->
+                  match publisher.Start(), subscriber.Start() with
+                  | Right (), Right () ->
+                    let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
+                    let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
 
-              member self.Clients
-                with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
+                    let updated =
+                      { store.State with
+                          Status = ServiceStatus.Running
+                          Publisher = publisher
+                          Subscriber = subscriber
+                          Server = server
+                          Disposables = [ srv; sub ] }
 
-              // **** SendSnapshot
+                    store.Update updated
+                    agent.Start()
+                    agent.Post Msg.Start
 
-              member self.SendSnapshot () =
-                Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) store.State.Clients
+                  | Left error, _ | _, Left error ->
+                    dispose server
+                    dispose publisher
+                    dispose subscriber
+                    return! Either.fail error
 
-              // **** Update
+                | Left error ->
+                  return! Either.fail error
+              }
 
-              member self.Update (origin: Origin) (sm: StateMachine) =
-                (origin, sm) |> Msg.Update |> agent.Post
+            // *** Clients
 
-              // **** Subscribe
+            member self.Clients
+              with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
 
-              member self.Subscribe (callback: IrisEvent -> unit) =
-                let listener = Observable.createListener store.State.Subscriptions
-                { new IObserver<IrisEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
+            // *** SendSnapshot
 
-              // **** Dispose
+            member self.SendSnapshot () =
+              Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) store.State.Clients
 
-              member self.Dispose () =
-                agent.Post Msg.Stop
-                if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-                  Logger.debug (tag "Dispose") "timeout: attempt to dispose api server failed"
-                dispose cts
-            }
-      }
+            // *** Update
+
+            member self.Update (origin: Origin) (sm: StateMachine) =
+              (origin, sm) |> Msg.Update |> agent.Post
+
+            // *** Subscribe
+
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              Observable.subscribe callback store.State.Subscriptions
+
+            // *** Dispose
+
+            member self.Dispose () =
+              agent.Post Msg.Stop
+              if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                Logger.debug (tag "Dispose") "timeout: attempt to dispose api server failed"
+              dispose cts
+          }
+    }

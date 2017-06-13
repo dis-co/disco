@@ -19,7 +19,7 @@ module Sub =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<Id * byte array>
+  type private Subscriptions = ConcurrentDictionary<Guid,IObserver<Id * byte array>>
 
   // ** Sub (type)
 
@@ -104,7 +104,7 @@ module Sub =
           // System.Text.Encoding.UTF8.GetString(bytes)
           // |> printfn "sub: msg   %s"
 
-          Observable.notify subscriptions (Id addr, bytes)
+          Observable.onNext<Id * byte[]> subscriptions (Id addr, bytes)
 
           dispose msg
 
@@ -170,13 +170,8 @@ module Sub =
 
     // *** Subscribe
 
-    member self.Subscribe (callback: Id -> byte array -> unit) =
-      let listener = Observable.createListener subscriptions
-      { new IObserver<Id * byte array> with
-          member self.OnCompleted() = ()
-          member self.OnError(error) = ()
-          member self.OnNext((id,value)) = callback id value }
-      |> listener.Subscribe
+    member self.Subscribe (callback: Id * byte array -> unit) =
+      Observable.subscribe callback subscriptions
 
     // *** Dispose
 

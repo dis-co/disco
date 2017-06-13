@@ -9,6 +9,7 @@ group Main
   nuget Expecto.FsCheck
   nuget FsCheck
   nuget Suave
+  nuget Suave.Git
   nuget Fleck
   nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
   nuget LibGit2Sharp.NativeBinaries
