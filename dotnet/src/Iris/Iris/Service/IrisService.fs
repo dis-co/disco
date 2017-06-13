@@ -14,7 +14,6 @@ open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
-open Microsoft.FSharp.Control
 open LibGit2Sharp
 open SharpYaml.Serialization
 open ZeroMQ
@@ -63,7 +62,7 @@ module IrisService =
   ///
   /// Type alias for IObserver subscriptions.
   ///
-  type Subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>
+  type Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** disposeAll
 
@@ -168,7 +167,7 @@ module IrisService =
   // ** handleNotify
 
   let private handleNotify (state: IrisState) (ev: IrisEvent) =
-    Observable.notify state.Subscriptions ev
+    Observable.onNext state.Subscriptions ev
     state
 
   // ** broadcastMsg
@@ -853,16 +852,6 @@ module IrisService =
     |> Msg.Event
     |> agent.Post
 
-  // ** subscribe
-
-  let private subscribe subscriptions callback =
-    let listener = Observable.createListener subscriptions
-    { new IObserver<IrisEvent> with
-        member self.OnCompleted() = ()
-        member self.OnError(error) = ()
-        member self.OnNext(value) = callback value }
-    |> listener.Subscribe
-
   // ** start
 
   let private start (context: ZContext)
@@ -1058,7 +1047,7 @@ module IrisService =
           with get () = store.State.SocketServer
 
         member self.Subscribe(callback: IrisEvent -> unit) =
-          subscribe subscriptions callback
+          Observable.subscribe callback subscriptions
 
         member self.Machine
           with get () = iris.Machine
@@ -1090,7 +1079,7 @@ module IrisService =
   // ** create
 
   let create ctx (iris: IrisServiceOptions) =
-    let subscriptions = new Subscriptions()
+    let subscriptions = Subscriptions()
     let cts = new CancellationTokenSource()
     let store = AgentStore.create()
     let agent = new IrisAgent(loop store, cts.Token)

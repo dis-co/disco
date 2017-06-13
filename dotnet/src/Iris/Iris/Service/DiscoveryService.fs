@@ -10,7 +10,6 @@ open System
 open System.IO
 open System.Threading
 open System.Collections.Concurrent
-open Microsoft.FSharp.Control
 
 open Mono.Zeroconf
 
@@ -32,7 +31,7 @@ module DiscoveryService =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<DiscoveryEvent>
+  type private Subscriptions = Observable.Subscriptions<DiscoveryEvent>
 
   // ** DiscoveryState
 
@@ -71,7 +70,7 @@ module DiscoveryService =
   // ** handleNotify
 
   let private handleNotify (state: DiscoveryState) (ev: DiscoveryEvent) =
-    Observable.notify state.Subscriptions ev
+    Observable.onNext state.Subscriptions ev
     state
 
   // ** addResolved
@@ -291,7 +290,7 @@ module DiscoveryService =
       Status = ServiceStatus.Stopped
       Machine = config
       Browser = Unchecked.defaultof<ServiceBrowser>
-      Subscriptions = new Subscriptions()
+      Subscriptions = Subscriptions()
       RegisteredServices = Map.empty
       ResolvedServices = Map.empty
     }
@@ -328,12 +327,7 @@ module DiscoveryService =
           with get () = store.State.RegisteredServices, store.State.ResolvedServices
 
         member self.Subscribe (callback: DiscoveryEvent -> unit) =
-          let listener = Observable.createListener store.State.Subscriptions
-          { new IObserver<DiscoveryEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          Observable.subscribe callback store.State.Subscriptions
 
         member self.Register (service: DiscoverableService) =
           service |> Msg.Register |> agent.Post

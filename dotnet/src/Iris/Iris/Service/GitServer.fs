@@ -27,7 +27,6 @@ open System.Threading
 open System.Diagnostics
 
 open System.Collections.Concurrent
-open Microsoft.FSharp.Control
 
 // * GitServer
 
@@ -36,10 +35,6 @@ module GitServer =
   // ** tag
 
   let private tag (str: string) = sprintf "GitServer.%s" str
-
-  // ** Subscriptions
-
-  type private Subscriptions = Subscriptions<GitEvent>
 
   // ** makeConfig
 
@@ -55,19 +50,14 @@ module GitServer =
   let create (mem: RaftMember) (project: IrisProject) =
     let mutable status = ServiceStatus.Stopped
     let cts = new CancellationTokenSource()
-    let subscriptions = Subscriptions()
+    let subscriptions = ConcurrentDictionary<Guid,IObserver<GitEvent>>()
 
     { new IGitServer with
         member self.Status
           with get () = status
 
         member self.Subscribe(callback: GitEvent -> unit) =
-          let listener = Observable.createListener subscriptions
-          { new IObserver<GitEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          Observable.subscribe<GitEvent> callback subscriptions
 
         member self.Start () = either {
             do! Network.ensureIpAddress mem.IpAddr
@@ -83,7 +73,7 @@ module GitServer =
 
             Thread.Sleep(150)
 
-            Observable.notify subscriptions GitEvent.Started
+            Observable.onNext subscriptions GitEvent.Started
             status <- ServiceStatus.Running
           }
 

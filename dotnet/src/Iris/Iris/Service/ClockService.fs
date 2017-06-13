@@ -16,7 +16,7 @@ module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** secPerFrame
 
@@ -160,12 +160,7 @@ module Clock =
           and set fps = if not state.Disposed then state.Fps <- fps
 
         member clock.Subscribe (callback: IrisEvent -> unit) =
-          let listener = Observable.createListener state.Subscriptions
-          { new IObserver<IrisEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          Observable.subscribe callback state.Subscriptions
 
         member clock.Dispose() =
           if not state.Disposed then

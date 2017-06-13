@@ -17,7 +17,7 @@ module Resolver =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** ResolverAgent
 
@@ -42,7 +42,7 @@ module Resolver =
       (fun slices ->
          (Origin.Service, UpdateSlices slices)
          |> IrisEvent.Append
-         |> Observable.notify state.Subscriptions)
+         |> Observable.onNext state.Subscriptions)
       cue.Slices
 
   // ** maybeDispatch
@@ -115,12 +115,7 @@ module Resolver =
           agent.Post cmd
 
         member resolver.Subscribe callback =
-          let listener = Observable.createListener subscriptions
-          { new IObserver<IrisEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          Observable.subscribe callback subscriptions
 
         member resolver.Dispose () =
           try

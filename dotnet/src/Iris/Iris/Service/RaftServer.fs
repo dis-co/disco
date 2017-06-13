@@ -28,7 +28,7 @@ module RaftServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** RaftServerState
 
@@ -204,7 +204,7 @@ module RaftServer =
   // ** handleNotify
 
   let private handleNotify (state: RaftServerState) (ev: IrisEvent) =
-    Observable.notify state.Subscriptions ev
+    Observable.onNext state.Subscriptions ev
     state
 
   // ** sendRequest
@@ -1575,12 +1575,7 @@ module RaftServer =
               id |> Msg.RemoveMember |> agent.Post
 
             member self.Subscribe (callback: IrisEvent -> unit) =
-              let listener = Observable.createListener store.State.Subscriptions
-              { new IObserver<IrisEvent> with
-                  member self.OnCompleted() = ()
-                  member self.OnError(error) = ()
-                  member self.OnNext(value) = callback value }
-              |> listener.Subscribe
+              Observable.subscribe callback store.State.Subscriptions
 
             member self.Connections
               with get () = store.State.Connections

@@ -34,7 +34,7 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** Client
 
@@ -161,7 +161,7 @@ module ApiServer =
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer: Id) (bytes: byte array) =
+  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) (peer:Id, bytes:byte array) =
     match Binary.decode bytes with
     | Right command ->
       match command with
@@ -200,7 +200,7 @@ module ApiServer =
         dispose client
         (Origin.Service, RemoveClient client.Meta)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
 
       // construct a new client value
       let addr = Uri.tcpUri meta.IpAddress (Some meta.Port)
@@ -223,7 +223,7 @@ module ApiServer =
 
         (Origin.Service, AddClient meta)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
 
         { state with Clients = Map.add meta.Id client state.Clients }
       | Left error ->
@@ -241,7 +241,7 @@ module ApiServer =
         dispose client
         (Origin.Service, RemoveClient peer)
         |> IrisEvent.Append
-        |> Observable.notify state.Subscriptions
+        |> Observable.onNext state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
 
@@ -289,7 +289,7 @@ module ApiServer =
   let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
     status
     |> IrisEvent.Status
-    |> Observable.notify state.Subscriptions
+    |> Observable.onNext state.Subscriptions
     { state with Status = status }
 
   // ** handleSetClientStatus
@@ -304,7 +304,7 @@ module ApiServer =
           let updated = { client with Meta = { client.Meta with Status = status } }
           (Origin.Service, UpdateClient updated.Meta)
           |> IrisEvent.Append
-          |> Observable.notify state.Subscriptions
+          |> Observable.onNext state.Subscriptions
           { state with Clients = Map.add id updated state.Clients }
         else state
     | None -> state
@@ -328,7 +328,7 @@ module ApiServer =
       updateAllClients state cmd agent       // in order to preserve ordering of the messages
       (origin, cmd)
       |> IrisEvent.Append
-      |> Observable.notify state.Subscriptions
+      |> Observable.onNext state.Subscriptions
 
     | Origin.Raft, _ ->
       updateAllClients state cmd agent       // in order to preserve ordering of the messages
@@ -338,10 +338,10 @@ module ApiServer =
     | Origin.Client id, UpdateSlices _ ->
       publish state cmd agent
       multicastClients state id cmd agent       // in order to preserve ordering of the messages
-      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
     | Origin.Client id, _ ->
-      (origin, cmd) |> IrisEvent.Append |> Observable.notify state.Subscriptions
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
     | Origin.Web _, LogMsg       _
     | Origin.Web _, CallCue      _
@@ -357,7 +357,7 @@ module ApiServer =
     | Origin.Service, RemoveClient _ ->
       (origin, cmd)
       |> IrisEvent.Append
-      |> Observable.notify state.Subscriptions
+      |> Observable.onNext state.Subscriptions
 
     | Origin.Service, LogMsg _ ->
       publish state cmd agent
@@ -580,12 +580,7 @@ module ApiServer =
             // *** Subscribe
 
             member self.Subscribe (callback: IrisEvent -> unit) =
-              let listener = Observable.createListener store.State.Subscriptions
-              { new IObserver<IrisEvent> with
-                  member self.OnCompleted() = ()
-                  member self.OnError(error) = ()
-                  member self.OnNext(value) = callback value }
-              |> listener.Subscribe
+              Observable.subscribe callback store.State.Subscriptions
 
             // *** Dispose
 

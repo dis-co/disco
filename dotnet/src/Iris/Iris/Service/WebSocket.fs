@@ -24,7 +24,7 @@ module WebSocketServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** SocketEventProcessor
 
@@ -227,7 +227,7 @@ module WebSocketServer =
   let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
     let rec act () = async {
         let! msg = inbox.Receive()
-        Observable.notify subscriptions msg
+        Observable.onNext subscriptions msg
         return! act ()
       }
     act()
@@ -272,13 +272,7 @@ module WebSocketServer =
               buildSession connections id session
 
             member self.Subscribe (callback: IrisEvent -> unit) =
-              let listener = Observable.createListener subscriptions
-              { new IObserver<IrisEvent> with
-                  member self.OnCompleted() = ()
-                  member self.OnError(error) = ()
-                  member self.OnNext(value) = callback value
-                }
-              |> listener.Subscribe
+              Observable.subscribe callback subscriptions
 
             member self.Start () =
               status := ServiceStatus.Starting
