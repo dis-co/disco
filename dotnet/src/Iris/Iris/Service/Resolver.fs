@@ -40,9 +40,9 @@ module Resolver =
   let private dispatch (state: ResolverState) (cue: Cue) =
     Array.iter
       (fun slices ->
-         (Origin.Service, UpdateSlices slices)
-         |> IrisEvent.Append
-         |> Observable.onNext state.Subscriptions)
+        (Origin.Service, UpdateSlices slices)
+        |> IrisEvent.Append
+        |> Observable.onNext state.Subscriptions)
       cue.Slices
 
   // ** maybeDispatch
@@ -51,7 +51,7 @@ module Resolver =
     let call, keep =
       Map.fold
         (fun (call, keep) desired cue ->
-          if desired < current then
+          if desired <= current then
             cue :: call, keep
           else
             call, Map.add desired cue keep)

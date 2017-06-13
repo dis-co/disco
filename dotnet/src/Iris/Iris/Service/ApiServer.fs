@@ -359,7 +359,8 @@ module ApiServer =
       |> IrisEvent.Append
       |> Observable.onNext state.Subscriptions
 
-    | Origin.Service, LogMsg _ ->
+    | Origin.Service, LogMsg _
+    | Origin.Service, UpdateSlices _ ->
       publish state cmd agent
       updateAllClients state cmd agent
 

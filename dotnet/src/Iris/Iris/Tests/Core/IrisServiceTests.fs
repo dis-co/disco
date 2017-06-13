@@ -325,9 +325,7 @@ module IrisServiceTests =
           Pins = Map.ofList [(pin.Id, pin)]
         }
 
-        group
-        |> AddPinGroup
-        |> service1.Append
+        client.AddPinGroup group
 
         do! waitOrDie "appendDone" appendDone
         do! waitOrDie "clientAppendDone" clientAppendDone
