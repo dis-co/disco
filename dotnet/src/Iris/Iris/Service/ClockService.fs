@@ -16,26 +16,7 @@ module Clock =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<IrisEvent>
-
-  // ** Listener
-
-  type private Listener = IObservable<IrisEvent>
-
-  // ** createListener
-
-  let private createListener (guid: Guid) (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(guid, obs)) do
-            Thread.Sleep(1)
-
-          { new IDisposable with
-              member self.Dispose() =
-                match subscriptions.TryRemove(guid) with
-                | true, _  -> ()
-                | _ -> subscriptions.TryRemove(guid)
-                      |> ignore } }
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** secPerFrame
 
@@ -179,15 +160,8 @@ module Clock =
           and set fps = if not state.Disposed then state.Fps <- fps
 
         member clock.Subscribe (callback: IrisEvent -> unit) =
-          let guid = Guid.NewGuid()
-          let listener = createListener guid state.Subscriptions
-          { new IObserver<IrisEvent> with
-              member self.OnCompleted() = ()
-              member self.OnError(error) = ()
-              member self.OnNext(value) = callback value }
-          |> listener.Subscribe
+          Observable.subscribe callback state.Subscriptions
 
         member clock.Dispose() =
           if not state.Disposed then
-            dispose state
-      }
+            dispose state }

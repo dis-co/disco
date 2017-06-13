@@ -82,6 +82,10 @@ module Server =
   let private tag (str: string) =
     String.Format("Server.", id, str)
 
+  // ** Subscriptions
+
+  type private Subscriptions = Observable.Subscriptions<RawServerRequest>
+
   // ** LocalThreadState
 
   [<NoComparison;NoEquality>]
@@ -92,7 +96,7 @@ module Server =
     [<DefaultValue>] val mutable Started: bool
     [<DefaultValue>] val mutable Run: bool
     [<DefaultValue>] val mutable Socket: ZSocket
-    [<DefaultValue>] val mutable Subscriptions: Subscriptions<RawServerRequest>
+    [<DefaultValue>] val mutable Subscriptions: Subscriptions
     [<DefaultValue>] val mutable Starter: AutoResetEvent
     [<DefaultValue>] val mutable Stopper: AutoResetEvent
     [<DefaultValue>] val mutable Stopwatch: Stopwatch
@@ -224,7 +228,7 @@ module Server =
               { From = Guid (incoming.[1].Read())
                 RequestId = Guid (incoming.[3].Read())
                 Body = incoming.[4].Read() }
-            Observable.notify state.Subscriptions request
+            Observable.onNext state.Subscriptions request
           with
             | exn ->
               exn.Message + exn.StackTrace
@@ -262,12 +266,7 @@ module Server =
                 state.Responses.Enqueue(response)
 
               member server.Subscribe(callback: RawServerRequest -> unit) =
-                let listener = Observable.createListener state.Subscriptions
-                { new IObserver<RawServerRequest> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
+                Observable.subscribe callback state.Subscriptions
 
               member server.Dispose() =
                 if not state.Disposed then

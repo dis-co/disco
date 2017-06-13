@@ -5,8 +5,8 @@ open Expecto
 
 open Iris.Core
 open Iris.Service.Interfaces
+open Iris.Service
 open Iris.Raft
-open Iris.Service.Raft
 open ZeroMQ
 
 [<AutoOpen>]

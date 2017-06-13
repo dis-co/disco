@@ -36,7 +36,7 @@ module ApiClient =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<ClientEvent>
+  type private Subscriptions = Observable.Subscriptions<ClientEvent>
 
   // ** ClientState
 
@@ -103,7 +103,7 @@ module ApiClient =
   // ** handleNotify
 
   let private handleNotify (state: ClientState) (ev: ClientEvent) =
-    Observable.notify state.Subscriptions ev
+    Observable.onNext state.Subscriptions ev
     state
 
   // ** requestRegister
@@ -418,12 +418,7 @@ module ApiClient =
           // **** Subscribe
 
           member self.Subscribe (callback: ClientEvent -> unit) =
-            let listener = Observable.createListener subscriptions
-            { new IObserver<ClientEvent> with
-                member self.OnCompleted() = ()
-                member self.OnError(error) = ()
-                member self.OnNext(value) = callback value }
-            |> listener.Subscribe
+            Observable.subscribe callback subscriptions
 
           // **** Dispose
 

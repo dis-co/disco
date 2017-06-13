@@ -71,7 +71,7 @@ module Client =
 
   // ** Subscriptions
 
-  type private Subscriptions = Subscriptions<RawClientResponse>
+  type private Subscriptions = Observable.Subscriptions<RawClientResponse>
 
   // ** LocalThreadState
 
@@ -192,7 +192,7 @@ module Client =
                 |> Error.asSocketError (tag "clientLoop")
                 |> Either.fail
                 |> fun body -> { RequestId = request.RequestId; PeerId = state.Id; Body = body }
-                |> Observable.notify state.Subscriptions // respond to subscriber that this request
+                |> Observable.onNext state.Subscriptions // respond to subscriber that this request
                                                          // has failed
 
         //  ____               _
@@ -209,14 +209,14 @@ module Client =
             { RequestId = reqid
               PeerId = state.Id
               Body = Right (incoming.[2].Read()) }
-            |> Observable.notify state.Subscriptions
+            |> Observable.onNext state.Subscriptions
             state.Pending.TryRemove(reqid) |> ignore
           with
             | exn ->
               exn.Message
               |> Error.asParseError (tag "clientLoop")
               |> fun error -> { RequestId = Guid.Empty; PeerId = state.Id; Body = Left error }
-              |> Observable.notify state.Subscriptions
+              |> Observable.onNext state.Subscriptions
 
         //  ____                _ _
         // |  _ \ ___ _ __   __| (_)_ __   __ _
@@ -231,7 +231,7 @@ module Client =
           if timedout then
             // PENDING REQUEST TIMED OUT
             { RequestId = reqid; PeerId = state.Id; Body = toerror }
-            |> Observable.notify state.Subscriptions
+            |> Observable.onNext state.Subscriptions
             state.Pending.TryRemove(reqid) |> ignore // its safe, because this collection is only
                                                     // ever modified in one place
 
@@ -285,12 +285,7 @@ module Client =
               state.Status = ServiceStatus.Running
 
           member self.Subscribe (callback: RawClientResponse -> unit) =
-            let listener = Observable.createListener state.Subscriptions
-            { new IObserver<RawClientResponse> with
-                member self.OnCompleted() = ()
-                member self.OnError (error) = ()
-                member self.OnNext(value) = callback value }
-            |> listener.Subscribe
+            Observable.subscribe callback state.Subscriptions
 
           member self.Dispose() =
             state.Status <- ServiceStatus.Stopping
