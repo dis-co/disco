@@ -43,6 +43,23 @@ type IHandler<'t> = IEventHandler<PipelineEvent<'t>>
 
 type IHandlerGroup<'t> = EventHandlerGroup<PipelineEvent<'t>>
 
+// * EventProcessor
+
+type EventProcessor<'t> = int64 -> bool -> 't -> unit
+
+// * IIrisSinks
+
+type IIrisSinks<'t> =
+  abstract Api: ISink<'t>
+  abstract Raft: ISink<'t>
+  abstract WebSocket: ISink<'t>
+
+// * IDispatcher
+
+type IDispatcher<'t> =
+  inherit IDisposable
+  abstract Dispatch: 't -> unit
+
 // * IDiscoveryService
 
 type IDiscoveryService =

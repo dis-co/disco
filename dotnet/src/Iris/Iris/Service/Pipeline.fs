@@ -60,7 +60,7 @@ module Pipeline =
 
   // ** createHandler
 
-  let createHandler<'t> (f: EventHandlerFunc<'t>) : IHandler<'t> =
+  let createHandler<'t> (f: EventProcessor<'t>) : IHandler<'t> =
     { new IHandler<'t> with
         member handler.OnEvent(ev: PipelineEvent<'t>, seqno, eob) =
           Option.iter (f seqno eob) ev.Event }
@@ -134,10 +134,12 @@ module Dispatcher =
 
   // ** dispatchEvent
 
-  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>) (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
+  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>)
+                            (pipeline: IPipeline<IrisEvent>)
+                            (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Process   -> pipeline.Push cmd
-    | Replicate -> sinks.Raft.Append cmd
+    | Replicate -> sinks.Raft.Publish Origin.Service cmd
     | Ignore    -> ()
 
   // ** create
