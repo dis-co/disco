@@ -10,6 +10,7 @@ open Iris.Raft
 open Iris.Zmq
 open Mono.Zeroconf
 open Disruptor
+open Disruptor.Dsl
 
 // * PipelineEvent
 
@@ -27,6 +28,20 @@ type PipelineEvent<'t>() =
 
 type ISink<'a> =
   abstract Publish: origin:Origin -> update:'a -> unit
+
+// * IPipeline
+
+type IPipeline<'a> =
+  inherit IDisposable
+  abstract Push: 'a -> unit
+
+// * IHandler
+
+type IHandler<'t> = IEventHandler<PipelineEvent<'t>>
+
+// * IHandlerGroup
+
+type IHandlerGroup<'t> = EventHandlerGroup<PipelineEvent<'t>>
 
 // * IDiscoveryService
 

@@ -109,14 +109,14 @@ module Dispatcher =
 
   let private createPublisher (sink: ISink<IrisEvent>) =
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
-      sink.Publish cmd
+      sink.Publish Origin.Raft cmd
 
   // ** commandResolver
 
   let private commandResolver (sink: ISink<IrisEvent>) =
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
       printfn "resolving commands"
-      sink.Publish cmd
+      sink.Publish Origin.Raft cmd
 
   // ** processors
 
@@ -136,8 +136,9 @@ module Dispatcher =
 
   let private dispatchEvent (sinks: IIrisSinks<IrisEvent>) (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
-    |  Publish | Resolve -> pipeline.Push cmd
-    |  Replicate -> sinks.Raft.Publish cmd
+    | Process   -> pipeline.Push cmd
+    | Replicate -> sinks.Raft.Append cmd
+    | Ignore    -> ()
 
   // ** create
 

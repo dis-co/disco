@@ -259,6 +259,9 @@ module WebSocketServer =
 
       return
         { new IWebSocketServer with
+            member self.Publish (origin: Origin) (ev: IrisEvent) =
+              tag "Publish" |> Console.WriteLine
+
             member self.Send (id: Id) (cmd: StateMachine) =
               ucast connections id cmd
 

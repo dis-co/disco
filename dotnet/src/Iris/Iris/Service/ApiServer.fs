@@ -486,6 +486,60 @@ module ApiServer =
       }
     act ()
 
+  // ** start
+
+  let private start (ctx: ZContext)
+                    (mem: RaftMember)
+                    (projectId: Id)
+                    (store: IAgentStore<ServerState>)
+                    (agent: ApiAgent) =
+    either {
+      let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
+      let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
+
+      let pubSubAddr =
+        Uri.epgmUri
+          mem.IpAddr
+          (IPv4Address Constants.MCAST_ADDRESS)
+          (port Constants.MCAST_PORT)
+
+      let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
+      let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
+
+      let result = Server.create ctx {
+        Id = mem.Id
+        Listen = frontend
+      }
+
+      match result  with
+      | Right server ->
+        match publisher.Start(), subscriber.Start() with
+        | Right (), Right () ->
+          let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
+          let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
+
+          let updated =
+            { store.State with
+                Status = ServiceStatus.Running
+                Publisher = publisher
+                Subscriber = subscriber
+                Server = server
+                Disposables = [ srv; sub ] }
+
+          store.Update updated
+          agent.Start()
+          agent.Post Msg.Start
+
+        | Left error, _ | _, Left error ->
+          dispose server
+          dispose publisher
+          dispose subscriber
+          return! Either.fail error
+
+      | Left error ->
+        return! Either.fail error
+    }
+
   // ** create
 
   let create ctx (mem: RaftMember) (projectId: Id) callbacks =
@@ -513,55 +567,14 @@ module ApiServer =
 
       return
         { new IApiServer with
+            // *** Publish
+
+            member self.Publish (origin: Origin) (ev: IrisEvent) =
+              tag "Publish" |> Console.WriteLine
 
             // *** Start
 
-            member self.Start () = either {
-                let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
-                let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
-
-                let pubSubAddr =
-                  Uri.epgmUri
-                    mem.IpAddr
-                    (IPv4Address Constants.MCAST_ADDRESS)
-                    (port Constants.MCAST_PORT)
-
-                let publisher = new Pub(unwrap pubSubAddr, string projectId, ctx)
-                let subscriber = new Sub(unwrap pubSubAddr, string projectId, ctx)
-
-                let result = Server.create ctx {
-                  Id = mem.Id
-                  Listen = frontend
-                }
-
-                match result  with
-                | Right server ->
-                  match publisher.Start(), subscriber.Start() with
-                  | Right (), Right () ->
-                    let srv = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                    let sub = subscriber.Subscribe(processSubscriptionEvent mem.Id agent)
-
-                    let updated =
-                      { store.State with
-                          Status = ServiceStatus.Running
-                          Publisher = publisher
-                          Subscriber = subscriber
-                          Server = server
-                          Disposables = [ srv; sub ] }
-
-                    store.Update updated
-                    agent.Start()
-                    agent.Post Msg.Start
-
-                  | Left error, _ | _, Left error ->
-                    dispose server
-                    dispose publisher
-                    dispose subscriber
-                    return! Either.fail error
-
-                | Left error ->
-                  return! Either.fail error
-              }
+            member self.Start () = start ctx mem projectId store agent
 
             // *** Clients
 
