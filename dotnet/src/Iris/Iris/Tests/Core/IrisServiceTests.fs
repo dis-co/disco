@@ -220,7 +220,7 @@ module IrisServiceTests =
       |> noError
 
   let test_ensure_cue_resolver_works =
-    ftestCase "ensure cue resolver works" <| fun _ ->
+    testCase "ensure cue resolver works" <| fun _ ->
       either {
         use lobs = Logger.subscribe Logger.stdout
 
