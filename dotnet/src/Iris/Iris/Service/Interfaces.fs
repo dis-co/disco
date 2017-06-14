@@ -27,7 +27,7 @@ type PipelineEvent<'t>() =
 // * ISink
 
 type ISink<'a> =
-  abstract Publish: origin:Origin -> update:'a -> unit
+  abstract Publish: update:'a -> unit
 
 // * IPipeline
 
@@ -46,13 +46,6 @@ type IHandlerGroup<'t> = EventHandlerGroup<PipelineEvent<'t>>
 // * EventProcessor
 
 type EventProcessor<'t> = int64 -> bool -> 't -> unit
-
-// * IIrisSinks
-
-type IIrisSinks<'t> =
-  abstract Api: ISink<'t>
-  abstract Raft: ISink<'t>
-  abstract WebSocket: ISink<'t>
 
 // * IDispatcher
 
@@ -106,6 +99,7 @@ type IRaftSnapshotCallbacks =
 
 type IRaftServer =
   inherit IDisposable
+  inherit ISink<IrisEvent>
   abstract Start         : unit -> Either<IrisError, unit>
   abstract Member        : RaftMember
   abstract MemberId      : Id

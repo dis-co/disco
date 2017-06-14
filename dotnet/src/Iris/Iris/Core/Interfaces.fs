@@ -66,16 +66,6 @@ type GitEvent =
   member ev.DispatchStrategy
     with get () = Process
 
-// * RaftEvent
-
-[<NoComparison;NoEquality>]
-type RaftEvent =
-
-  // ** DispatchStrategy
-
-  member ev.DispatchStrategy
-    with get () = Publish
-
 // * DiscoveryEvent
 
 type DiscoveryEvent =
@@ -93,11 +83,11 @@ type DiscoveryEvent =
     with get () =
       match ev with
       | Status       _ -> Process
-      | Registering  _ -> Publish
-      | Registered   _ -> Publish
-      | UnRegistered _ -> Publish
-      | Appeared     _ -> Replicate
-      | Updated      _ -> Replicate
+      | Registering  _
+      | Registered   _
+      | UnRegistered _ -> Ignore
+      | Appeared     _
+      | Updated      _
       | Vanished     _ -> Replicate
 
 // * ClockEvent

@@ -569,7 +569,7 @@ module ApiServer =
         { new IApiServer with
             // *** Publish
 
-            member self.Publish (origin: Origin) (ev: IrisEvent) =
+            member self.Publish (ev: IrisEvent) =
               tag "Publish" |> Console.WriteLine
 
             // *** Start

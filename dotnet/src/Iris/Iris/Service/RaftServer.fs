@@ -1553,6 +1553,9 @@ module RaftServer =
             member self.Append cmd =
               cmd |> Msg.AddCmd |> agent.Post
 
+            member self.Publish cmd =
+              tag "Publish" |> Console.WriteLine
+
             member self.Status
               with get () = store.State.Status
 

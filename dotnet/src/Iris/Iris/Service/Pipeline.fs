@@ -111,7 +111,7 @@ module Dispatcher =
     // *** ISink
 
     interface ISink<IrisEvent> with
-      member self.Publish (origin: Origin) (update: IrisEvent) =
+      member self.Publish (update: IrisEvent) =
         match update with
         | IrisEvent.Append(_, sm) ->
           sm
@@ -242,14 +242,14 @@ module Dispatcher =
 
   let private createPublisher (sink: ISink<IrisEvent>) =
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
-      sink.Publish Origin.Raft cmd
+      sink.Publish cmd
 
   // ** commandResolver
 
   let private commandResolver (sink: ISink<IrisEvent>) =
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
       printfn "resolving commands"
-      sink.Publish Origin.Raft cmd
+      sink.Publish cmd
 
   // ** processors
 
@@ -260,30 +260,30 @@ module Dispatcher =
 
   // ** publishers
 
-  let private publishers (sinks: IIrisSinks<IrisEvent>) =
-    [| Pipeline.createHandler (createPublisher sinks.Api)
-       Pipeline.createHandler (createPublisher sinks.WebSocket)
-       Pipeline.createHandler (commandResolver sinks.Api) |]
+  let private publishers (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (createPublisher store.State.ApiServer)
+       Pipeline.createHandler (createPublisher store.State.SocketServer)
+       Pipeline.createHandler (commandResolver store.State.ApiServer) |]
 
   // ** dispatchEvent
 
-  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>)
+  let private dispatchEvent (store: IAgentStore<IrisState>)
                             (pipeline: IPipeline<IrisEvent>)
                             (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Publish   -> pipeline.Push cmd
     | Process   -> pipeline.Push cmd
-    | Replicate -> sinks.Raft.Publish Origin.Service cmd
+    | Replicate -> store.State.RaftServer.Publish cmd
     | Ignore    -> ()
 
   // ** createDisruptor
 
-  let private createDisruptor (store: IAgentStore<IrisState>) (sinks: IIrisSinks<IrisEvent>) =
-    let pipeline = Pipeline.create (processors store) (publishers sinks)
+  let private createDisruptor (store: IAgentStore<IrisState>) =
+    let pipeline = Pipeline.create (processors store) (publishers store)
 
     { new IDispatcher<IrisEvent> with
         member dispatcher.Dispatch(cmd: IrisEvent) =
-          dispatchEvent sinks pipeline cmd
+          dispatchEvent store pipeline cmd
 
         member dispatcher.Dispose() =
           dispose pipeline }
@@ -439,15 +439,8 @@ module Dispatcher =
 
         let cueResolver = Resolver.create ()
 
-        // setting up the sinks
-        let sinks =
-          { new IIrisSinks<IrisEvent> with
-              member sinks.Raft = unbox raft
-              member sinks.Api = unbox apiServer
-              member sinks.WebSocket = unbox socketServer }
-
         // creating the pipeline
-        let dispatcher = createDisruptor store sinks
+        let dispatcher = createDisruptor store
 
         // wiring up the sources
         let disposables = [|
