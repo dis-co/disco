@@ -100,7 +100,10 @@ module IrisServiceTests =
   let test_ensure_iris_server_clones_changes_from_leader =
     ftestCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
+        use lobs = Logger.subscribe Logger.stdout
+
         use ctx = new ZContext()
+
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
@@ -129,7 +132,9 @@ module IrisServiceTests =
         }
 
         use oobs1 =
-          (function
+          (fun ev ->
+            printfn "ev: %A" ev
+            match ev with
             | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
             | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
@@ -138,7 +143,12 @@ module IrisServiceTests =
           |> service1.Subscribe
 
         do! service1.Start()
+
+        printfn "waiting: git started"
+
         do! waitOrDie "checkGitStarted" checkGitStarted
+
+        printfn "waiting: git started DONE"
 
         //  ____
         // |___ \
