@@ -64,9 +64,6 @@
     <Compile Include="..\..\Iris\Core\Serialization.fs">
       <Link>Serialization.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\Strategies.fs">
-      <Link>Strategies.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Id.fs">
       <Link>Id.fs</Link>
     </Compile>

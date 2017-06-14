@@ -167,8 +167,8 @@ module IrisNG =
 
   // ** disposeAll
 
-  let inline private disposeAll (disposables: Map<_,IDisposable>) =
-    Map.iter (konst dispose) disposables
+  let inline private disposeAll (disposables: IDisposable array) =
+    Array.iter dispose disposables
 
   // ** Subscriptions
 
@@ -189,22 +189,22 @@ module IrisNG =
 
   [<NoComparison;NoEquality>]
   type private IrisState =
-    { Member         : RaftMember
-      Machine        : IrisMachine
-      Status         : ServiceStatus
-      Store          : Store
-      Leader         : Leader option
-      GitPoller      : IDisposable option
-      LogForwarder   : IDisposable
-      ApiServer      : IApiServer
-      GitServer      : IGitServer
-      RaftServer     : IRaftServer
-      SocketServer   : IWebSocketServer
-      ClockService   : IClock
-      Resolver       : IResolver
-      Subscriptions  : Subscriptions
-      Disposables    : Map<string,IDisposable>
-      Context        : ZContext }
+    { Member        : RaftMember
+      Machine       : IrisMachine
+      Status        : ServiceStatus
+      Store         : Store
+      Leader        : Leader option
+      Dispatcher    : IDispatcher<IrisEvent>
+      LogForwarder  : IDisposable
+      ApiServer     : IApiServer
+      GitServer     : IGitServer
+      RaftServer    : IRaftServer
+      SocketServer  : IWebSocketServer
+      ClockService  : IClock
+      Resolver      : IResolver
+      Subscriptions : Subscriptions
+      Disposables   : IDisposable array
+      Context       : ZContext }
 
     // *** Dispose
 
@@ -213,7 +213,6 @@ module IrisNG =
         self.Subscriptions.Clear()
         disposeAll self.Disposables
         Option.iter dispose self.Leader
-        Option.iter dispose self.GitPoller
         dispose self.Resolver
         dispose self.LogForwarder
         dispose self.ApiServer
@@ -221,6 +220,7 @@ module IrisNG =
         dispose self.RaftServer
         dispose self.ClockService
         dispose self.SocketServer
+        dispose self.Dispatcher
 
   // ** retrieveSnapshot
 
@@ -279,13 +279,13 @@ module IrisNG =
   let inline private forwardEvent (constr: ^a -> IrisEvent) (dispatcher: IDispatcher<IrisEvent>) =
     constr >> dispatcher.Dispatch
 
-  // ** start
+  // ** makeStore
 
-  let private start (context: ZContext)
-                    (iris: IrisServiceOptions)
-                    (store: IAgentStore<IrisState>)
-                    (subscriptions: Subscriptions) =
+  let private makeStore  (context: ZContext) (iris: IrisServiceOptions) =
     either {
+      let subscriptions = Subscriptions()
+      let store = AgentStore.create()
+
       let! path = Project.checkPath iris.Machine iris.ProjectName
       let! (state: State) = Asset.loadWithMachine path iris.Machine
 
@@ -372,29 +372,20 @@ module IrisNG =
         let dispatcher = Dispatcher.create store sinks
 
         // wiring up the sources
-        let wiring = [|
+        let disposables = [|
           gitServer.Subscribe(forwardEvent IrisEvent.Git dispatcher)
           apiServer.Subscribe(forwardEvent id dispatcher)
           socketServer.Subscribe(forwardEvent id dispatcher)
           raftServer.Subscribe(forwardEvent id dispatcher)
           cueResolver.Subscribe(forwardEvent id dispatcher)
+          clockService.Subscribe(forwardEvent id dispatcher)
         |]
-
-        // set up event forwarding of various services to the actor
-        let disposables =
-          [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
-            (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
-            (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)
-            (GIT_SERVER,    forwardEvent IrisEvent.Git agent |> gitServer.Subscribe)
-            (RESOLVER,      forwardEvent id            agent |> cueResolver.Subscribe)
-            (CLOCK_SERVICE, forwardEvent id            agent |> clockService.Subscribe) ]
-          |> Map.ofList
 
         // set up the agent state
         { Member         = mem
           Machine        = iris.Machine
           Leader         = None
-          GitPoller      = None
+          Dispatcher     = dispatcher
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)
@@ -409,77 +400,103 @@ module IrisNG =
           Disposables    = disposables }
         |> store.Update          // and feed it to the store, before we start the services
 
-        let result =
-          either {
-            do! raftServer.Start()
-            do! apiServer.Start()
-            do! socketServer.Start()
-            do! gitServer.Start()
-          }
-
-        agent.Post Msg.Start    // this service is ready for action
-
-        match result with
-        | Right _ -> return ()
-        | Left error ->
-          disposeAll disposables
-          dispose socketServer
-          dispose apiServer
-          dispose raftServer
-          dispose gitServer
-          return! Either.fail error
+        return store
       | _ ->
         return!
           "Login rejected"
           |> Error.asProjectError (tag "loadProject")
           |> Either.fail
+      }
+
+  // ** start
+
+  let private start (store: IAgentStore<IrisState>) =
+    either {
+      // start all services
+      let result =
+        either {
+          do! store.State.RaftServer.Start()
+          do! store.State.ApiServer.Start()
+          do! store.State.SocketServer.Start()
+          do! store.State.GitServer.Start()
+        }
+
+      match result with
+      | Right _ ->
+        { store.State with Status = ServiceStatus.Running }
+        |> store.Update
+
+        store.State.Status
+        |> IrisEvent.Status
+        |> Observable.onNext store.State.Subscriptions
+        return ()
+      | Left error ->
+        { store.State with Status = ServiceStatus.Failed error }
+        |> store.Update
+
+        store.State.Status
+        |> IrisEvent.Status
+        |> Observable.onNext store.State.Subscriptions
+        dispose store.State
+        return! Either.fail error
     }
 
   // ** disposeService
 
-  let private disposeService (store: IAgentStore<IrisState>)
-                             (agent: IrisAgent)
-                             (cts: CancellationTokenSource) =
-    match store.State.Status with
-    | ServiceStatus.Starting -> dispose agent
-    | ServiceStatus.Running ->
-      use are = new AutoResetEvent(false)
-      are |> Msg.Stop |> agent.Post // signalling stop to the loop
-      if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-        "timeout: attempt to dispose iris service failed"
-        |> Logger.debug (tag "Dispose")
-      cts.Cancel()                // cancel the actor
-      dispose cts
-      dispose agent
-      dispose store.State         // dispose the state
-      store.Update { store.State with Status = ServiceStatus.Disposed }
-    | _ -> ()
+  let private disposeService (store: IAgentStore<IrisState>) =
+    dispose store.State         // dispose the state
+    store.Update { store.State with Status = ServiceStatus.Disposed }
+
+  // ** addMember
+
+  let private addMember (store: IAgentStore<IrisState>) (mem: RaftMember) =
+    (Origin.Service, AddMember mem)
+    |> IrisEvent.Append
+    |> store.State.Dispatcher.Dispatch
+
+  // ** removeMember
+
+  let private removeMember (store: IAgentStore<IrisState>) (id: Id) =
+    store.State.RaftServer.Raft.Peers
+    |> Map.tryFind id
+    |> Option.iter
+      (fun mem ->
+        (Origin.Service, RemoveMember mem)
+        |> IrisEvent.Append
+        |> store.State.Dispatcher.Dispatch)
+
+  // ** append
+
+  let private append (store: IAgentStore<IrisState>) (cmd: StateMachine) =
+    (Origin.Service, cmd)
+    |> IrisEvent.Append
+    |> store.State.Dispatcher.Dispatch
 
   // ** makeService
 
-  let private makeService ctx iris (store: AgentStore<IrisState>) subscriptions =
+  let private makeService (store: IAgentStore<IrisState>) =
     { new IIrisService with
-        member self.Start() = failwith "start"
+        member self.Start() = start store
 
         member self.Project
           with get () = store.State.Store.State.Project // :D
 
         member self.Config
           with get () = store.State.Store.State.Project.Config // :D
-          and set config = agent.Post (Msg.SetConfig config)
+          and set config = failwith "set() Config"
 
         member self.Status
           with get () = store.State.Status
 
-        member self.ForceElection () = agent.Post(Msg.ForceElection)
+        member self.ForceElection () = failwith "forceelection"
 
-        member self.Periodic () = agent.Post(Msg.Periodic)
+        member self.Periodic () = failwith "periodic"
 
-        member self.AddMember mem = addMember store agent mem
+        member self.AddMember mem = addMember store mem
 
-        member self.RemoveMember id = removeMember store agent id
+        member self.RemoveMember id = removeMember store id
 
-        member self.Append cmd = append store agent cmd
+        member self.Append cmd = append store cmd
 
         member self.GitServer
           with get () = store.State.GitServer
@@ -491,12 +508,12 @@ module IrisNG =
           with get () = store.State.SocketServer
 
         member self.Subscribe(callback: IrisEvent -> unit) =
-          Observable.subscribe callback subscriptions
+          Observable.subscribe callback store.State.Subscriptions
 
         member self.Machine
-          with get () = iris.Machine
+          with get () = store.State.Machine
 
-        member self.Dispose() = disposeService store agent cts
+        member self.Dispose() = disposeService store
 
         // member self.LeaveCluster () =
         //   Tracing.trace (tag "LeaveCluster") <| fun () ->
@@ -523,7 +540,7 @@ module IrisNG =
   // ** create
 
   let create ctx (iris: IrisServiceOptions) =
-    let subscribers = Subscriptions()
-    let store = AgentStore.create()
-
-    makeService ctx iris store subscribers
+    either {
+      let! store = makeStore ctx iris
+      return makeService store
+    }
