@@ -42,8 +42,9 @@ type DispatchStrategy =
   | Replicate
   | Process
   | Ignore
+  | Publish
 
-// * GitEvent
+// * GitMergeStatus
 
 [<RequireQualifiedAccess>]
 type GitMergeStatus =
@@ -51,6 +52,8 @@ type GitMergeStatus =
   | FastForward
   | NonFastForward
   | Conflicts
+
+// * GitEvent
 
 [<NoEquality;NoComparison>]
 type GitEvent =
@@ -71,7 +74,7 @@ type RaftEvent =
   // ** DispatchStrategy
 
   member ev.DispatchStrategy
-    with get () = Process
+    with get () = Publish
 
 // * DiscoveryEvent
 
@@ -90,9 +93,9 @@ type DiscoveryEvent =
     with get () =
       match ev with
       | Status       _ -> Process
-      | Registering  _ -> Process
-      | Registered   _ -> Process
-      | UnRegistered _ -> Process
+      | Registering  _ -> Publish
+      | Registered   _ -> Publish
+      | UnRegistered _ -> Publish
       | Appeared     _ -> Replicate
       | Updated      _ -> Replicate
       | Vanished     _ -> Replicate
@@ -104,7 +107,7 @@ type ClockEvent =
     Deviation: int64<ns> }
 
   member tick.DispatchStrategy
-    with get () = Process
+    with get () = Publish
 
 // * IrisEvent
 
@@ -170,8 +173,8 @@ type IrisEvent =
       | SessionClosed   _                                    -> Replicate
 
       // *all* Raft and Api events get processed right away
-      | Append (Origin.Raft, _)                              -> Process
-      | Append (Origin.Api,  _)                              -> Process
+      | Append (Origin.Raft, _)                              -> Publish
+      | Append (Origin.Api,  _)                              -> Publish
 
       //  ____            _           _
       // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -348,7 +351,7 @@ type IrisEvent =
       | Append (Origin.Client  _, RemoveDiscoveredService _) -> Ignore
       | Append (Origin.Service _, AddDiscoveredService    _)
       | Append (Origin.Service _, UpdateDiscoveredService _)
-      | Append (Origin.Service _, RemoveDiscoveredService _) -> Process
+      | Append (Origin.Service _, RemoveDiscoveredService _) -> Publish
 
       //   ____ _            _
       //  / ___| | ___   ___| | __
@@ -356,7 +359,7 @@ type IrisEvent =
       // | |___| | (_) | (__|   <
       //  \____|_|\___/ \___|_|\_\
 
-      | Append (Origin.Service _, UpdateClock _)             -> Process
+      | Append (Origin.Service _, UpdateClock _)             -> Publish
       | Append (               _, UpdateClock _)             -> Ignore
 
       //   ____                                          _
@@ -386,8 +389,8 @@ type IrisEvent =
       // |  _| (_| \__ \ |_|  __/| | | (_) | (_|  __/\__ \__ \
       // |_|  \__,_|___/\__|_|   |_|  \___/ \___\___||___/___/
 
-      | Append (_, UpdateSlices _)                           -> Process
-      | Append (_, CallCue      _)                           -> Process
+      | Append (_, UpdateSlices _)                           -> Publish
+      | Append (_, CallCue      _)                           -> Publish
 
       //  _                __  __
       // | |    ___   __ _|  \/  |___  __ _

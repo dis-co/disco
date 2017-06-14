@@ -31,6 +31,7 @@ type IrisMachine =
   { MachineId   : Id
     HostName    : Name
     WorkSpace   : FilePath
+    LogPath     : FilePath
     BindAddress : IpAddress
     WebPort     : Port
     RaftPort    : Port
@@ -52,6 +53,7 @@ type IrisMachine =
       | str -> builder.CreateString str |> Some
     let webip = machine.BindAddress |> string |> builder.CreateString
     let workspace = machine.WorkSpace |> unwrap |> mapNull
+    let logpath = machine.LogPath |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = machine.MachineId |> string |> builder.CreateString
     let version = machine.Version |> unwrap |> mapNull
@@ -59,6 +61,7 @@ type IrisMachine =
     IrisMachineFB.AddMachineId(builder, machineid)
     Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
     Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
+    Option.iter (fun value -> IrisMachineFB.AddLogPath(builder, value)) logpath
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
@@ -76,6 +79,7 @@ type IrisMachine =
       return
         { MachineId   = Id fb.MachineId
           WorkSpace   = filepath fb.WorkSpace
+          LogPath     = filepath fb.LogPath
           HostName    = name fb.HostName
           BindAddress = ip
           WebPort     = port fb.WebPort
@@ -93,6 +97,7 @@ type IrisMachine =
       { MachineId   = Id "<empty>"
         HostName    = name "<empty>"
         WorkSpace   = filepath "/dev/null"
+        LogPath     = filepath "/dev/null"
         BindAddress = IPv4Address "127.0.0.1"
         WebPort     = port Constants.DEFAULT_WEB_PORT
         RaftPort    = port Constants.DEFAULT_RAFT_PORT
@@ -224,6 +229,7 @@ module MachineConfig =
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId   : string
     [<DefaultValue>] val mutable WorkSpace   : string
+    [<DefaultValue>] val mutable LogPath     : string
     [<DefaultValue>] val mutable BindAddress : string
     [<DefaultValue>] val mutable WebPort     : uint16
     [<DefaultValue>] val mutable RaftPort    : uint16
@@ -233,9 +239,10 @@ module MachineConfig =
     [<DefaultValue>] val mutable Version     : string
 
     static member Create (cfg: IrisMachine) =
-      let yml = new MachineConfigYaml()
+      let yml = MachineConfigYaml()
       yml.MachineId   <- string cfg.MachineId
       yml.WorkSpace   <- unwrap cfg.WorkSpace
+      yml.LogPath     <- unwrap cfg.LogPath
       yml.BindAddress <- string cfg.BindAddress
       yml.WebPort     <- unwrap cfg.WebPort
       yml.RaftPort    <- unwrap cfg.RaftPort
@@ -255,6 +262,7 @@ module MachineConfig =
         { MachineId   = Id yml.MachineId
           HostName    = name hostname
           WorkSpace   = filepath yml.WorkSpace
+          LogPath     = filepath yml.LogPath
           BindAddress = ip
           WebPort     = port yml.WebPort
           RaftPort    = port yml.RaftPort
@@ -300,6 +308,7 @@ module MachineConfig =
     { MachineId   = Id.Create()
       HostName    = name hostname
       WorkSpace   = workspace
+      LogPath     = workspace </> filepath "log" </> filepath Constants.DEFAULT_LOGFILE_NAME
       BindAddress = IpAddress.Parse bindIp
       WebPort     = shiftPort Constants.DEFAULT_WEB_PORT
       RaftPort    = shiftPort Constants.DEFAULT_RAFT_PORT

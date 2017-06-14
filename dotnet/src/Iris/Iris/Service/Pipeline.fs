@@ -3,6 +3,7 @@ namespace Iris.Service
 // * Imports
 
 open System
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 open Disruptor
@@ -19,36 +20,36 @@ module Pipeline =
 
   // ** bufferSize
 
-  let private bufferSize = 1024
+  [<Literal>]
+  let private BufferSize = 1024
 
   // ** scheduler
 
   let private scheduler = TaskScheduler.Default
 
-  // ** createDirectory
+  // ** tag
 
-  let private logtag (str: string) =
-    String.Format("Pipeline.{0}", str)
+  let private tag (str: string) = String.format "Pipeline.{0}" str
 
   // ** createDisruptor
 
   let private createDisruptor () =
-    Dsl.Disruptor<PipelineEvent<'t>>(PipelineEvent<'t>, bufferSize, scheduler)
+    Dsl.Disruptor<PipelineEvent<IrisEvent>>(PipelineEvent<IrisEvent>, BufferSize, scheduler)
 
   // ** handleEventsWith
 
-  let private handleEventsWith (handlers: IHandler<'t> [])
-                               (disruptor: Disruptor<PipelineEvent<'t>>) =
+  let private handleEventsWith (handlers: IHandler<IrisEvent> [])
+                               (disruptor: Disruptor<PipelineEvent<IrisEvent>>) =
     disruptor.HandleEventsWith handlers
 
   // ** thenDo
 
-  let private thenDo (handlers: IHandler<'t>[]) (group: IHandlerGroup<'t>) =
+  let private thenDo (handlers: IHandler<IrisEvent>[]) (group: IHandlerGroup<IrisEvent>) =
     group.Then handlers
 
   // ** insertInto
 
-  let private insertInto (ringBuffer: RingBuffer<PipelineEvent<'t>>) (cmd: 't) =
+  let private insertInto (ringBuffer: RingBuffer<PipelineEvent<IrisEvent>>) (cmd: IrisEvent) =
     let seqno = ringBuffer.Next()
     let entry = ringBuffer.[seqno]
     entry.Event <- Some cmd
@@ -57,20 +58,20 @@ module Pipeline =
   // ** clearEvent
 
   let private clearEvent =
-    [|  { new IHandler<'t> with
-           member handler.OnEvent(ev: PipelineEvent<'t>, _, _) =
+    [|  { new IHandler<IrisEvent> with
+           member handler.OnEvent(ev: PipelineEvent<IrisEvent>, _, _) =
              ev.Clear() } |]
 
   // ** createHandler
 
-  let createHandler<'t> (f: EventProcessor<'t>) : IHandler<'t> =
-    { new IHandler<'t> with
-        member handler.OnEvent(ev: PipelineEvent<'t>, seqno, eob) =
+  let createHandler (f: EventProcessor<IrisEvent>) : IHandler<IrisEvent> =
+    { new IHandler<IrisEvent> with
+        member handler.OnEvent(ev: PipelineEvent<IrisEvent>, seqno, eob) =
           Option.iter (f seqno eob) ev.Event }
 
   // ** create
 
-  let create (processors: IHandler<'t>[]) (publish: IHandler<'t>[]) =
+  let create (processors: IHandler<IrisEvent>[]) (publish: IHandler<IrisEvent>[]) =
     let disruptor = createDisruptor()
 
     disruptor
@@ -81,94 +82,20 @@ module Pipeline =
 
     let ringBuffer = disruptor.Start()
 
-    { new IPipeline<'t> with
-        member pipeline.Push(cmd: 't) =
+    { new IPipeline<IrisEvent> with
+        member pipeline.Push(cmd: IrisEvent) =
           insertInto ringBuffer cmd
 
         member pipeline.Dispose() =
           disruptor.Shutdown() }
 
-
 // * Dispatcher
 
 module Dispatcher =
 
-  // ** stateMutator
-
-  let private stateMutator (store: IAgentStore<_>) (seqno: int64) (eob: bool) (cmd: IrisEvent) =
-    printfn "dispatch cmd on Store"
-
-  // ** statePersistor
-
-  let private statePersistor (seqno: int64) (eob: bool) (cmd: IrisEvent) =
-    printfn "persisting state now"
-
-  // ** logPersistor
-
-  let private logPersistor (seqno: int64) (eob: bool) (cmd: IrisEvent) =
-    printfn "writing log to disk"
-
-  // ** createPublisher
-
-  let private createPublisher (sink: ISink<IrisEvent>) =
-    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
-      sink.Publish Origin.Raft cmd
-
-  // ** commandResolver
-
-  let private commandResolver (sink: ISink<IrisEvent>) =
-    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
-      printfn "resolving commands"
-      sink.Publish Origin.Raft cmd
-
-  // ** processors
-
-  let private processors (store: IAgentStore<_>) : IHandler<IrisEvent>[] =
-    [| Pipeline.createHandler<IrisEvent> (stateMutator store)
-       Pipeline.createHandler<IrisEvent> statePersistor
-       Pipeline.createHandler<IrisEvent> logPersistor |]
-
-  // ** publishers
-
-  let private publishers (sinks: IIrisSinks<IrisEvent>) =
-    [| Pipeline.createHandler<IrisEvent> (createPublisher sinks.Api)
-       Pipeline.createHandler<IrisEvent> (createPublisher sinks.WebSocket)
-       Pipeline.createHandler<IrisEvent> (commandResolver sinks.Api) |]
-
-  // ** dispatchEvent
-
-  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>)
-                            (pipeline: IPipeline<IrisEvent>)
-                            (cmd:IrisEvent) =
-    match cmd.DispatchStrategy with
-    | Process   -> pipeline.Push cmd
-    | Replicate -> sinks.Raft.Publish Origin.Service cmd
-    | Ignore    -> ()
-
-  // ** create
-
-  let create (store: IAgentStore<_>) (sinks: IIrisSinks<IrisEvent>) =
-    let pipeline = Pipeline.create (processors store) (publishers sinks)
-
-    { new IDispatcher<IrisEvent> with
-        member dispatcher.Dispatch(cmd: IrisEvent) =
-          dispatchEvent sinks pipeline cmd
-
-        member dispatcher.Dispose() =
-          dispose pipeline }
-
-// * IrisNG
-
-module IrisNG =
-
   // ** tag
 
   let private tag (str: string) = String.format "IrisServiceNG.{0}" str
-
-  // ** disposeAll
-
-  let inline private disposeAll (disposables: IDisposable array) =
-    Array.iter dispose disposables
 
   // ** Subscriptions
 
@@ -180,6 +107,22 @@ module IrisNG =
   type private Leader =
     { Member: RaftMember
       Socket: IClient }
+
+    // *** ISink
+
+    interface ISink<IrisEvent> with
+      member self.Publish (origin: Origin) (update: IrisEvent) =
+        match update with
+        | IrisEvent.Append(_, sm) ->
+          sm
+          |> Binary.encode
+          |> RawClientRequest.create
+          |> self.Socket.Request
+          |> Either.mapError (string >> Logger.err (tag "Forward"))
+          |> ignore
+        | _ -> ()
+
+    // *** IDisposable
 
     interface IDisposable with
       member self.Dispose() =
@@ -196,6 +139,7 @@ module IrisNG =
       Leader        : Leader option
       Dispatcher    : IDispatcher<IrisEvent>
       LogForwarder  : IDisposable
+      LogFile       : StreamWriter
       ApiServer     : IApiServer
       GitServer     : IGitServer
       RaftServer    : IRaftServer
@@ -211,7 +155,7 @@ module IrisNG =
     interface IDisposable with
       member self.Dispose() =
         self.Subscriptions.Clear()
-        disposeAll self.Disposables
+        Array.iter dispose self.Disposables
         Option.iter dispose self.Leader
         dispose self.Resolver
         dispose self.LogForwarder
@@ -221,6 +165,128 @@ module IrisNG =
         dispose self.ClockService
         dispose self.SocketServer
         dispose self.Dispatcher
+        self.LogFile.Flush()
+        self.LogFile.Close()
+        dispose self.LogFile
+
+  // ** stateMutator
+
+  let private stateMutator (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
+    match cmd with
+    | IrisEvent.Append(_, cmd) ->  store.State.Store.Dispatch cmd
+    | _ -> ()
+
+  // ** statePersistor
+
+  let private statePersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
+    match cmd with
+    | IrisEvent.Append(_, sm) ->
+      let state = store.State
+      if state.RaftServer.IsLeader then
+        match sm.PersistenceStrategy with
+        | PersistenceStrategy.Save ->
+          //  ____
+          // / ___|  __ ___   _____
+          // \___ \ / _` \ \ / / _ \
+          //  ___) | (_| |\ V /  __/
+          // |____/ \__,_| \_/ \___|
+          match Persistence.persistEntry state.Store.State sm with
+          | Right () ->
+            string sm
+            |> String.format "Successfully persisted command {0} to disk"
+            |> Logger.debug (tag "persistLog")
+          | Left error ->
+            error |> String.format "Error persisting command to disk: {0}"
+            |> Logger.err (tag "persistLog")
+        | PersistenceStrategy.Commit ->
+          //  ____
+          // / ___|  __ ___   _____
+          // \___ \ / _` \ \ / / _ \
+          //  ___) | (_| |\ V /  __/
+          // |____/ \__,_| \_/ \___| *and*
+          match Persistence.persistEntry state.Store.State sm with
+          | Right () ->
+            string sm
+            |> String.format "Successfully persisted command {0} to disk"
+            |> Logger.debug (tag "persistLog")
+          | Left error ->
+            error
+            |> String.format "Error persisting command to disk: {0}"
+            |> Logger.err (tag "persistLog")
+          //   ____                          _ _
+          //  / ___|___  _ __ ___  _ __ ___ (_) |_
+          // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
+          // | |__| (_) | | | | | | | | | | | | |_
+          //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
+          match Persistence.commitChanges state.Store.State with
+          | Right commit ->
+            commit.Sha
+            |> String.format "Successfully committed changes in: {0}"
+            |> Logger.debug (tag "persistLog")
+          | Left error ->
+            error
+            |> String.format "Error committing changes to disk: {0}"
+            |> Logger.err (tag "persistLog")
+        | PersistenceStrategy.Ignore -> ignore cmd
+    | _ -> ignore cmd
+
+  // ** logPersistor
+
+  let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
+    match cmd with
+    | IrisEvent.Append(_, LogMsg log) ->
+      log |> string |> store.State.LogFile.WriteLine
+    | _ -> ()
+
+  // ** createPublisher
+
+  let private createPublisher (sink: ISink<IrisEvent>) =
+    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
+      sink.Publish Origin.Raft cmd
+
+  // ** commandResolver
+
+  let private commandResolver (sink: ISink<IrisEvent>) =
+    fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
+      printfn "resolving commands"
+      sink.Publish Origin.Raft cmd
+
+  // ** processors
+
+  let private processors (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (stateMutator   store)
+       Pipeline.createHandler (statePersistor store)
+       Pipeline.createHandler (logPersistor   store) |]
+
+  // ** publishers
+
+  let private publishers (sinks: IIrisSinks<IrisEvent>) =
+    [| Pipeline.createHandler (createPublisher sinks.Api)
+       Pipeline.createHandler (createPublisher sinks.WebSocket)
+       Pipeline.createHandler (commandResolver sinks.Api) |]
+
+  // ** dispatchEvent
+
+  let private dispatchEvent (sinks: IIrisSinks<IrisEvent>)
+                            (pipeline: IPipeline<IrisEvent>)
+                            (cmd:IrisEvent) =
+    match cmd.DispatchStrategy with
+    | Publish   -> pipeline.Push cmd
+    | Process   -> pipeline.Push cmd
+    | Replicate -> sinks.Raft.Publish Origin.Service cmd
+    | Ignore    -> ()
+
+  // ** createDisruptor
+
+  let private createDisruptor (store: IAgentStore<IrisState>) (sinks: IIrisSinks<IrisEvent>) =
+    let pipeline = Pipeline.create (processors store) (publishers sinks)
+
+    { new IDispatcher<IrisEvent> with
+        member dispatcher.Dispatch(cmd: IrisEvent) =
+          dispatchEvent sinks pipeline cmd
+
+        member dispatcher.Dispose() =
+          dispose pipeline }
 
   // ** retrieveSnapshot
 
@@ -267,6 +333,19 @@ module IrisNG =
     | Left error -> Logger.err (tag "persistSnapshot") (string error)
     | _ -> ()
     state
+
+  // ** makeRaftCallbacks
+
+  let private makeRaftCallbacks (store: IAgentStore<IrisState>) =
+    { new IRaftSnapshotCallbacks with
+        member self.PrepareSnapshot () = Some store.State.Store.State
+        member self.RetrieveSnapshot () = retrieveSnapshot store.State }
+
+  // ** makeApiCallbacks
+
+  let private makeApiCallbacks (store: IAgentStore<IrisState>) =
+    { new IApiServerCallbacks with
+        member self.PrepareSnapshot () = store.State.Store.State }
 
   // ** isValidPassword
 
@@ -330,17 +409,16 @@ module IrisNG =
         let clockService = Clock.create ()
         clockService.Stop()
 
-        let! raftServer = RaftServer.create context state.Project.Config {
-            new IRaftSnapshotCallbacks with
-              member self.PrepareSnapshot () = Some store.State.Store.State
-              member self.RetrieveSnapshot () = retrieveSnapshot store.State
-          }
+        let! raftServer =
+          store
+          |> makeRaftCallbacks
+          |> RaftServer.create context state.Project.Config
 
         let! socketServer = WebSocketServer.create mem
-        let! apiServer = ApiServer.create context mem state.Project.Id {
-            new IApiServerCallbacks with
-              member self.PrepareSnapshot () = store.State.Store.State
-          }
+        let! apiServer =
+          store
+          |> makeApiCallbacks
+          |> ApiServer.create context mem state.Project.Id
 
         let logForwarder =
           let lobs =
@@ -369,7 +447,7 @@ module IrisNG =
               member sinks.WebSocket = unbox socketServer }
 
         // creating the pipeline
-        let dispatcher = Dispatcher.create store sinks
+        let dispatcher = createDisruptor store sinks
 
         // wiring up the sources
         let disposables = [|
@@ -386,6 +464,7 @@ module IrisNG =
           Machine        = iris.Machine
           Leader         = None
           Dispatcher     = dispatcher
+          LogFile        = File.AppendText (unwrap iris.Machine.LogPath)
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)
@@ -398,7 +477,7 @@ module IrisNG =
           Resolver       = cueResolver
           Subscriptions  = subscriptions
           Disposables    = disposables }
-        |> store.Update          // and feed it to the store, before we start the services
+        |> store.Update                  // and feed it to the store, before we start the services
 
         return store
       | _ ->
@@ -488,9 +567,9 @@ module IrisNG =
         member self.Status
           with get () = store.State.Status
 
-        member self.ForceElection () = failwith "forceelection"
+        member self.ForceElection () = store.State.RaftServer.ForceElection()
 
-        member self.Periodic () = failwith "periodic"
+        member self.Periodic () = store.State.RaftServer.Periodic()
 
         member self.AddMember mem = addMember store mem
 
@@ -534,7 +613,6 @@ module IrisNG =
         //       String.format "Unexpected response from IrisAgent: {0}" other
         //       |> Error.asOther (tag "JoinCluster")
         //       |> Either.fail
-
       }
 
   // ** create

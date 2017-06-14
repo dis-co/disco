@@ -130,6 +130,9 @@ module Constants =
   let DEFAULT_RAFT_PORT = 6000us
 
   [<Literal>]
+  let DEFAULT_LOGFILE_NAME = "iris-log.txt"
+
+  [<Literal>]
   let DEFAULT_WEB_PORT = 7000us
 
   [<Literal>]

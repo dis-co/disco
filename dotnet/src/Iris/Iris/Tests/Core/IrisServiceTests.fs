@@ -98,7 +98,7 @@ module IrisServiceTests =
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
   let test_ensure_iris_server_clones_changes_from_leader =
-    testCase "ensure iris server clones changes from leader" <| fun _ ->
+    ftestCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
         use ctx = new ZContext()
         use checkGitStarted = new AutoResetEvent(false)
@@ -155,7 +155,7 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let service2 = IrisService.create ctx {
+        let! service2 = Dispatcher.create ctx {
           Machine = machine2
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -223,8 +223,6 @@ module IrisServiceTests =
   let test_ensure_cue_resolver_works =
     testCase "ensure cue resolver works" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use ctx = new ZContext()
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)

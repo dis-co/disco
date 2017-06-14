@@ -773,6 +773,7 @@ module IrisService =
   let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
     ev |> Msg.Notify |> agent.Post
     match ev.DispatchStrategy with
+    | Publish
     | Process   -> processEvent   state agent ev
     | Replicate -> replicateEvent state       ev
     | Ignore    -> ignoreEvent    state       ev
