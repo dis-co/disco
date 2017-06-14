@@ -7,8 +7,11 @@ open System.Threading
 open System.Threading.Tasks
 open Disruptor
 open Disruptor.Dsl
-open Interfaces
+open ZeroMQ
 open Iris.Core
+open Iris.Raft
+open Iris.Zmq
+open SharpYaml.Serialization
 
 // * Pipeline
 
@@ -92,7 +95,7 @@ module Dispatcher =
 
   // ** stateMutator
 
-  let private stateMutator (store: Store) (seqno: int64) (eob: bool) (cmd: IrisEvent) =
+  let private stateMutator (store: IAgentStore<_>) (seqno: int64) (eob: bool) (cmd: IrisEvent) =
     printfn "dispatch cmd on Store"
 
   // ** statePersistor
@@ -120,7 +123,7 @@ module Dispatcher =
 
   // ** processors
 
-  let private processors (store: Store) : IHandler<IrisEvent>[] =
+  let private processors (store: IAgentStore<_>) : IHandler<IrisEvent>[] =
     [| Pipeline.createHandler<IrisEvent> (stateMutator store)
        Pipeline.createHandler<IrisEvent> statePersistor
        Pipeline.createHandler<IrisEvent> logPersistor |]
@@ -144,7 +147,7 @@ module Dispatcher =
 
   // ** create
 
-  let create (store: Store) (sinks: IIrisSinks<IrisEvent>) =
+  let create (store: IAgentStore<_>) (sinks: IIrisSinks<IrisEvent>) =
     let pipeline = Pipeline.create (processors store) (publishers sinks)
 
     { new IDispatcher<IrisEvent> with
@@ -158,17 +161,129 @@ module Dispatcher =
 
 module IrisNG =
 
+  // ** tag
+
+  let private tag (str: string) = String.format "IrisServiceNG.{0}" str
+
+  // ** disposeAll
+
+  let inline private disposeAll (disposables: Map<_,IDisposable>) =
+    Map.iter (konst dispose) disposables
+
   // ** Subscriptions
 
   type private Subscriptions = Observable.Subscriptions<IrisEvent>
+
+  // ** Leader
+
+  [<NoComparison;NoEquality>]
+  type private Leader =
+    { Member: RaftMember
+      Socket: IClient }
+
+    interface IDisposable with
+      member self.Dispose() =
+        dispose self.Socket
+
+  // ** IrisState
+
+  [<NoComparison;NoEquality>]
+  type private IrisState =
+    { Member         : RaftMember
+      Machine        : IrisMachine
+      Status         : ServiceStatus
+      Store          : Store
+      Leader         : Leader option
+      GitPoller      : IDisposable option
+      LogForwarder   : IDisposable
+      ApiServer      : IApiServer
+      GitServer      : IGitServer
+      RaftServer     : IRaftServer
+      SocketServer   : IWebSocketServer
+      ClockService   : IClock
+      Resolver       : IResolver
+      Subscriptions  : Subscriptions
+      Disposables    : Map<string,IDisposable>
+      Context        : ZContext }
+
+    // *** Dispose
+
+    interface IDisposable with
+      member self.Dispose() =
+        self.Subscriptions.Clear()
+        disposeAll self.Disposables
+        Option.iter dispose self.Leader
+        Option.iter dispose self.GitPoller
+        dispose self.Resolver
+        dispose self.LogForwarder
+        dispose self.ApiServer
+        dispose self.GitServer
+        dispose self.RaftServer
+        dispose self.ClockService
+        dispose self.SocketServer
+
+  // ** retrieveSnapshot
+
+  let private retrieveSnapshot (state: IrisState) =
+    let path = Constants.RAFT_DIRECTORY <.>
+               Constants.SNAPSHOT_FILENAME +
+               Constants.ASSET_EXTENSION
+    match Asset.read path with
+    | Right str ->
+      try
+        let serializer = new Serializer()
+        let yml = serializer.Deserialize<SnapshotYaml>(str)
+
+        let members =
+          match Config.getActiveSite state.Store.State.Project.Config with
+          | Some site -> site.Members |> Map.toArray |> Array.map snd
+          | _ -> [| |]
+
+        Snapshot ( Id yml.Id
+                 , yml.Index
+                 , yml.Term
+                 , yml.LastIndex
+                 , yml.LastTerm
+                 , members
+                 , DataSnapshot state.Store.State
+                 )
+        |> Some
+      with
+        | exn ->
+          exn.Message
+          |> Logger.err (tag "retrieveSnapshot")
+          None
+
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "retrieveSnapshot")
+      None
+
+  // ** persistSnapshot
+
+  let private persistSnapshot (state: IrisState) (log: RaftLogEntry) =
+    match Persistence.persistSnapshot state.Store.State log with
+    | Left error -> Logger.err (tag "persistSnapshot") (string error)
+    | _ -> ()
+    state
+
+  // ** isValidPassword
+
+  let private isValidPassword (user: User) (password: Password) =
+    let password = Crypto.hashPassword password user.Salt
+    password = user.Password
+
+  // ** forwardEvent
+
+  let inline private forwardEvent (constr: ^a -> IrisEvent) (dispatcher: IDispatcher<IrisEvent>) =
+    constr >> dispatcher.Dispatch
 
   // ** start
 
   let private start (context: ZContext)
                     (iris: IrisServiceOptions)
                     (store: IAgentStore<IrisState>)
-                    (agent: IrisAgent)
-                    (cts: CancellationTokenSource)
                     (subscriptions: Subscriptions) =
     either {
       let! path = Project.checkPath iris.Machine iris.ProjectName
@@ -196,7 +311,7 @@ module IrisNG =
               then site
               else
                 let selfMember =
-                  { Member.create(machineId) with
+                 { Member.create(machineId) with
                       IpAddr  = iris.Machine.BindAddress
                       GitPort = iris.Machine.GitPort
                       WsPort  = iris.Machine.WsPort
@@ -245,6 +360,25 @@ module IrisNG =
         let gitServer = GitServer.create mem state.Project
 
         let cueResolver = Resolver.create ()
+
+        // setting up the sinks
+        let sinks =
+          { new IIrisSinks<IrisEvent> with
+              member sinks.Raft = unbox raft
+              member sinks.Api = unbox apiServer
+              member sinks.WebSocket = unbox socketServer }
+
+        // creating the pipeline
+        let dispatcher = Dispatcher.create store sinks
+
+        // wiring up the sources
+        let wiring = [|
+          gitServer.Subscribe(forwardEvent IrisEvent.Git dispatcher)
+          apiServer.Subscribe(forwardEvent id dispatcher)
+          socketServer.Subscribe(forwardEvent id dispatcher)
+          raftServer.Subscribe(forwardEvent id dispatcher)
+          cueResolver.Subscribe(forwardEvent id dispatcher)
+        |]
 
         // set up event forwarding of various services to the actor
         let disposables =
@@ -323,9 +457,9 @@ module IrisNG =
 
   // ** makeService
 
-  let private makeService ctx iris store agent subscriptions cts =
+  let private makeService ctx iris (store: AgentStore<IrisState>) subscriptions =
     { new IIrisService with
-        member self.Start() = start ctx iris store agent cts subscriptions
+        member self.Start() = failwith "start"
 
         member self.Project
           with get () = store.State.Store.State.Project // :D
@@ -390,51 +524,6 @@ module IrisNG =
 
   let create ctx (iris: IrisServiceOptions) =
     let subscribers = Subscriptions()
-    let project = store.State.Project
+    let store = AgentStore.create()
 
-    let! mem = Project.selfMember project
-
-    let! raft = RaftServer.create ()
-    let! api = ApiServer.create mem project.Id
-    let! websockets = WebSockets.SocketServer.create mem
-    let! git = Git.GitServer.create mem project.Path
-    let discovery = DiscoveryService.create store.State.Project.Config.Machine
-
-    do! raft.Load(project.Config)
-    do! api.Start()
-    do! discovery.Start()
-    do! websockets.Start()
-    do! git.Start()
-
-    // setting up the sinks
-    let sinks =
-      { new IIrisSinks<IrisEvent> with
-          member sinks.Raft = unbox raft
-          member sinks.Api = unbox api
-          member sinks.WebSocket = unbox websockets }
-
-    // creating the pipeline
-    let dispatcher = Dispatcher.create store sinks
-
-    // wiring up the sources
-    let wiring = [|
-      git.Subscribe(IrisEvent.Git >> dispatcher.Dispatch)
-      api.Subscribe(IrisEvent.Api >> dispatcher.Dispatch)
-      websockets.Subscribe(IrisEvent.Socket >> dispatcher.Dispatch)
-      raft.Subscribe(IrisEvent.Raft >> dispatcher.Dispatch)
-      discovery.Subscribe(IrisEvent.Discovery >> dispatcher.Dispatch)
-    |]
-
-    let! idle = discovery.Register {
-      Id = mem.Id
-      WebPort = port project.Config.Machine.WebPort
-      Status = Busy(project.Id, project.Name)
-      Services =
-        [| { ServiceType = ServiceType.Api;       Port = port mem.ApiPort }
-           { ServiceType = ServiceType.Git;       Port = port mem.GitPort }
-           { ServiceType = ServiceType.Raft;      Port = port mem.Port    }
-           { ServiceType = ServiceType.WebSocket; Port = port mem.WsPort  } |]
-      ExtraMetadata = Array.empty
-    }
-
-    failwith "later"
+    makeService ctx iris store subscribers
