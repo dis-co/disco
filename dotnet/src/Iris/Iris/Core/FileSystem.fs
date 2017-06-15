@@ -1,4 +1,4 @@
-namespace  Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -127,6 +127,10 @@ module Path =
 
 module File =
 
+  // ** tag
+
+  let private tag (str: string) = String.Format("File.{0}", str)
+
   // ** writeText
 
   let writeText (payload: string) (encoding: Text.Encoding option) (location: FilePath) =
@@ -172,6 +176,20 @@ module File =
     |> File.Exists
 
 #endif
+
+  // ** ensurePath
+
+  let ensurePath (path: FilePath) =
+    try
+      path
+      |> Path.getDirectoryName
+      |> Directory.createDirectory
+      |> Either.ignore
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "ensurePath")
+        |> Either.fail
 
 // * Directory
 

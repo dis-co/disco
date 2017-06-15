@@ -376,6 +376,7 @@ module Dispatcher =
       let subscriptions = Subscriptions()
       let store = AgentStore.create()
 
+      do! File.ensurePath iris.Machine.LogPath
       let! path = Project.checkPath iris.Machine iris.ProjectName
       let! (state: State) = Asset.loadWithMachine path iris.Machine
 
