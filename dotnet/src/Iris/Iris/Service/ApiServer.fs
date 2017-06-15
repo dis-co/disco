@@ -567,10 +567,15 @@ module ApiServer =
 
       return
         { new IApiServer with
+
             // *** Publish
 
             member self.Publish (ev: IrisEvent) =
-              tag "Publish" |> Console.WriteLine
+              match ev with
+              | IrisEvent.Append (origin, (LogMsg log as cmd)) when log.Id <> mem.Id -> ()
+              | IrisEvent.Append (origin, cmd) ->
+                self.Update origin cmd
+              | _ -> ()
 
             // *** Start
 
