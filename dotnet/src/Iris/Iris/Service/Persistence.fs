@@ -14,6 +14,8 @@ open LibGit2Sharp
 
 module Persistence =
 
+  // ** tag
+
   let private tag (str: string) = String.Format("Persistence.{0}", str)
 
   // ** createRaft
@@ -297,46 +299,5 @@ module Persistence =
       Git.Branch.setTracked repo branch remote
     else
       Either.nothing
-
-  // ** updateRepo
-
-  /// ## updateRepo
-  ///
-  /// Pull changes from the leader's git repository
-  ///
-  /// ### Signature:
-  /// - project: IrisProject
-  /// - leader: RaftMember who is currently leader of the cluster
-  ///
-  /// Returns: Either<IrisError, unit>
-  let updateRepo (project: IrisProject) (leader: RaftMember) =
-    either {
-      let! repo = Project.repository project
-      let! remote = getRemote project repo leader
-
-      let branch = Git.Branch.current repo
-      do! ensureTracking repo branch remote
-      let result = Git.Repo.pull repo remote User.Admin.Signature
-      match result with
-      | Right merge ->
-        return!
-          match merge.Status with
-          | MergeStatus.Conflicts ->
-            (GitMergeStatus.Conflicts, None)
-            |> Either.succeed
-          | MergeStatus.UpToDate  ->
-            (GitMergeStatus.UpToDate, None)
-            |> Either.succeed
-          | MergeStatus.FastForward ->
-            (GitMergeStatus.FastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
-            |> Either.succeed
-          | MergeStatus.NonFastForward as status ->
-            (GitMergeStatus.NonFastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
-            |> Either.succeed
-          | other ->
-            String.format "unknown merge status: %A" other
-            |> Error.asGitError (tag "updateRepo") |> Either.fail
-      | Left error -> return! Either.fail error
-    }
 
 #endif

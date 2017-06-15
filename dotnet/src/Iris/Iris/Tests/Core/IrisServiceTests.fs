@@ -107,7 +107,6 @@ module IrisServiceTests =
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
-        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -123,7 +122,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let! service1 = Dispatcher.create ctx {
+        let! service1 = IrisServiceNG.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -133,10 +132,8 @@ module IrisServiceTests =
 
         use oobs1 =
           (fun ev ->
-            printfn "ev: %A" ev
             match ev with
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -144,11 +141,7 @@ module IrisServiceTests =
 
         do! service1.Start()
 
-        printfn "waiting: git started"
-
         do! waitOrDie "checkGitStarted" checkGitStarted
-
-        printfn "waiting: git started DONE"
 
         //  ____
         // |___ \
@@ -165,7 +158,7 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let! service2 = Dispatcher.create ctx {
+        let! service2 = IrisServiceNG.create ctx {
           Machine = machine2
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -175,8 +168,7 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -220,8 +212,6 @@ module IrisServiceTests =
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
 
-        do! waitOrDie "pullDone" pullDone
-
         dispose service1
         dispose service2
 
@@ -240,7 +230,6 @@ module IrisServiceTests =
         use clientRegistered = new AutoResetEvent(false)
         use clientAppendDone = new AutoResetEvent(false)
         use updateDone = new AutoResetEvent(false)
-        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
 
@@ -262,8 +251,7 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())

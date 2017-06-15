@@ -88,7 +88,7 @@ type IClock =
 type IGitServer =
   inherit IDisposable
   abstract Status    : ServiceStatus
-  abstract Subscribe : (GitEvent -> unit) -> IDisposable
+  abstract Subscribe : (IrisEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
 // * IRaftSnapshotCallbacks

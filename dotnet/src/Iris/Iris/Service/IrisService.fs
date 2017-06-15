@@ -113,7 +113,6 @@ module IrisService =
       Status         : ServiceStatus
       Store          : Store
       Leader         : Leader option
-      GitPoller      : IDisposable option
       LogForwarder   : IDisposable
       ApiServer      : IApiServer
       GitServer      : IGitServer
@@ -132,7 +131,6 @@ module IrisService =
         self.Subscriptions.Clear()
         disposeAll self.Disposables
         Option.iter dispose self.Leader
-        Option.iter dispose self.GitPoller
         dispose self.Resolver
         dispose self.LogForwarder
         dispose self.ApiServer
@@ -294,86 +292,6 @@ module IrisService =
       |> Logger.err (tag "makeLeader")
       None
 
-  // ** makeGitPoller
-
-  let private makeGitPoller (state: IrisState) (leader: RaftMember) (agent: IrisAgent) =
-    let project = state.Store.State.Project
-    // resonably safe, because we already established that the project exits
-    let repo = Project.repository project |> Either.get
-    let uri = Uri.gitUri project.Name leader
-    let cts = new CancellationTokenSource()
-
-    let rec loop () =
-      async {
-        do! Async.Sleep 500
-
-        do! either {
-              let localRefs = Git.Repo.refs repo
-              let! remoteRefs = Git.lsRemote (unwrap uri)
-
-              let currentBranch =
-                repo
-                |> Git.Branch.current
-                |> Git.Branch.canonicalName
-
-              let local =
-                localRefs
-                |> Seq.filter (fun (ref: Reference) -> ref.CanonicalName = currentBranch)
-                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
-                |> Seq.tryHead
-
-              let remote =
-                remoteRefs
-                |> Seq.filter
-                  (fun (ref: Reference) ->
-                    ref.IsLocalBranch && ref.CanonicalName = currentBranch)
-                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
-                |> Seq.tryHead
-
-              do! match local, remote with
-                  | Some localRef, Some remoteRef when localRef <> remoteRef ->
-                    match updateRepo project leader with
-                    | Right (status, commitSha) ->
-                      GitEvent.Pull(status, commitSha)
-                      |> IrisEvent.Git
-                      |> Msg.Event
-                      |> agent.Post
-                    | Left error ->
-                      error
-                      |> string
-                      |> Logger.err (tag "makeGitPoller")
-                  | None, _ ->
-                    currentBranch
-                    |> String.format "current local branch ({0}) has no refs"
-                    |> Logger.err (tag "makeGitPoller")
-                  | _, None ->
-                    currentBranch
-                    |> String.format "remote has has no refs for current branch ({0}) "
-                    |> Logger.err (tag "makeGitPoller")
-                  | _ -> ()                  // remote and local branches are at the same refs
-                  |> Either.ignore
-
-              return ()
-            }
-            |> Either.mapError (string >> Logger.err (tag "makeGitPoller"))
-            |> ignore
-            |> async.Return
-
-        return! loop()
-      }
-
-    uri
-    |> String.format "starting git repository synchronization task: {0}"
-    |> Logger.info (tag "makeGitPoller")
-
-    Async.Start(loop(), cts.Token)
-    Some ({ new IDisposable with
-              member self.Dispose() =
-                try
-                  cts.Cancel()
-                  dispose cts
-                with | _ -> () })
-
   // ** leaderChanged
 
   let private leaderChanged (state: IrisState) (leader: MemberId option) (agent: IrisAgent) =
@@ -382,26 +300,19 @@ module IrisService =
     |> Logger.debug (tag "leaderChanged")
 
     Option.iter dispose state.Leader
-    Option.iter dispose state.GitPoller
 
     // create redirect socket if we have new leader other than this current node
     if Option.isSome leader && leader <> (Some state.Member.Id) then
       match state.RaftServer.Leader with
       | Some leader ->
         let makePeerSocket = Client.create state.Context
-        { state with
-            Leader = makeLeader leader makePeerSocket agent
-            GitPoller = makeGitPoller state leader agent }
+        { state with Leader = makeLeader leader makePeerSocket agent }
       | None ->
         "Could not start re-direct socket: no leader"
         |> Logger.debug (tag "leaderChanged")
-        { state with
-            Leader = None
-            GitPoller = None }
+        { state with Leader = None }
     else
-      { state with
-          Leader = None
-          GitPoller = None }
+      { state with Leader = None }
 
   // ** stateChanged
 
@@ -520,8 +431,8 @@ module IrisService =
 
   // ** forwardEvent
 
-  let inline private forwardEvent (constr: ^a -> IrisEvent) (agent: IrisAgent) =
-    constr >> Msg.Event >> agent.Post
+  let inline private forwardEvent (agent: IrisAgent) =
+    Msg.Event >> agent.Post
 
   // ** restartGitServer
 
@@ -540,7 +451,7 @@ module IrisService =
           let gitserver = GitServer.create mem state.Store.State.Project
           let disposable =
             agent
-            |> forwardEvent IrisEvent.Git
+            |> forwardEvent
             |> gitserver.Subscribe
           match gitserver.Start() with
           | Right () ->
@@ -640,42 +551,6 @@ module IrisService =
 
   let private processEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
     match ev with
-    //   ____ _ _
-    //  / ___(_) |_
-    // | |  _| | __|
-    // | |_| | | |_
-    //  \____|_|\__|
-
-    | Git (GitEvent.Connection(_, addr, port)) ->
-      sprintf "git-daemon connection from %s:%d" addr port
-      |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull(GitMergeStatus.UpToDate, _)) ->
-      "Repository already up-to-date"
-      |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull(GitMergeStatus.Conflicts, _)) ->
-      "Automatic merge failed with conflicts. Please resolve conflicts manually."
-      |> Logger.err (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull((GitMergeStatus.NonFastForward as status), commitSha))
-    | Git (GitEvent.Pull((GitMergeStatus.FastForward    as status), commitSha)) ->
-      match commitSha with
-      | Some commitSha ->
-        commitSha
-        |> sprintf "Automatic merge successful in: %s"
-        |> Logger.debug (tag "handleGitEvent")
-      | None ->
-        status
-        |> sprintf "Automatic merge successful: %O"
-        |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Status status -> state
-
     //  ____        __ _
     // |  _ \ __ _ / _| |_
     // | |_) / _` | |_| __|
@@ -939,19 +814,18 @@ module IrisService =
 
         // set up event forwarding of various services to the actor
         let disposables =
-          [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
-            (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
-            (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)
-            (GIT_SERVER,    forwardEvent IrisEvent.Git agent |> gitServer.Subscribe)
-            (RESOLVER,      forwardEvent id            agent |> cueResolver.Subscribe)
-            (CLOCK_SERVICE, forwardEvent id            agent |> clockService.Subscribe) ]
+          [ (RAFT_SERVER,   forwardEvent agent |> raftServer.Subscribe)
+            (WS_SERVER,     forwardEvent agent |> socketServer.Subscribe)
+            (API_SERVER,    forwardEvent agent |> apiServer.Subscribe)
+            (GIT_SERVER,    forwardEvent agent |> gitServer.Subscribe)
+            (RESOLVER,      forwardEvent agent |> cueResolver.Subscribe)
+            (CLOCK_SERVICE, forwardEvent agent |> clockService.Subscribe) ]
           |> Map.ofList
 
         // set up the agent state
         { Member         = mem
           Machine        = iris.Machine
           Leader         = None
-          GitPoller      = None
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)

@@ -72,12 +72,13 @@ module Pipeline =
 
   // ** create
 
-  let create (processors: IHandler<IrisEvent>[]) (publish: IHandler<IrisEvent>[]) =
+  let create processors publishers postactions =
     let disruptor = createDisruptor()
 
     disruptor
     |> handleEventsWith processors
-    |> thenDo publish
+    |> thenDo publishers
+    |> thenDo postactions
     |> thenDo clearEvent
     |> ignore
 
@@ -281,6 +282,11 @@ module IrisServiceNG =
         maybeDispatchUpdate current store.State
       | _ -> ()
 
+  // ** subscriptionNotifier
+
+  let private subscriptionNotifier (store: IAgentStore<IrisState>) =
+    fun _ _ -> Observable.onNext store.State.Subscriptions
+
   // ** processors
 
   let private processors (store: IAgentStore<IrisState>) =
@@ -295,9 +301,75 @@ module IrisServiceNG =
        Pipeline.createHandler (createPublisher store.State.SocketServer)
        Pipeline.createHandler (commandResolver store) |]
 
-  // ** processCmd
+  // ** postActions
 
-  let private processCmd (store: IAgentStore<IAgentS)
+  let private postActions (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (subscriptionNotifier store) |]
+
+  // ** makeLeader
+
+  let private makeLeader ctx (leader: RaftMember) =
+    let result = Client.create ctx {
+      PeerId = leader.Id
+      Frontend = Uri.raftUri leader
+      Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+    }
+    match result with
+    | Right socket ->
+      socket.Subscribe
+        (fun _ ->
+          "TODO: setup leader socket response handler"
+          |> Logger.warn (tag "makeLeader"))
+      |> ignore
+      Some { Member = leader; Socket = socket }
+    | Left error ->
+      error
+      |> String.format "error creating connection for leader: {0}"
+      |> Logger.err (tag "makeLeader")
+      None
+
+  // ** processEvent
+
+  let private processEvent (store: IAgentStore<IrisState>) = function
+    | IrisEvent.Configured mems ->
+      mems
+      |> Array.map (Member.getId >> string)
+      |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
+      |> Logger.debug (tag "processEvent")
+
+    | IrisEvent.StateChanged (oldstate, newstate) ->
+      newstate
+      |> sprintf "Raft state changed from %A to %A" oldstate
+      |> Logger.debug (tag "processEvent")
+
+    | IrisEvent.LeaderChanged leader ->
+
+      leader
+      |> String.format "Leader changed to {0}"
+      |> Logger.debug (tag "leaderChanged")
+
+      Option.iter dispose store.State.Leader
+
+      let newLeader =
+        // create redirect socket if we have new leader other than this current node
+        if Option.isSome leader && leader <> (Some store.State.Member.Id) then
+          match store.State.RaftServer.Leader with
+          | Some leader ->
+            makeLeader store.State.Context leader
+          | None ->
+            "Could not start re-direct socket: no leader"
+            |> Logger.debug (tag "leaderChanged")
+            None
+        else None
+
+      store.Update { store.State with Leader = newLeader }
+
+    | IrisEvent.PersistSnapshot log ->
+      match Persistence.persistSnapshot store.State.Store.State log with
+      | Left error -> Logger.err (tag "persistSnapshot") (string error)
+      | _ -> ()
+
+    | IrisEvent.RaftError _ | _ -> ()
 
   // ** dispatchEvent
 
@@ -306,11 +378,9 @@ module IrisServiceNG =
                             (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Publish   -> pipeline.Push cmd
-    | Process   -> processCmd store cmd
+    | Process   -> processEvent store cmd
     | Replicate -> store.State.RaftServer.Publish cmd
     | Ignore    -> ()
-
-    Observable.onNext store.State.Subscriptions cmd
 
   // ** createDispatcher
 
@@ -325,7 +395,7 @@ module IrisServiceNG =
 
         member dispatcher.Start() =
           if Service.isStopped status then
-            pipeline <- Pipeline.create (processors store) (publishers store)
+            pipeline <- Pipeline.create (processors store) (publishers store) (postActions store)
             status <- ServiceStatus.Running
 
         member dispatcher.Status
@@ -484,7 +554,7 @@ module IrisServiceNG =
 
         // wiring up the sources
         let disposables = [|
-          gitServer.Subscribe(forwardEvent IrisEvent.Git dispatcher)
+          gitServer.Subscribe(forwardEvent id dispatcher)
           apiServer.Subscribe(forwardEvent id dispatcher)
           socketServer.Subscribe(forwardEvent id dispatcher)
           raftServer.Subscribe(forwardEvent id dispatcher)

@@ -100,7 +100,7 @@ module GitTests =
         use started = new AutoResetEvent(false)
 
         let handleStarted = function
-          | GitEvent.Started _ -> started.Set() |> ignore
+          | IrisEvent.Started _ -> started.Set() |> ignore
           | _ -> ()
 
         use gitserver1 = GitServer.create mem path
@@ -127,7 +127,7 @@ module GitTests =
         let started = new AutoResetEvent(false)
 
         let handleStarted = function
-          | GitEvent.Started _ -> started.Set() |> ignore
+          | IrisEvent.Started _ -> started.Set() |> ignore
           | _ -> ()
 
         let uuid, tmpdir, project, mem, path =

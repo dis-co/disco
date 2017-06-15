@@ -44,28 +44,6 @@ type DispatchStrategy =
   | Ignore
   | Publish
 
-// * GitMergeStatus
-
-[<RequireQualifiedAccess>]
-type GitMergeStatus =
-  | UpToDate
-  | FastForward
-  | NonFastForward
-  | Conflicts
-
-// * GitEvent
-
-[<NoEquality;NoComparison>]
-type GitEvent =
-  | Started
-  | Connection of pid:int * address:string * port:Port
-  | Pull       of GitMergeStatus * commitSha: string option
-
-  // ** DispatchEvent
-
-  member ev.DispatchStrategy
-    with get () = Process
-
 // * DiscoveryEvent
 
 type DiscoveryEvent =
@@ -113,7 +91,6 @@ type IrisEvent =
   | Append          of origin:Origin * cmd:StateMachine
   | SessionOpened   of session:Id
   | SessionClosed   of session:Id
-  | Git             of ev:GitEvent
 
   // ** Origin
 
@@ -128,7 +105,6 @@ type IrisEvent =
       | RaftError       _
       | SessionOpened   _
       | SessionClosed   _
-      | Git             _
       | Status          _  -> None
       | Append (origin, _) -> Some origin
 
@@ -137,9 +113,8 @@ type IrisEvent =
   member ev.DispatchStrategy
     with get () =
       match ev with
-      | Started _                                            -> Ignore
-      | Status _                                             -> Process
-      | Git _                                                -> Process
+      | Status  _                                            -> Ignore
+      | Started _                                            -> Publish
 
       //  ____        __ _
       // |  _ \ __ _ / _| |_
