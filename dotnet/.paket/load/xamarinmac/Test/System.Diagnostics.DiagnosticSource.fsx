@@ -1,1 +1,1 @@
-#r "../../../../packages/test/System.Diagnostics.DiagnosticSource/lib/portable-net45+win8+wpa81/System.Diagnostics.DiagnosticSource.dll" 
+#r "../../../../packages/test/System.Diagnostics.DiagnosticSource/lib/netstandard1.3/System.Diagnostics.DiagnosticSource.dll" 

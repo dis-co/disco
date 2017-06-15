@@ -1,0 +1,1 @@
+#r "../../../../packages/build/System.Globalization.Calendars/lib/net46/System.Globalization.Calendars.dll" 

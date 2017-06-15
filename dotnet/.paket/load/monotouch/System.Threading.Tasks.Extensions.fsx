@@ -1,1 +1,1 @@
-#r "../../../packages/System.Threading.Tasks.Extensions/lib/portable-net45+win8+wp8+wpa81/System.Threading.Tasks.Extensions.dll" 
+#r "../../../packages/System.Threading.Tasks.Extensions/lib/netstandard1.0/System.Threading.Tasks.Extensions.dll" 
