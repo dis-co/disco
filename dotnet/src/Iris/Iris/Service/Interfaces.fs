@@ -51,6 +51,8 @@ type EventProcessor<'t> = int64 -> bool -> 't -> unit
 
 type IDispatcher<'t> =
   inherit IDisposable
+  abstract Start: unit -> unit
+  abstract Status: ServiceStatus
   abstract Dispatch: 't -> unit
 
 // * IDiscoveryService

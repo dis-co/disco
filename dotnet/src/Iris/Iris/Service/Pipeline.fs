@@ -276,17 +276,28 @@ module Dispatcher =
     | Replicate -> store.State.RaftServer.Publish cmd
     | Ignore    -> ()
 
-  // ** createDisruptor
+  // ** createDispatcher
 
-  let private createDisruptor (store: IAgentStore<IrisState>) =
-    let pipeline = Pipeline.create (processors store) (publishers store)
+  let private createDispatcher (store: IAgentStore<IrisState>) =
+    let mutable pipeline = Unchecked.defaultof<IPipeline<IrisEvent>>
+    let mutable status = ServiceStatus.Stopped
 
     { new IDispatcher<IrisEvent> with
         member dispatcher.Dispatch(cmd: IrisEvent) =
-          dispatchEvent store pipeline cmd
+          if Service.isRunning status then
+            dispatchEvent store pipeline cmd
+
+        member dispatcher.Start() =
+          if Service.isStopped status then
+            pipeline <- Pipeline.create (processors store) (publishers store)
+            status <- ServiceStatus.Running
+
+        member dispatcher.Status
+          with get () = status
 
         member dispatcher.Dispose() =
-          dispose pipeline }
+          if Service.isRunning status then
+            dispose pipeline }
 
   // ** retrieveSnapshot
 
@@ -439,8 +450,7 @@ module Dispatcher =
 
         let cueResolver = Resolver.create ()
 
-        // creating the pipeline
-        let dispatcher = createDisruptor store
+        let dispatcher = createDispatcher store
 
         // wiring up the sources
         let disposables = [|
@@ -484,6 +494,8 @@ module Dispatcher =
 
   let private start (store: IAgentStore<IrisState>) =
     either {
+      store.State.Dispatcher.Start()
+
       // start all services
       let result =
         either {

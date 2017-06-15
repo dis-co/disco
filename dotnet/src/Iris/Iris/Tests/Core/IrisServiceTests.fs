@@ -123,7 +123,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let service1 = IrisService.create ctx {
+        let! service1 = Dispatcher.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
