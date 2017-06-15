@@ -330,7 +330,9 @@ module IrisServiceNG =
 
   // ** processEvent
 
-  let private processEvent (store: IAgentStore<IrisState>) = function
+  let private processEvent (store: IAgentStore<IrisState>) ev =
+    Observable.onNext store.State.Subscriptions ev
+    match ev with
     | IrisEvent.Configured mems ->
       mems
       |> Array.map (Member.getId >> string)
