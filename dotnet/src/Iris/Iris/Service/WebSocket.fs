@@ -260,7 +260,15 @@ module WebSocketServer =
       return
         { new IWebSocketServer with
             member self.Publish (ev: IrisEvent) =
-              tag "Publish" |> Console.WriteLine
+              match ev with
+              | IrisEvent.Append (_, cmd) ->
+                match bcast connections cmd with
+                | Right _ -> ()
+                | Left error ->
+                  error
+                  |> string
+                  |> Logger.err (tag "Publish")
+              | _ -> ()
 
             member self.Send (id: Id) (cmd: StateMachine) =
               ucast connections id cmd
