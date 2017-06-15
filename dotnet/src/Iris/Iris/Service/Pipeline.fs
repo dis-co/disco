@@ -276,6 +276,8 @@ module Dispatcher =
     | Replicate -> store.State.RaftServer.Publish cmd
     | Ignore    -> ()
 
+    Observable.onNext store.State.Subscriptions cmd
+
   // ** createDispatcher
 
   let private createDispatcher (store: IAgentStore<IrisState>) =
