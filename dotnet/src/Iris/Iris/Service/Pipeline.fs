@@ -6,6 +6,7 @@ open System
 open System.IO
 open System.Threading
 open System.Threading.Tasks
+open System.Collections.Generic
 open Disruptor
 open Disruptor.Dsl
 open ZeroMQ
@@ -89,9 +90,9 @@ module Pipeline =
         member pipeline.Dispose() =
           disruptor.Shutdown() }
 
-// * Dispatcher
+// * IrisServiceNG
 
-module Dispatcher =
+module IrisServiceNG =
 
   // ** tag
 
@@ -145,8 +146,8 @@ module Dispatcher =
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
       ClockService  : IClock
-      Resolver      : IResolver
       Subscriptions : Subscriptions
+      BufferedCues  : Dictionary<(Frame * Id),Cue>
       Disposables   : IDisposable array
       Context       : ZContext }
 
@@ -157,7 +158,6 @@ module Dispatcher =
         self.Subscriptions.Clear()
         Array.iter dispose self.Disposables
         Option.iter dispose self.Leader
-        dispose self.Resolver
         dispose self.LogForwarder
         dispose self.ApiServer
         dispose self.GitServer
@@ -247,12 +247,37 @@ module Dispatcher =
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
       sink.Publish cmd
 
+  // ** dispatchUpdates
+
+  let private dispatchUpdates (state: IrisState) (cue: Cue) =
+    Array.iter
+      (fun slices ->
+        (Origin.Service, UpdateSlices slices)
+        |> IrisEvent.Append
+        |> state.Dispatcher.Dispatch)
+      cue.Slices
+
+  // ** maybeDispatchUpdate
+
+  let private maybeDispatchUpdate (current: Frame) (state: IrisState) =
+    for KeyValue((desired, id), cue) in state.BufferedCues do
+      if desired <= current then
+        dispatchUpdates state cue
+        state.BufferedCues.Remove((desired,id)) |> ignore
+
   // ** commandResolver
 
-  let private commandResolver (sink: ISink<IrisEvent>) =
+  let private commandResolver (store: IAgentStore<IrisState>) =
+    let mutable current = 0<frame>
     fun (seqno: int64) (eob: bool) (cmd: IrisEvent) ->
-      printfn "resolving commands"
-      sink.Publish cmd
+      match cmd with
+      | IrisEvent.Append(_, UpdateClock tick) ->
+        current <- int tick * 1<frame>
+        maybeDispatchUpdate current store.State
+      | IrisEvent.Append(_, CallCue cue) ->
+        store.State.BufferedCues.Add((current, cue.Id), cue)
+        maybeDispatchUpdate current store.State
+      | _ -> ()
 
   // ** processors
 
@@ -266,7 +291,7 @@ module Dispatcher =
   let private publishers (store: IAgentStore<IrisState>) =
     [| Pipeline.createHandler (createPublisher store.State.ApiServer)
        Pipeline.createHandler (createPublisher store.State.SocketServer)
-       Pipeline.createHandler (commandResolver store.State.ApiServer) |]
+       Pipeline.createHandler (commandResolver store) |]
 
   // ** dispatchEvent
 
@@ -441,8 +466,6 @@ module Dispatcher =
         // IMPORTANT: use the projects path here, not the path to project.yml
         let gitServer = GitServer.create mem state.Project
 
-        let cueResolver = Resolver.create ()
-
         let dispatcher = createDispatcher store
 
         let logForwarder =
@@ -456,7 +479,6 @@ module Dispatcher =
           apiServer.Subscribe(forwardEvent id dispatcher)
           socketServer.Subscribe(forwardEvent id dispatcher)
           raftServer.Subscribe(forwardEvent id dispatcher)
-          cueResolver.Subscribe(forwardEvent id dispatcher)
           clockService.Subscribe(forwardEvent id dispatcher)
         |]
 
@@ -477,7 +499,7 @@ module Dispatcher =
           RaftServer     = raftServer
           SocketServer   = socketServer
           ClockService   = clockService
-          Resolver       = cueResolver
+          BufferedCues   = Dictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }
         |> store.Update                  // and feed it to the store, before we start the services
