@@ -37,6 +37,8 @@ type LogLevel =
   | Warn
   | Err
 
+  // ** Parse
+
   static member Parse (str: string) =
     match String.toLower str with
     | "trace"         -> Trace
@@ -46,9 +48,13 @@ type LogLevel =
     | "err" | "error" -> Err
     | _               -> failwithf "could not parse %s" str
 
+  // ** TryParse
+
   static member TryParse (str: string) =
     Either.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
       str |> LogLevel.Parse
+
+  // ** ToString
 
   override self.ToString() =
     match self with
@@ -75,11 +81,15 @@ type Tier =
   | Client
   | Service
 
+  // ** ToString
+
   override self.ToString() =
     match self with
     | FrontEnd -> "FrontEnd"
     | Client   -> "Client"
     | Service  -> "Service"
+
+  // ** Parse
 
   static member Parse (str: string) =
     match str with
@@ -87,6 +97,8 @@ type Tier =
     | "Client"    -> Client
     | "Service"   -> Service
     | _           -> failwithf "could not parse %s" str
+
+  // ** TryParse
 
   static member TryParse (str: string) =
     Either.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
@@ -139,7 +151,7 @@ type LogEvent =
     sprintf "[%s - %s - %s - %d - %d - %s]: %s"
       (System.String.Format("{0,-5}",string self.LogLevel))
       (System.String.Format("{0,-8}",string self.Tier))
-      (System.String.Format("{0,-8}",self.Id |> string |> String.subString 0 8))
+      (System.String.Format("{0,-8}",self.Id.Prefix))
       self.Time
       self.Thread
       self.Tag
@@ -550,7 +562,7 @@ module LogFile =
 
   let create (machine: Id) (path: FilePath) =
     let ts = DateTime.Now
-    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", string machine, ts)
+    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
     let fp = Path.Combine(unwrap path, fn)
     try
       let writer = File.AppendText fp

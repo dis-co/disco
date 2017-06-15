@@ -458,7 +458,6 @@ module Dispatcher =
           raftServer.Subscribe(forwardEvent id dispatcher)
           cueResolver.Subscribe(forwardEvent id dispatcher)
           clockService.Subscribe(forwardEvent id dispatcher)
-          logForwarder
         |]
 
         let! logFile = LogFile.create iris.Machine.MachineId iris.Machine.LogDirectory
