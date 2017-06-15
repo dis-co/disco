@@ -2882,3 +2882,35 @@ module Project =
 
   let updateMachine (machine: IrisMachine) (project: IrisProject) : IrisProject =
     { project with Config = Config.updateMachine machine project.Config }
+
+  // ** updateRemotes
+
+  let updateRemotes (project: IrisProject) = either {
+      let! repo = repository project
+
+      // delete all current remotes
+      let current = Git.Config.remotes repo
+      do! Map.fold
+            (fun kontinue name _ -> either {
+              do! kontinue
+              do! Git.Config.delRemote repo name })
+            (Right ())
+            current
+
+      let! mem = Config.selfMember project.Config
+
+      // add remotes for all other peers
+      do! match Config.getActiveSite project.Config with
+          | Some cluster ->
+            Map.fold
+              (fun kontinue id peer -> either {
+                  do! kontinue
+                  if id <> mem.Id then
+                    let url = Uri.gitUri project.Name peer
+                    let name = string peer.Id
+                    do! Git.Config.addRemote repo name url |> Either.ignore
+                })
+              (Right ())
+              cluster.Members
+          | None -> Either.nothing
+    }

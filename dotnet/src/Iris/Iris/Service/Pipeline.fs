@@ -275,7 +275,9 @@ module IrisServiceNG =
         current <- int tick * 1<frame>
         maybeDispatchUpdate current store.State
       | IrisEvent.Append(_, CallCue cue) ->
-        store.State.BufferedCues.Add((current, cue.Id), cue)
+        let key = (current, cue.Id)
+        if not (store.State.BufferedCues.ContainsKey key) then
+          store.State.BufferedCues.Add(key, cue)
         maybeDispatchUpdate current store.State
       | _ -> ()
 
@@ -293,6 +295,10 @@ module IrisServiceNG =
        Pipeline.createHandler (createPublisher store.State.SocketServer)
        Pipeline.createHandler (commandResolver store) |]
 
+  // ** processCmd
+
+  let private processCmd (store: IAgentStore<IAgentS)
+
   // ** dispatchEvent
 
   let private dispatchEvent (store: IAgentStore<IrisState>)
@@ -300,7 +306,7 @@ module IrisServiceNG =
                             (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Publish   -> pipeline.Push cmd
-    | Process   -> pipeline.Push cmd
+    | Process   -> processCmd store cmd
     | Replicate -> store.State.RaftServer.Publish cmd
     | Ignore    -> ()
 
@@ -448,6 +454,9 @@ module IrisServiceNG =
         // This will fail if there's no ActiveSite set up in state.Project.Config
         // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
+
+        // ensure that we have all other nodes set-up correctly
+        do! Project.updateRemotes state.Project
 
         let clockService = Clock.create ()
         do clockService.Stop()
