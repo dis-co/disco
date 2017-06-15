@@ -6,6 +6,7 @@ namespace Iris.Core
 
 open System
 open System.IO
+open System.Diagnostics
 open System.Linq
 open LibGit2Sharp
 
@@ -812,6 +813,56 @@ module Git =
     let commitCount (repo: Repository) =
       commits repo
       |> fun lst -> lst.Count()
+
+    // *** push
+
+    let runGit (basepath: string) (cmd: string) (origin: string) (branch: string) =
+      use proc = new Process()
+      proc.StartInfo.FileName <- "git"
+      proc.StartInfo.Arguments <- cmd + " " + origin + " "  + branch
+      proc.StartInfo.WorkingDirectory <- basepath
+      proc.StartInfo.CreateNoWindow <- true
+      proc.StartInfo.UseShellExecute <- false
+      proc.StartInfo.RedirectStandardOutput <- true
+      proc.StartInfo.RedirectStandardError <- true
+
+      if proc.Start() then
+        let lines = ResizeArray()
+        while not proc.StandardOutput.EndOfStream do
+          proc.StandardOutput.ReadLine()
+          |> lines.Add
+        while not proc.StandardError.EndOfStream do
+          proc.StandardError.ReadLine()
+          |> lines.Add
+        proc.WaitForExit()
+        printfn "done: %d" proc.ExitCode
+        lines.ToArray()
+        |> String.join "\n"
+      else
+        proc.WaitForExit()
+        proc.StandardError.ReadToEnd()
+        |> failwithf "Error: %s"
+
+    let push (repo: Repository) (remote: Remote) =
+      try
+        let branch = Branch.current repo
+        let refSpec = String.format "+{0}:{0}" branch.CanonicalName
+        // this will force-push all local refs to all remote
+
+        let basepath = Path.GetDirectoryName repo.Info.Path
+
+        runGit basepath "remote" "" ""
+        |> printfn "Git.Repo.remote: %s"
+
+        branch.FriendlyName
+        |> runGit basepath "push" remote.Name
+        |> printfn "Git.Repo.push: %s"
+        |> Either.succeed
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "push")
+          |> Either.fail
 
     // *** pull
 

@@ -254,8 +254,20 @@ module Persistence =
       let signature = User.Admin.Signature
       let! repo = state.Project |> Project.repository
       do! Git.Repo.stageAll repo
-      return! Git.Repo.commit repo "Project changes committed." signature
+      let! commit = Git.Repo.commit repo "Project changes committed." signature
+      return repo, commit
     }
+
+  // ** pushChanges
+
+  let pushChanges (repo: Repository) =
+    repo
+    |> Git.Config.remotes
+    |> Map.map    (konst (Git.Repo.push repo))
+    |> Map.filter (konst (Either.isFail))
+    |> Map.map    (konst (Either.error))
+
+  // ** persistSnapshot
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {

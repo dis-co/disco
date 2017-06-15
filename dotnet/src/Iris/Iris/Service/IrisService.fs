@@ -260,10 +260,11 @@ module IrisService =
           |> String.format "Error persisting command to disk: {0}"
           |> Logger.err (tag "persistLog")
         match commitChanges state.Store.State with
-        | Right commit ->
+        | Right (repo, commit) ->
           commit.Sha
           |> String.format "Successfully committed changes in: {0}"
           |> Logger.debug (tag "persistLog")
+          dispose repo
         | Left error ->
           error
           |> String.format "Error committing changes to disk: {0}"

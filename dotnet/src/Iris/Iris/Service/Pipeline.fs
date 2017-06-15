@@ -177,57 +177,65 @@ module IrisServiceNG =
 
   // ** statePersistor
 
-  let private statePersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
-    match cmd with
-    | IrisEvent.Append(_, sm) ->
-      let state = store.State
-      if state.RaftServer.IsLeader then
-        match sm.PersistenceStrategy with
-        | PersistenceStrategy.Save ->
-          //  ____
-          // / ___|  __ ___   _____
-          // \___ \ / _` \ \ / / _ \
-          //  ___) | (_| |\ V /  __/
-          // |____/ \__,_| \_/ \___|
-          match Persistence.persistEntry state.Store.State sm with
-          | Right () ->
-            string sm
-            |> String.format "Successfully persisted command {0} to disk"
-            |> Logger.debug (tag "persistLog")
-          | Left error ->
-            error |> String.format "Error persisting command to disk: {0}"
-            |> Logger.err (tag "persistLog")
-        | PersistenceStrategy.Commit ->
-          //  ____
-          // / ___|  __ ___   _____
-          // \___ \ / _` \ \ / / _ \
-          //  ___) | (_| |\ V /  __/
-          // |____/ \__,_| \_/ \___| *and*
-          match Persistence.persistEntry state.Store.State sm with
-          | Right () ->
-            string sm
-            |> String.format "Successfully persisted command {0} to disk"
-            |> Logger.debug (tag "persistLog")
-          | Left error ->
-            error
-            |> String.format "Error persisting command to disk: {0}"
-            |> Logger.err (tag "persistLog")
-          //   ____                          _ _
-          //  / ___|___  _ __ ___  _ __ ___ (_) |_
-          // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
-          // | |__| (_) | | | | | | | | | | | | |_
-          //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
-          match Persistence.commitChanges state.Store.State with
-          | Right commit ->
-            commit.Sha
-            |> String.format "Successfully committed changes in: {0}"
-            |> Logger.debug (tag "persistLog")
-          | Left error ->
-            error
-            |> String.format "Error committing changes to disk: {0}"
-            |> Logger.err (tag "persistLog")
-        | PersistenceStrategy.Ignore -> ignore cmd
-    | _ -> ignore cmd
+  let private statePersistor (store: IAgentStore<IrisState>) =
+    fun _ _ -> function
+      | IrisEvent.Append(_, sm) ->
+        let state = store.State
+        if state.RaftServer.IsLeader then
+          match sm.PersistenceStrategy with
+          | PersistenceStrategy.Save ->
+            //  ____
+            // / ___|  __ ___   _____
+            // \___ \ / _` \ \ / / _ \
+            //  ___) | (_| |\ V /  __/
+            // |____/ \__,_| \_/ \___|
+            match Persistence.persistEntry state.Store.State sm with
+            | Right () ->
+              string sm
+              |> String.format "Successfully persisted command {0} to disk"
+              |> Logger.debug (tag "statePersistor")
+            | Left error ->
+              error |> String.format "Error persisting command to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+          | PersistenceStrategy.Commit ->
+            //  ____
+            // / ___|  __ ___   _____
+            // \___ \ / _` \ \ / / _ \
+            //  ___) | (_| |\ V /  __/
+            // |____/ \__,_| \_/ \___| *and*
+            match Persistence.persistEntry state.Store.State sm with
+            | Right () ->
+              string sm
+              |> String.format "Successfully persisted command {0} to disk"
+              |> Logger.debug (tag "statePersistor")
+            | Left error ->
+              error
+              |> String.format "Error persisting command to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+            //   ____                          _ _
+            //  / ___|___  _ __ ___  _ __ ___ (_) |_
+            // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
+            // | |__| (_) | | | | | | | | | | | | |_
+            //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
+            match Persistence.commitChanges state.Store.State with
+            | Right (repo, commit) ->
+              let b = Git.Branch.current repo
+              printfn "BRANCH: %s" b.FriendlyName
+              commit.Sha
+              |> String.format "Successfully committed changes in: {0}"
+              |> Logger.debug (tag "statePersistor")
+              Persistence.pushChanges repo
+              |> Map.iter
+                (fun name err ->
+                  sprintf "could not push to %s: %O" name err
+                  |> Logger.err (tag "statePersistor"))
+              dispose repo
+            | Left error ->
+              error
+              |> String.format "Error committing changes to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+          | PersistenceStrategy.Ignore -> ()
+      | _ -> ()
 
   // ** logPersistor
 
