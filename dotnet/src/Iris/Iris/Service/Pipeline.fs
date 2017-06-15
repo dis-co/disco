@@ -139,7 +139,7 @@ module Dispatcher =
       Leader        : Leader option
       Dispatcher    : IDispatcher<IrisEvent>
       LogForwarder  : IDisposable
-      LogFile       : StreamWriter
+      LogFile       : LogFile
       ApiServer     : IApiServer
       GitServer     : IGitServer
       RaftServer    : IRaftServer
@@ -165,8 +165,6 @@ module Dispatcher =
         dispose self.ClockService
         dispose self.SocketServer
         dispose self.Dispatcher
-        self.LogFile.Flush()
-        self.LogFile.Close()
         dispose self.LogFile
 
   // ** stateMutator
@@ -235,7 +233,12 @@ module Dispatcher =
   let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
     match cmd with
     | IrisEvent.Append(_, LogMsg log) ->
-      log |> string |> store.State.LogFile.WriteLine
+      match LogFile.write store.State.LogFile log with
+      | Right _ -> ()
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "logPersistor")
     | _ -> ()
 
   // ** createPublisher
@@ -378,7 +381,8 @@ module Dispatcher =
       let subscriptions = Subscriptions()
       let store = AgentStore.create()
 
-      do! File.ensurePath iris.Machine.LogPath
+      do Directory.createDirectory iris.Machine.LogDirectory |> ignore
+
       let! path = Project.checkPath iris.Machine iris.ProjectName
       let! (state: State) = Asset.loadWithMachine path iris.Machine
 
@@ -421,7 +425,7 @@ module Dispatcher =
         let! mem = Config.selfMember state.Project.Config
 
         let clockService = Clock.create ()
-        clockService.Stop()
+        do clockService.Stop()
 
         let! raftServer =
           store
@@ -434,26 +438,17 @@ module Dispatcher =
           |> makeApiCallbacks
           |> ApiServer.create context mem state.Project.Id
 
-        let logForwarder =
-          let lobs =
-            Logger.subscribe
-              (fun log ->
-                // Explanation:
-                //
-                // To prevent logs from other hosts being looped around endlessly, we only
-                // publish messages on the on api that emenate either from this service or
-                // any connected sessions.
-                if not (log.Tier = Tier.Service && log.Id <> iris.Machine.MachineId) then
-                  apiServer.Update Origin.Service (LogMsg log)
-                socketServer.Broadcast (LogMsg log) |> ignore)
-          { new IDisposable with member self.Dispose () = dispose lobs }
-
         // IMPORTANT: use the projects path here, not the path to project.yml
         let gitServer = GitServer.create mem state.Project
 
         let cueResolver = Resolver.create ()
 
         let dispatcher = createDispatcher store
+
+        let logForwarder =
+          let mkev log =
+            IrisEvent.Append(Origin.Service, LogMsg log)
+          Logger.subscribe (forwardEvent mkev dispatcher)
 
         // wiring up the sources
         let disposables = [|
@@ -463,14 +458,17 @@ module Dispatcher =
           raftServer.Subscribe(forwardEvent id dispatcher)
           cueResolver.Subscribe(forwardEvent id dispatcher)
           clockService.Subscribe(forwardEvent id dispatcher)
+          logForwarder
         |]
+
+        let! logFile = LogFile.create iris.Machine.MachineId iris.Machine.LogDirectory
 
         // set up the agent state
         { Member         = mem
           Machine        = iris.Machine
           Leader         = None
           Dispatcher     = dispatcher
-          LogFile        = File.AppendText (unwrap iris.Machine.LogPath)
+          LogFile        = logFile
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)

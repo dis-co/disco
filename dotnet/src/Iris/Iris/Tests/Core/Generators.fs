@@ -118,7 +118,7 @@ module Generators =
         { MachineId = id
           HostName = hn
           WorkSpace = wrksp
-          LogPath = logpth
+          LogDirectory = logpth
           BindAddress = ba
           WebPort = wp
           RaftPort = rp
@@ -133,7 +133,6 @@ module Generators =
   // | |_) / _` | |_| __\___ \| __/ _` | __/ _ \
   // |  _ < (_| |  _| |_ ___) | || (_| | ||  __/
   // |_| \_\__,_|_|  \__|____/ \__\__,_|\__\___|
-
 
   let raftStateGen = Gen.oneof [ Gen.constant Joining
                                  Gen.constant Running

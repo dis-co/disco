@@ -28,17 +28,17 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId   : Id
-    HostName    : Name
-    WorkSpace   : FilePath
-    LogPath     : FilePath
-    BindAddress : IpAddress
-    WebPort     : Port
-    RaftPort    : Port
-    WsPort      : Port
-    GitPort     : Port
-    ApiPort     : Port
-    Version     : Iris.Core.Version }
+  { MachineId:    Id
+    HostName:     Name
+    WorkSpace:    FilePath
+    LogDirectory: FilePath
+    BindAddress:  IpAddress
+    WebPort:      Port
+    RaftPort:     Port
+    WsPort:       Port
+    GitPort:      Port
+    ApiPort:      Port
+    Version:      Iris.Core.Version }
 
   // ** ToString
 
@@ -53,7 +53,7 @@ type IrisMachine =
       | str -> builder.CreateString str |> Some
     let webip = machine.BindAddress |> string |> builder.CreateString
     let workspace = machine.WorkSpace |> unwrap |> mapNull
-    let logpath = machine.LogPath |> unwrap |> mapNull
+    let logdir = machine.LogDirectory |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = machine.MachineId |> string |> builder.CreateString
     let version = machine.Version |> unwrap |> mapNull
@@ -61,7 +61,7 @@ type IrisMachine =
     IrisMachineFB.AddMachineId(builder, machineid)
     Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
     Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
-    Option.iter (fun value -> IrisMachineFB.AddLogPath(builder, value)) logpath
+    Option.iter (fun value -> IrisMachineFB.AddLogDirectory(builder, value)) logdir
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
@@ -77,34 +77,34 @@ type IrisMachine =
     either {
       let! ip = IpAddress.TryParse fb.BindAddress
       return
-        { MachineId   = Id fb.MachineId
-          WorkSpace   = filepath fb.WorkSpace
-          LogPath     = filepath fb.LogPath
-          HostName    = name fb.HostName
-          BindAddress = ip
-          WebPort     = port fb.WebPort
-          RaftPort    = port fb.RaftPort
-          WsPort      = port fb.WsPort
-          GitPort     = port fb.GitPort
-          ApiPort     = port fb.ApiPort
-          Version     = version fb.Version }
+        { MachineId    = Id fb.MachineId
+          WorkSpace    = filepath fb.WorkSpace
+          LogDirectory = filepath fb.LogDirectory
+          HostName     = name fb.HostName
+          BindAddress  = ip
+          WebPort      = port fb.WebPort
+          RaftPort     = port fb.RaftPort
+          WsPort       = port fb.WsPort
+          GitPort      = port fb.GitPort
+          ApiPort      = port fb.ApiPort
+          Version      = version fb.Version }
     }
 
   // ** Default
 
   static member Default
     with get () =
-      { MachineId   = Id "<empty>"
-        HostName    = name "<empty>"
-        WorkSpace   = filepath "/dev/null"
-        LogPath     = filepath "/dev/null"
-        BindAddress = IPv4Address "127.0.0.1"
-        WebPort     = port Constants.DEFAULT_WEB_PORT
-        RaftPort    = port Constants.DEFAULT_RAFT_PORT
-        WsPort      = port Constants.DEFAULT_WEB_SOCKET_PORT
-        GitPort     = port Constants.DEFAULT_GIT_PORT
-        ApiPort     = port Constants.DEFAULT_API_PORT
-        Version     = version Build.VERSION }
+      { MachineId    = Id "<empty>"
+        HostName     = name "<empty>"
+        WorkSpace    = filepath "/dev/null"
+        LogDirectory = filepath "/dev/null"
+        BindAddress  = IPv4Address "127.0.0.1"
+        WebPort      = port Constants.DEFAULT_WEB_PORT
+        RaftPort     = port Constants.DEFAULT_RAFT_PORT
+        WsPort       = port Constants.DEFAULT_WEB_SOCKET_PORT
+        GitPort      = port Constants.DEFAULT_GIT_PORT
+        ApiPort      = port Constants.DEFAULT_API_PORT
+        Version      = version Build.VERSION }
 
 // * MachineStatus
 
@@ -227,29 +227,29 @@ module MachineConfig =
   // ** MachineConfigYaml (private)
 
   type MachineConfigYaml () =
-    [<DefaultValue>] val mutable MachineId   : string
-    [<DefaultValue>] val mutable WorkSpace   : string
-    [<DefaultValue>] val mutable LogPath     : string
-    [<DefaultValue>] val mutable BindAddress : string
-    [<DefaultValue>] val mutable WebPort     : uint16
-    [<DefaultValue>] val mutable RaftPort    : uint16
-    [<DefaultValue>] val mutable WsPort      : uint16
-    [<DefaultValue>] val mutable GitPort     : uint16
-    [<DefaultValue>] val mutable ApiPort     : uint16
-    [<DefaultValue>] val mutable Version     : string
+    [<DefaultValue>] val mutable MachineId:    string
+    [<DefaultValue>] val mutable WorkSpace:    string
+    [<DefaultValue>] val mutable LogDirectory: string
+    [<DefaultValue>] val mutable BindAddress:  string
+    [<DefaultValue>] val mutable WebPort:      uint16
+    [<DefaultValue>] val mutable RaftPort:     uint16
+    [<DefaultValue>] val mutable WsPort:       uint16
+    [<DefaultValue>] val mutable GitPort:      uint16
+    [<DefaultValue>] val mutable ApiPort:      uint16
+    [<DefaultValue>] val mutable Version:      string
 
     static member Create (cfg: IrisMachine) =
       let yml = MachineConfigYaml()
-      yml.MachineId   <- string cfg.MachineId
-      yml.WorkSpace   <- unwrap cfg.WorkSpace
-      yml.LogPath     <- unwrap cfg.LogPath
-      yml.BindAddress <- string cfg.BindAddress
-      yml.WebPort     <- unwrap cfg.WebPort
-      yml.RaftPort    <- unwrap cfg.RaftPort
-      yml.WsPort      <- unwrap cfg.WsPort
-      yml.GitPort     <- unwrap cfg.GitPort
-      yml.ApiPort     <- unwrap cfg.ApiPort
-      yml.Version     <- cfg.Version.ToString()
+      yml.MachineId    <- string cfg.MachineId
+      yml.WorkSpace    <- unwrap cfg.WorkSpace
+      yml.LogDirectory <- unwrap cfg.LogDirectory
+      yml.BindAddress  <- string cfg.BindAddress
+      yml.WebPort      <- unwrap cfg.WebPort
+      yml.RaftPort     <- unwrap cfg.RaftPort
+      yml.WsPort       <- unwrap cfg.WsPort
+      yml.GitPort      <- unwrap cfg.GitPort
+      yml.ApiPort      <- unwrap cfg.ApiPort
+      yml.Version      <- cfg.Version.ToString()
       yml
 
   // ** parse (private)
@@ -259,17 +259,17 @@ module MachineConfig =
       let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
       return
-        { MachineId   = Id yml.MachineId
-          HostName    = name hostname
-          WorkSpace   = filepath yml.WorkSpace
-          LogPath     = filepath yml.LogPath
-          BindAddress = ip
-          WebPort     = port yml.WebPort
-          RaftPort    = port yml.RaftPort
-          WsPort      = port yml.WsPort
-          GitPort     = port yml.GitPort
-          ApiPort     = port yml.ApiPort
-          Version     = version yml.Version }
+        { MachineId    = Id yml.MachineId
+          HostName     = name hostname
+          WorkSpace    = filepath yml.WorkSpace
+          LogDirectory = filepath yml.LogDirectory
+          BindAddress  = ip
+          WebPort      = port yml.WebPort
+          RaftPort     = port yml.RaftPort
+          WsPort       = port yml.WsPort
+          GitPort      = port yml.GitPort
+          ApiPort      = port yml.ApiPort
+          Version      = version yml.Version }
     }
 
   // ** ensureExists (private)
@@ -305,17 +305,17 @@ module MachineConfig =
 
     let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
 
-    { MachineId   = Id.Create()
-      HostName    = name hostname
-      WorkSpace   = workspace
-      LogPath     = workspace </> filepath "log" </> filepath Constants.DEFAULT_LOGFILE_NAME
-      BindAddress = IpAddress.Parse bindIp
-      WebPort     = shiftPort Constants.DEFAULT_WEB_PORT
-      RaftPort    = shiftPort Constants.DEFAULT_RAFT_PORT
-      WsPort      = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
-      GitPort     = shiftPort Constants.DEFAULT_GIT_PORT
-      ApiPort     = shiftPort Constants.DEFAULT_API_PORT
-      Version     = version }
+    { MachineId    = Id.Create()
+      HostName     = name hostname
+      WorkSpace    = workspace
+      LogDirectory = workspace </> filepath "log"
+      BindAddress  = IpAddress.Parse bindIp
+      WebPort      = shiftPort Constants.DEFAULT_WEB_PORT
+      RaftPort     = shiftPort Constants.DEFAULT_RAFT_PORT
+      WsPort       = shiftPort Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort      = shiftPort Constants.DEFAULT_GIT_PORT
+      ApiPort      = shiftPort Constants.DEFAULT_API_PORT
+      Version      = version }
 
   // ** save
 

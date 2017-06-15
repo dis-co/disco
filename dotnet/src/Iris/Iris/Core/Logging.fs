@@ -11,12 +11,15 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.IO
 open Iris.Serialization
 
 #endif
 
 #if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
+
 #endif
 
 // * LogLevel
@@ -501,3 +504,65 @@ module Logger =
     msg
     |> create LogLevel.Err callsite
     |> append
+
+// * LogFile
+
+#if !FABLE_COMPILER
+
+[<NoComparison;NoEquality>]
+type LogFile =
+  { FilePath: FilePath
+    Created: DateTime
+    Stream: StreamWriter }
+
+  interface IDisposable with
+    member self.Dispose() =
+      try
+        self.Stream.Flush()
+        self.Stream.Close()
+        dispose self.Stream
+      with
+        | _ -> ()
+
+// * LogFile module
+
+module LogFile =
+
+  // ** tag
+
+  let private tag (str: string) = String.format "LogFile.{0}" str
+
+  // ** write
+
+  let write (file: LogFile) (log: LogEvent) =
+    try
+      log
+      |> string
+      |> file.Stream.WriteLine
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "write")
+        |> Either.fail
+
+  // ** create
+
+  let create (machine: Id) (path: FilePath) =
+    let ts = DateTime.Now
+    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", string machine, ts)
+    let fp = Path.Combine(unwrap path, fn)
+    try
+      let writer = File.AppendText fp
+      writer.AutoFlush <- true
+      { FilePath = filepath fp
+        Created = ts
+        Stream = writer }
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "create")
+        |> Either.fail
+
+#endif

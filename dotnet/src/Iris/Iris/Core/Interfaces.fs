@@ -389,7 +389,7 @@ type IrisEvent =
       // |_____\___/ \__, |_|  |_|___/\__, |
       //             |___/            |___/
 
-      | Append (_, LogMsg _)                                 -> Ignore
+      | Append (_, LogMsg _)                                 -> Publish
 
       //  __  __ _
       // |  \/  (_)___  ___
