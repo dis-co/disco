@@ -846,14 +846,7 @@ module Git =
     let push (repo: Repository) (remote: Remote) =
       try
         let branch = Branch.current repo
-        let refSpec = String.format "+{0}:{0}" branch.CanonicalName
-        // this will force-push all local refs to all remote
-
         let basepath = Path.GetDirectoryName repo.Info.Path
-
-        runGit basepath "remote" "" ""
-        |> printfn "Git.Repo.remote: %s"
-
         branch.FriendlyName
         |> runGit basepath "push" remote.Name
         |> printfn "Git.Repo.push: %s"
