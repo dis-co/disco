@@ -303,6 +303,53 @@ module IrisService =
 
     | IrisEvent.RaftError _ | _ -> ()
 
+  // ** replicateEvent
+
+  let private replicateEvent (store: IAgentStore<IrisState>) = function
+    //  ____             _        _
+    // / ___|  ___   ___| | _____| |_
+    // \___ \ / _ \ / __| |/ / _ \ __|
+    //  ___) | (_) | (__|   <  __/ |_
+    // |____/ \___/ \___|_|\_\___|\__|
+
+    // first, send a snapshot to the new browser session to bootstrap it
+    | SessionOpened id ->
+      store.State.Store.State
+      |> DataSnapshot
+      |> store.State.SocketServer.Send id
+      |> ignore
+
+    // next, replicate AddSession to other Raft nodes
+    | Append (Origin.Web id, AddSession session) ->
+      session
+      |> store.State.SocketServer.BuildSession id
+      |> Either.iter (AddSession >> store.State.RaftServer.Append)
+
+    // replicate a RemoveSession command if the session exists
+    | SessionClosed id ->
+      store.State.Store.State.Sessions
+      |> Map.tryFind id
+      |> Option.iter (RemoveSession >> store.State.RaftServer.Append)
+
+    //     _                               _
+    //    / \   _ __  _ __   ___ _ __   __| |
+    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
+    //  / ___ \| |_) | |_) |  __/ | | | (_| |
+    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
+    //  _the_  |_|   |_| base case...
+
+    | Append (_, AddMember mem) -> store.State.RaftServer.AddMember mem
+    | Append (_, RemoveMember mem) -> store.State.RaftServer.RemoveMember mem.Id
+    | Append (_, other) -> store.State.RaftServer.Append other
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | other -> ignore other
+
   // ** dispatchEvent
 
   let private dispatchEvent (store: IAgentStore<IrisState>)
@@ -311,7 +358,7 @@ module IrisService =
     match cmd.DispatchStrategy with
     | Publish   -> pipeline.Push cmd
     | Process   -> processEvent store cmd
-    | Replicate -> store.State.RaftServer.Publish cmd
+    | Replicate -> replicateEvent store cmd
     | Ignore    -> ()
 
   // ** createDispatcher
