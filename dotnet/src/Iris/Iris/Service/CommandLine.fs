@@ -379,18 +379,6 @@ module CommandLine =
       return ()
     }
 
-  // ** dumpDataDir
-
-  //  ____
-  // |  _ \ _   _ _ __ ___  _ __
-  // | | | | | | | '_ ` _ \| '_ \
-  // | |_| | |_| | | | | | | |_) |
-  // |____/ \__,_|_| |_| |_| .__/
-  //                       |_|
-
-  let dumpDataDir (datadir: FilePath) =
-    implement "dumpDataDir"
-
   // ** help
 
   [<Literal>]

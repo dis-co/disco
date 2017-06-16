@@ -151,10 +151,7 @@ module HttpServer =
 
   // ** makeConfig
 
-  let private makeConfig (config: IrisMachine)
-                       (basePath: FilePath)
-                       (cts: CancellationTokenSource) :
-                       Either<IrisError,SuaveConfig> =
+  let private makeConfig machine (basePath: FilePath) (cts: CancellationTokenSource) =
     either {
       try
         let logger =
@@ -180,8 +177,6 @@ module HttpServer =
                 async.Return ()
               member x.name: string [] =
                 [|"iris"|] }
-
-        let machine = MachineConfig.get()
 
         do! Network.ensureIpAddress machine.BindAddress
         do! Network.ensureAvailability machine.BindAddress machine.WebPort
@@ -210,7 +205,7 @@ module HttpServer =
 
   // ** create
 
-  let create (config: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
+  let create (machine: IrisMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
     either {
       let status = ref ServiceStatus.Stopped
 
@@ -220,7 +215,7 @@ module HttpServer =
         |> Path.getFullPath
 
       let cts = new CancellationTokenSource()
-      let! webConfig = makeConfig config basePath cts
+      let! webConfig = makeConfig machine basePath cts
 
       return
         { new IHttpServer with

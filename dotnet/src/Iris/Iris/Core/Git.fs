@@ -869,7 +869,7 @@ module Git =
     ///
     /// Returns: Either<IrisError,MergeResult>
 
-    let pull (repo: Repository) (remote: Remote) (signature: Signature) =
+    let pull (repo: Repository) (signature: Signature) =
       try
         either {
           let options =

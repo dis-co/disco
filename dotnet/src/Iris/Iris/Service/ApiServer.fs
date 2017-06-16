@@ -97,7 +97,7 @@ module ApiServer =
 
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (state: ServerState) (client: Client) (agent: ApiAgent) =
+  let private requestInstallSnapshot (state: ServerState) (client: Client) =
     state.Callbacks.PrepareSnapshot()
     |> ClientApiRequest.Snapshot
     |> Binary.encode
@@ -138,7 +138,7 @@ module ApiServer =
 
   // ** pingTimer
 
-  let private pingTimer (socket: IClient) (agent: ApiAgent) =
+  let private pingTimer (socket: IClient) =
     let cts = new CancellationTokenSource()
 
     let rec loop () =
@@ -186,7 +186,7 @@ module ApiServer =
 
   // ** handleStart
 
-  let private handleStart (state: ServerState) (agent: ApiAgent) =
+  let private handleStart (state: ServerState) =
     state
 
   // ** handleAddClient
@@ -217,7 +217,7 @@ module ApiServer =
         let client =
           { Meta = meta
             Socket = socket
-            Timer = pingTimer socket agent }
+            Timer = pingTimer socket }
 
         meta.Id |> Msg.InstallSnapshot |> agent.Post
 
@@ -258,7 +258,7 @@ module ApiServer =
 
   // ** updateAllClients
 
-  let private updateAllClients (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+  let private updateAllClients (state: ServerState) (sm: StateMachine) =
     Tracing.trace (tag "updateAllClients") <| fun () ->
       state.Clients
       |> Map.toArray
@@ -267,7 +267,7 @@ module ApiServer =
 
   // ** multicastClients
 
-  let private multicastClients (state: ServerState) except (sm: StateMachine) (agent: ApiAgent) =
+  let private multicastClients (state: ServerState) except (sm: StateMachine) =
     Tracing.trace (tag "multicastClients") <| fun () ->
       state.Clients
       |> Map.filter (fun id _ -> except <> id)
@@ -313,7 +313,7 @@ module ApiServer =
 
   let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
     match Map.tryFind id state.Clients with
-    | Some client -> requestInstallSnapshot state client agent
+    | Some client -> requestInstallSnapshot state client
     | None -> ()
     state
 
@@ -325,32 +325,32 @@ module ApiServer =
                            (agent: ApiAgent) =
     match origin, cmd with
     | Origin.Api, _ ->
-      updateAllClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd        // in order to preserve ordering of the messages
       (origin, cmd)
       |> IrisEvent.Append
       |> Observable.onNext state.Subscriptions
 
     | Origin.Raft, _ ->
-      updateAllClients state cmd agent       // in order to preserve ordering of the messages
+      updateAllClients state cmd        // in order to preserve ordering of the messages
 
     | Origin.Client id, LogMsg       _
     | Origin.Client id, CallCue      _
     | Origin.Client id, UpdateSlices _ ->
       publish state cmd agent
-      multicastClients state id cmd agent       // in order to preserve ordering of the messages
+      multicastClients state id cmd     // in order to preserve ordering of the messages
       (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
-    | Origin.Client id, _ ->
+    | Origin.Client _, _ ->
       (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
 
     | Origin.Web _, LogMsg       _
     | Origin.Web _, CallCue      _
     | Origin.Web _, UpdateSlices _ ->
       publish state cmd agent
-      updateAllClients state cmd agent
+      updateAllClients state cmd
 
-    | Origin.Web id, _ ->
-      updateAllClients state cmd agent
+    | Origin.Web _, _ ->
+      updateAllClients state cmd
 
     | Origin.Service, AddClient    _
     | Origin.Service, UpdateClient _
@@ -362,7 +362,7 @@ module ApiServer =
     | Origin.Service, LogMsg _
     | Origin.Service, UpdateSlices _ ->
       publish state cmd agent
-      updateAllClients state cmd agent
+      updateAllClients state cmd
 
     | other -> ignore other
 
@@ -460,7 +460,7 @@ module ApiServer =
           let newstate =
             try
               match msg with
-              | Msg.Start                       -> handleStart state inbox
+              | Msg.Start                       -> handleStart state
               | Msg.Stop                        -> handleStop state
               | Msg.AddClient(client)           -> handleAddClient state client inbox
               | Msg.RemoveClient(client)        -> handleRemoveClient state client
@@ -495,7 +495,6 @@ module ApiServer =
                     (agent: ApiAgent) =
     either {
       let frontend = Uri.tcpUri mem.IpAddr (Some mem.ApiPort)
-      let backend = Uri.inprocUri Constants.API_BACKEND_PREFIX (mem.Id |> string |> Some)
 
       let pubSubAddr =
         Uri.epgmUri
@@ -572,7 +571,7 @@ module ApiServer =
 
             member self.Publish (ev: IrisEvent) =
               match ev with
-              | IrisEvent.Append (origin, (LogMsg log as cmd)) when log.Id <> mem.Id -> ()
+              | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
               | IrisEvent.Append (origin, cmd) ->
                 self.Update origin cmd
               | _ -> ()
@@ -584,7 +583,7 @@ module ApiServer =
             // *** Clients
 
             member self.Clients
-              with get () = store.State.Clients |> Map.map (fun id client -> client.Meta)
+              with get () = store.State.Clients |> Map.map (fun _ client -> client.Meta)
 
             // *** SendSnapshot
 

@@ -137,7 +137,6 @@ module Persistence =
   ///
   /// Returns: Either<IrisError, FileInfo * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
-    let signature = User.Admin.Signature
     let basePath = state.Project.Path
     let inline save t = Asset.save basePath t
     let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete

@@ -247,6 +247,9 @@
     <Compile Include="..\..\Iris\Service\Resolver.fs">
       <Link>Resolver.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\Pipeline.fs">
+      <Link>Pipeline.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>
@@ -258,9 +261,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Service\CommandLine.fs">
       <Link>CommandLine.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Service\Pipeline.fs">
-      <Link>Pipeline.fs</Link>
     </Compile>
   </ItemGroup>
   <PropertyGroup>

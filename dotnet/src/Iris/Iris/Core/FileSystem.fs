@@ -175,8 +175,6 @@ module File =
     |> unwrap
     |> File.Exists
 
-#endif
-
   // ** ensurePath
 
   let ensurePath (path: FilePath) =
@@ -190,6 +188,8 @@ module File =
         exn.Message
         |> Error.asIOError (tag "ensurePath")
         |> Either.fail
+
+#endif
 
 // * Directory
 

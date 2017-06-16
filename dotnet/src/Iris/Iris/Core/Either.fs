@@ -14,10 +14,10 @@ type Either<'err,'a> =
   | Right of 'a
   | Left  of 'err
 
-
 // * Either Module
 
 [<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Either =
 
   // ** ofNullable

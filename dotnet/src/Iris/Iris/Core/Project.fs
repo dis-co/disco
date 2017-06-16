@@ -1943,7 +1943,7 @@ module Config =
 
   // ** create
 
-  let create (name: string) (machine: IrisMachine) =
+  let create (machine: IrisMachine) =
     { Machine    = machine
       ActiveSite = None
       #if FABLE_COMPILER
@@ -2799,17 +2799,17 @@ module Project =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: IrisProject
-  let create (path: FilePath) (projectName: string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
+  let create (path: FilePath) (projectName: string) (machine: IrisMachine) =
     either {
       let project =
         { Id        = Id.Create()
-        ; Name      = name projectName
-        ; Path      = path
-        ; CreatedOn = Time.createTimestamp()
-        ; LastSaved = Some (Time.createTimestamp ())
-        ; Copyright = None
-        ; Author    = None
-        ; Config    = Config.create projectName machine  }
+          Name      = name projectName
+          Path      = path
+          CreatedOn = Time.createTimestamp()
+          LastSaved = Some (Time.createTimestamp ())
+          Copyright = None
+          Author    = None
+          Config    = Config.create machine  }
 
       do! initRepo project
       let! _ = Asset.saveWithCommit (toFilePath path) User.Admin.Signature project
@@ -2885,6 +2885,8 @@ module Project =
 
   // ** updateRemotes
 
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   let updateRemotes (project: IrisProject) = either {
       let! repo = repository project
 
@@ -2917,3 +2919,5 @@ module Project =
               cluster.Members
           | None -> Either.nothing
     }
+
+  #endif

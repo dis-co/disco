@@ -100,6 +100,8 @@ module JsUtilities =
 
 // * Id (Fable)
 
+open System.Text.RegularExpressions
+
 type Id =
   | Id of string
 
@@ -114,6 +116,16 @@ type Id =
   // ** Create
 
   static member Create _ = mkGuid () |> Id
+
+  // ** Prefix
+
+  member id.Prefix
+    with get () =
+      let str = string id
+      let m = Regex.Match(str, "^([a-zA-Z0-9]{8})-") // match the first 8 chars of a guid
+      if m.Success
+      then m.Groups.[1].Value           // use the first block of characters
+      else str                          // just use the string as-is
 
 #else
 

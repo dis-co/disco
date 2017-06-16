@@ -21,7 +21,8 @@ module GitTests =
       |> Member.setGitPort (port p)
 
     let config =
-      Config.create "Test Project" machine
+      machine
+      |> Config.create
       |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
       |> Config.setLogLevel Debug
 

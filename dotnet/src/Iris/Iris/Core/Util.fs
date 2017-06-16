@@ -15,7 +15,6 @@ open Fable.Import
 open System.IO
 open System.Net
 open System.Linq
-open System.Management
 open System.Diagnostics
 open System.Text
 open System.Security.Cryptography
@@ -23,13 +22,11 @@ open System.Runtime.CompilerServices
 
 #endif
 
-// * List
+#if !IRIS_NODES && !FABLE_COMPILER
 
-[<RequireQualifiedAccess>]
-module List =
-  let reverse (lst : 'a list) : 'a list =
-    let reverser acc elm = List.concat [[elm]; acc]
-    List.fold reverser [] lst
+open System.Management
+
+#endif
 
 // * Utils
 

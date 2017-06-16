@@ -27,7 +27,8 @@ module IrisServiceTests =
       let author1 = "karsten"
 
       let cfg =
-        Config.create "leader" machine
+        machine
+        |> Config.create
         |> Config.addSiteAndSetActive site
         |> Config.setLogLevel (LogLevel.Debug)
 
@@ -120,7 +121,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let! service1 = IrisServiceNG.create ctx {
+        let! service1 = IrisService.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -129,8 +130,7 @@ module IrisServiceTests =
         }
 
         use oobs1 =
-          (fun ev ->
-            match ev with
+          (function
             | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
@@ -156,7 +156,7 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let! service2 = IrisServiceNG.create ctx {
+        let! service2 = IrisService.create ctx {
           Machine = machine2
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -239,7 +239,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        use service1 = IrisService.create ctx {
+        use! service1 = IrisService.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName

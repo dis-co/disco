@@ -7,6 +7,7 @@ namespace Iris.Service
 open System
 open Iris.Core
 open Iris.Raft
+open Iris.Service
 open ZeroMQ
 
 // * Iris
@@ -115,7 +116,7 @@ module Iris =
                 Option.iter dispose !iris              // in case there was already something loaded
                 Option.iter dispose !eventSubscription // and its subscription as well
                 Option.iter dispose !registration      // and any registered service
-                let irisService = IrisService.create ctx {
+                let! irisService = IrisService.create ctx {
                   Machine = options.Machine
                   ProjectName = name
                   UserName = username

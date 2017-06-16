@@ -176,11 +176,6 @@ module Server =
     let poll = ZPollItem.CreateReceiver()
     let timeout = Nullable(TimeSpan.FromMilliseconds 1.0)
 
-    let toerror =
-      "Timeout on socket"
-      |> Error.asSocketError (tag "worker")
-      |> Either.fail
-
     state.Starter.Set() |> ignore
 
     while spin state do

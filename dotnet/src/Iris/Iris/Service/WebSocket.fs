@@ -167,8 +167,7 @@ module WebSocketServer =
   /// - socket: IWebSocketConnection to add handlers to
   ///
   /// Returns: unit
-  let private onNewSocket (id: Id)
-                          (connections: Connections)
+  let private onNewSocket (connections: Connections)
                           (agent: SocketEventProcessor)
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
@@ -254,7 +253,7 @@ module WebSocketServer =
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-      let handler = onNewSocket mem.Id connections agent
+      let handler = onNewSocket connections agent
       let server = new WebSocketServer(uri)
 
       return

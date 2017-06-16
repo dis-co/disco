@@ -24,7 +24,7 @@ module ApiTests =
         LastSaved = Some (Time.createTimestamp ())
         Copyright = None
         Author    = None
-        Config    = Config.create "Hello" machine  }
+        Config    = Config.create machine  }
 
     { Project            = project
       PinGroups          = Map.empty

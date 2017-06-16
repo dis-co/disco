@@ -42,12 +42,14 @@ module RaftIntegrationTests =
               Members = Map.ofArray [| (mem1.Id, mem1)
                                        (mem2.Id, mem2) |] }
         let leadercfg =
-          Config.create "leader" machine1
+          machine1
+          |> Config.create
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
-          Config.create "follower" machine2
+          machine2
+          |> Config.create
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
@@ -94,7 +96,8 @@ module RaftIntegrationTests =
               Members = Map.ofArray [| (mem.Id, mem) |] }
 
         let leadercfg =
-          Config.create "leader" machine
+          machine
+          |> Config.create
           |> Config.addSiteAndSetActive site
 
         use! leader = RaftServer.create ctx leadercfg {
@@ -169,12 +172,14 @@ module RaftIntegrationTests =
                                        (mem2.Id, mem2) |] }
 
         let leadercfg =
-          Config.create "leader" machine1
+          machine1
+          |> Config.create
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
-          Config.create "follower" machine2
+          machine2
+          |> Config.create
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
@@ -227,7 +232,8 @@ module RaftIntegrationTests =
               Members = Map.ofArray [| (mem1.Id, mem1) |] }
 
         let leadercfg =
-          Config.create "leader" machine1
+          machine1
+          |> Config.create
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
@@ -317,12 +323,14 @@ module RaftIntegrationTests =
           { site1 with Members = Map.ofArray [| (mem2.Id, mem2) |] }
 
         let leadercfg =
-          Config.create "leader" machine1
+          machine1
+          |> Config.create
           |> Config.addSiteAndSetActive site1
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
-          Config.create "follower" machine2
+          machine2
+          |> Config.create
           |> Config.addSiteAndSetActive site2
           |> Config.setLogLevel (LogLevel.Debug)
 

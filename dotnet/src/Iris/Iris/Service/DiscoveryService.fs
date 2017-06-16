@@ -107,8 +107,7 @@ module DiscoveryService =
 
   // ** serviceRegistered
 
-  let private serviceRegistered (subs: Subscriptions)
-                                (agent: DiscoveryAgent)
+  let private serviceRegistered (agent: DiscoveryAgent)
                                 (disco: DiscoverableService)
                                 (_: obj)
                                 (args: RegisterServiceEventArgs) =
@@ -124,13 +123,10 @@ module DiscoveryService =
 
   // ** registerService
 
-  let private registerService (subs: Subscriptions)
-                              (config: IrisMachine)
-                              (agent: DiscoveryAgent)
-                              (disco: DiscoverableService) =
+  let private registerService (agent: DiscoveryAgent) (disco: DiscoverableService) =
     try
       let service = Discovery.toDiscoverableService disco
-      let handler = new RegisterServiceEventHandler(serviceRegistered subs agent disco)
+      let handler = new RegisterServiceEventHandler(serviceRegistered agent disco)
       service.Response.AddHandler(handler)
       service.Register()
       Either.succeed service
@@ -188,7 +184,7 @@ module DiscoveryService =
     | Some registered ->
       dispose registered
       srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
-      match registerService state.Subscriptions state.Machine agent srvc with
+      match registerService agent srvc with
       | Right service ->
         srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
         { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }
@@ -198,7 +194,7 @@ module DiscoveryService =
         |> Logger.err (tag "handleRegister")
         state
     | None ->
-      match registerService state.Subscriptions state.Machine agent srvc with
+      match registerService agent srvc with
       | Right service ->
         srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
         { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }

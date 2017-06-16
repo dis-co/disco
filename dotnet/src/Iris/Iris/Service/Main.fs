@@ -12,7 +12,6 @@ open Iris.Service.CommandLine
 
 [<AutoOpen>]
 module Main =
-  (*
   ////////////////////////////////////////
   //  __  __       _                    //
   // |  \/  | __ _(_)_ __               //
@@ -20,21 +19,6 @@ module Main =
   // | |  | | (_| | | | | |             //
   // |_|  |_|\__,_|_|_| |_|             //
   ////////////////////////////////////////
-
-  let (|Quit|_|) str =
-    match str with
-    | "quit" -> Some ()
-    | _ -> None
-
-  let (|Log|_|) (str: string) =
-    if str.StartsWith "log " then
-      str.Substring(3) |> Some
-    else None
-
-  let (|Append|_|) (str: string) =
-    if str.StartsWith "append " then
-      str.Substring(7) |> Some
-    else None
 
   [<EntryPoint>]
   let main args =
@@ -90,7 +74,6 @@ module Main =
       | Create,            _ -> createProject parsed
       | Start,           dir -> startService dir frontend
       | Reset,      Some dir -> resetProject dir
-      | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir
       | Add_Member, Some dir -> addMember dir
       | Help,              _ -> help ()
@@ -102,55 +85,3 @@ module Main =
     result |> Error.orExit ignore
 
     Error.exitWith IrisError.OK
-
-  *)
-
-  let (|Quit|_|) str =
-    match str with
-    | "quit" | "exit" -> Some ()
-    | _ -> None
-
-  let (|Log|_|) (str: string) =
-    if str.StartsWith("log ") then
-      str.Substring(3) |> Some
-    else None
-
-  let (|Append|_|) (str: string) =
-    if str.StartsWith("append ") then
-      str.Substring(6) |> Some
-    else None
-
-  [<EntryPoint>]
-  let main args =
-     use obs = Logger.subscribe Logger.stdout
-     MachineConfig.init None |> ignore
-
-     let machine = MachineConfig.get()
-
-     match IrisNG.load args.[0] machine with
-     | Right iris ->
-
-       Console.addExitHandlers [ unbox iris ]
-
-       let mutable run = true
-       while run do
-         match Console.ReadLine() with
-         | Quit _  ->
-           run <- false
-           dispose iris
-         | Log str ->
-           Logger.create LogLevel.Debug "test" str
-           |> IrisEvent.Log
-           |> iris.Publish
-         | Append str ->
-           { Id = Id.Create(); Name = str; Slices = [||] }
-           |> AddCue
-           |> fun cmd -> (Id.Create(), cmd)
-           |> SocketEvent.OnMessage
-           |> IrisEvent.Socket
-           |> iris.Publish
-         | _ -> ()
-
-     | Left error -> printf "error: %A" error
-
-     0

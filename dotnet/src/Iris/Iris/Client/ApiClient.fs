@@ -215,7 +215,7 @@ module ApiClient =
 
   // ** handleRequest
 
-  let private handleRequest (state: ClientState) (sm: StateMachine) (agent: ApiAgent) =
+  let private handleRequest (state: ClientState) (sm: StateMachine) =
     maybeDispatch state sm
     requestUpdate state.Socket sm
     state
@@ -313,7 +313,7 @@ module ApiClient =
           | Msg.CheckStatus            -> handleCheckStatus    state          inbox
           | Msg.Ping                   -> handlePing           state
           | Msg.Update sm              -> handleUpdate         state sm       inbox
-          | Msg.Request       sm       -> handleRequest        state sm       inbox
+          | Msg.Request       sm       -> handleRequest        state sm
           | Msg.RawServerRequest req   -> handleServerRequest  state req      inbox
           | Msg.RawClientResponse resp -> handleClientResponse state resp     inbox
         store.Update newstate
@@ -355,12 +355,6 @@ module ApiClient =
           // **** Start
 
           member self.Start () = either {
-              let backendAddr =
-                client.Id
-                |> string
-                |> Some
-                |> Uri.inprocUri Constants.API_CLIENT_PREFIX
-
               let clientAddr =
                 client.Port
                 |> Some
