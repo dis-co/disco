@@ -311,7 +311,7 @@ module ApiServer =
 
   // ** handleInstallSnapshot
 
-  let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
+  let private handleInstallSnapshot (state: ServerState) (id: Id) =
     match Map.tryFind id state.Clients with
     | Some client -> requestInstallSnapshot state client
     | None -> ()
@@ -466,7 +466,7 @@ module ApiServer =
               | Msg.RemoveClient(client)        -> handleRemoveClient state client
               | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
               | Msg.SetStatus(status)           -> handleSetStatus state status
-              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
+              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
               | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
               | Msg.RawServerRequest(req)       -> handleServerRequest state req inbox
               | Msg.RawClientResponse(resp)     -> handleClientResponse state resp inbox

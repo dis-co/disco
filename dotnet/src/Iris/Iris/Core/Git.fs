@@ -685,9 +685,12 @@ module Git =
           |> Error.asGitError (tag "add")
           |> Either.fail
         else
-          if File.exists path then
-            Path.map repo.Index.Add path
-          Either.succeed ()
+          if File.exists path || Directory.exists path then
+            runGit repo.Info.WorkingDirectory "add" "." ""
+            |> printfn "result: %s"
+            |> Either.succeed
+          else
+            Either.succeed ()
       with
         | exn ->
           exn.Message
@@ -699,8 +702,8 @@ module Git =
     let stage (repo: Repository) (path: FilePath) =
       try
         if Path.isPathRooted path then
-          path
-          |> Path.map (fun path -> Commands.Stage(repo, path))
+          runGit repo.Info.WorkingDirectory "stage" "." ""
+          |> printfn "result: %s"
           |> Either.succeed
         else
           path
