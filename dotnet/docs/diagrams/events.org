@@ -1,0 +1,31 @@
+* WebSocket Events
+
+  
+
+#+begin_src plantuml :file tryout.png
+hide footbox
+
+box "User"
+    actor "Alice" as C
+end box
+
+box "Iris" #Lightblue
+    participant "Dispatcher" as A
+    participant "Raft" as B
+end box
+
+box "Cluster" #LightGreen
+    participant "Other Members" as D
+end box
+
+C ->  A: AddCue
+A ->> B: << Strategy Replicate >>
+B --> D: Replicate to Members
+B <-- D: Replication Successful
+B ->> A: << Strategy Publish >>
+A -->] : Publish on API
+A ->  C: Apply to State and render
+#+end_src
+
+#+results:
+file:tryout.png
