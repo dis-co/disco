@@ -98,10 +98,8 @@ module IrisServiceTests =
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
   let test_ensure_iris_server_clones_changes_from_leader =
-    ftestCase "ensure iris server clones changes from leader" <| fun _ ->
+    testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use ctx = new ZContext()
 
         use checkGitStarted = new AutoResetEvent(false)

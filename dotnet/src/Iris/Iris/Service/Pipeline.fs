@@ -220,7 +220,6 @@ module IrisServiceNG =
             match Persistence.commitChanges state.Store.State with
             | Right (repo, commit) ->
               let b = Git.Branch.current repo
-              printfn "BRANCH: %s" b.FriendlyName
               commit.Sha
               |> String.format "Successfully committed changes in: {0}"
               |> Logger.debug (tag "statePersistor")

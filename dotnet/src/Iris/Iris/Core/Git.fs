@@ -29,6 +29,34 @@ module Git =
 
   let private tag (str: string) = String.format "Git.{0}" str
 
+  // ** runGit
+
+  let runGit (basepath: string) (cmd: string) (origin: string) (branch: string) =
+    use proc = new Process()
+    proc.StartInfo.FileName <- "git"
+    proc.StartInfo.Arguments <- cmd + " " + origin + " "  + branch
+    proc.StartInfo.WorkingDirectory <- basepath
+    proc.StartInfo.CreateNoWindow <- true
+    proc.StartInfo.UseShellExecute <- false
+    proc.StartInfo.RedirectStandardOutput <- true
+    proc.StartInfo.RedirectStandardError <- true
+
+    if proc.Start() then
+      let lines = ResizeArray()
+      while not proc.StandardOutput.EndOfStream do
+        proc.StandardOutput.ReadLine()
+        |> lines.Add
+      while not proc.StandardError.EndOfStream do
+        proc.StandardError.ReadLine()
+        |> lines.Add
+      proc.WaitForExit()
+      lines.ToArray()
+      |> String.join "\n"
+    else
+      proc.WaitForExit()
+      proc.StandardError.ReadToEnd()
+      |> failwithf "Error: %s"
+
   // ** lsRemote
 
   /// ## lsRemote
@@ -816,41 +844,13 @@ module Git =
 
     // *** push
 
-    let runGit (basepath: string) (cmd: string) (origin: string) (branch: string) =
-      use proc = new Process()
-      proc.StartInfo.FileName <- "git"
-      proc.StartInfo.Arguments <- cmd + " " + origin + " "  + branch
-      proc.StartInfo.WorkingDirectory <- basepath
-      proc.StartInfo.CreateNoWindow <- true
-      proc.StartInfo.UseShellExecute <- false
-      proc.StartInfo.RedirectStandardOutput <- true
-      proc.StartInfo.RedirectStandardError <- true
-
-      if proc.Start() then
-        let lines = ResizeArray()
-        while not proc.StandardOutput.EndOfStream do
-          proc.StandardOutput.ReadLine()
-          |> lines.Add
-        while not proc.StandardError.EndOfStream do
-          proc.StandardError.ReadLine()
-          |> lines.Add
-        proc.WaitForExit()
-        printfn "done: %d" proc.ExitCode
-        lines.ToArray()
-        |> String.join "\n"
-      else
-        proc.WaitForExit()
-        proc.StandardError.ReadToEnd()
-        |> failwithf "Error: %s"
-
     let push (repo: Repository) (remote: Remote) =
       try
         let branch = Branch.current repo
         let basepath = Path.GetDirectoryName repo.Info.Path
         branch.FriendlyName
         |> runGit basepath "push" remote.Name
-        |> printfn "Git.Repo.push: %s"
-        |> Either.succeed
+        |> Either.ignore
       with
         | exn ->
           exn.Message
