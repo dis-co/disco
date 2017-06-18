@@ -1,0 +1,37 @@
+title Replication of Assets
+
+hide footbox
+
+box "User"
+    actor "Alice" as C
+end box
+
+box "Iris (Leader)" #Lightblue
+    participant "Dispatcher" as A
+    participant "Raft" as B
+end box
+
+box "Cluster" #LightGreen
+    participant "Raft Members" as D
+end box
+
+box "API Clients" #red
+    participant "Locally Connected\nAPI Clients" as E
+end box
+
+C ->  A: AddCue
+activate A
+A ->> B: << Strategy Replicate >>
+activate B
+B --> D: Replicate to Members
+activate D
+B <-- D: Replication Successful
+deactivate D
+B ->> A: << Strategy Publish >>
+deactivate B
+D --> E: Publish on API
+activate E
+A --> E: Publish on API
+deactivate E
+A ->  C: Apply to State and render
+deactivate A
