@@ -169,6 +169,7 @@ box "Iris" #LightBlue
     participant "WebSocket Publisher" as E
 end box
 
+
 box "Local API Clients"
     participant "Other IrisService" as F
 end box

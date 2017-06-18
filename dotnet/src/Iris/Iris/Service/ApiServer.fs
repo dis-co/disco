@@ -573,7 +573,8 @@ module ApiServer =
               match ev with
               | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
               | IrisEvent.Append (origin, cmd) ->
-                self.Update origin cmd
+                updateAllClients store.State cmd
+                publish store.State cmd agent
               | _ -> ()
 
             // *** Start
@@ -593,7 +594,8 @@ module ApiServer =
             // *** Update
 
             member self.Update (origin: Origin) (sm: StateMachine) =
-              (origin, sm) |> Msg.Update |> agent.Post
+              updateAllClients store.State sm
+              publish store.State sm agent
 
             // *** Subscribe
 
