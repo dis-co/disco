@@ -1,5 +1,0 @@
-#r "../../../../packages/build/System.ValueTuple/lib/portable-net40+sl4+win8+wp8/System.ValueTuple.dll" 
-#r "../../../../packages/build/System.Diagnostics.DiagnosticSource/lib/portable-net45+win8+wpa81/System.Diagnostics.DiagnosticSource.dll" 
-#r "../../../../packages/build/Octokit/lib/netcore451/Octokit.dll" 
-#r "../../../../packages/build/Microsoft.Net.Http/lib/win8/System.Net.Http.Primitives.dll" 
-#r "../../../../packages/build/Microsoft.Net.Http/lib/win8/System.Net.Http.Extensions.dll" 

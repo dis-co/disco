@@ -1,1 +1,0 @@
-#r "../../../../packages/build/System.Console/lib/net46/System.Console.dll" 

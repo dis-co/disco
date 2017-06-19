@@ -1,8 +1,0 @@
-#r "../../../../packages/build/System.Security.Cryptography.OpenSsl/lib/netstandard1.6/System.Security.Cryptography.OpenSsl.dll" 
-#r "../../../../packages/build/System.Diagnostics.DiagnosticSource/lib/netstandard1.3/System.Diagnostics.DiagnosticSource.dll" 
-#r "../../../../packages/build/Octokit/lib/portable-net45+wp80+win+wpa81/Octokit.dll" 
-#r "../../../../packages/build/Microsoft.Net.Http/lib/portable-net45+win8/System.Net.Http.Primitives.dll" 
-#r "../../../../packages/build/Microsoft.Net.Http/lib/portable-net45+win8/System.Net.Http.Extensions.dll" 
-#r "../../../../packages/build/Microsoft.Bcl/lib/portable-net40+win8/System.Threading.Tasks.dll" 
-#r "../../../../packages/build/Microsoft.Bcl/lib/portable-net40+win8/System.Runtime.dll" 
-#r "../../../../packages/build/Microsoft.Bcl/lib/portable-net40+win8/System.IO.dll" 

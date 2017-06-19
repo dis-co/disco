@@ -1,6 +1,0 @@
-#load @"VVVV.Core.fsx" 
-#load @"VVVV.PluginInterfaces.fsx" 
-#load @"VVVV.System.ComponentModel.Composition.Codeplex.fsx" 
-#load @"VVVV.Utils.fsx" 
-#load @"VVVV.Utils3rdParty.fsx" 
-#load @"VVVV.UtilsIL.fsx" 

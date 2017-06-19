@@ -1,8 +1,0 @@
-#r "../../../packages/Suave.Git/lib/Suave.Git.dll" 
-#r "../../../packages/FsCheck/lib/portable-net45+netcore45/FsCheck.dll" 
-#r "../../../packages/Newtonsoft.Json/lib/portable-net45+wp80+win8+wpa81/Newtonsoft.Json.dll" 
-#r "../../../packages/System.Data.Common/lib/portable-net451+win8+wp8+wpa81/System.Data.Common.dll" 
-#r "../../../packages/System.Runtime.InteropServices.RuntimeInformation/lib/win8/System.Runtime.InteropServices.RuntimeInformation.dll" 
-#r "../../../packages/System.ValueTuple/lib/portable-net40+sl4+win8+wp8/System.ValueTuple.dll" 
-#r "../../../packages/System.Diagnostics.DiagnosticSource/lib/portable-net45+win8+wpa81/System.Diagnostics.DiagnosticSource.dll" 
-#r "../../../packages/System.Threading.Tasks.Extensions/lib/portable-net45+win8+wp8+wpa81/System.Threading.Tasks.Extensions.dll" 

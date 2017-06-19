@@ -1,7 +1,0 @@
-#r "../../../packages/Suave.Git/lib/Suave.Git.dll" 
-#r "../../../packages/Newtonsoft.Json/lib/net35/Newtonsoft.Json.dll" 
-#r "../../../packages/Mono.Cecil/lib/net35/Mono.Cecil.dll" 
-#r "../../../packages/Argu/lib/net35/Argu.dll" 
-#r "../../../packages/Mono.Cecil/lib/net35/Mono.Cecil.Rocks.dll" 
-#r "../../../packages/Mono.Cecil/lib/net35/Mono.Cecil.Pdb.dll" 
-#r "../../../packages/Mono.Cecil/lib/net35/Mono.Cecil.Mdb.dll" 

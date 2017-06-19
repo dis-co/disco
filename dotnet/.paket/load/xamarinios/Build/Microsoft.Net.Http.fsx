@@ -1,2 +1,0 @@
-#r "../../../../packages/build/Microsoft.Net.Http/lib/Xamarin.iOS10/System.Net.Http.Primitives.dll" 
-#r "../../../../packages/build/Microsoft.Net.Http/lib/Xamarin.iOS10/System.Net.Http.Extensions.dll" 

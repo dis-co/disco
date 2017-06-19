@@ -1,6 +1,0 @@
-#r "../../../packages/Suave.Git/lib/Suave.Git.dll" 
-#r "../../../packages/FsCheck/lib/portable-net45+netcore45+wp8/FsCheck.dll" 
-#r "../../../packages/Newtonsoft.Json/lib/netstandard1.0/Newtonsoft.Json.dll" 
-#r "../../../packages/System.ValueTuple/lib/netstandard1.0/System.ValueTuple.dll" 
-#r "../../../packages/System.Threading.Tasks.Extensions/lib/netstandard1.0/System.Threading.Tasks.Extensions.dll" 
-#r "../../../packages/System.Security.Principal/lib/netstandard1.0/System.Security.Principal.dll" 

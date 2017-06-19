@@ -1,6 +1,0 @@
-#load @"System.Dynamic.Runtime.fsx" 
-#load @"System.Linq.Expressions.fsx" 
-#load @"System.ObjectModel.fsx" 
-#load @"System.Reflection.TypeExtensions.fsx" 
-#load @"System.Threading.fsx" 
-#r "../../../packages/Microsoft.CSharp/lib/netstandard1.3/Microsoft.CSharp.dll" 
