@@ -579,10 +579,10 @@ module IrisService =
       // start all services
       let result =
         either {
-          do! store.State.RaftServer.Start()
           do! store.State.ApiServer.Start()
           do! store.State.SocketServer.Start()
           do! store.State.GitServer.Start()
+          do! store.State.RaftServer.Start()
         }
 
       match result with
