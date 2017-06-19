@@ -200,5 +200,6 @@ type IIris =
   abstract HttpServer: IHttpServer
   abstract DiscoveryService: IDiscoveryService option
   abstract IrisService: IIrisService option
+  abstract SaveProject: unit -> Either<IrisError,unit>
   abstract LoadProject: Name * UserName * Password * Id option -> Either<IrisError,unit>
   abstract UnloadProject: unit -> Either<IrisError,unit>

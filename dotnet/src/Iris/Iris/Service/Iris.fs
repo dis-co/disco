@@ -137,6 +137,18 @@ module Iris =
                   return! Either.fail error
               }
 
+            member self.SaveProject() =
+              match !iris with
+              | Some iris ->
+                AppCommand.SaveProject
+                |> StateMachine.Command
+                |> iris.Append
+                |> Either.succeed
+              | None ->
+                "No project loaded"
+                |> Error.asOther (tag "SaveProject")
+                |> Either.fail
+
             member self.UnloadProject() = either {
                 match !iris, !eventSubscription with
                 | Some irisService, subscription ->

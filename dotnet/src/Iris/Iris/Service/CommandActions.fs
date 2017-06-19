@@ -234,6 +234,9 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
         | MachineStatus -> machineStatus iris
         | MachineConfig -> machineConfig ()
         | CreateProject opts -> createProject cfg opts
+        | SaveProject ->
+          iris.SaveProject()
+          |> Either.map (fun _ -> "Successfully saved project")
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
         | LoadProject(projectName, username, password, site) ->
