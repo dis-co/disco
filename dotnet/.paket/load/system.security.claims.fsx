@@ -1,8 +1,0 @@
-#load @"system.collections.fsx" 
-#load @"system.globalization.fsx" 
-#load @"system.io.fsx" 
-#load @"system.resources.resourcemanager.fsx" 
-#load @"system.runtime.fsx" 
-#load @"system.runtime.extensions.fsx" 
-#load @"system.security.principal.fsx" 
-#r "../../packages/System.Security.Claims/lib/net46/System.Security.Claims.dll" 

@@ -21,13 +21,14 @@ module GitTests =
       |> Member.setGitPort (port p)
 
     let config =
-      Config.create "Test Project" machine
+      machine
+      |> Config.create
       |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
       |> Config.setLogLevel Debug
 
     let project =
       let p =
-        Project.create tmpdir "Test Project" machine
+        Project.create (Project.ofFilePath tmpdir) "Test Project" machine
         |> Either.get
       in { p with Config = config }
 
@@ -100,7 +101,7 @@ module GitTests =
         use started = new AutoResetEvent(false)
 
         let handleStarted = function
-          | GitEvent.Started _ -> started.Set() |> ignore
+          | IrisEvent.Started _ -> started.Set() |> ignore
           | _ -> ()
 
         use gitserver1 = GitServer.create mem path
@@ -127,7 +128,7 @@ module GitTests =
         let started = new AutoResetEvent(false)
 
         let handleStarted = function
-          | GitEvent.Started _ -> started.Set() |> ignore
+          | IrisEvent.Started _ -> started.Set() |> ignore
           | _ -> ()
 
         let uuid, tmpdir, project, mem, path =

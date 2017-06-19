@@ -14,6 +14,8 @@ open LibGit2Sharp
 
 module Persistence =
 
+  // ** tag
+
   let private tag (str: string) = String.Format("Persistence.{0}", str)
 
   // ** createRaft
@@ -135,7 +137,6 @@ module Persistence =
   ///
   /// Returns: Either<IrisError, FileInfo * IrisProject>
   let persistEntry (state: State) (sm: StateMachine) =
-    let signature = User.Admin.Signature
     let basePath = state.Project.Path
     let inline save t = Asset.save basePath t
     let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete
@@ -252,12 +253,24 @@ module Persistence =
       let signature = User.Admin.Signature
       let! repo = state.Project |> Project.repository
       do! Git.Repo.stageAll repo
-      return! Git.Repo.commit repo "Project changes committed." signature
+      let! commit = Git.Repo.commit repo "Project changes committed." signature
+      return repo, commit
     }
+
+  // ** pushChanges
+
+  let pushChanges (repo: Repository) =
+    repo
+    |> Git.Config.remotes
+    |> Map.map    (konst (Git.Repo.push repo))
+    |> Map.filter (konst (Either.isFail))
+    |> Map.map    (konst (Either.error))
+
+  // ** persistSnapshot
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
-      let path = state.Project.Path
+      let path = Project.toFilePath state.Project.Path
       do! state.Save(path)
       use! repo = Project.repository state.Project
       do! Git.Repo.stageAll repo
@@ -297,46 +310,5 @@ module Persistence =
       Git.Branch.setTracked repo branch remote
     else
       Either.nothing
-
-  // ** updateRepo
-
-  /// ## updateRepo
-  ///
-  /// Pull changes from the leader's git repository
-  ///
-  /// ### Signature:
-  /// - project: IrisProject
-  /// - leader: RaftMember who is currently leader of the cluster
-  ///
-  /// Returns: Either<IrisError, unit>
-  let updateRepo (project: IrisProject) (leader: RaftMember) =
-    either {
-      let! repo = Project.repository project
-      let! remote = getRemote project repo leader
-
-      let branch = Git.Branch.current repo
-      do! ensureTracking repo branch remote
-      let result = Git.Repo.pull repo remote User.Admin.Signature
-      match result with
-      | Right merge ->
-        return!
-          match merge.Status with
-          | MergeStatus.Conflicts ->
-            (GitMergeStatus.Conflicts, None)
-            |> Either.succeed
-          | MergeStatus.UpToDate  ->
-            (GitMergeStatus.UpToDate, None)
-            |> Either.succeed
-          | MergeStatus.FastForward ->
-            (GitMergeStatus.FastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
-            |> Either.succeed
-          | MergeStatus.NonFastForward as status ->
-            (GitMergeStatus.NonFastForward, merge.Commit |> Option.ofNull (fun c -> Some c.Sha))
-            |> Either.succeed
-          | other ->
-            String.format "unknown merge status: %A" other
-            |> Error.asGitError (tag "updateRepo") |> Either.fail
-      | Left error -> return! Either.fail error
-    }
 
 #endif

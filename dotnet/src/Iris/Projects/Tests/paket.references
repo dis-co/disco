@@ -11,3 +11,4 @@ FsCheck
 ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
+Disruptor

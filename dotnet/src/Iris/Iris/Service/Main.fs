@@ -74,7 +74,6 @@ module Main =
       | Create,            _ -> createProject parsed
       | Start,           dir -> startService dir frontend
       | Reset,      Some dir -> resetProject dir
-      | Dump,       Some dir -> dumpDataDir dir
       | Add_User,   Some dir -> addUser dir
       | Add_Member, Some dir -> addMember dir
       | Help,              _ -> help ()

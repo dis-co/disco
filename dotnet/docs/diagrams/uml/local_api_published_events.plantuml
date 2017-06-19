@@ -1,0 +1,26 @@
+title Local API Published Events
+
+hide footbox
+
+box "Local API Clients"
+    participant "VVVV"  as A
+    participant "Unity" as B
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "API Server"          as C
+    participant "Dispatcher"          as D
+    participant "State Mutator"       as E
+    participant "WebSocket Publisher" as F
+end box
+
+box "Remote API Listeners"
+    participant "Other IrisService" as G
+end box
+
+A -> C: UpdateSlice Command
+B <-- C: Pass-Thru to Clients
+C --> G: Publish via Multicast
+C -> D: Dispatch Command
+D -> E: Apply to State
+E -> F: Publish via WebSocket

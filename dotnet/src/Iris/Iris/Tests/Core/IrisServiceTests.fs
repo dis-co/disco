@@ -27,15 +27,16 @@ module IrisServiceTests =
       let author1 = "karsten"
 
       let cfg =
-        Config.create "leader" machine
+        machine
+        |> Config.create
         |> Config.addSiteAndSetActive site
         |> Config.setLogLevel (LogLevel.Debug)
 
-      let! project = Project.create path name machine
+      let! project = Project.create (Project.ofFilePath path) name machine
 
       let updated =
         { project with
-            Path = path
+            Path = Project.ofFilePath path
             Author = Some(author1)
             Config = cfg }
 
@@ -77,7 +78,8 @@ module IrisServiceTests =
               | Right project -> (i + 1, project)
               | Left error -> failwithf "unable to create project: %O" error
             else
-              match copyDir project'.Path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
+              let path = Project.toFilePath project'.Path
+              match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
               | Right () -> (i + 1, project')
               | Left error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<IrisProject>)
@@ -100,10 +102,10 @@ module IrisServiceTests =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
         use ctx = new ZContext()
+
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
-        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
 
@@ -119,7 +121,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let service1 = IrisService.create ctx {
+        let! service1 = IrisService.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -129,14 +131,14 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
           |> service1.Subscribe
 
         do! service1.Start()
+
         do! waitOrDie "checkGitStarted" checkGitStarted
 
         //  ____
@@ -154,7 +156,7 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let service2 = IrisService.create ctx {
+        let! service2 = IrisService.create ctx {
           Machine = machine2
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -164,8 +166,7 @@ module IrisServiceTests =
 
         use oobs2 =
           (function
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -209,8 +210,6 @@ module IrisServiceTests =
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
 
-        do! waitOrDie "pullDone" pullDone
-
         dispose service1
         dispose service2
 
@@ -222,8 +221,6 @@ module IrisServiceTests =
   let test_ensure_cue_resolver_works =
     testCase "ensure cue resolver works" <| fun _ ->
       either {
-        use lobs = Logger.subscribe Logger.stdout
-
         use ctx = new ZContext()
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
@@ -231,7 +228,6 @@ module IrisServiceTests =
         use clientRegistered = new AutoResetEvent(false)
         use clientAppendDone = new AutoResetEvent(false)
         use updateDone = new AutoResetEvent(false)
-        use pullDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
 
@@ -243,7 +239,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        use service1 = IrisService.create ctx {
+        use! service1 = IrisService.create ctx {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -253,8 +249,7 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | IrisEvent.Git (GitEvent.Started _)    -> checkGitStarted.Set() |> ignore
-            | IrisEvent.Git (GitEvent.Pull _)       -> pullDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
             | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
             | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
             | _                                     -> ())
@@ -353,6 +348,126 @@ module IrisServiceTests =
       }
       |> noError
 
+  let test_ensure_client_slice_update_does_not_loop =
+    testCase "ensure client slice update does not loop" <| fun _ ->
+      either {
+        use ctx = new ZContext()
+        use electionDone = new AutoResetEvent(false)
+        use appendDone = new AutoResetEvent(false)
+        use clientRegistered = new AutoResetEvent(false)
+        use clientAppendDone = new AutoResetEvent(false)
+        use updateDone = new AutoResetEvent(false)
+
+        let! (project, zipped) = mkCluster 1
+
+        //  _
+        // / |
+        // | |
+        // | |
+        // |_| start
+
+        let mem1, machine1 = List.head zipped
+
+        use! service1 = IrisService.create ctx {
+          Machine = machine1
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId = None
+        }
+
+        use oobs1 =
+          (function
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
+          |> service1.Subscribe
+
+        do! service1.Start()
+        do! waitOrDie "electionDone" electionDone
+
+        //  _____
+        // |___ /
+        //   |_ \
+        //  ___) |
+        // |____/ create an API client
+
+        let server:IrisServer = {
+          Port = mem1.ApiPort
+          IpAddress = mem1.IpAddr
+        }
+
+        use client = ApiClient.create ctx server {
+          Id = Id.Create()
+          Name = "hi"
+          Role = Role.Renderer
+          Status = ServiceStatus.Starting
+          IpAddress = IpAddress.Localhost
+          Port = port 12345us
+        }
+
+        let handleClient = function
+          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | _ -> ()
+
+        use clobs = client.Subscribe (handleClient)
+
+        do! client.Start()
+
+        do! waitOrDie "clientRegistered" clientRegistered
+
+        //  _  _
+        // | || |
+        // | || |_
+        // |__   _|
+        //    |_| do some work
+
+        let pinId = Id.Create()
+        let groupId = Id.Create()
+
+        let pin = BoolPin {
+          Id        = pinId
+          Name      = "hi"
+          PinGroup  = groupId
+          Tags      = Array.empty
+          Direction = ConnectionDirection.Output
+          IsTrigger = false
+          VecSize   = VecSize.Dynamic
+          Labels    = Array.empty
+          Values    = [| true |]
+        }
+
+        let group = {
+          Id = groupId
+          Name = name "whatevva"
+          Client = Id.Create()
+          Pins = Map.ofList [(pin.Id, pin)]
+        }
+
+        client.AddPinGroup group
+
+        do! waitOrDie "appendDone" appendDone
+        do! waitOrDie "clientAppendDone" clientAppendDone
+
+        let update = BoolSlices(pin.Id, [| false |])
+
+        client.UpdateSlices update
+
+        do! waitOrDie "updateDone" updateDone
+
+        let actual: Slices =
+          client.State.PinGroups
+          |> Map.find groupId
+          |> fun group -> Map.find pinId group.Pins
+          |> fun pin -> pin.Values
+
+       expect "should be equal" update id actual
+      }
+      |> noError
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -362,5 +477,6 @@ module IrisServiceTests =
   let irisServiceTests =
     testList "IrisService Tests" [
       test_ensure_iris_server_clones_changes_from_leader
+      test_ensure_client_slice_update_does_not_loop
       test_ensure_cue_resolver_works
     ] |> testSequenced

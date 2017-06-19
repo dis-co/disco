@@ -1,1 +1,0 @@
-#r "../../../packages/Newtonsoft.Json/lib/portable-net40+sl5+wp80+win8+wpa81/Newtonsoft.Json.dll" 

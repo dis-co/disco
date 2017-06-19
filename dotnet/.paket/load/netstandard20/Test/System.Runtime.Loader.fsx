@@ -1,1 +1,0 @@
-#r "../../../../packages/test/System.Runtime.Loader/lib/netstandard1.5/System.Runtime.Loader.dll" 

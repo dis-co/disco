@@ -9,3 +9,4 @@ Suave.Git
 ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
+Disruptor

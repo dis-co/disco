@@ -113,7 +113,7 @@ module Network =
       (fun result (iface: NetworkInterface) ->
         match result with
         | Right () -> result
-        | Left _ as error ->
+        | Left _ ->
           if List.contains ip iface.IpAddresses then
             Either.succeed ()
           else

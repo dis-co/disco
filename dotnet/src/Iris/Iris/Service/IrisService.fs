@@ -2,80 +2,30 @@ namespace Iris.Service
 
 // * Imports
 
-#if !IRIS_NODES
-
 open System
 open System.IO
 open System.Threading
+open System.Threading.Tasks
 open System.Collections.Concurrent
+open Disruptor
+open Disruptor.Dsl
+open ZeroMQ
+open Iris.Core
 open Iris.Raft
 open Iris.Zmq
-open Iris.Core
-open Iris.Core.Utils
-open Iris.Service.Interfaces
-open Iris.Service.Persistence
-open LibGit2Sharp
 open SharpYaml.Serialization
-open ZeroMQ
 
 // * IrisService
 
-//  ___      _     ____                  _
-// |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___
-//  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \
-//  | || |  | \__ \___) |  __/ |   \ V /| | (_|  __/
-// |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|
-//
-
 module IrisService =
+
   // ** tag
 
-  let private tag (str: string) =
-    String.Format("IrisService.{0}", str)
-
-  // ** keys
-
-  [<Literal>]
-  let private API_SERVER = "api"
-
-  [<Literal>]
-  let private GIT_SERVER = "git"
-
-  [<Literal>]
-  let private LOG_HANDLER = "log"
-
-  [<Literal>]
-  let private RAFT_SERVER = "raft"
-
-  [<Literal>]
-  let private WS_SERVER = "ws"
-
-  [<Literal>]
-  let private RESOLVER = "resolver"
-
-  [<Literal>]
-  let private CLOCK_SERVICE = "clock"
+  let private tag (str: string) = String.format "IrisServiceNG.{0}" str
 
   // ** Subscriptions
 
-  /// ## Subscriptions
-  ///
-  /// Type alias for IObserver subscriptions.
-  ///
-  type Subscriptions = Observable.Subscriptions<IrisEvent>
-
-  // ** disposeAll
-
-  /// ## disposeAll
-  ///
-  /// Dispose all resource in the passed `seq`.
-  ///
-  /// ### Signature:
-  /// - disposables: IDisposable seq
-  ///
-  /// Returns: unit
-  let inline private disposeAll (disposables: Map<_,IDisposable>) =
-    Map.iter (konst dispose) disposables
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** Leader
 
@@ -84,209 +34,223 @@ module IrisService =
     { Member: RaftMember
       Socket: IClient }
 
+    // *** ISink
+
+    interface ISink<IrisEvent> with
+      member self.Publish (update: IrisEvent) =
+        match update with
+        | IrisEvent.Append(_, sm) ->
+          sm
+          |> Binary.encode
+          |> RawClientRequest.create
+          |> self.Socket.Request
+          |> Either.mapError (string >> Logger.err (tag "Forward"))
+          |> ignore
+        | _ -> ()
+
+    // *** IDisposable
+
     interface IDisposable with
       member self.Dispose() =
         dispose self.Socket
 
   // ** IrisState
 
-  /// ## IrisState
-  ///
-  /// Encapsulate all service-internal state to hydrate an `IrisAgent` with a project loaded.
-  /// As the actor receives messages, it uses (and updates) this record and passes it on.
-  /// For ease of use it implements the IDisposable interface.
-  ///
-  /// ### Fields:
-  /// - MemberId: ServiceStatus of currently loaded project
-  /// - Status: ServiceStatus of currently loaded project
-  /// - Store: Store containing all state. This is sent to user via WebSockets on connection.
-  /// - Project: IrisProject currently loaded
-  /// - GitServer: IGitServer for current project
-  /// - RaftServer: IRaftServer for current project
-  /// - SocketServer: IWebSocketServer for current project
-  /// - Disposables: IDisposable list for Observables and the like
-  ///
   [<NoComparison;NoEquality>]
   type private IrisState =
-    { Member         : RaftMember
-      Machine        : IrisMachine
-      Status         : ServiceStatus
-      Store          : Store
-      Leader         : Leader option
-      GitPoller      : IDisposable option
-      LogForwarder   : IDisposable
-      ApiServer      : IApiServer
-      GitServer      : IGitServer
-      RaftServer     : IRaftServer
-      SocketServer   : IWebSocketServer
-      ClockService   : IClock
-      Resolver       : IResolver
-      Subscriptions  : Subscriptions
-      Disposables    : Map<string,IDisposable>
-      Context        : ZContext }
+    { Member        : RaftMember
+      Machine       : IrisMachine
+      Status        : ServiceStatus
+      Store         : Store
+      Leader        : Leader option
+      Dispatcher    : IDispatcher<IrisEvent>
+      LogForwarder  : IDisposable
+      LogFile       : LogFile
+      ApiServer     : IApiServer
+      GitServer     : IGitServer
+      RaftServer    : IRaftServer
+      SocketServer  : IWebSocketServer
+      ClockService  : IClock
+      Subscriptions : Subscriptions
+      BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
+      Disposables   : IDisposable array
+      Context       : ZContext }
 
     // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
         self.Subscriptions.Clear()
-        disposeAll self.Disposables
+        Array.iter dispose self.Disposables
         Option.iter dispose self.Leader
-        Option.iter dispose self.GitPoller
-        dispose self.Resolver
         dispose self.LogForwarder
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
         dispose self.ClockService
         dispose self.SocketServer
+        dispose self.Dispatcher
+        dispose self.LogFile
 
-  // ** Msg
+  // ** stateMutator
 
-  [<RequireQualifiedAccess;NoComparison;NoEquality>]
-  type private Msg =
-    | Start
-    | Stop              of AutoResetEvent
-    | Notify            of IrisEvent
-    | Event             of IrisEvent
-    | SetConfig         of IrisConfig
-    | RawClientResponse of RawClientResponse
-    | ForceElection
-    | Periodic
-    // | Join              of IpAddress  * uint16
-    // | Leave
-
-  // ** IrisAgent
-
-  /// ## IrisAgent
-  ///
-  /// Type alias for internal state mutation actor.
-  ///
-  type private IrisAgent = MailboxProcessor<Msg>
-
-  // ** handleNotify
-
-  let private handleNotify (state: IrisState) (ev: IrisEvent) =
-    Observable.onNext state.Subscriptions ev
-    state
-
-  // ** broadcastMsg
-
-  let private broadcastMsg (state: IrisState) (origin: Origin) (cmd: StateMachine) =
-    cmd
-    |> state.SocketServer.Broadcast
-    |> ignore
-
-  // ** sendMsg
-
-  let private sendMsg (state: IrisState) (id: Id) (cmd: StateMachine) =
-    Tracing.trace (tag "sendMsg") <| fun () ->
-      cmd
-      |> state.SocketServer.Send id
-      |> ignore
-
-  // ** appendCmd
-
-  let private appendCmd (state: IrisState) (cmd: StateMachine) =
-    if state.RaftServer.IsLeader then
-      match cmd with
-      // AddMember and RemoveMember will only be directed to replicate from either the Web or
-      // Service level, hence we can unilaterally assume that we need to call the respective members
-      // on RaftServer and don't replicate as regular commands.
-      | AddMember mem -> state.RaftServer.AddMember mem
-      | RemoveMember mem -> state.RaftServer.RemoveMember mem.Id
-      | other -> state.RaftServer.Append other
-    else
-      "ignoring append request, not leader"
-      |> Logger.debug (tag "appendCmd")
-
-
-  // ** publishCmd
-
-  let private publishCmd (state: IrisState) (origin: Origin) cmd =
-    state.ApiServer.Update origin cmd
-    broadcastMsg state origin cmd
-    state.Store.Dispatch cmd
-
-  // ** resolveCmd
-
-  let private resolveCmd (state: IrisState) cmd =
+  let private stateMutator (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
     match cmd with
-    | UpdateClock _ | CallCue _ -> state.Resolver.Update cmd
+    | IrisEvent.Append(_, cmd) ->  store.State.Store.Dispatch cmd
     | _ -> ()
 
-  // ** ignoreEvent
+  // ** statePersistor
 
-  let private ignoreEvent (state: IrisState) _ = state
+  let private statePersistor (store: IAgentStore<IrisState>) =
+    fun _ _ -> function
+      | IrisEvent.Append(_, sm) ->
+        let state = store.State
+        if state.RaftServer.IsLeader then
+          match sm.PersistenceStrategy with
+          | PersistenceStrategy.Save ->
+            //  ____
+            // / ___|  __ ___   _____
+            // \___ \ / _` \ \ / / _ \
+            //  ___) | (_| |\ V /  __/
+            // |____/ \__,_| \_/ \___|
+            match Persistence.persistEntry state.Store.State sm with
+            | Right () ->
+              string sm
+              |> String.format "Successfully persisted command {0} to disk"
+              |> Logger.debug (tag "statePersistor")
+            | Left error ->
+              error |> String.format "Error persisting command to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+          | PersistenceStrategy.Commit ->
+            //  ____
+            // / ___|  __ ___   _____
+            // \___ \ / _` \ \ / / _ \
+            //  ___) | (_| |\ V /  __/
+            // |____/ \__,_| \_/ \___| *and*
+            match Persistence.persistEntry state.Store.State sm with
+            | Right () ->
+              string sm
+              |> String.format "Successfully persisted command {0} to disk"
+              |> Logger.debug (tag "statePersistor")
+            | Left error ->
+              error
+              |> String.format "Error persisting command to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+            //   ____                          _ _
+            //  / ___|___  _ __ ___  _ __ ___ (_) |_
+            // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
+            // | |__| (_) | | | | | | | | | | | | |_
+            //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
+            match Persistence.commitChanges state.Store.State with
+            | Right (repo, commit) ->
+              commit.Sha
+              |> String.format "Successfully committed changes in: {0}"
+              |> Logger.debug (tag "statePersistor")
+              Persistence.pushChanges repo
+              |> Map.iter
+                (fun name err ->
+                  sprintf "could not push to %s: %O" name err
+                  |> Logger.err (tag "statePersistor"))
+              dispose repo
+            | Left error ->
+              error
+              |> String.format "Error committing changes to disk: {0}"
+              |> Logger.err (tag "statePersistor")
+          | PersistenceStrategy.Ignore -> ()
+      | _ -> ()
 
-  //  ____        __ _
-  // |  _ \ __ _ / _| |_
-  // | |_) / _` | |_| __|
-  // |  _ < (_| |  _| |_
-  // |_| \_\__,_|_|  \__|
+  // ** logPersistor
 
-  // ** persistLog
+  let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
+    match cmd with
+    | IrisEvent.Append(_, LogMsg log) ->
+      match LogFile.write store.State.LogFile log with
+      | Right _ -> ()
+      | Left error ->
+        error
+        |> string
+        |> Logger.err (tag "logPersistor")
+    | _ -> ()
 
-  /// ## persistLog
-  ///
-  /// Register a callback to be run when an appended entry is considered safely appended to a
-  /// majority of servers logs. The entry then is regarded as applied.
-  ///
-  /// In this callback implementation we essentially do 3 things:
-  ///
-  ///   - the state machine command is applied to the store, potentially altering its state
-  ///   - the state machine command is broadcast to all clients
-  ///   - the state machine command is persisted to disk (potentially recorded in a git commit)
+  // ** createPublisher
 
-  let private persistLog (state: IrisState) (sm: StateMachine) =
-    if state.RaftServer.IsLeader then
-      match sm.PersistenceStrategy with
-      | PersistenceStrategy.Save ->
-        match persistEntry state.Store.State sm with
-        | Right () ->
-          string sm
-          |> String.format "Successfully persisted command {0} to disk"
-          |> Logger.debug (tag "persistLog")
-        | Left error ->
-          error |> String.format "Error persisting command to disk: {0}"
-          |> Logger.err (tag "persistLog")
-        state
-      | PersistenceStrategy.Commit ->
-        match persistEntry state.Store.State sm with
-        | Right () ->
-          string sm
-          |> String.format "Successfully persisted command {0} to disk"
-          |> Logger.debug (tag "persistLog")
-        | Left error ->
-          error
-          |> String.format "Error persisting command to disk: {0}"
-          |> Logger.err (tag "persistLog")
-        match commitChanges state.Store.State with
-        | Right commit ->
-          commit.Sha
-          |> String.format "Successfully committed changes in: {0}"
-          |> Logger.debug (tag "persistLog")
-        | Left error ->
-          error
-          |> String.format "Error committing changes to disk: {0}"
-          |> Logger.err (tag "persistLog")
-        state
-      | PersistenceStrategy.Ignore -> state
-    else state                          // pulling is done by polling (no pun intended ;))
+  let private createPublisher (sink: ISink<IrisEvent>) _ _ = sink.Publish
+
+  // ** dispatchUpdates
+
+  let private dispatchUpdates (state: IrisState) (cue: Cue) =
+    Array.iter
+      (fun slices ->
+        (Origin.Service, UpdateSlices slices)
+        |> IrisEvent.Append
+        |> state.Dispatcher.Dispatch)
+      cue.Slices
+
+  // ** maybeDispatchUpdate
+
+  let private maybeDispatchUpdate (current: Frame) (state: IrisState) =
+    for KeyValue((desired, id), cue) in state.BufferedCues.ToArray() do
+      if desired <= current then
+        dispatchUpdates state cue
+        while not (state.BufferedCues.TryRemove((desired,id)) |> fst) do
+          ignore ()
+
+  // ** commandResolver
+
+  let private commandResolver (store: IAgentStore<IrisState>) =
+    let mutable current = 0<frame>
+    fun _ _ (cmd: IrisEvent) ->
+      match cmd with
+      | IrisEvent.Append(_, UpdateClock tick) ->
+        current <- int tick * 1<frame>
+        maybeDispatchUpdate current store.State
+      | IrisEvent.Append(_, CallCue cue) ->
+        let key = (current, cue.Id)
+        if not (store.State.BufferedCues.ContainsKey key) then
+          while not (store.State.BufferedCues.TryAdd(key, cue)) do
+            ignore ()
+        maybeDispatchUpdate current store.State
+      | _ -> ()
+
+  // ** subscriptionNotifier
+
+  let private subscriptionNotifier (store: IAgentStore<IrisState>) =
+    fun _ _ -> Observable.onNext store.State.Subscriptions
+
+  // ** processors
+
+  let private processors (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (stateMutator   store)
+       Pipeline.createHandler (statePersistor store)
+       Pipeline.createHandler (logPersistor   store) |]
+
+  // ** publishers
+
+  let private publishers (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (createPublisher store.State.ApiServer)
+       Pipeline.createHandler (createPublisher store.State.SocketServer)
+       Pipeline.createHandler (commandResolver store) |]
+
+  // ** postActions
+
+  let private postActions (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (subscriptionNotifier store) |]
 
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember)
-                         (construct: ClientConfig -> Either<IrisError,IClient>)
-                         (agent: IrisAgent) =
-    let result = construct {
+  let private makeLeader ctx (leader: RaftMember) =
+    let result = Client.create ctx {
       PeerId = leader.Id
       Frontend = Uri.raftUri leader
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
     match result with
     | Right socket ->
-      socket.Subscribe (Msg.RawClientResponse >> agent.Post) |> ignore
+      socket.Subscribe
+        (fun _ ->
+          "TODO: setup leader socket response handler"
+          |> Logger.warn (tag "makeLeader"))
+      |> ignore
       Some { Member = leader; Socket = socket }
     | Left error ->
       error
@@ -294,125 +258,131 @@ module IrisService =
       |> Logger.err (tag "makeLeader")
       None
 
-  // ** makeGitPoller
+  // ** processEvent
 
-  let private makeGitPoller (state: IrisState) (leader: RaftMember) (agent: IrisAgent) =
-    let project = state.Store.State.Project
-    // resonably safe, because we already established that the project exits
-    let repo = Project.repository project |> Either.get
-    let uri = Uri.gitUri project.Name leader
-    let cts = new CancellationTokenSource()
+  let private processEvent (store: IAgentStore<IrisState>) ev =
+    Observable.onNext store.State.Subscriptions ev
+    match ev with
+    | IrisEvent.Configured mems ->
+      mems
+      |> Array.map (Member.getId >> string)
+      |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
+      |> Logger.debug (tag "processEvent")
 
-    let rec loop () =
-      async {
-        do! Async.Sleep 500
+    | IrisEvent.StateChanged (oldstate, newstate) ->
+      newstate
+      |> sprintf "Raft state changed from %A to %A" oldstate
+      |> Logger.debug (tag "processEvent")
 
-        do! either {
-              let localRefs = Git.Repo.refs repo
-              let! remoteRefs = Git.lsRemote (unwrap uri)
+    | IrisEvent.LeaderChanged leader ->
 
-              let currentBranch =
-                repo
-                |> Git.Branch.current
-                |> Git.Branch.canonicalName
+      leader
+      |> String.format "Leader changed to {0}"
+      |> Logger.debug (tag "leaderChanged")
 
-              let local =
-                localRefs
-                |> Seq.filter (fun (ref: Reference) -> ref.CanonicalName = currentBranch)
-                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
-                |> Seq.tryHead
+      Option.iter dispose store.State.Leader
 
-              let remote =
-                remoteRefs
-                |> Seq.filter
-                  (fun (ref: Reference) ->
-                    ref.IsLocalBranch && ref.CanonicalName = currentBranch)
-                |> Seq.map (fun (ref: Reference) -> ref.TargetIdentifier)
-                |> Seq.tryHead
+      let newLeader =
+        // create redirect socket if we have new leader other than this current node
+        if Option.isSome leader && leader <> (Some store.State.Member.Id) then
+          match store.State.RaftServer.Leader with
+          | Some leader ->
+            makeLeader store.State.Context leader
+          | None ->
+            "Could not start re-direct socket: no leader"
+            |> Logger.debug (tag "leaderChanged")
+            None
+        else None
 
-              do! match local, remote with
-                  | Some localRef, Some remoteRef when localRef <> remoteRef ->
-                    match updateRepo project leader with
-                    | Right (status, commitSha) ->
-                      GitEvent.Pull(status, commitSha)
-                      |> IrisEvent.Git
-                      |> Msg.Event
-                      |> agent.Post
-                    | Left error ->
-                      error
-                      |> string
-                      |> Logger.err (tag "makeGitPoller")
-                  | None, _ ->
-                    currentBranch
-                    |> String.format "current local branch ({0}) has no refs"
-                    |> Logger.err (tag "makeGitPoller")
-                  | _, None ->
-                    currentBranch
-                    |> String.format "remote has has no refs for current branch ({0}) "
-                    |> Logger.err (tag "makeGitPoller")
-                  | _ -> ()                  // remote and local branches are at the same refs
-                  |> Either.ignore
+      store.Update { store.State with Leader = newLeader }
 
-              return ()
-            }
-            |> Either.mapError (string >> Logger.err (tag "makeGitPoller"))
-            |> ignore
-            |> async.Return
+    | IrisEvent.PersistSnapshot log ->
+      match Persistence.persistSnapshot store.State.Store.State log with
+      | Left error -> Logger.err (tag "persistSnapshot") (string error)
+      | _ -> ()
 
-        return! loop()
-      }
+    | IrisEvent.RaftError _ | _ -> ()
 
-    uri
-    |> String.format "starting git repository synchronization task: {0}"
-    |> Logger.info (tag "makeGitPoller")
+  // ** replicateEvent
 
-    Async.Start(loop(), cts.Token)
-    Some ({ new IDisposable with
-              member self.Dispose() =
-                try
-                  cts.Cancel()
-                  dispose cts
-                with | _ -> () })
+  let private replicateEvent (store: IAgentStore<IrisState>) = function
+    //  ____             _        _
+    // / ___|  ___   ___| | _____| |_
+    // \___ \ / _ \ / __| |/ / _ \ __|
+    //  ___) | (_) | (__|   <  __/ |_
+    // |____/ \___/ \___|_|\_\___|\__|
 
-  // ** leaderChanged
+    // first, send a snapshot to the new browser session to bootstrap it
+    | SessionOpened id ->
+      store.State.Store.State
+      |> DataSnapshot
+      |> store.State.SocketServer.Send id
+      |> ignore
 
-  let private leaderChanged (state: IrisState) (leader: MemberId option) (agent: IrisAgent) =
-    leader
-    |> String.format "Leader changed to {0}"
-    |> Logger.debug (tag "leaderChanged")
+    // next, replicate AddSession to other Raft nodes
+    | Append (Origin.Web id, AddSession session) ->
+      session
+      |> store.State.SocketServer.BuildSession id
+      |> Either.iter (AddSession >> store.State.RaftServer.Append)
 
-    Option.iter dispose state.Leader
-    Option.iter dispose state.GitPoller
+    // replicate a RemoveSession command if the session exists
+    | SessionClosed id ->
+      store.State.Store.State.Sessions
+      |> Map.tryFind id
+      |> Option.iter (RemoveSession >> store.State.RaftServer.Append)
 
-    // create redirect socket if we have new leader other than this current node
-    if Option.isSome leader && leader <> (Some state.Member.Id) then
-      match state.RaftServer.Leader with
-      | Some leader ->
-        let makePeerSocket = Client.create state.Context
-        { state with
-            Leader = makeLeader leader makePeerSocket agent
-            GitPoller = makeGitPoller state leader agent }
-      | None ->
-        "Could not start re-direct socket: no leader"
-        |> Logger.debug (tag "leaderChanged")
-        { state with
-            Leader = None
-            GitPoller = None }
-    else
-      { state with
-          Leader = None
-          GitPoller = None }
+    //     _                               _
+    //    / \   _ __  _ __   ___ _ __   __| |
+    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
+    //  / ___ \| |_) | |_) |  __/ | | | (_| |
+    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
+    //  _the_  |_|   |_| base case...
 
-  // ** stateChanged
+    | Append (_, AddMember mem) -> store.State.RaftServer.AddMember mem
+    | Append (_, RemoveMember mem) -> store.State.RaftServer.RemoveMember mem.Id
+    | Append (_, other) -> store.State.RaftServer.Append other
 
-  let private stateChanged (state: IrisState)
-                           (oldstate: RaftState)
-                           (newstate: RaftState)
-                           (agent: IrisAgent) =
-    newstate
-    |> sprintf "Raft state changed from %A to %A" oldstate
-    |> Logger.debug (tag "stateChanged")
-    state
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | other -> ignore other
+
+  // ** dispatchEvent
+
+  let private dispatchEvent (store: IAgentStore<IrisState>)
+                            (pipeline: IPipeline<IrisEvent>)
+                            (cmd:IrisEvent) =
+    match cmd.DispatchStrategy with
+    | Publish   -> pipeline.Push cmd
+    | Process   -> processEvent store cmd
+    | Replicate -> replicateEvent store cmd
+    | Ignore    -> ()
+
+  // ** createDispatcher
+
+  let private createDispatcher (store: IAgentStore<IrisState>) =
+    let mutable pipeline = Unchecked.defaultof<IPipeline<IrisEvent>>
+    let mutable status = ServiceStatus.Stopped
+
+    { new IDispatcher<IrisEvent> with
+        member dispatcher.Dispatch(cmd: IrisEvent) =
+          if Service.isRunning status then
+            dispatchEvent store pipeline cmd
+
+        member dispatcher.Start() =
+          if Service.isStopped status then
+            pipeline <- Pipeline.create (processors store) (publishers store) (postActions store)
+            status <- ServiceStatus.Running
+
+        member dispatcher.Status
+          with get () = status
+
+        member dispatcher.Dispose() =
+          if Service.isRunning status then
+            dispose pipeline }
 
   // ** retrieveSnapshot
 
@@ -431,13 +401,14 @@ module IrisService =
           | Some site -> site.Members |> Map.toArray |> Array.map snd
           | _ -> [| |]
 
-        Snapshot(Id yml.Id
-                ,yml.Index
-                ,yml.Term
-                ,yml.LastIndex
-                ,yml.LastTerm
-                ,members
-                ,DataSnapshot state.Store.State)
+        Snapshot ( Id yml.Id
+                 , yml.Index
+                 , yml.Term
+                 , yml.LastIndex
+                 , yml.LastTerm
+                 , members
+                 , DataSnapshot state.Store.State
+                 )
         |> Some
       with
         | exn ->
@@ -454,363 +425,23 @@ module IrisService =
   // ** persistSnapshot
 
   let private persistSnapshot (state: IrisState) (log: RaftLogEntry) =
-    match persistSnapshot state.Store.State log with
+    match Persistence.persistSnapshot state.Store.State log with
     | Left error -> Logger.err (tag "persistSnapshot") (string error)
     | _ -> ()
     state
 
-  // ** requestAppend
+  // ** makeRaftCallbacks
 
-  let private requestAppend (self: MemberId) (leader: Leader) (sm: StateMachine) =
-    AppendEntry sm
-    |> Binary.encode
-    |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
-    |> leader.Socket.Request
-    |> Either.mapError (String.format "request error: {0}" >> Logger.err (tag "requestAppend"))
-    |> ignore
+  let private makeRaftCallbacks (store: IAgentStore<IrisState>) =
+    { new IRaftSnapshotCallbacks with
+        member self.PrepareSnapshot () = Some store.State.Store.State
+        member self.RetrieveSnapshot () = retrieveSnapshot store.State }
 
-    //   match result with
-    //   | Right (AppendEntryResponse _) ->
-    //     Either.succeed leader
-    //   | Right (Redirect mem) ->
-    //     if count < max then
-    //       dispose leader
-    //       let newleader = mkLeader self mem
-    //       impl newleader (count + 1)
-    //     else
-    //       max
-    //       |> String.format "Maximum re-direct count reached ({0}). Appending failed"
-    //       |> Error.asRaftError (tag "requestAppend")
-    //       |> Either.fail
-    //   | Right other ->
-    //     other
-    //     |> String.format "Received unexpected response from server: {0}"
-    //     |> Error.asRaftError (tag "requestAppend")
-    //     |> Either.fail
-    //   | Left error ->
-    //     Either.fail error
+  // ** makeApiCallbacks
 
-    // Tracing.trace (tag "requestAppend") <| fun () ->
-    //   impl leader 0
-
-  // ** forwardCommand
-
-  let private forwardCommand (state: IrisState) (sm: StateMachine) (agent: IrisAgent) =
-    Tracing.trace (tag "forwardCommand") <| fun () ->
-      match state.Leader with
-      | Some leader ->
-        requestAppend state.Member.Id leader sm
-        state
-      | None ->
-        match state.RaftServer.Leader with
-        | Some mem ->
-          let makePeerSocket = Client.create state.Context
-          let leader = makeLeader mem makePeerSocket agent
-          Option.iter (fun leader -> requestAppend state.Member.Id leader sm) leader
-          { state with Leader = leader }
-        | None ->
-          "Could not start re-direct socket: No Known Leader"
-          |> Logger.debug (tag "forwardCommand")
-          state
-
-  // ** handleRaftEvent
-
-  let private handleRaftEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
-    ev |> Msg.Event |> agent.Post
-
-  // ** forwardEvent
-
-  let inline private forwardEvent (constr: ^a -> IrisEvent) (agent: IrisAgent) =
-    constr >> Msg.Event >> agent.Post
-
-  // ** restartGitServer
-
-  let private restartGitServer (state: IrisState) (agent: IrisAgent) =
-    Tracing.trace (tag "restartGitServer") <| fun () ->
-      state.Disposables
-      |> Map.tryFind GIT_SERVER
-      |> Option.map dispose
-      |> ignore
-
-      dispose state.GitServer
-
-      let result =
-        either {
-          let mem = state.RaftServer.Member
-          let gitserver = GitServer.create mem state.Store.State.Project
-          let disposable =
-            agent
-            |> forwardEvent IrisEvent.Git
-            |> gitserver.Subscribe
-          match gitserver.Start() with
-          | Right () ->
-            return { state with
-                      GitServer = gitserver
-                      Disposables = Map.add GIT_SERVER disposable state.Disposables }
-          | Left error ->
-            dispose disposable
-            dispose gitserver
-            return! Either.fail error
-        }
-
-      match result with
-      | Right newdata -> newdata
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "restartGitServer")
-        state
-
-  // ** handleSetConfig
-
-  let private handleSetConfig (state: IrisState) (config: IrisConfig) =
-    Tracing.trace (tag "handleSetConfig") <| fun () ->
-      Project.updateConfig config state.Store.State.Project
-      |> UpdateProject
-      |> state.Store.Dispatch
-      state
-
-  // ** handleForceElection
-
-  let private handleForceElection (state: IrisState) =
-    Tracing.trace (tag "handleForceElection") <| fun () ->
-      state.RaftServer.ForceElection()
-      state
-
-  // ** handlePeriodic
-
-  let private handlePeriodic (state: IrisState) =
-    Tracing.trace (tag "handlePeriodic") <| fun () ->
-      state.RaftServer.Periodic()
-      state
-
-  // ** handleJoin
-
-  // let private handleJoin (state: IrisState) (chan: ReplyChan) (ip: IpAddress) (port: uint16) =
-  //   Tracing.trace (tag "handleJoin") <| fun () ->
-  //     match state.RaftServer.JoinCluster ip port with
-  //     | Right () ->
-  //       Reply.Ok
-  //       |> Either.succeed
-  //       |> chan.Reply
-  //     | Left error ->
-  //       error
-  //       |> Either.fail
-  //       |> chan.Reply
-  //     state
-
-  // ** handleLeave
-
-  // let private handleLeave (state: IrisState) (chan: ReplyChan) =
-  //   withDefaultReply state chan <| fun data ->
-  //     asynchronously <| fun _ ->
-  //       Tracing.trace (tag "handleLeave") <| fun () ->
-  //         match data.RaftServer.LeaveCluster () with
-  //         | Right () ->
-  //           Reply.Ok
-  //           |> Either.succeed
-  //           |> chan.Reply
-  //         | Left error ->
-  //           error
-  //           |> Either.fail
-  //           |> chan.Reply
-  //     state
-
-  // ** handleClientResponse
-
-  let private handleClientResponse (state: IrisState) (response: RawClientResponse) =
-    state
-
-  // ** handleStart
-
-  let private handleStart (state: IrisState) (agent: IrisAgent) =
-    let status = ServiceStatus.Running
-    status |> IrisEvent.Status |> Msg.Notify |> agent.Post
-    { state with Status = status }
-
-  // ** handleStop
-
-  let private handleStop (state: IrisState) (agent: IrisAgent) (are: AutoResetEvent) =
-    let status = ServiceStatus.Stopping
-    status |> IrisEvent.Status |> Msg.Notify |> agent.Post
-    are.Set() |> ignore
-    { state with Status = status }
-
-  // ** processEvent
-
-  let private processEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
-    match ev with
-    //   ____ _ _
-    //  / ___(_) |_
-    // | |  _| | __|
-    // | |_| | | |_
-    //  \____|_|\__|
-
-    | Git (GitEvent.Connection(_, addr, port)) ->
-      sprintf "git-daemon connection from %s:%d" addr port
-      |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull(GitMergeStatus.UpToDate, _)) ->
-      "Repository already up-to-date"
-      |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull(GitMergeStatus.Conflicts, _)) ->
-      "Automatic merge failed with conflicts. Please resolve conflicts manually."
-      |> Logger.err (tag "handleGitEvent")
-      state
-
-    | Git (GitEvent.Pull((GitMergeStatus.NonFastForward as status), commitSha))
-    | Git (GitEvent.Pull((GitMergeStatus.FastForward    as status), commitSha)) ->
-      match commitSha with
-      | Some commitSha ->
-        commitSha
-        |> sprintf "Automatic merge successful in: %s"
-        |> Logger.debug (tag "handleGitEvent")
-      | None ->
-        status
-        |> sprintf "Automatic merge successful: %O"
-        |> Logger.debug (tag "handleGitEvent")
-      state
-
-    | Status status -> state
-
-    //  ____        __ _
-    // |  _ \ __ _ / _| |_
-    // | |_) / _` | |_| __|
-    // |  _ < (_| |  _| |_
-    // |_| \_\__,_|_|  \__|
-
-    | Configured mems ->
-      mems
-      |> Array.map (Member.getId >> string)
-      |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
-      |> Logger.debug (tag "processEvent")
-      state
-
-    | PersistSnapshot log ->
-      persistSnapshot state log
-
-    | StateChanged (ost, nst) ->
-      stateChanged state ost nst agent
-
-    | LeaderChanged leader ->
-      leaderChanged state leader agent
-
-    | RaftError _ -> state               // ?
-
-    //     _                               _
-    //    / \   _ __  _ __   ___ _ __   __| |
-    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
-    //  / ___ \| |_) | |_) |  __/ | | | (_| |
-    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
-    //         |_|   |_|
-
-    | Append (origin, cmd) ->
-      resolveCmd state        cmd
-      publishCmd state origin cmd
-      persistLog state cmd
-
-    //   ___  _   _
-    //  / _ \| |_| |__   ___ _ __
-    // | | | | __| '_ \ / _ \ '__|
-    // | |_| | |_| | | |  __/ |
-    //  \___/ \__|_| |_|\___|_|
-
-    | other ->
-      ignore other
-      state
-
-  // ** replicateEvent
-
-  let private replicateEvent (state: IrisState) (ev: IrisEvent) =
-    match ev with
-    //  ____             _        _
-    // / ___|  ___   ___| | _____| |_
-    // \___ \ / _ \ / __| |/ / _ \ __|
-    //  ___) | (_) | (__|   <  __/ |_
-    // |____/ \___/ \___|_|\_\___|\__|
-
-    // first, send a snapshot to the new browser session to bootstrap it
-    | SessionOpened id ->
-      sendMsg state id (DataSnapshot state.Store.State)
-
-    // next, replicate AddSession to other Raft nodes
-    | Append (Origin.Web id, AddSession session) ->
-      session
-      |> state.SocketServer.BuildSession id
-      |> Either.map AddSession
-      |> Either.iter (appendCmd state)
-
-    // replicate a RemoveSession command if the session exists
-    | SessionClosed id ->
-      state.Store.State.Sessions
-      |> Map.tryFind id
-      |> Option.iter (RemoveSession >> appendCmd state)
-
-    //     _                               _
-    //    / \   _ __  _ __   ___ _ __   __| |
-    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
-    //  / ___ \| |_) | |_) |  __/ | | | (_| |
-    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
-    //  _the_  |_|   |_| base case...
-
-    | Append (_, cmd) -> appendCmd state cmd
-
-    //   ___  _   _
-    //  / _ \| |_| |__   ___ _ __
-    // | | | | __| '_ \ / _ \ '__|
-    // | |_| | |_| | | |  __/ |
-    //  \___/ \__|_| |_|\___|_|
-
-    | other -> ignore other
-
-    state
-
-  // ** dispatchEvent
-
-  let private dispatchEvent (state: IrisState) (agent: IrisAgent) (ev: IrisEvent) =
-    ev |> Msg.Notify |> agent.Post
-    match ev.DispatchStrategy with
-    | Process   -> processEvent   state agent ev
-    | Replicate -> replicateEvent state       ev
-    | Ignore    -> ignoreEvent    state       ev
-
-  // ** loop
-
-  let private loop (store: IAgentStore<IrisState>) (inbox: IrisAgent) =
-    let rec act () =
-      async {
-        try
-          let! msg = inbox.Receive()
-
-          Actors.warnQueueLength (tag "loop") inbox
-
-          Tracing.trace (tag (sprintf "loop (%d msgs)" inbox.CurrentQueueLength)) <| fun () ->
-            let state = store.State
-            let newstate =
-              match msg with
-              | Msg.Start                  -> handleStart          state inbox
-              | Msg.Stop               are -> handleStop           state inbox are
-              | Msg.Notify              ev -> handleNotify         state       ev
-              | Msg.SetConfig          cnf -> handleSetConfig      state       cnf
-              | Msg.Event              ev  -> dispatchEvent        state inbox ev
-              | Msg.ForceElection          -> handleForceElection  state
-              | Msg.Periodic               -> handlePeriodic       state
-              | Msg.RawClientResponse resp -> handleClientResponse state       resp
-            store.Update newstate
-        with
-          | exn ->
-            let format = "Message: {0}\nStackTrace: {1}"
-            String.Format(format, exn.Message, exn.StackTrace)
-            |> Logger.err (tag "loop")
-        if Service.isStopping store.State.Status then
-          return ()
-        else
-          return! act ()
-    }
-    act ()
+  let private makeApiCallbacks (store: IAgentStore<IrisState>) =
+    { new IApiServerCallbacks with
+        member self.PrepareSnapshot () = store.State.Store.State }
 
   // ** isValidPassword
 
@@ -818,49 +449,20 @@ module IrisService =
     let password = Crypto.hashPassword password user.Salt
     password = user.Password
 
-  // ** addMember
+  // ** forwardEvent
 
-  let private addMember (store: IAgentStore<IrisState>)
-                        (agent: IrisAgent)
-                        (mem: RaftMember) =
-    (Origin.Service, AddMember mem)
-    |> IrisEvent.Append
-    |> Msg.Event
-    |> agent.Post
+  let inline private forwardEvent (constr: ^a -> IrisEvent) (dispatcher: IDispatcher<IrisEvent>) =
+    constr >> dispatcher.Dispatch
 
-  // ** removeMember
+  // ** makeStore
 
-  let private removeMember (store: IAgentStore<IrisState>)
-                           (agent: IrisAgent)
-                           (id: Id) =
-    store.State.RaftServer.Raft.Peers
-    |> Map.tryFind id
-    |> Option.iter
-      (fun mem ->
-        (Origin.Service, RemoveMember mem)
-        |> IrisEvent.Append
-        |> Msg.Event
-        |> agent.Post)
-
-  // ** append
-
-  let private append (store: IAgentStore<IrisState>)
-                     (agent: IrisAgent)
-                     (cmd: StateMachine) =
-    (Origin.Service, cmd)
-    |> IrisEvent.Append
-    |> Msg.Event
-    |> agent.Post
-
-  // ** start
-
-  let private start (context: ZContext)
-                    (iris: IrisServiceOptions)
-                    (store: IAgentStore<IrisState>)
-                    (agent: IrisAgent)
-                    (cts: CancellationTokenSource)
-                    (subscriptions: Subscriptions) =
+  let private makeStore  (context: ZContext) (iris: IrisServiceOptions) =
     either {
+      let subscriptions = Subscriptions()
+      let store = AgentStore.create()
+
+      do Directory.createDirectory iris.Machine.LogDirectory |> ignore
+
       let! path = Project.checkPath iris.Machine iris.ProjectName
       let! (state: State) = Asset.loadWithMachine path iris.Machine
 
@@ -886,7 +488,7 @@ module IrisService =
               then site
               else
                 let selfMember =
-                  { Member.create(machineId) with
+                 { Member.create(machineId) with
                       IpAddr  = iris.Machine.BindAddress
                       GitPort = iris.Machine.GitPort
                       WsPort  = iris.Machine.WsPort
@@ -902,55 +504,50 @@ module IrisService =
         // The frontend needs to handle that case
         let! mem = Config.selfMember state.Project.Config
 
-        let clockService = Clock.create ()
-        clockService.Stop()
+        // ensure that we have all other nodes set-up correctly
+        do! Project.updateRemotes state.Project
 
-        let! raftServer = RaftServer.create context state.Project.Config {
-            new IRaftSnapshotCallbacks with
-              member self.PrepareSnapshot () = Some store.State.Store.State
-              member self.RetrieveSnapshot () = retrieveSnapshot store.State
-          }
+        let clockService = Clock.create ()
+        do clockService.Stop()
+
+        let! raftServer =
+          store
+          |> makeRaftCallbacks
+          |> RaftServer.create context state.Project.Config
 
         let! socketServer = WebSocketServer.create mem
-        let! apiServer = ApiServer.create context mem state.Project.Id {
-            new IApiServerCallbacks with
-              member self.PrepareSnapshot () = store.State.Store.State
-          }
-
-        let logForwarder =
-          let lobs =
-            Logger.subscribe
-              (fun log ->
-                // Explanation:
-                //
-                // To prevent logs from other hosts being looped around endlessly, we only
-                // publish messages on the on api that emenate either from this service or
-                // any connected sessions.
-                if not (log.Tier = Tier.Service && log.Id <> iris.Machine.MachineId) then
-                  apiServer.Update Origin.Service (LogMsg log)
-                socketServer.Broadcast (LogMsg log) |> ignore)
-          { new IDisposable with member self.Dispose () = dispose lobs }
+        let! apiServer =
+          store
+          |> makeApiCallbacks
+          |> ApiServer.create context mem state.Project.Id
 
         // IMPORTANT: use the projects path here, not the path to project.yml
         let gitServer = GitServer.create mem state.Project
 
-        let cueResolver = Resolver.create ()
+        let dispatcher = createDispatcher store
 
-        // set up event forwarding of various services to the actor
-        let disposables =
-          [ (RAFT_SERVER,   forwardEvent id            agent |> raftServer.Subscribe)
-            (WS_SERVER,     forwardEvent id            agent |> socketServer.Subscribe)
-            (API_SERVER,    forwardEvent id            agent |> apiServer.Subscribe)
-            (GIT_SERVER,    forwardEvent IrisEvent.Git agent |> gitServer.Subscribe)
-            (RESOLVER,      forwardEvent id            agent |> cueResolver.Subscribe)
-            (CLOCK_SERVICE, forwardEvent id            agent |> clockService.Subscribe) ]
-          |> Map.ofList
+        let logForwarder =
+          let mkev log =
+            IrisEvent.Append(Origin.Service, LogMsg log)
+          Logger.subscribe (forwardEvent mkev dispatcher)
+
+        // wiring up the sources
+        let disposables = [|
+          gitServer.Subscribe(forwardEvent id dispatcher)
+          apiServer.Subscribe(forwardEvent id dispatcher)
+          socketServer.Subscribe(forwardEvent id dispatcher)
+          raftServer.Subscribe(forwardEvent id dispatcher)
+          clockService.Subscribe(forwardEvent id dispatcher)
+        |]
+
+        let! logFile = LogFile.create iris.Machine.MachineId iris.Machine.LogDirectory
 
         // set up the agent state
         { Member         = mem
           Machine        = iris.Machine
           Leader         = None
-          GitPoller      = None
+          Dispatcher     = dispatcher
+          LogFile        = logFile
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)
@@ -960,82 +557,110 @@ module IrisService =
           RaftServer     = raftServer
           SocketServer   = socketServer
           ClockService   = clockService
-          Resolver       = cueResolver
+          BufferedCues   = ConcurrentDictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }
-        |> store.Update          // and feed it to the store, before we start the services
+        |> store.Update                  // and feed it to the store, before we start the services
 
-        let result =
-          either {
-            do! raftServer.Start()
-            do! apiServer.Start()
-            do! socketServer.Start()
-            do! gitServer.Start()
-          }
-
-        agent.Post Msg.Start    // this service is ready for action
-
-        match result with
-        | Right _ -> return ()
-        | Left error ->
-          disposeAll disposables
-          dispose socketServer
-          dispose apiServer
-          dispose raftServer
-          dispose gitServer
-          return! Either.fail error
+        return store
       | _ ->
         return!
           "Login rejected"
           |> Error.asProjectError (tag "loadProject")
           |> Either.fail
+      }
+
+  // ** start
+
+  let private start (store: IAgentStore<IrisState>) =
+    either {
+      store.State.Dispatcher.Start()
+
+      // start all services
+      let result =
+        either {
+          do! store.State.ApiServer.Start()
+          do! store.State.SocketServer.Start()
+          do! store.State.GitServer.Start()
+          do! store.State.RaftServer.Start()
+        }
+
+      match result with
+      | Right _ ->
+        { store.State with Status = ServiceStatus.Running }
+        |> store.Update
+
+        store.State.Status
+        |> IrisEvent.Status
+        |> Observable.onNext store.State.Subscriptions
+        return ()
+      | Left error ->
+        { store.State with Status = ServiceStatus.Failed error }
+        |> store.Update
+
+        store.State.Status
+        |> IrisEvent.Status
+        |> Observable.onNext store.State.Subscriptions
+        dispose store.State
+        return! Either.fail error
     }
 
   // ** disposeService
 
-  let private disposeService (store: IAgentStore<IrisState>)
-                             (agent: IrisAgent)
-                             (cts: CancellationTokenSource) =
-    match store.State.Status with
-    | ServiceStatus.Starting -> dispose agent
-    | ServiceStatus.Running ->
-      use are = new AutoResetEvent(false)
-      are |> Msg.Stop |> agent.Post // signalling stop to the loop
-      if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-        "timeout: attempt to dispose iris service failed"
-        |> Logger.debug (tag "Dispose")
-      cts.Cancel()                // cancel the actor
-      dispose cts
-      dispose agent
-      dispose store.State         // dispose the state
-      store.Update { store.State with Status = ServiceStatus.Disposed }
-    | _ -> ()
+  let private disposeService (store: IAgentStore<IrisState>) =
+    dispose store.State         // dispose the state
+    store.Update { store.State with Status = ServiceStatus.Disposed }
+
+  // ** addMember
+
+  let private addMember (store: IAgentStore<IrisState>) (mem: RaftMember) =
+    (Origin.Service, AddMember mem)
+    |> IrisEvent.Append
+    |> store.State.Dispatcher.Dispatch
+
+  // ** removeMember
+
+  let private removeMember (store: IAgentStore<IrisState>) (id: Id) =
+    store.State.RaftServer.Raft.Peers
+    |> Map.tryFind id
+    |> Option.iter
+      (fun mem ->
+        (Origin.Service, RemoveMember mem)
+        |> IrisEvent.Append
+        |> store.State.Dispatcher.Dispatch)
+
+  // ** append
+
+  let private append (store: IAgentStore<IrisState>) (cmd: StateMachine) =
+    (Origin.Service, cmd)
+    |> IrisEvent.Append
+    |> store.State.Dispatcher.Dispatch
 
   // ** makeService
 
-  let private makeService ctx iris store agent subscriptions cts =
+  let private makeService (store: IAgentStore<IrisState>) =
     { new IIrisService with
-        member self.Start() = start ctx iris store agent cts subscriptions
+        member self.Start() = start store
 
         member self.Project
           with get () = store.State.Store.State.Project // :D
 
         member self.Config
           with get () = store.State.Store.State.Project.Config // :D
-          and set config = agent.Post (Msg.SetConfig config)
+          and set config = failwith "set() Config"
 
         member self.Status
           with get () = store.State.Status
 
-        member self.ForceElection () = agent.Post(Msg.ForceElection)
+        member self.ForceElection () = store.State.RaftServer.ForceElection()
 
-        member self.Periodic () = agent.Post(Msg.Periodic)
+        member self.Periodic () = store.State.RaftServer.Periodic()
 
-        member self.AddMember mem = addMember store agent mem
+        member self.AddMember mem = addMember store mem
 
-        member self.RemoveMember id = removeMember store agent id
+        member self.RemoveMember id = removeMember store id
 
-        member self.Append cmd = append store agent cmd
+        member self.Append cmd = append store cmd
 
         member self.GitServer
           with get () = store.State.GitServer
@@ -1047,12 +672,12 @@ module IrisService =
           with get () = store.State.SocketServer
 
         member self.Subscribe(callback: IrisEvent -> unit) =
-          Observable.subscribe callback subscriptions
+          Observable.subscribe callback store.State.Subscriptions
 
         member self.Machine
-          with get () = iris.Machine
+          with get () = store.State.Machine
 
-        member self.Dispose() = disposeService store agent cts
+        member self.Dispose() = disposeService store
 
         // member self.LeaveCluster () =
         //   Tracing.trace (tag "LeaveCluster") <| fun () ->
@@ -1073,19 +698,12 @@ module IrisService =
         //       String.format "Unexpected response from IrisAgent: {0}" other
         //       |> Error.asOther (tag "JoinCluster")
         //       |> Either.fail
-
       }
 
   // ** create
 
   let create ctx (iris: IrisServiceOptions) =
-    let subscriptions = Subscriptions()
-    let cts = new CancellationTokenSource()
-    let store = AgentStore.create()
-    let agent = new IrisAgent(loop store, cts.Token)
-    // set up the error handler so we can address any problems properly
-    agent.Error.Add (String.format "error on agent loop: {0}" >> Logger.err (tag "loop"))
-    agent.Start()                       // start the agent
-    makeService ctx iris store agent subscriptions cts
-
-#endif
+    either {
+      let! store = makeStore ctx iris
+      return makeService store
+    }

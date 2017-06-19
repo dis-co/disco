@@ -1,0 +1,186 @@
+#+TITLE: Event Paths
+#+STARTUP: showall 
+
+* Replicated Events
+
+  Events that get replicated are Add/Update/Remove calls for the
+  following resources: 
+
+  - Cue
+  - CueList
+  - CuePlayer
+  - ...
+  
+  Ok.
+
+#+BEGIN_SRC plantuml :file png/replication_of_assets.png :tangle uml/replication_of_assets.plantuml
+title Replication of Assets
+
+hide footbox
+
+box "User"
+    actor "Alice" as C
+end box
+
+box "Iris (Leader)" #Lightblue
+    participant "Dispatcher" as A
+    participant "Raft" as B
+end box
+
+box "Cluster" #LightGreen
+    participant "Raft Members" as D
+end box
+
+box "API Clients" #red
+    participant "Locally Connected\nAPI Clients" as E
+end box
+
+C ->  A: AddCue
+activate A
+A ->> B: << Strategy Replicate >>
+activate B
+B --> D: Replicate to Members
+activate D
+B <-- D: Replication Successful
+deactivate D
+B ->> A: << Strategy Publish >>
+deactivate B
+D --> E: Publish on API
+activate E
+A --> E: Publish on API
+deactivate E
+A ->  C: Apply to State and render
+deactivate A
+#+END_SRC
+
+#+RESULTS:
+[[file:png/replication_of_assets.png]]
+
+* Processed Events
+
+  Events that are tagged to be processed are special events that need
+  to be.
+
+#+BEGIN_SRC plantuml :file png/processed_events.png :tangle uml/processed_events.plantuml
+title Processed Events
+
+hide footbox
+
+box "User"
+    actor "Bob" as A
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "Dispatcher" as B
+end box
+
+A -> B: << AddSession >>
+activate B
+note right of B: Create Snapshot
+B --> A: << Respond with Snapshot >>
+deactivate B
+#+END_SRC
+
+#+RESULTS:
+[[file:png/processed_events.png]]
+
+* Published Events
+
+#+BEGIN_SRC plantuml :file png/websocket_published_events.png :tangle uml/websocket_published_events.plantuml
+title WebSocket Published Events
+
+hide footbox
+
+box "User"
+    actor "Eve" as A
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "Dispatcher"      as B
+    participant "State Mutator"   as C
+    participant "State Persistor" as D
+    participant "API Publisher"   as E
+end box
+
+box "API Clients" #LightGreen
+    participant "VVVV" as F
+end box
+
+A -> B: UpdateSlice Command
+B -> C: Apply to State
+B -> D: Ignore Command
+B -> E: Publish Command
+E -> F: Send Command
+F -> F: Apply Command to State
+#+END_SRC
+
+#+RESULTS:
+[[file:png/websocket_published_events.png]]
+
+* Local API Client Updates
+
+#+BEGIN_SRC plantuml :file png/local_api_published_events.png :tangle uml/local_api_published_events.plantuml
+title Local API Published Events
+
+hide footbox
+
+box "Local API Clients"
+    participant "VVVV"  as A
+    participant "Unity" as B
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "API Server"          as C
+    participant "Dispatcher"          as D
+    participant "State Mutator"       as E
+    participant "WebSocket Publisher" as F
+end box
+
+box "Remote API Listeners"
+    participant "Other IrisService" as G
+end box
+
+A -> C: UpdateSlice Command
+B <-- C: Pass-Thru to Clients
+C --> G: Publish via Multicast
+C -> D: Dispatch Command
+D -> E: Apply to State
+E -> F: Publish via WebSocket
+#+END_SRC
+
+#+results:
+[[file:png/local_api_published_events.png]]
+
+* Remote API Client Updates
+
+#+BEGIN_SRC plantuml :file png/remote_api_published_events.png :tangle uml/remote_api_published_events.plantuml
+title Remote API Published Events
+
+hide footbox
+
+box "Remote API Clients"
+    participant "VVVV"  as A
+end box
+
+box "Iris" #LightBlue
+    participant "API Server"          as B
+    participant "Dispatcher"          as C
+    participant "State Mutator"       as D
+    participant "WebSocket Publisher" as E
+end box
+
+
+box "Local API Clients"
+    participant "Other IrisService" as F
+end box
+
+A -> B: UpdateSlice Command
+B --> F: Publish to Local Clients
+B -> C: Dispatch Command
+C -> D: Apply to State
+D -> E: Publish via WebSocket
+#+END_SRC
+
+#+results:
+[[file:png/remote_api_published_events.png]]
+

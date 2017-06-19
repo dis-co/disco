@@ -1212,40 +1212,40 @@ type Listener = Store -> StateMachine -> unit
 
 type StateMachine =
   // Project
-  | UpdateProject         of IrisProject
+  | UpdateProject           of IrisProject
   | UnloadProject
 
   // Member
-  | AddMember             of RaftMember
-  | UpdateMember          of RaftMember
-  | RemoveMember          of RaftMember
+  | AddMember               of RaftMember
+  | UpdateMember            of RaftMember
+  | RemoveMember            of RaftMember
 
   // Client
-  | AddClient             of IrisClient
-  | UpdateClient          of IrisClient
-  | RemoveClient          of IrisClient
+  | AddClient               of IrisClient
+  | UpdateClient            of IrisClient
+  | RemoveClient            of IrisClient
 
   // GROUP
-  | AddPinGroup           of PinGroup
-  | UpdatePinGroup        of PinGroup
-  | RemovePinGroup        of PinGroup
+  | AddPinGroup             of PinGroup
+  | UpdatePinGroup          of PinGroup
+  | RemovePinGroup          of PinGroup
 
   // PIN
-  | AddPin                of Pin
-  | UpdatePin             of Pin
-  | RemovePin             of Pin
-  | UpdateSlices          of Slices
+  | AddPin                  of Pin
+  | UpdatePin               of Pin
+  | RemovePin               of Pin
+  | UpdateSlices            of Slices
 
   // CUE
-  | AddCue                of Cue
-  | UpdateCue             of Cue
-  | RemoveCue             of Cue
-  | CallCue               of Cue
+  | AddCue                  of Cue
+  | UpdateCue               of Cue
+  | RemoveCue               of Cue
+  | CallCue                 of Cue
 
-  // CUELIST
-  | AddCueList            of CueList
-  | UpdateCueList         of CueList
-  | RemoveCueList         of CueList
+  // CUE
+  | AddCueList              of CueList
+  | UpdateCueList           of CueList
+  | RemoveCueList           of CueList
 
   // CUEPLAYER
   | AddCuePlayer          of CuePlayer
@@ -1253,29 +1253,29 @@ type StateMachine =
   | RemoveCuePlayer       of CuePlayer
 
   // User
-  | AddUser               of User
-  | UpdateUser            of User
-  | RemoveUser            of User
+  | AddUser                 of User
+  | UpdateUser              of User
+  | RemoveUser              of User
 
   // Session
-  | AddSession            of Session
-  | UpdateSession         of Session
-  | RemoveSession         of Session
+  | AddSession              of Session
+  | UpdateSession           of Session
+  | RemoveSession           of Session
 
   // Discovery
   | AddDiscoveredService    of DiscoveredService
   | UpdateDiscoveredService of DiscoveredService
   | RemoveDiscoveredService of DiscoveredService
 
-  | UpdateClock           of uint32
+  | UpdateClock             of uint32
 
-  | Command               of AppCommand
+  | Command                 of AppCommand
 
-  | DataSnapshot          of State
+  | DataSnapshot            of State
 
-  | SetLogLevel           of LogLevel
+  | SetLogLevel             of LogLevel
 
-  | LogMsg                of LogEvent
+  | LogMsg                  of LogEvent
 
   // ** ToString
 

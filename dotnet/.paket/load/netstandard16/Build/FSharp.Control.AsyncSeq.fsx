@@ -1,1 +1,0 @@
-#r "../../../../packages/build/FSharp.Control.AsyncSeq/lib/portable-net45+netcore45+MonoAndroid1+MonoTouch1/FSharp.Control.AsyncSeq.dll" 

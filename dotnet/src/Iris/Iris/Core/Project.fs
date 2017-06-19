@@ -1943,7 +1943,7 @@ module Config =
 
   // ** create
 
-  let create (name: string) (machine: IrisMachine) =
+  let create (machine: IrisMachine) =
     { Machine    = machine
       ActiveSite = None
       #if FABLE_COMPILER
@@ -2193,7 +2193,7 @@ module Config =
 type IrisProject =
   { Id        : Id
   ; Name      : Name
-  ; Path      : FilePath                // project path should always be the path containing '.git'
+  ; Path      : FilePath
   ; CreatedOn : TimeStamp
   ; LastSaved : TimeStamp option
   ; Copyright : string    option
@@ -2284,7 +2284,7 @@ Config: %A
 
         return
           { project with
-              Path   = Path.getDirectoryName normalizedPath
+              Path   = Path.getDirectoryName normalizedPath |> unwrap |> filepath
               Config = Config.updateMachine machine project.Config }
     }
 
@@ -2464,7 +2464,7 @@ Config: %A
 
       return { Id        = Id meta.Id
                Name      = name meta.Name
-               Path      = Path.getFullPath (filepath ".")
+               Path      = filepath (Path.GetFullPath ".")
                CreatedOn = timestamp meta.CreatedOn
                LastSaved = lastSaved
                Copyright = ProjectYaml.parseStringProp meta.Copyright
@@ -2483,6 +2483,16 @@ module Project =
 
   let private tag (str: string) = String.format "Project.{0}" str
 
+  // ** toFilePath
+
+  let toFilePath (path: FilePath) =
+    path |> unwrap |> filepath
+
+  // ** ofFilePath
+
+  let ofFilePath (path: FilePath) =
+    path |> unwrap |> filepath
+
   // ** repository
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -2494,7 +2504,8 @@ module Project =
   ///
   /// # Returns: Repository option
   let repository (project: IrisProject) =
-    Git.Repo.repository project.Path
+    project.Path
+    |> Git.Repo.repository
 
   #endif
 
@@ -2640,7 +2651,7 @@ module Project =
         if Path.isPathRooted filepath then
           filepath
         else
-          project.Path </> filepath
+          toFilePath project.Path </> filepath
       do! Git.Repo.stage repo abspath
       let! commit = Git.Repo.commit repo msg committer
       return commit, project
@@ -2730,11 +2741,12 @@ module Project =
     deleteFile filepath signature msg project
 
   let private needsInit (project: IrisProject) =
-    let projdir = Directory.exists project.Path
-    let git = Directory.exists (project.Path </> filepath ".git")
-    let cues = Directory.exists (project.Path </> filepath CUE_DIR)
-    let cuelists = Directory.exists (project.Path </> filepath CUELIST_DIR)
-    let users = Directory.exists (project.Path </> filepath USER_DIR)
+    let projPath = project.Path
+    let projdir =  projPath |> Directory.exists
+    let git = Directory.exists (projPath </> filepath ".git")
+    let cues = Directory.exists (projPath </> filepath CUE_DIR)
+    let cuelists = Directory.exists (projPath </> filepath CUELIST_DIR)
+    let users = Directory.exists (projPath </> filepath USER_DIR)
 
     (not git)      ||
     (not cues)     ||
@@ -2756,7 +2768,7 @@ module Project =
   /// # Returns: Repository
   let private initRepo (project: IrisProject) : Either<IrisError,unit> =
     either {
-      let! repo = Git.Repo.init project.Path
+      let! repo = project.Path |> Git.Repo.init
       do! writeDaemonExportFile repo
       do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
@@ -2787,20 +2799,20 @@ module Project =
   /// Create a new project with the given name. The default configuration will apply.
   ///
   /// # Returns: IrisProject
-  let create (path: FilePath) (projectName: string) (machine: IrisMachine) : Either<IrisError,IrisProject> =
+  let create (path: FilePath) (projectName: string) (machine: IrisMachine) =
     either {
       let project =
         { Id        = Id.Create()
-        ; Name      = name projectName
-        ; Path      = path
-        ; CreatedOn = Time.createTimestamp()
-        ; LastSaved = Some (Time.createTimestamp ())
-        ; Copyright = None
-        ; Author    = None
-        ; Config    = Config.create projectName machine  }
+          Name      = name projectName
+          Path      = path
+          CreatedOn = Time.createTimestamp()
+          LastSaved = Some (Time.createTimestamp ())
+          Copyright = None
+          Author    = None
+          Config    = Config.create machine  }
 
       do! initRepo project
-      let! _ = Asset.saveWithCommit path User.Admin.Signature project
+      let! _ = Asset.saveWithCommit (toFilePath path) User.Admin.Signature project
       return project
     }
 
@@ -2851,6 +2863,11 @@ module Project =
   let findMember (mem: MemberId) (project: IrisProject) =
     Config.findMember project.Config mem
 
+  // ** selfMember
+
+  let selfMember (project: IrisProject) =
+    Config.findMember project.Config project.Config.Machine.MachineId
+
   // ** addMembers
 
   let addMembers (mems: RaftMember list) (project: IrisProject) : IrisProject =
@@ -2865,3 +2882,42 @@ module Project =
 
   let updateMachine (machine: IrisMachine) (project: IrisProject) : IrisProject =
     { project with Config = Config.updateMachine machine project.Config }
+
+  // ** updateRemotes
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  let updateRemotes (project: IrisProject) = either {
+      let! repo = repository project
+
+      // delete all current remotes
+      let current = Git.Config.remotes repo
+      do! Map.fold
+            (fun kontinue name _ -> either {
+              do! kontinue
+              do! Git.Config.delRemote repo name })
+            (Right ())
+            current
+
+      let! mem = Config.selfMember project.Config
+
+      // add remotes for all other peers
+      do! match Config.getActiveSite project.Config with
+          | Some cluster ->
+            Map.fold
+              (fun kontinue id peer -> either {
+                  do! kontinue
+                  if id <> mem.Id then
+                    let url = Uri.gitUri project.Name peer
+                    let name = string peer.Id
+                    printfn "name: %s url: %O" name url
+                    do! Git.Config.addRemote repo name url
+                        |> Either.iterError (string >> Logger.err (tag "updateRemotes"))
+                        |> Either.succeed
+                })
+              (Right ())
+              cluster.Members
+          | None -> Either.nothing
+    }
+
+  #endif

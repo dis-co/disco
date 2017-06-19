@@ -1,8 +1,9 @@
 namespace Iris.Core
 
-// * Custom Units
+// * Units
 
 [<Measure>] type filepath
+[<Measure>] type projectpath
 [<Measure>] type name
 [<Measure>] type password
 [<Measure>] type checksum

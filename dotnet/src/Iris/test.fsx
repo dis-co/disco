@@ -50,7 +50,6 @@
    "Iris/Service/RaftServer.fs"
    "Iris/Service/HttpServer.fs"
    "Iris/Service/WebSocket.fs"
-   "Iris/Service/IrisService.fs"
    "Iris/Service/ApiServer.fs"
    "Iris/Service/DiscoveryService.fs"
    "Iris/Service/CommandLine.fs"

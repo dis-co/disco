@@ -6,6 +6,7 @@ namespace Iris.Core
 
 open System
 open System.IO
+open System.Diagnostics
 open System.Linq
 open LibGit2Sharp
 
@@ -27,6 +28,34 @@ module Git =
   // ** tag
 
   let private tag (str: string) = String.format "Git.{0}" str
+
+  // ** runGit
+
+  let runGit (basepath: string) (cmd: string) (origin: string) (branch: string) =
+    use proc = new Process()
+    proc.StartInfo.FileName <- "git"
+    proc.StartInfo.Arguments <- cmd + " " + origin + " "  + branch
+    proc.StartInfo.WorkingDirectory <- basepath
+    proc.StartInfo.CreateNoWindow <- true
+    proc.StartInfo.UseShellExecute <- false
+    proc.StartInfo.RedirectStandardOutput <- true
+    proc.StartInfo.RedirectStandardError <- true
+
+    if proc.Start() then
+      let lines = ResizeArray()
+      while not proc.StandardOutput.EndOfStream do
+        proc.StandardOutput.ReadLine()
+        |> lines.Add
+      while not proc.StandardError.EndOfStream do
+        proc.StandardError.ReadLine()
+        |> lines.Add
+      proc.WaitForExit()
+      lines.ToArray()
+      |> String.join "\n"
+    else
+      proc.WaitForExit()
+      proc.StandardError.ReadToEnd()
+      |> failwithf "Error: %s"
 
   // ** lsRemote
 
@@ -656,9 +685,11 @@ module Git =
           |> Error.asGitError (tag "add")
           |> Either.fail
         else
-          if File.exists path then
-            Path.map repo.Index.Add path
-          Either.succeed ()
+          if File.exists path || Directory.exists path then
+            runGit repo.Info.WorkingDirectory "add" "." ""
+            |> Either.ignore
+          else
+            Either.succeed ()
       with
         | exn ->
           exn.Message
@@ -670,9 +701,8 @@ module Git =
     let stage (repo: Repository) (path: FilePath) =
       try
         if Path.isPathRooted path then
-          path
-          |> Path.map (fun path -> Commands.Stage(repo, path))
-          |> Either.succeed
+          runGit repo.Info.WorkingDirectory "stage" "." ""
+          |> Either.ignore
         else
           path
           |> String.format "Paths must be absolute: {0}"
@@ -813,6 +843,21 @@ module Git =
       commits repo
       |> fun lst -> lst.Count()
 
+    // *** push
+
+    let push (repo: Repository) (remote: Remote) =
+      try
+        let branch = Branch.current repo
+        let basepath = Path.GetDirectoryName repo.Info.Path
+        branch.FriendlyName
+        |> runGit basepath "push" remote.Name
+        |> Either.ignore
+      with
+        | exn ->
+          exn.Message
+          |> Error.asGitError (tag "push")
+          |> Either.fail
+
     // *** pull
 
     /// ## pull
@@ -825,7 +870,7 @@ module Git =
     ///
     /// Returns: Either<IrisError,MergeResult>
 
-    let pull (repo: Repository) (remote: Remote) (signature: Signature) =
+    let pull (repo: Repository) (signature: Signature) =
       try
         either {
           let options =

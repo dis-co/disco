@@ -81,7 +81,8 @@ module SerializationTests =
                                        (mem2.Id, mem2) |] }
 
         let config =
-          Config.create "default" machine
+          machine
+          |> Config.create
           |> Config.addSiteAndSetActive site
 
         let trm = term 666

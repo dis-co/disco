@@ -1,0 +1,17 @@
+title Processed Events
+
+hide footbox
+
+box "User"
+    actor "Bob" as A
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "Dispatcher" as B
+end box
+
+A -> B: << AddSession >>
+activate B
+note right of B: Create Snapshot
+B --> A: << Respond with Snapshot >>
+deactivate B

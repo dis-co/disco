@@ -18,7 +18,8 @@ module PersistenceTests =
       let name = rndstr()
       do! MachineConfig.init (konst "127.0.0.1") None (Some root)
       let machine = MachineConfig.get ()
-      let! project = Project.create (root </> filepath name) name machine
+      let path = Project.ofFilePath (root </> filepath name)
+      let! project = Project.create path name machine
       return machine, project
     }
 
@@ -44,7 +45,7 @@ module PersistenceTests =
         let group = mkPinGroup()
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
         expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
       }
@@ -56,14 +57,14 @@ module PersistenceTests =
         let group = mkPinGroup()
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
         expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.removePinGroup group loaded
         let! _ = Persistence.persistEntry state (RemovePinGroup group)
-        let! loaded = Asset.loadWithMachine updated.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
         expect "state should contain PinGroup" true (Map.containsKey group.Id >> not)  updated.PinGroups
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
@@ -109,14 +110,14 @@ module PersistenceTests =
         let pin = mkPin group.Id
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
         expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
-        let! loaded = Asset.loadWithMachine updated.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
         expect "state should contain Pin" true (Map.containsPin pin.Id) updated.PinGroups
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
@@ -130,21 +131,21 @@ module PersistenceTests =
         let pin = mkPin group.Id
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine state.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
         expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
-        let! loaded = Asset.loadWithMachine updated.Project.Path machine
+        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
         expect "state should contain Pin" true (Map.containsPin pin.Id) updated.PinGroups
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
 
         let updated = State.removePin pin updated
         let! _ = Persistence.persistEntry updated (RemovePin pin)
-        let! reloaded = Asset.loadWithMachine updated.Project.Path machine
+        let! reloaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
         expect "state should not contain Pin" true (Map.containsPin pin.Id >> not) updated.PinGroups
         expect "PinGroups should be the same" updated.PinGroups id reloaded.PinGroups

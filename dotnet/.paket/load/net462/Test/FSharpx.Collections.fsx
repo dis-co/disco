@@ -1,1 +1,0 @@
-#r "../../../../packages/test/FSharpx.Collections/lib/net40/FSharpx.Collections.dll" 

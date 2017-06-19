@@ -19,12 +19,12 @@ module ApiTests =
     let project =
       { Id        = Id.Create()
         Name      = name "Hello"
-        Path      = Path.getTempPath()
+        Path      = Path.getTempPath() |> Project.ofFilePath
         CreatedOn = Time.createTimestamp()
         LastSaved = Some (Time.createTimestamp ())
         Copyright = None
         Author    = None
-        Config    = Config.create "Hello" machine  }
+        Config    = Config.create machine  }
 
     { Project            = project
       PinGroups          = Map.empty

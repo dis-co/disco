@@ -167,8 +167,7 @@ module WebSocketServer =
   /// - socket: IWebSocketConnection to add handlers to
   ///
   /// Returns: unit
-  let private onNewSocket (id: Id)
-                          (connections: Connections)
+  let private onNewSocket (connections: Connections)
                           (agent: SocketEventProcessor)
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
@@ -254,11 +253,22 @@ module WebSocketServer =
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-      let handler = onNewSocket mem.Id connections agent
+      let handler = onNewSocket connections agent
       let server = new WebSocketServer(uri)
 
       return
         { new IWebSocketServer with
+            member self.Publish (ev: IrisEvent) =
+              match ev with
+              | IrisEvent.Append (_, cmd) ->
+                match bcast connections cmd with
+                | Right _ -> ()
+                | Left error ->
+                  error
+                  |> string
+                  |> Logger.err (tag "Publish")
+              | _ -> ()
+
             member self.Send (id: Id) (cmd: StateMachine) =
               ucast connections id cmd
 

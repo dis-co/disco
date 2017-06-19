@@ -50,14 +50,14 @@ module GitServer =
   let create (mem: RaftMember) (project: IrisProject) =
     let mutable status = ServiceStatus.Stopped
     let cts = new CancellationTokenSource()
-    let subscriptions = ConcurrentDictionary<Guid,IObserver<GitEvent>>()
+    let subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>()
 
     { new IGitServer with
         member self.Status
           with get () = status
 
-        member self.Subscribe(callback: GitEvent -> unit) =
-          Observable.subscribe<GitEvent> callback subscriptions
+        member self.Subscribe(callback: IrisEvent -> unit) =
+          Observable.subscribe<IrisEvent> callback subscriptions
 
         member self.Start () = either {
             do! Network.ensureIpAddress mem.IpAddr
@@ -73,7 +73,10 @@ module GitServer =
 
             Thread.Sleep(150)
 
-            Observable.onNext subscriptions GitEvent.Started
+            ServiceType.Git
+            |> IrisEvent.Started
+            |> Observable.onNext subscriptions
+
             status <- ServiceStatus.Running
           }
 

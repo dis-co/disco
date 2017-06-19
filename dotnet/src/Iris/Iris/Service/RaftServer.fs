@@ -562,7 +562,7 @@ module RaftServer =
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftServerState) (mem: Id) (is: InstallSnapshot) (raw: RawServerRequest) =
+  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: RawServerRequest) =
     Tracing.trace (tag "processInstallSnapshot") <| fun () ->
       let result =
         Raft.receiveInstallSnapshot is
@@ -725,7 +725,7 @@ module RaftServer =
 
   // ** processRedirect
 
-  let private processRedirect (state: RaftServerState) (leader: RaftMember) =
+  let private processRedirect (state: RaftServerState) (_: RaftMember) =
     "FIX REDIRECT RESPONSE PROCESSING"
     |> Logger.err (tag "processRedirect")
     state
@@ -754,7 +754,7 @@ module RaftServer =
 
   // ** processErrorResponse
 
-  let private processErrorResponse (state: RaftServerState) (sender: Id) (error: IrisError) =
+  let private processErrorResponse (state: RaftServerState) (_: Id) (error: IrisError) =
     error
     |> sprintf "received error response:  %A"
     |> Logger.err (tag "processErrorResponse")
@@ -1052,7 +1052,7 @@ module RaftServer =
   let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (agent: RaftAgent) =
     Tracing.trace (tag "handleAddCmd") <| fun () ->
       match appendCommand state cmd with
-      | Right (entry, newstate) ->
+      | Right (_, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
         // |> agent.Post
@@ -1085,7 +1085,7 @@ module RaftServer =
       |> Option.map (registerPeerSocket agent)
       |> Option.iter (addPeerSocket state.Connections)
       match addMembers state [| mem |] with
-      | Right (entry, newstate) ->
+      | Right (_, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
         // |> agent.Post
@@ -1106,7 +1106,7 @@ module RaftServer =
   let private handleRemoveMember (state: RaftServerState) (id: Id) (agent: RaftAgent) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
       match removeMember state id with
-      | Right (entry, newstate) ->
+      | Right (_, newstate) ->
         // (DateTime.Now, entry)
         // |> Msg.IsCommitted
         // |> agent.Post
@@ -1193,12 +1193,12 @@ module RaftServer =
         let! request = Binary.decode<RaftRequest> raw.Body
         let newstate =
           match request with
-          | AppendEntries (id, ae)   -> processAppendEntries   data id  ae  raw
-          | RequestVote (id, vr)     -> processVoteRequest     data id  vr  raw
-          | InstallSnapshot (id, is) -> processInstallSnapshot data id  is  raw
-          | AppendEntry  sm          -> processAppendEntry     data sm  raw agent
-          // | HandShake mem            -> processHandshake       data mem raw agent
-          // | HandWaive mem            -> processHandwaive       data mem raw agent
+          | AppendEntries (id, ae)  -> processAppendEntries   data id  ae  raw
+          | RequestVote (id, vr)    -> processVoteRequest     data id  vr  raw
+          | InstallSnapshot (_, is) -> processInstallSnapshot data     is  raw
+          | AppendEntry  sm         -> processAppendEntry     data sm  raw agent
+          // | HandShake mem        -> processHandshake       data mem raw agent
+          // | HandWaive mem        -> processHandwaive       data mem raw agent
         return newstate
       }
 
@@ -1294,7 +1294,7 @@ module RaftServer =
 
   let private handleClientResponse (state: RaftServerState) (raw: RawClientResponse) agent =
     match raw.Body with
-    | Left error ->
+    | Left _ ->
       let result =
         raft {
           let! peer = Raft.getMemberM raw.PeerId
@@ -1552,6 +1552,11 @@ module RaftServer =
 
             member self.Append cmd =
               cmd |> Msg.AddCmd |> agent.Post
+
+            member self.Publish cmd =
+              match cmd with
+              | IrisEvent.Append(_, cmd) -> self.Append cmd
+              | _ -> ()
 
             member self.Status
               with get () = store.State.Status

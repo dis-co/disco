@@ -3,6 +3,7 @@ namespace Iris.Core
 // * Imports
 
 open System
+open Iris.Core
 
 #if FABLE_COMPILER
 

@@ -1,1 +1,0 @@
-#r "../../../../packages/test/System.Net.Sockets/lib/net46/System.Net.Sockets.dll" 

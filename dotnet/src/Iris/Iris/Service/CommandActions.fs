@@ -72,7 +72,7 @@ let buildProject (machine: IrisMachine)
                   (raftDir: FilePath)
                   (mem: RaftMember) =
   either {
-    let! project = Project.create path name machine
+    let! project = Project.create (Project.ofFilePath path) name machine
 
     let site =
         let def = ClusterConfig.Default
@@ -135,7 +135,7 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
-let getProjectSites machine projectName username password =
+let getProjectSites machine projectName =
   either {
     let! path = Project.checkPath machine projectName
     let! (state: State) = Asset.loadWithMachine path machine
@@ -191,12 +191,12 @@ let pullProject (id: Id) (name: Name) (uri: Url) = either {
     let target = machine.WorkSpace </> filepath (unwrap name)
     let! repo = Git.Repo.repository target
 
-    let! remote =
+    let! _ =
       match Git.Config.tryFindRemote repo (string id) with
       | Some remote -> Git.Config.updateRemote repo remote uri
       | None -> Git.Config.addRemote repo (string id) uri
 
-    let! result = Git.Repo.pull repo remote User.Admin.Signature
+    let! result = Git.Repo.pull repo User.Admin.Signature
 
     match result.Status with
     | LibGit2Sharp.MergeStatus.Conflicts ->
@@ -213,7 +213,6 @@ let pullProject (id: Id) (name: Name) (uri: Url) = either {
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
 
 let startAgent (cfg: IrisMachine) (iris: IIris) =
-  let fail cmd msg = IrisError.Other (tag cmd, msg) |> Either.fail
   MailboxProcessor<Command*Channel>.Start(fun agent ->
     let rec loop() = async {
       let! input, replyChannel = agent.Receive()
@@ -240,8 +239,7 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
         | LoadProject(projectName, username, password, site) ->
           iris.LoadProject(projectName, username, password, site)
           |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
-        | GetProjectSites(projectName, username, password) ->
-          getProjectSites cfg projectName username password
+        | GetProjectSites(projectName, _, _) -> getProjectSites cfg projectName
 
       replyChannel.Reply res
       do! loop()

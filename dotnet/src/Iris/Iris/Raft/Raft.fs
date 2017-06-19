@@ -1962,7 +1962,7 @@ module rec Raft =
       do! setTimeoutElapsedM 0<ms>
 
       match is.Data with
-      | Snapshot(_,idx,_,_,_,mems, data) as snapshot ->
+      | Snapshot(_,idx,_,_,_,mems, _) as snapshot ->
 
         // IMPROVEMENT: implementent chunked transmission as per paper
         cbs.PersistSnapshot snapshot

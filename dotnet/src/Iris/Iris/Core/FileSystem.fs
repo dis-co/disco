@@ -1,4 +1,4 @@
-namespace  Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -55,8 +55,12 @@ module Path =
 
   // ** <.>
 
+  // ** <.>
+
   let (<.>) (p1: string) (p2: string) : FilePath =
     combine p1 p2
+
+  // ** pmap
 
   // ** pmap
 
@@ -123,6 +127,10 @@ module Path =
 
 module File =
 
+  // ** tag
+
+  let private tag (str: string) = String.Format("File.{0}", str)
+
   // ** writeText
 
   let writeText (payload: string) (encoding: Text.Encoding option) (location: FilePath) =
@@ -166,6 +174,20 @@ module File =
     path
     |> unwrap
     |> File.Exists
+
+  // ** ensurePath
+
+  let ensurePath (path: FilePath) =
+    try
+      path
+      |> Path.getDirectoryName
+      |> Directory.createDirectory
+      |> Either.ignore
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "ensurePath")
+        |> Either.fail
 
 #endif
 
@@ -220,6 +242,8 @@ module Directory =
           Array.empty
       |> Array.append current
     else current
+
+  // ** getDirectories
 
   // ** getDirectories
 
