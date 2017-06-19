@@ -175,12 +175,7 @@ type User =
 
   member user.AssetPath
     with get () =
-      let filename =
-        sprintf "%s_%s%s"
-          (user.UserName |> unwrap |> String.sanitize)
-          (string user.Id)
-          ASSET_EXTENSION
-      USER_DIR <.> filename
+      USER_DIR <.> sprintf "%s%s" (string user.Id) ASSET_EXTENSION
 
   // ** Admin
 

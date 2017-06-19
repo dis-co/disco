@@ -2910,7 +2910,6 @@ module Project =
                   if id <> mem.Id then
                     let url = Uri.gitUri project.Name peer
                     let name = string peer.Id
-                    printfn "name: %s url: %O" name url
                     do! Git.Config.addRemote repo name url
                         |> Either.iterError (string >> Logger.err (tag "updateRemotes"))
                         |> Either.succeed
