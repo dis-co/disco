@@ -134,6 +134,7 @@ module Client =
           self.Subscriptions.Clear()
           try
             self.Socket.Linger <- TimeSpan.FromMilliseconds 0.0
+            self.Socket.Disconnect(unwrap options.Frontend)
             self.Socket.Close()
           with | exn -> Logger.err (tag "Dispose") exn.Message
           self.Status <- ServiceStatus.Disposed
