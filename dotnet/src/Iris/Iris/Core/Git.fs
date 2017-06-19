@@ -687,8 +687,7 @@ module Git =
         else
           if File.exists path || Directory.exists path then
             runGit repo.Info.WorkingDirectory "add" "." ""
-            |> printfn "result: %s"
-            |> Either.succeed
+            |> Either.ignore
           else
             Either.succeed ()
       with
@@ -703,8 +702,7 @@ module Git =
       try
         if Path.isPathRooted path then
           runGit repo.Info.WorkingDirectory "stage" "." ""
-          |> printfn "result: %s"
-          |> Either.succeed
+          |> Either.ignore
         else
           path
           |> String.format "Paths must be absolute: {0}"
