@@ -158,6 +158,7 @@ module Server =
     interface IDisposable with
       member self.Dispose() =
         self.Subscriptions.Clear()
+        self.Socket.Unbind(unwrap args.Listen)
         self.Socket.Close()
         tryDispose self.Socket ignore
         self.Disposed <- true
