@@ -1903,9 +1903,9 @@ extsprintf@1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.0.2.tgz#e1080e0658e300b06294990cc70e1502235fd550"
 
-fable-loader@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.2.tgz#26e5e9ecb5df7e76ce7c2c1ab25388b92e0325f0"
+fable-loader@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/fable-loader/-/fable-loader-1.0.5.tgz#4e9461e087a09fade39cc0e61e55d1951d28f6fe"
   dependencies:
     fable-utils "^1.0.0"
 
@@ -2781,7 +2781,7 @@ loader-runner@^2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/loader-runner/-/loader-runner-2.3.0.tgz#f482aea82d543e07921700d5a46ef26fdac6b8a2"
 
-loader-utils@^0.2.16, loader-utils@^0.2.5:
+loader-utils@^0.2.16:
   version "0.2.17"
   resolved "https://registry.yarnpkg.com/loader-utils/-/loader-utils-0.2.17.tgz#f86e6374d43205a6e6c60e9196f17c0299bfb348"
   dependencies:
@@ -3010,10 +3010,6 @@ ms@0.7.2:
 ms@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
-
-muicss@^0.9.15:
-  version "0.9.16"
-  resolved "https://registry.yarnpkg.com/muicss/-/muicss-0.9.16.tgz#8aa6c527da77b3cf9b7447f1c19b74714c14d175"
 
 mute-stream@0.0.5:
   version "0.0.5"

@@ -67,9 +67,7 @@ var frontendConfig = {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
             plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
-            extra: {
-              useCache: false
-            }
+            extra: { useCache: true }
           }
         }
       },

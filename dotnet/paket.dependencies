@@ -26,13 +26,15 @@ group Main
   nuget VVVV.UtilsIL
   nuget Newtonsoft.Json
   nuget System.ValueTuple
-  nuget Disruptor >= 3.3.6 
-
-  # Keep this pinned to dotnet-fable version in Fable.proj
-  nuget Fable.Core 1.0.8
-
-  # Other Fable libraries
+  nuget Disruptor >= 3.3.6
   nuget Fable.JsonConverter
+
+group Fable
+  source https://nuget.org/api/v2
+  nuget FSharp.Core
+  # Keep this pinned to dotnet-fable version in Fable.proj
+  nuget Fable.Core 1.1.2
+  # Other Fable libraries
   nuget Fable.PowerPack
   nuget Fable.React
 

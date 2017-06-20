@@ -20,7 +20,7 @@
     "core-js": "^2.4.1",
     "css-loader": "^0.26.1",
     "expect.js": "^0.3.1",
-    "fable-loader": "^1.0.2",
+    "fable-loader": "^1.0.5",
     "less": "^2.7.2",
     "mocha": "^3.2.0",
     "mocha-phantomjs-core": "^2.1.1",
