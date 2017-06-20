@@ -18,12 +18,13 @@ let option = OptionBuilder()
 type ObjectId = int
 
 type State =
-  { PinGroup: PinGroup
-    GameObjects: Map<ObjectId, Action<float>> }
+  { IsRunning: bool
+    PinGroup: PinGroup
+    GameObjects: Map<ObjectId, Action<float>>
+    PendingRegistrations: (int*Action<double>) list }
 
 type Msg =
   | IrisEvent of ClientEvent
-  | UpdateState of State
   | RegisterObject of objectId: int * callback: Action<double>
 
 type Actor = MailboxProcessor<Msg>
@@ -60,76 +61,81 @@ let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
 
     match client.Start() with
     | Right () ->
-      Logger.info "startClient" "Successfully started ApiClient"
-      print "Successfully started ApiClient"
+      Logger.info "startClient" "Successfully started Unity ApiClient"
+      print "Successfully started Iris Client"
       myself.Id, zcontext, client
     | Left error ->
       let msg = string error
       Logger.err "startClient" msg
       exn msg |> raise
 
-let withState (state: State option) (f: State->State) =
-  match state with
-  | Some state -> f state |> Some
-  // TODO: Log/throw exception if state it's not initialized
-  | None -> state
+let startActor(state, client: IApiClient, print: string->unit) = Actor.Start(fun inbox -> async {
+  let rec loop state = async {
+    let! msg = inbox.Receive()
+    sprintf "DEBUG: Iris client actor received message: %A" msg |> print
+    let newState =
+      try
+        match msg with
+        | IrisEvent ev ->
+          match ev with
+          //| ClientEvent.Update(UpdatePinGroup pinGroup) when pinGroup.Id = state.PinGroup.Id ->
+          | ClientEvent.Update(UpdatePin pin) when pin.PinGroup = state.PinGroup.Id ->
+            let objectId =
+              let id = string pin.Id
+              id.Substring(id.IndexOf('/') + 1) |> int
+            option {
+              let! callback = Map.tryFind objectId state.GameObjects
+              let! value = pin.Values.At(index 0).NumberValue
+              callback.Invoke(value)
+            } |> function
+              | Some () -> state // Update state.PinGroup?
+              | None -> state
+          | ClientEvent.Status(ServiceStatus.Running) ->
+            print("DEBUG: Registrations pending " + (string state.PendingRegistrations.Length))
+            for (id,cb) in state.PendingRegistrations do
+              inbox.Post(RegisterObject(id,cb))
+            { state with IsRunning = true; PendingRegistrations = [] }
+          | _ -> state
+        | RegisterObject(objectId, callback) ->
+          // TODO: Batch pin creation
+          if state.IsRunning then
+            let pinGroup =
+              let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
+              print("DEBUG: Request to register game object with id: " + (string id))
+              if not(Map.containsKey id state.PinGroup.Pins)
+              then
+                sprintf "Registering pin %O to Iris" id |> print
+                let pin = Pin.number id (string objectId) state.PinGroup.Id [|astag "Scale"|] [|1.|]
+                client.AddPin(pin)
+                { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
+              else state.PinGroup
+            // Update allways the internal map in case the callback has changed
+            { state with PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
+          else
+            { state with PendingRegistrations = (objectId, callback)::state.PendingRegistrations }
+      with
+      | ex ->
+        Logger.err "Iris.Unity.actorLoop" ex.Message
+        print("Iris client error: " + ex.Message)
+        state
+    return! loop state
+  }
+  return! loop state
+})
 
 let startApiClientAndActor (serverIp, serverPort: uint16, print) =
   let clientId, zcontext, client = startApiClient(serverIp, serverPort, print) 
-  let actor = Actor.Start(fun inbox -> async {
-    let rec loop state = async {
-      let! msg = inbox.Receive()
-      let newState =
-        try
-          match msg with
-          | UpdateState state -> Some state
-          | IrisEvent ev ->
-            withState state <| fun state ->
-              match ev with
-              //| ClientEvent.Update(UpdatePinGroup pinGroup) when pinGroup.Id = state.PinGroup.Id ->
-              | ClientEvent.Update(UpdatePin pin) when pin.PinGroup = state.PinGroup.Id ->
-                let objectId =
-                  let id = string pin.Id
-                  id.Substring(id.IndexOf('/') + 1) |> int
-                option {
-                  let! callback = Map.tryFind objectId state.GameObjects
-                  let! value = pin.Values.At(index 0).NumberValue
-                  callback.Invoke(value)
-                } |> function
-                  | Some () -> state // Update state.PinGroup?
-                  | None -> state
-              | _ -> state
-          | RegisterObject(objectId, callback) ->
-            // TODO: Batch pin creation
-            withState state <| fun state ->
-              let pinGroup =
-                let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
-                if not(Map.containsKey id state.PinGroup.Pins)
-                then
-                  sprintf "Registering pin %O to Iris" id |> print
-                  let pin = Pin.number id (string objectId) state.PinGroup.Id [|astag "Scale"|] [|1.|]
-                  client.AddPin(pin)
-                  { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
-                else state.PinGroup
-              // Update allways the internal map in case the callback has changed
-              { PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
-        with
-        | ex -> Logger.err "Iris.Unity.actorLoop" ex.Message; state
-      return! loop state
-    }
-    return! loop None
-  })
-
-  // Create PinGroup and add it to Iris
-  let pinGroup: PinGroup =
-    { Id = Guid.NewGuid().ToString().[..7] |> sprintf "unity-%s" |> Id
-      Name = name "Unity"
-      Client = clientId
-      Pins = Map.empty }
-  client.AddPinGroup(pinGroup)
-  { PinGroup = pinGroup; GameObjects = Map.empty }
-  |> UpdateState |> actor.Post
-
+  let state =
+    // Create PinGroup and add it to Iris
+    let pinGroup: PinGroup =
+      { Id = Guid.NewGuid().ToString().[..7] |> sprintf "unity-%s" |> Id
+        Name = name "Unity"
+        Client = clientId
+        Pins = Map.empty }
+    client.AddPinGroup(pinGroup)
+    { IsRunning = false; PinGroup = pinGroup; GameObjects = Map.empty; PendingRegistrations = [] }
+  let actor = startActor(state, client, print)
+  print("DEBUG: Iris client actor started")
   zcontext, client, actor
 
 let private myLock = obj()
@@ -140,18 +146,23 @@ let getIrisClient(serverIp, serverPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
       | Some client ->
-        print.Invoke("Reciclying client instance")
+        print.Invoke("Reciclying Iris client instance")
         client
       | None ->
         let zcontext, apiClient, actor = startApiClientAndActor(serverIp, serverPort, print.Invoke)
+        print.Invoke("DEBUG: Subscribing to API Client")
         // Subscribe to API client events
-        let apiobs = apiClient.Subscribe(fun ev -> actor.Post(IrisEvent ev))
+        let apiobs = apiClient.Subscribe(IrisEvent >> actor.Post)
         let client2: IIrisClient =
+          let mutable disposed = false
           { new IIrisClient with
               member this.Dispose() =
-                apiobs.Dispose()
-                zcontext.Dispose()
-                (actor :> IDisposable).Dispose()
+                if not disposed then
+                  disposed <- true
+                  apiobs.Dispose()
+                  zcontext.Dispose()
+                  (actor :> IDisposable).Dispose()
+                  print.Invoke("Iris client disposed")
               member this.RegisterGameObject(objectId: int, callback: Action<double>) =
                 RegisterObject(objectId, callback) |> actor.Post }
         client <- Some client2
