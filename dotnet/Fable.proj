@@ -1,6 +1,7 @@
 <!-- This file just installs the dotnet-fable CLI tool -->
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <DotNetCliToolReference Include="dotnet-fable" Version="1.0.8" />
+    <!-- Keep dotnet-fable version synced with Fable.Core in paket.dependencies -->
+    <DotNetCliToolReference Include="dotnet-fable" Version="1.1.2" />
   </ItemGroup>
 </Project>
