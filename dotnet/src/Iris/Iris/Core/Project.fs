@@ -1925,6 +1925,7 @@ module ProjectYaml =
         g.Members <- Array.map string group.Members
         groups.Add(g)
 
+      cfg.Groups <- groups.ToArray()
       cfg.Members <- members.ToArray()
       sites.Add(cfg)
 
