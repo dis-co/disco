@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -27,7 +27,6 @@ open Iris.Serialization
 
 #if !FABLE_COMPILER && !IRIS_NODES
 
-open FSharp.Configuration
 open LibGit2Sharp
 open SharpYaml.Serialization
 
@@ -796,127 +795,156 @@ type IrisConfig =
 [<RequireQualifiedAccess>]
 module ProjectYaml =
 
-  // ** template
+  // ** VvvvExecutableYaml
 
-  [<Literal>]
-  let private template = """
-Project:
-  Version:
+  type VvvvExecutableYaml() =
+    [<DefaultValue>] val mutable Path: string
+    [<DefaultValue>] val mutable Version: string
+    [<DefaultValue>] val mutable Required: bool
 
-  Metadata:
-    Id:
-    CreatedOn:
-    Copyright:
-    Author:
-    Name:
-    LastSaved:
+  // ** VvvvPluginYaml
 
-  VVVV:
-    Executables:
-      - Path:
-        Version:
-        Required: true
-    Plugins:
-      - Name:
-        Path:
+  type VvvvPluginYaml() =
+    [<DefaultValue>] val mutable Path: string
+    [<DefaultValue>] val mutable Name: string
 
-  Engine:
-    LogLevel:
-    DataDir:
-    BindAddress:
-    RequestTimeout:   -1
-    ElectionTimeout:  -1
-    MaxLogDepth:      -1
-    MaxRetries:       -1
-    PeriodicInterval: -1
+  // ** VvvvYaml
 
-  Timing:
-    Framebase: 50
-    Input:
-    Servers:
-      -
-    UDPPort: 8090
-    TCPPort: 8091
+  type VvvvYaml() =
+    [<DefaultValue>] val mutable Executables: VvvvExecutableYaml array
+    [<DefaultValue>] val mutable Plugins:     VvvvPluginYaml array
 
-  Audio:
-    SampleRate: 48000
+  // ** TimingYaml
 
-  ViewPorts:
-    - Id:
-      Name:
-      Position:
-      Size:
-      OutputPosition:
-      OutputSize:
-      Overlap:
-      Description:
+  type TimingYaml() =
+    [<DefaultValue>] val mutable Framebase: int
+    [<DefaultValue>] val mutable Input: string
+    [<DefaultValue>] val mutable Servers: string array
+    [<DefaultValue>] val mutable UDPPort: int
+    [<DefaultValue>] val mutable TCPPort: int
 
-  Displays:
-    - Id:
-      Name:
-      Size:
-      Signals:
-        - Size:
-          Position:
-      RegionMap:
-        SrcViewportId:
-        Regions:
-          - Id:
-            Name:
-            SrcPosition:
-            SrcSize:
-            OutputPosition:
-            OutputSize:
-  Tasks:
-    - Id:
-      Description:
-      DisplayId:
-      AudioStream:
-      Arguments:
-        - Key:
-          Value:
+  // ** AudioYaml
 
-  ActiveSite:
+  type AudioYaml() =
+    [<DefaultValue>] val mutable SampleRate: int
 
-  Sites:
-    - Id:
-      Name:
-      Members:
-        - Id:
-          HostName:
-          Ip:
-          Port:    -1
-          WsPort:  -1
-          GitPort: -1
-          ApiPort: -1
-          State:
-      Groups:
-        - Name:
-          Members:
-            - 00000000-0000-0000-0000-000000000000
-"""
+  // ** RectYaml
 
-  // ** YamlConfig
+  type RectYaml() =
+    [<DefaultValue>] val mutable X: int
+    [<DefaultValue>] val mutable Y: int
 
-  type Config = YamlConfig<"",false,template>
+  // ** CoordinateYaml
 
-  type internal DisplayYaml   = Config.Project_Type.Displays_Item_Type
-  type internal ViewPortYaml  = Config.Project_Type.ViewPorts_Item_Type
-  type internal TaskYaml      = Config.Project_Type.Tasks_Item_Type
-  type internal ArgumentYaml  = Config.Project_Type.Tasks_Item_Type.Arguments_Item_Type
-  type internal ClusterYaml   = Config.Project_Type.Sites_Item_Type
-  type internal MemberYaml    = Config.Project_Type.Sites_Item_Type.Members_Item_Type
-  type internal GroupYaml     = Config.Project_Type.Sites_Item_Type.Groups_Item_Type
-  type internal AudioYaml     = Config.Project_Type.Audio_Type
-  type internal EngineYaml    = Config.Project_Type.Engine_Type
-  type internal MetadatYaml   = Config.Project_Type.Metadata_Type
-  type internal TimingYaml    = Config.Project_Type.Timing_Type
-  type internal VvvvYaml      = Config.Project_Type.VVVV_Type
-  type internal ExeYaml       = Config.Project_Type.VVVV_Type.Executables_Item_Type
-  type internal PluginYaml    = Config.Project_Type.VVVV_Type.Plugins_Item_Type
-  type internal SignalYaml    = Config.Project_Type.Displays_Item_Type.Signals_Item_Type
-  type internal RegionMapYaml = Config.Project_Type.Displays_Item_Type.RegionMap_Type
-  type internal RegionYaml    = Config.Project_Type.Displays_Item_Type.RegionMap_Type.Regions_Item_Type
+  type CoordinateYaml() =
+    [<DefaultValue>] val mutable X: int
+    [<DefaultValue>] val mutable Y: int
+
+  // ** ViewPortYaml
+
+  type ViewPortYaml() =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable Position: CoordinateYaml
+    [<DefaultValue>] val mutable Size: RectYaml
+    [<DefaultValue>] val mutable OutputPosition: CoordinateYaml
+    [<DefaultValue>] val mutable OutputSize: RectYaml
+    [<DefaultValue>] val mutable Overlap: RectYaml
+    [<DefaultValue>] val mutable Description: string
+
+  // ** SignalYaml
+
+  type SignalYaml () =
+    [<DefaultValue>] val mutable Size: RectYaml
+    [<DefaultValue>] val mutable Position: CoordinateYaml
+
+  // ** RegionYaml
+
+  type RegionYaml() =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable SrcPosition: CoordinateYaml
+    [<DefaultValue>] val mutable SrcSize: RectYaml
+    [<DefaultValue>] val mutable OutputPosition: CoordinateYaml
+    [<DefaultValue>] val mutable OutputSize: RectYaml
+
+  // ** RegionMapYaml
+
+  type RegionMapYaml() =
+    [<DefaultValue>] val mutable SrcViewportId: string
+    [<DefaultValue>] val mutable Regions: RegionYaml array
+
+  // ** DisplayYaml
+
+  type DisplayYaml() =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable Size: RectYaml
+    [<DefaultValue>] val mutable Signals: SignalYaml array
+    [<DefaultValue>] val mutable RegionMap: RegionMapYaml
+
+  // ** EngineYaml
+
+  type EngineYaml() =
+    [<DefaultValue>] val mutable LogLevel: string
+    [<DefaultValue>] val mutable DataDir: string
+    [<DefaultValue>] val mutable BindAddress: string
+    [<DefaultValue>] val mutable RequestTimeout: int
+    [<DefaultValue>] val mutable ElectionTimeout: int
+    [<DefaultValue>] val mutable PeriodicInterval: int
+    [<DefaultValue>] val mutable MaxLogDepth: int
+    [<DefaultValue>] val mutable MaxRetries: int
+
+  // ** ArgumentYaml
+
+  type ArgumentYaml() =
+    [<DefaultValue>] val mutable Key: string
+    [<DefaultValue>] val mutable Value: string
+
+  // ** TaskYaml
+
+  type TaskYaml() =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Description: string
+    [<DefaultValue>] val mutable DisplayId: string
+    [<DefaultValue>] val mutable AudioStream: string
+    [<DefaultValue>] val mutable Arguments: ArgumentYaml array
+
+  // ** GroupYaml
+
+  type GroupYaml() =
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable Members: string array
+
+  // ** SiteYaml
+
+  type SiteYaml () =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable Members: RaftMemberYaml array
+    [<DefaultValue>] val mutable Groups: GroupYaml array
+
+  // ** IrisProjectYaml
+
+  type IrisProjectYaml() =
+    [<DefaultValue>] val mutable Id: string
+    [<DefaultValue>] val mutable Name: string
+    [<DefaultValue>] val mutable Version: string
+    [<DefaultValue>] val mutable Copyright: string
+    [<DefaultValue>] val mutable Author: string
+    [<DefaultValue>] val mutable CreatedOn: string
+    [<DefaultValue>] val mutable LastSaved: string
+    [<DefaultValue>] val mutable ActiveSite: string
+
+    [<DefaultValue>] val mutable VVVV: VvvvYaml
+    [<DefaultValue>] val mutable Engine: EngineYaml
+    [<DefaultValue>] val mutable Timing: TimingYaml
+    [<DefaultValue>] val mutable Audio: AudioYaml
+
+    [<DefaultValue>] val mutable ViewPorts: ViewPortYaml array
+    [<DefaultValue>] val mutable Displays:  DisplayYaml array
+    [<DefaultValue>] val mutable Tasks:  TaskYaml array
+    [<DefaultValue>] val mutable Sites:  SiteYaml array
 
   // ** parseTuple
 
@@ -939,20 +967,22 @@ Project:
 
   // ** parseRect
 
-  let internal parseRect (str : string) : Either<IrisError,Rect> =
-    parseTuple str
-    |> Either.map Rect
+  let internal parseRect (rect: RectYaml) : Either<IrisError,Rect> =
+    (rect.X, rect.Y)
+    |> Rect
+    |> Either.succeed
 
   // ** parseCoordinate
 
-  let internal parseCoordinate (str : string) : Either<IrisError,Coordinate> =
-    parseTuple str
-    |> Either.map Coordinate
+  let internal parseCoordinate (coord: CoordinateYaml) : Either<IrisError,Coordinate> =
+    (coord.X, coord.Y)
+    |> Coordinate
+    |> Either.succeed
 
   // ** parseStringProp
 
   let internal parseStringProp (str : string) : string option =
-    if str.Length > 0 then Some(str) else None
+    if not (isNull str) && str.Length > 0 then Some(str) else None
 
   // ** parseAudio
 
@@ -961,9 +991,9 @@ Project:
   /// Parses the Audio configuration section of the passed-in configuration file.
   ///
   /// # Returns: AudioConfig
-  let internal parseAudio (config: Config) : Either<IrisError, AudioConfig> =
+  let internal parseAudio (config: IrisProjectYaml) : Either<IrisError, AudioConfig> =
     Either.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
-      { SampleRate = uint32 config.Project.Audio.SampleRate }
+      { SampleRate = uint32 config.Audio.SampleRate }
 
   // ** saveAudio
 
@@ -972,13 +1002,15 @@ Project:
   /// Transfer the configuration from `AudioConfig` values to a given config file.
   ///
   /// # Returns: ConfigFile
-  let internal saveAudio (file: Config, config: IrisConfig) =
-    file.Project.Audio.SampleRate <- int (config.Audio.SampleRate)
+  let internal saveAudio (file: IrisProjectYaml, config: IrisConfig) =
+    let audio = AudioYaml()
+    audio.SampleRate <- int (config.Audio.SampleRate)
+    file.Audio <- audio
     (file, config)
 
   // ** parseExe
 
-  let internal parseExe (exe: ExeYaml) : Either<IrisError, VvvvExe> =
+  let internal parseExe (exe: VvvvExecutableYaml) : Either<IrisError, VvvvExe> =
     Right { Executable = filepath exe.Path
             Version    = version exe.Version
             Required   = exe.Required }
@@ -1008,7 +1040,7 @@ Project:
 
   // ** parsePlugin
 
-  let internal parsePlugin (plugin: PluginYaml) : Either<IrisError, VvvvPlugin> =
+  let internal parsePlugin (plugin: VvvvPluginYaml) : Either<IrisError, VvvvPlugin> =
     Right { Name = name plugin.Name
             Path = filepath plugin.Path }
 
@@ -1042,11 +1074,10 @@ Project:
   /// Constructs the VVVV configuration values from the handed config file value.
   ///
   /// # Returns: VvvvConfig
-  let internal parseVvvv (config: Config) : Either<IrisError, VvvvConfig> =
+  let internal parseVvvv (config: IrisProjectYaml) : Either<IrisError, VvvvConfig> =
     either {
-      let vvvv = config.Project.VVVV
-      let! exes = parseExes vvvv.Executables
-      let! plugins = parsePlugins vvvv.Plugins
+      let! exes = parseExes config.VVVV.Executables
+      let! plugins = parsePlugins config.VVVV.Plugins
       return { Executables = exes
                Plugins     = plugins }
     }
@@ -1058,23 +1089,27 @@ Project:
   /// Translate the values from Config into the passed in configuration file.
   ///
   /// # Returns: ConfigFile
-  let internal saveVvvv (file: Config, config: IrisConfig) =
-    file.Project.VVVV.Executables.Clear() //
-
+  let internal saveVvvv (file: IrisProjectYaml, config: IrisConfig) =
+    let exes = ResizeArray()
     for exe in config.Vvvv.Executables do
-      let entry = new ExeYaml()
+      let entry = VvvvExecutableYaml()
       entry.Path <- unwrap exe.Executable;
       entry.Version <- unwrap exe.Version;
       entry.Required <- exe.Required
-      file.Project.VVVV.Executables.Add(entry)
+      exes.Add(entry)
 
-    file.Project.VVVV.Plugins.Clear()
-
+    let plugins = ResizeArray()
     for plug in config.Vvvv.Plugins do
-      let entry = new PluginYaml()
+      let entry = VvvvPluginYaml()
       entry.Name <- unwrap plug.Name
       entry.Path <- unwrap plug.Path
-      file.Project.VVVV.Plugins.Add(entry)
+      plugins.Add(entry)
+
+    let vvvv = VvvvYaml()
+    vvvv.Executables <- exes.ToArray()
+    vvvv.Plugins <- plugins.ToArray()
+
+    file.VVVV <- vvvv
 
     (file, config)
 
@@ -1091,21 +1126,19 @@ Project:
   /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
   ///
   /// Returns: RaftConfig
-  let internal parseRaft (config: Config) : Either<IrisError, RaftConfig> =
+  let internal parseRaft (config: IrisProjectYaml) : Either<IrisError, RaftConfig> =
     either {
-      let engine = config.Project.Engine
-
-      let! loglevel = Iris.Core.LogLevel.TryParse engine.LogLevel
+      let! loglevel = Iris.Core.LogLevel.TryParse config.Engine.LogLevel
 
       try
         return
-          { RequestTimeout   = engine.RequestTimeout * 1<ms>
-            ElectionTimeout  = engine.ElectionTimeout * 1<ms>
-            MaxLogDepth      = engine.MaxLogDepth
+          { RequestTimeout   = config.Engine.RequestTimeout * 1<ms>
+            ElectionTimeout  = config.Engine.ElectionTimeout * 1<ms>
+            MaxLogDepth      = config.Engine.MaxLogDepth
             LogLevel         = loglevel
-            DataDir          = filepath engine.DataDir
-            MaxRetries       = engine.MaxRetries
-            PeriodicInterval = engine.PeriodicInterval * 1<ms> }
+            DataDir          = filepath config.Engine.DataDir
+            MaxRetries       = config.Engine.MaxRetries
+            PeriodicInterval = config.Engine.PeriodicInterval * 1<ms> }
       with
         | exn ->
           return!
@@ -1121,14 +1154,16 @@ Project:
   /// Save Raft algorithm specific configuration options to the configuration file object.
   ///
   /// # Returns: ConfigFile
-  let internal saveRaft (file: Config, config: IrisConfig) =
-    file.Project.Engine.RequestTimeout   <- int config.Raft.RequestTimeout
-    file.Project.Engine.ElectionTimeout  <- int config.Raft.ElectionTimeout
-    file.Project.Engine.MaxLogDepth      <- int config.Raft.MaxLogDepth
-    file.Project.Engine.LogLevel         <- string config.Raft.LogLevel
-    file.Project.Engine.DataDir          <- unwrap config.Raft.DataDir
-    file.Project.Engine.MaxRetries       <- int config.Raft.MaxRetries
-    file.Project.Engine.PeriodicInterval <- int config.Raft.PeriodicInterval
+  let internal saveRaft (file: IrisProjectYaml, config: IrisConfig) =
+    let engine = EngineYaml()
+    engine.RequestTimeout   <- int config.Raft.RequestTimeout
+    engine.ElectionTimeout  <- int config.Raft.ElectionTimeout
+    engine.MaxLogDepth      <- int config.Raft.MaxLogDepth
+    engine.LogLevel         <- string config.Raft.LogLevel
+    engine.DataDir          <- unwrap config.Raft.DataDir
+    engine.MaxRetries       <- int config.Raft.MaxRetries
+    engine.PeriodicInterval <- int config.Raft.PeriodicInterval
+    file.Engine <- engine
     (file, config)
 
   // ** parseTiming
@@ -1145,9 +1180,9 @@ Project:
   /// Parse TimingConfig related values into a TimingConfig value and return it.
   ///
   /// # Returns: TimingConfig
-  let internal parseTiming (config: Config) : Either<IrisError,TimingConfig> =
+  let internal parseTiming (config: IrisProjectYaml) : Either<IrisError,TimingConfig> =
     either {
-      let timing = config.Project.Timing
+      let timing = config.Timing
       let arr =
         timing.Servers
         |> Seq.length
@@ -1186,16 +1221,21 @@ Project:
   ///
   ///
   /// # Returns: ConfigFile
-  let internal saveTiming (file: Config, config: IrisConfig) =
-    file.Project.Timing.Framebase <- int (config.Timing.Framebase)
-    file.Project.Timing.Input     <- config.Timing.Input
+  let internal saveTiming (file: IrisProjectYaml, config: IrisConfig) =
+    let timing = TimingYaml()
+    timing.Framebase <- int (config.Timing.Framebase)
+    timing.Input     <- config.Timing.Input
 
-    file.Project.Timing.Servers.Clear()
+    let servers = ResizeArray()
     for srv in config.Timing.Servers do
-      file.Project.Timing.Servers.Add(string srv)
+      servers.Add(string srv)
 
-    file.Project.Timing.TCPPort <- int (config.Timing.TCPPort)
-    file.Project.Timing.UDPPort <- int (config.Timing.UDPPort)
+    timing.Servers <- servers.ToArray()
+
+    timing.TCPPort <- int (config.Timing.TCPPort)
+    timing.UDPPort <- int (config.Timing.UDPPort)
+
+    file.Timing <- timing
 
     (file, config)
 
@@ -1232,10 +1272,10 @@ Project:
   /// Parses the ViewPort config section and returns an array of `ViewPort` values.
   ///
   /// # Returns: ViewPort array
-  let internal parseViewPorts (config: Config) : Either<IrisError,ViewPort array> =
+  let internal parseViewPorts (config: IrisProjectYaml) : Either<IrisError,ViewPort array> =
     either {
       let arr =
-        config.Project.ViewPorts
+        config.ViewPorts
         |> Seq.length
         |> Array.zeroCreate
 
@@ -1248,7 +1288,7 @@ Project:
             return (idx + 1, viewports)
           })
           (Right(0, arr))
-          config.Project.ViewPorts
+          config.ViewPorts
 
       return viewports
     }
@@ -1261,19 +1301,43 @@ Project:
   /// file.
   ///
   /// # Returns: ConfigFile
-  let internal saveViewPorts (file: Config, config: IrisConfig) =
-    file.Project.ViewPorts.Clear()
+  let internal saveViewPorts (file: IrisProjectYaml, config: IrisConfig) =
+    let viewports = ResizeArray()
     for vp in config.ViewPorts do
-      let item = new ViewPortYaml()
+      let item = ViewPortYaml()
       item.Id             <- string vp.Id
       item.Name           <- unwrap vp.Name
-      item.Size           <- string vp.Size
-      item.Position       <- string vp.Position
-      item.Overlap        <- string vp.Overlap
-      item.OutputPosition <- string vp.OutputPosition
-      item.OutputSize     <- string vp.OutputSize
-      item.Description    <- vp.Description
-      file.Project.ViewPorts.Add(item)
+
+      let size = RectYaml()
+      size.X <- vp.Size.X
+      size.Y <- vp.Size.Y
+      item.Size <- size
+
+      let position = CoordinateYaml()
+      position.X <- vp.Position.X
+      position.Y <- vp.Position.Y
+      item.Position <- position
+
+      let overlap = RectYaml()
+      overlap.X <- vp.Overlap.X
+      overlap.Y <- vp.Overlap.Y
+      item.Overlap <- overlap
+
+      let position = CoordinateYaml()
+      position.X <- vp.OutputPosition.X
+      position.Y <- vp.OutputPosition.Y
+      item.OutputPosition <- position
+
+      let size = RectYaml()
+      size.X <- vp.OutputSize.X
+      size.Y <- vp.OutputSize.Y
+      item.OutputSize <- size
+
+      item.Description <- vp.Description
+      viewports.Add(item)
+
+    file.ViewPorts <- viewports.ToArray()
+
     (file, config)
 
   // ** parseSignal
@@ -1441,10 +1505,10 @@ Project:
   /// - displays: DisplayYaml collection
   ///
   /// Returns: Either<IrisError,Display array>
-  let internal parseDisplays (config: Config) : Either<IrisError, Display array> =
+  let internal parseDisplays (config: IrisProjectYaml) : Either<IrisError, Display array> =
     either {
       let arr =
-        config.Project.Displays
+        config.Displays
         |> Seq.length
         |> Array.zeroCreate
 
@@ -1457,7 +1521,7 @@ Project:
             return (idx + 1, displays)
           })
           (Right(0, arr))
-          config.Project.Displays
+          config.Displays
 
       return displays
     }
@@ -1469,36 +1533,75 @@ Project:
   /// Save all `Display` values in `Config` to the passed configuration file.
   ///
   /// # Returns: ConfigFile
-  let internal saveDisplays (file: Config, config: IrisConfig) =
-    file.Project.Displays.Clear()
+  let internal saveDisplays (file: IrisProjectYaml, config: IrisConfig) =
+    let displays = ResizeArray()
     for dp in config.Displays do
-      let item = new DisplayYaml()
-      item.Id <- string dp.Id
-      item.Name <- unwrap dp.Name
-      item.Size <- dp.Size.ToString()
+      let display = DisplayYaml()
+      display.Id <- string dp.Id
+      display.Name <- unwrap dp.Name
 
-      item.RegionMap.SrcViewportId <- string dp.RegionMap.SrcViewportId
-      item.RegionMap.Regions.Clear()
+      let size = RectYaml()
+      size.X <- dp.Size.X
+      size.Y <- dp.Size.Y
+      display.Size <- size
+
+      let regionmap = RegionMapYaml()
+      regionmap.SrcViewportId <- string dp.RegionMap.SrcViewportId
+
+      let regions = ResizeArray()
 
       for region in dp.RegionMap.Regions do
-        let r = new RegionYaml()
+        let r = RegionYaml()
         r.Id <- string region.Id
         r.Name <- unwrap region.Name
-        r.OutputPosition <- region.OutputPosition.ToString()
-        r.OutputSize <- region.OutputSize.ToString()
-        r.SrcPosition <- region.SrcPosition.ToString()
-        r.SrcSize <- region.SrcSize.ToString()
-        item.RegionMap.Regions.Add(r)
 
-      item.Signals.Clear()
+        let position = CoordinateYaml()
+        position.X <- region.OutputPosition.X
+        position.Y <- region.OutputPosition.Y
+        r.OutputPosition <- position
+
+        let size = RectYaml()
+        size.X <- region.OutputSize.X
+        size.Y <- region.OutputSize.Y
+        r.OutputSize <- size
+
+        let position = CoordinateYaml()
+        position.X <- region.SrcPosition.X
+        position.Y <- region.SrcPosition.Y
+        r.SrcPosition <- position
+
+        let size = RectYaml()
+        size.X <- region.SrcSize.X
+        size.Y <- region.SrcSize.Y
+        r.SrcSize <- size
+
+        regions.Add(r)
+
+      regionmap.Regions <- regions.ToArray()
+
+      display.RegionMap <- regionmap
+
+      let signals = ResizeArray()
 
       for signal in dp.Signals do
-        let s = new SignalYaml()
-        s.Position <- signal.Position.ToString()
-        s.Size <- signal.Size.ToString()
-        item.Signals.Add(s)
+        let s = SignalYaml()
 
-      file.Project.Displays.Add(item)
+        let position = CoordinateYaml()
+        position.X <- signal.Position.X
+        position.Y <- signal.Position.Y
+        s.Position <- position
+
+        let size = RectYaml()
+        size.X <- signal.Size.X
+        size.Y <- signal.Size.Y
+        s.Size <- size
+
+        signals.Add(s)
+
+      display.Signals <- signals.ToArray()
+      displays.Add display
+
+    file.Displays <- displays.ToArray()
     (file, config)
 
   // ** parseArgument
@@ -1588,10 +1691,10 @@ Project:
   /// Create `Task` values for each entry in the Task config section.
   ///
   /// # Returns: Task array
-  let internal parseTasks (config: Config) : Either<IrisError,Task array> =
+  let internal parseTasks (config: IrisProjectYaml) : Either<IrisError,Task array> =
     either {
       let arr =
-        config.Project.Tasks
+        config.Tasks
         |> Seq.length
         |> Array.zeroCreate
 
@@ -1604,7 +1707,7 @@ Project:
             return (idx + 1, tasks)
           })
           (Right(0, arr))
-          config.Project.Tasks
+          config.Tasks
 
       return tasks
     }
@@ -1616,24 +1719,27 @@ Project:
   /// Transfers all `Task` values into the configuration file.
   ///
   /// # Returns: ConfigFile
-  let internal saveTasks (file: Config, config: IrisConfig) =
-    file.Project.Tasks.Clear()
+  let internal saveTasks (file: IrisProjectYaml, config: IrisConfig) =
+    let tasks = ResizeArray()
     for task in config.Tasks do
-      let t = new TaskYaml()
+      let t = TaskYaml()
       t.Id <- string task.Id
       t.AudioStream <- task.AudioStream
       t.Description <- task.Description
       t.DisplayId   <- string task.DisplayId
 
-      t.Arguments.Clear()
+      let args = ResizeArray()
 
       for arg in task.Arguments do
-        let a = new ArgumentYaml()
+        let a = ArgumentYaml()
         a.Key <- fst arg
         a.Value <- snd arg
-        t.Arguments.Add(a)
+        args.Add(a)
 
-      file.Project.Tasks.Add(t)
+      t.Arguments <- args.ToArray()
+      tasks.Add t
+
+    file.Tasks <- tasks.ToArray()
     (file, config)
 
   // ** parseMember
@@ -1653,9 +1759,9 @@ Project:
   /// - mem: MemberYaml
   ///
   /// Returns: Either<IrisError, RaftMember>
-  let internal parseMember (mem: MemberYaml) : Either<IrisError, RaftMember> =
+  let internal parseMember (mem: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
-      let! ip = IpAddress.TryParse mem.Ip
+      let! ip = IpAddress.TryParse mem.IpAddr
       let! state = RaftMemberState.TryParse mem.State
 
       try
@@ -1744,7 +1850,7 @@ Project:
   ///
   /// # Returns: Cluster
 
-  let internal parseCluster (cluster: ClusterYaml) : Either<IrisError, ClusterConfig> =
+  let internal parseCluster (cluster: SiteYaml) : Either<IrisError, ClusterConfig> =
     either {
       let! groups = parseGroups cluster.Groups
       let! mems = parseMembers cluster.Members
@@ -1757,10 +1863,10 @@ Project:
 
   // ** parseSites
 
-  let internal parseSites (config: Config) : Either<IrisError, ClusterConfig array> =
+  let internal parseSites (config: IrisProjectYaml) : Either<IrisError, ClusterConfig array> =
     either {
       let arr =
-        config.Project.Sites
+        config.Sites
         |> Seq.length
         |> Array.zeroCreate
 
@@ -1774,7 +1880,7 @@ Project:
               return (idx + 1, sites)
             })
           (Right(0, arr))
-          config.Project.Sites
+          config.Sites
 
       return sites
     }
@@ -1786,43 +1892,44 @@ Project:
   /// Saves the passed `Cluster` value to the passed config file.
   ///
   /// # Returns: ConfigFile
-  let internal saveSites (file: Config, config: IrisConfig) =
-    file.Project.Sites.Clear()
+  let internal saveSites (file: IrisProjectYaml, config: IrisConfig) =
+    let sites = ResizeArray()
 
     match config.ActiveSite with
-    | Some id -> file.Project.ActiveSite <- string id
-    | None -> file.Project.ActiveSite <- null
+    | Some id -> file.ActiveSite <- string id
+    | None -> file.ActiveSite <- null
 
     for cluster in config.Sites do
-      let cfg = new ClusterYaml()
-      cfg.Members.Clear()
-      cfg.Groups.Clear()
+      let cfg = SiteYaml()
+      let members = ResizeArray()
+      let groups = ResizeArray()
 
       cfg.Id <- string cluster.Id
       cfg.Name <- unwrap cluster.Name
 
       for KeyValue(memId,mem) in cluster.Members do
-        let n = new MemberYaml()
+        let n = RaftMemberYaml()
         n.Id       <- string memId
-        n.Ip       <- string mem.IpAddr
+        n.IpAddr   <- string mem.IpAddr
         n.HostName <- unwrap mem.HostName
-        n.Port     <- int mem.Port
-        n.WsPort   <- int mem.WsPort
-        n.GitPort  <- int mem.GitPort
-        n.ApiPort  <- int mem.ApiPort
+        n.Port     <- unwrap mem.Port
+        n.WsPort   <- unwrap mem.WsPort
+        n.GitPort  <- unwrap mem.GitPort
+        n.ApiPort  <- unwrap mem.ApiPort
         n.State    <- string mem.State
-        cfg.Members.Add(n)
+        members.Add(n)
 
       for group in cluster.Groups do
-        let g = new GroupYaml()
+        let g = GroupYaml()
         g.Name <- unwrap group.Name
-        g.Members.Clear()
+        g.Members <- Array.map string group.Members
+        groups.Add(g)
 
-        for mem in group.Members do
-          g.Members.Add(mem |> string |> Guid.Parse)
+      cfg.Groups <- groups.ToArray()
+      cfg.Members <- members.ToArray()
+      sites.Add(cfg)
 
-        cfg.Groups.Add(g)
-      file.Project.Sites.Add(cfg)
+    file.Sites <- sites.ToArray()
     (file, config)
 
   // ** parseLastSaved (private)
@@ -1832,12 +1939,11 @@ Project:
   /// Attempt to parse the LastSaved proptery from the passed `ConfigFile`.
   ///
   /// # Returns: DateTime option
-  let internal parseLastSaved (config: Config) =
-    let meta = config.Project.Metadata
-    if meta.LastSaved.Length > 0
+  let internal parseLastSaved (config: IrisProjectYaml) =
+    if config.LastSaved.Length > 0
     then
       try
-        Some(DateTime.Parse(meta.LastSaved))
+        Some(DateTime.Parse(config.LastSaved))
       with
         | _ -> None
     else None
@@ -1850,20 +1956,21 @@ Project:
   /// fails to read it, the date returned will be the begin of the epoch.
   ///
   /// # Returns: DateTime
-  let internal parseCreatedOn (config: Config) =
-    let meta = config.Project.Metadata
-    if meta.CreatedOn.Length > 0
+  let internal parseCreatedOn (config: IrisProjectYaml) =
+    if config.CreatedOn.Length > 0
     then
       try
-        DateTime.Parse(meta.CreatedOn)
+        DateTime.Parse(config.CreatedOn)
       with
         | _ -> DateTime.FromFileTimeUtc(int64 0)
     else DateTime.FromFileTimeUtc(int64 0)
 
+  // ** parse
+
   let internal parse (str: string) =
     try
-      let config = new Config()
-      config.LoadText str
+      let serializer = Serializer()
+      let config = serializer.Deserialize<IrisProjectYaml>(str)
       Either.succeed config
     with
       | exn ->
@@ -1889,9 +1996,9 @@ module Config =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let fromFile (file: ProjectYaml.Config) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
+  let fromFile (file: ProjectYaml.IrisProjectYaml) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
     either {
-      let  version   = file.Project.Version
+      let  version   = file.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
       let! vvvv      = ProjectYaml.parseVvvv      file
@@ -1902,10 +2009,10 @@ module Config =
       let! sites     = ProjectYaml.parseSites     file
 
       let site =
-        if isNull file.Project.ActiveSite || file.Project.ActiveSite = "" then
+        if isNull file.ActiveSite || file.ActiveSite = "" then
           None
         else
-          Some (Id file.Project.ActiveSite)
+          Some (Id file.ActiveSite)
 
       return { Machine    = machine
                ActiveSite = site
@@ -1926,8 +2033,8 @@ module Config =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let toFile (config: IrisConfig) (file: ProjectYaml.Config) =
-    file.Project.Version <- string config.Version
+  let toFile (config: IrisConfig) (file: ProjectYaml.IrisProjectYaml) =
+    file.Version <- string config.Version
     (file, config)
     |> ProjectYaml.saveVvvv
     |> ProjectYaml.saveAudio
@@ -2003,7 +2110,13 @@ module Config =
   // ** updateCluster
 
   let updateCluster (cluster: ClusterConfig) (config: IrisConfig) =
-    let sites = Array.map (fun site -> if cluster.Id = site.Id then cluster else site) config.Sites
+    let sites =
+      Array.map
+        (fun (site: ClusterConfig) ->
+          if cluster.Id = site.Id
+          then cluster
+          else site)
+        config.Sites
     { config with Sites = sites }
 
   // ** updateSites
@@ -2016,7 +2129,7 @@ module Config =
   let findMember (config: IrisConfig) (id: Id) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
       | Some cluster ->
         match Map.tryFind id cluster.Members with
         | Some mem -> Either.succeed mem
@@ -2038,7 +2151,7 @@ module Config =
   let getMembers (config: IrisConfig) : Either<IrisError,Map<MemberId,RaftMember>> =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
       | Some site -> site.Members |> Either.succeed
       | None ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
@@ -2063,7 +2176,7 @@ module Config =
 
   let getActiveSite (config: IrisConfig) =
     match config.ActiveSite with
-    | Some id -> Array.tryFind (fun site -> site.Id = id) config.Sites
+    | Some id -> Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
     | None -> None
 
   // ** getActiveMember
@@ -2071,14 +2184,14 @@ module Config =
   let getActiveMember (config: IrisConfig) =
     config
     |> getActiveSite
-    |> Option.bind (fun site -> Map.tryFind config.Machine.MachineId site.Members)
+    |> Option.bind (fun (site: ClusterConfig) -> Map.tryFind config.Machine.MachineId site.Members)
 
   // ** setMembers
 
   let setMembers (mems: Map<MemberId,RaftMember>) (config: IrisConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
       | Some site ->
         updateCluster { site with Members = mems } config
       | None -> config
@@ -2115,7 +2228,7 @@ module Config =
   // ** removeSite
 
   let removeSite (id: Id) (config: IrisConfig) =
-    let sites = Array.filter (fun site -> site.Id <> id) config.Sites
+    let sites = Array.filter (fun (site: ClusterConfig) -> site.Id <> id) config.Sites
     { config with Sites = sites }
 
   // ** siteByMember
@@ -2135,14 +2248,14 @@ module Config =
   // ** findSite
 
   let findSite (id: Id) (config: IrisConfig) =
-    Array.tryFind (fun site -> site.Id = id) config.Sites
+    Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
 
   // ** addMember
 
   let addMember (mem: RaftMember) (config: IrisConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
       | Some site ->
         let mems = Map.add mem.Id mem site.Members
         updateCluster { site with Members = mems } config
@@ -2154,7 +2267,7 @@ module Config =
   let removeMember (id: Id) (config: IrisConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun (clst:ClusterConfig) -> clst.Id = active) config.Sites with
       | Some site ->
         let mems = Map.remove id site.Members
         updateCluster { site with Members = mems } config
@@ -2414,40 +2527,39 @@ Config: %A
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYaml(_: Serializer) =
-    let config = new ProjectYaml.Config()
+  member self.ToYaml(serializer: Serializer) =
+    let config = ProjectYaml.IrisProjectYaml()
 
     Config.toFile self.Config config
 
     // Project metadata
-    config.Project.Metadata.Id        <- string self.Id
-    config.Project.Metadata.Name      <- unwrap self.Name
-    config.Project.Metadata.CreatedOn <- self.CreatedOn
+    config.Id        <- string self.Id
+    config.Name      <- unwrap self.Name
+    config.CreatedOn <- self.CreatedOn
 
     Option.map
-      (fun author -> config.Project.Metadata.Author <- author)
+      (fun author -> config.Author <- author)
       self.Author
     |> ignore
 
     Option.map
-      (fun copyright -> config.Project.Metadata.Copyright <- copyright)
+      (fun copyright -> config.Copyright <- copyright)
       self.Copyright
     |> ignore
 
     Option.map
-      (fun saved -> config.Project.Metadata.LastSaved <- saved)
+      (fun saved -> config.LastSaved <- saved)
       self.LastSaved
     |> ignore
 
-    config.ToString()
+    serializer.Serialize config
 
   // ** FromYaml
 
   static member FromYaml(str: string) =
     either {
-      let! config = ProjectYaml.parse str
+      let! meta = ProjectYaml.parse str
 
-      let meta = config.Project.Metadata
       let lastSaved =
         match meta.LastSaved with
           | null | "" -> None
@@ -2460,7 +2572,7 @@ Config: %A
 
       let dummy = MachineConfig.create Constants.DEFAULT_IP None
 
-      let! config = Config.fromFile config dummy
+      let! config = Config.fromFile meta dummy
 
       return { Id        = Id meta.Id
                Name      = name meta.Name

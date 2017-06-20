@@ -1,7 +1,7 @@
 FSharp.Core
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
-FSharp.Configuration
+SharpYaml
 Fleck
 Suave
 Expecto
