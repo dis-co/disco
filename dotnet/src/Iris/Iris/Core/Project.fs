@@ -982,7 +982,7 @@ module ProjectYaml =
   // ** parseStringProp
 
   let internal parseStringProp (str : string) : string option =
-    if str.Length > 0 then Some(str) else None
+    if not (isNull str) && str.Length > 0 then Some(str) else None
 
   // ** parseAudio
 
@@ -2526,7 +2526,7 @@ Config: %A
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYaml(_: Serializer) =
+  member self.ToYaml(serializer: Serializer) =
     let config = ProjectYaml.IrisProjectYaml()
 
     Config.toFile self.Config config
@@ -2551,7 +2551,7 @@ Config: %A
       self.LastSaved
     |> ignore
 
-    config.ToString()
+    serializer.Serialize config
 
   // ** FromYaml
 
