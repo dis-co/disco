@@ -24,6 +24,7 @@ type NameAndId = { Name: Name; Id: Id }
 
 type Command =
   | Shutdown
+  | SaveProject
   | UnloadProject
   | ListProjects
   | GetServiceInfo

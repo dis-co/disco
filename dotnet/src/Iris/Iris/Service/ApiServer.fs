@@ -570,12 +570,13 @@ module ApiServer =
             // *** Publish
 
             member self.Publish (ev: IrisEvent) =
-              match ev with
-              | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
-              | IrisEvent.Append (origin, cmd) ->
-                updateAllClients store.State cmd
-                publish store.State cmd agent
-              | _ -> ()
+              if Service.isRunning store.State.Status then
+                match ev with
+                | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
+                | IrisEvent.Append (origin, cmd) ->
+                  updateAllClients store.State cmd
+                  publish store.State cmd agent
+                | _ -> ()
 
             // *** Start
 
@@ -594,8 +595,9 @@ module ApiServer =
             // *** Update
 
             member self.Update (origin: Origin) (sm: StateMachine) =
-              updateAllClients store.State sm
-              publish store.State sm agent
+              if Service.isRunning store.State.Status then
+                updateAllClients store.State sm
+                publish store.State sm agent
 
             // *** Subscribe
 

@@ -226,6 +226,9 @@ let addMember(info: obj) =
 let shutdown() =
   Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
 
+let saveProject() =
+  SaveProject |> postCommand (fun _ -> notify "The project has been saved") notify
+
 let unloadProject() =
   UnloadProject |> postCommand (fun _ -> notify "The project has been unloaded") notify
 
