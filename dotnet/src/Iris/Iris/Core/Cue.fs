@@ -184,12 +184,7 @@ type Cue =
 
   member self.AssetPath
     with get () =
-      let path =
-        sprintf "%s_%s%s"
-          (self.Name |> string |> String.sanitize )
-          (string self.Id)
-          ASSET_EXTENSION
-      CUE_DIR <.> path
+      CUE_DIR <.> sprintf "%s%s" (string self.Id) ASSET_EXTENSION
 
   // ** Load
 

@@ -277,12 +277,7 @@ module CuePlayer =
   // ** assetPath
 
   let assetPath (player: CuePlayer) =
-    let path =
-      sprintf "%s_%s%s"
-        (player.Name |> unwrap |> String.sanitize)
-        (string player.Id)
-        ASSET_EXTENSION
-    CUEPLAYER_DIR <.> path
+    CUEPLAYER_DIR <.> sprintf "%s%s" (string player.Id) ASSET_EXTENSION
 
   // ** updateSlices
 
