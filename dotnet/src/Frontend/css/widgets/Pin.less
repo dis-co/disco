@@ -10,7 +10,7 @@
   flex-wrap: wrap;
   .iris-pingroup-name {
     margin: 5px;
-  }  
+  }
 }
 
 .iris-pin {
@@ -54,11 +54,10 @@
   }
 
   span {
-    display: block;
-    background-color: #6E6E6E;
-    margin-top: 1px;
+    background-color: #555;
+    padding: 2px 4px 2px 2px;
     line-height: @row-height - 1px;
-    padding:0px 5px 0px 10px;
+    // border-right: 1px solid #fff;
     cursor: default;
 
     &:hover {
@@ -68,9 +67,16 @@
 
     &:first-child {
       line-height: @base-height;
-      margin: 0px;
+      padding-left: 6px;
       background: none;
+      // border-top-left-radius: 50px;
+      // border-bottom-left-radius: 50px;
     }
+
+    // &:last-child {
+    //   border-top-right-radius: 50px;
+    //   border-bottom-right-radius: 50px;
+    // }
   }
 }
 
