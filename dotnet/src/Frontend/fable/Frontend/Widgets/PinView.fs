@@ -16,7 +16,7 @@ let [<Literal>] MIN_WIDTH = 100
 type [<Pojo>] InputState =
   { isOpen: bool }
 
-let addInputView(index: int, value: obj, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
+let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
   importMember "../../../src/behaviors/input.tsx"
 
 let formatValue(value: obj): string =
@@ -78,18 +78,18 @@ type PinView(props) =
     | Some update -> update index value
     | None -> updatePinValue(this.props.pin, index, value)
 
-  member this.RenderRows(rowCount: int, useRightClick: bool) =
+  member inline this.RenderRows(rowCount: int, useRightClick: bool) =
     let name = 
       if String.IsNullOrEmpty(this.props.pin.Name)
       then "--"
       else this.props.pin.Name
     let firstRowValue =
       if rowCount > 1
-      then span [] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
-      else addInputView(0, this.ValueAt(0), useRightClick, (fun i v -> this.UpdateValue(0,v)))
-    [
-      yield div [Key "-1"; ClassName "iris-pin-child"] [
-        span [
+      then td [] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+      else addInputView(0, this.ValueAt(0), "td", useRightClick, (fun i v -> this.UpdateValue(0,v)))
+    let head =
+      tr [ClassName "iris-pin-child"] [
+        td [
           Style [!!("cursor", "move")]
           OnMouseDown (fun ev ->
             ev.stopPropagation()
@@ -99,18 +99,23 @@ type PinView(props) =
         ] [str name]
         firstRowValue
       ]
-      if this.state.isOpen then
+
+    if rowCount > 1 then // && this.state.isOpen then
+      let tags = this.props.pin.GetTags
+      tbody [] [
+        yield head
         for i=0 to rowCount - 1 do
           let label =
             // The Labels array can be shorter than Values'
-            match Array.tryItem i this.props.pin.Labels with
-            | None | Some(NullOrEmpty) -> "Label"
+            match Array.tryItem i tags |> Option.map string with
+            | None | Some(NullOrEmpty) -> "Tag"
             | Some label -> label          
-          yield div [Key (string i); ClassName "iris-pin-child"] [
-            span [Key (string i)] [str label]
-            addInputView(i, this.ValueAt(i), useRightClick, (fun i v -> this.UpdateValue(i,v)))
+          yield tr [Key (string i); ClassName "iris-pin-child"] [
+            td [] [str label]
+            addInputView(i, this.ValueAt(i), "td", useRightClick, (fun i v -> this.UpdateValue(i,v)))
           ]
-    ]
+      ]
+    else tbody [] [head]
 
   member this.RenderArrow() =
     let arrowRotation = if this.state.isOpen then 90 else 0
@@ -141,7 +146,9 @@ type PinView(props) =
     div [
       ClassName "iris-pin"
       // Ref (fun el -> this.onMounted(el))
-    ] (this.RenderRows(rowCount, this.props.``global``.state.useRightClick))
+    ] [
+      table [] [this.RenderRows(rowCount, this.props.``global``.state.useRightClick)]
+    ]
       // div [
       //   ClassName "iris-pin-end"
       // ] (if rowCount > 1 then [this.RenderArrow()] else [])

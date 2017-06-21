@@ -39,7 +39,7 @@ type SharedWorker<'data>(url: string) =
 
 type ClientContext private () =
   let mutable store: Store option =
-    #if DEBUG // Mockup data
+    #if DESIGN // Mockup data
     Iris.Web.Core.MockData.getMockState() |> Store |> Some
     #else
     None
@@ -67,7 +67,9 @@ type ClientContext private () =
     me.OnError <- fun e -> printfn "%A" e.Message
     me.Port.OnMessage <- self.MsgHandler
     worker <- Some me
+    #if !DESIGN
     do! self.ConnectWithWebSocket()
+    #endif
   }
 
   member self.ConnectWithWebSocket() =
