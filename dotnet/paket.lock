@@ -1315,14 +1315,17 @@ NUGET
     Fable.Import.Browser (0.1) - restriction: >= netstandard16
       Fable.Core (>= 1.0.8) - restriction: >= netstandard16
       FSharp.Core (>= 4.2.1) - restriction: >= netstandard16
+    Fable.Import.Node (0.1)
+      Fable.Core (>= 1.0.8) - restriction: >= netstandard16
+      FSharp.Core (>= 4.2.1) - restriction: >= netstandard16
     Fable.PowerPack (1.1)
       Fable.Core (>= 1.1.1) - restriction: >= netstandard16
       Fable.Import.Browser (>= 0.1) - restriction: >= netstandard16
       FSharp.Core (>= 4.2.1) - restriction: >= netstandard16
-    Fable.React (1.0.0-narumi-902)
-      Fable.Core (>= 1.0.0-narumi-912) - restriction: >= netstandard16
-      FSharp.Core (>= 4.1.17) - restriction: >= netstandard16
-      NETStandard.Library (>= 1.6.1) - restriction: >= netstandard16
+    Fable.React (1.1)
+      Fable.Core (>= 1.1.2) - restriction: >= netstandard16
+      Fable.Import.Browser (>= 0.1) - restriction: >= netstandard16
+      FSharp.Core (>= 4.2.1) - restriction: >= netstandard16
     FSharp.Core (4.2.1)
       System.Collections (>= 4.0.11) - restriction: >= netstandard16
       System.Console (>= 4.0) - restriction: >= netstandard16
