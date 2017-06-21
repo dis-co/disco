@@ -38,8 +38,13 @@ type SharedWorker<'data>(url: string) =
 //  \____|_|_|\___|_| |_|\__|
 
 type ClientContext private () =
+  let mutable store: Store option =
+    #if DEBUG // Mockup data
+    Iris.Web.Core.MockData.getMockState() |> Store |> Some
+    #else
+    None
+    #endif
   let mutable session : Id option = None
-  let mutable store: Store option = None
   let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
@@ -71,10 +76,12 @@ type ClientContext private () =
     |> Promise.bind (fun res -> res.text())
     |> Promise.map (fun json ->
       try
-        let info = ofJson<ServiceInfo> json
-        serviceInfo <- Some info
-        ClientMessage.Connect info.webSocket
-        |> toJson |> self.Worker.Port.PostMessage
+        match ofJson<ServiceInfo option> json with
+        | Some info ->
+          serviceInfo <- Some info
+          ClientMessage.Connect info.webSocket
+          |> toJson |> self.Worker.Port.PostMessage
+        | None -> serviceInfo <- None
       with
       | err ->
         printfn "Error parsing GetServiceInfo reply: %s" err.Message)

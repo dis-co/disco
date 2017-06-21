@@ -23,7 +23,7 @@ let private serializeJson =
 // curl -H "Content-Type: application/json" \
 //      -XPOST \
 //      -d '"GetServiceInfo"' \
-//      http://localhost:7000/api/comman
+//      http://localhost:7000/api/command
 
 let getServiceInfo (iris: IIris): Either<IrisError,string> =
   let notLoaded () = null |> serializeJson |> Either.succeed
