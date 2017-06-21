@@ -1,9 +1,9 @@
 {
     "myGroup1": {
-        "myPin1": 100,
-        "myPin2": true,
-        "myPin3": "Hello World!",
-        "myPin4": [
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "D": [
             1,
             2,
             3
