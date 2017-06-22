@@ -83,8 +83,13 @@ let pinGroups: Map<Id, PinGroup> =
         pinGroup.Id, pinGroup)
     |> Map
 
+// let _1of3 (x,_,_) = x
+// let _2of3 (_,x,_) = x
+// let _3of3 (_,_,x) = x
+
 let cueListsAndPlayers =
-    let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[||]}
+    let cueGroup = { Id = Id "mockcuegroup"; Name = name "mockcuegroup"; CueRefs = [||] }        
+    let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[|cueGroup|]}
     let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
     Map[cueList.Id, cueList], Map[cuePlayer.Id, cuePlayer]
 
