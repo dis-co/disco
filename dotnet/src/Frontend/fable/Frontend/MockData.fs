@@ -41,7 +41,7 @@ let makeStringPin gid pid pk values =
     Pin.string pid pk gid labels values |> Some
 
 let makePin gid pk (v: obj) =
-    let pid = Id pk
+    let pid = Id (sprintf "%O::%s" gid pk)
     match v with
     | IsJsArray ar ->
         match Seq.tryHead ar with
@@ -78,7 +78,7 @@ let pinGroups: Map<Id, PinGroup> =
         let pinGroup =
             { Id = gid
               Name = name gk
-              Client = Id "mockup"
+              Client = Id "mockupclient"
               Pins = pins }
         pinGroup.Id, pinGroup)
     |> Map

@@ -1,5 +1,5 @@
 {
-    "myGroup1": {
+    "VVVV/design.4vp": {
         "A": 100,
         "B": true,
         "C": "Hello World!",
@@ -7,6 +7,48 @@
             ["tagA3", 5],
             ["tagB4", 7],
             ["tagC2", 9]
-        ]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    },
+    "VVVV/design.4vp II": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    },
+    "VVVV/design.4vp III": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    },
+    "VVVV/design.4vp IV": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
     }
 }
