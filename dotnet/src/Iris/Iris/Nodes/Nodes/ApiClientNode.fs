@@ -15,7 +15,7 @@ open Iris.Raft
 open Iris.Core
 open Iris.Client
 open Iris.Nodes
-open ZeroMQ
+open Iris.Net
 
 // * Api
 
@@ -50,7 +50,6 @@ module Api =
       OutConnected: ISpread<bool>
       OutStatus: ISpread<string>
       OutUpdate: ISpread<bool>
-      Context: ZContext
       Disposables: IDisposable list }
 
     static member Create () =
@@ -75,7 +74,6 @@ module Api =
         OutCommands = null
         OutStatus = null
         OutUpdate = null
-        Context = null
         Disposables = List.empty }
 
     interface IDisposable with
@@ -392,7 +390,6 @@ type ApiClientNode() =
               OutConnected = self.OutConnected
               OutStatus = self.OutStatus
               OutUpdate = self.OutUpdate
-              Context = new ZContext() }
         initialized <- true
 
       state <- Api.evaluate state spreadMax

@@ -6,19 +6,16 @@ open Expecto
 
 open Iris.Core
 open Iris.Service
-open Iris.Zmq
+open Iris.Net
 open Microsoft.FSharp.Control
-open ZeroMQ
 
 [<AutoOpen>]
-module ZmqIntegrationTests =
-
-  //  _____                  _____         _
-  // |__  /_ __ ___   __ _  |_   _|__  ___| |_ ___
-  //   / /| '_ ` _ \ / _` |   | |/ _ \/ __| __/ __|
-  //  / /_| | | | | | (_| |   | |  __/\__ \ |_\__ \
-  // /____|_| |_| |_|\__, |   |_|\___||___/\__|___/
-  //                    |_|
+module NetIntegrationTests =
+  //  _   _      _
+  // | \ | | ___| |_
+  // |  \| |/ _ \ __|
+  // | |\  |  __/ |_
+  // |_| \_|\___|\__|
 
   let test_server_request_handling =
     testCase "server request handling" <| fun _ ->

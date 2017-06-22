@@ -6,9 +6,8 @@ open System
 open System.Threading
 open System.Diagnostics
 open System.Collections.Concurrent
-open Iris.Zmq
+open Iris.Net
 open Iris.Core
-open ZeroMQ
 
 // * Clock module
 

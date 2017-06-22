@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -39,6 +39,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />
+    <Reference Include="System.Net" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
   </ItemGroup>
@@ -181,20 +182,17 @@
     <Compile Include="..\..\Iris\Raft\Raft.fs">
       <Link>Raft.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\Common.fs">
-      <Link>Common.fs</Link>
+    <Compile Include="..\..\Iris\Net\Core.fs">
+      <Link>Core.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\Pub.fs">
-      <Link>Pub.fs</Link>
+    <Compile Include="..\..\Iris\Net\PubSub.fs">
+      <Link>PubSub.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\Sub.fs">
-      <Link>Sub.fs</Link>
+    <Compile Include="..\..\Iris\Net\TcpClient.fs">
+      <Link>TcpClient.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Zmq\ClientSocket.fs">
-      <Link>ClientSocket.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Zmq\ServerSocket.fs">
-      <Link>ServerSocket.fs</Link>
+    <Compile Include="..\..\Iris\Net\TcpServer.fs">
+      <Link>TcpServer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\Interfaces.fs">
       <Link>Interfaces.fs</Link>
@@ -211,8 +209,8 @@
     <Compile Include="..\..\Iris\Service\RaftRequest.fs">
       <Link>RaftRequest.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Service\Zmq.fs">
-      <Link>Zmq.fs</Link>
+    <Compile Include="..\..\Iris\Service\NetUtils.fs">
+      <Link>NetUtils.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Service\Persistence.fs">
       <Link>Persistence.fs</Link>

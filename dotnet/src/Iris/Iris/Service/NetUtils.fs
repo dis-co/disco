@@ -4,16 +4,15 @@ namespace Iris.Service
 
 open System
 open System.Threading
-open ZeroMQ
-open Iris.Zmq
+open Iris.Net
 open Iris.Raft
 open Iris.Core
 open Iris.Service
 
-// * ZmqUtils
+// * NetUtils
 
 [<AutoOpen>]
-module ZmqUtils =
+module NetUtils =
 
   // ** request
 
@@ -29,7 +28,7 @@ module ZmqUtils =
   let request (sock: IClient) (req: RaftRequest) =
     req
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId sock.PeerId)
     |> sock.Request
 
   // ** getSocket
@@ -79,7 +78,7 @@ module ZmqUtils =
   let rawRequest (request: RaftRequest) (client: IClient) =
     request
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId client.PeerId)
     |> client.Request
 
   // ** performRequest
@@ -98,8 +97,6 @@ module ZmqUtils =
   let performRequest (request: RaftRequest) (client: IClient) =
     try
       rawRequest request client
-      |> Either.mapError (string >> Logger.err "performRequest")
-      |> ignore
     with
       | :? TimeoutException ->
         "Operation timed out"

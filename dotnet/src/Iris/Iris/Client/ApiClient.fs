@@ -7,9 +7,8 @@ open System.Threading
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Client
-open Iris.Zmq
+open Iris.Net
 open Iris.Serialization
-open ZeroMQ
 
 // * ApiClient module
 
@@ -71,13 +70,13 @@ module ApiClient =
     | Stop
     | CheckStatus
     | Dispose
-    | Notify            of ClientEvent
-    | SetState          of state:State
-    | SetStatus         of status:ServiceStatus
-    | Update            of sm:StateMachine
-    | Request           of sm:StateMachine
-    | RawServerRequest  of req:RawServerRequest
-    | RawClientResponse of req:RawClientResponse
+    | Notify      of ClientEvent
+    | SetState    of state:State
+    | SetStatus   of status:ServiceStatus
+    | Update      of sm:StateMachine
+    | Request     of sm:StateMachine
+    | ServerEvent of ev:TcpServerEvent
+    | ClientEvent of ev:TcpClientEvent
 
   // ** ApiAgent
 
@@ -114,10 +113,8 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.Register
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId state.Client.Id)
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestRegister"))
-    |> ignore
 
   // ** requestUnRegister
 
@@ -127,10 +124,8 @@ module ApiClient =
     state.Client
     |> ServerApiRequest.UnRegister
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId state.Client.Id)
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestUnregister"))
-    |> ignore
 
   // ** handleStart
 
@@ -200,10 +195,8 @@ module ApiClient =
   let private requestUpdate (socket: IClient) (sm: StateMachine) =
     ServerApiRequest.Update sm
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId socket.PeerId)
     |> socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestUpdate"))
-    |> ignore
 
   // ** maybeDispatch
 
@@ -222,7 +215,7 @@ module ApiClient =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ClientState) (req: RawServerRequest) (agent: ApiAgent) =
+  let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
       | Right ClientApiRequest.Ping ->
         Msg.Ping
@@ -230,7 +223,7 @@ module ApiClient =
 
         ApiResponse.Pong
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
 
       | Right (ClientApiRequest.Snapshot snapshot) ->
@@ -240,7 +233,7 @@ module ApiClient =
 
         ApiResponse.OK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
 
       | Right (ClientApiRequest.Update sm) ->
@@ -250,7 +243,7 @@ module ApiClient =
 
         ApiResponse.OK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
 
       | Left error ->
@@ -259,14 +252,29 @@ module ApiClient =
         |> ApiError.MalformedRequest
         |> ApiResponse.NOK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
       state
 
+  // ** handleServerEvent
+
+  let private handleServerEvent (state) (ev: TcpServerEvent) agent =
+    match ev with
+    | TcpServerEvent.Connect(peer, ip, port) ->
+      sprintf "Connection from %O:%d" ip port
+      |> Logger.debug (tag "handleServerEvent")
+      state
+    | TcpServerEvent.Disconnect peer ->
+      sprintf "Connection from %O" peer
+      |> Logger.debug (tag "handleServerEvent")
+      state
+    | TcpServerEvent.Request request ->
+      handleServerRequest state request agent
+
   // ** handleClientResponse
 
-  let private handleClientResponse (state: ClientState) (req: RawClientResponse) (agent: ApiAgent) =
-    match Either.bind Binary.decode req.Body with
+  let private handleClientResponse (state: ClientState) (req: Response) (agent: ApiAgent) =
+    match Binary.decode req.Body with
     | Right ApiResponse.Registered ->
       Logger.debug (tag "handleClientResponse") "registration successful"
       ClientEvent.Registered |> Msg.Notify |> agent.Post
@@ -279,6 +287,19 @@ module ApiClient =
     | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
     | Left error -> error |> string |> Logger.err (tag "handleClientResponse")
     state
+
+  // ** handleClientEvent
+
+  let private handleClientEvent state (ev: TcpClientEvent) agent =
+    match ev with
+    | TcpClientEvent.Connected (_,_) ->
+      "Connected!" |> Logger.debug (tag "handleClientEvent")
+      state
+    | TcpClientEvent.Disconnected (_,_) ->
+      "Disconnected :(" |> Logger.debug (tag "handleClientEvent")
+      state
+    | TcpClientEvent.Response response ->
+      handleClientResponse state response agent
 
   // ** handleStop
 
@@ -304,18 +325,18 @@ module ApiClient =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Notify ev              -> handleNotify         state ev
-          | Msg.Dispose                -> handleDispose        state
-          | Msg.Start                  -> handleStart          state inbox
-          | Msg.Stop                   -> handleStop           state
-          | Msg.SetStatus status       -> handleSetStatus      state status   inbox
-          | Msg.SetState newstate      -> handleSetState       state newstate inbox
-          | Msg.CheckStatus            -> handleCheckStatus    state          inbox
-          | Msg.Ping                   -> handlePing           state
-          | Msg.Update sm              -> handleUpdate         state sm       inbox
-          | Msg.Request       sm       -> handleRequest        state sm
-          | Msg.RawServerRequest req   -> handleServerRequest  state req      inbox
-          | Msg.RawClientResponse resp -> handleClientResponse state resp     inbox
+          | Msg.Notify ev          -> handleNotify      state ev
+          | Msg.Dispose            -> handleDispose     state
+          | Msg.Start              -> handleStart       state inbox
+          | Msg.Stop               -> handleStop        state
+          | Msg.SetStatus status   -> handleSetStatus   state status   inbox
+          | Msg.SetState newstate  -> handleSetState    state newstate inbox
+          | Msg.CheckStatus        -> handleCheckStatus state          inbox
+          | Msg.Ping               -> handlePing        state
+          | Msg.Update sm          -> handleUpdate      state sm       inbox
+          | Msg.Request       sm   -> handleRequest     state sm
+          | Msg.ServerEvent   ev   -> handleServerEvent state ev       inbox
+          | Msg.ClientEvent   ev   -> handleClientEvent state ev       inbox
         store.Update newstate
         return! act()
       }
@@ -328,7 +349,7 @@ module ApiClient =
 
     // *** create
 
-    let create ctx (server: IrisServer) (client: IrisClient) =
+    let create (server: IrisServer) (client: IrisClient) =
       let cts = new CancellationTokenSource()
       let subscriptions = new Subscriptions()
 
@@ -354,49 +375,46 @@ module ApiClient =
 
           // **** Start
 
-          member self.Start () = either {
-              let clientAddr =
-                client.Port
-                |> Some
-                |> Uri.tcpUri client.IpAddress
-
-              let srvAddr =
-                server.Port
-                |> Some
-                |> Uri.tcpUri server.IpAddress
-
-              sprintf "Starting server on %O" clientAddr
+          member self.Start () =
+            either {
+              client.Port
+              |> Some
+              |> Uri.tcpUri client.IpAddress
+              |> sprintf "Connecting to server on %O"
               |> Logger.debug (tag "start")
 
-              let! socket = Client.create ctx {
+              server.Port
+              |> Some
+              |> Uri.tcpUri server.IpAddress
+              |> sprintf "Starting server on %O"
+              |> Logger.debug (tag "start")
+
+              let socket = TcpClient.create {
                 PeerId = client.Id
-                Frontend = srvAddr
+                PeerAddress = server.IpAddress
+                PeerPort = server.Port
                 Timeout = int Constants.REQ_TIMEOUT * 1<ms>
               }
 
-              let result = Server.create ctx {
+              let server = TcpServer.create {
                 Id = client.Id
-                Listen = clientAddr
+                Listen = client.IpAddress
+                Port = client.Port
               }
 
-              match result with
-              | Right server ->
-                let srvobs = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                let clntobs = socket.Subscribe (Msg.RawClientResponse >> agent.Post)
+              do! socket.Start()
+              do! server.Start()
 
-                let updated =
-                  { store.State with
-                      Socket = socket
-                      Server = server
-                      Disposables = [ srvobs; clntobs ] }
+              let srvobs = server.Subscribe (Msg.ServerEvent >> agent.Post)
+              let clntobs = socket.Subscribe (Msg.ClientEvent >> agent.Post)
 
-                store.Update updated
+              store.Update { store.State with
+                               Socket = socket
+                               Server = server
+                               Disposables = [ srvobs; clntobs ] }
 
-                agent.Start()
-                agent.Post Msg.Start
-              | Left error ->
-                Logger.err (tag "Start") (string error)
-                return! Either.fail error
+              agent.Start()
+              agent.Post Msg.Start
             }
 
           // **** State

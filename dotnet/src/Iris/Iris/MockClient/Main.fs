@@ -11,8 +11,8 @@ open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
 open Iris.Service
+open Iris.Net
 open Iris.Service.Interfaces
-open ZeroMQ
 
 [<AutoOpen>]
 module Main =
@@ -615,8 +615,6 @@ Usage:
 
     Logger.initialize id
 
-    use ctx = new ZContext()
-
     let result =
       either {
         let server =
@@ -643,7 +641,7 @@ Usage:
               | false -> IPv4Address "127.0.0.1"
             Port = nextPort() |> uint16 |> port }
 
-        let client = ApiClient.create ctx server client
+        let client = ApiClient.create server client
         do! client.Start()
         return client
       }
@@ -674,12 +672,10 @@ Usage:
 
       loop client loaded patch
       dispose client
-      dispose ctx
       exit 0
     | Left error ->
       Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
-      dispose ctx
       error
       |> Error.toExitCode
       |> exit

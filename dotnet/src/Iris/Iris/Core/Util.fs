@@ -597,3 +597,10 @@ module Console =
     AppDomain.CurrentDomain.DomainUnload.Add disposer
 
 #endif
+
+// * Guid
+
+module Guid =
+
+  let ofId (id: Id) =
+    id |> string |> Guid.Parse

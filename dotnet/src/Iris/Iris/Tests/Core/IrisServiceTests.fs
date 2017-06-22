@@ -10,7 +10,7 @@ open Iris.Client
 open Iris.Client.Interfaces
 open Iris.Service.Interfaces
 open Iris.Raft
-open ZeroMQ
+open Iris.Net
 
 [<AutoOpen>]
 module IrisServiceTests =
