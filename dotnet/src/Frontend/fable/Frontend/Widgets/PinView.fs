@@ -9,9 +9,7 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-let [<Literal>] BASE_HEIGHT = 25
-let [<Literal>] ROW_HEIGHT = 17
-let [<Literal>] MIN_WIDTH = 100
+let [<Literal>] ARROW_SIZE = "14px"
 
 type [<Pojo>] InputState =
   { isOpen: bool }
@@ -65,9 +63,6 @@ type PinView(props) =
   inherit React.Component<PinProps, InputState>(props)
   do base.setInitState({ isOpen = false })
 
-  member this.RecalculateHeight(rowCount: int) =
-    BASE_HEIGHT + (ROW_HEIGHT * rowCount)
-
   member this.ValueAt(i) =
     match this.props.slices with
     | Some slices -> slices.[index i].Value
@@ -84,9 +79,13 @@ type PinView(props) =
       then "--"
       else this.props.pin.Name
     let firstRowValue =
-      if rowCount > 1
-      then td [] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
-      else addInputView(0, this.ValueAt(0), "td", useRightClick, (fun i v -> this.UpdateValue(0,v)))
+      if rowCount > 1 then
+        td [Style [Display "flex"; AlignItems "center"]] [
+          span [Style [Flex !^1.]] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+          this.RenderArrow()
+        ]
+      else
+        addInputView(0, this.ValueAt(0), "td", useRightClick, (fun i v -> this.UpdateValue(0,v)))
     let head =
       tr [ClassName "iris-pin-child"] [
         td [
@@ -99,8 +98,7 @@ type PinView(props) =
         ] [str name]
         firstRowValue
       ]
-
-    if rowCount > 1 then // && this.state.isOpen then
+    if rowCount > 1 && this.state.isOpen then
       let tags = this.props.pin.GetTags
       tbody [] [
         yield head
@@ -118,40 +116,23 @@ type PinView(props) =
     else tbody [] [head]
 
   member this.RenderArrow() =
-    let arrowRotation = if this.state.isOpen then 90 else 0
-    img [
-      Src "/lib/img/more.png"
-      Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
+    button [
+      ClassName ("icon uiControll " + (if this.state.isOpen then "icon-less" else "icon-more"))
+      Style [Color "white"; CSSProp.Width ARROW_SIZE; CSSProp.Height ARROW_SIZE]
       OnClick (fun ev ->
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
-    ]
-
-  // member this.onMounted(el: Browser.Element) =
-  //   if el <> null then
-  //     !!jQuery(el)?resizable(
-  //       createObj [
-  //         "minWidth" ==> MIN_WIDTH
-  //         "handles" ==> "e"
-  //         "resize" ==> fun event ui ->
-  //             !!ui?size?height = !!ui?originalSize?height
-  //       ])
-
+    ] []
   member this.render() =
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
-    // let height = if this.state.isOpen then this.RecalculateHeight(rowCount) else BASE_HEIGHT
-    div [
-      ClassName "iris-pin"
-      // Ref (fun el -> this.onMounted(el))
-    ] [
-      table [] [this.RenderRows(rowCount, this.props.``global``.state.useRightClick)]
+    let useRightClick =
+      this.props.``global``.state.useRightClick
+    div [ClassName "iris-pin"] [
+      table [] [this.RenderRows(rowCount, useRightClick)]
     ]
-      // div [
-      //   ClassName "iris-pin-end"
-      // ] (if rowCount > 1 then [this.RenderArrow()] else [])
 
 type [<Pojo>] PinGroupProps =
   { ``global``: IGlobalModel
