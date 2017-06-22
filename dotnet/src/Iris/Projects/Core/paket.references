@@ -6,7 +6,6 @@ SharpYaml
 Fleck
 Suave
 Suave.Git
-ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
 Disruptor
