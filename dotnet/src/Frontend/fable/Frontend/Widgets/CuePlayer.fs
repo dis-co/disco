@@ -81,6 +81,12 @@ module private Helpers =
       for cueRef in group.CueRefs do
         printfn "    CueRef: %O" cueRef.Id
 
+  let inline withStyle (width: int) (offset: int) =
+    Style [
+      CSSProp.Width (string width + "px")
+      MarginLeft (string offset + "px")
+    ]
+
   module Array =
     let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
       Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
@@ -163,18 +169,17 @@ type private CueView(props) =
     for d in disposables do
       d.dispose()
 
+  member this.RenderInput(width: int, offset: int, content) =
+    span [
+      withStyle width offset
+      ClassName "contentEditable"
+    ] [str content]
+
   member this.render() =
-      //   <More width={15}></More>
-      //   <PlayButton width={15}></PlayButton>
-      //   <Input label="Nr.:" width={40} offset={10}>0000</Input>
-      //   <Input label="Cue Name" width={140}>Untitled</Input>
-      //   <Input label="Delay" width={50} offset={20}>00:00:00</Input>
-      //   <Input label="Shortkey" width={50} offset={20}>shortkey</Input>
-      //   <AutoCall label="AutoCall" width={40}></AutoCall>
     let arrowButton =
       button [
         ClassName ("icon uiControll " + (if this.state.IsOpen then "icon-less" else "icon-more"))
-        Style [CSSProp.Width "15px"]
+        withStyle 15 0
         OnClick (fun ev ->
           ev.stopPropagation()
           this.setState({ this.state with IsOpen = not this.state.IsOpen}))
@@ -182,7 +187,7 @@ type private CueView(props) =
     let playButton =
       button [
         ClassName "icon icon-play"
-        Style [CSSProp.Width "15px"]
+        withStyle 15 0
         OnClick (fun ev ->
           ev.stopPropagation()
           Browser.window.alert("Fire cue!"))
@@ -205,6 +210,10 @@ type private CueView(props) =
     ] [
       arrowButton
       playButton
+      this.RenderInput(40, 10, "0000")
+      this.RenderInput(140, 0, "Untitled")
+      this.RenderInput(50, 20, "00:00:00")
+      this.RenderInput(40, 20, "shortkey")
       autocallButton
       // div [
       //     Class "cueplayer-list-header cueplayer-cue level"
@@ -483,13 +492,29 @@ type CuePlayerView(props) =
       d.Dispose()
 
   member this.render() =
+    let inline labelAtts w o: IHTMLProp list =
+      [ClassName "iris-list-label"; withStyle w o]
+    let headers =
+      li [
+        Key "labels"
+        ClassName "iris-list-label-row"
+      ] [
+        div (labelAtts 15 0) []
+        div (labelAtts 15 0) []
+        div (labelAtts 40 10) [str "Nr.:"]
+        div (labelAtts 140 0) [str "Cue name"]
+        div (labelAtts 50 20) [str "Delay"]
+        div (labelAtts 50 20) [str "Shortkey"]
+        div (labelAtts 40 0) [str "AutoCall"]
+      ]
     ul [ClassName "iris-list"] (
       this.state.CueList
       // TODO: Temporarily assume just one group
       |> Option.bind (fun cueList -> Seq.tryHead cueList.Groups)
       |> function
         | Some group ->
-          [ for i=0 to group.CueRefs.Length - 1 do
+          [ yield headers
+            for i=0 to group.CueRefs.Length - 1 do
               let cueRef = group.CueRefs.[i]
               yield com<CueView,_,_>
                 { key = string cueRef.Id
@@ -503,7 +528,7 @@ type CuePlayerView(props) =
                   SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
                   SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
                 [] ]
-        | None -> []
+        | None -> [headers]
     )
     // div [Class "cueplayer-container"] [
     //   // HEADER

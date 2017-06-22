@@ -50,7 +50,7 @@ let makePin gid pk (v: obj) =
             | :? float -> makeNumberPin gid pid pk ar
             | :? bool -> makeTogglePin gid pid pk ar
             | :? string -> makeStringPin gid pid pk ar
-            | _ -> failParse gid pk ar            
+            | _ -> failParse gid pk ar
         | Some(:? float) -> makeNumberPin gid pid pk ar
         | Some(:? bool) -> makeTogglePin gid pid pk ar
         | Some(:? string) -> makeStringPin gid pid pk ar
@@ -68,7 +68,7 @@ let pinGroups: Map<Id, PinGroup> =
     JS.Object.keys(pinGroups)
     |> Seq.map (fun gk ->
         let g = box pinGroups?(gk)
-        let gid = Id gk            
+        let gid = Id gk
         let pins =
             JS.Object.keys(g)
             |> Seq.choose (fun pk ->
@@ -83,18 +83,29 @@ let pinGroups: Map<Id, PinGroup> =
         pinGroup.Id, pinGroup)
     |> Map
 
-// let _1of3 (x,_,_) = x
-// let _2of3 (_,x,_) = x
-// let _3of3 (_,_,x) = x
+let _1of3 (x,_,_) = x
+let _2of3 (_,x,_) = x
+let _3of3 (_,_,x) = x
 
-let cueListsAndPlayers =
-    let cueGroup = { Id = Id "mockcuegroup"; Name = name "mockcuegroup"; CueRefs = [||] }        
+let cuesAndListsAndPlayers =
+    let makeCue() =
+        // Create new Cue and CueReference
+        let cue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
+        let cueRef = { Id = Id.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+        cue, cueRef
+    let cue1, cueRef1 = makeCue()
+    let cue2, cueRef2 = makeCue()
+    let cue3, cueRef3 = makeCue()
+    let cueGroup = { Id = Id "mockcuegroup"; Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
     let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[|cueGroup|]}
     let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
-    Map[cueList.Id, cueList], Map[cuePlayer.Id, cuePlayer]
+    Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
+    Map[cueList.Id, cueList],
+    Map[cuePlayer.Id, cuePlayer]
 
 let getMockState() =
     { State.Empty with
         PinGroups = pinGroups
-        CueLists = fst cueListsAndPlayers
-        CuePlayers = snd cueListsAndPlayers }
+        Cues = _1of3 cuesAndListsAndPlayers
+        CueLists = _2of3 cuesAndListsAndPlayers
+        CuePlayers = _3of3 cuesAndListsAndPlayers }
