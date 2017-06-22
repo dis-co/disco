@@ -65,7 +65,7 @@ type ClientContext private () =
   member self.Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
     me.OnError <- fun e -> printfn "%A" e.Message
-    me.Port.OnMessage <- self.MsgHandler
+    me.Port.OnMessage <- self.HandleMessageEvent
     worker <- Some me
     #if !DESIGN
     do! self.ConnectWithWebSocket()
@@ -106,8 +106,12 @@ type ClientContext private () =
   member self.Post(ev: StateMachine) =
     printfn "Client will send state machine command %A" ev
     ClientMessage.Event(self.Session, ev)
+    #if DESIGN
+    |> self.HandleClientMessage
+    #else
     |> toJson
     |> self.Worker.Port.PostMessage
+    #endif
 
   member self.Log (logLevel: LogLevel) (message : string) : unit =
     let log = Logger.create logLevel "frontend" message
@@ -115,9 +119,11 @@ type ClientContext private () =
     for ctrl in ctrls.Values do
       ctrl.OnNext msg
 
-  member self.MsgHandler (msg : MessageEvent<string>) : unit =
+  member self.HandleMessageEvent (msg : MessageEvent<string>) : unit =
     let data = ofJson<ClientMessage<State>> msg.Data
+    self.HandleClientMessage(data)
 
+  member self.HandleClientMessage (data : ClientMessage<State>) : unit =
     match data with
     // initialize this client session variable
     | ClientMessage.Initialized(Id id as token) ->

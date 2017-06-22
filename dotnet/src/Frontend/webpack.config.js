@@ -7,13 +7,16 @@ function resolve(filePath) {
   return path.join(__dirname, filePath)
 }
 
+var isDesignMode = false;
 var isDevServer = process.argv.find(v => v.includes('webpack-dev-server'));
 var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
 var irisHost = process.env.FRONTEND_IP;
-if (irisHost == null && isDevServer) {
-  throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+if (isDevServer && (irisHost == null || irisHost === "localhost")) {
+  // throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+  isDesignMode = true;
+  console.log("Iris will run in DESIGN MODE")
 }
 
 var irisPort = process.env.FRONTEND_PORT || "3000";
@@ -65,7 +68,7 @@ var frontendConfig = {
           loader: 'fable-loader',
           options: {
             babel: babelOptions,
-            define: isProduction ? [] : ["DEBUG"],
+            define: isProduction ? [] : ["DEBUG"].concat(isDesignMode ? "DESIGN" : null).filter(x => x),
             plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
             extra: { useCache: true }
           }
