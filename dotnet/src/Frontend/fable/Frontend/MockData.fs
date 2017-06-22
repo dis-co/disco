@@ -83,5 +83,13 @@ let pinGroups: Map<Id, PinGroup> =
         pinGroup.Id, pinGroup)
     |> Map
 
+let cueListsAndPlayers =
+    let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[||]}
+    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
+    Map[cueList.Id, cueList], Map[cuePlayer.Id, cuePlayer]
+
 let getMockState() =
-    { State.Empty with PinGroups = pinGroups }
+    { State.Empty with
+        PinGroups = pinGroups
+        CueLists = fst cueListsAndPlayers
+        CuePlayers = snd cueListsAndPlayers }
