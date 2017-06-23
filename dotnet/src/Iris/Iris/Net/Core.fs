@@ -106,21 +106,21 @@ module RequestBuilder =
   // ** findPreamble
 
   let private findPreamble (data: byte array) =
-    match Array.tryFindIndex ((=) Preamble.[0]) data with
-    | Some index ->
-      try
-        if data.[index + 1] = Preamble.[1]
-            && data.[index + 2] = Preamble.[2]
-            && data.[index + 3] = Preamble.[3]
-        then Some index
-        else None
-      with
-        | _ -> None
-    | _ -> None
+    Array.tryFindIndex ((=) Preamble.[0]) data
+
+  // ** PreambleMsgOffset
+
+  let private PreambleMsgOffset = PreambleSize + MsgLengthSize
+
+  // ** PreambleMsgIdOffset
+
+  let private PreambleMsgIdOffset = PreambleSize + MsgLengthSize + IdSize
+
 
   // ** create
 
   let create (buffer: byte array) (onComplete: Request -> unit) =
+    let preamble = ResizeArray()
     let length = ResizeArray()
     let client = ResizeArray()
     let request = ResizeArray()
@@ -133,6 +133,7 @@ module RequestBuilder =
         ConnectionId = Guid (client.ToArray())
         Body         = body.ToArray() }
       |> onComplete
+      preamble.Clear()
       length.Clear()
       client.Clear()
       request.Clear()
@@ -140,55 +141,94 @@ module RequestBuilder =
       bodyLength <- 0L
 
     let inProgress () =
-      not (length.Count = 0 && client.Count = 0 && request.Count = 0)
+      not (preamble.Count = 0 && length.Count = 0 && client.Count = 0 && request.Count = 0)
 
     let rec build (data: byte array) (read: int) =
       let rest = ResizeArray()
+      let mutable addToRest = false
       // this is a fresh response, so we start off nice and neat
       if not (inProgress()) then
         match findPreamble data with
-        | Some start ->
-          let offset = start + PreambleSize
+        | Some offset when offset <= read -> // we found the possible start of a preamble
           let remaining = read - offset
           for i in 0 .. remaining - 1 do
             match i with
-            | _ when i < MsgLengthSize ->
+            | _ when i < PreambleSize                                  && not addToRest ->
+              // add data to preamble
+              preamble.Add data.[i + offset]
+
+              // if the preamble is now complete, check if its valid
+              if preamble.Count = PreambleSize then
+                // if the preamble is not valid, the rest of the data is just
+                // going to get appended to the rest array, and processed again
+                addToRest <- (preamble.ToArray()) <> Preamble
+
+            | _ when i >= PreambleSize        && i < PreambleMsgOffset   && not addToRest ->
               length.Add data.[i + offset]
               if length.Count = int MsgLengthSize then
                 bodyLength <- parseLength (length.ToArray()) 0
-            | _ when i >= MsgLengthSize && i < MsgLengthSize + IdSize ->
+
+            | _ when i >= PreambleMsgOffset   && i < PreambleMsgIdOffset && not addToRest ->
               client.Add data.[i + offset]
-            | _ when i >= MsgLengthSize + IdSize && i < MsgLengthSize + (2 * IdSize) ->
+
+            | _ when i >= PreambleMsgIdOffset && i < HeaderSize          && not addToRest ->
               request.Add data.[i + offset]
-            | _ when int64 body.Count < bodyLength && inProgress() ->
+
+            | _ when int64 body.Count < bodyLength && inProgress()      && not addToRest ->
               body.Add data.[i + offset]
-            | _ when int64 body.Count = bodyLength && inProgress() ->
+
+            | _ when int64 body.Count = bodyLength && inProgress()      && not addToRest ->
               finalize()
+              addToRest <- true
               rest.Add data.[i + offset]
-            | _ ->
-              rest.Add data.[i + offset]
-        | None -> () // ignore data when no preamble was found and this is the first call
+
+            | _ -> rest.Add data.[i + offset]
+        | _ -> () // ignore data when no preamble was found and this is the first call
       else
-        let mutable addToRest = false
         // we're already working on something here, so keep at it
         for i in 0 .. read - 1 do
           match i with
-          | _ when length.Count < MsgLengthSize && not addToRest ->
-            length.Add buffer.[i]
+          | _ when preamble.Count < PreambleSize  && not addToRest ->
+            // add data to preamble
+            preamble.Add data.[i]
+
+            // if the preamble is now complete, check if its valid
+            if preamble.Count = PreambleSize then
+              // if the preamble is not valid, the rest of the data is just
+              // going to get appended to the rest array, and processed again
+              addToRest <- (preamble.ToArray()) <> Preamble
+
+          | _ when length.Count   < MsgLengthSize && not addToRest ->
+            length.Add data.[i]
+
+            // if enough bytes have been read, parse the length
             if length.Count = MsgLengthSize then
               bodyLength <- parseLength (length.ToArray()) 0
-          | _ when client.Count < IdSize && not addToRest ->
-            client.Add buffer.[i]
-          | _ when request.Count < IdSize && not addToRest ->
-            request.Add buffer.[i]
-          | _ when int64 body.Count < bodyLength && not addToRest ->
-            body.Add buffer.[i]
-          | _ when int64 body.Count = bodyLength && not addToRest ->
+
+          | _ when client.Count   < IdSize        && not addToRest ->
+            client.Add data.[i]
+
+          | _ when request.Count  < IdSize        && not addToRest ->
+            request.Add data.[i]
+
+          | _ when int64 body.Count < bodyLength  && not addToRest ->
+            body.Add data.[i]
+
+          | _ when int64 body.Count = bodyLength  && not addToRest ->
             finalize()
             addToRest <- true
             rest.Add data.[i]
-          | i ->
-            rest.Add data.[i]
+
+          | i -> rest.Add data.[i]
+
+      if  inProgress()
+        && preamble.Count     = PreambleSize
+        && preamble.ToArray() = Preamble
+        && length.Count       = MsgLengthSize
+        && client.Count       = IdSize
+        && request.Count      = IdSize
+        && int64 body.Count   = bodyLength
+      then finalize()
 
       // ever more to do, the recurse
       if rest.Count > 0 then
@@ -196,7 +236,8 @@ module RequestBuilder =
 
     { new IRequestBuilder with
         member state.Process(read: int) =
-          if read > 0 then build buffer read
+          if read > 0 then
+            build buffer read
 
         member state.Dispose() =
           length.Clear()
