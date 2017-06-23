@@ -19,7 +19,7 @@ module NetIntegrationTests =
   // |_| \_|\___|\__|
 
   let test_server_request_handling =
-    testCase "server request handling" <| fun _ ->
+    ftestCase "server request handling" <| fun _ ->
       either {
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
@@ -284,8 +284,8 @@ module NetIntegrationTests =
 
   let netIntegrationTests =
     testList "Net Integration Tests" [
-      test_client_timeout_keeps_socket_alive
       test_server_request_handling
+      test_client_timeout_keeps_socket_alive
       test_worker_timeout_fail_restarts_socket
       test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly

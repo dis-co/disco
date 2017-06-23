@@ -21,7 +21,7 @@ module SerializationTests =
   //               |_|
 
   let test_correct_request_serialization =
-    ftestCase "RequestResposse serialization should work" <| fun _ ->
+    testCase "RequestResposse serialization should work" <| fun _ ->
       let encDec (request: Request) =
         let binary = Request.serialize request
         let builder = RequestBuilder.create binary <| fun rerequest ->
@@ -38,7 +38,7 @@ module SerializationTests =
   // |_|   \__,_|_|  |___/\___|____/ \__\__,_|\__\___|
 
   let tests_parse_state_deserialization =
-    ftestCase "ParseState deserialization should work" <| fun _ ->
+    testCase "ParseState deserialization should work" <| fun _ ->
       let requests = ResizeArray()
       let rerequests = ResizeArray()
       let blob = ResizeArray()
