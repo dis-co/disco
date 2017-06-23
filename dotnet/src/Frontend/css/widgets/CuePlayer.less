@@ -1,9 +1,37 @@
-.iris-cue {
-  border: 2px solid transparent;
+.cue {
+  border: 1px solid transparent;
+  border-bottom-color: lightgray;
   &.iris-selected {
     background-color: @highlight-lightblue;
     border-color: @highlight-lightblue
   }
+}
+
+.cueplayer-table {
+  border-spacing: 0px;
+  width: 100%;
+  tr { width: 100%; }
+  th { text-align: left; }
+  th.p1 { width: 5%; }
+  th.p2 { width: 8%; }
+  th.p3 { width: 12%; }
+  th.p4 { width: 25%; }
+  th.p5 { width: 20%; }
+  th.p6 { width: 20%; }
+  th.p7 { width: 10%; }
+}
+
+.cueplayer-nested-table {
+  border-spacing: 0px;
+  width: 100%;
+  tr { width: 100% }
+  td.p1 { width: 5%; }
+  td.p2 { width: 8%; }
+  td.p3 { width: 12%; }
+  td.p4 { width: 25%; }
+  td.p5 { width: 20%; }
+  td.p6 { width: 20%; }
+  td.p7 { width: 10%; }
 }
 
 .cueplayer-container {

@@ -81,14 +81,6 @@ module private Helpers =
       for cueRef in group.CueRefs do
         printfn "    CueRef: %O" cueRef.Id
 
-  let inline withStyle (width: int) (offset: int) =
-    Style [
-      CSSProp.Width (string width + "px")
-      MarginLeft (string offset + "px")
-      MarginRight 0
-      // Padding 0
-    ]
-
   module Array =
     let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
       Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
@@ -158,10 +150,11 @@ type private CueView(props) =
               highlight <- true
             | "stop" ->
               if this.state.Cue.Slices |> Array.exists (fun slices -> slices.Id = ev.model.Id) then
-                failwith "The cue already contains this pin"
-              let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.Slices|] }
-              UpdateCue newCue |> ClientContext.Singleton.Post
-              this.setState({ this.state with IsOpen = true })
+                printfn "The cue already contains this pin"
+              else
+                let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.Slices|] }
+                UpdateCue newCue |> ClientContext.Singleton.Post
+                this.setState({ this.state with IsOpen = true })
             | _ -> ()
           if highlight
           then selfRef.classList.add("iris-highlight-blue")
@@ -172,47 +165,48 @@ type private CueView(props) =
     for d in disposables do
       d.dispose()
 
-  member this.RenderInput(width: int, offset: int, content) =
-    span [
-      withStyle width offset
-      ClassName "contentEditable"
-    ] [str content]
+  member this.RenderInput(pos: int, content) =
+    td [ClassName ("p" + string pos)] [
+      span [ClassName "contentEditable"] [str content]
+    ]
 
   member this.render() =
     let arrowButton =
-      button [
-        ClassName ("icon uiControll " + (if this.state.IsOpen then "icon-less" else "icon-more"))
-        withStyle 15 0
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          this.setState({ this.state with IsOpen = not this.state.IsOpen}))
-      ] []
+      td [ClassName "p1"] [
+        button [
+          ClassName ("icon uiControll " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            this.setState({ this.state with IsOpen = not this.state.IsOpen}))
+        ] []
+      ]
     let playButton =
-      button [
-        ClassName "icon icon-play"
-        withStyle 20 0
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
-        )
-      ] []
+      td [ClassName "p2"] [
+        button [
+          ClassName "icon icon-play"
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
+          )
+        ] []
+      ]
     let autocallButton =
-      button [
-        ClassName "icon icon-autocall"
-        withStyle 20 0
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          // Browser.window.alert("Auto call!")
-        )
-      ] []
+      td [ClassName "p7"] [
+        button [
+          ClassName "icon icon-autocall"
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            // Browser.window.alert("Auto call!")
+          )
+        ] []
+      ]
     let isSelected =
       if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
-      then "iris-cue iris-selected" else "iris-cue"
+      then "cue iris-selected" else "cue"
     let cueHeader =
-      li [
+      tr [
         Key this.props.Key
-        // Style [MarginLeft 20.]
         OnClick (fun _ ->
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
@@ -220,37 +214,43 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.RenderInput(40, 10, "0000")
-        this.RenderInput(140, 0, "Untitled")
-        this.RenderInput(50, 20, "00:00:00")
-        this.RenderInput(50, 20, "shortkey")
+        this.RenderInput(3, "0000")
+        this.RenderInput(4, "Untitled")
+        this.RenderInput(5, "00:00:00")
+        this.RenderInput(6, "shortkey")
         autocallButton
       ]
-    if not this.state.IsOpen then
-      div [ClassName isSelected; Ref (fun el -> selfRef <- el)] [cueHeader]
-    else
-      let pinGroups =
-        this.state.Cue.Slices
-        |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.Global.state, slices)
-        |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
-        |> Array.map(fun (pinGroupId, pinAndSlices) ->
-          let pinGroup = findPinGroup pinGroupId this.props.Global.state
-          li [Key (string pinGroupId)] [
-            yield div [Class "iris-row-label"] [str (unwrap pinGroup.Name)]
-            for i, pin, slices in pinAndSlices do
-              yield com<PinView,_,_>
-                { key = string pin.Id
-                  ``global`` = this.props.Global
-                  pin = pin
-                  slices = Some slices
-                  update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
-                  onDragStart = None } []
-          ])
-        |> Array.toList
-      div [ClassName isSelected; Ref (fun el -> selfRef <- el)] [
-        cueHeader
-        li [] [ul [ClassName "iris-listSorted"] pinGroups]
-      ]
+    let rows =
+      if not this.state.IsOpen then
+        [cueHeader]
+      else
+        let pinGroups =
+          this.state.Cue.Slices
+          |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.Global.state, slices)
+          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
+          |> Array.map(fun (pinGroupId, pinAndSlices) ->
+            let pinGroup = findPinGroup pinGroupId this.props.Global.state
+            li [Key (string pinGroupId)] [
+              yield div [Class "iris-row-label"] [str (unwrap pinGroup.Name)]
+              for i, pin, slices in pinAndSlices do
+                yield com<PinView,_,_>
+                  { key = string pin.Id
+                    ``global`` = this.props.Global
+                    pin = pin
+                    slices = Some slices
+                    update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
+                    onDragStart = None } []
+            ])
+          |> Array.toList
+        [cueHeader; tr [] [td [ColSpan 7.] [ul [ClassName "iris-listSorted"] pinGroups]]]
+    // cueHeader
+    tr [] [
+      td [ColSpan 7.] [
+        table [
+          ClassName ("cueplayer-nested-table " + isSelected)
+          Ref (fun el -> selfRef <- el)
+        ] [tbody [] rows]]
+    ]
       // div [
       //     Class "cueplayer-list-header cueplayer-cue level"
       //     Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
@@ -486,8 +486,8 @@ type CuePlayerModel() =
     member __.layout =
       { x = 0; y = 0;
         w = 8; h = 5;
-        minW = 2; maxW = 10;
-        minH = 1; maxH = 10; }
+        minW = 4; maxW = 10;
+        minH = 4; maxH = 10; }
 
 type [<Pojo>] CuePlayerState =
   { CueList: CueList option
@@ -527,45 +527,45 @@ type CuePlayerView(props) =
     for d in disposables do
       d.Dispose()
 
-  member this.render() =
-    let inline labelAtts w o: IHTMLProp list =
-      [ClassName "iris-list-label"; withStyle w o]
-    let headers =
-      li [
-        Key "labels"
-        ClassName "iris-list-label-row"
-      ] [
-        div (labelAtts 15 0) []
-        div (labelAtts 20 0) []
-        div (labelAtts 40 10) [str "Nr.:"]
-        div (labelAtts 140 0) [str "Cue name"]
-        div (labelAtts 50 20) [str "Delay"]
-        div (labelAtts 50 20) [str "Shortkey"]
-        div (labelAtts 20 0) [str "AutoCall"]
-      ]
-    ul [ClassName "iris-list"] (
+  member this.RenderCues() =
       this.state.CueList
       // TODO: Temporarily assume just one group
       |> Option.bind (fun cueList -> Seq.tryHead cueList.Groups)
-      |> function
-        | Some group ->
-          [ yield headers
-            for i=0 to group.CueRefs.Length - 1 do
-              let cueRef = group.CueRefs.[i]
-              yield com<CueView,_,_>
-                { Key = string cueRef.Id
-                  Global = this.props.``global``
-                  CueRef = cueRef
-                  CueGroup = group
-                  CueList = this.state.CueList.Value
-                  CueIndex = i
-                  CueGroupIndex = 0 //this.props.CueGroupIndex
-                  SelectedCueIndex = this.state.SelectedCueIndex
-                  SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-                  SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
-                [] ]
-        | None -> [headers]
-    )
+      |> Option.map (fun group ->
+        group.CueRefs
+        |> Array.mapi (fun i cueRef ->
+          com<CueView,_,_>
+            { Key = string cueRef.Id
+              Global = this.props.``global``
+              CueRef = cueRef
+              CueGroup = group
+              CueList = this.state.CueList.Value
+              CueIndex = i
+              CueGroupIndex = 0 //this.props.CueGroupIndex
+              SelectedCueIndex = this.state.SelectedCueIndex
+              SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+              SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
+            [])
+        |> Array.toList)
+      |> defaultArg <| []
+
+  member this.render() =
+    let inline header i s =
+      th [ClassName (sprintf "p%i iris-list-label" i)] [str s]
+    table [ClassName "iris-list cueplayer-table"] [
+      thead [Key "labels"] [
+        tr [ClassName "iris-list-label-row"] [
+          header 1 ""
+          header 2 ""
+          header 3 "Nr.:"
+          header 4 "Cue name"
+          header 5 "Delay"
+          header 6 "Shortkey"
+          header 7 "Autocall"
+        ]
+      ]
+      tbody [] (this.RenderCues())
+    ]
     // div [Class "cueplayer-container"] [
     //   // HEADER
     //   yield
