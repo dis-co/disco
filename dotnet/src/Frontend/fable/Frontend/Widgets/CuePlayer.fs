@@ -205,14 +205,10 @@ type private CueView(props) =
           // Browser.window.alert("Auto call!")
         )
       ] []
-    let backGroundStyle =
-      let isSelected =
-        this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+    let isSelected =
+      if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
-      Style [
-        BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")
-        Border ("2px solid " + if isSelected then SELECTION_COLOR else "transparent")
-      ]
+      then "iris-cue iris-selected" else "iris-cue"
     let cueHeader =
       li [
         Key this.props.Key
@@ -231,10 +227,7 @@ type private CueView(props) =
         autocallButton
       ]
     if not this.state.IsOpen then
-      div [
-        Ref (fun el -> selfRef <- el)
-        backGroundStyle
-      ] [cueHeader]
+      div [ClassName isSelected; Ref (fun el -> selfRef <- el)] [cueHeader]
     else
       let pinGroups =
         this.state.Cue.Slices
@@ -254,10 +247,7 @@ type private CueView(props) =
                   onDragStart = None } []
           ])
         |> Array.toList
-      div [
-        Ref (fun el -> selfRef <- el)
-        backGroundStyle
-      ] [
+      div [ClassName isSelected; Ref (fun el -> selfRef <- el)] [
         cueHeader
         li [] [ul [ClassName "iris-listSorted"] pinGroups]
       ]
