@@ -1,6 +1,7 @@
 @base-height: 25px;
 @row-height: 17px;
 @pin-width: 120px;
+@arrow-size: 14px;
 
 .iris-pingroup {
   margin: 5px;
@@ -38,8 +39,15 @@
     }
   }
 
+  .uiControll {
+    color: white;
+    width: @arrow-size;
+    height: @arrow-size;
+  }
+
   &:first-child {
     td:first-child {
+      cursor: move;
       border-top-left-radius: 10px;
     }
     td:last-child {

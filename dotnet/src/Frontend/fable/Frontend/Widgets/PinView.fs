@@ -9,8 +9,6 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-let [<Literal>] ARROW_SIZE = "14px"
-
 type [<Pojo>] InputState =
   { isOpen: bool }
 
@@ -74,14 +72,14 @@ type PinView(props) =
     | None -> updatePinValue(this.props.pin, index, value)
 
   member inline this.RenderRows(rowCount: int, useRightClick: bool) =
-    let name = 
+    let name =
       if String.IsNullOrEmpty(this.props.pin.Name)
       then "--"
       else this.props.pin.Name
     let firstRowValue =
       if rowCount > 1 then
-        td [Style [Display "flex"; AlignItems "center"]] [
-          span [Style [Flex !^1.]] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+        td [ClassName "iris-flex-row"] [
+          span [ClassName "iris-flex-1"] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
           this.RenderArrow()
         ]
       else
@@ -89,7 +87,6 @@ type PinView(props) =
     let head =
       tr [ClassName "iris-pin-child"] [
         td [
-          Style [!!("cursor", "move")]
           OnMouseDown (fun ev ->
             ev.stopPropagation()
             match this.props.onDragStart with
@@ -107,7 +104,7 @@ type PinView(props) =
             // The Labels array can be shorter than Values'
             match Array.tryItem i tags |> Option.map string with
             | None | Some(NullOrEmpty) -> "Tag"
-            | Some label -> label          
+            | Some label -> label
           yield tr [Key (string i); ClassName "iris-pin-child"] [
             td [] [str label]
             addInputView(i, this.ValueAt(i), "td", useRightClick, (fun i v -> this.UpdateValue(i,v)))
@@ -118,7 +115,6 @@ type PinView(props) =
   member this.RenderArrow() =
     button [
       ClassName ("icon uiControll " + (if this.state.isOpen then "icon-less" else "icon-more"))
-      Style [Color "white"; CSSProp.Width ARROW_SIZE; CSSProp.Height ARROW_SIZE]
       OnClick (fun ev ->
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
