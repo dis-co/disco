@@ -154,7 +154,7 @@ button {
 .iris-workspace {
   flex: 1;
   background: @background-grey;
-} 
+}
 
 //Icon Sizes
 .WidgetWindowControl .icon {
@@ -163,28 +163,25 @@ button {
 
 //Boxes
 .iris-list {
-  
-  
   li {
     display: flex;
     flex-flow: row;
     flex-wrap: wrap;
     border-bottom: 1px solid #D5D4D4;
-    
-    // height: 26px;
-    
-    & ul li {
-      border-top: 1px solid #D5D4D4;
-      border-bottom: none;
-      margin-left: 25px;
-      border-left: none;
 
+    // height: 26px;
+
+    & ul li {
+      // border-top: 1px solid #D5D4D4;
+      border-bottom: none;
+      // margin-left: 25px;
+      border-left: none;
     }
 
     div {
       float: left;
       line-height: 26px;
-      
+
     }
     .contentEditable {
       padding: 3px;
@@ -218,13 +215,15 @@ button {
 
 .iris-listSorted {
   .iris-row-label {
+    line-height: 14px;
     padding-right: 5px;
   }
   & li {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     background: #F3F3F3;
-    padding: 5px;
+    padding: 4px 5px;
       &:nth-child(even) {
       background: #EBEBEB;
       }
@@ -232,13 +231,13 @@ button {
         //Special margins for atoms within this list
         margin: 1px 3px 3px 0px;
       }
-      
-  } 
+
+  }
 }
 
 .atom {
   color: #fff;
-  
+
   span {
   padding: 2px 4px 2px 2px;
   background: #555;

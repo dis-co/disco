@@ -86,7 +86,7 @@ module private Helpers =
       CSSProp.Width (string width + "px")
       MarginLeft (string offset + "px")
       MarginRight 0
-      Padding 0
+      // Padding 0
     ]
 
   module Array =
@@ -161,6 +161,7 @@ type private CueView(props) =
                 failwith "The cue already contains this pin"
               let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.Slices|] }
               UpdateCue newCue |> ClientContext.Singleton.Post
+              this.setState({ this.state with IsOpen = true })
             | _ -> ()
           if highlight
           then selfRef.classList.add("iris-highlight-blue")
@@ -189,7 +190,7 @@ type private CueView(props) =
     let playButton =
       button [
         ClassName "icon icon-play"
-        withStyle 15 0
+        withStyle 20 0
         OnClick (fun ev ->
           ev.stopPropagation()
           updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
@@ -198,15 +199,20 @@ type private CueView(props) =
     let autocallButton =
       button [
         ClassName "icon icon-autocall"
-        withStyle 40 0
+        withStyle 20 0
         OnClick (fun ev ->
           ev.stopPropagation()
           // Browser.window.alert("Auto call!")
         )
       ] []
-    let isSelected =
-      this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
-      && this.props.CueIndex = this.props.SelectedCueIndex
+    let backGroundStyle =
+      let isSelected =
+        this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+        && this.props.CueIndex = this.props.SelectedCueIndex
+      Style [
+        BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")
+        Border ("2px solid " + if isSelected then SELECTION_COLOR else "transparent")
+      ]
     let cueHeader =
       li [
         Key this.props.Key
@@ -227,7 +233,7 @@ type private CueView(props) =
     if not this.state.IsOpen then
       div [
         Ref (fun el -> selfRef <- el)
-        Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+        backGroundStyle
       ] [cueHeader]
     else
       let pinGroups =
@@ -250,7 +256,7 @@ type private CueView(props) =
         |> Array.toList
       div [
         Ref (fun el -> selfRef <- el)
-        Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+        backGroundStyle
       ] [
         cueHeader
         li [] [ul [ClassName "iris-listSorted"] pinGroups]
@@ -515,7 +521,7 @@ type CuePlayerView(props) =
         Seq.tryHead globalModel.State.cuePlayers
         |> Option.bind (fun kv -> kv.Value.CueList)
         |> Option.bind (fun id -> Map.tryFind id globalModel.State.cueLists)
-      base.setInitState({ CueList = cueList; SelectedCueGroupIndex = 0; SelectedCueIndex = 0 })
+      base.setInitState({ CueList = cueList; SelectedCueGroupIndex = -1; SelectedCueIndex = -1 })
 
   member this.componentDidMount() =
     let state = globalModel.State
@@ -540,12 +546,12 @@ type CuePlayerView(props) =
         ClassName "iris-list-label-row"
       ] [
         div (labelAtts 15 0) []
-        div (labelAtts 15 0) []
+        div (labelAtts 20 0) []
         div (labelAtts 40 10) [str "Nr.:"]
         div (labelAtts 140 0) [str "Cue name"]
         div (labelAtts 50 20) [str "Delay"]
         div (labelAtts 50 20) [str "Shortkey"]
-        div (labelAtts 40 0) [str "AutoCall"]
+        div (labelAtts 20 0) [str "AutoCall"]
       ]
     ul [ClassName "iris-list"] (
       this.state.CueList
