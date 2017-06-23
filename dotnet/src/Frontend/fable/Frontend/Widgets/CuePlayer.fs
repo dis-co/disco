@@ -123,7 +123,7 @@ type [<Pojo>] private CueState =
     Time: string }
 
 type [<Pojo>] private CueProps =
-  { key: string
+  { Key: string
     Global: IGlobalModel
     CueRef: CueReference
     CueGroup: CueGroup
@@ -209,7 +209,7 @@ type private CueView(props) =
       && this.props.CueIndex = this.props.SelectedCueIndex
     let cueHeader =
       li [
-        Key this.props.key
+        Key this.props.Key
         // Style [MarginLeft 20.]
         OnClick (fun _ ->
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
@@ -557,7 +557,7 @@ type CuePlayerView(props) =
             for i=0 to group.CueRefs.Length - 1 do
               let cueRef = group.CueRefs.[i]
               yield com<CueView,_,_>
-                { key = string cueRef.Id
+                { Key = string cueRef.Id
                   Global = this.props.``global``
                   CueRef = cueRef
                   CueGroup = group
