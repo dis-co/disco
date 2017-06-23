@@ -1353,7 +1353,7 @@ module RaftServer =
     | TcpClientEvent.Connected _ ->
       "Connected!" |> Logger.err (tag "handleClientEvent")
       state
-    | TcpClientEvent.Disconnected (peer,_) ->
+    | TcpClientEvent.Disconnected peer ->
       handleClientDisconnect state peer
     | TcpClientEvent.Response response ->
       handleClientResponse state response agent

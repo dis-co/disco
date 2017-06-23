@@ -23,6 +23,12 @@ module rec TcpClient =
 
   type private Subscriptions = ConcurrentDictionary<Guid,IObserver<TcpClientEvent>>
 
+  // ** PendingRequests
+
+  type private RequestId = Guid
+
+  type private PendingRequests = ConcurrentDictionary<RequestId,int64>
+
   // ** IState
 
   type private IState =
@@ -34,12 +40,8 @@ module rec TcpClient =
     abstract Connected: ManualResetEvent
     abstract Sent: ManualResetEvent
     abstract Buffer: byte array
-    abstract ResponseId: Guid option with get, set
-    abstract ResponseLength: int with get, set
-    abstract Response: MemoryStream
-    abstract SetResponseId: offset:int -> unit
-    abstract SetResponseLength: offset:int -> unit
-    abstract CopyData: offset:int -> count:int -> unit
+    abstract PendingRequests: PendingRequests
+    abstract Response: IResponseBuilder with get, set
     abstract FinishResponse: unit -> unit
     abstract Subscriptions: Subscriptions
 
@@ -50,7 +52,7 @@ module rec TcpClient =
       try
         let state = ar.AsyncState :?> IState
         state.Socket.EndConnect(ar)     // complete the connection
-        (state.PeerId, state.ConnectionId)
+        state.PeerId
         |> TcpClientEvent.Connected
         |> Observable.onNext state.Subscriptions
         state.Connected.Set() |> ignore  // Signal that the connection has been made.
@@ -79,26 +81,34 @@ module rec TcpClient =
 
         if bytesRead > 0 then
           // this is a fresh response, so we start of nice and neat
-          if state.Response.Position = 0L && Option.isNone state.ResponseId then
-            state.SetResponseLength 0
-            state.SetResponseId Core.MSG_LENGTH_OFFSET
-            state.CopyData Core.HEADER_OFFSET (bytesRead - Core.HEADER_OFFSET)
-          elif int state.Response.Position < state.ResponseLength then
-            let required = state.ResponseLength - int state.Response.Position
-            if required >= Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
+          if isNull state.Response then
+            let response = ResponseBuilder.create()
+            state.Response <- response
+            state.Response.Start state.Buffer 0L // start a new response at the start of the buffer
+
+            state.Response.Append
+              state.Buffer
+              RequestBuilder.HeaderSize
+              (int64 bytesRead - RequestBuilder.HeaderSize)
+
+          elif not state.Response.IsFinished then
+            let required = state.Response.BodyLength - state.Response.Position
+            if required >= int64 Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
               // just add the entire current buffer
-              state.CopyData 0 Core.BUFFER_SIZE
-            elif required <= bytesRead then
-              state.CopyData 0 required
-              if int state.Response.Position = state.ResponseLength then
+              state.Response.Append state.Buffer 0L (int64 Core.BUFFER_SIZE)
+            elif required <= int64 bytesRead then
+              state.Response.Append state.Buffer 0L required
+              if state.Response.IsFinished then
                 state.FinishResponse()
-              let remaining = bytesRead - required
-              if remaining > 0 && remaining >= Core.HEADER_OFFSET then
-                state.SetResponseLength required
-                state.SetResponseId (required + Core.MSG_LENGTH_OFFSET)
-                state.CopyData (required + Core.HEADER_OFFSET) remaining
-            else state.CopyData 0 bytesRead
-          if state.ResponseLength = int state.Response.Position then
+              let remaining = int64 bytesRead - required
+              if remaining > 0L && remaining >= RequestBuilder.HeaderSize then
+                let response = ResponseBuilder.create()
+                state.Response <- response
+                // start the new response after `require` offset
+                state.Response.Start state.Buffer required
+                state.Response.Append state.Buffer (required + RequestBuilder.HeaderSize) remaining
+            else state.Response.Append state.Buffer 0L (int64 bytesRead)
+          if state.Response.IsFinished then
             state.FinishResponse()
         beginReceive state
       with
@@ -142,13 +152,7 @@ module rec TcpClient =
 
   let private send (state: IState) (request: Request) =
     try
-      let header =
-        Array.append
-          (BitConverter.GetBytes request.Body.Length)
-          (request.RequestId.ToByteArray())
-
-      let payload = Array.append header request.Body
-
+      let payload = Request.serialize request
       // Begin sending the data to the remote device.
       state.Socket.BeginSend(
         payload,
@@ -168,9 +172,8 @@ module rec TcpClient =
       let buffer = Array.zeroCreate Core.BUFFER_SIZE
       let connected = new ManualResetEvent(false)
       let sent = new ManualResetEvent(false)
-      let mutable responseId = None
-      let mutable responseLength = 0
-      let response = new MemoryStream()
+      let mutable response = null
+      let pending = PendingRequests()
       let subscriptions = Subscriptions()
       { new IState with
           member state.PeerId
@@ -194,51 +197,31 @@ module rec TcpClient =
           member state.Buffer
             with get () = buffer
 
+          member state.PendingRequests
+            with get () = pending
+
           member state.Response
             with get () = response
-
-          member state.ResponseId
-            with get () = responseId
-              and set id = responseId <- id
-
-          member state.ResponseLength
-            with get ()  = responseLength
-              and set len = responseLength <- len
-
-          member state.SetResponseLength(offset: int) =
-            responseLength <- BitConverter.ToInt32(buffer, offset)
-
-          member state.SetResponseId(offset: int) =
-            responseId <-
-              let intermediary = Array.zeroCreate Core.ID_LENGTH_OFFSET
-              Array.blit buffer offset intermediary 0 Core.ID_LENGTH_OFFSET
-              intermediary
-              |> Guid
-              |> Some
-
-          member state.CopyData (offset: int) (count: int) =
-            response.Write(buffer, offset, count)
+             and set builder = response <- builder
 
           member state.FinishResponse() =
-            match responseId with
-            | Some guid ->
-              { ConnectionId = id
-                RequestId = guid
-                Body = response.ToArray() }
+            match response with
+            | null -> ()
+            | builder ->
+              response <- null
+              builder.Finish()
               |> TcpClientEvent.Response
               |> Observable.onNext subscriptions
-              responseLength <- 0
-              responseId <- None
-              response.Seek(0L, SeekOrigin.Begin) |> ignore
-            | None -> ()
+              builder.Dispose()
 
           member state.Subscriptions
             with get () = subscriptions
 
           member state.Dispose() =
             Socket.dispose client
-            response.Close()
-            response.Dispose()
+            if not (isNull response) then
+              response.Dispose()
+              response <- null
         }
 
   let create (options: ClientConfig) =
@@ -250,7 +233,7 @@ module rec TcpClient =
     let state = makeState id options.PeerId endpoint client
 
     let checker =
-      (options.PeerId, id)
+      options.PeerId
       |> TcpClientEvent.Disconnected
       |> Socket.checkState client state.Subscriptions
 

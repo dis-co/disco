@@ -41,12 +41,7 @@ module TcpServer =
     abstract IPAddress: IPAddress
     abstract Port: int
     abstract Buffer: byte array
-    abstract RequestId: Guid option with get, set
-    abstract RequestLength: int with get, set
-    abstract Request: MemoryStream
-    abstract SetRequestLength: offset:int -> unit
-    abstract SetRequestId: offset:int -> unit
-    abstract CopyData: offset:int -> count:int -> unit
+    abstract Request: IRequestBuilder with get, set
     abstract FinishRequest: unit -> unit
     abstract Subscriptions: Subscriptions
 
@@ -109,11 +104,7 @@ module TcpServer =
 
     let send (response: Response) (socket: Socket) id subscriptions =
       try
-        let header =
-          Array.append
-            (BitConverter.GetBytes response.Body.Length)
-            (response.RequestId.ToByteArray())
-        let payload = Array.append header response.Body
+        let payload = Response.serialize response
         socket.BeginSend(
           payload,
           0,
@@ -157,33 +148,42 @@ module TcpServer =
 
         if bytesRead > 0 then
 
-          printfn "received %d bytes" bytesRead
-
-          // this is a new request, so we determine the length of the request
-          // and the request id
-          if connection.Request.Position = 0L && Option.isNone connection.RequestId then
-            connection.SetRequestLength (offset = 0)
-            connection.SetRequestId Core.MSG_LENGTH_OFFSET
-            connection.CopyData Core.HEADER_OFFSET (bytesRead - Core.HEADER_OFFSET)
-          elif int connection.Request.Position < connection.RequestLength then
-            // we are currently working on a request, so we add to request array whatever data is
-            // available
-            let required = connection.RequestLength - int connection.Request.Position
-            if required >= Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
+          // this is a fresh response, so we start of nice and neat
+          if isNull connection.Request then
+            let request = RequestBuilder.create()
+            connection.Request <- request
+            // start a new response at the start of the buffer
+            connection.Request.Start connection.Buffer 0L
+            // append the remaining data
+            connection.Request.Append
+              connection.Buffer
+              RequestBuilder.HeaderSize
+              (int64 bytesRead - RequestBuilder.HeaderSize)
+          elif not connection.Request.IsFinished then
+            let required = connection.Request.BodyLength - connection.Request.Position
+            if required >= int64 Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
               // just add the entire current buffer
-              connection.CopyData 0 Core.BUFFER_SIZE
-            elif required <= bytesRead then
-              connection.CopyData 0 required
-              if int connection.Request.Position = connection.RequestLength then
+              connection.Request.Append connection.Buffer 0L (int64 Core.BUFFER_SIZE)
+            elif required <= int64 bytesRead then
+              connection.Request.Append connection.Buffer 0L required
+              if connection.Request.IsFinished then
                 connection.FinishRequest()
-              let remaining = bytesRead - required
-              if remaining > 0 && remaining >= Core.HEADER_OFFSET then
-                connection.SetRequestLength required
-                connection.SetRequestId (required + Core.MSG_LENGTH_OFFSET)
-                connection.CopyData (required + Core.HEADER_OFFSET) remaining
-            else connection.CopyData 0 bytesRead
+              let remaining = int64 bytesRead - required
+              if remaining > 0L && remaining >= RequestBuilder.HeaderSize then
+                let response = RequestBuilder.create()
+                connection.Request <- response
+                // start the new response after `require` offset
+                connection.Request.Start connection.Buffer required
+                // append the remaining data
+                connection.Request.Append
+                  connection.Buffer
+                  (required + RequestBuilder.HeaderSize)
+                  remaining
+            else
+              connection.Request.Append connection.Buffer 0L (int64 bytesRead)
 
-          if connection.RequestLength = int connection.Request.Position then
+          // if the request is finished, create and notify listeners
+          if connection.Request.IsFinished then
             connection.FinishRequest()
 
         // keep trying to get more
@@ -209,7 +209,7 @@ module TcpServer =
 
       let mutable requestLength = 0
       let mutable requestId = None
-      let request = new MemoryStream()
+      let mutable request:IRequestBuilder = null
 
       let connection =
         { new IConnection with
@@ -231,43 +231,19 @@ module TcpServer =
             member connection.Buffer
               with get () = buffer
 
-            member connection.RequestId
-              with get () = requestId
-               and set id = requestId <- id
-
-            member connection.RequestLength
-              with get () = requestLength
-               and set len = requestLength <- len
-
             member connection.Request
               with get () = request
-
-            member connection.SetRequestLength(offset: int) =
-              requestLength <- BitConverter.ToInt32(buffer, offset)
-
-            member connection.SetRequestId(offset: int) =
-              requestId <-
-                let intermediary = Array.zeroCreate Core.ID_LENGTH_OFFSET
-                Array.blit buffer offset intermediary 0 Core.ID_LENGTH_OFFSET
-                intermediary
-                |> Guid
-                |> Some
-
-            member connection.CopyData (offset: int) (count: int) =
-              connection.Request.Write(buffer, offset, count)
+              and set builder = request <- builder
 
             member connection.FinishRequest() =
-              match requestId with
-              | Some guid ->
-                { ConnectionId = id
-                  RequestId = guid
-                  Body = request.ToArray() }
+              match request with
+              | null -> ()
+              | builder ->
+                request <- null
+                builder.Finish()
                 |> TcpServerEvent.Request
                 |> Observable.onNext connection.Subscriptions
-                requestLength <- 0
-                requestId <- None
-                request.Seek(0L, SeekOrigin.Begin) |> ignore
-              | None -> ()
+                builder.Dispose()
 
             member connection.Subscriptions
               with get () = state.Subscriptions

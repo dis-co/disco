@@ -24,7 +24,7 @@ let serialTests =
       configTests
       projectTests
       irisServiceTests
-      zmqIntegrationTests
+      netIntegrationTests
       raftIntegrationTests
     ] |> testSequenced
 

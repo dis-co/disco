@@ -21,8 +21,6 @@ module RaftIntegrationTests =
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
       either {
-        use ctx = new ZContext()
-
         let machine1 = MachineConfig.create "127.0.0.1" None
         let machine2 = MachineConfig.create "127.0.0.1" None
 
@@ -53,7 +51,7 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let! leader = RaftServer.create ctx leadercfg {
+        let! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -61,7 +59,7 @@ module RaftIntegrationTests =
         do! leader.Start()
         expect "Leader should have one connection" 1 count leader.Connections
 
-        let! follower = RaftServer.create ctx followercfg {
+        let! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -80,7 +78,6 @@ module RaftIntegrationTests =
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use started = new AutoResetEvent(false)
         let port = port 12000us
         let machine = MachineConfig.create "127.0.0.1" None
@@ -100,7 +97,7 @@ module RaftIntegrationTests =
           |> Config.create
           |> Config.addSiteAndSetActive site
 
-        use! leader = RaftServer.create ctx leadercfg {
+        use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -118,7 +115,7 @@ module RaftIntegrationTests =
 
         expect "Should be running" true Service.isRunning leader.Status
 
-        use! follower = RaftServer.create ctx leadercfg {
+        use! follower = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -135,7 +132,6 @@ module RaftIntegrationTests =
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use check1 = new AutoResetEvent(false)
         use check2 = new AutoResetEvent(false)
 
@@ -183,7 +179,7 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ctx leadercfg {
+        use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -193,7 +189,7 @@ module RaftIntegrationTests =
 
         do! leader.Start()
 
-        use! follower = RaftServer.create ctx followercfg {
+        use! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -211,7 +207,6 @@ module RaftIntegrationTests =
   let test_log_snapshotting_should_clean_all_logs =
     testCase "log snapshotting should clean all logs" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use snapshotCheck = new AutoResetEvent(false)
         use expectedCheck = new AutoResetEvent(false)
 
@@ -237,7 +232,7 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ctx leadercfg {
+        use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() =
@@ -272,7 +267,6 @@ module RaftIntegrationTests =
   let test_validate_add_member_works =
     testCase "validate add member works" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use added = new AutoResetEvent(false)
         use configured = new AutoResetEvent(false)
         use check1 = new AutoResetEvent(false)
@@ -334,7 +328,7 @@ module RaftIntegrationTests =
           |> Config.addSiteAndSetActive site2
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ctx leadercfg {
+        use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None
@@ -344,7 +338,7 @@ module RaftIntegrationTests =
 
         do! leader.Start()
 
-        use! follower = RaftServer.create ctx followercfg {
+        use! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
               member self.PrepareSnapshot() = None

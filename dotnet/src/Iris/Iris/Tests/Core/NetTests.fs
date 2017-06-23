@@ -26,20 +26,26 @@ module NetIntegrationTests =
         let numclients = 5
         let numrequests = 2
 
-        use ctx = new ZContext()
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
 
-        let frontend = url "tcp://127.0.0.1:5555"
-        let! server = Server.create ctx {
+        let server = TcpServer.create {
             Id = Id.Create()
-            Listen = frontend
+            Listen = ip
+            Port = prt
           }
 
-        let sloop (inbox: MailboxProcessor<RawServerRequest>) =
+        do! server.Start()
+
+        let sloop (inbox: MailboxProcessor<TcpServerEvent>) =
           let rec impl () = async {
-              let! request = inbox.Receive()
-              request.Body
-              |> RawServerResponse.fromRequest request
-              |> server.Respond
+              let! ev = inbox.Receive()
+              match ev with
+              | TcpServerEvent.Request request ->
+                request.Body
+                |> Response.fromRequest request
+                |> server.Respond
+              | _ -> ()
               return! impl ()
             }
           impl ()
@@ -49,19 +55,16 @@ module NetIntegrationTests =
 
         let responses = ResizeArray<Id * int64>()
 
-        let cloop (inbox: MailboxProcessor<RawClientResponse>) =
+        let cloop (inbox: MailboxProcessor<TcpClientEvent>) =
           let mutable count = 0
           let rec imp () = async {
-              let! msg = inbox.Receive()
+              let! ev = inbox.Receive()
               try
-                match msg.Body with
-                | Right response ->
-                  let converted = BitConverter.ToInt64(response, 0)
-                  responses.Add(msg.PeerId, converted)
-                | Left error ->
-                  error
-                  |> string
-                  |> Logger.err "client response"
+                match ev with
+                | TcpClientEvent.Response response ->
+                  let converted = BitConverter.ToInt64(response.Body, 0)
+                  responses.Add(response.PeerId, converted)
+                | _ -> ()
               with
               | exn -> Logger.err "client loop" exn.Message
 
@@ -77,13 +80,14 @@ module NetIntegrationTests =
 
         let clients =
           [| for n in 0 .. (numclients - 1) do
-               let result = Client.create ctx {
+               let socket = TcpClient.create {
                   PeerId = Id.Create()
-                  Frontend = frontend
+                  PeerAddress = ip
+                  PeerPort = prt
                   Timeout = 200<ms>
                 }
-               match result with
-               | Right socket ->
+               match socket.Start() with
+               | Right () ->
                   socket.Subscribe cmbp.Post |> ignore
                   yield socket
                | Left error -> failwithf "unable to create socket: %O" error
@@ -92,17 +96,11 @@ module NetIntegrationTests =
         let mkRequest (client: IClient) =
           async {
             let value = rand.Next() |> int64
-
             let request =
               value
               |> BitConverter.GetBytes
-              |> fun bytes -> { RequestId = Guid.NewGuid(); Body = bytes }
-
-            request
-            |> client.Request
-            |> Either.mapError (string >> Logger.err "client request")
-            |> ignore
-
+              |> Request.create (Guid.ofId client.PeerId)
+            client.Request request
             return (client.PeerId, value)
           }
 
@@ -140,41 +138,43 @@ module NetIntegrationTests =
   let test_worker_timeout_fail_restarts_socket =
     testCase "worker timeout fail restarts socket" <| fun _ ->
       either {
-        use ctx = new ZContext()
-
         let mutable count = 0
 
         let num = 5                     // number of clients
         let requests = 10               // number of requests per client
 
-        let frontend = url "tcp://127.0.0.1:5555"
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
 
-        use! server = Server.create ctx {
-            Id = Id.Create()
-            Listen = frontend
-          }
+        use server = TcpServer.create {
+          Id = Id.Create()
+          Listen = ip
+          Port = prt
+        }
 
         use bobs = server.Subscribe (fun _ -> count <- Interlocked.Increment &count)
 
+        do! server.Start()
+
         let clients =
           [| for n in 0 .. num - 1 do
-               let result = Client.create ctx {
+               let socket = TcpClient.create {
                   PeerId = Id.Create()
-                  Frontend = frontend
+                  PeerAddress = ip
+                  PeerPort = prt
                   Timeout = 100<ms>
                  }
-               match result with
-               | Right socket -> yield socket
+               match socket.Start() with
+               | Right () -> yield socket
                | Left error -> failwithf "unable to create client socket: %O" error |]
 
         let mkRequest (i: int) (client: IClient) =
           async {
-            let response =
-              i
-              |> BitConverter.GetBytes
-              |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
-              |> client.Request
-            return (client.PeerId, response)
+            i
+            |> BitConverter.GetBytes
+            |> Request.create (Guid.ofId client.PeerId)
+            |> client.Request
+            return (client.PeerId, ())
           }
 
         [| for i in 0 .. requests - 1 do
@@ -202,28 +202,32 @@ module NetIntegrationTests =
 
         use doneCheck = new AutoResetEvent(false)
 
-        use ctx = new ZContext()
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
 
-        use! client = Client.create ctx {
+        use client = TcpClient.create {
           PeerId = Id.Create()
-          Frontend = url "tcp://127.0.0.1:5555"
+          PeerAddress = ip
+          PeerPort = prt
           Timeout = timeout
         }
 
-        client.Subscribe (fun response ->
-          if Either.isFail response.Body then
-            Interlocked.Increment &timedout |> ignore
-          Interlocked.Increment &count |> ignore
-          if count = num then
-            doneCheck.Set() |> ignore)
+        client.Subscribe (function
+          | TcpClientEvent.Disconnected _ ->
+              Interlocked.Increment &timedout |> ignore
+          | _ ->
+            Interlocked.Increment &count |> ignore
+            if count = num then
+              doneCheck.Set() |> ignore)
         |> ignore
+
+        do! client.Start()
 
         let request (n: int) =
           n
           |> BitConverter.GetBytes
-          |> fun body -> { RequestId = Guid.NewGuid(); Body = body }
+          |> Request.create (Guid.ofId client.PeerId)
           |> client.Request
-          |> ignore
 
         do! [| for n in 0 .. (num - 1) -> n |]
             |> Array.iter request
@@ -238,67 +242,50 @@ module NetIntegrationTests =
   let test_duplicate_server_fails_gracefully =
     testCase "duplicate server fails gracefully" <| fun _ ->
       either {
-        use ctx = new ZContext()
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
 
-        let frontend = url "tcp://127.0.0.1:5555"
-
-        use! server1 = Server.create ctx {
+        use server1 = TcpServer.create {
             Id = Id.Create()
-            Listen = frontend
+            Listen = ip
+            Port = prt
           }
 
-        let server2 = Server.create ctx {
+        do! server1.Start()
+
+        let server2 = TcpServer.create {
             Id = Id.Create()
-            Listen = frontend
+            Listen = ip
+            Port = prt
           }
 
         return!
-          match server2 with
+          match server2.Start() with
           | Right _ -> Left(Other("test","should have failed"))
-          | Left _ -> Right ()
+          | Left  _ -> Right ()
       }
       |> noError
 
   let test_pub_socket_disposes_properly =
     testCase "pub socket disposes properly" <| fun _ ->
       either {
-        use ctx = new ZContext()
-        let uri = Uri.epgmUri
-                    (IPv4Address "127.0.0.1")
-                    (IPv4Address Constants.MCAST_ADDRESS)
-                    (port Constants.MCAST_PORT)
-
-        use pub = new Pub (unwrap uri, "myproject", ctx)
+        let id = Id.Create()
+        use pub = PubSub.create id PubSub.defaultAddress (int Constants.MCAST_PORT)
         do! pub.Start()
       }
       |> noError
 
-
-  let test_sub_socket_disposes_properly =
-    testCase "sub socket disposes properly" <| fun _ ->
-      either {
-        use ctx = new ZContext()
-        let uri = Uri.epgmUri
-                    (IPv4Address "127.0.0.1")
-                    (IPv4Address Constants.MCAST_ADDRESS)
-                    (port Constants.MCAST_PORT)
-
-        use sub = new Sub (unwrap uri, "myproject", ctx)
-        do! sub.Start()
-      }
-      |> noError
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
   //  / ___ \| | |   | |  __/\__ \ |_\__ \
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
-  let zmqIntegrationTests =
-    testList "Zmq Integration Tests" [
+  let netIntegrationTests =
+    testList "Net Integration Tests" [
       test_client_timeout_keeps_socket_alive
       test_server_request_handling
       test_worker_timeout_fail_restarts_socket
       test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly
-      test_sub_socket_disposes_properly
     ] |> testSequenced

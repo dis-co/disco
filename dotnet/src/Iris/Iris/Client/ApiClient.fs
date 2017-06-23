@@ -292,10 +292,10 @@ module ApiClient =
 
   let private handleClientEvent state (ev: TcpClientEvent) agent =
     match ev with
-    | TcpClientEvent.Connected (_,_) ->
+    | TcpClientEvent.Connected _ ->
       "Connected!" |> Logger.debug (tag "handleClientEvent")
       state
-    | TcpClientEvent.Disconnected (_,_) ->
+    | TcpClientEvent.Disconnected _ ->
       "Disconnected :(" |> Logger.debug (tag "handleClientEvent")
       state
     | TcpClientEvent.Response response ->

@@ -311,17 +311,6 @@ let runFable fableconfigdir extraArgs _ =
   // runNode ("../../Fable/build/fable " + fableconfigdir + " " + extraArgs + " --verbose") __SOURCE_DIRECTORY__ ()
 
 let runTestsOnWindows filepath workdir =
-  let arch =
-    if Environment.Is64BitOperatingSystem
-    then "amd64"
-    else "i386"
-
-  printfn "Copy %s to %s" (baseDir @@ arch @@ "libzmq.dll") workdir
-  CopyFile workdir (baseDir @@ arch @@ "libzmq.dll")
-
-  printfn "Copy %s to %s" (baseDir @@ arch @@ "libzmq.dll") workdir
-  CopyFile workdir (baseDir @@ arch @@ "libsodium.dll")
-
   ExecProcess (fun info ->
                   info.FileName <- (workdir </> filepath)
                   info.UseShellExecute <- false

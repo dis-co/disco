@@ -25,7 +25,7 @@ module rec PubSub =
   // ** IState
 
   type private IState =
-    abstract ConnectionId: Guid
+    abstract Id: Id
     abstract LocalEndPoint: IPEndPoint
     abstract RemoteEndPoint: IPEndPoint
     abstract Client: UdpClient
@@ -41,9 +41,12 @@ module rec PubSub =
       let guid =
         let intermediate = Array.zeroCreate 16
         Array.blit raw 0 intermediate 0 16
-        Guid intermediate
+        intermediate
+        |> Guid
+        |> string
+        |> Id
 
-      if guid <> state.ConnectionId then
+      if guid <> state.Id then
         let payload =
           let intermedate = raw.Length - 16 |> Array.zeroCreate
           Array.blit raw 16 intermedate 0 (raw.Length - 16)
@@ -72,7 +75,7 @@ module rec PubSub =
         |> printfn "exn: %s"
 
   let private beginSend (state: IState) (data: byte array) =
-    let id = state.ConnectionId
+    let id = Guid.ofId state.Id
     let payload = Array.append (id.ToByteArray()) data
     state.Client.BeginSend(
       payload,
@@ -82,9 +85,7 @@ module rec PubSub =
       state)
     |> ignore
 
-  let create (multicastAddress: IPAddress) (port: int) =
-    let id = Guid.NewGuid()
-
+  let create (id: Id) (multicastAddress: IPAddress) (port: int) =
     let subscriptions = ConcurrentDictionary<Guid,IObserver<PubSubEvent>>()
 
     let client = new UdpClient()
@@ -95,7 +96,7 @@ module rec PubSub =
 
     let state =
       { new IState with
-          member state.ConnectionId
+          member state.Id
             with get () = id
 
           member state.LocalEndPoint

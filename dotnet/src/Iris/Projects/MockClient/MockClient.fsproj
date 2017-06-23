@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -83,22 +83,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>mockdata.txt</Link>
     </Content>
-    <None Include="../../i386/libzmq.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libzmq.dll</Link>
-    </None>
-    <None Include="../../amd64/libzmq.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libzmq.dll</Link>
-    </None>
-    <None Include="../../i386/libsodium.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libsodium.dll</Link>
-    </None>
-    <None Include="../../amd64/libsodium.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libsodium.dll</Link>
-    </None>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

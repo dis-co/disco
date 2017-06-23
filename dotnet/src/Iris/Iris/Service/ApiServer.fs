@@ -166,7 +166,7 @@ module ApiServer =
         // substitute if necessary. This goes in conjunction with only publishing logs on the Api that
         // are from that service.
         | LogMsg log when log.Tier = Tier.Service && log.Id <> mem ->
-          Logger.append { log with Id = peer }
+          Logger.append { log with Id = id }
 
         // Base case for logs:
         //
@@ -446,10 +446,10 @@ module ApiServer =
 
   let private handleClientEvent state (ev: TcpClientEvent) agent =
     match ev with
-    | TcpClientEvent.Connected ->
+    | TcpClientEvent.Connected _ ->
       "Connected" |> Logger.debug (tag "handleClientEvent")
       state
-    | TcpClientEvent.Disconnected ->
+    | TcpClientEvent.Disconnected id ->
       "Disconnected" |> Logger.debug (tag "handleClientEvent")
       state
     | TcpClientEvent.Response response ->
@@ -509,7 +509,11 @@ module ApiServer =
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
     either {
-      let pubsub = PubSub.create PubSub.defaultAddress (int Constants.MCAST_PORT)
+      let pubsub =
+        PubSub.create
+          mem.Id                        // to deduplicate messages sent from this process
+          PubSub.defaultAddress
+          (int Constants.MCAST_PORT)
 
       let server = TcpServer.create {
         Id = mem.Id

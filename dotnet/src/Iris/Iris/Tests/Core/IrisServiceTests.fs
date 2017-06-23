@@ -101,8 +101,6 @@ module IrisServiceTests =
   let test_ensure_iris_server_clones_changes_from_leader =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        use ctx = new ZContext()
-
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
@@ -121,7 +119,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        let! service1 = IrisService.create ctx {
+        let! service1 = IrisService.create {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -156,7 +154,7 @@ module IrisServiceTests =
 
         let num2 = Git.Repo.commitCount repo2
 
-        let! service2 = IrisService.create ctx {
+        let! service2 = IrisService.create {
           Machine = machine2
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -221,7 +219,6 @@ module IrisServiceTests =
   let test_ensure_cue_resolver_works =
     testCase "ensure cue resolver works" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
@@ -239,7 +236,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        use! service1 = IrisService.create ctx {
+        use! service1 = IrisService.create {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -270,7 +267,7 @@ module IrisServiceTests =
           IpAddress = mem1.IpAddr
         }
 
-        use client = ApiClient.create ctx server {
+        use client = ApiClient.create server {
           Id = Id.Create()
           Name = "hi"
           Role = Role.Renderer
@@ -351,7 +348,6 @@ module IrisServiceTests =
   let test_ensure_client_slice_update_does_not_loop =
     testCase "ensure client slice update does not loop" <| fun _ ->
       either {
-        use ctx = new ZContext()
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
         use clientRegistered = new AutoResetEvent(false)
@@ -368,7 +364,7 @@ module IrisServiceTests =
 
         let mem1, machine1 = List.head zipped
 
-        use! service1 = IrisService.create ctx {
+        use! service1 = IrisService.create {
           Machine = machine1
           ProjectName = project.Name
           UserName = User.Admin.UserName
@@ -397,7 +393,7 @@ module IrisServiceTests =
           IpAddress = mem1.IpAddr
         }
 
-        use client = ApiClient.create ctx server {
+        use client = ApiClient.create server {
           Id = Id.Create()
           Name = "hi"
           Role = Role.Renderer
