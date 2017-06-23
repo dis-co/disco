@@ -10,7 +10,10 @@ export default class Widget extends Component {
       <div className="iris-widget">
         <div className="iris-draggable-handle">
           <span>{this.props.model.name}</span>
-          <div className="WidgetWindowControl">
+          <div className="iris-title-bar">
+            {this.props.model.titleBar}
+          </div>
+          <div className="iris-window-control">
             <button className="iris-icon icon-control icon-resize" onClick={ev => {
               ev.stopPropagation();
               this.props.global.addTab(this.props.model, this.props.id);

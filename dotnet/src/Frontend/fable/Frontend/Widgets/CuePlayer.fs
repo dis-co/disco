@@ -487,7 +487,23 @@ type private CueView(props) =
 //       ]
 //     ]
 
+type private MyObservable<'T>() =
+    let listeners = ResizeArray<IObserver<'T>>()
+    member x.Trigger v =
+        for lis in listeners do
+            lis.OnNext v
+    interface IObservable<'T> with
+        member x.Subscribe w =
+            listeners.Add(w)
+            { new IDisposable with
+                member x.Dispose() = listeners.Remove(w) |> ignore }
+
 type CuePlayerModel() =
+  let clickObservable = MyObservable()
+  member __.titleBar =
+    button [OnClick (fun _ -> clickObservable.Trigger())] [str "Add Cue"]
+  member __.addCue =
+    clickObservable :> IObservable<_>
   interface IWidgetModel with
     member __.view = typeof<CuePlayerView>
     member __.name = "Cue Player"
@@ -530,6 +546,24 @@ type CuePlayerView(props) =
           let cueList = Map.find cueList.Id globalModel.State.cueLists
           this.setState({this.state with CueList=Some cueList})
       | None -> ()))
+    disposables.Add(this.props.model.addCue.Subscribe(fun () ->
+      match this.state.CueList with
+      | None -> failwith "There is no cue list available to add the group"
+      | Some cueList ->
+        if cueList.Groups.Length = 0 then
+          failwith "A Cue Group must be added first"
+        // Create new Cue and CueReference
+        let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
+        let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+        // Insert new CueRef in the selected CueGroup after the selected cue
+        let cueGroup = cueList.Groups.[max this.state.SelectedCueGroupIndex 0]
+        let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.state.SelectedCueIndex newCueRef cueGroup.CueRefs }
+        // Update the CueList
+        let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
+        // Send messages to backend
+        AddCue newCue |>  ClientContext.Singleton.Post
+        UpdateCueList newCueList |> ClientContext.Singleton.Post
+    ))
 
   member this.componentWillUnmount() =
     for d in disposables do

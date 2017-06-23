@@ -63,11 +63,18 @@
     display: flex;
     align-items: baseline;
 
-    // Expand the first child to push
-    // the icons to the side
     & > :first-child {
-      flex: 1;
       margin-right: 10px;
+    }
+
+    // Push other elements to the sides
+    .iris-title-bar {
+        flex: 1;
+    }
+
+    //Icon Sizes
+    .iris-window-control .iris-icon {
+      vertical-align: 0px;
     }
   }
 
