@@ -85,6 +85,8 @@ module private Helpers =
     Style [
       CSSProp.Width (string width + "px")
       MarginLeft (string offset + "px")
+      MarginRight 0
+      Padding 0
     ]
 
   module Array =
@@ -190,31 +192,69 @@ type private CueView(props) =
         withStyle 15 0
         OnClick (fun ev ->
           ev.stopPropagation()
-          Browser.window.alert("Fire cue!"))
+          updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
+        )
       ] []
     let autocallButton =
       button [
         ClassName "icon icon-autocall"
-        Style [CSSProp.Width "40px"]
+        withStyle 40 0
         OnClick (fun ev ->
           ev.stopPropagation()
-          Browser.window.alert("Auto call!"))
+          // Browser.window.alert("Auto call!")
+        )
       ] []
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
       && this.props.CueIndex = this.props.SelectedCueIndex
-    li [
-      Key this.props.key
-      Ref (fun el -> selfRef <- el)
-      // Style [MarginLeft 20.]
-    ] [
-      arrowButton
-      playButton
-      this.RenderInput(40, 10, "0000")
-      this.RenderInput(140, 0, "Untitled")
-      this.RenderInput(50, 20, "00:00:00")
-      this.RenderInput(40, 20, "shortkey")
-      autocallButton
+    let cueHeader =
+      li [
+        Key this.props.key
+        // Style [MarginLeft 20.]
+        OnClick (fun _ ->
+          if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
+            || this.props.CueIndex <> this.props.SelectedCueIndex then
+            this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
+      ] [
+        arrowButton
+        playButton
+        this.RenderInput(40, 10, "0000")
+        this.RenderInput(140, 0, "Untitled")
+        this.RenderInput(50, 20, "00:00:00")
+        this.RenderInput(50, 20, "shortkey")
+        autocallButton
+      ]
+    if not this.state.IsOpen then
+      div [
+        Ref (fun el -> selfRef <- el)
+        Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+      ] [cueHeader]
+    else
+      let pinGroups =
+        this.state.Cue.Slices
+        |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.Global.state, slices)
+        |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
+        |> Array.map(fun (pinGroupId, pinAndSlices) ->
+          let pinGroup = findPinGroup pinGroupId this.props.Global.state
+          li [Key (string pinGroupId)] [
+            yield div [Class "iris-row-label"] [str (unwrap pinGroup.Name)]
+            for i, pin, slices in pinAndSlices do
+              yield com<PinView,_,_>
+                { key = string pin.Id
+                  ``global`` = this.props.Global
+                  pin = pin
+                  slices = Some slices
+                  update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
+                  onDragStart = None } []
+          ])
+        |> Array.toList
+      div [
+        Ref (fun el -> selfRef <- el)
+        Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
+      ] [
+        cueHeader
+        li [] [ul [ClassName "iris-listSorted"] pinGroups]
+      ]
       // div [
       //     Class "cueplayer-list-header cueplayer-cue level"
       //     Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
@@ -328,7 +368,7 @@ type private CueView(props) =
       //                 onDragStart = None } []
       //         ]
       // ]
-    ]
+    // ]
 
   member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =
