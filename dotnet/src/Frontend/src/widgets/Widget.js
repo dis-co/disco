@@ -22,7 +22,9 @@ export default class Widget extends Component {
             }}></button>
           </div>
         </div>
-        {this.props.children}
+        <div className="iris-widget-body" >
+          {this.props.children}
+        </div>
       </div>
     )
   }

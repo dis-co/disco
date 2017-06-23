@@ -242,7 +242,7 @@ type private CueView(props) =
                     onDragStart = None } []
             ])
           |> Array.toList
-        [cueHeader; tr [] [td [ColSpan 7.] [ul [ClassName "iris-listSorted"] pinGroups]]]
+        [cueHeader; tr [] [td [ColSpan 7.] [ul [ClassName "iris-graphview"] pinGroups]]]
     // cueHeader
     tr [] [
       td [ColSpan 7.] [

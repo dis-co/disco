@@ -77,7 +77,7 @@ class View extends React.Component {
 
   render() {
     return (
-      <ul className="iris-listSorted" ref={el => this.el = el}>
+      <ul className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <li key={i}>
             <div className="iris-row-label">{pinGroup[1].Name}</div>

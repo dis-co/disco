@@ -213,8 +213,9 @@ button {
   }
 }
 
-.iris-listSorted {
+.iris-graphview {
   background: #F3F3F3;
+  height: 100%;
   .iris-row-label {
     line-height: 14px;
     padding-right: 5px;
@@ -232,32 +233,23 @@ button {
         //Special margins for atoms within this list
         margin: 1px 3px 3px 0px;
       }
-
   }
 }
 
 .atom {
   color: #fff;
-
   span {
-  padding: 2px 4px 2px 2px;
-  background: #555;
-  border-right: 1px solid #fff;
-  &:first-child {
-  border-top-left-radius: 50px;
-  border-bottom-left-radius: 50px;
-  padding-left: 6px;
-  }
-  &:last-child {
-  border-top-right-radius: 50px;
-  border-bottom-right-radius: 50px;
-  }
+    padding: 2px 4px 2px 2px;
+    background: #555;
+    border-right: 1px solid #fff;
+    &:first-child {
+      border-top-left-radius: 50px;
+      border-bottom-left-radius: 50px;
+      padding-left: 6px;
+    }
+    &:last-child {
+      border-top-right-radius: 50px;
+      border-bottom-right-radius: 50px;
+    }
   }
 }
-
-.iris-list li div:last-child::after,
-.iris-listSorted li div:last-child::after {
-    content: "";
-    display: table;
-    clear: both;
-    }

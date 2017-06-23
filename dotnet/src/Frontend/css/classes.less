@@ -57,7 +57,7 @@
   .iris-draggable-handle {
     cursor: move;
     margin: 0;
-
+    height: 20px;
     padding: 7px;
     background: @iris-grey;
     display: flex;
@@ -66,19 +66,14 @@
     // Expand the first child to push
     // the icons to the side
     & > :first-child {
-      flex-basis: content;
+      flex: 1;
       margin-right: 10px;
-    }
-
-    & > :last-child {
-      float: right;
-      margin-left: auto;
     }
   }
 
-  & > :nth-child(2) {
-    overflow-x: auto;
+  .iris-widget-body {
     flex: 1;
+    overflow: scroll;
   }
 }
 
