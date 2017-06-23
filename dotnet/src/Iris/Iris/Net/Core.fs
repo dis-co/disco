@@ -27,12 +27,7 @@ type Request =
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
-  abstract IsFinished: bool
-  abstract Start: data: byte array -> offset:int64 -> unit
-  abstract Append: data: byte array -> offset:int64 -> count:int64 -> unit
-  abstract Position: int64
-  abstract BodyLength: int64
-  abstract Finish: unit -> Request
+  abstract Process: read:int -> unit
 
 // * RequestBuilder module
 
@@ -40,143 +35,174 @@ module RequestBuilder =
 
   // ** Constants
 
-  [<Literal>]
-  let MsgLengthSize = 8L      // int64 is 8 bytes long
+  let Preamble = [| 73uy; 77uy; 83uy; 71uy |] // IMSG in ASCII
 
   [<Literal>]
-  let IdSize = 16L             // Guid has 16 bytes
+  let PreambleSize = 4                  // 4 bytes in ASCII
 
-  // length of body  | length of client id | length of request id
-  // ------------------------------------------------------------
-  // MSG_LENGTH_SIZE +       ID_SIZE       +      ID_SIZE
-  // ------------------------------------------------------------
-  let HeaderSize = MsgLengthSize + IdSize + IdSize
+  [<Literal>]
+  let MsgLengthSize = 8                 // int64 is 8 bytes long
+
+  [<Literal>]
+  let IdSize = 16                       // Guid has 16 bytes
+
+  //  preamble | length of body  | length of client id | length of request id
+  // ------------------------------------------------------------------------
+  //     4     +        8        +        16           +      16
+  // ------------------------------------------------------------------------
+  let HeaderSize = PreambleSize + MsgLengthSize + IdSize + IdSize
 
   // ** parseLength
 
-  let private parseLength (data: byte array)  (offset: int64) =
-    BitConverter.ToInt64(data, int offset)
+  let private parseLength (data: byte array) (offset: int) =
+    BitConverter.ToInt64(data, offset)
 
-  // ** unparseLength
+  // ** serializeLength
 
-  let private unparseLength (request: Request) =
+  let private serializeLength (request: Request) =
     int64 request.Body.Length
     |> BitConverter.GetBytes
-
-  // ** parseIdData
-
-  let private parseIdData (data: byte array) (offset: int64) =
-    use stream = new MemoryStream()
-    stream.Write(data, int offset, int IdSize)
-    stream.ToArray()
-
-  // ** parseGuid
-
-  let private parseGuid (data: byte array) (offset: int64) =
-    try
-      parseIdData data offset |> Guid |> Some
-    with
-      | exn ->
-        printfn "[EXN] RequestBuilder.parseGuid: %s" exn.Message
-        None
 
   // ** serialize
 
   let serialize (request: Request) : byte array =
-    let totalSize = int RequestBuilder.HeaderSize + request.Body.Length
+    let totalSize = int HeaderSize + request.Body.Length
     let destination = Array.zeroCreate totalSize
+    // copy the preamble
+    Array.Copy(
+      Preamble,
+      destination,
+      PreambleSize)
     // copy the encoded message length to destination
     Array.Copy(
-      RequestBuilder.unparseLength request,
+      RequestBuilder.serializeLength request,
+      0,
       destination,
+      PreambleSize,
       MsgLengthSize)
     // copy the connection id (peer id) to destination
     Array.Copy(
       request.ConnectionId.ToByteArray(),
-      0L,
+      0,
       destination,
-      MsgLengthSize,
+      PreambleSize + MsgLengthSize,
       IdSize)
     // copy the request id to destination
     Array.Copy(
       request.RequestId.ToByteArray(),
-      0L,
+      0,
       destination,
-      MsgLengthSize + IdSize,
+      PreambleSize + MsgLengthSize + IdSize,
       IdSize)
     // copy the message body to destination
     Array.Copy(
       request.Body,
-      0L,
+      0,
       destination,
       HeaderSize,
-      int64 request.Body.Length)
+      request.Body.Length)
     destination                         // done!
+
+  // ** findPreamble
+
+  let private findPreamble (data: byte array) =
+    match Array.tryFindIndex ((=) Preamble.[0]) data with
+    | Some index ->
+      try
+        if data.[index + 1] = Preamble.[1]
+            && data.[index + 2] = Preamble.[2]
+            && data.[index + 3] = Preamble.[3]
+        then Some index
+        else None
+      with
+        | _ -> None
+    | _ -> None
 
   // ** create
 
-  let create () =
-    let body = new MemoryStream()
+  let create (buffer: byte array) (onComplete: Request -> unit) =
+    let length = ResizeArray()
+    let client = ResizeArray()
+    let request = ResizeArray()
+    let body = ResizeArray()
 
-    let mutable position = 0L
     let mutable bodyLength = 0L
-    let mutable clientId = None
-    let mutable requestId = None
+
+    let finalize () =
+      { RequestId    = Guid (request.ToArray())
+        ConnectionId = Guid (client.ToArray())
+        Body         = body.ToArray() }
+      |> onComplete
+      length.Clear()
+      client.Clear()
+      request.Clear()
+      body.Clear()
+      bodyLength <- 0L
+
+    let inProgress () =
+      not (length.Count = 0 && client.Count = 0 && request.Count = 0)
+
+    let rec build (data: byte array) (read: int) =
+      let rest = ResizeArray()
+      // this is a fresh response, so we start off nice and neat
+      if not (inProgress()) then
+        match findPreamble data with
+        | Some start ->
+          let offset = start + PreambleSize
+          let remaining = read - offset
+          for i in 0 .. remaining - 1 do
+            match i with
+            | _ when i < MsgLengthSize ->
+              length.Add data.[i + offset]
+              if length.Count = int MsgLengthSize then
+                bodyLength <- parseLength (length.ToArray()) 0
+            | _ when i >= MsgLengthSize && i < MsgLengthSize + IdSize ->
+              client.Add data.[i + offset]
+            | _ when i >= MsgLengthSize + IdSize && i < MsgLengthSize + (2 * IdSize) ->
+              request.Add data.[i + offset]
+            | _ when int64 body.Count < bodyLength && inProgress() ->
+              body.Add data.[i + offset]
+            | _ when int64 body.Count = bodyLength && inProgress() ->
+              finalize()
+              rest.Add data.[i + offset]
+            | _ ->
+              rest.Add data.[i + offset]
+        | None -> () // ignore data when no preamble was found and this is the first call
+      else
+        let mutable addToRest = false
+        // we're already working on something here, so keep at it
+        for i in 0 .. read - 1 do
+          match i with
+          | _ when length.Count < MsgLengthSize && not addToRest ->
+            length.Add buffer.[i]
+            if length.Count = MsgLengthSize then
+              bodyLength <- parseLength (length.ToArray()) 0
+          | _ when client.Count < IdSize && not addToRest ->
+            client.Add buffer.[i]
+          | _ when request.Count < IdSize && not addToRest ->
+            request.Add buffer.[i]
+          | _ when int64 body.Count < bodyLength && not addToRest ->
+            body.Add buffer.[i]
+          | _ when int64 body.Count = bodyLength && not addToRest ->
+            finalize()
+            addToRest <- true
+            rest.Add data.[i]
+          | i ->
+            rest.Add data.[i]
+
+      // ever more to do, the recurse
+      if rest.Count > 0 then
+        build (rest.ToArray()) rest.Count
 
     { new IRequestBuilder with
-        member builder.Position
-          with get () = position
+        member state.Process(read: int) =
+          if read > 0 then build buffer read
 
-        member builder.BodyLength
-          with get () = bodyLength
-
-        member builder.IsFinished
-          with get () =
-            Option.isSome requestId
-            && Option.isSome clientId
-            && body.Position = bodyLength
-
-        member builder.Start (data: byte array) (offset: int64) =
-          match clientId, requestId, bodyLength with
-          | None, None, 0L ->
-            if int64 data.Length < (HeaderSize + int64 offset) then
-              "Buffer not big enough to complete this operation"
-              |> InvalidOperationException
-              |> raise
-            else
-              bodyLength <- parseLength data offset
-              clientId   <- parseGuid data (offset + MsgLengthSize)
-              requestId  <- parseGuid data (offset + MsgLengthSize + IdSize)
-          | _ ->
-            "This builder was already started"
-            |> InvalidOperationException
-            |> raise
-
-        member builder.Append (data: byte array) (offset: int64) (count: int64) =
-          match clientId, requestId with
-          | Some client, Some id when body.Position < bodyLength ->
-            body.Write(data, int offset, int count)
-          | Some client, Some id -> ()
-          | _ ->
-            "You must call Start before appending data"
-            |> InvalidOperationException
-            |> raise
-
-        member builder.Finish() =
-          match clientId, requestId, builder.IsFinished with
-          | Some client, Some id, true ->
-            { RequestId = id
-              ConnectionId = client
-              Body = body.ToArray() }
-          | _ ->
-            "Request not done yet"
-            |> InvalidOperationException
-            |> raise
-
-        member builder.Dispose() =
-          body.Close()
-          body.Dispose()
-      }
+        member state.Dispose() =
+          length.Clear()
+          client.Clear()
+          request.Clear()
+          body.Clear() }
 
 // * Request module
 
@@ -201,7 +227,8 @@ type IResponseBuilder = IRequestBuilder
 
 module ResponseBuilder =
 
-  let create () : IResponseBuilder = RequestBuilder.create()
+  let create data callback : IResponseBuilder =
+    RequestBuilder.create data callback
 
 // * Response module
 
@@ -213,6 +240,7 @@ module Response =
       Body = body }
 
   let serialize (response: Response) = RequestBuilder.serialize response
+
 
 // * Client
 

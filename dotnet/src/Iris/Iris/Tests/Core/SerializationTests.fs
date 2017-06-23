@@ -8,7 +8,8 @@ open Iris.Raft
 open Iris.Client
 open Iris.Service
 open Iris.Service.Persistence
-
+open System
+open System.IO
 
 [<AutoOpen>]
 module SerializationTests =
@@ -23,16 +24,59 @@ module SerializationTests =
     ftestCase "RequestResposse serialization should work" <| fun _ ->
       let encDec (request: Request) =
         let binary = Request.serialize request
-        let builder = RequestBuilder.create()
-        builder.Start binary 0L
-        int64 binary.Length - RequestBuilder.HeaderSize
-        |> builder.Append binary RequestBuilder.HeaderSize
-        let rerequest = builder.Finish()
-        Expect.equal rerequest request "Should be structurally equal"
-
+        let builder = RequestBuilder.create binary <| fun rerequest ->
+          Expect.equal rerequest request "Should be structurally equal"
+        builder.Process binary.Length
       encDec
       |> Prop.forAll Generators.requestArb
       |> Check.QuickThrowOnFailure
+
+  //  ____                     ____  _        _
+  // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
+  // | |_) / _` | '__/ __|/ _ \___ \| __/ _` | __/ _ \
+  // |  __/ (_| | |  \__ \  __/___) | || (_| | ||  __/
+  // |_|   \__,_|_|  |___/\___|____/ \__\__,_|\__\___|
+
+  let tests_parse_state_deserialization =
+    ftestCase "ParseState deserialization should work" <| fun _ ->
+      let requests = ResizeArray()
+      let rerequests = ResizeArray()
+      let blob = ResizeArray()
+
+      let collect (request: Request) =
+        requests.Add request
+        let data = Request.serialize request
+        blob.AddRange data
+
+      // generate some test data
+      collect
+      |> Prop.forAll Generators.requestArb
+      |> Check.Quick
+
+      let bufsize = 1024
+      let buffer = Array.zeroCreate bufsize
+      let payload = blob.ToArray()
+      let payloadSize = payload.Length
+      let chunked = Array.chunkBySize bufsize payload
+      let parser = RequestBuilder.create buffer rerequests.Add
+
+      let mutable read = 0
+      for chunk in chunked do
+        let num =
+          let remaining = payloadSize - read
+          if remaining >= bufsize
+          then bufsize
+          else remaining
+        Array.Copy(chunk, buffer, num)
+        parser.Process num
+        read <- read + num
+
+      Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
+
+      let rerequests = rerequests.ToArray()
+      for request in requests do
+        let rerequest = Array.tryFind ((=) request) rerequests
+        Expect.equal rerequest (Some request) "Request and Rerequest should be equal"
 
   //   ____             __ _        ____ _
   //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -396,6 +440,7 @@ module SerializationTests =
   let serializationTests =
     testList "Serialization Tests" [
       test_correct_request_serialization
+      tests_parse_state_deserialization
       test_save_restore_raft_value_correctly
       test_validate_config_change
       test_validate_user_yaml_serialization

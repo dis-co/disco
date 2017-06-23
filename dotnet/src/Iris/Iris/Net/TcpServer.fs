@@ -41,8 +41,7 @@ module TcpServer =
     abstract IPAddress: IPAddress
     abstract Port: int
     abstract Buffer: byte array
-    abstract Request: IRequestBuilder with get, set
-    abstract FinishRequest: unit -> unit
+    abstract RequestBuilder: IRequestBuilder
     abstract Subscriptions: Subscriptions
 
   // ** Connections
@@ -145,46 +144,7 @@ module TcpServer =
       try
         // Read data from the client socket.
         let bytesRead = connection.Socket.EndReceive(result)
-
-        if bytesRead > 0 then
-
-          // this is a fresh response, so we start of nice and neat
-          if isNull connection.Request then
-            let request = RequestBuilder.create()
-            connection.Request <- request
-            // start a new response at the start of the buffer
-            connection.Request.Start connection.Buffer 0L
-            // append the remaining data
-            connection.Request.Append
-              connection.Buffer
-              RequestBuilder.HeaderSize
-              (int64 bytesRead - RequestBuilder.HeaderSize)
-          elif not connection.Request.IsFinished then
-            let required = connection.Request.BodyLength - connection.Request.Position
-            if required >= int64 Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
-              // just add the entire current buffer
-              connection.Request.Append connection.Buffer 0L (int64 Core.BUFFER_SIZE)
-            elif required <= int64 bytesRead then
-              connection.Request.Append connection.Buffer 0L required
-              if connection.Request.IsFinished then
-                connection.FinishRequest()
-              let remaining = int64 bytesRead - required
-              if remaining > 0L && remaining >= RequestBuilder.HeaderSize then
-                let response = RequestBuilder.create()
-                connection.Request <- response
-                // start the new response after `require` offset
-                connection.Request.Start connection.Buffer required
-                // append the remaining data
-                connection.Request.Append
-                  connection.Buffer
-                  (required + RequestBuilder.HeaderSize)
-                  remaining
-            else
-              connection.Request.Append connection.Buffer 0L (int64 bytesRead)
-
-          // if the request is finished, create and notify listeners
-          if connection.Request.IsFinished then
-            connection.FinishRequest()
+        connection.RequestBuilder.Process bytesRead
 
         // keep trying to get more
         beginReceive connection receiveCallback
@@ -207,9 +167,10 @@ module TcpServer =
 
       let buffer = Array.zeroCreate Core.BUFFER_SIZE
 
-      let mutable requestLength = 0
-      let mutable requestId = None
-      let mutable request:IRequestBuilder = null
+      let builder = RequestBuilder.create buffer <| fun request ->
+        request
+        |> TcpServerEvent.Request
+        |> Observable.onNext state.Subscriptions
 
       let connection =
         { new IConnection with
@@ -231,19 +192,8 @@ module TcpServer =
             member connection.Buffer
               with get () = buffer
 
-            member connection.Request
-              with get () = request
-              and set builder = request <- builder
-
-            member connection.FinishRequest() =
-              match request with
-              | null -> ()
-              | builder ->
-                request <- null
-                builder.Finish()
-                |> TcpServerEvent.Request
-                |> Observable.onNext connection.Subscriptions
-                builder.Dispose()
+            member connection.RequestBuilder
+              with get () = builder
 
             member connection.Subscriptions
               with get () = state.Subscriptions

@@ -41,8 +41,7 @@ module rec TcpClient =
     abstract Sent: ManualResetEvent
     abstract Buffer: byte array
     abstract PendingRequests: PendingRequests
-    abstract Response: IResponseBuilder with get, set
-    abstract FinishResponse: unit -> unit
+    abstract ResponseBuilder: IResponseBuilder
     abstract Subscriptions: Subscriptions
 
   // ** connectCallback
@@ -78,38 +77,7 @@ module rec TcpClient =
 
         // Read data from the remote device.
         let bytesRead = state.Socket.EndReceive(ar)
-
-        if bytesRead > 0 then
-          // this is a fresh response, so we start of nice and neat
-          if isNull state.Response then
-            let response = ResponseBuilder.create()
-            state.Response <- response
-            state.Response.Start state.Buffer 0L // start a new response at the start of the buffer
-
-            state.Response.Append
-              state.Buffer
-              RequestBuilder.HeaderSize
-              (int64 bytesRead - RequestBuilder.HeaderSize)
-
-          elif not state.Response.IsFinished then
-            let required = state.Response.BodyLength - state.Response.Position
-            if required >= int64 Core.BUFFER_SIZE && bytesRead = Core.BUFFER_SIZE then
-              // just add the entire current buffer
-              state.Response.Append state.Buffer 0L (int64 Core.BUFFER_SIZE)
-            elif required <= int64 bytesRead then
-              state.Response.Append state.Buffer 0L required
-              if state.Response.IsFinished then
-                state.FinishResponse()
-              let remaining = int64 bytesRead - required
-              if remaining > 0L && remaining >= RequestBuilder.HeaderSize then
-                let response = ResponseBuilder.create()
-                state.Response <- response
-                // start the new response after `require` offset
-                state.Response.Start state.Buffer required
-                state.Response.Append state.Buffer (required + RequestBuilder.HeaderSize) remaining
-            else state.Response.Append state.Buffer 0L (int64 bytesRead)
-          if state.Response.IsFinished then
-            state.FinishResponse()
+        state.ResponseBuilder.Process bytesRead
         beginReceive state
       with
         | exn ->
@@ -172,9 +140,14 @@ module rec TcpClient =
       let buffer = Array.zeroCreate Core.BUFFER_SIZE
       let connected = new ManualResetEvent(false)
       let sent = new ManualResetEvent(false)
-      let mutable response = null
       let pending = PendingRequests()
       let subscriptions = Subscriptions()
+
+      let builder = ResponseBuilder.create buffer <| fun response ->
+        response
+        |> TcpClientEvent.Response
+        |> Observable.onNext subscriptions
+
       { new IState with
           member state.PeerId
             with get () = peer
@@ -200,28 +173,14 @@ module rec TcpClient =
           member state.PendingRequests
             with get () = pending
 
-          member state.Response
-            with get () = response
-             and set builder = response <- builder
-
-          member state.FinishResponse() =
-            match response with
-            | null -> ()
-            | builder ->
-              response <- null
-              builder.Finish()
-              |> TcpClientEvent.Response
-              |> Observable.onNext subscriptions
-              builder.Dispose()
+          member state.ResponseBuilder
+            with get () = builder
 
           member state.Subscriptions
             with get () = subscriptions
 
           member state.Dispose() =
             Socket.dispose client
-            if not (isNull response) then
-              response.Dispose()
-              response <- null
         }
 
   let create (options: ClientConfig) =
