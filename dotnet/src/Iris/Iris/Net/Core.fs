@@ -140,14 +140,11 @@ module RequestBuilder =
       body.Clear()
       bodyLength <- 0L
 
-    let inProgress () =
-      not (preamble.Count = 0 && length.Count = 0 && client.Count = 0 && request.Count = 0)
-
     let rec build (data: byte array) (read: int) =
       let rest = ResizeArray()
       let mutable addToRest = false
       // this is a fresh response, so we start off nice and neat
-      if not (inProgress()) then
+      if preamble.Count = 0 && length.Count = 0 && client.Count = 0 && request.Count = 0 then
         match findPreamble data with
         | Some offset when offset <= read -> // we found the possible start of a preamble
           let remaining = read - offset
@@ -174,10 +171,10 @@ module RequestBuilder =
             | _ when i >= PreambleMsgIdOffset && i < HeaderSize          && not addToRest ->
               request.Add data.[i + offset]
 
-            | _ when int64 body.Count < bodyLength && inProgress()      && not addToRest ->
+            | _ when int64 body.Count < bodyLength                      && not addToRest ->
               body.Add data.[i + offset]
 
-            | _ when int64 body.Count = bodyLength && inProgress()      && not addToRest ->
+            | _ when int64 body.Count = bodyLength                      && not addToRest ->
               finalize()
               addToRest <- true
               rest.Add data.[i + offset]
@@ -221,8 +218,7 @@ module RequestBuilder =
 
           | i -> rest.Add data.[i]
 
-      if  inProgress()
-        && preamble.Count     = PreambleSize
+      if preamble.Count       = PreambleSize
         && preamble.ToArray() = Preamble
         && length.Count       = MsgLengthSize
         && client.Count       = IdSize
