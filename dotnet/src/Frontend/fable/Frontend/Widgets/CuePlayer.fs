@@ -11,8 +11,11 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open PinView
 open Helpers
+type RCom = React.ComponentClass<obj>
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
+
+let ContentEditable: RCom = importDefault "../../../src/widgets/ContentEditable"
 
 module private Helpers =
   type RCom = React.ComponentClass<obj>
@@ -109,10 +112,7 @@ module private Helpers =
 
 type [<Pojo>] private CueState =
   { Cue: Cue
-    IsOpen: bool
-    Name: Name
-    Offset: string
-    Time: string }
+    IsOpen: bool }
 
 type [<Pojo>] private CueProps =
   { Key: string
@@ -132,14 +132,14 @@ type private CueView(props) =
   let mutable selfRef = Unchecked.defaultof<Browser.Element>
   do
     let cue = findCue props.CueRef.CueId props.Global.state
-    base.setInitState({Cue = cue; IsOpen = false; Name = cue.Name; Offset = "0000"; Time = "00:00:00" })
+    base.setInitState({Cue = cue; IsOpen = false })
 
   member this.componentDidMount() =
     let globalModel = this.props.Global
     disposables.Add(globalModel.subscribe(!^(nameof globalModel.state.cues), fun _ dic ->
       if tryDic "Id" this.state.Cue.Id dic then
         let cue = Map.find this.state.Cue.Id globalModel.state.cues
-        this.setState({this.state with Cue=cue; Name=cue.Name})
+        this.setState({this.state with Cue=cue})
     ))
     disposables.Add(this.props.Global.subscribeToEvent("drag", fun (ev: IDragEvent<Pin>) _ ->
         if selfRef <> null then
@@ -165,10 +165,17 @@ type private CueView(props) =
     for d in disposables do
       d.dispose()
 
-  member this.RenderInput(pos: int, content) =
-    td [ClassName ("p" + string pos)] [
-      span [ClassName "contentEditable"] [str content]
-    ]
+  member this.RenderInput(pos: int, content: string, ?update: string->unit) =
+    let content =
+      match update with
+      | Some update ->
+        from ContentEditable
+          %["tagName" ==> "span"
+            "html" ==> content
+            "onChange" ==> update
+            "className" ==> "contentEditable"] []
+      | None -> span [] [str content]
+    td [ClassName ("p" + string pos)] [content]
 
   member this.render() =
     let arrowButton =
@@ -214,8 +221,9 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.RenderInput(3, "0000")
-        this.RenderInput(4, "Untitled")
+        this.RenderInput(3, String.Format("{0:0000}", this.props.CueIndex + 1))
+        this.RenderInput(4, unwrap this.state.Cue.Name, (fun txt ->
+          { this.state.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
         this.RenderInput(5, "00:00:00")
         this.RenderInput(6, "shortkey")
         autocallButton
@@ -557,7 +565,7 @@ type CuePlayerView(props) =
         tr [ClassName "iris-list-label-row"] [
           header 1 ""
           header 2 ""
-          header 3 "Nr.:"
+          header 3 "Nr."
           header 4 "Cue name"
           header 5 "Delay"
           header 6 "Shortkey"
