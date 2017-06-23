@@ -6,6 +6,7 @@ namespace Iris.Tests
 open FsCheck
 open FsCheck.GenBuilder
 open Iris.Core
+open Iris.Net
 open Iris.Raft
 open Iris.Client
 open Iris.Service
@@ -95,6 +96,14 @@ module Generators =
       let! value = Arb.generate<Guid>
       return Id (string value)
     }
+
+  //   ____       _     _
+  //  / ___|_   _(_) __| |
+  // | |  _| | | | |/ _` |
+  // | |_| | |_| | | (_| |
+  //  \____|\__,_|_|\__,_|
+
+  let guidGen = Arb.generate<Guid>
 
   //  __  __            _     _
   // |  \/  | __ _  ___| |__ (_)_ __   ___
@@ -1224,6 +1233,22 @@ module Generators =
       Gen.map NOK apiErrorGen ]
     |> Gen.oneof
 
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
+
+  let requestGen = gen {
+      let! reqId = guidGen
+      let! connId = guidGen
+      let! data = Gen.arrayOf Arb.generate<byte>
+      return { RequestId = reqId
+               ConnectionId = connId
+               Body = data }
+    }
+
   //     _         _     _ _
   //    / \   _ __| |__ (_) |_ _ __ __ _ _ __ _   _
   //   / _ \ | '__| '_ \| | __| '__/ _` | '__| | | |
@@ -1251,3 +1276,4 @@ module Generators =
   let cuePlayerArb = Arb.fromGen cuePlayerGen
   let stateMachineArb = Arb.fromGen stateMachineGen
   let stateArb = Arb.fromGen stateGen
+  let requestArb = Arb.fromGen requestGen

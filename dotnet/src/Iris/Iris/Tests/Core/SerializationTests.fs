@@ -3,6 +3,7 @@ namespace Iris.Tests
 open Expecto
 open FsCheck
 open Iris.Core
+open Iris.Net
 open Iris.Raft
 open Iris.Client
 open Iris.Service
@@ -11,6 +12,28 @@ open Iris.Service.Persistence
 
 [<AutoOpen>]
 module SerializationTests =
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
+
+  let test_correct_request_serialization =
+    ftestCase "RequestResposse serialization should work" <| fun _ ->
+      let encDec (request: Request) =
+        let binary = Request.serialize request
+        let builder = RequestBuilder.create()
+        builder.Start binary 0L
+        int64 binary.Length - RequestBuilder.HeaderSize
+        |> builder.Append binary RequestBuilder.HeaderSize
+        let rerequest = builder.Finish()
+        Expect.equal rerequest request "Should be structurally equal"
+
+      encDec
+      |> Prop.forAll Generators.requestArb
+      |> Check.QuickThrowOnFailure
+
   //   ____             __ _        ____ _
   //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
   // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
@@ -372,6 +395,7 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_correct_request_serialization
       test_save_restore_raft_value_correctly
       test_validate_config_change
       test_validate_user_yaml_serialization

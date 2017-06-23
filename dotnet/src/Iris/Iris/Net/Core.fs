@@ -116,25 +116,25 @@ module RequestBuilder =
   // ** create
 
   let create () =
-    let stream = new MemoryStream()
+    let body = new MemoryStream()
 
+    let mutable position = 0L
     let mutable bodyLength = 0L
     let mutable clientId = None
     let mutable requestId = None
 
     { new IRequestBuilder with
         member builder.Position
-          with get () = stream.Position
+          with get () = position
 
         member builder.BodyLength
           with get () = bodyLength
 
         member builder.IsFinished
           with get () =
-            bodyLength = 0L
-            && Option.isSome requestId
+            Option.isSome requestId
             && Option.isSome clientId
-            && stream.Position = bodyLength
+            && body.Position = bodyLength
 
         member builder.Start (data: byte array) (offset: int64) =
           match clientId, requestId, bodyLength with
@@ -154,8 +154,8 @@ module RequestBuilder =
 
         member builder.Append (data: byte array) (offset: int64) (count: int64) =
           match clientId, requestId with
-          | Some client, Some id when stream.Position < bodyLength ->
-            stream.Write(data, int offset, int count)
+          | Some client, Some id when body.Position < bodyLength ->
+            body.Write(data, int offset, int count)
           | Some client, Some id -> ()
           | _ ->
             "You must call Start before appending data"
@@ -167,15 +167,15 @@ module RequestBuilder =
           | Some client, Some id, true ->
             { RequestId = id
               ConnectionId = client
-              Body = stream.ToArray() }
+              Body = body.ToArray() }
           | _ ->
             "Request not done yet"
             |> InvalidOperationException
             |> raise
 
         member builder.Dispose() =
-          stream.Close()
-          stream.Dispose()
+          body.Close()
+          body.Dispose()
       }
 
 // * Request module

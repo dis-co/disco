@@ -11,6 +11,7 @@ open Microsoft.FSharp.Control
 
 [<AutoOpen>]
 module NetIntegrationTests =
+
   //  _   _      _
   // | \ | | ___| |_
   // |  \| |/ _ \ __|
