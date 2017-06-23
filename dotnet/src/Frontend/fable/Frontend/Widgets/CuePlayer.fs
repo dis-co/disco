@@ -174,7 +174,7 @@ type private CueView(props) =
     let arrowButton =
       td [ClassName "p1"] [
         button [
-          ClassName ("icon uiControll " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+          ClassName ("iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
             ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
@@ -183,7 +183,7 @@ type private CueView(props) =
     let playButton =
       td [ClassName "p2"] [
         button [
-          ClassName "icon icon-play"
+          ClassName "iris-icon icon-play"
           OnClick (fun ev ->
             ev.stopPropagation()
             updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
@@ -193,7 +193,7 @@ type private CueView(props) =
     let autocallButton =
       td [ClassName "p7"] [
         button [
-          ClassName "icon icon-autocall"
+          ClassName "iris-icon icon-autocall"
           OnClick (fun ev ->
             ev.stopPropagation()
             // Browser.window.alert("Auto call!")

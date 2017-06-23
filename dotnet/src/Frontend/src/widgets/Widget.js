@@ -11,12 +11,12 @@ export default class Widget extends Component {
         <div className="iris-draggable-handle">
           <span>{this.props.model.name}</span>
           <div className="WidgetWindowControl">
-            <button className="icon uiControll icon-resize" onClick={ev => {
+            <button className="iris-icon icon-control icon-resize" onClick={ev => {
               ev.stopPropagation();
               this.props.global.addTab(this.props.model, this.props.id);
               this.props.global.removeWidget(this.props.id);
             }}></button>
-            <button className="icon uiControll icon-close" onClick={ev => {
+            <button className="iris-icon icon-control icon-close" onClick={ev => {
               ev.stopPropagation();
               this.props.global.removeWidget(this.props.id);
             }}></button>

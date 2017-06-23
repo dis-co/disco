@@ -45,10 +45,10 @@ export const Atom = props =>
     </div>
 
 export const More = props =>
-    <button className="icon uiControll icon-more">{props.children}</button>
+    <button className="icon icon-control icon-more">{props.children}</button>
 
 export const Less = props =>
-    <button className="icon uiControll icon-less">{props.children}</button>
+    <button className="icon icon-control icon-less">{props.children}</button>
 
 export const Output = props =>
     <span className="iris-output icon icon-host"> {props.children} <span className="icon icon-bull iris-status-off"></span></span>
@@ -95,7 +95,7 @@ export const List = props =>
         {renderLabels(props)}
         {rangeTo(props.rows, row =>
             <li key={row}>{renderColumns(props)}
-                
+
             </li>)}
 
     </ul>
@@ -117,16 +117,16 @@ export const ListSorted = props =>
 export class TitleBar extends Component {
   constructor(props) {
     super(props);
-  } 
+  }
   render() {
     return <div>{this.props.children}</div>
-  }  
-} 
+  }
+}
 
 export class Widget extends Component {
   constructor(props) {
     super(props);
-  } 
+  }
 
   render() {
     var children = ensureArray(this.props.children).slice();
@@ -143,11 +143,11 @@ export class Widget extends Component {
           <span>{this.props.title}</span>
           {titleBar.length > 0 ? titleBar[0] : null}
           <div className="WidgetWindowControl">
-          <button className="icon uiControll icon-resize" onClick={() => {
+          <button className="iris-icon icon-control icon-resize" onClick={() => {
             {/*this.props.global.addTab(this.props.model, this.props.id);
             this.props.global.removeWidget(this.props.id);*/}
           }}></button>
-          <button className="icon uiControll icon-close" onClick={() => {
+          <button className="iris-icon icon-control icon-close" onClick={() => {
             {/*this.props.global.removeWidget(this.props.id);*/}
           }}></button>
           </div>
@@ -162,7 +162,7 @@ export const CueEditor = props =>
   <Widget title="Cue Editor">
       <TitleBar>
           <PlayButton>GO</PlayButton>
-          <Button>GO</Button>        
+          <Button>GO</Button>
       </TitleBar>
       <List rows={10}>
         <More width={15}></More>
@@ -184,7 +184,7 @@ export const CueEditor = props =>
   <Widget title="hohohohohoo">
     <TitleBar>
           <PlayButton>GO</PlayButton>
-          <Button>GO</Button>        
+          <Button>GO</Button>
       </TitleBar>
       <ListSorted>
         <Row label ="VVVV/design.4vp"><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom><Atom>hoho</Atom></Row>
@@ -197,7 +197,7 @@ export const CueEditor = props =>
   <Widget title="Hosts">
     <TitleBar>
           <PlayButton>GO</PlayButton>
-          <Button>GO</Button>        
+          <Button>GO</Button>
       </TitleBar>
       <List rows={10}>
         <Output label="Hosts" width={80}>Wilhelm</Output>
@@ -210,4 +210,4 @@ export const CueEditor = props =>
   </Widget>
 
 
-  
+

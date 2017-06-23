@@ -114,7 +114,7 @@ type PinView(props) =
 
   member this.RenderArrow() =
     button [
-      ClassName ("icon uiControll " + (if this.state.isOpen then "icon-less" else "icon-more"))
+      ClassName ("iris-icon icon-control " + (if this.state.isOpen then "icon-less" else "icon-more"))
       OnClick (fun ev ->
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
