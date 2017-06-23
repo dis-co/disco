@@ -15,10 +15,9 @@ type RCom = React.ComponentClass<obj>
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
 
-let ContentEditable: RCom = importDefault "../../../src/widgets/ContentEditable"
-
 module private Helpers =
   type RCom = React.ComponentClass<obj>
+  let ContentEditable: RCom = importDefault "../../../src/widgets/ContentEditable"
   let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
 
   let inline Class x = ClassName x
@@ -97,6 +96,8 @@ module private Helpers =
         [|x|]
       elif i >= len then
         failwith "Index out of array bounds"
+      elif i < 0 then
+        Array.append [|x|] xs
       elif i = (len - 1) then
         Array.append xs [|x|]
       else
@@ -115,7 +116,7 @@ type [<Pojo>] private CueState =
     IsOpen: bool }
 
 type [<Pojo>] private CueProps =
-  { Key: string
+  { key: string
     Global: IGlobalModel
     CueRef: CueReference
     CueGroup: CueGroup
@@ -207,13 +208,27 @@ type private CueView(props) =
           )
         ] []
       ]
+    let removeButton =
+      td [ClassName "p8"] [
+        button [
+          ClassName "iris-icon icon-close"
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            let id = this.props.CueRef.Id
+            // Change selection if this item was selected
+            if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+              this.props.SelectCue this.props.CueGroupIndex 0
+            let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
+            { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
+            |> UpdateCueList |> ClientContext.Singleton.Post)
+        ] []
+      ]
     let isSelected =
       if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
       then "cue iris-selected" else "cue"
     let cueHeader =
       tr [
-        Key this.props.Key
         OnClick (fun _ ->
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
@@ -227,6 +242,7 @@ type private CueView(props) =
         this.RenderInput(5, "00:00:00")
         this.RenderInput(6, "shortkey")
         autocallButton
+        removeButton
       ]
     let rows =
       if not this.state.IsOpen then
@@ -250,10 +266,9 @@ type private CueView(props) =
                     onDragStart = None } []
             ])
           |> Array.toList
-        [cueHeader; tr [] [td [ColSpan 7.] [ul [ClassName "iris-graphview"] pinGroups]]]
-    // cueHeader
+        [cueHeader; tr [] [td [ColSpan 8.] [ul [ClassName "iris-graphview"] pinGroups]]]
     tr [] [
-      td [ColSpan 7.] [
+      td [ColSpan 8.] [
         table [
           ClassName ("cueplayer-nested-table " + isSelected)
           Ref (fun el -> selfRef <- el)
@@ -528,7 +543,7 @@ type CuePlayerView(props) =
       let cueList, cuePlayer = cueMockup()
       AddCueList cueList |> ClientContext.Singleton.Post
       AddCuePlayer cuePlayer |> ClientContext.Singleton.Post
-      base.setInitState({ CueList = Some cueList; SelectedCueGroupIndex = 0; SelectedCueIndex = 0 })
+      base.setInitState({ CueList = Some cueList; SelectedCueGroupIndex = -1; SelectedCueIndex = -1 })
     else
       // TODO: Use a dropdown to choose the player/list
       let cueList =
@@ -561,7 +576,7 @@ type CuePlayerView(props) =
         // Update the CueList
         let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
         // Send messages to backend
-        AddCue newCue |>  ClientContext.Singleton.Post
+        AddCue newCue |> ClientContext.Singleton.Post
         UpdateCueList newCueList |> ClientContext.Singleton.Post
     ))
 
@@ -570,32 +585,32 @@ type CuePlayerView(props) =
       d.Dispose()
 
   member this.RenderCues() =
-      this.state.CueList
-      // TODO: Temporarily assume just one group
-      |> Option.bind (fun cueList -> Seq.tryHead cueList.Groups)
-      |> Option.map (fun group ->
-        group.CueRefs
-        |> Array.mapi (fun i cueRef ->
-          com<CueView,_,_>
-            { Key = string cueRef.Id
-              Global = this.props.``global``
-              CueRef = cueRef
-              CueGroup = group
-              CueList = this.state.CueList.Value
-              CueIndex = i
-              CueGroupIndex = 0 //this.props.CueGroupIndex
-              SelectedCueIndex = this.state.SelectedCueIndex
-              SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-              SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
-            [])
-        |> Array.toList)
-      |> defaultArg <| []
+    this.state.CueList
+    // TODO: Temporarily assume just one group
+    |> Option.bind (fun cueList -> Seq.tryHead cueList.Groups)
+    |> Option.map (fun group ->
+      group.CueRefs
+      |> Array.mapi (fun i cueRef ->
+        com<CueView,_,_>
+          { key = string cueRef.Id
+            Global = this.props.``global``
+            CueRef = cueRef
+            CueGroup = group
+            CueList = this.state.CueList.Value
+            CueIndex = i
+            CueGroupIndex = 0 //this.props.CueGroupIndex
+            SelectedCueIndex = this.state.SelectedCueIndex
+            SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+            SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
+          [])
+      |> Array.toList)
+    |> defaultArg <| []
 
   member this.render() =
     let inline header i s =
       th [ClassName (sprintf "p%i iris-list-label" i)] [str s]
     table [ClassName "iris-list cueplayer-table"] [
-      thead [Key "labels"] [
+      thead [Key "header"] [
         tr [ClassName "iris-list-label-row"] [
           header 1 ""
           header 2 ""
@@ -604,6 +619,7 @@ type CuePlayerView(props) =
           header 5 "Delay"
           header 6 "Shortkey"
           header 7 "Autocall"
+          header 8 ""
         ]
       ]
       tbody [] (this.RenderCues())
