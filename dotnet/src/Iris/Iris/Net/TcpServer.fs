@@ -198,7 +198,6 @@ module TcpServer =
             member connection.Dispose() =
               try
                 cts.Cancel()
-                cts.Dispose()
               with
                 | _ -> ()
               try

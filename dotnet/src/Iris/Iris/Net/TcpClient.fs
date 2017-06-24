@@ -235,7 +235,9 @@ module rec TcpClient =
           with get () = subscriptions
 
         member state.Dispose() =
-          dispose cts
+          try
+            cts.Cancel()
+          with | _ -> ()
           builder.Dispose()
           Socket.dispose client
       }
