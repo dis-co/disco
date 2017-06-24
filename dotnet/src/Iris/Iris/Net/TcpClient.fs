@@ -107,16 +107,14 @@ module rec TcpClient =
       let state = ar.AsyncState :?> IState
 
       // Complete sending the data to the remote device.
-      let bytesSent = state.Socket.EndSend(ar)
-
-      printfn "Sent %d bytes to server." bytesSent
+      state.Socket.EndSend(ar) |> ignore
 
       // Signal that all bytes have been sent.
       state.Sent.Set() |> ignore
     with
       | exn ->
         exn.Message
-        |> printfn "exn: %s"
+        |> Logger.err (tag "sendCallback")
 
   let private send (state: IState) (request: Request) =
     try
@@ -134,7 +132,7 @@ module rec TcpClient =
     with
       | exn ->
         exn.Message
-        |> printfn "exn: %s"
+        |> Logger.err (tag "send")
 
   let private makeState id peer endpoint client =
       let buffer = Array.zeroCreate Core.BUFFER_SIZE

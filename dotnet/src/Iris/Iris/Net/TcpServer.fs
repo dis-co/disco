@@ -92,14 +92,12 @@ module TcpServer =
         let handler = result.AsyncState :?> Socket
 
         // Complete sending the data to the remote device.
-        let bytesSent = handler.EndSend(result)
-
-        printfn "Sent %d bytes to client." bytesSent
+        handler.EndSend(result) |> ignore
       with
         | :? ObjectDisposedException -> ()
         | exn ->
           exn.Message
-          |> printfn "sendCallback: exn: %s"
+          |> Logger.err (tag "sendCallback")
 
     let send (response: OutgoingResponse) (socket: Socket) id subscriptions =
       try
@@ -144,7 +142,6 @@ module TcpServer =
       try
         // Read data from the client socket.
         let bytesRead = connection.Socket.EndReceive(result)
-        printfn "bytesRead: %d" bytesRead
         connection.RequestBuilder.Process bytesRead
 
         // keep trying to get more
@@ -156,7 +153,7 @@ module TcpServer =
           |> Observable.onNext connection.Subscriptions
         | exn ->
           exn.Message
-          |> printfn "EXN: receiveCallback: %s"
+          |> Logger.err (tag "receiveCallback")
           connection.Id
           |> TcpServerEvent.Disconnect
           |> Observable.onNext connection.Subscriptions
@@ -201,7 +198,6 @@ module TcpServer =
               with get () = state.Subscriptions
 
             member connection.Dispose() =
-              printfn "disposing %O" id
               try
                 cts.Cancel()
                 cts.Dispose()
