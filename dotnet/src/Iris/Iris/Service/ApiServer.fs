@@ -269,7 +269,7 @@ module ApiServer =
 
   // ** publish
 
-  let private publish (state: ServerState) (sm: StateMachine) (agent: ApiAgent) =
+  let private publish (state: ServerState) (sm: StateMachine) (_: ApiAgent) =
     sm |> Binary.encode |> state.PubSub.Send
 
   // ** handleSetStatus
@@ -410,7 +410,7 @@ module ApiServer =
 
   let private handleServerEvent state (ev: TcpServerEvent) agent =
     match ev with
-    | TcpServerEvent.Connect(peer, ip, port) ->
+    | TcpServerEvent.Connect(_, ip, port) ->
       sprintf "new connnection from %O:%d" ip port
       |> Logger.debug (tag "handleServerEvent")
       state
@@ -458,7 +458,7 @@ module ApiServer =
     | TcpClientEvent.Connected _ ->
       "Connected" |> Logger.debug (tag "handleClientEvent")
       state
-    | TcpClientEvent.Disconnected id ->
+    | TcpClientEvent.Disconnected _ ->
       "Disconnected" |> Logger.debug (tag "handleClientEvent")
       state
     | TcpClientEvent.Response response ->
@@ -589,7 +589,7 @@ module ApiServer =
               if Service.isRunning store.State.Status then
                 match ev with
                 | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
-                | IrisEvent.Append (origin, cmd) ->
+                | IrisEvent.Append (_, cmd) ->
                   updateAllClients store.State cmd
                   publish store.State cmd agent
                 | _ -> ()
