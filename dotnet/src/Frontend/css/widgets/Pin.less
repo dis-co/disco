@@ -1,6 +1,7 @@
 @base-height: 25px;
 @row-height: 17px;
 @pin-width: 120px;
+@arrow-size: 14px;
 
 .iris-pingroup {
   margin: 5px;
@@ -10,66 +11,58 @@
   flex-wrap: wrap;
   .iris-pingroup-name {
     margin: 5px;
-  }  
+  }
 }
 
 .iris-pin {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  float: left;
-  justify-content: flex-start;
-  align-content: stretch;
-  align-items: stretch;
-  margin: 2px;
-  // margin-left: 5px;
-  // margin-bottom: 5px;
-  width: @pin-width;
+  // margin: 1px 3px 3px 0px;
+  table {
+    border-spacing: 1px;
+    border-collapse:separate;
+  }
 }
 
 .iris-pin-child {
-  padding: 0px;
-  background: #555;
-  color:#fff;
-  line-height: @base-height;
-  border-left: 1px solid #fff;
-  overflow: hidden;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  transition: 0.1s;
-
-  &:nth-child(1) {
-    border-top-left-radius: 13px;
-    border-bottom-left-radius: 13px;
-    border: none;
-  }
-
-  /*.iris-pin-child:nth-child(2):hover{
-    cursor: move;
-  }*/
-
-  &:last-child {
-    border-top-right-radius: 13px;
-    border-bottom-right-radius: 13px;
-  }
-
-  span {
-    display: block;
-    background-color: #6E6E6E;
-    margin-top: 1px;
-    line-height: @row-height - 1px;
-    padding:0px 5px 0px 10px;
+  td {
     cursor: default;
-
+    vertical-align: middle;
+    font-weight: normal;
+    padding: 1px 4px 1px 2px;
+    color: #fff !important;
+    background-color: #555;
+    &:first-child {
+      padding-left: 6px;
+      // border-right: white solid 1px
+    }
     &:hover {
       background-color: #7F7F7F;
       transition: 0.1s;
     }
+  }
 
-    &:first-child {
-      line-height: @base-height;
-      margin: 0px;
-      background: none;
+  .icon-control {
+    color: white;
+    width: @arrow-size;
+    height: @arrow-size;
+    padding: 1px 0 0 0 ;
+  }
+
+  &:first-child {
+    td:first-child {
+      cursor: move;
+      border-top-left-radius: 10px;
+    }
+    td:last-child {
+      border-top-right-radius: 10px;
+    }
+  }
+
+  &:last-child {
+    td:first-child {
+      border-bottom-left-radius: 10px;
+    }
+    td:last-child {
+      border-bottom-right-radius: 10px;
     }
   }
 }

@@ -78,18 +78,22 @@ type private GlobalStateMutable(readState: unit->State option) =
         version = "0.0.0"
         buildNumber = "0"  } with get, set
   interface IGlobalState with
-
     member this.logs = upcast this.Logs
     member this.tabs = upcast this.Tabs
     member this.widgets = upcast this.Widgets
     member this.clock = this.Clock
     member this.useRightClick = this.UseRightClick
     member this.serviceInfo = this.ServiceInfo
-    member this.project = readState() |> Option.map (fun s -> s.Project)
     member this.pinGroups = projectOrEmpty (fun s -> s.PinGroups)
     member this.cues = projectOrEmpty (fun s -> s.Cues)
     member this.cueLists = projectOrEmpty (fun s -> s.CueLists)
     member this.cuePlayers = projectOrEmpty (fun s -> s.CuePlayers)
+    member this.project =
+      #if DESIGN
+      MockData.project |> Some
+      #else
+      readState() |> Option.map (fun s -> s.Project)
+      #endif
 
 /// To prevent duplication, this is the model all other views have access to.
 /// It manages the information coming from backend/shared worker.

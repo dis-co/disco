@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Core.Frontend", "Core.Frontend\Core.Frontend.fsproj", "{A98AF65E-A2F8-46B4-9171-0093DCFA7753}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Core.Frontend", "Core.Frontend/Core.Frontend.fsproj", "{A98AF65E-A2F8-46B4-9171-0093DCFA7753}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Frontend", "Frontend\Frontend.fsproj", "{33504E9E-C039-4BEF-AD83-CF23D8BD5465}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Frontend", "Frontend/Frontend.fsproj", "{33504E9E-C039-4BEF-AD83-CF23D8BD5465}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Worker", "Worker\Worker.fsproj", "{90A8CC7C-7EDD-4685-9720-65F520C6593A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Worker", "Worker/Worker.fsproj", "{90A8CC7C-7EDD-4685-9720-65F520C6593A}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Tests.Frontend", "Tests.Frontend\Tests.Frontend.fsproj", "{8C2FA483-81D2-4C27-A28E-A753C297174B}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Tests.Frontend", "Tests.Frontend/Tests.Frontend.fsproj", "{8C2FA483-81D2-4C27-A28E-A753C297174B}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FlatBuffersPlugin", "FlatBuffersPlugin\FlatBuffersPlugin.fsproj", "{B70913EC-4F64-4B99-8E23-5846737ECFA8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FlatBuffersPlugin", "FlatBuffersPlugin/FlatBuffersPlugin.fsproj", "{B70913EC-4F64-4B99-8E23-5846737ECFA8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

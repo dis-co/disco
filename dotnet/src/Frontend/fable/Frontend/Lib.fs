@@ -23,18 +23,6 @@ let renderApp(domel: obj) =
   ReactDOM?render(React?createElement(App), domel) |> ignore
 
 // TYPES -----------------------------------------------------
-type GenericObservable<'T>() =
-    let listeners = Dictionary<Guid,IObserver<'T>>()
-    member x.Trigger v =
-      for lis in listeners.Values do
-        lis.OnNext v
-    interface IObservable<'T> with
-      member x.Subscribe w =
-        let guid = Guid.NewGuid()
-        listeners.Add(guid, w)
-        { new IDisposable with
-          member x.Dispose() = listeners.Remove(guid) |> ignore }
-
 [<NoComparison>]
 type DragEvent = {
   ``type``: string; value: obj; x: int; y: int;
@@ -42,7 +30,6 @@ type DragEvent = {
 
 type [<Pojo>] TreeNode =
   { ``module``: string; children: TreeNode[] option }
-
 
 // VALUES ----------------------------------------------------
 let EMPTY = Constants.EMPTY
@@ -54,7 +41,7 @@ let getClientContext() =
     ClientContext.Singleton
 
 let private dragObservable =
-    GenericObservable<DragEvent>()
+    Widgets.GenericObservable<DragEvent>()
 
 let subscribeToDrags (f: DragEvent->unit) =
   Observable.subscribe f dragObservable
