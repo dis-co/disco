@@ -502,19 +502,8 @@ type private CueView(props) =
 //       ]
 //     ]
 
-type private MyObservable<'T>() =
-    let listeners = ResizeArray<IObserver<'T>>()
-    member x.Trigger v =
-        for lis in listeners do
-            lis.OnNext v
-    interface IObservable<'T> with
-        member x.Subscribe w =
-            listeners.Add(w)
-            { new IDisposable with
-                member x.Dispose() = listeners.Remove(w) |> ignore }
-
 type CuePlayerModel() =
-  let clickObservable = MyObservable()
+  let clickObservable = GenericObservable()
   member __.titleBar =
     button [OnClick (fun _ -> clickObservable.Trigger())] [str "Add Cue"]
   member __.addCue =

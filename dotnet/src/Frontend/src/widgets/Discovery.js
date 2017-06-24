@@ -2,7 +2,7 @@ import * as React from "react"
 import { IDisposable, ILayout, IIris } from "../Interfaces"
 import { GlobalModel } from "../../fable/Frontend/GlobalModel.fs"
 import domtoimage from "dom-to-image"
-import { touchesElement, map, first } from "../Util"
+import { touchesElement, map } from "../Util"
 
 class DiscoveryView extends React.Component {
   constructor(props) {

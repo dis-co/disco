@@ -1,6 +1,7 @@
 namespace Iris.Web.Widgets
 
 open System
+open System.Collections.Generic
 open Fable.Core
 open Iris.Core
 open Iris.Web.Core
@@ -29,3 +30,15 @@ type IDragEvent<'T> =
   abstract y: float
   abstract ``type``: string
   abstract model: 'T
+
+type GenericObservable<'T>() =
+  let listeners = Dictionary<Guid,IObserver<'T>>()
+  member x.Trigger v =
+    for lis in listeners.Values do
+      lis.OnNext v
+  interface IObservable<'T> with
+    member x.Subscribe w =
+      let guid = Guid.NewGuid()
+      listeners.Add(guid, w)
+      { new IDisposable with
+        member x.Dispose() = listeners.Remove(guid) |> ignore }

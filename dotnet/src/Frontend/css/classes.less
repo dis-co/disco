@@ -4,6 +4,19 @@
   cursor: pointer;
 }
 
+.iris-cluster {
+  border-spacing: 0px;
+  width: 100%;
+  tr { width: 100%; }
+  th, td { text-align: left; vertical-align: middle; }
+  th.p1, td.p1 { width: 15%; min-width: 80px; }
+  th.p2, td.p2 { width: 15%; }
+  th.p3, td.p3 { width: 30%; }
+  th.p4, td.p4 { width: 15%; }
+  th.p5, td.p5 { width: 15%; }
+  th.p6, td.p6 { width: 10%; }
+}
+
 .iris-highlight-blue {
   // border: 2px solid @highlight-blue !important;
   border-color: @highlight-blue !important;
@@ -82,10 +95,6 @@
     flex: 1;
     overflow: scroll;
   }
-}
-
-.iris-cluster {
-  overflow-x: scroll;
 }
 
 .iris-discovery {
