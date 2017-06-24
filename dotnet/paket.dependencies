@@ -34,6 +34,7 @@ group Fable
   # Keep this pinned to dotnet-fable version in Fable.proj
   nuget Fable.Core 1.1.2
   # Other Fable libraries
+  nuget Fable.Import.Node
   nuget Fable.PowerPack
   nuget Fable.React
 

@@ -12,8 +12,6 @@ dotnet restore Fable.proj     # Installs Fable CLI tool
 dotnet restore src/Frontend/fable/Iris.Frontend.sln
 ```
 
-> There's a bug in dotnet SDK by which solution cannot be restored in non-Windows system, so you may need to restore all the folders in `src/Frontend/fable` one by one. This is already done in the `BuildFrontend` FAKE target.
-
 - Build Fable plugin:
 
 ```shell

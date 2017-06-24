@@ -4,8 +4,22 @@
   cursor: pointer;
 }
 
+.iris-cluster {
+  border-spacing: 0px;
+  width: 100%;
+  tr { width: 100%; }
+  th, td { text-align: left; vertical-align: middle; }
+  th.p1, td.p1 { width: 15%; min-width: 80px; }
+  th.p2, td.p2 { width: 15%; }
+  th.p3, td.p3 { width: 30%; }
+  th.p4, td.p4 { width: 15%; }
+  th.p5, td.p5 { width: 15%; }
+  th.p6, td.p6 { width: 10%; }
+}
+
 .iris-highlight-blue {
-  border: 2px solid blue;
+  // border: 2px solid @highlight-blue !important;
+  border-color: @highlight-blue !important;
 }
 
 .dropdown {
@@ -56,25 +70,31 @@
   .iris-draggable-handle {
     cursor: move;
     margin: 0;
-    padding: 10px;
+    height: 35px;
+    padding: 7px;
     background: @iris-grey;
     display: flex;
+    align-items: baseline;
 
-    // Expand the first child to push
-    // the icons to the side
     & > :first-child {
-      flex: 1;
+      margin-right: 10px;
+    }
+
+    // Push other elements to the sides
+    .iris-title-bar {
+        flex: 1;
+    }
+
+    //Icon Sizes
+    .iris-window-control .iris-icon {
+      vertical-align: 0px;
     }
   }
 
-  & > :nth-child(2) {
-    overflow-x: auto;
+  .iris-widget-body {
     flex: 1;
+    overflow: scroll;
   }
-}
-
-.iris-cluster {
-  overflow-x: scroll;
 }
 
 .iris-discovery {
@@ -101,6 +121,12 @@
 }
 
 // FLEX --------------------
+.iris-flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
 .iris-flex-1 {
   flex: 1
 }

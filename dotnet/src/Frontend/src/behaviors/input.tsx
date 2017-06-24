@@ -34,11 +34,10 @@ export function formatValue(value: any) {
     return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
 }
 
-export function addInputView(index: number, value: any, useRightClick: boolean, update: UpdateFn) {
+export function addInputView(index: number, value: any, tagName, useRightClick: boolean, update: UpdateFn) {
 
-    let tagName = "span", // TODO: Pass tag name as parameter
-        typeofValue = typeof value,
-        props = { key: index } as any,
+    let typeofValue = typeof value,
+        props = {} as any, //{ key: index } as any,
         formattedValue = formatValue(value);
 
     // Boolean values, not editable

@@ -38,8 +38,13 @@ type SharedWorker<'data>(url: string) =
 //  \____|_|_|\___|_| |_|\__|
 
 type ClientContext private () =
+  let mutable store: Store option =
+    #if DESIGN // Mockup data
+    Iris.Web.Core.MockData.getMockState() |> Store |> Some
+    #else
+    None
+    #endif
   let mutable session : Id option = None
-  let mutable store: Store option = None
   let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
@@ -60,9 +65,11 @@ type ClientContext private () =
   member self.Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
     me.OnError <- fun e -> printfn "%A" e.Message
-    me.Port.OnMessage <- self.MsgHandler
+    me.Port.OnMessage <- self.HandleMessageEvent
     worker <- Some me
+    #if !DESIGN
     do! self.ConnectWithWebSocket()
+    #endif
   }
 
   member self.ConnectWithWebSocket() =
@@ -71,10 +78,12 @@ type ClientContext private () =
     |> Promise.bind (fun res -> res.text())
     |> Promise.map (fun json ->
       try
-        let info = ofJson<ServiceInfo> json
-        serviceInfo <- Some info
-        ClientMessage.Connect info.webSocket
-        |> toJson |> self.Worker.Port.PostMessage
+        match ofJson<ServiceInfo option> json with
+        | Some info ->
+          serviceInfo <- Some info
+          ClientMessage.Connect info.webSocket
+          |> toJson |> self.Worker.Port.PostMessage
+        | None -> serviceInfo <- None
       with
       | err ->
         printfn "Error parsing GetServiceInfo reply: %s" err.Message)
@@ -97,8 +106,12 @@ type ClientContext private () =
   member self.Post(ev: StateMachine) =
     printfn "Client will send state machine command %A" ev
     ClientMessage.Event(self.Session, ev)
+    #if DESIGN
+    |> self.HandleClientMessage
+    #else
     |> toJson
     |> self.Worker.Port.PostMessage
+    #endif
 
   member self.Log (logLevel: LogLevel) (message : string) : unit =
     let log = Logger.create logLevel "frontend" message
@@ -106,9 +119,11 @@ type ClientContext private () =
     for ctrl in ctrls.Values do
       ctrl.OnNext msg
 
-  member self.MsgHandler (msg : MessageEvent<string>) : unit =
+  member self.HandleMessageEvent (msg : MessageEvent<string>) : unit =
     let data = ofJson<ClientMessage<State>> msg.Data
+    self.HandleClientMessage(data)
 
+  member self.HandleClientMessage (data : ClientMessage<State>) : unit =
     match data with
     // initialize this client session variable
     | ClientMessage.Initialized(Id id as token) ->

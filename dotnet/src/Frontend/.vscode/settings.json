@@ -1,7 +1,7 @@
 // Place your settings in this file to overwrite default and user settings.
 {
     "less.compile": {
-        "main": "${workspaceRoot}/main.less",
-        "out": "${workspaceRoot}/Iris_generated.css"
+        "main": "${workspaceRoot}/css/main.less",
+        "out": "${workspaceRoot}/css/Iris_generated.css"
     }
 }

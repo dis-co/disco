@@ -206,17 +206,18 @@ let npmPath =
 
 let flatcPath : string =
   if Environment.OSVersion.Platform = PlatformID.Unix then
-    let info = new ProcessStartInfo("which","flatc")
-    info.StandardOutputEncoding <- System.Text.Encoding.UTF8
-    info.RedirectStandardOutput <- true
-    info.UseShellExecute        <- false
-    info.CreateNoWindow         <- true
-    use proc = Process.Start info
-    proc.WaitForExit()
-    match proc.ExitCode with
-      | 0 when not proc.StandardOutput.EndOfStream ->
-        proc.StandardOutput.ReadLine()
-      | _ -> failwith "flatc was not found. Please install FlatBuffers first"
+    "flatc"
+    // let info = new ProcessStartInfo("which","flatc")
+    // info.StandardOutputEncoding <- System.Text.Encoding.UTF8
+    // info.RedirectStandardOutput <- true
+    // info.UseShellExecute        <- false
+    // info.CreateNoWindow         <- true
+    // use proc = Process.Start info
+    // proc.WaitForExit()
+    // match proc.ExitCode with
+    //   | 0 when not proc.StandardOutput.EndOfStream ->
+    //     proc.StandardOutput.ReadLine()
+    //   | _ -> failwith "flatc was not found. Please install FlatBuffers first"
   else "flatc.exe"
 
 // Read additional information from the release notes document

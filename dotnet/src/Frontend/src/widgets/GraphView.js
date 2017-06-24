@@ -77,10 +77,10 @@ class View extends React.Component {
 
   render() {
     return (
-      <div className="iris-graphview" ref={el => this.el = el}>
+      <ul className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
-          <div key={i} className="iris-pingroup">
-            <div className="iris-pingroup-name">{pinGroup[1].Name + ":"}</div>
+          <li key={i}>
+            <div className="iris-row-label">{pinGroup[1].Name}</div>
             {map(pinGroup[1].Pins, (kv,i) => {
               const pin = kv[1], key = IrisLib.toString(pin.Id);
               return (
@@ -94,12 +94,32 @@ class View extends React.Component {
                 </div>
               )
             })}
-          </div>
-        ))}
-      </div>
+        </li>
+      ))}
+      </ul>
     )
   }
 }
+{/*<div className="iris-graphview" ref={el => this.el = el}>
+  {map(this.props.global.state.pinGroups, (pinGroup, i) => (
+    <div key={i} className="iris-pingroup">
+      <div className="iris-pingroup-name">{pinGroup[1].Name + ":"}</div>
+      {map(pinGroup[1].Pins, (kv,i) => {
+        const pin = kv[1], key = IrisLib.toString(pin.Id);
+        return (
+          // We need to wrap the PinView in a div to get the actual HTML element in `ref`
+          <div key={key} ref={el => { if (el != null) this.childNodes.set(key, el.childNodes[0]) }}>
+            <PinView
+              key={key}
+              pin={pin}
+              global={this.props.global}
+              onDragStart={() => this.startDragging(key, pin)} />
+          </div>
+        )
+      })}
+    </div>
+  ))}
+</div>*/}
 
 export default class GraphView {
   constructor() {

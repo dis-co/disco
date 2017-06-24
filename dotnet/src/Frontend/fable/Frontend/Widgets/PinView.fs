@@ -9,14 +9,10 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-let [<Literal>] BASE_HEIGHT = 25
-let [<Literal>] ROW_HEIGHT = 17
-let [<Literal>] MIN_WIDTH = 100
-
 type [<Pojo>] InputState =
   { isOpen: bool }
 
-let addInputView(index: int, value: obj, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
+let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
   importMember "../../../src/behaviors/input.tsx"
 
 let formatValue(value: obj): string =
@@ -65,9 +61,6 @@ type PinView(props) =
   inherit React.Component<PinProps, InputState>(props)
   do base.setInitState({ isOpen = false })
 
-  member this.RecalculateHeight(rowCount: int) =
-    BASE_HEIGHT + (ROW_HEIGHT * rowCount)
-
   member this.ValueAt(i) =
     match this.props.slices with
     | Some slices -> slices.[index i].Value
@@ -78,79 +71,63 @@ type PinView(props) =
     | Some update -> update index value
     | None -> updatePinValue(this.props.pin, index, value)
 
-  member this.RenderRowLabels(rowCount: int) = [
-    yield span [
-      Key "-1"
-      Style [!!("cursor", "move")]
-      OnMouseDown (fun ev ->
-        ev.stopPropagation()
-        match this.props.onDragStart with
-        | Some onDragStart -> onDragStart()
-        | None -> ())
-    ] [str <| if String.IsNullOrEmpty(this.props.pin.Name) then "--" else this.props.pin.Name]
-    if rowCount > 1 then
-      for i=0 to rowCount - 1 do
-        let label =
-          // The Labels array can be shorter than Values'
-          match Array.tryItem i this.props.pin.Labels with
-          | None | Some(NullOrEmpty) -> "Label"
-          | Some label -> label
-        yield span [Key (string i)] [str label]
-  ]
-
-  member this.RenderRowValues(rowCount: int, useRightClick: bool) = [
-    if rowCount > 1 then
-      yield span [
-        Key "-1"
-      ] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
-    let mutable i = 0
-    for i=0 to rowCount - 1 do
-      let value = this.ValueAt(i)
-      yield addInputView(i, value, useRightClick, (fun i v -> this.UpdateValue(i,v)))
-  ]
+  member inline this.RenderRows(rowCount: int, useRightClick: bool) =
+    let name =
+      if String.IsNullOrEmpty(this.props.pin.Name)
+      then "--"
+      else this.props.pin.Name
+    let firstRowValue =
+      if rowCount > 1 then
+        td [ClassName "iris-flex-row"] [
+          span [ClassName "iris-flex-1"] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+          this.RenderArrow()
+        ]
+      else
+        addInputView(0, this.ValueAt(0), "td", useRightClick, (fun i v -> this.UpdateValue(0,v)))
+    let head =
+      tr [ClassName "iris-pin-child"] [
+        td [
+          OnMouseDown (fun ev ->
+            ev.stopPropagation()
+            match this.props.onDragStart with
+            | Some onDragStart -> onDragStart()
+            | None -> ())
+        ] [str name]
+        firstRowValue
+      ]
+    if rowCount > 1 && this.state.isOpen then
+      let tags = this.props.pin.GetTags
+      tbody [] [
+        yield head
+        for i=0 to rowCount - 1 do
+          let label =
+            // The Labels array can be shorter than Values'
+            match Array.tryItem i tags |> Option.map string with
+            | None | Some(NullOrEmpty) -> "Tag"
+            | Some label -> label
+          yield tr [Key (string i); ClassName "iris-pin-child"] [
+            td [] [str label]
+            addInputView(i, this.ValueAt(i), "td", useRightClick, (fun i v -> this.UpdateValue(i,v)))
+          ]
+      ]
+    else tbody [] [head]
 
   member this.RenderArrow() =
-    let arrowRotation = if this.state.isOpen then 90 else 0
-    img [
-      Src "/lib/img/more.png"
-      Style [CSSProp.Transform (sprintf "rotate(%ideg)" arrowRotation)]
+    button [
+      ClassName ("iris-icon icon-control " + (if this.state.isOpen then "icon-less" else "icon-more"))
       OnClick (fun ev ->
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
-    ]
-
-  member this.onMounted(el: Browser.Element) =
-    if el <> null then
-      !!jQuery(el)?resizable(
-        createObj [
-          "minWidth" ==> MIN_WIDTH
-          "handles" ==> "e"
-          "resize" ==> fun event ui ->
-              !!ui?size?height = !!ui?originalSize?height
-        ])
-
+    ] []
   member this.render() =
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
-    let height = if this.state.isOpen then this.RecalculateHeight(rowCount) else BASE_HEIGHT
-    div [
-      ClassName "iris-pin"
-      Ref (fun el -> this.onMounted(el))
-    ] [
-      div [
-        ClassName "iris-pin-child iris-flex-1"
-        Style [Height height]
-      ] (this.RenderRowLabels(rowCount))
-      div [
-        ClassName "iris-pin-child iris-flex-2"
-        Style [Height height]
-      ] (this.RenderRowValues(rowCount, this.props.``global``.state.useRightClick))
-      div [
-        ClassName "iris-pin-child iris-pin-end"
-        Style [Height height]
-      ] (if rowCount > 1 then [this.RenderArrow()] else [])
+    let useRightClick =
+      this.props.``global``.state.useRightClick
+    div [ClassName "iris-pin"] [
+      table [] [this.RenderRows(rowCount, useRightClick)]
     ]
 
 type [<Pojo>] PinGroupProps =

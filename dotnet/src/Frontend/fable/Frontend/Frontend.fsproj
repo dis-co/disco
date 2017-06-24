@@ -7,6 +7,7 @@
     <Compile Include="Browser.fs" />
     <Compile Include="Crypto.fs" />
     <Compile Include="Worker.fs" />
+    <Compile Include="MockData.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
