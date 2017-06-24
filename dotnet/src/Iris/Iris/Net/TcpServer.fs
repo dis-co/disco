@@ -133,8 +133,6 @@ module TcpServer =
       |> ignore
 
     let rec receiveCallback (result: IAsyncResult) =
-      let mutable content = String.Empty
-
       // Retrieve the state object and the handler socket
       // from the asynchronous state object.
       let connection = result.AsyncState :?> IConnection

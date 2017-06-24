@@ -151,7 +151,7 @@ module Api =
 
     let result =
       either {
-        let client = ApiClient.create state.Context server myself
+        let client = ApiClient.create server myself
         do! client.Start()
         return client
       }
@@ -389,7 +389,7 @@ type ApiClientNode() =
               OutCommands = self.OutCommands
               OutConnected = self.OutConnected
               OutStatus = self.OutStatus
-              OutUpdate = self.OutUpdate
+              OutUpdate = self.OutUpdate }
         initialized <- true
 
       state <- Api.evaluate state spreadMax

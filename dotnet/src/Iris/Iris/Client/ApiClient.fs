@@ -260,7 +260,7 @@ module ApiClient =
 
   let private handleServerEvent (state) (ev: TcpServerEvent) agent =
     match ev with
-    | TcpServerEvent.Connect(peer, ip, port) ->
+    | TcpServerEvent.Connect(_, ip, port) ->
       sprintf "Connection from %O:%d" ip port
       |> Logger.debug (tag "handleServerEvent")
       state
