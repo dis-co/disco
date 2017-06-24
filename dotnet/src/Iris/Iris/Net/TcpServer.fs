@@ -167,7 +167,7 @@ module TcpServer =
 
       let builder = RequestBuilder.create buffer <| fun request client body ->
         body
-        |> IncomingRequest.create id request client
+        |> IncomingRequest.create request client id
         |> TcpServerEvent.Request
         |> Observable.onNext state.Subscriptions
 

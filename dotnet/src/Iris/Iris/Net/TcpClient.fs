@@ -64,7 +64,8 @@ module rec TcpClient =
 
   let private beginConnect (state: IState) =
     state.Socket.BeginConnect(state.EndPoint, connectCallback(), state) |> ignore
-    state.Connected.WaitOne() |> ignore
+    if not (state.Connected.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+      failwith "Connection Timeout"
 
   // *** receiveCallback
 
@@ -128,7 +129,8 @@ module rec TcpClient =
         AsyncCallback(sendCallback),
         state)
       |> ignore
-      state.Sent.WaitOne() |> ignore
+      if not (state.Sent.WaitOne(TimeSpan.FromMilliseconds 3000.0)) then
+        failwith "Send Timeout"
     with
       | exn ->
         exn.Message
@@ -143,7 +145,7 @@ module rec TcpClient =
 
       let builder = ResponseBuilder.create buffer <| fun request client body  ->
         body
-        |> Response.create client request
+        |> Response.create request client
         |> TcpClientEvent.Response
         |> Observable.onNext subscriptions
 

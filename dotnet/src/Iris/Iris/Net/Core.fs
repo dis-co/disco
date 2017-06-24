@@ -12,6 +12,13 @@ open System.Text
 open Iris.Core
 open System.Collections.Concurrent
 
+// * Core module
+
+module Core =
+
+  [<Literal>]
+  let BUFFER_SIZE = 4048
+
 // * ISocketMessage
 
 type ISocketMessage =
@@ -321,7 +328,7 @@ module IncomingRequest =
 
   // ** create
 
-  let create connectionId requestId peerId body : IncomingRequest =
+  let create requestId peerId connectionId body : IncomingRequest =
     { RequestId = requestId
       PeerId = peerId
       Body = body
@@ -437,14 +444,6 @@ type IPubSub =
   abstract Send: byte array -> unit
   abstract Subscribe: (PubSubEvent -> unit) -> IDisposable
 
-// * Core module
-
-module Core =
-
-  [<Literal>]
-  let BUFFER_SIZE = 4048
-
-
 // * Socket module
 
 module Socket =
@@ -460,8 +459,9 @@ module Socket =
     try
       socket.Shutdown(SocketShutdown.Both)
       socket.Close()
-    finally
-      socket.Dispose()
+    with
+      | _ ->
+        socket.Dispose()
 
   // ** checkState
 

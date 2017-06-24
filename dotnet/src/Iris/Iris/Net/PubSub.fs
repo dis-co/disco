@@ -35,44 +35,56 @@ module rec PubSub =
 
   let private receiveCallback () =
     AsyncCallback(fun (ar: IAsyncResult) ->
-      let state = ar.AsyncState :?> IState
-      let raw = state.Client.EndReceive(ar, &state.LocalEndPoint)
+      try
+        let state = ar.AsyncState :?> IState
+        let raw = state.Client.EndReceive(ar, &state.LocalEndPoint)
 
-      let guid =
-        let intermediate = Array.zeroCreate 16
-        Array.blit raw 0 intermediate 0 16
-        intermediate
-        |> Guid
-        |> string
-        |> Id
+        let guid =
+          let intermediate = Array.zeroCreate 16
+          Array.blit raw 0 intermediate 0 16
+          intermediate
+          |> Guid
+          |> string
+          |> Id
 
-      if guid <> state.Id then
-        let payload =
-          let intermedate = raw.Length - 16 |> Array.zeroCreate
-          Array.blit raw 16 intermedate 0 (raw.Length - 16)
-          intermedate
+        if guid <> state.Id then
+          let payload =
+            let intermedate = raw.Length - 16 |> Array.zeroCreate
+            Array.blit raw 16 intermedate 0 (raw.Length - 16)
+            intermedate
 
-        (guid, payload)
-        |> PubSubEvent.Request
-        |> Observable.onNext state.Subscriptions
-      beginReceive state)
+          (guid, payload)
+          |> PubSubEvent.Request
+          |> Observable.onNext state.Subscriptions
+        beginReceive state
+      with
+        | exn ->
+          exn.Message
+          |> Logger.err (tag "receiveCallback"))
 
   // ** beginReceive
 
   let private beginReceive (state: IState) =
-    state.Client.BeginReceive(receiveCallback(), state)
-    |> ignore
+    try
+      state.Client.BeginReceive(receiveCallback(), state)
+      |> ignore
+    with
+      | exn ->
+        exn.Message
+        |> Logger.err (tag "beginReceive")
+
+  // ** sendCallback
 
   let private sendCallback (ar: IAsyncResult) =
     try
       let state = ar.AsyncState :?> IState
-      state.Client.EndSend(ar)
-      |> String.format "%d bytes sent"
-      |> Logger.debug (tag "sendCallback")
+      state.Client.EndSend(ar) |> ignore
     with
       | exn ->
         exn.Message
-        |> printfn "exn: %s"
+        |> Logger.err (tag "sendCallback")
+
+  // ** beginSend
 
   let private beginSend (state: IState) (data: byte array) =
     let id = Guid.ofId state.Id
@@ -84,6 +96,8 @@ module rec PubSub =
       AsyncCallback(sendCallback),
       state)
     |> ignore
+
+  // ** create
 
   let create (id: Id) (multicastAddress: IPAddress) (port: int) =
     let subscriptions = ConcurrentDictionary<Guid,IObserver<PubSubEvent>>()
