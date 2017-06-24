@@ -133,17 +133,11 @@ module RaftIntegrationTests =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
         use check1 = new AutoResetEvent(false)
-        use check2 = new AutoResetEvent(false)
 
         let setState (id: Id) (are: AutoResetEvent) = function
           | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
-            |> Logger.debug "test"
-            are.Set() |> ignore
-          | IrisEvent.StateChanged (_,Follower) ->
-            id
-            |> sprintf "%O became follower"
             |> Logger.debug "test"
             are.Set() |> ignore
           | _ -> ()
@@ -195,12 +189,11 @@ module RaftIntegrationTests =
               member self.PrepareSnapshot() = None
           }
 
-        use obs2 = follower.Subscribe (setState mem2.Id check2)
+        use obs2 = follower.Subscribe (setState mem2.Id check1)
 
         do! follower.Start()
 
-        do! waitOrDie "check1" check1
-        do! waitOrDie "check2" check2
+        do! waitOrDie "Leader-Check" check1
       }
       |> noError
 

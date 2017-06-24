@@ -21,7 +21,6 @@ module NetIntegrationTests =
   let test_server_request_handling =
     testCase "server request handling" <| fun _ ->
       either {
-
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 
@@ -52,6 +51,7 @@ module NetIntegrationTests =
 
         let smbp = MailboxProcessor.Start(sloop)
         use obs = server.Subscribe smbp.Post
+
         do! server.Start()
 
         let responses = ResizeArray<Response>()

@@ -1299,13 +1299,13 @@ module RaftServer =
       |> Logger.err (tag "handleRawRespose")
       state
 
-  // ** handleClientDisconnect
+  // ** handleClientState
 
-  let private handleClientDisconnect (state: RaftServerState) (id: Id) =
+  let private handleClientState (state: RaftServerState) (id: Id) raftState =
     raft {
       let! peer = Raft.getMemberM id
       match peer with
-      | Some mem -> do! Raft.updateMemberM { mem with State = Failed }
+      | Some mem -> do! Raft.updateMemberM { mem with State = raftState }
       | None -> ()
     }
     |> runRaft state.Raft state.Callbacks
@@ -1314,7 +1314,7 @@ module RaftServer =
       | Left (err,_) ->
         err
         |> String.format "Could not set new state on member: {0}"
-        |> Logger.err (tag "handleClientDisconnect")
+        |> Logger.err (tag "handleClientState")
         state
 
   // ** handleClientResponse
@@ -1342,13 +1342,9 @@ module RaftServer =
 
   let private handleClientEvent state (ev: TcpClientEvent) agent =
     match ev with
-    | TcpClientEvent.Connected _ ->
-      "Connected!" |> Logger.err (tag "handleClientEvent")
-      state
-    | TcpClientEvent.Disconnected peer ->
-      handleClientDisconnect state peer
-    | TcpClientEvent.Response response ->
-      handleClientResponse state response agent
+    | TcpClientEvent.Connected    peer -> handleClientState    state peer RaftMemberState.Running
+    | TcpClientEvent.Disconnected peer -> handleClientState    state peer RaftMemberState.Failed
+    | TcpClientEvent.Response response -> handleClientResponse state response agent
 
   // ** handleStop
 

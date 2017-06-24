@@ -399,6 +399,7 @@ type IClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
   abstract PeerId: Id
+  abstract Status: ServiceStatus
   abstract Request: Request -> unit
   abstract Subscribe: (TcpClientEvent -> unit) -> IDisposable
 
@@ -465,17 +466,29 @@ module Socket =
 
   // ** checkState
 
-  let rec checkState<'t>
-    (socket: Socket)
-    (subscriptions: ConcurrentDictionary<Guid,IObserver<'t>>)
-    (ev: 't) =
-    async {
-      do! Async.Sleep(1000)             // check socket liveness ever second
-      try
-        if isAlive socket then
-          return! checkState socket subscriptions ev
-        else
-          Observable.onNext subscriptions ev
-      with
-        | _ -> Observable.onNext subscriptions ev
-    }
+  let checkState<'t> (socket: Socket)
+                     (subscriptions: ConcurrentDictionary<Guid,IObserver<'t>>)
+                     (good: 't option)
+                     (bad: 't option) =
+    let mutable lastState = true
+    let rec impl() : Async<unit> =
+      async {
+        do! Async.Sleep(1000)             // check socket liveness ever second
+        try
+          if isAlive socket then
+            if not lastState then
+              Option.iter (Observable.onNext subscriptions) good
+              lastState <- true
+          else
+            if lastState then
+              Option.iter (Observable.onNext subscriptions) bad
+              lastState <- false
+          return! impl()
+        with
+          | _ ->
+            if lastState then
+              Option.iter (Observable.onNext subscriptions) bad
+              lastState <- false
+            return! impl()
+      }
+    impl()

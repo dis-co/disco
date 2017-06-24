@@ -33,6 +33,8 @@ module rec TcpClient =
 
   type private IState =
     inherit IDisposable
+    abstract Status: ServiceStatus with get, set
+    abstract Start: unit -> unit
     abstract PeerId: Id
     abstract ConnectionId: Guid
     abstract Socket: Socket
@@ -56,34 +58,37 @@ module rec TcpClient =
         |> Observable.onNext state.Subscriptions
         state.Connected.Set() |> ignore  // Signal that the connection has been made.
       with
-        | exn ->
-          exn.Message
-          |> Logger.err (tag "connectCallback"))
+        | exn -> exn.Message |> Logger.err (tag "connectCallback"))
 
   // ** beginConnect
 
   let private beginConnect (state: IState) =
     state.Socket.BeginConnect(state.EndPoint, connectCallback(), state) |> ignore
     if not (state.Connected.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-      failwith "Connection Timeout"
+      state.Status <-
+        "Connection Timeout"
+        |> Error.asSocketError (tag "beginConnect")
+        |> ServiceStatus.Failed
+    else
+      state.Status <- ServiceStatus.Running
 
-  // *** receiveCallback
+  // ** receiveCallback
 
   let private receiveCallback() =
     AsyncCallback(fun (ar: IAsyncResult) ->
+      let state = ar.AsyncState :?> IState
       try
-        // Retrieve the state object and the client socket
-        // from the asynchronous state object.
-        let state = ar.AsyncState :?> IState
-
         // Read data from the remote device.
         let bytesRead = state.Socket.EndReceive(ar)
         state.ResponseBuilder.Process bytesRead
         beginReceive state
       with
         | exn ->
-          exn.Message
-          |> Logger.err (tag "receiveCallback"))
+          exn.Message |> Logger.err (tag "receiveCallback")
+          state.Status <-
+            exn.Message
+            |> Error.asSocketError (tag "receiveCallback")
+            |> ServiceStatus.Failed)
 
   // ** beginReceive
 
@@ -100,22 +105,30 @@ module rec TcpClient =
       |> ignore
     with
       | exn ->
-        exn.Message
-        |> Logger.err (tag "beginReceive")
+        exn.Message |> Logger.err (tag "beginReceive")
+        state.Status <-
+          exn.Message
+          |> Error.asSocketError (tag "beginReceive")
+          |> ServiceStatus.Failed
+
+  // ** sendCallback
 
   let private sendCallback (ar: IAsyncResult) =
+    let state = ar.AsyncState :?> IState
     try
-      let state = ar.AsyncState :?> IState
-
       // Complete sending the data to the remote device.
       state.Socket.EndSend(ar) |> ignore
-
       // Signal that all bytes have been sent.
       state.Sent.Set() |> ignore
     with
       | exn ->
-        exn.Message
-        |> Logger.err (tag "sendCallback")
+        exn.Message |> Logger.err (tag "sendCallback")
+        state.Status <-
+          exn.Message
+          |> Error.asSocketError (tag "sendCallback")
+          |> ServiceStatus.Failed
+
+  // ** send
 
   let private send (state: IState) (request: Request) =
     try
@@ -130,82 +143,126 @@ module rec TcpClient =
         state)
       |> ignore
       if not (state.Sent.WaitOne(TimeSpan.FromMilliseconds 3000.0)) then
-        failwith "Send Timeout"
+        state.Status <-
+          "Send Timeout"
+          |> Error.asSocketError (tag "send")
+          |> ServiceStatus.Failed
+      else
+        state.Status <- ServiceStatus.Running
     with
       | exn ->
-        exn.Message
-        |> Logger.err (tag "send")
+        exn.Message |> Logger.err (tag "send")
+        state.Status <-
+          exn.Message
+          |> Error.asSocketError (tag "receiveCallback")
+          |> ServiceStatus.Failed
 
-  let private makeState id peer endpoint client =
-      let buffer = Array.zeroCreate Core.BUFFER_SIZE
-      let connected = new ManualResetEvent(false)
-      let sent = new ManualResetEvent(false)
-      let pending = PendingRequests()
-      let subscriptions = Subscriptions()
+  // ** makeSocket
 
-      let builder = ResponseBuilder.create buffer <| fun request client body  ->
-        body
-        |> Response.create request client
-        |> TcpClientEvent.Response
-        |> Observable.onNext subscriptions
+  let private makeSocket () =
+    new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 
-      { new IState with
-          member state.PeerId
-            with get () = peer
+  // ** start
 
-          member state.ConnectionId
-            with get () = id
+  let private start (state: IState) checker (cts: CancellationTokenSource) =
+    if not (Service.isRunning state.Status) then
+      beginConnect state
+      Async.Start(checker, cts.Token)
+      beginReceive state
 
-          member state.Socket
-            with get () = client
+  // ** makeState
 
-          member state.EndPoint
-            with get () = endpoint
+  let private makeState id (options: ClientConfig) (subscriptions: Subscriptions) =
+    let cts = new CancellationTokenSource()
+    let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
+    let client = makeSocket()
 
-          member state.Connected
-            with get () = connected
+    let buffer = Array.zeroCreate Core.BUFFER_SIZE
+    let connected = new ManualResetEvent(false)
+    let sent = new ManualResetEvent(false)
+    let pending = PendingRequests()
+    let mutable status = ServiceStatus.Stopped
 
-          member state.Sent
-            with get () = sent
+    let builder = ResponseBuilder.create buffer <| fun request client body  ->
+      body
+      |> Response.create request client
+      |> TcpClientEvent.Response
+      |> Observable.onNext subscriptions
 
-          member state.Buffer
-            with get () = buffer
+    let checker =
+      Socket.checkState
+        client
+        subscriptions
+        (options.PeerId |> TcpClientEvent.Connected    |> Some)
+        (options.PeerId |> TcpClientEvent.Disconnected |> Some)
 
-          member state.PendingRequests
-            with get () = pending
+    { new IState with
+        member state.Start () =
+          start state checker cts
 
-          member state.ResponseBuilder
-            with get () = builder
+        member state.Status
+          with get () = status
+          and set st = status <- st
 
-          member state.Subscriptions
-            with get () = subscriptions
+        member state.PeerId
+          with get () = options.PeerId
 
-          member state.Dispose() =
-            Socket.dispose client
-        }
+        member state.ConnectionId
+          with get () = id
+
+        member state.Socket
+          with get () = client
+
+        member state.EndPoint
+          with get () = endpoint
+
+        member state.Connected
+          with get () = connected
+
+        member state.Sent
+          with get () = sent
+
+        member state.Buffer
+          with get () = buffer
+
+        member state.PendingRequests
+          with get () = pending
+
+        member state.ResponseBuilder
+          with get () = builder
+
+        member state.Subscriptions
+          with get () = subscriptions
+
+        member state.Dispose() =
+          dispose cts
+          builder.Dispose()
+          Socket.dispose client
+      }
+
+  // ** create
 
   let create (options: ClientConfig) =
     let id = Guid.NewGuid()
-
-    let cts = new CancellationTokenSource()
-    let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
-    let client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-    let state = makeState id options.PeerId endpoint client
-
-    let checker =
-      options.PeerId
-      |> TcpClientEvent.Disconnected
-      |> Socket.checkState client state.Subscriptions
+    let subscriptions = Subscriptions()
+    let mutable state = makeState id options subscriptions
 
     { new IClient with
+        member socket.Status
+          with get () = state.Status
+
         member socket.Request(request: Request) =
-          send state request
+          if not (Service.isRunning state.Status) then
+            state.Dispose()
+            state <- makeState id options subscriptions
+            state.Start()
+            send state request
+          else
+            send state request
 
         member socket.Start() =
           try
-            beginConnect state
-            Async.Start(checker, cts.Token)
-            beginReceive state
+            state.Start()
             Either.nothing
           with
             | exn ->
@@ -217,8 +274,7 @@ module rec TcpClient =
           with get () = options.PeerId
 
         member socket.Subscribe (callback: TcpClientEvent -> unit) =
-          Observable.subscribe callback state.Subscriptions
+          Observable.subscribe callback subscriptions
 
         member socket.Dispose () =
-          cts.Cancel()
           state.Dispose() }

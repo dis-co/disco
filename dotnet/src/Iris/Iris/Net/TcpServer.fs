@@ -214,7 +214,8 @@ module TcpServer =
         Socket.checkState
           connection.Socket
           connection.Subscriptions
-          (TcpServerEvent.Disconnect connection.Id)
+          None
+          (connection.Id |> TcpServerEvent.Disconnect |> Some)
 
       Async.Start(checker, cts.Token)
       beginReceive connection receiveCallback

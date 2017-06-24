@@ -246,10 +246,11 @@ module IrisServiceTests =
 
         use oobs1 =
           (function
-            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ())
+            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set() |> ignore
+            | IrisEvent.Append(_, CallCue _)               -> appendDone.Set() |> ignore
+            | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
