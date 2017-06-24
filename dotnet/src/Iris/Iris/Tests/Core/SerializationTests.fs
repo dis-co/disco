@@ -21,12 +21,17 @@ module SerializationTests =
   //               |_|
 
   let test_correct_request_serialization =
-    testCase "RequestResposse serialization should work" <| fun _ ->
+    ftestCase "RequestResposse serialization should work" <| fun _ ->
       let encDec (request: Request) =
-        let binary = Request.serialize request
-        let builder = RequestBuilder.create binary <| fun rerequest ->
+        let check (rerequest: Request) =
           Expect.equal rerequest request "Should be structurally equal"
-        builder.Process binary.Length
+        let buffer = Request.serialize request
+        let builder = RequestBuilder.create buffer <| fun requestId clientId body ->
+          body
+          |> Request.make requestId clientId
+          |> check
+
+        builder.Process buffer.Length
       encDec
       |> Prop.forAll Generators.requestArb
       |> Check.QuickThrowOnFailure
@@ -38,7 +43,7 @@ module SerializationTests =
   // |_|   \__,_|_|  |___/\___|____/ \__\__,_|\__\___|
 
   let tests_parse_state_deserialization =
-    testCase "ParseState deserialization should work" <| fun _ ->
+    ftestCase "ParseState deserialization should work" <| fun _ ->
       let requests = ResizeArray()
       let rerequests = ResizeArray()
       let blob = ResizeArray()
@@ -58,7 +63,10 @@ module SerializationTests =
       let payload = blob.ToArray()
       let payloadSize = payload.Length
       let chunked = Array.chunkBySize bufsize payload
-      let parser = RequestBuilder.create buffer rerequests.Add
+      let parser = RequestBuilder.create buffer <| fun request client body ->
+        body
+        |> Request.make request client
+        |> rerequests.Add
 
       let mutable read = 0
       for chunk in chunked do

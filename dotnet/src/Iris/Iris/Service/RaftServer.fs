@@ -62,7 +62,7 @@ module RaftServer =
     | AddCmd            of sm:StateMachine
     | AddMember         of mem:RaftMember
     | RemoveMember      of id:Id
-    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:Response
+    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:OutgoingResponse
     // | Join           of ip:IpAddress * port:uint16
     // | Leave
     // | IsCommitted    of started:DateTime * entry:EntryResponse
@@ -467,7 +467,7 @@ module RaftServer =
   let private processAppendEntries (state: RaftServerState)
                                    (sender: Id)
                                    (ae: AppendEntries)
-                                   (raw: Request) =
+                                   (raw: IncomingRequest) =
 
     Tracing.trace (tag "processAppendEntries") <| fun () ->
       let result =
@@ -478,7 +478,7 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> AppendEntriesResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -486,7 +486,7 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -494,7 +494,7 @@ module RaftServer =
 
   let private processAppendEntry (state: RaftServerState)
                                  (cmd: StateMachine)
-                                 (raw: Request)
+                                 (raw: IncomingRequest)
                                  (agent: RaftAgent) =
 
     Tracing.trace (tag "processAppendEntry") <| fun () ->
@@ -505,7 +505,7 @@ module RaftServer =
             entry                       // timing out or responding to the server
             |> AppendEntryResponse
             |> Binary.encode
-            |> Response.fromRequest raw
+            |> OutgoingResponse.fromRequest raw
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> agent.Post
@@ -514,7 +514,7 @@ module RaftServer =
           (state.Raft.Member.Id, err)
           |> ErrorResponse
           |> Binary.encode
-          |> Response.fromRequest raw
+          |> OutgoingResponse.fromRequest raw
           |> state.Server.Respond
           newstate
       else
@@ -523,7 +523,7 @@ module RaftServer =
           mem
           |> Redirect
           |> Binary.encode
-          |> Response.fromRequest raw
+          |> OutgoingResponse.fromRequest raw
           |> state.Server.Respond
           state
         | None ->
@@ -531,13 +531,13 @@ module RaftServer =
           |> Error.asRaftError (tag "processAppendEntry")
           |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
           |> Binary.encode
-          |> Response.fromRequest raw
+          |> OutgoingResponse.fromRequest raw
           |> state.Server.Respond
           state
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: Request) =
+  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: IncomingRequest) =
     Tracing.trace (tag "processVoteRequest") <| fun () ->
       let result =
         Raft.receiveVoteRequest sender vr
@@ -548,7 +548,7 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> RequestVoteResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -556,13 +556,13 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: Request) =
+  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: IncomingRequest) =
     Tracing.trace (tag "processInstallSnapshot") <| fun () ->
       let result =
         Raft.receiveInstallSnapshot is
@@ -573,14 +573,14 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> InstallSnapshotResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
       | Left (error, newstate) ->
         (state.Raft.Member.Id, error)
         |> ErrorResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -594,14 +594,14 @@ module RaftServer =
   /// - state: RaftServerState
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftServerState) (raw: Request) =
+  let private doRedirect (state: RaftServerState) (raw: IncomingRequest) =
     Tracing.trace (tag "doRedirect") <| fun () ->
       match Raft.getLeader state.Raft with
       | Some mem ->
         mem
         |> Redirect
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         state
       | None ->
@@ -609,7 +609,7 @@ module RaftServer =
         |> Error.asRaftError (tag "doRedirect")
         |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         state
 
@@ -1185,10 +1185,7 @@ module RaftServer =
 
   // ** processRequest
 
-  let private processRequest (data: RaftServerState)
-                             (raw: Request)
-                             (agent: RaftAgent) =
-
+  let private processRequest (data: RaftServerState) (raw: IncomingRequest) (agent: RaftAgent) =
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
@@ -1205,11 +1202,7 @@ module RaftServer =
 
   // ** handleServerRequest
 
-  let private handleServerRequest
-    (state: RaftServerState)
-    (raw: Request)
-    (agent: RaftAgent)
-    =
+  let private handleServerRequest (state: RaftServerState) (raw: IncomingRequest) agent =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
       match processRequest state raw agent with
       | Right newdata -> newdata
@@ -1217,7 +1210,7 @@ module RaftServer =
         (state.Raft.Member.Id, error)
         |> ErrorResponse
         |> Binary.encode
-        |> Response.fromRequest raw
+        |> OutgoingResponse.fromRequest raw
         |> state.Server.Respond
         state
 
@@ -1241,7 +1234,7 @@ module RaftServer =
   let private handleReqCommitted (state: RaftServerState)
                                  (ts: DateTime)
                                  (entry: EntryResponse)
-                                 (raw: Response)
+                                 (raw: OutgoingResponse)
                                  (agent: RaftAgent) =
 
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
@@ -1268,14 +1261,13 @@ module RaftServer =
           |> Error.asRaftError "handleReqCommitted"
           |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
           |> Binary.encode
-          |> fun body -> { raw with Body = body }
+          |> OutgoingResponse.create raw.RequestId raw.ConnectionId raw.PeerId
           |> state.Server.Respond
 
           delta
           |> fun delta -> delta.TotalMilliseconds
           |> sprintf "AppendEntry timed out: %f"
           |> Logger.debug (tag "handleReqCommitted")
-
           updateRaft state newstate
         else
           (ts, entry, raw)
@@ -1286,7 +1278,7 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> fun body -> { raw with Body = body }
+        |> OutgoingResponse.create raw.RequestId raw.ConnectionId raw.PeerId
         |> state.Server.Respond
         updateRaft state newstate
 

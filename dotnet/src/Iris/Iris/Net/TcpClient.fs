@@ -143,8 +143,9 @@ module rec TcpClient =
       let pending = PendingRequests()
       let subscriptions = Subscriptions()
 
-      let builder = ResponseBuilder.create buffer <| fun response ->
-        response
+      let builder = ResponseBuilder.create buffer <| fun request client body  ->
+        body
+        |> Response.create client request
         |> TcpClientEvent.Response
         |> Observable.onNext subscriptions
 
@@ -214,9 +215,6 @@ module rec TcpClient =
 
         member socket.PeerId
           with get () = options.PeerId
-
-        member socket.ConnectionId
-          with get () = id
 
         member socket.Subscribe (callback: TcpClientEvent -> unit) =
           Observable.subscribe callback state.Subscriptions

@@ -19,7 +19,7 @@ module NetIntegrationTests =
   // |_| \_|\___|\__|
 
   let test_server_request_handling =
-    ftestCase "server request handling" <| fun _ ->
+    testCase "server request handling" <| fun _ ->
       either {
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
@@ -36,23 +36,26 @@ module NetIntegrationTests =
             Port = prt
           }
 
-        do! server.Start()
-
         let sloop (inbox: MailboxProcessor<TcpServerEvent>) =
           let rec impl () = async {
               let! ev = inbox.Receive()
               match ev with
+              | TcpServerEvent.Connect(id, ip, port) ->
+                printfn "new connection from %O" id
+              | TcpServerEvent.Disconnect id ->
+                printfn "disconnect from %O" id
               | TcpServerEvent.Request request ->
+                printfn "new request: %A" request
                 request.Body
-                |> Response.fromRequest request
+                |> OutgoingResponse.fromRequest request
                 |> server.Respond
-              | _ -> ()
               return! impl ()
             }
           impl ()
 
         let smbp = MailboxProcessor.Start(sloop)
         use obs = server.Subscribe smbp.Post
+        do! server.Start()
 
         let responses = ResizeArray<Id * int64>()
 
@@ -64,7 +67,7 @@ module NetIntegrationTests =
                 match ev with
                 | TcpClientEvent.Response response ->
                   let converted = BitConverter.ToInt64(response.Body, 0)
-                  responses.Add(response.PeerId, converted)
+                  responses.Add(Guid.toId response.PeerId, converted)
                 | _ -> ()
               with
               | exn -> Logger.err "client loop" exn.Message

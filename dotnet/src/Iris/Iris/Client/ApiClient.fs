@@ -215,7 +215,7 @@ module ApiClient =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
+  let private handleServerRequest (state: ClientState) (req: IncomingRequest) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
       | Right ClientApiRequest.Ping ->
         Msg.Ping
@@ -223,7 +223,7 @@ module ApiClient =
 
         ApiResponse.Pong
         |> Binary.encode
-        |> Response.fromRequest req
+        |> OutgoingResponse.fromRequest req
         |> state.Server.Respond
 
       | Right (ClientApiRequest.Snapshot snapshot) ->
@@ -233,7 +233,7 @@ module ApiClient =
 
         ApiResponse.OK
         |> Binary.encode
-        |> Response.fromRequest req
+        |> OutgoingResponse.fromRequest req
         |> state.Server.Respond
 
       | Right (ClientApiRequest.Update sm) ->
@@ -243,7 +243,7 @@ module ApiClient =
 
         ApiResponse.OK
         |> Binary.encode
-        |> Response.fromRequest req
+        |> OutgoingResponse.fromRequest req
         |> state.Server.Respond
 
       | Left error ->
@@ -252,7 +252,7 @@ module ApiClient =
         |> ApiError.MalformedRequest
         |> ApiResponse.NOK
         |> Binary.encode
-        |> Response.fromRequest req
+        |> OutgoingResponse.fromRequest req
         |> state.Server.Respond
       state
 

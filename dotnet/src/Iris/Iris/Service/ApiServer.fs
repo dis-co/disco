@@ -358,7 +358,7 @@ module ApiServer =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ServerState) (req: Request) (agent: ApiAgent) =
+  let private handleServerRequest (state: ServerState) (req: IncomingRequest) (agent: ApiAgent) =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
       match req.Body |> Binary.decode with
       | Right (Register client) ->
@@ -367,7 +367,10 @@ module ApiServer =
         |> Logger.debug (tag "handleServerRequest")
 
         client |> Msg.AddClient |> agent.Post
-        Registered |> Binary.encode |> Response.fromRequest req |> state.Server.Respond
+        Registered
+        |> Binary.encode
+        |> OutgoingResponse.fromRequest req
+        |> state.Server.Respond
 
       | Right (UnRegister client) ->
         client.Id
@@ -375,14 +378,20 @@ module ApiServer =
         |> Logger.debug (tag "handleServerRequest")
 
         client |> Msg.RemoveClient |> agent.Post
-        Unregistered |> Binary.encode |> Response.fromRequest req |> state.Server.Respond
+        Unregistered
+        |> Binary.encode
+        |> OutgoingResponse.fromRequest req
+        |> state.Server.Respond
 
       | Right (Update sm) ->
         let id = req.PeerId |> string |> Id
         (Origin.Client id, sm)
         |> Msg.Update
         |> agent.Post
-        OK |> Binary.encode |> Response.fromRequest req |> state.Server.Respond
+        OK
+        |> Binary.encode
+        |> OutgoingResponse.fromRequest req
+        |> state.Server.Respond
 
       | Left error ->
         error
@@ -393,7 +402,7 @@ module ApiServer =
         |> ApiError.Internal
         |> NOK
         |> Binary.encode
-        |> Response.fromRequest req
+        |> OutgoingResponse.fromRequest req
         |> state.Server.Respond
       state
 
@@ -417,7 +426,7 @@ module ApiServer =
   let private handleClientResponse state (resp: Response) (agent: ApiAgent) =
     match Binary.decode resp.Body with
     | Right ApiResponse.Pong ->
-      (resp.PeerId, ServiceStatus.Running)
+      (Guid.toId resp.PeerId, ServiceStatus.Running)
       |> Msg.SetClientStatus
       |> agent.Post
     | Right (ApiResponse.NOK error) ->
@@ -426,7 +435,7 @@ module ApiServer =
       |> Logger.err (tag "handleClientResponse")
       // set the status of this client to error
       let err = error |> string |> Error.asSocketError (tag "handleClientResponse")
-      (resp.PeerId, ServiceStatus.Failed err)
+      (Guid.toId resp.PeerId, ServiceStatus.Failed err)
       |> Msg.SetClientStatus
       |> agent.Post
     | Right (ApiResponse.OK _)
@@ -437,7 +446,7 @@ module ApiServer =
       |> sprintf "error returned in client request. reason: %O"
       |> Logger.err (tag "handleClientResponse")
       // set the status of this client to error
-      (resp.PeerId, ServiceStatus.Failed error)
+      (Guid.toId resp.PeerId, ServiceStatus.Failed error)
       |> Msg.SetClientStatus
       |> agent.Post
     state

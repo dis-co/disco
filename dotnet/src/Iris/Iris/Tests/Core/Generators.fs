@@ -1241,12 +1241,9 @@ module Generators =
   //               |_|
 
   let requestGen = gen {
-      let! reqId = guidGen
-      let! connId = guidGen
+      let! peerId = guidGen
       let! data = Gen.arrayOf Arb.generate<byte>
-      return { RequestId = reqId
-               ConnectionId = connId
-               Body = data }
+      return Request.create peerId data
     }
 
   //     _         _     _ _

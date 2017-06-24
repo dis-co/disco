@@ -36,7 +36,7 @@ module TcpServer =
   type private IConnection =
     inherit IDisposable
     abstract Socket: Socket
-    abstract Send: Response -> unit
+    abstract Send: OutgoingResponse -> unit
     abstract Id: Guid
     abstract IPAddress: IPAddress
     abstract Port: int
@@ -101,9 +101,9 @@ module TcpServer =
           exn.Message
           |> printfn "sendCallback: exn: %s"
 
-    let send (response: Response) (socket: Socket) id subscriptions =
+    let send (response: OutgoingResponse) (socket: Socket) id subscriptions =
       try
-        let payload = Response.serialize response
+        let payload = OutgoingResponse.serialize response
         socket.BeginSend(
           payload,
           0,
@@ -128,7 +128,7 @@ module TcpServer =
       connection.Socket.BeginReceive(
         connection.Buffer,              // buffer to write to
         0,                              // offset in buffer
-        Core.BUFFER_SIZE,          // size of internal buffer
+        Core.BUFFER_SIZE,               // size of internal buffer
         SocketFlags.None,               // no flags
         AsyncCallback(callback),        // when done, invoke this callback
         connection)                     // pass-on connection into callback
@@ -144,6 +144,7 @@ module TcpServer =
       try
         // Read data from the client socket.
         let bytesRead = connection.Socket.EndReceive(result)
+        printfn "bytesRead: %d" bytesRead
         connection.RequestBuilder.Process bytesRead
 
         // keep trying to get more
@@ -167,8 +168,9 @@ module TcpServer =
 
       let buffer = Array.zeroCreate Core.BUFFER_SIZE
 
-      let builder = RequestBuilder.create buffer <| fun request ->
-        request
+      let builder = RequestBuilder.create buffer <| fun request client body ->
+        body
+        |> IncomingRequest.create id request client
         |> TcpServerEvent.Request
         |> Observable.onNext state.Subscriptions
 
@@ -177,7 +179,7 @@ module TcpServer =
             member connection.Socket
               with get () = socket
 
-            member connection.Send (response: Response) =
+            member connection.Send (response: OutgoingResponse) =
               send response socket id state.Subscriptions
 
             member connection.Id
@@ -266,10 +268,7 @@ module TcpServer =
       let thread = Thread(ThreadStart(acceptor state))
       thread.Start()
       { new IDisposable with
-          member self.Dispose() =
-            try
-              thread.Abort()
-            with | _ -> () }
+          member self.Dispose() = try thread.Abort() with | _ -> () }
 
     // *** cleanUp
 
@@ -288,6 +287,7 @@ module TcpServer =
 
     let state = SharedState.create listener
     let cleaner = Observable.subscribe (Server.cleanUp state.Connections) state.Subscriptions
+
     let mutable acceptor = Unchecked.defaultof<IDisposable>
 
     { new IServer with
@@ -304,7 +304,7 @@ module TcpServer =
               |> Error.asSocketError (tag "Start")
               |> Either.fail
 
-        member server.Respond (response: Response) =
+        member server.Respond (response: OutgoingResponse) =
           try
             state.Connections.[response.ConnectionId].Send response
           with

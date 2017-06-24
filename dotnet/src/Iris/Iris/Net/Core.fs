@@ -1,5 +1,7 @@
 namespace rec Iris.Net
 
+#nowarn "52" // "this value has been copied"
+
 // * Imports
 
 open System
@@ -10,24 +12,77 @@ open System.Text
 open Iris.Core
 open System.Collections.Concurrent
 
-// * Request
+// * ISocketMessage
+
+type ISocketMessage =
+  abstract RequestId: Guid
+  abstract PeerId: Guid
+  abstract Body: byte array
+
+// * Request (Client-side)
 
 type Request =
   { RequestId: Guid
-    ConnectionId: Guid
+    PeerId: Guid
     Body: byte array }
 
-  // ** PeedId
+  interface ISocketMessage with
+    member self.RequestId with get () = self.RequestId
+    member self.PeerId with get () = self.PeerId
+    member self.Body with get () = self.Body
 
-  member request.PeerId
-    with get () = Guid.toId request.ConnectionId
+// * Response (Client-side)
 
-// * RequestBuilder
+type Response =
+  { RequestId: Guid
+    PeerId: Guid
+    Body: byte array}
+
+  interface ISocketMessage with
+    member self.RequestId with get () = self.RequestId
+    member self.PeerId with get () = self.PeerId
+    member self.Body with get () = self.Body
+
+// * IncomingRequest (Server-side)
+
+type IncomingRequest =
+  { RequestId: Guid
+    PeerId: Guid
+    ConnectionId: Guid
+    Body: byte array}
+
+  interface ISocketMessage with
+    member self.RequestId with get () = self.RequestId
+    member self.PeerId with get () = self.PeerId
+    member self.Body with get () = self.Body
+
+// * OutgoingResponse (Server-side)
+
+type OutgoingResponse =
+  { RequestId: Guid
+    PeerId: Guid
+    ConnectionId: Guid
+    Body: byte array}
+
+  interface ISocketMessage with
+    member self.RequestId with get () = self.RequestId
+    member self.PeerId with get () = self.PeerId
+    member self.Body with get () = self.Body
+
+// * SocketMessageConstructor
+
+type SocketMessageConstructor = Guid -> Guid -> byte array -> unit
+
+// * IRequestBuilder
 
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
   abstract Process: read:int -> unit
+
+// * IResponseBuilder
+
+type IResponseBuilder = IRequestBuilder
 
 // * RequestBuilder module
 
@@ -59,13 +114,13 @@ module RequestBuilder =
 
   // ** serializeLength
 
-  let private serializeLength (request: Request) =
+  let private serializeLength (request: 't when 't :> ISocketMessage) =
     int64 request.Body.Length
     |> BitConverter.GetBytes
 
   // ** serialize
 
-  let serialize (request: Request) : byte array =
+  let serialize (request: 't when 't :> ISocketMessage) : byte array =
     let totalSize = int HeaderSize + request.Body.Length
     let destination = Array.zeroCreate totalSize
     // copy the preamble
@@ -82,7 +137,7 @@ module RequestBuilder =
       MsgLengthSize)
     // copy the connection id (peer id) to destination
     Array.Copy(
-      request.ConnectionId.ToByteArray(),
+      request.PeerId.ToByteArray(),
       0,
       destination,
       PreambleSize + MsgLengthSize,
@@ -116,11 +171,10 @@ module RequestBuilder =
 
   let private PreambleMsgIdOffset = PreambleSize + MsgLengthSize + IdSize
 
-
   // ** create
 
-  let create (buffer: byte array) (onComplete: Request -> unit) =
-    let preamble = ResizeArray()
+  let create (buffer: byte array) (onComplete: SocketMessageConstructor) =
+    let preamble = ResizeArray()     // TODO: eventually, these should probably become BinaryWriters
     let length = ResizeArray()
     let client = ResizeArray()
     let request = ResizeArray()
@@ -129,10 +183,10 @@ module RequestBuilder =
     let mutable bodyLength = 0L
 
     let finalize () =
-      { RequestId    = Guid (request.ToArray())
-        ConnectionId = Guid (client.ToArray())
-        Body         = body.ToArray() }
-      |> onComplete
+      onComplete
+        (Guid (request.ToArray()))
+        (Guid (client.ToArray()))
+        (body.ToArray())
       preamble.Clear()
       length.Clear()
       client.Clear()
@@ -245,20 +299,33 @@ module RequestBuilder =
 
 module Request =
 
-  let create (id: Guid) (body: byte array) : Request =
-    { RequestId = Guid.NewGuid()
-      ConnectionId = id
+  // ** make
+
+  let make (requestId: Guid) (peerId: Guid) (body: byte array) : Request =
+    { RequestId = requestId
+      PeerId = peerId
       Body = body }
+
+  // ** create
+
+  let create (peerId: Guid) (body: byte array) : Request =
+    make (Guid.NewGuid()) peerId body
+
+  // ** serialize
 
   let serialize = RequestBuilder.serialize
 
-// * Response
+// * IncomingRequest module
 
-type Response = Request
+module IncomingRequest =
 
-// * IResponseBuilder
+  // ** create
 
-type IResponseBuilder = IRequestBuilder
+  let create connectionId requestId peerId body : IncomingRequest =
+    { RequestId = requestId
+      PeerId = peerId
+      Body = body
+      ConnectionId = connectionId }
 
 // * ResponseBuilder module
 
@@ -271,13 +338,30 @@ module ResponseBuilder =
 
 module Response =
 
-  let fromRequest (request: Request) (body: byte array) =
-    { RequestId = request.RequestId
-      ConnectionId = request.ConnectionId
+  let create (requestId: Guid) (peerId: Guid) (body: byte array) : Response =
+    { RequestId = requestId
+      PeerId = peerId
       Body = body }
+
+  let fromRequest (request: Request) (body: byte array) : Response =
+    create request.RequestId request.PeerId body
 
   let serialize (response: Response) = RequestBuilder.serialize response
 
+// * OutgoingResponse module
+
+module OutgoingResponse =
+
+  let create requestId connectionId peerId body : OutgoingResponse =
+    { RequestId = requestId
+      PeerId = peerId
+      Body = body
+      ConnectionId = connectionId }
+
+  let fromRequest (request: IncomingRequest) (body: byte array) =
+    create request.RequestId request.ConnectionId request.PeerId body
+
+  let serialize (response: OutgoingResponse) = RequestBuilder.serialize response
 
 // * Client
 
@@ -308,7 +392,6 @@ type IClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
   abstract PeerId: Id
-  abstract ConnectionId: Guid
   abstract Request: Request -> unit
   abstract Subscribe: (TcpClientEvent -> unit) -> IDisposable
 
@@ -333,7 +416,7 @@ type ServerConfig =
 type TcpServerEvent =
   | Connect    of connectionId:Guid * ip:IPAddress * port:int
   | Disconnect of connectionId:Guid
-  | Request    of Request
+  | Request    of IncomingRequest
 
 // ** IServer
 
@@ -341,7 +424,7 @@ type IServer =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (TcpServerEvent -> unit) -> IDisposable
-  abstract Respond: Response -> unit
+  abstract Respond: OutgoingResponse -> unit
 
 // * PubSub
 
