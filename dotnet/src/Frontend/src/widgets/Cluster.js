@@ -64,11 +64,11 @@ class ClusterView extends React.Component {
             return (
               <tr key={IrisLib.toString(kv[0])}>
                 <td className="p1"><span className="iris-output iris-icon icon-host">{node.HostName} <span className="iris-icon icon-bull iris-status-off" /></span></td>
-                <td classsName="p2">{IrisLib.toString(node.IpAddr)}</td>
-                <td classsName="p3">{node.Port}</td>
-                <td classsName="p4">{node.State.ToString()}</td>
-                <td classsName="p5">shortkey</td>
-                <td classsName="p6"><button className="iris-icon icon-autocall" /></td>
+                <td className="p2">{IrisLib.toString(node.IpAddr)}</td>
+                <td className="p3">{node.Port}</td>
+                <td className="p4">{node.State.ToString()}</td>
+                <td className="p5">shortkey</td>
+                <td className="p6"><button className="iris-icon icon-autocall" /></td>
               </tr>
             );
           })}

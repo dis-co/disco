@@ -122,9 +122,10 @@ button {
 
     .iris-tab-name {
       height: 35px;
+      line-height: 20px;
       display: inline-block;
       border: 1px solid black;
-      padding: 9px 11px;
+      padding: 7px 11px;
       background: @iris-grey;
       cursor: pointer;
 
@@ -134,11 +135,11 @@ button {
       }
 
       &:hover {
-        border: 2px solid blue;
+        border: 2px solid @highlight-blue;
       }
 
       &.iris-selected {
-        border: 2px solid green;
+        border: 2px solid @highlight-lightblue;
       }
     }
   }
