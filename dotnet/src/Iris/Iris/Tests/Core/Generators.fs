@@ -1188,7 +1188,6 @@ module Generators =
 
   let apiRequestGen =
     [ Gen.map      ApiRequest.Snapshot   stateGen
-      Gen.constant ApiRequest.Ping
       Gen.map      ApiRequest.Register   clientGen
       Gen.map      ApiRequest.UnRegister clientGen
       Gen.map      ApiRequest.Update     stateMachineGen ]
@@ -1215,8 +1214,7 @@ module Generators =
   //         |_|                    |_|
 
   let apiResponseGen =
-    [ Gen.constant Pong
-      Gen.constant OK
+    [ Gen.constant OK
       Gen.constant Registered
       Gen.constant Unregistered
       Gen.map NOK apiErrorGen ]
