@@ -14,23 +14,22 @@ type OptionBuilder() =
 
 let option = OptionBuilder()
 
-type ObjectId = int
+type ObjectId = string
 
 type State =
   { IsRunning: bool
     PinGroup: PinGroup
-    GameObjects: Map<ObjectId, Action<float>>
-    PendingRegistrations: (int*Action<double>) list }
+    GameObjects: Map<ObjectId, Action<float>> }
 
 type Msg =
   | IrisEvent of ClientEvent
-  | RegisterObject of objectId: int * callback: Action<double>
+  | RegisterObject of objectId: string * callback: Action<double>
 
 type Actor = MailboxProcessor<Msg>
 
 type IIrisClient =
   inherit IDisposable
-  abstract member RegisterGameObject: objectId: int * callback: Action<float> -> unit
+  abstract member RegisterGameObject: objectId: string * callback: Action<float> -> unit
  
 let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
     let myself: IrisClient =
@@ -60,57 +59,50 @@ let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
     match client.Start() with
     | Right () ->
       Logger.info "startClient" "Successfully started Unity ApiClient"
-      print "Successfully started Iris Client"
+      //print "Successfully started Iris Client"
       myself.Id, client
     | Left error ->
       let msg = string error
       Logger.err "startClient" msg
+      print ("Couldn't start Iris Client: " + msg)
       exn msg |> raise
 
 let startActor(state, client: IApiClient, print: string->unit) = Actor.Start(fun inbox -> async {
   let rec loop state = async {
     let! msg = inbox.Receive()
-    sprintf "DEBUG: Iris client actor received message: %A" msg |> print
     let newState =
       try
         match msg with
         | IrisEvent ev ->
           match ev with
           //| ClientEvent.Update(UpdatePinGroup pinGroup) when pinGroup.Id = state.PinGroup.Id ->
-          | ClientEvent.Update(UpdatePin pin) when pin.PinGroup = state.PinGroup.Id ->
+          | ClientEvent.Update(UpdateSlices(Slices.NumberSlices(id, slices))) ->
             let objectId =
-              let id = string pin.Id
-              id.Substring(id.IndexOf('/') + 1) |> int
-            option {
-              let! callback = Map.tryFind objectId state.GameObjects
-              let! value = pin.Values.At(index 0).NumberValue
-              callback.Invoke(value)
-            } |> function
-              | Some () -> state // Update state.PinGroup?
-              | None -> state
+              let id = string id
+              id.Substring(id.IndexOf('/') + 1)
+            match Map.tryFind objectId state.GameObjects with
+            | Some callback -> callback.Invoke(slices.[0])
+            | None -> ()
+            state
           | ClientEvent.Status(ServiceStatus.Running) ->
-            print("DEBUG: Registrations pending " + (string state.PendingRegistrations.Length))
-            for (id,cb) in state.PendingRegistrations do
-              inbox.Post(RegisterObject(id,cb))
-            { state with IsRunning = true; PendingRegistrations = [] }
+            client.RemovePinGroup(state.PinGroup)
+            client.AddPinGroup(state.PinGroup)
+            { state with IsRunning = true }
           | _ -> state
         | RegisterObject(objectId, callback) ->
-          // TODO: Batch pin creation
-          if state.IsRunning then
-            let pinGroup =
-              let id = sprintf "%O/%i" state.PinGroup.Id objectId |> Id
-              print("DEBUG: Request to register game object with id: " + (string id))
-              if not(Map.containsKey id state.PinGroup.Pins)
-              then
-                sprintf "Registering pin %O to Iris" id |> print
-                let pin = Pin.number id (string objectId) state.PinGroup.Id [|astag "Scale"|] [|1.|]
+          let pinGroup =
+            let id = sprintf "%O/%s" state.PinGroup.Id objectId |> Id
+            //print("DEBUG: Request to register game object with id: " + (string id))
+            if not(Map.containsKey id state.PinGroup.Pins)
+            then
+              //sprintf "Registering pin %O to Iris" id |> print
+              let pin = Pin.number id objectId state.PinGroup.Id [|astag "Scale"|] [|0.|]
+              if state.IsRunning then
                 client.AddPin(pin)
-                { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
-              else state.PinGroup
-            // Update allways the internal map in case the callback has changed
-            { state with PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
-          else            
-            { state with PendingRegistrations = (objectId, callback)::state.PendingRegistrations }
+              { state.PinGroup with Pins = Map.add id pin state.PinGroup.Pins }
+            else state.PinGroup
+          // Update allways the internal map in case the callback has changed
+          { state with PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
       with
       | ex ->
         Logger.err "Iris.Unity.actorLoop" ex.Message
@@ -126,14 +118,13 @@ let startApiClientAndActor (serverIp, serverPort: uint16, print) =
   let state =
     // Create PinGroup and add it to Iris
     let pinGroup: PinGroup =
-      { Id = Guid.NewGuid().ToString().[..7] |> sprintf "unity-%s" |> Id
+      { Id = Id "Unity"
         Name = name "Unity"
         Client = clientId
         Pins = Map.empty }
-    client.AddPinGroup(pinGroup)
-    { IsRunning = false; PinGroup = pinGroup; GameObjects = Map.empty; PendingRegistrations = [] }
+    { IsRunning = false; PinGroup = pinGroup; GameObjects = Map.empty }
   let actor = startActor(state, client, print)
-  print("DEBUG: Iris client actor started")
+  //print("DEBUG: Iris client actor started")
   client, actor
 
 let private myLock = obj()
@@ -144,11 +135,11 @@ let getIrisClient(serverIp, serverPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
       | Some client ->
-        print.Invoke("Reciclying Iris client instance")
+        //print.Invoke("Reciclying Iris client instance")
         client
       | None ->
         let apiClient, actor = startApiClientAndActor(serverIp, serverPort, print.Invoke)
-        print.Invoke("DEBUG: Subscribing to API Client")
+        //print.Invoke("DEBUG: Subscribing to API Client")
         // Subscribe to API client events
         let apiobs = apiClient.Subscribe(IrisEvent >> actor.Post)
         let client2: IIrisClient =
@@ -160,7 +151,7 @@ let getIrisClient(serverIp, serverPort, print: Action<string>) =
                   apiobs.Dispose()
                   (actor :> IDisposable).Dispose()
                   print.Invoke("Iris client disposed")
-              member this.RegisterGameObject(objectId: int, callback: Action<double>) =
+              member this.RegisterGameObject(objectId: string, callback: Action<double>) =
                 RegisterObject(objectId, callback) |> actor.Post }
         client <- Some client2
         client2
