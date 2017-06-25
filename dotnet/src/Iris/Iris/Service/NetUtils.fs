@@ -28,7 +28,7 @@ module NetUtils =
   let request (sock: IClient) (req: RaftRequest) =
     req
     |> Binary.encode
-    |> Request.create (Guid.ofId sock.PeerId)
+    |> Request.create (Guid.ofId sock.ClientId)
     |> sock.Request
 
   // ** getSocket
@@ -78,7 +78,7 @@ module NetUtils =
   let rawRequest (request: RaftRequest) (client: IClient) =
     request
     |> Binary.encode
-    |> Request.create (Guid.ofId client.PeerId)
+    |> Request.create (Guid.ofId client.ClientId)
     |> client.Request
 
   // ** performRequest

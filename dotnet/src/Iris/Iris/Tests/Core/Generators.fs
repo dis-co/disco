@@ -1179,30 +1179,19 @@ module Generators =
       Gen.map Redirect                raftMemberGen ]
     |> Gen.oneof
 
-  //   ____ _ _            _      _          _
-  //  / ___| (_) ___ _ __ | |_   / \   _ __ (_)
-  // | |   | | |/ _ \ '_ \| __| / _ \ | '_ \| |
-  // | |___| | |  __/ | | | |_ / ___ \| |_) | |
-  //  \____|_|_|\___|_| |_|\__/_/   \_\ .__/|_|
-  //                                  |_|
+  //     _          _ ____                            _
+  //    / \   _ __ (_)  _ \ ___  __ _ _   _  ___  ___| |_
+  //   / _ \ | '_ \| | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  //  / ___ \| |_) | |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // /_/   \_\ .__/|_|_| \_\___|\__, |\__,_|\___||___/\__|
+  //         |_|                   |_|
 
-  let clientApiRequestGen =
-    [ Gen.map      ClientApiRequest.Snapshot stateGen
-      Gen.map      ClientApiRequest.Update   stateMachineGen
-      Gen.constant ClientApiRequest.Ping ]
-    |> Gen.oneof
-
-  //  ____                            _          _
-  // / ___|  ___ _ ____   _____ _ __ / \   _ __ (_)
-  // \___ \ / _ \ '__\ \ / / _ \ '__/ _ \ | '_ \| |
-  //  ___) |  __/ |   \ V /  __/ | / ___ \| |_) | |
-  // |____/ \___|_|    \_/ \___|_|/_/   \_\ .__/|_|
-  //                                      |_|
-
-  let serverApiRequestGen =
-    [ Gen.map Register clientGen
-      Gen.map UnRegister clientGen
-      Gen.map Update stateMachineGen ]
+  let apiRequestGen =
+    [ Gen.map      ApiRequest.Snapshot   stateGen
+      Gen.constant ApiRequest.Ping
+      Gen.map      ApiRequest.Register   clientGen
+      Gen.map      ApiRequest.UnRegister clientGen
+      Gen.map      ApiRequest.Update     stateMachineGen ]
     |> Gen.oneof
 
   //     _          _ _____
@@ -1267,8 +1256,7 @@ module Generators =
   let pinArb = Arb.fromGen pinGen
   let clientArb = Arb.fromGen clientGen
   let discoveredArb = Arb.fromGen discoveredGen
-  let clientApiRequestArb = Arb.fromGen clientApiRequestGen
-  let serverApiRequestArb = Arb.fromGen serverApiRequestGen
+  let apiRequestArb = Arb.fromGen apiRequestGen
   let apiResponseArb = Arb.fromGen apiResponseGen
   let cuePlayerArb = Arb.fromGen cuePlayerGen
   let stateMachineArb = Arb.fromGen stateMachineGen

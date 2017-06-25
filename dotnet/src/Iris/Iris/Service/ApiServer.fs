@@ -36,19 +36,6 @@ module ApiServer =
 
   type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
-  // ** Client
-
-  [<NoComparison;NoEquality>]
-  type private Client =
-    { Meta: IrisClient
-      Socket: IClient
-      Timer: IDisposable }
-
-    interface IDisposable with
-      member client.Dispose() =
-        dispose client.Timer
-        dispose client.Socket
-
   // ** ServerState
 
   [<NoComparison;NoEquality>]
@@ -57,7 +44,7 @@ module ApiServer =
       Status: ServiceStatus
       Server: IServer
       PubSub: IPubSub
-      Clients: Map<Id,Client>
+      Clients: Map<Id,IrisClient>
       Callbacks: IApiServerCallbacks
       Subscriptions: Subscriptions
       Disposables: IDisposable list
@@ -70,7 +57,6 @@ module ApiServer =
         List.iter dispose data.Disposables
         dispose data.Server
         dispose data.PubSub
-        Map.iter (fun _ v -> dispose v) data.Clients
         data.Subscriptions.Clear()
 
   // ** Msg
@@ -86,7 +72,6 @@ module ApiServer =
     | InstallSnapshot of id:Id
     | Update          of origin:Origin * sm:StateMachine
     | ServerEvent     of ev:TcpServerEvent
-    | ClientEvent     of ev:TcpClientEvent
 
   // ** ApiAgent
 
@@ -94,12 +79,12 @@ module ApiServer =
 
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (state: ServerState) (client: Client) =
+  let private requestInstallSnapshot (state: ServerState) (client: Id) =
     state.Callbacks.PrepareSnapshot()
-    |> ClientApiRequest.Snapshot
+    |> ApiRequest.Snapshot
     |> Binary.encode
-    |> Request.create (Guid.ofId state.Id)
-    |> client.Socket.Request
+    |> Request.create (Guid.ofId state.Server.Id)
+    |> state.Server.Request (Guid.ofId client)
 
     // match result with
     // | Right ApiResponse.OK -> ()
@@ -130,27 +115,6 @@ module ApiServer =
     //   |> fun reason -> client.Meta.Id, reason
     //   |> Msg.SetClientStatus
     //   |> agent.Post
-
-  // ** pingTimer
-
-  let private pingTimer (socket: IClient) =
-    let cts = new CancellationTokenSource()
-
-    let rec loop () =
-      async {
-        do! Async.Sleep(timeout)
-        ClientApiRequest.Ping
-        |> Binary.encode
-        |> Request.create (Guid.NewGuid())
-        |> socket.Request
-        return! loop ()
-      }
-
-    Async.Start(loop (), cts.Token)
-    { new IDisposable with
-        member self.Dispose () =
-          cts.Cancel() }
-
 
   // ** processSubscriptionEvent
 
@@ -185,46 +149,19 @@ module ApiServer =
 
   // ** handleAddClient
 
-  let private handleAddClient (state: ServerState) (meta: IrisClient) (agent: ApiAgent) =
-    Tracing.trace (tag "handleAddClient") <| fun () ->
-      // first, dispose of the previous client
-      match Map.tryFind meta.Id state.Clients with
-      | None -> ()
-      | Some client ->
-        dispose client
-        (Origin.Service, RemoveClient client.Meta)
-        |> IrisEvent.Append
-        |> Observable.onNext state.Subscriptions
-
-      // construct a new client value
-      let socket = TcpClient.create {
-        PeerId = meta.Id
-        PeerAddress = meta.IpAddress
-        PeerPort = meta.Port
-        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
-      }
-
-      match socket.Start() with
-      | Right () ->
-        socket.Subscribe (Msg.ClientEvent >> agent.Post) |> ignore
-
-        let client =
-          { Meta = meta
-            Socket = socket
-            Timer = pingTimer socket }
-
-        meta.Id |> Msg.InstallSnapshot |> agent.Post
-
-        (Origin.Service, AddClient meta)
-        |> IrisEvent.Append
-        |> Observable.onNext state.Subscriptions
-
-        { state with Clients = Map.add meta.Id client state.Clients }
-      | Left error ->
-        error
-        |> string
-        |> Logger.err (tag "handleAddClient")
-        state
+  let private handleAddClient (state: ServerState) (client: IrisClient) (agent: ApiAgent) =
+    // first, dispose of the previous client
+    client.Id |> Msg.InstallSnapshot |> agent.Post
+    match Map.tryFind client.Id state.Clients with
+    | None   ->
+      (Origin.Service, AddClient client)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+    | Some _ ->
+      (Origin.Service, UpdateClient client)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+    { state with Clients = Map.add client.Id client state.Clients }
 
   // ** handleRemoveClient
 
@@ -232,7 +169,6 @@ module ApiServer =
     Tracing.trace (tag "handleRemoveClient") <| fun () ->
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
-        dispose client
         (Origin.Service, RemoveClient peer)
         |> IrisEvent.Append
         |> Observable.onNext state.Subscriptions
@@ -241,12 +177,12 @@ module ApiServer =
 
   // ** updateClient
 
-  let private updateClient (sm: StateMachine) (client: Client) =
+  let private updateClient (sm: StateMachine) (server: IServer) (client: IrisClient) =
     sm
-    |> ClientApiRequest.Update
+    |> ApiRequest.Update
     |> Binary.encode
-    |> Request.create (Guid.NewGuid())
-    |> client.Socket.Request
+    |> Request.create (Guid.ofId server.Id)
+    |> server.Request (Guid.ofId client.Id)
 
   // ** updateAllClients
 
@@ -254,7 +190,7 @@ module ApiServer =
     Tracing.trace (tag "updateAllClients") <| fun () ->
       state.Clients
       |> Map.toArray
-      |> Array.Parallel.map (snd >> updateClient sm)
+      |> Array.Parallel.map (snd >> updateClient sm state.Server)
       |> ignore
 
   // ** multicastClients
@@ -264,7 +200,7 @@ module ApiServer =
       state.Clients
       |> Map.filter (fun id _ -> except <> id)
       |> Map.toArray
-      |> Array.Parallel.map (snd >> updateClient sm)
+      |> Array.Parallel.map (snd >> updateClient sm state.Server)
       |> ignore
 
   // ** publish
@@ -285,12 +221,12 @@ module ApiServer =
   let private handleSetClientStatus (state: ServerState) (id: Id) (status: ServiceStatus) =
     match Map.tryFind id state.Clients with
     | Some client ->
-      match client.Meta.Status, status with
+      match client.Status, status with
       | ServiceStatus.Running, ServiceStatus.Running -> state
       | oldst, newst ->
         if oldst <> newst then
-          let updated = { client with Meta = { client.Meta with Status = status } }
-          (Origin.Service, UpdateClient updated.Meta)
+          let updated = { client with Status = status }
+          (Origin.Service, UpdateClient updated)
           |> IrisEvent.Append
           |> Observable.onNext state.Subscriptions
           { state with Clients = Map.add id updated state.Clients }
@@ -301,7 +237,7 @@ module ApiServer =
 
   let private handleInstallSnapshot (state: ServerState) (id: Id) =
     match Map.tryFind id state.Clients with
-    | Some client -> requestInstallSnapshot state client
+    | Some client -> requestInstallSnapshot state client.Id
     | None -> ()
     state
 
@@ -358,7 +294,7 @@ module ApiServer =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ServerState) (req: IncomingRequest) (agent: ApiAgent) =
+  let private handleServerRequest (state: ServerState) (req: Request) (agent: ApiAgent) =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
       match req.Body |> Binary.decode with
       | Right (Register client) ->
@@ -366,10 +302,13 @@ module ApiServer =
         |> sprintf "%O requested to be registered"
         |> Logger.debug (tag "handleServerRequest")
 
-        client |> Msg.AddClient |> agent.Post
+        client
+        |> Msg.AddClient
+        |> agent.Post
+
         Registered
         |> Binary.encode
-        |> OutgoingResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
 
       | Right (UnRegister client) ->
@@ -377,10 +316,13 @@ module ApiServer =
         |> sprintf "%O requested to be un-registered"
         |> Logger.debug (tag "handleServerRequest")
 
-        client |> Msg.RemoveClient |> agent.Post
+        client
+        |> Msg.RemoveClient
+        |> agent.Post
+
         Unregistered
         |> Binary.encode
-        |> OutgoingResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
 
       | Right (Update sm) ->
@@ -388,10 +330,13 @@ module ApiServer =
         (Origin.Client id, sm)
         |> Msg.Update
         |> agent.Post
+
         OK
         |> Binary.encode
-        |> OutgoingResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
+
+      | Right other -> ()                // ignore Ping et al
 
       | Left error ->
         error
@@ -402,33 +347,19 @@ module ApiServer =
         |> ApiError.Internal
         |> NOK
         |> Binary.encode
-        |> OutgoingResponse.fromRequest req
+        |> Response.fromRequest req
         |> state.Server.Respond
       state
-
-  // ** handleServerEvent
-
-  let private handleServerEvent state (ev: TcpServerEvent) agent =
-    match ev with
-    | TcpServerEvent.Connect(_, ip, port) ->
-      sprintf "new connnection from %O:%d" ip port
-      |> Logger.debug (tag "handleServerEvent")
-      state
-    | TcpServerEvent.Disconnect(peer) ->
-      sprintf "%O disconnected" peer
-      |> Logger.debug (tag "handleServerEvent")
-      state
-    | TcpServerEvent.Request request ->
-      handleServerRequest state request agent
 
   // ** handleClientResponse
 
   let private handleClientResponse state (resp: Response) (agent: ApiAgent) =
     match Binary.decode resp.Body with
-    | Right ApiResponse.Pong ->
-      (Guid.toId resp.PeerId, ServiceStatus.Running)
-      |> Msg.SetClientStatus
-      |> agent.Post
+    //  _   _  ___  _  __
+    // | \ | |/ _ \| |/ /
+    // |  \| | | | | ' /
+    // | |\  | |_| | . \
+    // |_| \_|\___/|_|\_\
     | Right (ApiResponse.NOK error) ->
       error
       |> sprintf "NOK in client request. reason: %O"
@@ -438,9 +369,19 @@ module ApiServer =
       (Guid.toId resp.PeerId, ServiceStatus.Failed err)
       |> Msg.SetClientStatus
       |> agent.Post
+    //   ___  _  __
+    //  / _ \| |/ /
+    // | | | | ' /
+    // | |_| | . \
+    //  \___/|_|\_\
     | Right (ApiResponse.OK _)
     | Right (ApiResponse.Registered _)
     | Right (ApiResponse.Unregistered _) -> ()
+    //  ____                     _        _____
+    // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
+    // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|
+    // | |_| |  __/ (_| (_) | (_| |  __/ | |___| |  | | | (_) | |
+    // |____/ \___|\___\___/ \__,_|\___| |_____|_|  |_|  \___/|_|
     | Left error ->
       error
       |> sprintf "error returned in client request. reason: %O"
@@ -451,18 +392,32 @@ module ApiServer =
       |> agent.Post
     state
 
-  // ** handleClientEvent
+  // ** handleServerEvent
 
-  let private handleClientEvent state (ev: TcpClientEvent) agent =
+  let private handleServerEvent state (ev: TcpServerEvent) agent =
     match ev with
-    | TcpClientEvent.Connected _ ->
-      "Connected" |> Logger.debug (tag "handleClientEvent")
+    | TcpServerEvent.Request  request  -> handleServerRequest state request agent
+    | TcpServerEvent.Response response -> handleClientResponse state response agent
+
+    | TcpServerEvent.Connect(_, ip, port) ->
+      sprintf "new connnection from %O:%d" ip port
+      |> Logger.debug (tag "handleServerEvent")
       state
-    | TcpClientEvent.Disconnected _ ->
-      "Disconnected" |> Logger.debug (tag "handleClientEvent")
-      state
-    | TcpClientEvent.Response response ->
-      handleClientResponse state response agent
+
+    | TcpServerEvent.Disconnect(peer) ->
+      sprintf "%O disconnected" peer
+      |> Logger.debug (tag "handleServerEvent")
+      let id = Guid.toId peer
+      match Map.tryFind id state.Clients with
+      | None -> state
+      | Some client ->
+        (Origin.Service, RemoveClient client)
+        |> IrisEvent.Append
+        |> Observable.onNext state.Subscriptions
+        { state with Clients = Map.remove id state.Clients }
+        // (Guid.toId resp.PeerId, ServiceStatus.Running)
+        // |> Msg.SetClientStatus
+        // |> agent.Post
 
   // ** handleStop
 
@@ -494,7 +449,6 @@ module ApiServer =
               | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
               | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
               | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
-              | Msg.ClientEvent(ev)             -> handleClientEvent state ev inbox
             with
               | exn ->
                 exn.Message + exn.StackTrace
@@ -525,7 +479,7 @@ module ApiServer =
           (int Constants.MCAST_PORT)
 
       let server = TcpServer.create {
-        Id = mem.Id
+        ServerId = mem.Id
         Listen = mem.IpAddr
         Port = mem.ApiPort
       }
@@ -601,7 +555,7 @@ module ApiServer =
             // *** Clients
 
             member self.Clients
-              with get () = store.State.Clients |> Map.map (fun _ client -> client.Meta)
+              with get () = store.State.Clients |> Map.map (fun _ client -> client)
 
             // *** SendSnapshot
 

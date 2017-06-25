@@ -31,7 +31,7 @@ module NetIntegrationTests =
         let prt = port 5555us
 
         let server = TcpServer.create {
-            Id = Id.Create()
+            ServerId = Id.Create()
             Listen = ip
             Port = prt
           }
@@ -42,7 +42,7 @@ module NetIntegrationTests =
               match ev with
               | TcpServerEvent.Request request ->
                 request.Body
-                |> OutgoingResponse.fromRequest request
+                |> Response.fromRequest request
                 |> server.Respond
               | _ -> ()
               return! impl ()
@@ -79,7 +79,7 @@ module NetIntegrationTests =
         let clients =
           [| for n in 0 .. (numclients - 1) do
                let socket = TcpClient.create {
-                  PeerId = Id.Create()
+                  ClientId = Id.Create()
                   PeerAddress = ip
                   PeerPort = prt
                   Timeout = 200<ms>
@@ -97,7 +97,7 @@ module NetIntegrationTests =
             let request =
               value
               |> BitConverter.GetBytes
-              |> Request.create (Guid.ofId client.PeerId)
+              |> Request.create (Guid.ofId client.ClientId)
             client.Request request
             return request
           }
@@ -140,7 +140,7 @@ module NetIntegrationTests =
         let prt = port 5555us
 
         use server1 = TcpServer.create {
-            Id = Id.Create()
+            ServerId = Id.Create()
             Listen = ip
             Port = prt
           }
@@ -148,7 +148,7 @@ module NetIntegrationTests =
         do! server1.Start()
 
         let server2 = TcpServer.create {
-            Id = Id.Create()
+            ServerId = Id.Create()
             Listen = ip
             Port = prt
           }

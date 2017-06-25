@@ -27,7 +27,7 @@ module rec TcpClient =
 
   type private RequestId = Guid
 
-  type private PendingRequests = ConcurrentDictionary<RequestId,int64>
+  type private PendingRequests = ConcurrentDictionary<RequestId,Request>
 
   // ** IState
 
@@ -35,7 +35,7 @@ module rec TcpClient =
     inherit IDisposable
     abstract Status: ServiceStatus with get, set
     abstract Start: unit -> unit
-    abstract PeerId: Id
+    abstract ClientId: Id
     abstract ConnectionId: Guid
     abstract Socket: Socket
     abstract EndPoint: IPEndPoint
@@ -53,7 +53,15 @@ module rec TcpClient =
       try
         let state = ar.AsyncState :?> IState
         state.Socket.EndConnect(ar)     // complete the connection
-        state.PeerId
+
+        state.ClientId
+        |> string
+        |> Guid.Parse
+        |> fun guid -> guid.ToByteArray()
+        |> state.Socket.Send
+        |> ignore
+
+        state.ClientId
         |> TcpClientEvent.Connected
         |> Observable.onNext state.Subscriptions
         state.Connected.Set() |> ignore  // Signal that the connection has been made.
@@ -130,9 +138,9 @@ module rec TcpClient =
 
   // ** send
 
-  let private send (state: IState) (request: Request) =
+  let private send (state: IState) (msg: 't when 't :> ISocketMessage) =
     try
-      let payload = Request.serialize request
+      let payload = RequestBuilder.serialize msg
       // Begin sending the data to the remote device.
       state.Socket.BeginSend(
         payload,
@@ -184,17 +192,24 @@ module rec TcpClient =
     let mutable status = ServiceStatus.Stopped
 
     let builder = ResponseBuilder.create buffer <| fun request client body  ->
-      body
-      |> Response.create request client
-      |> TcpClientEvent.Response
-      |> Observable.onNext subscriptions
+      let ev =
+        if pending.ContainsKey request then
+          while not (pending.TryRemove(request) |> fst) do ignore ()
+          body
+          |> Response.create request client
+          |> TcpClientEvent.Response
+        else
+          body
+          |> Request.make request client
+          |> TcpClientEvent.Request
+      Observable.onNext subscriptions ev
 
     let checker =
       Socket.checkState
         client
         subscriptions
-        (options.PeerId |> TcpClientEvent.Connected    |> Some)
-        (options.PeerId |> TcpClientEvent.Disconnected |> Some)
+        (options.ClientId |> TcpClientEvent.Connected    |> Some)
+        (options.ClientId |> TcpClientEvent.Disconnected |> Some)
 
     { new IState with
         member state.Start () =
@@ -204,8 +219,8 @@ module rec TcpClient =
           with get () = status
           and set st = status <- st
 
-        member state.PeerId
-          with get () = options.PeerId
+        member state.ClientId
+          with get () = options.ClientId
 
         member state.ConnectionId
           with get () = id
@@ -245,7 +260,7 @@ module rec TcpClient =
   // ** create
 
   let create (options: ClientConfig) =
-    let id = Guid.NewGuid()
+    let id = Guid.ofId options.ClientId
     let subscriptions = Subscriptions()
     let mutable state = makeState id options subscriptions
 
@@ -254,13 +269,24 @@ module rec TcpClient =
           with get () = state.Status
 
         member socket.Request(request: Request) =
+          // this socket is asking soemthing, so we need to track this in pending requests
+          while not (state.PendingRequests.TryAdd(request.RequestId, request)) do
+            ignore ()
+
           if not (Service.isRunning state.Status) then
             state.Dispose()
             state <- makeState id options subscriptions
             state.Start()
-            send state request
-          else
-            send state request
+
+          send state request
+
+        member socket.Respond(response: Response) =
+          if not (Service.isRunning state.Status) then
+            state.Dispose()
+            state <- makeState id options subscriptions
+            state.Start()
+
+          send state response
 
         member socket.Start() =
           try
@@ -272,8 +298,8 @@ module rec TcpClient =
               |> Error.asSocketError (tag "Start")
               |> Either.fail
 
-        member socket.PeerId
-          with get () = options.PeerId
+        member socket.ClientId
+          with get () = options.ClientId
 
         member socket.Subscribe (callback: TcpClientEvent -> unit) =
           Observable.subscribe callback subscriptions

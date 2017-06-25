@@ -62,7 +62,7 @@ module RaftServer =
     | AddCmd            of sm:StateMachine
     | AddMember         of mem:RaftMember
     | RemoveMember      of id:Id
-    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:OutgoingResponse
+    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:Response
     // | Join           of ip:IpAddress * port:uint16
     // | Leave
     // | IsCommitted    of started:DateTime * entry:EntryResponse
@@ -163,7 +163,7 @@ module RaftServer =
 
   let private makePeerSocket (peer: RaftMember) =
     let socket = TcpClient.create {
-      PeerId = peer.Id
+      ClientId = peer.Id
       PeerAddress = peer.IpAddr
       PeerPort = peer.Port
       Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
@@ -192,10 +192,10 @@ module RaftServer =
   // ** addPeerSocket
 
   let private addPeerSocket (connections: Connections) (socket: IClient) =
-    match connections.TryAdd(socket.PeerId, socket) with
+    match connections.TryAdd(socket.ClientId, socket) with
     | true -> ()
     | false ->
-      match connections.TryAdd(socket.PeerId, socket) with
+      match connections.TryAdd(socket.ClientId, socket) with
       | true -> ()
       | false ->
         "unable to add peer socket after 1 retry"
@@ -467,7 +467,7 @@ module RaftServer =
   let private processAppendEntries (state: RaftServerState)
                                    (sender: Id)
                                    (ae: AppendEntries)
-                                   (raw: IncomingRequest) =
+                                   (raw: Request) =
 
     Tracing.trace (tag "processAppendEntries") <| fun () ->
       let result =
@@ -478,7 +478,7 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> AppendEntriesResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -486,7 +486,7 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -494,7 +494,7 @@ module RaftServer =
 
   let private processAppendEntry (state: RaftServerState)
                                  (cmd: StateMachine)
-                                 (raw: IncomingRequest)
+                                 (raw: Request)
                                  (agent: RaftAgent) =
 
     Tracing.trace (tag "processAppendEntry") <| fun () ->
@@ -505,7 +505,7 @@ module RaftServer =
             entry                       // timing out or responding to the server
             |> AppendEntryResponse
             |> Binary.encode
-            |> OutgoingResponse.fromRequest raw
+            |> Response.fromRequest raw
           (DateTime.Now, entry, response)
           |> Msg.ReqCommitted
           |> agent.Post
@@ -514,7 +514,7 @@ module RaftServer =
           (state.Raft.Member.Id, err)
           |> ErrorResponse
           |> Binary.encode
-          |> OutgoingResponse.fromRequest raw
+          |> Response.fromRequest raw
           |> state.Server.Respond
           newstate
       else
@@ -523,7 +523,7 @@ module RaftServer =
           mem
           |> Redirect
           |> Binary.encode
-          |> OutgoingResponse.fromRequest raw
+          |> Response.fromRequest raw
           |> state.Server.Respond
           state
         | None ->
@@ -531,13 +531,13 @@ module RaftServer =
           |> Error.asRaftError (tag "processAppendEntry")
           |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
           |> Binary.encode
-          |> OutgoingResponse.fromRequest raw
+          |> Response.fromRequest raw
           |> state.Server.Respond
           state
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: IncomingRequest) =
+  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: Request) =
     Tracing.trace (tag "processVoteRequest") <| fun () ->
       let result =
         Raft.receiveVoteRequest sender vr
@@ -548,7 +548,7 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> RequestVoteResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -556,13 +556,13 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: IncomingRequest) =
+  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: Request) =
     Tracing.trace (tag "processInstallSnapshot") <| fun () ->
       let result =
         Raft.receiveInstallSnapshot is
@@ -573,14 +573,14 @@ module RaftServer =
         (state.Raft.Member.Id, response)
         |> InstallSnapshotResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
       | Left (error, newstate) ->
         (state.Raft.Member.Id, error)
         |> ErrorResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -594,14 +594,14 @@ module RaftServer =
   /// - state: RaftServerState
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftServerState) (raw: IncomingRequest) =
+  let private doRedirect (state: RaftServerState) (raw: Request) =
     Tracing.trace (tag "doRedirect") <| fun () ->
       match Raft.getLeader state.Raft with
       | Some mem ->
         mem
         |> Redirect
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         state
       | None ->
@@ -609,7 +609,7 @@ module RaftServer =
         |> Error.asRaftError (tag "doRedirect")
         |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         state
 
@@ -1185,7 +1185,7 @@ module RaftServer =
 
   // ** processRequest
 
-  let private processRequest (data: RaftServerState) (raw: IncomingRequest) (agent: RaftAgent) =
+  let private processRequest (data: RaftServerState) (raw: Request) (agent: RaftAgent) =
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
@@ -1202,7 +1202,7 @@ module RaftServer =
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: RaftServerState) (raw: IncomingRequest) agent =
+  let private handleServerRequest (state: RaftServerState) (raw: Request) agent =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
       match processRequest state raw agent with
       | Right newdata -> newdata
@@ -1210,7 +1210,7 @@ module RaftServer =
         (state.Raft.Member.Id, error)
         |> ErrorResponse
         |> Binary.encode
-        |> OutgoingResponse.fromRequest raw
+        |> Response.fromRequest raw
         |> state.Server.Respond
         state
 
@@ -1222,19 +1222,23 @@ module RaftServer =
       sprintf "new connection from %O:%d" ip port
       |> Logger.debug (tag "handleServerEvent")
       state
+
     | TcpServerEvent.Disconnect(peer) ->
       sprintf "%O disconnected" peer
       |> Logger.debug (tag "handleServerEvent")
       state
+
     | TcpServerEvent.Request request ->
       handleServerRequest state request agent
+
+    | TcpServerEvent.Response response -> state
 
   // ** handleReqCommitted
 
   let private handleReqCommitted (state: RaftServerState)
                                  (ts: DateTime)
                                  (entry: EntryResponse)
-                                 (raw: OutgoingResponse)
+                                 (raw: Response)
                                  (agent: RaftAgent) =
 
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
@@ -1261,7 +1265,7 @@ module RaftServer =
           |> Error.asRaftError "handleReqCommitted"
           |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
           |> Binary.encode
-          |> OutgoingResponse.create raw.RequestId raw.ConnectionId raw.PeerId
+          |> Response.create raw.RequestId raw.PeerId
           |> state.Server.Respond
 
           delta
@@ -1278,7 +1282,7 @@ module RaftServer =
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
-        |> OutgoingResponse.create raw.RequestId raw.ConnectionId raw.PeerId
+        |> Response.create raw.RequestId raw.PeerId
         |> state.Server.Respond
         updateRaft state newstate
 
@@ -1345,6 +1349,7 @@ module RaftServer =
     | TcpClientEvent.Connected    peer -> handleClientState    state peer RaftMemberState.Running
     | TcpClientEvent.Disconnected peer -> handleClientState    state peer RaftMemberState.Failed
     | TcpClientEvent.Response response -> handleClientResponse state response agent
+    | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
 
   // ** handleStop
 
@@ -1491,7 +1496,7 @@ module RaftServer =
               Tracing.trace (tag "Start") <| fun () ->
                 if store.State.Status = ServiceStatus.Stopped then
                   let server = TcpServer.create {
-                      Id = raftState.Member.Id
+                      ServerId = raftState.Member.Id
                       Listen = raftState.Member.IpAddr
                       Port = raftState.Member.Port
                     }

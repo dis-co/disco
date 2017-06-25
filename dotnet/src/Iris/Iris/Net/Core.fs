@@ -55,7 +55,6 @@ type Response =
 type IncomingRequest =
   { RequestId: Guid
     PeerId: Guid
-    ConnectionId: Guid
     Body: byte array}
 
   interface ISocketMessage with
@@ -68,7 +67,6 @@ type IncomingRequest =
 type OutgoingResponse =
   { RequestId: Guid
     PeerId: Guid
-    ConnectionId: Guid
     Body: byte array}
 
   interface ISocketMessage with
@@ -322,18 +320,6 @@ module Request =
 
   let serialize = RequestBuilder.serialize
 
-// * IncomingRequest module
-
-module IncomingRequest =
-
-  // ** create
-
-  let create requestId peerId connectionId body : IncomingRequest =
-    { RequestId = requestId
-      PeerId = peerId
-      Body = body
-      ConnectionId = connectionId }
-
 // * ResponseBuilder module
 
 module ResponseBuilder =
@@ -355,21 +341,6 @@ module Response =
 
   let serialize (response: Response) = RequestBuilder.serialize response
 
-// * OutgoingResponse module
-
-module OutgoingResponse =
-
-  let create requestId connectionId peerId body : OutgoingResponse =
-    { RequestId = requestId
-      PeerId = peerId
-      Body = body
-      ConnectionId = connectionId }
-
-  let fromRequest (request: IncomingRequest) (body: byte array) =
-    create request.RequestId request.ConnectionId request.PeerId body
-
-  let serialize (response: OutgoingResponse) = RequestBuilder.serialize response
-
 // * Client
 
 //   ____ _ _            _
@@ -381,7 +352,7 @@ module OutgoingResponse =
 // ** ClientConfig
 
 type ClientConfig =
-  { PeerId: Id
+  { ClientId: Id
     PeerAddress: IpAddress
     PeerPort: Port
     Timeout: Timeout }
@@ -391,6 +362,7 @@ type ClientConfig =
 type TcpClientEvent =
   | Connected    of peerid:Id
   | Disconnected of peerid:Id
+  | Request      of Request
   | Response     of Response
 
 // ** IClient
@@ -398,9 +370,10 @@ type TcpClientEvent =
 type IClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract PeerId: Id
+  abstract ClientId: Id
   abstract Status: ServiceStatus
   abstract Request: Request -> unit
+  abstract Respond: Response -> unit
   abstract Subscribe: (TcpClientEvent -> unit) -> IDisposable
 
 // * Server
@@ -414,7 +387,7 @@ type IClient =
 // ** ServerConfig
 
 type ServerConfig =
-  { Id: Id
+  { ServerId: Id
     Listen: IpAddress
     Port: Port }
 
@@ -422,17 +395,20 @@ type ServerConfig =
 
 [<NoComparison;NoEquality>]
 type TcpServerEvent =
-  | Connect    of connectionId:Guid * ip:IPAddress * port:int
-  | Disconnect of connectionId:Guid
-  | Request    of IncomingRequest
+  | Connect    of peerId:Guid * ip:IPAddress * port:int
+  | Disconnect of peerId:Guid
+  | Request    of Request
+  | Response   of Response
 
 // ** IServer
 
 type IServer =
   inherit IDisposable
+  abstract Id: Id
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (TcpServerEvent -> unit) -> IDisposable
-  abstract Respond: OutgoingResponse -> unit
+  abstract Request: client:Guid -> Request -> unit
+  abstract Respond: Response -> unit
 
 // * PubSub
 

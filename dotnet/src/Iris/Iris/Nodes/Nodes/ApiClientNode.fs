@@ -40,8 +40,6 @@ module Api =
       InServerPort: ISpread<int>
       InClientId: ISpread<Id>
       InClientName: ISpread<string>
-      InClientIp: ISpread<string>
-      InClientPort: ISpread<int>
       InPinGroups: ISpread<PinGroup>
       InReconnect: ISpread<bool>
       InUpdate: ISpread<bool>
@@ -64,8 +62,6 @@ module Api =
         InServerPort = null
         InClientId = null
         InClientName = null
-        InClientIp = null
-        InClientPort = null
         InPinGroups = null
         InReconnect = null
         InUpdate = null
@@ -104,32 +100,17 @@ module Api =
 
   let private startClient (state: PluginState) =
     let myself =
-      let ip =
-        match IpAddress.TryParse state.InClientIp.[0] with
-        | Right ip -> ip
-        | Left error ->
-          error
-          |> string
-          |> Logger.err "startClient"
-          IPv4Address "127.0.0.1"
-
       let name =
         match state.InClientName.[0] with
         | null | "" -> "VVVV Client"
         | str -> str
 
-      let port =
-        try
-          state.InClientPort.[0] |> uint16 |> port
-        with
-          | _ -> port Constants.DEFAULT_API_CLIENT_PORT
-
       { Id = state.InClientId.[0]
         Name = name
         Role = Role.Renderer
         Status = ServiceStatus.Starting
-        IpAddress = ip
-        Port = port }
+        IpAddress = IpAddress.Localhost
+        Port = port 0us }
 
     let server : IrisServer =
       let ip =
@@ -331,14 +312,6 @@ type ApiClientNode() =
   val mutable InClientId: ISpread<Id>
 
   [<DefaultValue>]
-  [<Input("Client IP", IsSingle = true)>]
-  val mutable InClientIp: ISpread<string>
-
-  [<DefaultValue>]
-  [<Input("Client Port", IsSingle = true)>]
-  val mutable InClientPort: ISpread<int>
-
-  [<DefaultValue>]
   [<Input("Reconnect", IsSingle = true, IsBang = true)>]
   val mutable InReconnect: ISpread<bool>
 
@@ -380,8 +353,6 @@ type ApiClientNode() =
               InServerPort = self.InServerPort
               InClientId = self.InClientId
               InClientName = self.InClientName
-              InClientIp = self.InClientIp
-              InClientPort = self.InClientPort
               InPinGroups = self.InPinGroups
               InReconnect = self.InReconnect
               InUpdate = self.InUpdate

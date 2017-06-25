@@ -409,16 +409,10 @@ module SerializationTests =
       |> Prop.forAll Generators.discoveredArb
       |> Check.QuickThrowOnFailure
 
-  let test_validate_client_api_request_binary_serialization =
-    testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
-      binaryEncDec<ClientApiRequest>
-      |> Prop.forAll Generators.clientApiRequestArb
-      |> Check.QuickThrowOnFailure
-
-  let test_validate_server_api_request_binary_serialization =
-    testCase "Validate ServerApiRequest Binary Serialization" <| fun _ ->
-      binaryEncDec<ServerApiRequest>
-      |> Prop.forAll Generators.serverApiRequestArb
+  let test_validate_api_request_binary_serialization =
+    testCase "Validate ApiRequest Binary Serialization" <| fun _ ->
+      binaryEncDec<ApiRequest>
+      |> Prop.forAll Generators.apiRequestArb
       |> Check.QuickThrowOnFailure
 
   let test_validate_api_response_binary_serialization =
@@ -474,7 +468,7 @@ module SerializationTests =
       test_validate_raftrequest_serialization
       test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
-      test_validate_client_api_request_binary_serialization
+      test_validate_api_request_binary_serialization
 
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

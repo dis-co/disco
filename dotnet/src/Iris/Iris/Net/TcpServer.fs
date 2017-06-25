@@ -36,7 +36,8 @@ module TcpServer =
   type private IConnection =
     inherit IDisposable
     abstract Socket: Socket
-    abstract Send: OutgoingResponse -> unit
+    abstract Request: Request -> unit
+    abstract Respond: Response -> unit
     abstract Id: Guid
     abstract IPAddress: IPAddress
     abstract Port: int
@@ -86,7 +87,9 @@ module TcpServer =
 
   module private Connection =
 
-    let sendCallback (result: IAsyncResult) =
+    // ** sendCallback
+
+    let private sendCallback (result: IAsyncResult) =
       try
         // Retrieve the socket from the state object.
         let handler = result.AsyncState :?> Socket
@@ -99,9 +102,11 @@ module TcpServer =
           exn.Message
           |> Logger.err (tag "sendCallback")
 
-    let send (response: OutgoingResponse) (socket: Socket) id subscriptions =
+    // ** send
+
+    let private send (msg: ISocketMessage) (socket: Socket) id subscriptions =
       try
-        let payload = OutgoingResponse.serialize response
+        let payload = RequestBuilder.serialize msg
         socket.BeginSend(
           payload,
           0,
@@ -122,6 +127,8 @@ module TcpServer =
           |> TcpServerEvent.Disconnect
           |> Observable.onNext subscriptions
 
+    // ** beginReceive
+
     let private beginReceive (connection: IConnection) callback =
       connection.Socket.BeginReceive(
         connection.Buffer,              // buffer to write to
@@ -132,7 +139,9 @@ module TcpServer =
         connection)                     // pass-on connection into callback
       |> ignore
 
-    let rec receiveCallback (result: IAsyncResult) =
+    // ** receiveCallback
+
+    let rec private receiveCallback (result: IAsyncResult) =
       // Retrieve the state object and the handler socket
       // from the asynchronous state object.
       let connection = result.AsyncState :?> IConnection
@@ -156,25 +165,39 @@ module TcpServer =
           |> TcpServerEvent.Disconnect
           |> Observable.onNext connection.Subscriptions
 
-    let create (state: IState) (socket: Socket)  =
-      let id = Guid.NewGuid()
+    // ** create
+
+    let create (id: Guid) (state: IState) (socket: Socket)  =
       let cts = new CancellationTokenSource()
       let endpoint = socket.RemoteEndPoint :?> IPEndPoint
 
       let buffer = Array.zeroCreate Core.BUFFER_SIZE
 
+      let pending = ConcurrentDictionary<Guid,Request>()
+
       let builder = RequestBuilder.create buffer <| fun request client body ->
-        body
-        |> IncomingRequest.create request client id
-        |> TcpServerEvent.Request
-        |> Observable.onNext state.Subscriptions
+        let ev =
+          if pending.ContainsKey request then
+            while not (pending.TryRemove(request) |> fst) do ignore ()
+            body
+            |> Response.create request client
+            |> TcpServerEvent.Response
+          else
+            body
+            |> Request.make request client
+            |> TcpServerEvent.Request
+        Observable.onNext state.Subscriptions ev
 
       let connection =
         { new IConnection with
             member connection.Socket
               with get () = socket
 
-            member connection.Send (response: OutgoingResponse) =
+            member connection.Request (request: Request) =
+              while not (pending.TryAdd(request.RequestId, request)) do ignore ()
+              send request socket id state.Subscriptions
+
+            member connection.Respond (response: Response) =
               send response socket id state.Subscriptions
 
             member connection.Id
@@ -234,19 +257,26 @@ module TcpServer =
     let private acceptCallback()  =
       AsyncCallback(fun (result: IAsyncResult) ->
         let state = result.AsyncState :?> IState
-        state.DoneSignal.Set() |> ignore
         try
-          let connection =
-            result
-            |> state.Listener.EndAccept
-            |> Connection.create state
+          let socket = state.Listener.EndAccept(result)
 
+          state.DoneSignal.Set() |> ignore
+
+          let buffer = Array.zeroCreate 16
+          socket.Receive(buffer, 0, 16, SocketFlags.None) |> ignore
+
+          let guid = Guid buffer
+          let connection = Connection.create guid state socket
           while not (state.Connections.TryAdd(connection.Id, connection)) do
             ignore ()
+
+          guid
+          |> String.format "New connection from {0}"
+          |> Logger.info (tag "acceptCallback")
         with
           | exn ->
             exn.Message
-            |> Logger.err (tag "Server.acceptCallback"))
+            |> Logger.err (tag "acceptCallback"))
 
     // *** acceptor
 
@@ -285,6 +315,9 @@ module TcpServer =
     let mutable acceptor = Unchecked.defaultof<IDisposable>
 
     { new IServer with
+        member Server.Id
+          with get () = options.ServerId
+
         member server.Start() =
           try
             listener.Bind(endpoint)
@@ -298,9 +331,17 @@ module TcpServer =
               |> Error.asSocketError (tag "Start")
               |> Either.fail
 
-        member server.Respond (response: OutgoingResponse) =
+        member server.Request (client: Guid) (request: Request) =
           try
-            state.Connections.[response.ConnectionId].Send response
+            state.Connections.[client].Request request
+          with
+            | exn ->
+              exn.Message
+              |> Logger.err (tag "Send")
+
+        member server.Respond (response: Response) =
+          try
+            state.Connections.[response.PeerId].Respond response
           with
             | exn ->
               exn.Message

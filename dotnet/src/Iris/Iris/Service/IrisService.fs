@@ -41,7 +41,7 @@ module IrisService =
         | IrisEvent.Append(_, sm) ->
           sm
           |> Binary.encode
-          |> Request.create (Guid.ofId self.Socket.PeerId)
+          |> Request.create (Guid.ofId self.Socket.ClientId)
           |> self.Socket.Request
         | _ -> ()
 
@@ -236,7 +236,7 @@ module IrisService =
 
   let private makeLeader (leader: RaftMember) =
     let socket = TcpClient.create {
-      PeerId = leader.Id
+      ClientId = leader.Id
       PeerAddress = leader.IpAddr
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
