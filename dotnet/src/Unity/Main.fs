@@ -4,7 +4,6 @@ module Iris.Unity
 open System
 open Iris.Core
 open Iris.Client
-open ZeroMQ
 open System.Threading
 
 type OptionBuilder() =
@@ -40,7 +39,7 @@ let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IPv4Address "127.0.0.1"
-        Port = port 10500us }
+        Port = port 3500us }
 
     let server : IrisServer =
       let ip =
@@ -56,14 +55,13 @@ let startApiClient(serverIp, serverPort: uint16, print: string->unit) =
     sprintf "Unity client at %O:%O connecting to Iris at %O:%O..."
       myself.IpAddress myself.Port server.IpAddress server.Port |> print
     
-    let zcontext = new ZContext()
-    let client = ApiClient.create zcontext server myself
+    let client = ApiClient.create server myself
 
     match client.Start() with
     | Right () ->
       Logger.info "startClient" "Successfully started Unity ApiClient"
       print "Successfully started Iris Client"
-      myself.Id, zcontext, client
+      myself.Id, client
     | Left error ->
       let msg = string error
       Logger.err "startClient" msg
@@ -111,20 +109,20 @@ let startActor(state, client: IApiClient, print: string->unit) = Actor.Start(fun
               else state.PinGroup
             // Update allways the internal map in case the callback has changed
             { state with PinGroup = pinGroup; GameObjects = Map.add objectId callback state.GameObjects }
-          else
+          else            
             { state with PendingRegistrations = (objectId, callback)::state.PendingRegistrations }
       with
       | ex ->
         Logger.err "Iris.Unity.actorLoop" ex.Message
         print("Iris client error: " + ex.Message)
         state
-    return! loop state
+    return! loop newState
   }
   return! loop state
 })
 
 let startApiClientAndActor (serverIp, serverPort: uint16, print) =
-  let clientId, zcontext, client = startApiClient(serverIp, serverPort, print) 
+  let clientId, client = startApiClient(serverIp, serverPort, print) 
   let state =
     // Create PinGroup and add it to Iris
     let pinGroup: PinGroup =
@@ -136,7 +134,7 @@ let startApiClientAndActor (serverIp, serverPort: uint16, print) =
     { IsRunning = false; PinGroup = pinGroup; GameObjects = Map.empty; PendingRegistrations = [] }
   let actor = startActor(state, client, print)
   print("DEBUG: Iris client actor started")
-  zcontext, client, actor
+  client, actor
 
 let private myLock = obj()
 let mutable private client = None
@@ -149,7 +147,7 @@ let getIrisClient(serverIp, serverPort, print: Action<string>) =
         print.Invoke("Reciclying Iris client instance")
         client
       | None ->
-        let zcontext, apiClient, actor = startApiClientAndActor(serverIp, serverPort, print.Invoke)
+        let apiClient, actor = startApiClientAndActor(serverIp, serverPort, print.Invoke)
         print.Invoke("DEBUG: Subscribing to API Client")
         // Subscribe to API client events
         let apiobs = apiClient.Subscribe(IrisEvent >> actor.Post)
@@ -160,7 +158,6 @@ let getIrisClient(serverIp, serverPort, print: Action<string>) =
                 if not disposed then
                   disposed <- true
                   apiobs.Dispose()
-                  zcontext.Dispose()
                   (actor :> IDisposable).Dispose()
                   print.Invoke("Iris client disposed")
               member this.RegisterGameObject(objectId: int, callback: Action<double>) =
