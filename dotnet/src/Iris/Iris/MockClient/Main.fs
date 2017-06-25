@@ -10,9 +10,7 @@ open System.Net.Sockets
 open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
-open Iris.Service
 open Iris.Net
-open Iris.Service.Interfaces
 
 [<AutoOpen>]
 module Main =

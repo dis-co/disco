@@ -471,16 +471,13 @@ Target "GenerateManifest" (
 let withoutNodeModules (path: string) =
   path.Contains("node_modules") |> not
 
-Target "CopyBinaries"
-  (fun _ ->
-    // SilentCopyDir "bin/Core"  (baseDir @@ "bin/Release/Core")  withoutNodeModules
-    SilentCopyDir "bin/Iris"  (baseDir @@ "bin/Release/Iris")  withoutNodeModules
-    SilentCopyDir "bin/Nodes" (baseDir @@ "bin/Release/Nodes") withoutNodeModules
-    SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules
-  )
+Target "CopyBinaries" (fun _ ->
+    SilentCopyDir "bin/Iris"       (baseDir @@ "bin/Release/Iris")       withoutNodeModules
+    SilentCopyDir "bin/Nodes"      (baseDir @@ "bin/Release/Nodes")      withoutNodeModules
+    SilentCopyDir "bin/Sdk"        (baseDir @@ "bin/Release/Sdk")        withoutNodeModules
+    SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules)
 
-Target "CopyAssets"
-  (fun _ ->
+Target "CopyAssets" (fun _ ->
     [ "CHANGELOG.md"
     // ; userScripts @@ "runiris.sh"
     ; userScripts @@ "createproject.cmd"
@@ -493,8 +490,7 @@ Target "CopyAssets"
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
     SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
     FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
-    FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/"
-  )
+    FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/")
 
 Target "CopyDocs"
   (fun _ ->
@@ -692,15 +688,22 @@ let runWebTests = (fun _ ->
 Target "RunWebTests" runWebTests
 Target "RunWebTestsFast" runWebTests
 
-//    _   _ _____ _____
-//   | \ | | ____|_   _|
-//   |  \| |  _|   | |
-//  _| |\  | |___  | |
-// (_)_| \_|_____| |_|
+//   ____
+//  / ___|___  _ __ ___
+// | |   / _ \| '__/ _ \
+// | |__| (_) | | |  __/
+//  \____\___/|_|  \___|
+
 
 Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
 
 Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
+
+//  ____                  _
+// / ___|  ___ _ ____   _(_) ___ ___
+// \___ \ / _ \ '__\ \ / / |/ __/ _ \
+//  ___) |  __/ |   \ V /| | (_|  __/
+// |____/ \___|_|    \_/ |_|\___\___|
 
 Target "BuildDebugService" (fun () ->
   buildDebug "Projects/Service/Service.fsproj" ()
@@ -716,9 +719,32 @@ Target "BuildReleaseService" (fun () ->
   // runNpmNoErrors "install" targetDir ()
 )
 
+//  _   _           _
+// | \ | | ___   __| | ___  ___
+// |  \| |/ _ \ / _` |/ _ \/ __|
+// | |\  | (_) | (_| |  __/\__ \
+// |_| \_|\___/ \__,_|\___||___/
+
 Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
 
 Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
+
+//  ____      _ _
+// / ___|  __| | | __
+// \___ \ / _` | |/ /
+//  ___) | (_| |   <
+// |____/ \__,_|_|\_\
+
+Target "BuildDebugSdk" (buildDebug "Projects/Sdk/Sdk.fsproj")
+
+Target "BuildReleaseSdk" (buildRelease "Projects/Sdk/Sdk.fsproj")
+
+//  __  __            _     ____ _ _            _
+// |  \/  | ___   ___| | __/ ___| (_) ___ _ __ | |_
+// | |\/| |/ _ \ / __| |/ / |   | | |/ _ \ '_ \| __|
+// | |  | | (_) | (__|   <| |___| | |  __/ | | | |_
+// |_|  |_|\___/ \___|_|\_\\____|_|_|\___|_| |_|\__|
+
 
 Target "BuildDebugMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
 
@@ -895,6 +921,9 @@ Target "Release" DoNothing
 ==> "BuildReleaseService"
 
 "GenerateSerialization"
+==> "BuildReleaseSdk"
+
+"GenerateSerialization"
 ==> "BuildReleaseNodes"
 
 "GenerateSerialization"
@@ -904,6 +933,9 @@ Target "Release" DoNothing
 
 "BuildReleaseZeroconf"
 ==> "BuildReleaseService"
+
+"BuildReleaseZeroconf"
+==> "BuildReleaseSdk"
 
 "BuildReleaseZeroconf"
 ==> "BuildReleaseCore"
@@ -924,7 +956,8 @@ Target "Release" DoNothing
 
 // ONWARDS!
 
-"BuildReleaseNodes"
+"BuildReleaseSdk"
+==> "BuildReleaseNodes"
 ==> "BuildReleaseService"
 ==> "BuildFrontend"
 // ==> "BuildReleaseCore"

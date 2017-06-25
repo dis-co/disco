@@ -45,9 +45,9 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Core\Core.fsproj">
-      <Name>Iris.Core</Name>
-      <Project>{7d6918e9-1494-41e9-9beb-638616110a60}</Project>
+    <ProjectReference Include="..\Sdk\Sdk.fsproj">
+      <Name>Iris.Sdk</Name>
+      <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

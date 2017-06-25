@@ -51,6 +51,12 @@ zeroconf:
 	${BUILD} BuildDebugZeroconf
 	${BUILD} BuildReleaseZeroconf
 
+sdk:
+	${BUILD} BuildDebugSdk
+
+sdk.release:
+	${BUILD} BuildReleaseSdk
+
 client:
 	${BUILD} BuildDebugMockClient
 
@@ -140,7 +146,7 @@ clean:
 # | | |  __/ |  __/ (_| \__ \  __/
 # |_|  \___|_|\___|\__,_|___/\___|
 
-release:
+release: restore
 	${BUILD} Release
 
 #      _          _ _
