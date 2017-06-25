@@ -60,6 +60,9 @@ sdk.release:
 client:
 	${BUILD} BuildDebugMockClient
 
+raspi:
+	${BUILD} BuildDebugRaspi
+
 #  _ __ _   _ _ __
 # | '__| | | | '_ \
 # | |  | |_| | | | |

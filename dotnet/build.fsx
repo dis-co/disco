@@ -739,6 +739,15 @@ Target "BuildDebugSdk" (buildDebug "Projects/Sdk/Sdk.fsproj")
 
 Target "BuildReleaseSdk" (buildRelease "Projects/Sdk/Sdk.fsproj")
 
+//  ____                 _
+// |  _ \ __ _ ___ _ __ (_)
+// | |_) / _` / __| '_ \| |
+// |  _ < (_| \__ \ |_) | |
+// |_| \_\__,_|___/ .__/|_|
+//                |_|
+
+Target "BuildDebugRaspi" (buildDebug "Projects/RaspberryPi/RaspberryPi.fsproj")
+
 //  __  __            _     ____ _ _            _
 // |  \/  | ___   ___| | __/ ___| (_) ___ _ __ | |_
 // | |\/| |/ _ \ / __| |/ / |   | | |/ _ \ '_ \| __|

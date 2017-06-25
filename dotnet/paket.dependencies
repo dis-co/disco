@@ -27,6 +27,7 @@ group Main
   nuget System.ValueTuple
   nuget Disruptor >= 3.3.6
   nuget Fable.JsonConverter
+  nuget Raspberry.IO.GeneralPurpose
 
 group Fable
   source https://nuget.org/api/v2
