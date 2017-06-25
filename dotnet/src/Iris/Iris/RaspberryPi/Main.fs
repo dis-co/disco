@@ -24,7 +24,6 @@ module Main =
     | [<AltCommandLine("-v")>] Verbose
     | [<AltCommandLine("-h")>] Host of string
     | [<AltCommandLine("-p")>] Port of uint16
-    | [<AltCommandLine("-b")>] Bind of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -32,7 +31,6 @@ module Main =
         | Verbose -> "be more verbose"
         | Host _  -> "specify the iris services' host to connect to (optional)"
         | Port _  -> "specify the iris services' port to connect on (optional)"
-        | Bind _  -> "specify the iris clients'  address to bind to"
 
   [<Literal>]
   let private help = @"
@@ -44,13 +42,6 @@ module Main =
                   |_|"
 
   let defaultValue = 250 // milliseconds
-
-  let private nextPort () =
-    let l = new TcpListener(IPAddress.Loopback, 0)
-    l.Start()
-    let port = (l.LocalEndpoint :?> IPEndPoint).Port
-    l.Stop()
-    port
 
   //  _   _           _       _         _
   // | | | |_ __   __| | __ _| |_ ___  | |    ___   ___  _ __
@@ -86,7 +77,8 @@ module Main =
     abstract Update: double -> unit      // the update function
 
   let startUpdater () =
-    let led = ConnectorPin.P1Pin11.Output() // the output pin we'll toggle
+    printfn "IsRaspi: %b" Raspberry.Board.Current.IsRaspberryPi
+    let led = ConnectorPin.P1Pin13.Output() // the output pin we'll toggle
     let connection = new GpioConnection(led) // connection with that output
     let cts = new CancellationTokenSource()  // token to cancel the Actor
     let mbp = MailboxProcessor.Start(updater led connection, cts.Token) // an actor
@@ -133,11 +125,8 @@ module Main =
         Name = "Raspi Client"
         Role = Role.Renderer
         Status = ServiceStatus.Starting
-        IpAddress =
-          match parsed.Contains <@ Bind @> with
-          | true  -> IPv4Address (parsed.GetResult <@ Bind @>)
-          | false -> IPv4Address "127.0.0.1"
-        Port = nextPort() |> uint16 |> port }
+        IpAddress = IpAddress.Localhost
+        Port = port 0us }
 
     let pinid = Id.Create()
 
