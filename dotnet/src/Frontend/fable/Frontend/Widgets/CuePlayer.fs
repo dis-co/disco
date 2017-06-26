@@ -45,10 +45,14 @@ module private Helpers =
       | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueMockup() =
+    let cueGroup = 
+      { Id = Id.Create()
+        Name = name "MockCueGroup"
+        CueRefs = [||] }
     let cueList: CueList =
       { Id = Id.Create()
         Name = name "MockCueList"
-        Groups = [||] }
+        Groups = [|cueGroup|] }
     let cuePlayer =
       CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
     cueList, cuePlayer
