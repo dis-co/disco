@@ -42,6 +42,7 @@ module rec TcpClient =
     abstract Connected: ManualResetEvent
     abstract Sent: ManualResetEvent
     abstract Buffer: byte array
+    abstract IsCancelled: bool
     abstract PendingRequests: PendingRequests
     abstract ResponseBuilder: IResponseBuilder
     abstract Subscriptions: Subscriptions
@@ -50,34 +51,50 @@ module rec TcpClient =
 
   let private connectCallback() =
     AsyncCallback(fun (ar: IAsyncResult) ->
+      let state = ar.AsyncState :?> IState
       try
-        let state = ar.AsyncState :?> IState
         state.Socket.EndConnect(ar)     // complete the connection
 
-        state.ClientId
-        |> string
-        |> Guid.Parse
-        |> fun guid -> guid.ToByteArray()
-        |> state.Socket.Send
-        |> ignore
+        if not state.IsCancelled then
+          Logger.err (tag "connectCallback") "SENDING ID"
+          state.ClientId
+          |> string
+          |> Guid.Parse
+          |> fun guid -> guid.ToByteArray()
+          |> state.Socket.Send
+          |> ignore
 
-        state.ClientId
-        |> TcpClientEvent.Connected
-        |> Observable.onNext state.Subscriptions
-        state.Connected.Set() |> ignore  // Signal that the connection has been made.
+          Logger.err (tag "connectCallback") "NOTIFY CONNECTED"
+
+          state.ClientId
+          |> TcpClientEvent.Connected
+          |> Observable.onNext state.Subscriptions
+
+          state.Connected.Set() |> ignore  // Signal that the connection has been made.
+        else
+          Logger.err (tag "connectCallback") "ALREADY CANCELED"
       with
-        | exn -> exn.Message |> Logger.err (tag "connectCallback"))
+        | exn ->
+          exn.Message |> Logger.err (tag "connectCallback"))
+          // state.ClientId
+          // |> TcpClientEvent.Disconnected
+          // |> Observable.onNext state.Subscriptions)
 
   // ** beginConnect
 
   let private beginConnect (state: IState) =
     state.Socket.BeginConnect(state.EndPoint, connectCallback(), state) |> ignore
     if not (state.Connected.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+      Logger.err (tag "beginConnect") "Connection Timeout"
       state.Status <-
         "Connection Timeout"
         |> Error.asSocketError (tag "beginConnect")
         |> ServiceStatus.Failed
+      // state.ClientId
+      // |> TcpClientEvent.Disconnected
+      // |> Observable.onNext state.Subscriptions
     else
+      Logger.err (tag "beginConnect") "CONNECTED"
       state.Status <- ServiceStatus.Running
 
   // ** receiveCallback
@@ -86,10 +103,11 @@ module rec TcpClient =
     AsyncCallback(fun (ar: IAsyncResult) ->
       let state = ar.AsyncState :?> IState
       try
-        // Read data from the remote device.
-        let bytesRead = state.Socket.EndReceive(ar)
-        state.ResponseBuilder.Process bytesRead
-        beginReceive state
+        if not state.IsCancelled then
+          // Read data from the remote device.
+          let bytesRead = state.Socket.EndReceive(ar)
+          state.ResponseBuilder.Process bytesRead
+          beginReceive state
       with
         | exn ->
           exn.Message |> Logger.err (tag "receiveCallback")
@@ -97,20 +115,24 @@ module rec TcpClient =
             exn.Message
             |> Error.asSocketError (tag "receiveCallback")
             |> ServiceStatus.Failed)
+          // state.ClientId
+          // |> TcpClientEvent.Disconnected
+          // |> Observable.onNext state.Subscriptions)
 
   // ** beginReceive
 
   let private beginReceive (state: IState) =
     try
-      // Begin receiving the data from the remote device.
-      state.Socket.BeginReceive(
-        state.Buffer,
-        0,
-        Core.BUFFER_SIZE,
-        SocketFlags.None,
-        receiveCallback(),
-        state)
-      |> ignore
+      if not state.IsCancelled then
+        // Begin receiving the data from the remote device.
+        state.Socket.BeginReceive(
+          state.Buffer,
+          0,
+          Core.BUFFER_SIZE,
+          SocketFlags.None,
+          receiveCallback(),
+          state)
+        |> ignore
     with
       | exn ->
         exn.Message |> Logger.err (tag "beginReceive")
@@ -118,16 +140,20 @@ module rec TcpClient =
           exn.Message
           |> Error.asSocketError (tag "beginReceive")
           |> ServiceStatus.Failed
+        state.ClientId
+        |> TcpClientEvent.Disconnected
+        |> Observable.onNext state.Subscriptions
 
   // ** sendCallback
 
   let private sendCallback (ar: IAsyncResult) =
     let state = ar.AsyncState :?> IState
     try
-      // Complete sending the data to the remote device.
-      state.Socket.EndSend(ar) |> ignore
-      // Signal that all bytes have been sent.
-      state.Sent.Set() |> ignore
+      if not state.IsCancelled then
+        // Complete sending the data to the remote device.
+        state.Socket.EndSend(ar) |> ignore
+        // Signal that all bytes have been sent.
+        state.Sent.Set() |> ignore
     with
       | exn ->
         exn.Message |> Logger.err (tag "sendCallback")
@@ -135,6 +161,9 @@ module rec TcpClient =
           exn.Message
           |> Error.asSocketError (tag "sendCallback")
           |> ServiceStatus.Failed
+        // state.ClientId
+        // |> TcpClientEvent.Disconnected
+        // |> Observable.onNext state.Subscriptions
 
   // ** send
 
@@ -164,6 +193,9 @@ module rec TcpClient =
           exn.Message
           |> Error.asSocketError (tag "receiveCallback")
           |> ServiceStatus.Failed
+        // state.ClientId
+        // |> TcpClientEvent.Disconnected
+        // |> Observable.onNext state.Subscriptions
 
   // ** makeSocket
 
@@ -204,6 +236,14 @@ module rec TcpClient =
           |> TcpClientEvent.Request
       Observable.onNext subscriptions ev
 
+    let listener =
+      let autoCancel = function
+        | TcpClientEvent.Disconnected _ ->
+          Logger.err (tag "autoCancel") "autoCancel"
+          // try cts.Cancel() with | _ -> ()
+        | _ -> ()
+      Observable.subscribe autoCancel subscriptions
+
     let checker =
       Socket.checkState
         client
@@ -243,6 +283,9 @@ module rec TcpClient =
         member state.PendingRequests
           with get () = pending
 
+        member state.IsCancelled
+          with get () = cts.IsCancellationRequested
+
         member state.ResponseBuilder
           with get () = builder
 
@@ -250,9 +293,13 @@ module rec TcpClient =
           with get () = subscriptions
 
         member state.Dispose() =
+          for KeyValue(id,_) in pending.ToArray() do
+            while not (pending.TryRemove(id) |> fst) do
+              ignore "purging pending requests"
           try
             cts.Cancel()
           with | _ -> ()
+          listener.Dispose()
           builder.Dispose()
           Socket.dispose client
       }
@@ -269,24 +316,27 @@ module rec TcpClient =
           with get () = state.Status
 
         member socket.Request(request: Request) =
-          // this socket is asking soemthing, so we need to track this in pending requests
-          while not (state.PendingRequests.TryAdd(request.RequestId, request)) do
-            ignore ()
-
-          if not (Service.isRunning state.Status) then
-            state.Dispose()
-            state <- makeState id options subscriptions
-            state.Start()
-
-          send state request
+          if Service.isRunning state.Status then
+            // this socket is asking soemthing, so we need to track this in pending requests
+            while not (state.PendingRequests.TryAdd(request.RequestId, request)) do
+              ignore ()
+            send state request
 
         member socket.Respond(response: Response) =
-          if not (Service.isRunning state.Status) then
+          if Service.isRunning state.Status then
+            send state response
+
+        member socket.Restart() =
+          try
             state.Dispose()
             state <- makeState id options subscriptions
             state.Start()
-
-          send state response
+            Either.nothing
+          with
+            | exn ->
+              exn.Message
+              |> Error.asSocketError (tag "Start")
+              |> Either.fail
 
         member socket.Start() =
           try

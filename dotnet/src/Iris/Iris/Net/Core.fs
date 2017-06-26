@@ -17,7 +17,7 @@ open System.Collections.Concurrent
 module Core =
 
   [<Literal>]
-  let BUFFER_SIZE = 4048
+  let BUFFER_SIZE = 1024
 
 // * ISocketMessage
 
@@ -370,6 +370,7 @@ type TcpClientEvent =
 type IClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
+  abstract Restart: unit -> Either<IrisError,unit>
   abstract ClientId: Id
   abstract Status: ServiceStatus
   abstract Request: Request -> unit

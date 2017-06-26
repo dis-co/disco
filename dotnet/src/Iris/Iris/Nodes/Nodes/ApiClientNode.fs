@@ -96,6 +96,26 @@ module Api =
   let private enqueueEvent (state: PluginState) (ev: ClientEvent) =
     state.Events.Enqueue ev
 
+  // ** serverInfo
+
+  let private serverInfo (state: PluginState) =
+    let ip =
+      match IpAddress.TryParse state.InServerIp.[0] with
+      | Right ip ->  ip
+      | Left error ->
+        error
+        |> string
+        |> Logger.err "startClient"
+        IPv4Address "127.0.0.1"
+
+    let port =
+      try
+        state.InServerPort.[0] |> uint16 |> port
+      with
+        | _ -> port Constants.DEFAULT_API_PORT
+
+    { Port = port; IpAddress = ip }
+
   // ** startClient
 
   let private startClient (state: PluginState) =
@@ -112,33 +132,11 @@ module Api =
         IpAddress = IpAddress.Localhost
         Port = port 0us }
 
-    let server : IrisServer =
-      let ip =
-        match IpAddress.TryParse state.InServerIp.[0] with
-        | Right ip ->  ip
-        | Left error ->
-          error
-          |> string
-          |> Logger.err "startClient"
-          IPv4Address "127.0.0.1"
+    let server = serverInfo state
+    let client = ApiClient.create server myself
 
-      let port =
-        try
-          state.InServerPort.[0] |> uint16 |> port
-        with
-          | _ -> port Constants.DEFAULT_API_PORT
-
-      { Port = port; IpAddress = ip }
-
-    let result =
-      either {
-        let client = ApiClient.create server myself
-        do! client.Start()
-        return client
-      }
-
-    match result with
-    | Right client ->
+    match client.Start() with
+    | Right () ->
       let apiobs = client.Subscribe(enqueueEvent state)
       Logger.info "startClient" "successfully started ApiClient"
       { state with
@@ -201,6 +199,7 @@ module Api =
           []
           local
       for cmd in commands do
+        Logger.err "mergeGraphState" (sprintf "cmd: %A" cmd)
         plugstate.ApiClient.Append cmd
     plugstate
 
@@ -210,8 +209,11 @@ module Api =
     if state.InReconnect.[0] then
       while state.Events.TryDequeue() |> fst do
         ignore "purging event"
-      dispose state.ApiClient
-      startClient state
+      state
+      |> serverInfo
+      |> state.ApiClient.Restart
+      |> ignore
+      state
     elif state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
@@ -242,6 +244,7 @@ module Api =
           cmdUpdates.Add cmd
           newstate <- state
         | true, ClientEvent.Snapshot ->
+          Logger.err "ClientEvent.Snapshot" "event received"
           stateUpdates <- stateUpdates + 1
           newstate <- mergeGraphState state
         | false, _ -> run <- false
@@ -251,7 +254,7 @@ module Api =
 
       if stateUpdates > 0 || cmdUpdates.Count > 0 then
         state.OutUpdate.[0] <- true
-        updateState state
+        updateState newstate
       else
         state.OutUpdate.[0] <- false
         newstate
@@ -334,6 +337,10 @@ type ApiClientNode() =
   [<DefaultValue>]
   [<Output("Connected", IsSingle = true, DefaultValue = 0.0)>]
   val mutable OutConnected: ISpread<bool>
+
+  [<DefaultValue>]
+  [<Output("Count", IsSingle = true)>]
+  val mutable OutCount: ISpread<int>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
