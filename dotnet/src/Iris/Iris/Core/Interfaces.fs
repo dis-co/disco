@@ -92,6 +92,21 @@ type IrisEvent =
   | SessionOpened   of session:Id
   | SessionClosed   of session:Id
 
+  // ** ToString
+
+  override ev.ToString() =
+    match ev with
+    | Started          _  -> "Started"
+    | Configured       _  -> "Configured"
+    | LeaderChanged    _  -> "LeaderChanged"
+    | StateChanged     _  -> "StateChanged"
+    | PersistSnapshot  _  -> "PersistSnapshot"
+    | RaftError        _  -> "RaftError"
+    | Status           _  -> "Status"
+    | SessionOpened    _  -> "SessionOpened"
+    | SessionClosed    _  -> "SessionClosed"
+    | Append (origin,cmd) -> sprintf "Append(%s, %s)" (string origin) (string cmd)
+
   // ** Origin
 
   member ev.Origin

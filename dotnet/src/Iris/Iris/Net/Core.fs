@@ -429,7 +429,9 @@ module Socket =
   // ** isAlive
 
   let isAlive (socket:Socket) =
-    not (socket.Poll(1, SelectMode.SelectRead) && socket.Available = 0)
+    try
+      not (socket.Poll(1, SelectMode.SelectRead) && socket.Available = 0)
+    with | _ -> false
 
   // ** dispose
 
@@ -438,8 +440,7 @@ module Socket =
       socket.Shutdown(SocketShutdown.Both)
       socket.Close()
     with
-      | _ ->
-        socket.Dispose()
+      | _ -> socket.Dispose()
 
   // ** checkState
 

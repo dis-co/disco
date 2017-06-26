@@ -137,7 +137,7 @@ module Clock =
       Logger.warn "Clock" "internal timer is not using high resolution clock"
 
     let thread = Thread(worker state)
-    thread.Start()
+    // thread.Start()
 
     { new IClock with
         member clock.Start() =

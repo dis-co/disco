@@ -32,6 +32,9 @@ build: paket.restore zeroconf
 service:
 	${BUILD} BuildDebugService
 
+service.release:
+	${BUILD} BuildReleaseService
+
 core:
 	${BUILD} BuildDebugCore
 

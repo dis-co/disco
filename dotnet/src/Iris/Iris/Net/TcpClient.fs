@@ -221,7 +221,7 @@ module rec TcpClient =
     let builder = ResponseBuilder.create buffer <| fun request client body  ->
       let ev =
         if pending.ContainsKey request then
-          while not (pending.TryRemove(request) |> fst) do ignore ()
+          pending.TryRemove(request) |> ignore
           body
           |> Response.create request client
           |> TcpClientEvent.Response
@@ -289,10 +289,8 @@ module rec TcpClient =
 
         member state.Dispose() =
           for KeyValue(id,_) in pending.ToArray() do
-            while not (pending.TryRemove(id) |> fst) do
-              ignore "purging pending requests"
-          try
-            cts.Cancel()
+            pending.TryRemove(id) |> ignore
+          try cts.Cancel()
           with | _ -> ()
           listener.Dispose()
           builder.Dispose()
@@ -313,8 +311,7 @@ module rec TcpClient =
         member socket.Request(request: Request) =
           if Service.isRunning state.Status then
             // this socket is asking soemthing, so we need to track this in pending requests
-            while not (state.PendingRequests.TryAdd(request.RequestId, request)) do
-              ignore ()
+            state.PendingRequests.TryAdd(request.RequestId, request) |> ignore
             send state request
 
         member socket.Respond(response: Response) =

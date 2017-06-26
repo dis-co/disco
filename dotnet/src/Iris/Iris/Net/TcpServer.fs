@@ -177,12 +177,12 @@ module TcpServer =
 
       let builder = RequestBuilder.create buffer <| fun request client body ->
         let ev =
-          if pending.ContainsKey request then
-            while not (pending.TryRemove(request) |> fst) do ignore ()
+          match pending.TryRemove(request) with
+          | true, _ ->
             body
             |> Response.create request client
             |> TcpServerEvent.Response
-          else
+          | false, _ ->
             body
             |> Request.make request client
             |> TcpServerEvent.Request
@@ -194,7 +194,8 @@ module TcpServer =
               with get () = socket
 
             member connection.Request (request: Request) =
-              while not (pending.TryAdd(request.RequestId, request)) do ignore ()
+              // if false, the dictionary already contains reuqest
+              pending.TryAdd(request.RequestId, request) |> ignore
               send request socket id state.Subscriptions
 
             member connection.Respond (response: Response) =
@@ -267,8 +268,13 @@ module TcpServer =
 
           let guid = Guid buffer
           let connection = Connection.create guid state socket
-          while not (state.Connections.TryAdd(connection.Id, connection)) do
-            ignore ()
+
+          match state.Connections.TryRemove(connection.Id) with
+          | true, connection -> connection.Dispose()
+          | _ -> ()
+
+          state.Connections.TryAdd(connection.Id, connection)
+          |> ignore
 
           guid
           |> String.format "New connection from {0}"

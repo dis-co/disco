@@ -188,8 +188,7 @@ module IrisService =
     for KeyValue((desired, id), cue) in state.BufferedCues.ToArray() do
       if desired <= current then
         dispatchUpdates state cue
-        while not (state.BufferedCues.TryRemove((desired,id)) |> fst) do
-          ignore ()
+        state.BufferedCues.TryRemove((desired,id)) |> ignore
 
   // ** commandResolver
 
@@ -203,8 +202,7 @@ module IrisService =
       | IrisEvent.Append(_, CallCue cue) ->
         let key = (current, cue.Id)
         if not (store.State.BufferedCues.ContainsKey key) then
-          while not (store.State.BufferedCues.TryAdd(key, cue)) do
-            ignore ()
+          store.State.BufferedCues.TryAdd(key, cue) |> ignore
         maybeDispatchUpdate current store.State
       | _ -> ()
 
@@ -389,7 +387,7 @@ module IrisService =
     match Asset.read path with
     | Right str ->
       try
-        let serializer = new Serializer()
+        let serializer = Serializer()
         let yml = serializer.Deserialize<SnapshotYaml>(str)
 
         let members =
