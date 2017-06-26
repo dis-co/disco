@@ -56,7 +56,6 @@ module rec TcpClient =
         state.Socket.EndConnect(ar)     // complete the connection
 
         if not state.IsCancelled then
-          Logger.err (tag "connectCallback") "SENDING ID"
           state.ClientId
           |> string
           |> Guid.Parse
@@ -64,15 +63,11 @@ module rec TcpClient =
           |> state.Socket.Send
           |> ignore
 
-          Logger.err (tag "connectCallback") "NOTIFY CONNECTED"
-
           state.ClientId
           |> TcpClientEvent.Connected
           |> Observable.onNext state.Subscriptions
 
           state.Connected.Set() |> ignore  // Signal that the connection has been made.
-        else
-          Logger.err (tag "connectCallback") "ALREADY CANCELED"
       with
         | exn ->
           exn.Message |> Logger.err (tag "connectCallback"))
