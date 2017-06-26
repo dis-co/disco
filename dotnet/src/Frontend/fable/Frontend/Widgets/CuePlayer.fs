@@ -214,7 +214,7 @@ type private CueView(props) =
     let removeButton =
       td [ClassName "p8"] [
         button [
-          ClassName "iris-icon icon-close"
+          ClassName "iris-icon icon-control icon-close"
           OnClick (fun ev ->
             ev.stopPropagation()
             let id = this.props.CueRef.Id
