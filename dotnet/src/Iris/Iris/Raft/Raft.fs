@@ -1564,7 +1564,6 @@ module rec Raft =
                 do! setNextIndexM peer.Id nextIndex
                 do! setMatchIndexM peer.Id (nextIndex - index 1)
             else
-              do! debug "receiveAppendEntriesResponse" "success"
               do! updateMemberIndices resp peer
               do! updateCommitIndex resp
           else

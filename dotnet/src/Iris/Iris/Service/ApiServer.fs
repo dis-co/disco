@@ -206,7 +206,8 @@ module ApiServer =
   // ** publish
 
   let private publish (state: ServerState) (sm: StateMachine) (_: ApiAgent) =
-    sm |> Binary.encode |> state.PubSub.Send
+    // sm |> Binary.encode |> state.PubSub.Send
+    ()
 
   // ** handleSetStatus
 

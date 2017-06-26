@@ -1346,8 +1346,14 @@ module RaftServer =
 
   let private handleClientEvent state (ev: TcpClientEvent) agent =
     match ev with
-    | TcpClientEvent.Connected    peer -> handleClientState    state peer RaftMemberState.Running
-    | TcpClientEvent.Disconnected peer -> handleClientState    state peer RaftMemberState.Failed
+    | TcpClientEvent.Connected    peer ->
+      handleClientState    state peer RaftMemberState.Running
+    | TcpClientEvent.Disconnected peer ->
+      try
+        let connection = state.Connections.[peer]
+        connection.Restart() |> ignore
+      with | exn -> Logger.err (tag "handleClientEvent") exn.Message
+      handleClientState    state peer RaftMemberState.Failed
     | TcpClientEvent.Response response -> handleClientResponse state response agent
     | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
 
