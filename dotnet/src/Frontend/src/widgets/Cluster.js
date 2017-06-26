@@ -82,6 +82,8 @@ export default class Cluster {
   constructor() {
     this.view = ClusterView;
     this.name = "Cluster";
+    this.titleBar =
+      <button onClick={() => { showModal(AddMember)}}>Add member</button>;
     this.layout = {
       x: 0, y: 0,
       w: 8, h: 5,
