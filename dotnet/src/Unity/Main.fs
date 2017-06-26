@@ -29,12 +29,13 @@ type Actor = MailboxProcessor<Msg>
 
 type IIrisClient =
   inherit IDisposable
+  abstract member Name: string
   abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]> -> unit
 
-let startApiClient(serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
+let startApiClient(clientName, serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
     let myself: IrisClient =
-      { Id = Id.Create()
-        Name = "Unity Client"
+      { Id = Id.Create() // clientName
+        Name = clientName
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IPv4Address clientIp
@@ -47,13 +48,23 @@ let startApiClient(serverIp, serverPort: uint16, clientIp, clientPort: uint16, p
     match client.Start() with
     | Right () ->
       Logger.info "startClient" "Successfully started Unity ApiClient"
-      //print "Successfully started Iris Client"
+      print(sprintf "Successfully started Iris Client (status %A)" client.Status)
       myself.Id, client
     | Left error ->
       let msg = string error
       Logger.err "startClient" msg
       print ("Couldn't start Iris Client: " + msg)
       exn msg |> raise
+
+let addPin(pin: Pin, client: IApiClient, isRunning: bool) =
+  if isRunning then
+    client.RemovePin(pin)
+    client.AddPin(pin)
+
+let addPinGroup(pinGroup: PinGroup, client: IApiClient, isRunning: bool) =
+  if isRunning then
+    client.RemovePinGroup(pinGroup)
+    client.AddPinGroup(pinGroup)
 
 let startActor(state, client: IApiClient, clientId, print: string->unit) =
   let mutable apiobs: IDisposable option = None
@@ -66,8 +77,8 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
             match msg with
             | Dispose ->
               apiobs |> Option.iter (fun x -> x.Dispose())
-              for KeyValue(_,group) in state.PinGroups do
-                  client.RemovePinGroup(group)
+              //for KeyValue(_,group) in state.PinGroups do
+              //    client.RemovePinGroup(group)
               client.Dispose()
               print("Iris client disposed")
               None
@@ -78,27 +89,28 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
                 | Some callback -> callback.Invoke(slices)
                 | None -> ()
                 Some state
-              | ClientEvent.Status(ServiceStatus.Running) ->
-                for KeyValue(_,group) in state.PinGroups do
-                    client.AddPinGroup(group)
-                Some { state with IsRunning = true }
+              | ClientEvent.Status status ->
+                print(sprintf "IrisClient status: %A" status)
+                if status = ServiceStatus.Running then
+                  for KeyValue(_,pinGroup) in state.PinGroups do
+                    addPinGroup(pinGroup, client, true)
+                  Some { state with IsRunning = true }
+                else Some state
               | _ -> Some state
             | RegisterObject(groupName, pinName, values, callback) ->
               let groupId, pinId = Id groupName, Id(groupName + "/" + pinName)
-              let tags, values = values |> Seq.map (fun kv -> (astag kv.Key), kv.Value) |> Seq.toArray |> Array.unzip 
+              let tags, values = values |> Seq.map (fun kv -> (astag kv.Key), kv.Value) |> Seq.toArray |> Array.unzip
               let pin = Pin.number pinId pinName groupId tags values
               let pinGroup =
                 match Map.tryFind groupName state.PinGroups with
                 | Some pinGroup ->
                   if Map.containsKey pinId pinGroup.Pins then
                     failwithf "There's already a pin registered with group %s and name %s" groupName pinName
-                  if state.IsRunning then
-                    client.AddPin(pin)
+                  addPin(pin, client, state.IsRunning)
                   { pinGroup with Pins = Map.add pinId pin pinGroup.Pins }
                 | None ->
                   let pinGroup = { Id = Id groupName; Name = name groupName; Client = clientId; Pins = Map[pinId,pin] }
-                  if state.IsRunning then
-                    client.AddPinGroup(pinGroup)
+                  addPinGroup(pinGroup, client, state.IsRunning)
                   pinGroup
               Some { state with PinGroups = Map.add groupName pinGroup state.PinGroups; Callbacks = Map.add (string pinId) callback state.Callbacks }
           with
@@ -116,24 +128,25 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
   apiobs <- client.Subscribe(IrisEvent >> actor.Post) |> Some
   actor
 
-let startApiClientAndActor (serverIp, serverPort: uint16, clientIp, clientPort, print) =
-  let clientId, client = startApiClient(serverIp, serverPort, clientIp, clientPort, print)
+let startApiClientAndActor(clientName, serverIp, serverPort: uint16, clientIp, clientPort, print) =
+  let clientId, client = startApiClient(clientName, serverIp, serverPort, clientIp, clientPort, print)
   let state = { IsRunning = false; PinGroups = Map.empty; Callbacks = Map.empty }
   let actor = startActor(state, client, clientId, print)
   client, actor
 
 let private myLock = obj()
-let mutable private client = None
+let mutable private client: IIrisClient option = None
 
 [<CompiledName("GetIrisClient")>]
-let getIrisClient(serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
+let getIrisClient(clientName, serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
       | Some client ->
-        //print.Invoke("Reciclying Iris client instance")
+        if client.Name <> clientName then
+          failwithf "An Iris Client with name %s has already been started" client.Name
         client
       | None ->
-        let apiClient, actor = startApiClientAndActor(serverIp, serverPort, clientIp, clientPort, print.Invoke)
+        let apiClient, actor = startApiClientAndActor(clientName, serverIp, serverPort, clientIp, clientPort, print.Invoke)
         let client2: IIrisClient =
           let mutable disposed = false
           { new IIrisClient with
@@ -141,6 +154,7 @@ let getIrisClient(serverIp, serverPort, clientIp, clientPort, print: Action<stri
                 if not disposed then
                   disposed <- true
                   actor.Post Dispose
+              member this.Name = clientName
               member this.RegisterGameObject(groupName, pinName, values, callback) =
                 RegisterObject(groupName, pinName, values, callback) |> actor.Post }
         client <- Some client2

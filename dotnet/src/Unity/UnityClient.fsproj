@@ -1707,4 +1707,7 @@
       </ItemGroup>
     </When>
   </Choose>
+  <PropertyGroup>
+    <PostBuildEvent>Copy $(TargetPath) "C:\Users\Alfonso\dev\New Unity Project\Assets\UnityClient.dll"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
