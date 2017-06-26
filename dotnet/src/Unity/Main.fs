@@ -18,18 +18,18 @@ let option = OptionBuilder()
 type State =
   { IsRunning: bool
     PinGroups: Map<string,PinGroup>
-    Callbacks: Map<string, Action<float>> }
+    Callbacks: Map<string, Action<double[]>> }
 
 type Msg =
   | IrisEvent of ClientEvent
-  | RegisterObject of groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double>
+  | RegisterObject of groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]>
   | Dispose
 
 type Actor = MailboxProcessor<Msg>
 
 type IIrisClient =
   inherit IDisposable
-  abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<float> -> unit
+  abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]> -> unit
 
 let startApiClient(serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
     let myself: IrisClient =
@@ -75,7 +75,7 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
               match ev with
               | ClientEvent.Update(UpdateSlices(Slices.NumberSlices(id, slices))) ->
                 match Map.tryFind (string id) state.Callbacks with
-                | Some callback -> callback.Invoke(slices.[0])
+                | Some callback -> callback.Invoke(slices)
                 | None -> ()
                 Some state
               | ClientEvent.Status(ServiceStatus.Running) ->
@@ -141,7 +141,7 @@ let getIrisClient(serverIp, serverPort, clientIp, clientPort, print: Action<stri
                 if not disposed then
                   disposed <- true
                   actor.Post Dispose
-              member this.RegisterGameObject(groupName, pinName, values, callback: Action<double>) =
+              member this.RegisterGameObject(groupName, pinName, values, callback) =
                 RegisterObject(groupName, pinName, values, callback) |> actor.Post }
         client <- Some client2
         client2
