@@ -29,13 +29,13 @@ type Actor = MailboxProcessor<Msg>
 
 type IIrisClient =
   inherit IDisposable
-  abstract member Name: string
+  abstract member Guid: Guid
   abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]> -> unit
 
-let startApiClient(clientName, serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
+let startApiClient(clientGuid: Guid, serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
     let myself: IrisClient =
-      { Id = Id.Create() // clientName
-        Name = clientName
+      { Id = string clientGuid |> Id
+        Name = string clientGuid
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IPv4Address clientIp
@@ -128,8 +128,8 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
   apiobs <- client.Subscribe(IrisEvent >> actor.Post) |> Some
   actor
 
-let startApiClientAndActor(clientName, serverIp, serverPort: uint16, clientIp, clientPort, print) =
-  let clientId, client = startApiClient(clientName, serverIp, serverPort, clientIp, clientPort, print)
+let startApiClientAndActor(clientGuid, serverIp, serverPort: uint16, clientIp, clientPort, print) =
+  let clientId, client = startApiClient(clientGuid, serverIp, serverPort, clientIp, clientPort, print)
   let state = { IsRunning = false; PinGroups = Map.empty; Callbacks = Map.empty }
   let actor = startActor(state, client, clientId, print)
   client, actor
@@ -138,15 +138,15 @@ let private myLock = obj()
 let mutable private client: IIrisClient option = None
 
 [<CompiledName("GetIrisClient")>]
-let getIrisClient(clientName, serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
+let getIrisClient(clientGuid, serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
       | Some client ->
-        if client.Name <> clientName then
-          failwithf "An Iris Client with name %s has already been started" client.Name
+        if client.Guid <> clientGuid then
+          failwithf "An Iris Client with guid %O has already been started" client.Guid
         client
       | None ->
-        let apiClient, actor = startApiClientAndActor(clientName, serverIp, serverPort, clientIp, clientPort, print.Invoke)
+        let apiClient, actor = startApiClientAndActor(clientGuid, serverIp, serverPort, clientIp, clientPort, print.Invoke)
         let client2: IIrisClient =
           let mutable disposed = false
           { new IIrisClient with
@@ -154,7 +154,7 @@ let getIrisClient(clientName, serverIp, serverPort, clientIp, clientPort, print:
                 if not disposed then
                   disposed <- true
                   actor.Post Dispose
-              member this.Name = clientName
+              member this.Guid = clientGuid
               member this.RegisterGameObject(groupName, pinName, values, callback) =
                 RegisterObject(groupName, pinName, values, callback) |> actor.Post }
         client <- Some client2

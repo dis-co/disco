@@ -6,8 +6,8 @@ open System.Collections.Generic
 
 type IIrisClient =
   inherit IDisposable
-  abstract member Name: string
+  abstract member Guid: Guid
   abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string, double> * callback: Action<double[]> -> unit
 
 [<CompiledName("GetIrisClient")>]
-val getIrisClient: clientName: string * serverIp: string * serverPort: uint16 * clientIp: string * clientPort: uint16 * print: Action<string> -> IIrisClient
+val getIrisClient: clientId: Guid * serverIp: string * serverPort: uint16 * clientIp: string * clientPort: uint16 * print: Action<string> -> IIrisClient
