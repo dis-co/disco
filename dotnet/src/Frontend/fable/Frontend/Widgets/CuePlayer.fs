@@ -45,7 +45,7 @@ module private Helpers =
       | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueMockup() =
-    let cueGroup = 
+    let cueGroup =
       { Id = Id.Create()
         Name = name "MockCueGroup"
         CueRefs = [||] }
@@ -565,7 +565,11 @@ type CuePlayerView(props) =
         let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
         // Insert new CueRef in the selected CueGroup after the selected cue
         let cueGroup = cueList.Groups.[max this.state.SelectedCueGroupIndex 0]
-        let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.state.SelectedCueIndex newCueRef cueGroup.CueRefs }
+        let idx =
+          if this.state.SelectedCueIndex < 0
+          then cueGroup.CueRefs.Length - 1
+          else this.state.SelectedCueIndex
+        let newCueGroup = { cueGroup with CueRefs = Array.insertAfter idx newCueRef cueGroup.CueRefs }
         // Update the CueList
         let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
         // Send messages to backend
