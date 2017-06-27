@@ -44,6 +44,9 @@ class ClusterView extends React.Component {
   }
 
   render() {
+    if (this.props.global.state.project == null) {
+      return <table className="iris-list iris-cluster"></table>
+    }
     const config = this.props.global.state.project.Config;
     let site = tryFirst(config.Sites, site => site.Id = config.ActiveSite);
     return (
