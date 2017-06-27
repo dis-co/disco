@@ -16,7 +16,7 @@ export function showModal(content, props) {
 export default class App extends Component {
   constructor(props) {
     super(props);
-    this.global = new GlobalModel();
+    this.global = GlobalModel.Singleton;
     this.global.addTab({
       name: "Workspace",
       view: Workspace,

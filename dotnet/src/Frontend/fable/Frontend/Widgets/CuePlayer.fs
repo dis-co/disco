@@ -71,15 +71,14 @@ module private Helpers =
   let updatePins (cue: Cue) (state: IGlobalState) =
     for slices in cue.Slices do
       let pin = findPin slices.Id state
-      match slices, pin with
-      | StringSlices (_, values), StringPin pin -> StringPin { pin with Values = values }
-      | NumberSlices (_, values), NumberPin pin -> NumberPin { pin with Values = values }
-      | BoolSlices   (_, values), BoolPin pin   -> BoolPin   { pin with Values = values }
-      | ByteSlices   (_, values), BytePin pin   -> BytePin   { pin with Values = values }
-      | EnumSlices   (_, values), EnumPin pin   -> EnumPin   { pin with Values = values }
-      | ColorSlices  (_, values), ColorPin pin  -> ColorPin  { pin with Values = values }
-      | _ -> failwithf "Slices and pin types don't match\nSlices: %A\nPin: %A\nCue Id: %O" slices pin cue.Id
-      |> UpdatePin |> ClientContext.Singleton.Post
+      match slices with
+      | StringSlices (_, values) -> StringSlices(pin.Id, values)
+      | NumberSlices (_, values) -> NumberSlices(pin.Id, values)
+      | BoolSlices   (_, values) -> BoolSlices(pin.Id, values)
+      | ByteSlices   (_, values) -> ByteSlices(pin.Id, values)
+      | EnumSlices   (_, values) -> EnumSlices(pin.Id, values)
+      | ColorSlices  (_, values) -> ColorSlices(pin.Id, values)
+      |> UpdateSlices |> ClientContext.Singleton.Post
 
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do
