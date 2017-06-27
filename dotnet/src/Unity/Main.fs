@@ -57,12 +57,12 @@ let startApiClient(clientGuid: Guid, serverIp, serverPort: uint16, clientIp, cli
       exn msg |> raise
 
 let addPin(pin: Pin, client: IApiClient, isRunning: bool) =
-  if isRunning then
+  //if isRunning then
     client.RemovePin(pin)
     client.AddPin(pin)
 
 let addPinGroup(pinGroup: PinGroup, client: IApiClient, isRunning: bool) =
-  if isRunning then
+  //if isRunning then
     client.RemovePinGroup(pinGroup)
     client.AddPinGroup(pinGroup)
 
@@ -92,8 +92,8 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
               | ClientEvent.Status status ->
                 print(sprintf "IrisClient status: %A" status)
                 if status = ServiceStatus.Running then
-                  for KeyValue(_,pinGroup) in state.PinGroups do
-                    addPinGroup(pinGroup, client, true)
+                  //for KeyValue(_,pinGroup) in state.PinGroups do
+                  //  addPinGroup(pinGroup, client, true)
                   Some { state with IsRunning = true }
                 else Some state
               | _ -> Some state
