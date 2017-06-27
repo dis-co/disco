@@ -114,10 +114,14 @@ type GlobalModel() as this =
       | ClientMessage.Initialized _ ->
         this.NotifyAll()
       | ClientMessage.Event(_, ev) ->
+        // match ev with
+        // | LogMsg _ | UpdateClock _ -> ()
+        // | ev -> printfn "GlobalModel received event %A" ev
         match ev with
         | DataSnapshot _ -> this.NotifyAll()
-        | StateMachine.UnloadProject -> this.NotifyAll()
-        | UpdateProject _ ->
+        // The UnloadProject event is not actually being returned to frontend
+        // | StateMachine.UnloadProject -> this.NotifyAll()
+        | UpdateProject _ | AddMember _ | UpdateMember _ | RemoveMember _ ->
           this.Notify(nameof(stateImmutable.project), stateImmutable.project, [])
         | AddPinGroup _
         | UpdatePinGroup _
@@ -140,10 +144,6 @@ type GlobalModel() as this =
         | UpdateCuePlayer _
         | RemoveCuePlayer _ ->
           this.Notify(nameof(stateImmutable.cuePlayers), stateImmutable.cuePlayers, [])
-        // TODO: Add members to global state for cluster widget
-        // | AddMember _
-        // | UpdateMember _
-        // | RemoveMember _
         | LogMsg log -> this.AddLog(log.Message)
         | UpdateClock frames ->
           stateMutable.Clock <- frames
@@ -151,6 +151,16 @@ type GlobalModel() as this =
         | _ -> ()
       | _ -> ())
   )
+
+  static let mutable singleton: GlobalModel option = None
+
+  static member Singleton =
+    match singleton with
+    | Some singleton -> singleton
+    | None ->
+      let globalModel = GlobalModel()
+      singleton <- Some globalModel
+      globalModel
 
   // Private methods
   member private this.Notify(key, newValue: obj, keyValuePairs) =
@@ -160,12 +170,13 @@ type GlobalModel() as this =
       for s in keySubscribers.Values do s newValue dic
     | false, _ -> ()
 
-  member private this.NotifyAll() =
+  member this.NotifyAll() =
     let dic = dict []
     for KeyValue(key, keySubscribers) in subscribers do
       let value = stateMutable?(key)
-      for subscriber in keySubscribers.Values do
-        subscriber value dic
+      keySubscribers.Values |> Seq.iteri (fun i subscriber ->
+        // printfn "Inform subscriber %i: %s" i key
+        subscriber value dic)
 
   // Public methods
   member this.State: IGlobalState = stateImmutable

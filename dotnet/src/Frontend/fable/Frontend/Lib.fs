@@ -217,7 +217,9 @@ let saveProject() =
   SaveProject |> postCommand (fun _ -> notify "The project has been saved") notify
 
 let unloadProject() =
-  UnloadProject |> postCommand (fun _ -> notify "The project has been unloaded") notify
+  UnloadProject |> postCommand (fun _ ->
+    GlobalModel.Singleton.NotifyAll()
+    notify "The project has been unloaded") notify
 
 let nullify _: 'a = null
 
