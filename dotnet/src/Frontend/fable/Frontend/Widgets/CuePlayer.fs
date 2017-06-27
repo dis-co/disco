@@ -161,8 +161,8 @@ type private CueView(props) =
                 this.setState({ this.state with IsOpen = true })
             | _ -> ()
           if highlight
-          then selfRef.classList.add("iris-highlight-blue")
-          else selfRef.classList.remove("iris-highlight-blue")
+          then selfRef.classList.add("iris-highlight", "iris-blue")
+          else selfRef.classList.remove("iris-highlight", "iris-blue")
     ))
 
   member this.componentWillUnmount() =
