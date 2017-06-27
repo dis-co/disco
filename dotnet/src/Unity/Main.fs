@@ -45,24 +45,15 @@ let startApiClient(clientGuid: Guid, serverIp, serverPort: uint16, clientIp, cli
     sprintf "Unity client at %O:%O connecting to Iris at %O:%O..."
       myself.IpAddress myself.Port server.IpAddress server.Port |> print
     let client = ApiClient.create server myself
-    match client.Start() with
-    | Right () ->
-      Logger.info "startClient" "Successfully started Unity ApiClient"
-      print(sprintf "Successfully started Iris Client (status %A)" client.Status)
-      myself.Id, client
-    | Left error ->
-      let msg = string error
-      Logger.err "startClient" msg
-      print ("Couldn't start Iris Client: " + msg)
-      exn msg |> raise
+    myself.Id, client
 
 let addPin(pin: Pin, client: IApiClient, isRunning: bool) =
-  //if isRunning then
+  if isRunning then
     client.RemovePin(pin)
     client.AddPin(pin)
 
 let addPinGroup(pinGroup: PinGroup, client: IApiClient, isRunning: bool) =
-  //if isRunning then
+  if isRunning then
     client.RemovePinGroup(pinGroup)
     client.AddPinGroup(pinGroup)
 
@@ -77,8 +68,8 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
             match msg with
             | Dispose ->
               apiobs |> Option.iter (fun x -> x.Dispose())
-              //for KeyValue(_,group) in state.PinGroups do
-              //    client.RemovePinGroup(group)
+              for KeyValue(_,group) in state.PinGroups do
+                  client.RemovePinGroup(group)
               client.Dispose()
               print("Iris client disposed")
               None
@@ -126,7 +117,16 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
     })
   // Subscribe to API client events
   apiobs <- client.Subscribe(IrisEvent >> actor.Post) |> Some
-  actor
+  match client.Start() with
+  | Right () ->
+    Logger.info "startClient" "Successfully started Unity ApiClient"
+    print(sprintf "Successfully started Iris Client (status %A)" client.Status)
+    actor
+  | Left error ->
+    let msg = string error
+    Logger.err "startClient" msg
+    print ("Couldn't start Iris Client: " + msg)
+    exn msg |> raise
 
 let startApiClientAndActor(clientGuid, serverIp, serverPort: uint16, clientIp, clientPort, print) =
   let clientId, client = startApiClient(clientGuid, serverIp, serverPort, clientIp, clientPort, print)
