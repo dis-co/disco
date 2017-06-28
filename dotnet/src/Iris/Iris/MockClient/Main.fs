@@ -10,9 +10,7 @@ open System.Net.Sockets
 open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
-open Iris.Service
-open Iris.Service.Interfaces
-open ZeroMQ
+open Iris.Net
 
 [<AutoOpen>]
 module Main =
@@ -31,7 +29,6 @@ module Main =
     | [<AltCommandLine("-n")>] Name of string
     | [<AltCommandLine("-h")>] Host of string
     | [<AltCommandLine("-p")>] Port of uint16
-    | [<AltCommandLine("-b")>] Bind of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -41,7 +38,6 @@ module Main =
         | Name _  -> "specify the iris clients' name (optional)"
         | Host _  -> "specify the iris services' host to connect to (optional)"
         | Port _  -> "specify the iris services' port to connect on (optional)"
-        | Bind _  -> "specify the iris clients' address to bind to"
 
   [<Literal>]
   let private help = @"
@@ -172,13 +168,6 @@ Usage:
   "
 
   let private patchid = Id.Create()
-
-  let private nextPort () =
-    let l = new TcpListener(IPAddress.Loopback, 0)
-    l.Start()
-    let port = (l.LocalEndpoint :?> IPEndPoint).Port
-    l.Stop()
-    port
 
   let private (|Exit|_|) str =
     match str with
@@ -615,8 +604,6 @@ Usage:
 
     Logger.initialize id
 
-    use ctx = new ZContext()
-
     let result =
       either {
         let server =
@@ -637,13 +624,10 @@ Usage:
               else "<empty>"
             Role = Role.Renderer
             Status = ServiceStatus.Starting
-            IpAddress =
-              match parsed.Contains <@ Bind @> with
-              | true  -> IPv4Address (parsed.GetResult <@ Bind @>)
-              | false -> IPv4Address "127.0.0.1"
-            Port = nextPort() |> uint16 |> port }
+            IpAddress = IpAddress.Localhost // these are not used anymore
+            Port = port 0us }
 
-        let client = ApiClient.create ctx server client
+        let client = ApiClient.create server client
         do! client.Start()
         return client
       }
@@ -674,12 +658,10 @@ Usage:
 
       loop client loaded patch
       dispose client
-      dispose ctx
       exit 0
     | Left error ->
       Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
-      dispose ctx
       error
       |> Error.toExitCode
       |> exit

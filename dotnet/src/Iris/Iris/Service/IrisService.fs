@@ -9,10 +9,9 @@ open System.Threading.Tasks
 open System.Collections.Concurrent
 open Disruptor
 open Disruptor.Dsl
-open ZeroMQ
 open Iris.Core
 open Iris.Raft
-open Iris.Zmq
+open Iris.Net
 open SharpYaml.Serialization
 
 // * IrisService
@@ -42,10 +41,8 @@ module IrisService =
         | IrisEvent.Append(_, sm) ->
           sm
           |> Binary.encode
-          |> RawClientRequest.create
+          |> Request.create (Guid.ofId self.Socket.ClientId)
           |> self.Socket.Request
-          |> Either.mapError (string >> Logger.err (tag "Forward"))
-          |> ignore
         | _ -> ()
 
     // *** IDisposable
@@ -73,8 +70,7 @@ module IrisService =
       ClockService  : IClock
       Subscriptions : Subscriptions
       BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
-      Disposables   : IDisposable array
-      Context       : ZContext }
+      Disposables   : IDisposable array }
 
     // *** Dispose
 
@@ -192,8 +188,7 @@ module IrisService =
     for KeyValue((desired, id), cue) in state.BufferedCues.ToArray() do
       if desired <= current then
         dispatchUpdates state cue
-        while not (state.BufferedCues.TryRemove((desired,id)) |> fst) do
-          ignore ()
+        state.BufferedCues.TryRemove((desired,id)) |> ignore
 
   // ** commandResolver
 
@@ -207,8 +202,7 @@ module IrisService =
       | IrisEvent.Append(_, CallCue cue) ->
         let key = (current, cue.Id)
         if not (store.State.BufferedCues.ContainsKey key) then
-          while not (store.State.BufferedCues.TryAdd(key, cue)) do
-            ignore ()
+          store.State.BufferedCues.TryAdd(key, cue) |> ignore
         maybeDispatchUpdate current store.State
       | _ -> ()
 
@@ -238,18 +232,18 @@ module IrisService =
 
   // ** makeLeader
 
-  let private makeLeader ctx (leader: RaftMember) =
-    let result = Client.create ctx {
-      PeerId = leader.Id
-      Frontend = Uri.raftUri leader
+  let private makeLeader (leader: RaftMember) =
+    let socket = TcpClient.create {
+      ClientId = leader.Id
+      PeerAddress = leader.IpAddr
+      PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    match result with
-    | Right socket ->
-      socket.Subscribe
-        (fun _ ->
-          "TODO: setup leader socket response handler"
-          |> Logger.warn (tag "makeLeader"))
+    match socket.Start() with
+    | Right () ->
+      (fun _ -> "TODO: setup leader socket response handler"
+              |> Logger.warn (tag "makeLeader"))
+      |> socket.Subscribe
       |> ignore
       Some { Member = leader; Socket = socket }
     | Left error ->
@@ -287,7 +281,7 @@ module IrisService =
         if Option.isSome leader && leader <> (Some store.State.Member.Id) then
           match store.State.RaftServer.Leader with
           | Some leader ->
-            makeLeader store.State.Context leader
+            makeLeader leader
           | None ->
             "Could not start re-direct socket: no leader"
             |> Logger.debug (tag "leaderChanged")
@@ -393,7 +387,7 @@ module IrisService =
     match Asset.read path with
     | Right str ->
       try
-        let serializer = new Serializer()
+        let serializer = Serializer()
         let yml = serializer.Deserialize<SnapshotYaml>(str)
 
         let members =
@@ -456,7 +450,7 @@ module IrisService =
 
   // ** makeStore
 
-  let private makeStore  (context: ZContext) (iris: IrisServiceOptions) =
+  let private makeStore (iris: IrisServiceOptions) =
     either {
       let subscriptions = Subscriptions()
       let store = AgentStore.create()
@@ -513,13 +507,13 @@ module IrisService =
         let! raftServer =
           store
           |> makeRaftCallbacks
-          |> RaftServer.create context state.Project.Config
+          |> RaftServer.create state.Project.Config
 
         let! socketServer = WebSocketServer.create mem
         let! apiServer =
           store
           |> makeApiCallbacks
-          |> ApiServer.create context mem state.Project.Id
+          |> ApiServer.create mem state.Project.Id
 
         // IMPORTANT: use the projects path here, not the path to project.yml
         let gitServer = GitServer.create mem state.Project
@@ -551,7 +545,6 @@ module IrisService =
           LogForwarder   = logForwarder
           Status         = ServiceStatus.Starting
           Store          = Store(state)
-          Context        = context
           ApiServer      = apiServer
           GitServer      = gitServer
           RaftServer     = raftServer
@@ -702,8 +695,8 @@ module IrisService =
 
   // ** create
 
-  let create ctx (iris: IrisServiceOptions) =
+  let create (iris: IrisServiceOptions) =
     either {
-      let! store = makeStore ctx iris
+      let! store = makeStore iris
       return makeService store
     }

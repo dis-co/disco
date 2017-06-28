@@ -15,7 +15,7 @@ open Iris.Raft
 open Iris.Core
 open Iris.Client
 open Iris.Nodes
-open ZeroMQ
+open Iris.Net
 
 // * Api
 
@@ -40,8 +40,6 @@ module Api =
       InServerPort: ISpread<int>
       InClientId: ISpread<Id>
       InClientName: ISpread<string>
-      InClientIp: ISpread<string>
-      InClientPort: ISpread<int>
       InPinGroups: ISpread<PinGroup>
       InReconnect: ISpread<bool>
       InUpdate: ISpread<bool>
@@ -50,7 +48,6 @@ module Api =
       OutConnected: ISpread<bool>
       OutStatus: ISpread<string>
       OutUpdate: ISpread<bool>
-      Context: ZContext
       Disposables: IDisposable list }
 
     static member Create () =
@@ -65,8 +62,6 @@ module Api =
         InServerPort = null
         InClientId = null
         InClientName = null
-        InClientIp = null
-        InClientPort = null
         InPinGroups = null
         InReconnect = null
         InUpdate = null
@@ -75,7 +70,6 @@ module Api =
         OutCommands = null
         OutStatus = null
         OutUpdate = null
-        Context = null
         Disposables = List.empty }
 
     interface IDisposable with
@@ -102,64 +96,47 @@ module Api =
   let private enqueueEvent (state: PluginState) (ev: ClientEvent) =
     state.Events.Enqueue ev
 
+  // ** serverInfo
+
+  let private serverInfo (state: PluginState) =
+    let ip =
+      match IpAddress.TryParse state.InServerIp.[0] with
+      | Right ip ->  ip
+      | Left error ->
+        error
+        |> string
+        |> Logger.err "startClient"
+        IPv4Address "127.0.0.1"
+
+    let port =
+      try
+        state.InServerPort.[0] |> uint16 |> port
+      with
+        | _ -> port Constants.DEFAULT_API_PORT
+
+    { Port = port; IpAddress = ip }
+
   // ** startClient
 
   let private startClient (state: PluginState) =
     let myself =
-      let ip =
-        match IpAddress.TryParse state.InClientIp.[0] with
-        | Right ip -> ip
-        | Left error ->
-          error
-          |> string
-          |> Logger.err "startClient"
-          IPv4Address "127.0.0.1"
-
       let name =
         match state.InClientName.[0] with
         | null | "" -> "VVVV Client"
         | str -> str
 
-      let port =
-        try
-          state.InClientPort.[0] |> uint16 |> port
-        with
-          | _ -> port Constants.DEFAULT_API_CLIENT_PORT
-
       { Id = state.InClientId.[0]
         Name = name
         Role = Role.Renderer
         Status = ServiceStatus.Starting
-        IpAddress = ip
-        Port = port }
+        IpAddress = IpAddress.Localhost
+        Port = port 0us }
 
-    let server : IrisServer =
-      let ip =
-        match IpAddress.TryParse state.InServerIp.[0] with
-        | Right ip ->  ip
-        | Left error ->
-          error
-          |> string
-          |> Logger.err "startClient"
-          IPv4Address "127.0.0.1"
+    let server = serverInfo state
+    let client = ApiClient.create server myself
 
-      let port =
-        try
-          state.InServerPort.[0] |> uint16 |> port
-        with
-          | _ -> port Constants.DEFAULT_API_PORT
-
-      { Port = port; IpAddress = ip }
-
-    let result =
-      either {
-        let client = ApiClient.create state.Context server myself
-        do! client.Start()
-        return client
-      }
-
-    match result with
-    | Right client ->
+    match client.Start() with
+    | Right () ->
       let apiobs = client.Subscribe(enqueueEvent state)
       Logger.info "startClient" "successfully started ApiClient"
       { state with
@@ -222,6 +199,7 @@ module Api =
           []
           local
       for cmd in commands do
+        Logger.err "mergeGraphState" (sprintf "cmd: %A" cmd)
         plugstate.ApiClient.Append cmd
     plugstate
 
@@ -231,8 +209,11 @@ module Api =
     if state.InReconnect.[0] then
       while state.Events.TryDequeue() |> fst do
         ignore "purging event"
-      dispose state.ApiClient
-      startClient state
+      state
+      |> serverInfo
+      |> state.ApiClient.Restart
+      |> ignore
+      state
     elif state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
@@ -263,6 +244,7 @@ module Api =
           cmdUpdates.Add cmd
           newstate <- state
         | true, ClientEvent.Snapshot ->
+          Logger.err "ClientEvent.Snapshot" "event received"
           stateUpdates <- stateUpdates + 1
           newstate <- mergeGraphState state
         | false, _ -> run <- false
@@ -272,7 +254,7 @@ module Api =
 
       if stateUpdates > 0 || cmdUpdates.Count > 0 then
         state.OutUpdate.[0] <- true
-        updateState state
+        updateState newstate
       else
         state.OutUpdate.[0] <- false
         newstate
@@ -333,14 +315,6 @@ type ApiClientNode() =
   val mutable InClientId: ISpread<Id>
 
   [<DefaultValue>]
-  [<Input("Client IP", IsSingle = true)>]
-  val mutable InClientIp: ISpread<string>
-
-  [<DefaultValue>]
-  [<Input("Client Port", IsSingle = true)>]
-  val mutable InClientPort: ISpread<int>
-
-  [<DefaultValue>]
   [<Input("Reconnect", IsSingle = true, IsBang = true)>]
   val mutable InReconnect: ISpread<bool>
 
@@ -365,6 +339,10 @@ type ApiClientNode() =
   val mutable OutConnected: ISpread<bool>
 
   [<DefaultValue>]
+  [<Output("Count", IsSingle = true)>]
+  val mutable OutCount: ISpread<int>
+
+  [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
   val mutable OutUpdate: ISpread<bool>
 
@@ -382,8 +360,6 @@ type ApiClientNode() =
               InServerPort = self.InServerPort
               InClientId = self.InClientId
               InClientName = self.InClientName
-              InClientIp = self.InClientIp
-              InClientPort = self.InClientPort
               InPinGroups = self.InPinGroups
               InReconnect = self.InReconnect
               InUpdate = self.InUpdate
@@ -391,8 +367,7 @@ type ApiClientNode() =
               OutCommands = self.OutCommands
               OutConnected = self.OutConnected
               OutStatus = self.OutStatus
-              OutUpdate = self.OutUpdate
-              Context = new ZContext() }
+              OutUpdate = self.OutUpdate }
         initialized <- true
 
       state <- Api.evaluate state spreadMax

@@ -3,14 +3,89 @@ namespace Iris.Tests
 open Expecto
 open FsCheck
 open Iris.Core
+open Iris.Net
 open Iris.Raft
 open Iris.Client
 open Iris.Service
 open Iris.Service.Persistence
-
+open System
+open System.IO
 
 [<AutoOpen>]
 module SerializationTests =
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
+
+  let test_correct_request_serialization =
+    testCase "RequestResposse serialization should work" <| fun _ ->
+      let encDec (request: Request) =
+        let check (rerequest: Request) =
+          Expect.equal rerequest request "Should be structurally equal"
+        let buffer = Request.serialize request
+        let builder = RequestBuilder.create buffer <| fun requestId clientId body ->
+          body
+          |> Request.make requestId clientId
+          |> check
+
+        builder.Process buffer.Length
+      encDec
+      |> Prop.forAll Generators.requestArb
+      |> Check.QuickThrowOnFailure
+
+  //  ____                     ____  _        _
+  // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
+  // | |_) / _` | '__/ __|/ _ \___ \| __/ _` | __/ _ \
+  // |  __/ (_| | |  \__ \  __/___) | || (_| | ||  __/
+  // |_|   \__,_|_|  |___/\___|____/ \__\__,_|\__\___|
+
+  let tests_parse_state_deserialization =
+    testCase "ParseState deserialization should work" <| fun _ ->
+      let requests = ResizeArray()
+      let rerequests = ResizeArray()
+      let blob = ResizeArray()
+
+      let collect (request: Request) =
+        requests.Add request
+        let data = Request.serialize request
+        blob.AddRange data
+
+      // generate some test data
+      collect
+      |> Prop.forAll Generators.requestArb
+      |> Check.Quick
+
+      let bufsize = 1024
+      let buffer = Array.zeroCreate bufsize
+      let payload = blob.ToArray()
+      let payloadSize = payload.Length
+      let chunked = Array.chunkBySize bufsize payload
+      let parser = RequestBuilder.create buffer <| fun request client body ->
+        body
+        |> Request.make request client
+        |> rerequests.Add
+
+      let mutable read = 0
+      for chunk in chunked do
+        let num =
+          let remaining = payloadSize - read
+          if remaining >= bufsize
+          then bufsize
+          else remaining
+        Array.Copy(chunk, buffer, num)
+        parser.Process num
+        read <- read + num
+
+      Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
+
+      let rerequests = rerequests.ToArray()
+      for request in requests do
+        let rerequest = Array.tryFind ((=) request) rerequests
+        Expect.equal rerequest (Some request) "Request and Rerequest should be equal"
+
   //   ____             __ _        ____ _
   //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
   // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
@@ -334,16 +409,10 @@ module SerializationTests =
       |> Prop.forAll Generators.discoveredArb
       |> Check.QuickThrowOnFailure
 
-  let test_validate_client_api_request_binary_serialization =
-    testCase "Validate ClientApiRequest Binary Serialization" <| fun _ ->
-      binaryEncDec<ClientApiRequest>
-      |> Prop.forAll Generators.clientApiRequestArb
-      |> Check.QuickThrowOnFailure
-
-  let test_validate_server_api_request_binary_serialization =
-    testCase "Validate ServerApiRequest Binary Serialization" <| fun _ ->
-      binaryEncDec<ServerApiRequest>
-      |> Prop.forAll Generators.serverApiRequestArb
+  let test_validate_api_request_binary_serialization =
+    testCase "Validate ApiRequest Binary Serialization" <| fun _ ->
+      binaryEncDec<ApiRequest>
+      |> Prop.forAll Generators.apiRequestArb
       |> Check.QuickThrowOnFailure
 
   let test_validate_api_response_binary_serialization =
@@ -372,6 +441,8 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_correct_request_serialization
+      tests_parse_state_deserialization
       test_save_restore_raft_value_correctly
       test_validate_config_change
       test_validate_user_yaml_serialization
@@ -397,7 +468,7 @@ module SerializationTests =
       test_validate_raftrequest_serialization
       test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
-      test_validate_client_api_request_binary_serialization
+      test_validate_api_request_binary_serialization
 
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

@@ -3,177 +3,73 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{FBFFB969-00ED-4568-8FD0-65A699AACA18}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{46d46127-2623-465e-b51b-fc4bd1888a95}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <AssemblyName>Iris.Nodes</AssemblyName>
+    <AssemblyName>RaspiExample</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Iris.Nodes</Name>
+    <Name>RaspberryPi</Name>
     <TargetFrameworkProfile />
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <ResolveNuGetPackages>false</ResolveNuGetPackages>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>..\..\bin\Debug\Nodes</OutputPath>
-    <DefineConstants>DEBUG;TRACE;IRIS_NODES</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <OtherFlags>--warnon:1182</OtherFlags>
+    <OutputPath>..\..\bin\Debug\RaspberryPi</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>5</WarningLevel>
+    <StartArguments>-b 127.0.0.1 -h 192.168.8.11 -p 5000</StartArguments>
+    <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>..\..\bin\Release\Nodes</OutputPath>
-    <DefineConstants>TRACE;IRIS_NODES</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <DocumentationFile>.\bin\Release\Iris.Nodes.xml</DocumentationFile>
+    <OutputPath>..\..\bin\Release\RaspberryPi</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <!-- <OtherFlags>-\-standalone</OtherFlags> -->
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
-    <Reference Include="System.Web" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Management" />
-    <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../AssemblyInfo/NodesInfo.fs">
-      <Link>NodesInfo.fs</Link>
-    </Compile>
-    <!-- NODES -->
-    <Compile Include="../../Iris/Nodes/NodeUtils.fs">
-      <Link>NodeUtils.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/AudioConfigNode.fs">
-      <Link>AudioConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/RaftConfigNode.fs">
-      <Link>RaftConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/TimingConfigNode.fs">
-      <Link>TimingConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ClusterConfigNode.fs">
-      <Link>ClusterConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/VvvvConfigNode.fs">
-      <Link>VvvvConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ConfigNode.fs">
-      <Link>ConfigNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/DisplayNode.fs">
-      <Link>DisplayNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/HostGroupNode.fs">
-      <Link>HostGroupNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ApiClientNode.fs">
-      <Link>ApiClientNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/MemberNode.fs">
-      <Link>MemberNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ProjectNode.fs">
-      <Link>ProjectNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/RegionMapNode.fs">
-      <Link>RegionMapNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/RegionNode.fs">
-      <Link>RegionNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/SignalNode.fs">
-      <Link>SignalNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/StateNode.fs">
-      <Link>StateNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/TaskNode.fs">
-      <Link>TaskNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ViewPortNode.fs">
-      <Link>ViewPortNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/VvvvExeNode.fs">
-      <Link>VvvvExeNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/VvvvPluginNode.fs">
-      <Link>VvvvPluginNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/CueNode.fs">
-      <Link>CueNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/CueListNode.fs">
-      <Link>CueListNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/SessionNode.fs">
-      <Link>SessionNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/UserNode.fs">
-      <Link>UserNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ClientNode.fs">
-      <Link>ClientNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/PinGroupNode.fs">
-      <Link>PinGroupNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/PinNode.fs">
-      <Link>PinNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/PinWriteNode.fs">
-      <Link>PinWriteNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/GraphNode.fs">
-      <Link>GraphNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/LoggingNode.fs">
-      <Link>LoggingNode.fs</Link>
-    </Compile>
-    <Compile Include="../../Iris/Nodes/Nodes/ClientIdNode.fs">
-      <Link>ClientIdNode.fs</Link>
-    </Compile>
-    <!-- END NODES -->
+    <ProjectReference Include="..\Sdk\Sdk.fsproj">
+      <Name>Iris.Sdk</Name>
+      <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
-  <PropertyGroup>
-    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Iris.Serialization">
       <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Mono.Zeroconf">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Mono.Zeroconf.Providers.AvahiDBus">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Mono.Zeroconf.Providers.Bonjour">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.ComponentModel.Composition.CodePlex">
-      <HintPath>../../../../packages/VVVV.System.ComponentModel.Composition.Codeplex/lib/net40/System.ComponentModel.Composition.CodePlex.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Sdk\Sdk.fsproj">
-      <Name>Sdk</Name>
-      <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
-      <Private>True</Private>
-    </ProjectReference>
+    <Compile Include="..\..\AssemblyInfo\ServiceInfo.fs">
+      <Link>ServiceInfo.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\RaspberryPi\Main.fs">
+      <Link>Main.fs</Link>
+    </Compile>
+    <Content Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
       <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
@@ -188,48 +84,25 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <PropertyGroup>
-        <__paket__VVVV_Utils3rdParty_targets>net46\VVVV.Utils3rdParty</__paket__VVVV_Utils3rdParty_targets>
-      </PropertyGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v2.0' Or $(TargetFrameworkVersion) == 'v3.0' Or $(TargetFrameworkVersion) == 'v3.5')">
-      <PropertyGroup>
-        <__paket__VVVV_SlimDX_props>net20\VVVV.SlimDX</__paket__VVVV_SlimDX_props>
-        <__paket__VVVV_SlimDX_targets>net20\VVVV.SlimDX</__paket__VVVV_SlimDX_targets>
-      </PropertyGroup>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v3.5'">
+      <ItemGroup>
+        <Reference Include="Argu">
+          <HintPath>..\..\..\..\packages\Argu\lib\net35\Argu.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
     </When>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.0.3' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <PropertyGroup>
-        <__paket__VVVV_SlimDX_props>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_props>
-        <__paket__VVVV_SlimDX_targets>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_targets>
-      </PropertyGroup>
+      <ItemGroup>
+        <Reference Include="Argu">
+          <HintPath>..\..\..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props')" Label="Paket" />
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <PropertyGroup>
-        <__paket__VVVV_PluginInterfaces_targets>net46\VVVV.PluginInterfaces</__paket__VVVV_PluginInterfaces_targets>
-      </PropertyGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <PropertyGroup>
-        <__paket__VVVV_Hosting_targets>net46\VVVV.Hosting</__paket__VVVV_Hosting_targets>
-      </PropertyGroup>
-    </When>
-  </Choose>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v2.0' Or $(TargetFrameworkVersion) == 'v3.0' Or $(TargetFrameworkVersion) == 'v3.5')">
       <ItemGroup>
@@ -324,6 +197,41 @@
         <Reference Include="Microsoft.Win32.Primitives">
           <HintPath>..\..\..\..\packages\Microsoft.Win32.Primitives\ref\netstandard1.3\Microsoft.Win32.Primitives.xml</HintPath>
           <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.0.3' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
+      <ItemGroup>
+        <Reference Include="Raspberry.IO">
+          <HintPath>..\..\..\..\packages\Raspberry.IO.GeneralPurpose\lib\net40\Raspberry.IO.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Raspberry.IO.GeneralPurpose">
+          <HintPath>..\..\..\..\packages\Raspberry.IO.GeneralPurpose\lib\net40\Raspberry.IO.GeneralPurpose.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Raspberry.IO.Interop">
+          <HintPath>..\..\..\..\packages\Raspberry.IO.GeneralPurpose\lib\net40\Raspberry.IO.Interop.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.0.3' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
+      <ItemGroup>
+        <Reference Include="System.Configuration">
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Raspberry.System">
+          <HintPath>..\..\..\..\packages\Raspberry.System\lib\net40\Raspberry.System.dll</HintPath>
+          <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
@@ -1859,41 +1767,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <ItemGroup>
-        <Reference Include="VVVV.Core">
-          <HintPath>..\..\..\..\packages\VVVV.Core\lib\net46\VVVV.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <ItemGroup>
-        <Reference Include="VVVV.Utils">
-          <HintPath>..\..\..\..\packages\VVVV.Utils\lib\net46\VVVV.Utils.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <ItemGroup>
-        <Reference Include="VVVV.UtilsIL">
-          <HintPath>..\..\..\..\packages\VVVV.UtilsIL\lib\net46\VVVV.UtilsIL.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Import Project="..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets')" Label="Paket" />
-  <Import Project="..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets')" Label="Paket" />
-  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets')" Label="Paket" />
-  <Import Project="..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets')" Label="Paket" />
 </Project>

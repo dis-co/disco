@@ -9,8 +9,8 @@ open System.Threading
 open System.Collections.Generic
 open System.Collections.Concurrent
 
+open Iris.Net
 open Iris.Core
-open ZeroMQ
 
 // * IClient
 

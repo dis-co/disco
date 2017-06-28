@@ -44,7 +44,6 @@
    "Iris/Client/Client.fs"
    "Iris/Service/GitServer.fs"
    "Iris/Service/RaftRequest.fs"
-   "Iris/Service/Zmq/ZmqUtils.fs"
    "Iris/Service/Persistence.fs"
    "Iris/Service/Utilities.fs"
    "Iris/Service/RaftServer.fs"

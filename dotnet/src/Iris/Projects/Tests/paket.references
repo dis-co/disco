@@ -8,7 +8,6 @@ Expecto
 Expecto.PerfUtil
 Expecto.FsCheck
 FsCheck
-ZeroMQ
 Newtonsoft.Json
 Fable.JsonConverter
 Disruptor

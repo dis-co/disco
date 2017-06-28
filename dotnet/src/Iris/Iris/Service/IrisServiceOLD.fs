@@ -9,14 +9,13 @@ open System.IO
 open System.Threading
 open System.Collections.Concurrent
 open Iris.Raft
-open Iris.Zmq
+open Iris.Net
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open LibGit2Sharp
 open SharpYaml.Serialization
-open ZeroMQ
 
 // * IrisService
 
@@ -121,8 +120,7 @@ module IrisService =
       ClockService   : IClock
       Resolver       : IResolver
       Subscriptions  : Subscriptions
-      Disposables    : Map<string,IDisposable>
-      Context        : ZContext }
+      Disposables    : Map<string,IDisposable> }
 
     // *** Dispose
 
@@ -719,8 +717,7 @@ module IrisService =
 
   // ** start
 
-  let private start (context: ZContext)
-                    (iris: IrisServiceOptions)
+  let private start (iris: IrisServiceOptions)
                     (store: IAgentStore<IrisState>)
                     (agent: IrisAgent)
                     (subscriptions: Subscriptions) =

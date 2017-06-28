@@ -9,10 +9,9 @@ open System.Threading.Tasks
 open System.Collections.Generic
 open Disruptor
 open Disruptor.Dsl
-open ZeroMQ
 open Iris.Core
 open Iris.Raft
-open Iris.Zmq
+open Iris.Net
 open SharpYaml.Serialization
 
 // * Pipeline

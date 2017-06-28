@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -45,9 +45,9 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Core\Core.fsproj">
-      <Name>Iris.Core</Name>
-      <Project>{7d6918e9-1494-41e9-9beb-638616110a60}</Project>
+    <ProjectReference Include="..\Sdk\Sdk.fsproj">
+      <Name>Iris.Sdk</Name>
+      <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
@@ -83,22 +83,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>mockdata.txt</Link>
     </Content>
-    <None Include="../../i386/libzmq.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libzmq.dll</Link>
-    </None>
-    <None Include="../../amd64/libzmq.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libzmq.dll</Link>
-    </None>
-    <None Include="../../i386/libsodium.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libsodium.dll</Link>
-    </None>
-    <None Include="../../amd64/libsodium.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>libsodium.dll</Link>
-    </None>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -116,13 +100,6 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.0.3' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <PropertyGroup>
-        <__paket__ZeroMQ_targets>net40\ZeroMQ</__paket__ZeroMQ_targets>
-      </PropertyGroup>
-    </When>
-  </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v3.5'">
       <ItemGroup>
@@ -2684,16 +2661,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.0.3' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
-      <ItemGroup>
-        <Reference Include="ZeroMQ">
-          <HintPath>..\..\..\..\packages\ZeroMQ\lib\net40\ZeroMQ.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Import Project="..\..\..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets" Condition="Exists('..\..\..\..\packages\ZeroMQ\build\$(__paket__ZeroMQ_targets).targets')" Label="Paket" />
 </Project>

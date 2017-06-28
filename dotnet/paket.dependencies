@@ -14,7 +14,6 @@ group Main
   nuget LibGit2Sharp >= 0.24.0-pre20170124092542 prerelease
   nuget LibGit2Sharp.NativeBinaries
   nuget SharpYaml
-  nuget ZeroMQ
   nuget Mono.Posix
   nuget VVVV.Core
   nuget VVVV.Hosting
@@ -28,6 +27,7 @@ group Main
   nuget System.ValueTuple
   nuget Disruptor >= 3.3.6
   nuget Fable.JsonConverter
+  nuget Raspberry.IO.GeneralPurpose
 
 group Fable
   source https://nuget.org/api/v2

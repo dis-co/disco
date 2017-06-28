@@ -6,9 +6,8 @@ open System
 open System.Threading
 open System.Diagnostics
 open System.Collections.Concurrent
-open Iris.Zmq
+open Iris.Net
 open Iris.Core
-open ZeroMQ
 
 // * Clock module
 
@@ -138,7 +137,7 @@ module Clock =
       Logger.warn "Clock" "internal timer is not using high resolution clock"
 
     let thread = Thread(worker state)
-    thread.Start()
+    // thread.Start()
 
     { new IClock with
         member clock.Start() =

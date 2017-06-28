@@ -7,9 +7,8 @@ open System.Threading
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Client
-open Iris.Zmq
+open Iris.Net
 open Iris.Serialization
-open ZeroMQ
 
 // * ApiClient module
 
@@ -26,13 +25,9 @@ module ApiClient =
 
   let private tag (str: string) = String.Format("ApiClient.{0}",str)
 
-  // ** FREQ
-
-  let private FREQ = 500<ms>
-
   // ** TIMEOUT
 
-  let private TIMEOUT = 5000<ms>
+  let private TIMEOUT = 2000<ms>
 
   // ** Subscriptions
 
@@ -42,23 +37,19 @@ module ApiClient =
 
   [<NoComparison;NoEquality>]
   type private ClientState =
-    { Status: ServiceStatus
-      Client: IrisClient
+    { Client: IrisClient
       Peer: IrisServer
-      Elapsed: Timeout
-      Server: IServer
       Socket: IClient
       Store:  Store
       Subscriptions: Subscriptions
-      Disposables: IDisposable list
+      SocketSubscription: IDisposable
       Stopper: AutoResetEvent }
 
     // *** Dispose
 
     interface IDisposable with
       member self.Dispose() =
-        List.iter dispose self.Disposables
-        try dispose self.Server  with | _ -> ()
+        dispose self.SocketSubscription
         try dispose self.Socket  with | _ -> ()
         try dispose self.Stopper with | _ -> ()
 
@@ -66,39 +57,19 @@ module ApiClient =
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Ping
     | Start
+    | Restart     of server:IrisServer
     | Stop
-    | CheckStatus
     | Dispose
-    | Notify            of ClientEvent
-    | SetState          of state:State
-    | SetStatus         of status:ServiceStatus
-    | Update            of sm:StateMachine
-    | Request           of sm:StateMachine
-    | RawServerRequest  of req:RawServerRequest
-    | RawClientResponse of req:RawClientResponse
+    | Notify      of ClientEvent
+    | SetState    of state:State
+    | SetStatus   of status:ServiceStatus
+    | Update      of sm:StateMachine
+    | SocketEvent of ev:TcpClientEvent
 
   // ** ApiAgent
 
   type private ApiAgent = MailboxProcessor<Msg>
-
-  // ** pingTimer
-
-  let private pingTimer (agent: ApiAgent) =
-    let cts = new CancellationTokenSource()
-
-    let rec loop () =
-      async {
-        do! Async.Sleep(int FREQ)
-        agent.Post(Msg.CheckStatus)
-        return! loop ()
-      }
-
-    Async.Start(loop (), cts.Token)
-    { new IDisposable with
-        member self.Dispose () =
-          cts.Cancel() }
 
   // ** handleNotify
 
@@ -109,77 +80,56 @@ module ApiClient =
   // ** requestRegister
 
   let private requestRegister (state: ClientState) =
-    sprintf "registering with %O:%O" state.Peer.IpAddress state.Peer.Port
+    state.Peer.Port
+    |> sprintf "registering with %O:%O" state.Peer.IpAddress
     |> Logger.debug (tag "requestRegister")
+
     state.Client
-    |> ServerApiRequest.Register
+    |> ApiRequest.Register
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId state.Client.Id)
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestRegister"))
-    |> ignore
 
   // ** requestUnRegister
 
   let private requestUnRegister (state: ClientState) =
-    sprintf "unregistering from %O:%O" state.Peer.IpAddress state.Peer.Port
+    state.Peer.Port
+    |> sprintf "unregistering from %O:%O" state.Peer.IpAddress
     |> Logger.debug (tag "requestUnRegister")
+
     state.Client
-    |> ServerApiRequest.UnRegister
+    |> ApiRequest.UnRegister
     |> Binary.encode
-    |> RawClientRequest.create
+    |> Request.create (Guid.ofId state.Client.Id)
     |> state.Socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestUnregister"))
-    |> ignore
 
   // ** handleStart
 
-  let private handleStart (state: ClientState) (agent: ApiAgent) =
-    Tracing.trace (tag "handleStart") <| fun () ->
-      let timer = pingTimer agent
-      requestRegister state
-      { state with Disposables = timer :: state.Disposables }
+  let private handleStart (state: ClientState) (_: ApiAgent) =
+    requestRegister state
+    state
 
   // ** handleSetStatus
 
   let private handleSetStatus (state: ClientState) (status: ServiceStatus) (agent: ApiAgent) =
-    Tracing.trace (tag "handleSetStatus") <| fun () ->
-      status |> ClientEvent.Status |> Msg.Notify |> agent.Post
+    if state.Client.Status <> status then
+      match status with
+      | ServiceStatus.Running ->
+          agent.Post Msg.Start
+      | _ ->
+        async {
+          do! Async.Sleep(int TIMEOUT)
+          do state.Socket.Restart() |> ignore
+        } |> Async.Start
+
+      status
+      |> ClientEvent.Status
+      |> Msg.Notify
+      |> agent.Post
+
       { state with Client = { state.Client with Status = status } }
-
-  // ** handleCheckStatus
-
-  let private handleCheckStatus (state: ClientState) (agent: ApiAgent) =
-    Tracing.trace (tag "handleCheckStatus") <| fun () ->
-      if not (Service.hasFailed state.Client.Status) then
-        match state.Elapsed with
-        | x when x > TIMEOUT ->
-          let status =
-            "Server ping timed out"
-            |> Error.asClientError (tag "handleCheckStatus")
-            |> ServiceStatus.Failed
-          status |> ClientEvent.Status |> Msg.Notify |> agent.Post
-          { state with
-             Client = { state.Client with Status = status }
-             Elapsed = state.Elapsed + FREQ }
-        | _ ->
-          let status =
-            match state.Client.Status with
-            | ServiceStatus.Running -> state.Client.Status
-            | _ ->
-              let newstatus = ServiceStatus.Running
-              newstatus |> ClientEvent.Status |> Msg.Notify |> agent.Post
-              newstatus
-          { state with
-             Client = { state.Client with Status = status }
-             Elapsed = state.Elapsed + FREQ }
-      else
-        state
-
-  // ** handlePing
-
-  let private handlePing (state: ClientState) =
-    { state with Elapsed = 0<ms> }
+    else
+      state
 
   // ** handleSetState
 
@@ -190,68 +140,73 @@ module ApiClient =
   // ** handleUpdate
 
   let private handleUpdate (state: ClientState) (sm: StateMachine) (agent: ApiAgent) =
-    Tracing.trace (tag "handleUpdate") <| fun () ->
-      state.Store.Dispatch sm
-      sm |> ClientEvent.Update |> Msg.Notify |> agent.Post
-      state
+    state.Store.Dispatch sm
+    sm
+    |> ClientEvent.Update
+    |> Msg.Notify
+    |> agent.Post
+    state
 
-  // ** requestUpdate
+  // ** performRequest
 
-  let private requestUpdate (socket: IClient) (sm: StateMachine) =
-    ServerApiRequest.Update sm
-    |> Binary.encode
-    |> RawClientRequest.create
-    |> socket.Request
-    |> Either.mapError (string >> Logger.err (tag "requestUpdate"))
-    |> ignore
+  let private performRequest (state: ClientState) (sm: StateMachine) =
+    if Service.isRunning state.Socket.Status then
+      sm
+      |> ApiRequest.Update
+      |> Binary.encode
+      |> Request.create (Guid.ofId state.Socket.ClientId)
+      |> state.Socket.Request
+    else
+      sm
+      |> sprintf "cannot perform request: %A  - %A " state.Socket.Status
+      |> Logger.err (tag "performRequest")
 
   // ** maybeDispatch
 
   let private maybeDispatch (data: ClientState) (sm: StateMachine) =
-    Tracing.trace (tag "maybeDispatch") <| fun () ->
-      match sm with
-      | UpdateSlices _ -> data.Store.Dispatch sm
-      | _ -> ()
+    match sm with
+    | UpdateSlices _ -> data.Store.Dispatch sm
+    | _ -> ()
 
   // ** handleRequest
 
-  let private handleRequest (state: ClientState) (sm: StateMachine) =
+  let private handleRequest (store: IAgentStore<ClientState>) (sm: StateMachine) =
+    let state = store.State
     maybeDispatch state sm
-    requestUpdate state.Socket sm
-    state
+    performRequest state sm
 
   // ** handleServerRequest
 
-  let private handleServerRequest (state: ClientState) (req: RawServerRequest) (agent: ApiAgent) =
+  let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
-      | Right ClientApiRequest.Ping ->
-        Msg.Ping
-        |> agent.Post
-
-        ApiResponse.Pong
-        |> Binary.encode
-        |> RawServerResponse.fromRequest req
-        |> state.Server.Respond
-
-      | Right (ClientApiRequest.Snapshot snapshot) ->
+      | Right (ApiRequest.Snapshot snapshot) ->
+        Logger.debug "handleServerResponse" (sprintf "got snapshot (socket: %A)" state.Socket.Status)
         snapshot
         |> Msg.SetState
         |> agent.Post
 
         ApiResponse.OK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
-        |> state.Server.Respond
+        |> Response.fromRequest req
+        |> state.Socket.Respond
 
-      | Right (ClientApiRequest.Update sm) ->
+      | Right (ApiRequest.Update sm) ->
         sm
         |> Msg.Update
         |> agent.Post
 
         ApiResponse.OK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
-        |> state.Server.Respond
+        |> Response.fromRequest req
+        |> state.Socket.Respond
+
+      | Right other ->
+        string other
+        |> ApiError.UnknownCommand
+        |> ApiResponse.NOK
+        |> Binary.encode
+        |> Response.fromRequest req
+        |> state.Socket.Respond
 
       | Left error ->
         error
@@ -259,26 +214,74 @@ module ApiClient =
         |> ApiError.MalformedRequest
         |> ApiResponse.NOK
         |> Binary.encode
-        |> RawServerResponse.fromRequest req
-        |> state.Server.Respond
+        |> Response.fromRequest req
+        |> state.Socket.Respond
       state
 
   // ** handleClientResponse
 
-  let private handleClientResponse (state: ClientState) (req: RawClientResponse) (agent: ApiAgent) =
-    match Either.bind Binary.decode req.Body with
+  let private handleClientResponse (state: ClientState) (req: Response) (agent: ApiAgent) =
+    match Binary.decode req.Body with
+    //  ____            _     _                    _
+    // |  _ \ ___  __ _(_)___| |_ ___ _ __ ___  __| |
+    // | |_) / _ \/ _` | / __| __/ _ \ '__/ _ \/ _` |
+    // |  _ <  __/ (_| | \__ \ ||  __/ | |  __/ (_| |
+    // |_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
+    //            |___/
     | Right ApiResponse.Registered ->
       Logger.debug (tag "handleClientResponse") "registration successful"
       ClientEvent.Registered |> Msg.Notify |> agent.Post
+    //  _   _       ____            _     _                    _
+    // | | | |_ __ |  _ \ ___  __ _(_)___| |_ ___ _ __ ___  __| |
+    // | | | | '_ \| |_) / _ \/ _` | / __| __/ _ \ '__/ _ \/ _` |
+    // | |_| | | | |  _ <  __/ (_| | \__ \ ||  __/ | |  __/ (_| |
+    //  \___/|_| |_|_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
+    //                        |___/
     | Right ApiResponse.Unregistered ->
       Logger.debug (tag "handleClientResponse") "un-registration successful"
       ClientEvent.UnRegistered |> Msg.Notify |> agent.Post
       agent.Post Msg.Dispose
-    | Right ApiResponse.OK
-    | Right ApiResponse.Pong -> ()
+    //   ___  _  __
+    //  / _ \| |/ /
+    // | | | | ' /
+    // | |_| | . \
+    //  \___/|_|\_\
+    | Right ApiResponse.OK -> ()
+
+    //  _   _  ___  _  __
+    // | \ | |/ _ \| |/ /
+    // |  \| | | | | ' /
+    // | |\  | |_| | . \
+    // |_| \_|\___/|_|\_\
     | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
+    //  ____                     _        _____
+    // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
+    // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|
+    // | |_| |  __/ (_| (_) | (_| |  __/ | |___| |  | | | (_) | |
+    // |____/ \___|\___\___/ \__,_|\___| |_____|_|  |_|  \___/|_|
     | Left error -> error |> string |> Logger.err (tag "handleClientResponse")
     state
+
+  // ** handleSocketEvent
+
+  let private handleSocketEvent state (ev: TcpClientEvent) agent =
+    match ev with
+    | TcpClientEvent.Request  request  -> handleServerRequest  state request  agent
+    | TcpClientEvent.Response response -> handleClientResponse state response agent
+
+    | TcpClientEvent.Connected _ ->
+      ServiceStatus.Running
+      |> Msg.SetStatus
+      |> agent.Post
+      state
+
+    | TcpClientEvent.Disconnected _ ->
+      "Connection to Server closed"
+      |> Error.asClientError (tag "handleSocketEvent")
+      |> ServiceStatus.Failed
+      |> Msg.SetStatus
+      |> agent.Post
+      state
 
   // ** handleStop
 
@@ -289,11 +292,44 @@ module ApiClient =
   // ** handleDispose
 
   let private handleDispose (state: ClientState) =
-    List.iter dispose state.Disposables
+    dispose state.SocketSubscription
     state.Stopper.Set() |> ignore
+    { state with Client = { state.Client with Status = ServiceStatus.Stopping } }
+
+  // ** makeSocket
+
+  let private makeSocket (server: IrisServer) (client: IrisClient) (agent: ApiAgent) =
+    let socket =
+      TcpClient.create {
+        ClientId = client.Id
+        PeerAddress = server.IpAddress
+        PeerPort = server.Port
+        Timeout = int Constants.REQ_TIMEOUT * 1<ms>
+      }
+    let subscription = socket.Subscribe (Msg.SocketEvent >> agent.Post)
+    subscription, socket
+
+  // ** handleRestart
+
+  let private handleRestart (state: ClientState) (server: IrisServer) (agent: ApiAgent) =
+    dispose state.Socket
+    dispose state.SocketSubscription
+
+    server.Port
+    |> Some
+    |> Uri.tcpUri server.IpAddress
+    |> sprintf "Connecting to server on %O"
+    |> Logger.debug (tag "start")
+
+    let subscription, socket = makeSocket server state.Client agent
+
+    socket.Start()
+    |> Either.mapError (string >> Logger.err (tag "handleRestart"))
+    |> ignore
+
     { state with
-        Status = ServiceStatus.Stopping
-        Disposables = [] }
+        Socket = socket
+        SocketSubscription = subscription }
 
   // ** loop
 
@@ -304,18 +340,15 @@ module ApiClient =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Notify ev              -> handleNotify         state ev
-          | Msg.Dispose                -> handleDispose        state
-          | Msg.Start                  -> handleStart          state inbox
-          | Msg.Stop                   -> handleStop           state
-          | Msg.SetStatus status       -> handleSetStatus      state status   inbox
-          | Msg.SetState newstate      -> handleSetState       state newstate inbox
-          | Msg.CheckStatus            -> handleCheckStatus    state          inbox
-          | Msg.Ping                   -> handlePing           state
-          | Msg.Update sm              -> handleUpdate         state sm       inbox
-          | Msg.Request       sm       -> handleRequest        state sm
-          | Msg.RawServerRequest req   -> handleServerRequest  state req      inbox
-          | Msg.RawClientResponse resp -> handleClientResponse state resp     inbox
+          | Msg.Restart    server  -> handleRestart     state server   inbox
+          | Msg.Notify ev          -> handleNotify      state ev
+          | Msg.Dispose            -> handleDispose     state
+          | Msg.Start              -> handleStart       state inbox
+          | Msg.Stop               -> handleStop        state
+          | Msg.SetStatus status   -> handleSetStatus   state status   inbox
+          | Msg.SetState newstate  -> handleSetState    state newstate inbox
+          | Msg.Update sm          -> handleUpdate      state sm       inbox
+          | Msg.SocketEvent   ev   -> handleSocketEvent state ev       inbox
         store.Update newstate
         return! act()
       }
@@ -328,76 +361,49 @@ module ApiClient =
 
     // *** create
 
-    let create ctx (server: IrisServer) (client: IrisClient) =
+    let create (server: IrisServer) (client: IrisClient) =
       let cts = new CancellationTokenSource()
       let subscriptions = new Subscriptions()
 
-      let state =
-        { Status = ServiceStatus.Stopped
-          Client = client
-          Peer = server
-          Server = Unchecked.defaultof<IServer>
-          Socket = Unchecked.defaultof<IClient>
-          Store = Store(State.Empty)
-          Elapsed = 0<ms>
-          Subscriptions = subscriptions
-          Stopper = new AutoResetEvent(false)
-          Disposables = [] }
-
       let store:IAgentStore<ClientState> = AgentStore.create()
-      store.Update state
 
       let agent = new ApiAgent(loop store, cts.Token)
+      let subscription, socket = makeSocket server client agent
+
+      let state =
+        { Client = { client with Status = ServiceStatus.Stopped }
+          Peer = server
+          Socket = socket
+          Store = Store(State.Empty)
+          Subscriptions = subscriptions
+          Stopper = new AutoResetEvent(false)
+          SocketSubscription = subscription }
+
+      store.Update state
+
       agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
 
       { new IApiClient with
 
           // **** Start
 
-          member self.Start () = either {
-              let clientAddr =
-                client.Port
-                |> Some
-                |> Uri.tcpUri client.IpAddress
-
-              let srvAddr =
-                server.Port
-                |> Some
-                |> Uri.tcpUri server.IpAddress
-
-              sprintf "Starting server on %O" clientAddr
+          member self.Start () =
+            either {
+              server.Port
+              |> Some
+              |> Uri.tcpUri server.IpAddress
+              |> sprintf "Connecting to server on %O"
               |> Logger.debug (tag "start")
 
-              let! socket = Client.create ctx {
-                PeerId = client.Id
-                Frontend = srvAddr
-                Timeout = int Constants.REQ_TIMEOUT * 1<ms>
-              }
+              agent.Start()
 
-              let result = Server.create ctx {
-                Id = client.Id
-                Listen = clientAddr
-              }
-
-              match result with
-              | Right server ->
-                let srvobs = server.Subscribe (Msg.RawServerRequest >> agent.Post)
-                let clntobs = socket.Subscribe (Msg.RawClientResponse >> agent.Post)
-
-                let updated =
-                  { store.State with
-                      Socket = socket
-                      Server = server
-                      Disposables = [ srvobs; clntobs ] }
-
-                store.Update updated
-
-                agent.Start()
-                agent.Post Msg.Start
-              | Left error ->
-                Logger.err (tag "Start") (string error)
-                return! Either.fail error
+              socket.Start()
+              |> Either.mapError (string >> Logger.err (tag "Start"))
+              |> ignore
             }
+
+          member self.Restart(server: IrisServer) =
+            server |> Msg.Restart |> agent.Post |> Either.succeed
 
           // **** State
 
@@ -407,7 +413,7 @@ module ApiClient =
           // **** Status
 
           member self.Status
-            with get () = store.State.Status
+            with get () = store.State.Client.Status
 
           // **** Subscribe
 
@@ -432,9 +438,13 @@ module ApiClient =
               ServiceStatus.Disposed |> ClientEvent.Status |> Msg.Notify |> agent.Post
               if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
                 Logger.debug (tag "Dispose") "timeout: attempt to dispose api client failed"
+
             dispose cts
             dispose store.State
-            store.Update { store.State with Status = ServiceStatus.Disposed }
+
+            store.Update {
+              store.State with
+                Client = { client with Status = ServiceStatus.Disposed } }
 
           // **** AddCue
 
@@ -445,98 +455,96 @@ module ApiClient =
           //  \____\__,_|\___|
 
           member self.AddCue (cue: Cue) =
-            AddCue cue
-            |> Msg.Request
-            |> agent.Post
+            cue
+            |> AddCue
+            |> handleRequest store
 
           // **** UpdateCue
 
           member self.UpdateCue (cue: Cue) =
-            UpdateCue cue
-            |> Msg.Request
-            |> agent.Post
+            cue
+            |> UpdateCue
+            |> handleRequest store
 
           // **** RemoveCue
 
           member self.RemoveCue (cue: Cue) =
-            RemoveCue cue
-            |> Msg.Request
-            |> agent.Post
+            cue
+            |> RemoveCue
+            |> handleRequest store
 
           // **** AddPinGroup
 
           member self.AddPinGroup (group: PinGroup) =
-            AddPinGroup group
-            |> Msg.Request
-            |> agent.Post
+            group
+            |> AddPinGroup
+            |> handleRequest store
 
           // **** UpdatePinGroup
 
           member self.UpdatePinGroup (group: PinGroup) =
-            UpdatePinGroup group
-            |> Msg.Request
-            |> agent.Post
+            group
+            |> UpdatePinGroup
+            |> handleRequest store
 
           // **** RemovePinGroup
 
           member self.RemovePinGroup (group: PinGroup) =
-            RemovePinGroup group
-            |> Msg.Request
-            |> agent.Post
+            group
+            |> RemovePinGroup
+            |> handleRequest store
 
           // **** AddCueList
 
           member self.AddCueList (cuelist: CueList) =
-            AddCueList cuelist
-            |> Msg.Request
-            |> agent.Post
+            cuelist
+            |> AddCueList
+            |> handleRequest store
 
           // **** UpdateCueList
 
           member self.UpdateCueList (cuelist: CueList) =
-            UpdateCueList cuelist
-            |> Msg.Request
-            |> agent.Post
+            cuelist
+            |> UpdateCueList
+            |> handleRequest store
 
           // **** RemoveCueList
 
           member self.RemoveCueList (cuelist: CueList) =
-            RemoveCueList cuelist
-            |> Msg.Request
-            |> agent.Post
+            cuelist
+            |> RemoveCueList
+            |> handleRequest store
 
           // **** AddPin
 
           member self.AddPin(pin: Pin) =
-            AddPin pin
-            |> Msg.Request
-            |> agent.Post
+            pin
+            |> AddPin
+            |> handleRequest store
 
           // **** UpdatePin
 
           member self.UpdatePin(pin: Pin) =
-            UpdatePin pin
-            |> Msg.Request
-            |> agent.Post
+            pin
+            |> UpdatePin
+            |> handleRequest store
 
           // **** UpdateSlices
 
           member self.UpdateSlices(slices: Slices) =
-            UpdateSlices slices
-            |> Msg.Request
-            |> agent.Post
+            slices
+            |> UpdateSlices
+            |> handleRequest store
 
           // **** RemovePin
 
           member self.RemovePin(pin: Pin) =
-            RemovePin pin
-            |> Msg.Request
-            |> agent.Post
+            pin
+            |> RemovePin
+            |> handleRequest store
 
           // **** Append
 
           member self.Append(cmd: StateMachine) =
-            cmd
-            |> Msg.Request
-            |> agent.Post
+            handleRequest store cmd
         }

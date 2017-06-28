@@ -7,7 +7,7 @@ open System
 open System.Collections.Concurrent
 open Iris.Core
 open Iris.Raft
-open Iris.Zmq
+open Iris.Net
 open Mono.Zeroconf
 open Disruptor
 open Disruptor.Dsl

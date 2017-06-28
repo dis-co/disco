@@ -3,12 +3,12 @@ namespace Iris.Tests
 open System
 open System.Threading
 open Expecto
+open Iris.Net
 open Iris.Core
 open Iris.Raft
 open Iris.Client
 open Iris.Service
 open Iris.Service.Interfaces
-open ZeroMQ
 
 [<AutoOpen>]
 module ApiTests =
@@ -45,12 +45,11 @@ module ApiTests =
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
       either {
-        use ctx = new ZContext()
         let mutable store = Store(mkState ())
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create ctx mem store.State.Project.Id {
+        use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }
@@ -75,7 +74,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        let client = ApiClient.create ctx srvr clnt
+        let client = ApiClient.create srvr clnt
 
         use registered = new AutoResetEvent(false)
         use unregistered = new AutoResetEvent(false)
@@ -113,12 +112,11 @@ module ApiTests =
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands to client" <| fun _ ->
       either {
-        use ctx = new ZContext()
         let store = Store(mkState ())
 
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create ctx mem store.State.Project.Id {
+        use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
             member self.PrepareSnapshot () = store.State
         }
@@ -143,7 +141,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        use client = ApiClient.create ctx srvr clnt
+        use client = ApiClient.create srvr clnt
 
         use snapshot = new AutoResetEvent(false)
         use doneCheck = new AutoResetEvent(false)
@@ -197,8 +195,6 @@ module ApiTests =
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
-        use ctx = new ZContext()
-
         use clientRegistered = new AutoResetEvent(false)
         use clientSnapshot = new AutoResetEvent(false)
         use clientUpdate = new AutoResetEvent(false)
@@ -219,7 +215,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        use! server = ApiServer.create ctx mem store.State.Project.Id {
+        use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
             member self.PrepareSnapshot () = store.State
         }
@@ -243,7 +239,7 @@ module ApiTests =
 
         use obs2 = server.Subscribe(apiHandler) //
 
-        use client = ApiClient.create ctx srvr clnt
+        use client = ApiClient.create srvr clnt
 
         let clientHandler = function
           | ClientEvent.Registered -> clientRegistered.Set() |> ignore
@@ -321,11 +317,10 @@ module ApiTests =
   let test_server_should_dispose_properly =
     testCase "server should dispose properly" <| fun _ ->
       either {
-        use ctx = new ZContext()
         let store = Store(mkState ())
         let mem = Member.create (Id.Create())
 
-        use! server = ApiServer.create ctx mem store.State.Project.Id {
+        use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }
@@ -336,8 +331,6 @@ module ApiTests =
   let test_client_should_dispose_properly =
     testCase "client should dispose properly" <| fun _ ->
       either {
-        use ctx = new ZContext()
-
         let mem = Member.create (Id.Create())
 
         let srvr : IrisServer =
@@ -352,7 +345,7 @@ module ApiTests =
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        use client = ApiClient.create ctx srvr clnt
+        use client = ApiClient.create srvr clnt
         do! client.Start()
       }
       |> noError

@@ -32,6 +32,9 @@ build: paket.restore zeroconf
 service:
 	${BUILD} BuildDebugService
 
+service.release:
+	${BUILD} BuildReleaseService
+
 core:
 	${BUILD} BuildDebugCore
 
@@ -51,8 +54,17 @@ zeroconf:
 	${BUILD} BuildDebugZeroconf
 	${BUILD} BuildReleaseZeroconf
 
+sdk:
+	${BUILD} BuildDebugSdk
+
+sdk.release:
+	${BUILD} BuildReleaseSdk
+
 client:
 	${BUILD} BuildDebugMockClient
+
+raspi:
+	${BUILD} BuildDebugRaspi
 
 #  _ __ _   _ _ __
 # | '__| | | | '_ \
@@ -140,7 +152,7 @@ clean:
 # | | |  __/ |  __/ (_| \__ \  __/
 # |_|  \___|_|\___|\__,_|___/\___|
 
-release:
+release: restore
 	${BUILD} Release
 
 #      _          _ _

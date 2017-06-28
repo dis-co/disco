@@ -6,6 +6,7 @@ namespace Iris.Tests
 open FsCheck
 open FsCheck.GenBuilder
 open Iris.Core
+open Iris.Net
 open Iris.Raft
 open Iris.Client
 open Iris.Service
@@ -95,6 +96,14 @@ module Generators =
       let! value = Arb.generate<Guid>
       return Id (string value)
     }
+
+  //   ____       _     _
+  //  / ___|_   _(_) __| |
+  // | |  _| | | | |/ _` |
+  // | |_| | |_| | | (_| |
+  //  \____|\__,_|_|\__,_|
+
+  let guidGen = Arb.generate<Guid>
 
   //  __  __            _     _
   // |  \/  | __ _  ___| |__ (_)_ __   ___
@@ -1170,30 +1179,18 @@ module Generators =
       Gen.map Redirect                raftMemberGen ]
     |> Gen.oneof
 
-  //   ____ _ _            _      _          _
-  //  / ___| (_) ___ _ __ | |_   / \   _ __ (_)
-  // | |   | | |/ _ \ '_ \| __| / _ \ | '_ \| |
-  // | |___| | |  __/ | | | |_ / ___ \| |_) | |
-  //  \____|_|_|\___|_| |_|\__/_/   \_\ .__/|_|
-  //                                  |_|
+  //     _          _ ____                            _
+  //    / \   _ __ (_)  _ \ ___  __ _ _   _  ___  ___| |_
+  //   / _ \ | '_ \| | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  //  / ___ \| |_) | |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // /_/   \_\ .__/|_|_| \_\___|\__, |\__,_|\___||___/\__|
+  //         |_|                   |_|
 
-  let clientApiRequestGen =
-    [ Gen.map      ClientApiRequest.Snapshot stateGen
-      Gen.map      ClientApiRequest.Update   stateMachineGen
-      Gen.constant ClientApiRequest.Ping ]
-    |> Gen.oneof
-
-  //  ____                            _          _
-  // / ___|  ___ _ ____   _____ _ __ / \   _ __ (_)
-  // \___ \ / _ \ '__\ \ / / _ \ '__/ _ \ | '_ \| |
-  //  ___) |  __/ |   \ V /  __/ | / ___ \| |_) | |
-  // |____/ \___|_|    \_/ \___|_|/_/   \_\ .__/|_|
-  //                                      |_|
-
-  let serverApiRequestGen =
-    [ Gen.map Register clientGen
-      Gen.map UnRegister clientGen
-      Gen.map Update stateMachineGen ]
+  let apiRequestGen =
+    [ Gen.map      ApiRequest.Snapshot   stateGen
+      Gen.map      ApiRequest.Register   clientGen
+      Gen.map      ApiRequest.UnRegister clientGen
+      Gen.map      ApiRequest.Update     stateMachineGen ]
     |> Gen.oneof
 
   //     _          _ _____
@@ -1217,12 +1214,24 @@ module Generators =
   //         |_|                    |_|
 
   let apiResponseGen =
-    [ Gen.constant Pong
-      Gen.constant OK
+    [ Gen.constant OK
       Gen.constant Registered
       Gen.constant Unregistered
       Gen.map NOK apiErrorGen ]
     |> Gen.oneof
+
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
+  //               |_|
+
+  let requestGen = gen {
+      let! peerId = guidGen
+      let! data = Gen.arrayOf Arb.generate<byte>
+      return Request.create peerId data
+    }
 
   //     _         _     _ _
   //    / \   _ __| |__ (_) |_ _ __ __ _ _ __ _   _
@@ -1245,9 +1254,9 @@ module Generators =
   let pinArb = Arb.fromGen pinGen
   let clientArb = Arb.fromGen clientGen
   let discoveredArb = Arb.fromGen discoveredGen
-  let clientApiRequestArb = Arb.fromGen clientApiRequestGen
-  let serverApiRequestArb = Arb.fromGen serverApiRequestGen
+  let apiRequestArb = Arb.fromGen apiRequestGen
   let apiResponseArb = Arb.fromGen apiResponseGen
   let cuePlayerArb = Arb.fromGen cuePlayerGen
   let stateMachineArb = Arb.fromGen stateMachineGen
   let stateArb = Arb.fromGen stateGen
+  let requestArb = Arb.fromGen requestGen
