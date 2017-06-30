@@ -7,12 +7,12 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>85e871ad-0799-46f9-a613-7ee3a834e331</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>UnityClient</RootNamespace>
-    <AssemblyName>UnityClient</AssemblyName>
+    <RootNamespace>Iris</RootNamespace>
+    <AssemblyName>Iris.Unity</AssemblyName>
+    <Name>Iris.Unity</Name>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.1.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>UnityClient</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -71,7 +71,7 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>
@@ -1707,7 +1707,7 @@
       </ItemGroup>
     </When>
   </Choose>
-  <PropertyGroup>
-    <PostBuildEvent>Copy $(TargetPath) "C:\Users\Alfonso\dev\New Unity Project\Assets\UnityClient.dll"</PostBuildEvent>
-  </PropertyGroup>
+  <!--<PropertyGroup>
+    <PostBuildEvent>Copy $(TargetPath) "C:\Users\Alfonso\dev\New Unity Project\Assets\Iris.Unity.dll"</PostBuildEvent>
+  </PropertyGroup>-->
 </Project>
