@@ -326,6 +326,7 @@ module TcpServer =
 
         member server.Start() =
           try
+            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true)
             listener.Bind(endpoint)
             listener.Listen(100)
 
