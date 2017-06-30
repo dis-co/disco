@@ -69,11 +69,8 @@ module rec TcpClient =
 
           state.Connected.Set() |> ignore  // Signal that the connection has been made.
       with
-        | exn ->
-          exn.Message |> Logger.err (tag "connectCallback"))
-          // state.ClientId
-          // |> TcpClientEvent.Disconnected
-          // |> Observable.onNext state.Subscriptions)
+        | :? ObjectDisposedException -> ()
+        | exn -> exn.Message |> Logger.err (tag "connectCallback"))
 
   // ** beginConnect
 
@@ -89,7 +86,6 @@ module rec TcpClient =
       // |> TcpClientEvent.Disconnected
       // |> Observable.onNext state.Subscriptions
     else
-      Logger.err (tag "beginConnect") "CONNECTED"
       state.Status <- ServiceStatus.Running
 
   // ** receiveCallback
@@ -104,15 +100,17 @@ module rec TcpClient =
           state.ResponseBuilder.Process bytesRead
           beginReceive state
       with
+        | :? ObjectDisposedException ->
+          state.Status <-
+            "Socket already disposed"
+            |> Error.asSocketError (tag "receiveCallback")
+            |> ServiceStatus.Failed
         | exn ->
           exn.Message |> Logger.err (tag "receiveCallback")
           state.Status <-
             exn.Message
             |> Error.asSocketError (tag "receiveCallback")
             |> ServiceStatus.Failed)
-          // state.ClientId
-          // |> TcpClientEvent.Disconnected
-          // |> Observable.onNext state.Subscriptions)
 
   // ** beginReceive
 
@@ -129,6 +127,14 @@ module rec TcpClient =
           state)
         |> ignore
     with
+      | :? ObjectDisposedException ->
+        state.Status <-
+          "Socket already disposed"
+          |> Error.asSocketError (tag "beginReceive")
+          |> ServiceStatus.Failed
+        state.ClientId
+        |> TcpClientEvent.Disconnected
+        |> Observable.onNext state.Subscriptions
       | exn ->
         exn.Message |> Logger.err (tag "beginReceive")
         state.Status <-
@@ -150,6 +156,11 @@ module rec TcpClient =
         // Signal that all bytes have been sent.
         state.Sent.Set() |> ignore
     with
+      | :? ObjectDisposedException ->
+        state.Status <-
+          "Socket already disposed"
+          |> Error.asSocketError (tag "sendCallback")
+          |> ServiceStatus.Failed
       | exn ->
         exn.Message |> Logger.err (tag "sendCallback")
         state.Status <-
@@ -182,15 +193,17 @@ module rec TcpClient =
       else
         state.Status <- ServiceStatus.Running
     with
+      | :? ObjectDisposedException ->
+        state.Status <-
+          "Socket already disposed"
+          |> Error.asSocketError (tag "receiveCallback")
+          |> ServiceStatus.Failed
       | exn ->
         exn.Message |> Logger.err (tag "send")
         state.Status <-
           exn.Message
           |> Error.asSocketError (tag "receiveCallback")
           |> ServiceStatus.Failed
-        // state.ClientId
-        // |> TcpClientEvent.Disconnected
-        // |> Observable.onNext state.Subscriptions
 
   // ** makeSocket
 

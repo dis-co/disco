@@ -43,7 +43,7 @@ module ApiTests =
   // |____/ \___|_|    \_/ \___|_|
 
   let test_server_should_replicate_state_snapshot_to_client =
-    testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
+    testCase "server should replicate state snapshot to client" <| fun _ ->
       either {
         let mutable store = Store(mkState ())
 

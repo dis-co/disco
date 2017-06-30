@@ -98,9 +98,7 @@ module TcpServer =
         handler.EndSend(result) |> ignore
       with
         | :? ObjectDisposedException -> ()
-        | exn ->
-          exn.Message
-          |> Logger.err (tag "sendCallback")
+        | exn -> exn.Message |> Logger.err (tag "sendCallback")
 
     // ** send
 
@@ -280,6 +278,7 @@ module TcpServer =
           |> String.format "New connection from {0}"
           |> Logger.info (tag "acceptCallback")
         with
+          | :? ObjectDisposedException -> ()
           | exn ->
             exn.Message
             |> Logger.err (tag "acceptCallback"))

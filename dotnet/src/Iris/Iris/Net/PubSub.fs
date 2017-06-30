@@ -58,6 +58,7 @@ module rec PubSub =
           |> Observable.onNext state.Subscriptions
         beginReceive state
       with
+        | :? ObjectDisposedException -> ()
         | exn ->
           exn.Message
           |> Logger.err (tag "receiveCallback"))
@@ -69,6 +70,7 @@ module rec PubSub =
       state.Client.BeginReceive(receiveCallback(), state)
       |> ignore
     with
+      | :? ObjectDisposedException -> ()
       | exn ->
         exn.Message
         |> Logger.err (tag "beginReceive")
@@ -80,6 +82,7 @@ module rec PubSub =
       let state = ar.AsyncState :?> IState
       state.Client.EndSend(ar) |> ignore
     with
+      | :? ObjectDisposedException -> ()
       | exn ->
         exn.Message
         |> Logger.err (tag "sendCallback")
