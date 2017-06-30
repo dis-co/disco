@@ -218,7 +218,7 @@ let flatcPath : string =
     //   | 0 when not proc.StandardOutput.EndOfStream ->
     //     proc.StandardOutput.ReadLine()
     //   | _ -> failwith "flatc was not found. Please install FlatBuffers first"
-  else "flatc.exe"
+  else __SOURCE_DIRECTORY__ </> "src/Lib/flatc.exe"
 
 // Read additional information from the release notes document
 let release = LoadReleaseNotes "CHANGELOG.md"
