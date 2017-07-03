@@ -45,20 +45,22 @@ class ClusterView extends React.Component {
 
   render() {
     if (this.props.global.state.project == null) {
-      return <table className="iris-list iris-cluster"></table>
+      return <table className="iris-table"></table>
     }
     const config = this.props.global.state.project.Config;
-    let site = tryFirst(config.Sites, site => site.Id = config.ActiveSite);
+    const site = tryFirst(config.Sites, site => site.Id = config.ActiveSite);
+    const padding5 = {paddingLeft: "5px"};
+    const topBorder ={borderTop: "1px solid lightgray"}
     return (
-      <table className="iris-list iris-cluster">
+      <table className="iris-table">
         <thead>
-          <tr className="iris-list-label-row">
-            <th className="p1 iris-list-label">Host</th>
-            <th className="p2 iris-list-label">IP</th>
-            <th className="p3 iris-list-label"></th>
-            <th className="p4 iris-list-label"></th>
-            <th className="p5 iris-list-label"></th>
-            <th className="p6 iris-list-label"></th>
+          <tr>
+            <th className="width-20" style={padding5}>Host</th>
+            <th className="width-15">IP</th>
+            <th className="width-25"></th>
+            <th className="width-15"></th>
+            <th className="width-15"></th>
+            <th className="width-10"></th>
           </tr>
         </thead>
         <tbody>
@@ -66,12 +68,14 @@ class ClusterView extends React.Component {
             const node = kv[1];
             return (
               <tr key={IrisLib.toString(kv[0])}>
-                <td className="p1"><span className="iris-output iris-icon icon-host">{node.HostName} <span className="iris-icon icon-bull iris-status-off" /></span></td>
-                <td className="p2">{IrisLib.toString(node.IpAddr)}</td>
-                <td className="p3">{node.Port}</td>
-                <td className="p4">{node.State.ToString()}</td>
-                <td className="p5">shortkey</td>
-                <td className="p6"><button className="iris-icon icon-autocall" /></td>
+                <td className="width-20" style={Object.assign({},padding5,topBorder)}>
+                  <span className="iris-output iris-icon icon-host">{node.HostName} <span className="iris-icon icon-bull iris-status-off" /></span>
+                </td>
+                <td className="width-15" style={topBorder}>{IrisLib.toString(node.IpAddr)}</td>
+                <td className="width-25" style={topBorder}>{node.Port}</td>
+                <td className="width-15" style={topBorder}>{node.State.ToString()}</td>
+                <td className="width-15" style={topBorder}>shortkey</td>
+                <td className="width-10" style={topBorder}><button className="iris-button iris-icon icon-autocall" /></td>
               </tr>
             );
           })}
@@ -86,11 +90,11 @@ export default class Cluster {
     this.view = ClusterView;
     this.name = "Cluster";
     this.titleBar =
-      <button onClick={() => { showModal(AddMember)}}>Add member</button>;
+      <button className="iris-button" onClick={() => { showModal(AddMember)}}>Add member</button>;
     this.layout = {
       x: 0, y: 0,
       w: 8, h: 5,
-      minW: 2, maxW: 10,
+      minW: 4, maxW: 10,
       minH: 1, maxH: 10
     };
   }

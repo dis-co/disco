@@ -105,7 +105,7 @@ export default class NavBar extends React.Component {
                 <h1 className="nav-item">Iris</h1>
                 <a className="nav-item" onClick={() => this.setState({isDropdownOpen: !this.state.isDropdownOpen})}>Menu</a>
                 {this.state.isDropdownOpen ?
-                    <div className="box dropdown">
+                    <div className="box iris-dropdown">
                     <ul>
                         <li><a onClick={this.onClick(0).bind(this)}>Create Project</a></li>
                         <li><a onClick={this.onClick(1).bind(this)}>Load Project</a></li>

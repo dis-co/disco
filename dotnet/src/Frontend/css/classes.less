@@ -1,32 +1,15 @@
 @import "values";
 
-.ui-icon-close, .ui-icon-copy {
+.icon-control {
   cursor: pointer;
 }
 
-.iris-cluster {
-  border-spacing: 0px;
-  width: 100%;
-  tr {
-    width: 100%;
-  }
-  th, td {
-    text-align: left;
-    vertical-align: middle;
-  }
-  td {
-    border-top: 1px solid lightgray;
-  }
-  th.p1, td.p1 {
-    width: 20%;
-    white-space: nowrap;
-    padding-left: 5px;
-  }
-  th.p2, td.p2 { width: 15%; }
-  th.p3, td.p3 { width: 25%; }
-  th.p4, td.p4 { width: 15%; }
-  th.p5, td.p5 { width: 15%; }
-  th.p6, td.p6 { width: 10%; }
+.iris-status-on {
+  color: @status-on;
+}
+
+.iris-status-off {
+  color: @status-off;
 }
 
 .iris-highlight.iris-blue {
@@ -34,7 +17,30 @@
   border-color: @highlight-blue !important;
 }
 
-.dropdown {
+.iris-button {
+  cursor: pointer;
+  margin: 2px 5px 1px 0px;
+  padding: 2px 4px;
+  outline: none;
+  border-radius: 3px;
+  border: solid 1px lightgray;
+  background-color: white;
+
+  &:active {
+    color: #fff;
+  }
+
+  &.icon-control {
+    background: none;
+    margin-right: 0px;
+    border: none;
+  }
+  &.icon-control:active {
+    color:blue;
+  }
+}
+
+.iris-dropdown {
   box-shadow: 0 0 8px #777;
   display: block;
   left: 0;
@@ -43,6 +49,98 @@
   top: 100%;
   z-index: 1000;
 }
+
+.iris-table {
+  border-spacing: 0px;
+  width: 100%;
+  [contenteditable] {
+    padding: 3px;
+  }
+  [contenteditable]:focus {
+    outline: none;
+    box-shadow: 0px 0px 1px grey;
+    border-radius: 5px;
+  }
+  th, td {
+    text-align: left;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  tr { width: 100% }
+  th.width-5, td.width-5 { width: 5% }
+  th.width-10, td.width-10 { width: 10% }
+  th.width-15, td.width-15 { width: 15% }
+  th.width-20, td.width-20 { width: 20% }
+  th.width-25, td.width-25 { width: 25% }
+  th.width-30, td.width-30 { width: 30% }
+}
+
+// FLEX --------------------
+
+.iris-flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.iris-flex-1 {
+  flex: 1
+}
+
+.iris-flex-2 {
+  flex: 2
+}
+
+.iris-flex-3 {
+  flex: 3
+}
+
+.iris-flex-4 {
+  flex: 4
+}
+
+// -------------------------
+
+// .iris-discovery {
+//   display: flex;
+//   flex-wrap: wrap;
+// }
+
+// .iris-discovered-service {
+//   margin: 5px;
+//   text-align: center;
+//   padding: 0 auto;
+//   background: @iris-grey;
+//   width: 150px;
+//   height: 50px;
+//   line-height: 50px;
+//   color: white;
+//   white-space: nowrap;
+//   user-select: none;
+
+//   &.enabled {
+//     cursor: move;
+//     background: @background-grey;
+//   }
+// }
+
+// .atom {
+//   color: #fff;
+//   span {
+//     padding: 2px 4px 2px 2px;
+//     background: #555;
+//     border-right: 1px solid #fff;
+//     &:first-child {
+//       border-top-left-radius: 50px;
+//       border-bottom-left-radius: 50px;
+//       padding-left: 6px;
+//     }
+//     &:last-child {
+//       border-top-right-radius: 50px;
+//       border-bottom-right-radius: 50px;
+//     }
+//   }
+// }
 
 // .iris-dropdown {
 //   display: inline-block;
@@ -73,98 +171,15 @@
 //   }
 // }
 
-.iris-widget {
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-
-  .iris-draggable-handle {
-    cursor: move;
-    margin: 0;
-    height: 35px;
-    padding: 7px;
-    background: @iris-grey;
-    display: flex;
-    align-items: baseline;
-
-    & > :first-child {
-      margin-right: 10px;
-    }
-
-    // Push other elements to the sides
-    .iris-title-bar {
-        flex: 1;
-    }
-
-    //Icon Sizes
-    .iris-window-control .iris-icon {
-      vertical-align: 0px;
-    }
-  }
-
-  .iris-widget-body {
-    flex: 1;
-    overflow: scroll;
-  }
-}
-
-.iris-discovery {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.iris-discovered-service {
-  margin: 5px;
-  text-align: center;
-  padding: 0 auto;
-  background: @iris-grey;
-  width: 150px;
-  height: 50px;
-  line-height: 50px;
-  color: white;
-  white-space: nowrap;
-  user-select: none;
-
-  &.enabled {
-    cursor: move;
-    background: @background-grey;
-  }
-}
-
-// FLEX --------------------
-.iris-flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.iris-flex-1 {
-  flex: 1
-}
-
-.iris-flex-2 {
-  flex: 2
-}
-
-.iris-flex-3 {
-  flex: 3
-}
-
-.iris-flex-4 {
-  flex: 4
-}
-// -------------------------
-
-.iris-tooltip {
-  // height: 100px;
-  background-color: lightyellow; // #EBEBEB;
-  position: absolute;
-  padding: 10px;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  transition: 0.8s;
-  z-index: 100000000;
-}
+// .iris-tooltip {
+//   // height: 100px;
+//   background-color: lightyellow; // #EBEBEB;
+//   position: absolute;
+//   padding: 10px;
+//   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+//   transition: 0.8s;
+//   z-index: 100000000;
+// }
 
 // .shadow {
 //   height: 20px;
