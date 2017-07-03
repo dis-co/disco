@@ -18,6 +18,7 @@
 }
 
 .iris-button {
+  cursor: pointer;
   margin: 2px 5px 1px 0px;
   padding: 2px 4px;
   outline: none;
@@ -49,56 +50,29 @@
   z-index: 1000;
 }
 
-//Boxes
-.iris-list {
-  li {
-    display: flex;
-    flex-flow: row;
-    flex-wrap: wrap;
-    // border-bottom: 1px solid #D5D4D4;
-
-    // height: 26px;
-
-    & ul li {
-      // border-top: 1px solid #D5D4D4;
-      border-bottom: none;
-      // margin-left: 25px;
-      border-left: none;
-    }
-
-    div {
-      float: left;
-      line-height: 26px;
-
-    }
-    .contentEditable {
-      padding: 3px;
-    }
-    .contentEditable:focus {
-      outline: none;
-      box-shadow: 0px 0px 1px grey;
-      border-radius: 5px;
-    }
-    & ul {
-      flex-grow: 1;
-    }
+.iris-table {
+  border-spacing: 0px;
+  width: 100%;
+  [contenteditable] {
+    padding: 3px;
   }
-
-  .iris-list-label-row {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  background: #fff;
+  [contenteditable]:focus {
+    outline: none;
+    box-shadow: 0px 0px 1px grey;
+    border-radius: 5px;
   }
-
-  .iris-list-label-row {
-    height: 16px;
+  th, td {
+    text-align: left;
+    white-space: nowrap;
+    vertical-align: middle;
   }
-  .iris-list-label {
-    line-height: 16px;
-    height: 16px;
-    padding-left: 0.5px;
-  }
+  tr { width: 100% }
+  th.width-5, td.width-5 { width: 5% }
+  th.width-10, td.width-10 { width: 10% }
+  th.width-15, td.width-15 { width: 15% }
+  th.width-20, td.width-20 { width: 20% }
+  th.width-25, td.width-25 { width: 25% }
+  th.width-30, td.width-30 { width: 30% }
 }
 
 // FLEX --------------------
@@ -125,80 +99,30 @@
   flex: 4
 }
 
-// ----------------------------
-
-.iris-cluster {
-  border-spacing: 0px;
-  width: 100%;
-  tr {
-    width: 100%;
-  }
-  th, td {
-    text-align: left;
-    vertical-align: middle;
-  }
-  td {
-    border-top: 1px solid lightgray;
-  }
-  th.p1, td.p1 {
-    width: 20%;
-    white-space: nowrap;
-    padding-left: 5px;
-  }
-  th.p2, td.p2 { width: 15%; }
-  th.p3, td.p3 { width: 25%; }
-  th.p4, td.p4 { width: 15%; }
-  th.p5, td.p5 { width: 15%; }
-  th.p6, td.p6 { width: 10%; }
-}
-
-.iris-graphview {
-  background: #F3F3F3;
-  height: 100%;
-  .iris-row-label {
-    line-height: 14px;
-    padding-right: 5px;
-  }
-  & li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    background: #F3F3F3;
-    padding: 4px 5px;
-      &:nth-child(even) {
-      background: #EBEBEB;
-      }
-      & .atom {
-        //Special margins for atoms within this list
-        margin: 1px 3px 3px 0px;
-      }
-  }
-}
-
-.iris-discovery {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.iris-discovered-service {
-  margin: 5px;
-  text-align: center;
-  padding: 0 auto;
-  background: @iris-grey;
-  width: 150px;
-  height: 50px;
-  line-height: 50px;
-  color: white;
-  white-space: nowrap;
-  user-select: none;
-
-  &.enabled {
-    cursor: move;
-    background: @background-grey;
-  }
-}
-
 // -------------------------
+
+// .iris-discovery {
+//   display: flex;
+//   flex-wrap: wrap;
+// }
+
+// .iris-discovered-service {
+//   margin: 5px;
+//   text-align: center;
+//   padding: 0 auto;
+//   background: @iris-grey;
+//   width: 150px;
+//   height: 50px;
+//   line-height: 50px;
+//   color: white;
+//   white-space: nowrap;
+//   user-select: none;
+
+//   &.enabled {
+//     cursor: move;
+//     background: @background-grey;
+//   }
+// }
 
 // .atom {
 //   color: #fff;

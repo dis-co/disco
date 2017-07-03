@@ -2,6 +2,41 @@
 @row-height: 17px;
 @pin-width: 120px;
 @arrow-size: 14px;
+@odd-row: #F3F3F3;
+@even-row: #EBEBEB;
+
+.iris-cue {
+  border-left: 3px solid transparent;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-top: 1px solid lightgray;
+  &.iris-highlight {
+    // When hightlighted we want a stronger top border
+    border-top-width: 2px;
+  }
+  &.iris-selected {
+    background-color: @highlight-lightblue;
+    border-color: @highlight-lightblue
+  }
+}
+
+.iris-graphview {
+  background: @odd-row;
+  height: 100%;
+  > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: @odd-row;
+    padding: 4px 5px;
+    &:nth-child(even) {
+      background: @even-row;
+    }
+    > :first-child {
+      padding-right: 5px;
+    }
+  }
+}
 
 .iris-pingroup {
   margin: 5px;

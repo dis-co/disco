@@ -166,21 +166,20 @@ type private CueView(props) =
     for d in disposables do
       d.dispose()
 
-  member this.RenderInput(pos: int, content: string, ?update: string->unit) =
+  member this.RenderInput(widthPercentage: int, content: string, ?update: string->unit) =
     let content =
       match update with
       | Some update ->
         from ContentEditable
           %["tagName" ==> "span"
             "html" ==> content
-            "onChange" ==> update
-            "className" ==> "contentEditable"] []
+            "onChange" ==> update] []
       | None -> span [] [str content]
-    td [ClassName ("p" + string pos)] [content]
+    td [ClassName ("width-" + string widthPercentage)] [content]
 
   member this.render() =
     let arrowButton =
-      td [ClassName "p1"] [
+      td [ClassName "width-5"] [
         button [
           ClassName ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
@@ -189,7 +188,7 @@ type private CueView(props) =
         ] []
       ]
     let playButton =
-      td [ClassName "p2"] [
+      td [ClassName "width-5"] [
         button [
           ClassName "iris-button iris-icon icon-play"
           OnClick (fun ev ->
@@ -199,7 +198,7 @@ type private CueView(props) =
         ] []
       ]
     let autocallButton =
-      td [ClassName "p7"] [
+      td [ClassName "width-10"; Style [TextAlign "center"]] [
         button [
           ClassName "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
@@ -209,7 +208,7 @@ type private CueView(props) =
         ] []
       ]
     let removeButton =
-      td [ClassName "p8"] [
+      td [ClassName "width-5"] [
         button [
           ClassName "iris-button iris-icon icon-control icon-close"
           OnClick (fun ev ->
@@ -226,7 +225,7 @@ type private CueView(props) =
     let isSelected =
       if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
-      then "cue iris-selected" else "cue"
+      then "iris-cue iris-selected" else "iris-cue"
     let cueHeader =
       tr [
         OnClick (fun _ ->
@@ -236,11 +235,11 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.RenderInput(3, String.Format("{0:0000}", this.props.CueIndex + 1))
-        this.RenderInput(4, unwrap this.state.Cue.Name, (fun txt ->
+        this.RenderInput(10, String.Format("{0:0000}", this.props.CueIndex + 1))
+        this.RenderInput(25, unwrap this.state.Cue.Name, (fun txt ->
           { this.state.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
-        this.RenderInput(5, "00:00:00")
-        this.RenderInput(6, "shortkey")
+        this.RenderInput(20, "00:00:00")
+        this.RenderInput(20, "shortkey")
         autocallButton
         removeButton
       ]
@@ -255,7 +254,7 @@ type private CueView(props) =
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = findPinGroup pinGroupId this.props.Global.state
             li [Key (string pinGroupId)] [
-              yield div [Class "iris-row-label"] [str (unwrap pinGroup.Name)]
+              yield div [] [str (unwrap pinGroup.Name)]
               for i, pin, slices in pinAndSlices do
                 yield com<PinView,_,_>
                   { key = string pin.Id
@@ -270,7 +269,7 @@ type private CueView(props) =
     tr [] [
       td [ColSpan 8.] [
         table [
-          ClassName ("cueplayer-nested-table " + isSelected)
+          ClassName ("iris-table " + isSelected)
           Ref (fun el -> selfRef <- el)
         ] [tbody [] rows]]
     ]
@@ -489,19 +488,17 @@ type CuePlayerView(props) =
     |> defaultArg <| []
 
   member this.render() =
-    let inline header i s =
-      th [ClassName (sprintf "p%i iris-list-label" i)] [str s]
-    table [ClassName "iris-list cueplayer-table"] [
+    table [ClassName "iris-table"] [
       thead [Key "header"] [
-        tr [ClassName "iris-list-label-row"] [
-          header 1 ""
-          header 2 ""
-          header 3 "Nr."
-          header 4 "Cue name"
-          header 5 "Delay"
-          header 6 "Shortkey"
-          header 7 "Autocall"
-          header 8 ""
+        tr [] [
+          th [ClassName "width-5"] [str ""]
+          th [ClassName "width-5"] [str ""]
+          th [ClassName "width-10"] [str "Nr."]
+          th [ClassName "width-25"] [str "Cue name"]
+          th [ClassName "width-20"] [str "Delay"]
+          th [ClassName "width-20"] [str "Shortkey"]
+          th [ClassName "width-10"; Style [TextAlign "center"]] [str "Autocall"]
+          th [ClassName "width-5"] [str ""]
         ]
       ]
       tbody [] (this.RenderCues())
