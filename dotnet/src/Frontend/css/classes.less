@@ -1,8 +1,131 @@
 @import "values";
 
-.ui-icon-close, .ui-icon-copy {
+.icon-control {
   cursor: pointer;
 }
+
+.iris-status-on {
+  color: @status-on;
+}
+
+.iris-status-off {
+  color: @status-off;
+}
+
+.iris-highlight.iris-blue {
+  // border: 2px solid @highlight-blue !important;
+  border-color: @highlight-blue !important;
+}
+
+.iris-button {
+  margin: 2px 5px 1px 0px;
+  padding: 2px 4px;
+  outline: none;
+  border-radius: 3px;
+  border: solid 1px lightgray;
+  background-color: white;
+
+  &:active {
+    color: #fff;
+  }
+
+  &.icon-control {
+    background: none;
+    margin-right: 0px;
+    border: none;
+  }
+  &.icon-control:active {
+    color:blue;
+  }
+}
+
+.iris-dropdown {
+  box-shadow: 0 0 8px #777;
+  display: block;
+  left: 0;
+  top: -1000px;
+  position: absolute;
+  top: 100%;
+  z-index: 1000;
+}
+
+//Boxes
+.iris-list {
+  li {
+    display: flex;
+    flex-flow: row;
+    flex-wrap: wrap;
+    // border-bottom: 1px solid #D5D4D4;
+
+    // height: 26px;
+
+    & ul li {
+      // border-top: 1px solid #D5D4D4;
+      border-bottom: none;
+      // margin-left: 25px;
+      border-left: none;
+    }
+
+    div {
+      float: left;
+      line-height: 26px;
+
+    }
+    .contentEditable {
+      padding: 3px;
+    }
+    .contentEditable:focus {
+      outline: none;
+      box-shadow: 0px 0px 1px grey;
+      border-radius: 5px;
+    }
+    & ul {
+      flex-grow: 1;
+    }
+  }
+
+  .iris-list-label-row {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  }
+
+  .iris-list-label-row {
+    height: 16px;
+  }
+  .iris-list-label {
+    line-height: 16px;
+    height: 16px;
+    padding-left: 0.5px;
+  }
+}
+
+// FLEX --------------------
+
+.iris-flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.iris-flex-1 {
+  flex: 1
+}
+
+.iris-flex-2 {
+  flex: 2
+}
+
+.iris-flex-3 {
+  flex: 3
+}
+
+.iris-flex-4 {
+  flex: 4
+}
+
+// ----------------------------
 
 .iris-cluster {
   border-spacing: 0px;
@@ -29,20 +152,71 @@
   th.p6, td.p6 { width: 10%; }
 }
 
-.iris-highlight.iris-blue {
-  // border: 2px solid @highlight-blue !important;
-  border-color: @highlight-blue !important;
+.iris-graphview {
+  background: #F3F3F3;
+  height: 100%;
+  .iris-row-label {
+    line-height: 14px;
+    padding-right: 5px;
+  }
+  & li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: #F3F3F3;
+    padding: 4px 5px;
+      &:nth-child(even) {
+      background: #EBEBEB;
+      }
+      & .atom {
+        //Special margins for atoms within this list
+        margin: 1px 3px 3px 0px;
+      }
+  }
 }
 
-.dropdown {
-  box-shadow: 0 0 8px #777;
-  display: block;
-  left: 0;
-  top: -1000px;
-  position: absolute;
-  top: 100%;
-  z-index: 1000;
+.iris-discovery {
+  display: flex;
+  flex-wrap: wrap;
 }
+
+.iris-discovered-service {
+  margin: 5px;
+  text-align: center;
+  padding: 0 auto;
+  background: @iris-grey;
+  width: 150px;
+  height: 50px;
+  line-height: 50px;
+  color: white;
+  white-space: nowrap;
+  user-select: none;
+
+  &.enabled {
+    cursor: move;
+    background: @background-grey;
+  }
+}
+
+// -------------------------
+
+// .atom {
+//   color: #fff;
+//   span {
+//     padding: 2px 4px 2px 2px;
+//     background: #555;
+//     border-right: 1px solid #fff;
+//     &:first-child {
+//       border-top-left-radius: 50px;
+//       border-bottom-left-radius: 50px;
+//       padding-left: 6px;
+//     }
+//     &:last-child {
+//       border-top-right-radius: 50px;
+//       border-bottom-right-radius: 50px;
+//     }
+//   }
+// }
 
 // .iris-dropdown {
 //   display: inline-block;
@@ -73,98 +247,15 @@
 //   }
 // }
 
-.iris-widget {
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-
-  .iris-draggable-handle {
-    cursor: move;
-    margin: 0;
-    height: 35px;
-    padding: 7px;
-    background: @iris-grey;
-    display: flex;
-    align-items: baseline;
-
-    & > :first-child {
-      margin-right: 10px;
-    }
-
-    // Push other elements to the sides
-    .iris-title-bar {
-        flex: 1;
-    }
-
-    //Icon Sizes
-    .iris-window-control .iris-icon {
-      vertical-align: 0px;
-    }
-  }
-
-  .iris-widget-body {
-    flex: 1;
-    overflow: scroll;
-  }
-}
-
-.iris-discovery {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.iris-discovered-service {
-  margin: 5px;
-  text-align: center;
-  padding: 0 auto;
-  background: @iris-grey;
-  width: 150px;
-  height: 50px;
-  line-height: 50px;
-  color: white;
-  white-space: nowrap;
-  user-select: none;
-
-  &.enabled {
-    cursor: move;
-    background: @background-grey;
-  }
-}
-
-// FLEX --------------------
-.iris-flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.iris-flex-1 {
-  flex: 1
-}
-
-.iris-flex-2 {
-  flex: 2
-}
-
-.iris-flex-3 {
-  flex: 3
-}
-
-.iris-flex-4 {
-  flex: 4
-}
-// -------------------------
-
-.iris-tooltip {
-  // height: 100px;
-  background-color: lightyellow; // #EBEBEB;
-  position: absolute;
-  padding: 10px;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  transition: 0.8s;
-  z-index: 100000000;
-}
+// .iris-tooltip {
+//   // height: 100px;
+//   background-color: lightyellow; // #EBEBEB;
+//   position: absolute;
+//   padding: 10px;
+//   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+//   transition: 0.8s;
+//   z-index: 100000000;
+// }
 
 // .shadow {
 //   height: 20px;

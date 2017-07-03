@@ -71,7 +71,7 @@ class ClusterView extends React.Component {
                 <td className="p3">{node.Port}</td>
                 <td className="p4">{node.State.ToString()}</td>
                 <td className="p5">shortkey</td>
-                <td className="p6"><button className="iris-icon icon-autocall" /></td>
+                <td className="p6"><button className="iris-button iris-icon icon-autocall" /></td>
               </tr>
             );
           })}
@@ -86,7 +86,7 @@ export default class Cluster {
     this.view = ClusterView;
     this.name = "Cluster";
     this.titleBar =
-      <button onClick={() => { showModal(AddMember)}}>Add member</button>;
+      <button className="iris-button" onClick={() => { showModal(AddMember)}}>Add member</button>;
     this.layout = {
       x: 0, y: 0,
       w: 8, h: 5,

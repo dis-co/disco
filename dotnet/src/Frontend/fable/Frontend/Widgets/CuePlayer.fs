@@ -90,9 +90,6 @@ module private Helpers =
     let inline replaceById< ^t when ^t : (member Id : Id)> (newItem : ^t) (ar: ^t[]) =
       Array.map (fun (x: ^t) -> if (^t : (member Id : Id) newItem) = (^t : (member Id : Id) x) then newItem else x) ar
 
-    // let inline replaceById (newItem : CueGroup) (ar: CueGroup[]) =
-    //   Array.map (fun (x: CueGroup) -> if newItem.Id = x.Id then newItem else x) ar
-
     let insertAfter (i: int) (x: 't) (xs: 't[]) =
       let len = xs.Length
       if len = 0 (* && i = 0 *) then
@@ -185,7 +182,7 @@ type private CueView(props) =
     let arrowButton =
       td [ClassName "p1"] [
         button [
-          ClassName ("iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+          ClassName ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
             ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
@@ -194,7 +191,7 @@ type private CueView(props) =
     let playButton =
       td [ClassName "p2"] [
         button [
-          ClassName "iris-icon icon-play"
+          ClassName "iris-button iris-icon icon-play"
           OnClick (fun ev ->
             ev.stopPropagation()
             updatePins this.state.Cue this.props.Global.state // TODO: Send CallCue event instead
@@ -204,7 +201,7 @@ type private CueView(props) =
     let autocallButton =
       td [ClassName "p7"] [
         button [
-          ClassName "iris-icon icon-autocall"
+          ClassName "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
             ev.stopPropagation()
             // Browser.window.alert("Auto call!")
@@ -214,7 +211,7 @@ type private CueView(props) =
     let removeButton =
       td [ClassName "p8"] [
         button [
-          ClassName "iris-icon icon-control icon-close"
+          ClassName "iris-button iris-icon icon-control icon-close"
           OnClick (fun ev ->
             ev.stopPropagation()
             let id = this.props.CueRef.Id
@@ -277,120 +274,6 @@ type private CueView(props) =
           Ref (fun el -> selfRef <- el)
         ] [tbody [] rows]]
     ]
-      // div [
-      //     Class "cueplayer-list-header cueplayer-cue level"
-      //     Style [BackgroundColor (if isSelected then SELECTION_COLOR else "inherit")]
-      //     OnClick (fun _ ->
-      //       if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
-      //         || this.props.CueIndex <> this.props.SelectedCueIndex then
-      //         this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
-      //   ] [
-      //     div [Class "level-left"] [
-      //       div [Class "level-item"] [
-      //         span [
-      //           Class arrowIconClass
-      //           OnClick (fun ev ->
-      //             ev.stopPropagation()
-      //             this.setState({this.state with IsOpen = not this.state.IsOpen}))
-      //         ] []]
-      //       div [
-      //         Class "cueplayer-button iris-icon cueplayer-player level-item"
-      //         OnClick (fun ev ->
-      //           ev.stopPropagation()
-      //           updatePins this.state.Cue this.props.Global.state) // TODO: Send CallCue event instead
-      //       ] [
-      //         span [Class "iris-icon iris-icon-play"] []
-      //       ]
-      //     ]
-      //     form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
-      //       input [
-      //         Class "cueplayer-cueDesc"
-      //         Type "text"
-      //         Name "cueoffset"
-      //         Value !^this.state.Offset
-      //         OnChange (fun ev -> this.setState({this.state with Offset = !!ev.target?value}))
-      //       ]
-      //       br []
-      //     ]
-      //     form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
-      //       input [
-      //         Class "cueplayer-cueDesc"
-      //         Type "text"
-      //         Name "cuename"
-      //         Value !^(unwrap this.state.Name: string)
-      //         OnChange (fun ev -> this.setState({this.state with Name = !!ev.target?value}))
-      //         OnBlur (fun _ ->
-      //           { this.state.Cue with Name = this.state.Name } |> UpdateCue |> ClientContext.Singleton.Post)
-      //         OnKeyUp (fun ev -> if ev.keyCode = 13. (* ENTER *) then !!ev.target?blur())
-      //       ]
-      //       br []
-      //     ]
-      //     form [Class "level-item"; OnSubmit (fun ev -> ev.preventDefault())] [
-      //       input [
-      //         Class "cueplayer-cueDesc"
-      //         Style [
-      //           CSSProp.Width 60.
-      //           MarginRight 5.
-      //         ]
-      //         Type "text"
-      //         Name "cuetime"
-      //         Value !^this.state.Time
-      //         OnChange (fun ev -> this.setState({this.state with Time = !!ev.target?value}))
-      //       ]
-      //       br []
-      //     ]
-      //     div [Class "level-right"] [
-      //       div [Class "cueplayer-button iris-icon level-item"; OnClick (fun ev ->
-      //           ev.stopPropagation()
-      //           // Create new Cue and CueReference
-      //           let newCue = { this.state.Cue with Id = Id.Create() }
-      //           let newCueRef = { this.props.CueRef with Id = Id.Create(); CueId = newCue.Id }
-      //           // Insert new CueRef in the selected CueGroup after the selected cue
-      //           let cueGroup = this.props.CueList.Groups.[this.props.CueGroupIndex]
-      //           let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.props.CueIndex newCueRef cueGroup.CueRefs }
-      //           // Update the CueList
-      //           let newCueList = { this.props.CueList with Groups = Array.replaceById newCueGroup this.props.CueList.Groups }
-      //           // Send messages to backend
-      //           AddCue newCue |>  ClientContext.Singleton.Post
-      //           UpdateCueList newCueList |> ClientContext.Singleton.Post
-      //       )] [
-      //         span [Class "iris-icon iris-icon-duplicate"] []
-      //       ]
-      //       div [Class "cueplayer-button iris-icon cueplayer-close level-item"; OnClick (fun ev ->
-      //         ev.stopPropagation()
-      //         let id = this.props.CueRef.Id
-      //         // Change selection if this item was selected
-      //         if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
-      //           this.props.SelectCue this.props.CueGroupIndex 0
-      //         let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
-      //         { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
-      //         |> UpdateCueList |> ClientContext.Singleton.Post)
-      //       ] [span [Class "iris-icon iris-icon-close"] []]
-      //     ]
-      //   ]
-      // div [] [
-      //   if this.state.IsOpen then
-      //     let pinGroups =
-      //       this.state.Cue.Slices
-      //       |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.Global.state, slices)
-      //       |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
-      //     printfn "PinGroups %A" pinGroups
-      //     for (pinGroupId, pinAndSlices) in pinGroups do
-      //       let pinGroup = findPinGroup pinGroupId this.props.Global.state
-      //       yield
-      //         div [Key (string pinGroupId); Class "iris-pingroup"] [
-      //           yield div [Class "iris-pingroup-name"] [str (unwrap pinGroup.Name + ":")]
-      //           for i, pin, slices in pinAndSlices do
-      //             yield com<PinView,_,_>
-      //               { key = string pin.Id
-      //                 ``global`` = this.props.Global
-      //                 pin = pin
-      //                 slices = Some slices
-      //                 update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
-      //                 onDragStart = None } []
-      //         ]
-      // ]
-    // ]
 
   member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =
@@ -508,7 +391,10 @@ type private CueView(props) =
 type CuePlayerModel() =
   let clickObservable = GenericObservable()
   member __.titleBar =
-    button [OnClick (fun _ -> clickObservable.Trigger())] [str "Add Cue"]
+    button [
+      ClassName "iris-button"
+      OnClick (fun _ -> clickObservable.Trigger())
+    ] [str "Add Cue"]
   member __.addCue =
     clickObservable :> IObservable<_>
   interface IWidgetModel with
@@ -620,73 +506,3 @@ type CuePlayerView(props) =
       ]
       tbody [] (this.RenderCues())
     ]
-    // div [Class "cueplayer-container"] [
-    //   // HEADER
-    //   yield
-    //     div [Class "cueplayer-list-header"] [
-    //       div [Class "cueplayer-button cueplayer-go"] [
-    //         span [
-    //           Class "iris-icon"
-    //           CustomKeyValue("data-icon", "c")
-    //         ] [str "GO"]
-    //       ]
-    //       div [Class "cueplayer-button iris-icon"] [
-    //         span [Class "iris-icon iris-icon-fast-backward"] []
-    //       ]
-    //       div [Class "cueplayer-button iris-icon"] [
-    //         span [Class "iris-icon iris-icon-fast-forward"] []
-    //       ]
-    //       div [
-    //         Class "cueplayer-button"
-    //         OnClick (fun _ ->
-    //           match this.state.CueList with
-    //           | None -> failwith "There is no cue list available to add the cue"
-    //           | Some cueList ->
-    //             if cueList.Groups.Length = 0 then
-    //               failwith "A Cue Group must be added first"
-    //             // Create new Cue and CueReference
-    //             let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-    //             let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-    //             // Insert new CueRef in the selected CueGroup after the selected cue
-    //             let cueGroup = cueList.Groups.[this.state.SelectedCueGroupIndex]
-    //             let newCueGroup = { cueGroup with CueRefs = Array.insertAfter this.state.SelectedCueIndex newCueRef cueGroup.CueRefs }
-    //             // Update the CueList
-    //             let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
-    //             // Send messages to backend
-    //             AddCue newCue |>  ClientContext.Singleton.Post
-    //             UpdateCueList newCueList |> ClientContext.Singleton.Post
-    //           )
-    //       ] [str "Add Cue"]
-    //       div [
-    //         Class "cueplayer-button"
-    //         OnClick (fun _ ->
-    //           match this.state.CueList with
-    //           | None -> failwith "There is no cue list available to add the group"
-    //           | Some cueList ->
-    //             // Create new CueGroup and insert it after the selected one
-    //             let newCueGroup = { Id = Id.Create(); Name = name "Untitled"; CueRefs = [||] }
-    //             let newCueList = { cueList with Groups = Array.insertAfter this.state.SelectedCueGroupIndex newCueGroup cueList.Groups }
-    //             // Send messages to backend
-    //             UpdateCueList newCueList |> ClientContext.Singleton.Post
-    //           )
-    //       ] [str "Add Group"]
-    //       div [Style [Clear "both"]] []
-    //     ]
-    //   // CUE GROUPS
-    //   match this.state.CueList with
-    //   | None -> ()
-    //   | Some cueList ->
-    //     for i=0 to (cueList.Groups.Length-1) do
-    //       let cueGroup = cueList.Groups.[i]
-    //       yield com<CueGroupView,_,_>
-    //         { key = (string cueGroup.Id) + ":" + (unwrap cueGroup.Name)
-    //           Global = globalModel
-    //           CueGroup = cueGroup
-    //           CueList = cueList
-    //           CueGroupIndex = i
-    //           SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-    //           SelectedCueIndex = this.state.SelectedCueIndex
-    //           SelectCueGroup = fun g -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = 0})
-    //           SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
-    //         []
-    // ]
