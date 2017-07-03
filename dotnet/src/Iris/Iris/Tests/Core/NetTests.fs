@@ -18,6 +18,33 @@ module NetIntegrationTests =
   // | |\  |  __/ |_
   // |_| \_|\___|\__|
 
+  let test_server_should_fail_on_start_with_duplicate_port =
+    testCase "server should fail on start with duplicate port" <| fun _ ->
+      either {
+        use log = Logger.subscribe Logger.stdout
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
+
+        use server1 = TcpServer.create {
+            ServerId = Id.Create()
+            Listen = ip
+            Port = prt
+          }
+
+        use server2 = TcpServer.create {
+            ServerId = Id.Create()
+            Listen = ip
+            Port = prt
+          }
+
+        do! server1.Start()
+
+        do! match server2.Start() with
+            | Right () -> Left(Other("test", "should have failed"))
+            | Left _   -> Right ()
+      }
+      |> noError
+
   let test_server_request_handling =
     testCase "server request handling" <| fun _ ->
       either {
@@ -177,6 +204,7 @@ module NetIntegrationTests =
 
   let netIntegrationTests =
     testList "Net Integration Tests" [
+      test_server_should_fail_on_start_with_duplicate_port
       test_server_request_handling
       test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly

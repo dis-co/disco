@@ -62,6 +62,10 @@ module rec TcpClient =
           |> fun guid -> guid.ToByteArray()
           |> state.Socket.Send
           |> ignore
+          // |> String.format "client introduction sent {0} bytes"
+          // |> Logger.debug (tag "connectCallback")
+
+          state.Status <- ServiceStatus.Running
 
           state.ClientId
           |> TcpClientEvent.Connected
@@ -69,8 +73,12 @@ module rec TcpClient =
 
           state.Connected.Set() |> ignore  // Signal that the connection has been made.
       with
-        | :? ObjectDisposedException -> ()
-        | exn -> exn.Message |> Logger.err (tag "connectCallback"))
+        | :? ObjectDisposedException ->
+          "Socket already disposed"
+          |> Logger.err (tag "connectCallback")
+        | exn ->
+          exn.Message
+          |> Logger.err (tag "connectCallback"))
 
   // ** beginConnect
 
@@ -82,9 +90,9 @@ module rec TcpClient =
         "Connection Timeout"
         |> Error.asSocketError (tag "beginConnect")
         |> ServiceStatus.Failed
-      // state.ClientId
-      // |> TcpClientEvent.Disconnected
-      // |> Observable.onNext state.Subscriptions
+      state.ClientId
+      |> TcpClientEvent.Disconnected
+      |> Observable.onNext state.Subscriptions
     else
       state.Status <- ServiceStatus.Running
 
@@ -101,10 +109,13 @@ module rec TcpClient =
           beginReceive state
       with
         | :? ObjectDisposedException ->
-          state.Status <-
-            "Socket already disposed"
-            |> Error.asSocketError (tag "receiveCallback")
-            |> ServiceStatus.Failed
+          "Socket already disposed"
+          |> fun error ->
+            Logger.err (tag "receiveCallback") error
+            state.Status <-
+              error
+              |> Error.asSocketError (tag "receiveCallback")
+              |> ServiceStatus.Failed
         | exn ->
           exn.Message |> Logger.err (tag "receiveCallback")
           state.Status <-
@@ -128,10 +139,13 @@ module rec TcpClient =
         |> ignore
     with
       | :? ObjectDisposedException ->
-        state.Status <-
-          "Socket already disposed"
-          |> Error.asSocketError (tag "beginReceive")
-          |> ServiceStatus.Failed
+        "Socket already disposed"
+        |> fun error ->
+          Logger.err (tag "beginReceive") error
+          state.Status <-
+            error
+            |> Error.asSocketError (tag "beginReceive")
+            |> ServiceStatus.Failed
         state.ClientId
         |> TcpClientEvent.Disconnected
         |> Observable.onNext state.Subscriptions
@@ -151,25 +165,32 @@ module rec TcpClient =
     let state = ar.AsyncState :?> IState
     try
       if not state.IsCancelled then
+
         // Complete sending the data to the remote device.
         state.Socket.EndSend(ar) |> ignore
+        // |> String.format "client sent {0} bytes"
+        // |> Logger.debug (tag "sendCallback")
+
         // Signal that all bytes have been sent.
         state.Sent.Set() |> ignore
     with
       | :? ObjectDisposedException ->
-        state.Status <-
-          "Socket already disposed"
-          |> Error.asSocketError (tag "sendCallback")
-          |> ServiceStatus.Failed
+        "Socket already disposed"
+        |> fun error ->
+          Logger.err (tag "sendCallback") error
+          state.Status <-
+            error
+            |> Error.asSocketError (tag "sendCallback")
+            |> ServiceStatus.Failed
       | exn ->
         exn.Message |> Logger.err (tag "sendCallback")
         state.Status <-
           exn.Message
           |> Error.asSocketError (tag "sendCallback")
           |> ServiceStatus.Failed
-        // state.ClientId
-        // |> TcpClientEvent.Disconnected
-        // |> Observable.onNext state.Subscriptions
+        state.ClientId
+        |> TcpClientEvent.Disconnected
+        |> Observable.onNext state.Subscriptions
 
   // ** send
 
@@ -194,21 +215,19 @@ module rec TcpClient =
         state.Status <- ServiceStatus.Running
     with
       | :? ObjectDisposedException ->
-        state.Status <-
-          "Socket already disposed"
-          |> Error.asSocketError (tag "receiveCallback")
-          |> ServiceStatus.Failed
+        "Socket already disposed"
+        |> fun error ->
+          Logger.err (tag "receiveCallback") error
+          state.Status <-
+            error
+            |> Error.asSocketError (tag "receiveCallback")
+            |> ServiceStatus.Failed
       | exn ->
         exn.Message |> Logger.err (tag "send")
         state.Status <-
           exn.Message
           |> Error.asSocketError (tag "receiveCallback")
           |> ServiceStatus.Failed
-
-  // ** makeSocket
-
-  let private makeSocket () =
-    new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 
   // ** start
 
@@ -223,7 +242,7 @@ module rec TcpClient =
   let private makeState id (options: ClientConfig) (subscriptions: Subscriptions) =
     let cts = new CancellationTokenSource()
     let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
-    let client = makeSocket()
+    let client = Socket.createTcp()
 
     let buffer = Array.zeroCreate Core.BUFFER_SIZE
     let connected = new ManualResetEvent(false)
@@ -326,10 +345,18 @@ module rec TcpClient =
             // this socket is asking soemthing, so we need to track this in pending requests
             state.PendingRequests.TryAdd(request.RequestId, request) |> ignore
             send state request
+          else
+            state.Status
+            |> String.format "not sending, wrong state {0}"
+            |> Logger.err (tag "Request")
 
         member socket.Respond(response: Response) =
           if Service.isRunning state.Status then
             send state response
+          else
+            state.Status
+            |> String.format "not sending, wrong state {0}"
+            |> Logger.err (tag "Request")
 
         member socket.Restart() =
           try

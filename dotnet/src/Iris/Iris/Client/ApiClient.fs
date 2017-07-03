@@ -180,7 +180,10 @@ module ApiClient =
   let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
       | Right (ApiRequest.Snapshot snapshot) ->
-        Logger.debug "handleServerResponse" (sprintf "got snapshot (socket: %A)" state.Socket.Status)
+        state.Socket.Status
+        |> String.format "received snapshot (status: {0})"
+        |> Logger.debug (tag "handleServerResponse")
+
         snapshot
         |> Msg.SetState
         |> agent.Post

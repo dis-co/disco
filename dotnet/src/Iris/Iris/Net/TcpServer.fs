@@ -311,7 +311,7 @@ module TcpServer =
   // ** create
 
   let create (options: ServerConfig) =
-    let listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+    let listener = Socket.createTcp()
     let endpoint = IPEndPoint(options.Listen.toIPAddress(), int options.Port)
 
     let state = SharedState.create listener
@@ -325,10 +325,8 @@ module TcpServer =
 
         member server.Start() =
           try
-            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true)
-            listener.Bind(endpoint)
-            listener.Listen(100)
-
+            do listener.Bind(endpoint)
+            do listener.Listen(100)
             acceptor <- Server.startAcceptingConnections state
             Either.nothing
           with
@@ -341,26 +339,22 @@ module TcpServer =
           try
             state.Connections.[client].Request request
           with
-            | exn ->
-              exn.Message
-              |> Logger.err (tag "Send")
+            | exn -> exn.Message |> Logger.err (tag "Send")
 
         member server.Respond (response: Response) =
           try
             state.Connections.[response.PeerId].Respond response
           with
-            | exn ->
-              exn.Message
-              |> Logger.err (tag "Send")
+            | exn -> exn.Message |> Logger.err (tag "Send")
 
         member server.Subscribe (callback: TcpServerEvent -> unit) =
           Observable.subscribe callback state.Subscriptions
 
         member server.Dispose() =
-          cleaner.Dispose()
+          tryDispose cleaner ignore
 
           for KeyValue(_,connection) in state.Connections.ToArray() do
-            connection.Dispose()
+            tryDispose connection ignore
 
-          acceptor.Dispose()
-          state.Dispose() }
+          tryDispose acceptor ignore
+          tryDispose state ignore }
