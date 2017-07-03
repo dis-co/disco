@@ -113,7 +113,7 @@ type PinView(props) =
     else tbody [] [head]
 
   member this.RenderArrow() =
-    button [
+    span [
       ClassName ("iris-icon icon-control " + (if this.state.isOpen then "icon-less" else "icon-more"))
       OnClick (fun ev ->
         ev.stopPropagation()

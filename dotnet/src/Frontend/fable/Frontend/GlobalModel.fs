@@ -175,7 +175,7 @@ type GlobalModel() as this =
     for KeyValue(key, keySubscribers) in subscribers do
       let value = stateMutable?(key)
       keySubscribers.Values |> Seq.iteri (fun i subscriber ->
-        // printfn "Inform subscriber %i: %s" i key
+        // printfn "Inform subscriber %i: %s - %A" i key value
         subscriber value dic)
 
   // Public methods

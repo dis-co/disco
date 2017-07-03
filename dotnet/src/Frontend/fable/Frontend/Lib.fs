@@ -218,8 +218,8 @@ let saveProject() =
 
 let unloadProject() =
   UnloadProject |> postCommand (fun _ ->
-    GlobalModel.Singleton.NotifyAll()
-    notify "The project has been unloaded") notify
+    notify "The project has been unloaded"
+    Browser.location.reload()) notify
 
 let nullify _: 'a = null
 
@@ -231,7 +231,9 @@ let rec loadProject(project: Name, username: UserName, pass: Password, site: Id 
     then
       ClientContext.Singleton.ConnectWithWebSocket()
       |> Promise.map (fun _msg -> // TODO: Check message?
-        notify "The project has been loaded successfully"; None)
+        notify "The project has been loaded successfully"
+        Browser.location.reload()
+        None)
     else
       res.text() |> Promise.map (fun msg ->
         if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
