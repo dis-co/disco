@@ -117,7 +117,7 @@ type [<Pojo>] private CueState =
 
 type [<Pojo>] private CueProps =
   { key: string
-    Global: IGlobalModel
+    Global: GlobalModel
     CueRef: CueReference
     CueGroup: CueGroup
     CueList: CueList
@@ -328,8 +328,8 @@ type private CueView(props) =
 //               ev.stopPropagation()
 //               // Fire all cues in the group
 //               for cueRef in this.props.CueGroup.CueRefs do
-//                 let cue = findCue cueRef.CueId this.props.Global.State
-//                 updatePins cue this.props.Global.State
+//                 let cue = findCue cueRef.CueId this.props.Global.state
+//                 updatePins cue this.props.Global.state
 //             )
 //           ] [
 //             span [Class "iris-icon iris-icon-play"] []
@@ -412,11 +412,11 @@ type [<Pojo>] CuePlayerState =
 
 type CuePlayerView(props) =
   inherit React.Component<IWidgetProps<CuePlayerModel>, CuePlayerState>(props)
-  let disposables = ResizeArray<IDisposable>()
-  let globalModel = props.``global`` :?> GlobalModel
+  let disposables = ResizeArray<IDisposableJS>()
+  let globalModel = props.``global``
   do
     // TODO: Mock code, create player if it doesn't exist
-    if Map.count globalModel.State.cuePlayers = 0 then
+    if Map.count props.``global``.state.cuePlayers = 0 then
       let cueList, cuePlayer = cueMockup()
       AddCueList cueList |> ClientContext.Singleton.Post
       AddCuePlayer cuePlayer |> ClientContext.Singleton.Post
@@ -424,18 +424,18 @@ type CuePlayerView(props) =
     else
       // TODO: Use a dropdown to choose the player/list
       let cueList =
-        Seq.tryHead globalModel.State.cuePlayers
+        Seq.tryHead props.``global``.state.cuePlayers
         |> Option.bind (fun kv -> kv.Value.CueList)
-        |> Option.bind (fun id -> Map.tryFind id globalModel.State.cueLists)
+        |> Option.bind (fun id -> Map.tryFind id props.``global``.state.cueLists)
       base.setInitState({ CueList = cueList; SelectedCueGroupIndex = -1; SelectedCueIndex = -1 })
 
   member this.componentDidMount() =
-    let state = globalModel.State
-    disposables.Add(globalModel.Subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ dic ->
+    let state = globalModel.state
+    disposables.Add(globalModel.subscribe(!^[|nameof(state.cueLists); nameof(state.cuePlayers)|], fun _ dic ->
       match this.state.CueList with
       | Some cueList ->
         if tryDic (nameof cueList.Id) cueList.Id dic then
-          let cueList = Map.find cueList.Id globalModel.State.cueLists
+          let cueList = Map.find cueList.Id globalModel.state.cueLists
           this.setState({this.state with CueList=Some cueList})
       | None -> ()))
     disposables.Add(this.props.model.addCue.Subscribe(fun () ->
@@ -459,11 +459,11 @@ type CuePlayerView(props) =
         // Send messages to backend
         AddCue newCue |> ClientContext.Singleton.Post
         UpdateCueList newCueList |> ClientContext.Singleton.Post
-    ))
+    ).ToIDisposableJS())
 
   member this.componentWillUnmount() =
     for d in disposables do
-      d.Dispose()
+      d.dispose()
 
   member this.RenderCues() =
     this.state.CueList

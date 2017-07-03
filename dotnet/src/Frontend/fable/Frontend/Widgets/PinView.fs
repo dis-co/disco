@@ -51,7 +51,7 @@ let (|NullOrEmpty|_|) str =
 
 type [<Pojo>] PinProps =
   { key: string
-    ``global``: IGlobalModel
+    ``global``: GlobalModel
     pin: Pin
     slices: Slices option
     update: (int->obj->unit) option
@@ -131,7 +131,7 @@ type PinView(props) =
     ]
 
 type [<Pojo>] PinGroupProps =
-  { ``global``: IGlobalModel
+  { ``global``: GlobalModel
     pinGroup: PinGroup
     pinAndSlices: (int * Pin * Slices)[]
     update: (int->int->obj->unit) option }

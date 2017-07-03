@@ -8,10 +8,10 @@ open Fable.Core.JsInterop
 open Fable.PowerPack
 open Iris.Core
 
-let private (|IsJsArray|_|) (o: obj) =
+let (|IsJsArray|_|) (o: obj) =
     if JS.Array.isArray(o) then Some(o :?> ResizeArray<obj>) else None
 
-let private failParse (gid: Id) (pk: string) (x: obj) =
+let failParse (gid: Id) (pk: string) (x: obj) =
     printfn "Unexpected value %A when parsing %s in PinGroup %O" x pk gid; None
 
 let inline forcePin<'T> gid pk (values: obj seq) =

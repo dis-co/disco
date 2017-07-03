@@ -22,7 +22,7 @@ type IWidgetModel =
 type [<Pojo>] IWidgetProps<'T> =
   abstract id: Guid
   abstract model: 'T
-  abstract ``global``: IGlobalModel
+  abstract ``global``: GlobalModel
 
 type IDragEvent<'T> =
   abstract origin: int
