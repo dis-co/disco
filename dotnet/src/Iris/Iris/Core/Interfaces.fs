@@ -88,6 +88,8 @@ type IrisEvent =
   | PersistSnapshot of log:RaftLogEntry
   | RaftError       of error:IrisError
   | Status          of ServiceStatus
+  | GitPull         of remote:IpAddress
+  | GitPush         of remote:IpAddress
   | Append          of origin:Origin * cmd:StateMachine
   | SessionOpened   of session:Id
   | SessionClosed   of session:Id
@@ -105,6 +107,8 @@ type IrisEvent =
     | Status           _  -> "Status"
     | SessionOpened    _  -> "SessionOpened"
     | SessionClosed    _  -> "SessionClosed"
+    | GitPull          _  -> "GitPull"
+    | GitPush          _  -> "GitPush"
     | Append (origin,cmd) -> sprintf "Append(%s, %s)" (string origin) (string cmd)
 
   // ** Origin
@@ -120,6 +124,8 @@ type IrisEvent =
       | RaftError       _
       | SessionOpened   _
       | SessionClosed   _
+      | GitPull         _
+      | GitPush         _
       | Status          _  -> None
       | Append (origin, _) -> Some origin
 
@@ -142,6 +148,15 @@ type IrisEvent =
       | LeaderChanged   _
       | PersistSnapshot _
       | RaftError       _                                    -> Process
+
+      //   ____ _ _
+      //  / ___(_) |_
+      // | |  _| | __|
+      // | |_| | | |_
+      //  \____|_|\__|
+
+      | GitPull         _
+      | GitPush         _                                    -> Process
 
       // __        __   _    ____             _        _
       // \ \      / /__| |__/ ___|  ___   ___| | _____| |_

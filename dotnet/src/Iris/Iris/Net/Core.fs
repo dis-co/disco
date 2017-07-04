@@ -425,15 +425,26 @@ type IPubSub =
 // * Socket module
 
 module Socket =
+
+  // ** setSocketOption
+
+  let setSocketOption (option: SocketOptionName) (value: bool) (socket: Socket) =
+    socket.SetSocketOption(SocketOptionLevel.Socket, option, value)
+    socket
+
+  // ** setNoDelay
+
+  let setNoDelay value (socket: Socket) =
+    socket.NoDelay <- value              // disable Nagle's algorithm (small packets)
+    socket
+
   // ** createTcp
 
   let createTcp () =
-    let socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-    // do socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true)
-    do socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true)
-    // socket.Blocking <- false             // don't block
-    socket.NoDelay <- true               // disable Nagle's algorithm (small packets)
-    socket
+    new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+    |> setSocketOption SocketOptionName.ReuseAddress true
+    |> setSocketOption SocketOptionName.DontLinger   true
+    |> setNoDelay true
 
   // ** isAlive
 

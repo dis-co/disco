@@ -1354,8 +1354,8 @@ type StateMachine =
       | UnloadProject           _      -> Ignore
 
       // Member
+      | UpdateMember            _      -> Save
       | AddMember               _
-      | UpdateMember            _
       | RemoveMember            _      -> Commit
 
       // Client

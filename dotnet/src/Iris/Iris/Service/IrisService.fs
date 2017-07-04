@@ -142,7 +142,12 @@ module IrisService =
               commit.Sha
               |> String.format "Successfully committed changes in: {0}"
               |> Logger.debug (tag "statePersistor")
-              Persistence.pushChanges repo
+              repo
+              |> Persistence.ensureRemotes
+                  state.RaftServer.MemberId
+                  state.Store.State.Project
+                  state.RaftServer.Raft.Peers
+              |> Persistence.pushChanges
               |> Map.iter
                 (fun name err ->
                   sprintf "could not push to %s: %O" name err
@@ -152,6 +157,7 @@ module IrisService =
               error
               |> String.format "Error committing changes to disk: {0}"
               |> Logger.err (tag "statePersistor")
+
           | PersistenceStrategy.Ignore -> ()
       | _ -> ()
 
