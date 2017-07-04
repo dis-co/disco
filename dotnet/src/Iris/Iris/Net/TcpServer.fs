@@ -324,16 +324,19 @@ module TcpServer =
           with get () = options.ServerId
 
         member server.Start() =
-          try
-            do listener.Bind(endpoint)
-            do listener.Listen(100)
-            acceptor <- Server.startAcceptingConnections state
-            Either.nothing
-          with
-            | exn ->
-              exn.Message
-              |> Error.asSocketError (tag "Start")
-              |> Either.fail
+          either {
+            try
+              do! Network.ensureAvailability options.Listen options.Port
+              do listener.Bind(endpoint)
+              do listener.Listen(100)
+              acceptor <- Server.startAcceptingConnections state
+            with
+              | exn ->
+                return!
+                  exn.Message
+                  |> Error.asSocketError (tag "Start")
+                  |> Either.fail
+          }
 
         member server.Request (client: Guid) (request: Request) =
           try
