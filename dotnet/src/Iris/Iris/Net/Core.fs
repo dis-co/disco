@@ -457,6 +457,7 @@ module Socket =
 
   let dispose (socket:Socket) =
     try
+      socket.LingerState <- LingerOption(true,0)
       socket.Shutdown(SocketShutdown.Both)
       socket.Close()
     with

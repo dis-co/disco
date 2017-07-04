@@ -147,6 +147,8 @@ module Network =
       try
         use socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
         let endpoint = IPEndPoint(ip.toIPAddress(), int port)
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true)
+        socket.LingerState <- LingerOption(true,0)
         socket.Bind(endpoint)
         socket.Listen(1)
         socket.Close()
