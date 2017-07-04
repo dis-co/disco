@@ -12,7 +12,7 @@ open Fable.Helpers.React.Props
 type [<Pojo>] InputState =
   { isOpen: bool }
 
-let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, update: int -> obj -> unit): React.ReactElement =
+let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater): React.ReactElement =
   importMember "../../../src/behaviors/input.tsx"
 
 let formatValue(value: obj): string =
@@ -49,12 +49,15 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
+type IUpdater =
+  abstract Update: dragging:bool * index:int * value:obj -> unit
+
 type [<Pojo>] PinProps =
   { key: string
     ``global``: GlobalModel
     pin: Pin
     slices: Slices option
-    update: (int->obj->unit) option
+    updater: IUpdater option
     onDragStart: (unit -> unit) option }
 
 type PinView(props) =
@@ -66,12 +69,7 @@ type PinView(props) =
     | Some slices -> slices.[index i].Value
     | None -> this.props.pin.Values.[index i].Value
 
-  member this.UpdateValue(index: int, value: obj) =
-    match this.props.update with
-    | Some update -> update index value
-    | None -> updatePinValue(this.props.pin, index, value)
-
-  member inline this.RenderRows(rowCount: int, useRightClick: bool) =
+  member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater) =
     let name =
       if String.IsNullOrEmpty(this.props.pin.Name)
       then "--"
@@ -83,7 +81,7 @@ type PinView(props) =
           this.RenderArrow()
         ]
       else
-        addInputView(0, this.ValueAt(0), "td", useRightClick, (fun i v -> this.UpdateValue(0,v)))
+        addInputView(0, this.ValueAt(0), "td", useRightClick, updater)
     let head =
       tr [ClassName "iris-pin-child"] [
         td [
@@ -107,7 +105,7 @@ type PinView(props) =
             | Some label -> label
           yield tr [Key (string i); ClassName "iris-pin-child"] [
             td [] [str label]
-            addInputView(i, this.ValueAt(i), "td", useRightClick, (fun i v -> this.UpdateValue(i,v)))
+            addInputView(i, this.ValueAt(i), "td", useRightClick, updater)
           ]
       ]
     else tbody [] [head]
@@ -119,7 +117,15 @@ type PinView(props) =
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
     ] []
+
   member this.render() =
+    let updater =
+      match props.updater with
+      | Some updater -> updater
+      | None ->
+        { new IUpdater with
+            member __.Update(_, index, value) =
+              updatePinValue(this.props.pin, index, value) }
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
@@ -127,7 +133,7 @@ type PinView(props) =
     let useRightClick =
       this.props.``global``.state.useRightClick
     div [ClassName "iris-pin"] [
-      table [] [this.RenderRows(rowCount, useRightClick)]
+      table [] [this.RenderRows(rowCount, useRightClick, updater)]
     ]
 
 type [<Pojo>] PinGroupProps =
