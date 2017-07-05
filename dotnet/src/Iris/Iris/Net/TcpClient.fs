@@ -346,7 +346,7 @@ module rec TcpClient =
             state.PendingRequests.TryAdd(request.RequestId, request) |> ignore
             send state request
           else
-            state.Status
+            string state.Status
             |> String.format "not sending, wrong state {0}"
             |> Logger.err (tag "Request")
 
@@ -354,7 +354,7 @@ module rec TcpClient =
           if Service.isRunning state.Status then
             send state response
           else
-            state.Status
+            string state.Status
             |> String.format "not sending, wrong state {0}"
             |> Logger.err (tag "Request")
 

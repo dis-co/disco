@@ -319,9 +319,7 @@ module ApiClient =
     dispose state.SocketSubscription
 
     server.Port
-    |> Some
-    |> Uri.tcpUri server.IpAddress
-    |> sprintf "Connecting to server on %O"
+    |> sprintf "Connecting to server on %O:%O" server.IpAddress
     |> Logger.debug (tag "start")
 
     let subscription, socket = makeSocket server state.Client agent
@@ -393,9 +391,7 @@ module ApiClient =
           member self.Start () =
             either {
               server.Port
-              |> Some
-              |> Uri.tcpUri server.IpAddress
-              |> sprintf "Connecting to server on %O"
+              |> sprintf "Connecting to server on %O:%O" server.IpAddress
               |> Logger.debug (tag "start")
 
               agent.Start()
