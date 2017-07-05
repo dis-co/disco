@@ -31,7 +31,7 @@ type IDisposableJS =
   abstract dispose: unit->unit
 
 type IGlobalState =
-  abstract logs: IEnumerable<string>
+  abstract logs: IEnumerable<LogEvent>
   abstract tabs: IDictionary<Guid,ITab>
   abstract widgets: IDictionary<Guid,IWidget>
   abstract clock: uint32
@@ -59,7 +59,12 @@ type private GlobalStateMutable(readState: unit->State option) =
       match readState() with
       | Some state -> project state
       | None -> Map.empty
-  member val Logs = ResizeArray()
+  member val Logs =
+    #if DESIGN
+    Array.init 50 (fun _ -> MockData.genLog()) |> ResizeArray
+    #else
+    ResizeArray()
+    #endif
   member val Tabs = Dictionary()
   member val Widgets = Dictionary()
   member val Clock = 0ul with get, set
@@ -93,7 +98,6 @@ type GlobalModel() =
   let context = ClientContext.Singleton
   let stateMutable = GlobalStateMutable(fun () ->
     context.Store |> Option.map (fun x -> x.State))
-  let stateImmutable: IGlobalState = upcast stateMutable
   let subscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
   let eventSubscribers = Dictionary<string, Dictionary<Guid, ISubscriber>>()
 
@@ -114,7 +118,7 @@ type GlobalModel() =
           // The UnloadProject event is not actually being returned to frontend
           // | StateMachine.UnloadProject -> this.NotifyAll()
           | UpdateProject _ | AddMember _ | UpdateMember _ | RemoveMember _ ->
-            this.Notify(nameof(stateImmutable.project), stateImmutable.project, [])
+            this.Notify(nameof(this.state.project), this.state.project, [])
           | AddPinGroup _
           | UpdatePinGroup _
           | RemovePinGroup _
@@ -122,24 +126,24 @@ type GlobalModel() =
           | UpdatePin _
           | RemovePin _
           | UpdateSlices _ ->
-            this.Notify(nameof(stateImmutable.pinGroups), stateImmutable.pinGroups, [])
+            this.Notify(nameof(this.state.pinGroups), this.state.pinGroups, [])
           | AddCue cue
           | UpdateCue cue
           | RemoveCue cue
           | CallCue cue ->
-            this.Notify(nameof(stateImmutable.cues), stateImmutable.cues, [nameof cue.Id, box cue.Id])
+            this.Notify(nameof(this.state.cues), this.state.cues, [nameof cue.Id, box cue.Id])
           | AddCueList cueList
           | UpdateCueList cueList
           | RemoveCueList cueList ->
-            this.Notify(nameof(stateImmutable.cueLists), stateImmutable.cueLists, [(nameof cueList.Id), box cueList.Id])
+            this.Notify(nameof(this.state.cueLists), this.state.cueLists, [(nameof cueList.Id), box cueList.Id])
           | AddCuePlayer    _
           | UpdateCuePlayer _
           | RemoveCuePlayer _ ->
-            this.Notify(nameof(stateImmutable.cuePlayers), stateImmutable.cuePlayers, [])
-          | LogMsg log -> this.addLog(log.Message)
+            this.Notify(nameof(this.state.cuePlayers), this.state.cuePlayers, [])
+          | LogMsg log -> this.addLog(log)
           | UpdateClock frames ->
             stateMutable.Clock <- frames
-            this.Notify(nameof(stateImmutable.clock), stateImmutable.clock, [])
+            this.Notify(nameof(this.state.clock), this.state.clock, [])
           | _ -> ()
         | _ -> ())
     )
@@ -170,7 +174,7 @@ type GlobalModel() =
         subscriber value dic)
 
   // Public methods
-  member this.state: IGlobalState = stateImmutable
+  member this.state: IGlobalState = upcast stateMutable
 
   member this.subscribe(keys: U2<string, string[]>, subscriber: ISubscriber) =
     let keys =
@@ -219,12 +223,12 @@ type GlobalModel() =
     stateMutable.Tabs.Remove(id) |> ignore
     this.Notify(nameof(this.state.tabs), this.state.tabs, [])
 
-  member this.addLog(log: string) =
+  member this.addLog(log: LogEvent) =
     let length = stateMutable.Logs.Count
     if length > LOG_MAX then
       removeRange (length - LOG_DIFF) LOG_DIFF stateMutable.Logs
     stateMutable.Logs.Insert(0, log)
-    this.Notify(nameof(stateImmutable.logs), stateImmutable.logs, [])
+    this.Notify(nameof(this.state.logs), this.state.logs, [])
 
   member this.triggerEvent(event: string, data: obj) =
     match eventSubscribers.TryGetValue(event) with

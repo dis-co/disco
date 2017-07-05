@@ -8,6 +8,36 @@ open Fable.Core.JsInterop
 open Fable.PowerPack
 open Iris.Core
 
+let loremIpsum =
+    [|"Lorem ipsum dolor sit amet"
+      "consectetur adipiscing elit"
+      "sed do eiusmod tempor incididunt"
+      "ut labore et dolore magna aliqua"
+      "Ut enim ad minim veniam"
+      "quis nostrud exercitation ullamco laboris"
+      "nisi ut aliquip ex ea commodo consequat"
+      "Duis aute irure dolor in reprehenderit"
+      "in voluptate velit esse cillum dolore eu fugiat nulla pariatur"
+      "Excepteur sint occaecat cupidatat non proident"
+      "sunt in culpa qui officia deserunt mollit anim id est laborum"|]
+
+let tags = [| "raft"; "iris"; "remote"; "git"; "store"; "persistence"; "frontend"; "yaml" |]
+let tiers = [| Tier.FrontEnd; Tier.Client; Tier.Service |]
+let levels = [| LogLevel.Debug; LogLevel.Info; LogLevel.Warn; LogLevel.Err; LogLevel.Trace |]
+
+let rnd = Random()
+let oneOf (ar: 'T[]) =
+    ar.[rnd.Next(ar.Length)]
+
+let genLog() =
+    { Time = rnd.Next() |> uint32
+      Thread = rnd.Next()
+      Tier = oneOf tiers
+      Id = Guid.NewGuid() |> string |> Id
+      Tag = oneOf tags
+      LogLevel = oneOf levels
+      Message = oneOf loremIpsum }
+
 let (|IsJsArray|_|) (o: obj) =
     if JS.Array.isArray(o) then Some(o :?> ResizeArray<obj>) else None
 
