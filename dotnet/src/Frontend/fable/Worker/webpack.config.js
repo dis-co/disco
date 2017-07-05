@@ -26,9 +26,7 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json'],
-    modules: [
-      "node_modules", resolve("../../../../node_modules/")
-    ]
+    modules: [resolve("../../../../node_modules/")]
   },
   module: {
     rules: [
@@ -46,7 +44,6 @@ module.exports = {
       },
       {
         test: /\.js$/,
-        exclude: /node_modules[\\\/](?!fable-)/,
         use: {
           loader: 'babel-loader',
           options: babelOptions
