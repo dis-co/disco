@@ -491,3 +491,22 @@ module Socket =
             return! impl()
       }
     impl()
+
+// * Playground
+
+module Playground =
+
+  let f () =
+    let listener = Socket.createTcp()
+    let endpoint = IPEndPoint(IPAddress.Loopback, 9999)
+
+    listener.Connect(endpoint)
+    listener.Send(Text.Encoding.UTF8.GetBytes("hello"))
+    listener.Disconnect(true)
+
+    let args = new SocketAsyncEventArgs()
+    args.
+
+    listener.AcceptAsync(args)
+    listener.Close()
+    listener.Dispose()

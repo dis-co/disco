@@ -22,7 +22,6 @@ module Uri =
     | EPGM
     | HTTP
     | HTTPS
-    | INPROC
     | LOCALGIT
     | REMOTEGIT
 
@@ -37,7 +36,6 @@ module Uri =
       | EPGM      -> "epgm"
       | HTTP      -> "http"
       | HTTPS     -> "https"
-      | INPROC    -> "inproc"
       | LOCALGIT  -> "git"
       | REMOTEGIT -> "git"
 
@@ -67,33 +65,6 @@ module Uri =
     | _, _, None, None                   -> String.Format("{0}://{1}", string proto, ip)
     |> url
 
-  // ** tcpUri
-
-  /// ## Format ZeroMQ TCO URI
-  ///
-  /// Formates the given IP and port into a ZeroMQ compatible resource string.
-  ///
-  /// ### Signature:
-  /// - ip: IpAddress
-  /// - port: Port
-  ///
-  /// Returns: string
-  let tcpUri (ip: IpAddress) (port: Port option) =
-    toUri TCP None None (string ip) port
-
-  // ** raftUri
-
-  /// ## Format ZeroMQ Raft API URI for passed RaftMember
-  ///
-  /// Formates the given RaftMember's host metadata into a ZeroMQ compatible resource string.
-  ///
-  /// ### Signature:
-  /// - data: RaftMember
-  ///
-  /// Returns: string
-  let raftUri (data: RaftMember) =
-    tcpUri data.IpAddr (data.Port |> Some)
-
   // ** gitUri
 
   /// ## gitUri
@@ -118,36 +89,3 @@ module Uri =
       |> System.Web.HttpUtility.UrlEncode
       #endif
     toUri HTTP None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
-
-  // ** pgmUri
-
-  /// ## Format ZeroMQ PGM URI
-  ///
-  /// Formates the given IP and port into a ZeroMQ compatible PGM resource string.
-  ///
-  /// ### Signature:
-  /// - ip: IpAddress
-  /// - port: Port
-  ///
-  /// Returns: string
-  let pgmUri (ip: IpAddress) (mcast: IpAddress) (port: Port) =
-    toUri PGM (ip |> string |> Some) None (string mcast) (Some port)
-
-  // ** epgmUri
-
-  /// ## Format ZeroMQ EPGM URI
-  ///
-  /// Formates the given IP and port into a ZeroMQ compatible PGM resource string.
-  ///
-  /// ### Signature:
-  /// - ip: IpAddress
-  /// - port: Port
-  ///
-  /// Returns: string
-  let epgmUri (ip: IpAddress) (mcast: IpAddress) (port: Port) =
-    toUri EPGM (ip |> string |> Some) (None) (string mcast) (Some port)
-
-  // ** inprocURi
-
-  let inprocUri (address: string) (path: string option) =
-    toUri INPROC None path address None
