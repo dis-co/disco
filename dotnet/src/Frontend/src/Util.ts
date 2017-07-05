@@ -6,7 +6,7 @@ import ProjectConfig from './modals/ProjectConfig'
 declare var IrisLib: any;
 
 export function jQueryEventAsPromise(selector: any, events: string) {
-  return new Promise<JQuery.Event<HTMLElement,null>>(resolve => {
+  return new Promise<JQueryEventObject>(resolve => {
     $(selector).on(events, e => {
       $(events).off(events);
       resolve(e);
