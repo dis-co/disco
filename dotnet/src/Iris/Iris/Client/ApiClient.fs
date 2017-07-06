@@ -114,13 +114,8 @@ module ApiClient =
   let private handleSetStatus (state: ClientState) (status: ServiceStatus) (agent: ApiAgent) =
     if state.Client.Status <> status then
       match status with
-      | ServiceStatus.Running ->
-          agent.Post Msg.Start
-      | _ ->
-        async {
-          do! Async.Sleep(int TIMEOUT)
-          do state.Socket.Restart() |> ignore
-        } |> Async.Start
+      | ServiceStatus.Running -> agent.Post Msg.Start
+      | _ -> ()
 
       status
       |> ClientEvent.Status
@@ -324,13 +319,9 @@ module ApiClient =
 
     let subscription, socket = makeSocket server state.Client agent
 
-    socket.Start()
-    |> Either.mapError (string >> Logger.err (tag "handleRestart"))
-    |> ignore
+    socket.Connect()
 
-    { state with
-        Socket = socket
-        SocketSubscription = subscription }
+    { state with Socket = socket; SocketSubscription = subscription }
 
   // ** loop
 
@@ -394,11 +385,8 @@ module ApiClient =
               |> sprintf "Connecting to server on %O:%O" server.IpAddress
               |> Logger.debug (tag "start")
 
-              agent.Start()
-
-              socket.Start()
-              |> Either.mapError (string >> Logger.err (tag "Start"))
-              |> ignore
+              do agent.Start()
+              do socket.Connect()
             }
 
           member self.Restart(server: IrisServer) =

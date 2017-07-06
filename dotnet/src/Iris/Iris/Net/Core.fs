@@ -17,7 +17,7 @@ open System.Collections.Concurrent
 module Core =
 
   [<Literal>]
-  let BUFFER_SIZE = 1024
+  let BUFFER_SIZE = 8192
 
 // * ISocketMessage
 
@@ -361,7 +361,7 @@ type ClientConfig =
 
 type TcpClientEvent =
   | Connected    of peerid:Id
-  | Disconnected of peerid:Id
+  | Disconnected of peerid:Id * IrisError
   | Request      of Request
   | Response     of Response
 
@@ -369,8 +369,8 @@ type TcpClientEvent =
 
 type IClient =
   inherit IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-  abstract Restart: unit -> Either<IrisError,unit>
+  abstract Connect: unit -> unit
+  abstract Disconnect: unit -> unit
   abstract ClientId: Id
   abstract Status: ServiceStatus
   abstract Request: Request -> unit
@@ -426,6 +426,10 @@ type IPubSub =
 
 module Socket =
 
+  // ** tag
+
+  let private tag (str: string) = String.format "Socket.{0}" str
+
   // ** setSocketOption
 
   let setSocketOption (option: SocketOptionName) (value: bool) (socket: Socket) =
@@ -449,8 +453,7 @@ module Socket =
   // ** isAlive
 
   let isAlive (socket:Socket) =
-    try
-      not (socket.Poll(1, SelectMode.SelectRead) && socket.Available = 0)
+    try not (socket.Poll(1, SelectMode.SelectRead) && socket.Available = 0)
     with | _ -> false
 
   // ** dispose
@@ -463,36 +466,40 @@ module Socket =
     with
       | _ -> socket.Dispose()
 
+  // ** disconnect
+
+  let disconnect (socket: Socket) =
+    try
+      socket.Disconnect(false)
+    with
+      | exn ->
+        Logger.err (tag "disconnect") exn.Message
+
   // ** checkState
 
   let checkState<'t> (socket: Socket)
                      (subscriptions: ConcurrentDictionary<Guid,IObserver<'t>>)
                      (good: 't option)
                      (bad: 't option) =
-    let mutable lastState = true
     let rec impl() : Async<unit> =
       async {
-        do! Async.Sleep(1000)             // check socket liveness ever second
+        do! Async.Sleep(500)            // check socket liveness every 0.5 seconds
         try
           if isAlive socket then
-            if not lastState then
-              Option.iter (Observable.onNext subscriptions) good
-              lastState <- true
+            Option.iter (Observable.onNext subscriptions) good
           else
-            if lastState then
-              Option.iter (Observable.onNext subscriptions) bad
-              lastState <- false
+            Option.iter (Observable.onNext subscriptions) bad
           return! impl()
         with
           | _ ->
-            if lastState then
-              Option.iter (Observable.onNext subscriptions) bad
-              lastState <- false
+            Option.iter (Observable.onNext subscriptions) bad
             return! impl()
       }
     impl()
 
 // * Playground
+
+#if INTERACTIVE
 
 module Playground =
 
@@ -504,9 +511,7 @@ module Playground =
     listener.Send(Text.Encoding.UTF8.GetBytes("hello"))
     listener.Disconnect(true)
 
-    let args = new SocketAsyncEventArgs()
-    args.
+    listener.Connected
 
-    listener.AcceptAsync(args)
-    listener.Close()
-    listener.Dispose()
+
+#endif

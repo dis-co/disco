@@ -168,13 +168,8 @@ module RaftServer =
       PeerPort = peer.Port
       Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
     }
-    match socket.Start() with
-    | Right () -> Some socket
-    | Left error ->
-      error
-      |> string
-      |> Logger.err (tag "makePeerSocket")
-      None
+    socket.Connect()
+    Some socket
 
   // ** getPeerSocket
 
@@ -1348,10 +1343,11 @@ module RaftServer =
     match ev with
     | TcpClientEvent.Connected    peer ->
       handleClientState    state peer RaftMemberState.Running
-    | TcpClientEvent.Disconnected peer ->
+    | TcpClientEvent.Disconnected(peer, error) ->
       try
         let connection = state.Connections.[peer]
-        connection.Restart() |> ignore
+        connection.Disconnect()
+        connection.Connect()
       with | exn -> Logger.err (tag "handleClientEvent") exn.Message
       handleClientState    state peer RaftMemberState.Failed
     | TcpClientEvent.Response response -> handleClientResponse state response agent

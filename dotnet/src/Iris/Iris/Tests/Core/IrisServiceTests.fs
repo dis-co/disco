@@ -14,8 +14,6 @@ open Iris.Net
 
 [<AutoOpen>]
 module IrisServiceTests =
-  let logs = Logger.subscribe Logger.stdout
-
   let private mkMachine () =
     { MachineConfig.create "127.0.0.1" None with
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
@@ -471,7 +469,7 @@ module IrisServiceTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let irisServiceTests =
-    ftestList "IrisService Tests" [
+    testList "IrisService Tests" [
       test_ensure_iris_server_clones_changes_from_leader
       test_ensure_client_slice_update_does_not_loop
       test_ensure_cue_resolver_works

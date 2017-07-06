@@ -18,30 +18,45 @@ module NetIntegrationTests =
   // | |\  |  __/ |_
   // |_| \_|\___|\__|
 
-  let test_server_should_fail_on_start_with_duplicate_port =
-    testCase "server should fail on start with duplicate port" <| fun _ ->
+  let test_client_should_automatically_reconnect =
+    testCase "client should automatically reconnect" <| fun _ ->
       either {
-        use log = Logger.subscribe Logger.stdout
+        use logs1 = Logger.subscribe Logger.stdout
+        use logs2 = Logger.subscribe Logger.stdout
+
         let ip = IpAddress.Localhost
         let prt = port 5555us
 
-        use server1 = TcpServer.create {
+        use onConnected = new AutoResetEvent(false)
+        use onDisconnected = new AutoResetEvent(false)
+
+        use client = TcpClient.create {
+            ClientId = Id.Create()
+            PeerAddress = ip
+            PeerPort = prt
+            Timeout = 0<ms>
+          }
+
+        use clientHandler =
+          client.Subscribe <| function
+            | TcpClientEvent.Connected    _ -> onConnected.Set() |> ignore
+            | TcpClientEvent.Disconnected _ -> onDisconnected.Set() |> ignore
+            | _ -> ()
+
+        do client.Connect()
+
+        do! waitOrDie "onDisconnected" onDisconnected
+        do! waitOrDie "onDisconnected" onDisconnected
+
+        use server = TcpServer.create {
             ServerId = Id.Create()
             Listen = ip
             Port = prt
           }
 
-        use server2 = TcpServer.create {
-            ServerId = Id.Create()
-            Listen = ip
-            Port = prt
-          }
+        do! server.Start()
 
-        do! server1.Start()
-
-        do! match server2.Start() with
-            | Right () -> Left(Other("test", "should have failed"))
-            | Left _   -> Right ()
+        do! waitOrDie "onConnected" onConnected
       }
       |> noError
 
@@ -110,12 +125,10 @@ module NetIntegrationTests =
                   PeerAddress = ip
                   PeerPort = prt
                   Timeout = 200<ms>
-                }
-               match socket.Start() with
-               | Right () ->
-                  socket.Subscribe cmbp.Post |> ignore
-                  yield socket
-               | Left error -> failwithf "unable to create socket: %O" error
+               }
+               socket.Connect()
+               socket.Subscribe cmbp.Post |> ignore
+               yield socket
            |]
 
         let mkRequest (client: IClient) =
@@ -203,8 +216,8 @@ module NetIntegrationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let netIntegrationTests =
-    testList "Net Integration Tests" [
-      test_server_should_fail_on_start_with_duplicate_port
+    ftestList "Net Integration Tests" [
+      test_client_should_automatically_reconnect
       test_server_request_handling
       test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly
