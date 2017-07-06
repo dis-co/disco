@@ -36,7 +36,7 @@ module rec TcpClient =
     abstract Disposed: bool
     abstract Status: ServiceStatus with get, set
     abstract ClientId: Id
-    abstract ConnectionId: Guid
+    abstract ConnectionId: byte array
     abstract Socket: Socket
     abstract EndPoint: IPEndPoint
     abstract Buffer: byte array
@@ -47,7 +47,8 @@ module rec TcpClient =
   // ** makeState
 
   let private makeState (options: ClientConfig) (subscriptions: Subscriptions) =
-    let guid = Guid.ofId options.ClientId
+    let guid = options.ClientId |> Guid.ofId |> fun guid -> guid.ToByteArray()
+
     let cts = new CancellationTokenSource()
     let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
     let mutable client = Socket.createTcp()
@@ -137,6 +138,7 @@ module rec TcpClient =
     let args = new SocketAsyncEventArgs()
     args.RemoteEndPoint <- state.EndPoint
     args.UserToken <- state
+    do args.SetBuffer(bytes, 0, bytes.Length)
     do args.Completed.Add onSend
     match state.Socket.SendAsync(args) with
     | true -> ()
@@ -165,6 +167,8 @@ module rec TcpClient =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
       state.Status <- ServiceStatus.Running
+      state.ConnectionId
+      |> sendAsync state
       do state.ClientId
         |> TcpClientEvent.Connected
         |> Observable.onNext state.Subscriptions
@@ -186,14 +190,14 @@ module rec TcpClient =
 
   let create (options: ClientConfig) =
     let subscriptions = Subscriptions()
-    let state = makeState options subscriptions
+    let mutable state = makeState options subscriptions
 
     let listener =
       flip Observable.subscribe subscriptions <| function
-        | TcpClientEvent.Connected id ->
-          printfn "connected"
         | TcpClientEvent.Disconnected(id, error) ->
-          printfn "disconnected"
+          dispose state
+          state <- makeState options subscriptions
+          connectAsync state
         | _ -> ()
 
     { new IClient with
@@ -207,7 +211,7 @@ module rec TcpClient =
           if Service.isRunning state.Status then
             // this socket is asking soemthing, so we need to track this in pending requests
             state.PendingRequests.TryAdd(request.RequestId, request) |> ignore
-            do sendAsync state request
+            do request |> RequestBuilder.serialize |> sendAsync state
           else
             string state.Status
             |> String.format "not sending, wrong state {0}"
@@ -215,11 +219,11 @@ module rec TcpClient =
 
         member socket.Respond(response: Response) =
           if Service.isRunning state.Status then
-            do sendAsync state response
+            do response |> RequestBuilder.serialize |> sendAsync state
           else
             string state.Status
             |> String.format "not sending, wrong state {0}"
-            |> Logger.err (tag "Request")
+            |> Logger.err (tag "Respond")
 
         member socket.Disconnect() =
           do Socket.disconnect state.Socket
