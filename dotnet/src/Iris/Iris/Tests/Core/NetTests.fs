@@ -21,9 +21,6 @@ module NetIntegrationTests =
   let test_client_should_automatically_reconnect =
     testCase "client should automatically reconnect" <| fun _ ->
       either {
-        use logs1 = Logger.subscribe Logger.stdout
-        use logs2 = Logger.subscribe Logger.stdout
-
         let ip = IpAddress.Localhost
         let prt = port 5555us
 
@@ -98,20 +95,27 @@ module NetIntegrationTests =
 
         let responses = ResizeArray<Response>()
 
+        let clientsLive = new AutoResetEvent(false)
+        let mutable liveClients = 0
+
         let cloop (inbox: MailboxProcessor<TcpClientEvent>) =
           let mutable count = 0
           let rec imp () = async {
               let! ev = inbox.Receive()
               try
                 match ev with
-                | TcpClientEvent.Response response -> responses.Add(response)
+                | TcpClientEvent.Connected _ ->
+                  Interlocked.Increment &liveClients |> ignore
+                  if liveClients = numclients then
+                    clientsLive.Set() |> ignore
+                | TcpClientEvent.Response response ->
+                  responses.Add(response)
+                  count <- count + 1
+                  if count = (numrequests * numclients) then
+                    stopper.Set() |> ignore
                 | _ -> ()
               with
               | exn -> Logger.err "client loop" exn.Message
-              count <- count + 1
-              if count = (numrequests * numclients) then
-                stopper.Set() |> ignore
-
               return! imp()
             }
           imp()
@@ -126,10 +130,12 @@ module NetIntegrationTests =
                   PeerPort = prt
                   Timeout = 200<ms>
                }
-               socket.Connect()
                socket.Subscribe cmbp.Post |> ignore
+               socket.Connect()
                yield socket
            |]
+
+        do! waitOrDie "clientsLive" clientsLive
 
         let mkRequest (client: IClient) =
           async {
@@ -216,7 +222,7 @@ module NetIntegrationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let netIntegrationTests =
-    ftestList "Net Integration Tests" [
+    testList "Net Integration Tests" [
       test_client_should_automatically_reconnect
       test_server_request_handling
       test_duplicate_server_fails_gracefully

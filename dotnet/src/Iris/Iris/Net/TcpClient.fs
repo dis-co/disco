@@ -120,6 +120,8 @@ module rec TcpClient =
             client.Dispose()
       }
 
+  // ** onError
+
   let private onError location (args: SocketAsyncEventArgs) =
     let state = args.UserToken :?> IState
     let msg = String.Format("{0} in socket operation", args.SocketError)
@@ -130,9 +132,13 @@ module rec TcpClient =
     |> TcpClientEvent.Disconnected
     |> Observable.onNext state.Subscriptions
 
+  // ** onSend
+
   let private onSend (args: SocketAsyncEventArgs) =
     if args.SocketError <> SocketError.Success then
       onError "onSend" args
+
+  // ** sendAsync
 
   let private sendAsync (state: IState) (bytes: byte array) =
     let args = new SocketAsyncEventArgs()
@@ -144,6 +150,8 @@ module rec TcpClient =
     | true -> ()
     | false -> onSend args
 
+  // ** onReceive
+
   let private onReceive (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
@@ -151,6 +159,8 @@ module rec TcpClient =
       do args.Dispose()
       do receiveAsync state
     else onError "onReceive" args
+
+  // ** receiveAsync
 
   let private receiveAsync (state: IState) =
     let args = new SocketAsyncEventArgs()
@@ -162,6 +172,8 @@ module rec TcpClient =
       match state.Socket.ReceiveAsync(args) with
       | true -> ()
       | false -> onReceive args
+
+  // ** onConnected
 
   let private onConnected (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
@@ -175,6 +187,8 @@ module rec TcpClient =
       do args.Dispose()
       do receiveAsync state
     else onError "onConnected" args
+
+  // ** connectAsync
 
   let private connectAsync (state: IState) =
     state.Status <- ServiceStatus.Starting
