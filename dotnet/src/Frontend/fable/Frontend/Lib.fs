@@ -37,6 +37,12 @@ let EMPTY = Constants.EMPTY
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
+let createObservable<'T>() =
+  Widgets.GenericObservable<'T>()
+
+let subscribe(obs: IObservable<'T>, f: 'T->unit) =
+  obs.Subscribe(f)
+
 let getClientContext() =
     ClientContext.Singleton
 

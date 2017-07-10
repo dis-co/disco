@@ -90,7 +90,7 @@ export default class Cluster {
     this.view = ClusterView;
     this.name = "Cluster";
     this.titleBar =
-      <button className="iris-button" onClick={() => { showModal(AddMember)}}>Add member</button>;
+      <button className="iris-button" onClick={() => { showModal(AddMember) }}>Add member</button>;
     this.layout = {
       x: 0, y: 0,
       w: 8, h: 5,
