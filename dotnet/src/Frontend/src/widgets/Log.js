@@ -26,7 +26,6 @@ class Sort {
 }
 
 const SortableCell = props => {
-  debugger;
   const col = typeof props.children === "string" ? props.children : "";
   return (
     <Cell style={{cursor: "pointer"}}
@@ -40,13 +39,29 @@ class View extends Component {
   constructor(props) {
     super(props);
     var logs = props.global.state.logs;
-    this.state = { filter: null, sort: null, logs: logs, viewLogs: logs };
-    IrisLib.subscribe(props.model.filterChange, filter => {
-      this.updateState({filter})
+    this.state = {
+      filter: null,
+      sort: null,
+      columns: {
+        LogLevel: true,
+        Time: true,
+        Tag: true,
+        Tier: true
+      },
+      logs: logs,
+      viewLogs: logs
+    };
+    IrisLib.subscribe(props.model.observable, kv => {
+      if (kv.key === "filter") {
+        this.updateViewLogs({filter: kv.value})
+      }
+      else {
+        this.setState({columns: Object.assign(this.state.columns, {[kv.key]: kv.value})});
+      }
     });
   }
 
-  updateState({
+  updateViewLogs({
     logs = this.state.logs,
     filter = this.state.filter,
     sort = this.state.sort
@@ -69,7 +84,7 @@ class View extends Component {
   componentDidMount() {
     this.disposable =
       this.props.global.subscribe("logs", logs =>
-        this.updateState({logs}));
+        this.updateViewLogs({logs}));
   }
 
   componentWillUnmount() {
@@ -79,7 +94,6 @@ class View extends Component {
   }
 
   onSorted(col) {
-    debugger;
     let sort = this.state.sort;
     if (sort instanceof Sort && sort.column === col) {
       sort = new Sort(col, sort.direction * -1);
@@ -87,7 +101,7 @@ class View extends Component {
     else {
       sort = new Sort(col, SortTypes.ASC);
     }
-    this.updateState({sort});
+    this.updateViewLogs({sort});
   }
 
   render() {
@@ -97,29 +111,33 @@ class View extends Component {
       rowsCount={this.state.viewLogs.length}
       rowHeight={30}
       headerHeight={30}
-      width={800}
+      width={700}
       height={600}
       >
-        <Column width={100}
-          header={<SortableCell sort={this.state.sort} onClick={onSorted}>LogLevel</SortableCell>}
-          cell={({rowIndex, ...props}) => (
-            <Cell {...props}>{IrisLib.toString(this.state.viewLogs[rowIndex].LogLevel)}</Cell>
-        )} />
-        <Column width={100}
-          header={<SortableCell sort={this.state.sort} onClick={onSorted}>Time</SortableCell>}
-          cell={({rowIndex, ...props}) => (
-            <Cell {...props}>{new Date(this.state.viewLogs[rowIndex].Time).toLocaleTimeString()}</Cell>
-        )} />
-        <Column width={100}
-          header={<SortableCell sort={this.state.sort} onClick={onSorted}>Tag</SortableCell>}
-          cell={({rowIndex, ...props}) => (
-            <Cell {...props}>{this.state.viewLogs[rowIndex].Tag}</Cell>
-        )} />
-        <Column width={100}
-          header={<SortableCell sort={this.state.sort} onClick={onSorted}>Tier</SortableCell>}
-          cell={({rowIndex, ...props}) => (
-            <Cell {...props}>{IrisLib.toString(this.state.viewLogs[rowIndex].Tier)}</Cell>
-        )} />
+        {this.state.columns.LogLevel ?
+          <Column width={70}
+            header={<SortableCell sort={this.state.sort} onClick={onSorted}>LogLevel</SortableCell>}
+            cell={({rowIndex, ...props}) => (
+              <Cell {...props}>{IrisLib.toString(this.state.viewLogs[rowIndex].LogLevel)}</Cell>
+          )} /> : null}
+        {this.state.columns.Time ?
+          <Column width={80}
+            header={<SortableCell sort={this.state.sort} onClick={onSorted}>Time</SortableCell>}
+            cell={({rowIndex, ...props}) => (
+              <Cell {...props}>{new Date(this.state.viewLogs[rowIndex].Time).toLocaleTimeString()}</Cell>
+          )} /> : null }
+        {this.state.columns.Tag ?
+          <Column width={75}
+            header={<SortableCell sort={this.state.sort} onClick={onSorted}>Tag</SortableCell>}
+            cell={({rowIndex, ...props}) => (
+              <Cell {...props}>{this.state.viewLogs[rowIndex].Tag}</Cell>
+          )} /> : null }
+        {this.state.columns.Tier ?
+          <Column width={75}
+            header={<SortableCell sort={this.state.sort} onClick={onSorted}>Tier</SortableCell>}
+            cell={({rowIndex, ...props}) => (
+              <Cell {...props}>{IrisLib.toString(this.state.viewLogs[rowIndex].Tier)}</Cell>
+          )} /> : null }
         <Column width={400}
           header={<Cell>Message</Cell>}
           cell={({rowIndex, ...props}) => (
@@ -132,21 +150,73 @@ class View extends Component {
   }
 }
 
+class TitleForm extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      filter: "",
+      LogLevel: true,
+      Time: true,
+      Tag: true,
+      Tier: true
+    };
+  }
+
+  render() {
+    return (
+      <div>
+        <input type="text" placeholder="Filter by regex..."
+          value={this.state.filter} onChange={ev => {
+            this.props.observable.trigger({key: "filter", value: ev.target.value});
+            this.setState({filter: ev.target.value});
+          }} />
+       <label style={{marginLeft: "10px"}}>
+          LogLevel
+          <input type="checkbox" checked={this.state.LogLevel}
+            style={{marginLeft: "5px"}} onChange={ev => {
+              this.props.observable.trigger({key: "LogLevel", value: ev.target.checked});
+              this.setState({LogLevel: ev.target.checked});
+            }} />
+        </label>
+       <label style={{marginLeft: "10px"}}>
+          Time
+          <input type="checkbox" checked={this.state.Time}
+            style={{marginLeft: "5px"}} onChange={ev => {
+              this.props.observable.trigger({key: "Time", value: ev.target.checked});
+              this.setState({Time: ev.target.checked});
+            }} />
+        </label>
+       <label style={{marginLeft: "10px"}}>
+          Tag
+          <input type="checkbox" checked={this.state.Tag}
+            style={{marginLeft: "5px"}} onChange={ev => {
+              this.props.observable.trigger({key: "Tag", value: ev.target.checked});
+              this.setState({Tag: ev.target.checked});
+            }} />
+        </label>
+       <label style={{marginLeft: "10px"}}>
+          Tier
+          <input type="checkbox" checked={this.state.Tier}
+            style={{marginLeft: "5px"}} onChange={ev => {
+              this.props.observable.trigger({key: "Tier", value: ev.target.checked});
+              this.setState({Tier: ev.target.checked});
+            }} />
+        </label>
+      </div>
+    );
+  }
+}
+
 export default class Log {
   constructor() {
     this.view = View;
     this.name = "LOG";
-    this.filterChange = IrisLib.createObservable();
-    this.titleBar =
-      <input type="text" placeholder="Filter by regex..." ref={input => {
-        input.addEventListener("change", _ => {
-          this.filterChange.trigger(input.value)
-        })
-      }} />
+    this.observable = IrisLib.createObservable();
+    this.titleBar = <TitleForm observable={this.observable} />;
     this.layout = {
       x: 0, y: 0,
       w: 8, h: 6,
-      minW: 2, maxW: 20,
+      minW: 6, maxW: 20,
       minH: 2, maxH: 20
     }
   }
