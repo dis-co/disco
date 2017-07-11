@@ -343,10 +343,10 @@ module TcpServer =
 
     let private onAccept (args: SocketAsyncEventArgs) =
       let listener, state = args.UserToken :?> (IDisposable * IState)
-      let socket = args.AcceptSocket
       dispose listener
-      do returnArgs state args
+      let socket = args.AcceptSocket
       do initializeAsync state socket
+      do returnArgs state args
       do acceptAsync state
 
     // *** acceptAsync
