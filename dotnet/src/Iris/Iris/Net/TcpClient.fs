@@ -121,6 +121,7 @@ module rec TcpClient =
               pending.TryRemove(id) |> ignore
             builder.Dispose()
             client.Dispose()
+            status <- ServiceStatus.Disposed
       }
 
   // ** onError
@@ -215,8 +216,11 @@ module rec TcpClient =
       flip Observable.subscribe subscriptions <| function
         | TcpClientEvent.Disconnected(id, error) ->
           dispose state
-          state <- makeState options subscriptions
-          connectAsync state
+          Async.Start(async {
+              do! Async.Sleep(500);
+              state <- makeState options subscriptions
+              connectAsync state
+            })
         | _ -> ()
 
     { new IClient with
