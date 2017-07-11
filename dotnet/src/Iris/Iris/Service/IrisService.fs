@@ -245,12 +245,12 @@ module IrisService =
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    socket.Connect()
     (fun _ ->
       "TODO: setup leader socket response handler"
       |> Logger.warn (tag "makeLeader"))
     |> socket.Subscribe
     |> ignore
+    socket.Connect()
     Some { Member = leader; Socket = socket }
 
   // ** processEvent

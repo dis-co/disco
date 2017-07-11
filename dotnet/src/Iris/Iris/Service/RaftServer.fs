@@ -1044,7 +1044,7 @@ module RaftServer =
 
   // ** handleAddCmd
 
-  let private handleAddCmd (state: RaftServerState) (cmd: StateMachine) (agent: RaftAgent) =
+  let private handleAddCmd (state: RaftServerState) (agent: RaftAgent) (cmd: StateMachine) =
     Tracing.trace (tag "handleAddCmd") <| fun () ->
       match appendCommand state cmd with
       | Right (_, newstate) ->
@@ -1074,7 +1074,7 @@ module RaftServer =
 
   // ** handleAddMember
 
-  let private handleAddMember (state: RaftServerState) (mem: RaftMember) (agent: RaftAgent) =
+  let private handleAddMember (state: RaftServerState) (agent: RaftAgent) (mem: RaftMember) =
     Tracing.trace (tag "handleAddMember") <| fun () ->
       mem
       |> makePeerSocket
@@ -1099,7 +1099,7 @@ module RaftServer =
 
   // ** handleRemoveMember
 
-  let private handleRemoveMember (state: RaftServerState) (id: Id) (agent: RaftAgent) =
+  let private handleRemoveMember (state: RaftServerState) (agent: RaftAgent) (id: Id) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
       match removeMember state id with
       | Right (_, newstate) ->
@@ -1123,7 +1123,7 @@ module RaftServer =
 
   (*
 
-  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (chan: ReplyChan) (agent: RaftAgent) =
+  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (agent: RaftAgent) (chan: ReplyChan) =
     Tracing.trace (tag "handleIsCommitted") <| fun () ->
       let result =
         Raft.responseCommitted entry
@@ -1180,7 +1180,7 @@ module RaftServer =
 
   // ** processRequest
 
-  let private processRequest (data: RaftServerState) (raw: Request) (agent: RaftAgent) =
+  let private processRequest (data: RaftServerState) (agent: RaftAgent) (raw: Request) =
     Tracing.trace (tag "processRequest") <| fun () ->
       either {
         let! request = Binary.decode<RaftRequest> raw.Body
@@ -1199,7 +1199,7 @@ module RaftServer =
 
   let private handleServerRequest (state: RaftServerState) (raw: Request) agent =
     Tracing.trace (tag "handleServerRequest") <| fun () ->
-      match processRequest state raw agent with
+      match processRequest state agent raw with
       | Right newdata -> newdata
       | Left error ->
         (state.Raft.Member.Id, error)
@@ -1211,8 +1211,7 @@ module RaftServer =
 
   // ** handleServerEvent
 
-  let private handleServerEvent state (ev: TcpServerEvent) agent =
-    match ev with
+  let private handleServerEvent state agent = function
     | TcpServerEvent.Connect(_, ip, port) ->
       sprintf "new connection from %O:%d" ip port
       |> Logger.debug (tag "handleServerEvent")
@@ -1231,10 +1230,10 @@ module RaftServer =
   // ** handleReqCommitted
 
   let private handleReqCommitted (state: RaftServerState)
+                                 (agent: RaftAgent)
                                  (ts: DateTime)
                                  (entry: EntryResponse)
-                                 (raw: Response)
-                                 (agent: RaftAgent) =
+                                 (raw: Response) =
 
     Tracing.trace (tag "handleReqCommitted") <| fun () ->
       let result =
@@ -1283,7 +1282,7 @@ module RaftServer =
 
   // ** handleServerResponse
 
-  let private handleServerResponse (state: RaftServerState) (raw: Response) agent =
+  let private handleServerResponse (state: RaftServerState) agent (raw: Response) =
     match Binary.decode raw.Body with
     | Right response ->
       match response with
@@ -1339,10 +1338,10 @@ module RaftServer =
 
   // ** handleClientEvent
 
-  let private handleClientEvent state (ev: TcpClientEvent) agent =
-    match ev with
-    | TcpClientEvent.Connected    peer ->
-      handleClientState    state peer RaftMemberState.Running
+  let private handleClientEvent state agent = function
+    | TcpClientEvent.Connected peer -> handleClientState  state peer RaftMemberState.Running
+    | TcpClientEvent.Response response -> handleClientResponse state response agent
+    | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
     | TcpClientEvent.Disconnected(peer, error) ->
       try
         let connection = state.Connections.[peer]
@@ -1350,8 +1349,6 @@ module RaftServer =
         connection.Connect()
       with | exn -> Logger.err (tag "handleClientEvent") exn.Message
       handleClientState    state peer RaftMemberState.Failed
-    | TcpClientEvent.Response response -> handleClientResponse state response agent
-    | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
 
   // ** handleStop
 
@@ -1428,20 +1425,20 @@ module RaftServer =
             let state = store.State
             let newstate =
               match cmd with
-              | Msg.Start                         -> handleStart          state              inbox
+              | Msg.Start                         -> handleStart          state inbox
               | Msg.Started                       -> handleStarted        state
-              | Msg.Stop                          -> handleStop           state              inbox
+              | Msg.Stop                          -> handleStop           state inbox
               | Msg.Stopped                       -> handleStopped        state
               | Msg.Notify             ev         -> handleNotify         state ev
               | Msg.Periodic                      -> handlePeriodic       state
-              | Msg.ForceElection                 -> handleForceElection  state              inbox
-              | Msg.AddCmd             cmd        -> handleAddCmd         state cmd          inbox
-              | Msg.AddMember          mem        -> handleAddMember      state mem          inbox
-              | Msg.RemoveMember        id        -> handleRemoveMember   state id           inbox
-              | Msg.ServerEvent         ev        -> handleServerEvent    state ev           inbox
-              | Msg.ClientEvent         ev        -> handleClientEvent    state ev           inbox
-              | Msg.RawServerResponse   response  -> handleServerResponse state response     inbox
-              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state ts entry raw inbox
+              | Msg.ForceElection                 -> handleForceElection  state inbox
+              | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
+              | Msg.AddMember          mem        -> handleAddMember      state inbox mem
+              | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
+              | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
+              | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
+              | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
+              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
               // | Msg.Join        (ip, port)        -> handleJoin          state ip port
               // | Msg.Leave                         -> handleLeave         state
 

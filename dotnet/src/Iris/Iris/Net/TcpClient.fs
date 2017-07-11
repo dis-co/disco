@@ -47,7 +47,10 @@ module rec TcpClient =
   // ** makeState
 
   let private makeState (options: ClientConfig) (subscriptions: Subscriptions) =
-    let guid = options.ClientId |> Guid.ofId |> fun guid -> guid.ToByteArray()
+    let guid =
+      options.ClientId
+      |> Guid.ofId
+      |> fun guid -> guid.ToByteArray()
 
     let cts = new CancellationTokenSource()
     let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
@@ -57,7 +60,7 @@ module rec TcpClient =
     let pending = PendingRequests()
     let mutable status = ServiceStatus.Stopped
 
-    let builder = ResponseBuilder.create buffer <| fun request client body  ->
+    let builder = ResponseBuilder.create <| fun request client body  ->
       if pending.ContainsKey request then
         pending.TryRemove(request) |> ignore
         body
@@ -146,16 +149,19 @@ module rec TcpClient =
     args.UserToken <- state
     do args.SetBuffer(bytes, 0, bytes.Length)
     do args.Completed.Add onSend
-    match state.Socket.SendAsync(args) with
-    | true -> ()
-    | false -> onSend args
+    try
+      match state.Socket.SendAsync(args) with
+      | true -> ()
+      | false -> onSend args
+    with
+      | :? ObjectDisposedException -> ()
 
   // ** onReceive
 
   let private onReceive (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
-      do state.ResponseBuilder.Process args.BytesTransferred
+      do state.ResponseBuilder.Process args.Buffer args.BytesTransferred
       do args.Dispose()
       do receiveAsync state
     else onError "onReceive" args
@@ -179,8 +185,7 @@ module rec TcpClient =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
       state.Status <- ServiceStatus.Running
-      state.ConnectionId
-      |> sendAsync state
+      do sendAsync state state.ConnectionId
       do state.ClientId
         |> TcpClientEvent.Connected
         |> Observable.onNext state.Subscriptions

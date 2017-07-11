@@ -17,7 +17,19 @@ open System.Collections.Concurrent
 module Core =
 
   [<Literal>]
+  let MAX_CONNECTIONS = 100
+
+  [<Literal>]
   let BUFFER_SIZE = 8192
+
+  [<Literal>]
+  let ID_SIZE = 16
+
+  [<Literal>]
+  let ACCEPT_BUFFER_OFFSET = 288 // internal offset for connection info
+
+  [<Literal>]
+  let ACCEPT_BUFFER_SIZE = 304 // ACCEPT_BUFFER_OFFSET + 16 (for Client GUID)
 
 // * ISocketMessage
 
@@ -83,7 +95,7 @@ type SocketMessageConstructor = Guid -> Guid -> byte array -> unit
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
-  abstract Process: read:int -> unit
+  abstract Process: buffer: byte array -> read:int -> unit
 
 // * IResponseBuilder
 
@@ -178,7 +190,7 @@ module RequestBuilder =
 
   // ** create
 
-  let create (buffer: byte array) (onComplete: SocketMessageConstructor) =
+  let create (onComplete: SocketMessageConstructor) =
     let preamble = ResizeArray()     // TODO: eventually, these should probably become BinaryWriters
     let length = ResizeArray()
     let client = ResizeArray()
@@ -290,7 +302,7 @@ module RequestBuilder =
         build (rest.ToArray()) rest.Count
 
     { new IRequestBuilder with
-        member state.Process(read: int) =
+        member state.Process (buffer: byte array) (read: int) =
           if read > 0 then
             build buffer read
 
@@ -324,8 +336,8 @@ module Request =
 
 module ResponseBuilder =
 
-  let create data callback : IResponseBuilder =
-    RequestBuilder.create data callback
+  let create callback : IResponseBuilder =
+    RequestBuilder.create callback
 
 // * Response module
 
