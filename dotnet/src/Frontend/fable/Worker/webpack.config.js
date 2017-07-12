@@ -38,7 +38,7 @@ module.exports = {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
             plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
-            extra: { useCache: "readonly" }
+            // extra: { useCache: "readonly" }
           }
         }
       },

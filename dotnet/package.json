@@ -1,15 +1,16 @@
 {
   "private": true,
   "scripts": {
-    "start": "webpack-dev-server --config src/Frontend/webpack.config.js",
-    "build": "webpack            --config src/Frontend/webpack.config.js              -p",
-    "build-test": "webpack       --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
+    "start": "webpack-dev-server --config src/Frontend/fable/Frontend/webpack.config.js",
+    "build": "webpack --config src/Frontend/fable/Frontend/webpack.config.js -p",
+    "worker": "webpack --config src/Frontend/fable/Worker/webpack.config.js",
+    "build-test": "webpack --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "lessc": "lessc"
   },
   "devDependencies": {
-    "@types/jquery": "^2.0.41",
-    "@types/react": "^15.0.18",
+    "@types/jquery": "^2.0.48",
+    "@types/react": "^15.0.38",
     "awesome-typescript-loader": "^3.0.7",
     "babel-core": "^6.22.1",
     "babel-loader": "^7.0.0",
@@ -20,15 +21,15 @@
     "core-js": "^2.4.1",
     "css-loader": "^0.28.4",
     "expect.js": "^0.3.1",
-    "fable-loader": "^1.0.5",
+    "fable-loader": "^1.0.6",
     "less": "^2.7.2",
     "mocha": "^3.2.0",
     "mocha-phantomjs-core": "^2.1.1",
     "phantomjs-prebuilt": "^2.1.14",
     "style-loader": "^0.18.2",
     "typescript": "^2.2.1",
-    "webpack": "^2.2.0",
-    "webpack-dev-server": "^2.2.0"
+    "webpack": "^2.6.1",
+    "webpack-dev-server": "^2.5.1"
   },
   "dependencies": {
     "babel-runtime": "^6.23.0",
