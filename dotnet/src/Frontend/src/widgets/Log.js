@@ -41,6 +41,7 @@ class View extends Component {
     var logs = props.global.state.logs;
     this.state = {
       filter: null,
+      logLevel: "none",
       sort: null,
       columns: {
         LogLevel: true,
@@ -55,8 +56,12 @@ class View extends Component {
       if (kv.key === "filter") {
         this.updateViewLogs({filter: kv.value})
       }
-      else {
-        this.setState({columns: Object.assign(this.state.columns, {[kv.key]: kv.value})});
+      if (kv.key === "logLevel") {
+        this.updateViewLogs({logLevel: kv.value})
+      }
+      else if (kv.key.startsWith("columns/")) {
+        let key = kv.key.replace("columns/","")
+        this.setState({columns: Object.assign(this.state.columns, {[key]: kv.value})});
       }
     });
   }
@@ -64,12 +69,16 @@ class View extends Component {
   updateViewLogs({
     logs = this.state.logs,
     filter = this.state.filter,
+    logLevel = this.state.logLevel,
     sort = this.state.sort
   }) {
     let viewLogs = logs;
     if (filter) {
       let reg = new RegExp(filter, "i");
       viewLogs = viewLogs.filter(log => reg.test(log.Message));
+    }
+    if (logLevel && logLevel !== "none") {
+      viewLogs = viewLogs.filter(log => IrisLib.toString(log.LogLevel) === logLevel);
     }
     if (sort) {
       viewLogs = viewLogs.sort((log1,log2) => {
@@ -78,7 +87,7 @@ class View extends Component {
         return sort.direction === SortTypes.ASC ? res : res * -1;
       })
     }
-    this.setState({filter, sort, logs, viewLogs})
+    this.setState({filter, sort, logLevel, logs, viewLogs})
   }
 
   componentDidMount() {
@@ -155,12 +164,25 @@ class TitleForm extends Component {
     super(props);
     this.state = {
       filter: "",
-      LogLevel: true,
-      Time: true,
-      Tag: true,
-      Tier: true
+      logLevel: "none",
+      columns: {
+        LogLevel: true,
+        Time: true,
+        Tag: true,
+        Tier: true
+      }
     };
   }
+
+  renderDropdown(title, values, generator) {
+    return (
+    <div className="iris-dropdown">
+    <div className="iris-dropdown-button">{title}</div>
+    <div className="iris-dropdown-content">
+      {values.map(x => <div key={x}>{generator(x)}</div>)}
+    </div>
+  </div>
+  )}
 
   render() {
     return (
@@ -170,47 +192,24 @@ class TitleForm extends Component {
           this.props.observable.trigger({key: "filter", value: ev.target.value});
           this.setState({filter: ev.target.value});
         }} />
-      <div className="iris-dropdown">
-        <div className="iris-dropdown-button">Columns</div>
-        <div className="iris-dropdown-content">
-          <div>
-            <label>
-              <input type="checkbox" checked={this.state.LogLevel} onChange={ev => {
-                  this.props.observable.trigger({key: "LogLevel", value: ev.target.checked});
-                  this.setState({LogLevel: ev.target.checked});
-                }} />
-              LogLevel
-            </label>
-          </div>
-          <div>
-            <label>
-              <input type="checkbox" checked={this.state.Time} onChange={ev => {
-                  this.props.observable.trigger({key: "Time", value: ev.target.checked});
-                  this.setState({Time: ev.target.checked});
-                }} />
-                Time
-            </label>
-          </div>
-          <div>
-            <label>
-              <input type="checkbox" checked={this.state.Tag} onChange={ev => {
-                  this.props.observable.trigger({key: "Tag", value: ev.target.checked});
-                  this.setState({Tag: ev.target.checked});
-                }} />
-              Tag
-            </label>
-          </div>
-          <div>
-            <label>
-              <input type="checkbox" checked={this.state.Tier} onChange={ev => {
-                  this.props.observable.trigger({key: "Tier", value: ev.target.checked});
-                  this.setState({Tier: ev.target.checked});
-                }} />
-              Tier
-            </label>
-          </div>
-        </div>
-      </div>
+      {this.renderDropdown("Columns", ["LogLevel", "Time", "Tag", "Tier"], col => (
+        <label>
+          <input type="checkbox" checked={this.state.columns[col]} onChange={ev => {
+              this.props.observable.trigger({key: "columns/" + col, value: ev.target.checked});
+              this.setState({columns: Object.assign(this.state.columns, {[col]: ev.target.checked})});
+            }} />
+          {col}
+        </label>
+      ))}
+      {this.renderDropdown("Log filter", ["debug", "info", "warn", "err", "trace", "none"], lv => (
+        <label>
+          <input type="radio" checked={this.state.logLevel === lv} onChange={_ => {
+              this.props.observable.trigger({key: "logLevel", value: lv});
+              this.setState({logLevel: lv});
+            }} />
+          {lv}
+        </label>
+      ))}
     </div>
   );
   }
