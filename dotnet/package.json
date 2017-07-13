@@ -1,9 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "start": "webpack-dev-server --config src/Frontend/fable/Frontend/webpack.config.js",
-    "build": "webpack --config src/Frontend/fable/Frontend/webpack.config.js -p",
-    "worker": "webpack --config src/Frontend/fable/Worker/webpack.config.js",
+    "start": "concurrently -k \"cd src/Frontend/fable/Frontend && dotnet fable webpack-dev-server\" \"cd src/Frontend/fable/Worker && dotnet fable webpack --port free -- -w\" ",
+    "build": "concurrently \"cd src/Frontend/fable/Frontend && dotnet fable webpack -- -p\" \"cd src/Frontend/fable/Worker && dotnet fable webpack --port free -- -p\" ",
     "build-test": "webpack --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "lessc": "lessc"
@@ -18,6 +17,7 @@
     "babel-preset-es2015": "^6.22.0",
     "babel-preset-react": "^6.22.0",
     "babel-preset-stage-2": "^6.22.0",
+    "concurrently": "^3.5.0",
     "core-js": "^2.4.1",
     "css-loader": "^0.28.4",
     "expect.js": "^0.3.1",

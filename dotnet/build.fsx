@@ -620,16 +620,14 @@ Target "BuildFrontend" (fun () ->
   DotNet.installDotnetSdk ()
   DotNet.restore (frontendDir @@ "fable") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable yarn-worker -- -p" (frontendDir @@ "fable" @@ "Frontend") false
-  runExec DotNet.dotnetExePath "fable yarn-build" (frontendDir @@ "fable" @@ "Frontend") false
+  runNpm ("run build") __SOURCE_DIRECTORY__ ()
 )
 
 Target "BuildFrontendFast" (fun () ->
   // runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
   // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  // runExec DotNet.dotnetExePath "fable yarn-worker -- -p" (frontendDir @@ "fable" @@ "Frontend") false
-  runExec DotNet.dotnetExePath "fable yarn-build" (frontendDir @@ "fable" @@ "Frontend") false
+  runNpm ("run build") __SOURCE_DIRECTORY__ ()
 )
 
 
