@@ -15,6 +15,7 @@ open System.Collections.Concurrent
 // * Core module
 
 module Core =
+  let CONNECTED = [| 79uy; 75uy |] //  "OK" in utf8
 
   [<Literal>]
   let MAX_CONNECTIONS = 100
@@ -95,7 +96,8 @@ type SocketMessageConstructor = Guid -> Guid -> byte array -> unit
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
-  abstract Process: buffer: byte array -> read:int -> unit
+  abstract Buffer: byte array
+  abstract Process: offset: int -> read:int -> unit
 
 // * IResponseBuilder
 
@@ -196,6 +198,8 @@ module RequestBuilder =
     let client = ResizeArray()
     let request = ResizeArray()
     let body = ResizeArray()
+
+    let buffer = Array.zeroCreate Core.BUFFER_SIZE
 
     let mutable bodyLength = 0L
 
@@ -302,9 +306,11 @@ module RequestBuilder =
         build (rest.ToArray()) rest.Count
 
     { new IRequestBuilder with
-        member state.Process (buffer: byte array) (read: int) =
-          if read > 0 then
-            build buffer read
+        member state.Buffer
+          with get () = buffer
+
+        member state.Process (offset:int) (read: int) =
+          if read > 0 then build buffer read
 
         member state.Dispose() =
           length.Clear()

@@ -39,7 +39,6 @@ module rec TcpClient =
     abstract ConnectionId: byte array
     abstract Socket: Socket
     abstract EndPoint: IPEndPoint
-    abstract Buffer: byte array
     abstract PendingRequests: PendingRequests
     abstract ResponseBuilder: IResponseBuilder
     abstract Subscriptions: Subscriptions
@@ -56,7 +55,6 @@ module rec TcpClient =
     let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
     let mutable client = Socket.createTcp()
 
-    let buffer = Array.zeroCreate Core.BUFFER_SIZE
     let pending = PendingRequests()
     let mutable status = ServiceStatus.Stopped
 
@@ -98,9 +96,6 @@ module rec TcpClient =
 
         member state.EndPoint
           with get () = endpoint
-
-        member state.Buffer
-          with get () = buffer
 
         member state.PendingRequests
           with get () = pending
@@ -162,7 +157,7 @@ module rec TcpClient =
   let private onReceive (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
-      do state.ResponseBuilder.Process args.Buffer args.BytesTransferred
+      do state.ResponseBuilder.Process args.Offset args.BytesTransferred
       do args.Dispose()
       do receiveAsync state
     else onError "onReceive" args
@@ -174,22 +169,54 @@ module rec TcpClient =
     args.Completed.Add onReceive
     args.RemoteEndPoint <- state.EndPoint
     args.UserToken <- state
-    args.SetBuffer(state.Buffer, 0, Core.BUFFER_SIZE)
+    args.SetBuffer(state.ResponseBuilder.Buffer, 0, Core.BUFFER_SIZE)
     if not state.Disposed then
       match state.Socket.ReceiveAsync(args) with
       | true -> ()
       | false -> onReceive args
+
+  // ** onInitialize
+
+  let private onInitialize (args: SocketAsyncEventArgs) =
+    if args.SocketError = SocketError.Success then
+      let state = args.UserToken :?> IState
+      if args.Buffer = Core.CONNECTED then
+        Logger.debug (tag "onInitialize") "connection successful"
+        state.Status <- ServiceStatus.Running
+        do state.ClientId
+          |> TcpClientEvent.Connected
+          |> Observable.onNext state.Subscriptions
+        do receiveAsync state
+      else
+        let msg = "Incorrect response from server, disconnected"
+        let error = Error.asSocketError (tag "onInitialize") msg
+        do Logger.err (tag "onInitialize") msg
+        do (state.ClientId, error)
+          |> TcpClientEvent.Disconnected
+          |> Observable.onNext state.Subscriptions
+      do args.Dispose()
+    else onError "onConnected" args
+
+  // ** initializeAsync
+
+  let private initializeAsync (state: IState) =
+    do sendAsync state state.ConnectionId
+    let buffer = Array.zeroCreate Core.CONNECTED.Length
+    let args = new SocketAsyncEventArgs()
+    args.Completed.Add onInitialize
+    args.UserToken <- state
+    args.SetBuffer(buffer, 0, Core.CONNECTED.Length)
+    if not state.Disposed then
+      match state.Socket.ReceiveAsync(args) with
+      | true -> ()
+      | false -> onInitialize args
 
   // ** onConnected
 
   let private onConnected (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
       let state = args.UserToken :?> IState
-      state.Status <- ServiceStatus.Running
-      do sendAsync state state.ConnectionId
-      do state.ClientId
-        |> TcpClientEvent.Connected
-        |> Observable.onNext state.Subscriptions
+      do initializeAsync state
       do args.Dispose()
       do receiveAsync state
     else onError "onConnected" args

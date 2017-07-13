@@ -26,12 +26,12 @@ module SerializationTests =
         let check (rerequest: Request) =
           Expect.equal rerequest request "Should be structurally equal"
         let buffer = Request.serialize request
-        let builder = RequestBuilder.create buffer <| fun requestId clientId body ->
+        let builder = RequestBuilder.create <| fun requestId clientId body ->
           body
           |> Request.make requestId clientId
           |> check
 
-        builder.Process buffer.Length
+        builder.Process 0 buffer.Length
       encDec
       |> Prop.forAll Generators.requestArb
       |> Check.QuickThrowOnFailure
@@ -58,15 +58,15 @@ module SerializationTests =
       |> Prop.forAll Generators.requestArb
       |> Check.Quick
 
-      let bufsize = 1024
-      let buffer = Array.zeroCreate bufsize
-      let payload = blob.ToArray()
-      let payloadSize = payload.Length
-      let chunked = Array.chunkBySize bufsize payload
-      let parser = RequestBuilder.create buffer <| fun request client body ->
+      let parser = RequestBuilder.create <| fun request client body ->
         body
         |> Request.make request client
         |> rerequests.Add
+
+      let payload = blob.ToArray()
+      let payloadSize = payload.Length
+      let bufsize = parser.Buffer.Length
+      let chunked = Array.chunkBySize bufsize payload
 
       let mutable read = 0
       for chunk in chunked do
@@ -75,8 +75,8 @@ module SerializationTests =
           if remaining >= bufsize
           then bufsize
           else remaining
-        Array.Copy(chunk, buffer, num)
-        parser.Process num
+        Array.Copy(chunk, parser.Buffer, num)
+        parser.Process 0 num
         read <- read + num
 
       Expect.equal rerequests.Count requests.Count "Should have the same count of requests"

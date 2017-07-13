@@ -63,7 +63,6 @@ module TcpServer =
     abstract Connections: Connections
     abstract Subscriptions: Subscriptions
     abstract BufferedArgs: BufferedArgs
-    abstract BufferManager: BufferManager
     abstract Listener: Socket
     abstract EndPoint: IPEndPoint
 
@@ -94,19 +93,12 @@ module TcpServer =
         new SocketAsyncEventArgs()
         |> args.Add
 
-      let manager =
-        BufferManager.CreateBufferManager(
-          int64 Core.MAX_CONNECTIONS,
-          Core.MAX_CONNECTIONS * Core.BUFFER_SIZE)
-
       let cleaner =
         connections
         |> cleanUp
         |> flip Observable.subscribe subscriptions
 
       { new IState with
-          member state.BufferManager
-            with get () = manager
 
           member state.BufferedArgs
             with get () = args
@@ -201,18 +193,10 @@ module TcpServer =
 
     // *** withState
 
-    let private withState (state: IState) (size: int option) f =
-      match state.BufferedArgs.TryTake(), size with
-      | (true, args), Some size ->
-        try
-          let buffer = state.BufferManager.TakeBuffer(size)
-          f args (Some buffer)
-        with
-          | exn ->
-            Logger.err (tag "withState") exn.Message
-      | (true, args), None ->
-        f args None
-      | (false, _), _ ->
+    let private withState (state: IState) f =
+      match state.BufferedArgs.TryTake() with
+      | (true, args) -> f args
+      | (false, _) ->
         "Error: too many connections"
         |> Logger.err (tag "withState")
 
@@ -224,16 +208,14 @@ module TcpServer =
       args.SetBuffer(null, 0, 0)
       state.BufferedArgs.Add args
 
-    // *** returnBuffer
-
-    let private returnBuffer (state: IState) buffer =
-      state.BufferManager.ReturnBuffer buffer
-
     // *** onError
 
     let private onError location state (args: SocketAsyncEventArgs) =
-      let msg = String.Format("{0} error in Socket operation", args.SocketError)
-      let error = Error.asSocketError (tag location) msg
+      let msg =
+        if args.BytesTransferred = 0 then
+          "Connection closed by peer"
+        else
+          String.format "{0} error in Socket operation" args.SocketError
       do returnArgs state args
       Logger.err (tag location) msg
 
@@ -243,7 +225,6 @@ module TcpServer =
       let listener, connection, state = args.UserToken :?> (IDisposable * IConnection * IState)
       dispose listener
       if args.SocketError <> SocketError.Success then
-        // we intentionally don't return the buffer to the pool, because it didn't come from there
         do onError "onSend" state args
       else
         do returnArgs state args
@@ -251,7 +232,7 @@ module TcpServer =
     // *** sendAsync
 
     let private sendAsync (state: IState) (connection: IConnection) (bytes: byte array) =
-      withState state None <| fun args None ->
+      withState state <| fun args ->
         let listener = args.Completed.Subscribe onSend
         do args.SetBuffer(bytes, 0, bytes.Length)
         args.UserToken <- listener, connection, state
@@ -268,20 +249,21 @@ module TcpServer =
     let private onReceive (args: SocketAsyncEventArgs) =
       let listener, connection, state = args.UserToken :?> (IDisposable * IConnection * IState)
       dispose listener
-      if args.SocketError = SocketError.Success then
-        connection.RequestBuilder.Process args.Buffer args.BytesTransferred
-        do returnBuffer state args.Buffer
+      if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
+        connection.RequestBuilder.Process args.Offset args.BytesTransferred
         do returnArgs state args
         do receiveAsync state connection
       else
-        do returnBuffer state args.Buffer
         do onError "onReceive" state args
 
     // *** receiveAsync
 
     let private receiveAsync (state: IState) (connection: IConnection) =
-      withState state (Some Core.BUFFER_SIZE) <| fun args (Some buffer) ->
-        do args.SetBuffer(buffer, 0, Core.BUFFER_SIZE)
+      withState state <| fun args ->
+        do args.SetBuffer(
+            connection.RequestBuilder.Buffer,
+            0,
+            connection.RequestBuilder.Buffer.Length)
         let listener = args.Completed.Subscribe onReceive
         args.UserToken <- listener, connection, state
         try
@@ -298,11 +280,7 @@ module TcpServer =
       let listener, socket, state = args.UserToken :?> (IDisposable * Socket * IState)
       dispose listener
       if args.SocketError = SocketError.Success then
-        let guid =
-          let arr = Array.zeroCreate Core.ID_SIZE
-          Array.blit args.Buffer 0 arr 0 Core.ID_SIZE
-          Guid arr
-
+        let guid = Guid args.Buffer
         let connection = Connection.create guid state socket
 
         match state.Connections.TryRemove(connection.Id) with
@@ -311,24 +289,23 @@ module TcpServer =
 
         state.Connections.TryAdd(connection.Id, connection) |> ignore
 
+        do Core.CONNECTED |> sendAsync state connection
+
         guid
         |> String.format "New connection from {0}"
         |> Logger.info (tag "acceptCallback")
 
-        dispose listener
-        do returnBuffer state args.Buffer
         do returnArgs state args
-
         do receiveAsync state connection
       else
-        do returnBuffer state args.Buffer
         do onError "onConnection" state args
 
     // *** initializeAsync
 
     let private initializeAsync (state: IState) (socket: Socket) =
-      withState state (Some Core.BUFFER_SIZE) <| fun args (Some buffer) ->
-        do args.SetBuffer(buffer, 0, Core.BUFFER_SIZE)
+      withState state <| fun args ->
+        let buffer = Array.zeroCreate Core.ID_SIZE
+        do args.SetBuffer(buffer, 0, Core.ID_SIZE)
         let listener = args.Completed.Subscribe onConnection
         args.UserToken <- listener, socket, state
         try
@@ -352,7 +329,7 @@ module TcpServer =
     // *** acceptAsync
 
     let acceptAsync (state: IState) =
-      withState state None <| fun args None ->
+      withState state <| fun args ->
         let listener = args.Completed.Subscribe onAccept
         args.UserToken <- listener, state
         try
