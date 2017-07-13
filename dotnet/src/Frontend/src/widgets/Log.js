@@ -164,46 +164,55 @@ class TitleForm extends Component {
 
   render() {
     return (
-      <div>
-        <input type="text" placeholder="Filter by regex..."
-          value={this.state.filter} onChange={ev => {
-            this.props.observable.trigger({key: "filter", value: ev.target.value});
-            this.setState({filter: ev.target.value});
-          }} />
-       <label style={{marginLeft: "10px"}}>
-          LogLevel
-          <input type="checkbox" checked={this.state.LogLevel}
-            style={{marginLeft: "5px"}} onChange={ev => {
-              this.props.observable.trigger({key: "LogLevel", value: ev.target.checked});
-              this.setState({LogLevel: ev.target.checked});
-            }} />
-        </label>
-       <label style={{marginLeft: "10px"}}>
-          Time
-          <input type="checkbox" checked={this.state.Time}
-            style={{marginLeft: "5px"}} onChange={ev => {
-              this.props.observable.trigger({key: "Time", value: ev.target.checked});
-              this.setState({Time: ev.target.checked});
-            }} />
-        </label>
-       <label style={{marginLeft: "10px"}}>
-          Tag
-          <input type="checkbox" checked={this.state.Tag}
-            style={{marginLeft: "5px"}} onChange={ev => {
-              this.props.observable.trigger({key: "Tag", value: ev.target.checked});
-              this.setState({Tag: ev.target.checked});
-            }} />
-        </label>
-       <label style={{marginLeft: "10px"}}>
-          Tier
-          <input type="checkbox" checked={this.state.Tier}
-            style={{marginLeft: "5px"}} onChange={ev => {
-              this.props.observable.trigger({key: "Tier", value: ev.target.checked});
-              this.setState({Tier: ev.target.checked});
-            }} />
-        </label>
+    <div>
+      <input type="text" placeholder="Filter by regex..."
+        value={this.state.filter} onChange={ev => {
+          this.props.observable.trigger({key: "filter", value: ev.target.value});
+          this.setState({filter: ev.target.value});
+        }} />
+      <div className="iris-dropdown">
+        <div className="iris-dropdown-button">Columns</div>
+        <div className="iris-dropdown-content">
+          <div>
+            <label>
+              <input type="checkbox" checked={this.state.LogLevel} onChange={ev => {
+                  this.props.observable.trigger({key: "LogLevel", value: ev.target.checked});
+                  this.setState({LogLevel: ev.target.checked});
+                }} />
+              LogLevel
+            </label>
+          </div>
+          <div>
+            <label>
+              <input type="checkbox" checked={this.state.Time} onChange={ev => {
+                  this.props.observable.trigger({key: "Time", value: ev.target.checked});
+                  this.setState({Time: ev.target.checked});
+                }} />
+                Time
+            </label>
+          </div>
+          <div>
+            <label>
+              <input type="checkbox" checked={this.state.Tag} onChange={ev => {
+                  this.props.observable.trigger({key: "Tag", value: ev.target.checked});
+                  this.setState({Tag: ev.target.checked});
+                }} />
+              Tag
+            </label>
+          </div>
+          <div>
+            <label>
+              <input type="checkbox" checked={this.state.Tier} onChange={ev => {
+                  this.props.observable.trigger({key: "Tier", value: ev.target.checked});
+                  this.setState({Tier: ev.target.checked});
+                }} />
+              Tier
+            </label>
+          </div>
+        </div>
       </div>
-    );
+    </div>
+  );
   }
 }
 

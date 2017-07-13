@@ -40,15 +40,6 @@
   }
 }
 
-.iris-dropdown {
-  box-shadow: 0 0 8px #777;
-  display: block;
-  left: 0;
-  top: -1000px;
-  position: absolute;
-  top: 100%;
-  z-index: 1000;
-}
 
 .iris-table {
   border-spacing: 0px;
@@ -97,6 +88,64 @@
 
 .iris-flex-4 {
   flex: 4
+}
+
+.iris-dropdown {
+  /* The container <div> - needed to position the dropdown content */
+  // box-shadow: 0 0 8px #777;
+  position: relative;
+  display: inline-block;
+  z-index: 1000;
+
+  /* Dropdown Button */
+  .iris-dropdown-button {
+    // border: none;
+    margin: 0 5px;
+    cursor: pointer;
+
+    &::after {
+      border: 1px solid black;
+      border-right: 0;
+      border-top: 0;
+      content: " ";
+      display: block;
+      height: 5px;
+      width: 5px;
+      margin-top: -3px;
+      right: -2px;
+      top: 50%;
+      pointer-events: none;
+      position: absolute;
+      transform: rotate(-45deg);
+    }
+  }
+
+  /* Dropdown Content (Hidden by Default) */
+  .iris-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+
+    div {
+      margin: 10px 5px;
+      label input[type="checkbox"] {
+        margin-right: 5px
+      }
+    }
+  }
+
+  /* Show the dropdown menu on hover */
+  &:hover .iris-dropdown-content {
+    display: block;
+  }
+
+  /* Change the background color of the dropdown button when the dropdown content is shown */
+  &:hover .iris-dropdown-button {
+    background-color: rgb(220,220,220);
+  }
 }
 
 // -------------------------
