@@ -26,9 +26,7 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json'],
-    modules: [
-      "node_modules", resolve("../../../../node_modules/")
-    ]
+    modules: [resolve("../../../../node_modules/")]
   },
   module: {
     rules: [
@@ -40,13 +38,13 @@ module.exports = {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
             plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
-            extra: { useCache: "readonly" }
+            // extra: { useCache: "readonly" }
           }
         }
       },
       {
         test: /\.js$/,
-        exclude: /node_modules[\\\/](?!fable-)/,
+        exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: babelOptions

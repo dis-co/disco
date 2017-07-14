@@ -37,6 +37,12 @@ let EMPTY = Constants.EMPTY
 // HELPERS ----------------------------------------------------
 let toString (x: obj) = string x
 
+let createObservable<'T>() =
+  Widgets.GenericObservable<'T>()
+
+let subscribe(obs: IObservable<'T>, f: 'T->unit) =
+  obs.Subscribe(f)
+
 let getClientContext() =
     ClientContext.Singleton
 
@@ -220,6 +226,9 @@ let unloadProject() =
   UnloadProject |> postCommand (fun _ ->
     notify "The project has been unloaded"
     Browser.location.reload()) notify
+
+let setLogLevel(lv) =
+  LogLevel.Parse(lv) |> SetLogLevel |> ClientContext.Singleton.Post
 
 let nullify _: 'a = null
 

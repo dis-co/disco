@@ -261,7 +261,10 @@ type private CueView(props) =
                     ``global`` = this.props.Global
                     pin = pin
                     slices = Some slices
-                    update = Some(fun valueIndex value -> this.UpdateCueValue(i, valueIndex, value))
+                    updater =
+                      Some { new IUpdater with
+                          member __.Update(dragging, valueIndex, value) =
+                            this.UpdateCueValue(dragging, i, valueIndex, value) }
                     onDragStart = None } []
             ])
           |> Array.toList
@@ -274,11 +277,15 @@ type private CueView(props) =
         ] [tbody [] rows]]
     ]
 
-  member this.UpdateCueValue(sliceIndex: int, valueIndex: int, value: obj) =
+  member this.UpdateCueValue(local: bool, sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =
       this.state.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
-    { this.state.Cue with Slices = newSlices } |> UpdateCue |> ClientContext.Singleton.Post
+    let command =
+      { this.state.Cue with Slices = newSlices } |> UpdateCue
+    if local
+    then ClientContext.Singleton.PostLocal command
+    else ClientContext.Singleton.Post command
 
 // type [<Pojo>] private CueGroupState =
 //   { IsOpen: bool

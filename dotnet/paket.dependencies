@@ -31,10 +31,9 @@ group Main
 
 group Fable
   source https://nuget.org/api/v2
+  clitool dotnet-fable
   nuget FSharp.Core
-  # Keep this pinned to dotnet-fable version in Fable.proj
-  nuget Fable.Core 1.1.2
-  # Other Fable libraries
+  nuget Fable.Core
   nuget Fable.Import.Node
   nuget Fable.PowerPack
   nuget Fable.React
