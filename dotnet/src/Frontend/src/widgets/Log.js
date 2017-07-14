@@ -165,6 +165,7 @@ class TitleForm extends Component {
     this.state = {
       filter: "",
       logLevel: "none",
+      setLogLevel: "debug",
       columns: {
         LogLevel: true,
         Time: true,
@@ -201,7 +202,7 @@ class TitleForm extends Component {
           {col}
         </label>
       ))}
-      {this.renderDropdown("Log filter", ["debug", "info", "warn", "err", "trace", "none"], lv => (
+      {this.renderDropdown("Log Filter", ["debug", "info", "warn", "err", "trace", "none"], lv => (
         <label>
           <input type="radio" checked={this.state.logLevel === lv} onChange={_ => {
               this.props.observable.trigger({key: "logLevel", value: lv});
@@ -210,6 +211,23 @@ class TitleForm extends Component {
           {lv}
         </label>
       ))}
+      {this.renderDropdown("Set Log Level", ["debug", "info", "warn", "err", "trace", "button"], lv => {
+        if (lv === "button") {
+          return (<button
+              style={{padding: "5px", marginLeft: "10px"}}
+              onClick={_ => IrisLib.setLogLevel(this.state.setLogLevel)}>
+                SET
+            </button>)
+        }
+        else {
+          return (<label>
+              <input type="radio" checked={this.state.setLogLevel === lv} onChange={_ => {
+                  this.setState({setLogLevel: lv});
+                }} />
+              {lv}
+            </label>)
+        }
+      })}
     </div>
   );
   }

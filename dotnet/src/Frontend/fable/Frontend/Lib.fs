@@ -227,6 +227,9 @@ let unloadProject() =
     notify "The project has been unloaded"
     Browser.location.reload()) notify
 
+let setLogLevel(lv) =
+  LogLevel.Parse(lv) |> SetLogLevel |> ClientContext.Singleton.Post
+
 let nullify _: 'a = null
 
 let rec loadProject(project: Name, username: UserName, pass: Password, site: Id option, ipAndPort: string option): JS.Promise<string option> =
