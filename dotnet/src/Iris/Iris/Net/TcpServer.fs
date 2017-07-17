@@ -62,6 +62,7 @@ module TcpServer =
     inherit IDisposable
     abstract Connections: Connections
     abstract Subscriptions: Subscriptions
+    abstract BufferManager: IBufferManager
     abstract BufferedArgs: BufferedArgs
     abstract Listener: Socket
     abstract EndPoint: IPEndPoint
@@ -93,12 +94,16 @@ module TcpServer =
         new SocketAsyncEventArgs()
         |> args.Add
 
+      let manager = BufferManager.create Core.MAX_CONNECTIONS Core.BUFFER_SIZE
+
       let cleaner =
         connections
         |> cleanUp
         |> flip Observable.subscribe subscriptions
 
       { new IState with
+          member state.BufferManager
+            with get () = manager
 
           member state.BufferedArgs
             with get () = args
@@ -227,6 +232,9 @@ module TcpServer =
       if args.SocketError <> SocketError.Success then
         do onError "onSend" state args
       else
+        sprintf "sent %d bytes" args.BytesTransferred
+        |> Logger.err (tag "onSend")
+
         do returnArgs state args
 
     // *** sendAsync
@@ -247,12 +255,17 @@ module TcpServer =
     // *** onReceive
 
     let private onReceive (args: SocketAsyncEventArgs) =
-      let listener, connection, state = args.UserToken :?> (IDisposable * IConnection * IState)
+      let listener, connection, buffer, state =
+        args.UserToken :?> (IDisposable * IConnection * IBuffer * IState)
+
       dispose listener
       if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
-        connection.RequestBuilder.Process args.Offset args.BytesTransferred
+        connection.RequestBuilder.Process buffer args.Offset args.BytesTransferred
         do returnArgs state args
         do receiveAsync state connection
+
+        sprintf "received %d bytes" args.BytesTransferred
+        |> Logger.err (tag "onReceive")
       else
         do onError "onReceive" state args
 
@@ -260,12 +273,10 @@ module TcpServer =
 
     let private receiveAsync (state: IState) (connection: IConnection) =
       withState state <| fun args ->
-        do args.SetBuffer(
-            connection.RequestBuilder.Buffer,
-            0,
-            connection.RequestBuilder.Buffer.Length)
+        let buffer = state.BufferManager.TakeBuffer()
+        do args.SetBuffer(buffer.Data, 0, buffer.Length)
         let listener = args.Completed.Subscribe onReceive
-        args.UserToken <- listener, connection, state
+        args.UserToken <- listener, connection, buffer, state
         try
           match connection.Socket.ReceiveAsync(args) with
           | true -> ()
@@ -304,8 +315,8 @@ module TcpServer =
 
     let private initializeAsync (state: IState) (socket: Socket) =
       withState state <| fun args ->
-        let buffer = Array.zeroCreate Core.ID_SIZE
-        do args.SetBuffer(buffer, 0, Core.ID_SIZE)
+        let idbuf = Array.zeroCreate Core.ID_SIZE
+        do args.SetBuffer(idbuf, 0, Core.ID_SIZE)
         let listener = args.Completed.Subscribe onConnection
         args.UserToken <- listener, socket, state
         try

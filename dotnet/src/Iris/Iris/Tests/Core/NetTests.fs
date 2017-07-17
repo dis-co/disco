@@ -12,6 +12,8 @@ open Microsoft.FSharp.Control
 [<AutoOpen>]
 module NetIntegrationTests =
 
+  let log = Logger.subscribe Logger.stdout
+
   //  _   _      _
   // | \ | | ___| |_
   // |  \| |/ _ \ __|
@@ -58,8 +60,9 @@ module NetIntegrationTests =
       |> noError
 
   let test_server_request_handling =
-    testCase "server request handling" <| fun _ ->
+    testCase "se request handling" <| fun _ ->
       either {
+
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 

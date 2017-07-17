@@ -8,9 +8,84 @@ open System
 open System.IO
 open System.Net
 open System.Net.Sockets
+open System.Threading
 open System.Text
 open Iris.Core
 open System.Collections.Concurrent
+
+// * IBuffer
+
+type IBuffer =
+  inherit IDisposable
+  abstract Length: int
+  abstract Data: byte array
+  abstract Id: int
+
+// * IBufferManager
+
+type IBufferManager =
+  abstract InUse: int
+  abstract Available: int
+  abstract NumBuffers: int
+  abstract BufferSize: int
+  abstract TakeBuffer: unit -> IBuffer
+
+// * BufferManager
+
+module BufferManager =
+
+  let create (num: int) (size: int) =
+    let mutable num = num
+    let mutable count = 0
+    let mutable missing = 0
+
+    let holding = ConcurrentQueue<byte array>()
+
+    for n in 0 .. (num - 1) do
+      size
+      |> Array.zeroCreate
+      |> holding.Enqueue
+
+    { new IBufferManager with
+        member manager.NumBuffers
+          with get () = num
+
+        member manager.BufferSize
+          with get () =  size
+
+        member manager.InUse
+          with get () = missing
+
+        member manager.Available
+          with get () = num - missing
+
+        member manager.TakeBuffer () =
+            let buffer =
+              match holding.TryDequeue() with
+              | true, buffer -> buffer
+              | false, _ ->
+                Interlocked.Increment &num |> ignore
+                Array.zeroCreate size
+
+            Interlocked.Increment &count |> ignore
+            Interlocked.Increment &missing |> ignore
+
+            { new IBuffer with
+                member buf.Data
+                  with get () = buffer
+
+                member buf.Length
+                  with get () = size
+
+                member buf.Id
+                  with get () = count
+
+                member buf.Dispose () =
+                  Interlocked.Decrement &missing |> ignore
+                  for n in 0 .. (size - 1) do
+                    buffer.[n] <- 0uy
+                  holding.Enqueue buffer }
+      }
 
 // * Core module
 
@@ -96,8 +171,7 @@ type SocketMessageConstructor = Guid -> Guid -> byte array -> unit
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
-  abstract Buffer: byte array
-  abstract Process: offset: int -> read:int -> unit
+  abstract Process: buffer: IBuffer -> offset: int -> read:int -> unit
 
 // * IResponseBuilder
 
@@ -109,22 +183,23 @@ module RequestBuilder =
 
   // ** Constants
 
-  let Preamble = [| 73uy; 77uy; 83uy; 71uy |] // IMSG in ASCII
+  let private Preamble = [| 73uy; 77uy; 83uy; 71uy |] // IMSG in ASCII
 
-  [<Literal>]
-  let PreambleSize = 4                  // 4 bytes in ASCII
+  let private PreambleSize = Preamble.Length // 4 bytes in ASCII
 
-  [<Literal>]
-  let MsgLengthSize = 8                 // int64 is 8 bytes long
+  let private MsgLengthSize = sizeof<int64> // int64 is 8 bytes long
 
-  [<Literal>]
-  let IdSize = 16                       // Guid has 16 bytes
+  let private IdSize = sizeof<Guid>     // Guid has 16 bytes
 
   //  preamble | length of body  | length of client id | length of request id
   // ------------------------------------------------------------------------
   //     4     +        8        +        16           +      16
   // ------------------------------------------------------------------------
-  let HeaderSize = PreambleSize + MsgLengthSize + IdSize + IdSize
+  let private HeaderSize = PreambleSize + MsgLengthSize + IdSize + IdSize
+
+  let private PreambleMsgOffset = PreambleSize + MsgLengthSize
+
+  let private PreambleMsgIdOffset = PreambleSize + MsgLengthSize + IdSize
 
   // ** parseLength
 
@@ -180,143 +255,258 @@ module RequestBuilder =
   // ** findPreamble
 
   let private findPreamble (data: byte array) =
-    Array.tryFindIndex ((=) Preamble.[0]) data
+    match Array.tryFindIndex ((=) Preamble.[0]) data with
+    | Some idx
+      as found
+      when data.[idx + 1] = Preamble.[1]
+        && data.[idx + 2] = Preamble.[2]
+        && data.[idx + 3] = Preamble.[3] -> found
+    | _ -> None
 
-  // ** PreambleMsgOffset
+  // ** IBoundedWriter
 
-  let private PreambleMsgOffset = PreambleSize + MsgLengthSize
+  type private IBoundedWriter =
+    inherit IDisposable
+    abstract Size: int
+    abstract Position: int64
+    abstract IsDone: bool
+    abstract Write: byte -> bool
+    abstract Buffer: byte array
+    abstract Reset: unit -> unit
 
-  // ** PreambleMsgIdOffset
+  // ** BoundedWriter
 
-  let private PreambleMsgIdOffset = PreambleSize + MsgLengthSize + IdSize
+  module private BoundedWriter =
+
+    let create (capacity: int) =
+      let buffer = Array.zeroCreate capacity
+      let stream = new MemoryStream(buffer)
+
+      { new IBoundedWriter with
+          member writer.Size
+            with get () = capacity
+
+          member writer.Position
+            with get () = stream.Position
+
+          member writer.Buffer
+            with get () = buffer
+
+          member writer.IsDone
+            with get () = stream.Position = int64 capacity
+
+          member writer.Write (data: byte) =
+            try
+              stream.WriteByte(data)
+              true
+            with
+              | _ -> false
+
+          member writer.Reset() =
+            for n in 0 .. (capacity - 1) do
+              buffer.[n] <- 0uy
+            stream.Seek(0L, SeekOrigin.Begin) |> ignore
+
+          member writer.Dispose() =
+            stream.Dispose() }
+
+  // ** IUnboundedWriter
+
+  type private IUnboundedWriter =
+    inherit IDisposable
+    inherit IBoundedWriter
+    abstract TargetSize: int64 option with get, set
+
+  // ** UnboundedWriter
+
+  module private UnboundedWriter =
+
+    let create () =
+      let mutable targetSize: int64 option = None
+      let stream = new MemoryStream()
+
+      { new IUnboundedWriter with
+          member writer.Size
+            with get () = 0
+
+          member writer.TargetSize
+            with get () = targetSize
+            and set size = targetSize <- size
+
+          member writer.Position
+            with get () = stream.Position
+
+          member writer.Buffer
+            with get () = stream.ToArray()
+
+          member writer.IsDone
+            with get () =
+              match targetSize with
+              | Some size -> size = stream.Position
+              | None -> false
+
+          member writer.Write (data: byte) =
+            stream.WriteByte(data)
+            true
+
+          member writer.Reset() =
+            targetSize <- None
+            stream.Seek(0L, SeekOrigin.Begin) |> ignore
+            stream.SetLength(0L)
+
+          member writer.Dispose() =
+            stream.Dispose() }
+
+  // ** Aliases
+
+  type private Offset = int
+  type private BytesRead = int
+  type private JobQueue = BlockingCollection<Offset * BytesRead * IBuffer>
+
+  // ** IState
+
+  type private IState =
+    inherit IDisposable
+    abstract Queue: JobQueue
+    abstract Read: int64
+    abstract Remaining: int64
+    abstract Processing: bool
+    abstract Length: int64 option
+    abstract IsDone: bool
+    abstract Write: byte -> unit
+
+  // ** State
+
+  module private State =
+
+    let create (queue: JobQueue) (onComplete: SocketMessageConstructor) =
+      let mutable processing = false
+
+      let length = BoundedWriter.create MsgLengthSize
+      let client = BoundedWriter.create IdSize
+      let request = BoundedWriter.create IdSize
+      let body = UnboundedWriter.create ()
+
+      let finalize() =
+        onComplete (Guid request.Buffer) (Guid client.Buffer) body.Buffer
+        length.Reset()
+        request.Reset()
+        client.Reset()
+        body.Reset()
+        processing <- false
+
+      { new IState with
+          member state.Queue
+            with get () = queue
+
+          member state.Read
+            with get () = body.Position
+
+          member state.Length
+            with get () = body.TargetSize
+
+          member state.Remaining
+            with get () =
+              match body.TargetSize with
+              | Some size -> int64 HeaderSize + size
+              | None -> (int64 MsgLengthSize - length.Position) + int64 (IdSize * 2)
+
+          member state.Processing
+            with get () = processing
+
+          member state.IsDone
+            with get () =
+              processing
+              && length.IsDone
+              && client.IsDone
+              && request.IsDone
+              && body.IsDone
+
+          member state.Write (data: byte) =
+            if not processing then
+              processing <- true
+
+            if not length.IsDone then
+              let needMore = length.Write data
+              if not needMore && Option.isNone body.TargetSize then
+                let size = parseLength length.Buffer 0
+                body.TargetSize <- Some size
+            elif not client.IsDone then
+              client.Write data |> ignore
+            elif not request.IsDone then
+              request.Write data |> ignore
+            elif not body.IsDone then
+              body.Write data |> ignore
+            elif state.IsDone then
+              finalize()
+
+          member state.Dispose() =
+            dispose length
+            dispose client
+            dispose request
+            dispose body }
+
+  // ** processBuffer
+
+  let rec private processBuffer (state: IState) (offset: int) (read: int) (buffer: IBuffer) =
+    if state.Processing then
+      let remaining =
+        if state.Remaining <= int64 read
+        then int state.Remaining
+        else read
+
+      let nextOffset = offset + remaining
+
+      for idx in offset .. (nextOffset - 1) do
+        state.Write buffer.Data.[idx]
+
+      if remaining < read then
+        do processBuffer state nextOffset (read - remaining) buffer
+    else
+      match findPreamble buffer.Data with
+      | Some idx ->
+        let remaining =
+          if state.Remaining <= int64 (read - idx) then
+            int state.Remaining
+          else read - idx
+
+        let nextOffset = offset + remaining
+
+        for idx in offset .. (remaining - 1) do
+          state.Write buffer.Data.[idx]
+
+        if remaining < read then
+          do processBuffer state nextOffset (read - remaining) buffer
+      | None -> ()
+
+  // ** worker
+
+  let private worker (state: IState) () =
+    while true do
+      let offset, num, buffer = state.Queue.Take()
+      processBuffer state offset num buffer
+      dispose buffer
 
   // ** create
 
-  let create (onComplete: SocketMessageConstructor) =
-    let preamble = ResizeArray()     // TODO: eventually, these should probably become BinaryWriters
-    let length = ResizeArray()
-    let client = ResizeArray()
-    let request = ResizeArray()
-    let body = ResizeArray()
-
-    let buffer = Array.zeroCreate Core.BUFFER_SIZE
-
-    let mutable bodyLength = 0L
-
-    let finalize () =
-      onComplete
-        (Guid (request.ToArray()))
-        (Guid (client.ToArray()))
-        (body.ToArray())
-      preamble.Clear()
-      length.Clear()
-      client.Clear()
-      request.Clear()
-      body.Clear()
-      bodyLength <- 0L
-
-    let rec build (data: byte array) (read: int) =
-      let rest = ResizeArray()
-      let mutable addToRest = false
-      // this is a fresh response, so we start off nice and neat
-      if preamble.Count = 0 && length.Count = 0 && client.Count = 0 && request.Count = 0 then
-        match findPreamble data with
-        | Some offset when offset <= read -> // we found the possible start of a preamble
-          let remaining = read - offset
-          for i in 0 .. remaining - 1 do
-            match i with
-            | _ when i < PreambleSize                                  && not addToRest ->
-              // add data to preamble
-              preamble.Add data.[i + offset]
-
-              // if the preamble is now complete, check if its valid
-              if preamble.Count = PreambleSize then
-                // if the preamble is not valid, the rest of the data is just
-                // going to get appended to the rest array, and processed again
-                addToRest <- (preamble.ToArray()) <> Preamble
-
-            | _ when i >= PreambleSize        && i < PreambleMsgOffset   && not addToRest ->
-              length.Add data.[i + offset]
-              if length.Count = int MsgLengthSize then
-                bodyLength <- parseLength (length.ToArray()) 0
-
-            | _ when i >= PreambleMsgOffset   && i < PreambleMsgIdOffset && not addToRest ->
-              client.Add data.[i + offset]
-
-            | _ when i >= PreambleMsgIdOffset && i < HeaderSize          && not addToRest ->
-              request.Add data.[i + offset]
-
-            | _ when int64 body.Count < bodyLength                      && not addToRest ->
-              body.Add data.[i + offset]
-
-            | _ when int64 body.Count = bodyLength                      && not addToRest ->
-              finalize()
-              addToRest <- true
-              rest.Add data.[i + offset]
-
-            | _ -> rest.Add data.[i + offset]
-        | _ -> () // ignore data when no preamble was found and this is the first call
-      else
-        // we're already working on something here, so keep at it
-        for i in 0 .. read - 1 do
-          match i with
-          | _ when preamble.Count < PreambleSize  && not addToRest ->
-            // add data to preamble
-            preamble.Add data.[i]
-
-            // if the preamble is now complete, check if its valid
-            if preamble.Count = PreambleSize then
-              // if the preamble is not valid, the rest of the data is just
-              // going to get appended to the rest array, and processed again
-              addToRest <- (preamble.ToArray()) <> Preamble
-
-          | _ when length.Count   < MsgLengthSize && not addToRest ->
-            length.Add data.[i]
-
-            // if enough bytes have been read, parse the length
-            if length.Count = MsgLengthSize then
-              bodyLength <- parseLength (length.ToArray()) 0
-
-          | _ when client.Count   < IdSize        && not addToRest ->
-            client.Add data.[i]
-
-          | _ when request.Count  < IdSize        && not addToRest ->
-            request.Add data.[i]
-
-          | _ when int64 body.Count < bodyLength  && not addToRest ->
-            body.Add data.[i]
-
-          | _ when int64 body.Count = bodyLength  && not addToRest ->
-            finalize()
-            addToRest <- true
-            rest.Add data.[i]
-
-          | i -> rest.Add data.[i]
-
-      if preamble.Count       = PreambleSize
-        && preamble.ToArray() = Preamble
-        && length.Count       = MsgLengthSize
-        && client.Count       = IdSize
-        && request.Count      = IdSize
-        && int64 body.Count   = bodyLength
-      then finalize()
-
-      // ever more to do, the recurse
-      if rest.Count > 0 then
-        build (rest.ToArray()) rest.Count
+  let create onComplete =
+    let mutable disposed = false
+    let queue = new JobQueue()
+    let state = State.create queue onComplete
+    let worker = Thread(ThreadStart (worker state))
+    worker.Start()
 
     { new IRequestBuilder with
-        member state.Buffer
-          with get () = buffer
-
-        member state.Process (offset:int) (read: int) =
-          if read > 0 then build buffer read
+        member state.Process (buffer: IBuffer) (offset:int) (read: int) =
+          if read > 0 && not disposed then
+            (offset, read, buffer)
+            |> queue.Add
 
         member state.Dispose() =
-          length.Clear()
-          client.Clear()
-          request.Clear()
-          body.Clear() }
+          if not disposed then
+            try worker.Abort() with | _ -> ()
+            dispose queue
+            disposed <- true }
 
 // * Request module
 

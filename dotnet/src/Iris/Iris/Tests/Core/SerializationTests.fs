@@ -21,17 +21,20 @@ module SerializationTests =
   //               |_|
 
   let test_correct_request_serialization =
-    testCase "RequestResposse serialization should work" <| fun _ ->
+    ftestCase "RequestResposse serialization should work" <| fun _ ->
       let encDec (request: Request) =
         let check (rerequest: Request) =
+          printfn "CHECKKK"
           Expect.equal rerequest request "Should be structurally equal"
-        let buffer = Request.serialize request
+        let binary = Request.serialize request
+        let manager = BufferManager.create 1 binary.Length
         let builder = RequestBuilder.create <| fun requestId clientId body ->
           body
           |> Request.make requestId clientId
           |> check
-
-        builder.Process 0 buffer.Length
+        let buffer = manager.TakeBuffer()
+        Array.Copy(binary, buffer.Data, binary.Length)
+        builder.Process buffer 0 buffer.Length
       encDec
       |> Prop.forAll Generators.requestArb
       |> Check.QuickThrowOnFailure
@@ -44,6 +47,7 @@ module SerializationTests =
 
   let tests_parse_state_deserialization =
     testCase "ParseState deserialization should work" <| fun _ ->
+      let bufsize = 128
       let requests = ResizeArray()
       let rerequests = ResizeArray()
       let blob = ResizeArray()
@@ -65,8 +69,8 @@ module SerializationTests =
 
       let payload = blob.ToArray()
       let payloadSize = payload.Length
-      let bufsize = parser.Buffer.Length
       let chunked = Array.chunkBySize bufsize payload
+      let manager = BufferManager.create 10 bufsize
 
       let mutable read = 0
       for chunk in chunked do
@@ -75,8 +79,9 @@ module SerializationTests =
           if remaining >= bufsize
           then bufsize
           else remaining
-        Array.Copy(chunk, parser.Buffer, num)
-        parser.Process 0 num
+        let buffer = manager.TakeBuffer()
+        Array.Copy(chunk, buffer.Data, num)
+        parser.Process buffer 0 num
         read <- read + num
 
       Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
