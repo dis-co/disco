@@ -12,8 +12,6 @@ open Microsoft.FSharp.Control
 [<AutoOpen>]
 module NetIntegrationTests =
 
-  let log = Logger.subscribe Logger.stdout
-
   //  _   _      _
   // | \ | | ___| |_
   // |  \| |/ _ \ __|

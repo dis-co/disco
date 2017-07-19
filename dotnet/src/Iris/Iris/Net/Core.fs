@@ -181,6 +181,10 @@ type IResponseBuilder = IRequestBuilder
 
 module RequestBuilder =
 
+  // ** tag
+
+  let private tag (str: string) = String.format "RequestBuilder.{0}" str
+
   // ** Constants
 
   let private Preamble = [| 73uy; 77uy; 83uy; 71uy |] // IMSG in ASCII
@@ -252,17 +256,6 @@ module RequestBuilder =
       request.Body.Length)
     destination                         // done!
 
-  // ** findPreamble
-
-  let private findPreamble (data: byte array) =
-    match Array.tryFindIndex ((=) Preamble.[0]) data with
-    | Some idx
-      as found
-      when data.[idx + 1] = Preamble.[1]
-        && data.[idx + 2] = Preamble.[2]
-        && data.[idx + 3] = Preamble.[3] -> found
-    | _ -> None
-
   // ** IBoundedWriter
 
   type private IBoundedWriter =
@@ -270,7 +263,7 @@ module RequestBuilder =
     abstract Size: int
     abstract Position: int64
     abstract IsDone: bool
-    abstract Write: byte -> bool
+    abstract Write: byte -> unit
     abstract Buffer: byte array
     abstract Reset: unit -> unit
 
@@ -298,9 +291,10 @@ module RequestBuilder =
           member writer.Write (data: byte) =
             try
               stream.WriteByte(data)
-              true
             with
-              | _ -> false
+              | exn ->
+                String.format "{0}" exn
+                |> Logger.err (tag "BoundedWriter.Write")
 
           member writer.Reset() =
             for n in 0 .. (capacity - 1) do
@@ -347,7 +341,6 @@ module RequestBuilder =
 
           member writer.Write (data: byte) =
             stream.WriteByte(data)
-            true
 
           member writer.Reset() =
             targetSize <- None
@@ -368,8 +361,6 @@ module RequestBuilder =
   type private IState =
     inherit IDisposable
     abstract Queue: JobQueue
-    abstract Read: int64
-    abstract Remaining: int64
     abstract Processing: bool
     abstract Length: int64 option
     abstract IsDone: bool
@@ -380,36 +371,22 @@ module RequestBuilder =
   module private State =
 
     let create (queue: JobQueue) (onComplete: SocketMessageConstructor) =
+      let mutable previousMatch = None
+      let mutable processed = 0L
       let mutable processing = false
 
+      let preamble = BoundedWriter.create PreambleSize
       let length = BoundedWriter.create MsgLengthSize
       let client = BoundedWriter.create IdSize
       let request = BoundedWriter.create IdSize
       let body = UnboundedWriter.create ()
 
-      let finalize() =
-        onComplete (Guid request.Buffer) (Guid client.Buffer) body.Buffer
-        length.Reset()
-        request.Reset()
-        client.Reset()
-        body.Reset()
-        processing <- false
-
       { new IState with
           member state.Queue
             with get () = queue
 
-          member state.Read
-            with get () = body.Position
-
           member state.Length
             with get () = body.TargetSize
-
-          member state.Remaining
-            with get () =
-              match body.TargetSize with
-              | Some size -> int64 HeaderSize + size
-              | None -> (int64 MsgLengthSize - length.Position) + int64 (IdSize * 2)
 
           member state.Processing
             with get () = processing
@@ -424,68 +401,80 @@ module RequestBuilder =
 
           member state.Write (data: byte) =
             if not processing then
-              processing <- true
+              match previousMatch, preamble.Position with
+              // the base case is we have not had any matching data before, so we start tracking
+              | None, 0L when data = Preamble.[0] ->
+                previousMatch <- Some data
+                preamble.Write(data)
+              | Some previous, 1L when previous = Preamble.[0] && data = Preamble.[1] ->
+                previousMatch <- Some data
+                preamble.Write(data)
+              | Some previous, 2L when previous = Preamble.[1] && data = Preamble.[2] ->
+                previousMatch <- Some data
+                preamble.Write(data)
+              | Some previous, 3L when previous = Preamble.[2] && data = Preamble.[3] ->
+                previousMatch <- None
+                preamble.Write(data)
+              // it can happen that the start value of the preamble is passed twice in a row
+              // so, we simply restart the process in that case
+              | _, _ when data = Preamble.[0] ->
+                preamble.Reset()
+                preamble.Write(data)
+                previousMatch <- Some data
+              // reset the stream parser, because its in a weird state
+              | _, position when position > 0L ->
+                previousMatch <- None
+                preamble.Reset()
+              // no match, keep on truckin'
+              | _, _ -> previousMatch <- None
 
-            if not length.IsDone then
-              let needMore = length.Write data
-              if not needMore && Option.isNone body.TargetSize then
-                let size = parseLength length.Buffer 0
-                body.TargetSize <- Some size
-            elif not client.IsDone then
-              client.Write data |> ignore
-            elif not request.IsDone then
-              request.Write data |> ignore
-            elif not body.IsDone then
-              body.Write data |> ignore
-            elif state.IsDone then
-              finalize()
+              if preamble.IsDone then
+                processing <- true
+            else
+              if not length.IsDone then
+                length.Write data |> ignore
+                if length.IsDone && Option.isNone body.TargetSize then
+                  let size = parseLength length.Buffer 0
+                  body.TargetSize <- Some size
+              elif not client.IsDone then
+                client.Write data |> ignore
+              elif not request.IsDone then
+                request.Write data |> ignore
+              elif not body.IsDone then
+                body.Write data |> ignore
+
+              if state.IsDone then
+                onComplete (Guid request.Buffer) (Guid client.Buffer) body.Buffer
+                preamble.Reset()
+                length.Reset()
+                request.Reset()
+                client.Reset()
+                body.Reset()
+                processing <- false
 
           member state.Dispose() =
+            dispose preamble
             dispose length
             dispose client
             dispose request
             dispose body }
 
-  // ** processBuffer
-
-  let rec private processBuffer (state: IState) (offset: int) (read: int) (buffer: IBuffer) =
-    if state.Processing then
-      let remaining =
-        if state.Remaining <= int64 read
-        then int state.Remaining
-        else read
-
-      let nextOffset = offset + remaining
-
-      for idx in offset .. (nextOffset - 1) do
-        state.Write buffer.Data.[idx]
-
-      if remaining < read then
-        do processBuffer state nextOffset (read - remaining) buffer
-    else
-      match findPreamble buffer.Data with
-      | Some idx ->
-        let remaining =
-          if state.Remaining <= int64 (read - idx) then
-            int state.Remaining
-          else read - idx
-
-        let nextOffset = offset + remaining
-
-        for idx in offset .. (remaining - 1) do
-          state.Write buffer.Data.[idx]
-
-        if remaining < read then
-          do processBuffer state nextOffset (read - remaining) buffer
-      | None -> ()
-
   // ** worker
 
   let private worker (state: IState) () =
+    let mutable num = 0
     while true do
-      let offset, num, buffer = state.Queue.Take()
-      processBuffer state offset num buffer
-      dispose buffer
+      try
+        let offset, read, buffer = state.Queue.Take()
+        for idx in offset .. (read - offset - 1) do
+          state.Write buffer.Data.[idx]
+        Interlocked.Increment &num |> ignore
+        dispose buffer
+      with
+        | :? ThreadAbortException -> ()
+        | exn ->
+          String.format "{0}" exn
+          |> Logger.err (tag "worker")
 
   // ** create
 
@@ -497,14 +486,15 @@ module RequestBuilder =
     worker.Start()
 
     { new IRequestBuilder with
-        member state.Process (buffer: IBuffer) (offset:int) (read: int) =
+        member parser.Process (buffer: IBuffer) (offset:int) (read: int) =
           if read > 0 && not disposed then
             (offset, read, buffer)
             |> queue.Add
 
-        member state.Dispose() =
+        member parser.Dispose() =
           if not disposed then
             try worker.Abort() with | _ -> ()
+            dispose state
             dispose queue
             disposed <- true }
 
