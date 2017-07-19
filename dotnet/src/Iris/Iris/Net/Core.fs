@@ -462,13 +462,11 @@ module RequestBuilder =
   // ** worker
 
   let private worker (state: IState) () =
-    let mutable num = 0
     while true do
       try
         let offset, read, buffer = state.Queue.Take()
         for idx in offset .. (read - offset - 1) do
           state.Write buffer.Data.[idx]
-        Interlocked.Increment &num |> ignore
         dispose buffer
       with
         | :? ThreadAbortException -> ()
