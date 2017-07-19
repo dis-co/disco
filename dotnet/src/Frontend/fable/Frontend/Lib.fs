@@ -35,6 +35,8 @@ type [<Pojo>] TreeNode =
 let EMPTY = Constants.EMPTY
 
 // HELPERS ----------------------------------------------------
+let newGuid(): Guid = Guid.NewGuid()
+
 let toString (x: obj) = string x
 
 let createObservable<'T>() =

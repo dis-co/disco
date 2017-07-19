@@ -74,8 +74,13 @@ class View extends Component {
   }) {
     let viewLogs = logs;
     if (filter) {
-      let reg = new RegExp(filter, "i");
-      viewLogs = viewLogs.filter(log => reg.test(log.Message));
+      try {
+        let reg = new RegExp(filter, "i");
+        viewLogs = viewLogs.filter(log => reg.test(log.Message));
+      }
+      catch (err) {
+        // Do nothing if the RegExp is not well formed
+      }
     }
     if (logLevel && logLevel !== "none") {
       viewLogs = viewLogs.filter(log => IrisLib.toString(log.LogLevel) === logLevel);
