@@ -174,7 +174,8 @@ module TcpServer =
 
             member connection.Dispose() =
               try cts.Cancel() with | _ -> ()
-              Socket.dispose socket }
+              Socket.dispose socket
+              dispose builder }
 
       let checker =
         Socket.checkState

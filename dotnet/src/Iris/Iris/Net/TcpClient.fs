@@ -121,17 +121,18 @@ module rec TcpClient =
             try cts.Cancel() with | _ -> ()
             for KeyValue(id,_) in pending.ToArray() do
               pending.TryRemove(id) |> ignore
-            builder.Dispose()
-            client.Dispose()
+            dispose builder
+            dispose client
             status <- ServiceStatus.Disposed
       }
 
   // ** onError
 
   let private onError location (args: SocketAsyncEventArgs) =
-    let state = args.UserToken :?> IState
+    let buffer, state = args.UserToken :?> IBuffer * IState
     let msg = String.Format("{0} in socket operation", args.SocketError)
     let error = Error.asSocketError (tag location) msg
+    dispose buffer
     do Logger.err (tag location) msg
     state.Status <- ServiceStatus.Failed error
     (state.ClientId, error)
@@ -142,7 +143,14 @@ module rec TcpClient =
 
   let private onSend (args: SocketAsyncEventArgs) =
     if args.SocketError <> SocketError.Success then
-      onError "onSend" args
+      let state = args.UserToken :?> IState
+      let msg = String.Format("{0} in socket operation", args.SocketError)
+      let error = Error.asSocketError (tag "onError") msg
+      do Logger.err (tag "onError") msg
+      state.Status <- ServiceStatus.Failed error
+      (state.ClientId, error)
+      |> TcpClientEvent.Disconnected
+      |> Observable.onNext state.Subscriptions
     else
       sprintf "sent %d bytes" args.BytesTransferred
       |> Logger.err (tag "onSend")
@@ -194,8 +202,10 @@ module rec TcpClient =
 
   let private onInitialize (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
-      let state = args.UserToken :?> IState
-      if args.Buffer = Core.CONNECTED then
+      let buffer, state = args.UserToken :?> IBuffer * IState
+      let tmp = Array.zeroCreate Core.CONNECTED.Length
+      Array.blit args.Buffer 0 tmp 0 Core.CONNECTED.Length
+      if tmp = Core.CONNECTED then
         Logger.debug (tag "onInitialize") "connection successful"
         state.Status <- ServiceStatus.Running
         do state.ClientId
@@ -210,17 +220,18 @@ module rec TcpClient =
           |> TcpClientEvent.Disconnected
           |> Observable.onNext state.Subscriptions
       do args.Dispose()
-    else onError "onConnected" args
+      do dispose buffer
+    else onError "onInitialize" args
 
   // ** initializeAsync
 
   let private initializeAsync (state: IState) =
     do sendAsync state state.ConnectionId
-    let buffer = Array.zeroCreate Core.CONNECTED.Length
+    let buffer = state.BufferManager.TakeBuffer()
     let args = new SocketAsyncEventArgs()
     args.Completed.Add onInitialize
-    args.UserToken <- state
-    args.SetBuffer(buffer, 0, Core.CONNECTED.Length)
+    args.UserToken <- buffer, state
+    args.SetBuffer(buffer.Data, 0, Core.CONNECTED.Length)
     if not state.Disposed then
       match state.Socket.ReceiveAsync(args) with
       | true -> ()
@@ -230,19 +241,21 @@ module rec TcpClient =
 
   let private onConnected (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
-      let state = args.UserToken :?> IState
+      let buffer, state = args.UserToken :?> IBuffer * IState
       do initializeAsync state
       do args.Dispose()
+      do dispose buffer
     else onError "onConnected" args
 
   // ** connectAsync
 
   let private connectAsync (state: IState) =
     state.Status <- ServiceStatus.Starting
+    let buffer = state.BufferManager.TakeBuffer()
     let args = new SocketAsyncEventArgs()
     do args.Completed.Add onConnected
     args.RemoteEndPoint <- state.EndPoint
-    args.UserToken <- state
+    args.UserToken <- buffer, state
     match state.Socket.ConnectAsync args with
     | true  -> ()
     | false -> onConnected args
