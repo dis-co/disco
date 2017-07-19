@@ -432,16 +432,16 @@ module RequestBuilder =
                 processing <- true
             else
               if not length.IsDone then
-                length.Write data |> ignore
+                length.Write data
                 if length.IsDone && Option.isNone body.TargetSize then
                   let size = parseLength length.Buffer 0
                   body.TargetSize <- Some size
               elif not client.IsDone then
-                client.Write data |> ignore
+                client.Write data
               elif not request.IsDone then
-                request.Write data |> ignore
+                request.Write data
               elif not body.IsDone then
-                body.Write data |> ignore
+                body.Write data
 
               if state.IsDone then
                 onComplete (Guid request.Buffer) (Guid client.Buffer) body.Buffer
