@@ -354,13 +354,12 @@ module RequestBuilder =
 
   type private Offset = int
   type private BytesRead = int
-  type private JobQueue = BlockingCollection<Offset * BytesRead * IBuffer>
+  type private JobQueue = MailboxProcessor<Offset * BytesRead * IBuffer>
 
   // ** IState
 
   type private IState =
     inherit IDisposable
-    abstract Queue: JobQueue
     abstract Processing: bool
     abstract Length: int64 option
     abstract IsDone: bool
@@ -370,7 +369,7 @@ module RequestBuilder =
 
   module private State =
 
-    let create (queue: JobQueue) (onComplete: SocketMessageConstructor) =
+    let create (onComplete: SocketMessageConstructor) =
       let mutable previousMatch = None
       let mutable processed = 0L
       let mutable processing = false
@@ -382,9 +381,6 @@ module RequestBuilder =
       let body = UnboundedWriter.create ()
 
       { new IState with
-          member state.Queue
-            with get () = queue
-
           member state.Length
             with get () = body.TargetSize
 
@@ -461,39 +457,33 @@ module RequestBuilder =
 
   // ** worker
 
-  let private worker (state: IState) () =
-    while true do
-      try
-        let offset, read, buffer = state.Queue.Take()
-        for idx in offset .. (read - offset - 1) do
-          state.Write buffer.Data.[idx]
-        dispose buffer
-      with
-        | :? ThreadAbortException -> ()
-        | exn ->
-          String.format "{0}" exn
-          |> Logger.err (tag "worker")
+  let private worker (state: IState) (inbox: JobQueue) =
+    async {
+      let! (offset, read, buffer) = inbox.Receive()
+      for idx in offset .. (read - offset - 1) do
+        state.Write buffer.Data.[idx]
+      dispose buffer
+      return! worker state inbox
+    }
 
   // ** create
 
   let create onComplete =
     let mutable disposed = false
-    let queue = new JobQueue()
-    let state = State.create queue onComplete
-    let worker = Thread(ThreadStart (worker state))
-    worker.Start()
+    let cts = new CancellationTokenSource()
+    let state = State.create onComplete
+    let queue = MailboxProcessor.Start(worker state, cts.Token)
 
     { new IRequestBuilder with
         member parser.Process (buffer: IBuffer) (offset:int) (read: int) =
           if read > 0 && not disposed then
             (offset, read, buffer)
-            |> queue.Add
+            |> queue.Post
 
         member parser.Dispose() =
           if not disposed then
-            try worker.Abort() with | _ -> ()
             dispose state
-            dispose queue
+            cts.Cancel()
             disposed <- true }
 
 // * Request module

@@ -173,7 +173,7 @@ module rec TcpClient =
   // ** onReceive
 
   let private onReceive (args: SocketAsyncEventArgs) =
-    if args.SocketError = SocketError.Success then
+    if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
       let buffer, state = args.UserToken :?> IBuffer * IState
       do state.ResponseBuilder.Process buffer args.Offset args.BytesTransferred
       do args.Dispose()

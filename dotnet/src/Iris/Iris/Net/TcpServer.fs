@@ -260,13 +260,15 @@ module TcpServer =
         args.UserToken :?> (IDisposable * IConnection * IBuffer * IState)
 
       dispose listener
-      if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
+      if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
         connection.RequestBuilder.Process buffer args.Offset args.BytesTransferred
+
+        args.BytesTransferred
+        |> sprintf "HMMMM received %d bytes"
+        |> Logger.err (tag "onReceive")
+
         do returnArgs state args
         do receiveAsync state connection
-
-        sprintf "received %d bytes" args.BytesTransferred
-        |> Logger.err (tag "onReceive")
       else
         do onError "onReceive" state args
 
