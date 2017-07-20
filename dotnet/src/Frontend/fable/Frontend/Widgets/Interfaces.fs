@@ -22,7 +22,7 @@ type IWidgetModel =
 type [<Pojo>] IWidgetProps<'T> =
   abstract id: Guid
   abstract model: 'T
-  abstract ``global``: IGlobalModel
+  abstract ``global``: GlobalModel
 
 type IDragEvent<'T> =
   abstract origin: int
@@ -36,6 +36,8 @@ type GenericObservable<'T>() =
   member x.Trigger v =
     for lis in listeners.Values do
       lis.OnNext v
+  member x.trigger v = // JS API
+    x.Trigger v
   interface IObservable<'T> with
     member x.Subscribe w =
       let guid = Guid.NewGuid()

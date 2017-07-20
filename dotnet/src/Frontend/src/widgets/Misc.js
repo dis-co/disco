@@ -33,7 +33,7 @@ export const Button = props =>
 //        <input type="text" placeholder={props.children} />
 
 export const Input = props =>
-    <span className="contentEditable" contentEditable="true">{props.children}</span>
+    <span contentEditable="true">{props.children}</span>
 
 
 export const AutoCall = props =>

@@ -80,7 +80,7 @@ class View extends React.Component {
       <ul className="iris-graphview" ref={el => this.el = el}>
         {map(this.props.global.state.pinGroups, (pinGroup, i) => (
           <li key={i}>
-            <div className="iris-row-label">{pinGroup[1].Name}</div>
+            <div>{pinGroup[1].Name}</div>
             {map(pinGroup[1].Pins, (kv,i) => {
               const pin = kv[1], key = IrisLib.toString(pin.Id);
               return (

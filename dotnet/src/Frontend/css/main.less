@@ -1,23 +1,15 @@
 @import "values";
-@import "classes";
 @import "icons";
+@import "classes";
+@import "PanelLeft";
+@import "Pin";
 
-@import "widgets/CuePlayer";
-@import "widgets/PanelLeft";
-@import "widgets/Log";
-@import "widgets/Pin";
-
-*{font-size: 11px; line-height: 14px; margin: 0px; padding: 0px;}
-
-//COLORS
-.iris-status-on {
-  color: #8CDD2A;
+* {
+  font-size: 11px;
+  line-height: 14px;
+  margin: 0px;
+  padding: 0px;
 }
-
-.iris-status-off {
-  color: #F21300;
-}
-
 
 html, body {
   /*width: 100%;
@@ -38,29 +30,6 @@ html, body {
   border: #D5D3D3 1px solid;
   border-radius: 100px;
   padding: 3px 5px 3px 5px;
-}
-
-button {
-  cursor: pointer;
-  margin-right: 5px;
-  padding: 3px;
-  outline: none;
-  border-radius: 3px;
-  border: solid 1px lightgray;
-  background-color: white;
-
-  &:active {
-    color: #fff;
-  }
-
-  &.icon-control {
-    background: none;
-    margin-right: 0px;
-    border: none;
-  }
-  &.icon-control:active {
-    color:blue;
-  }
 }
 
 #app-container {
@@ -85,7 +54,6 @@ button {
 }
 
 #app-content {
-  background:white;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -98,6 +66,7 @@ button {
     padding: 0;
     display: flex !important;
     flex-direction: column;
+    background-color: @background-grey !important;
   }
 
   .ui-layout-west {
@@ -119,7 +88,7 @@ button {
   padding: 0;
 
   .iris-tab-name-container {
-    background:#989898;
+    background: @tab-background;
     height: 35px;
 
     .iris-tab-name {
@@ -150,104 +119,45 @@ button {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
   }
 }
 
 .iris-workspace {
   flex: 1;
-  background: @background-grey;
 }
 
-//Boxes
-.iris-list {
-  li {
-    display: flex;
-    flex-flow: row;
-    flex-wrap: wrap;
-    // border-bottom: 1px solid #D5D4D4;
-
-    // height: 26px;
-
-    & ul li {
-      // border-top: 1px solid #D5D4D4;
-      border-bottom: none;
-      // margin-left: 25px;
-      border-left: none;
-    }
-
-    div {
-      float: left;
-      line-height: 26px;
-
-    }
-    .contentEditable {
-      padding: 3px;
-    }
-    .contentEditable:focus {
-      outline: none;
-      box-shadow: 0px 0px 1px grey;
-      border-radius: 5px;
-    }
-    & ul {
-      flex-grow: 1;
-    }
-  }
-
-  .iris-list-label-row {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  }
-
-  .iris-list-label-row {
-    height: 16px;
-  }
-  .iris-list-label {
-    line-height: 16px;
-    height: 16px;
-    padding-left: 0.5px;
-  }
-}
-
-.iris-graphview {
-  background: #F3F3F3;
+.iris-widget {
   height: 100%;
-  .iris-row-label {
-    line-height: 14px;
-    padding-right: 5px;
-  }
-  & li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    background: #F3F3F3;
-    padding: 4px 5px;
-      &:nth-child(even) {
-      background: #EBEBEB;
-      }
-      & .atom {
-        //Special margins for atoms within this list
-        margin: 1px 3px 3px 0px;
-      }
-  }
-}
+  background: white;
+  display: flex;
+  flex-direction: column;
 
-.atom {
-  color: #fff;
-  span {
-    padding: 2px 4px 2px 2px;
-    background: #555;
-    border-right: 1px solid #fff;
-    &:first-child {
-      border-top-left-radius: 50px;
-      border-bottom-left-radius: 50px;
-      padding-left: 6px;
+  .iris-draggable-handle {
+    cursor: move;
+    margin: 0;
+    height: 35px;
+    padding: 7px;
+    background: @iris-grey;
+    display: flex;
+    align-items: baseline;
+
+    & > :first-child {
+      margin-right: 10px;
     }
-    &:last-child {
-      border-top-right-radius: 50px;
-      border-bottom-right-radius: 50px;
+
+    // Push other elements to the sides
+    .iris-title-bar {
+        flex: 1;
     }
+
+    //Icon Sizes
+    .iris-window-control .iris-icon {
+      vertical-align: 0px;
+    }
+  }
+
+  .iris-widget-body {
+    flex: 1;
+    overflow: scroll;
   }
 }

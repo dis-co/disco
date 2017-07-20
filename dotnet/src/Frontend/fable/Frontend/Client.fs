@@ -113,6 +113,12 @@ type ClientContext private () =
     |> self.Worker.Port.PostMessage
     #endif
 
+  /// Don't send command to backend, it'll affect only the local store
+  member self.PostLocal(ev: StateMachine) =
+    printfn "Local update: %A" ev
+    ClientMessage.Event(self.Session, ev)
+    |> self.HandleClientMessage
+
   member self.Log (logLevel: LogLevel) (message : string) : unit =
     let log = Logger.create logLevel "frontend" message
     let msg = ClientMessage.Event(self.Session, LogMsg log)

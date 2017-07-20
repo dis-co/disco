@@ -26,12 +26,12 @@ var babelOptions = {
   plugins: ["transform-runtime"]
 }
 
-var frontendConfig = {
+module.exports = {
   devtool: isProduction ? false : 'inline-source-map',
-  entry: resolve('./fable/Frontend/Frontend.fsproj'),
+  entry: resolve('./Frontend.fsproj'),
   output: {
     filename: 'iris.js', // the output bundle
-    path: resolve('js'),
+    path: resolve('../../js'),
     publicPath: '/js/', // For dev server
     libraryTarget: "var",
     library: "IrisLib"
@@ -41,12 +41,10 @@ var frontendConfig = {
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json'],
-    modules: [
-      "node_modules", resolve("../../node_modules/")
-    ]
+    modules: [resolve("../../../../node_modules/")]
   },
   devServer: {
-    contentBase: resolve("."),
+    contentBase: resolve("../.."),
     host: irisHost,
     port: 3000,
     historyApiFallback: true, // respond to 404s with index.html
@@ -69,14 +67,14 @@ var frontendConfig = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"].concat(isDesignMode ? "DESIGN" : null).filter(x => x),
-            plugins: resolve("./fable/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
-            extra: { useCache: true }
+            plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            // extra: { useCache: true }
           }
         }
       },
       {
         test: /\.js$/,
-        exclude: /node_modules[\\\/](?!fable-)/,
+        exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: babelOptions
@@ -93,5 +91,3 @@ var frontendConfig = {
     ],
   },
 };
-
-module.exports = [frontendConfig, require("./fable/Worker/webpack.config.js")]
