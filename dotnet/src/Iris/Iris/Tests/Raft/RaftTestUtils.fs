@@ -34,24 +34,25 @@ module RaftTestUtils =
   /// Callbacks fired when instantiating the Raft
   [<NoEquality;NoComparison>]
   type Callbacks =
-    { SendRequestVote     : RaftMember        -> VoteRequest     -> unit
-      SendAppendEntries   : RaftMember        -> AppendEntries   -> unit
-      SendInstallSnapshot : RaftMember        -> InstallSnapshot -> unit
-      PersistSnapshot     : RaftLogEntry      -> unit
-      PrepareSnapshot     : RaftValue         -> RaftLog option
-      RetrieveSnapshot    : unit              -> RaftLogEntry option
-      ApplyLog            : StateMachine      -> unit
-      MemberAdded         : RaftMember        -> unit
-      MemberUpdated       : RaftMember        -> unit
-      MemberRemoved       : RaftMember        -> unit
-      Configured          : RaftMember array  -> unit
-      StateChanged        : RaftState         -> RaftState -> unit
-      LeaderChanged       : MemberId option   -> unit
-      PersistVote         : RaftMember option -> unit
-      PersistTerm         : Term              -> unit
-      PersistLog          : RaftLogEntry      -> unit
-      DeleteLog           : RaftLogEntry      -> unit
-      LogMsg              : RaftMember        -> CallSite -> LogLevel -> String -> unit }
+    { SendRequestVote     : RaftMember         -> VoteRequest     -> unit
+      SendAppendEntries   : RaftMember         -> AppendEntries   -> unit
+      SendInstallSnapshot : RaftMember         -> InstallSnapshot -> unit
+      PersistSnapshot     : RaftLogEntry       -> unit
+      PrepareSnapshot     : RaftValue          -> RaftLog option
+      RetrieveSnapshot    : unit               -> RaftLogEntry option
+      ApplyLog            : StateMachine       -> unit
+      MemberAdded         : RaftMember         -> unit
+      MemberUpdated       : RaftMember         -> unit
+      MemberRemoved       : RaftMember         -> unit
+      Configured          : RaftMember array   -> unit
+      JointConsensus      : ConfigChange array -> unit
+      StateChanged        : RaftState          -> RaftState -> unit
+      LeaderChanged       : MemberId option    -> unit
+      PersistVote         : RaftMember option  -> unit
+      PersistTerm         : Term               -> unit
+      PersistLog          : RaftLogEntry       -> unit
+      DeleteLog           : RaftLogEntry       -> unit
+      LogMsg              : RaftMember         -> CallSite -> LogLevel -> String -> unit }
 
     interface IRaftCallbacks with
       member self.SendRequestVote mem req    = self.SendRequestVote mem req
@@ -65,6 +66,7 @@ module RaftTestUtils =
       member self.MemberUpdated mem          = self.MemberUpdated mem
       member self.MemberRemoved mem          = self.MemberRemoved mem
       member self.Configured mems            = self.Configured mems
+      member self.JointConsensus changes     = self.JointConsensus changes
       member self.StateChanged olds news     = self.StateChanged olds news
       member self.LeaderChanged leader       = self.LeaderChanged leader
       member self.PersistVote mem            = self.PersistVote mem
@@ -106,6 +108,9 @@ module RaftTestUtils =
 
         Configured = fun mems ->
           sprintf "Cluster configuration applied:\n%A" mems |> Logger.debug "Configured"
+
+        JointConsensus = fun changes ->
+          sprintf "Entering joint consensus:\n%A" changes |> Logger.debug "Configured"
 
         StateChanged = fun _ _ ->
           sprintf "state changed" |> Logger.debug "StateChanged"

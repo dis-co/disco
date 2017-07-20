@@ -258,7 +258,22 @@ module IrisService =
   let private processEvent (store: IAgentStore<IrisState>) ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
-    | IrisEvent.Configured mems ->
+    | IrisEvent.EnterJointConsensus changes ->
+      changes
+      |> Array.map
+        (function
+          | ConfigChange.MemberAdded mem ->
+            mem
+            |> Member.getId
+            |> String.format "added {0}"
+          | ConfigChange.MemberRemoved mem ->
+            mem
+            |> Member.getId
+            |> String.format "removed {0}")
+      |> Array.fold (fun s id -> s + " " + id) "Joint consensus with: "
+      |> Logger.debug (tag "processEvent")
+
+    | IrisEvent.ConfigurationDone mems ->
       mems
       |> Array.map (Member.getId >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "

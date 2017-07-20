@@ -198,7 +198,7 @@ module rec Raft =
       let! cbs = read
 
       let msg =
-        sprintf "SendAppendEntries: (to: %s) (ci: %d) (term: %d) (leader commit: %d) (prv log idx: %d) (prev log term: %d)"
+        sprintf "to: %s ci: %d term: %d leader-commit: %d prv-log-idx: %d prev-log-term: %d"
           (string mem.Id)
           (currentIndex state)
           request.Term
@@ -1468,8 +1468,8 @@ module rec Raft =
       if Option.isSome msg.Entries then
         let! current = currentIndexM ()
         let str =
-          sprintf "(from: %s) (term: %d) (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
-                     (string nid)
+          sprintf "from: %A term: %d (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
+                     nid
                      msg.Term
                      current
                      msg.LeaderCommit
@@ -1489,8 +1489,9 @@ module rec Raft =
           | Some log ->
             return! checkAndProcess log nid msg resp
           | _ ->
-            let str = sprintf "Failed. No log at (prev log idx %d)" msg.PrevLogIdx
-            do! error "receiveAppendEntries" str
+            do! msg.PrevLogIdx
+                |> String.format "Failed. No log at (prev-log-idx: {0})"
+                |> error "receiveAppendEntries"
             return resp
         else
           return! processEntry nid msg resp
@@ -1762,7 +1763,7 @@ module rec Raft =
       let resp = { Id = Id.Create(); Term = term 0; Index = index 0 }
 
       if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
-        do! debug "receiveEntry" "Failed: UnexpectedVotingChange"
+        do! debug "receiveEntry" "Error: UnexpectedVotingChange"
         return!
           "Unexpected Voting Change"
           |> Error.asRaftError (tag "receiveEntry")
@@ -1777,23 +1778,23 @@ module rec Raft =
         let! term = currentTermM ()
 
         match entry with
-          | LogEntry(id,_,_,data,_) ->
-            let log = LogEntry(id, index 0, term, data, None)
-            return! handleLog log resp
+        | LogEntry(id,_,_,data,_) ->
+          let log = LogEntry(id, index 0, term, data, None)
+          return! handleLog log resp
 
-          | Configuration(id,_,_,mems,_) ->
-            let log = Configuration(id, index 0, term, mems, None)
-            return! handleLog log resp
+        | Configuration(id,_,_,mems,_) ->
+          let log = Configuration(id, index 0, term, mems, None)
+          return! handleLog log resp
 
-          | JointConsensus(id,_,_,changes,_) ->
-            let log = JointConsensus(id, index 0, term, changes, None)
-            return! handleLog log resp
+        | JointConsensus(id,_,_,changes,_) ->
+          let log = JointConsensus(id, index 0, term, changes, None)
+          return! handleLog log resp
 
-          | _ ->
-            return!
-              "Log Format Error"
-              |> Error.asRaftError (tag "receiveEntry")
-              |> failM
+        | _ ->
+          return!
+            "Log Format Error"
+            |> Error.asRaftError (tag "receiveEntry")
+            |> failM
       else
         return!
           "Not Leader"
@@ -1839,7 +1840,9 @@ module rec Raft =
   // ** applyEntry
 
   let applyEntry (cbs: IRaftCallbacks) = function
-    | JointConsensus(_,_,_,changes,_) -> Array.iter (notifyChange cbs) changes
+    | JointConsensus(_,_,_,changes,_) ->
+      Array.iter (notifyChange cbs) changes
+      cbs.JointConsensus changes
     | Configuration(_,_,_,mems,_) -> cbs.Configured mems
     | LogEntry(_,_,_,data,_) -> cbs.ApplyLog data
     | Snapshot(_,_,_,_,_,_,data) as snapshot ->
@@ -1892,7 +1895,11 @@ module rec Raft =
               (state, state.ConfigChangeEntry)
               entries
 
-          do! debug "applyEntries" (sprintf "setting ConfigChangeEntry to %A" change)
+          do! match change with
+              | Some _ -> "setting ConfigChangeEntry to JointConsensus"
+              | None   -> "resetting ConfigChangeEntry"
+              |> debug "applyEntries"
+
           do! put { state with ConfigChangeEntry = change }
 
           if LogEntry.contains LogEntry.isConfiguration entries then

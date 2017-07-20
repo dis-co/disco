@@ -16,7 +16,7 @@ open Persistence
 
 // * Raft
 
-module RaftServer =
+module rec RaftServer =
 
   // ** tag
 
@@ -200,7 +200,11 @@ module RaftServer =
 
   let private handleNotify (state: RaftServerState) (ev: IrisEvent) =
     Observable.onNext state.Subscriptions ev
-    state
+    if state.Raft.IsLeader then
+      match ev with
+      | IrisEvent.EnterJointConsensus _ -> onConfigDone state
+      | _ -> state
+    else state
 
   // ** sendRequest
 
@@ -281,10 +285,17 @@ module RaftServer =
             |> Msg.Notify
             |> agent.Post
 
+        member self.JointConsensus changes =
+          Tracing.trace (tag "configured") <| fun () ->
+            changes
+            |> IrisEvent.EnterJointConsensus
+            |> Msg.Notify
+            |> agent.Post
+
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
             mems
-            |> IrisEvent.Configured
+            |> IrisEvent.ConfigurationDone
             |> Msg.Notify
             |> agent.Post
 
@@ -376,14 +387,23 @@ module RaftServer =
 
   let private onConfigDone (state: RaftServerState) =
     Tracing.trace (tag "onConfigDone") <| fun () ->
-      "appending entry to exit joint-consensus into regular configuration"
-      |> Logger.debug (tag "onConfigDone")
-
-      state.Raft.Peers
-      |> Map.toArray
-      |> Array.map snd
-      |> Log.mkConfig state.Raft.CurrentTerm
-      |> appendEntry state
+      let result =
+        state.Raft.Peers
+        |> Map.toArray
+        |> Array.map snd
+        |> Log.mkConfig state.Raft.CurrentTerm
+        |> appendEntry state
+      match result with
+      | Right (entry, newstate) ->
+        entry.Id
+        |> String.format "appended new Configuration in {0}"
+        |> Logger.info (tag "onConfigDone")
+        newstate
+      | Left (error, newstate) ->
+        error
+        |> String.format "error appending new Configruation: {0}"
+        |> Logger.err (tag "onConfigDone")
+        newstate
 
   // ** addMembers
 
@@ -1339,7 +1359,7 @@ module RaftServer =
   // ** handleClientEvent
 
   let private handleClientEvent state agent = function
-    | TcpClientEvent.Connected peer -> handleClientState  state peer RaftMemberState.Running
+    | TcpClientEvent.Connected peer    -> handleClientState  state peer RaftMemberState.Running
     | TcpClientEvent.Response response -> handleClientResponse state response agent
     | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
     | TcpClientEvent.Disconnected(peer, error) ->
@@ -1429,7 +1449,7 @@ module RaftServer =
               | Msg.Started                       -> handleStarted        state
               | Msg.Stop                          -> handleStop           state inbox
               | Msg.Stopped                       -> handleStopped        state
-              | Msg.Notify             ev         -> handleNotify         state ev
+              | Msg.Notify              ev        -> handleNotify         state ev
               | Msg.Periodic                      -> handlePeriodic       state
               | Msg.ForceElection                 -> handleForceElection  state inbox
               | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd

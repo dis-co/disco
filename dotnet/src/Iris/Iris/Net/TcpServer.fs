@@ -229,14 +229,14 @@ module TcpServer =
 
     let private onSend (args: SocketAsyncEventArgs) =
       let listener, connection, state = args.UserToken :?> (IDisposable * IConnection * IState)
-      dispose listener
       if args.SocketError <> SocketError.Success then
         do onError "onSend" state args
       else
-        sprintf "sent %d bytes" args.BytesTransferred
+        args.BytesTransferred
+        |> String.format "sent {0} bytes"
         |> Logger.err (tag "onSend")
-
         do returnArgs state args
+      do dispose listener
 
     // *** sendAsync
 
@@ -259,18 +259,17 @@ module TcpServer =
       let listener, connection, buffer, state =
         args.UserToken :?> (IDisposable * IConnection * IBuffer * IState)
 
-      dispose listener
       if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
         connection.RequestBuilder.Process buffer args.Offset args.BytesTransferred
-
         args.BytesTransferred
-        |> sprintf "HMMMM received %d bytes"
+        |> String.format "received {0} bytes"
         |> Logger.err (tag "onReceive")
-
         do returnArgs state args
         do receiveAsync state connection
       else
         do onError "onReceive" state args
+
+      do dispose listener
 
     // *** receiveAsync
 

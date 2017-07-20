@@ -281,7 +281,7 @@ module RaftIntegrationTests =
             |> sprintf "%O was added"
             |> Logger.debug "test"
             added.Set() |> ignore
-          | IrisEvent.Configured mems ->
+          | IrisEvent.ConfigurationDone mems ->
             Array.length mems
             |> sprintf "new cluster configuration active with %d members"
             |> Logger.debug "test"
@@ -369,8 +369,10 @@ module RaftIntegrationTests =
   //  / ___ \| | |   | |  __/\__ \ |_\__ \
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
+  // let logs = Logger.subscribe Logger.stdout
+
   let raftIntegrationTests =
-    testList "Raft Integration Tests" [
+    ftestList "Raft Integration Tests" [
       // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port

@@ -458,6 +458,9 @@ type IRaftCallbacks =
   /// a cluster configuration transition was successfully applied
   abstract member Configured: members:RaftMember array  -> unit
 
+  /// a cluster configuration transition was successfully applied
+  abstract member JointConsensus: changes:ConfigChange array  -> unit
+
   /// the state of Raft itself has changed from old state to new given state
   abstract member StateChanged: oldstate:RaftState -> newstate:RaftState -> unit
 

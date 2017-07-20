@@ -81,34 +81,36 @@ type ClockEvent =
 
 [<NoComparison;NoEquality>]
 type IrisEvent =
-  | Started         of tipe:ServiceType
-  | Configured      of members:RaftMember array
-  | LeaderChanged   of leader:MemberId option
-  | StateChanged    of oldstate:RaftState * newstate:RaftState
-  | PersistSnapshot of log:RaftLogEntry
-  | RaftError       of error:IrisError
-  | Status          of ServiceStatus
-  | GitPull         of remote:IpAddress
-  | GitPush         of remote:IpAddress
-  | Append          of origin:Origin * cmd:StateMachine
-  | SessionOpened   of session:Id
-  | SessionClosed   of session:Id
+  | Started             of tipe:ServiceType
+  | ConfigurationDone   of members:RaftMember array
+  | EnterJointConsensus of changes:ConfigChange array
+  | LeaderChanged       of leader:MemberId option
+  | StateChanged        of oldstate:RaftState * newstate:RaftState
+  | PersistSnapshot     of log:RaftLogEntry
+  | RaftError           of error:IrisError
+  | Status              of ServiceStatus
+  | GitPull             of remote:IpAddress
+  | GitPush             of remote:IpAddress
+  | Append              of origin:Origin * cmd:StateMachine
+  | SessionOpened       of session:Id
+  | SessionClosed       of session:Id
 
   // ** ToString
 
   override ev.ToString() =
     match ev with
-    | Started          _  -> "Started"
-    | Configured       _  -> "Configured"
-    | LeaderChanged    _  -> "LeaderChanged"
-    | StateChanged     _  -> "StateChanged"
-    | PersistSnapshot  _  -> "PersistSnapshot"
-    | RaftError        _  -> "RaftError"
-    | Status           _  -> "Status"
-    | SessionOpened    _  -> "SessionOpened"
-    | SessionClosed    _  -> "SessionClosed"
-    | GitPull          _  -> "GitPull"
-    | GitPush          _  -> "GitPush"
+    | Started             _  -> "Started"
+    | ConfigurationDone   _  -> "ConfigurationDone"
+    | EnterJointConsensus _  -> "EnterJointConsensus"
+    | LeaderChanged       _  -> "LeaderChanged"
+    | StateChanged        _  -> "StateChanged"
+    | PersistSnapshot     _  -> "PersistSnapshot"
+    | RaftError           _  -> "RaftError"
+    | Status              _  -> "Status"
+    | SessionOpened       _  -> "SessionOpened"
+    | SessionClosed       _  -> "SessionClosed"
+    | GitPull             _  -> "GitPull"
+    | GitPush             _  -> "GitPush"
     | Append (origin,cmd) -> sprintf "Append(%s, %s)" (string origin) (string cmd)
 
   // ** Origin
@@ -116,18 +118,19 @@ type IrisEvent =
   member ev.Origin
     with get () =
       match ev with
-      | Started         _
-      | Configured      _
-      | LeaderChanged   _
-      | StateChanged    _
-      | PersistSnapshot _
-      | RaftError       _
-      | SessionOpened   _
-      | SessionClosed   _
-      | GitPull         _
-      | GitPush         _
-      | Status          _  -> None
-      | Append (origin, _) -> Some origin
+      | Started             _
+      | ConfigurationDone   _
+      | EnterJointConsensus _
+      | LeaderChanged       _
+      | StateChanged        _
+      | PersistSnapshot     _
+      | RaftError           _
+      | SessionOpened       _
+      | SessionClosed       _
+      | GitPull             _
+      | GitPush             _
+      | Status              _  -> None
+      | Append (origin,     _) -> Some origin
 
   // ** DispatchStrategy
 
@@ -143,11 +146,12 @@ type IrisEvent =
       // |  _ < (_| |  _| |_
       // |_| \_\__,_|_|  \__|
 
-      | Configured      _
-      | StateChanged    _
-      | LeaderChanged   _
-      | PersistSnapshot _
-      | RaftError       _                                    -> Process
+      | ConfigurationDone   _
+      | EnterJointConsensus _
+      | StateChanged        _
+      | LeaderChanged       _
+      | PersistSnapshot     _
+      | RaftError           _                                -> Process
 
       //   ____ _ _
       //  / ___(_) |_

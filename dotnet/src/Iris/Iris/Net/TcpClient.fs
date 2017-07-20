@@ -29,6 +29,10 @@ module rec TcpClient =
 
   type private PendingRequests = ConcurrentDictionary<RequestId,Request>
 
+  // ** BufferedArgs
+
+  type private BufferedArgs = ConcurrentBag<SocketAsyncEventArgs>
+
   // ** IState
 
   type private IState =
@@ -39,6 +43,7 @@ module rec TcpClient =
     abstract ConnectionId: byte array
     abstract Socket: Socket
     abstract EndPoint: IPEndPoint
+    abstract SocketAsyncEventArgs: SocketAsyncEventArgs with get, set
     abstract BufferManager: IBufferManager
     abstract PendingRequests: PendingRequests
     abstract ResponseBuilder: IResponseBuilder
@@ -58,11 +63,15 @@ module rec TcpClient =
 
     let manager = BufferManager.create Core.MAX_CONNECTIONS Core.BUFFER_SIZE
 
+    let args = BufferedArgs()
+    for n in 1 .. (Core.MAX_CONNECTIONS) do
+      new SocketAsyncEventArgs()
+      |> args.Add
+
     let pending = PendingRequests()
     let mutable status = ServiceStatus.Stopped
 
     let builder = ResponseBuilder.create <| fun request client body  ->
-      Logger.warn (tag "finalize") (string request)
       if pending.ContainsKey request then
         pending.TryRemove(request) |> ignore
         body
@@ -104,6 +113,18 @@ module rec TcpClient =
         member state.PendingRequests
           with get () = pending
 
+        member state.SocketAsyncEventArgs
+          with get () =
+            match args.TryTake() with
+            | true, arg -> arg
+            | false, _ -> new SocketAsyncEventArgs()
+          and set arg =
+            arg.AcceptSocket <- null
+            arg.RemoteEndPoint <- null
+            arg.UserToken <- null
+            arg.SetBuffer(null, 0, 0)
+            args.Add arg
+
         member state.Disposed
           with get () = cts.IsCancellationRequested
 
@@ -129,11 +150,13 @@ module rec TcpClient =
   // ** onError
 
   let private onError location (args: SocketAsyncEventArgs) =
-    let buffer, state = args.UserToken :?> IBuffer * IState
+    let listener, buffer, state = args.UserToken :?> IDisposable * IBuffer * IState
     let msg = String.Format("{0} in socket operation", args.SocketError)
     let error = Error.asSocketError (tag location) msg
-    dispose buffer
+    do dispose buffer
+    do dispose listener
     do Logger.err (tag location) msg
+    state.SocketAsyncEventArgs <- args
     state.Status <- ServiceStatus.Failed error
     (state.ClientId, error)
     |> TcpClientEvent.Disconnected
@@ -142,8 +165,8 @@ module rec TcpClient =
   // ** onSend
 
   let private onSend (args: SocketAsyncEventArgs) =
+    let listener, state = args.UserToken :?> IDisposable * IState
     if args.SocketError <> SocketError.Success then
-      let state = args.UserToken :?> IState
       let msg = String.Format("{0} in socket operation", args.SocketError)
       let error = Error.asSocketError (tag "onError") msg
       do Logger.err (tag "onError") msg
@@ -152,17 +175,20 @@ module rec TcpClient =
       |> TcpClientEvent.Disconnected
       |> Observable.onNext state.Subscriptions
     else
-      sprintf "sent %d bytes" args.BytesTransferred
-      |> Logger.err (tag "onSend")
+      args.BytesTransferred
+      |> String.format "sent {0} bytes"
+      |> Logger.debug (tag "onSend")
+    do dispose listener
+    state.SocketAsyncEventArgs <- args
 
   // ** sendAsync
 
   let private sendAsync (state: IState) (bytes: byte array) =
-    let args = new SocketAsyncEventArgs()
-    args.RemoteEndPoint <- state.EndPoint
-    args.UserToken <- state
+    let args = state.SocketAsyncEventArgs
     do args.SetBuffer(bytes, 0, bytes.Length)
-    do args.Completed.Add onSend
+    let listener = args.Completed.Subscribe onSend
+    args.RemoteEndPoint <- state.EndPoint
+    args.UserToken <- listener, state
     try
       match state.Socket.SendAsync(args) with
       | true -> ()
@@ -174,13 +200,13 @@ module rec TcpClient =
 
   let private onReceive (args: SocketAsyncEventArgs) =
     if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
-      let buffer, state = args.UserToken :?> IBuffer * IState
+      let listener, buffer, state = args.UserToken :?> IDisposable * IBuffer * IState
       do state.ResponseBuilder.Process buffer args.Offset args.BytesTransferred
-      do args.Dispose()
-
-      sprintf "received %d bytes" args.BytesTransferred
+      do dispose listener
+      args.BytesTransferred
+      |> String.format "received {0} bytes"
       |> Logger.err (tag "onReceive")
-
+      state.SocketAsyncEventArgs <- args
       do receiveAsync state
     else onError "onReceive" args
 
@@ -188,10 +214,10 @@ module rec TcpClient =
 
   let private receiveAsync (state: IState) =
     let buffer = state.BufferManager.TakeBuffer()
-    let args = new SocketAsyncEventArgs()
-    args.Completed.Add onReceive
+    let args = state.SocketAsyncEventArgs
+    let listener = args.Completed.Subscribe onReceive
     args.RemoteEndPoint <- state.EndPoint
-    args.UserToken <- buffer, state
+    args.UserToken <- listener, buffer, state
     args.SetBuffer(buffer.Data, 0, buffer.Length)
     if not state.Disposed then
       match state.Socket.ReceiveAsync(args) with
@@ -202,11 +228,10 @@ module rec TcpClient =
 
   let private onInitialize (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
-      let buffer, state = args.UserToken :?> IBuffer * IState
+      let listener, buffer, state = args.UserToken :?> IDisposable * IBuffer * IState
       let tmp = Array.zeroCreate Core.CONNECTED.Length
       Array.blit args.Buffer 0 tmp 0 Core.CONNECTED.Length
       if tmp = Core.CONNECTED then
-        Logger.debug (tag "onInitialize") "connection successful"
         state.Status <- ServiceStatus.Running
         do state.ClientId
           |> TcpClientEvent.Connected
@@ -219,8 +244,9 @@ module rec TcpClient =
         do (state.ClientId, error)
           |> TcpClientEvent.Disconnected
           |> Observable.onNext state.Subscriptions
-      do args.Dispose()
+      do dispose listener
       do dispose buffer
+      state.SocketAsyncEventArgs <- args
     else onError "onInitialize" args
 
   // ** initializeAsync
@@ -228,9 +254,9 @@ module rec TcpClient =
   let private initializeAsync (state: IState) =
     do sendAsync state state.ConnectionId
     let buffer = state.BufferManager.TakeBuffer()
-    let args = new SocketAsyncEventArgs()
-    args.Completed.Add onInitialize
-    args.UserToken <- buffer, state
+    let args = state.SocketAsyncEventArgs
+    let listener = args.Completed.Subscribe onInitialize
+    args.UserToken <- listener, buffer, state
     args.SetBuffer(buffer.Data, 0, Core.CONNECTED.Length)
     if not state.Disposed then
       match state.Socket.ReceiveAsync(args) with
@@ -241,10 +267,11 @@ module rec TcpClient =
 
   let private onConnected (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
-      let buffer, state = args.UserToken :?> IBuffer * IState
+      let listener, buffer, state = args.UserToken :?> IDisposable * IBuffer * IState
       do initializeAsync state
-      do args.Dispose()
+      do dispose listener
       do dispose buffer
+      state.SocketAsyncEventArgs <- args
     else onError "onConnected" args
 
   // ** connectAsync
@@ -252,10 +279,10 @@ module rec TcpClient =
   let private connectAsync (state: IState) =
     state.Status <- ServiceStatus.Starting
     let buffer = state.BufferManager.TakeBuffer()
-    let args = new SocketAsyncEventArgs()
-    do args.Completed.Add onConnected
+    let args = state.SocketAsyncEventArgs
+    let listener = args.Completed.Subscribe onConnected
     args.RemoteEndPoint <- state.EndPoint
-    args.UserToken <- buffer, state
+    args.UserToken <- listener, buffer, state
     match state.Socket.ConnectAsync args with
     | true  -> ()
     | false -> onConnected args
