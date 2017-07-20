@@ -372,7 +372,7 @@ module RaftIntegrationTests =
   // let logs = Logger.subscribe Logger.stdout
 
   let raftIntegrationTests =
-    ftestList "Raft Integration Tests" [
+    testList "Raft Integration Tests" [
       // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port

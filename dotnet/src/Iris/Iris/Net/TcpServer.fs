@@ -9,8 +9,6 @@ open System.Net.Sockets
 open System.Threading
 open System.Threading.Tasks
 open System.Collections.Concurrent
-open System.ServiceModel.Channels
-
 open Iris.Core
 
 // * TcpServer
