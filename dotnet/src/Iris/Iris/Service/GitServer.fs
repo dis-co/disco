@@ -23,6 +23,7 @@ open Suave.Git
 open System
 open System.IO
 open System.Text
+open System.Text.RegularExpressions
 open System.Threading
 open System.Diagnostics
 
@@ -40,11 +41,38 @@ module GitServer =
 
   type Subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>
 
+  // ** logger
+
+  let private makeLogger () =
+    let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
+    { new Logger with
+        member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> =
+          match level with
+          | Suave.Logging.LogLevel.Verbose -> ()
+          | level ->
+            let line = nextLine level
+            match line.value with
+            | Event template ->
+              reg.Replace(template, fun m ->
+                let value = line.fields.[m.Groups.[1].Value]
+                if m.Groups.Count = 3
+                then System.String.Format("{0:" + m.Groups.[2].Value + "}", value)
+                else string value)
+              |> Logger.debug (tag "logger")
+            | Gauge _ -> ()
+          async.Return ()
+        member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> =
+          // failwith "Not implemented yet"
+          async.Return ()
+        member x.name: string [] =
+          [| "iris" |] }
+
   // ** makeConfig
 
   let private makeConfig (ip: IpAddress) port (cts: CancellationTokenSource) =
     let addr = ip.toIPAddress()
     { defaultConfig with
+        logger = makeLogger()
         cancellationToken = cts.Token
         bindings = [ HttpBinding.create HTTP addr port ]
         mimeTypesMap = defaultMimeTypesMap }

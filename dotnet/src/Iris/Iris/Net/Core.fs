@@ -657,6 +657,8 @@ module Socket =
     try
       socket.Disconnect(false)
     with
+      | :? ObjectDisposedException ->
+        Logger.err (tag "disconnect") "socket already disposed"
       | exn ->
         Logger.err (tag "disconnect") exn.Message
 
