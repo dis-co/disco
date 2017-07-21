@@ -62,7 +62,7 @@ type LogLevel =
     | Debug -> "debug"
     | Info  -> "info"
     | Warn  -> "warn"
-    | Err   -> "err"
+    | Err   -> "error"
 
 // * Tier
 
