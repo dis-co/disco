@@ -1359,16 +1359,10 @@ module rec RaftServer =
   // ** handleClientEvent
 
   let private handleClientEvent state agent = function
-    | TcpClientEvent.Connected peer    -> handleClientState  state peer RaftMemberState.Running
     | TcpClientEvent.Response response -> handleClientResponse state response agent
     | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
-    | TcpClientEvent.Disconnected(peer, error) ->
-      try
-        let connection = state.Connections.[peer]
-        connection.Disconnect()
-        connection.Connect()
-      with | exn -> Logger.err (tag "handleClientEvent") exn.Message
-      handleClientState    state peer RaftMemberState.Failed
+    | TcpClientEvent.Connected peer        -> handleClientState state peer RaftMemberState.Running
+    | TcpClientEvent.Disconnected(peer, _) -> handleClientState state peer RaftMemberState.Failed
 
   // ** handleStop
 
