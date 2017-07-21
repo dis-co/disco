@@ -72,7 +72,7 @@ module Main =
         Id = machine.MachineId
         Tier = Tier.Service
         UseColors = false
-        LogLevel = LogLevel.Debug
+        Level = LogLevel.Debug
       }
 
       match parsed.GetResult <@ Cmd @>, dir with
