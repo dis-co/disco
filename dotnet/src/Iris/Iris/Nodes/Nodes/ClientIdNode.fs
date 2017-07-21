@@ -45,7 +45,12 @@ type ClientIdNode() =
               Logger.err "ClientId (Iris)" exn.StackTrace
               Id.Create()
 
-        Logger.initialize id
+        Logger.initialize {
+          Id = id
+          Tier = Tier.Client
+          UseColors = false
+          LogLevel = LogLevel.Debug
+        }
 
         self.OutId.SliceCount <- 1
         self.OutIdStr.SliceCount <- 1

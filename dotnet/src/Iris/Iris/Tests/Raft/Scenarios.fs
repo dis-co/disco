@@ -145,7 +145,7 @@ module Scenarios =
     Map.fold (anyMsg) false peers
 
   // Do 50 iterations maximum. If unsure, turn up value.
-  let config = { FsCheck.Config.Default with MaxTest = 50 }
+  let config = { FsCheckConfig.defaultConfig with maxTest = 50 }
 
   let scenario_leader_appears =
     testPropertyWithConfig config "leader appears" <| fun _ ->

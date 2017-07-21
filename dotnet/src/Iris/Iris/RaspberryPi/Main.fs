@@ -108,7 +108,12 @@ module Main =
     // create a new unique client id (must be a GUID)
     let clientid = Id.Create()
 
-    Logger.initialize clientid
+    Logger.initialize {
+      Id = clientId
+      Tier = Tier.Client
+      UseColors = false
+      LogLevel = LogLevel.Debug
+    }
 
     let server =
       { Port =

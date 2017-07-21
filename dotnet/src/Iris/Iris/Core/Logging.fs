@@ -251,6 +251,24 @@ type LogEvent =
 
   #endif
 
+// * LoggingSettings
+
+type LoggingSettings =
+  { Id: Id
+    Level: LogLevel
+    UseColors: bool
+    Tier: Tier }
+
+// * LoggingSettings
+
+module LoggingSettings =
+
+  let defaultSettings =
+    { Id = Id.Create()
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
+
 // * Logger
 
 [<RequireQualifiedAccess>]
@@ -262,13 +280,17 @@ module Logger =
   open System.Threading
   open Iris.Core
 
-  // ** id
+  // ** settings
 
-  let mutable private id = Id "<uninitialized>"
+  let mutable private settings =
+    { Id = Id "<uninitialized>"
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
 
   // ** initialize
 
-  let initialize (mid: Id) = id <- mid
+  let initialize config = settings <- config
 
   // ** colors
 
@@ -348,30 +370,32 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    green "{0}" "["
-    match log.LogLevel with
-    | LogLevel.Trace -> darkGray "{0,-5}" log.LogLevel
-    | LogLevel.Debug -> white    "{0,-5}" log.LogLevel
-    | LogLevel.Info  -> green    "{0,-5}" log.LogLevel
-    | LogLevel.Warn  -> darkRed  "{0,-5}" log.LogLevel
-    | LogLevel.Err   -> red      "{0,-5}" log.LogLevel
-    green "{0}" "] "
+    if settings.UseColors then
+      darkGreen "{0}" "["
+      match log.LogLevel with
+      | LogLevel.Trace -> gray   "{0,-5}" log.LogLevel
+      | LogLevel.Debug -> white  "{0,-5}" log.LogLevel
+      | LogLevel.Info  -> green  "{0,-5}" log.LogLevel
+      | LogLevel.Warn  -> yellow "{0,-5}" log.LogLevel
+      | LogLevel.Err   -> red    "{0,-5}" log.LogLevel
+      darkGreen "{0}" "] "
 
-    cyan  "{0}:" "ts"
-    white "{0} " log.Time
+      darkGreen "{0}:" "ts"
+      white     "{0} " log.Time
 
-    cyan  "{0}:" "id"
-    white "{0} " log.Id.Prefix
+      darkGreen "{0}:" "id"
+      white     "{0} " log.Id.Prefix
 
-    cyan  "{0}:"    "type"
-    white "{0,-7} " log.Tier
+      darkGreen "{0}:"    "type"
+      white     "{0,-7} " log.Tier
 
-    cyan   "{0}:"     "in"
-    yellow "{0,-30} " log.Tag
+      darkGreen "{0}:"     "in"
+      yellow    "{0,-30} " log.Tag
 
-    white  "{0}"  log.Message
-    Console.Write(System.Environment.NewLine)
-
+      white  "{0}"  log.Message
+      Console.Write(System.Environment.NewLine)
+    else
+      Console.WriteLine("{0}", log)
 
   // ** filter
 
@@ -393,9 +417,13 @@ module Logger =
       stdout log
     | _ -> ()
 
+  // ** subscriptions
+
   let private subscriptions = new ResizeArray<IObserver<LogEvent>>()
 
-  let listener =
+  // ** listener
+
+  let private listener =
     { new IObservable<LogEvent> with
         member self.Subscribe(obs) =
 
@@ -434,6 +462,8 @@ module Logger =
           sub.OnNext log
     }
 
+  // ** subscribe
+
   /// ## subscribe
   ///
   /// Log the given string.
@@ -443,30 +473,6 @@ module Logger =
         member x.OnError(error) = ()
         member x.OnNext(value) = cb value }
     |> listener.Subscribe
-
-  // let filter (level: LogLevel) (logger: LogEvent -> unit) =
-  //     /// ## To `log` or not, that is the question.
-  //     match level with
-  //     /// In Debug, all messages get logged
-  //     | Debug -> onLog log
-
-  //     // In Info mode, all messages except `Debug` ones get logged
-  //     | Info  ->
-  //       match log.LogLevel with
-  //       | Info | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Warn mode, messages of type `Err` and `Warn` get logged
-  //     | Warn  ->
-  //       match log.LogLevel with
-  //       | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Err mode, only messages of type `Err` get logged
-  //     | Err   ->
-  //       match log.LogLevel with
-  //       | Err -> onLog log
-  //       | _ -> ()
 
   // ** create
 
@@ -481,27 +487,15 @@ module Logger =
   ///
   /// Returns: LogEvent
   let create (level: LogLevel) (callsite: CallSite) (msg: string) =
-    let tier =
-      #if FABLE_COMPILER
-      Tier.FrontEnd
-      #endif
-      #if IRIS_NODES
-      Tier.Client
-      #endif
-      #if !IRIS_NODES && !FABLE_COMPILER
-      Tier.Service
-      #endif
-
     let now  = DateTime.UtcNow |> Time.unixTime
-
     { Time     = uint32 now
       #if FABLE_COMPILER
       Thread   = 1
       #else
       Thread   = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = tier
-      Id       = id
+      Tier     = settings.Tier
+      Id       = settings.Id
       Tag      = callsite
       LogLevel = level
       Message  = msg }
