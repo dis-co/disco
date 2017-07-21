@@ -9,16 +9,45 @@ open Fable.Import
 open Fable.Import.Browser
 open Iris.Web.State
 
+open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Helpers
 
-let inline Class x = ClassName x
+module PanelLeft =
+  let view() = div [] []
 
-let root (model: Model) dispatch =
+module Tabs =
+  let view() = div [] []
+
+let view (model: Model) dispatch =
   div [Id "app"] [
     Navbar.view()
+    div [Id "app-content"] [
+      div [Class "ui-layout-west"] [
+        PanelLeft.view()
+      ]
+      div [Class "ui-layout-center"] [
+        Tabs.view()
+      ]
+    ]
+    footer [Id "app-footer"] [
+      div [Class "container"] [
+        p [] [
+          str "© 2017 - "
+          a [Href "http://nsynk.de/"] [str "NSYNK Gesellschaft für Kunst und Technik GmbH"]
+        ]
+      ]
+    ]
   ]
-  // h1 [Class "title is-1"] [str (sprintf "Bye %s!" model.name)]
+
+let root model dispatch =
+  hookViewWith
+    (fun x y -> obj.ReferenceEquals(x, y))
+    (fun () -> printfn "Mounted!")
+    (fun () -> printfn "Unmounted!")
+    (fun model -> view model dispatch)
+    model
 
 open Elmish.React
 open Elmish.Debug
