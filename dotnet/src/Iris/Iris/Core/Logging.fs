@@ -311,53 +311,61 @@ module Logger =
   // White         - The color white.
   // Yellow        - The color yellow.
 
+  // ** withForeground
+
+  let private withForeground pat fg (o: obj) =
+    let prevFg = Console.ForegroundColor
+    Console.ForegroundColor <- fg
+    Console.Write(pat,o)
+    Console.ForegroundColor <- prevFg
+
   let private black pat (thing: obj) =
-    Console.write pat ConsoleColor.Black thing
+    withForeground pat ConsoleColor.Black thing
 
   let private white pat (thing: obj) =
-    Console.write pat ConsoleColor.White thing
+    withForeground pat ConsoleColor.White thing
 
   let private blue pat (thing: obj) =
-    Console.write pat ConsoleColor.Blue thing
+    withForeground pat ConsoleColor.Blue thing
 
   let private darkBlue pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkBlue thing
+    withForeground pat ConsoleColor.DarkBlue thing
 
   let private cyan pat (thing: obj) =
-    Console.write pat ConsoleColor.Cyan thing
+    withForeground pat ConsoleColor.Cyan thing
 
   let private darkCyan pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkCyan thing
+    withForeground pat ConsoleColor.DarkCyan thing
 
   let private gray pat (thing: obj) =
-    Console.write pat ConsoleColor.Gray thing
+    withForeground pat ConsoleColor.Gray thing
 
   let private darkGray pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkGray thing
+    withForeground pat ConsoleColor.DarkGray thing
 
   let private green pat (thing: obj) =
-    Console.write pat ConsoleColor.Green thing
+    withForeground pat ConsoleColor.Green thing
 
   let private darkGreen pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkGreen thing
+    withForeground pat ConsoleColor.DarkGreen thing
 
   let private magenta pat (thing: obj) =
-    Console.write pat ConsoleColor.Magenta thing
+    withForeground pat ConsoleColor.Magenta thing
 
   let private darkMagenta pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkMagenta thing
+    withForeground pat ConsoleColor.DarkMagenta thing
 
   let private red pat (thing: obj) =
-    Console.write pat ConsoleColor.Red thing
+    withForeground pat ConsoleColor.Red thing
 
   let private darkRed pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkRed thing
+    withForeground pat ConsoleColor.DarkRed thing
 
   let private yellow pat (thing: obj) =
-    Console.write pat ConsoleColor.Yellow thing
+    withForeground pat ConsoleColor.Yellow thing
 
   let private darkYellow pat (thing: obj) =
-    Console.write pat ConsoleColor.DarkYellow thing
+    withForeground pat ConsoleColor.DarkYellow thing
 
   // ** stdout
 
