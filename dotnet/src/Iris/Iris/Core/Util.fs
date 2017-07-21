@@ -598,6 +598,15 @@ module Console =
 
 #endif
 
+
+  // ** write
+
+  let write pat fg (o: obj) =
+    let prevFg = Console.ForegroundColor
+    Console.ForegroundColor <- fg
+    Console.Write(pat,o)
+    Console.ForegroundColor <- prevFg
+
 // * Guid
 
 module Guid =

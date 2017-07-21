@@ -85,9 +85,9 @@ type Tier =
 
   override self.ToString() =
     match self with
-    | FrontEnd -> "FrontEnd"
-    | Client   -> "Client"
-    | Service  -> "Service"
+    | FrontEnd -> "ui"
+    | Client   -> "client"
+    | Service  -> "service"
 
   // ** Parse
 
@@ -270,6 +270,73 @@ module Logger =
 
   let initialize (mid: Id) = id <- mid
 
+  // ** colors
+
+  // Black         - The color black.
+  // Blue          - The color blue.
+  // Cyan          - The color cyan (blue-green).
+  // DarkBlue      - The color dark blue.
+  // DarkCyan      - The color dark cyan (dark blue-green).
+  // DarkGray      - The color dark gray.
+  // DarkGreen     - The color dark green.
+  // DarkMagenta   - The color dark magenta (dark purplish-red).
+  // DarkRed       - The color dark red.
+  // DarkYellow    - The color dark yellow (ochre).
+  // Gray          - The color gray.
+  // Green         - The color green.
+  // Magenta       - The color magenta (purplish-red).
+  // Red           - The color red.
+  // White         - The color white.
+  // Yellow        - The color yellow.
+
+  let private black pat (thing: obj) =
+    Console.write pat ConsoleColor.Black thing
+
+  let private white pat (thing: obj) =
+    Console.write pat ConsoleColor.White thing
+
+  let private blue pat (thing: obj) =
+    Console.write pat ConsoleColor.Blue thing
+
+  let private darkBlue pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkBlue thing
+
+  let private cyan pat (thing: obj) =
+    Console.write pat ConsoleColor.Cyan thing
+
+  let private darkCyan pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkCyan thing
+
+  let private gray pat (thing: obj) =
+    Console.write pat ConsoleColor.Gray thing
+
+  let private darkGray pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkGray thing
+
+  let private green pat (thing: obj) =
+    Console.write pat ConsoleColor.Green thing
+
+  let private darkGreen pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkGreen thing
+
+  let private magenta pat (thing: obj) =
+    Console.write pat ConsoleColor.Magenta thing
+
+  let private darkMagenta pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkMagenta thing
+
+  let private red pat (thing: obj) =
+    Console.write pat ConsoleColor.Red thing
+
+  let private darkRed pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkRed thing
+
+  let private yellow pat (thing: obj) =
+    Console.write pat ConsoleColor.Yellow thing
+
+  let private darkYellow pat (thing: obj) =
+    Console.write pat ConsoleColor.DarkYellow thing
+
   // ** stdout
 
   /// ## stdout
@@ -281,7 +348,30 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    log |> printfn "%O"
+    green "{0}" "["
+    match log.LogLevel with
+    | LogLevel.Trace -> darkGray "{0,-5}" log.LogLevel
+    | LogLevel.Debug -> white    "{0,-5}" log.LogLevel
+    | LogLevel.Info  -> green    "{0,-5}" log.LogLevel
+    | LogLevel.Warn  -> darkRed  "{0,-5}" log.LogLevel
+    | LogLevel.Err   -> red      "{0,-5}" log.LogLevel
+    green "{0}" "] "
+
+    cyan  "{0}:" "ts"
+    white "{0} " log.Time
+
+    cyan  "{0}:" "id"
+    white "{0} " log.Id.Prefix
+
+    cyan  "{0}:"    "type"
+    white "{0,-7} " log.Tier
+
+    cyan   "{0}:"     "in"
+    yellow "{0,-30} " log.Tag
+
+    white  "{0}"  log.Message
+    Console.Write(System.Environment.NewLine)
+
 
   // ** filter
 
