@@ -15,7 +15,17 @@ open Fable.Helpers.React.Props
 open Helpers
 
 module Tabs =
-  let view() = div [] []
+  let view() =
+    div [Class "iris-tab-container"] [
+      div [Class "tabs is-boxed"] [
+        ul [] [
+          li [Class "is-active"] [a [] [str "Workspace"]]
+          li [] [a [] [str "Foo"]]
+          li [] [a [] [str "Bar"]]
+        ]
+      ]
+      div [Class "iris-tab-body"] []
+    ]
 
 let view (model: Model) =
   div [Id "app"] [
