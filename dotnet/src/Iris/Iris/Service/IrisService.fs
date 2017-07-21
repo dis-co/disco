@@ -20,7 +20,7 @@ module IrisService =
 
   // ** tag
 
-  let private tag (str: string) = String.format "IrisServiceNG.{0}" str
+  let private tag (str: string) = String.format "IrisService.{0}" str
 
   // ** Subscriptions
 

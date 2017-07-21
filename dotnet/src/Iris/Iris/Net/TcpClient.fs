@@ -205,7 +205,7 @@ module rec TcpClient =
       do dispose listener
       args.BytesTransferred
       |> String.format "received {0} bytes"
-      |> Logger.err (tag "onReceive")
+      |> Logger.debug (tag "onReceive")
       state.SocketAsyncEventArgs <- args
       do receiveAsync state
     else onError "onReceive" args
@@ -295,7 +295,7 @@ module rec TcpClient =
 
     let listener =
       flip Observable.subscribe subscriptions <| function
-        | TcpClientEvent.Disconnected(id, error) ->
+        | TcpClientEvent.Disconnected _ ->
           dispose state
           Async.Start(async {
               do! Async.Sleep(500);

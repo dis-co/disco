@@ -49,7 +49,7 @@ type ClientIdNode() =
           Id = id
           Tier = Tier.Client
           UseColors = false
-          LogLevel = LogLevel.Debug
+          Level = LogLevel.Debug
         }
 
         self.OutId.SliceCount <- 1

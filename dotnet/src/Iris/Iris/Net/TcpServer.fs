@@ -226,13 +226,13 @@ module TcpServer =
     // *** onSend
 
     let private onSend (args: SocketAsyncEventArgs) =
-      let listener, connection, state = args.UserToken :?> (IDisposable * IConnection * IState)
+      let listener, _, state = args.UserToken :?> (IDisposable * IConnection * IState)
       if args.SocketError <> SocketError.Success then
         do onError "onSend" state args
       else
         args.BytesTransferred
         |> String.format "sent {0} bytes"
-        |> Logger.err (tag "onSend")
+        |> Logger.debug (tag "onSend")
         do returnArgs state args
       do dispose listener
 
@@ -261,7 +261,7 @@ module TcpServer =
         connection.RequestBuilder.Process buffer args.Offset args.BytesTransferred
         args.BytesTransferred
         |> String.format "received {0} bytes"
-        |> Logger.err (tag "onReceive")
+        |> Logger.debug (tag "onReceive")
         do returnArgs state args
         do receiveAsync state connection
       else

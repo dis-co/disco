@@ -371,7 +371,6 @@ module RequestBuilder =
 
     let create (onComplete: SocketMessageConstructor) =
       let mutable previousMatch = None
-      let mutable processed = 0L
       let mutable processing = false
 
       let preamble = BoundedWriter.create PreambleSize
