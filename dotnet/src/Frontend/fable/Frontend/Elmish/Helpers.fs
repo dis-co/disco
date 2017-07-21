@@ -46,3 +46,7 @@ let inline hookViewWith
         []
 
 let inline Class x = ClassName x
+let inline (~%) o = createObj o
+
+[<Global("$")>]
+let jQuery(arg: obj): obj = jsNative

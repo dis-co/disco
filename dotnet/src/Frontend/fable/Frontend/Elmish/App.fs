@@ -14,21 +14,20 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Helpers
 
-module PanelLeft =
-  let view() = div [] []
-
 module Tabs =
   let view() = div [] []
 
-let view (model: Model) dispatch =
+let view (model: Model) =
   div [Id "app"] [
     Navbar.view()
     div [Id "app-content"] [
-      div [Class "ui-layout-west"] [
-        PanelLeft.view()
-      ]
-      div [Class "ui-layout-center"] [
-        Tabs.view()
+      div [Id "ui-layout-container"] [
+        div [Class "ui-layout-west"] [
+          PanelLeft.view()
+        ]
+        div [Class "ui-layout-center"] [
+          Tabs.view()
+        ]
       ]
     ]
     footer [Id "app-footer"] [
@@ -44,9 +43,11 @@ let view (model: Model) dispatch =
 let root model dispatch =
   hookViewWith
     (fun x y -> obj.ReferenceEquals(x, y))
-    (fun () -> printfn "Mounted!")
-    (fun () -> printfn "Unmounted!")
-    (fun model -> view model dispatch)
+    (fun () ->
+      !!jQuery("#ui-layout-container")
+        ?layout(%["west__size" ==> 200]))
+    (fun () -> printfn "App unmounted!")
+    view
     model
 
 open Elmish.React

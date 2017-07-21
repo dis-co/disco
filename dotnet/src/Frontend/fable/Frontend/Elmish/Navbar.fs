@@ -6,7 +6,7 @@ open Fable.Core.JsInterop
 open Helpers
 
 let onClick id _ =
-    printfn "Clicked %i" id
+    printfn "Navbar clicked %i" id
 
 let dropdown () =
     div [Class "navbar-item has-dropdown is-hoverable"] [
