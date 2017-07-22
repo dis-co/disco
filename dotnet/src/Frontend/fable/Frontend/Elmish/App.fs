@@ -27,13 +27,13 @@ module Tabs =
       div [Class "iris-tab-body"] []
     ]
 
-let view (model: Model) =
+let view dispatch (model: Model) =
   div [Id "app"] [
     Navbar.view()
     div [Id "app-content"] [
       div [Id "ui-layout-container"] [
         div [Class "ui-layout-west"] [
-          PanelLeft.view()
+          PanelLeft.view dispatch ()
         ]
         div [Class "ui-layout-center"] [
           Tabs.view()
@@ -52,12 +52,12 @@ let view (model: Model) =
 
 let root model dispatch =
   hookViewWith
-    (fun x y -> obj.ReferenceEquals(x, y))
+    equalsRef
     (fun () ->
       !!jQuery("#ui-layout-container")
         ?layout(%["west__size" ==> 200]))
     (fun () -> printfn "App unmounted!")
-    view
+    (view dispatch)
     model
 
 open Elmish.React

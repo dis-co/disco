@@ -47,6 +47,8 @@ let inline hookViewWith
 
 let inline Class x = ClassName x
 let inline (~%) o = createObj o
+let inline (=>) x y = x ==> y
+let inline equalsRef x y = obj.ReferenceEquals(x, y)
 
 [<Global("$")>]
 let jQuery(arg: obj): obj = jsNative
