@@ -9,6 +9,7 @@ open Elmish
 type Msg =
   | AddWidget of Guid * IWidget
   | RemoveWidget of Guid
+  // | AddTab
   | AddLog of LogEvent
   | UpdateLogConfig of LogConfig
 
@@ -28,6 +29,7 @@ type Sorting =
 type LogConfig =
   { filter: string option
     logLevel: LogLevel option
+    setLogLevel: LogLevel
     sorting: Sorting option
     columns: Map<string, bool>
     viewLogs: LogEvent array
@@ -35,6 +37,8 @@ type LogConfig =
   static member Create(logs: LogEvent list) =
     { filter = None
       logLevel = None
+      // TODO: This should be read from backend
+      setLogLevel = LogLevel.Debug
       sorting = None
       columns =
         Map["LogLevel", true
@@ -68,6 +72,8 @@ let update msg model =
       { model with widgets = Map.add id widget model.widgets }
     | RemoveWidget id ->
       { model with widgets = Map.remove id model.widgets }
+    // | AddTab -> // Add tab and remove widget
+    // | RemoveTab -> // Optional, add widget
     | AddLog log ->
       { model with logs = log::model.logs }
     | UpdateLogConfig cfg ->
