@@ -14,17 +14,45 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Helpers
 
+let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
+
+module Values =
+  let [<Literal>] gridLayoutColumns = 20
+  let [<Literal>] gridLayoutWidth = 1600
+  let [<Literal>] gridLayoutRowHeight = 30
+  let [<Literal>] jqueryLayoutWestSize = 200
+
 module Tabs =
-  let view() =
+  let view dispatch (model: Model) =
     div [Class "iris-tab-container"] [
       div [Class "tabs is-boxed"] [
         ul [] [
           li [Class "is-active"] [a [] [str "Workspace"]]
-          li [] [a [] [str "Foo"]]
-          li [] [a [] [str "Bar"]]
+          // li [] [a [] [str "Foo"]]
+          // li [] [a [] [str "Bar"]]
         ]
       ]
-      div [Class "iris-tab-body"] []
+      div [Class "iris-tab-body"] [
+        fn ReactGridLayout %[
+          "className" => "iris-workspace"
+          "cols" => Values.gridLayoutColumns
+          "rowHeight" => Values.gridLayoutRowHeight
+          "width" => Values.gridLayoutWidth
+          "verticalCompact" => false
+          "draggableHandle" => ".iris-draggable-handle"
+          "layout" => (
+            model.widgets
+            |> Seq.map (fun (KeyValue(_,widget)) -> widget.InitialLayout)
+            |> Seq.toArray
+          )
+          "onLayoutChange" => fun layout ->
+            // printfn "Layout Change: %A" layout
+            ()
+        ] [
+          for KeyValue(id,widget) in model.widgets do
+            yield widget.Render(id, dispatch, model)
+        ]
+      ]
     ]
 
 let view dispatch (model: Model) =
@@ -36,7 +64,7 @@ let view dispatch (model: Model) =
           PanelLeft.view dispatch ()
         ]
         div [Class "ui-layout-center"] [
-          Tabs.view()
+          Tabs.view dispatch model
         ]
       ]
     ]
@@ -55,7 +83,7 @@ let root model dispatch =
     equalsRef
     (fun () ->
       !!jQuery("#ui-layout-container")
-        ?layout(%["west__size" ==> 200]))
+        ?layout(%["west__size" ==> Values.jqueryLayoutWestSize]))
     (fun () -> printfn "App unmounted!")
     (view dispatch)
     model

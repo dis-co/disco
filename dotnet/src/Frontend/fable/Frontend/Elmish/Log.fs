@@ -43,7 +43,7 @@ let readLog (cfg: LogConfig) (idx: int) (col: string) =
   | Columns.Message -> str log.Message
   | col -> failwithf "Unrecognized log column: %s" col
 
-let onSorted dispatch (cfg: LogConfig) col =
+let onSorted dispatch (cfg: LogConfig) col _ =
   let direction =
     match cfg.sorting with
     | Some s when s.column = col ->
@@ -79,8 +79,8 @@ let body dispatch model =
     %["rowsCount" => cfg.viewLogs.Length
       "rowHeight" => 30
       "headerHeight" => 30
-      "width" => 30
-      "height" => 30]
+      "width" => 700
+      "height" => 600]
     [ yield! cfg.columns |> Seq.choose (fun (KeyValue(col, visible)) ->
         if visible
         then makeSortableColumn dispatch cfg col |> Some
@@ -127,11 +127,12 @@ let titleBar dispatch (model: Model) =
             { model.logConfig with columns = columns } |> UpdateLogConfig |> dispatch
           )
         ]
+        str col
       ]
     )
-    dropdown "Log Filter" ["debug"; "info"; "warn"; "err"; "trace"; "none"] (fun lv ->
+    dropdown "Log Filter" ["debug"; "info"; "warn"; "err"; "trace"; "none"] (fun strLv ->
       let lv =
-        match lv with
+        match strLv with
         | "none" -> None
         | lv -> Some(Iris.Core.LogLevel.Parse(lv))
       label [] [
@@ -143,18 +144,19 @@ let titleBar dispatch (model: Model) =
             |> UpdateLogConfig |> dispatch
           )
         ]
+        str strLv
       ]
     )
-    dropdown "Set Log Lvel" ["debug"; "info"; "warn"; "err"; "trace"; "button"] (fun lv ->
-      if lv = "button" then
+    dropdown "Set Log Level" ["debug"; "info"; "warn"; "err"; "trace"; "button"] (fun strLv ->
+      if strLv = "button" then
         button [
           OnClick(fun _ ->
             model.logConfig.setLogLevel
             |> SetLogLevel
             |> ClientContext.Singleton.Post)
-        ] []
+        ] [str "SET"]
       else
-        let lv = Iris.Core.LogLevel.Parse(lv)
+        let lv = Iris.Core.LogLevel.Parse(strLv)
         label [] [
           input [
             Type "radio"
@@ -163,6 +165,7 @@ let titleBar dispatch (model: Model) =
               { model.logConfig with setLogLevel = lv }
               |> UpdateLogConfig |> dispatch)
           ]
+          str strLv
         ]
     )
   ]
@@ -199,13 +202,21 @@ let widget name titleBar body dispatch model =
 let view dispatch model =
   widget "LOG" titleBar body dispatch model
 
-let createLogWidget() =
+let createLogWidget(id: System.Guid) =
   { new IWidget with
-    member __.Render(dispatch, model) =
-      lazyViewWith
-        (fun m1 m2 ->
-            equalsRef m1.logs m2.logs
-                && equalsRef m1.logConfig m2.logConfig)
-        (view dispatch)
-        model
+    member __.InitialLayout =
+      { i = id; ``static`` = false
+        x = 0; y = 0
+        w = 8; h = 6
+        minW = 6; maxW = 20
+        minH = 2; maxH = 20 }
+    member __.Render(id, dispatch, model) =
+      div [Key (string id)] [
+        lazyViewWith
+          (fun m1 m2 ->
+              equalsRef m1.logs m2.logs
+                  && equalsRef m1.logConfig m2.logConfig)
+          (view dispatch)
+          model
+      ]
   }

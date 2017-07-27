@@ -47,8 +47,16 @@ type LogConfig =
             "Tier", true]
       viewLogs = Array.ofList logs }
 
+type [<Pojo>] Layout =
+  { i: Guid; ``static``: bool
+    x: int; y: int
+    w: int; h: int
+    minW: int; maxW: int
+    minH: int; maxH: int }
+
 type IWidget =
-  abstract Render: Dispatch<Msg> * Model -> React.ReactElement
+  abstract InitialLayout: Layout
+  abstract Render: Guid * Dispatch<Msg> * Model -> React.ReactElement
 
 type Model =
   { widgets: Map<Guid,IWidget>

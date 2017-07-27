@@ -17,8 +17,8 @@
     <Compile Include="Elmish/State.fs" />
     <Compile Include="Elmish/Helpers.fs" />
     <Compile Include="Elmish/Navbar.fs" />
-    <Compile Include="Elmish/PanelLeft.fs" />
     <Compile Include="Elmish/Log.fs" />
+    <Compile Include="Elmish/PanelLeft.fs" />
     <Compile Include="Elmish/App.fs" />
     <!-- <Compile Include="Lib.fs" /> -->
   </ItemGroup>
