@@ -3,6 +3,7 @@ module Iris.Web.Log
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Fable.Core
 open Fable.Core.JsInterop
 open Elmish.React
 open Iris.Core
@@ -23,6 +24,7 @@ module Columns =
   let [<Literal>] Tag = "Tag"
   let [<Literal>] Tier = "Tier"
   let [<Literal>] Message = "Message"
+  let sortable = [LogLevel; Time; Tag; Tier]
 
 let getWidth (col: string) =
   match col with
@@ -33,11 +35,13 @@ let getWidth (col: string) =
   | Columns.Message -> 400
   | col -> failwithf "Unrecognized log column: %s" col
 
-let readLog (cfg: LogConfig) (idx: int) (col: string) =
-  let log = cfg.viewLogs.[idx]
+[<Emit("new Date($0).toLocaleTimeString()")>]
+let printTime (t: uint32): string = jsNative
+
+let readLog (col: string) (log: LogEvent) =
   match col with
   | Columns.LogLevel -> str (string log.LogLevel)
-  | Columns.Time -> str (string log.Time)
+  | Columns.Time -> str (printTime log.Time)
   | Columns.Tag -> str log.Tag
   | Columns.Tier -> str (string log.Tier)
   | Columns.Message -> str log.Message
@@ -63,14 +67,14 @@ let sortableCell dispatch (cfg: LogConfig) col =
     from Cell
       %["style" => %["cursor" => "pointer"]
         "onClick" => onSorted dispatch cfg col]
-      [str ("column" + suffix)]
+      [str (col + " " + suffix)]
 
 let makeSortableColumn dispatch cfg col =
   from Column
       %["width" => getWidth col
         "header" => sortableCell dispatch cfg col
         "cell" => fun (props: obj) ->
-          from Cell props [readLog cfg (!!props?rowIndex) col]
+          from Cell props [readLog col cfg.viewLogs.[!!props?rowIndex]]
        ] []
 
 let body dispatch model =
@@ -81,16 +85,16 @@ let body dispatch model =
       "headerHeight" => 30
       "width" => 700
       "height" => 600]
-    [ yield! cfg.columns |> Seq.choose (fun (KeyValue(col, visible)) ->
-        if visible
-        then makeSortableColumn dispatch cfg col |> Some
-        else None)
+    [ yield! Columns.sortable |> Seq.choose (fun col ->
+        match Map.tryFind col cfg.columns with
+        | Some true -> makeSortableColumn dispatch cfg col |> Some
+        | Some false | None -> None)
       yield from Column
         %["width" => getWidth Columns.Message
           "header" => from Cell %[] [str Columns.Message]
           "cell" => fun (props: obj) ->
             // %["style" => %["whiteSpace"=>"nowrap"]]
-            from Cell props [readLog cfg (!!props?rowIndex) Columns.Message]
+            from Cell props [readLog Columns.Message cfg.viewLogs.[!!props?rowIndex]]
          ] []
     ]
 
@@ -102,75 +106,71 @@ let dropdown title values generator =
   ]
 
 let titleBar dispatch (model: Model) =
-  let filter = defaultArg model.logConfig.filter ""
-  div [] [
-    input [
-      Type "text"
-      Placeholder "Filter by regex..."
-      Value !^filter
-      OnChange (fun ev ->
-        let filter =
-          match !!ev.target?value with
-          | null | "" -> None
-          | filter -> Some filter
-        { model.logConfig with filter = filter } |> UpdateLogConfig |> dispatch
+    let filter = defaultArg model.logConfig.filter ""
+    div [] [
+      input [
+        Type "text"
+        Placeholder "Filter by regex..."
+        DefaultValue !^filter
+        OnChange (fun ev ->
+          let filter =
+            match !!ev.target?value with
+            | null | "" -> None
+            | filter -> Some filter
+          { model.logConfig with filter = filter } |> UpdateLogConfig |> dispatch)
+      ]
+      dropdown "Columns" Columns.sortable (fun col ->
+        label [] [
+          input [
+            Type "checkbox"
+            Checked model.logConfig.columns.[col]
+            OnChange (fun ev ->
+              let checked': bool = !!ev.target?``checked``
+              let columns = Map.add col checked' model.logConfig.columns
+              { model.logConfig with columns = columns } |> UpdateLogConfig |> dispatch)
+          ]
+          str col
+        ]
       )
-    ]
-    dropdown "Columns" ["LogLevel"; "Time"; "Tag"; "Tier"] (fun col ->
-      label [] [
-        input [
-          Type "checkbox"
-          Checked model.logConfig.columns.[col]
-          OnChange (fun ev ->
-            let checked': bool = !!ev.target?``checked``
-            let columns = Map.add col checked' model.logConfig.columns
-            { model.logConfig with columns = columns } |> UpdateLogConfig |> dispatch
-          )
-        ]
-        str col
-      ]
-    )
-    dropdown "Log Filter" ["debug"; "info"; "warn"; "err"; "trace"; "none"] (fun strLv ->
-      let lv =
-        match strLv with
-        | "none" -> None
-        | lv -> Some(Iris.Core.LogLevel.Parse(lv))
-      label [] [
-        input [
-          Type "radio"
-          Checked (model.logConfig.logLevel = lv)
-          OnChange (fun ev ->
-            { model.logConfig with logLevel = lv }
-            |> UpdateLogConfig |> dispatch
-          )
-        ]
-        str strLv
-      ]
-    )
-    dropdown "Set Log Level" ["debug"; "info"; "warn"; "err"; "trace"; "button"] (fun strLv ->
-      if strLv = "button" then
-        button [
-          OnClick(fun _ ->
-            model.logConfig.setLogLevel
-            |> SetLogLevel
-            |> ClientContext.Singleton.Post)
-        ] [str "SET"]
-      else
-        let lv = Iris.Core.LogLevel.Parse(strLv)
+      dropdown "Log Filter" ["debug"; "info"; "warn"; "err"; "trace"; "none"] (fun strLv ->
+        let lv =
+          match strLv with
+          | "none" -> None
+          | lv -> Some(Iris.Core.LogLevel.Parse(lv))
         label [] [
           input [
             Type "radio"
-            Checked (model.logConfig.setLogLevel = lv)
+            Checked (model.logConfig.logLevel = lv)
             OnChange (fun ev ->
-              { model.logConfig with setLogLevel = lv }
+              { model.logConfig with logLevel = lv }
               |> UpdateLogConfig |> dispatch)
           ]
           str strLv
         ]
-    )
-  ]
+      )
+      dropdown "Set Log Level" ["debug"; "info"; "warn"; "err"; "trace"; "button"] (fun strLv ->
+        if strLv = "button" then
+          button [
+            OnClick(fun _ ->
+              model.logConfig.setLogLevel
+              |> SetLogLevel
+              |> ClientContext.Singleton.Post)
+          ] [str "SET"]
+        else
+          let lv = Iris.Core.LogLevel.Parse(strLv)
+          label [] [
+            input [
+              Type "radio"
+              Checked (model.logConfig.setLogLevel = lv)
+              OnChange (fun ev ->
+                { model.logConfig with setLogLevel = lv }
+                |> UpdateLogConfig |> dispatch)
+            ]
+            str strLv
+          ])
+    ]
 
-let widget name titleBar body dispatch model =
+let widget id name titleBar body dispatch model =
   div [Class "iris-widget"] [
     div [Class "iris-draggable-handle"] [
       span [] [str name]
@@ -189,7 +189,7 @@ let widget name titleBar body dispatch model =
           Class "iris-button iris-icon icon-control icon-close"
           OnClick(fun ev ->
             ev.stopPropagation()
-            failwith "TODO" // RemoveWidget id |> dispatch
+            RemoveWidget id |> dispatch
           )
         ] []
       ]
@@ -199,8 +199,8 @@ let widget name titleBar body dispatch model =
     ]
   ]
 
-let view dispatch model =
-  widget "LOG" titleBar body dispatch model
+let view id dispatch model =
+  widget id "LOG" titleBar body dispatch model
 
 let createLogWidget(id: System.Guid) =
   { new IWidget with
@@ -216,7 +216,7 @@ let createLogWidget(id: System.Guid) =
           (fun m1 m2 ->
               equalsRef m1.logs m2.logs
                   && equalsRef m1.logConfig m2.logConfig)
-          (view dispatch)
+          (view id dispatch)
           model
       ]
   }

@@ -14,6 +14,7 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Helpers
 
+importSideEffects "react-grid-layout/css/styles.css"
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
 
 module Values =
