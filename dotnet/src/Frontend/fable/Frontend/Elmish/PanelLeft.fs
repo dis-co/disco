@@ -7,17 +7,11 @@ open Elmish.React
 open Helpers
 open State
 open System
-
-module Widgets =
-    let [<Literal>] Log = "LOG"
+open Types
 
 let onClick dispatch name _ =
-  match name with
-  | Widgets.Log ->
-    let id = Guid.NewGuid()
-    let widget = Log.createLogWidget(id)
-    AddWidget(id, widget) |> dispatch
-  | _ -> printfn "Widget %s is not currently supported" name
+  let widget = getFactory().CreateWidget(None, name)
+  AddWidget(widget.Id, widget) |> dispatch
 
 let card dispatch name letter text =
     div [

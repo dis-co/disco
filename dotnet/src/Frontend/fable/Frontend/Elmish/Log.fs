@@ -10,6 +10,7 @@ open Iris.Core
 open Iris.Web.Core
 open Helpers
 open State
+open Types
 
 // fixed-data-table styles
 importSideEffects("fixed-data-table/dist/fixed-data-table.css")
@@ -204,6 +205,8 @@ let view id dispatch model =
 
 let createLogWidget(id: System.Guid) =
   { new IWidget with
+    member __.Id = id
+    member __.Name = "LOG"
     member __.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0

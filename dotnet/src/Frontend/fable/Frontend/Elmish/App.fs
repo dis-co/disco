@@ -6,13 +6,22 @@ open Elmish.Browser.UrlParser
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
-open Fable.Import.Browser
 open Iris.Web.State
-
+open System
 open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Helpers
+open Types
+
+initFactory
+  { new IFactory with
+      member __.CreateWidget(id, name) =
+        let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
+        match name with
+        | Widgets.Log -> Log.createLogWidget(id)
+        | _ -> failwithf "Widget %s is not currently supported" name
+  }
 
 importSideEffects "react-grid-layout/css/styles.css"
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
@@ -41,14 +50,9 @@ module Tabs =
           "width" => Values.gridLayoutWidth
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
-          "layout" => (
-            model.widgets
-            |> Seq.map (fun (KeyValue(_,widget)) -> widget.InitialLayout)
-            |> Seq.toArray
-          )
+          "layout" => model.layout
           "onLayoutChange" => fun layout ->
-            // printfn "Layout Change: %A" layout
-            ()
+            saveToLocalStorage "iris-layout" layout
         ] [
           for KeyValue(id,widget) in model.widgets do
             yield widget.Render(id, dispatch, model)

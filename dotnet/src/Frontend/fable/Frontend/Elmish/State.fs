@@ -4,28 +4,24 @@ open System
 open System.Text.RegularExpressions
 open Iris.Core
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Elmish
+open Types
 
-type Msg =
-  | AddWidget of Guid * IWidget
-  | RemoveWidget of Guid
-  // | AddTab
-  | AddLog of LogEvent
-  | UpdateLogConfig of LogConfig
+[<PassGenerics>]
+let getFromLocalStorage<'T> (key: string) =
+  let g = Fable.Import.Browser.window
+  match g.localStorage.getItem(key) with
+  | null -> Unchecked.defaultof<'T>
+  | value -> ofJson<'T> !!value
 
-type Direction =
-  | Ascending
-  | Descending
-  member this.Reverse =
-    match this with
-    | Ascending -> Descending
-    | Descending -> Ascending
+let saveToLocalStorage (key: string) (value: obj) =
+  let g = Fable.Import.Browser.window
+  g.localStorage.setItem(key, toJson value)
 
-type Sorting =
-  { column: string
-    direction: Direction
-  }
+module Widgets =
+    let [<Literal>] Log = "LOG"
 
 let updateViewLogs (model: Model) (cfg: LogConfig) =
   let readLog (col: string) (log: LogEvent) =
@@ -63,50 +59,16 @@ let updateViewLogs (model: Model) (cfg: LogConfig) =
     | None -> viewLogs
   { cfg with viewLogs = viewLogs}
 
-type LogConfig =
-  { filter: string option
-    logLevel: LogLevel option
-    setLogLevel: LogLevel
-    sorting: Sorting option
-    columns: Map<string, bool>
-    viewLogs: LogEvent array
-  }
-  static member Create(logs: LogEvent list) =
-    { filter = None
-      logLevel = None
-      // TODO: This should be read from backend
-      setLogLevel = LogLevel.Debug
-      sorting = None
-      columns =
-        Map["LogLevel", true
-            "Time", true
-            "Tag", true
-            "Tier", true]
-      viewLogs = Array.ofList logs }
-
-type [<Pojo>] Layout =
-  { i: Guid; ``static``: bool
-    x: int; y: int
-    w: int; h: int
-    minW: int; maxW: int
-    minH: int; maxH: int }
-
-type IWidget =
-  abstract InitialLayout: Layout
-  abstract Render: Guid * Dispatch<Msg> * Model -> React.ReactElement
-
-type Model =
-  { widgets: Map<Guid,IWidget>
-    logs: LogEvent list
-    logConfig: LogConfig
-  }
-
 let init() =
   let logs = List.init 50 (fun _ -> Core.MockData.genLog())
   let initModel =
     { widgets = Map.empty
       logs = logs
       logConfig = LogConfig.Create(logs)
+      layout = obj()
+      //   widgets
+      //   |> Seq.map (fun (KeyValue(_,widget)) -> widget.InitialLayout)
+      //   |> Seq.toArray
     }
   initModel, []
 
