@@ -52,7 +52,7 @@ module Tabs =
           "draggableHandle" => ".iris-draggable-handle"
           "layout" => model.layout
           "onLayoutChange" => fun layout ->
-            saveToLocalStorage "iris-layout" layout
+            saveToLocalStorage StorageKeys.layout layout
         ] [
           for KeyValue(id,widget) in model.widgets do
             yield widget.Render(id, dispatch, model)

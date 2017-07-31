@@ -5,6 +5,10 @@ open Fable.Core
 open Fable.Import
 open Iris.Core
 
+module StorageKeys =
+  let [<Literal>] layout = "iris-layout"
+  let [<Literal>] widgets = "iris-widgets"
+
 module Widgets =
     let [<Literal>] Log = "LOG"
 
@@ -13,6 +17,8 @@ type IWidget =
   abstract Name: string
   abstract InitialLayout: Layout
   abstract Render: Guid * Elmish.Dispatch<Msg> * Model -> React.ReactElement
+
+and WidgetRef = Guid * string
 
 and Direction =
   | Ascending
@@ -38,7 +44,7 @@ and Model =
   { widgets: Map<Guid,IWidget>
     logs: LogEvent list
     logConfig: LogConfig
-    layout: obj
+    layout: Layout[]
   }
 
 and LogConfig =

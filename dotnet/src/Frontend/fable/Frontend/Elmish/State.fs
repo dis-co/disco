@@ -10,18 +10,15 @@ open Elmish
 open Types
 
 [<PassGenerics>]
-let getFromLocalStorage<'T> (key: string) =
+let loadFromLocalStorage<'T> (key: string) =
   let g = Fable.Import.Browser.window
   match g.localStorage.getItem(key) with
-  | null -> Unchecked.defaultof<'T>
-  | value -> ofJson<'T> !!value
+  | null -> None
+  | value -> ofJson<'T> !!value |> Some
 
 let saveToLocalStorage (key: string) (value: obj) =
   let g = Fable.Import.Browser.window
   g.localStorage.setItem(key, toJson value)
-
-module Widgets =
-    let [<Literal>] Log = "LOG"
 
 let updateViewLogs (model: Model) (cfg: LogConfig) =
   let readLog (col: string) (log: LogEvent) =
@@ -60,15 +57,23 @@ let updateViewLogs (model: Model) (cfg: LogConfig) =
   { cfg with viewLogs = viewLogs}
 
 let init() =
+  let widgets =
+    let factory = Types.getFactory()
+    loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
+    |> Option.defaultValue [||]
+    |> Array.map (fun (id, name) ->
+      let widget = factory.CreateWidget(Some id, name)
+      id, widget)
+    |> Map
+  let layout =
+    loadFromLocalStorage<Layout[]> StorageKeys.layout
+    |> Option.defaultValue [||]
   let logs = List.init 50 (fun _ -> Core.MockData.genLog())
   let initModel =
-    { widgets = Map.empty
+    { widgets = widgets
       logs = logs
       logConfig = LogConfig.Create(logs)
-      layout = obj()
-      //   widgets
-      //   |> Seq.map (fun (KeyValue(_,widget)) -> widget.InitialLayout)
-      //   |> Seq.toArray
+      layout = layout
     }
   initModel, []
 
@@ -76,7 +81,13 @@ let update msg model =
   let newModel =
     match msg with
     | AddWidget(id, widget) ->
-      { model with widgets = Map.add id widget model.widgets }
+      let widgets = Map.add id widget model.widgets
+      let layout = Array.append model.layout [|widget.InitialLayout|]
+      widgets
+      |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
+      |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
+      layout |> saveToLocalStorage StorageKeys.layout
+      { model with widgets = widgets; layout = layout }
     | RemoveWidget id ->
       { model with widgets = Map.remove id model.widgets }
     // | AddTab -> // Add tab and remove widget
