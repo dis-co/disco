@@ -77,19 +77,25 @@ let init() =
     }
   initModel, []
 
+let saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
+    widgets
+    |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
+    |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
+    layout |> saveToLocalStorage StorageKeys.layout
+
 let update msg model =
   let newModel =
     match msg with
     | AddWidget(id, widget) ->
       let widgets = Map.add id widget model.widgets
       let layout = Array.append model.layout [|widget.InitialLayout|]
-      widgets
-      |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
-      |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
-      layout |> saveToLocalStorage StorageKeys.layout
+      saveWidgetsAndLayout widgets layout
       { model with widgets = widgets; layout = layout }
     | RemoveWidget id ->
-      { model with widgets = Map.remove id model.widgets }
+      let widgets = Map.remove id model.widgets
+      let layout = model.layout |> Array.filter (fun x -> x.i <> id)
+      saveWidgetsAndLayout widgets layout
+      { model with widgets = widgets; layout = layout }
     // | AddTab -> // Add tab and remove widget
     // | RemoveTab -> // Optional, add widget
     | AddLog log ->
