@@ -3,8 +3,10 @@ module rec Iris.Web.State
 open System
 open System.Text.RegularExpressions
 open Iris.Core
+open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
+open Fable.PowerPack
 open Fable.Import
 open Elmish
 open Types
@@ -57,6 +59,14 @@ let updateViewLogs (model: Model) (cfg: LogConfig) =
   { cfg with viewLogs = viewLogs}
 
 let init() =
+  let startContext dispatch =
+    let context = ClientContext.Singleton
+    context.Start()
+    |> Promise.iter (fun () ->
+      context.OnMessage
+      |> Observable.add (fun _ ->
+        let state = context.Store |> Option.map (fun s -> s.State)
+        UpdateState state |> dispatch))
   let widgets =
     let factory = Types.getFactory()
     loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
@@ -74,8 +84,10 @@ let init() =
       logs = logs
       logConfig = LogConfig.Create(logs)
       layout = layout
+      state = None
+      useRightClick = false
     }
-  initModel, []
+  initModel, [startContext]
 
 let saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
@@ -103,4 +115,6 @@ let update msg model =
     | UpdateLogConfig cfg ->
       let cfg = updateViewLogs model cfg
       { model with logConfig = cfg }
+    | UpdateState state ->
+      { model with state = state }
   newModel, []

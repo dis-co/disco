@@ -1,4 +1,4 @@
-module rec Iris.Web.Widgets.PinView
+module Iris.Web.PinView
 
 open System
 open Iris.Core
@@ -8,15 +8,19 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 
 type [<Pojo>] InputState =
   { isOpen: bool }
 
+type IUpdater =
+  abstract Update: dragging:bool * index:int * value:obj -> unit
+
 let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater): React.ReactElement =
-  importMember "../../../src/behaviors/input.tsx"
+  importMember "../../../src/Util.ts"
 
 let formatValue(value: obj): string =
-  importMember "../../../src/behaviors/input.tsx"
+  importMember "../../../src/Util.ts"
 
 [<Global>]
 let jQuery(el: obj): obj = jsNative
@@ -49,12 +53,9 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-type IUpdater =
-  abstract Update: dragging:bool * index:int * value:obj -> unit
-
 type [<Pojo>] PinProps =
   { key: string
-    ``global``: GlobalModel
+    model: Model
     pin: Pin
     slices: Slices option
     updater: IUpdater option
@@ -130,14 +131,12 @@ type PinView(props) =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
-    let useRightClick =
-      this.props.``global``.state.useRightClick
     div [ClassName "iris-pin"] [
-      table [] [this.RenderRows(rowCount, useRightClick, updater)]
+      table [] [this.RenderRows(rowCount, this.props.model.useRightClick, updater)]
     ]
 
 type [<Pojo>] PinGroupProps =
-  { ``global``: GlobalModel
+  { model: Model
     pinGroup: PinGroup
     pinAndSlices: (int * Pin * Slices)[]
     update: (int->int->obj->unit) option }

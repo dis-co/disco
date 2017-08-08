@@ -29,7 +29,7 @@ let card dispatch name letter text =
 let render dispatch () =
     div [Class "iris-panel-left"] [
         card dispatch Widgets.Log        "L" "Cluster Settings"
-        card dispatch "Graph View"       "G" "Cluster Settings"
+        card dispatch Widgets.GraphView  "G" "Cluster Settings"
         card dispatch "Cue Player"       "C" "Cluster Settings"
         card dispatch "Project View"     "P" "Cluster Settings"
         card dispatch "Test Widget"      "T" "Cluster Settings"

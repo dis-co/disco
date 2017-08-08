@@ -1,17 +1,28 @@
 module Iris.Web.Helpers
 
+open System
 open Elmish
 open Elmish.Browser.Navigation
 open Elmish.Browser.UrlParser
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
-open Fable.Import.Browser
-
 open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 
+// jQuery
+let [<Global("$")>] jQuery(arg: obj): obj = jsNative
+
+// Syntactic sugar
+let inline Class x = ClassName x
+let inline (~%) o = createObj o
+let inline (=>) x y = x ==> y
+let inline equalsRef x y = obj.ReferenceEquals(x, y)
+
+// Same as Elmish LazyView with hooks
+// for mount and unmount events
 type [<Pojo>] HookProps<'model> = {
     model:'model
     render:unit->ReactElement
@@ -45,10 +56,36 @@ let inline hookViewWith
         onUnMount = onUnMount }
         []
 
-let inline Class x = ClassName x
-let inline (~%) o = createObj o
-let inline (=>) x y = x ==> y
-let inline equalsRef x y = obj.ReferenceEquals(x, y)
-
-[<Global("$")>]
-let jQuery(arg: obj): obj = jsNative
+// Widget view
+let widget (id: Guid) (name: string)
+           (titleBar: _ option) (body: (Msg->unit)->Model->React.ReactElement)
+           (dispatch: Msg->unit) (model: Model) =
+  div [Class "iris-widget"] [
+    div [Class "iris-draggable-handle"] [
+      span [] [str name]
+      div [Class "iris-title-bar"] [
+        titleBar
+        |> Option.map (fun titleBar -> titleBar dispatch model)
+        |> opt
+      ]
+      div [Class "iris-window-control"] [
+        button [
+          Class "iris-button iris-icon icon-control icon-resize"
+          OnClick(fun ev ->
+            ev.stopPropagation()
+            failwith "TODO" // AddTab id |> dispatch
+          )
+        ] []
+        button [
+          Class "iris-button iris-icon icon-control icon-close"
+          OnClick(fun ev ->
+            ev.stopPropagation()
+            RemoveWidget id |> dispatch
+          )
+        ] []
+      ]
+    ]
+    div [Class "iris-widget-body"] [
+      body dispatch model
+    ]
+  ]

@@ -171,37 +171,8 @@ let titleBar dispatch (model: Model) =
           ])
     ]
 
-let widget id name titleBar body dispatch model =
-  div [Class "iris-widget"] [
-    div [Class "iris-draggable-handle"] [
-      span [] [str name]
-      div [Class "iris-title-bar"] [
-        titleBar dispatch model
-      ]
-      div [Class "iris-window-control"] [
-        button [
-          Class "iris-button iris-icon icon-control icon-resize"
-          OnClick(fun ev ->
-            ev.stopPropagation()
-            failwith "TODO" // AddTab id |> dispatch
-          )
-        ] []
-        button [
-          Class "iris-button iris-icon icon-control icon-close"
-          OnClick(fun ev ->
-            ev.stopPropagation()
-            RemoveWidget id |> dispatch
-          )
-        ] []
-      ]
-    ]
-    div [Class "iris-widget-body"] [
-      body dispatch model
-    ]
-  ]
-
-let view id dispatch model =
-  widget id "LOG" titleBar body dispatch model
+let view id name dispatch model =
+  widget id name (Some titleBar) body dispatch model
 
 let createLogWidget(id: System.Guid) =
   { new IWidget with
@@ -213,13 +184,13 @@ let createLogWidget(id: System.Guid) =
         w = 8; h = 6
         minW = 6; maxW = 20
         minH = 2; maxH = 20 }
-    member __.Render(id, dispatch, model) =
+    member this.Render(id, dispatch, model) =
       div [Key (string id)] [
         lazyViewWith
           (fun m1 m2 ->
               equalsRef m1.logs m2.logs
                   && equalsRef m1.logConfig m2.logConfig)
-          (view id dispatch)
+          (view id this.Name dispatch)
           model
       ]
   }

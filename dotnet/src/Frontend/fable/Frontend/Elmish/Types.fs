@@ -11,6 +11,7 @@ module StorageKeys =
 
 module Widgets =
     let [<Literal>] Log = "LOG"
+    let [<Literal>] GraphView = "Graph View"
 
 type IWidget =
   abstract Id: Guid
@@ -39,12 +40,15 @@ and Msg =
   // | AddTab
   | AddLog of LogEvent
   | UpdateLogConfig of LogConfig
+  | UpdateState of State option
 
 and Model =
   { widgets: Map<Guid,IWidget>
     logs: LogEvent list
     logConfig: LogConfig
     layout: Layout[]
+    state: State option
+    useRightClick: bool
   }
 
 and LogConfig =

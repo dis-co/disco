@@ -20,6 +20,7 @@ initFactory
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
         | Widgets.Log -> Log.createLogWidget(id)
+        | Widgets.GraphView -> GraphView.createGraphViewWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
