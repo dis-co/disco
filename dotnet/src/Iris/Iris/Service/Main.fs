@@ -68,7 +68,12 @@ module Main =
         parsed.TryGetResult <@ Frontend @>
         |> Option.map filepath
 
-      Logger.initialize machine.MachineId
+      Logger.initialize {
+        Id = machine.MachineId
+        Tier = Tier.Service
+        UseColors = false
+        Level = LogLevel.Debug
+      }
 
       match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed

@@ -253,8 +253,18 @@ module WebSocketServer =
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
+      FleckLog.LogAction <- Action<Fleck.LogLevel,string,exn>(fun level msg ex ->
+        match level with
+        | Fleck.LogLevel.Debug -> Logger.debug (tag "logger") msg
+        | Fleck.LogLevel.Info  -> Logger.info  (tag "logger") msg
+        | Fleck.LogLevel.Warn  -> Logger.warn  (tag "logger") msg
+        | Fleck.LogLevel.Error -> Logger.err   (tag "logger") msg
+        |                _     -> Logger.err   (tag "logger") msg)
+
       let handler = onNewSocket connections agent
       let server = new WebSocketServer(uri)
+      server.RestartAfterListenError <- true
+      server.ListenerSocket.NoDelay <- true
 
       return
         { new IWebSocketServer with

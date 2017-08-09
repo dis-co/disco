@@ -28,6 +28,24 @@ type IrisError =
   | ClientError  of location:string * error:string
   | Other        of location:string * error:string
 
+  // ** Message
+
+  member error.Message
+    with get () =
+      match error with
+      | OK                      -> "Ok"
+      | GitError     (_, error) -> error
+      | ProjectError (_, error) -> error
+      | SocketError  (_, error) -> error
+      | ParseError   (_, error) -> error
+      | IOError      (_, error) -> error
+      | AssetError   (_, error) -> error
+      | RaftError    (_, error) -> error
+      | ClientError  (_, error) -> error
+      | Other        (_, error) -> error
+
+  // ** ToString
+
   override error.ToString() =
     match error with
     | GitError     (loc,err) -> sprintf "Git error: %s in %s"     err loc

@@ -12,6 +12,7 @@ open Fable.Import
 
 open System
 open System.Net
+open System.Net.Sockets
 open System.Net.NetworkInformation
 
 #endif
@@ -142,13 +143,22 @@ module Network =
   // ** ensureAvailability
 
   let ensureAvailability (ip: IpAddress) (port: Port) =
-    if portAvailable ip port then
-      Either.succeed ()
-    else
-      unwrap port
-      |> sprintf "%O:%d is unavailable" ip
-      |> Error.asSocketError (tag "ensureAvailability")
-      |> Either.fail
+    either {
+      try
+        use socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        let endpoint = IPEndPoint(ip.toIPAddress(), int port)
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true)
+        socket.LingerState <- LingerOption(true,0)
+        socket.Bind(endpoint)
+        socket.Listen(1)
+        socket.Close()
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asSocketError (tag "ensureAvailability")
+            |> Either.fail
+    }
 
   #endif
 

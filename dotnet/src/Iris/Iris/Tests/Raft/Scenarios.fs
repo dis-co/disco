@@ -145,7 +145,7 @@ module Scenarios =
     Map.fold (anyMsg) false peers
 
   // Do 50 iterations maximum. If unsure, turn up value.
-  let config = { FsCheck.Config.Default with MaxTest = 50 }
+  let config = { FsCheckConfig.defaultConfig with maxTest = 50 }
 
   let scenario_leader_appears =
     testPropertyWithConfig config "leader appears" <| fun _ ->
@@ -169,23 +169,24 @@ module Scenarios =
 
             let callbacks =
               { SendRequestVote     = testRequestVote     senders peers.[int n]
-              ; SendAppendEntries   = testAppendEntries   senders peers.[int n]
-              ; SendInstallSnapshot = testInstallSnapshot senders peers.[int n]
-              ; PersistSnapshot     = ignore
-              ; PrepareSnapshot     = konst None
-              ; RetrieveSnapshot    = konst None
-              ; ApplyLog            = ignore
-              ; MemberAdded         = ignore
-              ; MemberUpdated       = ignore
-              ; MemberRemoved       = ignore
-              ; Configured          = ignore
-              ; StateChanged        = fun _ -> ignore
-              ; LeaderChanged       = ignore
-              ; PersistVote         = ignore
-              ; PersistTerm         = ignore
-              ; PersistLog          = ignore
-              ; DeleteLog           = ignore
-              ; LogMsg              = fun _ _ _ -> ignore
+                SendAppendEntries   = testAppendEntries   senders peers.[int n]
+                SendInstallSnapshot = testInstallSnapshot senders peers.[int n]
+                PersistSnapshot     = ignore
+                PrepareSnapshot     = konst None
+                RetrieveSnapshot    = konst None
+                ApplyLog            = ignore
+                MemberAdded         = ignore
+                MemberUpdated       = ignore
+                MemberRemoved       = ignore
+                Configured          = ignore
+                JointConsensus      = ignore
+                StateChanged        = fun _ -> ignore
+                LeaderChanged       = ignore
+                PersistVote         = ignore
+                PersistTerm         = ignore
+                PersistLog          = ignore
+                DeleteLog           = ignore
+                LogMsg              = fun _ _ _ -> ignore
               } :> IRaftCallbacks
 
             let raft =

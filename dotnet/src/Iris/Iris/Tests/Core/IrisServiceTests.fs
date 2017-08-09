@@ -14,7 +14,6 @@ open Iris.Net
 
 [<AutoOpen>]
 module IrisServiceTests =
-
   let private mkMachine () =
     { MachineConfig.create "127.0.0.1" None with
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
@@ -104,8 +103,16 @@ module IrisServiceTests =
         use checkGitStarted = new AutoResetEvent(false)
         use electionDone = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
+        use pushDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 2
+
+        let handler = function
+            | IrisEvent.GitPush _                   -> pushDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ()
 
         let! repo1 = Project.repository project
 
@@ -127,13 +134,7 @@ module IrisServiceTests =
           SiteId = None
         }
 
-        use oobs1 =
-          (function
-            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ())
-          |> service1.Subscribe
+        use oobs1 = service1.Subscribe handler
 
         do! service1.Start()
 
@@ -162,13 +163,7 @@ module IrisServiceTests =
           SiteId = None
         }
 
-        use oobs2 =
-          (function
-            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ())
-          |> service2.Subscribe
+        use oobs2 = service2.Subscribe handler
 
         do! service2.Start()
 
@@ -207,6 +202,8 @@ module IrisServiceTests =
         do! waitOrDie "appendDone" appendDone
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
+
+        do! waitOrDie "pushDone"   pushDone
 
         dispose service1
         dispose service2

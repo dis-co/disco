@@ -598,6 +598,8 @@ module Console =
 
 #endif
 
+
+
 // * Guid
 
 module Guid =

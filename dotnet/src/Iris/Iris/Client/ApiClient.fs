@@ -82,7 +82,7 @@ module ApiClient =
   let private requestRegister (state: ClientState) =
     state.Peer.Port
     |> sprintf "registering with %O:%O" state.Peer.IpAddress
-    |> Logger.debug (tag "requestRegister")
+    |> Logger.info (tag "requestRegister")
 
     state.Client
     |> ApiRequest.Register
@@ -95,7 +95,7 @@ module ApiClient =
   let private requestUnRegister (state: ClientState) =
     state.Peer.Port
     |> sprintf "unregistering from %O:%O" state.Peer.IpAddress
-    |> Logger.debug (tag "requestUnRegister")
+    |> Logger.info (tag "requestUnRegister")
 
     state.Client
     |> ApiRequest.UnRegister
@@ -114,13 +114,8 @@ module ApiClient =
   let private handleSetStatus (state: ClientState) (status: ServiceStatus) (agent: ApiAgent) =
     if state.Client.Status <> status then
       match status with
-      | ServiceStatus.Running ->
-          agent.Post Msg.Start
-      | _ ->
-        async {
-          do! Async.Sleep(int TIMEOUT)
-          do state.Socket.Restart() |> ignore
-        } |> Async.Start
+      | ServiceStatus.Running -> agent.Post Msg.Start
+      | _ -> ()
 
       status
       |> ClientEvent.Status
@@ -180,7 +175,10 @@ module ApiClient =
   let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
       | Right (ApiRequest.Snapshot snapshot) ->
-        Logger.debug "handleServerResponse" (sprintf "got snapshot (socket: %A)" state.Socket.Status)
+        state.Socket.Status
+        |> String.format "received snapshot (status: {0})"
+        |> Logger.info (tag "handleServerResponse")
+
         snapshot
         |> Msg.SetState
         |> agent.Post
@@ -229,7 +227,7 @@ module ApiClient =
     // |_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
     //            |___/
     | Right ApiResponse.Registered ->
-      Logger.debug (tag "handleClientResponse") "registration successful"
+      Logger.info (tag "handleClientResponse") "registration successful"
       ClientEvent.Registered |> Msg.Notify |> agent.Post
     //  _   _       ____            _     _                    _
     // | | | |_ __ |  _ \ ___  __ _(_)___| |_ ___ _ __ ___  __| |
@@ -238,7 +236,7 @@ module ApiClient =
     //  \___/|_| |_|_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
     //                        |___/
     | Right ApiResponse.Unregistered ->
-      Logger.debug (tag "handleClientResponse") "un-registration successful"
+      Logger.info (tag "handleClientResponse") "un-registration successful"
       ClientEvent.UnRegistered |> Msg.Notify |> agent.Post
       agent.Post Msg.Dispose
     //   ___  _  __
@@ -316,20 +314,14 @@ module ApiClient =
     dispose state.SocketSubscription
 
     server.Port
-    |> Some
-    |> Uri.tcpUri server.IpAddress
-    |> sprintf "Connecting to server on %O"
-    |> Logger.debug (tag "start")
+    |> sprintf "Connecting to server on %O:%O" server.IpAddress
+    |> Logger.info (tag "start")
 
     let subscription, socket = makeSocket server state.Client agent
 
-    socket.Start()
-    |> Either.mapError (string >> Logger.err (tag "handleRestart"))
-    |> ignore
+    socket.Connect()
 
-    { state with
-        Socket = socket
-        SocketSubscription = subscription }
+    { state with Socket = socket; SocketSubscription = subscription }
 
   // ** loop
 
@@ -390,16 +382,11 @@ module ApiClient =
           member self.Start () =
             either {
               server.Port
-              |> Some
-              |> Uri.tcpUri server.IpAddress
-              |> sprintf "Connecting to server on %O"
-              |> Logger.debug (tag "start")
+              |> sprintf "Connecting to server on %O:%O" server.IpAddress
+              |> Logger.info (tag "start")
 
-              agent.Start()
-
-              socket.Start()
-              |> Either.mapError (string >> Logger.err (tag "Start"))
-              |> ignore
+              do agent.Start()
+              do socket.Connect()
             }
 
           member self.Restart(server: IrisServer) =
@@ -434,14 +421,14 @@ module ApiClient =
             match store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0) with
             | true -> ()
             | false ->
-              Logger.debug (tag "Dispose") "attempt to un-register with server failed"
+              "attempt to un-register with server failed: timeout"
+              |> Logger.err (tag "Dispose")
               ServiceStatus.Disposed |> ClientEvent.Status |> Msg.Notify |> agent.Post
               if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-                Logger.debug (tag "Dispose") "timeout: attempt to dispose api client failed"
-
+                "attempt to dispose api client failed: timeout"
+                |> Logger.info (tag "Dispose")
             dispose cts
             dispose store.State
-
             store.Update {
               store.State with
                 Client = { client with Status = ServiceStatus.Disposed } }

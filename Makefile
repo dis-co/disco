@@ -1,6 +1,7 @@
 VVVV_BASEDIR=dotnet
 
-BUILD=cd $(VVVV_BASEDIR) && ./build.sh
+OPTSS="parallel-jobs=4"
+BUILD=cd $(VVVV_BASEDIR) && mono packages/build/FAKE/tools/FAKE.exe build.fsx
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
@@ -21,50 +22,50 @@ export FRONTEND_PORT
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) &&  ./build.sh RunTestsFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunTestsFast $(OPTS)"
 
 tests:
-	${BUILD} BuildTests
+	${BUILD} BuildTests ${OPTS}
 
 build: paket.restore zeroconf
-	${BUILD}
+	${BUILD} ${OPTS}
 
 service:
-	${BUILD} BuildDebugService
+	${BUILD} BuildDebugService ${OPTS}
 
 service.release:
-	${BUILD} BuildReleaseService
+	${BUILD} BuildReleaseService ${OPTS}
 
 core:
-	${BUILD} BuildDebugCore
+	${BUILD} BuildDebugCore ${OPTS}
 
 core.release:
-	${BUILD} BuildReleaseCore
+	${BUILD} BuildReleaseCore ${OPTS}
 
 nodes:
-	${BUILD} BuildDebugNodes
+	${BUILD} BuildDebugNodes ${OPTS}
 
 nodes.release:
-	${BUILD} BuildReleaseNodes
+	${BUILD} BuildReleaseNodes ${OPTS}
 
 serialization:
-	${BUILD} GenerateSerialization
+	${BUILD} GenerateSerialization ${OPTS}
 
 zeroconf:
-	${BUILD} BuildDebugZeroconf
-	${BUILD} BuildReleaseZeroconf
+	${BUILD} BuildDebugZeroconf ${OPTS}
+	${BUILD} BuildReleaseZeroconf ${OPTS}
 
 sdk:
-	${BUILD} BuildDebugSdk
+	${BUILD} BuildDebugSdk ${OPTS}
 
 sdk.release:
-	${BUILD} BuildReleaseSdk
+	${BUILD} BuildReleaseSdk ${OPTS}
 
 client:
-	${BUILD} BuildDebugMockClient
+	${BUILD} BuildDebugMockClient ${OPTS}
 
 raspi:
-	${BUILD} BuildDebugRaspi
+	${BUILD} BuildDebugRaspi ${OPTS}
 
 #  _ __ _   _ _ __
 # | '__| | | | '_ \
@@ -99,7 +100,7 @@ run.service.3.project:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast $(OPTS)"
 
 run.service.1.project.profile:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
@@ -111,16 +112,16 @@ run.service.1.project.profile:
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
 frontend:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"
 
 frontend.full:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend $(OPTS)"
 
 frontend.watch:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && dotnet fable npm-run start"
 
 web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast $(OPTS)"
 
 #      _
 #   __| | ___   ___ ___
@@ -129,7 +130,7 @@ web.tests:
 #  \__,_|\___/ \___|___/
 
 docs:
-	${BUILD} DebugDocs
+	${BUILD} DebugDocs ${OPTS}
 
 #        _ _
 #   __ _| | |
@@ -138,10 +139,10 @@ docs:
 #  \__,_|_|_|
 
 tests.all:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && ./build.sh AllTests"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) AllTests $(OPTS)"
 
 debug.all:
-	${BUILD} DebugAll
+	${BUILD} DebugAll ${OPTS}
 
 clean:
 	@git clean -fdX
@@ -153,7 +154,7 @@ clean:
 # |_|  \___|_|\___|\__,_|___/\___|
 
 release: restore
-	${BUILD} Release
+	${BUILD} Release ${OPTS}
 
 #      _          _ _
 #  ___| |__   ___| | |
@@ -174,7 +175,7 @@ nixfsi:
 # |____/ \___/ \___|_|\_\___|_|
 
 docker:
-	${BUILD} DebugDocker
+	${BUILD} DebugDocker ${OPTS}
 
 image_base:
 	@docker build \
@@ -245,7 +246,7 @@ enter:
 # |_|
 
 restore: paket.restore
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap $(OPTS)"
 
 paket.generate:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
