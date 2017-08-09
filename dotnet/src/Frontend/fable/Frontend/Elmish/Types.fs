@@ -17,7 +17,7 @@ type IWidget =
   abstract Id: Guid
   abstract Name: string
   abstract InitialLayout: Layout
-  abstract Render: Guid * Elmish.Dispatch<Msg> * Model -> React.ReactElement
+  abstract Render: Elmish.Dispatch<Msg> * Model -> React.ReactElement
 
 and WidgetRef = Guid * string
 
@@ -37,40 +37,42 @@ and Sorting =
 and Msg =
   | AddWidget of Guid * IWidget
   | RemoveWidget of Guid
-  // | AddTab
+  // | AddTab | RemoveTab
   | AddLog of LogEvent
-  | UpdateLogConfig of LogConfig
+  | UpdateLayout of Layout[]
+  | UpdateUserConfig of UserConfig
   | UpdateState of State option
+  | DragMoved of x:float * y:float * data:obj
+  | DragStopped of x:float * y:float * data:obj
 
 and Model =
   { widgets: Map<Guid,IWidget>
-    logs: LogEvent list
-    logConfig: LogConfig
     layout: Layout[]
     state: State option
-    useRightClick: bool
+    logs: LogEvent list
+    userConfig: UserConfig
   }
 
-and LogConfig =
-  { filter: string option
-    logLevel: LogLevel option
+and UserConfig =
+  { logTextFilter: string option
+    logLevelFilter: LogLevel option
     setLogLevel: LogLevel
-    sorting: Sorting option
-    columns: Map<string, bool>
-    viewLogs: LogEvent array
+    logSorting: Sorting option
+    logColumns: Map<string, bool>
+    useRightClick: bool
   }
-  static member Create(logs: LogEvent list) =
-    { filter = None
-      logLevel = None
+  static member Create() =
+    { logTextFilter = None
+      logLevelFilter = None
       // TODO: This should be read from backend
       setLogLevel = LogLevel.Debug
-      sorting = None
-      columns =
+      logSorting = None
+      logColumns =
         Map["LogLevel", true
             "Time", true
             "Tag", true
             "Tier", true]
-      viewLogs = Array.ofList logs }
+      useRightClick = false }
 
 and [<Pojo>] Layout =
   { i: Guid; ``static``: bool

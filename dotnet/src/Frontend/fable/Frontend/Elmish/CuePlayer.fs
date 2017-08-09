@@ -9,7 +9,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open PinView
+open Iris.Web.PinView
 open Helpers
 type RCom = React.ComponentClass<obj>
 
@@ -143,7 +143,7 @@ type private CueView(props) =
         this.setState({this.state with Cue=cue})
     ))
     disposables.Add(this.props.Global.subscribeToEvent("drag", fun (ev: IDragEvent<Pin>) _ ->
-        if selfRef <> null then
+        if not(isNull selfRef) then
           let mutable highlight = false
           if touchesElement(selfRef, ev.x, ev.y) then
             match ev.``type`` with
@@ -258,7 +258,7 @@ type private CueView(props) =
               for i, pin, slices in pinAndSlices do
                 yield com<PinView,_,_>
                   { key = string pin.Id
-                    ``global`` = this.props.Global
+                    model = Unchecked.defaultof<Iris.Web.Types.Model>
                     pin = pin
                     slices = Some slices
                     updater =

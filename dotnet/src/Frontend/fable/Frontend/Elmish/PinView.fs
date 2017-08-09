@@ -53,13 +53,21 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
+let rec findWithClassUpwards (className: string) (el: Browser.HTMLElement) =
+  if el.classList.contains(className)
+  then el
+  else
+    match el.parentElement with
+    | null -> failwithf "Couldn't find any element with class %s in parent hierarchy" className
+    | el -> findWithClassUpwards className el
+
 type [<Pojo>] PinProps =
   { key: string
     model: Model
     pin: Pin
     slices: Slices option
     updater: IUpdater option
-    onDragStart: (unit -> unit) option }
+    onDragStart: (Browser.HTMLElement -> unit) option }
 
 type PinView(props) =
   inherit React.Component<PinProps, InputState>(props)
@@ -88,8 +96,9 @@ type PinView(props) =
         td [
           OnMouseDown (fun ev ->
             ev.stopPropagation()
+            let el = findWithClassUpwards "iris-pin" !!ev.target
             match this.props.onDragStart with
-            | Some onDragStart -> onDragStart()
+            | Some onDragStart -> onDragStart(el)
             | None -> ())
         ] [str name]
         firstRowValue
@@ -132,7 +141,7 @@ type PinView(props) =
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
     div [ClassName "iris-pin"] [
-      table [] [this.RenderRows(rowCount, this.props.model.useRightClick, updater)]
+      table [] [this.RenderRows(rowCount, this.props.model.userConfig.useRightClick, updater)]
     ]
 
 type [<Pojo>] PinGroupProps =

@@ -1,5 +1,6 @@
 module Iris.Web.Log
 
+open System.Text.RegularExpressions
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
@@ -41,25 +42,25 @@ let printTime (t: uint32): string = jsNative
 
 let readLog (col: string) (log: LogEvent) =
   match col with
-  | Columns.LogLevel -> str (string log.LogLevel)
-  | Columns.Time -> str (printTime log.Time)
-  | Columns.Tag -> str log.Tag
-  | Columns.Tier -> str (string log.Tier)
-  | Columns.Message -> str log.Message
+  | Columns.LogLevel -> string log.LogLevel
+  | Columns.Time -> printTime log.Time
+  | Columns.Tag -> log.Tag
+  | Columns.Tier -> string log.Tier
+  | Columns.Message -> log.Message
   | col -> failwithf "Unrecognized log column: %s" col
 
-let onSorted dispatch (cfg: LogConfig) col _ =
+let onSorted dispatch (cfg: UserConfig) col _ =
   let direction =
-    match cfg.sorting with
+    match cfg.logSorting with
     | Some s when s.column = col ->
       s.direction.Reverse
     | _ -> Direction.Ascending
-  { cfg with sorting = Some { column = col; direction = direction } }
-  |> UpdateLogConfig |> dispatch
+  { cfg with logSorting = Some { column = col; direction = direction } }
+  |> UpdateUserConfig |> dispatch
 
-let sortableCell dispatch (cfg: LogConfig) col =
+let sortableCell dispatch (cfg: UserConfig) col =
     let suffix =
-      match cfg.sorting with
+      match cfg.logSorting with
       | Some s when s.column = col ->
         match s.direction with
         | Ascending -> " ↓"
@@ -70,32 +71,59 @@ let sortableCell dispatch (cfg: LogConfig) col =
         "onClick" => onSorted dispatch cfg col]
       [str (col + " " + suffix)]
 
-let makeSortableColumn dispatch cfg col =
+let makeSortableColumn dispatch cfg (viewLogs: LogEvent array) col =
   from Column
       %["width" => getWidth col
         "header" => sortableCell dispatch cfg col
         "cell" => fun (props: obj) ->
-          from Cell props [readLog col cfg.viewLogs.[!!props?rowIndex]]
+          from Cell props [readLog col viewLogs.[!!props?rowIndex] |> str]
        ] []
 
+let getViewLogs (model: Model) (cfg: UserConfig) =
+  let viewLogs =
+    model.logs |> List.toArray
+  let viewLogs =
+    match cfg.logTextFilter with
+    | Some filter ->
+      try
+        let reg = Regex(filter, RegexOptions.IgnoreCase);
+        viewLogs |> Array.filter (fun log -> reg.IsMatch(log.Message))
+      with _ -> viewLogs  // Do nothing if the RegExp is not well formed
+    | None -> viewLogs
+  let viewLogs =
+    match cfg.logLevelFilter with
+    | Some lv -> viewLogs |> Array.filter (fun log -> log.LogLevel = lv)
+    | None -> viewLogs
+  match cfg.logSorting with
+  | Some sort ->
+    viewLogs |> Array.sortWith (fun log1 log2 ->
+      let col1 = readLog sort.column log1
+      let col2 = readLog sort.column log2
+      let res = compare col1 col2
+      match sort.direction with
+      | Direction.Ascending -> res
+      | Direction.Descending -> res * -1)
+  | None -> viewLogs
+
 let body dispatch model =
-  let cfg = model.logConfig
+  let viewLogs =
+    getViewLogs model model.userConfig
   from Table
-    %["rowsCount" => cfg.viewLogs.Length
+    %["rowsCount" => viewLogs.Length
       "rowHeight" => 30
       "headerHeight" => 30
       "width" => 700
       "height" => 600]
     [ yield! Columns.sortable |> Seq.choose (fun col ->
-        match Map.tryFind col cfg.columns with
-        | Some true -> makeSortableColumn dispatch cfg col |> Some
+        match Map.tryFind col model.userConfig.logColumns with
+        | Some true -> makeSortableColumn dispatch model.userConfig viewLogs col |> Some
         | Some false | None -> None)
       yield from Column
         %["width" => getWidth Columns.Message
           "header" => from Cell %[] [str Columns.Message]
           "cell" => fun (props: obj) ->
             // %["style" => %["whiteSpace"=>"nowrap"]]
-            from Cell props [readLog Columns.Message cfg.viewLogs.[!!props?rowIndex]]
+            from Cell props [readLog Columns.Message viewLogs.[!!props?rowIndex] |> str]
          ] []
     ]
 
@@ -107,7 +135,7 @@ let dropdown title values generator =
   ]
 
 let titleBar dispatch (model: Model) =
-    let filter = defaultArg model.logConfig.filter ""
+    let filter = defaultArg model.userConfig.logTextFilter ""
     div [] [
       input [
         Type "text"
@@ -118,17 +146,17 @@ let titleBar dispatch (model: Model) =
             match !!ev.target?value with
             | null | "" -> None
             | filter -> Some filter
-          { model.logConfig with filter = filter } |> UpdateLogConfig |> dispatch)
+          { model.userConfig with logTextFilter = filter } |> UpdateUserConfig |> dispatch)
       ]
       dropdown "Columns" Columns.sortable (fun col ->
         label [] [
           input [
             Type "checkbox"
-            Checked model.logConfig.columns.[col]
+            Checked model.userConfig.logColumns.[col]
             OnChange (fun ev ->
               let checked': bool = !!ev.target?``checked``
-              let columns = Map.add col checked' model.logConfig.columns
-              { model.logConfig with columns = columns } |> UpdateLogConfig |> dispatch)
+              let columns = Map.add col checked' model.userConfig.logColumns
+              { model.userConfig with logColumns = columns } |> UpdateUserConfig |> dispatch)
           ]
           str col
         ]
@@ -141,10 +169,10 @@ let titleBar dispatch (model: Model) =
         label [] [
           input [
             Type "radio"
-            Checked (model.logConfig.logLevel = lv)
+            Checked (model.userConfig.logLevelFilter = lv)
             OnChange (fun ev ->
-              { model.logConfig with logLevel = lv }
-              |> UpdateLogConfig |> dispatch)
+              { model.userConfig with logLevelFilter = lv }
+              |> UpdateUserConfig |> dispatch)
           ]
           str strLv
         ]
@@ -153,7 +181,7 @@ let titleBar dispatch (model: Model) =
         if strLv = "button" then
           button [
             OnClick(fun _ ->
-              model.logConfig.setLogLevel
+              model.userConfig.setLogLevel
               |> SetLogLevel
               |> ClientContext.Singleton.Post)
           ] [str "SET"]
@@ -162,35 +190,32 @@ let titleBar dispatch (model: Model) =
           label [] [
             input [
               Type "radio"
-              Checked (model.logConfig.setLogLevel = lv)
+              Checked (model.userConfig.setLogLevel = lv)
               OnChange (fun ev ->
-                { model.logConfig with setLogLevel = lv }
-                |> UpdateLogConfig |> dispatch)
+                { model.userConfig with setLogLevel = lv }
+                |> UpdateUserConfig |> dispatch)
             ]
             str strLv
           ])
     ]
 
-let view id name dispatch model =
-  widget id name (Some titleBar) body dispatch model
-
 let createLogWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
-    member __.Name = "LOG"
-    member __.InitialLayout =
+    member __.Name = Types.Widgets.Log
+    member this.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
         w = 8; h = 6
         minW = 6; maxW = 20
         minH = 2; maxH = 20 }
-    member this.Render(id, dispatch, model) =
+    member this.Render(dispatch, model) =
       div [Key (string id)] [
         lazyViewWith
           (fun m1 m2 ->
-              equalsRef m1.logs m2.logs
-                  && equalsRef m1.logConfig m2.logConfig)
-          (view id this.Name dispatch)
+            equalsRef m1.logs m2.logs
+                && equalsRef m1.userConfig m2.userConfig)
+          (widget id this.Name (Some titleBar) body dispatch)
           model
       ]
   }

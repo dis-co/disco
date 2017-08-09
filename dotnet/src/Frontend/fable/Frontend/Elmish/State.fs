@@ -1,7 +1,6 @@
 module rec Iris.Web.State
 
 open System
-open System.Text.RegularExpressions
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
@@ -10,6 +9,43 @@ open Fable.PowerPack
 open Fable.Import
 open Elmish
 open Types
+open Helpers
+
+type IDomToImage =
+  abstract toPng: el:Browser.HTMLElement * options:obj -> JS.Promise<string>
+
+let domtoimage: IDomToImage = importDefault "dom-to-image"
+let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../../src/Util.ts"
+
+let startDragging (dispatch:Msg->unit) (data:obj) el =
+  Promise.race
+    (domtoimage.toPng(el, obj()))
+    (jQueryEventAsPromise(Browser.document, "mouseup.domtoimage"))
+  |> Promise.iterOrError
+    (function
+      | Choice1Of2 dataUrl ->
+        let mutable prev: Point option = None
+        let img = jQuery("#iris-drag-image")
+        !!jQuery(Browser.window.document)
+          ?on("mousemove.drag", fun e ->
+            let cur = { Point.x = !!e?clientX; y = !!e?clientY }
+            match prev with
+            | None ->
+              prev <- Some cur
+              !!jQuery(img)?attr("src", dataUrl)?css(%["display" => "block"; "left" => cur.x; "top" => cur.y])
+              DragMoved(cur.x, cur.y, data) |> dispatch
+            | Some p when distance p cur > 5. ->
+              prev <- Some cur
+              !!jQuery(img)?css(%["left" => cur.x; "top" => cur.y])
+              DragMoved(cur.x, cur.y, data) |> dispatch
+            | Some _ -> ())
+          ?on("mouseup.drag", fun e ->
+            !!jQuery(img)?css(%["display" => "none"])
+            DragStopped(!!e?clientX, !!e?clientY, data) |> dispatch
+            jQuery(Browser.window.document)?off("mousemove.drag mouseup.drag"))
+      // If the mouseup event happens before the image is finished, do nothing
+      | Choice2Of2 _ -> ())
+    (fun ex -> Browser.console.error("Error when generating image:", ex))
 
 [<PassGenerics>]
 let loadFromLocalStorage<'T> (key: string) =
@@ -21,42 +57,6 @@ let loadFromLocalStorage<'T> (key: string) =
 let saveToLocalStorage (key: string) (value: obj) =
   let g = Fable.Import.Browser.window
   g.localStorage.setItem(key, toJson value)
-
-let updateViewLogs (model: Model) (cfg: LogConfig) =
-  let readLog (col: string) (log: LogEvent) =
-    match col with
-    | "LogLevel" -> string log.LogLevel
-    | "Time" -> string log.Time
-    | "Tag" -> log.Tag
-    | "Tier" -> string log.Tier
-    | "Message" -> log.Message
-    | col -> failwithf "Unrecognized log column: %s" col
-  let viewLogs = model.logs |> List.toArray
-  let viewLogs =
-    match cfg.filter with
-    | Some filter ->
-      try
-        let reg = Regex(filter, RegexOptions.IgnoreCase);
-        viewLogs |> Array.filter (fun log -> reg.IsMatch(log.Message))
-      with _ -> viewLogs  // Do nothing if the RegExp is not well formed
-    | None -> viewLogs
-  let viewLogs =
-    match cfg.logLevel with
-    | Some lv -> viewLogs |> Array.filter (fun log -> log.LogLevel = lv)
-    | None -> viewLogs
-  let viewLogs =
-    match cfg.sorting with
-    | Some sort ->
-      viewLogs |> Array.sortWith (fun log1 log2 ->
-        let col1 = readLog sort.column log1
-        let col2 = readLog sort.column log2
-        let res = compare col1 col2
-        match sort.direction with
-        | Direction.Ascending -> res
-        | Direction.Descending -> res * -1
-      )
-    | None -> viewLogs
-  { cfg with viewLogs = viewLogs}
 
 let init() =
   let startContext dispatch =
@@ -81,12 +81,10 @@ let init() =
   let logs = List.init 50 (fun _ -> Core.MockData.genLog())
   let initModel =
     { widgets = widgets
-      logs = logs
-      logConfig = LogConfig.Create(logs)
       layout = layout
       state = None
-      useRightClick = false
-    }
+      logs = logs
+      userConfig = UserConfig.Create() }
   initModel, [startContext]
 
 let saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
@@ -112,9 +110,13 @@ let update msg model =
     // | RemoveTab -> // Optional, add widget
     | AddLog log ->
       { model with logs = log::model.logs }
-    | UpdateLogConfig cfg ->
-      let cfg = updateViewLogs model cfg
-      { model with logConfig = cfg }
+    | UpdateLayout layout ->
+      saveToLocalStorage StorageKeys.layout layout
+      { model with layout = layout }
+    | UpdateUserConfig cfg ->
+      { model with userConfig = cfg }
     | UpdateState state ->
       { model with state = state }
+    | DragMoved(x,y,data) -> printfn   "MOVED:   x:%3f, y:%3f" x y; model
+    | DragStopped(x,y,data) -> printfn "STOPPED: x:%3f, y:%3f" x y; model
   newModel, []

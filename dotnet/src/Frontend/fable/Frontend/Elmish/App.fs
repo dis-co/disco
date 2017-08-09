@@ -39,8 +39,6 @@ module Tabs =
       div [Class "tabs is-boxed"] [
         ul [] [
           li [Class "is-active"] [a [] [str "Workspace"]]
-          // li [] [a [] [str "Foo"]]
-          // li [] [a [] [str "Bar"]]
         ]
       ]
       div [Class "iris-tab-body"] [
@@ -52,11 +50,10 @@ module Tabs =
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
           "layout" => model.layout
-          "onLayoutChange" => fun layout ->
-            saveToLocalStorage StorageKeys.layout layout
+          "onLayoutChange" => (UpdateLayout >> dispatch)
         ] [
-          for KeyValue(id,widget) in model.widgets do
-            yield widget.Render(id, dispatch, model)
+          for KeyValue(_,widget) in model.widgets do
+            yield widget.Render(dispatch, model)
         ]
       ]
     ]

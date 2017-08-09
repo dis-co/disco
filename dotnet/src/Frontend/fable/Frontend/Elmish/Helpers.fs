@@ -21,6 +21,12 @@ let inline (~%) o = createObj o
 let inline (=>) x y = x ==> y
 let inline equalsRef x y = obj.ReferenceEquals(x, y)
 
+// Math
+type Point = { x: float; y: float}
+
+let distance (p1: Point) (p2: Point) =
+  sqrt ((pown (p2.x - p1.x) 2) + (pown (p2.y - p1.y) 2))
+
 // Same as Elmish LazyView with hooks
 // for mount and unmount events
 type [<Pojo>] HookProps<'model> = {
@@ -56,11 +62,13 @@ let inline hookViewWith
         onUnMount = onUnMount }
         []
 
+type ElmishView = (Msg->unit)->Model->React.ReactElement
+
 // Widget view
 let widget (id: Guid) (name: string)
-           (titleBar: _ option) (body: (Msg->unit)->Model->React.ReactElement)
+           (titleBar: ElmishView option) (body: ElmishView)
            (dispatch: Msg->unit) (model: Model) =
-  div [Class "iris-widget"] [
+  div [Class "iris-widget"; Key (string id)] [
     div [Class "iris-draggable-handle"] [
       span [] [str name]
       div [Class "iris-title-bar"] [
@@ -89,3 +97,24 @@ let widget (id: Guid) (name: string)
       body dispatch model
     ]
   ]
+
+module Promise =
+  open Fable.PowerPack
+
+  [<Emit("$2.then($0,$1)")>]
+  let iterOrError (resolve: 'T->unit) (reject: Exception->unit) (pr: JS.Promise<'T>): unit = jsNative
+
+  let race (p1: JS.Promise<'a>) (p2: JS.Promise<'b>) =
+    let mutable fin = false
+    let onSuccess resolve choice result =
+      if not fin then
+        fin <- true
+        choice result |> resolve
+    let onError reject er =
+      if not fin then
+        fin <- true
+        reject er
+    Promise.create(fun resolve reject ->
+      p1 |> iterOrError (onSuccess resolve Choice1Of2) (onError reject)
+      p2 |> iterOrError (onSuccess resolve Choice2Of2) (onError reject)
+    )
