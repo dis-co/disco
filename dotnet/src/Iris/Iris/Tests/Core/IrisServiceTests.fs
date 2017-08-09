@@ -469,7 +469,7 @@ module IrisServiceTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
   let irisServiceTests =
-    ftestList "IrisService Tests" [
+    testList "IrisService Tests" [
       test_ensure_iris_server_clones_changes_from_leader
       test_ensure_client_slice_update_does_not_loop
       test_ensure_cue_resolver_works

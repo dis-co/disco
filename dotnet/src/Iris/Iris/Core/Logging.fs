@@ -85,18 +85,18 @@ type Tier =
 
   override self.ToString() =
     match self with
-    | FrontEnd -> "ui"
+    | FrontEnd -> "frontend"
     | Client   -> "client"
     | Service  -> "service"
 
   // ** Parse
 
   static member Parse (str: string) =
-    match str with
-    | "FrontEnd"  -> FrontEnd
-    | "Client"    -> Client
-    | "Service"   -> Service
-    | _           -> failwithf "could not parse %s" str
+    match str.ToLower() with
+    | "frontend" | "ui" -> FrontEnd
+    | "client"  -> Client
+    | "service" -> Service
+    | _         -> failwithf "could not parse %s" str
 
   // ** TryParse
 
