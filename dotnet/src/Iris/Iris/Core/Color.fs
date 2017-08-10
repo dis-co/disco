@@ -12,9 +12,14 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
+
+#endif
 
 // * Color Yaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
   [<DefaultValue>] val mutable ColorType : string
@@ -86,7 +91,7 @@ type RGBAValue =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> RGBAValueFB.GetRootAsRGBAValueFB
     |> RGBAValue.FromFB
@@ -166,7 +171,7 @@ type HSLAValue =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> HSLAValueFB.GetRootAsHSLAValueFB
     |> HSLAValue.FromFB
@@ -272,14 +277,14 @@ type ColorSpace =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: Binary.Buffer) =
+  static member FromBytes(bytes: byte[]) =
     Binary.createBuffer bytes
     |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB
 
   // ** ToYamlObject
 
-#if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
     match self with

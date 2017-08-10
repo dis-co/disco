@@ -1,4 +1,5 @@
-namespace Iris.Client
+[<AutoOpen>]
+module Iris.Client.Interfaces
 
 // * Imports
 
@@ -7,7 +8,6 @@ open System
 open System.Collections.Concurrent
 open FlatBuffers
 open Iris.Serialization
-
 
 // * IrisServer
 
@@ -49,20 +49,21 @@ type ClientEvent =
 type IApiClient =
   inherit IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract State: Either<IrisError,State>
+  abstract Restart: server:IrisServer -> Either<IrisError,unit>
+  abstract State: State
   abstract Status: ServiceStatus
   abstract Subscribe: (ClientEvent -> unit) -> IDisposable
-  abstract AddPinGroup: PinGroup -> Either<IrisError,unit>
-  abstract UpdatePinGroup: PinGroup -> Either<IrisError,unit>
-  abstract RemovePinGroup: PinGroup -> Either<IrisError,unit>
-  abstract AddCue: Cue -> Either<IrisError,unit>
-  abstract UpdateCue: Cue -> Either<IrisError,unit>
-  abstract RemoveCue: Cue -> Either<IrisError,unit>
-  abstract AddCueList: CueList -> Either<IrisError,unit>
-  abstract UpdateCueList: CueList -> Either<IrisError,unit>
-  abstract RemoveCueList: CueList -> Either<IrisError,unit>
-  abstract AddPin: Pin -> Either<IrisError,unit>
-  abstract UpdatePin: Pin -> Either<IrisError,unit>
-  abstract UpdateSlices: Slices -> Either<IrisError,unit>
-  abstract RemovePin: Pin -> Either<IrisError,unit>
-  abstract Append: StateMachine -> Either<IrisError,unit>
+  abstract AddPinGroup: PinGroup -> unit
+  abstract UpdatePinGroup: PinGroup -> unit
+  abstract RemovePinGroup: PinGroup -> unit
+  abstract AddCue: Cue -> unit
+  abstract UpdateCue: Cue -> unit
+  abstract RemoveCue: Cue -> unit
+  abstract AddCueList: CueList -> unit
+  abstract UpdateCueList: CueList -> unit
+  abstract RemoveCueList: CueList -> unit
+  abstract AddPin: Pin -> unit
+  abstract UpdatePin: Pin -> unit
+  abstract UpdateSlices: Slices -> unit
+  abstract RemovePin: Pin -> unit
+  abstract Append: StateMachine -> unit

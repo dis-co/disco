@@ -1,0 +1,24 @@
+title Remote API Published Events
+
+hide footbox
+
+box "Remote API Clients"
+    participant "VVVV"  as A
+end box
+
+box "Iris" #LightBlue
+    participant "API Server"          as B
+    participant "Dispatcher"          as C
+    participant "State Mutator"       as D
+    participant "WebSocket Publisher" as E
+end box
+
+box "Local API Clients"
+    participant "Other IrisService" as F
+end box
+
+A -> B: UpdateSlice Command
+B --> F: Publish to Local Clients
+B -> C: Dispatch Command
+C -> D: Apply to State
+D -> E: Publish via WebSocket

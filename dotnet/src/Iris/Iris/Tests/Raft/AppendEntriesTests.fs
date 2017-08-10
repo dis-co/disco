@@ -25,13 +25,13 @@ module AppendEntries =
       raft {
         do! Raft.addMemberM peer
         do! expectM "Should have no current leader" None Raft.currentLeader
-        do! Raft.setTermM 5u
+        do! Raft.setTermM (term 5)
 
         let msg =
-          { Term         = 1u
-          ; PrevLogIdx   = 0u
-          ; PrevLogTerm  = 0u
-          ; LeaderCommit = 0u
+          { Term         = term 1
+          ; PrevLogIdx   = index 0
+          ; PrevLogTerm  = term 0
+          ; LeaderCommit = index 0
           ; Entries      = None }
 
         let! result = Raft.receiveAppendEntries (Some peer.Id) msg
@@ -46,10 +46,10 @@ module AppendEntries =
       raft {
         do! Raft.addMemberM (Member.create (Id.Create()))
         let msg =
-          { Term         = 1u
-          ; PrevLogIdx   = 0u
-          ; PrevLogTerm  = 0u
-          ; LeaderCommit = 1u
+          { Term         = term 1
+          ; PrevLogIdx   = index 0
+          ; PrevLogTerm  = term 0
+          ; LeaderCommit = index 1
           ; Entries      = None }
 
         let! response = Raft.receiveAppendEntries None msg
@@ -64,21 +64,21 @@ module AppendEntries =
       raft {
         let peer = Member.create (Id.Create())
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
         do! expectM "Should not have a leader" None Raft.currentLeader
         let msg =
-          { Term = 2u
-          ; PrevLogIdx = 0u
-          ; PrevLogTerm = 0u
-          ; LeaderCommit = 0u
+          { Term = term 2
+          ; PrevLogIdx = index 0
+          ; PrevLogTerm = term 0
+          ; LeaderCommit = index 0
           ; Entries = None
           }
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
 
         expect "Should be successful" true AppendRequest.succeeded response
-        expect "Response should have term 2" 2u AppendRequest.term response
+        expect "Response should have term 2" (term 2) AppendRequest.term response
 
-        do! expectM "Raft should have term 2" 2u Raft.currentTerm
+        do! expectM "Raft should have term 2" (term 2) Raft.currentTerm
         do! expectM "should have leader" (Some peer.Id) Raft.currentLeader
       }
       |> runWithDefaults
@@ -90,16 +90,16 @@ module AppendEntries =
         let peer = Member.create (Id.Create())
         do! Raft.addMemberM peer
         do! Raft.setStateM Follower
-        do! expectM "Should have 0 log entries" 0u Raft.numLogs
+        do! expectM "Should have 0 log entries" 0 Raft.numLogs
         let msg =
-          { Term = 1u
-          ; PrevLogIdx = 1u
-          ; PrevLogTerm = 4u
-          ; LeaderCommit = 5u
+          { Term = term 1
+          ; PrevLogIdx = index 1
+          ; PrevLogTerm = term 4
+          ; LeaderCommit = index 5
           ; Entries = None
           }
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
-        do! expectM "Should still have 0 log entries" 0u Raft.numLogs
+        do! expectM "Should still have 0 log entries" 0 Raft.numLogs
       }
       |> runWithDefaults
       |> ignore
@@ -110,19 +110,19 @@ module AppendEntries =
         let peer = Member.create (Id.Create())
         do! Raft.addMemberM peer
         do! Raft.setStateM Follower
-        do! expectM "Should log count 0" 0u Raft.numLogs
+        do! expectM "Should log count 0" 0 Raft.numLogs
         let msg =
-          { Term = 3u
-          ; PrevLogIdx = 0u
-          ; PrevLogTerm = 1u
-          ; LeaderCommit = 5u
-          ; Entries = Log.make 2u defSM |> Some
+          { Term = term 3
+          ; PrevLogIdx = index 0
+          ; PrevLogTerm = term 1
+          ; LeaderCommit = index 5
+          ; Entries = Log.make (term 2) defSM |> Some
           }
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should be a success" true AppendRequest.succeeded response
-        do! expectM "Should have log count 1" 1u Raft.numLogs
-        let! entry = Raft.getEntryAtM 1u
-        expect "Should have term 2" 2u (Option.get >> LogEntry.term) entry
+        do! expectM "Should have log count 1" 1 Raft.numLogs
+        let! entry = Raft.getEntryAtM (index 1)
+        expect "Should have term 2" (term 2) (Option.get >> LogEntry.getTerm) entry
       }
       |> runWithDefaults
       |> ignore
@@ -132,14 +132,14 @@ module AppendEntries =
       raft {
         let peer = Member.create (Id.Create())
         do! Raft.addMemberM peer
-        do! Raft.setTermM 2u
+        do! Raft.setTermM (term 2)
 
         let msg =
-          { Term = 2u
-          ; PrevLogIdx = 1u
-          ; PrevLogTerm = 1u
-          ; LeaderCommit = 5u
-          ; Entries = Log.make 0u defSM |> Some
+          { Term = term 2
+          ; PrevLogIdx = index 1
+          ; PrevLogTerm = term 1
+          ; LeaderCommit = index 5
+          ; Entries = Log.make (term 0) defSM |> Some
           }
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should not have succeeded" true AppendRequest.failed response
@@ -155,8 +155,8 @@ module AppendEntries =
 
   let follower_recv_appendentries_delete_entries_if_conflict_with_new_entries =
     testCase "follower recv appendentries delete entries if conflict with new entries" <| fun _ ->
-      let raft' = defaultServer "string tango"
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         let getNth n =
@@ -167,30 +167,30 @@ module AppendEntries =
 
         let data =
           [| "one"; "two"; "three"; |]
-          |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Pins = [| |] })
+          |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
 
         let peer = Member.create (Id.Create())
 
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
 
         do! _entries_for_conflict_tests data // add some log entries
 
         let newer =
-          { Term         = 2u
-          ; PrevLogIdx   = 1u
-          ; PrevLogTerm  = 1u
-          ; LeaderCommit = 5u
-          ; Entries      = Log.make 2u (AddCue { Id = Id "four"; Name = "four"; Pins = [| |] }) |> Some
+          { Term         = term 2
+          ; PrevLogIdx   = index 1
+          ; PrevLogTerm  = term 1
+          ; LeaderCommit = index 5
+          ; Entries      = Log.make (term 2) (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) |> Some
           }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
         expect "Should have succeeded" true AppendRequest.succeeded response
 
-        do! expectM "Should have 2 entries" 2u Raft.numLogs
+        do! expectM "Should have 2 entries" 2 Raft.numLogs
 
-        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = "one"; Pins = [| |] }) (getNth 1u)
-        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = "four"; Pins = [| |] }) (getNth 2u)
+        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] }) (getNth (index 1))
+        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) (getNth (index 2))
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -205,30 +205,30 @@ module AppendEntries =
 
       let data =
         [| "one"; "two"; "three"; |]
-        |> Array.map (fun name -> AddCue { Id = Id name; Name = name; Pins = [| |] })
+        |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
 
       let peer = Member.create (Id.Create())
-      let raft' = defaultServer "string tango"
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
         do! _entries_for_conflict_tests data // add some log entries
 
         let newer =
-          { Term = 2u
-          ; PrevLogIdx = 1u
-          ; PrevLogTerm = 1u
-          ; LeaderCommit = 5u
+          { Term = term 2
+          ; PrevLogIdx = index 1
+          ; PrevLogTerm = term 1
+          ; LeaderCommit = index 5
           ; Entries = None
           }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
         expect "Should have succeeded" true AppendRequest.succeeded response
-        do! expectM "Should have 1 log entry" 1u Raft.numLogs
-        let! entry = getNth 1u
-        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = "one"; Pins = [| |] })) id entry
+        do! expectM "Should have 1 log entry" 1 Raft.numLogs
+        let! entry = getNth (index 1)
+        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] })) id entry
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -238,24 +238,24 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 2u, 1u, DataSnapshot (State.Empty),
-            Some <| LogEntry((Id.Create()), 2u, 1u, DataSnapshot (State.Empty), None))
+        LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty),
+            Some <| LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty), None))
 
       raft {
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
 
         let newer =
-          { Term = 1u
-          ; PrevLogIdx = 0u
-          ; PrevLogTerm = 1u
-          ; LeaderCommit = 5u
+          { Term = term 1
+          ; PrevLogIdx = index 0
+          ; PrevLogTerm = term 1
+          ; LeaderCommit = index 5
           ; Entries = Some log
           }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
         expect "Should be a success" true AppendRequest.succeeded response
-        do! expectM "Should have 2 logs" 2u Raft.numLogs
+        do! expectM "Should have 2 logs" 2 Raft.numLogs
       }
       |> runWithDefaults
       |> ignore
@@ -264,37 +264,36 @@ module AppendEntries =
     testCase "follower recv appendentries does not add dupe entries already in log" <| fun _ ->
       let peer = Member.create (Id.Create())
 
-      let entry = LogEntry((Id.Create()), 2u, 1u, DataSnapshot (State.Empty), None)
+      let entry = LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty), None)
       let log = Log.fromEntries entry
 
       let next =
-        { Term = 1u
-        ; PrevLogIdx = 0u
-        ; PrevLogTerm = 1u
-        ; LeaderCommit = 5u
+        { Term = term 1
+        ; PrevLogIdx = index 0
+        ; PrevLogTerm = term 1
+        ; LeaderCommit = index 5
         ; Entries = Some entry
         }
 
-      let raft' = defaultServer "server"
-
-      let cbs = mkcbs (ref defSM) :> IRaftCallbacks
+      let raft' = defaultServer ()
+      let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       raft {
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
         let! response = Raft.receiveAppendEntries (Some peer.Id) next
         expect "Should be a success" true AppendRequest.succeeded response
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) next
         expect "Should still be a success" true AppendRequest.succeeded response
-        do! expectM "Should have log count 1" 1u Raft.numLogs
+        do! expectM "Should have log count 1" 1 Raft.numLogs
 
-        let log'' = Log.append (Log.make 1u (DataSnapshot (State.Empty))) log
+        let log'' = Log.append (Log.make (term 1) (DataSnapshot (State.Empty))) log
         let msg = { next with Entries = log''.Data }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should be a success" true AppendRequest.succeeded response
-        do! expectM "Should have 2 entries now" 2u Raft.numLogs
+        do! expectM "Should have 2 entries now" 2 Raft.numLogs
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -304,16 +303,16 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0u, 1u, DataSnapshot (State.Empty),
-            Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (State.Empty),
-                Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (State.Empty),
-                    Some <| LogEntry((Id.Create()), 0u, 1u, DataSnapshot (State.Empty), None))))
+        LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
+            Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
+                Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
+                    Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty), None))))
 
       let msg =
-        { Term = 1u
-        ; PrevLogIdx = 0u
-        ; PrevLogTerm = 1u
-        ; LeaderCommit = 5u
+        { Term = term 1
+        ; PrevLogIdx = index 0
+        ; PrevLogTerm = term 1
+        ; LeaderCommit = index 5
         ; Entries = Some log
         }
 
@@ -321,8 +320,8 @@ module AppendEntries =
         do! Raft.addMemberM peer
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should have been successful" true AppendRequest.succeeded response
-        expect "Should have correct CurrentIndex" 4u AppendRequest.currentIndex response
-        do! expectM "Should have commit index 4" 4u Raft.commitIndex
+        expect "Should have correct CurrentIndex" (index 4) AppendRequest.currentIndex response
+        do! expectM "Should have commit index 4" (index 4) Raft.commitIndex
       }
       |> runWithDefaults
       |> ignore
@@ -332,25 +331,25 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let log =
-        LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (State.Empty),
-          Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (State.Empty),
-              Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (State.Empty),
-                  Some <| LogEntry((Id.Create()), 0u, 1u,  DataSnapshot (State.Empty), None))))
+        LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+          Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+              Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+                  Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty), None))))
 
       let msg =
-        { Term = 1u
-        ; PrevLogIdx = 0u
-        ; PrevLogTerm = 1u
-        ; LeaderCommit = 0u
+        { Term = term 1
+        ; PrevLogIdx = index 0
+        ; PrevLogTerm = term 1
+        ; LeaderCommit = index 0
         ; Entries = Some log
         }
 
       raft {
         do! Raft.addMemberM peer
         let! response1 = Raft.receiveAppendEntries (Some peer.Id) msg
-        let! response2 = Raft.receiveAppendEntries (Some peer.Id) { msg with PrevLogIdx = 3u; LeaderCommit = 3u; Entries = None }
+        let! response2 = Raft.receiveAppendEntries (Some peer.Id) { msg with PrevLogIdx = index 3; LeaderCommit = index 3; Entries = None }
         expect "Should have been successful" true AppendRequest.succeeded response2
-        do! expectM "Should have commit index 3" 3u Raft.commitIndex
+        do! expectM "Should have commit index 3" (index 3) Raft.commitIndex
       }
       |> runWithDefaults
       |> ignore
@@ -360,29 +359,29 @@ module AppendEntries =
     testCase "follower recv appendentries failure includes current idx" <| fun _ ->
       let peer = Member.create (Id.Create())
 
-      let log id = LogEntry(id, 0u, 1u, DataSnapshot (State.Empty), None)
+      let log id = LogEntry(id, index  0, term 1, DataSnapshot (State.Empty), None)
 
       let msg =
-        { Term = 0u
-        ; PrevLogIdx = 0u
-        ; PrevLogTerm = 0u
-        ; LeaderCommit = 0u
+        { Term = term 0
+        ; PrevLogIdx = index 0
+        ; PrevLogTerm = term  0
+        ; LeaderCommit = index 0
         ; Entries = None
         }
 
       raft {
         do! Raft.addMemberM peer
-        do! Raft.setTermM 1u
+        do! Raft.setTermM (term 1)
         do! Raft.appendEntryM (log (Id.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
 
         expect "Should not be successful" true AppendRequest.failed response
-        expect "Should have current index 1" 1u AppendRequest.currentIndex response
+        expect "Should have current index 1" (index 1) AppendRequest.currentIndex response
 
         do! Raft.appendEntryM (log (Id.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should not be successful" true AppendRequest.failed response
-        expect "Should have current index 2" 2u AppendRequest.currentIndex response
+        expect "Should have current index 2" (index 2) AppendRequest.currentIndex response
       }
       |> runWithDefaults
       |> ignore
@@ -392,19 +391,19 @@ module AppendEntries =
       let peer = Member.create (Id.Create())
 
       let msg =
-        { Term = 1u
-        ; PrevLogIdx = 0u
-        ; PrevLogTerm = 0u
-        ; LeaderCommit = 0u
+        { Term = term 1
+        ; PrevLogIdx = index 0
+        ; PrevLogTerm = term 0
+        ; LeaderCommit = index 0
         ; Entries = None
         }
 
       raft {
-        do! Raft.setElectionTimeoutM 1000u
+        do! Raft.setElectionTimeoutM 1000<ms>
         do! Raft.addMemberM peer
-        do! Raft.periodic 900u
+        do! Raft.periodic 900<ms>
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
-        do! expectM "Should have timeout elapsed 0" 0u Raft.timeoutElapsed
+        do! expectM "Should have timeout elapsed 0" 0<ms> Raft.timeoutElapsed
       }
       |> runWithDefaults
       |> ignore

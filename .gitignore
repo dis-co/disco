@@ -12,3 +12,4 @@ node_modules
 /dotnet/docs/src/CHANGELOG.md
 /dotnet/docs/src/LICENSE.txt
 /.markdown-preview.html
+/dotnet/.paket/load/*

@@ -2,20 +2,21 @@ namespace Iris.Service
 
 // * Imports
 
+#if !IRIS_NODES
+
 open System
-open System.IO
-open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
-open Iris.Core.Utils
 open Iris.Service
 open LibGit2Sharp
-open ZeroMQ
-open FSharpx.Functional
-open SharpYaml.Serialization
 
 // * Persistence
+
 module Persistence =
+
+  // ** tag
+
+  let private tag (str: string) = String.Format("Persistence.{0}", str)
 
   // ** createRaft
 
@@ -34,8 +35,11 @@ module Persistence =
       let! mems = Config.getMembers options
       let state =
         mem
-        |> Raft.mkRaft
+        |> Raft.create
         |> Raft.addMembers mems
+        |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
+        |> Raft.setRequestTimeout options.Raft.RequestTimeout
+        |> Raft.setElectionTimeout options.Raft.ElectionTimeout
       return state
     }
 
@@ -56,7 +60,7 @@ module Persistence =
     either {
       let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
-      let count = Map.fold (fun m _ _ -> m + 1u) 0u mems
+      let count = Map.fold (fun m _ _ -> m + 1) 0 mems
       let! data =
         options
         |> Config.metadataPath
@@ -64,9 +68,12 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member     = mem
-            NumMembers = count
-            Peers      = mems }
+            Member          = mem
+            NumMembers      = count
+            Peers           = mems
+            MaxLogDepth     = options.Raft.MaxLogDepth
+            RequestTimeout  = options.Raft.RequestTimeout
+            ElectionTimeout = options.Raft.ElectionTimeout }
     }
 
   // ** getRaft
@@ -110,6 +117,14 @@ module Persistence =
         |> Error.asProjectError "Persistence.saveRaft"
         |> Either.fail
 
+  // ** ensureDirectory
+
+  let private ensureDirectory (path: FilePath) =
+    path
+    |> Path.getDirectoryName
+    |> Directory.createDirectory
+    |> ignore
+
   // ** persistEntry
 
   /// ## persistEntry
@@ -120,38 +135,214 @@ module Persistence =
   /// - project: IrisProject to work on
   /// - sm: StateMachine command
   ///
-  /// Returns: Either<IrisError, FileInfo * Commit * IrisProject>
-  let inline persistEntry (state: State) (sm: StateMachine) =
-    let signature = User.Admin.Signature
-    let path = state.Project.Path
+  /// Returns: Either<IrisError, FileInfo * IrisProject>
+  let persistEntry (state: State) (sm: StateMachine) =
+    let basePath = state.Project.Path
+    let inline save t = Asset.save basePath t
+    let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete
     match sm with
-    | AddCue        cue     -> Asset.saveWithCommit   path signature cue
-    | UpdateCue     cue     -> Asset.saveWithCommit   path signature cue
-    | RemoveCue     cue     -> Asset.deleteWithCommit path signature cue
-    | AddCueList    cuelist -> Asset.saveWithCommit   path signature cuelist
-    | UpdateCueList cuelist -> Asset.saveWithCommit   path signature cuelist
-    | RemoveCueList cuelist -> Asset.deleteWithCommit path signature cuelist
-    | AddUser       user    -> Asset.saveWithCommit   path signature user
-    | UpdateUser    user    -> Asset.saveWithCommit   path signature user
-    | RemoveUser    user    -> Asset.deleteWithCommit path signature user
-    | AddMember     _       -> Asset.saveWithCommit   path signature state.Project
-    | UpdateMember  _       -> Asset.saveWithCommit   path signature state.Project
-    | RemoveMember  _       -> Asset.deleteWithCommit path signature state.Project
-    | UpdateProject project -> Asset.saveWithCommit   path signature project
-    | _                     -> Left OK
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
 
-  // ** updateRepo
+    | AddCue    cue
+    | UpdateCue cue -> save cue
+    | RemoveCue cue -> delete cue
 
-  /// ## updateRepo
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
+
+    | AddCueList    cuelist
+    | UpdateCueList cuelist -> save cuelist
+    | RemoveCueList cuelist -> delete cuelist
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | AddCuePlayer    player
+    | UpdateCuePlayer player -> save player
+    | RemoveCuePlayer player -> delete player
+
+    //  ____  _        ____
+    // |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+    // | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+    // |  __/| | | | | |_| | | | (_) | |_| | |_) |
+    // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+    //                                     |_|
+
+    | AddPinGroup    group
+    | UpdatePinGroup group -> save group
+    | RemovePinGroup group -> delete group
+
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
+
+    | AddUser    user
+    | UpdateUser user -> save user
+    | RemoveUser user -> delete user
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+    | AddMember     _
+    | RemoveMember  _
+    | UpdateProject _ -> save state.Project
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
+
+    | AddPin    pin
+    | UpdatePin pin -> either {
+        let! group =
+          state
+          |> State.tryFindPinGroup pin.PinGroup
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        let path = Asset.path group
+        ensureDirectory path
+        return! save group
+      }
+    | RemovePin pin -> either {
+        let! group =
+          state
+          |> State.tryFindPinGroup pin.PinGroup
+          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+        let path = Asset.path group
+        ensureDirectory path
+        return! save group
+      }
+
+    //   ___  _   _
+    //  / _ \| |_| |__   ___ _ __
+    // | | | | __| '_ \ / _ \ '__|
+    // | |_| | |_| | | |  __/ |
+    //  \___/ \__|_| |_|\___|_|
+
+    | _ -> Either.nothing
+
+  // ** commitChanges
+
+  /// ## commitChanges
   ///
-  /// Description
+  /// Commit all changes to disk
   ///
   /// ### Signature:
-  /// - arg: arg
-  /// - arg: arg
-  /// - arg: arg
+  /// - project: IrisProject to work on
+  /// - sm: StateMachine command
   ///
-  /// Returns: Either<IrisError, about:blank>
-  let updateRepo (project: IrisProject) (leader: RaftMember) : Either<IrisError,unit> =
-    printfn "should pull repository now"
-    |> Either.succeed
+  /// Returns: Either<IrisError, Commit>
+  let commitChanges (state: State) =
+    either {
+      let signature = User.Admin.Signature
+      let! repo = state.Project |> Project.repository
+      do! Git.Repo.stageAll repo
+      let! commit = Git.Repo.commit repo "Project changes committed." signature
+      return repo, commit
+    }
+
+  // ** pushChanges
+
+  let pushChanges (repo: Repository) =
+    repo
+    |> Git.Config.remotes
+    |> Map.map    (konst (Git.Repo.push repo))
+    |> Map.filter (konst (Either.isFail))
+    |> Map.map    (konst (Either.error))
+
+  // ** persistSnapshot
+
+  let persistSnapshot (state: State) (log: RaftLogEntry) =
+    either {
+      let path = Project.toFilePath state.Project.Path
+      do! state.Save(path)
+      use! repo = Project.repository state.Project
+      do! Git.Repo.stageAll repo
+
+      Git.Repo.commit repo "[Snapshot] Log Compaction" User.Admin.Signature
+      |> ignore
+
+      do! Asset.save path log
+    }
+
+  // ** getRemote
+
+  let getRemote (project: IrisProject) (repo: Repository) (leader: RaftMember) =
+    let uri = Uri.gitUri project.Name leader
+    match Git.Config.tryFindRemote repo (string leader.Id) with
+    | None ->
+      leader.Id
+      |> string
+      |> sprintf "Adding %A to list of remotes"
+      |> Logger.debug (tag "getRemote")
+      Git.Config.addRemote repo (string leader.Id) uri
+
+    | Some remote when remote.Url <> unwrap uri ->
+      leader.Id
+      |> string
+      |> sprintf "Updating remote section for %A to point to %A" uri
+      |> Logger.debug (tag "getRemote")
+      Git.Config.updateRemote repo remote uri
+
+    | Some remote ->
+      Either.succeed remote
+
+  // ** ensureRemote
+
+  let ensureRemote (project: IrisProject) (repo: Repository) (peer: RaftMember) =
+    let uri = Uri.gitUri project.Name peer
+    match Git.Config.tryFindRemote repo (string peer.Id) with
+    | None ->
+      peer.Id
+      |> string
+      |> sprintf "Adding %A to list of remotes"
+      |> Logger.debug (tag "getRemote")
+      Git.Config.addRemote repo (string peer.Id) uri
+
+    | Some remote when remote.Url <> unwrap uri ->
+      peer.Id
+      |> string
+      |> sprintf "Updating remote section for %A to point to %A" uri
+      |> Logger.debug (tag "getRemote")
+      Git.Config.updateRemote repo remote uri
+
+    | Some remote ->
+      Either.succeed remote
+
+  // ** ensureRemotes
+
+  let ensureRemotes (leader: Id)
+                    (project: IrisProject)
+                    (peers: Map<Id,RaftMember>)
+                    (repo: Repository) =
+    peers
+    |> Map.toArray
+    |> Array.filter (fst >> (<>) leader)
+    |> Array.iter (snd >> ensureRemote project repo >> ignore)
+    repo
+
+  // ** ensureTracking
+
+  let ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =
+    if not (Git.Branch.isTracking branch) then
+      Git.Branch.setTracked repo branch remote
+    else
+      Either.nothing
+
+#endif

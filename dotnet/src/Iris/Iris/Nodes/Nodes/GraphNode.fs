@@ -17,8 +17,6 @@ open VVVV.Core.Logging
 open Iris.Raft
 open Iris.Core
 open Iris.Nodes
-open Newtonsoft.Json
-open FSharpx.Functional
 
 // * Graph
 
@@ -269,7 +267,7 @@ module Graph =
   let private parseTags (str: string) =
     match str with
     | null | "" -> [| |]
-    | _ -> str.Split [| ',' |]
+    | _ -> str.Split [| ',' |] |> Array.map astag
 
   // ** parsePinGroupId
 
@@ -585,7 +583,7 @@ module Graph =
       | Left error ->
         error
         |> string
-        |> Logger.err state.InClientId.[0] "registerHandlers"
+        |> Logger.err "registerHandlers"
 
     let vecsizeHandler = new EventHandler(vecsizeUpdate)
     let columnsHandler = new EventHandler(vecsizeUpdate)
@@ -715,7 +713,7 @@ module Graph =
 
   type private Parser = IPin2 -> Either<IrisError,Pin>
 
-  let private parseSeqWith (parse: Parser) (state: PluginState) (pins: IPin2 seq) =
+  let private parseSeqWith (parse: Parser) (pins: IPin2 seq) =
     Seq.fold
       (fun lst pin ->
         match parse pin with
@@ -724,22 +722,22 @@ module Graph =
         | Left error ->
           error
           |> string
-          |> Logger.err state.InClientId.[0] "parseSeqWith"
+          |> Logger.err "parseSeqWith"
           lst)
       []
       pins
 
   // ** parseValuesPins
 
-  let private parseValuePins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseValuePin state pins
+  let private parseValuePins (pins: IPin2 seq) =
+    parseSeqWith parseValuePin pins
 
   // ** parseValueBox
 
-  let private parseValueBox (state: PluginState) (node: INode2) =
+  let private parseValueBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseValuePins state
+    |> parseValuePins
 
   // ** parseStringType
 
@@ -782,7 +780,7 @@ module Graph =
         Tags = [| |]
         Direction = dir
         Behavior = st
-        MaxChars = maxchars
+        MaxChars = 1<chars> * maxchars
         VecSize = vc
         Labels = [| |]
         Values = parseStringValues pin
@@ -791,15 +789,15 @@ module Graph =
 
   // ** parseStringPins
 
-  let private parseStringPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseStringPin state pins
+  let private parseStringPins (pins: IPin2 seq) =
+    parseSeqWith parseStringPin pins
 
   // ** parseStringBox
 
-  let private parseStringBox (state: PluginState) (node: INode2) =
+  let private parseStringBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseStringPins state
+    |> parseStringPins
 
   // ** parseEnumPin
 
@@ -826,15 +824,15 @@ module Graph =
 
   // ** parseEnumPins
 
-  let private parseEnumPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseEnumPin state pins
+  let private parseEnumPins (pins: IPin2 seq) =
+    parseSeqWith parseEnumPin pins
 
   // ** parseEnumBox
 
-  let private parseEnumBox (state: PluginState) (node: INode2) =
+  let private parseEnumBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseEnumPins state
+    |> parseEnumPins
 
   // ** parseColorPin
 
@@ -859,43 +857,30 @@ module Graph =
 
   // ** parseColorPins
 
-  let private parseColorPins (state: PluginState) (pins: IPin2 seq) =
-    parseSeqWith parseColorPin state pins
+  let private parseColorPins (pins: IPin2 seq) =
+    parseSeqWith parseColorPin pins
 
   // ** parseColorBox
 
-  let private parseColorBox (state: PluginState) (node: INode2) =
+  let private parseColorBox (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseColorPins state
+    |> parseColorPins
 
   // ** parseINode2
 
-  let private parseINode2 (state: PluginState) (node: INode2) =
-    // for pin in node.Pins do
-    //   sprintf "name: %s direction: %A visible: %A type: %s subtype: %s value: %A"
-    //      pin.Name
-    //      pin.Direction
-    //      pin.Visibility
-    //      pin.Type
-    //      pin.SubType
-    //      pin.[0]
-    //   |> Util.debug state
-      // for n in 0 .. pin.SliceCount - 1 do
-      //   sprintf "  [%d] %A" n pin.[n]
-      //   |> Util.debug state
-
+  let private parseINode2 (node: INode2) =
     either {
       let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
       match boxtype with
       | IOBoxType.Value ->
-        return parseValueBox state node
+        return parseValueBox node
       | IOBoxType.String ->
-        return parseStringBox state node
+        return parseStringBox node
       | IOBoxType.Enum ->
-        return parseEnumBox state node
+        return parseEnumBox node
       | IOBoxType.Color ->
-        return parseColorBox state node
+        return parseColorBox node
       | x ->
         return!
           sprintf "unsupported type %A" x
@@ -914,7 +899,7 @@ module Graph =
       let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
       let group: PinGroup =
         { Id = pin.PinGroup
-          Name = node.GetNodePath(true)
+          Name = name (node.GetNodePath(true))
           Client = state.InClientId.[0]
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
@@ -938,14 +923,16 @@ module Graph =
 
   let private updatePinValues (state: PluginState) (group: Id) (slices: Slices) =
     updatePinWith state group slices.Id <| fun oldpin ->
-      oldpin.SetSlices slices
-    state.Commands.Add (UpdateSlices slices)
+      Pin.setSlices slices oldpin
+    slices
+    |> UpdateSlices
+    |> state.Commands.Add
 
   // ** updatePinName
 
   let private updatePinName (state: PluginState) (group: Id) (pin: Id) (name: string) =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = oldpin.SetName name
+      let updated = Pin.setName name oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -953,7 +940,7 @@ module Graph =
 
   let private updatePinTags (state: PluginState) (group: Id) (pin: Id) (tags: Tag array) =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = oldpin.SetTags tags
+      let updated = Pin.setTags tags oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -961,7 +948,7 @@ module Graph =
 
   let private updatePinDirection (state: PluginState) (group: Id) (pin: Id) dir =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = oldpin.SetDirection dir
+      let updated = Pin.setDirection dir oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -969,7 +956,7 @@ module Graph =
 
   let private updatePinVecSize (state: PluginState) (group: Id) (pin: Id) vecsize =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = oldpin.SetVecSize vecsize
+      let updated = Pin.setVecSize vecsize oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -1068,13 +1055,13 @@ module Graph =
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    match parseINode2 state node with
+    match parseINode2 node with
     | Right [] -> ()
     | Right pins -> List.iter (Msg.PinAdded >> state.Events.Enqueue) pins
     | Left error ->
       error
       |> string
-      |> Logger.err state.InClientId.[0] "onNodeExposed"
+      |> Logger.err "onNodeExposed"
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     parseINode2Ids state node
@@ -1203,12 +1190,12 @@ module Graph =
         | Msg.PinSubTypeChange nodeid ->
           let node = state.V2Host.GetNodeFromPath(nodeid)
           if not (isNull node) then
-            match parseINode2 state node with
+            match parseINode2 node with
             | Right []     -> ()
             | Left error   ->
               error
               |> string
-              |> Logger.err state.InClientId.[0] "processing"
+              |> Logger.err "processing"
             | Right parsed ->
               List.iter
                 (fun (pin,parsed) ->

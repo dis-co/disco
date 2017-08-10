@@ -1,23 +1,17 @@
 namespace Iris.Tests
 
-open System
 open System.Threading
-open System.Text
 open Expecto
 
 open Iris.Core
-open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
 open Iris.Service.Interfaces
+open Iris.Service
 open Iris.Raft
-open Iris.Service.Raft
-open FSharpx.Functional
-open Microsoft.FSharp.Control
-open ZeroMQ
+open Iris.Net
 
 [<AutoOpen>]
 module RaftIntegrationTests =
+
   //  ____        __ _     _____         _
   // |  _ \ __ _ / _| |_  |_   _|__  ___| |_ ___
   // | |_) / _` | |_| __|   | |/ _ \/ __| __/ __|
@@ -27,144 +21,341 @@ module RaftIntegrationTests =
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
       either {
-        let machine1 = MachineConfig.create ()
-        let machine2 = MachineConfig.create ()
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort 8000us
+          |> Member.setRaftPort (port 8000us)
 
         let mem2 =
           machine2.MachineId
           |> Member.create
-          |> Member.setPort 8001us
+          |> Member.setRaftPort (port 8001us)
 
+        let site =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
         let leadercfg =
-          Config.create "leader" machine1
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          machine1
+          |> Config.create
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
-          Config.create "follower" machine2
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          machine2
+          |> Config.create
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        let! leader = RaftServer.create ()
-        do! leader.Load(leadercfg)
-        do! expectE "Leader should have one connection" 1 count leader.Connections
+        let! leader = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+        do! leader.Start()
+        expect "Leader should have one connection" 1 count leader.Connections
 
-        let! follower = RaftServer.create ()
-        do! follower.Load(followercfg)
-        do! expectE "Follower should have one connection" 1 count follower.Connections
+        let! follower = RaftServer.create followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+        do! follower.Start()
+        expect "Follower should have one connection" 1 count follower.Connections
 
-        dispose leader
         dispose follower
+        dispose leader
 
-        do! expectE "Leader should be stopped"   true Service.isStopped leader.Status
-        do! expectE "Follower should be stopped" true Service.isStopped follower.Status
+        expect "Leader should be disposed"   true Service.isDisposed leader.Status
+        expect "Follower should be disposed" true Service.isDisposed follower.Status
       }
       |> noError
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
-        let port = 12000us
-        let machine = MachineConfig.create ()
+        use started = new AutoResetEvent(false)
+        let port = port 12000us
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let mem =
           machine.MachineId
           |> Member.create
-          |> Member.setPort port
+          |> Member.setRaftPort port
+
+        let site =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem.Id, mem) |] }
 
         let leadercfg =
-          Config.create "leader" machine
-          |> Config.addMember mem
+          machine
+          |> Config.create
+          |> Config.addSiteAndSetActive site
 
-        use! leader = RaftServer.create ()
-        do! leader.Load leadercfg
+        use! leader = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
-        do! expectE "Should be running" true Service.isRunning leader.Status
+        let handle = function
+          | IrisEvent.Started ServiceType.Raft -> started.Set() |> ignore
+          | _ -> ()
 
-        use! follower = RaftServer.create ()
+        use sobs = leader.Subscribe(handle)
 
-        do! match follower.Load leadercfg with
-            | Right ()   -> Left (Other("loco","Should have failed to start"))
-            | Left error -> Right ()
+        do! leader.Start()
 
-        do! expectE "Should be failed" true Service.isStopped follower.Status
+        do! waitOrDie "started" started
+
+        expect "Should be running" true Service.isRunning leader.Status
+
+        use! follower = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+
+        do! match follower.Start() with
+            | Right _ -> Left (Other("test","follower should have failed"))
+            | Left _ -> Right ()
+
+        expect "Should be failed" true Service.hasFailed follower.Status
       }
       |> noError
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        let state = ref None
+        use check1 = new AutoResetEvent(false)
 
-        let setState (ev: RaftEvent) =
-          match !state, ev with
-          | None, StateChanged (_,Leader) ->
-            lock state <| fun _ ->
-              state := Some Leader
+        let setState (id: Id) (are: AutoResetEvent) = function
+          | IrisEvent.StateChanged (_,Leader) ->
+            id
+            |> sprintf "%O became leader"
+            |> Logger.debug "test"
+            are.Set() |> ignore
           | _ -> ()
 
-        let machine1 = MachineConfig.create ()
-        let machine2 = MachineConfig.create ()
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
           machine1.MachineId
           |> Member.create
-          |> Member.setPort 8000us
+          |> Member.setRaftPort (port 8000us)
 
         let mem2 =
           machine2.MachineId
           |> Member.create
-          |> Member.setPort 8001us
+          |> Member.setRaftPort (port 8001us)
+
+        let site =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
 
         let leadercfg =
-          Config.create "leader" machine1
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          machine1
+          |> Config.create
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
         let followercfg =
-          Config.create "follower" machine2
-          |> Config.setMembers (Map.ofArray [| (mem1.Id,mem1); (mem2.Id,mem2) |])
+          machine2
+          |> Config.create
+          |> Config.addSiteAndSetActive site
           |> Config.setLogLevel (LogLevel.Debug)
 
-        use! leader = RaftServer.create ()
+        use! leader = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
-        use obs1 = leader.Subscribe setState
+        use obs1 = leader.Subscribe (setState mem1.Id check1)
 
-        do! leader.Load leadercfg
+        do! leader.Start()
 
-        use! follower = RaftServer.create ()
+        use! follower = RaftServer.create followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
 
-        use obs2 = follower.Subscribe setState
+        use obs2 = follower.Subscribe (setState mem2.Id check1)
 
-        do! follower.Load(followercfg)
+        do! follower.Start()
 
-        let! state1 = leader.State
-        let! state2 = follower.State
-
-        max
-          state1.Raft.ElectionTimeout
-          state2.Raft.ElectionTimeout
-        |> (int >> ((+) 100))
-        |> Thread.Sleep
-
-        expect "Should have elected a leader" (Some Leader) id !state
+        do! waitOrDie "Leader-Check" check1
       }
       |> noError
 
+  let test_log_snapshotting_should_clean_all_logs =
+    testCase "log snapshotting should clean all logs" <| fun _ ->
+      either {
+        use snapshotCheck = new AutoResetEvent(false)
+        use expectedCheck = new AutoResetEvent(false)
+
+        let state = ref None
+
+        let machine1 = MachineConfig.create "127.0.0.1" None
+
+        let store = Store(State.Empty)
+
+        let mem1 =
+          machine1.MachineId
+          |> Member.create
+          |> Member.setRaftPort (port 8000us)
+
+        let site =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+
+        let leadercfg =
+          machine1
+          |> Config.create
+          |> Config.addSiteAndSetActive site
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        use! leader = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() =
+                snapshotCheck.Set() |> ignore
+                Some store.State
+          }
+
+        let expected = int leadercfg.Raft.MaxLogDepth * 2
+
+        let evHandler = function
+          | IrisEvent.Append(Origin.Raft, sm) ->
+            store.Dispatch sm
+            if store.State.Users.Count = expected then
+              expectedCheck.Set() |> ignore
+          | _ -> ()
+
+        use obs1 = leader.Subscribe evHandler
+        do! leader.Start()
+
+        let cmds =
+          [ for n in 0 .. expected - 1 do
+              yield AddUser (mkUser ()) ]
+          |> List.map leader.Append
+
+        do! waitOrDie "snapshot" snapshotCheck
+        do! waitOrDie "expectedCheck" expectedCheck
+
+        expect "Should have expected number of Users" expected id store.State.Users.Count
+      }
+      |> noError
+
+  let test_validate_add_member_works =
+    testCase "validate add member works" <| fun _ ->
+      either {
+        use added = new AutoResetEvent(false)
+        use configured = new AutoResetEvent(false)
+        use check1 = new AutoResetEvent(false)
+        use check2 = new AutoResetEvent(false)
+
+        let setState (id: Id) (are: AutoResetEvent) = function
+          | IrisEvent.StateChanged (_,Leader) ->
+            id
+            |> sprintf "%O became leader"
+            |> Logger.debug "test"
+            are.Set() |> ignore
+          | IrisEvent.StateChanged (_,Follower) ->
+            id
+            |> sprintf "%O became follower"
+            |> Logger.debug "test"
+            are.Set() |> ignore
+          | IrisEvent.Append(Origin.Raft, AddMember mem) ->
+            mem.Id
+            |> sprintf "%O was added"
+            |> Logger.debug "test"
+            added.Set() |> ignore
+          | IrisEvent.ConfigurationDone mems ->
+            Array.length mems
+            |> sprintf "new cluster configuration active with %d members"
+            |> Logger.debug "test"
+            configured.Set() |> ignore
+          | _ -> ()
+
+        let machine1 = MachineConfig.create "127.0.0.1" None
+        let machine2 = MachineConfig.create "127.0.0.1" None
+
+        let mem1 =
+          machine1.MachineId
+          |> Member.create
+          |> Member.setRaftPort (port 8000us)
+
+        let mem2 =
+          machine2.MachineId
+          |> Member.create
+          |> Member.setRaftPort (port 8001us)
+
+        let site1 =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+
+        let site2 =
+          { site1 with Members = Map.ofArray [| (mem2.Id, mem2) |] }
+
+        let leadercfg =
+          machine1
+          |> Config.create
+          |> Config.addSiteAndSetActive site1
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        let followercfg =
+          machine2
+          |> Config.create
+          |> Config.addSiteAndSetActive site2
+          |> Config.setLogLevel (LogLevel.Debug)
+
+        use! leader = RaftServer.create leadercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+
+        use obs1 = leader.Subscribe (setState mem1.Id check1)
+
+        do! leader.Start()
+
+        use! follower = RaftServer.create followercfg {
+            new IRaftSnapshotCallbacks with
+              member self.RetrieveSnapshot() = None
+              member self.PrepareSnapshot() = None
+          }
+
+        use obs2 = follower.Subscribe (setState mem2.Id check2)
+
+        do! follower.Start()
+
+        do! waitOrDie "check1" check1
+        do! waitOrDie "check2" check2
+
+        leader.AddMember mem2           // add mem2 to cluster
+
+        do! waitOrDie "added" added
+        do! waitOrDie "configured" configured
+      }
+      |> noError
   //                       _ _
   //  _ __   ___ _ __   __| (_)_ __   __ _
   // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
   // | |_) |  __/ | | | (_| | | | | | (_| |
   // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
   // |_|                             |___/
-
-  let test_log_snapshotting_should_clean_all_logs =
-    pending "log snapshotting should clean all logs"
 
   let test_follower_join_should_fail_on_duplicate_raftid =
     pending "follower join should fail on duplicate raftid"
@@ -178,6 +369,8 @@ module RaftIntegrationTests =
   //  / ___ \| | |   | |  __/\__ \ |_\__ \
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
+  // let logs = Logger.subscribe Logger.stdout
+
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
       // raft
@@ -186,8 +379,10 @@ module RaftIntegrationTests =
       test_validate_follower_joins_leader_after_startup
 
       // db
-      // test_log_snapshotting_should_clean_all_logs
+      test_log_snapshotting_should_clean_all_logs
 
+      // cluster changes
+      test_validate_add_member_works
 
       // test_follower_join_should_fail_on_duplicate_raftid
       // test_all_rafts_should_share_a_common_distributed_event_log

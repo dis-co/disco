@@ -3,12 +3,10 @@
 open System
 open System.IO
 open System.Linq
-open System.Threading
 open Expecto
 open Iris.Core
 open Iris.Raft
 open LibGit2Sharp
-open FSharpx.Functional
 
 [<AutoOpen>]
 module ProjectTests =
@@ -22,14 +20,14 @@ module ProjectTests =
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) name machine
 
-        let result = Asset.loadWithMachine project.Path machine
+        let result = Asset.loadWithMachine (Project.toFilePath project.Path) machine
 
         do! expectE "Projects should be equal" true ((=) project) result
       }
@@ -45,12 +43,12 @@ module ProjectTests =
   let dirtyTest =
     testCase "Project create should render clean repo" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) name machine
         let! repo = Project.repository project
         let! status = Git.Repo.status repo
         let untracked = status.Untracked.Count()
@@ -69,11 +67,11 @@ module ProjectTests =
   let relpathTest =
     testCase "Project create should only work on absolute paths" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
-        let path = Path.GetRandomFileName()
+        let path = Path.getRandomFileName()
 
-        let result = Project.create path path machine
+        let result = Project.create (Project.ofFilePath path) (unwrap path) machine
 
         expect "Create should have failed" false Either.isSuccess result
 
@@ -94,57 +92,55 @@ module ProjectTests =
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let fn = Path.getFileName path
 
         let engineCfg = RaftConfig.Default
 
         let vvvvCfg =
           { VvvvConfig.Default with
               Executables =
-                [| { Executable = "/pth/to/nowhere"
-                  ; Version    = "0.0.0.0.0.0.1"
+                [| { Executable = filepath "/pth/to/nowhere"
+                  ; Version    = version "0.0.0.0.0.0.1"
                   ; Required   = true };
-                  { Executable = "/antoher/path"
-                  ; Version    = "1.2.34.4"
+                  { Executable = filepath "/antoher/path"
+                  ; Version    = version "1.2.34.4"
                   ; Required   = false } |]
             }
 
         let display1 =
           { Id        = Id.Create()
-          ; Name      = "Nice Display"
+          ; Name      = name "Nice Display"
           ; Size      = Rect (1280,1080)
           ; Signals   =
-              [| { Size     = Rect       (500,500)
-                ; Position = Coordinate (0,0) };
-                { Size     = Rect       (800,800)
-                ; Position = Coordinate (29, 13) } |]
+              [| { Size    = Rect       (500,500)
+                 ; Position = Coordinate (0,0) };
+                 { Size     = Rect       (800,800)
+                 ; Position = Coordinate (29, 13) } |]
           ; RegionMap =
             {
               SrcViewportId = Id.Create()
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "A Cool Region"
-                  ; SrcPosition    = Coordinate (0,0)
-                  ; SrcSize        = Rect       (50,50)
-                  ; OutputPosition = Coordinate (50,50)
-                  ; OutputSize     = Rect       (100,100)
-                  };
-                  { Id             = Id.Create()
-                  ; Name           = "Another Cool Region"
-                  ; SrcPosition    = Coordinate (8,67)
-                  ; SrcSize        = Rect       (588,5130)
-                  ; OutputPosition = Coordinate (10,5300)
-                  ; OutputSize     = Rect       (800,900)
-                  } |]
+                     Name           = name "A Cool Region"
+                     SrcPosition    = Coordinate (0,0)
+                     SrcSize        = Rect       (50,50)
+                     OutputPosition = Coordinate (50,50)
+                     OutputSize     = Rect       (100,100) };
+                   { Id             = Id.Create()
+                     Name           = name "Another Cool Region"
+                     SrcPosition    = Coordinate (8,67)
+                     SrcSize        = Rect       (588,5130)
+                     OutputPosition = Coordinate (10,5300)
+                     OutputSize     = Rect       (800,900) } |]
             }
           }
 
         let display2 =
           { Id        = Id.Create()
-          ; Name      = "Cool Display"
+          ; Name      = name "Cool Display"
           ; Size      = Rect (180,12080)
           ; Signals   =
               [| { Size     = Rect (800,200)
@@ -155,14 +151,14 @@ module ProjectTests =
             { SrcViewportId = Id.Create();
               Regions =
                 [| { Id             = Id.Create()
-                  ; Name           = "One Region"
+                  ; Name           = name "One Region"
                   ; SrcPosition    = Coordinate (0,8)
                   ; SrcSize        = Rect       (50,52)
                   ; OutputPosition = Coordinate (53,50)
                   ; OutputSize     = Rect       (103,800)
                   };
                   { Id             = Id.Create()
-                  ; Name           = "Premium Region"
+                  ; Name           = name "Premium Region"
                   ; SrcPosition    = Coordinate (8333,897)
                   ; SrcSize        = Rect       (83,510)
                   ; OutputPosition = Coordinate (1580,50)
@@ -173,7 +169,7 @@ module ProjectTests =
 
         let viewPort1 =
           { Id             = Id.Create()
-          ; Name           = "One fine viewport"
+          ; Name           = name "One fine viewport"
           ; Position       = Coordinate (22,22)
           ; Size           = Rect       (666,666)
           ; OutputPosition = Coordinate (0,0)
@@ -184,7 +180,7 @@ module ProjectTests =
 
         let viewPort2 =
           { Id             = Id.Create()
-          ; Name           = "Another fine viewport"
+          ; Name           = name "Another fine viewport"
           ; Position       = Coordinate (82,2)
           ; Size           = Rect       (466,86)
           ; OutputPosition = Coordinate (12310,80)
@@ -211,45 +207,46 @@ module ProjectTests =
 
         let memA =
           { Member.create (Id.Create()) with
-              HostName = "moomoo"
+              HostName = name "moomoo"
               IpAddr   = IpAddress.Parse "182.123.18.2"
               State    = Running
-              Port     = 1234us }
+              Port     = port 1234us }
 
         let memB =
           { Member.create (Id.Create()) with
-              HostName = "taataaa"
+              HostName = name "taataaa"
               IpAddr   = IpAddress.Parse "118.223.8.12"
               State    = Joining
-              Port     = 1234us }
+              Port     = port 1234us }
 
         let groupA: HostGroup =
-          { Name    = "Group A"
+          { Name    = name "Group A"
           ; Members = [| Id.Create() |]
           }
 
         let groupB: HostGroup =
-          { Name    = "Group B"
+          { Name    = name "Group B"
           ; Members = [| Id.Create() |]
           }
 
         let cluster =
-          { Name   = "A mighty cool cluster"
-          ; Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
-          ; Groups = [| groupA; groupB |]
-          }
+          { Id = Id.Create()
+            Name   = name "A mighty cool cluster"
+            Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
+            Groups = [| groupA; groupB |] }
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) (unwrap fn) machine
 
         let updated =
           Project.updateConfig
             { project.Config with
-                Raft      = engineCfg
-                Vvvv      = vvvvCfg
-                ViewPorts = [| viewPort1; viewPort2 |]
-                Displays  = [| display1;  display2  |]
-                Tasks     = [| task1;     task2     |]
-                Cluster   = cluster }
+                Raft       = engineCfg
+                Vvvv       = vvvvCfg
+                ViewPorts  = [| viewPort1; viewPort2 |]
+                Displays   = [| display1;  display2  |]
+                Tasks      = [| task1;     task2     |]
+                ActiveSite = Some cluster.Id
+                Sites      = [| cluster |] }
             project
 
         let! commit = Asset.saveWithCommit path User.Admin.Signature updated
@@ -263,7 +260,7 @@ module ProjectTests =
         expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) updated.Config.Timing
         expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) updated.Config.Displays
         expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) updated.Config.Tasks
-        expect "Cluster should be structurally equal"    true ((=) loaded.Config.Cluster) updated.Config.Cluster
+        expect "Sites should be structurally equal"      true ((=) loaded.Config.Sites) updated.Config.Sites
       }
       |> noError
 
@@ -289,20 +286,20 @@ module ProjectTests =
   let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
-        let! _ = Project.create path name machine
+        let! _ = Project.create (Project.ofFilePath path) name machine
 
         let loaded = Asset.loadWithMachine path machine
 
-        expect "Projects should be a folder"   true  Directory.Exists path
-        expect "Projects should be a git repo" true  Directory.Exists (path </> ".git")
+        expect "Projects should be a folder"   true  Directory.exists path
+        expect "Projects should be a git repo" true  Directory.exists (path </> filepath ".git")
 
-        let projectFile = path </> PROJECT_FILENAME + ASSET_EXTENSION
+        let projectFile = path </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
 
-        expect "Projects should have project yml" true  File.Exists projectFile
+        expect "Projects should have project yml" true  File.exists projectFile
 
         let getRepo =
           Project.repository
@@ -337,14 +334,14 @@ module ProjectTests =
   let savesMultipleCommits =
     testCase "Saving project should contain multiple commits" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
         let author1 = "karsten"
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) name machine
 
         let updated = { project with Author = Some author1 }
         let! commit = Asset.saveWithCommit path User.Admin.Signature updated
@@ -375,7 +372,7 @@ module ProjectTests =
 
         let! loaded = Asset.loadWithMachine path machine
 
-        expect "Authors should be equal"           true ((=) (Option.get loaded.Author))  author3
+        expect "Authors should be equal"           true ((=) (Option.get loaded.Author)) author3
         expect "Projects should have four commits" true ((=) (Git.Repo.commitCount repo)) 4
       }
       |> noError
@@ -383,51 +380,51 @@ module ProjectTests =
   let upToDatePath =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
       either {
-        let machine = MachineConfig.create()
+        let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
-        let! loaded = Asset.loadWithMachine path machine
+        let! project = Project.create (Project.ofFilePath path) name machine
+        let! (loaded: IrisProject) = Asset.loadWithMachine path machine
 
-        expect "Project should have correct path" path id loaded.Path
+        expect "Project should have correct path" path Project.toFilePath loaded.Path
 
         let newpath = tmpPath()
 
         FileSystem.moveFile path newpath
 
-        let! loaded = Asset.loadWithMachine newpath machine
+        let! (loaded: IrisProject) = Asset.loadWithMachine newpath machine
 
-        expect "Project should have correct path" newpath id loaded.Path
+        expect "Project should have correct path" newpath Project.toFilePath loaded.Path
       }
       |> noError
 
   let saveAsset =
     testCase "Should save an asset in new commit" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let fn = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) fn machine
 
         let user =
           { Id = Id.Create()
-            UserName = "krgn"
-            FirstName = "karsten"
-            LastName = "gebbert"
-            Email = "k@lazy.af"
-            Password = "1234"
-            Salt = "56789"
+            UserName = name "krgn"
+            FirstName = name "karsten"
+            LastName = name "gebbert"
+            Email = email "k@lazy.af"
+            Password = checksum "1234"
+            Salt = checksum "56789"
             Joined = DateTime.Now
             Created = DateTime.Now }
 
         let! (commit, project) = Project.saveAsset user User.Admin project
 
         let! (loaded: User) =
-          let userpath = project.Path </> Asset.path user
-          File.ReadAllText(userpath)
+          let userpath = Project.toFilePath project.Path </> Asset.path user
+          File.readText(userpath)
           |> Yaml.decode
 
         expect "Should be the same" true ((=) user) loaded
@@ -437,15 +434,15 @@ module ProjectTests =
   let createDefaultUser =
     testCase "Should create a default admin user" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
-        let name = Path.GetFileName path
+        let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create path name machine
+        let! project = Project.create (Project.ofFilePath path) name machine
 
         let! (admin: User) =
-          project.Path </> Asset.path User.Admin
-          |> File.ReadAllText
+          Project.toFilePath project.Path </> Asset.path User.Admin
+          |> File.readText
           |> Yaml.decode
 
         // Don't compare Joined and Created as they may differ a bit

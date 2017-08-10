@@ -4,7 +4,6 @@ namespace Iris.Core
 
 open Fable.Core
 open Fable.Import
-open Fable.Import.JS
 open Iris.Core.FlatBuffers
 
 #else
@@ -12,6 +11,30 @@ open Iris.Core.FlatBuffers
 open FlatBuffers
 
 #endif
+
+[<RequireQualifiedAccess>]
+module EitherExt =
+
+  let bindGeneratorToArray loc length generator (f: 'a -> Either<IrisError,'b>) =
+    let mutable i = 0
+    let mutable error = None
+    let arr = Array.zeroCreate length
+    while i < arr.Length && Option.isNone error do
+      #if !FABLE_COMPILER
+      let item: System.Nullable<'a> = generator i
+      if not item.HasValue then
+        error <- ParseError(loc, "Could not parse empty item") |> Some
+      else
+        let item = item.Value
+      #else
+        let item = generator i
+      #endif
+        match f item with
+        | Right value -> arr.[i] <- value; i <- i + 1
+        | Left err -> error <- Some err
+    match error with
+    | Some err -> Left err
+    | None -> Right arr
 
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _
@@ -22,26 +45,27 @@ open FlatBuffers
 
 [<RequireQualifiedAccess>]
 module Binary =
-#if FABLE_COMPILER
-  type Buffer = ArrayBuffer
-#else
-  type Buffer = byte array
-#endif
 
-  let createBuffer (bytes: Buffer) : ByteBuffer =
+  let createBuffer (bytes: byte[]) : ByteBuffer =
 #if FABLE_COMPILER
     ByteBuffer.Create(bytes)
 #else
-    new ByteBuffer(bytes)
+    ByteBuffer(bytes)
 #endif
 
-  let inline encode (value : ^t when ^t : (member ToBytes : unit -> Buffer)) =
-    (^t : (member ToBytes : unit -> Buffer) value)
+  let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte[])) =
+    (^t : (member ToBytes : unit -> byte[]) value)
 
-  let inline decode< ^err, ^t when ^t : (static member FromBytes : Buffer -> Either< ^err, ^t >)>
-                                  (bytes: Buffer) :
-                                  Either< ^err, ^t > =
-    (^t : (static member FromBytes : Buffer -> Either< ^err, ^t >) bytes)
+  let inline decode< ^t when ^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>)>
+                                  (bytes: byte[]) :
+                                  Either<IrisError, ^t > =
+    try
+      (^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>) bytes)
+    with
+      | exn ->
+        ((typeof< ^t >).Name + ".FromBytes", exn.Message)
+        |> ParseError
+        |> Either.fail
 
   let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
                      (builder: FlatBufferBuilder)
@@ -49,14 +73,14 @@ module Binary =
                      : Offset< ^t > =
     (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
 
-  let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : Buffer =
+  let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : byte[] =
 #if FABLE_COMPILER
     let builder = FlatBufferBuilder.Create(1)
     let offset = toOffset builder thing
     builder.Finish(offset)
     builder.SizedByteArray()
 #else
-    let builder = new FlatBufferBuilder(1)
+    let builder = FlatBufferBuilder(1)
     let offset = toOffset builder thing
     builder.Finish(offset.Value)
     builder.SizedByteArray()
@@ -68,15 +92,14 @@ module Binary =
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-#if FABLE_COMPILER
-#else
+#if !FABLE_COMPILER && !IRIS_NODES
 
 [<RequireQualifiedAccess>]
 module Yaml =
   open SharpYaml.Serialization
 
   let inline encode< ^t when ^t : (member ToYaml : Serializer -> string)> (thing: ^t) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     (^t : (member ToYaml : Serializer -> string) thing,serializer)
 
   let inline decode< ^err, ^t when ^t : (static member FromYaml : string -> Either< ^err, ^t >)> (str: string) =

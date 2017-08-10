@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -20,9 +20,20 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
 open SharpYaml.Serialization
 
 #endif
+
+// * PersistenceStrategy
+
+type PersistenceStrategy =
+  | Commit
+  | Save
+  | Ignore
 
 // * AppCommand
 
@@ -122,14 +133,15 @@ type AppCommand =
 //
 
 type State =
-  { Project  : IrisProject
-    PinGroups  : Map<Id,PinGroup>
-    Cues     : Map<Id,Cue>
-    CueLists : Map<Id,CueList>
-    Sessions : Map<Id,Session>
-    Users    : Map<Id,User>
-    Clients  : Map<Id,IrisClient>
-    DiscoveredServices : Map<Id,Discovery.DiscoveredService> }
+  { Project:            IrisProject
+    PinGroups:          Map<Id,PinGroup>
+    Cues:               Map<Id,Cue>
+    CueLists:           Map<Id,CueList>
+    Sessions:           Map<Id,Session>
+    Users:              Map<Id,User>
+    Clients:            Map<Id,IrisClient>
+    CuePlayers:         Map<Id,CuePlayer>
+    DiscoveredServices: Map<Id,DiscoveredService> }
 
   // ** Empty
 
@@ -137,11 +149,12 @@ type State =
     with get () =
       { Project  = IrisProject.Empty
         PinGroups  = Map.empty
-        Cues     = Map.empty
-        CueLists = Map.empty
-        Sessions = Map.empty
-        Users    = Map.empty
-        Clients  = Map.empty
+        Cues       = Map.empty
+        CueLists   = Map.empty
+        Sessions   = Map.empty
+        Users      = Map.empty
+        Clients    = Map.empty
+        CuePlayers = Map.empty
         DiscoveredServices = Map.empty }
 
   // ** Load
@@ -150,18 +163,22 @@ type State =
 
   static member Load (path: FilePath, machine: IrisMachine) =
     either {
+      let inline toMap value = Either.map (Array.map toPair >> Map.ofArray) value
+
       let! project  = Asset.loadWithMachine path machine
-      let! users    = Asset.loadAll project.Path
-      let! cues     = Asset.loadAll project.Path
-      let! cuelists = Asset.loadAll project.Path
-      let! groups  = Asset.loadAll project.Path
+      let! users    = Asset.loadAll project.Path |> toMap
+      let! cues     = Asset.loadAll project.Path |> toMap
+      let! cuelists = Asset.loadAll project.Path |> toMap
+      let! groups   = Asset.loadAll project.Path |> toMap
+      let! players  = Asset.loadAll project.Path |> toMap
 
       return
-        { Project  = project
-          Users    = Array.map toPair users    |> Map.ofArray
-          Cues     = Array.map toPair cues     |> Map.ofArray
-          CueLists = Array.map toPair cuelists |> Map.ofArray
-          PinGroups  = Array.map toPair groups  |> Map.ofArray
+        { Project            = project
+          Users              = users
+          Cues               = cues
+          CueLists           = cuelists
+          PinGroups          = groups
+          CuePlayers         = players
           Sessions           = Map.empty
           Clients            = Map.empty
           DiscoveredServices = Map.empty }
@@ -179,288 +196,11 @@ type State =
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
       do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
+      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CuePlayers
       do! Asset.save basePath state.Project
     }
 
   #endif
-
-  // ** addUser
-
-  //  _   _
-  // | | | |___  ___ _ __
-  // | | | / __|/ _ \ '__|
-  // | |_| \__ \  __/ |
-  //  \___/|___/\___|_|
-
-  static member addUser (user: User) (state: State) =
-    if Map.containsKey user.Id state.Users then
-      state
-    else
-      let users = Map.add user.Id user state.Users
-      { state with Users = users }
-
-  // ** updateUser
-
-  static member updateUser (user: User) (state: State) =
-    if Map.containsKey user.Id state.Users then
-      let users = Map.add user.Id user state.Users
-      { state with Users = users }
-    else
-      state
-
-  // ** RemoveUser
-
-  static member removeUser (user: User) (state: State) =
-    { state with Users = Map.filter (fun k _ -> (k <> user.Id)) state.Users }
-
-  // ** addOrUpdateService
-
-  static member addOrUpdateService (service: Discovery.DiscoveredService) (state: State) =
-    { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
-
-  // ** removeService
-
-  static member removeService (service: Discovery.DiscoveredService) (state: State) =
-    { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
-
-  // ** addSession
-
-  //  ____                _
-  // / ___|  ___  ___ ___(_) ___  _ __
-  // \___ \ / _ \/ __/ __| |/ _ \| '_ \
-  //  ___) |  __/\__ \__ \ | (_) | | | |
-  // |____/ \___||___/___/_|\___/|_| |_|
-
-  static member addSession (session: Session) (state: State) =
-    let sessions =
-      if Map.containsKey session.Id state.Sessions then
-        state.Sessions
-      else
-        Map.add session.Id session state.Sessions
-    { state with Sessions = sessions }
-
-  // ** updateSession
-
-  static member updateSession (session: Session) (state: State) =
-    let sessions =
-      if Map.containsKey session.Id state.Sessions then
-        Map.add session.Id session state.Sessions
-      else
-        state.Sessions
-    { state with Sessions = sessions }
-
-  // ** removeSession
-
-  static member removeSession (session: Session) (state: State) =
-    { state with Sessions = Map.filter (fun k _ -> (k <> session.Id)) state.Sessions }
-
-  // ** addPinGroup
-
-  //  ____       _       _
-  // |  _ \ __ _| |_ ___| |__
-  // | |_) / _` | __/ __| '_ \
-  // |  __/ (_| | || (__| | | |
-  // |_|   \__,_|\__\___|_| |_|
-
-  static member addPinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      state
-    else
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-
-  // ** updatePinGroup
-
-  static member updatePinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-    else
-      state
-
-  // ** removePinGroup
-
-  static member removePinGroup (group : PinGroup) (state: State) =
-    { state with PinGroups = Map.remove group.Id state.PinGroups }
-
-
-  // ** addPin
-
-  //  ____  _
-  // |  _ \(_)_ __
-  // | |_) | | '_ \
-  // |  __/| | | | |
-  // |_|   |_|_| |_|
-
-  static member addPin (pin: Pin) (state: State) =
-    if Map.containsKey pin.PinGroup state.PinGroups then
-      let update _ (group: PinGroup) =
-        if group.Id = pin.PinGroup then
-          PinGroup.AddPin group pin
-        else
-          group
-      { state with PinGroups = Map.map update state.PinGroups }
-    else
-      state
-
-  // ** updatePin
-
-  static member updatePin (pin : Pin) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      if group.Id = pin.PinGroup then
-        PinGroup.UpdatePin group pin
-      else
-        group
-    { state with PinGroups = Map.map mapper state.PinGroups }
-
-  // ** updateSlices
-
-  static member updateSlices (slices: Slices) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      PinGroup.UpdateSlices group slices
-    { state with PinGroups = Map.map mapper state.PinGroups }
-
-  // ** removePin
-
-  static member removePin (pin : Pin) (state: State) =
-    let updater _ (group : PinGroup) =
-      if pin.PinGroup = group.Id
-      then PinGroup.RemovePin group pin
-      else group
-    { state with PinGroups = Map.map updater state.PinGroups }
-
-  // ** findPin
-
-  static member findPin (id: Id) (state: State) =
-    Map.fold
-      (fun (m: Pin option) _ (group: PinGroup) ->
-        match m with
-        | Some _ -> m
-        | _ -> Map.tryFind id group.Pins)
-      None
-      state.PinGroups
-
-  // ** addCueList
-
-  //   ____           _     _     _
-  //  / ___|   _  ___| |   (_)___| |_ ___
-  // | |  | | | |/ _ \ |   | / __| __/ __|
-  // | |__| |_| |  __/ |___| \__ \ |_\__ \
-  //  \____\__,_|\___|_____|_|___/\__|___/
-
-  static member addCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      state
-    else
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
-
-  // ** updateCueList
-
-  static member updateCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
-    else
-      state
-
-  // ** removeCueList
-
-  static member removeCueList (cuelist : CueList) (state: State) =
-    { state with CueLists = Map.remove cuelist.Id state.CueLists }
-
-  // ** AddCue
-
-  //   ____
-  //  / ___|   _  ___
-  // | |  | | | |/ _ \
-  // | |__| |_| |  __/
-  //  \____\__,_|\___|
-
-  static member addCue (cue : Cue) (state: State) =
-    if Map.containsKey cue.Id state.Cues then
-      state
-    else
-      { state with Cues = Map.add cue.Id cue state.Cues }
-
-  // ** updateCue
-
-  static member updateCue (cue : Cue) (state: State) =
-    if Map.containsKey cue.Id state.Cues then
-      { state with Cues = Map.add cue.Id cue state.Cues }
-    else
-      state
-
-  // ** removeCue
-
-  static member removeCue (cue : Cue) (state: State) =
-    { state with Cues = Map.remove cue.Id state.Cues }
-
-  //  __  __                _
-  // |  \/  | ___ _ __ ___ | |__   ___ _ __
-  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
-  // | |  | |  __/ | | | | | |_) |  __/ |
-  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
-
-  // ** addMember
-
-  static member addMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.addMember mem state.Project }
-
-  // ** updateMember
-
-  static member updateMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.updateMember mem state.Project }
-
-  // ** removeMember
-
-  static member removeMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.removeMember mem.Id state.Project }
-
-  //   ____ _ _            _
-  //  / ___| (_) ___ _ __ | |_
-  // | |   | | |/ _ \ '_ \| __|
-  // | |___| | |  __/ | | | |_
-  //  \____|_|_|\___|_| |_|\__|
-
-  // ** addClient
-
-  static member addClient (client: IrisClient) (state: State) =
-    if Map.containsKey client.Id state.Clients then
-      state
-    else
-      { state with Clients = Map.add client.Id client state.Clients }
-
-  // ** updateClient
-
-  static member updateClient (client: IrisClient) (state: State) =
-    if Map.containsKey client.Id state.Clients then
-      { state with Clients = Map.add client.Id client state.Clients }
-    else
-      state
-
-  // ** removeClient
-
-  static member removeClient (client: IrisClient) (state: State) =
-    { state with Clients = Map.remove client.Id state.Clients }
-
-  //  ____            _           _
-  // |  _ \ _ __ ___ (_) ___  ___| |_
-  // | |_) | '__/ _ \| |/ _ \/ __| __|
-  // |  __/| | | (_) | |  __/ (__| |_
-  // |_|   |_|  \___// |\___|\___|\__|
-  //               |__/
-
-  // ** updateMachine
-
-  static member updateMachine (machine: IrisMachine) (state: State) =
-    { state with Project = Project.updateMachine machine state.Project }
-
-  // ** updateConfig
-
-  static member updateConfig (config: IrisConfig) (state: State) =
-    { state with Project = Project.updateConfig config state.Project }
-
-  // ** updateProject
-
-  static member updateProject (project: IrisProject) (state: State) =
-    { state with Project = project }
 
   // ** ToOffset
 
@@ -510,6 +250,18 @@ type State =
 
     let clientsoffset = StateFB.CreateClientsVector(builder, clients)
 
+    let players =
+      Map.toArray self.CuePlayers
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let playersoffset = StateFB.CreateCuePlayersVector(builder, players)
+
+    let services =
+      Map.toArray self.DiscoveredServices
+      |> Array.map (snd >> Binary.toOffset builder)
+
+    let servicesoffset = StateFB.CreateDiscoveredServicesVector(builder, services)
+
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
     StateFB.AddPinGroups(builder, groupsoffset)
@@ -518,6 +270,8 @@ type State =
     StateFB.AddSessions(builder, sessionsoffset)
     StateFB.AddClients(builder, clientsoffset)
     StateFB.AddUsers(builder, usersoffset)
+    StateFB.AddCuePlayers(builder, playersoffset)
+    StateFB.AddDiscoveredServices(builder, servicesoffset)
     StateFB.EndStateFB(builder)
 
   // ** ToBytes
@@ -712,22 +466,50 @@ type State =
           arr
         |> Either.map snd
 
+      // PLAYERS
+
+      let! players =
+        let arr = Array.zeroCreate fb.CuePlayersLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, CuePlayer>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! player = fb.CuePlayers(i) |> CuePlayer.FromFB
+            #else
+            let! player =
+              let value = fb.CuePlayers(i)
+              if value.HasValue then
+                value.Value
+                |> CuePlayer.FromFB
+              else
+                "Could not parse empty CuePlayer payload"
+                |> Error.asParseError "CuePlayer.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add player.Id player map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
       // DISCOVERED SERVICES
 
       let! discoveredServices =
         let arr = Array.zeroCreate fb.DiscoveredServicesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, Discovery.DiscoveredService>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<Id, DiscoveredService>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
-            let! service = fb.DiscoveredServices(i) |> Discovery.DiscoveredService.FromFB
+            let! service = fb.DiscoveredServices(i) |> DiscoveredService.FromFB
             #else
             let! service =
               let value = fb.DiscoveredServices(i)
               if value.HasValue then
                 value.Value
-                |> Discovery.DiscoveredService.FromFB
+                |> DiscoveredService.FromFB
               else
                 "Could not parse empty DiscoveredService payload"
                 |> Error.asParseError "DiscoveredService.FromFB"
@@ -740,22 +522,349 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project  = project
-               PinGroups  = groups
-               Cues     = cues
-               CueLists = cuelists
-               Users    = users
-               Sessions = sessions
-               Clients  = clients
+      return { Project            = project
+               PinGroups          = groups
+               Cues               = cues
+               CueLists           = cuelists
+               Users              = users
+               Sessions           = sessions
+               Clients            = clients
+               CuePlayers         = players
                DiscoveredServices = discoveredServices }
     }
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,State> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,State> =
     Binary.createBuffer bytes
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
+
+// * State module
+
+module State =
+
+  // ** addCuePlayer
+
+  let addCuePlayer (player: CuePlayer) (state: State) =
+    if Map.containsKey player.Id state.CuePlayers then
+      state
+    else
+      let players = Map.add player.Id player state.CuePlayers
+      { state with CuePlayers = players }
+
+  // ** updateCuePlayer
+
+  let updateCuePlayer (player: CuePlayer) (state: State) =
+    if Map.containsKey player.Id state.CuePlayers then
+      let players = Map.add player.Id player state.CuePlayers
+      { state with CuePlayers = players }
+    else
+      state
+
+  // ** removeCuePlayer
+
+  let removeCuePlayer (player: CuePlayer) (state: State) =
+    { state with CuePlayers = Map.remove player.Id state.CuePlayers }
+
+  // ** addUser
+
+  //  _   _
+  // | | | |___  ___ _ __
+  // | | | / __|/ _ \ '__|
+  // | |_| \__ \  __/ |
+  //  \___/|___/\___|_|
+
+  let addUser (user: User) (state: State) =
+    if Map.containsKey user.Id state.Users then
+      state
+    else
+      let users = Map.add user.Id user state.Users
+      { state with Users = users }
+
+  // ** updateUser
+
+  let updateUser (user: User) (state: State) =
+    if Map.containsKey user.Id state.Users then
+      let users = Map.add user.Id user state.Users
+      { state with Users = users }
+    else
+      state
+
+  // ** removeUser
+
+  let removeUser (user: User) (state: State) =
+    { state with Users = Map.remove user.Id state.Users }
+
+  // ** addOrUpdateService
+
+  let addOrUpdateService (service: DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.add service.Id service state.DiscoveredServices }
+
+  // ** removeService
+
+  let removeService (service: DiscoveredService) (state: State) =
+    { state with DiscoveredServices = Map.remove service.Id state.DiscoveredServices }
+
+  // ** addSession
+
+  //  ____                _
+  // / ___|  ___  ___ ___(_) ___  _ __
+  // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+  //  ___) |  __/\__ \__ \ | (_) | | | |
+  // |____/ \___||___/___/_|\___/|_| |_|
+
+  let addSession (session: Session) (state: State) =
+    let sessions =
+      if Map.containsKey session.Id state.Sessions then
+        state.Sessions
+      else
+        Map.add session.Id session state.Sessions
+    { state with Sessions = sessions }
+
+  // ** updateSession
+
+  let updateSession (session: Session) (state: State) =
+    let sessions =
+      if Map.containsKey session.Id state.Sessions then
+        Map.add session.Id session state.Sessions
+      else
+        state.Sessions
+    { state with Sessions = sessions }
+
+  // ** removeSession
+
+  let removeSession (session: Session) (state: State) =
+    { state with Sessions = Map.remove session.Id state.Sessions }
+
+  // ** addPinGroup
+
+  //  ____       _       _
+  // |  _ \ __ _| |_ ___| |__
+  // | |_) / _` | __/ __| '_ \
+  // |  __/ (_| | || (__| | | |
+  // |_|   \__,_|\__\___|_| |_|
+
+  let addPinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
+      state
+    else
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
+
+  // ** updatePinGroup
+
+  let updatePinGroup (group : PinGroup) (state: State) =
+    if Map.containsKey group.Id state.PinGroups then
+      { state with PinGroups = Map.add group.Id group state.PinGroups }
+    else
+      state
+
+  // ** removePinGroup
+
+  let removePinGroup (group : PinGroup) (state: State) =
+    { state with PinGroups = Map.remove group.Id state.PinGroups }
+
+
+  // ** addPin
+
+  //  ____  _
+  // |  _ \(_)_ __
+  // | |_) | | '_ \
+  // |  __/| | | | |
+  // |_|   |_|_| |_|
+
+  let addPin (pin: Pin) (state: State) =
+    if Map.containsKey pin.PinGroup state.PinGroups then
+      let update _ (group: PinGroup) =
+        if group.Id = pin.PinGroup then
+          PinGroup.addPin pin group
+        else
+          group
+      { state with PinGroups = Map.map update state.PinGroups }
+    else
+      state
+
+  // ** updatePin
+
+  let updatePin (pin : Pin) (state: State) =
+    let mapper (_: Id) (group : PinGroup) =
+      if group.Id = pin.PinGroup then
+        PinGroup.updatePin pin group
+      else
+        group
+    { state with PinGroups = Map.map mapper state.PinGroups }
+
+  // ** updateSlices
+
+  let updateSlices (slices: Slices) (state: State) =
+    { state with
+        PinGroups = Map.map
+                      (fun _ group -> PinGroup.updateSlices slices group)
+                      state.PinGroups
+        CuePlayers = Map.map
+                      (fun _ player -> CuePlayer.updateSlices slices player)
+                      state.CuePlayers }
+  // ** removePin
+
+  let removePin (pin : Pin) (state: State) =
+    let updater _ (group : PinGroup) =
+      if pin.PinGroup = group.Id
+      then PinGroup.removePin pin group
+      else group
+    { state with PinGroups = Map.map updater state.PinGroups }
+
+  // ** tryFindPin
+
+  let tryFindPin (id: Id) (state: State) =
+    Map.fold
+      (fun (m: Pin option) _ (group: PinGroup) ->
+        match m with
+        | Some _ -> m
+        | _ -> Map.tryFind id group.Pins)
+      None
+      state.PinGroups
+
+  // ** tryFindPinGroup
+
+  let tryFindPinGroup (id: Id) (state: State) =
+    Map.tryFind id state.PinGroups
+
+  // ** findPinGroupBy
+
+  let findPinGroupBy (pred: PinGroup -> bool) (state: State) =
+    Map.fold
+      (fun m _ (grp: PinGroup) ->
+        match m with
+        | None when pred grp -> Some grp
+        | None -> None
+        | Some _ -> m)
+      None
+      state.PinGroups
+
+
+  // ** addCueList
+
+  //   ____           _     _     _
+  //  / ___|   _  ___| |   (_)___| |_ ___
+  // | |  | | | |/ _ \ |   | / __| __/ __|
+  // | |__| |_| |  __/ |___| \__ \ |_\__ \
+  //  \____\__,_|\___|_____|_|___/\__|___/
+
+  let addCueList (cuelist : CueList) (state: State) =
+    if Map.containsKey cuelist.Id state.CueLists then
+      state
+    else
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+
+  // ** updateCueList
+
+  let updateCueList (cuelist : CueList) (state: State) =
+    if Map.containsKey cuelist.Id state.CueLists then
+      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+    else
+      state
+
+  // ** removeCueList
+
+  let removeCueList (cuelist : CueList) (state: State) =
+    { state with CueLists = Map.remove cuelist.Id state.CueLists }
+
+  // ** AddCue
+
+  //   ____
+  //  / ___|   _  ___
+  // | |  | | | |/ _ \
+  // | |__| |_| |  __/
+  //  \____\__,_|\___|
+
+  let addCue (cue : Cue) (state: State) =
+    if Map.containsKey cue.Id state.Cues then
+      state
+    else
+      { state with Cues = Map.add cue.Id cue state.Cues }
+
+  // ** updateCue
+
+  let updateCue (cue : Cue) (state: State) =
+    if Map.containsKey cue.Id state.Cues then
+      { state with Cues = Map.add cue.Id cue state.Cues }
+    else
+      state
+
+  // ** removeCue
+
+  let removeCue (cue : Cue) (state: State) =
+    { state with Cues = Map.remove cue.Id state.Cues }
+
+  //  __  __                _
+  // |  \/  | ___ _ __ ___ | |__   ___ _ __
+  // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  // | |  | |  __/ | | | | | |_) |  __/ |
+  // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+  // ** addMember
+
+  let addMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.addMember mem state.Project }
+
+  // ** updateMember
+
+  let updateMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.updateMember mem state.Project }
+
+  // ** removeMember
+
+  let removeMember (mem: RaftMember) (state: State) =
+    { state with Project = Project.removeMember mem.Id state.Project }
+
+  //   ____ _ _            _
+  //  / ___| (_) ___ _ __ | |_
+  // | |   | | |/ _ \ '_ \| __|
+  // | |___| | |  __/ | | | |_
+  //  \____|_|_|\___|_| |_|\__|
+
+  // ** addClient
+
+  let addClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      state
+    else
+      { state with Clients = Map.add client.Id client state.Clients }
+
+  // ** updateClient
+
+  let updateClient (client: IrisClient) (state: State) =
+    if Map.containsKey client.Id state.Clients then
+      { state with Clients = Map.add client.Id client state.Clients }
+    else
+      state
+
+  // ** removeClient
+
+  let removeClient (client: IrisClient) (state: State) =
+    { state with Clients = Map.remove client.Id state.Clients }
+
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
+
+  // ** updateMachine
+
+  let updateMachine (machine: IrisMachine) (state: State) =
+    { state with Project = Project.updateMachine machine state.Project }
+
+  // ** updateConfig
+
+  let updateConfig (config: IrisConfig) (state: State) =
+    { state with Project = Project.updateConfig config state.Project }
+
+  // ** updateProject
+
+  let updateProject (project: IrisProject) (state: State) =
+    { state with Project = project }
 
 // * Store Action
 
@@ -774,7 +883,7 @@ type State =
 /// the front-end).
 ///
 /// Returns: StoreAction
-and StoreAction =
+type [<NoComparison>] StoreAction =
   { Event: StateMachine
   ; State: State }
 
@@ -800,7 +909,7 @@ and StoreAction =
 /// - action: `StoreAction` - the initial `StoreAction` beyond which there is no history
 ///
 /// Returns: History
-and History (action: StoreAction) =
+type History (action: StoreAction) =
   let mutable depth = 10
   let mutable debug = false
   let mutable head = 1
@@ -890,11 +999,11 @@ and History (action: StoreAction) =
 /// - state: `State` - the intitial state to use for the store
 ///
 /// Returns: Store
-and Store(state : State)=
+type Store(state : State)=
 
   let mutable state = state
 
-  let mutable history = new History {
+  let mutable history = History {
       State = state;
       Event = Command(AppCommand.Reset);
     }
@@ -938,9 +1047,9 @@ and Store(state : State)=
     with get () = history.Depth
       and set n  = history.Depth <- n
 
-  // ** Disgroup
+  // ** Dispatch
 
-  /// ## Disgroup
+  /// ## Dispatch
   ///
   /// Disgroup an action (StateMachine command) to be executed against the current version of the
   /// `State` to produce the next `State`.
@@ -959,50 +1068,55 @@ and Store(state : State)=
                        State = state })  // 4) append to undo history
 
     match ev with
-    | Command (AppCommand.Redo)  -> self.Redo()
-    | Command (AppCommand.Undo)  -> self.Undo()
-    | Command (AppCommand.Reset) -> ()   // do nothing for now
+    | Command (AppCommand.Redo)     -> self.Redo()
+    | Command (AppCommand.Undo)     -> self.Undo()
+    | Command (AppCommand.Reset)    -> ()   // do nothing for now
 
-    | AddCue            cue -> State.addCue        cue     state |> andRender
-    | UpdateCue         cue -> State.updateCue     cue     state |> andRender
-    | RemoveCue         cue -> State.removeCue     cue     state |> andRender
+    | AddCue            cue         -> State.addCue         cue     state |> andRender
+    | UpdateCue         cue         -> State.updateCue      cue     state |> andRender
+    | RemoveCue         cue         -> State.removeCue      cue     state |> andRender
 
-    | AddCueList    cuelist -> State.addCueList    cuelist state |> andRender
-    | UpdateCueList cuelist -> State.updateCueList cuelist state |> andRender
-    | RemoveCueList cuelist -> State.removeCueList cuelist state |> andRender
+    | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
+    | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
+    | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
 
-    | AddPinGroup        group -> State.addPinGroup      group   state |> andRender
-    | UpdatePinGroup     group -> State.updatePinGroup   group   state |> andRender
-    | RemovePinGroup     group -> State.removePinGroup   group   state |> andRender
+    | AddCuePlayer    player        -> State.addCuePlayer    player state |> andRender
+    | UpdateCuePlayer player        -> State.updateCuePlayer player state |> andRender
+    | RemoveCuePlayer player        -> State.removeCuePlayer player state |> andRender
 
-    | AddPin            pin -> State.addPin        pin     state |> andRender
-    | UpdatePin         pin -> State.updatePin     pin     state |> andRender
-    | RemovePin         pin -> State.removePin     pin     state |> andRender
-    | UpdateSlices   slices -> State.updateSlices  slices  state |> andRender
+    | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
+    | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
+    | RemovePinGroup  group         -> State.removePinGroup group   state |> andRender
 
-    | AddMember         mem -> State.addMember     mem     state |> andRender
-    | UpdateMember      mem -> State.updateMember  mem     state |> andRender
-    | RemoveMember      mem -> State.removeMember  mem     state |> andRender
+    | AddPin            pin         -> State.addPin         pin     state |> andRender
+    | UpdatePin         pin         -> State.updatePin      pin     state |> andRender
+    | RemovePin         pin         -> State.removePin      pin     state |> andRender
+    | UpdateSlices   slices         -> State.updateSlices   slices  state |> andRender
 
-    | AddClient      client -> State.addClient     client  state |> andRender
-    | UpdateClient   client -> State.updateClient  client  state |> andRender
-    | RemoveClient   client -> State.removeClient  client  state |> andRender
+    | AddMember         mem         -> State.addMember      mem     state |> andRender
+    | UpdateMember      mem         -> State.updateMember   mem     state |> andRender
+    | RemoveMember      mem         -> State.removeMember   mem     state |> andRender
 
-    | AddSession    session -> State.addSession    session state |> andRender
-    | UpdateSession session -> State.updateSession session state |> andRender
-    | RemoveSession session -> State.removeSession session state |> andRender
+    | AddClient      client         -> State.addClient      client  state |> andRender
+    | UpdateClient   client         -> State.updateClient   client  state |> andRender
+    | RemoveClient   client         -> State.removeClient   client  state |> andRender
 
-    | AddUser          user -> State.addUser       user    state |> andRender
-    | UpdateUser       user -> State.updateUser    user    state |> andRender
-    | RemoveUser       user -> State.removeUser    user    state |> andRender
+    | AddSession    session         -> State.addSession     session state |> andRender
+    | UpdateSession session         -> State.updateSession  session state |> andRender
+    | RemoveSession session         -> State.removeSession  session state |> andRender
 
-    | UpdateProject project -> State.updateProject project state |> andRender
+    | AddUser          user         -> State.addUser        user    state |> andRender
+    | UpdateUser       user         -> State.updateUser     user    state |> andRender
+    | RemoveUser       user         -> State.removeUser     user    state |> andRender
+
+    | UpdateProject project         -> State.updateProject  project state |> andRender
+    | UnloadProject                 -> self.Notify(ev) // This event doesn't actually modify the state
 
     // It may happen that a service didn't make it into the state and an update service
     // event is received. For those cases just add/update the service into the state.
-    | AddResolvedService    service
-    | UpdateResolvedService service -> State.addOrUpdateService    service state |> andRender
-    | RemoveResolvedService service -> State.removeService service state |> andRender
+    | AddDiscoveredService    service
+    | UpdateDiscoveredService service -> State.addOrUpdateService    service state |> andRender
+    | RemoveDiscoveredService service -> State.removeService service state |> andRender
 
     | _ -> ()
 
@@ -1086,8 +1200,7 @@ and Store(state : State)=
 /// which gets invoked once a state change occurred.
 ///
 /// Returns: Store -> StateMachine -> unit
-and Listener = Store -> StateMachine -> unit
-
+type Listener = Store -> StateMachine -> unit
 
 // * StateMachine
 
@@ -1097,123 +1210,211 @@ and Listener = Store -> StateMachine -> unit
 //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
 // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-and StateMachine =
+type StateMachine =
   // Project
-  | UpdateProject of IrisProject
+  | UpdateProject           of IrisProject
+  | UnloadProject
 
   // Member
-  | AddMember     of RaftMember
-  | UpdateMember  of RaftMember
-  | RemoveMember  of RaftMember
+  | AddMember               of RaftMember
+  | UpdateMember            of RaftMember
+  | RemoveMember            of RaftMember
 
   // Client
-  | AddClient     of IrisClient
-  | UpdateClient  of IrisClient
-  | RemoveClient  of IrisClient
+  | AddClient               of IrisClient
+  | UpdateClient            of IrisClient
+  | RemoveClient            of IrisClient
 
   // GROUP
-  | AddPinGroup      of PinGroup
-  | UpdatePinGroup   of PinGroup
-  | RemovePinGroup   of PinGroup
+  | AddPinGroup             of PinGroup
+  | UpdatePinGroup          of PinGroup
+  | RemovePinGroup          of PinGroup
 
   // PIN
-  | AddPin       of Pin
-  | UpdatePin    of Pin
-  | RemovePin    of Pin
-  | UpdateSlices of Slices
+  | AddPin                  of Pin
+  | UpdatePin               of Pin
+  | RemovePin               of Pin
+  | UpdateSlices            of Slices
 
   // CUE
-  | AddCue        of Cue
-  | UpdateCue     of Cue
-  | RemoveCue     of Cue
-  | CallCue       of Cue
+  | AddCue                  of Cue
+  | UpdateCue               of Cue
+  | RemoveCue               of Cue
+  | CallCue                 of Cue
 
   // CUE
-  | AddCueList    of CueList
-  | UpdateCueList of CueList
-  | RemoveCueList of CueList
+  | AddCueList              of CueList
+  | UpdateCueList           of CueList
+  | RemoveCueList           of CueList
+
+  // CUEPLAYER
+  | AddCuePlayer          of CuePlayer
+  | UpdateCuePlayer       of CuePlayer
+  | RemoveCuePlayer       of CuePlayer
 
   // User
-  | AddUser       of User
-  | UpdateUser    of User
-  | RemoveUser    of User
+  | AddUser                 of User
+  | UpdateUser              of User
+  | RemoveUser              of User
 
   // Session
-  | AddSession    of Session
-  | UpdateSession of Session
-  | RemoveSession of Session
+  | AddSession              of Session
+  | UpdateSession           of Session
+  | RemoveSession           of Session
 
   // Discovery
-  | AddResolvedService    of Discovery.DiscoveredService
-  | UpdateResolvedService of Discovery.DiscoveredService
-  | RemoveResolvedService of Discovery.DiscoveredService
+  | AddDiscoveredService    of DiscoveredService
+  | UpdateDiscoveredService of DiscoveredService
+  | RemoveDiscoveredService of DiscoveredService
 
-  | Command       of AppCommand
+  | UpdateClock             of uint32
 
-  | DataSnapshot  of State
+  | Command                 of AppCommand
 
-  | SetLogLevel   of LogLevel
+  | DataSnapshot            of State
 
-  | LogMsg        of LogEvent
+  | SetLogLevel             of LogLevel
+
+  | LogMsg                  of LogEvent
 
   // ** ToString
 
   override self.ToString() : string =
     match self with
     // Project
-    | UpdateProject project -> sprintf "UpdateProject %s" project.Name
+    | UpdateProject           _ -> "UpdateProject "
+    | UnloadProject             -> "UnloadProject"
 
     // Member
-    | AddMember    mem      -> sprintf "AddMember %s"    (string mem)
-    | UpdateMember mem      -> sprintf "UpdateMember %s" (string mem)
-    | RemoveMember mem      -> sprintf "RemoveMember %s" (string mem)
+    | AddMember               _ -> "AddMember"
+    | UpdateMember            _ -> "UpdateMember"
+    | RemoveMember            _ -> "RemoveMember"
 
     // Client
-    | AddClient    client  -> sprintf "AddClient %s"    (string client)
-    | UpdateClient client  -> sprintf "UpdateClient %s" (string client)
-    | RemoveClient client  -> sprintf "RemoveClient %s" (string client)
+    | AddClient               _ -> "AddClient"
+    | UpdateClient            _ -> "UpdateClient"
+    | RemoveClient            _ -> "RemoveClient"
 
     // GROUP
-    | AddPinGroup    group     -> sprintf "AddPinGroup %s"    (string group)
-    | UpdatePinGroup group     -> sprintf "UpdatePinGroup %s" (string group)
-    | RemovePinGroup group     -> sprintf "RemovePinGroup %s" (string group)
+    | AddPinGroup             _ -> "AddPinGroup"
+    | UpdatePinGroup          _ -> "UpdatePinGroup"
+    | RemovePinGroup          _ -> "RemovePinGroup"
 
     // PIN
-    | AddPin    pin         -> sprintf "AddPin %s"       (string pin)
-    | UpdatePin pin         -> sprintf "UpdatePin %s"    (string pin)
-    | RemovePin pin         -> sprintf "RemovePin %s"    (string pin)
-    | UpdateSlices slices   -> sprintf "UpdateSlices %s" (string slices)
+    | AddPin                  _ -> "AddPin"
+    | UpdatePin               _ -> "UpdatePin"
+    | RemovePin               _ -> "RemovePin"
+    | UpdateSlices            _ -> "UpdateSlices"
 
     // CUE
-    | AddCue    cue         -> sprintf "AddCue %s"    (string cue)
-    | UpdateCue cue         -> sprintf "UpdateCue %s" (string cue)
-    | RemoveCue cue         -> sprintf "RemoveCue %s" (string cue)
-    | CallCue   cue         -> sprintf "CallCue %s"   (string cue)
+    | AddCue                  _ -> "AddCue"
+    | UpdateCue               _ -> "UpdateCue"
+    | RemoveCue               _ -> "RemoveCue"
+    | CallCue                 _ -> "CallCue"
 
     // CUELIST
-    | AddCueList    cuelist -> sprintf "AddCueList %s"    (string cuelist)
-    | UpdateCueList cuelist -> sprintf "UpdateCueList %s" (string cuelist)
-    | RemoveCueList cuelist -> sprintf "RemoveCueList %s" (string cuelist)
+    | AddCueList              _ -> "AddCueList"
+    | UpdateCueList           _ -> "UpdateCueList"
+    | RemoveCueList           _ -> "RemoveCueList"
+
+    // CUEPLAYER
+    | AddCuePlayer            _ -> "AddCuePlayer"
+    | UpdateCuePlayer         _ -> "UpdateCuePlayer"
+    | RemoveCuePlayer         _ -> "RemoveCuePlayer"
 
     // User
-    | AddUser    user       -> sprintf "AddUser %s"    (string user)
-    | UpdateUser user       -> sprintf "UpdateUser %s" (string user)
-    | RemoveUser user       -> sprintf "RemoveUser %s" (string user)
+    | AddUser                 _ -> "AddUser"
+    | UpdateUser              _ -> "UpdateUser"
+    | RemoveUser              _ -> "RemoveUser"
 
     // Session
-    | AddSession    session -> sprintf "AddSession %s"    (string session)
-    | UpdateSession session -> sprintf "UpdateSession %s" (string session)
-    | RemoveSession session -> sprintf "RemoveSession %s" (string session)
+    | AddSession              _ -> "AddSession"
+    | UpdateSession           _ -> "UpdateSession"
+    | RemoveSession           _ -> "RemoveSession"
 
     // Discovery
-    | AddResolvedService    service -> sprintf "AddResolvedService %s"    (string service)
-    | UpdateResolvedService service -> sprintf "UpdateResolvedService %s" (string service)
-    | RemoveResolvedService service -> sprintf "RemoveResolvedService %s" (string service)
+    | AddDiscoveredService    _ -> "AddDiscoveredService"
+    | UpdateDiscoveredService _ -> "UpdateDiscoveredService"
+    | RemoveDiscoveredService _ -> "RemoveDiscoveredService"
 
-    | Command    ev         -> sprintf "Command: %s"  (string ev)
-    | DataSnapshot state    -> sprintf "DataSnapshot: %A" state
-    | SetLogLevel level     -> sprintf "SetLogLevel: %A" level
-    | LogMsg log            -> sprintf "LogMsg: [%A] %s" log.LogLevel log.Message
+    | Command                 _ -> "Command"
+    | DataSnapshot            _ -> "DataSnapshot"
+    | SetLogLevel             _ -> "SetLogLevel"
+    | LogMsg                  _ -> "LogMsg"
+
+    | UpdateClock             _ -> "UpdateClock"
+
+  // ** PersistenceStrategy
+
+  member cmd.PersistenceStrategy
+    with get () =
+      match cmd with
+      // Project
+      | UpdateProject           _      -> Save
+      | UnloadProject           _      -> Ignore
+
+      // Member
+      | UpdateMember            _      -> Save
+      | AddMember               _
+      | RemoveMember            _      -> Commit
+
+      // Client
+      | AddClient               _
+      | UpdateClient            _
+      | RemoveClient            _      -> Ignore
+
+      // GROUP
+      | AddPinGroup             _
+      | UpdatePinGroup          _
+      | RemovePinGroup          _      -> Save
+
+      // PIN
+      | AddPin                  _
+      | UpdatePin               _
+      | RemovePin               _      -> Save
+      | UpdateSlices            _      -> Ignore
+
+      // CUE
+      | AddCue                  _
+      | UpdateCue               _
+      | RemoveCue               _      -> Save
+      | CallCue                 _      -> Ignore
+
+      // CUELIST
+      | AddCueList              _
+      | UpdateCueList           _
+      | RemoveCueList           _      -> Save
+
+      // CUEPLAYER
+      | AddCuePlayer            _
+      | UpdateCuePlayer         _
+      | RemoveCuePlayer         _      -> Save
+
+      // User
+      | AddUser                 _
+      | UpdateUser              _
+      | RemoveUser              _      -> Save
+
+      // Session
+      | AddSession              _
+      | UpdateSession           _
+      | RemoveSession           _      -> Ignore
+
+      // Discovery
+      | AddDiscoveredService    _
+      | UpdateDiscoveredService _
+      | RemoveDiscoveredService _      -> Ignore
+
+      | UpdateClock             _      -> Ignore
+
+      | Command AppCommand.SaveProject -> Commit
+      | Command                 _      -> Ignore
+
+      | DataSnapshot            _      -> Ignore
+
+      | SetLogLevel             _      -> Ignore
+
+      | LogMsg                  _      -> Ignore
 
   // ** FromFB (JavaScript)
 
@@ -1224,14 +1425,17 @@ and StateMachine =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-#if FABLE_COMPILER
+  #if FABLE_COMPILER
+
   static member FromFB (fb: StateMachineFB) =
     match fb.PayloadType with
     | x when x = StateMachinePayloadFB.ProjectFB ->
-      let project = fb.ProjectFB |> IrisProject.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
+        let project = fb.ProjectFB |> IrisProject.FromFB
         Either.map UpdateProject project
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Right UnloadProject
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -1332,6 +1536,20 @@ and StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    | x when x = StateMachinePayloadFB.CuePlayerFB ->
+      let cuelist = fb.CuePlayerFB |> CuePlayer.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddCuePlayer cuelist
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateCuePlayer cuelist
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemoveCuePlayer cuelist
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
     | x when x = StateMachinePayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
@@ -1374,6 +1592,20 @@ and StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    | x when x = StateMachinePayloadFB.DiscoveredServiceFB ->
+      let discoveredService = fb.DiscoveredServiceFB |> DiscoveredService.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddDiscoveredService discoveredService
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateDiscoveredService discoveredService
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemoveDiscoveredService discoveredService
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
     | x when x = StateMachinePayloadFB.StateFB && fb.Action = StateMachineActionFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
@@ -1394,12 +1626,17 @@ and StateMachine =
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
+
+    | x when x = StateMachinePayloadFB.ClockFB ->
+      UpdateClock(fb.ClockFB.Value)
+      |> Either.succeed
+
     | _ ->
       fb.Action
       |> AppCommand.FromFB
       |> Either.map Command
 
-#else
+  #else
 
   // ** FromFB (.NET)
 
@@ -1415,18 +1652,19 @@ and StateMachine =
 
     | StateMachinePayloadFB.ProjectFB ->
       either {
-        let! project =
-          let projectish = fb.Payload<ProjectFB>()
-          if projectish.HasValue then
-            projectish.Value
-            |> IrisProject.FromFB
-          else
-            "Could not parse empty project payload"
-            |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
-
         match fb.Action with
-        | StateMachineActionFB.UpdateFB -> return (UpdateProject project)
+        | StateMachineActionFB.UpdateFB ->
+          let projectish = fb.Payload<ProjectFB>()
+          return!
+            if projectish.HasValue then
+              projectish.Value
+              |> IrisProject.FromFB
+              |> Either.map UpdateProject
+            else
+              "Could not parse empty project payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
+        | StateMachineActionFB.RemoveFB -> return UnloadProject
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1515,6 +1753,36 @@ and StateMachine =
         | StateMachineActionFB.AddFB    -> return (AddCueList    cuelist)
         | StateMachineActionFB.UpdateFB -> return (UpdateCueList cuelist)
         | StateMachineActionFB.RemoveFB -> return (RemoveCueList cuelist)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
+
+    | StateMachinePayloadFB.CuePlayerFB ->
+      either {
+        let! player =
+          let playerish = fb.Payload<CuePlayerFB>()
+          if playerish.HasValue then
+            playerish.Value
+            |> CuePlayer.FromFB
+          else
+            "Could not parse empty player payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddCuePlayer    player)
+        | StateMachineActionFB.UpdateFB -> return (UpdateCuePlayer player)
+        | StateMachineActionFB.RemoveFB -> return (RemoveCuePlayer player)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1693,6 +1961,36 @@ and StateMachine =
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
+
+    //  ____  _                                     _
+    // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+    // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+    // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+    // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
+
+    | StateMachinePayloadFB.DiscoveredServiceFB ->
+      either {
+        let! discoveredService =
+          let discoveredServiceish = fb.Payload<DiscoveredServiceFB>()
+          if discoveredServiceish.HasValue then
+            discoveredServiceish.Value
+            |> DiscoveredService.FromFB
+          else
+            "Could not parse empty discoveredService payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddDiscoveredService    discoveredService)
+        | StateMachineActionFB.UpdateFB -> return (UpdateDiscoveredService discoveredService)
+        | StateMachineActionFB.RemoveFB -> return (RemoveDiscoveredService discoveredService)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     //  __  __ _
     // |  \/  (_)___  ___
     // | |\/| | / __|/ __|
@@ -1740,16 +2038,30 @@ and StateMachine =
             |> Either.fail
       }
 
+    | StateMachinePayloadFB.ClockFB ->
+      either {
+        let clockish = fb.Payload<ClockFB> ()
+        if clockish.HasValue then
+          let clock = clockish.Value
+          return (UpdateClock clock.Value)
+        else
+          return!
+            "Could not parse empty clock payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
     | _ -> either {
       let! cmd = AppCommand.FromFB fb.Action
       return (Command cmd)
     }
 
-#endif
+  #endif
+
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateMachineFB> =
-    let inline addDiscoveredServicePayload (service: Discovery.DiscoveredService) action =
+    let inline addDiscoveredServicePayload (service: DiscoveredService) action =
       let offset = service.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, action)
@@ -1772,6 +2084,14 @@ and StateMachine =
 #else
       StateMachineFB.AddPayload(builder, offset.Value)
 #endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UnloadProject ->
+      StateMachineFB.StartStateMachineFB(builder)
+      // This is not exactly removing a project, but we use RemoveFB to avoid having
+      // another action just for UnloadProject
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ProjectFB)
       StateMachineFB.EndStateMachineFB(builder)
 
     | AddMember       mem ->
@@ -2014,6 +2334,42 @@ and StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    | AddCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdateCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemoveCuePlayer player ->
+      let player = player.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CuePlayerFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, player)
+#else
+      StateMachineFB.AddPayload(builder, player.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
     | AddUser user ->
       let user = user.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2131,14 +2487,28 @@ and StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | AddResolvedService    service ->
+    | AddDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.AddFB
 
-    | UpdateResolvedService    service ->
+    | UpdateDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.UpdateFB
 
-    | RemoveResolvedService    service ->
+    | RemoveDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
+
+    | UpdateClock value ->
+      ClockFB.StartClockFB(builder)
+      ClockFB.AddValue(builder, value)
+      let offset = ClockFB.EndClockFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClockFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
 
 
   // ** ToBytes
@@ -2147,7 +2517,7 @@ and StateMachine =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,StateMachine> =
+  static member FromBytes (bytes: byte[]) : Either<IrisError,StateMachine> =
     Binary.createBuffer bytes
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB

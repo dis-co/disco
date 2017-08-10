@@ -1,28 +1,22 @@
-import css from "../css/main.less"
-import css2 from "react-grid-layout/css/styles.css"
+import "react-grid-layout/css/styles.css"
 
 import values from "./values"
-import GlobalModel from "./GlobalModel"
+import { GlobalModel } from "../fable/Frontend/GlobalModel.fs"
 
 import React, { Component } from 'react'
 import PanelLeft from './PanelLeft'
 import Tabs from './Tabs'
 import Workspace from './Workspace'
-import DropdownMenu from './DropdownMenu'
-import ModalDialog from './modals/ModalDialog'
-import CreateProject from './modals/CreateProject'
-import LoadProject from './modals/LoadProject'
+import NavBar, { showModal as showModalNavBar } from './widgets/NavBar'
 
-let modal = null;
-
-export function showModal(content, onSubmit) {
-  modal.setState({ content, onSubmit });
+export function showModal(content, props) {
+  return showModalNavBar(content, props);
 }
 
 export default class App extends Component {
   constructor(props) {
     super(props);
-    this.global = new GlobalModel();
+    this.global = GlobalModel.Singleton;
     this.global.addTab({
       name: "Workspace",
       view: Workspace,
@@ -44,16 +38,7 @@ export default class App extends Component {
   render() {
     return (
       <div id="app">
-        <ModalDialog ref={el => modal = (el || modal)} />        
-        <header id="app-header">
-          <h1>Iris</h1>
-          <DropdownMenu options={{
-            "Create project": () => showModal(CreateProject),
-            "Load project": () => showModal(LoadProject),
-            "Unload project": () => Iris.unloadProject(),
-            "Shutdown": () => Iris.shutdown(),
-          }} />
-        </header>
+        <NavBar global={this.global} />
         <div id="app-content">
           <div id="ui-layout-container">
             <div className="ui-layout-west">
@@ -65,9 +50,9 @@ export default class App extends Component {
           </div>
         </div>
         <footer id="app-footer">
-          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik mbH</a></p>
+          <p>© 2017 - <a href="http://nsynk.de/">NSYNK Gesellschaft für Kunst und Technik GmbH</a></p>
         </footer>
-      </div>      
+      </div>
     );
   }
 }

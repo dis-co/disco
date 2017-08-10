@@ -1,20 +1,35 @@
 import React, { Component } from 'react'
-import css from "../css/PanelLeft.less";
-import Log from "./widgets/Log";
-import Manager from "./widgets/Manager";
-import GraphView from "./widgets/GraphView";
+import Log from "./widgets/Log"
+import GraphView from "./widgets/GraphView"
+import ProjectView from "./widgets/ProjectView"
+import Cluster from "./widgets/Cluster"
+import Discovery from "./widgets/Discovery"
+import TestWidget from "./widgets/TestWidget"
+import { CuePlayerModel } from "../fable/Frontend/Widgets/CuePlayer.fs"
 
 function cardClicked(title, global) {
   switch (title.toUpperCase()) {
     case "LOG":
       global.addWidget(new Log());
       break;
-    case "MANAGER":
-      global.addWidget(new Manager());
-      break;
     case "GRAPH VIEW":
       global.addWidget(new GraphView());
       break;
+    case "CUE PLAYER":
+      global.addWidget(new CuePlayerModel());
+      break;
+    case "PROJECT VIEW":
+      global.addWidget(new ProjectView());
+      break;
+    case "CLUSTER":
+      global.addWidget(new Cluster());
+      break;
+    case "DISCOVERY":
+      global.addWidget(new Discovery());
+      break;
+    case "TEST WIDGET":
+      global.addWidget(new TestWidget());
+      break;      
     default:
       alert("Widget " + title + " is not currently supported")
   }
@@ -40,15 +55,16 @@ export default class PanelLeft extends Component {
       <div className="iris-panel-left">
         <Card key={0} global={this.props.global} letter="L" title="LOG" text="Cluster Settings" />
         <Card key={1} global={this.props.global} letter="G" title="Graph View" text="Cluster Settings" />
-        <Card key={2} global={this.props.global} letter="M" title="Manager" text="Cluster Settings" />
-        <Card key={3} global={this.props.global} letter="P" title="Project Overview (Small)" text="Cluster Settings" />
-        <Card key={4} global={this.props.global} letter="B" title="Branches" text="Cluster Settings" />
-        <Card key={5} global={this.props.global} letter="U" title="User Management" text="Cluster Settings" />
-        <Card key={6} global={this.props.global} letter="H" title="Unassigned Hosts" text="Cluster Settings" />
-        <Card key={7} global={this.props.global} letter="R" title="Remotter" text="Cluster Settings" />
-        <Card key={8} global={this.props.global} letter="S" title="Project Settings" text="Cluster Settings" />
-        <Card key={9} global={this.props.global} letter="L" title="Library" text="Graph View" />
-        <Card key={10} global={this.props.global} letter="P" title="Project Overview (Big)" text="Cluster Settings" />
+        <Card key={2} global={this.props.global} letter="C" title="Cue Player" text="Cluster Settings" />
+        <Card key={3} global={this.props.global} letter="P" title="Project View" text="Cluster Settings" />
+        <Card key={4} global={this.props.global} letter="T" title="Test Widget" text="Cluster Settings" />
+        <Card key={5} global={this.props.global} letter="R" title="Cluster" text="Cluster Settings" />
+        <Card key={6} global={this.props.global} letter="D" title="Discovery" text="Cluster Settings" />
+        <Card key={7} global={this.props.global} letter="H" title="Unassigned Hosts" text="Cluster Settings" />
+        <Card key={8} global={this.props.global} letter="R" title="Remotter" text="Cluster Settings" />
+        <Card key={9} global={this.props.global} letter="S" title="Project Settings" text="Cluster Settings" />
+        <Card key={10} global={this.props.global} letter="L" title="Library" text="Graph View" />
+        <Card key={11} global={this.props.global} letter="P" title="Project Overview (Big)" text="Cluster Settings" />
       </div>
     )
   }

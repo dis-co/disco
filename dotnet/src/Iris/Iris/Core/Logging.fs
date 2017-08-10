@@ -11,8 +11,14 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open SharpYaml.Serialization
+open System.IO
 open Iris.Serialization
+
+#endif
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 #endif
 
@@ -25,29 +31,38 @@ open Iris.Serialization
 // |_____\___/ \__, |_____\___| \_/ \___|_|
 //             |___/
 type LogLevel =
+  | Trace
   | Debug
   | Info
   | Warn
   | Err
 
+  // ** Parse
+
   static member Parse (str: string) =
     match String.toLower str with
+    | "trace"         -> Trace
     | "debug"         -> Debug
     | "info"          -> Info
     | "warn"          -> Warn
     | "err" | "error" -> Err
     | _               -> failwithf "could not parse %s" str
 
+  // ** TryParse
+
   static member TryParse (str: string) =
     Either.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
       str |> LogLevel.Parse
 
+  // ** ToString
+
   override self.ToString() =
     match self with
+    | Trace -> "trace"
     | Debug -> "debug"
     | Info  -> "info"
     | Warn  -> "warn"
-    | Err   -> "err"
+    | Err   -> "error"
 
 // * Tier
 
@@ -66,18 +81,24 @@ type Tier =
   | Client
   | Service
 
+  // ** ToString
+
   override self.ToString() =
     match self with
-    | FrontEnd -> "FrontEnd"
-    | Client   -> "Client"
-    | Service  -> "Service"
+    | FrontEnd -> "frontend"
+    | Client   -> "client"
+    | Service  -> "service"
+
+  // ** Parse
 
   static member Parse (str: string) =
-    match str with
-    | "FrontEnd"  -> FrontEnd
-    | "Client"    -> Client
-    | "Service"   -> Service
-    | _           -> failwithf "could not parse %s" str
+    match str.ToLower() with
+    | "frontend" | "ui" -> FrontEnd
+    | "client"  -> Client
+    | "service" -> Service
+    | _         -> failwithf "could not parse %s" str
+
+  // ** TryParse
 
   static member TryParse (str: string) =
     Either.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
@@ -85,7 +106,7 @@ type Tier =
 
 // * LogEventYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
 
 type LogEventYaml() =
   [<DefaultValue>] val mutable Time      : uint32
@@ -124,17 +145,19 @@ type LogEvent =
     LogLevel  : LogLevel
     Message   : string }
 
+  // ** ToString
+
   override self.ToString() =
     sprintf "[%s - %s - %s - %d - %d - %s]: %s"
       (System.String.Format("{0,-5}",string self.LogLevel))
       (System.String.Format("{0,-8}",string self.Tier))
-      (System.String.Format("{0,-8}",self.Id |> string |> String.subString 0 8))
+      (System.String.Format("{0,-8}",self.Id.Prefix))
       self.Time
       self.Thread
       self.Tag
       self.Message
 
-  // ** Binary
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -146,25 +169,26 @@ type LogEvent =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let tier = builder.CreateString (string self.Tier)
     let id = builder.CreateString (string self.Id)
-    let tag = builder.CreateString self.Tag
+    let tag = Option.mapNull builder.CreateString self.Tag
     let level = builder.CreateString (string self.LogLevel)
-    let msg = builder.CreateString self.Message
+    let msg = Option.mapNull builder.CreateString self.Message
 
     LogEventFB.StartLogEventFB(builder)
     LogEventFB.AddTime(builder, self.Time)
     LogEventFB.AddThread(builder, self.Thread)
     LogEventFB.AddTier(builder, tier)
     LogEventFB.AddId(builder,id)
-    LogEventFB.AddTag(builder,tag)
+    Option.iter (fun value -> LogEventFB.AddTag(builder,value)) tag
     LogEventFB.AddLogLevel(builder, level)
-    LogEventFB.AddMessage(builder, msg)
+    Option.iter (fun value -> LogEventFB.AddMessage(builder,value)) msg
     LogEventFB.EndLogEventFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: LogEventFB) = either {
       let id = Id fb.Id
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
-
       return { Time     = fb.Time
                Thread   = fb.Thread
                Tier     = tier
@@ -174,7 +198,7 @@ type LogEvent =
                Message  = fb.Message }
     }
 
-  // ** Yaml
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -182,10 +206,10 @@ type LogEvent =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  #if !FABLE_COMPILER
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
-    let yaml = new LogEventYaml()
+    let yaml = LogEventYaml()
     yaml.Time     <- self.Time
     yaml.Thread   <- self.Thread
     yaml.Tier     <- string self.Tier
@@ -195,10 +219,14 @@ type LogEvent =
     yaml.Message  <- self.Message
     yaml
 
+  // ** ToYaml
+
   member self.ToYaml(serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: LogEventYaml) = either {
       let id = Id yaml.Id
@@ -213,13 +241,33 @@ type LogEvent =
                Message  = yaml.Message }
     }
 
+  // ** FromYaml
+
   static member FromYaml(str: string) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     str
     |> serializer.Deserialize
     |> LogEvent.FromYamlObject
 
   #endif
+
+// * LoggingSettings
+
+type LoggingSettings =
+  { Id: Id
+    Level: LogLevel
+    UseColors: bool
+    Tier: Tier }
+
+// * LoggingSettings
+
+module LoggingSettings =
+
+  let defaultSettings =
+    { Id = Id.Create()
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
 
 // * Logger
 
@@ -230,8 +278,94 @@ module Logger =
 
   open System
   open System.Threading
-
   open Iris.Core
+
+  // ** settings
+
+  let mutable private settings =
+    { Id = Id "<uninitialized>"
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
+
+  // ** initialize
+
+  let initialize config = settings <- config
+
+  // ** colors
+
+  // Black         - The color black.
+  // Blue          - The color blue.
+  // Cyan          - The color cyan (blue-green).
+  // DarkBlue      - The color dark blue.
+  // DarkCyan      - The color dark cyan (dark blue-green).
+  // DarkGray      - The color dark gray.
+  // DarkGreen     - The color dark green.
+  // DarkMagenta   - The color dark magenta (dark purplish-red).
+  // DarkRed       - The color dark red.
+  // DarkYellow    - The color dark yellow (ochre).
+  // Gray          - The color gray.
+  // Green         - The color green.
+  // Magenta       - The color magenta (purplish-red).
+  // Red           - The color red.
+  // White         - The color white.
+  // Yellow        - The color yellow.
+
+  // ** withForeground
+
+  let private withForeground pat fg (o: obj) =
+    let prevFg = Console.ForegroundColor
+    Console.ForegroundColor <- fg
+    Console.Write(pat,o)
+    Console.ForegroundColor <- prevFg
+
+  let private black pat (thing: obj) =
+    withForeground pat ConsoleColor.Black thing
+
+  let private white pat (thing: obj) =
+    withForeground pat ConsoleColor.White thing
+
+  let private blue pat (thing: obj) =
+    withForeground pat ConsoleColor.Blue thing
+
+  let private darkBlue pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkBlue thing
+
+  let private cyan pat (thing: obj) =
+    withForeground pat ConsoleColor.Cyan thing
+
+  let private darkCyan pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkCyan thing
+
+  let private gray pat (thing: obj) =
+    withForeground pat ConsoleColor.Gray thing
+
+  let private darkGray pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGray thing
+
+  let private green pat (thing: obj) =
+    withForeground pat ConsoleColor.Green thing
+
+  let private darkGreen pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGreen thing
+
+  let private magenta pat (thing: obj) =
+    withForeground pat ConsoleColor.Magenta thing
+
+  let private darkMagenta pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkMagenta thing
+
+  let private red pat (thing: obj) =
+    withForeground pat ConsoleColor.Red thing
+
+  let private darkRed pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkRed thing
+
+  let private yellow pat (thing: obj) =
+    withForeground pat ConsoleColor.Yellow thing
+
+  let private darkYellow pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkYellow thing
 
   // ** stdout
 
@@ -244,13 +378,45 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    log |> string |> printfn "%s"
+    if settings.UseColors then
+      darkGreen "{0}" "["
+      match log.LogLevel with
+      | LogLevel.Trace -> gray   "{0,-5}" log.LogLevel
+      | LogLevel.Debug -> white  "{0,-5}" log.LogLevel
+      | LogLevel.Info  -> green  "{0,-5}" log.LogLevel
+      | LogLevel.Warn  -> yellow "{0,-5}" log.LogLevel
+      | LogLevel.Err   -> red    "{0,-5}" log.LogLevel
+      darkGreen "{0}" "] "
+
+      darkGreen "{0}:" "ts"
+      white     "{0} " log.Time
+
+      darkGreen "{0}:" "id"
+      white     "{0} " log.Id.Prefix
+
+      darkGreen "{0}:"    "type"
+      white     "{0,-7} " log.Tier
+
+      darkGreen "{0}:"     "in"
+      yellow    "{0,-30} " log.Tag
+
+      white  "{0}"  log.Message
+      Console.Write(System.Environment.NewLine)
+    else
+      Console.WriteLine("{0}", log)
+
+  // ** filter
+
+  let filter (level: LogLevel) (logger: LogEvent -> unit) (log: LogEvent) =
+    if level = log.LogLevel then
+      logger log
 
   // ** stdoutWith
 
   let stdoutWith (level: LogLevel) (log: LogEvent) =
     match level, log.LogLevel with
-    | Debug, _ -> stdout log
+    | Trace, _ -> stdout log
+    | Debug, Debug | Debug, Info | Debug, Warn | Debug, Err -> stdout log
     | Info, Info | Info, Warn | Info, Err ->
       stdout log
     | Warn, Warn | Warn, Err ->
@@ -259,9 +425,13 @@ module Logger =
       stdout log
     | _ -> ()
 
+  // ** subscriptions
+
   let private subscriptions = new ResizeArray<IObserver<LogEvent>>()
 
-  let listener =
+  // ** listener
+
+  let private listener =
     { new IObservable<LogEvent> with
         member self.Subscribe(obs) =
 
@@ -300,6 +470,8 @@ module Logger =
           sub.OnNext log
     }
 
+  // ** subscribe
+
   /// ## subscribe
   ///
   /// Log the given string.
@@ -309,30 +481,6 @@ module Logger =
         member x.OnError(error) = ()
         member x.OnNext(value) = cb value }
     |> listener.Subscribe
-
-  // let filter (level: LogLevel) (logger: LogEvent -> unit) =
-  //     /// ## To `log` or not, that is the question.
-  //     match level with
-  //     /// In Debug, all messages get logged
-  //     | Debug -> onLog log
-
-  //     // In Info mode, all messages except `Debug` ones get logged
-  //     | Info  ->
-  //       match log.LogLevel with
-  //       | Info | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Warn mode, messages of type `Err` and `Warn` get logged
-  //     | Warn  ->
-  //       match log.LogLevel with
-  //       | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Err mode, only messages of type `Err` get logged
-  //     | Err   ->
-  //       match log.LogLevel with
-  //       | Err -> onLog log
-  //       | _ -> ()
 
   // ** create
 
@@ -346,27 +494,25 @@ module Logger =
   /// - arg: arg
   ///
   /// Returns: LogEvent
-  let create (level: LogLevel) (id: Id) (callsite: CallSite) (msg: string) =
-    let tier =
-      #if FABLE_COMPILER
-      Tier.FrontEnd
-      #else
-      Tier.Service
-      #endif
-
+  let create (level: LogLevel) (callsite: CallSite) (msg: string) =
     let now  = DateTime.UtcNow |> Time.unixTime
-
     { Time     = uint32 now
       #if FABLE_COMPILER
       Thread   = 1
       #else
       Thread   = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = tier
-      Id       = id
+      Tier     = settings.Tier
+      Id       = settings.Id
       Tag      = callsite
       LogLevel = level
       Message  = msg }
+
+  // ** append
+
+  let append (log: LogEvent) = agent.Post log
+
+  // ** log
 
   /// ## log
   ///
@@ -374,14 +520,30 @@ module Logger =
   ///
   /// ### Signature:
   /// - level: LogLevel
-  /// - id: Id
   /// - callside: CallSite
   /// - msg: string
   ///
   /// Returns: unit
-  let log (level: LogLevel) (id: Id) (callsite: CallSite) (msg: string) =
-    create level id callsite msg
-    |> agent.Post
+  let log (level: LogLevel) (callsite: CallSite) (msg: string) =
+    msg
+    |> create level callsite
+    |> append
+
+  // ** trace
+
+  /// ## trace
+  ///
+  /// Shorthand for creating a Trace event.
+  ///
+  /// ### Signature:
+  /// - callsite: location where even was generated
+  /// - msg: log message
+  ///
+  /// Returns: unit
+  let trace (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Trace callsite
+    |> append
 
   // ** debug
 
@@ -390,14 +552,14 @@ module Logger =
   /// Shorthand for creating a Debug event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: unit
-  let debug (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Debug id callsite msg
-    |> agent.Post
+  let debug (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Debug callsite
+    |> append
 
   // ** info
 
@@ -406,14 +568,14 @@ module Logger =
   /// Shorthand for creating a Info event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let info (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Info id callsite msg
-    |> agent.Post
+  let info (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Info callsite
+    |> append
 
   // ** warn
 
@@ -422,14 +584,14 @@ module Logger =
   /// Shorthand for creating a Warn event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let warn (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Warn id callsite msg
-    |> agent.Post
+  let warn (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Warn callsite
+    |> append
 
   // ** err
 
@@ -438,11 +600,73 @@ module Logger =
   /// Shorthand for creating a Err event.
   ///
   /// ### Signature:
-  /// - id: Id of session/client/service node
   /// - callsite: location where even was generated
   /// - msg: log message
   ///
   /// Returns: LogEvent
-  let err (id: Id) (callsite: CallSite) (msg: string) =
-    create LogLevel.Err id callsite msg
-    |> agent.Post
+  let err (callsite: CallSite) (msg: string) =
+    msg
+    |> create LogLevel.Err callsite
+    |> append
+
+// * LogFile
+
+#if !FABLE_COMPILER
+
+[<NoComparison;NoEquality>]
+type LogFile =
+  { FilePath: FilePath
+    Created: DateTime
+    Stream: StreamWriter }
+
+  interface IDisposable with
+    member self.Dispose() =
+      try
+        self.Stream.Flush()
+        self.Stream.Close()
+        dispose self.Stream
+      with
+        | _ -> ()
+
+// * LogFile module
+
+module LogFile =
+
+  // ** tag
+
+  let private tag (str: string) = String.format "LogFile.{0}" str
+
+  // ** write
+
+  let write (file: LogFile) (log: LogEvent) =
+    try
+      log
+      |> string
+      |> file.Stream.WriteLine
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "write")
+        |> Either.fail
+
+  // ** create
+
+  let create (machine: Id) (path: FilePath) =
+    let ts = DateTime.Now
+    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
+    let fp = Path.Combine(unwrap path, fn)
+    try
+      let writer = File.AppendText fp
+      writer.AutoFlush <- true
+      { FilePath = filepath fp
+        Created = ts
+        Stream = writer }
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "create")
+        |> Either.fail
+
+#endif

@@ -1,0 +1,4 @@
+group Fable
+FSharp.Core
+Fable.Core
+Fable.PowerPack

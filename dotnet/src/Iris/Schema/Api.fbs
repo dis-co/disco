@@ -14,29 +14,15 @@ table ApiErrorFB {
      Data: string;
 }
 
-enum ServerApiCommandFB:ushort {
+enum ApiCommandFB:ushort {
      RegisterFB = 0,
-     UnReqisterFB,
-     AddPinFB,
-     UpdatePinFB,
-     RemovePinFB,
-     AddPinGroupFB,
-     UpdatePinGroupFB,
-     RemovePinGroupFB,
-     AddCueFB,
-     UpdateCueFB,
-     RemoveCueFB,
-     AddCueListFB,
-     UpdateCueListFB,
-     RemoveCueListFB,
-     UpdateSlicesFB,
-     CallCueFB,
-}
-
-enum ClientApiCommandFB:ushort {
-     PingFB = 0,
+     UnRegisterFB,
      SnapshotFB,
      UpdateProjectFB,
+     UnloadProjectFB,
+     AddClientFB,
+     UpdateClientFB,
+     RemoveClientFB,
      AddMemberFB,
      UpdateMemberFB,
      RemoveMemberFB,
@@ -58,10 +44,21 @@ enum ClientApiCommandFB:ushort {
      AddSessionFB,
      RemoveSessionFB,
      UpdateSessionFB,
+     AddCuePlayerFB,
+     RemoveCuePlayerFB,
+     UpdateCuePlayerFB,
+     AddDiscoveredServiceFB,
+     RemoveDiscoveredServiceFB,
+     UpdateDiscoveredServiceFB,
+     LogEventFB,
      UndoFB,
      RedoFB,
      ResetFB,
+     SaveProjectFB,
      UpdateSlicesFB,
+     UpdateClockFB,
+     DataSnapshotFB,
+     SetLogLevelFB,
      CallCueFB,
 }
 
@@ -74,25 +71,26 @@ union ParameterFB {
      PinFB,
      CueFB,
      CueListFB,
+     CuePlayerFB,
      UserFB,
+     ClockFB,
      SessionFB,
      SlicesFB,
+     LogEventFB,
+     StringFB,
+     DiscoveredServiceFB,
 }
 
-table ServerApiRequestFB {
-     Command: ServerApiCommandFB;
-     Parameter: ParameterFB;      
-}
-
-table ClientApiRequestFB {
-     Command: ClientApiCommandFB;
+table ApiRequestFB {
+     Command: ApiCommandFB;
      Parameter: ParameterFB;      
 }
 
 enum StatusFB:ushort {
-     PongFB = 0,
-     OKFB = 1,
-     NOKFB = 2,
+     OKFB = 0,
+     NOKFB,
+     RegisteredFB,
+     UnregisteredFB
 }
 
 table ApiResponseFB {

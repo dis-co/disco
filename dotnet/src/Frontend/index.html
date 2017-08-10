@@ -12,6 +12,11 @@
     <script src="lib/jquery/jquery-ui.min.js"></script>
     <script src="lib/jquery/jquery.layout.min.js"></script>
 
+    <!-- Iris styles. Order matters! -->
+    <link rel="stylesheet" href="lib/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="lib/bulma.css">
+    <link rel="stylesheet" href="css/Iris_generated.css">
+
     <!-- Serialization -->
     <script src="../js/Core_generated.js"></script>
     <script src="../js/Api_generated.js"></script>
@@ -20,7 +25,7 @@
   <body>
     <div id="app-container"></div>
     <img id="iris-drag-image" />
-    <script src="/js/iris.js"></script>
-    <script src="/js/bundle.js"></script>
+    <script src="js/iris.js"></script>
+    <script>IrisLib.renderApp(document.getElementById('app-container'))</script>
   </body>
 </html>

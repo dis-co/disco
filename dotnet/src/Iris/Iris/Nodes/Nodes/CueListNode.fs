@@ -40,8 +40,8 @@ type CueListNode() =
   val mutable OutName: ISpread<string>
 
   [<DefaultValue>]
-  [<Output("Cues")>]
-  val mutable OutCues: ISpread<ISpread<Cue>>
+  [<Output("CueGroups")>]
+  val mutable OutCues: ISpread<ISpread<CueGroup>>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
@@ -59,9 +59,9 @@ type CueListNode() =
           if not (Util.isNullReference self.InCueList.[n]) then
             let cuelist = self.InCueList.[n]
             self.OutId.[n] <- string cuelist.Id
-            self.OutName.[n] <- cuelist.Name
-            self.OutCues.[n].SliceCount <- Array.length cuelist.Cues
-            self.OutCues.[n].AssignFrom cuelist.Cues
+            self.OutName.[n] <- unwrap cuelist.Name
+            self.OutCues.[n].SliceCount <- Array.length cuelist.Groups
+            self.OutCues.[n].AssignFrom cuelist.Groups
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

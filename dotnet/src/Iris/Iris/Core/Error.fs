@@ -28,6 +28,24 @@ type IrisError =
   | ClientError  of location:string * error:string
   | Other        of location:string * error:string
 
+  // ** Message
+
+  member error.Message
+    with get () =
+      match error with
+      | OK                      -> "Ok"
+      | GitError     (_, error) -> error
+      | ProjectError (_, error) -> error
+      | SocketError  (_, error) -> error
+      | ParseError   (_, error) -> error
+      | IOError      (_, error) -> error
+      | AssetError   (_, error) -> error
+      | RaftError    (_, error) -> error
+      | ClientError  (_, error) -> error
+      | Other        (_, error) -> error
+
+  // ** ToString
+
   override error.ToString() =
     match error with
     | GitError     (loc,err) -> sprintf "Git error: %s in %s"     err loc
@@ -45,7 +63,7 @@ type IrisError =
 
   static member FromFB (fb: ErrorFB) =
     match fb.Type with
-#if FABLE_COMPILER
+    #if FABLE_COMPILER
     | x when x = ErrorTypeFB.OKFB           -> Right OK
     | x when x = ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
     | x when x = ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
@@ -60,7 +78,7 @@ type IrisError =
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrorTypeFB: %A" x)
       |> ParseError
       |> Either.fail
-#else
+    #else
     | ErrorTypeFB.OKFB           -> Right OK
     | ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
     | ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
@@ -75,11 +93,20 @@ type IrisError =
       ("IrisError.FromFB", sprintf "Could not parse unknown ErrotTypeFB: %A" x)
       |> ParseError
       |> Either.fail
-#endif
+    #endif
 
   // ** ToOffset
 
   member error.ToOffset (builder: FlatBufferBuilder) =
+    let map (str: string) =
+      match str with
+      #if FABLE_COMPILER
+      | null -> Unchecked.defaultof<Offset<string>>
+      #else
+      | null -> Unchecked.defaultof<StringOffset>
+      #endif
+      | _ -> builder.CreateString str
+
     let tipe =
       match error with
       | OK             -> ErrorTypeFB.OKFB
@@ -95,15 +122,15 @@ type IrisError =
 
     let str =
       match error with
-      | GitError     (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ProjectError (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | AssetError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ParseError   (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | SocketError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | ClientError  (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | IOError      (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | Other        (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
-      | RaftError    (loc,msg) -> (builder.CreateString loc,builder.CreateString msg) |> Some
+      | GitError     (loc,msg) -> (map loc, map msg) |> Some
+      | ProjectError (loc,msg) -> (map loc, map msg) |> Some
+      | AssetError   (loc,msg) -> (map loc, map msg) |> Some
+      | ParseError   (loc,msg) -> (map loc, map msg) |> Some
+      | SocketError  (loc,msg) -> (map loc, map msg) |> Some
+      | ClientError  (loc,msg) -> (map loc, map msg) |> Some
+      | IOError      (loc,msg) -> (map loc, map msg) |> Some
+      | Other        (loc,msg) -> (map loc, map msg) |> Some
+      | RaftError    (loc,msg) -> (map loc, map msg) |> Some
       | _                      -> None
 
     ErrorFB.StartErrorFB(builder)
@@ -115,16 +142,6 @@ type IrisError =
     | _ -> ()
     ErrorFB.EndErrorFB(builder)
 
-  // ** ToBytes
-
-  member self.ToBytes() = Binary.buildBuffer self
-
-  // ** FromBytes
-
-  static member FromBytes(bytes: Binary.Buffer) =
-    Binary.createBuffer bytes
-    |> ErrorFB.GetRootAsErrorFB
-    |> IrisError.FromFB
 
 
 // * Error Module

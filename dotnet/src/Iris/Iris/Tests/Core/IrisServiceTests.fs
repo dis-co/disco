@@ -1,92 +1,464 @@
 namespace Iris.Tests
 
-open System
 open System.IO
 open System.Threading
-open System.Text
 open Expecto
 
 open Iris.Core
 open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
+open Iris.Client
+open Iris.Client.Interfaces
 open Iris.Service.Interfaces
 open Iris.Raft
-open Iris.Service.Git
-open Iris.Service.Iris
-open FSharpx.Functional
-open Microsoft.FSharp.Control
-open ZeroMQ
+open Iris.Net
 
 [<AutoOpen>]
 module IrisServiceTests =
+  let private mkMachine () =
+    { MachineConfig.create "127.0.0.1" None with
+        WorkSpace = tmpPath() </> Path.getRandomFileName() }
+
+  let private mkProject (machine: IrisMachine) (site: ClusterConfig) =
+    either {
+      let name = Path.GetRandomFileName()
+      let path = machine.WorkSpace </> filepath name
+
+      let author1 = "karsten"
+
+      let cfg =
+        machine
+        |> Config.create
+        |> Config.addSiteAndSetActive site
+        |> Config.setLogLevel (LogLevel.Debug)
+
+      let! project = Project.create (Project.ofFilePath path) name machine
+
+      let updated =
+        { project with
+            Path = Project.ofFilePath path
+            Author = Some(author1)
+            Config = cfg }
+
+      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+
+      return updated
+    }
+
+  let private mkMember baseport (machine: IrisMachine) =
+    { Member.create machine.MachineId with
+        Port = port  baseport
+        ApiPort = port (baseport + 1us)
+        GitPort = port (baseport + 2us)
+        WsPort = port (baseport + 3us) }
+
+  let private mkCluster (num: int) =
+    either {
+      let machines = [ for n in 0 .. num - 1 -> mkMachine () ]
+
+      let baseport = 4000us
+
+      let members =
+        List.mapi
+          (fun i machine ->
+            let port = baseport + uint16 (i * 1000)
+            mkMember port machine)
+          machines
+
+      let site =
+        { ClusterConfig.Default with
+            Name = name "Cool Cluster Yo"
+            Members = members |> List.map (fun mem -> mem.Id,mem) |> Map.ofList }
+
+      let project =
+        List.fold
+          (fun (i, project') machine ->
+            if i = 0 then
+              match mkProject machine site with
+              | Right project -> (i + 1, project)
+              | Left error -> failwithf "unable to create project: %O" error
+            else
+              let path = Project.toFilePath project'.Path
+              match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
+              | Right () -> (i + 1, project')
+              | Left error -> failwithf "error copying project: %O" error)
+          (0, Unchecked.defaultof<IrisProject>)
+          machines
+        |> snd
+
+      let zipped = List.zip members machines
+
+      return (project, zipped)
+    }
+
+
   //  ___      _     ____                  _            _____         _
   // |_ _|_ __(_)___/ ___|  ___ _ ____   _(_) ___ ___  |_   _|__  ___| |_ ___
   //  | || '__| / __\___ \ / _ \ '__\ \ / / |/ __/ _ \   | |/ _ \/ __| __/ __|
   //  | || |  | \__ \___) |  __/ |   \ V /| | (_|  __/   | |  __/\__ \ |_\__ \
   // |___|_|  |_|___/____/ \___|_|    \_/ |_|\___\___|   |_|\___||___/\__|___/
 
-  let test_ensure_gitserver_restart_on_premature_exit =
-    testCase "ensure gitserver restart on premature exit" <| fun _ ->
+  let test_ensure_iris_server_clones_changes_from_leader =
+    testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        let signal = ref 0
+        use checkGitStarted = new AutoResetEvent(false)
+        use electionDone = new AutoResetEvent(false)
+        use appendDone = new AutoResetEvent(false)
+        use pushDone = new AutoResetEvent(false)
 
-        let path = tmpPath()
+        let! (project, zipped) = mkCluster 2
 
-        let machine = { MachineConfig.create() with WorkSpace = Path.GetDirectoryName path }
-        let mem = Member.create machine.MachineId
+        let handler = function
+            | IrisEvent.GitPush _                   -> pushDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ()
 
-        let cfg =
-          Config.create "leader" machine
-          |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
-          |> Config.setLogLevel (LogLevel.Debug)
+        let! repo1 = Project.repository project
 
-        let name = Path.GetFileName path
+        let num1 = Git.Repo.commitCount repo1
 
-        let author1 = "karsten"
+        //  _
+        // / |
+        // | |
+        // | |
+        // |_| start
 
-        let! project = Project.create path name machine
+        let mem1, machine1 = List.head zipped
 
-        let updated =
-          { project with
-              Path = path
-              Author = Some(author1)
-              Config = cfg }
+        let! service1 = IrisService.create {
+          Machine = machine1
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId = None
+        }
 
-        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+        use oobs1 = service1.Subscribe handler
 
-        let raw =
-          Project.filePath project
-          |> File.ReadAllText
+        do! service1.Start()
 
-        use! service = IrisService.create machine (fun _ -> Async.result (Right "ok"))
-        use oobs =
-          (fun ev ->
-            match ev with
-            | Git (Started _) -> signal := 1 + !signal
+        do! waitOrDie "checkGitStarted" checkGitStarted
+
+        //  ____
+        // |___ \
+        //   __) |
+        //  / __/
+        // |_____| start
+
+        let mem2, machine2 = List.last zipped
+
+        let! repo2 = Project.repository {
+          project with
+            Path = machine2.WorkSpace </> (project.Name |> unwrap |> filepath)
+        }
+
+        let num2 = Git.Repo.commitCount repo2
+
+        let! service2 = IrisService.create {
+          Machine = machine2
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId = None
+        }
+
+        use oobs2 = service2.Subscribe handler
+
+        do! service2.Start()
+
+        do! waitOrDie "checkGitStarted" checkGitStarted
+
+        do! waitOrDie "electionDone" electionDone
+
+        //  _____
+        // |___ /
+        //   |_ \
+        //  ___) |
+        // |____/ do some work
+
+        let raft1 = service1.RaftServer
+        let raft2 = service2.RaftServer
+
+        let leader =
+          match raft1.IsLeader, raft2.IsLeader with
+          | true, false  -> raft1
+          | false, true  -> raft2
+          | false, false -> failwith "no leader is bad news"
+          | true, true   -> failwith "two leaders is really bad news"
+
+        mkCue()
+        |> AddCue
+        |> leader.Append
+
+        do! waitOrDie "appendDone" appendDone
+        appendDone.Reset() |> ignore
+        do! waitOrDie "appendDone" appendDone
+
+        AppCommand.SaveProject
+        |> Command
+        |> leader.Append
+
+        do! waitOrDie "appendDone" appendDone
+        appendDone.Reset() |> ignore
+        do! waitOrDie "appendDone" appendDone
+
+        do! waitOrDie "pushDone"   pushDone
+
+        dispose service1
+        dispose service2
+
+        expect "Instance 1 should have same commit count" (num1 + 1) Git.Repo.commitCount repo1
+        expect "Instance 2 should have same commit count" (num2 + 1) Git.Repo.commitCount repo2
+      }
+      |> noError
+
+  let test_ensure_cue_resolver_works =
+    testCase "ensure cue resolver works" <| fun _ ->
+      either {
+        use checkGitStarted = new AutoResetEvent(false)
+        use electionDone = new AutoResetEvent(false)
+        use appendDone = new AutoResetEvent(false)
+        use clientRegistered = new AutoResetEvent(false)
+        use clientAppendDone = new AutoResetEvent(false)
+        use updateDone = new AutoResetEvent(false)
+
+        let! (project, zipped) = mkCluster 1
+
+        //  _
+        // / |
+        // | |
+        // | |
+        // |_| start
+
+        let mem1, machine1 = List.head zipped
+
+        use! service1 = IrisService.create {
+          Machine = machine1
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId = None
+        }
+
+        use oobs1 =
+          (function
+            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Set() |> ignore
+            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set() |> ignore
+            | IrisEvent.Append(_, CallCue _)               -> appendDone.Set() |> ignore
             | _ -> ())
-          |> service.Subscribe
+          |> service1.Subscribe
 
-        do! service.LoadProject(name, "admin", "Nsynk")
+        do! service1.Start()
+        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitOrDie "electionDone" electionDone
 
-        let! gitserver = service.GitServer
-        let! pid = gitserver.Pid
+        //  _____
+        // |___ /
+        //   |_ \
+        //  ___) |
+        // |____/ create an API client
 
-        expect "Git should be running" true Process.isRunning pid
-        expect "Should have emitted one Started event" 1 id !signal
+        let server:IrisServer = {
+          Port = mem1.ApiPort
+          IpAddress = mem1.IpAddr
+        }
 
-        Process.kill pid
+        use client = ApiClient.create server {
+          Id = Id.Create()
+          Name = "hi"
+          Role = Role.Renderer
+          Status = ServiceStatus.Starting
+          IpAddress = IpAddress.Localhost
+          Port = port 12345us
+        }
 
-        expect "Git should be running" false Process.isRunning pid
+        let handleClient = function
+          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | _ -> ()
 
-        Thread.Sleep 100
+        use clobs = client.Subscribe (handleClient)
 
-        let! gitserver = service.GitServer
-        let! newpid = gitserver.Pid
+        do! client.Start()
 
-        expect "Should be a different pid" false ((=) pid) newpid
-        expect "Git should be running" true Process.isRunning newpid
-        expect "Should have emitted another Started event" 2 id !signal
+        do! waitOrDie "clientRegistered" clientRegistered
+
+        //  _  _
+        // | || |
+        // | || |_
+        // |__   _|
+        //    |_| do some work
+
+        let pinId = Id.Create()
+        let groupId = Id.Create()
+
+        let pin = BoolPin {
+          Id        = pinId
+          Name      = "hi"
+          PinGroup  = groupId
+          Tags      = Array.empty
+          Direction = ConnectionDirection.Output
+          IsTrigger = false
+          VecSize   = VecSize.Dynamic
+          Labels    = Array.empty
+          Values    = [| true |]
+        }
+
+        let group = {
+          Id = groupId
+          Name = name "whatevva"
+          Client = Id.Create()
+          Pins = Map.ofList [(pin.Id, pin)]
+        }
+
+        client.AddPinGroup group
+
+        do! waitOrDie "appendDone" appendDone
+        do! waitOrDie "clientAppendDone" clientAppendDone
+
+        let cue = {
+          Id = Id.Create()
+          Name = name "hi"
+          Slices = [| BoolSlices(pin.Id, [| false |]) |]
+        }
+
+        cue
+        |> CallCue
+        |> service1.Append
+
+        do! waitOrDie "appendDone" appendDone
+        do! waitOrDie "updateDone" updateDone
+
+        let actual: Slices =
+          client.State.PinGroups
+          |> Map.find groupId
+          |> fun group -> Map.find pinId group.Pins
+          |> fun pin -> pin.Values
+
+       expect "should be equal" cue.Slices.[0] id actual
+      }
+      |> noError
+
+  let test_ensure_client_slice_update_does_not_loop =
+    testCase "ensure client slice update does not loop" <| fun _ ->
+      either {
+        use electionDone = new AutoResetEvent(false)
+        use appendDone = new AutoResetEvent(false)
+        use clientRegistered = new AutoResetEvent(false)
+        use clientAppendDone = new AutoResetEvent(false)
+        use updateDone = new AutoResetEvent(false)
+
+        let! (project, zipped) = mkCluster 1
+
+        //  _
+        // / |
+        // | |
+        // | |
+        // |_| start
+
+        let mem1, machine1 = List.head zipped
+
+        use! service1 = IrisService.create {
+          Machine = machine1
+          ProjectName = project.Name
+          UserName = User.Admin.UserName
+          Password = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId = None
+        }
+
+        use oobs1 =
+          (function
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
+            | _                                     -> ())
+          |> service1.Subscribe
+
+        do! service1.Start()
+        do! waitOrDie "electionDone" electionDone
+
+        //  _____
+        // |___ /
+        //   |_ \
+        //  ___) |
+        // |____/ create an API client
+
+        let server:IrisServer = {
+          Port = mem1.ApiPort
+          IpAddress = mem1.IpAddr
+        }
+
+        use client = ApiClient.create server {
+          Id = Id.Create()
+          Name = "hi"
+          Role = Role.Renderer
+          Status = ServiceStatus.Starting
+          IpAddress = IpAddress.Localhost
+          Port = port 12345us
+        }
+
+        let handleClient = function
+          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | _ -> ()
+
+        use clobs = client.Subscribe (handleClient)
+
+        do! client.Start()
+
+        do! waitOrDie "clientRegistered" clientRegistered
+
+        //  _  _
+        // | || |
+        // | || |_
+        // |__   _|
+        //    |_| do some work
+
+        let pinId = Id.Create()
+        let groupId = Id.Create()
+
+        let pin = BoolPin {
+          Id        = pinId
+          Name      = "hi"
+          PinGroup  = groupId
+          Tags      = Array.empty
+          Direction = ConnectionDirection.Output
+          IsTrigger = false
+          VecSize   = VecSize.Dynamic
+          Labels    = Array.empty
+          Values    = [| true |]
+        }
+
+        let group = {
+          Id = groupId
+          Name = name "whatevva"
+          Client = Id.Create()
+          Pins = Map.ofList [(pin.Id, pin)]
+        }
+
+        client.AddPinGroup group
+
+        do! waitOrDie "appendDone" appendDone
+        do! waitOrDie "clientAppendDone" clientAppendDone
+
+        let update = BoolSlices(pin.Id, [| false |])
+
+        client.UpdateSlices update
+
+        do! waitOrDie "updateDone" updateDone
+
+        let actual: Slices =
+          client.State.PinGroups
+          |> Map.find groupId
+          |> fun group -> Map.find pinId group.Pins
+          |> fun pin -> pin.Values
+
+       expect "should be equal" update id actual
       }
       |> noError
 
@@ -98,5 +470,7 @@ module IrisServiceTests =
 
   let irisServiceTests =
     testList "IrisService Tests" [
-      test_ensure_gitserver_restart_on_premature_exit
-    ]
+      test_ensure_iris_server_clones_changes_from_leader
+      test_ensure_client_slice_update_does_not_loop
+      test_ensure_cue_resolver_works
+    ] |> testSequenced

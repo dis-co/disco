@@ -33,8 +33,12 @@ type ConfigNode() =
   val mutable InUpdate: IDiffSpread<bool>
 
   [<DefaultValue>]
-  [<Output("MachineId", IsSingle = true)>]
-  val mutable OutMachineId: ISpread<string>
+  [<Output("Machine", IsSingle = true)>]
+  val mutable OutMachine: ISpread<IrisMachine>
+
+  [<DefaultValue>]
+  [<Output("ActiveSite", IsSingle = true)>]
+  val mutable OutActiveSite: ISpread<string>
 
   [<DefaultValue>]
   [<Output("Audio", IsSingle = true)>]
@@ -53,8 +57,8 @@ type ConfigNode() =
   val mutable OutTiming: ISpread<TimingConfig>
 
   [<DefaultValue>]
-  [<Output("Cluster", IsSingle = true)>]
-  val mutable OutCluster: ISpread<ClusterConfig>
+  [<Output("Sites")>]
+  val mutable OutSites: ISpread<ClusterConfig>
 
   [<DefaultValue>]
   [<Output("Viewports")>]
@@ -81,12 +85,13 @@ type ConfigNode() =
       if self.InUpdate.[0] && not (Util.isNullReference self.InConfig.[0]) then
         let config = self.InConfig.[0]
 
-        self.OutMachineId.[0] <- string config.MachineId
+        self.OutMachine.[0] <- config.Machine
         self.OutAudio.[0] <- config.Audio
         self.OutVvvv.[0] <- config.Vvvv
         self.OutRaft.[0] <- config.Raft
         self.OutTiming.[0] <- config.Timing
-        self.OutCluster.[0] <- config.Cluster
+        self.OutSites.SliceCount <- Array.length config.Sites
+        self.OutSites.AssignFrom config.Sites
         self.OutViewports.SliceCount <- Array.length config.ViewPorts
         self.OutViewports.AssignFrom config.ViewPorts
         self.OutDisplays.SliceCount <- Array.length config.Displays

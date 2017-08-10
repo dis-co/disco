@@ -1,3 +1,4 @@
-[submodule "wiki"]
-	path = wiki
-	url = https://ingolfheinsch@bitbucket.org/nsynk/iris.git/wiki
+[submodule "dotnet/docs/src"]
+	path = dotnet/docs/src
+	url = git@bitbucket.org:nsynk/iris.git/wiki
+

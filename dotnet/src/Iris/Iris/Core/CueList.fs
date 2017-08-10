@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -20,26 +20,46 @@ open Iris.Serialization
 open SharpYaml.Serialization
 // * CueList Yaml
 
-type CueListYaml(id, name, cues) as self =
+type CueListYaml() =
   [<DefaultValue>] val mutable Id   : string
   [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Cues : CueYaml array
+  [<DefaultValue>] val mutable Groups : CueGroupYaml array
 
-  new () = new CueListYaml(null, null, null)
+  static member From(cuelist: CueList) =
+    let yaml = CueListYaml()
+    yaml.Id   <- string cuelist.Id
+    yaml.Name <- unwrap cuelist.Name
+    yaml.Groups <- Array.map Yaml.toYaml cuelist.Groups
+    yaml
 
-  do
-    self.Id   <- id
-    self.Name <- name
-    self.Cues <- cues
+  member yaml.ToCueList() =
+    either {
+      let! groups =
+        let arr = Array.zeroCreate yaml.Groups.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * CueGroup array>) cueish -> either {
+            let! (i, arr) = m
+            let! (group: CueGroup) = Yaml.fromYaml cueish
+            arr.[i] <- group
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.Groups
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = name yaml.Name
+               Groups = groups }
+    }
 
 #endif
 
 // * CueList
 
 type CueList =
-  { Id   : Id
-    Name : Name
-    Cues : Cue array }
+  { Id     : Id
+    Name   : Name
+    Groups : CueGroup array }
 
   // ** ToOffset
 
@@ -52,13 +72,13 @@ type CueList =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = self.Id |> string |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let cueoffsets = Array.map (fun (cue: Cue)  -> cue.ToOffset(builder)) self.Cues
-    let cuesvec = CueListFB.CreateCuesVector(builder, cueoffsets)
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let groupoffsets = Array.map (Binary.toOffset builder) self.Groups
+    let groupsvec = CueListFB.CreateGroupsVector(builder, groupoffsets)
     CueListFB.StartCueListFB(builder)
     CueListFB.AddId(builder, id)
-    CueListFB.AddName(builder, name)
-    CueListFB.AddCues(builder, cuesvec)
+    Option.iter (fun value -> CueListFB.AddName(builder, value)) name
+    CueListFB.AddGroups(builder, groupsvec)
     CueListFB.EndCueListFB(builder)
 
   // ** ToBytes
@@ -69,46 +89,46 @@ type CueList =
 
   static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
     either {
-      let! cues =
-        let arr = Array.zeroCreate fb.CuesLength
+      let! groups =
+        let arr = Array.zeroCreate fb.GroupsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Cue array>) _ -> either {
-            let! (i, cues) = m
+          (fun (m: Either<IrisError,int * CueGroup array>) _ -> either {
+            let! (i, groups) = m
 
             #if FABLE_COMPILER
 
-            let! cue =
-              fb.Cues(i)
-              |> Cue.FromFB
+            let! group =
+              fb.Groups(i)
+              |> CueGroup.FromFB
             #else
 
-            let! cue =
-              let value = fb.Cues(i)
+            let! group =
+              let value = fb.Groups(i)
               if value.HasValue then
                 value.Value
-                |> Cue.FromFB
+                |> CueGroup.FromFB
               else
-                "Could not parse empty CueFB"
+                "Could not parse empty CueGroupFB"
                 |> Error.asParseError "CueList.FromFB"
                 |> Either.fail
 
             #endif
 
-            cues.[i] <- cue
-            return (i + 1, cues)
+            groups.[i] <- group
+            return (i + 1, groups)
           })
           (Right (0, arr))
           arr
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
-               Cues = cues }
+               Name = name fb.Name
+               Groups = groups }
     }
 
   // ** FromBytes
 
-  static member FromBytes (bytes: Binary.Buffer) =
+  static member FromBytes (bytes: byte[]) =
     Binary.createBuffer bytes
     |> CueListFB.GetRootAsCueListFB
     |> CueList.FromFB
@@ -123,38 +143,17 @@ type CueList =
 
   // ** ToYamlObject
 
-  member self.ToYamlObject() =
-    new CueListYaml(
-      string self.Id,
-      self.Name,
-      Array.map Yaml.toYaml self.Cues)
+  member cuelist.ToYamlObject() = CueListYaml.From(cuelist)
 
   // ** FromYamlObject
 
   static member FromYamlObject(yml: CueListYaml) : Either<IrisError,CueList> =
-    either {
-      let! cues =
-        let arr = Array.zeroCreate yml.Cues.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * Cue array>) cueish -> either {
-            let! (i, arr) = m
-            let! (cue: Cue) = Yaml.fromYaml cueish
-            arr.[i] <- cue
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yml.Cues
-        |> Either.map snd
-
-      return { Id = Id yml.Id
-               Name = yml.Name
-               Cues = cues }
-    }
+    yml.ToCueList()
 
   // ** ToYaml
 
-  member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+  member cuelist.ToYaml(serializer: Serializer) =
+    cuelist |> Yaml.toYaml |> serializer.Serialize
 
   // ** FromYaml
 
@@ -167,12 +166,7 @@ type CueList =
 
   member self.AssetPath
     with get () =
-      let filepath =
-        sprintf "%s_%s%s"
-          (String.sanitize self.Name)
-          (string self.Id)
-          ASSET_EXTENSION
-      CUELIST_DIR </> filepath
+      CUELIST_DIR <.> sprintf "%s%s" (string self.Id) ASSET_EXTENSION
 
   // ** Load
 
@@ -183,42 +177,13 @@ type CueList =
   // |_____\___/ \__,_|\__,_|
 
   static member Load(path: FilePath) : Either<IrisError, CueList> =
-    either {
-      let! data = Asset.read path
-      let! cuelist = Yaml.decode data
-      return cuelist
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, CueList array> =
-    either {
-      try
-        let dir = basePath </> CUELIST_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
-
-        let! (_,cuelists) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * CueList array>) path ->
-              either {
-                let! (idx,cuelists) = m
-                let! cuelist = CueList.Load path
-                cuelists.[idx] <- cuelist
-                return (idx + 1, cuelists)
-              })
-            (Right(0, arr))
-            files
-
-        return cuelists
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "CueList.LoadAll"
-            |> Either.fail
-    }
+    basePath </> filepath CUELIST_DIR
+    |> IrisData.loadAll
 
   // ** Save
 
@@ -229,11 +194,6 @@ type CueList =
   // |____/ \__,_| \_/ \___|
 
   member cuelist.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path cuelist
-      let data = Yaml.encode cuelist
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath cuelist
 
   #endif

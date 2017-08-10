@@ -1,9 +1,11 @@
 namespace Iris.Service
 
+#if !IRIS_NODES
+
 // * CommandLine
 module CommandLine =
 
-  let private tag (str: string) = sprintf "CommandLine.%s" str
+  let private logtag (str: string) = sprintf "CommandLine.%s" str
 
   // ** Imports
   open Argu
@@ -13,14 +15,10 @@ module CommandLine =
   open Iris.Service.Iris
   open Iris.Service.CommandActions
   open Iris.Service.Interfaces
-  open FSharpx.Functional
   open System
-  open System.IO
   open System.Linq
   open System.Collections.Generic
   open System.Text.RegularExpressions
-  open Http
-  open Iris.Core.Discovery
 
   // ** Command Line Argument Parser
 
@@ -146,6 +144,7 @@ module CommandLine =
     | [<EqualsAssignment>] Project      of string
     | [<EqualsAssignment>] Machine      of string
     | [<EqualsAssignment>] Frontend     of string
+    | [<EqualsAssignment>] Shift_Defaults of uint16
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -153,6 +152,7 @@ module CommandLine =
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
           | Frontend _  -> "Path to the frontend files"
+          | Shift_Defaults _  -> "Shift the default ports and workspaces of machine configuration"
           | Bind    _   -> "Specify a valid IP address."
           | Git     _   -> "Git server port."
           | Ws      _   -> "WebSocket port."
@@ -168,7 +168,7 @@ module CommandLine =
     let ensureProject result =
       if opts.Contains <@ Project @> |> not then
         "Missing Startup-Project"
-        |> Error.asOther (tag "validateOptions")
+        |> Error.asOther (logtag "validateOptions")
         |> Error.exitWith
       result
 
@@ -191,7 +191,7 @@ module CommandLine =
         if not raft    then printfn "    --raft=<raft port>"
         if not ws      then printfn "    --ws=<ws port>"
         "CLI options parse error"
-        |> Error.asOther (tag "validateOptions")
+        |> Error.asOther (logtag "validateOptions")
         |> Error.exitWith
 
   //   ____                _
@@ -207,18 +207,18 @@ module CommandLine =
       match dic.TryGetValue k with
       | true, v ->
         try map v |> Right
-        with ex -> Other(tag "tryCreateProject", ex.Message) |> Left
-      | false, _ -> Other(tag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
+        with ex -> Other(logtag "tryCreateProject", ex.Message) |> Left
+      | false, _ -> Other(logtag "tryCreateProject", sprintf "Missing %s parameter" k) |> Left
 
     either {
       let machine = MachineConfig.get()
       let! name = parameters |> tryGet "project" id
-      let dir = machine.WorkSpace </> name
-      let raftDir = dir </> RAFT_DIRECTORY
+      let dir = machine.WorkSpace </> filepath name
+      let raftDir = dir </> filepath RAFT_DIRECTORY
 
-      do! match Directory.Exists dir, force with
+      do! match Directory.exists dir, force with
           | true, false  ->
-            match Directory.EnumerateFileSystemEntries(dir).Count() = 0 with
+            match Directory.fileSystemEntries(dir).Count() = 0 with
             | true  -> Either.nothing
             | false ->
               printf "%A not empty. I clean first? y/n" dir
@@ -242,10 +242,10 @@ module CommandLine =
       let mem =
         { Member.create(machine.MachineId) with
             IpAddr  = bind
-            GitPort = git
-            WsPort  = ws
-            Port    = raft
-            ApiPort = api }
+            GitPort = port git
+            WsPort  = port ws
+            Port    = port raft
+            ApiPort = port api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -260,11 +260,10 @@ module CommandLine =
   // | |__| (_) | (_) | |_) |
   // |_____\___/ \___/| .__/ s
   //                  |_|
-  let registerExitHandlers (context: IIrisServer) (httpServer: IHttpServer) =
+  let registerExitHandlers (context: IIris) =
     Console.CancelKeyPress.Add (fun _ ->
       printfn "Disposing context..."
       dispose context
-      dispose httpServer
       exit 0)
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
@@ -277,7 +276,7 @@ module CommandLine =
   //  ___) | || (_| | |  | |_
   // |____/ \__\__,_|_|   \__|
 
-  let startService (projectDir: FilePath option) (frontend: string option) : Either<IrisError, unit> =
+  let startService (projectDir: FilePath option) (frontend: FilePath option) =
     either {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
@@ -285,19 +284,25 @@ module CommandLine =
 
       use _ = Logger.subscribe Logger.stdout
 
-      let! irisService = IrisService.create machine post
-
-      let! httpServer = HttpServer.create machine frontend post
-      do! httpServer.Start()
+      let! irisService = Iris.create post {
+        Machine = machine
+        FrontendPath = frontend
+        ProjectPath = projectDir
+      }
 
       agentRef := CommandActions.startAgent machine irisService |> Some
 
-      registerExitHandlers irisService httpServer
+      registerExitHandlers irisService
 
       do!
         match projectDir with
         | Some projectDir ->
-          Commands.Command.LoadProject(projectDir, "admin", "Nsynk")
+          let name, user, password, site =
+            name (unwrap projectDir),
+            name "admin",
+            password "Nsynk",
+            None
+          Commands.Command.LoadProject(name, user, password, site)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
           |> Either.map ignore
@@ -357,13 +362,13 @@ module CommandLine =
   ///
   /// Returns: unit
   let resetProject (datadir: FilePath) = either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
-      let raftDir = datadir </> RAFT_DIRECTORY
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
+      let raftDir = datadir </> filepath RAFT_DIRECTORY
 
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
-      do! match Directory.Exists raftDir with
+      do! match Directory.exists raftDir with
           | true  -> rmDir raftDir
           | false -> Either.nothing
 
@@ -373,18 +378,6 @@ module CommandLine =
       let! _ = saveRaft project.Config raft
       return ()
     }
-
-  // ** dumpDataDir
-
-  //  ____
-  // |  _ \ _   _ _ __ ___  _ __
-  // | | | | | | | '_ ` _ \| '_ \
-  // | |_| | |_| | | | | | | |_) |
-  // |____/ \__,_|_| |_| |_| .__/
-  //                       |_|
-
-  let dumpDataDir (datadir: FilePath) =
-    implement "dumpDataDir"
 
   // ** help
 
@@ -420,7 +413,7 @@ module CommandLine =
             pass <- String.subString 0 (String.length pass - 1) pass
             Console.Write("\b \b")
       printf "%s" Environment.NewLine
-    pass
+    password pass
 
   let private readString (field: string) =
     let mutable str = ""
@@ -470,14 +463,14 @@ module CommandLine =
 
   let addUser (datadir: FilePath) =
     either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
       let username  = readString "UserName"
       let firstname = readString "First Name"
       let lastname  = readString "Last Name"
-      let email     = readEmail  "Email"
+      let useremail = readEmail  "Email"
       let password1 = readPass   "Enter Password"
       let password2 = readPass   "Re-Enter Password"
 
@@ -485,10 +478,10 @@ module CommandLine =
         let hash, salt = Crypto.hash password1
         let user =
           { Id        = Id.Create()
-            UserName  = username
-            FirstName = firstname
-            LastName  = lastname
-            Email     = email
+            UserName  = name username
+            FirstName = name firstname
+            LastName  = name lastname
+            Email     = email useremail
             Password  = hash
             Salt      = salt
             Joined    = DateTime.UtcNow
@@ -498,13 +491,13 @@ module CommandLine =
       else
         return!
           "Passwords do not match. Try again Sam."
-          |> Error.asOther (tag "addUser")
+          |> Error.asOther (logtag "addUser")
           |> Either.fail
     }
 
   let addMember (datadir: FilePath) =
     either {
-      let path = datadir </> PROJECT_FILENAME + ASSET_EXTENSION
+      let path = datadir </> filepath (PROJECT_FILENAME + ASSET_EXTENSION)
       let machine = MachineConfig.get()
       let! project = Asset.loadWithMachine path machine
 
@@ -517,11 +510,11 @@ module CommandLine =
 
       let mem =
         { Member.create id with
-            HostName = hn
+            HostName = name hn
             IpAddr   = ip
-            Port     = raft
-            WsPort   = ws
-            GitPort  = git }
+            Port     = port raft
+            WsPort   = port ws
+            GitPort  = port git }
 
       let! _ =
         Asset.saveWithCommit
@@ -529,5 +522,7 @@ module CommandLine =
           User.Admin.Signature
           (Project.addMember mem project)
 
-      printfn "successfully added new member %A" mem.HostName
+      return ()
     }
+
+#endif

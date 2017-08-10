@@ -70,8 +70,8 @@ type ProjectNode() =
           | None -> ""
 
         self.OutId.[0] <- string project.Id
-        self.OutName.[0] <- project.Name
-        self.OutPath.[0] <- project.Path
+        self.OutName.[0] <- unwrap project.Name
+        self.OutPath.[0] <- unwrap project.Path
         self.OutCreatedOn.[0] <- sprintf "%A" project.CreatedOn
         self.OutLastSaved.[0] <- lastSaved
         self.OutConfig.[0] <- project.Config

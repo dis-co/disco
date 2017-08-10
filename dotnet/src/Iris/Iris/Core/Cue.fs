@@ -1,4 +1,6 @@
-namespace Iris.Core
+namespace rec Iris.Core
+
+// * Imports
 
 #if FABLE_COMPILER
 
@@ -15,29 +17,62 @@ open Iris.Serialization
 
 #endif
 
+// * CueYaml
+
+open Path
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml
 open SharpYaml.Serialization
 
-type CueYaml(id, name, pins) as self =
-  [<DefaultValue>] val mutable Id   : string
-  [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Pins : PinYaml array
+type CueYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Slices: SlicesYaml array
 
-  new () = new CueYaml(null, null, null)
+  // ** From
 
-  do
-    self.Id <- id
-    self.Name <- name
-    self.Pins <- pins
+  static member From(cue: Cue) =
+    let yaml = CueYaml()
+    yaml.Id <- string cue.Id
+    yaml.Name <- unwrap cue.Name
+    yaml.Slices <- Array.map Yaml.toYaml cue.Slices
+    yaml
+
+  // ** ToCue
+
+  member yaml.ToCue() =
+    either {
+      let! slices =
+        let arr = Array.zeroCreate yaml.Slices.Length
+        Array.fold
+          (fun (m: Either<IrisError,int * Slices array>) box -> either {
+            let! (i, arr) = m
+            let! (slice : Slices) = Yaml.fromYaml box
+            arr.[i] <- slice
+            return (i + 1, arr)
+          })
+          (Right (0, arr))
+          yaml.Slices
+        |> Either.map snd
+
+      return { Id = Id yaml.Id
+               Name = name yaml.Name
+               Slices = slices }
+    }
 
 #endif
 
+// * Cue
+
+[<StructuralEquality; StructuralComparison>]
 type Cue =
-  { Id:   Id
-    Name: string
-    Pins: Pin array }
+  { Id:     Id
+    Name:   Name
+    Slices: Slices array }
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -48,58 +83,69 @@ type Cue =
 
   static member FromFB(fb: CueFB) : Either<IrisError,Cue> =
     either {
-      let! pins =
-        let arr = Array.zeroCreate fb.PinsLength
+      let! slices =
+        let arr = Array.zeroCreate fb.SlicesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Pin array>) _ -> either {
-              let! (i, pins) = m
+          (fun (m: Either<IrisError,int * Slices array>) _ -> either {
+            let! (i, slices) = m
 
-              #if FABLE_COMPILER
-
-              let! pin = i |> fb.Pins |> Pin.FromFB
-
-              #else
-
-              let! pin =
-                let nullable = fb.Pins(i)
+            let! slice =
+              try
+                #if FABLE_COMPILER
+                i |> fb.Slices |> Slices.FromFB
+                #else
+                let nullable = fb.Slices(i)
                 if nullable.HasValue then
                   nullable.Value
-                  |> Pin.FromFB
+                  |> Slices.FromFB
                 else
-                  "Could not parse empty PinFB"
+                  "Could not parse empty SlicesFB"
                   |> Error.asParseError "Cue.FromFB"
                   |> Either.fail
+                #endif
+              with
+                | exn ->
+                  exn.Message
+                  |> Error.asParseError "Cue.FromtFB"
+                  |> Either.fail
 
-              #endif
-
-              pins.[i] <- pin
-              return (i + 1, pins)
-            })
+            slices.[i] <- slice
+            return (i + 1, slices) })
           (Right (0, arr))
           arr
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
-               Pins = pins }
+               Name = name fb.Name
+               Slices = slices }
     }
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
-    let pinoffsets = Array.map (fun (pin: Pin) -> pin.ToOffset(builder)) self.Pins
-    let pins = CueFB.CreatePinsVector(builder, pinoffsets)
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
+    let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)
     CueFB.StartCueFB(builder)
     CueFB.AddId(builder, id)
-    CueFB.AddName(builder, name)
-    CueFB.AddPins(builder, pins)
+    Option.iter (fun value -> CueFB.AddName(builder, value)) name
+    CueFB.AddSlices(builder, slices)
     CueFB.EndCueFB(builder)
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Cue> =
-    CueFB.GetRootAsCueFB(Binary.createBuffer bytes)
+  // ** FromBytes
+
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Cue> =
+    bytes
+    |> Binary.createBuffer
+    |> CueFB.GetRootAsCueFB
     |> Cue.FromFB
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -109,37 +155,26 @@ type Cue =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
-    let pins = Array.map Yaml.toYaml self.Pins
-    new CueYaml(string self.Id, self.Name, pins)
+  member cue.ToYamlObject() = CueYaml.From(cue)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
-    either {
-      let! pins =
-        let arr = Array.zeroCreate yaml.Pins.Length
-        Array.fold
-          (fun (m: Either<IrisError,int * Pin array>) box -> either {
-            let! (i, arr) = m
-            let! (pin : Pin) = Yaml.fromYaml box
-            arr.[i] <- pin
-            return (i + 1, arr)
-          })
-          (Right (0, arr))
-          yaml.Pins
-        |> Either.map snd
+    yaml.ToCue()
 
-      return { Id = Id yaml.Id
-               Name = yaml.Name
-               Pins = pins }
-    }
+  // ** ToYaml
 
   member self.ToYaml(serializer: Serializer) =
     Yaml.toYaml self |> serializer.Serialize
 
+  // ** FromYaml
+
   static member FromYaml(str: string) : Either<IrisError,Cue> =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     serializer.Deserialize<CueYaml>(str)
     |> Yaml.fromYaml
+
+  // ** AssetPath
 
   //     _                 _   ____       _   _
   //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
@@ -149,12 +184,9 @@ type Cue =
 
   member self.AssetPath
     with get () =
-      let filepath =
-        sprintf "%s_%s%s"
-          (String.sanitize self.Name)
-          (string self.Id)
-          ASSET_EXTENSION
-      CUE_DIR </> filepath
+      CUE_DIR <.> sprintf "%s%s" (string self.Id) ASSET_EXTENSION
+
+  // ** Load
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -163,42 +195,15 @@ type Cue =
   // |_____\___/ \__,_|\__,_|
 
   static member Load(path: FilePath) : Either<IrisError, Cue> =
-    either {
-      let! data = Asset.read path
-      let! cue = Yaml.decode data
-      return cue
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, Cue array> =
-    either {
-      try
-        let dir = basePath </> CUE_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+    basePath </> filepath CUE_DIR
+    |> IrisData.loadAll
 
-        let! (_,cues) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * Cue array>) path ->
-              either {
-                let! (idx,cues) = m
-                let! cue = Cue.Load path
-                cues.[idx] <- cue
-                return (idx + 1, cues)
-              })
-            (Right(0, arr))
-            files
-
-        return cues
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "Cue.LoadAll"
-            |> Either.fail
-    }
+  // ** Save
 
   //  ____
   // / ___|  __ ___   _____
@@ -207,11 +212,6 @@ type Cue =
   // |____/ \__,_| \_/ \___|
 
   member cue.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path cue
-      let data = Yaml.encode cue
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath cue
 
   #endif

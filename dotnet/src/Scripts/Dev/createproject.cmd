@@ -1,1 +1,1 @@
-..\..\Iris\bin\Debug\Iris\iris.exe create --project=iris_sample --bind=192.168.8.11 --api=5000 --raft=6000 --ws=8000 --git=9000
+..\..\Iris\bin\Release\Iris\iris.exe create --machine=\Iris\etc --bind=%FRONTEND_IP% --project=%1 --api=5000 --raft=6000 --ws=8000 --git=9000

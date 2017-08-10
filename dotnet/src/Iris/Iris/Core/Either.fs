@@ -14,18 +14,20 @@ type Either<'err,'a> =
   | Right of 'a
   | Left  of 'err
 
-
 // * Either Module
 
 [<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Either =
+
+  // ** ofNullable
 
   // FB types are not modeled with nullables in JS
   #if FABLE_COMPILER
-  let ofNullable (v: 'T) (er: string->'Err) =
+  let ofNullable (v: 'T) (er: string -> 'Err) =
     Right v
   #else
-  let ofNullable (v: Nullable<'T>) (er: string->'Err) =
+  let ofNullable (v: Nullable<'T>) (er: string -> 'Err) =
     if v.HasValue
     then Right v.Value
     else "Item has no value" |> er |> Left
@@ -118,6 +120,13 @@ module Either =
     | Right value -> f value
     | Left _ -> ()
 
+  // ** iterError
+
+  let inline iterError< ^a, ^err >(f: ^err -> unit) (a: Either< ^err, ^a >) =
+    match a with
+    | Left error -> f error
+    | Right _ -> ()
+
   // ** unwrap
 
   /// Gets the value if it's successful and runs the provided function otherwise
@@ -167,7 +176,7 @@ module Either =
     | Right value -> f value |> succeed
     | Left  error -> Left error
 
-  let mapArray(f: 'a->Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+  let bindArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
     let mutable i = 0
     let mutable error = None
     let arr2 = Array.zeroCreate arr.Length
@@ -235,6 +244,11 @@ module Either =
   let inline nothing< ^err > : Either< ^err,unit > =
     succeed ()
 
+  // ** ignore
+
+  let inline ignore< ^err > _ : Either< ^err, unit > =
+    succeed ()
+
   // ** tryWith
 
   let inline tryWith< ^a, ^err >
@@ -249,6 +263,12 @@ module Either =
         |> err
         |> fail
 
+
+  // ** orElse
+
+  let inline orElse value = function
+    | Right _ as good -> good
+    | Left _ -> Right value
 
 // * Either Builder
 
@@ -267,18 +287,18 @@ module EitherUtils =
 
     member self.ReturnFrom(v: Either<'err, 'a>): Either<'err, 'a> = v
 
-    member self.Bind(m: Either<'err, 'a>, f: 'a->Either<'err, 'b>): Either<'err, 'b> =
+    member self.Bind(m: Either<'err, 'a>, f: 'a -> Either<'err, 'b>): Either<'err, 'b> =
       match m with
       | Right value -> f value
       | Left err    -> Left err
 
     member self.Zero(): Either<'err, unit> = Right ()
 
-    member self.Delay(f: unit->Either<'err, 'a>) = f
+    member self.Delay(f: unit -> Either<'err, 'a>) = f
 
-    member self.Run(f: unit->Either<'err, 'a>) = f()
+    member self.Run(f: unit -> Either<'err, 'a>) = f()
 
-    member self.While(guard: unit->bool, body: unit->Either<'err, unit>): Either<'err, unit> =
+    member self.While(guard: unit -> bool, body: unit -> Either<'err, unit>): Either<'err, unit> =
       if guard ()
       then self.Bind(body(), fun () -> self.While(guard, body))
       else self.Zero()
@@ -302,16 +322,28 @@ module EitherUtils =
       finally
         handler ()
 
-    member self.Using<'a, 'b, 'err when 'a :> IDisposable>(disposable: 'a, body: 'a->Either<'err, 'b>): Either<'err, 'b> =
+    member self.Using<'a, 'b, 'err when 'a :> IDisposable>
+                     (disposable: 'a, body: 'a -> Either<'err, 'b>): Either<'err, 'b> =
+
       let body' = fun () -> body disposable
       self.TryFinally(body', fun () ->
         disposable.Dispose())
 
-  let either = new EitherBuilder()
+  let either = EitherBuilder()
 
 #if INTERACTIVE
 module Test =
   open EitherUtils
+
+  type DisposableAction(f) =
+      interface IDisposable with
+          member __.Dispose() = f()
+
+  let equal expected actual =
+      let areEqual = expected = actual
+      printfn "%A = %A > %b" expected actual areEqual
+      if not areEqual then
+          failwithf "Expected %A but got %A" expected actual
 
   let orFail x =
     match x with
@@ -346,7 +378,23 @@ module Test =
       for x in [|1;2;0;3|] do
         do! riskyOp x
     } |> orFail
+
+  let testUse() =
+      let isDisposed = ref false
+      let step1ok = ref false
+      let step2ok = ref false
+      let resource = either {
+          return new DisposableAction(fun () -> isDisposed := true)
+      }
+      either {
+          use! r = resource
+          step1ok := not !isDisposed
+      } |> ignore
+      step2ok := !isDisposed
+      (!step1ok && !step2ok) |> equal true
+
 #endif
+
 
 // * Option Builder
 

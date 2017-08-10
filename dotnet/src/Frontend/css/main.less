@@ -1,5 +1,15 @@
 @import "values";
+@import "icons";
 @import "classes";
+@import "PanelLeft";
+@import "Pin";
+
+* {
+  font-size: 11px;
+  line-height: 14px;
+  margin: 0px;
+  padding: 0px;
+}
 
 html, body {
   /*width: 100%;
@@ -11,8 +21,15 @@ html, body {
   font-family:'ArialMT', 'Arial';
   font-weight:400;
   font-style: normal;
-  font-size:11px;
   user-select: none;
+  background: #aaa;
+}
+
+.iris-output {
+  background: #fff;
+  border: #D5D3D3 1px solid;
+  border-radius: 100px;
+  padding: 3px 5px 3px 5px;
 }
 
 #app-container {
@@ -27,11 +44,7 @@ html, body {
 
 #app-header {
   background: @iris-grey;
-  height: @header-height;
-  h1 {
-    margin: 5px 10px;
-    display: inline-block;
-  }
+  // height: @header-height;
 }
 
 #app-footer {
@@ -41,7 +54,6 @@ html, body {
 }
 
 #app-content {
-  background:white;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -54,6 +66,7 @@ html, body {
     padding: 0;
     display: flex !important;
     flex-direction: column;
+    background-color: @background-grey !important;
   }
 
   .ui-layout-west {
@@ -75,14 +88,15 @@ html, body {
   padding: 0;
 
   .iris-tab-name-container {
-    background:#989898;
+    background: @tab-background;
+    height: 35px;
 
     .iris-tab-name {
-      height: 15px;
+      height: 35px;
+      line-height: 20px;
       display: inline-block;
       border: 1px solid black;
-      padding: 8px 10px;
-      margin: 1px;
+      padding: 7px 11px;
       background: @iris-grey;
       cursor: pointer;
 
@@ -92,15 +106,11 @@ html, body {
       }
 
       &:hover {
-        border: 2px solid blue;
-        padding: 7px 9px;
-        margin: 0;
+        border: 2px solid @highlight-blue;
       }
 
       &.iris-selected {
-        border: 2px solid green;
-        padding: 7px 9px;
-        margin: 0;
+        border: 2px solid @highlight-lightblue;
       }
     }
   }
@@ -109,11 +119,45 @@ html, body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
   }
 }
 
 .iris-workspace {
   flex: 1;
-  background: @background-grey;
+}
+
+.iris-widget {
+  height: 100%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+
+  .iris-draggable-handle {
+    cursor: move;
+    margin: 0;
+    height: 35px;
+    padding: 7px;
+    background: @iris-grey;
+    display: flex;
+    align-items: baseline;
+
+    & > :first-child {
+      margin-right: 10px;
+    }
+
+    // Push other elements to the sides
+    .iris-title-bar {
+        flex: 1;
+    }
+
+    //Icon Sizes
+    .iris-window-control .iris-icon {
+      vertical-align: 0px;
+    }
+  }
+
+  .iris-widget-body {
+    flex: 1;
+    overflow: scroll;
+  }
 }

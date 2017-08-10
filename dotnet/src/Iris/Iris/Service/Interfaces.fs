@@ -1,3 +1,4 @@
+[<AutoOpen>]
 module Iris.Service.Interfaces
 
 // * Imports
@@ -5,111 +6,146 @@ module Iris.Service.Interfaces
 open System
 open System.Collections.Concurrent
 open Iris.Core
-open Iris.Core.Discovery
 open Iris.Raft
-open Iris.Client
-open Iris.Zmq
+open Iris.Net
 open Mono.Zeroconf
+open Disruptor
+open Disruptor.Dsl
+
+// * PipelineEvent
+
+type PipelineEvent<'t>() =
+  let mutable cell: 't option = None
+
+  member ev.Event
+    with get () = cell
+    and set value = cell <- value
+
+  member ev.Clear() =
+    cell <- None
+
+// * ISink
+
+type ISink<'a> =
+  abstract Publish: update:'a -> unit
+
+// * IPipeline
+
+type IPipeline<'a> =
+  inherit IDisposable
+  abstract Push: 'a -> unit
+
+// * IHandler
+
+type IHandler<'t> = IEventHandler<PipelineEvent<'t>>
+
+// * IHandlerGroup
+
+type IHandlerGroup<'t> = EventHandlerGroup<PipelineEvent<'t>>
+
+// * EventProcessor
+
+type EventProcessor<'t> = int64 -> bool -> 't -> unit
+
+// * IDispatcher
+
+type IDispatcher<'t> =
+  inherit IDisposable
+  abstract Start: unit -> unit
+  abstract Status: ServiceStatus
+  abstract Dispatch: 't -> unit
 
 // * IDiscoveryService
 
 type IDiscoveryService =
   inherit IDisposable
-  abstract Services: Either<IrisError,Map<Id,RegisterService> * Map<Id,DiscoveredService>>
+  abstract Services: Map<Id,RegisterService> * Map<Id,DiscoveredService>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Register: tipe:ServiceType -> port:Port -> addr:IpAddress -> metadata:Map<string,string> -> Either<IrisError,IDisposable>
+  abstract Register: service:DiscoverableService -> IDisposable
 
-// * GitEvent
+// * IResolver
 
-type GitEvent =
-  | Started of pid:int
-  | Exited  of code:int
-  | Pull    of pid:int * address:string * port:Port
+type IResolver =
+  inherit IDisposable
+  abstract Pending: Map<Frame,Cue>
+  abstract Update: StateMachine -> unit
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+
+// * IClock
+
+type IClock =
+  inherit IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+  abstract Start: unit -> unit
+  abstract Stop: unit -> unit
+  abstract Running: bool with get
+  abstract Fps: int16<fps>  with get, set
+  abstract Frame: int64<frame>
 
 // * IGitServer
 
 type IGitServer =
   inherit IDisposable
-
-  abstract Status    : Either<IrisError,ServiceStatus>
-  abstract Pid       : Either<IrisError,int>
-  abstract Subscribe : (GitEvent -> unit) -> IDisposable
+  abstract Status    : ServiceStatus
+  abstract Subscribe : (IrisEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
-// * RaftEvent
+// * IRaftSnapshotCallbacks
 
-type RaftEvent =
-  | ApplyLog       of StateMachine
-  | MemberAdded    of RaftMember
-  | MemberRemoved  of RaftMember
-  | MemberUpdated  of RaftMember
-  | Configured     of RaftMember array
-  | StateChanged   of RaftState * RaftState
-  | CreateSnapshot of string
-
-// * RaftAppContext
-
-[<NoComparison;NoEquality>]
-type RaftAppContext =
-  { Status:      ServiceStatus
-    Raft:        RaftValue
-    Options:     IrisConfig
-    Callbacks:   IRaftCallbacks
-    Server:      Rep
-    Periodic:    IDisposable
-    Connections: ConcurrentDictionary<Id,Req> }
-
-  interface IDisposable with
-    member self.Dispose() =
-      dispose self.Periodic
-      for KeyValue(_,connection) in self.Connections do
-        dispose connection
-      self.Connections.Clear()
-      dispose self.Server
+type IRaftSnapshotCallbacks =
+  abstract PrepareSnapshot: unit -> State option
+  abstract RetrieveSnapshot: unit -> RaftLogEntry option
 
 // * IRaftServer
 
 type IRaftServer =
   inherit IDisposable
-
-  abstract Member        : Either<IrisError,RaftMember>
-  abstract MemberId      : Either<IrisError,Id>
-  abstract Load          : IrisConfig -> Either<IrisError, unit>
-  abstract Unload        : unit -> Either<IrisError, unit>
-  abstract Append        : StateMachine -> Either<IrisError, EntryResponse>
-  abstract ForceElection : unit -> Either<IrisError, unit>
-  abstract State         : Either<IrisError, RaftAppContext>
-  abstract Status        : Either<IrisError, ServiceStatus>
-  abstract Subscribe     : (RaftEvent -> unit) -> IDisposable
+  inherit ISink<IrisEvent>
   abstract Start         : unit -> Either<IrisError, unit>
-  abstract Periodic      : unit -> Either<IrisError, unit>
-  abstract JoinCluster   : IpAddress -> uint16 -> Either<IrisError, unit>
-  abstract LeaveCluster  : unit -> Either<IrisError, unit>
-  abstract AddMember     : RaftMember -> Either<IrisError, EntryResponse>
-  abstract RmMember      : Id -> Either<IrisError, EntryResponse>
-  abstract Connections   : Either<IrisError, ConcurrentDictionary<Id,Req>>
-  abstract Leader        : Either<IrisError, RaftMember option>
+  abstract Member        : RaftMember
+  abstract MemberId      : Id
+  abstract Append        : StateMachine -> unit
+  abstract ForceElection : unit -> unit
+  abstract Status        : ServiceStatus
+  abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
+  abstract Periodic      : unit -> unit
+  abstract AddMember     : RaftMember -> unit
+  abstract RemoveMember  : Id -> unit
+  abstract Connections   : ConcurrentDictionary<Id,IClient>
+  abstract Leader        : RaftMember option
   abstract IsLeader      : bool
+  abstract Raft          : RaftValue
+  // abstract JoinCluster   : IpAddress -> uint16 -> unit
+  // abstract LeaveCluster  : unit -> unit
 
-// * SocketEvent
-
-[<NoComparison;NoEquality>]
-type SocketEvent =
-  | OnOpen    of Id
-  | OnClose   of Id
-  | OnMessage of Id * StateMachine
-  | OnError   of Id * Exception
-
-// * IWsServer
+// * IWebSocketServer
 
 type IWebSocketServer =
-  inherit System.IDisposable
+  inherit IDisposable
+  inherit ISink<IrisEvent>
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
+  abstract Multicast    : except:Id -> StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
-  abstract Subscribe    : (SocketEvent -> unit) -> System.IDisposable
+  abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
+
+// * IApiServerCallbacks
+
+type IApiServerCallbacks =
+  abstract PrepareSnapshot: unit -> State
+
+// * IApiServer
+
+type IApiServer =
+  inherit IDisposable
+  inherit ISink<IrisEvent>
+  abstract Start: unit -> Either<IrisError,unit>
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+  abstract Clients: Map<Id,IrisClient>
+  abstract SendSnapshot: unit -> unit
+  abstract Update: origin:Origin -> sm:StateMachine -> unit
 
 // * IHttpServer
 
@@ -117,55 +153,53 @@ type IHttpServer =
   inherit System.IDisposable
   abstract Start: unit -> Either<IrisError,unit>
 
-// * ApiEvent
-
-[<RequireQualifiedAccess>]
-type ApiEvent =
-  | Update        of StateMachine
-  | ServiceStatus of ServiceStatus
-  | ClientStatus  of IrisClient
-  | Register      of IrisClient
-  | UnRegister    of IrisClient
-
-// * IrisEvent
+// * IrisServiceOptions
 
 [<NoComparison;NoEquality>]
-type IrisEvent =
-  | Git    of GitEvent
-  | Socket of SocketEvent
-  | Raft   of RaftEvent
-  | Log    of LogEvent
-  | Api    of ApiEvent
-  | Status of ServiceStatus
+type IrisServiceOptions =
+  { Machine: IrisMachine
+    ProjectName: Name
+    UserName: Name
+    Password: Password
+    SiteId: Id option }
 
-// * IIrisServer
+// * IIrisService
 
 /// Interface type to close over internal actors and state.
-type IIrisServer =
+type IIrisService =
   inherit IDisposable
-  abstract Config        : Either<IrisError,IrisConfig>
-  abstract Status        : Either<IrisError,ServiceStatus>
-  abstract GitServer     : Either<IrisError,IGitServer>
-  abstract RaftServer    : Either<IrisError,IRaftServer>
-  abstract SocketServer  : Either<IrisError,IWebSocketServer>
-  abstract SetConfig     : IrisConfig -> Either<IrisError,unit>
-  abstract Periodic      : unit       -> Either<IrisError,unit>
-  abstract ForceElection : unit       -> Either<IrisError,unit>
-  abstract LeaveCluster  : unit       -> Either<IrisError,unit>
-  abstract RmMember      : Id         -> Either<IrisError,EntryResponse>
-  abstract AddMember     : RaftMember -> Either<IrisError,EntryResponse>
-  abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
-  abstract Subscribe     : (IrisEvent -> unit) -> IDisposable
-  abstract LoadProject   : name:string * userName:string * password:string -> Either<IrisError,unit>
-  abstract UnloadProject : unit -> Either<IrisError,unit>
+  abstract AddMember:     RaftMember -> unit
+  abstract Append:        StateMachine -> unit
+  abstract Config:        IrisConfig with get, set
+  abstract ForceElection: unit       -> unit
+  abstract GitServer:     IGitServer
+  abstract Machine:       IrisMachine
+  abstract Periodic:      unit       -> unit
+  abstract Project:       IrisProject
+  abstract RaftServer:    IRaftServer
+  abstract RemoveMember:  Id         -> unit
+  abstract SocketServer:  IWebSocketServer
+  abstract Start:         unit -> Either<IrisError,unit>
+  abstract Status:        ServiceStatus
+  abstract Subscribe:     (IrisEvent -> unit) -> IDisposable
+  // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>
+  // abstract LeaveCluster  : unit       -> Either<IrisError,unit>
 
-// * IApiServer
+// * IrisOptions
 
-type IApiServer =
+type IrisOptions =
+  { Machine: IrisMachine
+    FrontendPath: FilePath option
+    ProjectPath: FilePath option }
+
+// * IIris
+
+type IIris =
   inherit IDisposable
-  abstract Start: unit -> Either<IrisError,unit>
-  abstract Subscribe: (ApiEvent -> unit) -> IDisposable
-  abstract Clients: Either<IrisError,Map<Id,IrisClient>>
-  abstract State: Either<IrisError,State>
-  abstract Update: sm:StateMachine -> unit
-  abstract SetState: state:State -> Either<IrisError,unit>
+  abstract Machine: IrisMachine
+  abstract HttpServer: IHttpServer
+  abstract DiscoveryService: IDiscoveryService option
+  abstract IrisService: IIrisService option
+  abstract SaveProject: unit -> Either<IrisError,unit>
+  abstract LoadProject: Name * UserName * Password * Id option -> Either<IrisError,unit>
+  abstract UnloadProject: unit -> Either<IrisError,unit>

@@ -1,7 +1,10 @@
-namespace Iris.Core
+namespace rec Iris.Core
+
+// * Imports
 
 #if FABLE_COMPILER
 
+open Path
 open System
 open Fable.Core
 open Fable.Import
@@ -9,17 +12,19 @@ open Iris.Core.FlatBuffers
 open Iris.Web.Core.FlatBufferTypes
 
 #else
-
+open Path
 open System
 open System.IO
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
 
+// * UserYaml
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
+open SharpYaml.Serialization
 open LibGit2Sharp
 
 // __   __              _
@@ -28,56 +33,44 @@ open LibGit2Sharp
 //   | | (_| | | | | | | |
 //   |_|\__,_|_| |_| |_|_|
 
-type UserYaml(i, u, f, l, e, p, s, j, c) =
-  let mutable id        = i
-  let mutable username  = u
-  let mutable firstname = f
-  let mutable lastname  = l
-  let mutable email     = e
-  let mutable password  = p
-  let mutable salt      = s
-  let mutable joined    = j
-  let mutable created   = c
+type UserYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable UserName: string
+  [<DefaultValue>] val mutable FirstName: string
+  [<DefaultValue>] val mutable LastName: string
+  [<DefaultValue>] val mutable Email: string
+  [<DefaultValue>] val mutable Password: string
+  [<DefaultValue>] val mutable Salt: string
+  [<DefaultValue>] val mutable Joined: DateTime
+  [<DefaultValue>] val mutable Created: DateTime
 
-  new () = new UserYaml(null, null, null, null, null, null, null, DateTime.MinValue, DateTime.MinValue)
+  static member From(user: User) =
+    let yaml = UserYaml()
+    yaml.Id <- string user.Id
+    yaml.UserName <- unwrap user.UserName
+    yaml.FirstName <- unwrap user.FirstName
+    yaml.LastName <- unwrap user.LastName
+    yaml.Email <- unwrap user.Email
+    yaml.Password <- unwrap user.Password
+    yaml.Salt <- unwrap user.Salt
+    yaml.Joined <- user.Joined
+    yaml.Created <- user.Created
+    yaml
 
-  member self.Id
-    with get ()  = id
-     and set str = id <- str
-
-  member self.UserName
-    with get ()  = username
-     and set str = username <- str
-
-  member self.FirstName
-    with get ()  = firstname
-     and set str = firstname <- str
-
-  member self.LastName
-    with get ()  = lastname
-     and set str = lastname <- str
-
-  member self.Email
-    with get ()  = email
-     and set str = email <- str
-
-  member self.Password
-    with get ()  = password
-     and set str = password <- str
-
-  member self.Salt
-    with get ()  = salt
-     and set str = salt <- str
-
-  member self.Joined
-    with get ()  = joined
-     and set dt = joined <- dt
-
-  member self.Created
-    with get ()  = created
-     and set dt = created <- dt
+  member yaml.ToUser() =
+    Either.succeed { Id        = Id yaml.Id
+                     UserName  = name yaml.UserName
+                     FirstName = name yaml.FirstName
+                     LastName  = name yaml.LastName
+                     Email     = email yaml.Email
+                     Password  = checksum yaml.Password
+                     Salt      = checksum yaml.Salt
+                     Joined    = yaml.Joined
+                     Created   = yaml.Created }
 
 #endif
+
+// * User
 
 //  _   _
 // | | | |___  ___ _ __
@@ -88,25 +81,27 @@ type UserYaml(i, u, f, l, e, p, s, j, c) =
 [<CustomEquality;CustomComparison>]
 type User =
   { Id:        Id
-  ; UserName:  Name
-  ; FirstName: Name
-  ; LastName:  Name
-  ; Email:     Email
-  ; Password:  string
-  ; Salt:      string
-  ; Joined:    DateTime
-  ; Created:   DateTime }
+    UserName:  Name
+    FirstName: Name
+    LastName:  Name
+    Email:     Email
+    Password:  Hash
+    Salt:      Hash
+    Joined:    DateTime
+    Created:   DateTime }
+
+  // ** GetHashCode
 
   override me.GetHashCode() =
     let mutable hash = 42
     #if FABLE_COMPILER
     hash <- (hash * 7) + hashCode (string me.Id)
-    hash <- (hash * 7) + hashCode me.UserName
-    hash <- (hash * 7) + hashCode me.FirstName
-    hash <- (hash * 7) + hashCode me.LastName
-    hash <- (hash * 7) + hashCode me.Email
-    hash <- (hash * 7) + hashCode me.Password
-    hash <- (hash * 7) + hashCode me.Salt
+    hash <- (hash * 7) + (me.UserName  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.FirstName |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.LastName  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Email     |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Password  |> unwrap |> hashCode)
+    hash <- (hash * 7) + (me.Salt      |> unwrap |> hashCode)
     hash <- (hash * 7) + hashCode (string me.Joined)
     hash <- (hash * 7) + hashCode (string me.Created)
     #else
@@ -122,11 +117,15 @@ type User =
     #endif
     hash
 
+  // ** Equals
+
   override self.Equals(other) =
     match other with
     | :? User as user ->
       (self :> System.IEquatable<User>).Equals user
     | _ -> false
+
+  // ** IEquatable.Equals
 
   interface System.IEquatable<User> with
     member me.Equals(other: User) =
@@ -137,6 +136,8 @@ type User =
       me.Email            = other.Email           &&
       me.Joined           = other.Joined          &&
       me.Created          = other.Created
+
+  // ** IComparable.CompareTo
 
   interface System.IComparable with
     member me.CompareTo(o: obj) =
@@ -161,38 +162,38 @@ type User =
 
       | _ -> 0
 
+  // ** Signature
 
-#if !FABLE_COMPILER && !IRIS_NODES
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member user.Signature
     with get () =
-      let name = sprintf "%s %s" user.FirstName user.LastName
-      new Signature(name, user.Email, new DateTimeOffset(user.Created))
+      let name = String.Format("{0} {1}", user.FirstName, user.LastName)
+      Signature(name, unwrap user.Email, DateTimeOffset(user.Created))
 
   // ** AssetPath
 
   member user.AssetPath
     with get () =
-      let filename =
-        sprintf "%s_%s%s"
-          (String.sanitize user.UserName)
-          (string user.Id)
-          ASSET_EXTENSION
-      USER_DIR </> filename
+      USER_DIR <.> sprintf "%s%s" (string user.Id) ASSET_EXTENSION
+
+  // ** Admin
 
   static member Admin
     with get () =
       { Id        = Id "cb558968-bd42-4de0-a671-18e2ec7cf580"
-      ; UserName  = "admin"
-      ; FirstName = "Administrator"
-      ; LastName  = ""
-      ; Email     = "admin@nsynk.de"
-      ; Password  = ADMIN_DEFAULT_PASSWORD
-      ; Salt      = ADMIN_DEFAULT_SALT
-      ; Joined    = DateTime.UtcNow
-      ; Created   = DateTime.UtcNow }
+        UserName  = name Constants.ADMIN_USER_NAME
+        FirstName = name Constants.ADMIN_FIRST_NAME
+        LastName  = name Constants.ADMIN_LAST_NAME
+        Email     = email Constants.ADMIN_EMAIL
+        Password  = checksum ADMIN_DEFAULT_PASSWORD_HASH
+        Salt      = checksum ADMIN_DEFAULT_SALT
+        Joined    = DateTime.UtcNow
+        Created   = DateTime.UtcNow }
 
-#endif
+  #endif
+
+  // ** ToOffset
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -203,43 +204,51 @@ type User =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id        = self.Id        |> string |> builder.CreateString
-    let username  = self.UserName  |> builder.CreateString
-    let firstname = self.FirstName |> builder.CreateString
-    let lastname  = self.LastName  |> builder.CreateString
-    let email     = self.Email     |> builder.CreateString
-    let password  = self.Password  |> builder.CreateString
-    let salt      = self.Salt      |> builder.CreateString
+    let username  = self.UserName  |> unwrap |> Option.mapNull builder.CreateString
+    let firstname = self.FirstName |> unwrap |> Option.mapNull builder.CreateString
+    let lastname  = self.LastName  |> unwrap |> Option.mapNull builder.CreateString
+    let email     = self.Email     |> unwrap |> Option.mapNull builder.CreateString
+    let password  = self.Password  |> unwrap |> Option.mapNull builder.CreateString
+    let salt      = self.Salt      |> unwrap |> Option.mapNull builder.CreateString
     let joined    = self.Joined.ToString("o")  |> builder.CreateString
     let created   = self.Created.ToString("o") |> builder.CreateString
     UserFB.StartUserFB(builder)
     UserFB.AddId(builder, id)
-    UserFB.AddUserName(builder, username)
-    UserFB.AddFirstName(builder, firstname)
-    UserFB.AddLastName(builder, lastname)
-    UserFB.AddEmail(builder, email)
-    UserFB.AddPassword(builder, password)
-    UserFB.AddSalt(builder, salt)
+    Option.iter (fun value -> UserFB.AddUserName(builder, value)) username
+    Option.iter (fun value -> UserFB.AddFirstName(builder, value)) firstname
+    Option.iter (fun value -> UserFB.AddLastName(builder, value)) lastname
+    Option.iter (fun value -> UserFB.AddEmail(builder, value)) email
+    Option.iter (fun value -> UserFB.AddPassword(builder, value)) password
+    Option.iter (fun value -> UserFB.AddSalt(builder, value)) salt
     UserFB.AddJoined(builder, joined)
     UserFB.AddCreated(builder, created)
     UserFB.EndUserFB(builder)
 
+  // ** ToBytes
+
   member self.ToBytes() = Binary.buildBuffer self
+
+  // ** FromFB
 
   static member FromFB(fb: UserFB) : Either<IrisError, User> =
     Either.tryWith (Error.asParseError "User.FromFB") <| fun _ ->
       { Id        = Id fb.Id
-        UserName  = fb.UserName
-        FirstName = fb.FirstName
-        LastName  = fb.LastName
-        Email     = fb.Email
-        Password  = fb.Password
-        Salt      = fb.Salt
+        UserName  = name     fb.UserName
+        FirstName = name     fb.FirstName
+        LastName  = name     fb.LastName
+        Email     = email    fb.Email
+        Password  = checksum fb.Password
+        Salt      = checksum fb.Salt
         Joined    = DateTime.Parse fb.Joined
         Created   = DateTime.Parse fb.Created }
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError, User> =
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte[]) : Either<IrisError, User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
+
+  // ** ToYamlObject
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -249,39 +258,27 @@ type User =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject () =
-    new UserYaml(
-      string self.Id,
-      self.UserName,
-      self.FirstName,
-      self.LastName,
-      self.Email,
-      self.Password,
-      self.Salt,
-      self.Joined,
-      self.Created)
+  member user.ToYamlObject () = UserYaml.From(user)
 
-  member self.ToYaml(serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
+  // ** ToYaml
 
-  static member FromYamlObject (yaml: UserYaml) =
-    Either.tryWith (Error.asParseError "User.FromYaml") <| fun _ ->
-      { Id        = Id yaml.Id
-        UserName  = yaml.UserName
-        FirstName = yaml.FirstName
-        LastName  = yaml.LastName
-        Email     = yaml.Email
-        Password  = yaml.Password
-        Salt      = yaml.Salt
-        Joined    = yaml.Joined
-        Created   = yaml.Created }
+  member user.ToYaml(serializer: Serializer) =
+    user |> Yaml.toYaml |> serializer.Serialize
+
+  // ** FromYamlObject
+
+  static member FromYamlObject (yaml: UserYaml) = yaml.ToUser()
+
+  // ** FromYaml
 
   static member FromYaml(str: string) =
-    let serializer = new Serializer()
+    let serializer = Serializer()
     serializer.Deserialize<UserYaml>(str)
     |> User.FromYamlObject
 
   #endif
+
+  // ** Load
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -292,43 +289,13 @@ type User =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError, User> =
-    either {
-      let! data = Asset.read path
-      let! user = Yaml.decode data
-      return user
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, User array> =
-    either {
-      try
-        let dir = basePath </> USER_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
-
-        let! (_,users) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-
-          Array.fold
-            (fun (m: Either<IrisError, int * User array>) path ->
-              either {
-                let! (idx,users) = m
-                let! user = User.Load path
-                users.[idx] <- user
-                return (idx + 1, users)
-              })
-            (Right(0, arr))
-            files
-
-        return users
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "User.LoadAll"
-            |> Either.fail
-    }
+    basePath </> filepath USER_DIR
+    |> IrisData.loadAll
 
   // ** Save
 
@@ -339,11 +306,20 @@ type User =
   // |____/ \__,_| \_/ \___|
 
   member user.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path user
-      let data = Yaml.encode user
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath user
 
   #endif
+
+// * User module
+
+#if !FABLE_COMPILER
+
+module User =
+
+  // ** passwordValid
+
+  let passwordValid (user: User) (password: Password) =
+    let password = Crypto.hashPassword password user.Salt
+    password = user.Password
+
+#endif

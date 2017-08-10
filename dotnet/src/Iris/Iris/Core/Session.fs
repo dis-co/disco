@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -11,12 +13,14 @@ open Iris.Web.Core.FlatBufferTypes
 open System
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
 
+// * SessionYaml
 
-#if !FABLE_COMPILER
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
 
 // __   __              _    ___  _     _           _
 // \ \ / /_ _ _ __ ___ | |  / _ \| |__ (_) ___  ___| |_
@@ -39,6 +43,8 @@ type SessionYaml(id, ip, ua) as self =
 
 #endif
 
+// * Session
+
 //  ____                _
 // / ___|  ___  ___ ___(_) ___  _ __
 // \___ \ / _ \/ __/ __| |/ _ \| '_ \
@@ -47,13 +53,17 @@ type SessionYaml(id, ip, ua) as self =
 
 type Session =
   { Id:        Id
-  ; IpAddress: IpAddress
-  ; UserAgent: UserAgent }
+    IpAddress: IpAddress
+    UserAgent: UserAgent }
+
+  // ** Empty
 
   static member Empty(id: Id) =
     { Id = id
-    ; IpAddress = IPv4Address "0.0.0.0"
-    ; UserAgent = "" }
+      IpAddress = IPv4Address "0.0.0.0"
+      UserAgent = "" }
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -70,24 +80,32 @@ type Session =
                UserAgent = fb.UserAgent }
     }
 
-  static member FromBytes(bytes: Binary.Buffer) : Either<IrisError,Session> =
+  // ** FromBytes
+
+  static member FromBytes(bytes: byte[]) : Either<IrisError,Session> =
     Binary.createBuffer bytes
     |> SessionFB.GetRootAsSessionFB
     |> Session.FromFB
 
+  // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     let session = self.Id |> string |> builder.CreateString
     let ip = self.IpAddress |> string |> builder.CreateString
-    let ua = self.UserAgent |> string |> builder.CreateString
+    let ua = self.UserAgent |> Option.mapNull builder.CreateString
     SessionFB.StartSessionFB(builder)
     SessionFB.AddId(builder, session)
     SessionFB.AddIpAddress(builder, ip)
-    SessionFB.AddUserAgent(builder, ua)
+    Option.iter (fun value -> SessionFB.AddUserAgent(builder, value)) ua
     SessionFB.EndSessionFB(builder)
+
+  // ** ToBytes
 
   member self.ToBytes() = Binary.buildBuffer self
 
-#if !FABLE_COMPILER
+  // ** ToYamlObject
+
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -101,10 +119,14 @@ type Session =
       string self.IpAddress,
       self.UserAgent)
 
+  // ** ToYaml
+
   member self.ToYaml (serializer: Serializer) =
     self
     |> Yaml.toYaml
     |> serializer.Serialize
+
+  // ** FromYamlObject
 
   static member FromYamlObject (yml: SessionYaml) =
     either {
@@ -114,9 +136,11 @@ type Session =
                UserAgent = yml.UserAgent }
     }
 
+  // ** FromYaml
+
   static member FromYaml (str: string): Either<IrisError,Session> =
     let serializer = new Serializer()
     serializer.Deserialize<SessionYaml>(str)
     |> Yaml.fromYaml
 
-#endif
+  #endif

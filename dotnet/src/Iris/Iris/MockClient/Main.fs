@@ -10,8 +10,7 @@ open System.Net.Sockets
 open System.Text.RegularExpressions
 open Iris.Raft
 open Iris.Client
-open Iris.Service
-open Iris.Service.Interfaces
+open Iris.Net
 
 [<AutoOpen>]
 module Main =
@@ -30,7 +29,6 @@ module Main =
     | [<AltCommandLine("-n")>] Name of string
     | [<AltCommandLine("-h")>] Host of string
     | [<AltCommandLine("-p")>] Port of uint16
-    | [<AltCommandLine("-b")>] Bind of string
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -40,7 +38,6 @@ module Main =
         | Name _  -> "specify the iris clients' name (optional)"
         | Host _  -> "specify the iris services' host to connect to (optional)"
         | Port _  -> "specify the iris services' port to connect on (optional)"
-        | Bind _  -> "specify the iris clients' address to bind to"
 
   [<Literal>]
   let private help = @"
@@ -172,13 +169,6 @@ Usage:
 
   let private patchid = Id.Create()
 
-  let private nextPort () =
-    let l = new TcpListener(IPAddress.Loopback, 0)
-    l.Start()
-    let port = (l.LocalEndpoint :?> IPEndPoint).Port
-    l.Stop()
-    port
-
   let private (|Exit|_|) str =
     match str with
     | "exit" | "quit" -> Some ()
@@ -256,53 +246,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle name ->
-        Pin.Toggle(Id name,name,patchid, [| |], [| false |])
+        Pin.toggle (Id name) name patchid  [| |]  [| false |]
         |> Some
 
       | Bang name ->
-        Pin.Bang(Id name,name,patchid, [| |], [| false |])
+        Pin.bang (Id name) name patchid [| |] [| false |]
         |> Some
 
       | String name ->
-        Pin.String(Id name,name,patchid, [| |], [| "" |])
+        Pin.string (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Multiline name ->
-        Pin.MultiLine(Id name,name,patchid, [| |], [| "" |])
+        Pin.multiLine (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | File name ->
-        Pin.FileName(Id name,name,patchid, [| |], [| "" |])
+        Pin.fileName (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Dir name ->
-        Pin.Directory(Id name,name,patchid, [| |], [| "" |])
+        Pin.directory (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Url name ->
-        Pin.Url(Id name,name,patchid, [| |], [| "" |])
+        Pin.url (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | IP name ->
-        Pin.IP(Id name,name,patchid, [| |], [| "" |])
+        Pin.ip (Id name) name patchid [| |] [| "" |]
         |> Some
 
       | Float name ->
-        Pin.Number(Id name,name,patchid, [| |], [| 0.0 |])
+        Pin.number (Id name) name patchid [| |] [| 0.0 |]
         |> Some
 
       | Bytes name ->
-        Pin.Bytes(Id name,name,patchid, [| |], [| [| |] |])
+        Pin.bytes (Id name) name patchid [| |] [| [| |] |]
         |> Some
 
       | Color name ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Color(Id name,name,patchid, [| |], [| color |])
+        Pin.color (Id name) name patchid [| |] [| color |]
         |> Some
 
       | Enum name ->
         let prop = { Key = ""; Value = "" }
-        Pin.Enum(Id name,name,patchid, [| |], [| prop |], [| prop |])
+        Pin.enum (Id name) name patchid [| |] [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None
@@ -319,20 +309,15 @@ Usage:
     | _ -> None
 
   let private listPins (client: IApiClient) =
-    match client.State with
-    | Right state ->
-      printfn ""
-      Map.iter
-        (fun _ (patch: PinGroup) ->
-          printfn "Patch: %A" (string patch.Id)
-          Map.iter
-            (fun _ (pin: Pin) ->
-              printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
-            patch.Pins)
-        state.PinGroups
-      printfn ""
-    | Left error ->
-      Console.Error.WriteLine("error getting state in listPins: {0}", string error)
+    Map.iter
+      (fun _ (patch: PinGroup) ->
+        printfn "Patch: %A" (string patch.Id)
+        Map.iter
+          (fun _ (pin: Pin) ->
+            printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
+          patch.Pins)
+      client.State.PinGroups
+    printfn ""
 
   let private parseLine (line: string) : Pin option =
     match line with
@@ -340,7 +325,7 @@ Usage:
     | _ -> None
 
   let private tryLoad (path: FilePath) =
-    let lines = try File.ReadAllLines(path) with | _ -> [| |]
+    let lines = try File.readLines path with | _ -> [| |]
     Array.fold
       (fun (pins: Map<Id,Pin>) line ->
         match parseLine line with
@@ -428,17 +413,14 @@ Usage:
   let private parseDoubleValues (str: string) : double array =
     let parse input = try double input with | _ -> 0.0
     parseSimple parse str
-    |> Array.mapi (fun i num -> num)
 
-  let private parseByteValues (str: string) : Binary.Buffer array =
+  let private parseByteValues (str: string) : byte array array =
     parseStringValues str
-    |> Array.map
-      (fun thing -> Encoding.UTF8.GetBytes thing)
+    |> Array.map Encoding.UTF8.GetBytes
 
   let private parseColorValues (str: string) : ColorSpace array =
     parseStringValues str
-    |> Array.map
-      (fun thing -> parseColor thing)
+    |> Array.map parseColor
 
   let private parseEnumValues (props: Property array) (str: string) : Property array =
     str.Split(' ')
@@ -454,33 +436,19 @@ Usage:
   let private PS1 = "λ: "
 
   let private addPin (client: IApiClient) (pin: Pin) =
-    match client.AddPin pin with
-    | Right () -> printfn "successfully added %A" pin.Name
-    | Left error ->
-      Console.Error.WriteLine("Could not add \"{0}\": {1}", pin.Name, string error)
+    client.AddPin pin
 
   let private updateSlices (client: IApiClient) (slices: Slices) =
-    match client.UpdateSlices slices with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not update slices {0}", string error)
+    client.UpdateSlices slices
 
   let private updatePin (client: IApiClient) (pin: Pin) =
-    match client.UpdatePin pin with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not update pin \"{0}\": {1}", pin.Name, string error)
+    client.UpdatePin pin
 
   let private removePin (client: IApiClient) (pin: Pin) =
-    match client.RemovePin pin with
-    | Right () -> ()
-    | Left error ->
-      Console.Error.WriteLine("Could not remove \"{0}\": {1}", pin.Name, string error)
+    client.RemovePin pin
 
   let private getPin (client: IApiClient) (id: string)  =
-    match client.State with
-    | Right state -> State.findPin (Id (id.Trim())) state
-    | Left error -> None
+    State.tryFindPin (Id (id.Trim())) client.State
 
   let private showPin (pin: Pin)  =
     printfn ""
@@ -490,11 +458,7 @@ Usage:
   let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:PinGroup) =
     let mutable run = true
 
-    match client.AddPinGroup patch with
-    | Right () -> ()
-    | Left err ->
-      Console.Error.WriteLine("Unable to add mock client patch: {0}",err)
-      exit 128
+    client.AddPinGroup patch
 
     Map.iter (fun _ (pin: Pin) -> addPin client pin) initial
 
@@ -638,13 +602,20 @@ Usage:
 
     let id = Id.Create()
 
+    Logger.initialize {
+      Id = Id.Create()
+      Tier = Tier.Client
+      UseColors = true
+      LogLevel = LogLevel.Debug
+    }
+
     let result =
       either {
         let server =
           { Port =
               if parsed.Contains <@ Port @>
-              then parsed.GetResult <@ Port @>
-              else Constants.DEFAULT_API_PORT
+              then port (parsed.GetResult <@ Port @>)
+              else port Constants.DEFAULT_API_PORT
             IpAddress =
               if parsed.Contains <@ Host @>
               then IPv4Address (parsed.GetResult <@ Host @>)
@@ -658,13 +629,10 @@ Usage:
               else "<empty>"
             Role = Role.Renderer
             Status = ServiceStatus.Starting
-            IpAddress =
-              match parsed.Contains <@ Bind @> with
-              | true  -> IPv4Address (parsed.GetResult <@ Bind @>)
-              | false -> IPv4Address "127.0.0.1"
-            Port = uint16 (nextPort()) }
+            IpAddress = IpAddress.Localhost // these are not used anymore
+            Port = port 0us }
 
-        let! client = ApiClient.create server client
+        let client = ApiClient.create server client
         do! client.Start()
         return client
       }
@@ -673,13 +641,14 @@ Usage:
     | Right client ->
       let patch : PinGroup =
         { Id = patchid
-          Name = "MockClient Patch"
+          Name = name "MockClient Patch"
           Client = id
           Pins = Map.empty }
 
       let loaded =
         if parsed.Contains <@ File @> then
           parsed.GetResult <@ File @>
+          |> filepath
           |> tryLoad
         else
           Map.empty

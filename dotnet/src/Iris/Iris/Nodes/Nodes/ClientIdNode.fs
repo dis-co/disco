@@ -22,27 +22,40 @@ open FSharp.Reflection
 type ClientIdNode() =
 
   [<DefaultValue>]
-  [<Input("ID String", IsSingle = true)>]
-  val mutable InIdStr: ISpread<string>
-
-  [<DefaultValue>]
-  [<Output("Id")>]
+  [<Output("Id", IsSingle = true)>]
   val mutable OutId: ISpread<Id>
 
   [<DefaultValue>]
   [<Output("ID String", IsSingle = true)>]
   val mutable OutIdStr: ISpread<string>
 
+  let mutable initialized = false
+
   interface IPluginEvaluate with
     member self.Evaluate (_: int) : unit =
-      let id =
-        if self.InIdStr.[0] = null then
+      if not initialized then
+        let id =
           try
-            Environment.GetEnvironmentVariable IRIS_CLIENT_ID_ENV_VAR
-            |> Id
+            match Environment.GetEnvironmentVariable IRIS_CLIENT_ID_ENV_VAR with
+            | null | "" -> Id.Create()
+            | str -> str |> Guid.Parse |> string |> Id
           with
-            | _ -> Id.Create()
-        else Id self.InIdStr.[0]
+            | exn ->
+              Logger.err "ClientId (Iris)" exn.Message
+              Logger.err "ClientId (Iris)" exn.StackTrace
+              Id.Create()
 
-      self.OutId.[0] <- id
-      self.OutIdStr.[0] <- string id
+        Logger.initialize {
+          Id = id
+          Tier = Tier.Client
+          UseColors = false
+          Level = LogLevel.Debug
+        }
+
+        self.OutId.SliceCount <- 1
+        self.OutIdStr.SliceCount <- 1
+
+        self.OutId.[0] <- id
+        self.OutIdStr.[0] <- string id
+
+        initialized <- true

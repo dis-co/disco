@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
 
@@ -14,9 +14,28 @@ open System
 open System.Text
 open FlatBuffers
 open Iris.Serialization
-open SharpYaml.Serialization
 
 #endif
+
+// * PropertyYaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+open SharpYaml.Serialization
+
+type PropertyYaml(key, value) as self =
+  [<DefaultValue>] val mutable Key   : string
+  [<DefaultValue>] val mutable Value : string
+
+  new () = PropertyYaml(null, null)
+
+  do
+    self.Key <- key
+    self.Value <- value
+
+#endif
+
+// * Property
 
 //  ____                            _
 // |  _ \ _ __ ___  _ __   ___ _ __| |_ _   _
@@ -25,42 +44,33 @@ open SharpYaml.Serialization
 // |_|   |_|  \___/| .__/ \___|_|   \__|\__, |
 //                 |_|                  |___/
 
-#if FABLE_COMPILER
-
 type Property =
   { Key: string; Value: string }
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let key, value =
-        builder.CreateString self.Key, builder.CreateString self.Value
-    EnumPropertyFB.StartEnumPropertyFB(builder)
-    EnumPropertyFB.AddKey(builder, key)
-    EnumPropertyFB.AddValue(builder, value)
-    EnumPropertyFB.EndEnumPropertyFB(builder)
+  // ** ToOffset
 
-  static member FromFB(fb: EnumPropertyFB) =
+  member self.ToOffset(builder: FlatBufferBuilder) =
+    let key = if isNull self.Key then None else Some (builder.CreateString self.Key)
+    let value = if isNull self.Value then None else Some (builder.CreateString self.Value)
+    KeyValueFB.StartKeyValueFB(builder)
+    Option.iter (fun data -> KeyValueFB.AddKey(builder, data)) key
+    Option.iter (fun data -> KeyValueFB.AddValue(builder, data)) value
+    KeyValueFB.EndKeyValueFB(builder)
+
+  // ** FromOffset
+
+  static member FromFB(fb: KeyValueFB) =
     { Key = fb.Key; Value = fb.Value }
     |> Either.succeed
 
-#else
+  // ** ToYamlObject
 
-open SharpYaml.Serialization
-
-type PropertyYaml(key, value) as self =
-  [<DefaultValue>] val mutable Key   : string
-  [<DefaultValue>] val mutable Value : string
-
-  new () = new PropertyYaml(null, null)
-
-  do
-    self.Key <- key
-    self.Value <- value
-
-and Property =
-  { Key: string; Value: string }
+  #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
-    new PropertyYaml(self.Key, self.Value)
+    PropertyYaml(self.Key, self.Value)
+
+  // ** FromYamlObject
 
   static member FromYamlObject(yml: PropertyYaml) : Either<IrisError,Property> =
     try
@@ -72,16 +82,4 @@ and Property =
         |> ParseError
         |> Either.fail
 
-  member self.ToOffset(builder: FlatBufferBuilder) =
-    let key, value =
-        builder.CreateString self.Key, builder.CreateString self.Value
-    EnumPropertyFB.StartEnumPropertyFB(builder)
-    EnumPropertyFB.AddKey(builder, key)
-    EnumPropertyFB.AddValue(builder, value)
-    EnumPropertyFB.EndEnumPropertyFB(builder)
-
-  static member FromFB(fb: EnumPropertyFB) =
-    { Key = fb.Key; Value = fb.Value }
-    |> Either.succeed
-
-    #endif
+  #endif

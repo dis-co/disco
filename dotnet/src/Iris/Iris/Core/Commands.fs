@@ -4,24 +4,36 @@ module Iris.Core.Commands
 
 open System
 open Iris.Core
-open Iris.Core.Discovery
 
 // * Commands
 
 type CreateProjectOptions =
   { name: string
-  ; ipAddress: string
-  ; apiPort: uint16
-  ; raftPort: uint16
-  ; webSocketPort: uint16 
-  ; gitPort: uint16 }
+    ipAddr: string
+    port: uint16
+    apiPort: uint16
+    wsPort: uint16
+    gitPort: uint16 }
+
+type ServiceInfo =
+  { webSocket: string
+    version: string
+    buildNumber: string }
+
+type NameAndId = { Name: Name; Id: Id }
 
 type Command =
   | Shutdown
+  | SaveProject
   | UnloadProject
   | ListProjects
-  | GetWebSocketAddress
+  | GetServiceInfo
+  | MachineStatus
+  | MachineConfig
   | CreateProject of CreateProjectOptions
-  | LoadProject of projectName:string * userName:string * password:string
+  | CloneProject of projectName:Name * uri:Url
+  | PullProject of projectId:Id * projectName:Name * uri:Url
+  | LoadProject of projectName:Name * username:UserName * password:Password * site:Id option
+  | GetProjectSites of projectName:Name * username:UserName * password:Password
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

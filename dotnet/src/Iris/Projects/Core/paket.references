@@ -1,11 +1,11 @@
 FSharp.Core
 Argu
-FSharpx.Extras
 LibGit2Sharp
 LibGit2Sharp.NativeBinaries
-FSharp.Configuration
+SharpYaml
 Fleck
 Suave
-ZeroMQ
+Suave.Git
 Newtonsoft.Json
 Fable.JsonConverter
+Disruptor

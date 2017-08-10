@@ -3,18 +3,18 @@ namespace Iris.Service
 // * Imports
 
 open System
+open System.Net
 open System.Threading
 open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Client
-open Iris.Zmq
+open Iris.Net
 open Iris.Service.Interfaces
 open Iris.Serialization
 
 // * ApiServer module
 
-[<AutoOpen>]
 module ApiServer =
 
   //  ____       _            _
@@ -25,7 +25,7 @@ module ApiServer =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "IApiServer.%s" str
+  let private tag (str: string) = String.Format("ApiServer.{0}",str)
 
   // ** timeout
 
@@ -34,671 +34,554 @@ module ApiServer =
 
   // ** Subscriptions
 
-  type private Subscriptions = ConcurrentDictionary<int, IObserver<ApiEvent>>
-
-  // ** Client
-
-  [<NoComparison;NoEquality>]
-  type private Client =
-    { Meta: IrisClient
-      Socket: Req
-      Timer: IDisposable }
-
-    interface IDisposable with
-      member client.Dispose() =
-        dispose client.Timer
-        dispose client.Socket
-
-  // ** ServerStateData
-
-  [<NoComparison;NoEquality>]
-  type private ServerStateData =
-    { Status: ServiceStatus
-      Store: Store
-      Server: Rep
-      Publisher: Pub
-      Subscriber: Sub
-      Clients: Map<Id,Client> }
-
-    interface IDisposable with
-      member data.Dispose() =
-        dispose data.Publisher
-        dispose data.Subscriber
-        dispose data.Server
-        Map.iter (fun _ v -> dispose v) data.Clients
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** ServerState
 
   [<NoComparison;NoEquality>]
   type private ServerState =
-    | Loaded of ServerStateData
-    | Idle
+    { Id: Id
+      Status: ServiceStatus
+      Server: IServer
+      PubSub: IPubSub
+      Clients: Map<Id,IrisClient>
+      Callbacks: IApiServerCallbacks
+      Subscriptions: Subscriptions
+      Disposables: IDisposable list
+      Stopper: AutoResetEvent }
+
+    // *** Dispose
 
     interface IDisposable with
-      member state.Dispose() =
-        match state with
-        | Loaded data -> dispose data
-        | _ -> ()
-
-  // ** Reply
-
-  [<RequireQualifiedAccess>]
-  type private Reply =
-    | Clients of Map<Id,IrisClient>
-    | State of State
-    | Ok
-
-  // ** ReplyChan
-
-  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
+      member data.Dispose() =
+        List.iter dispose data.Disposables
+        dispose data.Server
+        dispose data.PubSub
+        data.Subscriptions.Clear()
 
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Start           of chan:ReplyChan * mem:RaftMember * projectId:Id
-    | Dispose         of chan:ReplyChan
-    | GetClients      of chan:ReplyChan
+    | Start
+    | Stop
     | SetStatus       of status:ServiceStatus
-    | AddClient       of chan:ReplyChan * client:IrisClient
-    | RemoveClient    of chan:ReplyChan * client:IrisClient
-    | SetClientStatus of id:Id          * status:ServiceStatus
-    | SetState        of chan:ReplyChan * state:State
-    | GetState        of chan:ReplyChan
+    | AddClient       of client:IrisClient
+    | RemoveClient    of client:IrisClient
+    | SetClientStatus of id:Id * status:ServiceStatus
     | InstallSnapshot of id:Id
-    | LocalUpdate     of sm:StateMachine
-    | RemoteUpdate    of sm:StateMachine
-    | ClientUpdate    of sm:StateMachine
+    | Update          of origin:Origin * sm:StateMachine
+    | ServerEvent     of ev:TcpServerEvent
 
   // ** ApiAgent
 
   type private ApiAgent = MailboxProcessor<Msg>
 
-  // ** Listener
-
-  type private Listener = IObservable<ApiEvent>
-
-  // ** createListener
-
-  let private createListener (subscriptions: Subscriptions) =
-    { new Listener with
-        member self.Subscribe(obs) =
-          while not (subscriptions.TryAdd(obs.GetHashCode(), obs)) do
-            Thread.Sleep(1)
-
-          { new IDisposable with
-              member self.Dispose() =
-                match subscriptions.TryRemove(obs.GetHashCode()) with
-                | true, _  -> ()
-                | _ -> subscriptions.TryRemove(obs.GetHashCode())
-                      |> ignore } }
-
-  // ** notify
-
-  let private notify (subs: Subscriptions) (ev: ApiEvent) =
-    for KeyValue(_,sub) in subs do
-      sub.OnNext ev
-
-  // ** postCommand
-
-  let inline private postCommand (agent: ApiAgent) (cb: ReplyChan -> Msg) =
-    async {
-      let! result = agent.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
-      match result with
-      | Some response -> return response
-      | None ->
-        return
-          "Command Timeout"
-          |> Error.asOther (tag "postCommand")
-          |> Either.fail
-    }
-    |> Async.RunSynchronously
-
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (data: ServerStateData) (client: Client) (agent: ApiAgent) =
-    let result : Either<IrisError,ApiResponse> =
-      data.Store.State
-      |> ClientApiRequest.Snapshot
-      |> Binary.encode
-      |> client.Socket.Request
-      |> Either.bind Binary.decode
+  let private requestInstallSnapshot (state: ServerState) (client: Id) =
+    state.Callbacks.PrepareSnapshot()
+    |> ApiRequest.Snapshot
+    |> Binary.encode
+    |> Request.create (Guid.ofId state.Server.Id)
+    |> state.Server.Request (Guid.ofId client)
 
-    match result with
-    | Right ApiResponse.OK -> ()
-    | Right (ApiResponse.NOK error) ->
-      let reason =
-        string error
-        |> Error.asClientError (tag "requestInstallSnapshot")
-      (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetClientStatus
-      |> agent.Post
-    | Right other ->
-      let reason =
-        sprintf "Unexpected reply from Client %A" other
-        |> Error.asClientError (tag "requestInstallSnapshot")
-      (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetClientStatus
-      |> agent.Post
-    | Left error ->
-      let reason =
-        string error
-        |> Error.asClientError (tag "requestInstallSnapshot")
-      (client.Meta.Id, ServiceStatus.Failed reason)
-      |> Msg.SetClientStatus
-      |> agent.Post
+    // match result with
+    // | Right ApiResponse.OK -> ()
 
-  // ** pingTimer
+    // | Right (ApiResponse.NOK error) ->
+    //   error
+    //   |> string
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
-  let private pingTimer (socket: Req) (agent: ApiAgent) =
-    let cts = new CancellationTokenSource()
+    // | Right other ->
+    //   other
+    //   |> sprintf "Unexpected reply from Client %A"
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
-    let rec loop () =
-      async {
-        do! Async.Sleep(timeout)
-
-        if not socket.Running then
-          socket.Restart()
-
-        let response : Either<IrisError,ApiResponse> =
-          ClientApiRequest.Ping
-          |> Binary.encode
-          |> socket.Request
-          |> Either.bind Binary.decode
-
-        match response with
-        | Right Pong ->
-//          string socket.Id
-//          |> sprintf "ping request to %s successful"
-//          |> Logger.debug socket.Id (tag "pingTimer")
-          (socket.Id, ServiceStatus.Running)
-          |> Msg.SetClientStatus
-          |> agent.Post
-        | Left error ->
-          string error
-          |> sprintf "error during 
-           to %s: %s" (string socket.Id)
-          |> Logger.debug socket.Id (tag "pingTimer")
-          (socket.Id, ServiceStatus.Failed error)
-          |> Msg.SetClientStatus
-          |> agent.Post
-        | _ -> ()
-
-        return! loop ()
-      }
-
-    Async.Start(loop (), cts.Token)
-    { new IDisposable with
-        member self.Dispose () =
-          cts.Cancel() }
-
-  // ** requestHandler
-
-  let private requestHandler (agent: ApiAgent) (raw: byte array) =
-    match Binary.decode raw with
-    | Right (Register client) ->
-      match postCommand agent (fun chan -> Msg.AddClient(chan, client)) with
-      | Right Reply.Ok -> Binary.encode OK
-      | Right _ ->
-        "Received wrong Reply type from ApiAgent"
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-      | Left error ->
-        string error
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-    | Right (UnRegister client) ->
-      match postCommand agent (fun chan -> Msg.RemoveClient(chan, client)) with
-      | Right Reply.Ok -> Binary.encode OK
-      | Right _ ->
-        "Received wrong Reply type from ApiAgent"
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-      | Left error ->
-        string error
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-    | Right (Update sm) ->
-      agent.Post(Msg.ClientUpdate sm)
-      Binary.encode OK
-    | Left error ->
-      string error
-      |> ApiError.Internal
-      |> NOK
-      |> Binary.encode
+    // | Left error ->
+    //   error
+    //   |> string
+    //   |> Error.asClientError (tag "requestInstallSnapshot")
+    //   |> ServiceStatus.Failed
+    //   |> fun reason -> client.Meta.Id, reason
+    //   |> Msg.SetClientStatus
+    //   |> agent.Post
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (agent: ApiAgent) (bytes: byte array) =
-    match Binary.decode bytes with
-    | Right command ->
-      match command with
-      | UpdateSlices _ | CallCue _ ->
-        command
-        |> Msg.RemoteUpdate
-        |> agent.Post
-      | _ -> ()
-    | _ -> ()
+  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) = function
+    | PubSubEvent.Request(id, bytes) ->
+      match Binary.decode bytes with
+      | Right command ->
+        match command with
+        // Special case for tests:
+        //
+        // In tests, the Logger singleton won't have the correct Id (because they run in the same
+        // process). Hence, we look at the peer Id as supplied from the Sub socket, compare and
+        // substitute if necessary. This goes in conjunction with only publishing logs on the Api that
+        // are from that service.
+        | LogMsg log when log.Tier = Tier.Service && log.Id <> mem ->
+          Logger.append { log with Id = id }
 
-  // ** start
+        // Base case for logs:
+        //
+        // Append logs to the current Logger singleton, to be forwarded to the frontend.
+        | LogMsg log -> Logger.append log
 
-  let private start (chan: ReplyChan) (agent: ApiAgent) (mem: RaftMember) (id: Id) =
-    let srvAddr = formatTCPUri mem.IpAddr (int mem.ApiPort)
-    let server = new Rep(mem.Id, srvAddr, requestHandler agent)
-
-    let pubSubAddr =
-      formatEPGMUri
-        mem.IpAddr
-        (IPv4Address Constants.MCAST_ADDRESS)
-        Constants.MCAST_PORT
-
-    let publisher = new Pub(mem.Id, pubSubAddr, string id)
-    let subscriber = new Sub(mem.Id, pubSubAddr, string id)
-
-    subscriber.Subscribe(processSubscriptionEvent agent)
-    |> ignore                            // gets cleaned up during Dispose
-
-    match server.Start(), publisher.Start(), subscriber.Start() with
-    | Right (), Right (), Right () ->
-      chan.Reply(Right Reply.Ok)
-      Loaded { Status = ServiceStatus.Running
-               Store = new Store(State.Empty)
-               Publisher = publisher
-               Subscriber = subscriber
-               Clients = Map.empty
-               Server = server }
-    | Left error, _, _ | _, Left error, _ | _, _, Left error ->
-      chan.Reply(Left error)
-      dispose server
-      Idle
+        | CallCue _ | UpdateSlices _ ->
+          Msg.Update(Origin.Api, command) |> agent.Post
+        | _ -> ()
+      | Left _ -> () // not sure if I should log here..
 
   // ** handleStart
 
-  let private handleStart (chan: ReplyChan)
-                          (state: ServerState)
-                          (agent: ApiAgent)
-                          (mem: RaftMember)
-                          (projectId: Id) =
-    match state with
-    | Loaded data ->
-      dispose data
-      start chan agent mem projectId
-    | Idle ->
-      start chan agent mem projectId
-
-  // ** handleDispose
-
-  let private handleDispose (chan: ReplyChan) (state: ServerState) =
-    dispose state
-    chan.Reply(Right Reply.Ok)
-    Idle
+  let private handleStart (state: ServerState) =
+    state
 
   // ** handleAddClient
 
-  let private handleAddClient (chan: ReplyChan)
-                              (state: ServerState)
-                              (subs: Subscriptions)
-                              (meta: IrisClient)
-                              (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-
-      // first, dispose of the previous client
-      match Map.tryFind meta.Id data.Clients with
-      | Some client ->
-        dispose client
-        notify subs (ApiEvent.UnRegister client.Meta)
-      | None -> ()
-
-      // construct a new client value
-      let addr = formatTCPUri meta.IpAddress (int meta.Port)
-      let socket = new Req(meta.Id, addr, Constants.REQ_TIMEOUT)
-      socket.Start()
-
-      let client =
-        { Meta = meta
-          Socket = socket
-          Timer = pingTimer socket agent }
-
-      agent.Post(Msg.InstallSnapshot meta.Id)
-
-      chan.Reply(Right Reply.Ok)
-      notify subs (ApiEvent.Register meta)
-      Loaded { data with Clients = Map.add meta.Id client data.Clients }
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      Idle
+  let private handleAddClient (state: ServerState) (client: IrisClient) (agent: ApiAgent) =
+    // first, dispose of the previous client
+    client.Id |> Msg.InstallSnapshot |> agent.Post
+    match Map.tryFind client.Id state.Clients with
+    | None   ->
+      (Origin.Service, AddClient client)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+    | Some _ ->
+      (Origin.Service, UpdateClient client)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+    { state with Clients = Map.add client.Id client state.Clients }
 
   // ** handleRemoveClient
 
-  let private handleRemoveClient (chan: ReplyChan)
-                                 (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (peer: IrisClient) =
-    match state with
-    | Loaded data ->
-      match Map.tryFind peer.Id data.Clients with
+  let private handleRemoveClient (state: ServerState) (peer: IrisClient) =
+    Tracing.trace (tag "handleRemoveClient") <| fun () ->
+      match Map.tryFind peer.Id state.Clients with
       | Some client ->
-        dispose client
-        chan.Reply(Right Reply.Ok)
-        notify subs (ApiEvent.UnRegister peer)
-        Loaded { data with Clients = Map.remove peer.Id data.Clients }
-      | _ ->
-        chan.Reply(Right Reply.Ok)
-        state
-    | Idle ->
-      chan.Reply(Right Reply.Ok)
-      state
+        (Origin.Service, RemoveClient peer)
+        |> IrisEvent.Append
+        |> Observable.onNext state.Subscriptions
+        { state with Clients = Map.remove peer.Id state.Clients }
+      | _ -> state
 
   // ** updateClient
 
-  let private updateClient (sm: StateMachine) (client: Client) =
-    async {
-      let result : Either<IrisError,ApiResponse> =
-        sm
-        |> ClientApiRequest.Update
-        |> Binary.encode
-        |> client.Socket.Request
-        |> Either.bind Binary.decode
+  let private updateClient (sm: StateMachine) (server: IServer) (client: IrisClient) =
+    sm
+    |> ApiRequest.Update
+    |> Binary.encode
+    |> Request.create (Guid.ofId server.Id)
+    |> server.Request (Guid.ofId client.Id)
 
-      match result with
-      | Right ApiResponse.OK | Right ApiResponse.Pong ->
-        return Either.succeed ()
-      | Right (ApiResponse.NOK err) ->
-        let error =
-          string err
-          |> Error.asClientError (tag "updateClient")
-        return  Either.fail (client.Meta.Id, error)
-      | Left error ->
-        return Either.fail (client.Meta.Id, error)
-    }
+  // ** updateAllClients
 
-  // ** updateClients
-
-  let private updateClients (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
-    data.Clients
-    |> Map.toArray
-    |> Array.map (snd >> updateClient sm)
-    |> Async.Parallel
-    |> Async.RunSynchronously
-    |> Array.iter
-      (fun result ->
-        match result with
-        | Left (id, error) ->
-          (id, ServiceStatus.Failed error)
-          |> Msg.SetClientStatus
-          |> agent.Post
-        | _ -> ())
-
-  // ** maybePublish
-
-  let private maybePublish (data: ServerStateData) (sm: StateMachine) (agent: ApiAgent) =
-    match sm with
-    | UpdateSlices _ | CallCue _ ->
-      sm
-      |> Binary.encode
-      |> data.Publisher.Publish
-      |> Either.mapError (ServiceStatus.Failed >> Msg.SetStatus >> agent.Post)
+  let private updateAllClients (state: ServerState) (sm: StateMachine) =
+    Tracing.trace (tag "updateAllClients") <| fun () ->
+      state.Clients
+      |> Map.toArray
+      |> Array.Parallel.map (snd >> updateClient sm state.Server)
       |> ignore
-    | _ -> ()
 
-  // ** maybeDispatch
+  // ** multicastClients
 
-  let private maybeDispatch (data: ServerStateData) (sm: StateMachine) =
-    match sm with
-    | UpdateSlices _ | CallCue _ -> data.Store.Dispatch sm
-    | _ -> ()
+  let private multicastClients (state: ServerState) except (sm: StateMachine) =
+    Tracing.trace (tag "multicastClients") <| fun () ->
+      state.Clients
+      |> Map.filter (fun id _ -> except <> id)
+      |> Map.toArray
+      |> Array.Parallel.map (snd >> updateClient sm state.Server)
+      |> ignore
 
-  // ** handleGetClients
+  // ** publish
 
-  let private handleGetClients (chan: ReplyChan) (state: ServerState) =
-    match state with
-    | Loaded data ->
-      data.Clients
-      |> Map.map (fun _ v -> v.Meta)
-      |> Reply.Clients
-      |> Either.succeed
-      |> chan.Reply
-      state
-    | Idle ->
-      "ClientApi not running"
-      |> Error.asClientError (tag "handleGetClients")
-      |> Either.fail
-      |> chan.Reply
-      state
+  let private publish (state: ServerState) (sm: StateMachine) (_: ApiAgent) =
+    // sm |> Binary.encode |> state.PubSub.Send
+    ()
 
   // ** handleSetStatus
 
-  let private handleSetStatus (state: ServerState)
-                              (subs: Subscriptions)
-                              (status: ServiceStatus) =
-    match state with
-    | Loaded data ->
-      notify subs (ApiEvent.ServiceStatus status)
-      Loaded { data with Status = status }
-    | idle -> idle
+  let private handleSetStatus (state: ServerState) (status: ServiceStatus) =
+    status
+    |> IrisEvent.Status
+    |> Observable.onNext state.Subscriptions
+    { state with Status = status }
 
   // ** handleSetClientStatus
 
-  let private handleSetClientStatus (state: ServerState)
-                                    (subs: Subscriptions)
-                                    (id: Id)
-                                    (status: ServiceStatus) =
-    match state with
-    | Loaded data ->
-      match Map.tryFind id data.Clients with
-      | Some client ->
-        match client.Meta.Status, status with
-        | ServiceStatus.Running, ServiceStatus.Running ->
-          state
-        | oldst, newst ->
-          if oldst <> newst then
-            let updated = { client with Meta = { client.Meta with Status = status } }
-            notify subs (ApiEvent.ClientStatus updated.Meta)
-            Loaded { data with Clients = Map.add id updated data.Clients }
-          else
-            state
-      | None -> state
-    | idle -> idle
-
-  // ** handleSetState
-
-  let private handleSetState (chan: ReplyChan)
-                             (state: ServerState)
-                             (newstate: State)
-                             (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      Map.iter (fun id _ -> agent.Post(Msg.InstallSnapshot id)) data.Clients
-      chan.Reply (Right Reply.Ok)
-      Loaded { data with Store = new Store(newstate) }
-    | Idle ->
-      chan.Reply (Right Reply.Ok)
-      state
+  let private handleSetClientStatus (state: ServerState) (id: Id) (status: ServiceStatus) =
+    match Map.tryFind id state.Clients with
+    | Some client ->
+      match client.Status, status with
+      | ServiceStatus.Running, ServiceStatus.Running -> state
+      | oldst, newst ->
+        if oldst <> newst then
+          let updated = { client with Status = status }
+          (Origin.Service, UpdateClient updated)
+          |> IrisEvent.Append
+          |> Observable.onNext state.Subscriptions
+          { state with Clients = Map.add id updated state.Clients }
+        else state
+    | None -> state
 
   // ** handleInstallSnapshot
 
-  let private handleInstallSnapshot (state: ServerState) (id: Id) (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      match Map.tryFind id data.Clients with
-      | Some client ->
-        requestInstallSnapshot data client agent
-        state
+  let private handleInstallSnapshot (state: ServerState) (id: Id) =
+    match Map.tryFind id state.Clients with
+    | Some client -> requestInstallSnapshot state client.Id
+    | None -> ()
+    state
+
+  // ** handleUpdate
+
+  let private handleUpdate (state: ServerState)
+                           (origin: Origin)
+                           (cmd: StateMachine)
+                           (agent: ApiAgent) =
+    match origin, cmd with
+    | Origin.Api, _ ->
+      updateAllClients state cmd        // in order to preserve ordering of the messages
+      (origin, cmd)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+
+    | Origin.Raft, _ ->
+      updateAllClients state cmd        // in order to preserve ordering of the messages
+
+    | Origin.Client id, LogMsg       _
+    | Origin.Client id, CallCue      _
+    | Origin.Client id, UpdateSlices _ ->
+      publish state cmd agent
+      multicastClients state id cmd     // in order to preserve ordering of the messages
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
+
+    | Origin.Client _, _ ->
+      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
+
+    | Origin.Web _, LogMsg       _
+    | Origin.Web _, CallCue      _
+    | Origin.Web _, UpdateSlices _ ->
+      publish state cmd agent
+      updateAllClients state cmd
+
+    | Origin.Web _, _ ->
+      updateAllClients state cmd
+
+    | Origin.Service, AddClient    _
+    | Origin.Service, UpdateClient _
+    | Origin.Service, RemoveClient _ ->
+      (origin, cmd)
+      |> IrisEvent.Append
+      |> Observable.onNext state.Subscriptions
+
+    | Origin.Service, LogMsg _
+    | Origin.Service, UpdateSlices _ ->
+      publish state cmd agent
+      updateAllClients state cmd
+
+    | other -> ignore other
+
+    state
+
+  // ** handleServerRequest
+
+  let private handleServerRequest (state: ServerState) (req: Request) (agent: ApiAgent) =
+    Tracing.trace (tag "handleServerRequest") <| fun () ->
+      match req.Body |> Binary.decode with
+      | Right (Register client) ->
+        client.Id
+        |> sprintf "%O requested to be registered"
+        |> Logger.info (tag "handleServerRequest")
+
+        client
+        |> Msg.AddClient
+        |> agent.Post
+
+        Registered
+        |> Binary.encode
+        |> Response.fromRequest req
+        |> state.Server.Respond
+
+      | Right (UnRegister client) ->
+        client.Id
+        |> sprintf "%O requested to be un-registered"
+        |> Logger.info (tag "handleServerRequest")
+
+        client
+        |> Msg.RemoveClient
+        |> agent.Post
+
+        Unregistered
+        |> Binary.encode
+        |> Response.fromRequest req
+        |> state.Server.Respond
+
+      | Right (Update sm) ->
+        let id = req.PeerId |> string |> Id
+        (Origin.Client id, sm)
+        |> Msg.Update
+        |> agent.Post
+
+        OK
+        |> Binary.encode
+        |> Response.fromRequest req
+        |> state.Server.Respond
+
+      | Right other -> ()                // ignore Ping et al
+
+      | Left error ->
+        error
+        |> sprintf "error decoding request: %O"
+        |> Logger.err (tag "handleServerRequest")
+
+        string error
+        |> ApiError.Internal
+        |> NOK
+        |> Binary.encode
+        |> Response.fromRequest req
+        |> state.Server.Respond
+      state
+
+  // ** handleClientResponse
+
+  let private handleClientResponse state (resp: Response) (agent: ApiAgent) =
+    match Binary.decode resp.Body with
+    //  _   _  ___  _  __
+    // | \ | |/ _ \| |/ /
+    // |  \| | | | | ' /
+    // | |\  | |_| | . \
+    // |_| \_|\___/|_|\_\
+    | Right (ApiResponse.NOK error) ->
+      error
+      |> sprintf "NOK in client request. reason: %O"
+      |> Logger.err (tag "handleClientResponse")
+      // set the status of this client to error
+      let err = error |> string |> Error.asSocketError (tag "handleClientResponse")
+      (Guid.toId resp.PeerId, ServiceStatus.Failed err)
+      |> Msg.SetClientStatus
+      |> agent.Post
+    //   ___  _  __
+    //  / _ \| |/ /
+    // | | | | ' /
+    // | |_| | . \
+    //  \___/|_|\_\
+    | Right (ApiResponse.OK _)
+    | Right (ApiResponse.Registered _)
+    | Right (ApiResponse.Unregistered _) -> ()
+    //  ____                     _        _____
+    // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
+    // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|
+    // | |_| |  __/ (_| (_) | (_| |  __/ | |___| |  | | | (_) | |
+    // |____/ \___|\___\___/ \__,_|\___| |_____|_|  |_|  \___/|_|
+    | Left error ->
+      error
+      |> sprintf "error returned in client request. reason: %O"
+      |> Logger.err (tag "handleClientResponse")
+      // set the status of this client to error
+      (Guid.toId resp.PeerId, ServiceStatus.Failed error)
+      |> Msg.SetClientStatus
+      |> agent.Post
+    state
+
+  // ** handleServerEvent
+
+  let private handleServerEvent state (ev: TcpServerEvent) agent =
+    match ev with
+    | TcpServerEvent.Request  request  -> handleServerRequest state request agent
+    | TcpServerEvent.Response response -> handleClientResponse state response agent
+
+    | TcpServerEvent.Connect(_, ip, port) ->
+      sprintf "new connnection from %O:%d" ip port
+      |> Logger.info (tag "handleServerEvent")
+      state
+
+    | TcpServerEvent.Disconnect(peer) ->
+      sprintf "%O disconnected" peer
+      |> Logger.warn (tag "handleServerEvent")
+      let id = Guid.toId peer
+      match Map.tryFind id state.Clients with
       | None -> state
-    | Idle -> state
+      | Some client ->
+        (Origin.Service, RemoveClient client)
+        |> IrisEvent.Append
+        |> Observable.onNext state.Subscriptions
+        { state with Clients = Map.remove id state.Clients }
+        // (Guid.toId resp.PeerId, ServiceStatus.Running)
+        // |> Msg.SetClientStatus
+        // |> agent.Post
 
-  // ** handleGetState
+  // ** handleStop
 
-  let private handleGetState (chan: ReplyChan) (state: ServerState) =
-    match state with
-    | Loaded data ->
-      data.Store.State
-      |> Reply.State
-      |> Either.succeed
-      |> chan.Reply
-      state
-    | _ ->
-      "Not Loaded"
-      |> Error.asClientError (tag "handleGetState")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-  // ** handleClientUpdate
-
-  let private handleClientUpdate (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (sm: StateMachine)
-                                 (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      maybeDispatch data sm
-      maybePublish data sm agent
-      notify subs (ApiEvent.Update sm)
-      state
-    | Idle ->
-      state
-
-  // ** handleRemoteUpdate
-
-  let private handleRemoteUpdate (state: ServerState)
-                                 (subs: Subscriptions)
-                                 (sm: StateMachine)
-                                 (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      maybeDispatch data sm
-      updateClients data sm agent
-      notify subs (ApiEvent.Update sm)
-      state
-    | Idle ->
-      state
-
-  // ** handleLocalUpdate
-
-  let private handleLocalUpdate (state: ServerState)
-                                (sm: StateMachine)
-                                (agent: ApiAgent) =
-    match state with
-    | Loaded data ->
-      data.Store.Dispatch sm
-      maybePublish data sm agent
-      updateClients data sm agent
-      state
-    | Idle -> state
+  let private handleStop (state: ServerState) =
+    dispose state
+    state.Stopper.Set() |> ignore
+    { state with Status = ServiceStatus.Stopping }
 
   // ** loop
 
-  let private loop (initial: ServerState) (subs: Subscriptions) (inbox: ApiAgent) =
-    let rec act (state: ServerState) =
+  let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
+    let rec act () =
       async {
-        let! msg = inbox.Receive()
+        try
+          let! msg = inbox.Receive()
 
-        let newstate =
-          match msg with
-          | Msg.Start(chan,mem,projectId)   -> handleStart chan state inbox mem projectId
-          | Msg.Dispose chan                -> handleDispose chan state
-          | Msg.AddClient(chan,client)      -> handleAddClient chan state subs client inbox
-          | Msg.RemoveClient(chan,client)   -> handleRemoveClient chan state subs client
-          | Msg.GetClients(chan)            -> handleGetClients chan state
-          | Msg.SetStatus(status)           -> handleSetStatus state subs status
-          | Msg.SetClientStatus(id, status) -> handleSetClientStatus state subs id status
-          | Msg.SetState(chan, newstate)    -> handleSetState chan state newstate inbox
-          | Msg.GetState(chan)              -> handleGetState chan state
-          | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id inbox
-          | Msg.LocalUpdate(sm)             -> handleLocalUpdate state sm inbox
-          | Msg.ClientUpdate(sm)            -> handleClientUpdate state subs sm inbox
-          | Msg.RemoteUpdate(sm)            -> handleRemoteUpdate state subs sm inbox
+          Actors.warnQueueLength (tag "loop") inbox
 
-        return! act newstate
+          let state = store.State
+          let newstate =
+            try
+              match msg with
+              | Msg.Start                       -> handleStart state
+              | Msg.Stop                        -> handleStop state
+              | Msg.AddClient(client)           -> handleAddClient state client inbox
+              | Msg.RemoveClient(client)        -> handleRemoveClient state client
+              | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+              | Msg.SetStatus(status)           -> handleSetStatus state status
+              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
+              | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
+              | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
+            with
+              | exn ->
+                exn.Message + exn.StackTrace
+                |> String.format "Error in loop: {0}"
+                |> Logger.err (tag "loop")
+                state
+          if not (Service.isStopping newstate.Status) then
+            store.Update newstate
+        with
+          | exn ->
+            exn.Message
+            |> Logger.err (tag "loop")
+        return! act ()
       }
-    act initial
+    act ()
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
+  // ** start
 
-  // ** ApiServer module
+  let private start (mem: RaftMember)
+                    (projectId: Id)
+                    (store: IAgentStore<ServerState>)
+                    (agent: ApiAgent) =
+    either {
+      let pubsub =
+        PubSub.create
+          mem.Id                        // to deduplicate messages sent from this process
+          PubSub.defaultAddress
+          (int Constants.MCAST_PORT)
 
-  [<RequireQualifiedAccess>]
-  module ApiServer =
-
-    let create (mem: RaftMember) (projectId: Id) =
-      either {
-        let cts = new CancellationTokenSource()
-        let subs = new Subscriptions()
-        let agent = new ApiAgent(loop Idle subs, cts.Token)
-        let listener = createListener subs
-        agent.Start()
-
-        return
-          { new IApiServer with
-              member self.Start () =
-                match postCommand agent (fun chan -> Msg.Start(chan,mem,projectId)) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "Start")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
-              member self.Clients
-                with get () =
-                  match postCommand agent (fun chan -> Msg.GetClients(chan)) with
-                  | Right (Reply.Clients clients) -> Either.succeed clients
-                  | Right other ->
-                    sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "Clients")
-                    |> Either.fail
-                  | Left error ->
-                    error
-                    |> Either.fail
-
-              member self.State
-                with get () =
-                  match postCommand agent (fun chan -> Msg.GetState(chan)) with
-                  | Right (Reply.State state) -> Either.succeed state
-                  | Right other ->
-                    sprintf "Unexpected Reply from ApiAgent: %A" other
-                    |> Error.asClientError (tag "State")
-                    |> Either.fail
-                  | Left error ->
-                    error
-                    |> Either.fail
-
-              member self.Update (sm: StateMachine) =
-                agent.Post(Msg.LocalUpdate sm)
-
-              member self.SetState (state: State) =
-                match postCommand agent (fun chan -> Msg.SetState(chan, state)) with
-                | Right (Reply.Ok) -> Either.succeed ()
-                | Right other ->
-                  sprintf "Unexpected Reply from ApiAgent: %A" other
-                  |> Error.asClientError (tag "SetState")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
-              member self.Subscribe (callback: ApiEvent -> unit) =
-                { new IObserver<ApiEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
-
-              member self.Dispose () =
-                postCommand agent (fun chan -> Msg.Dispose chan)
-                |> ignore
-                dispose cts
-            }
+      let server = TcpServer.create {
+        ServerId = mem.Id
+        Listen = mem.IpAddr
+        Port = mem.ApiPort
       }
+
+      match server.Start()  with
+      | Right () ->
+        match pubsub.Start() with
+        | Right () ->
+          let srv = server.Subscribe (Msg.ServerEvent >> agent.Post)
+          let pbsb = pubsub.Subscribe(processSubscriptionEvent mem.Id agent)
+
+          let updated =
+            { store.State with
+                Status = ServiceStatus.Running
+                PubSub = pubsub
+                Server = server
+                Disposables = [ srv; pbsb ] }
+
+          store.Update updated
+          agent.Start()
+          agent.Post Msg.Start
+
+        | Left error ->
+          dispose server
+          dispose pubsub
+          return! Either.fail error
+
+      | Left error ->
+        return! Either.fail error
+    }
+
+  // ** create
+
+  let create (mem: RaftMember) (projectId: Id) callbacks =
+    either {
+      let cts = new CancellationTokenSource()
+
+      let store = AgentStore.create ()
+
+      store.Update {
+        Id = mem.Id
+        Status = ServiceStatus.Stopped
+        Server = Unchecked.defaultof<IServer>
+        PubSub = Unchecked.defaultof<IPubSub>
+        Clients = Map.empty
+        Subscriptions = Subscriptions()
+        Disposables = []
+        Callbacks = callbacks
+        Stopper = new AutoResetEvent(false)
+      }
+
+      let agent = new ApiAgent(loop store, cts.Token)
+      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+
+      return
+        { new IApiServer with
+
+            // *** Publish
+
+            member self.Publish (ev: IrisEvent) =
+              if Service.isRunning store.State.Status then
+                match ev with
+                | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
+                | IrisEvent.Append (_, cmd) ->
+                  updateAllClients store.State cmd
+                  publish store.State cmd agent
+                | _ -> ()
+
+            // *** Start
+
+            member self.Start () = start mem projectId store agent
+
+            // *** Clients
+
+            member self.Clients
+              with get () = store.State.Clients |> Map.map (fun _ client -> client)
+
+            // *** SendSnapshot
+
+            member self.SendSnapshot () =
+              Map.iter (fun id _ -> id |> Msg.InstallSnapshot |> agent.Post) store.State.Clients
+
+            // *** Update
+
+            member self.Update (origin: Origin) (sm: StateMachine) =
+              if Service.isRunning store.State.Status then
+                updateAllClients store.State sm
+                publish store.State sm agent
+
+            // *** Subscribe
+
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              Observable.subscribe callback store.State.Subscriptions
+
+            // *** Dispose
+
+            member self.Dispose () =
+              agent.Post Msg.Stop
+              if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
+                "timeout: attempt to dispose api server failed"
+                |> Logger.err (tag "Dispose")
+              dispose cts
+          }
+    }

@@ -2,122 +2,116 @@ namespace Iris.Service
 
 // * Imports
 
+#if !IRIS_NODES
+
 open System
 open System.Threading
-open System.Collections
 open System.Collections.Concurrent
-open Iris.Zmq
+open Iris.Net
 open Iris.Core
 open Iris.Core.Utils
 open Iris.Service.Interfaces
 open Iris.Raft
-open FSharpx.Functional
-open Utilities
 open Persistence
 
 // * Raft
 
-[<AutoOpen>]
-module Raft =
-
-  //  ____       _            _
-  // |  _ \ _ __(_)_   ____ _| |_ ___
-  // | |_) | '__| \ \ / / _` | __/ _ \
-  // |  __/| |  | |\ V / (_| | ||  __/
-  // |_|   |_|  |_| \_/ \__,_|\__\___|
+module rec RaftServer =
 
   // ** tag
 
-  let private tag (str: string) = sprintf "RaftServer.%s" str
+  let private tag (str: string) = String.format "RaftServer.{0}" str
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,Req>
-
-  // ** Reply
-
-  [<RequireQualifiedAccess;NoComparison;NoEquality>]
-  type private Reply =
-    | Ok
-    | Entry          of EntryResponse
-    | Response       of RaftResponse
-    | State          of RaftAppContext
-    | Status         of ServiceStatus
-    | IsCommitted    of bool
-
-  // ** ReplyChan
-
-  type private ReplyChan = AsyncReplyChannel<Either<IrisError,Reply>>
-
-  // ** Msg
-
-  [<RequireQualifiedAccess;NoComparison;NoEquality>]
-  type private Msg =
-    | Load           of chan:ReplyChan * config:IrisConfig
-    | Unload         of chan:ReplyChan
-    | Join           of chan:ReplyChan * ip:IpAddress * port:uint16
-    | Leave          of chan:ReplyChan
-    | Get            of chan:ReplyChan
-    | Status         of chan:ReplyChan
-    | Periodic
-    | ForceElection
-    | AddCmd         of chan:ReplyChan * sm:StateMachine
-    | Request        of chan:ReplyChan * req:RaftRequest
-    | Response       of chan:ReplyChan * resp:RaftResponse
-    | AddMember      of chan:ReplyChan * mem:RaftMember
-    | RmMember       of chan:ReplyChan * id:Id
-    | IsCommitted    of chan:ReplyChan * entry:EntryResponse
-
-    override self.ToString() =
-      match self with
-      | Load       (_,config)    -> sprintf "Load:  %A" config
-      | Unload             _     -> sprintf "Unload"
-      | Join       (_,ip,port)   -> sprintf "Join: %s %d" (string ip) port
-      | Leave               _    -> "Leave"
-      | Get                 _    -> "Get"
-      | Status              _    -> "Status"
-      | Periodic                 -> "Periodic"
-      | ForceElection            -> "ForceElection"
-      | AddCmd         (_,sm)    -> sprintf "AddCmd:  %A" sm
-      | Request        (_,req)   -> sprintf "Request:  %A" req
-      | Response       (_,resp)  -> sprintf "Response:  %A" resp
-      | AddMember      (_,mem)  -> sprintf "AddMember:  %A" mem
-      | RmMember       (_,id)    -> sprintf "RmMember:  %A" id
-      | IsCommitted    (_,entry) -> sprintf "IsCommitted:  %A" entry
+  type private Connections = ConcurrentDictionary<Id,IClient>
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<RaftEvent>>
-
-  // ** StateArbiter
-
-  type private StateArbiter = MailboxProcessor<Msg>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** RaftServerState
 
   [<NoComparison;NoEquality>]
   type private RaftServerState =
-    | Idle
-    | Loaded of RaftAppContext
+    { Status:         ServiceStatus
+      Raft:           RaftValue
+      Options:        IrisConfig
+      Callbacks:      IRaftCallbacks
+      Server:         IServer
+      Disposables:    IDisposable list
+      Connections:    ConcurrentDictionary<Id,IClient>
+      Subscriptions:  Subscriptions
+      Started:        AutoResetEvent
+      Stopped:        AutoResetEvent }
 
-  //  _   _      _
-  // | | | | ___| |_ __   ___ _ __ ___
-  // | |_| |/ _ \ | '_ \ / _ \ '__/ __|
-  // |  _  |  __/ | |_) |  __/ |  \__ \
-  // |_| |_|\___|_| .__/ \___|_|  |___/
-  //              |_|
+  // ** Msg
+
+  [<RequireQualifiedAccess;NoComparison;NoEquality>]
+  type private Msg =
+    | Periodic
+    | ForceElection
+    | Start
+    | Started
+    | Stop
+    | Stopped
+    | Notify            of IrisEvent
+    | RawServerResponse of response:Response
+    | ServerEvent       of ev:TcpServerEvent
+    | ClientEvent       of ev:TcpClientEvent
+    | AddCmd            of sm:StateMachine
+    | AddMember         of mem:RaftMember
+    | RemoveMember      of id:Id
+    | ReqCommitted      of started:DateTime * entry:EntryResponse * response:Response
+    // | Join           of ip:IpAddress * port:uint16
+    // | Leave
+    // | IsCommitted    of started:DateTime * entry:EntryResponse
+
+    // *** ToString
+
+    override msg.ToString() =
+      match msg with
+      | Start                     -> "Start"
+      | Started                   -> "Started"
+      | Stop                   _  -> "Stop"
+      | Stopped                _  -> "Stopped"
+      | Notify                 e  -> sprintf "Notify: %A" e
+      | ServerEvent            _  -> "ServerEvent"
+      | ClientEvent            _  -> "ClientEvent"
+      | RawServerResponse      _  -> "RawServerResponse"
+      | Periodic                  -> "Periodic"
+      | ForceElection             -> "ForceElection"
+      | AddCmd          sm        -> sprintf "AddCmd:  %A" sm
+      | AddMember       mem       -> sprintf "AddMember:  %O" mem.Id
+      | RemoveMember        id    -> sprintf "RemoveMember:  %O" id
+      | ReqCommitted  (_,entry,_) -> sprintf "ReqCommitted:  %A" entry
+      // | Join          (ip,port)   -> sprintf "Join: %s %d" (string ip) port
+      // | Leave                     -> "Leave"
+      // | IsCommitted   (_,entry)   -> sprintf "IsCommitted:  %A" entry
+
+  // ** RaftAgent
+
+  type private RaftAgent = MailboxProcessor<Msg>
+
+  // ** tryPost
+
+  let private tryPost (agent: RaftAgent) msg =
+    try agent.Post msg
+    with
+      | exn -> sprintf "exn: %s" exn.Message
+               |> Logger.err (tag "tryPost")
 
   // ** getRaft
 
-  /// ## pull Raft state value out of RaftAppContext value
+  /// ## pull Raft state value out of RaftServerState value
   ///
-  /// Get Raft state value from RaftAppContext.
+  /// Get Raft state value from RaftServerState.
   ///
   /// ### Signature:
-  /// - context: RaftAppContext
+  /// - context: RaftServerState
   ///
   /// Returns: Raft
-  let private getRaft (context: RaftAppContext) =
+  let private getRaft (context: RaftServerState) =
     context.Raft
 
   // ** getMember
@@ -127,10 +121,10 @@ module Raft =
   /// Return the current mem.
   ///
   /// ### Signature:
-  /// - context: RaftAppContext
+  /// - context: RaftServerState
   ///
   /// Returns: RaftMember
-  let private getMember (context: RaftAppContext) =
+  let private getMember (context: RaftServerState) =
     context
     |> getRaft
     |> Raft.getSelf
@@ -142,10 +136,10 @@ module Raft =
   /// Return the current mem Id.
   ///
   /// ### Signature:
-  /// - context: RaftAppContext
+  /// - context: RaftServerState
   ///
   /// Returns: Id
-  let private getMemberId (context: RaftAppContext) =
+  let private getMemberId (context: RaftServerState) =
     context
     |> getRaft
     |> Raft.getSelf
@@ -153,307 +147,176 @@ module Raft =
 
   // ** updateRaft
 
-  /// ## Update Raft in RaftAppContext
+  /// ## Update Raft in RaftServerState
   ///
-  /// Update the Raft field of a given RaftAppContext
+  /// Update the Raft field of a given RaftServerState
   ///
   /// ### Signature:
-  /// - raft: new Raft value to add to RaftAppContext
-  /// - state: RaftAppContext to update
+  /// - raft: new Raft value to add to RaftServerState
+  /// - state: RaftServerState to update
   ///
-  /// Returns: RaftAppContext
-  let private updateRaft (context: RaftAppContext) (raft: RaftValue) : RaftAppContext =
+  /// Returns: RaftServerState
+  let private updateRaft (context: RaftServerState) (raft: RaftValue) : RaftServerState =
     { context with Raft = raft }
 
-  // ** postCommand
+  // ** makePeerSocket
 
-  let inline private postCommand (arbiter: StateArbiter) (cb: ReplyChan -> Msg) =
-    async {
-      let! result = arbiter.PostAndTryAsyncReply(cb, Constants.COMMAND_TIMEOUT)
-      match result with
-      | Some response -> return response
-      | None ->
-        return
-          "Command Timeout"
-          |> Error.asOther (tag "postCommand")
-          |> Either.fail
+  let private makePeerSocket (peer: RaftMember) =
+    let socket = TcpClient.create {
+      ClientId = peer.Id
+      PeerAddress = peer.IpAddr
+      PeerPort = peer.Port
+      Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
     }
-    |> Async.RunSynchronously
+    socket.Connect()
+    Some socket
 
-  //  ____
-  // / ___|  ___ _ ____   _____ _ __
-  // \___ \ / _ \ '__\ \ / / _ \ '__|
-  //  ___) |  __/ |   \ V /  __/ |
-  //.|____/.\___|_|....\_/.\___|_|............................................................
+  // ** getPeerSocket
 
-  // ** waitForCommit
+  let private getPeerSocket (connections: Connections) (peer: Id)  =
+    match connections.TryGetValue peer with
+    | true, connection -> Some connection
+    | _ -> None
 
-  /// ## waitForCommit
-  ///
-  /// Block execution until an entry has successfully been committed in the cluster.
-  ///
-  /// ### Signature:
-  /// - appended: EntryResponse returned by receiveEntry
-  /// - state: RaftServerState transactional state variable
-  ///
-  /// Returns: bool
-  let private waitForCommit (arbiter: StateArbiter) (appended: EntryResponse) =
-    let timeout = 200                   // ms!
-    let delta = 2                       // ms!
+  // ** registerPeerSocket
 
-    let ok = ref (Right true)
-    let run = ref true
-    let iterations = ref 0
+  let private registerPeerSocket (agent: RaftAgent) (socket: IClient) =
+    socket.Subscribe (Msg.ClientEvent >> tryPost agent) |> ignore
+    socket
 
-    // wait for the entry to be committed by everybody
-    while !run && !iterations < timeout do
-      let response = postCommand arbiter (fun chan -> Msg.IsCommitted(chan,appended))
+  // ** addPeerSocket
 
-      match response with
-      | Right (Reply.IsCommitted result) ->
-        ok := Right result
+  let private addPeerSocket (connections: Connections) (socket: IClient) =
+    match connections.TryAdd(socket.ClientId, socket) with
+    | true -> ()
+    | false ->
+      match connections.TryAdd(socket.ClientId, socket) with
+      | true -> ()
+      | false ->
+        "unable to add peer socket after 1 retry"
+        |> Logger.err (tag "addPeerSocket")
 
-      | Right reply ->
-        let error = RaftError(tag "waitForCommit", sprintf "Unxpeced reply:  %A" reply)
-        ok := Left error
-        run := false
+  // ** handleNotify
 
-      | Left error ->
-        ok  := Left error
-        run := false
+  let private handleNotify (state: RaftServerState) (ev: IrisEvent) =
+    Observable.onNext state.Subscriptions ev
+    if state.Raft.IsLeader then
+      match ev with
+      | IrisEvent.EnterJointConsensus _ -> onConfigDone state
+      | _ -> state
+    else state
 
-      match !ok with
-      | Right true | Left _ -> run := false
-      | _ ->
-        printfn " %A not yet committed" (string appended.Id)
-        iterations := !iterations + delta
-        Thread.Sleep delta
+  // ** sendRequest
 
-    !ok
+  let private sendRequest (peer: RaftMember) connections agent request =
+    match peer.Id |> getPeerSocket connections with
+    | Some connection -> performRequest request connection
+    | None ->
+      peer.Id
+      |> sprintf "unable to find peer socket for %O. starting one.."
+      |> Logger.debug (tag "sendRequest")
+      let connection =
+        peer
+        |> makePeerSocket
+        |> Option.map (registerPeerSocket agent)
+      Option.iter (performRequest request) connection
+      Option.iter (addPeerSocket connections) connection
 
-  // ** requestHandler
+  // ** makeCallbacks
 
-  let private requestHandler (mem: RaftMember) (arbiter: StateArbiter) (data: byte array) =
-    let handleRequest request =
-      either {
-        let! message = Binary.decode<IrisError,RaftRequest> request
-        let! reply = postCommand arbiter (fun chan -> Msg.Request(chan, message))
-
-        match reply with
-        | Reply.Response response ->       // the base case: the response is ready
-          return response
-
-        | Reply.Entry entry ->
-          let! committed = waitForCommit arbiter entry
-
-          match message, committed with
-          | AppendEntry _, true ->
-            return AppendEntryResponse entry
-
-          | HandShake _, true ->
-            return Welcome mem
-
-          | HandWaive _, true ->
-            return Arrivederci
-
-          | HandWaive _, false | HandShake _, false | AppendEntry _, false ->
-            return!
-              "Response Timeout"
-              |> Error.asRaftError (tag "requestHandler")
-              |> Either.fail
-
-          | other ->
-            return!
-              sprintf "Unexpected reply StateArbiter:  %A" other
-              |> Error.asRaftError (tag "requestHandler")
-              |> Either.fail
-
-        | other ->
-          return!
-            sprintf "Unexpected reply StateArbiter:  %A" other
-            |> Error.asRaftError (tag "requestHandler")
-            |> Either.fail
-      }
-
-    match handleRequest data with
-    | Right response ->
-      response
-      |> Binary.encode
-    | Left error ->
-      error
-      |> ErrorResponse
-      |> Binary.encode
-
-  //   ____      _ _ _                _
-  //  / ___|__ _| | | |__   __ _  ___| | _____
-  // | |   / _` | | | '_ \ / _` |/ __| |/ / __|
-  // | |__| (_| | | | |_) | (_| | (__|   <\__ \
-  //  \____\__,_|_|_|_.__/ \__,_|\___|_|\_\___/
-
-  // ** getConnection
-
-  let private getConnection (self: Id) (connections: Connections) (peer: RaftMember) : Req =
-    match connections.TryGetValue peer.Id with
-    | true, connection -> connection
-    | _ ->
-      let connection = mkReqSocket peer
-      while not (connections.TryAdd(peer.Id, connection)) do
-        "Unable to add connection. Retrying."
-        |> Logger.err self (tag "getConnection")
-        Thread.Sleep 1
-      connection
-
-  // ** sendRequestVote
-
-  let private sendRequestVote (self: Id)
-                              (connections: Connections)
-                              (peer: RaftMember)
-                              (request: VoteRequest) :
-                              VoteResponse option =
-
-    let request = RequestVote(self, request)
-    let client = getConnection self connections peer
-    let result = performRequest client request
-
-    match result with
-    | Right (RequestVoteResponse(_, vote)) -> Some vote
-    | Right other ->
-      other
-      |> sprintf "Unexpected Response:  %A"
-      |> Logger.err self (tag "sendRequestVote")
-      None
-
-    | Left error ->
-      dispose client
-      connections.TryRemove peer.Id |> ignore
-      memUri peer
-      |> sprintf "Encountered error %A in request to  %A" error
-      |> Logger.err self (tag "sendRequestVote")
-      None
-
-  // ** sendAppendEntries
-
-  let private sendAppendEntries (self: Id)
-                                (connections: Connections)
-                                (peer: RaftMember)
-                                (request: AppendEntries) =
-
-    let request = AppendEntries(self, request)
-    let client = getConnection self connections peer
-    let result = performRequest client request
-
-    match result with
-    | Right (AppendEntriesResponse(_, ar)) -> Some ar
-    | Right response ->
-      response
-      |> sprintf "Unexpected Response:   %A"
-      |> Logger.err self (tag "sendAppendEntries")
-      None
-    | Left error ->
-      memUri peer
-      |> sprintf "SendAppendEntries: received error  %A in request to  %A" error
-      |> Logger.err self (tag "sendAppendEntries")
-      None
-
-  // ** sendInstallSnapshot
-
-  let private sendInstallSnapshot (self: Id)
-                                  (connections: Connections)
-                                  (peer: RaftMember)
-                                  (is: InstallSnapshot) =
-    let client = getConnection self connections peer
-    let request = InstallSnapshot(self, is)
-    let result = performRequest client request
-
-    match result with
-    | Right (InstallSnapshotResponse(_, ar)) -> Some ar
-    | Right response ->
-      response
-      |> sprintf "Unexpected Response:  %A"
-      |> Logger.err self (tag "sendInstallSnapshot")
-      None
-    | Left error ->
-      memUri peer
-      |> sprintf "SendInstallSnapshot: received error  %A in request to  %A" error
-      |> Logger.err self (tag "sendInstallSnapshot")
-      None
-
-  // ** prepareSnapshot
-
-  let private prepareSnapshot state snapshot =
-    Raft.createSnapshot (DataSnapshot snapshot) state.Raft
-  //     match onCreateSnapshot with
-
-  //     | Some cb ->
-  //       let currIdx = Log.index raft.Log
-  //       let prevTerm = Log.term raft.Log
-  //       let term = raft.CurrentTerm
-  //       let mems = raft.Peers |> Map.toArray |> Array.map snd
-  //       let data = cb ()
-  //       Snapshot(Id.Create(), currIdx + 1u, term, currIdx, prevTerm, mems, data)
-  //       |> Log.fromEntries
-  //       |> Some
-  //     | _ ->
-  //       Logger.err memid tag "Unable to create snapshot. No data handler specified."
-  //       None
-
-  let private trigger (subscriptions: Subscriptions) (ev: RaftEvent) =
-    for subscription in subscriptions do
-      subscription.OnNext ev
-
-  // ** mkCallbacks
-
-  let private mkCallbacks (id: Id)
-                          (connections: Connections)
-                          (subscriptions: Subscriptions) =
+  let private makeCallbacks (id: Id)
+                            (connections: Connections)
+                            (callbacks: IRaftSnapshotCallbacks)
+                            (agent: RaftAgent) =
 
     { new IRaftCallbacks with
         member self.SendRequestVote peer request =
-          sendRequestVote id connections peer request
+          Tracing.trace (tag "sendRequestVote") <| fun () ->
+            RequestVote(id, request)
+            |> sendRequest peer connections agent
 
         member self.SendAppendEntries peer request =
-          sendAppendEntries id connections peer request
+          Tracing.trace (tag "sendAppendEntries") <| fun () ->
+            AppendEntries(id, request)
+            |> sendRequest peer connections agent
 
         member self.SendInstallSnapshot peer request =
-          sendInstallSnapshot id connections peer request
+          Tracing.trace (tag "sendInstallSnapshot") <| fun () ->
+            InstallSnapshot(id, request)
+            |> sendRequest peer connections agent
 
         member self.PrepareSnapshot raft =
-          printfn "PrepareSnapshot"
-          None
+          Tracing.trace (tag "prepareSnapshot") <| fun () ->
+            callbacks.PrepareSnapshot ()
+            |> Option.map (DataSnapshot >> Raft.createSnapshot raft)
 
         member self.RetrieveSnapshot () =
-          printfn "RetrieveSnapshot"
-          None
+          Tracing.trace (tag "retrieveSnapshot") <| fun () ->
+            callbacks.RetrieveSnapshot()
 
         member self.PersistSnapshot log =
-          printfn "PersistSnapshot"
+          Tracing.trace (tag "persistSnapshot") <| fun () ->
+            log
+            |> IrisEvent.PersistSnapshot
+            |> Msg.Notify
+            |> agent.Post
 
         member self.ApplyLog cmd =
-          RaftEvent.ApplyLog cmd
-          |> trigger subscriptions
+          Tracing.trace (tag "applyLog") <| fun () ->
+            IrisEvent.Append (Origin.Raft, cmd)
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberAdded mem =
-          RaftEvent.MemberAdded mem
-          |> trigger subscriptions
+          Tracing.trace (tag "memberAdded") <| fun () ->
+            IrisEvent.Append (Origin.Raft, AddMember mem)
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberUpdated mem =
-          RaftEvent.MemberUpdated mem
-          |> trigger subscriptions
+          Tracing.trace (tag "memberUpdated") <| fun () ->
+            IrisEvent.Append (Origin.Raft, UpdateMember mem)
+            |> Msg.Notify
+            |> agent.Post
 
         member self.MemberRemoved mem =
-          RaftEvent.MemberRemoved mem
-          |> trigger subscriptions
+          Tracing.trace (tag "memberRemoved") <| fun () ->
+            IrisEvent.Append (Origin.Raft, RemoveMember mem)
+            |> Msg.Notify
+            |> agent.Post
+
+        member self.JointConsensus changes =
+          Tracing.trace (tag "configured") <| fun () ->
+            changes
+            |> IrisEvent.EnterJointConsensus
+            |> Msg.Notify
+            |> agent.Post
 
         member self.Configured mems =
-          RaftEvent.Configured mems
-          |> trigger subscriptions
+          Tracing.trace (tag "configured") <| fun () ->
+            mems
+            |> IrisEvent.ConfigurationDone
+            |> Msg.Notify
+            |> agent.Post
 
         member self.StateChanged oldstate newstate =
-          RaftEvent.StateChanged(oldstate, newstate)
-          |> trigger subscriptions
+          Tracing.trace (tag "stateChanged") <| fun () ->
+            (oldstate, newstate)
+            |> IrisEvent.StateChanged
+            |> Msg.Notify
+            |> agent.Post
+
+        member self.LeaderChanged newleader =
+          Tracing.trace (tag "leaderChanged") <| fun () ->
+            newleader
+            |> IrisEvent.LeaderChanged
+            |> Msg.Notify
+            |> agent.Post
 
         member self.PersistVote mem =
-          printfn "PersistVote"
+          Tracing.trace (tag "persistVote") <| fun () ->
+            ignore mem
+
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -463,13 +326,15 @@ module Raft =
   //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
-  //       "PersistVote reset VotedFor" |> Logger.debug memid tag
+  //       "PersistVote reset VotedFor" |> Logger.debug tag
   //     with
 
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistTerm term =
-          printfn "PersistTerm"
+          Tracing.trace (tag "persistTerm") <| fun () ->
+            ignore term
+
   //     try
   //       self.State
   //       |> RaftContext.getRaft
@@ -479,65 +344,66 @@ module Raft =
   //           printfn "Could not persit vote change.  %A" err)
   //       |> ignore
 
-  //       sprintf "PersistTerm term:  %A" term |> Logger.debug memid tag
+  //       sprintf "PersistTerm term:  %A" term |> Logger.debug tag
   //     with
 
   //       | exn -> handleException "PersistTerm" exn
 
         member self.PersistLog log =
-          printfn "PersistLog"
+          Tracing.trace (tag "persistLog") <| fun () ->
+            ignore log
 
         member self.DeleteLog log =
-          printfn "DeleteLog"
-
-        member self.LogMsg mem callsite level msg =
-          Logger.log level mem.Id callsite msg
-
+          Tracing.trace (tag "deleteLog") <| fun () ->
+            ignore log
         }
-
-
-  //  ____        __ _
-  // |  _ \ __ _ / _| |_
-  // | |_) / _` | |_| __|
-  // |  _ < (_| |  _| |_
-  // |_| \_\__,_|_|  \__|
 
   // ** appendEntry
 
-  let private appendEntry (state: RaftAppContext) (entry: RaftLogEntry) =
-    let result =
-      entry
-      |> Raft.receiveEntry
-      |> runRaft state.Raft state.Callbacks
+  let private appendEntry (state: RaftServerState) (entry: RaftLogEntry) =
+    Tracing.trace (tag "appendEntry") <| fun () ->
+      let result =
+        entry
+        |> Raft.receiveEntry
+        |> runRaft state.Raft state.Callbacks
 
-    match result with
+      match result with
+      | Right (appended, raftState) ->
+        (appended, updateRaft state raftState)
+        |> Either.succeed
 
-    | Right (appended, raftState) ->
-      (appended, updateRaft state raftState)
-      |> Either.succeed
-
-    | Left (err, raftState) ->
-      (err, updateRaft state raftState)
-      |> Either.fail
+      | Left (err, raftState) ->
+        (err, updateRaft state raftState)
+        |> Either.fail
 
   // ** appendCommand
 
-  let private appendCommand (state: RaftAppContext) (cmd: StateMachine) =
+  let private appendCommand (state: RaftServerState) (cmd: StateMachine) =
     cmd
     |> Log.make state.Raft.CurrentTerm
     |> appendEntry state
 
   // ** onConfigDone
 
-  let private onConfigDone (state: RaftAppContext) =
-    "appending entry to exit joint-consensus into regular configuration"
-    |> Logger.debug state.Raft.Member.Id (tag "onConfigDone")
-
-    state.Raft.Peers
-    |> Map.toArray
-    |> Array.map snd
-    |> Log.mkConfig state.Raft.CurrentTerm
-    |> appendEntry state
+  let private onConfigDone (state: RaftServerState) =
+    Tracing.trace (tag "onConfigDone") <| fun () ->
+      let result =
+        state.Raft.Peers
+        |> Map.toArray
+        |> Array.map snd
+        |> Log.mkConfig state.Raft.CurrentTerm
+        |> appendEntry state
+      match result with
+      | Right (entry, newstate) ->
+        entry.Id
+        |> String.format "appended new Configuration in {0}"
+        |> Logger.info (tag "onConfigDone")
+        newstate
+      | Left (error, newstate) ->
+        error
+        |> String.format "error appending new Configruation: {0}"
+        |> Logger.err (tag "onConfigDone")
+        newstate
 
   // ** addMembers
 
@@ -550,29 +416,18 @@ module Raft =
   /// - mems: the changes to make to the current cluster configuration
   ///
   /// Returns: Either<RaftError * RaftValue, unit * Raft, EntryResponse * RaftValue>
-  let private addMembers (state: RaftAppContext) (mems: RaftMember array) =
-    if Raft.isLeader state.Raft then
-      mems
-      |> Array.map ConfigChange.MemberAdded
-      |> Log.mkConfigChange state.Raft.CurrentTerm
-      |> appendEntry state
-    else
-      "Unable to add new member. Not leader."
-      |> Logger.err state.Raft.Member.Id (tag "addMembers")
-      (RaftError(tag "addMembers", "Not Leader"), state)
-      |> Either.fail
-
-  // ** addNewMember
-
-  let private addNewMember (state: RaftAppContext) (id: Id) (ip: IpAddress) (port: uint32) =
-    sprintf "attempting to add mem with
-          %A  %A:%d" (string id) (string ip) port
-    |> Logger.debug state.Raft.Member.Id (tag "addNewMember")
-
-    [| { Member.create id with
-          IpAddr = ip
-          Port   = uint16 port } |]
-    |> addMembers state
+  let private addMembers (state: RaftServerState) (mems: RaftMember array) =
+    Tracing.trace (tag "addMembers") <| fun () ->
+      if Raft.isLeader state.Raft then
+        mems
+        |> Array.map ConfigChange.MemberAdded
+        |> Log.mkConfigChange state.Raft.CurrentTerm
+        |> appendEntry state
+      else
+        let msg = "Unable to add new member. Not leader."
+        let error = Error.asRaftError (tag "addMembers") msg
+        Logger.err (tag "addMembers") msg
+        Either.fail (error, state)
 
   // ** removeMembers
 
@@ -586,148 +441,163 @@ module Raft =
   /// - appState: transactional variable to work against
   ///
   /// Returns: RaftResponse
-  let private removeMembers (state: RaftAppContext) (mems: RaftMember array) =
-    "appending entry to enter joint-consensus"
-    |> Logger.debug state.Raft.Member.Id (tag "removeMembers")
+  let private removeMembers (state: RaftServerState) (mems: RaftMember array) =
+    Tracing.trace (tag "removeMembers") <| fun () ->
+      "appending entry to enter joint-consensus"
+      |> Logger.debug (tag "removeMembers")
 
-    mems
-    |> Array.map ConfigChange.MemberRemoved
-    |> Log.mkConfigChange state.Raft.CurrentTerm
-    |> appendEntry state
+      mems
+      |> Array.map ConfigChange.MemberRemoved
+      |> Log.mkConfigChange state.Raft.CurrentTerm
+      |> appendEntry state
 
   // ** removeMember
 
-  let private removeMember (state: RaftAppContext) (id: Id) =
-    if Raft.isLeader state.Raft then
-      string id
-      |> sprintf "attempting to remove members with id %A"
-      |> Logger.debug state.Raft.Member.Id (tag "removeMember")
+  let private removeMember (state: RaftServerState) (id: Id) =
+    Tracing.trace (tag "removeMember") <| fun () ->
+      if Raft.isLeader state.Raft then
+        string id
+        |> sprintf "attempting to remove members with id %A"
+        |> Logger.debug (tag "removeMember")
 
-      let potentialChange =
-        state.Raft
-        |> Raft.getMember id
+        let potentialChange =
+          state.Raft
+          |> Raft.getMember id
 
-      match potentialChange with
-
-      | Some mem -> removeMembers state [| mem |]
-      | None ->
-        sprintf "Unable to remove member. Not found:  %A" (string id)
-        |> Logger.err state.Raft.Member.Id (tag "removeMember")
-
-        (RaftError(tag "removeMember", sprintf "Missing Member: %A" id), state)
-        |> Either.fail
-    else
-      "Unable to remove mem. Not leader."
-      |> Logger.err state.Raft.Member.Id (tag "removeMember")
-
-      (RaftError(tag "removeMember","Not Leader"), state)
-      |> Either.fail
+        match potentialChange with
+        | Some mem -> removeMembers state [| mem |]
+        | None ->
+          let msg = sprintf "Unable to remove member. Not found:  %A" (string id)
+          let error = Error.asRaftError (tag "removeMember") msg
+          Logger.err (tag "removeMember") msg
+          Either.fail (error, state)
+      else
+        let msg = "Unable to remove mem. Not leader."
+        let error = Error.asRaftError (tag "removeMember") msg
+        Logger.err (tag "removeMember") msg
+        Either.fail (error, state)
 
   // ** processAppendEntries
 
-  let private processAppendEntries (state: RaftAppContext)
+  let private processAppendEntries (state: RaftServerState)
                                    (sender: Id)
                                    (ae: AppendEntries)
-                                   (channel: ReplyChan) =
-    let result =
-      Raft.receiveAppendEntries (Some sender) ae
-      |> runRaft state.Raft state.Callbacks
+                                   (raw: Request) =
 
-    match result with
-    | Right (response, newstate) ->
-      AppendEntriesResponse(state.Raft.Member.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+    Tracing.trace (tag "processAppendEntries") <| fun () ->
+      let result =
+        Raft.receiveAppendEntries (Some sender) ae
+        |> runRaft state.Raft state.Callbacks
+      match result with
+      | Right (response, newstate) ->
+        (state.Raft.Member.Id, response)
+        |> AppendEntriesResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
-    | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      | Left (err, newstate) ->
+        (state.Raft.Member.Id, err)
+        |> ErrorResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
   // ** processAppendEntry
 
-  let private processAppendEntry (state: RaftAppContext)
+  let private processAppendEntry (state: RaftServerState)
                                  (cmd: StateMachine)
-                                 (chan: ReplyChan) =
-    if Raft.isLeader state.Raft then    // I'm leader, so I try to append command
-      match appendCommand state cmd with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-      | Left (err, newstate) ->
-        err
-        |> Either.fail
-        |> chan.Reply
-        newstate
-    else
-      match Raft.getLeader state.Raft with // redirect to known ledader or fail
-      | Some mem ->
-        Redirect mem
-        |> Reply.Response
-        |> Either.succeed
-        |> chan.Reply
-        state
-      | None ->
-        "Not leader and no known leader."
-        |> Error.asRaftError (tag "processAppendEntry")
-        |> Either.fail
-        |> chan.Reply
-        state
+                                 (raw: Request)
+                                 (agent: RaftAgent) =
 
+    Tracing.trace (tag "processAppendEntry") <| fun () ->
+      if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
+        match appendCommand state cmd with
+        | Right (entry, newstate) ->     // command was appended, now queue a message and the later
+          let response =                // response to check its committed status, eventually
+            entry                       // timing out or responding to the server
+            |> AppendEntryResponse
+            |> Binary.encode
+            |> Response.fromRequest raw
+          (DateTime.Now, entry, response)
+          |> Msg.ReqCommitted
+          |> agent.Post
+          newstate
+        | Left (err, newstate) ->        // Request was unsuccessful, respond immeditately
+          (state.Raft.Member.Id, err)
+          |> ErrorResponse
+          |> Binary.encode
+          |> Response.fromRequest raw
+          |> state.Server.Respond
+          newstate
+      else
+        match Raft.getLeader state.Raft with // redirect to known leader or fail
+        | Some mem ->
+          mem
+          |> Redirect
+          |> Binary.encode
+          |> Response.fromRequest raw
+          |> state.Server.Respond
+          state
+        | None ->
+          "Not leader and no known leader."
+          |> Error.asRaftError (tag "processAppendEntry")
+          |> fun err -> ErrorResponse(state.Raft.Member.Id, err)
+          |> Binary.encode
+          |> Response.fromRequest raw
+          |> state.Server.Respond
+          state
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftAppContext)
-                                 (sender: Id)
-                                 (vr: VoteRequest)
-                                 (channel: ReplyChan) =
-    let result =
-      Raft.receiveVoteRequest sender vr
-      |> runRaft state.Raft state.Callbacks
+  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: Request) =
+    Tracing.trace (tag "processVoteRequest") <| fun () ->
+      let result =
+        Raft.receiveVoteRequest sender vr
+        |> runRaft state.Raft state.Callbacks
 
-    match result with
-    | Right (response, newstate) ->
-      RequestVoteResponse(state.Raft.Member.Id, response)
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      match result with
+      | Right (response, newstate) ->
+        (state.Raft.Member.Id, response)
+        |> RequestVoteResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
-    | Left (err, newstate) ->
-      ErrorResponse err
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
+      | Left (err, newstate) ->
+        (state.Raft.Member.Id, err)
+        |> ErrorResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
   // ** processInstallSnapshot
 
-  let private processInstallSnapshot (state: RaftAppContext)
-                                     (sender: Id)
-                                     (snapshot: InstallSnapshot)
-                                     (channel: ReplyChan) =
-    "INSTALLSNAPSHOT REQUEST NOT HANDLED YET"
-    |> Logger.err state.Raft.Member.Id (tag "processInstallSnapshot")
+  let private processInstallSnapshot (state: RaftServerState) (is: InstallSnapshot) (raw: Request) =
+    Tracing.trace (tag "processInstallSnapshot") <| fun () ->
+      let result =
+        Raft.receiveInstallSnapshot is
+        |> runRaft state.Raft state.Callbacks
 
-    // let snapshot = createSnapshot () |> runRaft raft'
-    let ar = { Term         = state.Raft.CurrentTerm
-             ; Success      = false
-             ; CurrentIndex = Raft.currentIndex state.Raft
-             ; FirstIndex   = match Raft.firstIndex state.Raft.CurrentTerm state.Raft with
-                              | Some idx -> idx
-                              | _        -> 0u }
-
-    InstallSnapshotResponse(state.Raft.Member.Id, ar)
-    |> Reply.Response
-    |> Either.succeed
-    |> channel.Reply
-    state
+      match result with
+      | Right (response, newstate) ->
+        (state.Raft.Member.Id, response)
+        |> InstallSnapshotResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
+      | Left (error, newstate) ->
+        (state.Raft.Member.Id, error)
+        |> ErrorResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        updateRaft state newstate
 
   // ** doRedirect
 
@@ -739,25 +609,28 @@ module Raft =
   /// - state: RaftServerState
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let private doRedirect (state: RaftAppContext) (channel: ReplyChan) =
-    match Raft.getLeader state.Raft with
-    | Some mem ->
-      Redirect mem
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
-
-    | None ->
-      "No known leader"
-      |> Error.asRaftError (tag "doRedirect")
-      |> ErrorResponse
-      |> Reply.Response
-      |> Either.succeed
-      |> channel.Reply
-      state
+  let private doRedirect (state: RaftServerState) (raw: Request) =
+    Tracing.trace (tag "doRedirect") <| fun () ->
+      match Raft.getLeader state.Raft with
+      | Some mem ->
+        mem
+        |> Redirect
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        state
+      | None ->
+        "No known leader"
+        |> Error.asRaftError (tag "doRedirect")
+        |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
+        state
 
   // ** processHandshake
+
+  (*
 
   /// ## Process a HandShake request by a certain Mem.
   ///
@@ -769,242 +642,228 @@ module Raft =
   /// - appState: current TVar<RaftServerState>
   ///
   /// Returns: RaftResponse
-  let private processHandshake (state: RaftAppContext)
-                               (mem: RaftMember)
-                               (channel: ReplyChan) =
-    if Raft.isLeader state.Raft then
-      match addMembers state [| mem |] with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-    else
-      doRedirect state channel
+  let private processHandshake (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
+    Tracing.trace (tag "processHandshake") <| fun () ->
+      if Raft.isLeader state.Raft then
+        match addMembers state [| mem |] with
+        | Right (entry, newstate) ->
+            let response =                  // response to check its committed status, eventually
+              mem
+              |> Welcome
+              |> Binary.encode
+              |> RawResponse.fromRequest raw
+            (DateTime.Now, entry, response)
+            |> Msg.ReqCommitted
+            |> agent.Post
+          newstate
+        | Left (err, newstate) ->
+            err
+            |> ErrorResponse
+            |> Binary.encode
+            |> RawResponse.fromRequest raw
+            |> state.Server.Respond
+          newstate
+      else
+        doRedirect state raw
+  *)
 
   // ** processHandwaive
 
-  let private processHandwaive (state: RaftAppContext)
-                               (mem: RaftMember)
-                               (channel: ReplyChan) =
-    if Raft.isLeader state.Raft then
-      match removeMember state mem.Id with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> channel.Reply
-        newstate
+  (*
 
-      | Left (err, newstate) ->
-        ErrorResponse err
-        |> Reply.Response
-        |> Either.succeed
-        |> channel.Reply
-        newstate
-    else
-      doRedirect state channel
+  let private processHandwaive (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
+    Tracing.trace (tag "processHandwaive") <| fun () ->
+      if Raft.isLeader state.Raft then
+        match removeMember state mem.Id with
+        | Right (entry, newstate) ->
+            let response =                  // response to check its committed status, eventually
+              Arrivederci
+              |> Binary.encode
+              |> RawResponse.fromRequest raw
+            (DateTime.Now, entry, response)
+            |> Msg.ReqCommitted
+            |> agent.Post
+          newstate
+        | Left (err, newstate) ->
+            err
+            |> ErrorResponse
+            |> Binary.encode
+            |> RawResponse.fromRequest raw
+            |> state.Server.Respond
+          newstate
+      else
+        doRedirect state raw
+  *)
 
   // ** processAppendEntriesResponse
 
-  let private processAppendEntriesResponse (state: RaftAppContext)
-                                           (sender: Id)
+  let private processAppendEntriesResponse (state: RaftServerState)
+                                           (mem: Id)
                                            (ar: AppendResponse)
-                                           (channel: ReplyChan) =
+                                           (agent: RaftAgent) =
     let result =
-      Raft.receiveAppendEntriesResponse sender ar
+      Raft.receiveAppendEntriesResponse mem ar
       |> runRaft state.Raft state.Callbacks
 
     match result with
-    | Right (_, newstate) ->
-      Reply.Ok
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
-
+    | Right (_, newstate)  -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> Either.fail
-      |> channel.Reply
+      |> IrisEvent.RaftError
+      |> Msg.Notify
+      |> agent.Post
       updateRaft state newstate
 
   // ** processVoteResponse
 
-  let private processVoteResponse (state: RaftAppContext)
+  let private processVoteResponse (state: RaftServerState)
                                   (sender: Id)
                                   (vr: VoteResponse)
-                                  (channel: ReplyChan) =
+                                  (agent: RaftAgent) =
     let result =
       Raft.receiveVoteResponse sender vr
       |> runRaft state.Raft state.Callbacks
 
     match result with
-    | Right (_, newstate) ->
-      Reply.Ok
-      |> Either.succeed
-      |> channel.Reply
-      updateRaft state newstate
-
+    | Right (_, newstate) -> updateRaft state newstate
     | Left (err, newstate) ->
       err
-      |> Either.fail
-      |> channel.Reply
+      |> IrisEvent.RaftError
+      |> Msg.Notify
+      |> agent.Post
       updateRaft state newstate
 
   // ** processSnapshotResponse
 
-  let private processSnapshotResponse (state: RaftAppContext)
-                                      (sender: Id)
-                                      (ar: AppendResponse)
-                                      (channel: ReplyChan) =
-    "FIX RESPONSE PROCESSING FOR SNAPSHOT REQUESTS"
-    |> Logger.err state.Raft.Member.Id (tag "processSnapshotResponse")
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
-    state
+  let private processSnapshotResponse (state: RaftServerState) (sender: Id) (ar: AppendResponse) =
+    processAppendEntriesResponse state sender ar
 
   // ** processRedirect
 
-  let private processRedirect (state: RaftAppContext)
-                              (leader: RaftMember)
-                              (channel: ReplyChan) =
+  let private processRedirect (state: RaftServerState) (_: RaftMember) =
     "FIX REDIRECT RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id (tag "processRedirect")
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
+    |> Logger.err (tag "processRedirect")
     state
 
   // ** processWelcome
 
-  let private processWelcome (state: RaftAppContext)
-                             (leader: RaftMember)
-                             (channel: ReplyChan) =
+  (*
+
+  let private processWelcome (state: RaftServerState) (leader: RaftMember) =
 
     "FIX WELCOME RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id (tag "processWelcome")
+    |> Logger.err (tag "processWelcome")
 
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
     state
+  *)
 
   // ** processArrivederci
 
-  let private processArrivederci (state: RaftAppContext)
-                                 (channel: ReplyChan) =
+  (*
 
+  let private processArrivederci (state: RaftServerState) =
     "FIX ARRIVEDERCI RESPONSE PROCESSING"
-    |> Logger.err state.Raft.Member.Id (tag "processArrivederci")
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
+    |> Logger.err (tag "processArrivederci")
     state
+  *)
 
   // ** processErrorResponse
 
-  let private processErrorResponse (state: RaftAppContext)
-                                   (error: IrisError)
-                                   (channel: ReplyChan) =
-
+  let private processErrorResponse (state: RaftServerState) (_: Id) (error: IrisError) =
     error
     |> sprintf "received error response:  %A"
-    |> Logger.err state.Raft.Member.Id (tag "processErrorResponse")
-
-    Reply.Ok
-    |> Either.succeed
-    |> channel.Reply
+    |> Logger.err (tag "processErrorResponse")
     state
 
   // ** tryJoin
 
-  let private tryJoin (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
+  (*
+
+  let private tryJoin (state: RaftServerState) (ip: IpAddress) (port: uint16) =
     let rec _tryJoin retry peer =
       either {
         if retry < int state.Options.Raft.MaxRetries then
           use client = mkReqSocket peer
 
           sprintf "Retry: %d" retry
-          |> Logger.debug state.Raft.Member.Id "tryJoin"
+          |> Logger.debug "tryJoin"
 
           let request = HandShake(state.Raft.Member)
           let! result = rawRequest request client
 
           sprintf "Result:  %A" result
-          |> Logger.debug state.Raft.Member.Id "tryJoin"
+          |> Logger.debug "tryJoin"
 
           match result with
           | Welcome mem ->
             sprintf "Received Welcome from  %A" mem.Id
-            |> Logger.debug state.Raft.Member.Id "tryJoin"
+            |> Logger.debug "tryJoin"
             return mem
 
           | Redirect next ->
-            sprintf "Got redirected to  %A" (memUri next)
-            |> Logger.info state.Raft.Member.Id "tryJoin"
+            sprintf "Got redirected to  %A" (Uri.raftUri next)
+            |> Logger.info "tryJoin"
             return! _tryJoin (retry + 1) next
 
           | ErrorResponse err ->
             sprintf "Unexpected error occurred.  %A" err
-            |> Logger.err state.Raft.Member.Id "tryJoin"
+            |> Logger.err "tryJoin"
             return! Either.fail err
 
           | resp ->
             sprintf "Unexpected response.  %A" resp
-            |> Logger.err state.Raft.Member.Id "tryJoin"
+            |> Logger.err "tryJoin"
             return!
               "Unexpected response"
               |> Error.asRaftError (tag "tryJoin")
               |> Either.fail
         else
           "Too many unsuccesful connection attempts."
-          |> Logger.err state.Raft.Member.Id "tryJoin"
+          |> Logger.err "tryJoin"
           return!
             "Too many unsuccesful connection attempts."
             |> Error.asRaftError (tag "tryJoin")
             |> Either.fail
       }
 
-    // execute the join request with a newly created "fake" mem
-    _tryJoin 0 { Member.create (Id.Create()) with
-                  IpAddr = ip
-                  Port   = port }
+    Tracing.trace (tag "tryJoin") <| fun () ->
+      // execute the join request with a newly created "fake" mem
+      _tryJoin 0 { Member.create (Id.Create()) with
+                    IpAddr = ip
+                    Port   = port }
+  *)
 
   // ** tryJoinCluster
 
-  let private tryJoinCluster (state: RaftAppContext) (ip: IpAddress) (port: uint16) =
-    raft {
-      "requesting to join"
-      |> Logger.debug state.Raft.Member.Id (tag "tryJoinCluster")
+  (*
 
-      let leader = tryJoin state ip port
+  let private tryJoinCluster (state: RaftServerState) (ip: IpAddress) (port: uint16) =
+    Tracing.trace (tag "tryJoinCluster") <| fun () ->
+      raft {
+        "requesting to join"
+        |> Logger.debug (tag "tryJoinCluster")
 
-      match leader with
-      | Right leader ->
-        sprintf "Reached leader:  %A Adding to mems." leader.Id
-        |> Logger.info state.Raft.Member.Id (tag "tryJoinCluster")
+        let leader = tryJoin state ip port
 
-        do! Raft.addMemberM leader
-        do! Raft.becomeFollower ()
+        match leader with
+        | Right leader ->
+          sprintf "Reached leader:  %A Adding to mems." leader.Id
+          |> Logger.info (tag "tryJoinCluster")
 
-      | Left err ->
-        sprintf "Joining cluster failed.  %A" err
-        |> Logger.err state.Raft.Member.Id (tag "tryJoinCluster")
+          do! Raft.addMemberM leader
+          do! Raft.becomeFollower ()
 
-    }
-    |> runRaft state.Raft state.Callbacks
+        | Left err ->
+          sprintf "Joining cluster failed.  %A" err
+          |> Logger.err (tag "tryJoinCluster")
+
+      }
+      |> runRaft state.Raft state.Callbacks
+  *)
 
   // ** tryLeave
+
+  (*
 
   /// ## Attempt to leave a Raft cluster
   ///
@@ -1015,7 +874,7 @@ module Raft =
   /// - appState: RaftServerState TVar
   ///
   /// Returns: unit
-  let private tryLeave (state: RaftAppContext) : Either<IrisError,bool> =
+  let private tryLeave (state: RaftServerState) : Either<IrisError,bool> =
     let rec _tryLeave retry mem =
       either {
         if retry < int state.Options.Raft.MaxRetries then
@@ -1048,93 +907,68 @@ module Raft =
             |> Either.fail
       }
 
-    match state.Raft.CurrentLeader with
-    | Some nid ->
-      match Map.tryFind nid state.Raft.Peers with
+    Tracing.trace (tag "tryLeave") <| fun () ->
+      match state.Raft.CurrentLeader with
+      | Some nid ->
+        match Map.tryFind nid state.Raft.Peers with
 
-      | Some mem -> _tryLeave 0 mem
-      | _         ->
-        "Member data for leader id not found"
+        | Some mem -> _tryLeave 0 mem
+        | _         ->
+          "Member data for leader id not found"
+          |> Error.asRaftError (tag "tryLeave")
+          |> Either.fail
+      | _ ->
+        "No known Leader"
         |> Error.asRaftError (tag "tryLeave")
         |> Either.fail
-    | _ ->
-      "No known Leader"
-      |> Error.asRaftError (tag "tryLeave")
-      |> Either.fail
+  *)
 
   // ** leaveCluster
 
-  let private tryLeaveCluster (state: RaftAppContext) =
-    raft {
-      do! Raft.setTimeoutElapsedM 0u
+  (*
 
-      match tryLeave state with
+  let private tryLeaveCluster (state: RaftServerState) =
+    Tracing.trace (tag "tryLeaveCluster") <| fun () ->
+      raft {
+        do! Raft.setTimeoutElapsedM 0<ms>
 
-      | Right true  ->
-        // FIXME: this might need more consequences than this
-        "Successfully left cluster."
-        |> Logger.info state.Raft.Member.Id (tag "tryLeaveCluster")
+        match tryLeave state with
 
-      | Right false ->
-        "Could not leave cluster."
-        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
+        | Right true  ->
+          // FIXME: this might need more consequences than this
+          "Successfully left cluster."
+          |> Logger.info (tag "tryLeaveCluster")
 
-      | Left err ->
-        err
-        |> sprintf "Could not leave cluster.  %A"
-        |> Logger.err state.Raft.Member.Id (tag "tryLeaveCluster")
+        | Right false ->
+          "Could not leave cluster."
+          |> Logger.err (tag "tryLeaveCluster")
 
-      do! Raft.becomeFollower ()
+        | Left err ->
+          err
+          |> sprintf "Could not leave cluster.  %A"
+          |> Logger.err (tag "tryLeaveCluster")
 
-      let! peers = Raft.getMembersM ()
+        do! Raft.becomeFollower ()
 
-      for kv in peers do
-        do! Raft.removeMemberM kv.Value
+        let! peers = Raft.getMembersM ()
 
-    }
-    |> runRaft state.Raft state.Callbacks
+        for kv in peers do
+          do! Raft.removeMemberM kv.Value
+
+      }
+      |> runRaft state.Raft state.Callbacks
+  *)
 
   // ** forceElection
 
-  let private forceElection (state: RaftAppContext) =
-    raft {
-      let! timeout = Raft.electionTimeoutM ()
-      do! Raft.setTimeoutElapsedM timeout
-      do! Raft.periodic timeout
-    }
-    |> runRaft state.Raft state.Callbacks
-
-  //  _                    _ _
-  // | |    ___   __ _  __| (_)_ __   __ _
-  // | |   / _ \ / _` |/ _` | | '_ \ / _` |
-  // | |__| (_) | (_| | (_| | | | | | (_| |
-  // |_____\___/ \__,_|\__,_|_|_| |_|\__, |
-  //                                 |___/
-
-  // ** rand
-
-  let private rand = new System.Random()
-
-  // ** initializeRaft
-
-  let private initializeRaft (state: RaftValue) (callbacks: IRaftCallbacks) =
-    raft {
-      let term = 0u
-      do! Raft.setTermM term
-      let! num = Raft.numMembersM ()
-
-      if num = 1u then
-        do! Raft.setTimeoutElapsedM 0u
-        do! Raft.becomeLeader ()
-      else
-        // set the timeout to something random, to prevent split votes
-        let timeout : Long =
-          rand.Next(0, int state.ElectionTimeout)
-          |> uint32
+  let private forceElection (state: RaftServerState) =
+    Tracing.trace (tag "forceElection") <| fun () ->
+      raft {
+        let! timeout = Raft.electionTimeoutM ()
         do! Raft.setTimeoutElapsedM timeout
-        do! Raft.becomeFollower ()
-    }
-    |> runRaft state callbacks
+        do! Raft.periodic timeout
+      }
+      |> runRaft state.Raft state.Callbacks
 
   // ** startPeriodic
 
@@ -1144,650 +978,677 @@ module Raft =
   /// loop can be cancelled at a later time.
   ///
   /// ### Signature:
-  /// - timeoput: interval at which the loop runs
+  /// - timeout: interval at which the loop runs
   /// - appState: current RaftServerState TVar
   ///
   /// Returns: CancellationTokenSource
-  let private startPeriodic (interval: int) (arbiter: StateArbiter) : IDisposable =
-    MailboxProcessor.Start(fun inbox ->
+  let private startPeriodic (interval: int) (agent: RaftAgent) : IDisposable =
+    let cts = new CancellationTokenSource()
+
+    let loop (inbox: MailboxProcessor<unit>) =
       let rec loop n =
         async {
           inbox.Post()                  // kick the machine
           let! _ = inbox.Receive()
-          arbiter.Post(Msg.Periodic)
+          agent.Post(Msg.Periodic)
           do! Async.Sleep(interval) // sleep for inverval (ms)
           return! loop (n + 1)
         }
-      loop 0)
-    :> IDisposable
+      loop 0
 
-  // ** load
+    let mbp = MailboxProcessor.Start(loop, cts.Token)
 
-  let private load (config: IrisConfig) (subscriptions: Subscriptions) (agent: StateArbiter) =
-    either {
-      let connections = new Connections()
-
-      let! raftstate = Persistence.getRaft config
-
-      let addr = raftstate.Member |> memUri
-      let server = new Rep(raftstate.Member.Id, addr, requestHandler raftstate.Member agent)
-
-      match server.Start() with
-      | Right _ ->
-        let callbacks =
-          mkCallbacks
-            raftstate.Member.Id
-            connections
-            subscriptions
-
-        Map.iter
-          (fun _ (peer: RaftMember) ->
-            if peer.Id <> raftstate.Member.Id then
-              getConnection raftstate.Member.Id connections peer
-              |> ignore)
-          raftstate.Peers
-
-        // periodic function
-        let interval = int config.Raft.PeriodicInterval
-        let periodic = startPeriodic interval agent
-
-        match initializeRaft raftstate callbacks with
-        | Right (_, newstate) ->
-          return
-            Loaded { Status      = ServiceStatus.Running
-                     Raft        = newstate
-                     Callbacks   = callbacks
-                     Options     = config
-                     Periodic    = periodic
-                     Server      = server
-                     Connections = connections }
-
-        | Left (err, _) ->
-          dispose server
-          connections |> Seq.iter (fun (KeyValue(_,connection)) ->
-            dispose connection)
-          dispose periodic
-          return! Either.fail err
-
-      | Left error ->
-        dispose server
-        return! Either.fail error
-    }
-
-  // ** handleLoad
-
-  let private handleLoad (state: RaftServerState)
-                         (chan: ReplyChan)
-                         (config: IrisConfig)
-                         (subscriptions: Subscriptions)
-                         (agent: StateArbiter) =
-    match state with
-    | Loaded data -> dispose data
-    | Idle -> ()
-
-    match load config subscriptions agent with
-    | Right state ->
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
-      state
-
-    | Left error ->
-      error
-      |> Either.fail
-      |> chan.Reply
-      Idle
-
-  // ** handleUnload
-
-  let private handleUnload (state: RaftServerState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
-      state
-    | Loaded data ->
-      dispose data
-      Reply.Ok
-      |> Either.succeed
-      |> chan.Reply
-      Idle
-
-  // ** handleStatus
-
-  let private handleStatus (state: RaftServerState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      ServiceStatus.Stopped
-      |> Reply.Status
-      |> Either.succeed
-      |> chan.Reply
-    | Loaded data ->
-      data.Status
-      |> Reply.Status
-      |> Either.succeed
-      |> chan.Reply
-    state
+    { new IDisposable with
+        member self.Dispose() =
+          try
+            cts.Cancel()
+            dispose cts
+          finally
+            dispose mbp }
 
   // ** handleJoin
 
-  let private handleJoin (state: RaftServerState) (chan: ReplyChan) (ip: IpAddress) (port: UInt16) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleJoin")
-      |> Either.fail
-      |> chan.Reply
-      state
+  (*
 
-    | Loaded data ->
-      match tryJoinCluster data ip port with
+  let private handleJoin (state: RaftServerState) (ip: IpAddress) (port: UInt16) =
+    Tracing.trace (tag "handleJoin") <| fun () ->
+      match tryJoinCluster state ip port with
       | Right (_, newstate) ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-        |> updateRaft data
-        |> Loaded
-
+        notify state.Subscriptions IrisEvent.JoinedCluster
+        updateRaft state newstate
       | Left (error, newstate) ->
         error
-        |> Either.fail
-        |> chan.Reply
-        newstate
-        |> updateRaft data
-        |> Loaded
+        |> IrisEvent.RaftError
+        |> notify state.Subscriptions
+        updateRaft state newstate
+  *)
 
   // ** handleLeave
 
-  let private handleLeave (state: RaftServerState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleLeave")
-      |> Either.fail
-      |> chan.Reply
-      state
+  (*
 
-    | Loaded data ->
-      match tryLeaveCluster data with
+  let private handleLeave (state: RaftServerState) =
+    Tracing.trace (tag "handleLeave") <| fun () ->
+      match tryLeaveCluster state with
       | Right (_, newstate) ->
-        Reply.Ok
-        |> Either.succeed
-        |> chan.Reply
-        newstate
-        |> updateRaft data
-        |> Loaded
+        notify state.Subscriptions IrisEvent.LeftCluster
+        updateRaft state newstate
 
       | Left (error, newstate) ->
         error
-        |> Either.fail
-        |> chan.Reply
-        newstate
-        |> updateRaft data
-        |> Loaded
+        |> string
+        |> Logger.err (tag "handleLeave")
+        error
+        |> IrisEvent.RaftError
+        |> notify state.Subscriptions
+        updateRaft state newstate
+  *)
 
   // ** handleForceElection
 
-  let private handleForceElection (state: RaftServerState) =
-    match state with
-    | Idle -> state
-    | Loaded data ->
-      match forceElection data with
-      | Right (_, newstate) ->
-        newstate
-        |> updateRaft data
-        |> Loaded
-
+  let private handleForceElection (state: RaftServerState) (agent: RaftAgent) =
+    Tracing.trace (tag "handleForceElection") <| fun () ->
+      match forceElection state with
+      | Right (_, newstate) -> updateRaft state newstate
       | Left (err, newstate) ->
         err
         |> sprintf "Unable to force an election:  %A"
-        |> Logger.err newstate.Member.Id (tag "handleForceElection")
+        |> Logger.err (tag "handleForceElection")
 
-        newstate
-        |> updateRaft data
-        |> Loaded
+        err
+        |> IrisEvent.RaftError
+        |> Msg.Notify
+        |> agent.Post
+
+        updateRaft state newstate
 
   // ** handleAddCmd
 
-  let private handleAddCmd (state: RaftServerState) (chan: ReplyChan) (cmd: StateMachine) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleAddCmd")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      match appendCommand data cmd with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
+  let private handleAddCmd (state: RaftServerState) (agent: RaftAgent) (cmd: StateMachine) =
+    Tracing.trace (tag "handleAddCmd") <| fun () ->
+      match appendCommand state cmd with
+      | Right (_, newstate) ->
+        // (DateTime.Now, entry)
+        // |> Msg.IsCommitted
+        // |> agent.Post
         newstate
-        |> Loaded
 
       | Left (err, newstate) ->
         err
-        |> Either.fail
-        |> chan.Reply
+        |> string
+        |> Logger.err (tag "handleAddCmd")
+        err
+        |> IrisEvent.RaftError
+        |> Msg.Notify
+        |> agent.Post
         newstate
-        |> Loaded
-
-  // ** handleResponse
-
-  let private handleResponse (state: RaftServerState) (chan: ReplyChan) (response: RaftResponse) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleResponse")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      match response with
-      | RequestVoteResponse     (sender, vote) -> processVoteResponse          data sender vote chan
-      | AppendEntriesResponse   (sender, ar)   -> processAppendEntriesResponse data sender ar   chan
-      | InstallSnapshotResponse (sender, ar)   -> processSnapshotResponse      data sender ar   chan
-      | ErrorResponse            error         -> processErrorResponse         data error       chan
-      | _                                      -> data
-      |> Loaded
-
-  // ** handleRequest
-
-  let private handleRequest (state: RaftServerState) (chan: ReplyChan) (req: RaftRequest) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleRequest")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      match req with
-      | AppendEntries (id, ae)   -> processAppendEntries   data id ae chan
-      | AppendEntry  sm          -> processAppendEntry     data sm    chan
-      | RequestVote (id, vr)     -> processVoteRequest     data id vr chan
-      | InstallSnapshot (id, is) -> processInstallSnapshot data id is chan
-      | HandShake mem            -> processHandshake       data mem   chan
-      | HandWaive mem            -> processHandwaive       data mem   chan
-      |> Loaded
 
   // ** handlePeriodic
 
   let private handlePeriodic (state: RaftServerState) =
-    match state with
-    | Idle -> Idle
-    | Loaded data ->
-      uint32 data.Options.Raft.PeriodicInterval
+    Tracing.trace (tag "handlePeriodic") <| fun () ->
+      int state.Options.Raft.PeriodicInterval * 1<ms>
       |> Raft.periodic
-      |> evalRaft data.Raft data.Callbacks
-      |> updateRaft data
-      |> Loaded
-
-  // ** handleGet
-
-  let private handleGet (state: RaftServerState) (chan: ReplyChan) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleGet")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      Reply.State data
-      |> Either.succeed
-      |> chan.Reply
-      state
-
+      |> evalRaft state.Raft state.Callbacks
+      |> updateRaft state
 
   // ** handleAddMember
 
-  let private handleAddMember (state: RaftServerState) (chan: ReplyChan) (mem: RaftMember) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleAddMember")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      match addMembers data [| mem |] with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
+  let private handleAddMember (state: RaftServerState) (agent: RaftAgent) (mem: RaftMember) =
+    Tracing.trace (tag "handleAddMember") <| fun () ->
+      mem
+      |> makePeerSocket
+      |> Option.map (registerPeerSocket agent)
+      |> Option.iter (addPeerSocket state.Connections)
+      match addMembers state [| mem |] with
+      | Right (_, newstate) ->
+        // (DateTime.Now, entry)
+        // |> Msg.IsCommitted
+        // |> agent.Post
         newstate
-        |> Loaded
 
       | Left (err, newstate) ->
         err
-        |> Either.fail
-        |> chan.Reply
+        |> string
+        |> Logger.err (tag "handleAddMember")
+        err
+        |> IrisEvent.RaftError
+        |> Msg.Notify
+        |> agent.Post
         newstate
-        |> Loaded
 
   // ** handleRemoveMember
 
-  let private handleRemoveMember (state: RaftServerState) (chan: ReplyChan) (id: Id) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleRemoveMember")
-      |> Either.fail
-      |> chan.Reply
-      state
-
-    | Loaded data ->
-      match removeMember data id with
-      | Right (entry, newstate) ->
-        Reply.Entry entry
-        |> Either.succeed
-        |> chan.Reply
+  let private handleRemoveMember (state: RaftServerState) (agent: RaftAgent) (id: Id) =
+    Tracing.trace (tag "handleRemoveMember") <| fun () ->
+      match removeMember state id with
+      | Right (_, newstate) ->
+        // (DateTime.Now, entry)
+        // |> Msg.IsCommitted
+        // |> agent.Post
         newstate
-        |> Loaded
 
       | Left (err, newstate) ->
         err
-        |> Either.fail
-        |> chan.Reply
+        |> string
+        |> Logger.err (tag "handleRemoveMember")
+
+        err
+        |> IrisEvent.RaftError
+        |> Msg.Notify
+        |> agent.Post
         newstate
-        |> Loaded
 
   // ** handleIsCommitted
 
-  let private handleIsCommitted (state: RaftServerState) (chan: ReplyChan) (entry: EntryResponse) =
-    match state with
-    | Idle ->
-      "No config loaded"
-      |> Error.asRaftError (tag "handleIsCommitted")
-      |> Either.fail
-      |> chan.Reply
-      state
+  (*
 
-    | Loaded data ->
+  let private handleIsCommitted (state: RaftServerState) (ts: DateTime) (entry: EntryResponse) (agent: RaftAgent) (chan: ReplyChan) =
+    Tracing.trace (tag "handleIsCommitted") <| fun () ->
       let result =
         Raft.responseCommitted entry
-        |> runRaft data.Raft data.Callbacks
+        |> runRaft state.Raft state.Callbacks
+
+      let delta = DateTime.Now - ts
 
       match result with
-      | Right (committed, _) ->
-        committed
-        |> Reply.IsCommitted
-        |> Either.succeed
-        |> chan.Reply
-        state
+      | Right (true, newstate) ->        // the entry was committed, hence we reply to the caller
+          entry
+          |> Reply.Entry
+          |> Either.succeed
+          |> chan.Reply
 
-      | Left  (err, _) ->
+          delta.TotalMilliseconds
+          |> sprintf "Completed request in %fms"
+          |> Logger.debug "handleIsCommitted"
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Right (false, newstate) ->       // the entry was not yet committed
+        if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
+            "Command timed out"          // failed miserably
+            |> Error.asRaftError "handleIsCommitted"
+            |> Either.fail
+            |> chan.Reply
+
+            delta.TotalMilliseconds
+            |> sprintf "Command append failed after %fms"
+            |> Logger.err "handleIsCommitted"
+        else
+          job {                        // now we re-queue the message to check again in 1ms
+            do! timeOutMillis 1000
+            (ts, entry, chan)
+            |> Msg.IsCommitted
+            |> agent.Post
+          } |> Hopac.start
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+
+      | Left (err, newstate) ->          // encountered an error during check. request failed
         err
         |> Either.fail
         |> chan.Reply
+
+        newstate
+        |> updateRaft data
+        |> Loaded
+  *)
+
+  // ** processRequest
+
+  let private processRequest (data: RaftServerState) (agent: RaftAgent) (raw: Request) =
+    Tracing.trace (tag "processRequest") <| fun () ->
+      either {
+        let! request = Binary.decode<RaftRequest> raw.Body
+        let newstate =
+          match request with
+          | AppendEntries (id, ae)  -> processAppendEntries   data id  ae  raw
+          | RequestVote (id, vr)    -> processVoteRequest     data id  vr  raw
+          | InstallSnapshot (_, is) -> processInstallSnapshot data     is  raw
+          | AppendEntry  sm         -> processAppendEntry     data sm  raw agent
+          // | HandShake mem        -> processHandshake       data mem raw agent
+          // | HandWaive mem        -> processHandwaive       data mem raw agent
+        return newstate
+      }
+
+  // ** handleServerRequest
+
+  let private handleServerRequest (state: RaftServerState) (raw: Request) agent =
+    Tracing.trace (tag "handleServerRequest") <| fun () ->
+      match processRequest state agent raw with
+      | Right newdata -> newdata
+      | Left error ->
+        (state.Raft.Member.Id, error)
+        |> ErrorResponse
+        |> Binary.encode
+        |> Response.fromRequest raw
+        |> state.Server.Respond
         state
+
+  // ** handleServerEvent
+
+  let private handleServerEvent state agent = function
+    | TcpServerEvent.Connect(_, ip, port) ->
+      sprintf "new connection from %O:%d" ip port
+      |> Logger.debug (tag "handleServerEvent")
+      state
+
+    | TcpServerEvent.Disconnect(peer) ->
+      sprintf "%O disconnected" peer
+      |> Logger.debug (tag "handleServerEvent")
+      state
+
+    | TcpServerEvent.Request request ->
+      handleServerRequest state request agent
+
+    | TcpServerEvent.Response response -> state
+
+  // ** handleReqCommitted
+
+  let private handleReqCommitted (state: RaftServerState)
+                                 (agent: RaftAgent)
+                                 (ts: DateTime)
+                                 (entry: EntryResponse)
+                                 (raw: Response) =
+
+    Tracing.trace (tag "handleReqCommitted") <| fun () ->
+      let result =
+        Raft.responseCommitted entry
+        |> runRaft state.Raft state.Callbacks
+
+      let delta = DateTime.Now - ts
+
+      match result with
+      | Right (true, newstate) ->
+        state.Server.Respond raw
+
+        delta
+        |> fun delta -> delta.TotalMilliseconds
+        |> sprintf "Entry took %fms to commit"
+        |> Logger.debug (tag "handleReqCommitted")
+
+        updateRaft state newstate
+
+      | Right (false, newstate) ->
+        if int delta.TotalMilliseconds > Constants.COMMAND_TIMEOUT then
+          "AppendEntry timed out"
+          |> Error.asRaftError "handleReqCommitted"
+          |> fun error -> ErrorResponse(state.Raft.Member.Id, error)
+          |> Binary.encode
+          |> Response.create raw.RequestId raw.PeerId
+          |> state.Server.Respond
+
+          delta
+          |> fun delta -> delta.TotalMilliseconds
+          |> sprintf "AppendEntry timed out: %f"
+          |> Logger.debug (tag "handleReqCommitted")
+          updateRaft state newstate
+        else
+          (ts, entry, raw)
+          |> Msg.ReqCommitted
+          |> agent.Post
+          updateRaft state newstate
+      | Left (err, newstate) ->
+        (state.Raft.Member.Id, err)
+        |> ErrorResponse
+        |> Binary.encode
+        |> Response.create raw.RequestId raw.PeerId
+        |> state.Server.Respond
+        updateRaft state newstate
+
+  // ** handleServerResponse
+
+  let private handleServerResponse (state: RaftServerState) agent (raw: Response) =
+    match Binary.decode raw.Body with
+    | Right response ->
+      match response with
+      | RequestVoteResponse (sender, vote)   -> processVoteResponse state sender vote agent
+      | AppendEntriesResponse (sender, ar)   -> processAppendEntriesResponse state sender ar agent
+      | InstallSnapshotResponse (sender, ar) -> processSnapshotResponse state sender ar agent
+      | ErrorResponse (sender, error)        -> processErrorResponse state sender error
+      | _ -> state
+    | Left error ->
+      error
+      |> string
+      |> Logger.err (tag "handleRawRespose")
+      state
+
+  // ** handleClientState
+
+  let private handleClientState (state: RaftServerState) (id: Id) raftState =
+    raft {
+      let! peer = Raft.getMemberM id
+      match peer with
+      | Some mem -> do! Raft.updateMemberM { mem with State = raftState }
+      | None -> ()
+    }
+    |> runRaft state.Raft state.Callbacks
+    |> function
+      | Right (_, newstate) -> updateRaft state newstate
+      | Left (err,_) ->
+        err
+        |> String.format "Could not set new state on member: {0}"
+        |> Logger.err (tag "handleClientState")
+        state
+
+  // ** handleClientResponse
+
+  let private handleClientResponse (state: RaftServerState) (raw: Response) agent =
+    match raw.Body |> Binary.decode with
+    | Right (AppendEntryResponse entry) ->
+      // FIXME:
+      // this will likely take some more thought and handling
+      sprintf "successfully appended entry in %O" entry.Id
+      |> Logger.debug (tag "handleClientResponse")
+      state
+    | Right (AppendEntriesResponse(id, ar))   -> processAppendEntriesResponse state id ar agent
+    | Right (RequestVoteResponse(id, vr))     -> processVoteResponse state id vr agent
+    | Right (InstallSnapshotResponse(id, ar)) -> processSnapshotResponse state id ar agent
+    | Right (ErrorResponse(id, error))        -> processErrorResponse state id error
+    | Right (Redirect leader)                 -> processRedirect state leader
+    | Left error ->
+      error
+      |> sprintf "Error decoding response: %O"
+      |> Logger.err (tag "handleClientResponse")
+      state
+
+  // ** handleClientEvent
+
+  let private handleClientEvent state agent = function
+    | TcpClientEvent.Response response -> handleClientResponse state response agent
+    | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
+    | TcpClientEvent.Connected peer        -> handleClientState state peer RaftMemberState.Running
+    | TcpClientEvent.Disconnected(peer, _) -> handleClientState state peer RaftMemberState.Failed
+
+  // ** handleStop
+
+  let private handleStop (state: RaftServerState) (agent: RaftAgent) =
+    agent.Post Msg.Stopped
+    { state with Status = ServiceStatus.Stopping }
+
+  // ** handleStopped
+
+  let private handleStopped (state: RaftServerState) =
+    state.Stopped.Set() |> ignore
+    state
+
+  // ** initializeRaft
+
+  let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftValue)  =
+    Tracing.trace (tag "initializeRaft") <| fun () ->
+      let rand = System.Random()
+      raft {
+        let term = term 0
+        do! Raft.setTermM term
+        let! num = Raft.numMembersM ()
+
+        if num = 1 then
+          do! Raft.setTimeoutElapsedM 0<ms>
+          do! Raft.becomeLeader ()
+        else
+          // set the timeout to something random, to prevent split votes
+          let timeout = 1<ms> * rand.Next(0, int state.ElectionTimeout)
+          do! Raft.setTimeoutElapsedM timeout
+          do! Raft.becomeFollower ()
+      }
+      |> runRaft state callbacks
+      |> Either.mapError fst
+      |> Either.map snd
+
+  // ** handleStart
+
+  let private handleStart (state: RaftServerState) (agent: RaftAgent) =
+    match initializeRaft state.Callbacks state.Raft with
+    | Right initialized ->
+      // periodic function
+      let interval = int state.Options.Raft.PeriodicInterval
+      let periodic = startPeriodic interval agent
+      ServiceType.Raft |> IrisEvent.Started |> Msg.Notify |> agent.Post
+      agent.Post Msg.Started
+      { state with
+          Status = ServiceStatus.Running
+          Raft = initialized
+          Disposables = periodic :: state.Disposables }
+    | Left error ->
+      sprintf "Fatal, could not initialize Raft: %O" error
+      |> Logger.err (tag "handleStart")
+      agent.Post Msg.Started
+      { state with Status = ServiceStatus.Failed error  }
+
+  // ** handleStarted
+
+  let private handleStarted (state: RaftServerState) =
+    state.Started.Set() |> ignore
+    state
 
   // ** loop
 
-  let private loop (subs: Subscriptions) (inbox: StateArbiter) =
-    let rec act state =
+  let private loop (store: IAgentStore<RaftServerState>) (inbox: RaftAgent) =
+    let rec act () =
       async {
-        let! cmd = inbox.Receive()
+        try
+          let! cmd = inbox.Receive()
 
-        let newstate =
-          match cmd with
-          | Msg.Load (chan,config)     -> handleLoad          state chan config subs inbox
-          | Msg.Unload chan            -> handleUnload        state chan
-          | Msg.Status chan            -> handleStatus        state chan
-          | Msg.Join (chan, ip, port)  -> handleJoin          state chan ip port
-          | Msg.Leave chan             -> handleLeave         state chan
-          | Msg.Periodic               -> handlePeriodic      state
-          | Msg.ForceElection          -> handleForceElection state
-          | Msg.AddCmd (chan, cmd)     -> handleAddCmd        state chan cmd
-          | Msg.Request (chan, req)    -> handleRequest       state chan req
-          | Msg.Response (chan, resp)  -> handleResponse      state chan resp
-          | Msg.Get chan               -> handleGet           state chan
-          | Msg.AddMember (chan, mem)   -> handleAddMember       state chan mem
-          | Msg.RmMember (chan, id)      -> handleRemoveMember    state chan id
-          | Msg.IsCommitted (chan,ety) -> handleIsCommitted   state chan ety
+          Actors.warnQueueLength (tag "loop") inbox
 
-        do! act newstate
+          Tracing.trace (tag "loop") <| fun () ->
+            let state = store.State
+            let newstate =
+              match cmd with
+              | Msg.Start                         -> handleStart          state inbox
+              | Msg.Started                       -> handleStarted        state
+              | Msg.Stop                          -> handleStop           state inbox
+              | Msg.Stopped                       -> handleStopped        state
+              | Msg.Notify              ev        -> handleNotify         state ev
+              | Msg.Periodic                      -> handlePeriodic       state
+              | Msg.ForceElection                 -> handleForceElection  state inbox
+              | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
+              | Msg.AddMember          mem        -> handleAddMember      state inbox mem
+              | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
+              | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
+              | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
+              | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
+              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
+              // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+              // | Msg.Leave                         -> handleLeave         state
+
+            // once we received the signal to stop we don't allow any more updates to the state to get
+            // a consistent result in the Dispose method (due to possibly queued up messages on the
+            // actors queue)
+            if not (Service.isStopping newstate.Status) then
+              store.Update newstate
+        with
+          | exn ->
+            let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
+            String.Format(format,
+                          exn.Message, exn.StackTrace,
+                          exn.InnerException.Message, exn.InnerException.StackTrace)
+            |> Logger.err (tag "loop")
+        return! act ()
       }
-    act Idle
+    act ()
 
-  // ** withOk
+  // ** create
 
-  let private withOk (msgcb: ReplyChan -> Msg) (agent: StateArbiter) : Either<IrisError,unit> =
-    match postCommand agent msgcb with
-    | Right Reply.Ok -> Right ()
+  let create (config: IrisConfig) callbacks =
+    either {
+      let cts = new CancellationTokenSource()
+      let connections = new Connections()
+      let store = AgentStore.create()
 
-    | Right other ->
-      sprintf "Received garbage reply from agent:  %A" other
-      |> Error.asRaftError (tag "withOk")
-      |> Either.fail
+      let agent = new RaftAgent(loop store, cts.Token)
+      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
-    | Left error ->
-      Either.fail error
+      let! raftState = Persistence.getRaft config
+      let callbacks =
+        makeCallbacks
+          raftState.Member.Id
+          connections
+          callbacks
+          agent
 
-  // ** addCmd
+      store.Update
+        { Status = ServiceStatus.Stopped
+          Server = Unchecked.defaultof<IServer>
+          Raft = raftState
+          Options = config
+          Callbacks = callbacks
+          Disposables = []
+          Connections = connections
+          Subscriptions = new Subscriptions()
+          Started = new AutoResetEvent(false)
+          Stopped = new AutoResetEvent(false) }
 
-  let private addCmd (agent: StateArbiter)
-                     (cmd: StateMachine) :
-                     Either<IrisError, EntryResponse> =
-    match postCommand agent (fun chan -> Msg.AddCmd(chan,cmd)) with
-    | Right (Reply.Entry entry) ->
-      match waitForCommit agent entry with
-      | Right true -> Either.succeed entry
+      return
+        { new IRaftServer with
+            member self.Start () =
+              Tracing.trace (tag "Start") <| fun () ->
+                if store.State.Status = ServiceStatus.Stopped then
+                  let server = TcpServer.create {
+                      ServerId = raftState.Member.Id
+                      Listen = raftState.Member.IpAddr
+                      Port = raftState.Member.Port
+                    }
 
-      | Right false ->
-        "Response Timeout"
-        |> Error.asRaftError (tag "addCmd")
-        |> Either.fail
+                  agent.Start()       // we must start the agent, so the dispose logic will work
+                                      // as expected
 
-      | Left error ->
-        error
-        |> Either.fail
+                  match server.Start() with
+                  | Right () ->
+                    let srvobs = server.Subscribe(Msg.ServerEvent >> agent.Post)
 
-    | Right other ->
-      sprintf "Received garbage reply from agent:  %A" other
-      |> Error.asRaftError (tag "addCmd")
-      |> Either.fail
+                    Map.iter
+                      (fun _ (peer: RaftMember) ->
+                        if peer.Id <> raftState.Member.Id then
+                          peer.Id
+                          |> sprintf "adding peer socket for %O"
+                          |> Logger.debug (tag "Start")
+                          peer
+                          |> makePeerSocket
+                          |> Option.map (registerPeerSocket agent)
+                          |> Option.iter (addPeerSocket connections))
+                      raftState.Peers
 
-    | Left error ->
-      Either.fail error
+                    store.Update
+                      { store.State with
+                          Server = server
+                          Disposables = [ srvobs ] }
 
-  // ** getStatus
+                    agent.Post Msg.Start // kick it off
 
-  let private getStatus (agent: StateArbiter) =
-    match postCommand agent (fun chan -> Msg.Status chan) with
-    | Right (Reply.Status status) -> Right status
+                    let result = store.State.Started.WaitOne(TimeSpan.FromMilliseconds 1000.0)
 
-    | Right other ->
-      sprintf "Received garbage reply from agent:  %A" other
-      |> Error.asRaftError (tag "getStatus")
-      |> Either.fail
-
-    | Left error ->
-      Either.fail error
-
-  // ** addMember
-
-  let private addMember (agent: StateArbiter) (mem: RaftMember) =
-    match postCommand agent (fun chan -> Msg.AddMember(chan,mem)) with
-    | Right (Reply.Entry entry) -> Right entry
-    | Right other ->
-      sprintf "Unexpected reply by agent:  %A" other
-      |> Error.asRaftError (tag "addMember")
-      |> Either.fail
-    | Left error ->
-      Either.fail error
-
-  // ** rmMember
-
-  let private rmMember (agent: StateArbiter) (id: Id) =
-    match postCommand agent (fun chan -> Msg.RmMember(chan,id)) with
-    | Right (Reply.Entry entry) -> Right entry
-    | Right other ->
-      sprintf "Unexpected reply by agent:  %A" other
-      |> Error.asRaftError (tag "rmMember")
-      |> Either.fail
-    | Left error ->
-      Either.fail error
-
-  // ** getState
-
-  let private getState (agent: StateArbiter) =
-    match postCommand agent (fun chan -> Msg.Get chan) with
-    | Right (Reply.State state) -> Right state
-
-    | Right other ->
-      sprintf "Received garbage reply from agent:  %A" other
-      |> Error.asRaftError (tag "getState")
-      |> Either.fail
-
-    | Left error ->
-      Either.fail error
-
-  // ** startServer
-
-  let private startServer (agent: StateArbiter) =
-    Either.succeed ()
-
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
-
-  [<RequireQualifiedAccess>]
-  module RaftServer =
-
-    let create () =
-      either {
-        let subscriptions = new Subscriptions()
-
-        let listener =
-          { new IObservable<RaftEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
-
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
-
-        let agent = new StateArbiter(loop subscriptions)
-
-        agent.Start()
-
-        return
-          { new IRaftServer with
-              member self.Load (config: IrisConfig) =
-                match postCommand agent (fun chan -> Msg.Load(chan,config)) with
-                | Right Reply.Ok -> Right ()
-                | Right other ->
-                  sprintf "Unexpected reply type from agent:  %A" other
-                  |> Error.asRaftError (tag "create")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
-              member self.Unload () =
-                match postCommand agent (fun chan -> Msg.Unload chan) with
-                | Right Reply.Ok -> Right ()
-                | Right other ->
-                  sprintf "Unexpected reply type from agent:  %A" other
-                  |> Error.asRaftError (tag "create")
-                  |> Either.fail
-                | Left error ->
-                  error
-                  |> Either.fail
-
-              member self.Member
-                with get () =
-                  match getState agent with
-                  | Right state ->
-                    state.Raft.Member
-                    |> Either.succeed
+                    if result then
+                      match store.State.Status with
+                      | ServiceStatus.Failed error ->
+                        Either.fail error
+                      | _ -> Either.succeed ()
+                    else
+                      "Timeout waiting for started signal"
+                      |> Error.asRaftError (tag "Start")
+                      |> Either.fail
                   | Left error ->
+                    error
+                    |> sprintf "error starting broker: %O"
+                    |> Logger.err (tag "Start")
+                    store.Update { store.State with Status = ServiceStatus.Failed error }
                     Either.fail error
+                else
+                  sprintf "Status error. %O" store.State.Status
+                  |> Error.asRaftError (tag "Start")
+                  |> Either.fail
 
-              member self.MemberId
-                with get () =
-                  match getState agent with
-                  | Right state ->
-                    state.Raft.Member.Id
-                    |> Either.succeed
-                  | Left error ->
-                    Either.fail error
+            member self.Raft
+              with get () = store.State.Raft
 
-              member self.Append cmd =
-                addCmd agent cmd
+            member self.Member
+              with get () = store.State.Raft.Member
 
-              member self.Status
-                with get () = getStatus agent
+            member self.MemberId
+              with get () = store.State.Raft.Member.Id
 
-              member self.ForceElection () =
-                agent.Post Msg.ForceElection
-                |> Either.succeed
+            member self.Append cmd =
+              cmd |> Msg.AddCmd |> agent.Post
 
-              member self.Periodic () =
-                agent.Post Msg.Periodic
-                |> Either.succeed
+            member self.Publish cmd =
+              match cmd with
+              | IrisEvent.Append(_, cmd) -> self.Append cmd
+              | _ -> ()
 
-              member self.JoinCluster ip port =
-                withOk (fun chan -> Msg.Join(chan,ip,port)) agent
+            member self.Status
+              with get () = store.State.Status
 
-              member self.LeaveCluster () =
-                withOk (fun chan -> Msg.Leave chan) agent
+            member self.ForceElection () =
+              agent.Post Msg.ForceElection
 
-              member self.AddMember mem = addMember agent mem
+            member self.Periodic () =
+              agent.Post Msg.Periodic
 
-              member self.RmMember id = rmMember agent id
+            // member self.JoinCluster ip port =
+            //   (ip, port) |> Msg.Join |> agent.Post
 
-              member self.State
-                with get () = getState agent
+            // member self.LeaveCluster () =
+            //   agent.Post Msg.Leave
 
-              member self.Subscribe (callback: RaftEvent -> unit) =
-                { new IObserver<RaftEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value }
-                |> listener.Subscribe
+            member self.AddMember mem =
+              mem |> Msg.AddMember |> agent.Post
 
-              member self.Start () = startServer agent
+            member self.RemoveMember id =
+              id |> Msg.RemoveMember |> agent.Post
 
-              member self.Connections
-                with get () =
-                  match getState agent with
-                  | Right ctx  -> ctx.Connections |> Either.succeed
-                  | Left error -> error |> Either.fail
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              Observable.subscribe callback store.State.Subscriptions
 
-              member self.IsLeader
-                with get () =
-                  match getState agent with
-                  | Right state -> Raft.isLeader state.Raft
-                  | _ -> false
+            member self.Connections
+              with get () = store.State.Connections
 
-              member self.Leader
-                with get () =
-                  match getState agent with
-                  | Right state -> Raft.getLeader state.Raft |> Either.succeed
-                  | Left error -> Either.fail error
+            member self.IsLeader
+              with get () = Raft.isLeader store.State.Raft
 
-              member self.Dispose () =
-                match postCommand agent (fun chan -> Msg.Unload chan) with
-                | Left error -> printfn "unable to dispose:  %A" error
-                | Right _ -> ()
-                subscriptions.Clear()
-                dispose agent
+            member self.Leader
+              with get () = Raft.getLeader store.State.Raft
 
-            }
-      }
+            member self.Dispose () =
+              if not (Service.isDisposed store.State.Status) then
+                // tell the loop to settle and eventually stop processing state updates
+                agent.Post Msg.Stop
+
+                // dispose periodic functions
+                for disp in store.State.Disposables do
+                  dispose disp
+
+                let result = store.State.Stopped.WaitOne(TimeSpan.FromMilliseconds 3000.0)
+
+                if not result then
+                  Logger.err (tag "Dispose") "timeout waiting for stop to complete"
+
+                // clear all listener subscriptions
+                store.State.Subscriptions.Clear()
+
+                for KeyValue(_,client) in store.State.Connections do
+                  dispose client
+
+                // stop the actor
+                try cts.Cancel()
+                with | exn -> Logger.err (tag "Dispose") exn.Message
+                tryDispose agent ignore // then stop the actor so it doesn't keep processing
+                tryDispose cts ignore   // buffered msgs
+
+                // clear connections
+                self.Connections.Clear()
+
+                tryDispose store.State.Server <| fun exn ->
+                  exn.Message
+                  |> sprintf "error disposing server: %s"
+                  |> Logger.err (tag "Dispose")
+
+                // mark as disposed
+                store.Update { store.State with Status = ServiceStatus.Disposed }
+          }
+    }
+
+#endif

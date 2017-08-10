@@ -3,18 +3,16 @@ namespace Iris.Service
 // * Imports
 
 open System
-open System.Threading
 open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open Iris.Service
-open FSharpx.Functional
 open Fleck
 open Iris.Service.Interfaces
 
-// * WebSockets
+// * WebSocketServer
 
-module WebSockets =
+module WebSocketServer =
 
   // ** tag
 
@@ -26,11 +24,11 @@ module WebSockets =
 
   // ** Subscriptions
 
-  type private Subscriptions = ResizeArray<IObserver<SocketEvent>>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<SocketEvent>
+  type private SocketEventProcessor = MailboxProcessor<IrisEvent>
 
   // ** getConnectionId
 
@@ -41,9 +39,8 @@ module WebSockets =
 
   let private buildSession (connections: Connections)
                            (socketId: Id)
-                           (session: Session) :
-                           Either<IrisError,Session> =
-    match connections.TryGetValue socketId with
+                           (session: Session) =
+    match connections.TryGetValue(socketId) with
     | true, socket ->
       let ua =
         if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
@@ -55,13 +52,14 @@ module WebSockets =
           UserAgent = ua }
       |> Either.succeed
     | false, _ ->
-      sprintf "No socket open with id %O" socketId
+      socketId
+      |> String.format "No connection found for {0}"
       |> Error.asSocketError (tag "buildSession")
       |> Either.fail
 
-  // ** send
+  // ** ucast
 
-  /// ## send
+  /// ## ucast
   ///
   /// Send a `StateMachine` command to the requested session.
   ///
@@ -70,7 +68,7 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: Either<IrisError,unit>
-  let private send (connections: Connections) (sid: Id) (msg: StateMachine) =
+  let private ucast (connections: Connections) (sid: Id) (msg: StateMachine) =
     match connections.TryGetValue(sid) with
     | true, socket ->
       try
@@ -81,7 +79,9 @@ module WebSockets =
         |> Either.succeed
       with
         | exn ->
-          let _, _ = connections.TryRemove(sid)
+          exn.Message + exn.StackTrace
+          |> Logger.err (tag "send")
+
           exn.Message
           |> Error.asSocketError (tag "send")
           |> Either.fail
@@ -92,7 +92,7 @@ module WebSockets =
       |> Error.asSocketError (tag "send")
       |> Either.fail
 
-  // ** broadcast
+  // ** bcast
 
   /// ## Broadcast
   ///
@@ -102,16 +102,47 @@ module WebSockets =
   /// - msg: StateMachine command to send
   ///
   /// Returns: unit
-  let private broadcast (connections: Connections)
+  let private bcast (connections: Connections) (msg: StateMachine) =
+    let result : IrisError list =
+      connections.Keys
+      |> Seq.toArray
+      |> Array.map (fun id -> ucast connections id msg)
+      |> Array.fold
+        (fun lst (result: Either<IrisError,unit>) ->
+          match result with
+          | Right _ -> lst
+          | Left error -> error :: lst)
+        []
+
+    match result with
+    | [ ] -> Right ()
+    | _   -> Left result
+
+  // ** mcast
+
+  /// ## mcast
+  ///
+  /// Send a `StateMachine` command to all open connections except the one that matches the passed
+  /// session id.
+  ///
+  /// ### Signature:
+  /// - id: Id to exclude
+  /// - msg: StateMachine command to send
+  ///
+  /// Returns: unit
+  let private mcast (connections: Connections)
+                        (id: Id)
                         (msg: StateMachine) :
                         Either<IrisError list, unit> =
+
     let sendAsync (id: Id) = async {
-        let result = send connections id msg
+        let result = ucast connections id msg
         return result
       }
 
     let result : IrisError list =
       connections.Keys
+      |> Seq.filter (fun sid -> id <> sid)
       |> Seq.map sendAsync
       |> Async.Parallel
       |> Async.RunSynchronously
@@ -136,143 +167,159 @@ module WebSockets =
   /// - socket: IWebSocketConnection to add handlers to
   ///
   /// Returns: unit
-  let private onNewSocket (id: Id)
-                          (connections: Connections)
+  let private onNewSocket (connections: Connections)
                           (agent: SocketEventProcessor)
                           (socket: IWebSocketConnection) =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
-      connections.TryAdd(sid, socket) |> ignore
-      agent.Post(OnOpen sid)
+
+      connections.TryAdd(sid, socket)
+      |> ignore
+
+      sid
+      |> SessionOpened
+      |> agent.Post
 
       sid
       |> string
       |> sprintf "New connection opened: %s"
-      |> Logger.info id (tag "onNewSocket")
+      |> Logger.info (tag "onNewSocket")
 
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(OnClose sid)
+
+      sid
+      |> SessionClosed
+      |> agent.Post
 
       sid
       |> string
       |> sprintf "Connection closed: %s"
-      |> Logger.info id (tag "onNewSocket")
+      |> Logger.info (tag "onCloseSocket")
 
     socket.OnBinary <- fun bytes ->
       let sid = getConnectionId socket
       match Binary.decode bytes with
-      | Right cmd -> agent.Post(OnMessage(sid, cmd))
+      | Right cmd -> IrisEvent.Append(Origin.Web sid, cmd) |> agent.Post
       | Left err  ->
         err
         |> string
         |> sprintf "Could not decode message: %s"
-        |> Logger.err id (tag "onNewSocket")
+        |> Logger.err (tag "onSocketMessage")
 
     socket.OnError <- fun exn ->
       let sid = getConnectionId socket
       connections.TryRemove(sid) |> ignore
-      agent.Post(OnError(sid, exn))
+
+      sid
+      |> SessionClosed
+      |> agent.Post
 
       sid
       |> string
       |> sprintf "Error %A on websocket: %s" exn.Message
-      |> Logger.err id (tag "onNewSocket")
+      |> Logger.err (tag "onSocketError")
 
   // ** loop
 
-  let private loop (initial: Subscriptions)(inbox: SocketEventProcessor) =
-    let rec act (subscriptions: Subscriptions) = async {
+  let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
+    let rec act () = async {
         let! msg = inbox.Receive()
-        for sub in subscriptions do
-          sub.OnNext msg
-        do! act subscriptions
+        Observable.onNext subscriptions msg
+        return! act ()
       }
-    act initial
+    act()
 
-  // ** WsServer
+  // ** broadcast
 
-  //  ____        _     _ _
-  // |  _ \ _   _| |__ | (_) ___
-  // | |_) | | | | '_ \| | |/ __|
-  // |  __/| |_| | |_) | | | (__
-  // |_|    \__,_|_.__/|_|_|\___|
+  let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
+    server.Broadcast cmd
 
-  [<RequireQualifiedAccess>]
-  module SocketServer =
+  // ** send
 
-    let create (mem: RaftMember) =
-      either {
-        let connections = new Connections()
-        let subscriptions = new Subscriptions()
+  let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
+    server.Send id cmd
 
-        let listener =
-          { new IObservable<SocketEvent> with
-              member self.Subscribe(obs) =
-                lock subscriptions <| fun _ ->
-                  subscriptions.Add obs
+  // ** create
 
-                { new IDisposable with
-                    member self.Dispose () =
-                      lock subscriptions <| fun _ ->
-                        subscriptions.Remove obs
-                        |> ignore } }
+  let create (mem: RaftMember) =
+    either {
+      let status = ref ServiceStatus.Stopped
+      let connections = Connections()
+      let subscriptions = Subscriptions()
 
-        let agent = new SocketEventProcessor(loop subscriptions)
+      let agent = new SocketEventProcessor(loop subscriptions)
 
-        let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
+      let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
 
-        let handler = onNewSocket mem.Id connections agent
-        let server = new WebSocketServer(uri)
+      FleckLog.LogAction <- Action<Fleck.LogLevel,string,exn>(fun level msg ex ->
+        match level with
+        | Fleck.LogLevel.Debug -> Logger.debug (tag "logger") msg
+        | Fleck.LogLevel.Info  -> Logger.info  (tag "logger") msg
+        | Fleck.LogLevel.Warn  -> Logger.warn  (tag "logger") msg
+        | Fleck.LogLevel.Error -> Logger.err   (tag "logger") msg
+        |                _     -> Logger.err   (tag "logger") msg)
 
-        return
-          { new IWebSocketServer with
-              member self.Send (id: Id) (cmd: StateMachine) =
-                send connections id cmd
+      let handler = onNewSocket connections agent
+      let server = new WebSocketServer(uri)
+      server.RestartAfterListenError <- true
+      server.ListenerSocket.NoDelay <- true
 
-              member self.Broadcast (cmd: StateMachine) =
-                broadcast connections cmd
+      return
+        { new IWebSocketServer with
+            member self.Publish (ev: IrisEvent) =
+              match ev with
+              | IrisEvent.Append (_, cmd) ->
+                match bcast connections cmd with
+                | Right _ -> ()
+                | Left error ->
+                  error
+                  |> string
+                  |> Logger.err (tag "Publish")
+              | _ -> ()
 
-              member self.BuildSession (id: Id) (session: Session) =
-                buildSession connections id session
+            member self.Send (id: Id) (cmd: StateMachine) =
+              ucast connections id cmd
 
-              member self.Subscribe (callback: SocketEvent -> unit) =
-                { new IObserver<SocketEvent> with
-                    member self.OnCompleted() = ()
-                    member self.OnError(error) = ()
-                    member self.OnNext(value) = callback value
-                  }
-                |> listener.Subscribe
+            member self.Broadcast (cmd: StateMachine) =
+              bcast connections cmd
 
-              member self.Start () =
-                try
-                  uri
-                  |> sprintf "Starting WebSocketServer on: %s"
-                  |> Logger.debug mem.Id (tag "Start")
+            member self.Multicast (except: Id) (cmd: StateMachine) =
+              mcast connections except cmd
 
-                  agent.Start()
-                  server.Start(new Action<IWebSocketConnection>(handler))
+            member self.BuildSession (id: Id) (session: Session) =
+              buildSession connections id session
 
-                  "WebSocketServer successfully started"
-                  |> Logger.debug mem.Id (tag "Start")
-                  |> Either.succeed
-                with
-                  | exn ->
-                    exn.Message
-                    |> Error.asSocketError (tag "Start")
-                    |> Either.fail
+            member self.Subscribe (callback: IrisEvent -> unit) =
+              Observable.subscribe callback subscriptions
 
-              member self.Dispose () =
+            member self.Start () =
+              status := ServiceStatus.Starting
+              try
+                uri
+                |> sprintf "Starting WebSocketServer on: %s"
+                |> Logger.debug (tag "Start")
+
+                agent.Start()
+                server.Start(new Action<IWebSocketConnection>(handler))
+
+                status := ServiceStatus.Running
+                "WebSocketServer successfully started"
+                |> Logger.debug (tag "Start")
+                |> Either.succeed
+              with
+                | exn ->
+                  exn.Message
+                  |> Error.asSocketError (tag "Start")
+                  |> Either.fail
+
+            member self.Dispose () =
+              if Service.isRunning !status then
                 for KeyValue(_, connection) in connections do
                   connection.Close()
                 connections.Clear()
                 subscriptions.Clear()
-                dispose server }
-      }
-
-    let broadcast (cmd: StateMachine) (server: IWebSocketServer) =
-      server.Broadcast cmd
-
-    let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
-      server.Send id cmd
+                dispose server
+                status := ServiceStatus.Disposed }
+    }

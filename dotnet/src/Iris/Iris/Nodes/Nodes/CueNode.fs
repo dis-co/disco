@@ -40,8 +40,8 @@ type CueNode() =
   val mutable OutName: ISpread<string>
 
   [<DefaultValue>]
-  [<Output("Pins")>]
-  val mutable OutPins: ISpread<ISpread<Pin>>
+  [<Output("Slices")>]
+  val mutable OutSlices: ISpread<ISpread<Slices>>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
@@ -53,15 +53,15 @@ type CueNode() =
 
         self.OutId.SliceCount <- self.InCue.SliceCount
         self.OutName.SliceCount <- self.InCue.SliceCount
-        self.OutPins.SliceCount <- self.InCue.SliceCount
+        self.OutSlices.SliceCount <- self.InCue.SliceCount
 
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InCue.[n]) then
             let cue = self.InCue.[n]
             self.OutId.[n] <- string cue.Id
-            self.OutName.[n] <- cue.Name
-            self.OutPins.[n].SliceCount <- Array.length cue.Pins
-            self.OutPins.[n].AssignFrom cue.Pins
+            self.OutName.[n] <- unwrap cue.Name
+            self.OutSlices.[n].SliceCount <- Array.length cue.Slices
+            self.OutSlices.[n].AssignFrom cue.Slices
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

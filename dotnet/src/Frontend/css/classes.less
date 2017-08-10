@@ -1,77 +1,79 @@
-.ui-icon-close, .ui-icon-copy {
+@import "values";
+
+.icon-control {
   cursor: pointer;
 }
 
-.iris-highlight-blue {
-  border: 2px solid blue;
+.iris-status-on {
+  color: @status-on;
 }
 
-.iris-dropdown {
-  display: inline-block;
-  font-size: 1.3em;
-  user-select: none;
+.iris-status-off {
+  color: @status-off;
+}
+
+.iris-highlight.iris-blue {
+  // border: 2px solid @highlight-blue !important;
+  border-color: @highlight-blue !important;
+}
+
+.iris-button {
   cursor: pointer;
+  margin: 2px 5px 1px 0px;
+  padding: 2px 4px;
+  outline: none;
+  border-radius: 3px;
+  border: solid 1px lightgray;
+  background-color: white;
 
-  .iris-dropdown-options {
-    position: absolute;
-    z-index: 100;
-    background: white;
-    border: 1px solid gray;
-    margin: 0;
-    padding: 0;
+  &:active {
+    color: #fff;
+  }
 
-    li {
-      list-style: none;
-      margin-left: 0;
-      padding: 10px;
-
-      &:hover {
-        background-color: lightgray;
-        /*cursor: text;*/
-        transition: 0.1s;
-      }
-    }
+  &.icon-control {
+    background: none;
+    margin-right: 0px;
+    border: none;
+  }
+  &.icon-control:active {
+    color:blue;
   }
 }
 
-.iris-widget {
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
 
-  .iris-draggable-handle {
-    cursor: move;
-    margin: 0;
-    padding: 10px;
-    background: @iris-grey;
-    display: flex;
-
-    // Expand the first child to push
-    // the icons to the side
-    & > :first-child {
-      flex: 1;
-    }
+.iris-table {
+  border-spacing: 0px;
+  width: 100%;
+  [contenteditable] {
+    padding: 3px;
   }
-
-  & > :nth-child(2) {
-    overflow-x: auto;
-    flex: 1;
+  [contenteditable]:focus {
+    outline: none;
+    box-shadow: 0px 0px 1px grey;
+    border-radius: 5px;
   }
-
-}
-
-.iris-pingroup {
-  margin: 5px;
-  & > p {
-    margin-left: 10px;
-    margin-bottom: 5px;
-    font-weight: bold;
-    border-bottom: 1px solid black;
+  th, td {
+    text-align: left;
+    white-space: nowrap;
+    vertical-align: middle;
   }
+  tr { width: 100% }
+  th.width-5, td.width-5 { width: 5% }
+  th.width-10, td.width-10 { width: 10% }
+  th.width-15, td.width-15 { width: 15% }
+  th.width-20, td.width-20 { width: 20% }
+  th.width-25, td.width-25 { width: 25% }
+  th.width-30, td.width-30 { width: 30% }
 }
 
 // FLEX --------------------
+
+.iris-flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
 .iris-flex-1 {
   flex: 1
 }
@@ -87,17 +89,144 @@
 .iris-flex-4 {
   flex: 4
 }
+
+.iris-dropdown {
+  /* The container <div> - needed to position the dropdown content */
+  // box-shadow: 0 0 8px #777;
+  position: relative;
+  display: inline-block;
+  z-index: 1000;
+  margin: 0 10px;
+
+  /* Dropdown Button */
+  .iris-dropdown-button {
+    // border: none;
+    margin: 0 5px;
+    cursor: pointer;
+
+    &::after {
+      border: 1px solid black;
+      border-right: 0;
+      border-top: 0;
+      content: " ";
+      display: block;
+      height: 5px;
+      width: 5px;
+      margin-top: -3px;
+      right: -2px;
+      top: 50%;
+      pointer-events: none;
+      position: absolute;
+      transform: rotate(-45deg);
+    }
+  }
+
+  /* Dropdown Content (Hidden by Default) */
+  .iris-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+
+    div {
+      margin: 10px 5px;
+      label input {
+        margin-right: 5px
+      }
+    }
+  }
+
+  /* Show the dropdown menu on hover */
+  &:hover .iris-dropdown-content {
+    display: block;
+  }
+
+  /* Change the background color of the dropdown button when the dropdown content is shown */
+  &:hover .iris-dropdown-button {
+    background-color: rgb(220,220,220);
+  }
+}
+
 // -------------------------
 
+// .iris-discovery {
+//   display: flex;
+//   flex-wrap: wrap;
+// }
+
+// .iris-discovered-service {
+//   margin: 5px;
+//   text-align: center;
+//   padding: 0 auto;
+//   background: @iris-grey;
+//   width: 150px;
+//   height: 50px;
+//   line-height: 50px;
+//   color: white;
+//   white-space: nowrap;
+//   user-select: none;
+
+//   &.enabled {
+//     cursor: move;
+//     background: @background-grey;
+//   }
+// }
+
+// .atom {
+//   color: #fff;
+//   span {
+//     padding: 2px 4px 2px 2px;
+//     background: #555;
+//     border-right: 1px solid #fff;
+//     &:first-child {
+//       border-top-left-radius: 50px;
+//       border-bottom-left-radius: 50px;
+//       padding-left: 6px;
+//     }
+//     &:last-child {
+//       border-top-right-radius: 50px;
+//       border-bottom-right-radius: 50px;
+//     }
+//   }
+// }
+
+// .iris-dropdown {
+//   display: inline-block;
+//   font-size: 1.3em;
+//   user-select: none;
+//   cursor: pointer;
+
+//   .iris-dropdown-options {
+//     position: absolute;
+//     z-index: 100;
+//     background: white;
+//     border: 1px solid gray;
+//     margin: 0;
+//     padding: 0;
+
+//     li {
+//       list-style: none;
+//       margin-left: 0;
+//       padding: 10px;
+//       background: white;
+
+//       &:hover {
+//         background-color: lightgray;
+//         /*cursor: text;*/
+//         transition: 0.1s;
+//       }
+//     }
+//   }
+// }
+
 // .iris-tooltip {
-//   height: 100px;
-//   background-color: #EBEBEB;
+//   // height: 100px;
+//   background-color: lightyellow; // #EBEBEB;
 //   position: absolute;
-//   bottom: 35px;
-//   right: 10px;
 //   padding: 10px;
 //   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-//   display: none;
 //   transition: 0.8s;
 //   z-index: 100000000;
 // }

@@ -1,245 +1,172 @@
 namespace Iris.Tests
 
 open Expecto
+open FsCheck
 open Iris.Core
+open Iris.Net
 open Iris.Raft
+open Iris.Client
 open Iris.Service
-open Iris.Serialization
-open Iris.Service.Utilities
 open Iris.Service.Persistence
-open System.Net
-open FlatBuffers
-open FSharpx.Functional
+open System
+open System.IO
+open System.Threading
 
 [<AutoOpen>]
 module SerializationTests =
-  //  ____                            _ __     __    _
-  // |  _ \ ___  __ _ _   _  ___  ___| |\ \   / /__ | |_ ___
-  // | |_) / _ \/ _` | | | |/ _ \/ __| __\ \ / / _ \| __/ _ \
-  // |  _ <  __/ (_| | |_| |  __/\__ \ |_ \ V / (_) | ||  __/
-  // |_| \_\___|\__, |\__,_|\___||___/\__| \_/ \___/ \__\___|
+  //  ____                            _
+  // |  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\___|\__, |\__,_|\___||___/\__|
   //               |_|
 
-  let test_validate_requestvote_serialization =
-    testCase "Validate RequestVote Serialization" <| fun _ ->
-      let mem =
-        { Member.create (Id.Create()) with
-            HostName = "test-host"
-            IpAddr   = IpAddress.Parse "192.168.2.10"
-            Port     = 8080us }
+  let test_correct_request_serialization =
+    testCase "RequestResposse serialization should work" <| fun _ ->
+      use reset = new AutoResetEvent(false)
+      let rand = System.Random()
 
-      let vr : VoteRequest =
-        { Term = 8u
-        ; LastLogIndex = 128u
-        ; LastLogTerm = 7u
-        ; Candidate = mem }
+      let mutable count = 0
 
-      let msg   = RequestVote(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+      let data = ResizeArray()
+      let codata = ResizeArray()
 
-      expect "Should be structurally the same" msg id remsg
+      Prop.forAll Generators.requestArb (fun request ->
+        data.Add request
+        request
+        |> Request.serialize
+        |> codata.Add)
+      |> Check.QuickThrowOnFailure
 
-  // __     __    _       ____
-  // \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
-  //  \ \ / / _ \| __/ _ \ |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
-  //   \ V / (_) | ||  __/  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
-  //    \_/ \___/ \__\___|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
-  //                                    |_|
+      let expected = data.Count
 
-  let test_validate_requestvote_response_serialization =
-    testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let vr : VoteResponse =
-        { Term = 8u
-        ; Granted = false
-        ; Reason = Some (RaftError("test","error")) }
+      let max =
+        codata.ToArray()
+        |> Array.map Array.length
+        |> Array.max
 
-      let msg   = RequestVoteResponse(Id.Create(), vr)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+      let check request (rerequest: Request) =
+        try
+          Expect.equal rerequest request "Should be structurally equal"
+        with
+          | exn ->
+            printfn "actual: %A" request
+            raise exn
 
-      expect "Should be structurally the same" msg id remsg
+        Interlocked.Increment &count |> ignore
+        if count = expected then
+          reset.Set() |> ignore
 
-  //     _                               _ _____       _        _
-  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
-  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
-  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
-  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
-  //         |_|   |_|
+      let manager = BufferManager.create 1 max
+      use builder = RequestBuilder.create <| fun requestId clientId body ->
+        let request = data.Find (fun (request: Request) -> request.RequestId = requestId)
+        body
+        |> Request.make requestId clientId
+        |> check request
 
-  let test_validate_appendentries_serialization =
-    testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      either {
-        let! state = mkTmpDir() |> mkState
+      for binary in codata do
+        let buffer = manager.TakeBuffer()
+        Array.Copy(binary, buffer.Data, binary.Length)
+        builder.Process buffer 0 binary.Length
 
-        let mem1 = Member.create (Id.Create())
-        let mem2 = Member.create (Id.Create())
+      waitOrDie "reset" reset |> noError
 
-        let changes = [| MemberRemoved mem2 |]
-        let mems = [| mem1; mem2 |]
+  //  ____                     ____  _        _
+  // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
+  // | |_) / _` | '__/ __|/ _ \___ \| __/ _` | __/ _ \
+  // |  __/ (_| | |  \__ \  __/___) | || (_| | ||  __/
+  // |_|   \__,_|_|  |___/\___|____/ \__\__,_|\__\___|
 
-        let log =
-          Some <| LogEntry(Id.Create(), 7u, 1u, DataSnapshot(state),
-            Some <| LogEntry(Id.Create(), 6u, 1u, DataSnapshot(state),
-              Some <| Configuration(Id.Create(), 5u, 1u, [| mem1 |],
-                Some <| JointConsensus(Id.Create(), 4u, 1u, changes,
-                  Some <| Snapshot(Id.Create(), 3u, 1u, 2u, 1u, mems, DataSnapshot(state))))))
+  let tests_parse_state_deserialization =
+    testCase "ParseState deserialization should work" <| fun _ ->
+      let rand = System.Random()
+      let bufsize = 128
+      let requests = ResizeArray()
+      let rerequests = ResizeArray()
+      let edges = ResizeArray()
+      let blob = ResizeArray()
+      use stopper = new AutoResetEvent(false)
 
-        let ae : AppendEntries =
-          { Term = 8u
-          ; PrevLogIdx = 192u
-          ; PrevLogTerm = 87u
-          ; LeaderCommit = 182u
-          ; Entries = log }
+      let collect (request: Request) =
+        requests.Add request
+        let data = Request.serialize request
+        // adding some random padding in between to ensure robustness
+        let padding = [| for n in 0 .. (rand.Next(5,20)) -> byte (rand.Next(0,255)) |]
+        edges.Add blob.Count
+        blob.AddRange data
+        blob.AddRange padding
 
-        let msg   = AppendEntries(Id.Create(), ae)
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+      // generate some test data
+      collect
+      |> Prop.forAll Generators.requestArb
+      |> Check.Quick
 
-        expect "Should be structurally the same" msg id remsg
+      use parser = RequestBuilder.create <| fun request client body ->
+        body
+        |> Request.make request client
+        |> rerequests.Add
+        if rerequests.Count = requests.Count then
+          stopper.Set() |> ignore
 
-        let msg   = AppendEntries(Id.Create(), { ae with Entries = None })
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+      let payload = blob.ToArray()
+      let payloadSize = payload.Length
+      let chunked = Array.chunkBySize bufsize payload
+      let manager = BufferManager.create 10 bufsize
 
-        expect "Should be structurally the same" msg id remsg
-      }
-      |> noError
+      let mutable read = 0
+      for chunk in chunked do
+        let buffer = manager.TakeBuffer()
+        Array.Copy(chunk, buffer.Data, chunk.Length)
+        parser.Process buffer 0 chunk.Length
+        Interlocked.Increment &read |> ignore
 
-  //     _                               _ ____
-  //    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
-  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
-  //  / ___ \| |_) | |_) |  __/ | | | (_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
-  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
-  //         |_|   |_|                                   |_|
+      waitOrDie "stopper" stopper |> noError
 
-  let test_validate_appendentries_response_serialization =
-    testCase "Validate RequestVote Response Serialization" <| fun _ ->
-      let response : AppendResponse =
-        { Term         = 38u
-        ; Success      = true
-        ; CurrentIndex = 1234u
-        ; FirstIndex   = 8942u
-        }
+      Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
 
-      let msg = AppendEntriesResponse(Id.Create(), response)
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
+      let rerequests = rerequests.ToArray()
+      for request in requests do
+        let rerequest = Array.tryFind ((=) request) rerequests
+        Expect.equal rerequest (Some request) "Request and Rerequest should be equal"
 
-      expect "Should be structurally the same" msg id remsg
+  //   ____             __ _        ____ _
+  //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+  // | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+  // | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+  //  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+  //                         |___/                         |___/
 
-  //  ____                        _           _
-  // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
-  // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
-  //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
-  // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
-  //                   |_|
+  let test_validate_config_change =
+    testCase "ConfigChange serialization should work" <| fun _ ->
+      binaryEncDec<ConfigChange>
+      |> Prop.forAll Generators.changeArb
+      |> Check.QuickThrowOnFailure
 
-  let test_validate_installsnapshot_serialization =
-    testCase "Validate InstallSnapshot Serialization" <| fun _ ->
-      either {
-        let! state = mkTmpDir() |> mkState
+  //  ____        __ _   ____                            _
+  // |  _ \ __ _ / _| |_|  _ \ ___  __ _ _   _  ___  ___| |_
+  // | |_) / _` | |_| __| |_) / _ \/ _` | | | |/ _ \/ __| __|
+  // |  _ < (_| |  _| |_|  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // |_| \_\__,_|_|  \__|_| \_\___|\__, |\__,_|\___||___/\__|
+  //                                  |_|
 
-        let mem1 = [| Member.create (Id.Create()) |]
+  let test_validate_raftrequest_serialization =
+    testCase "Validate RaftRequest Serialization" <| fun _ ->
+      binaryEncDec<RaftRequest>
+      |> Prop.forAll Generators.raftRequestArb
+      |> Check.QuickThrowOnFailure
 
-        let is : InstallSnapshot =
-          { Term = 2134u
-          ; LeaderId = Id.Create()
-          ; LastIndex = 242u
-          ; LastTerm = 124242u
-          ; Data = Snapshot(Id.Create(), 12u, 3414u, 241u, 422u, mem1, DataSnapshot(state))
-          }
+  //  ____        __ _   ____
+  // |  _ \ __ _ / _| |_|  _ \ ___  ___ _ __   ___  _ __  ___  ___
+  // | |_) / _` | |_| __| |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+  // |  _ < (_| |  _| |_|  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+  // |_| \_\__,_|_|  \__|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+  //                                   |_|
 
-        let msg = InstallSnapshot(Id.Create(), is)
-        let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-        expect "Should be structurally the same" msg id remsg
-      }
-      |> noError
-
-  //  _   _                 _ ____  _           _
-  // | | | | __ _ _ __   __| / ___|| |__   __ _| | _____
-  // | |_| |/ _` | '_ \ / _` \___ \| '_ \ / _` | |/ / _ \
-  // |  _  | (_| | | | | (_| |___) | | | | (_| |   <  __/
-  // |_| |_|\__,_|_| |_|\__,_|____/|_| |_|\__,_|_|\_\___|
-
-  let test_validate_handshake_serialization =
-    testCase "Validate HandShake Serialization" <| fun _ ->
-      let msg = HandShake(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
-
-  //  _   _                 ___        __    _
-  // | | | | __ _ _ __   __| \ \      / /_ _(_)_   _____
-  // | |_| |/ _` | '_ \ / _` |\ \ /\ / / _` | \ \ / / _ \
-  // |  _  | (_| | | | | (_| | \ V  V / (_| | |\ V /  __/
-  // |_| |_|\__,_|_| |_|\__,_|  \_/\_/ \__,_|_| \_/ \___|
-
-  let test_validate_handwaive_serialization =
-    testCase "Validate HandWaive Serialization" <| fun _ ->
-      let msg = HandWaive(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
-
-  //  ____          _ _               _
-  // |  _ \ ___  __| (_)_ __ ___  ___| |_
-  // | |_) / _ \/ _` | | '__/ _ \/ __| __|
-  // |  _ <  __/ (_| | | | |  __/ (__| |_
-  // |_| \_\___|\__,_|_|_|  \___|\___|\__|
-
-  let test_validate_redirect_serialization =
-    testCase "Validate Redirect Serialization" <| fun _ ->
-      let msg = Redirect(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-
-      expect "Should be structurally the same" msg id remsg
-
-  // __        __   _
-  // \ \      / /__| | ___ ___  _ __ ___   ___
-  //  \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \
-  //   \ V  V /  __/ | (_| (_) | | | | | |  __/
-  //    \_/\_/ \___|_|\___\___/|_| |_| |_|\___|
-
-  let test_validate_welcome_serialization =
-    testCase "Validate Welcome Serialization" <| fun _ ->
-      let msg = Welcome(Member.create (Id.Create()))
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally the same" msg id remsg
-
-  //     _              _               _               _
-  //    / \   _ __ _ __(_)_   _____  __| | ___ _ __ ___(_)
-  //   / _ \ | '__| '__| \ \ / / _ \/ _` |/ _ \ '__/ __| |
-  //  / ___ \| |  | |  | |\ V /  __/ (_| |  __/ | | (__| |
-  // /_/   \_\_|  |_|  |_| \_/ \___|\__,_|\___|_|  \___|_|
-
-  let test_validate_arrivederci_serialization =
-    testCase "Validate Arrivederci Serialization" <| fun _ ->
-      let msg = Arrivederci
-      let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally the same" msg id remsg
-
-  //  _____
-  // | ____|_ __ _ __ ___  _ __
-  // |  _| | '__| '__/ _ \| '__|
-  // | |___| |  | | | (_) | |
-  // |_____|_|  |_|  \___/|_|
-
-  let test_validate_errorresponse_serialization =
-    testCase "Validate ErrorResponse Serialization" <| fun _ ->
-
-      let errors = [
-          OK
-          GitError ("one","two")
-          ProjectError ("one","two")
-          ParseError ("one","two")
-          SocketError ("one","two")
-          IOError ("one","two")
-          AssetError ("one","two")
-          RaftError ("one","two")
-          Other  ("one","two")
-        ]
-      List.iter (fun err ->
-                  let msg = ErrorResponse(err)
-                  let remsg = msg |> Binary.encode |> Binary.decode |> Either.get
-                  expect "Should be structurally the same" msg id remsg)
-                errors
+  let test_validate_raftresponse_serialization =
+    testCase "Validate RaftResponse Serialization" <| fun _ ->
+      binaryEncDec<RaftResponse>
+      |> Prop.forAll Generators.raftResponseArb
+      |> Check.QuickThrowOnFailure
 
   //  ____        __ _
   // |  _ \ __ _ / _| |_
@@ -250,7 +177,7 @@ module SerializationTests =
   let test_save_restore_raft_value_correctly =
     testCase "save/restore raft value correctly" <| fun _ ->
       either {
-        let machine = MachineConfig.create ()
+        let machine = MachineConfig.create "127.0.0.1" None
 
         let self =
           machine.MachineId
@@ -264,17 +191,23 @@ module SerializationTests =
           Id.Create()
           |> Member.create
 
-        let config =
-          Config.create "default" machine
-          |> Config.addMember self
-          |> Config.addMember mem1
-          |> Config.addMember mem2
+        let site =
+          { ClusterConfig.Default with
+              Name = name "Cool Cluster Yo"
+              Members = Map.ofArray [| (self.Id,self)
+                                       (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
 
-        let term = 666u
+        let config =
+          machine
+          |> Config.create
+          |> Config.addSiteAndSetActive site
+
+        let trm = term 666
 
         let! raft =
           createRaft config
-          |> Either.map (Raft.setTerm term)
+          |> Either.map (Raft.setTerm trm)
 
         saveRaft config raft
         |> Either.mapError Error.throw
@@ -283,7 +216,7 @@ module SerializationTests =
         let! loaded = loadRaft config
 
         expect "Member should be correct" self Raft.self loaded
-        expect "Term should be correct" term Raft.currentTerm loaded
+        expect "Term should be correct" trm Raft.currentTerm loaded
       }
       |> noError
 
@@ -296,26 +229,16 @@ module SerializationTests =
 
   let test_validate_project_binary_serialization =
     testCase "Validate IrisProject Binary Serializaton" <| fun _ ->
-      either {
-        let! project = mkTmpDir () |>  mkProject
-        let! reproject = project |> Binary.encode |> Binary.decode
-        expect "Project should be the same" project id reproject
-      }
-      |> noError
+      binaryEncDec<IrisProject>
+      |> Prop.forAll Generators.projectArb
+      |> Check.QuickThrowOnFailure
+
 
   let test_validate_project_yaml_serialization =
     testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
-      either {
-        let! project = mkTmpDir () |>  mkProject
-        let reproject : IrisProject = project |> Yaml.encode |> Yaml.decode |> Either.get
-        let reconfig = { reproject.Config with MachineId = project.Config.MachineId }
-
-        // not all properties can be the same (timestampts for instance, so we check basics)
-        expect "Project Id should be the same" project.Id id reproject.Id
-        expect "Project Name should be the same" project.Name id reproject.Name
-        expect "Project Config should be the same" project.Config id reconfig
-      }
-      |> noError
+      yamlEncDec<IrisProject>
+      |> Prop.forAll Generators.projectArb
+      |> Check.QuickThrowOnFailure
 
   //   ____
   //  / ___|   _  ___
@@ -325,17 +248,32 @@ module SerializationTests =
 
   let test_validate_cue_binary_serialization =
     testCase "Validate Cue Binary Serialization" <| fun _ ->
-      let cue : Cue = mkCue ()
+      binaryEncDec<Cue>
+      |> Prop.forAll Generators.cueArb
+      |> Check.QuickThrowOnFailure
 
-      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
-      expect "should be same" cue id recue
 
   let test_validate_cue_yaml_serialization =
     testCase "Validate Cue Yaml Serialization" <| fun _ ->
-      let cue : Cue = mkCue ()
+      yamlEncDec<Cue>
+      |> Prop.forAll Generators.cueArb
+      |> Check.QuickThrowOnFailure
 
-      let recue = cue |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" cue id recue
+  let test_validate_cueref_binary_serialization =
+    testCase "Validate CueReference Binary Serialization" <| fun _ ->
+      mkCueRef () |> binaryEncDec
+
+  let test_validate_cueref_yaml_serialization =
+    testCase "Validate CueReference Yaml Serialization" <| fun _ ->
+      mkCueRef () |> yamlEncDec
+
+  let test_validate_cuegroup_binary_serialization =
+    testCase "Validate CueGroup Binary Serialization" <| fun _ ->
+      mkCueGroup () |> binaryEncDec
+
+  let test_validate_cuegroup_yaml_serialization =
+    testCase "Validate CueGroup Yaml Serialization" <| fun _ ->
+      mkCueGroup () |> yamlEncDec
 
   //   ____           _     _     _
   //  / ___|   _  ___| |   (_)___| |_
@@ -345,37 +283,34 @@ module SerializationTests =
 
   let test_validate_cuelist_binary_serialization =
     testCase "Validate CueList Binary Serialization" <| fun _ ->
-      let cuelist : CueList = mkCueList ()
-
-      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
-      expect "should be same" cuelist id recuelist
+      binaryEncDec<CueList>
+      |> Prop.forAll Generators.cuelistArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_cuelist_yaml_serialization =
     testCase "Validate CueList Yaml Serialization" <| fun _ ->
-      let cuelist : CueList = mkCueList ()
+      yamlEncDec<CueList>
+      |> Prop.forAll Generators.cuelistArb
+      |> Check.QuickThrowOnFailure
 
-      let recuelist = cuelist |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "should be same" cuelist id recuelist
-
-  //  ____       _       _
-  // |  _ \ __ _| |_ ___| |__
-  // | |_) / _` | __/ __| '_ \
-  // |  __/ (_| | || (__| | | |
-  // |_|   \__,_|\__\___|_| |_|
+  //  ____  _        ____
+  // |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+  // | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+  // |  __/| | | | | |_| | | | (_) | |_| | |_) |
+  // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+  //                                     |_|
 
   let test_validate_group_binary_serialization =
     testCase "Validate PinGroup Binary Serialization" <| fun _ ->
-      let group : PinGroup = mkPinGroup ()
-
-      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" group id regroup
+      binaryEncDec<PinGroup>
+      |> Prop.forAll Generators.pingroupArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_group_yaml_serialization =
     testCase "Validate PinGroup Yaml Serialization" <| fun _ ->
-      let group : PinGroup = mkPinGroup ()
-
-      let regroup = group |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" group id regroup
+      yamlEncDec<PinGroup>
+      |> Prop.forAll Generators.pingroupArb
+      |> Check.QuickThrowOnFailure
 
   //  ____                _
   // / ___|  ___  ___ ___(_) ___  _ __
@@ -385,17 +320,16 @@ module SerializationTests =
 
   let test_validate_session_binary_serialization =
     testCase "Validate Session Binary Serialization" <| fun _ ->
-      let session : Session = mkSession ()
-
-      let resession = session |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" session id resession
+      binaryEncDec<Session>
+      |> Prop.forAll Generators.sessionArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_session_yaml_serialization =
     testCase "Validate Session Yaml Serialization" <| fun _ ->
-      let session : Session = mkSession ()
+      yamlEncDec<Session>
+      |> Prop.forAll Generators.sessionArb
+      |> Check.QuickThrowOnFailure
 
-      let resession = session |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" session id resession
 
   //  _   _
   // | | | |___  ___ _ __
@@ -405,17 +339,15 @@ module SerializationTests =
 
   let test_validate_user_binary_serialization =
     testCase "Validate User Binary Serialization" <| fun _ ->
-      let user : User = mkUser ()
-
-      let reuser = user |> Binary.encode |> Binary.decode |> Either.get
-      expect "Should be structurally equivalent" user id reuser
+      binaryEncDec<User>
+      |> Prop.forAll Generators.userArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_user_yaml_serialization =
     testCase "Validate User Yaml Serialization" <| fun _ ->
-      let user : User = mkUser ()
-
-      let reuser = user |> Yaml.encode |> Yaml.decode |> Either.get
-      expect "Should be structurally equivalent" user id reuser
+      yamlEncDec<User>
+      |> Prop.forAll Generators.userArb
+      |> Check.QuickThrowOnFailure
 
   //  ____  _ _
   // / ___|| (_) ___ ___
@@ -425,35 +357,16 @@ module SerializationTests =
 
   let test_validate_slice_binary_serialization =
     testCase "Validate Slice Binary Serialization" <| fun _ ->
-
-      [| BoolSlice   (0u, true)
-      ;  StringSlice (0u, "hello")
-      ;  NumberSlice (0u, 1234.0)
-      ;  ByteSlice   (0u, [| 0uy; 4uy; 9uy; 233uy |])
-      ;  EnumSlice   (0u, { Key = "one"; Value = "two" })
-      ;  ColorSlice  (0u, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
-      ;  ColorSlice  (0u, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
-      |]
-      |> Array.iter
-        (fun slice ->
-          let reslice = slice |> Binary.encode |> Binary.decode |> Either.get
-          expect "Should be structurally equivalent" slice id reslice)
+      binaryEncDec<Slice>
+      |> Prop.forAll Generators.sliceArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_slice_yaml_serialization =
     testCase "Validate Slice Yaml Serialization" <| fun _ ->
+      yamlEncDec<Slice>
+      |> Prop.forAll Generators.sliceArb
+      |> Check.QuickThrowOnFailure
 
-      [| BoolSlice    (0u, true    )
-      ;  StringSlice   (0u, "hello" )
-      ;  NumberSlice   (0u, 1234.0  )
-      ;  ByteSlice     (0u, [| 0uy; 4uy; 9uy; 233uy |] )
-      ;  EnumSlice     (0u, { Key = "one"; Value = "two" })
-      ;  ColorSlice    (0u, RGBA { Red = 255uy; Blue = 2uy; Green = 255uy; Alpha = 33uy } )
-      ;  ColorSlice    (0u, HSLA { Hue = 255uy; Saturation = 25uy; Lightness = 255uy; Alpha = 55uy } )
-      |]
-      |> Array.iter
-        (fun slice ->
-          let reslice = slice |> Yaml.encode |> Yaml.decode |> Either.get
-          expect "Should be structurally equivalent" slice id reslice)
 
   //  ____  _ _
   // / ___|| (_) ___ ___  ___
@@ -463,19 +376,15 @@ module SerializationTests =
 
   let test_validate_slices_binary_serialization =
     testCase "Validate Slices Binary Serialization" <| fun _ ->
+      binaryEncDec<Slices>
+      |> Prop.forAll Generators.slicesArb
+      |> Check.QuickThrowOnFailure
 
-      [| BoolSlices     (Id.Create(),[| true    |])
-      ;  StringSlices   (Id.Create(), [| "hello" |])
-      ;  NumberSlices   (Id.Create(), [| 1234.0  |])
-      ;  ByteSlices     (Id.Create(), [| [| 0uy; 4uy; 9uy; 233uy |] |])
-      ;  EnumSlices     (Id.Create(), [| { Key = "one"; Value = "two" }|])
-      ;  ColorSlices    (Id.Create(), [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |])
-      ;  ColorSlices    (Id.Create(), [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy }|])
-      |]
-      |> Array.iter
-        (fun slices ->
-          let reslices = slices |> Binary.encode |> Binary.decode |> Either.get
-          expect "Should be structurally equivalent" slices id reslices)
+  let test_validate_slices_yaml_serialization =
+    testCase "Validate Slices Yaml Serialization" <| fun _ ->
+      yamlEncDec<Slices>
+      |> Prop.forAll Generators.slicesArb
+      |> Check.QuickThrowOnFailure
 
   //  ____  _
   // |  _ \(_)_ __
@@ -485,19 +394,15 @@ module SerializationTests =
 
   let test_validate_pin_binary_serialization =
     testCase "Validate Pin Binary Serialization" <| fun _ ->
-      let check pin =
-        pin |> Binary.encode |> Binary.decode |> Either.get
-        |> expect "Should be structurally equivalent" pin id
-
-      Array.iter check (mkPins ())
+      binaryEncDec<Pin>
+      |> Prop.forAll Generators.pinArb
+      |> Check.QuickThrowOnFailure
 
   let test_validate_pin_yaml_serialization =
     testCase "Validate Pin Yaml Serialization" <| fun _ ->
-      let check pin =
-        pin |> Yaml.encode |> Yaml.decode |> Either.get
-        |> expect "Should be structurally equivalent" pin id
-
-      Array.iter check (mkPins ())
+      yamlEncDec<Pin>
+      |> Prop.forAll Generators.pinArb
+      |> Check.QuickThrowOnFailure
 
   //   ____ _ _            _
   //  / ___| (_) ___ _ __ | |_
@@ -507,12 +412,9 @@ module SerializationTests =
 
   let test_validate_client_binary_serialization =
     testCase "Validate Client Binary Serialization" <| fun _ ->
-      either {
-        let client = mkClient ()
-        let! reclient = client |> Binary.encode |> Binary.decode
-        expect "Should be structurally equivalent" client id reclient
-      }
-      |> noError
+      binaryEncDec<IrisClient>
+      |> Prop.forAll Generators.clientArb
+      |> Check.QuickThrowOnFailure
 
   //  ____  _        _
   // / ___|| |_ __ _| |_ ___
@@ -522,12 +424,9 @@ module SerializationTests =
 
   let test_validate_state_binary_serialization =
     testCase "Validate State Binary Serialization" <| fun _ ->
-      either {
-        let! state = mkTmpDir() |> mkState
-        let! restate = state |> Binary.encode |> Binary.decode
-        expect "Should be structurally equivalent" state id restate
-      }
-      |> noError
+      binaryEncDec<State>
+      |> Prop.forAll Generators.stateArb
+      |> Check.QuickThrowOnFailure
 
   //  ____  _        _       __  __            _     _
   // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
@@ -537,45 +436,46 @@ module SerializationTests =
 
   let test_validate_state_machine_binary_serialization =
     testCase "Validate StateMachine Binary Serialization" <| fun _ ->
-      either {
-        let! state = mkTmpDir() |> mkState
+      binaryEncDec<StateMachine>
+      |> Prop.forAll Generators.stateMachineArb
+      |> Check.QuickThrowOnFailure
 
-        [ AddCue        <| mkCue ()
-        ; UpdateCue     <| mkCue ()
-        ; RemoveCue     <| mkCue ()
-        ; AddCueList    <| mkCueList ()
-        ; UpdateCueList <| mkCueList ()
-        ; RemoveCueList <| mkCueList ()
-        ; AddSession    <| mkSession ()
-        ; UpdateSession <| mkSession ()
-        ; RemoveSession <| mkSession ()
-        ; AddUser       <| mkUser ()
-        ; UpdateUser    <| mkUser ()
-        ; RemoveUser    <| mkUser ()
-        ; AddPinGroup      <| mkPinGroup ()
-        ; UpdatePinGroup   <| mkPinGroup ()
-        ; RemovePinGroup   <| mkPinGroup ()
-        ; AddPin        <| mkPin ()
-        ; UpdatePin     <| mkPin ()
-        ; RemovePin     <| mkPin ()
-        ; UpdateSlices  <| mkSlices ()
-        ; AddClient     <| mkClient ()
-        ; UpdateClient  <| mkClient ()
-        ; RemoveClient  <| mkClient ()
-        ; AddMember     <| Member.create (Id.Create())
-        ; UpdateMember  <| Member.create (Id.Create())
-        ; RemoveMember  <| Member.create (Id.Create())
-        ; DataSnapshot  <| state
-        ; Command AppCommand.Undo
-        ; LogMsg(Logger.create Debug (Id.Create()) "bla" "oohhhh")
-        ; SetLogLevel Warn
-        ]
-        |> List.iter
-            (fun cmd ->
-              let remsg = cmd |> Binary.encode |> Binary.decode |> Either.get
-              expect "Should be structurally the same" cmd id remsg)
-      }
-      |> noError
+  //  ____  _                                     _
+  // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+  // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+  // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+  // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
+
+  let test_validate_discovered_service_binary_serialization =
+    testCase "Validate DiscoveredService Binary Serialization" <| fun _ ->
+      binaryEncDec<DiscoveredService>
+      |> Prop.forAll Generators.discoveredArb
+      |> Check.QuickThrowOnFailure
+
+  let test_validate_api_request_binary_serialization =
+    testCase "Validate ApiRequest Binary Serialization" <| fun _ ->
+      binaryEncDec<ApiRequest>
+      |> Prop.forAll Generators.apiRequestArb
+      |> Check.QuickThrowOnFailure
+
+  let test_validate_api_response_binary_serialization =
+    testCase "Validate ApiResponse Binary Serialization" <| fun _ ->
+      binaryEncDec<ApiResponse>
+      |> Prop.forAll Generators.apiResponseArb
+      |> Check.QuickThrowOnFailure
+
+  let test_validate_cueplayer_binary_serialization =
+    testCase "Validate CuePlayer Binary Serialization" <| fun _ ->
+      binaryEncDec<CuePlayer>
+      |> Prop.forAll Generators.cuePlayerArb
+      |> Check.QuickThrowOnFailure
+
+  let test_validate_cueplayer_yaml_serialization =
+    testCase "Validate CuePlayer Yaml Serialization" <| fun _ ->
+      yamlEncDec<CuePlayer>
+      |> Prop.forAll Generators.cuePlayerArb
+      |> Check.QuickThrowOnFailure
+
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
   //   / _ \ | | |   | |/ _ \/ __| __/ __|
@@ -584,35 +484,34 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
-      test_validate_requestvote_serialization
-      test_validate_requestvote_response_serialization
-      test_validate_appendentries_serialization
-      test_validate_appendentries_response_serialization
-      test_validate_installsnapshot_serialization
-      test_validate_handshake_serialization
-      test_validate_handwaive_serialization
-      test_validate_redirect_serialization
-      test_validate_welcome_serialization
-      test_validate_arrivederci_serialization
-      test_validate_errorresponse_serialization
+      test_correct_request_serialization
+      tests_parse_state_deserialization
       test_save_restore_raft_value_correctly
-      test_validate_project_binary_serialization
-      test_validate_project_yaml_serialization
+      test_validate_config_change
+      test_validate_user_yaml_serialization
+      test_validate_user_binary_serialization
+      test_validate_slice_binary_serialization
+      test_validate_slices_binary_serialization
+      test_validate_client_binary_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization
       test_validate_cuelist_binary_serialization
       test_validate_cuelist_yaml_serialization
-      test_validate_group_binary_serialization
-      test_validate_group_yaml_serialization
       test_validate_session_binary_serialization
       test_validate_session_yaml_serialization
-      test_validate_user_binary_serialization
-      test_validate_user_yaml_serialization
-      test_validate_slice_binary_serialization
-      test_validate_slices_binary_serialization
       test_validate_pin_binary_serialization
       test_validate_pin_yaml_serialization
-      test_validate_client_binary_serialization
+      test_validate_cueplayer_binary_serialization
+      test_validate_cueplayer_yaml_serialization
+      test_validate_group_binary_serialization
+      test_validate_group_yaml_serialization
+      test_validate_discovered_service_binary_serialization
+      test_validate_project_binary_serialization
       test_validate_state_binary_serialization
+      test_validate_raftrequest_serialization
+      test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
+      test_validate_api_request_binary_serialization
+
+      // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

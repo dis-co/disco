@@ -1,0 +1,25 @@
+title WebSocket Published Events
+
+hide footbox
+
+box "User"
+    actor "Eve" as A
+end box
+
+box "Iris (Leader)" #LightBlue
+    participant "Dispatcher"      as B
+    participant "State Mutator"   as C
+    participant "State Persistor" as D
+    participant "API Publisher"   as E
+end box
+
+box "API Clients" #LightGreen
+    participant "VVVV" as F
+end box
+
+A -> B: UpdateSlice Command
+B -> C: Apply to State
+B -> D: Ignore Command
+B -> E: Publish Command
+E -> F: Send Command
+F -> F: Apply Command to State

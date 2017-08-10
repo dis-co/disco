@@ -1,0 +1,129 @@
+@base-height: 25px;
+@row-height: 17px;
+@pin-width: 120px;
+@arrow-size: 14px;
+@odd-row: #F3F3F3;
+@even-row: #EBEBEB;
+
+.iris-cue {
+  border-left: 3px solid transparent;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-top: 1px solid lightgray;
+  &.iris-highlight {
+    // When hightlighted we want a stronger top border
+    border-top-width: 2px;
+  }
+  &.iris-selected {
+    background-color: @highlight-lightblue;
+    border-color: @highlight-lightblue
+  }
+}
+
+.iris-graphview {
+  background: @odd-row;
+  height: 100%;
+  > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: @odd-row;
+    padding: 4px 5px;
+    &:nth-child(even) {
+      background: @even-row;
+    }
+    > :first-child {
+      padding-right: 5px;
+    }
+  }
+}
+
+.iris-pingroup {
+  margin: 5px;
+  padding: 5px;
+  border: 1px solid black;
+  display: flex;
+  flex-wrap: wrap;
+  .iris-pingroup-name {
+    margin: 5px;
+  }
+}
+
+.iris-pin {
+  // margin: 1px 3px 3px 0px;
+  table {
+    border-spacing: 1px;
+    border-collapse:separate;
+  }
+}
+
+.iris-pin-child {
+  td {
+    cursor: default;
+    vertical-align: middle;
+    font-weight: normal;
+    padding: 1px 4px 1px 2px;
+    color: #fff !important;
+    background-color: #555;
+    &:first-child {
+      padding-left: 6px;
+      // border-right: white solid 1px
+    }
+    &:hover {
+      background-color: #7F7F7F;
+      transition: 0.1s;
+    }
+  }
+
+  .icon-control {
+    color: white;
+    width: @arrow-size;
+    height: @arrow-size;
+    padding: 1px 0 0 0 ;
+  }
+
+  &:first-child {
+    td:first-child {
+      cursor: move;
+      border-top-left-radius: 10px;
+    }
+    td:last-child {
+      border-top-right-radius: 10px;
+    }
+  }
+
+  &:last-child {
+    td:first-child {
+      border-bottom-left-radius: 10px;
+    }
+    td:last-child {
+      border-bottom-right-radius: 10px;
+    }
+  }
+}
+
+.iris-pin-end {
+  padding: 0px;
+  background: none;
+  border: 1px #555 solid;
+  border-top-right-radius: 13px;
+  border-bottom-right-radius: 13px;
+  border-left: none;
+  width: 14px;
+  /*height: 23px;*/
+  background-color: #fff;
+  transition: 0.1s;
+
+  img {
+    /* position: absolute; */
+    /* left: 4px; */
+    /* top: 8px; */
+    transition: 0.1s;
+    margin-left: 2px;
+    width: 50%;
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+}

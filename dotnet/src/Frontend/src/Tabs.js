@@ -36,20 +36,21 @@ export default class Tabs extends Component {
       let spans = [<span key={0}>{tab.name}</span>];
       if (!tab.isFixed) {
         spans.push(
-          <span key={1} className="ui-icon ui-icon-copy" onClick={ev => {
+          <button key={1} className="iris-button iris-icon icon-control icon-resize" onClick={ev => {
             ev.stopPropagation();
-            this.props.global.addWidget(id, tab);
+            this.props.global.addWidget(tab, id);
             this.props.global.removeTab(id);
-          }}></span>,
-          <span key={2} className="ui-icon ui-icon-close" onClick={ev => {
+          }}></button>,
+          <button key={2} className="iris-button iris-icon icon-control icon-close" onClick={ev => {
             ev.stopPropagation();
             this.props.global.removeTab(id);
-          }}></span>
+          }}></button>
         )
       }
 
       return (
-        <div key={id} className={className} onClick={() => {
+        <div key={id} className={className} onClick={ev => {
+          ev.stopPropagation();
           console.log("tab " + id + " clicked");
           this.setState({ selected: kv })
         }}>

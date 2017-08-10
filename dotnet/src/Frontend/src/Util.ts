@@ -1,3 +1,27 @@
+import * as $ from "jquery"
+import { showModal } from "./App"
+import LoadProject from './modals/LoadProject'
+import ProjectConfig from './modals/ProjectConfig'
+
+declare var IrisLib: any;
+
+export function jQueryEventAsPromise(selector: any, events: string) {
+  return new Promise<JQueryEventObject>(resolve => {
+    $(selector).on(events, e => {
+      $(events).off(events);
+      resolve(e);
+    });
+  })
+}
+
+export function raceIndexed(...promises: Promise<any>[]) {
+  return new Promise<[number, any]>(resolve => {
+    for (let i = 0; i < promises.length; i++) {
+      promises[i].then(x => resolve([i, x]));
+    }
+  })
+}
+
 export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   let ar = [];
   if (iterable != null) {
@@ -8,6 +32,16 @@ export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
     }
   }
   return ar;
+}
+
+export function tryFirst<T>(iterable: Iterable<T>, condition?: (x:T)=>boolean) {
+  if (iterable != null) {
+    let iter = iterable[Symbol.iterator](), cur = iter.next();
+    if (!cur.done && condition(cur.value)) {
+      return cur.value;
+    }
+  }
+  return null;
 }
 
 export function head<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
@@ -41,6 +75,7 @@ export function getRandomInt(min: number, max: number) {
 export function touchesElement(el: HTMLElement, x: number, y: number) {
   if (el != null) {
     var rect = el.getBoundingClientRect();
+    // console.log("Touches?", {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom}, {x, y})
     return rect.left < x && x < rect.right
       && rect.top < y && y < rect.bottom;
   }
@@ -51,4 +86,46 @@ export function findParentTag(el: HTMLElement, tagName: string): HTMLElement {
   var parent = el.parentElement;
   return parent.tagName.toUpperCase() === tagName.toUpperCase()
     ? parent : findParentTag(parent, tagName);
+}
+
+export function xand(a: boolean, b: boolean) {
+  return a === b;
+}
+
+export function xor(a: boolean, b: boolean) {
+  return a !== b;
+}
+
+/** Returns true if one and only one of the parameters is null */
+export function oneIsNull(a: {}, b: {}) {
+  return xor(a == null, b == null);
+}
+
+interface ProjectInfo { name: string, username: string, password: string }
+
+export function loadProject() {
+  let cachedInfo: ProjectInfo = null;
+  showModal(LoadProject)
+    .then((info: ProjectInfo) => {
+      cachedInfo = info;
+      return IrisLib.loadProject(info.name, info.username, info.password)
+    })
+    .then((err: any) =>
+      err != null
+      // Get project sites and machine config
+      ? IrisLib.getProjectSites(cachedInfo.name)
+      : null
+    )
+    .then((sites: any) =>
+      sites != null
+      // Ask user to create or select a new config
+      ? showModal(ProjectConfig, { sites })
+      : null
+    )
+    .then((site: any) =>
+      site != null
+      // Try loading the project again with the site config
+      ? IrisLib.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
+      : null
+    );
 }

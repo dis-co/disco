@@ -7,7 +7,6 @@ open System.Collections
 open FlatBuffers
 open Iris.Core
 open Iris.Serialization
-open SharpYaml.Serialization
 
 // * RaftLog
 
@@ -20,7 +19,7 @@ open SharpYaml.Serialization
 
 type RaftLog =
   { Data  : RaftLogEntry option
-  ; Depth : Long
+  ; Depth : int
   ; Index : Index
   }
 
@@ -83,11 +82,11 @@ type RaftLog =
       | Some entries as value ->
         return { Data  = value
                  Depth = LogEntry.depth entries
-                 Index = LogEntry.index entries }
+                 Index = LogEntry.getIndex entries }
       | _ ->
         return { Data  = None
-                 Depth = 0u
-                 Index = 0u }
+                 Depth = 0
+                 Index = index 0 }
     }
 
 // * Log Module
@@ -109,8 +108,8 @@ module Log =
   /// Build a new, empty log data structure.
   ///
   /// Returns: RaftLog
-  let empty = { Depth = 0u
-              ; Index = 0u
+  let empty = { Depth = 0
+              ; Index = index 0
               ; Data  = None }
 
   // ** Log.fromEntries
@@ -125,7 +124,7 @@ module Log =
   /// Returns: RaftLog
   let fromEntries (entries: RaftLogEntry) =
     { Depth = LogEntry.depth entries
-    ; Index = LogEntry.index entries
+    ; Index = LogEntry.getIndex entries
     ; Data  = Some entries }
 
   // ** Log.length
@@ -150,7 +149,7 @@ module Log =
   /// - log: RaftLog to get index for
   ///
   /// Returns: Long
-  let index log = log.Index
+  let getIndex log = log.Index
 
   // ** Log.prevIndex
 
@@ -175,10 +174,10 @@ module Log =
   /// - log: RaftLog to return term for
   ///
   /// Returns: Long
-  let term log =
+  let getTerm log =
     match log.Data with
-    | Some entries -> LogEntry.term entries
-    | _            -> 0u
+    | Some entries -> LogEntry.getTerm entries
+    | _            -> term 0
 
   // ** Log.prevTerm
 
@@ -204,7 +203,7 @@ module Log =
       match LogEntry.prevEntry entries with
       | Some entry ->
         { Depth = LogEntry.depth entry
-        ; Index = LogEntry.index entry
+        ; Index = LogEntry.getIndex entry
         ; Data  = Some entry }
         |> Some
       | _ -> None
@@ -250,12 +249,12 @@ module Log =
     match log.Data with
     | Some entries ->
       let newlog = LogEntry.append newentries entries
-      { Index = LogEntry.index newlog
+      { Index = LogEntry.getIndex newlog
         Depth = LogEntry.depth newlog
         Data  = Some           newlog }
     | _ ->
       let entries = LogEntry.rewrite newentries
-      { Index = LogEntry.index entries
+      { Index = LogEntry.getIndex entries
         Depth = LogEntry.depth entries
         Data  = Some           entries }
 
@@ -295,8 +294,8 @@ module Log =
     match log.Data with
       | Some entries ->
         let snapshot = LogEntry.snapshot nodes data entries
-        { Index = LogEntry.index snapshot
-          Depth = 1u
+        { Index = LogEntry.getIndex snapshot
+          Depth = 1
           Data = Some snapshot }
       | _ -> log
 

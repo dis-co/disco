@@ -1,4 +1,6 @@
-namespace Iris.Core
+namespace rec Iris.Core
+
+// * Imports
 
 #if FABLE_COMPILER
 
@@ -15,149 +17,29 @@ open Iris.Serialization
 
 #endif
 
+open Path
+
+// * PinGroupYaml
+
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml.Serialization
 
-type PinGroupYaml(id, name, client, pins) as self =
-  [<DefaultValue>] val mutable Id   : string
-  [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Client : string
-  [<DefaultValue>] val mutable Pins : PinYaml array
+type PinGroupYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Client: string
+  [<DefaultValue>] val mutable Pins: PinYaml array
 
-  new () = new PinGroupYaml(null, null, null, null)
+  static member From (group: PinGroup) =
+    let yml = PinGroupYaml()
+    yml.Id <- string group.Id
+    yml.Name <- unwrap group.Name
+    yml.Client <- string group.Client
+    yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
+    yml
 
-  do
-    self.Id <- id
-    self.Name <- name
-    self.Client <- client
-    self.Pins <- pins
-
-#endif
-
-//  ____       _       _
-// |  _ \ __ _| |_ ___| |__
-// | |_) / _` | __/ __| '_ \
-// |  __/ (_| | || (__| | | |
-// |_|   \__,_|\__\___|_| |_|
-
-type PinGroup =
-  { Id: Id
-    Name: Name
-    Client: Id
-    Pins: Map<Id,Pin> }
-
-  //  _   _           ____  _
-  // | | | | __ _ ___|  _ \(_)_ __
-  // | |_| |/ _` / __| |_) | | '_ \
-  // |  _  | (_| \__ \  __/| | | | |
-  // |_| |_|\__,_|___/_|   |_|_| |_|
-
-  static member HasPin (group : PinGroup) (id: Id) : bool =
-    Map.containsKey id group.Pins
-
-  //  _____ _           _ ____  _
-  // |  ___(_)_ __   __| |  _ \(_)_ __
-  // | |_  | | '_ \ / _` | |_) | | '_ \
-  // |  _| | | | | | (_| |  __/| | | | |
-  // |_|   |_|_| |_|\__,_|_|   |_|_| |_|
-
-  static member FindPin (groups : Map<Id, PinGroup>) (id : Id) : Pin option =
-    let folder (m : Pin option) _ (group: PinGroup) =
-      match m with
-        | Some _ as res -> res
-        |      _        -> Map.tryFind id group.Pins
-    Map.fold folder None groups
-
-  //   ____            _        _           ____  _
-  //  / ___|___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
-  // | |   / _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
-  // | |__| (_) | | | | || (_| | | | | \__ \  __/| | | | |
-  //  \____\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
-
-  static member ContainsPin (groups : Map<Id,PinGroup>) (id: Id) : bool =
-    let folder m _ p =
-      if m then m else PinGroup.HasPin p id || m
-    Map.fold folder false groups
-
-  //     _       _     _ ____  _
-  //    / \   __| | __| |  _ \(_)_ __
-  //   / _ \ / _` |/ _` | |_) | | '_ \
-  //  / ___ \ (_| | (_| |  __/| | | | |
-  // /_/   \_\__,_|\__,_|_|   |_|_| |_|
-
-  static member AddPin (group : PinGroup) (pin : Pin) : PinGroup=
-    if PinGroup.HasPin group pin.Id then
-      group
-    else
-      { group with Pins = Map.add pin.Id pin group.Pins }
-
-  //  _   _           _       _       ____  _
-  // | | | |_ __   __| | __ _| |_ ___|  _ \(_)_ __
-  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
-  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
-  //  \___/| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
-  //       |_|
-
-  static member UpdatePin (group : PinGroup) (pin : Pin) : PinGroup =
-    if PinGroup.HasPin group pin.Id then
-      let mapper _ (other: Pin) =
-        if other.Id = pin.Id then pin else other
-      { group with Pins = Map.map mapper group.Pins }
-    else
-      group
-
-  //  _   _           _       _       ____  _ _
-  // | | | |_ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
-  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
-  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
-  //  \___/| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
-  //       |_|
-
-  static member UpdateSlices (group : PinGroup) (slices: Slices) : PinGroup =
-    if PinGroup.HasPin group slices.Id then
-      let mapper _ (pin: Pin) =
-        if pin.Id = slices.Id then
-          pin.SetSlices slices
-        else pin
-      { group with Pins = Map.map mapper group.Pins }
-    else
-      group
-
-  //  ____                               ____  _
-  // |  _ \ ___ _ __ ___   _____   _____|  _ \(_)_ __
-  // | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \
-  // |  _ <  __/ | | | | | (_) \ V /  __/  __/| | | | |
-  // |_| \_\___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
-
-  static member RemovePin (group : PinGroup) (pin : Pin) : PinGroup =
-    { group with Pins = Map.remove pin.Id group.Pins }
-
-
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  #if !FABLE_COMPILER && !IRIS_NODES
-
-  member self.ToYamlObject () =
-    let yaml = new PinGroupYaml()
-    yaml.Id <- string self.Id
-    yaml.Name <- self.Name
-    yaml.Client <- string self.Client
-    yaml.Pins <- self.Pins
-                   |> Map.toArray
-                   |> Array.map (snd >> Yaml.toYaml)
-    yaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  static member FromYamlObject (yml: PinGroupYaml) =
+  member yml.ToPinGroup() =
     either {
       let! pins =
         Array.fold
@@ -170,17 +52,61 @@ type PinGroup =
           yml.Pins
 
       return { Id = Id yml.Id
-               Name = yml.Name
+               Name = name yml.Name
                Client = Id yml.Client
                Pins = pins }
     }
 
+#endif
+
+// * PinGroup
+
+//  ____  _        ____
+// |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __
+// | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \
+// |  __/| | | | | |_| | | | (_) | |_| | |_) |
+// |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
+//                                     |_|
+
+type PinGroup =
+  { Id: Id
+    Name: Name
+    Client: Id
+    Pins: Map<Id,Pin> }
+
+  // ** ToYamlObject
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  member group.ToYamlObject () = PinGroupYaml.From(group)
+
+  // ** ToYaml
+
+  member self.ToYaml (serializer: Serializer) =
+    self
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  // ** FromYamlObject
+
+  static member FromYamlObject (yml: PinGroupYaml) = yml.ToPinGroup()
+
+  // ** FromYaml
+
   static member FromYaml (str: string) : Either<IrisError,PinGroup> =
-    let serializer = new Serializer()
-    serializer.Deserialize<PinGroupYaml>(str)
-    |> Yaml.fromYaml
+    let serializer = Serializer()
+    let yml = serializer.Deserialize<PinGroupYaml>(str)
+    Yaml.fromYaml yml
 
   #endif
+
+  // ** FromFB
 
   //  ____  _
   // | __ )(_)_ __   __ _ _ __ _   _
@@ -218,14 +144,16 @@ type PinGroup =
         |> Either.map snd
 
       return { Id = Id fb.Id
-               Name = fb.Name
+               Name = name fb.Name
                Client = Id fb.Client
                Pins = pins }
     }
 
+  // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
@@ -235,17 +163,23 @@ type PinGroup =
     let pins = PinGroupFB.CreatePinsVector(builder, pinoffsets)
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
-    PinGroupFB.AddName(builder, name)
+    Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
     PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 
-  member self.ToBytes() : Binary.Buffer = Binary.buildBuffer self
+  // ** ToBytes
 
-  static member FromBytes (bytes: Binary.Buffer) : Either<IrisError,PinGroup> =
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroup> =
     Binary.createBuffer bytes
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB
+
+  // ** Load
 
   //  _                    _
   // | |    ___   __ _  __| |
@@ -256,57 +190,15 @@ type PinGroup =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   static member Load(path: FilePath) : Either<IrisError, PinGroup> =
-    either {
-      let! data = Asset.read path
-      let! group = Yaml.decode data
-      return group
-    }
+    IrisData.load path
+
+  // ** LoadAll
 
   static member LoadAll(basePath: FilePath) : Either<IrisError, PinGroup array> =
-    either {
-      try
-        let dir = basePath </> PINGROUP_DIR
-        let files = Directory.GetFiles(dir, sprintf "*%s" ASSET_EXTENSION)
+    basePath </> filepath Constants.PINGROUP_DIR
+    |> IrisData.loadAll
 
-        let! (_,groups) =
-          let arr =
-            files
-            |> Array.length
-            |> Array.zeroCreate
-          Array.fold
-            (fun (m: Either<IrisError, int * PinGroup array>) path ->
-              either {
-                let! (idx,groups) = m
-                let! group = PinGroup.Load path
-                groups.[idx] <- group
-                return (idx + 1, groups)
-              })
-            (Right(0, arr))
-            files
-
-        return groups
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError "PinGroup.LoadAll"
-            |> Either.fail
-    }
-
-  //     _                 _   ____       _   _
-  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
-  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
-  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
-  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
-
-  member self.AssetPath
-    with get () =
-      let filepath =
-        sprintf "%s_%s%s"
-          (String.sanitize self.Name)
-          (string self.Id)
-          ASSET_EXTENSION
-      PINGROUP_DIR </> filepath
+  // ** Save
 
   //  ____
   // / ___|  __ ___   _____
@@ -315,11 +207,121 @@ type PinGroup =
   // |____/ \__,_| \_/ \___|
 
   member group.Save (basePath: FilePath) =
-    either {
-      let path = basePath </> Asset.path group
-      let data = Yaml.encode group
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basePath group
 
   #endif
+
+  // ** AssetPath
+
+  //     _                 _   ____       _   _
+  //    / \   ___ ___  ___| |_|  _ \ __ _| |_| |__
+  //   / _ \ / __/ __|/ _ \ __| |_) / _` | __| '_ \
+  //  / ___ \\__ \__ \  __/ |_|  __/ (_| | |_| | | |
+  // /_/   \_\___/___/\___|\__|_|   \__,_|\__|_| |_|
+
+  member pingroup.AssetPath
+    with get () = PinGroup.assetPath pingroup
+
+// * PinGroup module
+
+module PinGroup =
+
+  // ** assetPath
+
+  let assetPath (group: PinGroup) =
+    let fn = (string group.Id |> String.sanitize) + ASSET_EXTENSION
+    let path = (string group.Client) <.> fn
+    filepath PINGROUP_DIR </> path
+
+  // ** hasPin
+
+  //  _               ____  _
+  // | |__   __ _ ___|  _ \(_)_ __
+  // | '_ \ / _` / __| |_) | | '_ \
+  // | | | | (_| \__ \  __/| | | | |
+  // |_| |_|\__,_|___/_|   |_|_| |_|
+
+  let hasPin (id: Id) (group : PinGroup) : bool =
+    Map.containsKey id group.Pins
+
+  // ** addPin
+
+  //            _     _ ____  _
+  //   __ _  __| | __| |  _ \(_)_ __
+  //  / _` |/ _` |/ _` | |_) | | '_ \
+  // | (_| | (_| | (_| |  __/| | | | |
+  //  \__,_|\__,_|\__,_|_|   |_|_| |_|
+
+  let addPin (pin : Pin) (group : PinGroup) : PinGroup =
+    if hasPin pin.Id group
+    then   group
+    else { group with Pins = Map.add pin.Id pin group.Pins }
+
+  // ** updatePin
+
+  //                  _       _       ____  _
+  //  _   _ _ __   __| | __ _| |_ ___|  _ \(_)_ __
+  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
+  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
+  //  \__,_| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
+  //       |_|
+
+  let updatePin (pin : Pin) (group : PinGroup) : PinGroup =
+    if hasPin pin.Id group
+    then { group with Pins = Map.add pin.Id pin group.Pins }
+    else   group
+
+  // ** updateSlices
+
+  //                  _       _       ____  _ _
+  //  _   _ _ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
+  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
+  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
+  //  \__,_| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
+  //       |_|
+
+  let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
+    match Map.tryFind slices.Id group.Pins with
+    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
+    | None -> group
+
+  // ** removePin
+
+  //                                    ____  _
+  //  _ __ ___ _ __ ___   _____   _____|  _ \(_)_ __
+  // | '__/ _ \ '_ ` _ \ / _ \ \ / / _ \ |_) | | '_ \
+  // | | |  __/ | | | | | (_) \ V /  __/  __/| | | | |
+  // |_|  \___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
+
+  let removePin (pin : Pin) (group : PinGroup) : PinGroup =
+    { group with Pins = Map.remove pin.Id group.Pins }
+
+
+// * Map module
+
+module Map =
+
+  //  _              _____ _           _ ____  _
+  // | |_ _ __ _   _|  ___(_)_ __   __| |  _ \(_)_ __
+  // | __| '__| | | | |_  | | '_ \ / _` | |_) | | '_ \
+  // | |_| |  | |_| |  _| | | | | | (_| |  __/| | | | |
+  //  \__|_|   \__, |_|   |_|_| |_|\__,_|_|   |_|_| |_|
+  //           |___/
+
+  let tryFindPin (id : Id) (groups : Map<Id, PinGroup>) : Pin option =
+    let folder (m : Pin option) _ (group: PinGroup) =
+      match m with
+        | Some _ as res -> res
+        |      _        -> Map.tryFind id group.Pins
+    Map.fold folder None groups
+
+  //                  _        _           ____  _
+  //   ___ ___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
+  //  / __/ _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
+  // | (_| (_) | | | | || (_| | | | | \__ \  __/| | | | |
+  //  \___\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
+
+  let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
+    let folder m _ group =
+      if m then m else PinGroup.hasPin id group || m
+    Map.fold folder false groups

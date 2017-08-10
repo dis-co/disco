@@ -1,37 +1,26 @@
 namespace Iris.Tests
 
-open System
-open System.Threading
-open System.Text
 open Expecto
-
 open Iris.Core
 open Iris.Service
-open Iris.Service.Utilities
-open Iris.Service.Persistence
-open Iris.Zmq
-open Iris.Raft
-open Iris.Service
-open FSharpx.Functional
-open Microsoft.FSharp.Control
 
 [<AutoOpen>]
 module PinTests =
 
   let mkStringPin (value: string array) =
-    Pin.String(Id.Create(), "test", Id.Create(), [| |], value)
+    Pin.string (Id.Create()) "test" (Id.Create()) [| |] value
 
   let mkNumberPin (value: double array) =
-    Pin.Number(Id.Create(), "test", Id.Create(), [| |], value)
+    Pin.number (Id.Create()) "test" (Id.Create()) [| |] value
 
   let mkBooleanPin (value: bool array) =
-    Pin.Toggle(Id.Create(), "test", Id.Create(), [| |], value)
+    Pin.toggle (Id.Create()) "test" (Id.Create()) [| |] value
 
   let mkEnumPin (value: Property array) =
-    Pin.Enum(Id.Create(), "test", Id.Create(), [| |], value, value)
+    Pin.enum (Id.Create()) "test" (Id.Create()) [| |] value value
 
   let mkColorPin (value: ColorSpace array) =
-    Pin.Color(Id.Create(), "test", Id.Create(), [| |], value)
+    Pin.color (Id.Create()) "test" (Id.Create()) [| |] value
 
   let test_simple_string_pin_to_spread =
     testCase "validate correct string pin ToSpread with non-whitespace" <| fun _ ->
