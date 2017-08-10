@@ -1,0 +1,3 @@
+[submodule "wiki"]
+	path = wiki
+	url = https://ingolfheinsch@bitbucket.org/nsynk/iris.git/wiki
