@@ -238,9 +238,32 @@ module IrisService =
   // ** sendLocalData
 
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<IrisState>) =
-    let sessions = store.State.SocketServer.Sessions
-    let clients = store.State.ApiServer.Clients
-    ()
+    if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
+      let sessions =
+        store.State.SocketServer.Sessions
+        |> Map.toList
+        |> List.map (snd >> AddSession)
+      let clients =
+        store.State.ApiServer.Clients
+        |> Map.toList
+        |> List.map (snd >> AddClient)
+      let batch =
+        List.append sessions clients
+        |> StateMachineBatch
+        |> CommandBatch
+      batch
+      |> RaftRequest.AppendEntry
+      |> Binary.encode
+      |> Request.create (Guid.ofId socket.ClientId)
+      |> socket.Request
+
+  // ** handleLeaderEvents
+
+  let private handleLeaderEvents socket store = function
+    | TcpClientEvent.Connected _ ->
+      do sendLocalData socket store
+    // | TcpClientEvent. -> ()
+    | _ -> ()
 
   // ** makeLeader
 
@@ -251,13 +274,13 @@ module IrisService =
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    (fun _ ->
-      "TODO: setup leader socket response handler"
-      |> Logger.warn (tag "makeLeader"))
+
+    handleLeaderEvents socket store
     |> socket.Subscribe
     |> ignore
+
     socket.Connect()
-    do sendLocalData socket store
+
     Some { Member = leader; Socket = socket }
 
   // ** processEvent

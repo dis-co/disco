@@ -17,7 +17,7 @@ open Common
 module EnsureClientsReplicated =
 
   let test =
-    testCase "ensure connected clients are forwarded to leader" <| fun _ ->
+    ftestCase "ensure connected clients are forwarded to leader" <| fun _ ->
       either {
         use electionDone = new AutoResetEvent(false)
         use addClientDone = new AutoResetEvent(false)

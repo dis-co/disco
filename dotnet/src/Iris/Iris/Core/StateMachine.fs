@@ -866,6 +866,61 @@ module State =
   let updateProject (project: IrisProject) (state: State) =
     { state with Project = project }
 
+  // ** update
+
+  let update (state: State) = function
+    | AddCue            cue           -> addCue         cue     state
+    | UpdateCue         cue           -> updateCue      cue     state
+    | RemoveCue         cue           -> removeCue      cue     state
+
+    | AddCueList    cuelist           -> addCueList     cuelist state
+    | UpdateCueList cuelist           -> updateCueList  cuelist state
+    | RemoveCueList cuelist           -> removeCueList  cuelist state
+
+    | AddCuePlayer    player          -> addCuePlayer    player state
+    | UpdateCuePlayer player          -> updateCuePlayer player state
+    | RemoveCuePlayer player          -> removeCuePlayer player state
+
+    | AddPinGroup     group           -> addPinGroup    group   state
+    | UpdatePinGroup  group           -> updatePinGroup group   state
+    | RemovePinGroup  group           -> removePinGroup group   state
+
+    | AddPin            pin           -> addPin         pin     state
+    | UpdatePin         pin           -> updatePin      pin     state
+    | RemovePin         pin           -> removePin      pin     state
+    | UpdateSlices   slices           -> updateSlices   slices  state
+
+    | AddMember         mem           -> addMember      mem     state
+    | UpdateMember      mem           -> updateMember   mem     state
+    | RemoveMember      mem           -> removeMember   mem     state
+
+    | AddClient      client           -> addClient      client  state
+    | UpdateClient   client           -> updateClient   client  state
+    | RemoveClient   client           -> removeClient   client  state
+
+    | AddSession    session           -> addSession     session state
+    | UpdateSession session           -> updateSession  session state
+    | RemoveSession session           -> removeSession  session state
+
+    | AddUser          user           -> addUser        user    state
+    | UpdateUser       user           -> updateUser     user    state
+    | RemoveUser       user           -> removeUser     user    state
+
+    | UpdateProject project           -> updateProject  project state
+
+    // It may happen that a service didn't make it into the state and an update service
+    // event is received. For those cases just add/update the service into the state.
+    | AddDiscoveredService    service
+    | UpdateDiscoveredService service -> addOrUpdateService    service state
+    | RemoveDiscoveredService service -> removeService         service state
+
+    | _ -> state
+
+  // ** processBatch
+
+  let processBatch (state: State) (batch: StateMachineBatch) =
+    List.fold update state batch.Commands
+
 // * Store Action
 
 //  ____  _                      _        _   _
@@ -1068,57 +1123,15 @@ type Store(state : State)=
                        State = state })  // 4) append to undo history
 
     match ev with
-    | Command (AppCommand.Redo)     -> self.Redo()
-    | Command (AppCommand.Undo)     -> self.Undo()
-    | Command (AppCommand.Reset)    -> ()   // do nothing for now
+    | Command (AppCommand.Redo)  -> self.Redo()
+    | Command (AppCommand.Undo)  -> self.Undo()
+    | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue            cue         -> State.addCue         cue     state |> andRender
-    | UpdateCue         cue         -> State.updateCue      cue     state |> andRender
-    | RemoveCue         cue         -> State.removeCue      cue     state |> andRender
+    | UnloadProject              -> self.Notify(ev) // This event doesn't actually modify the state
 
-    | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
-    | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
-    | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
+    | CommandBatch batch         -> State.processBatch state batch |> andRender
 
-    | AddCuePlayer    player        -> State.addCuePlayer    player state |> andRender
-    | UpdateCuePlayer player        -> State.updateCuePlayer player state |> andRender
-    | RemoveCuePlayer player        -> State.removeCuePlayer player state |> andRender
-
-    | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
-    | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
-    | RemovePinGroup  group         -> State.removePinGroup group   state |> andRender
-
-    | AddPin            pin         -> State.addPin         pin     state |> andRender
-    | UpdatePin         pin         -> State.updatePin      pin     state |> andRender
-    | RemovePin         pin         -> State.removePin      pin     state |> andRender
-    | UpdateSlices   slices         -> State.updateSlices   slices  state |> andRender
-
-    | AddMember         mem         -> State.addMember      mem     state |> andRender
-    | UpdateMember      mem         -> State.updateMember   mem     state |> andRender
-    | RemoveMember      mem         -> State.removeMember   mem     state |> andRender
-
-    | AddClient      client         -> State.addClient      client  state |> andRender
-    | UpdateClient   client         -> State.updateClient   client  state |> andRender
-    | RemoveClient   client         -> State.removeClient   client  state |> andRender
-
-    | AddSession    session         -> State.addSession     session state |> andRender
-    | UpdateSession session         -> State.updateSession  session state |> andRender
-    | RemoveSession session         -> State.removeSession  session state |> andRender
-
-    | AddUser          user         -> State.addUser        user    state |> andRender
-    | UpdateUser       user         -> State.updateUser     user    state |> andRender
-    | RemoveUser       user         -> State.removeUser     user    state |> andRender
-
-    | UpdateProject project         -> State.updateProject  project state |> andRender
-    | UnloadProject                 -> self.Notify(ev) // This event doesn't actually modify the state
-
-    // It may happen that a service didn't make it into the state and an update service
-    // event is received. For those cases just add/update the service into the state.
-    | AddDiscoveredService    service
-    | UpdateDiscoveredService service -> State.addOrUpdateService    service state |> andRender
-    | RemoveDiscoveredService service -> State.removeService service state |> andRender
-
-    | _ -> ()
+    | other                      -> State.update state other |> andRender
 
   // ** Subscribe
 
