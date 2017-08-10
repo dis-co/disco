@@ -672,6 +672,10 @@ table CuePlayerFB {
       LastCaller:    string;
 }
 
+table CommandBatchFB {
+      Commands: [StateMachineFB];
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -712,13 +716,15 @@ union StateMachinePayloadFB {
       ProjectFB,
       CuePlayerFB,
       DiscoveredServiceFB,
-      ClockFB
+      ClockFB,
+      CommandBatchFB
 }
 
 enum StateMachineActionFB:ushort {
       AddFB,
       UpdateFB,
       RemoveFB,
+      BatchFB,
       LogEventFB,
       DataSnapshotFB,
       CallFB,

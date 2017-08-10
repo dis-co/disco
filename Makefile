@@ -114,6 +114,9 @@ run.service.1.project.profile:
 frontend:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"
 
+frontend.plugins:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendPlugins $(OPTS)"
+
 frontend.full:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend $(OPTS)"
 

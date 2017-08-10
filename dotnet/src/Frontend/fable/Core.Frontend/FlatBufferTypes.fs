@@ -1,4 +1,4 @@
-module Iris.Web.Core.FlatBufferTypes
+module rec Iris.Web.Core.FlatBufferTypes
 
 open Fable.Core
 open Fable.Import
@@ -1798,12 +1798,30 @@ type ByteFBConstructor =
 
 let ByteFB: ByteFBConstructor = failwith "JS only"
 
-//     _          _    _        _   _
-//    / \   _ __ (_)  / \   ___| |_(_) ___  _ __
-//   / _ \ | '_ \| | / _ \ / __| __| |/ _ \| '_ \
-//  / ___ \| |_) | |/ ___ \ (__| |_| | (_) | | | |
-// /_/   \_\ .__/|_/_/   \_\___|\__|_|\___/|_| |_|
-//         |_|
+//   ____                                          _ ____        _       _
+//  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+// | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+// | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+//  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+type CommandBatchFB =
+  abstract Commands: int -> StateMachineFB
+  abstract CommandsLength: int
+
+type CommandBatchFBConstructor =
+  abstract prototype: CommandBatchFB with get, set
+  abstract StartCommandBatchFB: builder:FlatBufferBuilder -> unit
+  abstract AddCommands: builder:FlatBufferBuilder * commands:Offset<StateMachineFB> -> unit
+  abstract EndCommandBacthFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
+  abstract GetRootAsCommandBatchFB: bytes:ByteBuffer -> CommandBatchFB
+  abstract CreateCommandsVector: builder: FlatBufferBuilder * Offset<StateMachineFB> array -> Offset<'a>
+  abstract Create: unit -> CommandBatchFB
+
+//  ____  _        _       __  __            _     _
+// / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+// \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+// |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type StateMachineActionFB = int
 
@@ -1816,6 +1834,7 @@ type StateMachineActionFBConstructor =
   abstract RedoFB: StateMachineActionFB
   abstract ResetFB: StateMachineActionFB
   abstract CallFB: StateMachineActionFB
+  abstract BatchFB: StateMachineActionFB
   abstract SaveProjectFB: StateMachineActionFB
   abstract DataSnapshotFB: StateMachineActionFB
   abstract SetLogLevelFB: StateMachineActionFB
@@ -1842,6 +1861,7 @@ type StateMachinePayloadFBConstructor =
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
+  abstract CommandBatchFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -1863,6 +1883,7 @@ type StateMachineFB =
   abstract IrisClientFB: IrisClientFB
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
+  abstract CommandBatchFB: CommandBatchFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =

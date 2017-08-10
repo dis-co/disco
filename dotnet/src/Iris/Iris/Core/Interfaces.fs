@@ -175,6 +175,16 @@ type IrisEvent =
       | Append (Origin.Raft, _)                              -> Publish
       | Append (Origin.Api,  _)                              -> Publish
 
+      //  ____        _       _
+      // | __ )  __ _| |_ ___| |__
+      // |  _ \ / _` | __/ __| '_ \
+      // | |_) | (_| | || (__| | | |
+      // |____/ \__,_|\__\___|_| |_|
+
+      | Append (Origin.Client  _, CommandBatch _)
+      | Append (Origin.Service _, CommandBatch _)
+      | Append (Origin.Web     _, CommandBatch _)            -> Replicate
+
       //  ____            _           _
       // |  _ \ _ __ ___ (_) ___  ___| |_
       // | |_) | '__/ _ \| |/ _ \/ __| __|

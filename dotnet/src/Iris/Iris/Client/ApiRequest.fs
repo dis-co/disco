@@ -61,7 +61,7 @@ type ApiError =
       |> Error.asClientError "ApiErrorFB.FromFB"
       |> Either.fail
 
-// * ClientApiRequest
+// * ApiRequest
 
 type ApiRequest =
   | Snapshot   of State
@@ -116,6 +116,12 @@ type ApiRequest =
         project
         |> Binary.toOffset builder
         |> withPayload builder ApiCommandFB.UpdateProjectFB ParameterFB.ProjectFB
+
+      // CommandBatch
+      | CommandBatch _ as batch ->
+        batch
+        |> Binary.toOffset builder
+        |> withPayload builder ApiCommandFB.BatchFB ParameterFB.CommandBatchFB
 
       // CuePlayer
       | AddCuePlayer player
@@ -396,6 +402,27 @@ type ApiRequest =
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return ApiRequest.Update (UpdateProject project)
+      }
+
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+    | ApiCommandFB.BatchFB ->
+      either {
+        let! commands =
+          let batchish = fb.Parameter<CommandBatchFB>()
+          if batchish.HasValue then
+            let batch = batchish.Value
+            StateMachineBatch.FromFB batch
+          else
+            "Empty CommandBatchFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+
+        return ApiRequest.Update (CommandBatch commands)
       }
 
     //   ____           ____  _

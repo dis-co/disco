@@ -613,6 +613,9 @@ Target "BuildReleaseZeroconf"
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
 
+Target "BuildFrontendPlugins" (fun () ->
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false)
+
 Target "BuildFrontend" (fun () ->
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()

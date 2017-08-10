@@ -1202,6 +1202,79 @@ type Store(state : State)=
 /// Returns: Store -> StateMachine -> unit
 type Listener = Store -> StateMachine -> unit
 
+// * StateMachineBatch
+
+type StateMachineBatch = StateMachineBatch of StateMachine list
+  with
+    // ** Commands
+
+    member batch.Commands
+      with get () = match batch with | StateMachineBatch commands -> commands
+
+    // ** ToOffset
+
+    member batch.ToOffset(builder: FlatBufferBuilder) =
+      let serialized =
+        batch.Commands
+        |> List.map (Binary.toOffset builder)
+        |> List.toArray
+        |> fun arr -> CommandBatchFB.CreateCommandsVector(builder, arr)
+      CommandBatchFB.StartCommandBatchFB(builder)
+      CommandBatchFB.AddCommands(builder, serialized)
+      CommandBatchFB.EndCommandBatchFB(builder)
+
+    // ** FromFB
+
+    static member FromFB(batch: CommandBatchFB) =
+      either {
+        let input = Array.zeroCreate batch.CommandsLength
+
+        let! (_,commands) =
+          #if FABLE_COMPILER
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>) _ -> either {
+                let! (idx, arr) = m
+                let! cmd = batch.Commands(idx) |>  StateMachine.FromFB
+                do arr.[idx] <- cmd
+                return (idx +  1, arr)
+              })
+            (Right (0, input))
+            input
+          #else
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>)  _ -> either {
+                let! (idx, arr) = m
+                let cmdish = batch.Commands(idx)
+                if cmdish.HasValue then
+                  let raw = cmdish.Value
+                  let! cmd = StateMachine.FromFB raw
+                  do arr.[idx] <- cmd
+                  return (idx +  1, arr)
+                else
+                  return!
+                    "Could not parse empty CommandBatch *value* payload"
+                    |> Error.asParseError "StateMachine.FromFB"
+                    |> Either.fail
+              })
+            (Right (0, input))
+            input
+          #endif
+        return StateMachineBatch (List.ofArray commands)
+      }
+
+    // ** ToBytes
+
+    member batch.ToBytes() =
+      Binary.buildBuffer batch
+
+    // ** FromBytes
+
+    static member FromBytes(raw: byte array) =
+      raw
+      |> Binary.createBuffer
+      |> CommandBatchFB.GetRootAsCommandBatchFB
+      |> StateMachineBatch.FromFB
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1248,9 +1321,9 @@ type StateMachine =
   | RemoveCueList           of CueList
 
   // CUEPLAYER
-  | AddCuePlayer          of CuePlayer
-  | UpdateCuePlayer       of CuePlayer
-  | RemoveCuePlayer       of CuePlayer
+  | AddCuePlayer            of CuePlayer
+  | UpdateCuePlayer         of CuePlayer
+  | RemoveCuePlayer         of CuePlayer
 
   // User
   | AddUser                 of User
@@ -1272,6 +1345,8 @@ type StateMachine =
   | Command                 of AppCommand
 
   | DataSnapshot            of State
+
+  | CommandBatch            of StateMachineBatch
 
   | SetLogLevel             of LogLevel
 
@@ -1338,6 +1413,7 @@ type StateMachine =
     | RemoveDiscoveredService _ -> "RemoveDiscoveredService"
 
     | Command                 _ -> "Command"
+    | CommandBatch            _ -> "CommandBatch"
     | DataSnapshot            _ -> "DataSnapshot"
     | SetLogLevel             _ -> "SetLogLevel"
     | LogMsg                  _ -> "LogMsg"
@@ -1404,6 +1480,8 @@ type StateMachine =
       | AddDiscoveredService    _
       | UpdateDiscoveredService _
       | RemoveDiscoveredService _      -> Ignore
+
+      | CommandBatch            _      -> Ignore
 
       | UpdateClock             _      -> Ignore
 
@@ -1630,6 +1708,13 @@ type StateMachine =
     | x when x = StateMachinePayloadFB.ClockFB ->
       UpdateClock(fb.ClockFB.Value)
       |> Either.succeed
+
+    | x when x = StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let fb = fb.CommandBatchFB
+        let! batch = StateMachineBatch.FromFB fb
+        return CommandBatch batch
+      }
 
     | _ ->
       fb.Action
@@ -2047,6 +2132,26 @@ type StateMachine =
         else
           return!
             "Could not parse empty clock payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+    | StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let batchish = fb.Payload<CommandBatchFB> ()
+        if batchish.HasValue then
+          let batch = batchish.Value
+          let! commands = StateMachineBatch.FromFB batch
+          return CommandBatch commands
+        else
+          return!
+            "Could not parse empty CommandBatch payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
@@ -2495,6 +2600,18 @@ type StateMachine =
 
     | RemoveDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
+
+    | CommandBatch commands ->
+      let offset = Binary.toOffset builder commands
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.BatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CommandBatchFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
 
     | UpdateClock value ->
       ClockFB.StartClockFB(builder)
