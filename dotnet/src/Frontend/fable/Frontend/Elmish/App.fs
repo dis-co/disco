@@ -21,6 +21,7 @@ initFactory
         match name with
         | Widgets.Log -> Log.createLogWidget(id)
         | Widgets.GraphView -> GraphView.createGraphViewWidget(id)
+        | Widgets.CuePlayer -> CuePlayer.createCuePlayerWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
@@ -52,8 +53,10 @@ module Tabs =
           "layout" => model.layout
           "onLayoutChange" => (UpdateLayout >> dispatch)
         ] [
-          for KeyValue(_,widget) in model.widgets do
-            yield widget.Render(dispatch, model)
+          for KeyValue(id, widget) in model.widgets do
+            if id <> widget.Id then
+              printfn "DIFFERENT: %O %O" id widget.Id
+            yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
     ]

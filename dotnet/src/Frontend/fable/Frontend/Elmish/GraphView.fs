@@ -28,8 +28,8 @@ let body dispatch (model: Model) =
         yield! group.Pins |> Seq.map (fun (KeyValue(pid, pin)) ->
           com<PinView.PinView,_,_>
             { key = string pid
-              model = model
               pin = pin
+              useRightClick = model.userConfig.useRightClick
               slices = None
               updater = None
               onDragStart = Some(fun el ->
@@ -48,15 +48,13 @@ let createGraphViewWidget(id: System.Guid) =
         minW = 2; maxW = 10
         minH = 2; maxH = 10 }
     member this.Render(dispatch, model) =
-      div [Key (string id)] [
-        lazyViewWith
-          (fun m1 m2 ->
-            match m1.state, m2.state with
-            | Some s1, Some s2 ->
-              equalsRef s1.PinGroups s2.PinGroups
-            | None, None -> true
-            | _ -> false)
-          (widget id this.Name None body dispatch)
-          model
-      ]
+      lazyViewWith
+        (fun m1 m2 ->
+          match m1.state, m2.state with
+          | Some s1, Some s2 ->
+            equalsRef s1.PinGroups s2.PinGroups
+          | None, None -> true
+          | _ -> false)
+        (widget id this.Name None body dispatch)
+        model
   }

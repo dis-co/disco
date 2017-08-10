@@ -12,6 +12,7 @@ module StorageKeys =
 module Widgets =
     let [<Literal>] Log = "LOG"
     let [<Literal>] GraphView = "Graph View"
+    let [<Literal>] CuePlayer = "Cue Player"
 
 type IWidget =
   abstract Id: Guid
@@ -39,6 +40,7 @@ and Msg =
   | RemoveWidget of Guid
   // | AddTab | RemoveTab
   | AddLog of LogEvent
+  | AddCueUI of cueList:CueList * cueGroupIndex:int * cueIndex:int
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option

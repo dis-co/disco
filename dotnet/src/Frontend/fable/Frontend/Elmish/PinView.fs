@@ -63,8 +63,8 @@ let rec findWithClassUpwards (className: string) (el: Browser.HTMLElement) =
 
 type [<Pojo>] PinProps =
   { key: string
-    model: Model
     pin: Pin
+    useRightClick: bool
     slices: Slices option
     updater: IUpdater option
     onDragStart: (Browser.HTMLElement -> unit) option }
@@ -141,11 +141,5 @@ type PinView(props) =
       | Some slices -> slices.Length
       | None -> this.props.pin.Values.Length
     div [ClassName "iris-pin"] [
-      table [] [this.RenderRows(rowCount, this.props.model.userConfig.useRightClick, updater)]
+      table [] [this.RenderRows(rowCount, this.props.useRightClick, updater)]
     ]
-
-type [<Pojo>] PinGroupProps =
-  { model: Model
-    pinGroup: PinGroup
-    pinAndSlices: (int * Pin * Slices)[]
-    update: (int->int->obj->unit) option }

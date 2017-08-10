@@ -210,12 +210,10 @@ let createLogWidget(id: System.Guid) =
         minW = 6; maxW = 20
         minH = 2; maxH = 20 }
     member this.Render(dispatch, model) =
-      div [Key (string id)] [
-        lazyViewWith
-          (fun m1 m2 ->
-            equalsRef m1.logs m2.logs
-                && equalsRef m1.userConfig m2.userConfig)
-          (widget id this.Name (Some titleBar) body dispatch)
-          model
-      ]
+      lazyViewWith
+        (fun m1 m2 ->
+          equalsRef m1.logs m2.logs
+              && equalsRef m1.userConfig m2.userConfig)
+        (widget id this.Name (Some titleBar) body dispatch)
+        model
   }
