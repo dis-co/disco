@@ -24,7 +24,7 @@ module rec RaftServer =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,IClient>
+  type private Connections = ConcurrentDictionary<Id,ITcpClient>
 
   // ** Subscriptions
 
@@ -38,9 +38,9 @@ module rec RaftServer =
       Raft:           RaftValue
       Options:        IrisConfig
       Callbacks:      IRaftCallbacks
-      Server:         IServer
+      Server:         ITcpServer
       Disposables:    IDisposable list
-      Connections:    ConcurrentDictionary<Id,IClient>
+      Connections:    ConcurrentDictionary<Id,ITcpClient>
       Subscriptions:  Subscriptions
       Started:        AutoResetEvent
       Stopped:        AutoResetEvent }
@@ -180,13 +180,13 @@ module rec RaftServer =
 
   // ** registerPeerSocket
 
-  let private registerPeerSocket (agent: RaftAgent) (socket: IClient) =
+  let private registerPeerSocket (agent: RaftAgent) (socket: ITcpClient) =
     socket.Subscribe (Msg.ClientEvent >> tryPost agent) |> ignore
     socket
 
   // ** addPeerSocket
 
-  let private addPeerSocket (connections: Connections) (socket: IClient) =
+  let private addPeerSocket (connections: Connections) (socket: ITcpClient) =
     match connections.TryAdd(socket.ClientId, socket) with
     | true -> ()
     | false ->
@@ -1493,7 +1493,7 @@ module rec RaftServer =
 
       store.Update
         { Status = ServiceStatus.Stopped
-          Server = Unchecked.defaultof<IServer>
+          Server = Unchecked.defaultof<ITcpServer>
           Raft = raftState
           Options = config
           Callbacks = callbacks

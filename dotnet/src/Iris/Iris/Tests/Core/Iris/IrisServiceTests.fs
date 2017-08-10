@@ -25,6 +25,7 @@ module IrisServiceTests =
     testList "IrisService Tests" [
       ClonesFromLeader.test
       EnsureClientCommandForward.test
+      EnsureClientsReplicated.test
       EnsureClientUpdateNoLoop.test
       EnsureResolver.test
     ] |> testSequenced

@@ -39,7 +39,7 @@ module ApiClient =
   type private ClientState =
     { Client: IrisClient
       Peer: IrisServer
-      Socket: IClient
+      Socket: ITcpClient
       Store:  Store
       Subscriptions: Subscriptions
       SocketSubscription: IDisposable

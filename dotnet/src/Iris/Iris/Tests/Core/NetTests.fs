@@ -138,7 +138,7 @@ module NetIntegrationTests =
 
         do! waitOrDie "clientsLive" clientsLive
 
-        let mkRequest (client: IClient) =
+        let mkRequest (client: ITcpClient) =
           async {
             let value = rand.Next() |> int64
             let request =

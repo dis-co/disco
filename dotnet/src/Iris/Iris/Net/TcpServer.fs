@@ -371,7 +371,7 @@ module TcpServer =
 
   let create (options: ServerConfig) =
     let state = SharedState.create options
-    { new IServer with
+    { new ITcpServer with
         member Server.Id
           with get () = options.ServerId
 

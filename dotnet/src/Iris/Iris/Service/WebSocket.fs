@@ -20,7 +20,7 @@ module WebSocketServer =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,IWebSocketConnection>
+  type private Connections = ConcurrentDictionary<Id,IWebSocketConnection * Session option>
 
   // ** Subscriptions
 
@@ -41,16 +41,24 @@ module WebSocketServer =
                            (socketId: Id)
                            (session: Session) =
     match connections.TryGetValue(socketId) with
-    | true, socket ->
+    | true, (socket, _ as current) ->
       let ua =
         if socket.ConnectionInfo.Headers.ContainsKey("User-Agent") then
           socket.ConnectionInfo.Headers.["User-Agent"]
         else
           "<no user agent specified>"
-      { session with
-          IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
-          UserAgent = ua }
-      |> Either.succeed
+      let updated =
+        { session with
+            IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
+            UserAgent = ua }
+      if connections.TryUpdate(socketId, (socket, Some updated), current) then
+        Either.succeed updated
+      elif connections.TryUpdate(socketId, (socket, Some updated), current) then
+        Either.succeed updated
+      else
+        "Updating connections failed after one retry"
+        |> Error.asSocketError (tag "buildSession")
+        |> Either.fail
     | false, _ ->
       socketId
       |> String.format "No connection found for {0}"
@@ -70,7 +78,7 @@ module WebSocketServer =
   /// Returns: Either<IrisError,unit>
   let private ucast (connections: Connections) (sid: Id) (msg: StateMachine) =
     match connections.TryGetValue(sid) with
-    | true, socket ->
+    | true, (socket, _) ->
       try
         msg
         |> Binary.encode
@@ -173,8 +181,7 @@ module WebSocketServer =
     socket.OnOpen <- fun () ->
       let sid = getConnectionId socket
 
-      connections.TryAdd(sid, socket)
-      |> ignore
+      connections.TryAdd(sid, (socket, None)) |> ignore
 
       sid
       |> SessionOpened
@@ -291,6 +298,16 @@ module WebSocketServer =
             member self.BuildSession (id: Id) (session: Session) =
               buildSession connections id session
 
+            member self.Sessions
+              with get () =
+                Array.fold
+                  (fun m (KeyValue(id, (_,session))) ->
+                    match session with
+                    | Some session -> Map.add id session m
+                    | _ -> m)
+                  Map.empty
+                  (connections.ToArray())
+
             member self.Subscribe (callback: IrisEvent -> unit) =
               Observable.subscribe callback subscriptions
 
@@ -316,7 +333,7 @@ module WebSocketServer =
 
             member self.Dispose () =
               if Service.isRunning !status then
-                for KeyValue(_, connection) in connections do
+                for KeyValue(_, (connection, _)) in connections do
                   connection.Close()
                 connections.Clear()
                 subscriptions.Clear()

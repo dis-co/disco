@@ -304,7 +304,7 @@ module rec TcpClient =
             })
         | _ -> ()
 
-    { new IClient with
+    { new ITcpClient with
         member socket.Status
           with get () = state.Status
 

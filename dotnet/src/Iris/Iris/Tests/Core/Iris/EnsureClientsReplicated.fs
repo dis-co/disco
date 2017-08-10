@@ -14,10 +14,10 @@ open Iris.Net
 
 open Common
 
-module EnsureClientCommandForward =
+module EnsureClientsReplicated =
 
   let test =
-    testCase "ensure client commands are forwarded to leader" <| fun _ ->
+    testCase "ensure connected clients are forwarded to leader" <| fun _ ->
       either {
         use electionDone = new AutoResetEvent(false)
         use addClientDone = new AutoResetEvent(false)
@@ -142,9 +142,14 @@ module EnsureClientCommandForward =
         //   | |  __/\__ \ |_\__ \
         //   |_|\___||___/\__|___/
 
-        printfn "Service: 1 has %d Clients" service1.State.Clients.Count
-        printfn "Service: 2 has %d Clients" service2.State.Clients.Count
+        printfn "Service: 1 %A" service1.State.Sessions
+        printfn "Service: 2 %A" service2.State.Sessions
 
+        printfn "Service: 1 %A" service1.State.Clients
+        printfn "Service: 2 %A" service2.State.Clients
+
+        expect "Service 1 should have 2 Sessions" 2 id service1.State.Sessions.Count
+        expect "Service 2 should have 2 Sessions" 2 id service2.State.Sessions.Count
         expect "Service 1 should have 2 Clients" 2 id service1.State.Clients.Count
         expect "Service 2 should have 2 Clients" 2 id service2.State.Clients.Count
       }

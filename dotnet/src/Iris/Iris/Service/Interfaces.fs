@@ -112,7 +112,7 @@ type IRaftServer =
   abstract Periodic      : unit -> unit
   abstract AddMember     : RaftMember -> unit
   abstract RemoveMember  : Id -> unit
-  abstract Connections   : ConcurrentDictionary<Id,IClient>
+  abstract Connections   : ConcurrentDictionary<Id,ITcpClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
   abstract Raft          : RaftValue
@@ -125,6 +125,7 @@ type IWebSocketServer =
   inherit IDisposable
   inherit ISink<IrisEvent>
   abstract Send         : Id -> StateMachine -> Either<IrisError,unit>
+  abstract Sessions     : Map<Id,Session>
   abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
   abstract Multicast    : except:Id -> StateMachine -> Either<IrisError list,unit>
   abstract BuildSession : Id -> Session -> Either<IrisError,Session>
@@ -180,6 +181,7 @@ type IIrisService =
   abstract RemoveMember:  Id         -> unit
   abstract SocketServer:  IWebSocketServer
   abstract Start:         unit -> Either<IrisError,unit>
+  abstract State:         State
   abstract Status:        ServiceStatus
   abstract Subscribe:     (IrisEvent -> unit) -> IDisposable
   // abstract JoinCluster   : IpAddress  -> uint16 -> Either<IrisError,unit>

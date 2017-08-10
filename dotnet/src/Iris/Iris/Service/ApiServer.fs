@@ -42,7 +42,7 @@ module ApiServer =
   type private ServerState =
     { Id: Id
       Status: ServiceStatus
-      Server: IServer
+      Server: ITcpServer
       PubSub: IPubSub
       Clients: Map<Id,IrisClient>
       Callbacks: IApiServerCallbacks
@@ -177,7 +177,7 @@ module ApiServer =
 
   // ** updateClient
 
-  let private updateClient (sm: StateMachine) (server: IServer) (client: IrisClient) =
+  let private updateClient (sm: StateMachine) (server: ITcpServer) (client: IrisClient) =
     sm
     |> ApiRequest.Update
     |> Binary.encode
@@ -523,7 +523,7 @@ module ApiServer =
       store.Update {
         Id = mem.Id
         Status = ServiceStatus.Stopped
-        Server = Unchecked.defaultof<IServer>
+        Server = Unchecked.defaultof<ITcpServer>
         PubSub = Unchecked.defaultof<IPubSub>
         Clients = Map.empty
         Subscriptions = Subscriptions()

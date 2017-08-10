@@ -31,7 +31,7 @@ module IrisService =
   [<NoComparison;NoEquality>]
   type private Leader =
     { Member: RaftMember
-      Socket: IClient }
+      Socket: ITcpClient }
 
     // *** ISink
 
@@ -200,8 +200,7 @@ module IrisService =
 
   let private commandResolver (store: IAgentStore<IrisState>) =
     let mutable current = 0<frame>
-    fun _ _ (cmd: IrisEvent) ->
-      match cmd with
+    fun _ _ -> function
       | IrisEvent.Append(_, UpdateClock tick) ->
         current <- int tick * 1<frame>
         maybeDispatchUpdate current store.State
@@ -236,9 +235,16 @@ module IrisService =
   let private postActions (store: IAgentStore<IrisState>) =
     [| Pipeline.createHandler (subscriptionNotifier store) |]
 
+  // ** sendLocalData
+
+  let private sendLocalData (socket: ITcpClient) (store: IAgentStore<IrisState>) =
+    let sessions = store.State.SocketServer.Sessions
+    let clients = store.State.ApiServer.Clients
+    ()
+
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember) =
+  let private makeLeader (leader: RaftMember) store =
     let socket = TcpClient.create {
       ClientId = leader.Id
       PeerAddress = leader.IpAddr
@@ -251,6 +257,7 @@ module IrisService =
     |> socket.Subscribe
     |> ignore
     socket.Connect()
+    do sendLocalData socket store
     Some { Member = leader; Socket = socket }
 
   // ** processEvent
@@ -297,7 +304,7 @@ module IrisService =
         if Option.isSome leader && leader <> (Some store.State.Member.Id) then
           match store.State.RaftServer.Leader with
           | Some leader ->
-            makeLeader leader
+            makeLeader leader store
           | None ->
             "Could not start re-direct socket: no leader"
             |> Logger.debug (tag "leaderChanged")
@@ -350,7 +357,11 @@ module IrisService =
 
     | Append (_, AddMember mem) -> store.State.RaftServer.AddMember mem
     | Append (_, RemoveMember mem) -> store.State.RaftServer.RemoveMember mem.Id
-    | Append (_, other) -> store.State.RaftServer.Append other
+    | Append (_, other) ->
+      if store.State.RaftServer.IsLeader then
+        store.State.RaftServer.Append other
+      else
+        printfn "FORWARD: command %A" other
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
@@ -650,6 +661,9 @@ module IrisService =
   let private makeService (store: IAgentStore<IrisState>) =
     { new IIrisService with
         member self.Start() = start store
+
+        member self.State
+          with get () = store.State.Store.State
 
         member self.Project
           with get () = store.State.Store.State.Project // :D

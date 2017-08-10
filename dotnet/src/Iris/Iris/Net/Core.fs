@@ -550,9 +550,9 @@ type TcpClientEvent =
   | Request      of Request
   | Response     of Response
 
-// ** IClient
+// ** ITcpClient
 
-type IClient =
+type ITcpClient =
   inherit IDisposable
   abstract Connect: unit -> unit
   abstract Disconnect: unit -> unit
@@ -586,9 +586,9 @@ type TcpServerEvent =
   | Request    of Request
   | Response   of Response
 
-// ** IServer
+// ** ITcpServer
 
-type IServer =
+type ITcpServer =
   inherit IDisposable
   abstract Id: Id
   abstract Start: unit -> Either<IrisError,unit>
