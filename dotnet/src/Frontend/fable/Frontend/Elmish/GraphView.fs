@@ -33,8 +33,7 @@ let body dispatch (model: Model) =
               slices = None
               updater = None
               onDragStart = Some(fun el ->
-                let data = obj() // TODO
-                startDragging dispatch data el) } [])
+                Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)
 
 let createGraphViewWidget(id: System.Guid) =

@@ -15,6 +15,7 @@
     <Compile Include="Elmish/Types.fs" />
     <Compile Include="Elmish/Helpers.fs" />
     <Compile Include="Elmish/State.fs" />
+    <Compile Include="Elmish/Drag.fs" />
     <Compile Include="Elmish/Navbar.fs" />
     <Compile Include="Elmish/PinView.fs" />
     <Compile Include="Elmish/GraphView.fs" />

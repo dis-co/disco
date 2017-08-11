@@ -53,7 +53,7 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-let rec findWithClassUpwards (className: string) (el: Browser.HTMLElement) =
+let rec findWithClassUpwards (className: string) (el: Browser.Element) =
   if el.classList.contains(className)
   then el
   else
@@ -67,7 +67,7 @@ type [<Pojo>] PinProps =
     useRightClick: bool
     slices: Slices option
     updater: IUpdater option
-    onDragStart: (Browser.HTMLElement -> unit) option }
+    onDragStart: (Browser.Element -> unit) option }
 
 type PinView(props) =
   inherit React.Component<PinProps, InputState>(props)

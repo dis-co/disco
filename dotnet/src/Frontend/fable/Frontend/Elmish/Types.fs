@@ -44,8 +44,6 @@ and Msg =
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
-  | DragMoved of x:float * y:float * data:obj
-  | DragStopped of x:float * y:float * data:obj
 
 and Model =
   { widgets: Map<Guid,IWidget>

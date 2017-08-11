@@ -21,7 +21,7 @@ let [<Literal>] SELECTION_COLOR = "lightblue"
 module private PrivateHelpers =
   type RCom = React.ComponentClass<obj>
   let ContentEditable: RCom = importDefault "../../../src/widgets/ContentEditable"
-  let touchesElement(el: Browser.Element, x: float, y: float): bool = importMember "../../../src/Util"
+  let touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../src/Util"
 
   let tryDic key value (dic: IDictionary<string, obj>) =
     match dic.TryGetValue(key) with
@@ -83,13 +83,14 @@ module private PrivateHelpers =
         printfn "    CueRef: %O" cueRef.Id
 
 type [<Pojo>] private CueState =
-  { Cue: Cue
-    IsOpen: bool }
+  { IsOpen: bool
+    IsHighlit: bool }
 
 type [<Pojo>] private CueProps =
   { key: string
     State: State
     UseRightClick: bool
+    Cue: Cue
     CueRef: CueReference
     CueGroup: CueGroup
     CueList: CueList
@@ -101,37 +102,39 @@ type [<Pojo>] private CueProps =
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
-  do
-    let cue = findCue props.CueRef.CueId props.State
-    base.setInitState({Cue = cue; IsOpen = false })
+  let mutable selfRef: Browser.Element option = None
+  let mutable disposable: IDisposable option = None
+  do base.setInitState({ IsOpen = false; IsHighlit = false })
 
-  // TODO: Subscribe to drag events, see Ref below
-  // member this.componentDidMount() =
-  //   disposables.Add(this.props.Global.subscribeToEvent("drag", fun (ev: IDragEvent<Pin>) _ ->
-  //       if not(isNull selfRef) then
-  //         let mutable highlight = false
-  //         if touchesElement(selfRef, ev.x, ev.y) then
-  //           match ev.``type`` with
-  //           | "move" ->
-  //             highlight <- true
-  //           | "stop" ->
-  //             if this.state.Cue.Slices |> Array.exists (fun slices -> slices.Id = ev.model.Id) then
-  //               printfn "The cue already contains this pin"
-  //             else
-  //               let newCue = { this.state.Cue with Slices = Array.append this.state.Cue.Slices [|ev.model.Slices|] }
-  //               UpdateCue newCue |> ClientContext.Singleton.Post
-  //               this.setState({ this.state with IsOpen = true })
-  //           | _ -> ()
-  //         if highlight
-  //         then selfRef.classList.add("iris-highlight", "iris-blue")
-  //         else selfRef.classList.remove("iris-highlight", "iris-blue")
-  //   ))
+  member this.componentWillUnmount() =
+    disposable |> Option.iter (fun disp -> disp.Dispose())
 
-  // member this.componentWillUnmount() =
-  //   for d in disposables do
-  //     d.dispose()
+  member this.componentDidMount() =
+    disposable <-
+      Drag.observe()
+      |> Observable.choose(function
+        | Drag.Moved(x,y,Drag.Pin pin) -> Some(pin,x,y,false)
+        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true)
+        | _ -> None)
+      |> Observable.subscribe(fun (pin,x,y,stopped) ->
+        let isHighlit, isOpen =
+          if touchesElement(selfRef, x, y) then
+            if not stopped then
+              true, this.state.IsOpen
+            else
+              if this.props.Cue.Slices |> Array.exists (fun slices -> slices.Id = pin.Id) then
+                printfn "The cue already contains this pin"
+              else
+                let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|pin.Slices|] }
+                UpdateCue newCue |> ClientContext.Singleton.Post
+              false, true
+          else
+            false, this.state.IsOpen
+        if isHighlit <> this.state.IsHighlit || isOpen <> this.state.IsOpen then
+          this.setState({ this.state with IsOpen = isOpen; IsHighlit = isHighlit })
+      ) |> Some
 
-  member this.RenderInput(widthPercentage: int, content: string, ?update: string->unit) =
+  member this.renderInput(widthPercentage: int, content: string, ?update: string->unit) =
     let content =
       match update with
       | Some update ->
@@ -158,7 +161,7 @@ type private CueView(props) =
           ClassName "iris-button iris-icon icon-play"
           OnClick (fun ev ->
             ev.stopPropagation()
-            updatePins this.state.Cue this.props.State // TODO: Send CallCue event instead
+            updatePins this.props.Cue this.props.State // TODO: Send CallCue event instead
           )
         ] []
       ]
@@ -187,10 +190,6 @@ type private CueView(props) =
             |> UpdateCueList |> ClientContext.Singleton.Post)
         ] []
       ]
-    let isSelected =
-      if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
-        && this.props.CueIndex = this.props.SelectedCueIndex
-      then "iris-cue iris-selected" else "iris-cue"
     let cueHeader =
       tr [
         OnClick (fun _ ->
@@ -200,11 +199,11 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.RenderInput(10, String.Format("{0:0000}", this.props.CueIndex + 1))
-        this.RenderInput(25, unwrap this.state.Cue.Name, (fun txt ->
-          { this.state.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
-        this.RenderInput(20, "00:00:00")
-        this.RenderInput(20, "shortkey")
+        this.renderInput(10, String.Format("{0:0000}", this.props.CueIndex + 1))
+        this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
+          { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
+        this.renderInput(20, "00:00:00")
+        this.renderInput(20, "shortkey")
         autocallButton
         removeButton
       ]
@@ -213,7 +212,7 @@ type private CueView(props) =
         [cueHeader]
       else
         let pinGroups =
-          this.state.Cue.Slices
+          this.props.Cue.Slices
           |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.State, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
@@ -229,25 +228,33 @@ type private CueView(props) =
                     updater =
                       Some { new PinView.IUpdater with
                               member __.Update(dragging, valueIndex, value) =
-                                this.UpdateCueValue(dragging, i, valueIndex, value) }
+                                this.updateCueValue(dragging, i, valueIndex, value) }
                     onDragStart = None } []
             ])
           |> Array.toList
         [cueHeader; tr [] [td [ColSpan 8.] [ul [ClassName "iris-graphview"] pinGroups]]]
+    let isSelected =
+      this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+        && this.props.CueIndex = this.props.SelectedCueIndex
+    let isHighlit = this.state.IsHighlit
     tr [] [
       td [ColSpan 8.] [
         table [
-          ClassName ("iris-table " + isSelected)
-          Ref ignore // TODO: Subscribe to event here
+          classList ["iris-table", true
+                     "iris-cue", true
+                     "iris-selected", isSelected
+                     "iris-highlight", isHighlit
+                     "iris-blue", isHighlit]
+          Ref (fun el -> selfRef <- Option.ofObj el)
         ] [tbody [] rows]]
     ]
 
-  member this.UpdateCueValue(local: bool, sliceIndex: int, valueIndex: int, value: obj) =
+  member this.updateCueValue(local: bool, sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =
-      this.state.Cue.Slices |> Array.mapi (fun i slices ->
+      this.props.Cue.Slices |> Array.mapi (fun i slices ->
         if i = sliceIndex then updateSlicesValue valueIndex value slices else slices)
     let command =
-      { this.state.Cue with Slices = newSlices } |> UpdateCue
+      { this.props.Cue with Slices = newSlices } |> UpdateCue
     if local
     then ClientContext.Singleton.PostLocal command
     else ClientContext.Singleton.Post command
@@ -279,6 +286,7 @@ type CuePlayerView(props) =
             { key = string cueRef.Id
               State = state
               UseRightClick = this.props.Model.userConfig.useRightClick
+              Cue = findCue cueRef.CueId state
               CueRef = cueRef
               CueGroup = group
               CueList = cueList

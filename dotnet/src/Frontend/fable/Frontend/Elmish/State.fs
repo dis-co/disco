@@ -11,42 +11,6 @@ open Elmish
 open Types
 open Helpers
 
-type IDomToImage =
-  abstract toPng: el:Browser.HTMLElement * options:obj -> JS.Promise<string>
-
-let domtoimage: IDomToImage = importDefault "dom-to-image"
-let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../../src/Util.ts"
-
-let startDragging (dispatch:Msg->unit) (data:obj) el =
-  Promise.race
-    (domtoimage.toPng(el, obj()))
-    (jQueryEventAsPromise(Browser.document, "mouseup.domtoimage"))
-  |> Promise.iterOrError
-    (function
-      | Choice1Of2 dataUrl ->
-        let mutable prev: Point option = None
-        let img = jQuery("#iris-drag-image")
-        !!jQuery(Browser.window.document)
-          ?on("mousemove.drag", fun e ->
-            let cur = { Point.x = !!e?clientX; y = !!e?clientY }
-            match prev with
-            | None ->
-              prev <- Some cur
-              !!jQuery(img)?attr("src", dataUrl)?css(%["display" => "block"; "left" => cur.x; "top" => cur.y])
-              DragMoved(cur.x, cur.y, data) |> dispatch
-            | Some p when distance p cur > 5. ->
-              prev <- Some cur
-              !!jQuery(img)?css(%["left" => cur.x; "top" => cur.y])
-              DragMoved(cur.x, cur.y, data) |> dispatch
-            | Some _ -> ())
-          ?on("mouseup.drag", fun e ->
-            !!jQuery(img)?css(%["display" => "none"])
-            DragStopped(!!e?clientX, !!e?clientY, data) |> dispatch
-            jQuery(Browser.window.document)?off("mousemove.drag mouseup.drag"))
-      // If the mouseup event happens before the image is finished, do nothing
-      | Choice2Of2 _ -> ())
-    (fun ex -> Browser.console.error("Error when generating image:", ex))
-
 [<PassGenerics>]
 let loadFromLocalStorage<'T> (key: string) =
   let g = Fable.Import.Browser.window
@@ -137,6 +101,4 @@ let update msg model =
       { model with userConfig = cfg }
     | UpdateState state ->
       { model with state = state }
-    | DragMoved(x,y,data) -> printfn   "MOVED:   x:%3f, y:%3f" x y; model
-    | DragStopped(x,y,data) -> printfn "STOPPED: x:%3f, y:%3f" x y; model
   newModel, []
