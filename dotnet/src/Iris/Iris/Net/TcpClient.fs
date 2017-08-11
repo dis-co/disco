@@ -48,6 +48,9 @@ module rec TcpClient =
     abstract PendingRequests: PendingRequests
     abstract ResponseBuilder: IResponseBuilder
     abstract Subscriptions: Subscriptions
+    abstract SendDone: AutoResetEvent
+    abstract Request: Request -> unit
+    abstract Respond: Response -> unit
 
   // ** makeState
 
@@ -58,6 +61,7 @@ module rec TcpClient =
       |> fun guid -> guid.ToByteArray()
 
     let cts = new CancellationTokenSource()
+    let sendDone = new AutoResetEvent(false)
     let endpoint = IPEndPoint(options.PeerAddress.toIPAddress(), int options.PeerPort)
     let mutable client = Socket.createTcp()
 
@@ -70,6 +74,17 @@ module rec TcpClient =
 
     let pending = PendingRequests()
     let mutable status = ServiceStatus.Stopped
+
+    let rec sendLoop (inbox: MailboxProcessor<byte array * IState>) = async {
+        let! (msg, state) = inbox.Receive()
+        do  sendAsync state msg
+        if sendDone.WaitOne(TimeSpan.FromMilliseconds 3000.0) then
+          return! sendLoop inbox
+        else
+          "Send timeout" |> Logger.err (tag "sendLoop")
+      }
+
+    let sender = MailboxProcessor.Start(sendLoop, cts.Token)
 
     let builder = ResponseBuilder.create <| fun request client body  ->
       if pending.ContainsKey request then
@@ -113,6 +128,9 @@ module rec TcpClient =
         member state.PendingRequests
           with get () = pending
 
+        member state.SendDone
+          with get () = sendDone
+
         member state.SocketAsyncEventArgs
           with get () =
             match args.TryTake() with
@@ -137,6 +155,14 @@ module rec TcpClient =
         member state.BufferManager
           with get () = manager
 
+        member state.Request (request: Request) =
+          // this socket is asking something, so we need to track this in pending requests
+          pending.TryAdd(request.RequestId, request) |> ignore
+          do (RequestBuilder.serialize request, state) |> sender.Post
+
+        member state.Respond (response: Response) =
+          do (RequestBuilder.serialize response, state) |> sender.Post
+
         member state.Dispose() =
           if not cts.IsCancellationRequested then
             try cts.Cancel() with | _ -> ()
@@ -144,6 +170,7 @@ module rec TcpClient =
               pending.TryRemove(id) |> ignore
             dispose builder
             dispose client
+            dispose sendDone
             status <- ServiceStatus.Disposed
       }
 
@@ -178,6 +205,7 @@ module rec TcpClient =
       args.BytesTransferred
       |> String.format "sent {0} bytes"
       |> Logger.debug (tag "onSend")
+    do state.SendDone.Set() |> ignore
     do dispose listener
     state.SocketAsyncEventArgs <- args
 
@@ -199,7 +227,7 @@ module rec TcpClient =
   // ** onReceive
 
   let private onReceive (args: SocketAsyncEventArgs) =
-    if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
+    if args.SocketError = SocketError.Success then
       let listener, buffer, state = args.UserToken :?> IDisposable * IBuffer * IState
       do state.ResponseBuilder.Process buffer args.Offset args.BytesTransferred
       do dispose listener
@@ -313,9 +341,7 @@ module rec TcpClient =
 
         member socket.Request(request: Request) =
           if Service.isRunning state.Status then
-            // this socket is asking soemthing, so we need to track this in pending requests
-            state.PendingRequests.TryAdd(request.RequestId, request) |> ignore
-            do request |> RequestBuilder.serialize |> sendAsync state
+            do state.Request request
           else
             string state.Status
             |> String.format "not sending, wrong state {0}"
@@ -323,7 +349,7 @@ module rec TcpClient =
 
         member socket.Respond(response: Response) =
           if Service.isRunning state.Status then
-            do response |> RequestBuilder.serialize |> sendAsync state
+            do state.Respond response
           else
             string state.Status
             |> String.format "not sending, wrong state {0}"
