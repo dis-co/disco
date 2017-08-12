@@ -28,9 +28,6 @@ type DragEvent = {
   ``type``: string; value: obj; x: int; y: int;
 }
 
-type [<Pojo>] TreeNode =
-  { ``module``: string; children: TreeNode[] option }
-
 // VALUES ----------------------------------------------------
 let EMPTY = Constants.EMPTY
 
@@ -273,43 +270,3 @@ let createProject(info: obj) =
         |> CreateProject
         |> postCommand (fun _ -> notify "The project has been created successfully") notify
   })
-
-let project2tree (p: IrisProject) =
-  let leaf m = { ``module``=m; children=None }
-  let node m c = { ``module``=m; children=Some c }
-  let rec obj2tree k (o: obj) =
-    Fable.Import.JS.Object.getOwnPropertyNames(o)
-    |> Seq.map (fun k ->
-    match box o?(k) with
-      | :? (obj[]) as arr ->
-        arr2tree k arr
-      | :? IDictionary<obj, obj> as dic ->
-        dic |> Seq.map (fun kv -> obj2tree (string kv.Key) kv.Value)
-        |> Seq.toArray |> node k
-      | v -> sprintf "%s: %O" k v |> leaf)
-    |> Seq.toArray
-    |> node k
-  and arr2tree k (arr: obj[]) =
-    Array.mapi (fun i v -> obj2tree (string i) v) arr
-    |> node k
-  let cfg2tree (c: IrisConfig) =
-    [| leaf ("MachineId: " + string c.Machine.MachineId)
-    ;  obj2tree "Audio" c.Audio
-    ;  obj2tree "Vvvv" c.Vvvv
-    ;  obj2tree "Raft" c.Raft
-    ;  obj2tree "Timing" c.Timing
-    ;  leaf ("ActiveSite" + string c.ActiveSite)
-    ;  arr2tree "Sites" (Array.map box c.Sites)
-    ;  arr2tree "ViewPorts" (Array.map box c.ViewPorts)
-    ;  arr2tree "Displays" (Array.map box c.Displays)
-    ;  arr2tree "Tasks" (Array.map box c.Tasks)
-    |] |> node "Config"
-  [| leaf ("Id: " + string p.Id)
-  ;  leaf ("Name: " + unwrap p.Name)
-  ;  leaf ("Path: " + unwrap p.Path)
-  ;  leaf ("CreatedOn: " + p.CreatedOn)
-  ;  leaf ("LastSaved: " + defaultArg p.LastSaved "unknown")
-  ;  leaf ("Copyright: " + defaultArg p.Copyright "unknown")
-  ;  leaf ("Author: " + defaultArg p.Author "unknown")
-  ;  cfg2tree p.Config
-  |] |> node "Project"

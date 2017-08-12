@@ -13,6 +13,7 @@ module Widgets =
     let [<Literal>] Log = "LOG"
     let [<Literal>] GraphView = "Graph View"
     let [<Literal>] CuePlayer = "Cue Player"
+    let [<Literal>] ProjectView = "Project View"
 
 type IWidget =
   abstract Id: Guid

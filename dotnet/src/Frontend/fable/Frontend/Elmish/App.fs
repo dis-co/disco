@@ -22,6 +22,7 @@ initFactory
         | Widgets.Log -> Log.createLogWidget(id)
         | Widgets.GraphView -> GraphView.createGraphViewWidget(id)
         | Widgets.CuePlayer -> CuePlayer.createCuePlayerWidget(id)
+        | Widgets.ProjectView -> ProjectView.createProjectViewWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
