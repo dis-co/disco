@@ -14,6 +14,7 @@ module Widgets =
     let [<Literal>] GraphView = "Graph View"
     let [<Literal>] CuePlayer = "Cue Player"
     let [<Literal>] ProjectView = "Project View"
+    let [<Literal>] Cluster = "Cluster"
 
 type IWidget =
   abstract Id: Guid

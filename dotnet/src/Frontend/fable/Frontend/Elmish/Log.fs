@@ -199,7 +199,7 @@ let titleBar dispatch (model: Model) =
           ])
     ]
 
-let createLogWidget(id: System.Guid) =
+let createWidget (id: System.Guid) =
   { new IWidget with
     member __.Id = id
     member __.Name = Types.Widgets.Log

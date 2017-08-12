@@ -73,7 +73,7 @@ let body dispatch (model: Model) =
                   span [] [str node.``module``]
                 ] []
 
-let createProjectViewWidget(id: System.Guid) =
+let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
     member __.Name = Types.Widgets.ProjectView

@@ -36,7 +36,7 @@ let body dispatch (model: Model) =
                 Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)
 
-let createGraphViewWidget(id: System.Guid) =
+let createWidget (id: System.Guid) =
   { new IWidget with
     member __.Id = id
     member __.Name = Types.Widgets.GraphView

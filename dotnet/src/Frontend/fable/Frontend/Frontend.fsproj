@@ -22,6 +22,7 @@
     <Compile Include="Elmish/ProjectView.fs" />
     <Compile Include="Elmish/CuePlayer.fs" />
     <Compile Include="Elmish/Log.fs" />
+    <Compile Include="Elmish/Cluster.fs" />
     <Compile Include="Elmish/PanelLeft.fs" />
     <Compile Include="Elmish/App.fs" />
     <!-- <Compile Include="Lib.fs" /> -->

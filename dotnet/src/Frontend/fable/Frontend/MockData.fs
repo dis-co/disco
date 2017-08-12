@@ -177,6 +177,7 @@ let cuesAndListsAndPlayers =
 
 let getMockState() =
     { State.Empty with
+        Project = project
         PinGroups = pinGroups
         Cues = _1of3 cuesAndListsAndPlayers
         CueLists = _2of3 cuesAndListsAndPlayers

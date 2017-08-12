@@ -341,7 +341,7 @@ type CuePlayerView(props) =
     | None, None -> false
     | _ -> true
 
-let createCuePlayerWidget(id: System.Guid) =
+let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
     member __.Name = Types.Widgets.CuePlayer

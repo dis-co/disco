@@ -28,17 +28,17 @@ let card dispatch name letter text =
 
 let render dispatch () =
     div [Class "iris-panel-left"] [
-        card dispatch Widgets.Log        "L" "Cluster Settings"
-        card dispatch Widgets.GraphView  "G" "Cluster Settings"
-        card dispatch "Cue Player"       "C" "Cluster Settings"
-        card dispatch "Project View"     "P" "Cluster Settings"
-        card dispatch "Test Widget"      "T" "Cluster Settings"
-        card dispatch "Cluster"          "R" "Cluster Settings"
-        card dispatch "Discovery"        "D" "Cluster Settings"
-        card dispatch "Unassigned Hosts" "H" "Cluster Settings"
-        card dispatch "Remotter"         "R" "Cluster Settings"
-        card dispatch "Project Settings" "S" "Cluster Settings"
-        card dispatch "Library"          "L" "Graph View"
+        card dispatch Widgets.Log         "L" "Cluster Settings"
+        card dispatch Widgets.GraphView   "G" "Cluster Settings"
+        card dispatch Widgets.CuePlayer   "C" "Cluster Settings"
+        card dispatch Widgets.ProjectView "P" "Cluster Settings"
+        card dispatch Widgets.Cluster     "R" "Cluster Settings"
+        card dispatch "Test Widget"       "T" "Cluster Settings"
+        card dispatch "Discovery"         "D" "Cluster Settings"
+        card dispatch "Unassigned Hosts"  "H" "Cluster Settings"
+        card dispatch "Remotter"          "R" "Cluster Settings"
+        card dispatch "Project Settings"  "S" "Cluster Settings"
+        card dispatch "Library"           "L" "Graph View"
         card dispatch "Project Overview (Big)" "P" "Cluster Settings"
     ]
 

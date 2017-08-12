@@ -19,10 +19,11 @@ initFactory
       member __.CreateWidget(id, name) =
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
-        | Widgets.Log -> Log.createLogWidget(id)
-        | Widgets.GraphView -> GraphView.createGraphViewWidget(id)
-        | Widgets.CuePlayer -> CuePlayer.createCuePlayerWidget(id)
-        | Widgets.ProjectView -> ProjectView.createProjectViewWidget(id)
+        | Widgets.Log -> Log.createWidget(id)
+        | Widgets.GraphView -> GraphView.createWidget(id)
+        | Widgets.CuePlayer -> CuePlayer.createWidget(id)
+        | Widgets.ProjectView -> ProjectView.createWidget(id)
+        | Widgets.Cluster -> Cluster.createWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
