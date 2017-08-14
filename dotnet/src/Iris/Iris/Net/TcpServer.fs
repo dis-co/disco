@@ -45,6 +45,7 @@ module TcpServer =
     abstract PendingRequests: PendingRequests
     abstract RequestBuilder: IRequestBuilder
     abstract Subscriptions: Subscriptions
+    abstract Send: byte array -> unit
 
   // ** Connections
 
@@ -130,10 +131,14 @@ module TcpServer =
 
   module private Connection =
 
+    // *** create
+
     let create (id: Guid) (state: IState) (socket: Socket)  =
       let cts = new CancellationTokenSource()
       let endpoint = socket.RemoteEndPoint :?> IPEndPoint
       let pending = ConcurrentDictionary<Guid,Request>()
+      let stream = new NetworkStream(socket)
+
       let builder = RequestBuilder.create <| fun request client body ->
         match pending.TryRemove(request) with
         | true, _ ->
@@ -146,6 +151,43 @@ module TcpServer =
           |> Request.make request client
           |> TcpServerEvent.Request
           |> Observable.onNext state.Subscriptions
+
+      //                     _ _
+      //  ___  ___ _ __   __| (_)_ __   __ _
+      // / __|/ _ \ '_ \ / _` | | '_ \ / _` |
+      // \__ \  __/ | | | (_| | | | | | (_| |
+      // |___/\___|_| |_|\__,_|_|_| |_|\__, |
+      //                               |___/
+      let rec sendLoop (inbox: MailboxProcessor<byte[]>) = async {
+          let! msg = inbox.Receive()
+          do stream.Write(msg, 0, msg.Length)
+          return! sendLoop inbox
+        }
+
+      //                    _       _
+      //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
+      // | '__/ _ \/ __/ _ \ \ \ / / | '_ \ / _` |
+      // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
+      // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
+      //                                    |___/
+      let receiveLoop = async {
+          let mutable run = true
+          while run do
+            try
+              let data = stream.ReadByte()
+              if data <> -1 then
+                data |> byte |> builder.Write
+              else // once the stream returns -1, the underlying stream has ended
+                run <- false
+            with
+              | :? IOException -> run <- false
+              | exn ->
+                run <- false
+                Logger.err (tag "receiveLoop") exn.Message
+        }
+
+      let sender = MailboxProcessor.Start(sendLoop, cts.Token)
+      Async.Start(receiveLoop, cts.Token)
 
       let connection =
         { new IConnection with
@@ -170,9 +212,13 @@ module TcpServer =
             member connection.Subscriptions
               with get () = state.Subscriptions
 
+            member connection.Send (data: byte array) =
+              sender.Post data
+
             member connection.Dispose() =
               try cts.Cancel() with | _ -> ()
               Socket.dispose socket
+              dispose stream
               dispose builder }
 
       let checker =
@@ -251,40 +297,6 @@ module TcpServer =
           | :? ObjectDisposedException -> ()
           | exn -> Logger.err (tag "sendAsync") exn.Message
 
-    // *** onReceive
-
-    let private onReceive (args: SocketAsyncEventArgs) =
-      let listener, connection, buffer, state =
-        args.UserToken :?> (IDisposable * IConnection * IBuffer * IState)
-
-      if args.BytesTransferred > 0 && args.SocketError = SocketError.Success then
-        connection.RequestBuilder.Process buffer args.Offset args.BytesTransferred
-        args.BytesTransferred
-        |> String.format "received {0} bytes"
-        |> Logger.debug (tag "onReceive")
-        do returnArgs state args
-        do receiveAsync state connection
-      else
-        do onError "onReceive" state args
-
-      do dispose listener
-
-    // *** receiveAsync
-
-    let private receiveAsync (state: IState) (connection: IConnection) =
-      withState state <| fun args ->
-        let buffer = state.BufferManager.TakeBuffer()
-        do args.SetBuffer(buffer.Data, 0, buffer.Length)
-        let listener = args.Completed.Subscribe onReceive
-        args.UserToken <- listener, connection, buffer, state
-        try
-          match connection.Socket.ReceiveAsync(args) with
-          | true -> ()
-          | false -> do onReceive args
-        with
-          | :? ObjectDisposedException -> ()
-          | exn -> Logger.err (tag "receiveAsync") exn.Message
-
     // *** onConnection
 
     let private onConnection (args: SocketAsyncEventArgs) =
@@ -307,7 +319,6 @@ module TcpServer =
         |> Logger.info (tag "acceptCallback")
 
         do returnArgs state args
-        do receiveAsync state connection
       else
         do onError "onConnection" state args
 
@@ -351,22 +362,6 @@ module TcpServer =
           | :? ObjectDisposedException -> ()
           | exn -> Logger.err (tag "acceptAsync") exn.Message
 
-    // *** requestAsync
-
-    let requestAsync (state: IState) (connection: IConnection) (request: Request) =
-      // if false, the dictionary already contains reuqest, which would be weird
-      connection.PendingRequests.TryAdd(request.RequestId, request) |> ignore
-      request
-      |> RequestBuilder.serialize
-      |> sendAsync state connection
-
-    // *** respondAsync
-
-    let respondAsync (state: IState) (connection: IConnection) (response: Response) =
-      response
-      |> RequestBuilder.serialize
-      |> sendAsync state connection
-
   // ** create
 
   let create (options: ServerConfig) =
@@ -392,13 +387,17 @@ module TcpServer =
 
         member server.Request (client: Guid) (request: Request) =
           try
-            Server.requestAsync state state.Connections.[client] request
+            request
+            |> RequestBuilder.serialize
+            |> state.Connections.[client].Send
           with
             | exn -> exn.Message |> Logger.err (tag "Request")
 
         member server.Respond (response: Response) =
           try
-            Server.respondAsync state state.Connections.[response.PeerId] response
+            response
+            |> RequestBuilder.serialize
+            |> state.Connections.[response.PeerId].Send
           with
             | exn -> exn.Message |> Logger.err (tag "Respond")
 

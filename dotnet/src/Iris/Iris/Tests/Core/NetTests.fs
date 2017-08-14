@@ -2,8 +2,9 @@ namespace Iris.Tests
 
 open System
 open System.Threading
+open System.Collections.Concurrent
 open Expecto
-
+open FsCheck
 open Iris.Core
 open Iris.Service
 open Iris.Net
@@ -58,7 +59,7 @@ module NetIntegrationTests =
       |> noError
 
   let test_server_request_handling =
-    testCase "se request handling" <| fun _ ->
+    testCase "server request handling" <| fun _ ->
       either {
 
         let rand = new System.Random()
@@ -66,6 +67,12 @@ module NetIntegrationTests =
 
         let numclients = 5
         let numrequests = 2
+
+        let apirequests = ConcurrentBag()
+
+        apirequests.Add
+        |> Prop.forAll Generators.apiRequestArb
+        |> Check.QuickThrowOnFailure
 
         let ip = IpAddress.Localhost
         let prt = port 5555us
@@ -140,10 +147,10 @@ module NetIntegrationTests =
 
         let mkRequest (client: ITcpClient) =
           async {
-            let value = rand.Next() |> int64
             let request =
-              value
-              |> BitConverter.GetBytes
+              apirequests.TryTake()
+              |> snd
+              |> Binary.encode
               |> Request.create (Guid.ofId client.ClientId)
             client.Request request
             return request

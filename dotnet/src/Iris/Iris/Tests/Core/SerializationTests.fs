@@ -78,9 +78,8 @@ module SerializationTests =
         |> check request
 
       for binary in codata do
-        let buffer = manager.TakeBuffer()
-        Array.Copy(binary, buffer.Data, binary.Length)
-        builder.Process buffer 0 binary.Length
+        for bte in binary do
+          builder.Write bte
 
       waitOrDie "reset" reset |> noError
 
@@ -128,9 +127,8 @@ module SerializationTests =
 
       let mutable read = 0
       for chunk in chunked do
-        let buffer = manager.TakeBuffer()
-        Array.Copy(chunk, buffer.Data, chunk.Length)
-        parser.Process buffer 0 chunk.Length
+        for bte in chunk do
+          parser.Write bte
         Interlocked.Increment &read |> ignore
 
       waitOrDie "stopper" stopper |> noError
