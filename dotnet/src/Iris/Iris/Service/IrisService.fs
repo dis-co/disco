@@ -267,9 +267,9 @@ module IrisService =
 
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember) store =
+  let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
-      ClientId = leader.Id
+      ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
       PeerAddress = leader.IpAddr
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
