@@ -1,9 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "start": "concurrently -k \"cd src/Frontend/fable/Frontend && dotnet fable webpack-dev-server\" \"cd src/Frontend/fable/Worker && dotnet fable webpack --port free -- -w\" ",
-    "build": "concurrently \"cd src/Frontend/fable/Frontend && dotnet fable webpack -- -p\" \"cd src/Frontend/fable/Worker && dotnet fable webpack --port free -- -p\" ",
-    "build-test": "webpack --config src/Frontend/fable/Tests.Frontend/webpack.config.js",
+    "start": "concurrently -k \"cd src/Frontend/src/Frontend && dotnet fable webpack-dev-server\" \"cd src/Frontend/src/Worker && dotnet fable webpack --port free -- -w\" ",
+    "build": "concurrently \"cd src/Frontend/src/Frontend && dotnet fable webpack -- -p\" \"cd src/Frontend/src/Worker && dotnet fable webpack --port free -- -p\" ",
+    "build-test": "webpack --config src/Frontend/src/Tests.Frontend/webpack.config.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "lessc": "lessc"
   },

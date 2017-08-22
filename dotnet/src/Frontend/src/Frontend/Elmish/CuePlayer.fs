@@ -20,8 +20,8 @@ let [<Literal>] SELECTION_COLOR = "lightblue"
 
 module private PrivateHelpers =
   type RCom = React.ComponentClass<obj>
-  let ContentEditable: RCom = importDefault "../../../src/widgets/ContentEditable"
-  let touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../src/Util"
+  let ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
+  let touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../js/Util"
 
   let tryDic key value (dic: IDictionary<string, obj>) =
     match dic.TryGetValue(key) with

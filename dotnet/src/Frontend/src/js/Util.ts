@@ -1,10 +1,6 @@
 import * as $ from "jquery"
 import * as React from "react"
-import LoadProject from './modals/LoadProject'
-import ProjectConfig from './modals/ProjectConfig'
 import ContentEditable from "./widgets/ContentEditable"
-
-declare var IrisLib: any;
 
 export function jQueryEventAsPromise(selector: any, events: string) {
   return new Promise<JQuery.Event<HTMLElement,null>>(resolve => {
@@ -62,7 +58,7 @@ export function last<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
       last = cur.value;
       cur = iter.next();
     }
-    return  projection ? projection(last) : last;
+    return projection ? projection(last) : last;
   }
   return null;
 }

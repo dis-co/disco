@@ -15,13 +15,13 @@ type IProjectInfo =
   abstract password: Password
 
 let CreateProjectModal: React.ComponentClass<ModalProps<obj, string>> =
-  importDefault "../../../src/modals/CreateProject"
+  importDefault "../../js/modals/CreateProject"
 
 let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
-  importDefault "../../../src/modals/LoadProject"
+  importDefault "../../js/modals/LoadProject"
 
 let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
-  importDefault "../../../src/modals/ProjectConfig"
+  importDefault "../../js/modals/ProjectConfig"
 
 module Options =
   let [<Literal>] createProject = "Create Project"

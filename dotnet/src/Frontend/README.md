@@ -8,13 +8,13 @@ All of these will be executed if you run a full build. All commands must be run 
 
 ```shell
 yarn install
-dotnet restore src/Frontend/fable/Iris.Frontend.sln
+dotnet restore src/Frontend/src/Iris.Frontend.sln
 ```
 
 - Build Fable plugin:
 
 ```shell
-dotnet build -c Release src/Frontend/fable/FlatBuffersPlugin
+dotnet build -c Release src/Frontend/src/FlatBuffersPlugin
 ```
 
 - Build Worker & Frontend (not necessary in development, see Watching below):

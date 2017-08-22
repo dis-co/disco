@@ -1,3 +1,5 @@
+// UNUSED AT THE MOMENT
+
 import React, { Component } from 'react'
 
 class TestWidget extends Component {
@@ -19,7 +21,7 @@ class TestWidget extends Component {
 
   componentWillUnmount() {
     window.clearInterval(this.intervalID);
-  }  
+  }
 
   render() {
     return (

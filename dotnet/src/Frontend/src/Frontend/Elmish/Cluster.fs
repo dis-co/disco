@@ -17,7 +17,7 @@ open State
 open Types
 
 let AddMemberModal: React.ComponentClass<ModalProps<obj, string*uint16>> =
-  importDefault "../../../src/modals/AddMember"
+  importDefault "../../js/modals/AddMember"
 
 let inline padding5() =
   Style [PaddingLeft "5px"]

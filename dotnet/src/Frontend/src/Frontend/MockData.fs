@@ -94,7 +94,7 @@ let makePin gid pk (v: obj) =
     | x -> failParse gid pk x
 
 let pinGroups: Map<Id, PinGroup> =
-    let pinGroups: obj = Node.Globals.require.Invoke("../../data/pingroups.json")
+    let pinGroups: obj = Node.Globals.require.Invoke("../data/pingroups.json")
     JS.Object.keys(pinGroups)
     |> Seq.map (fun gk ->
         let g = box pinGroups?(gk)

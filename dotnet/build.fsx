@@ -332,7 +332,7 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  DotNet.restore (frontendDir @@ "fable") "Iris.Frontend.sln"
+  DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
 )
 
 //     _                           _     _       ___        __
@@ -618,15 +618,15 @@ Target "BuildFrontend" (fun () ->
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
 
   DotNet.installDotnetSdk ()
-  DotNet.restore (frontendDir @@ "fable") "Iris.Frontend.sln"
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm ("run build") __SOURCE_DIRECTORY__ ()
 )
 
 Target "BuildFrontendFast" (fun () ->
   // runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm ("run build") __SOURCE_DIRECTORY__ ()
 )
 
@@ -640,14 +640,14 @@ Target "BuildFrontendFast" (fun () ->
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
   runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  DotNet.restore (frontendDir @@ "fable") "Iris.Frontend.sln"
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "fable" @@ "Tests.Frontend") false
+  DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
 )
 
 Target "BuildWebTestsFast" (fun _ ->
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "fable" @@ "Tests.Frontend") false
+  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
 )
 
 let runWebTests = (fun _ ->

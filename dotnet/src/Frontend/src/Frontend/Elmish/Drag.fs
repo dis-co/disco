@@ -17,7 +17,7 @@ type IDomToImage =
   abstract toPng: el:Browser.Element * options:obj -> JS.Promise<string>
 
 let domtoimage: IDomToImage = importDefault "dom-to-image"
-let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../../src/Util.ts"
+let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../js/Util.ts"
 
 type Data =
   | Pin of Pin
