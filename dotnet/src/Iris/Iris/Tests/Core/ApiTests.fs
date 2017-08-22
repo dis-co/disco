@@ -42,8 +42,33 @@ module ApiTests =
   //  ___) |  __/ |   \ V /  __/ |
   // |____/ \___|_|    \_/ \___|_|
 
+  let test_server_should_not_start_when_bind_fails =
+    testCase "server should not start when bind fails" <| fun _ ->
+      either {
+        let mutable store = Store(mkState ())
+
+        let mem = Member.create (Id.Create())
+
+        use! server1 = ApiServer.create mem store.State.Project.Id {
+          new IApiServerCallbacks with
+            member self.PrepareSnapshot() = store.State
+        }
+
+        do! server1.Start()
+
+        use! server2 = ApiServer.create mem store.State.Project.Id {
+          new IApiServerCallbacks with
+            member self.PrepareSnapshot() = store.State
+        }
+
+        do! match server2.Start() with
+            | Right () -> Left (Other("test","should have failed"))
+            | Left _ -> Right()
+      }
+      |> noError
+
   let test_server_should_replicate_state_snapshot_to_client =
-    testCase "should replicate state snapshot on connect and SetState" <| fun _ ->
+    testCase "server should replicate state snapshot to client" <| fun _ ->
       either {
         let mutable store = Store(mkState ())
 
@@ -171,7 +196,7 @@ module ApiTests =
 
         do! client.Start()
 
-        do! waitOrDie "shaptwhot" snapshot
+        do! waitOrDie "snapshot" snapshot
 
         List.iter
           (fun cmd ->
@@ -361,6 +386,7 @@ module ApiTests =
       test_server_should_replicate_state_snapshot_to_client
       test_server_should_replicate_state_machine_commands_to_client
       test_client_should_replicate_state_machine_commands_to_server
+      test_server_should_not_start_when_bind_fails
       test_server_should_dispose_properly
       test_client_should_dispose_properly
     ] |> testSequenced

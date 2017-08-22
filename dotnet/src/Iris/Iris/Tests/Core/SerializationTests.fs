@@ -10,6 +10,7 @@ open Iris.Service
 open Iris.Service.Persistence
 open System
 open System.IO
+open System.Threading
 
 [<AutoOpen>]
 module SerializationTests =
@@ -22,19 +23,53 @@ module SerializationTests =
 
   let test_correct_request_serialization =
     testCase "RequestResposse serialization should work" <| fun _ ->
-      let encDec (request: Request) =
-        let check (rerequest: Request) =
-          Expect.equal rerequest request "Should be structurally equal"
-        let buffer = Request.serialize request
-        let builder = RequestBuilder.create buffer <| fun requestId clientId body ->
-          body
-          |> Request.make requestId clientId
-          |> check
+      use reset = new AutoResetEvent(false)
+      let rand = System.Random()
 
-        builder.Process buffer.Length
-      encDec
-      |> Prop.forAll Generators.requestArb
+      let mutable count = 0
+
+      let data = ResizeArray()
+      let codata = ResizeArray()
+
+      Prop.forAll Generators.requestArb (fun request ->
+        data.Add request
+        request
+        |> Request.serialize
+        |> codata.Add)
       |> Check.QuickThrowOnFailure
+
+      let expected = data.Count
+
+      let max =
+        codata.ToArray()
+        |> Array.map Array.length
+        |> Array.max
+
+      let check request (rerequest: Request) =
+        try
+          Expect.equal rerequest request "Should be structurally equal"
+        with
+          | exn ->
+            printfn "actual: %A" request
+            raise exn
+
+        Interlocked.Increment &count |> ignore
+        if count = expected then
+          reset.Set() |> ignore
+
+      let manager = BufferManager.create 1 max
+      use builder = RequestBuilder.create <| fun requestId clientId body ->
+        let request = data.Find (fun (request: Request) -> request.RequestId = requestId)
+        body
+        |> Request.make requestId clientId
+        |> check request
+
+      for binary in codata do
+        let buffer = manager.TakeBuffer()
+        Array.Copy(binary, buffer.Data, binary.Length)
+        builder.Process buffer 0 binary.Length
+
+      waitOrDie "reset" reset |> noError
 
   //  ____                     ____  _        _
   // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
@@ -44,40 +79,48 @@ module SerializationTests =
 
   let tests_parse_state_deserialization =
     testCase "ParseState deserialization should work" <| fun _ ->
+      let rand = System.Random()
+      let bufsize = 128
       let requests = ResizeArray()
       let rerequests = ResizeArray()
+      let edges = ResizeArray()
       let blob = ResizeArray()
+      use stopper = new AutoResetEvent(false)
 
       let collect (request: Request) =
         requests.Add request
         let data = Request.serialize request
+        // adding some random padding in between to ensure robustness
+        let padding = [| for n in 0 .. (rand.Next(5,20)) -> byte (rand.Next(0,255)) |]
+        edges.Add blob.Count
         blob.AddRange data
+        blob.AddRange padding
 
       // generate some test data
       collect
       |> Prop.forAll Generators.requestArb
       |> Check.Quick
 
-      let bufsize = 1024
-      let buffer = Array.zeroCreate bufsize
-      let payload = blob.ToArray()
-      let payloadSize = payload.Length
-      let chunked = Array.chunkBySize bufsize payload
-      let parser = RequestBuilder.create buffer <| fun request client body ->
+      use parser = RequestBuilder.create <| fun request client body ->
         body
         |> Request.make request client
         |> rerequests.Add
+        if rerequests.Count = requests.Count then
+          stopper.Set() |> ignore
+
+      let payload = blob.ToArray()
+      let payloadSize = payload.Length
+      let chunked = Array.chunkBySize bufsize payload
+      let manager = BufferManager.create 10 bufsize
 
       let mutable read = 0
       for chunk in chunked do
-        let num =
-          let remaining = payloadSize - read
-          if remaining >= bufsize
-          then bufsize
-          else remaining
-        Array.Copy(chunk, buffer, num)
-        parser.Process num
-        read <- read + num
+        let buffer = manager.TakeBuffer()
+        Array.Copy(chunk, buffer.Data, chunk.Length)
+        parser.Process buffer 0 chunk.Length
+        Interlocked.Increment &read |> ignore
+
+      waitOrDie "stopper" stopper |> noError
 
       Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
 

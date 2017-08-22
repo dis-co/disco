@@ -303,6 +303,40 @@ module Persistence =
     | Some remote ->
       Either.succeed remote
 
+  // ** ensureRemote
+
+  let ensureRemote (project: IrisProject) (repo: Repository) (peer: RaftMember) =
+    let uri = Uri.gitUri project.Name peer
+    match Git.Config.tryFindRemote repo (string peer.Id) with
+    | None ->
+      peer.Id
+      |> string
+      |> sprintf "Adding %A to list of remotes"
+      |> Logger.debug (tag "getRemote")
+      Git.Config.addRemote repo (string peer.Id) uri
+
+    | Some remote when remote.Url <> unwrap uri ->
+      peer.Id
+      |> string
+      |> sprintf "Updating remote section for %A to point to %A" uri
+      |> Logger.debug (tag "getRemote")
+      Git.Config.updateRemote repo remote uri
+
+    | Some remote ->
+      Either.succeed remote
+
+  // ** ensureRemotes
+
+  let ensureRemotes (leader: Id)
+                    (project: IrisProject)
+                    (peers: Map<Id,RaftMember>)
+                    (repo: Repository) =
+    peers
+    |> Map.toArray
+    |> Array.filter (fst >> (<>) leader)
+    |> Array.iter (snd >> ensureRemote project repo >> ignore)
+    repo
+
   // ** ensureTracking
 
   let ensureTracking (repo: Repository) (branch: Branch) (remote: Remote) =

@@ -301,7 +301,7 @@ module ApiServer =
       | Right (Register client) ->
         client.Id
         |> sprintf "%O requested to be registered"
-        |> Logger.debug (tag "handleServerRequest")
+        |> Logger.info (tag "handleServerRequest")
 
         client
         |> Msg.AddClient
@@ -315,7 +315,7 @@ module ApiServer =
       | Right (UnRegister client) ->
         client.Id
         |> sprintf "%O requested to be un-registered"
-        |> Logger.debug (tag "handleServerRequest")
+        |> Logger.info (tag "handleServerRequest")
 
         client
         |> Msg.RemoveClient
@@ -402,12 +402,12 @@ module ApiServer =
 
     | TcpServerEvent.Connect(_, ip, port) ->
       sprintf "new connnection from %O:%d" ip port
-      |> Logger.debug (tag "handleServerEvent")
+      |> Logger.info (tag "handleServerEvent")
       state
 
     | TcpServerEvent.Disconnect(peer) ->
       sprintf "%O disconnected" peer
-      |> Logger.debug (tag "handleServerEvent")
+      |> Logger.warn (tag "handleServerEvent")
       let id = Guid.toId peer
       match Map.tryFind id state.Clients with
       | None -> state
@@ -580,7 +580,8 @@ module ApiServer =
             member self.Dispose () =
               agent.Post Msg.Stop
               if not (store.State.Stopper.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
-                Logger.debug (tag "Dispose") "timeout: attempt to dispose api server failed"
+                "timeout: attempt to dispose api server failed"
+                |> Logger.err (tag "Dispose")
               dispose cts
           }
     }

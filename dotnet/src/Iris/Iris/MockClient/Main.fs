@@ -602,7 +602,12 @@ Usage:
 
     let id = Id.Create()
 
-    Logger.initialize id
+    Logger.initialize {
+      Id = Id.Create()
+      Tier = Tier.Client
+      UseColors = true
+      LogLevel = LogLevel.Debug
+    }
 
     let result =
       either {

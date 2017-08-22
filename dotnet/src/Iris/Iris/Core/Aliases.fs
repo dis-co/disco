@@ -174,8 +174,8 @@ type ServiceStatus =
     | Running      -> "Running"
     | Stopping     -> "Stopping"
     | Stopped      -> "Stopped"
-    | Degraded err -> sprintf "Degraded %A" err
-    | Failed   err -> sprintf "Failed %A" err
+    | Degraded err -> sprintf "Degraded (%O)" err.Message
+    | Failed   err -> sprintf "Failed (%O)"   err.Message
     | Disposed     -> "Disposed"
 
   // ** ToOffset

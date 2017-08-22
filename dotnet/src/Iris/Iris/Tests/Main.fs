@@ -23,9 +23,9 @@ let serialTests =
       assetTests
       configTests
       projectTests
-      irisServiceTests
       netIntegrationTests
       raftIntegrationTests
+      irisServiceTests
     ] |> testSequenced
 
 let all =
@@ -37,10 +37,9 @@ let all =
 [<EntryPoint>]
 let main _ =
   // Tracing.enable()
-  use lobs = Logger.subscribe (Logger.filter Trace Logger.stdout)
+  use lobs = Logger.subscribe Logger.stdout // (Logger.filter Trace Logger.stdout)
 
-  Id.Create ()
-  |> Logger.initialize
+  Logger.initialize LoggingSettings.defaultSettings
 
   Thread.CurrentThread.GetApartmentState()
   |> printfn "threading model: %A"

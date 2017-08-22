@@ -18,9 +18,49 @@ module NetIntegrationTests =
   // | |\  |  __/ |_
   // |_| \_|\___|\__|
 
-  let test_server_request_handling =
-    testCase "server request handling" <| fun _ ->
+  let test_client_should_automatically_reconnect =
+    testCase "client should automatically reconnect" <| fun _ ->
       either {
+        let ip = IpAddress.Localhost
+        let prt = port 5555us
+
+        use onConnected = new AutoResetEvent(false)
+        use onDisconnected = new AutoResetEvent(false)
+
+        use client = TcpClient.create {
+            ClientId = Id.Create()
+            PeerAddress = ip
+            PeerPort = prt
+            Timeout = 0<ms>
+          }
+
+        use clientHandler =
+          client.Subscribe <| function
+            | TcpClientEvent.Connected    _ -> onConnected.Set() |> ignore
+            | TcpClientEvent.Disconnected _ -> onDisconnected.Set() |> ignore
+            | _ -> ()
+
+        do client.Connect()
+
+        do! waitOrDie "onDisconnected" onDisconnected
+        do! waitOrDie "onDisconnected" onDisconnected
+
+        use server = TcpServer.create {
+            ServerId = Id.Create()
+            Listen = ip
+            Port = prt
+          }
+
+        do! server.Start()
+
+        do! waitOrDie "onConnected" onConnected
+      }
+      |> noError
+
+  let test_server_request_handling =
+    testCase "se request handling" <| fun _ ->
+      either {
+
         let rand = new System.Random()
         use stopper = new AutoResetEvent(false)
 
@@ -56,20 +96,27 @@ module NetIntegrationTests =
 
         let responses = ResizeArray<Response>()
 
+        let clientsLive = new AutoResetEvent(false)
+        let mutable liveClients = 0
+
         let cloop (inbox: MailboxProcessor<TcpClientEvent>) =
           let mutable count = 0
           let rec imp () = async {
               let! ev = inbox.Receive()
               try
                 match ev with
-                | TcpClientEvent.Response response -> responses.Add(response)
+                | TcpClientEvent.Connected _ ->
+                  Interlocked.Increment &liveClients |> ignore
+                  if liveClients = numclients then
+                    clientsLive.Set() |> ignore
+                | TcpClientEvent.Response response ->
+                  responses.Add(response)
+                  count <- count + 1
+                  if count = (numrequests * numclients) then
+                    stopper.Set() |> ignore
                 | _ -> ()
               with
               | exn -> Logger.err "client loop" exn.Message
-              count <- count + 1
-              if count = (numrequests * numclients) then
-                stopper.Set() |> ignore
-
               return! imp()
             }
           imp()
@@ -83,13 +130,13 @@ module NetIntegrationTests =
                   PeerAddress = ip
                   PeerPort = prt
                   Timeout = 200<ms>
-                }
-               match socket.Start() with
-               | Right () ->
-                  socket.Subscribe cmbp.Post |> ignore
-                  yield socket
-               | Left error -> failwithf "unable to create socket: %O" error
+               }
+               socket.Subscribe cmbp.Post |> ignore
+               socket.Connect()
+               yield socket
            |]
+
+        do! waitOrDie "clientsLive" clientsLive
 
         let mkRequest (client: IClient) =
           async {
@@ -177,6 +224,7 @@ module NetIntegrationTests =
 
   let netIntegrationTests =
     testList "Net Integration Tests" [
+      test_client_should_automatically_reconnect
       test_server_request_handling
       test_duplicate_server_fails_gracefully
       test_pub_socket_disposes_properly

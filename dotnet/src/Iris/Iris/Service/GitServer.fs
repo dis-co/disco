@@ -23,6 +23,7 @@ open Suave.Git
 open System
 open System.IO
 open System.Text
+open System.Text.RegularExpressions
 open System.Threading
 open System.Diagnostics
 
@@ -36,21 +37,84 @@ module GitServer =
 
   let private tag (str: string) = sprintf "GitServer.%s" str
 
+  // ** Subscriptions
+
+  type Subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>
+
+  // ** logger
+
+  let private makeLogger () =
+    let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
+    { new Logger with
+        member x.log(level: Suave.Logging.LogLevel) (nextLine: Suave.Logging.LogLevel -> Message): Async<unit> =
+          match level with
+          | Suave.Logging.LogLevel.Verbose -> ()
+          | level ->
+            let line = nextLine level
+            match line.value with
+            | Event template ->
+              reg.Replace(template, fun m ->
+                let value = line.fields.[m.Groups.[1].Value]
+                if m.Groups.Count = 3
+                then System.String.Format("{0:" + m.Groups.[2].Value + "}", value)
+                else string value)
+              |> Logger.debug (tag "logger")
+            | Gauge _ -> ()
+          async.Return ()
+        member x.logWithAck(arg1: Suave.Logging.LogLevel) (arg2: Suave.Logging.LogLevel -> Message): Async<unit> =
+          // failwith "Not implemented yet"
+          async.Return ()
+        member x.name: string [] =
+          [| "iris" |] }
+
   // ** makeConfig
 
   let private makeConfig (ip: IpAddress) port (cts: CancellationTokenSource) =
     let addr = ip.toIPAddress()
     { defaultConfig with
+        logger = makeLogger()
         cancellationToken = cts.Token
         bindings = [ HttpBinding.create HTTP addr port ]
         mimeTypesMap = defaultMimeTypesMap }
+
+  // ** route
+
+  let private route (name: string) (path: string) =
+    if name.StartsWith("/") then
+      String.Format("{0}{1}", name, path)
+    else
+      String.Format("/{0}{1}", name, path)
+
+  // ** routes
+
+  let private routes (project: IrisProject) (subscriptions: Subscriptions) =
+    let name = unwrap project.Name
+    let path = unwrap project.Path
+    let handler = gitServer (Some name) path
+    choose [
+        Filters.POST >=>
+          (choose [
+            Filters.path (route name "/git-receive-pack") >=> fun req ->
+              req.request.clientHost false []
+              |> IpAddress.Parse
+              |> IrisEvent.GitPush
+              |> Observable.onNext subscriptions
+              handler req
+            Filters.path (route name "/git-upload-pack" ) >=> fun req ->
+              req.request.clientHost false []
+              |> IpAddress.Parse
+              |> IrisEvent.GitPull
+              |> Observable.onNext subscriptions
+              handler req ])
+        handler
+      ]
 
   // ** create
 
   let create (mem: RaftMember) (project: IrisProject) =
     let mutable status = ServiceStatus.Stopped
     let cts = new CancellationTokenSource()
-    let subscriptions = ConcurrentDictionary<Guid,IObserver<IrisEvent>>()
+    let subscriptions = Subscriptions()
 
     { new IGitServer with
         member self.Status
@@ -66,8 +130,7 @@ module GitServer =
             status <- ServiceStatus.Starting
             let config = makeConfig mem.IpAddr (unwrap mem.GitPort) cts
 
-            unwrap project.Path
-            |> gitServer (project.Name |> unwrap |> Some)
+            routes project subscriptions
             |> startWebServerAsync config
             |> (fun (_, server) -> Async.Start(server, cts.Token))
 

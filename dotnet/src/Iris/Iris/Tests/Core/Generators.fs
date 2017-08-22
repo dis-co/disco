@@ -103,7 +103,10 @@ module Generators =
   // | |_| | |_| | | (_| |
   //  \____|\__,_|_|\__,_|
 
-  let guidGen = Arb.generate<Guid>
+  let guidGen = gen {
+      let guid = Guid.NewGuid()
+      return guid
+    }
 
   //  __  __            _     _
   // |  \/  | __ _  ___| |__ (_)_ __   ___

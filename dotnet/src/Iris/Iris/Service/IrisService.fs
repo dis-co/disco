@@ -20,7 +20,7 @@ module IrisService =
 
   // ** tag
 
-  let private tag (str: string) = String.format "IrisServiceNG.{0}" str
+  let private tag (str: string) = String.format "IrisService.{0}" str
 
   // ** Subscriptions
 
@@ -142,7 +142,12 @@ module IrisService =
               commit.Sha
               |> String.format "Successfully committed changes in: {0}"
               |> Logger.debug (tag "statePersistor")
-              Persistence.pushChanges repo
+              repo
+              |> Persistence.ensureRemotes
+                  state.RaftServer.MemberId
+                  state.Store.State.Project
+                  state.RaftServer.Raft.Peers
+              |> Persistence.pushChanges
               |> Map.iter
                 (fun name err ->
                   sprintf "could not push to %s: %O" name err
@@ -152,6 +157,7 @@ module IrisService =
               error
               |> String.format "Error committing changes to disk: {0}"
               |> Logger.err (tag "statePersistor")
+
           | PersistenceStrategy.Ignore -> ()
       | _ -> ()
 
@@ -239,25 +245,35 @@ module IrisService =
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    match socket.Start() with
-    | Right () ->
-      (fun _ -> "TODO: setup leader socket response handler"
-              |> Logger.warn (tag "makeLeader"))
-      |> socket.Subscribe
-      |> ignore
-      Some { Member = leader; Socket = socket }
-    | Left error ->
-      error
-      |> String.format "error creating connection for leader: {0}"
-      |> Logger.err (tag "makeLeader")
-      None
+    (fun _ ->
+      "TODO: setup leader socket response handler"
+      |> Logger.warn (tag "makeLeader"))
+    |> socket.Subscribe
+    |> ignore
+    socket.Connect()
+    Some { Member = leader; Socket = socket }
 
   // ** processEvent
 
   let private processEvent (store: IAgentStore<IrisState>) ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
-    | IrisEvent.Configured mems ->
+    | IrisEvent.EnterJointConsensus changes ->
+      changes
+      |> Array.map
+        (function
+          | ConfigChange.MemberAdded mem ->
+            mem
+            |> Member.getId
+            |> String.format "added {0}"
+          | ConfigChange.MemberRemoved mem ->
+            mem
+            |> Member.getId
+            |> String.format "removed {0}")
+      |> Array.fold (fun s id -> s + " " + id) "Joint consensus with: "
+      |> Logger.debug (tag "processEvent")
+
+    | IrisEvent.ConfigurationDone mems ->
       mems
       |> Array.map (Member.getId >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "

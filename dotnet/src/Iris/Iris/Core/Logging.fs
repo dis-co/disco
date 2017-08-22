@@ -62,7 +62,7 @@ type LogLevel =
     | Debug -> "debug"
     | Info  -> "info"
     | Warn  -> "warn"
-    | Err   -> "err"
+    | Err   -> "error"
 
 // * Tier
 
@@ -85,18 +85,18 @@ type Tier =
 
   override self.ToString() =
     match self with
-    | FrontEnd -> "FrontEnd"
-    | Client   -> "Client"
-    | Service  -> "Service"
+    | FrontEnd -> "frontend"
+    | Client   -> "client"
+    | Service  -> "service"
 
   // ** Parse
 
   static member Parse (str: string) =
-    match str with
-    | "FrontEnd"  -> FrontEnd
-    | "Client"    -> Client
-    | "Service"   -> Service
-    | _           -> failwithf "could not parse %s" str
+    match str.ToLower() with
+    | "frontend" | "ui" -> FrontEnd
+    | "client"  -> Client
+    | "service" -> Service
+    | _         -> failwithf "could not parse %s" str
 
   // ** TryParse
 
@@ -251,6 +251,24 @@ type LogEvent =
 
   #endif
 
+// * LoggingSettings
+
+type LoggingSettings =
+  { Id: Id
+    Level: LogLevel
+    UseColors: bool
+    Tier: Tier }
+
+// * LoggingSettings
+
+module LoggingSettings =
+
+  let defaultSettings =
+    { Id = Id.Create()
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
+
 // * Logger
 
 [<RequireQualifiedAccess>]
@@ -262,13 +280,92 @@ module Logger =
   open System.Threading
   open Iris.Core
 
-  // ** id
+  // ** settings
 
-  let mutable private id = Id "<uninitialized>"
+  let mutable private settings =
+    { Id = Id "<uninitialized>"
+      Level = LogLevel.Debug
+      UseColors = true
+      Tier = Tier.Service }
 
   // ** initialize
 
-  let initialize (mid: Id) = id <- mid
+  let initialize config = settings <- config
+
+  // ** colors
+
+  // Black         - The color black.
+  // Blue          - The color blue.
+  // Cyan          - The color cyan (blue-green).
+  // DarkBlue      - The color dark blue.
+  // DarkCyan      - The color dark cyan (dark blue-green).
+  // DarkGray      - The color dark gray.
+  // DarkGreen     - The color dark green.
+  // DarkMagenta   - The color dark magenta (dark purplish-red).
+  // DarkRed       - The color dark red.
+  // DarkYellow    - The color dark yellow (ochre).
+  // Gray          - The color gray.
+  // Green         - The color green.
+  // Magenta       - The color magenta (purplish-red).
+  // Red           - The color red.
+  // White         - The color white.
+  // Yellow        - The color yellow.
+
+  // ** withForeground
+
+  let private withForeground pat fg (o: obj) =
+    let prevFg = Console.ForegroundColor
+    Console.ForegroundColor <- fg
+    Console.Write(pat,o)
+    Console.ForegroundColor <- prevFg
+
+  let private black pat (thing: obj) =
+    withForeground pat ConsoleColor.Black thing
+
+  let private white pat (thing: obj) =
+    withForeground pat ConsoleColor.White thing
+
+  let private blue pat (thing: obj) =
+    withForeground pat ConsoleColor.Blue thing
+
+  let private darkBlue pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkBlue thing
+
+  let private cyan pat (thing: obj) =
+    withForeground pat ConsoleColor.Cyan thing
+
+  let private darkCyan pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkCyan thing
+
+  let private gray pat (thing: obj) =
+    withForeground pat ConsoleColor.Gray thing
+
+  let private darkGray pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGray thing
+
+  let private green pat (thing: obj) =
+    withForeground pat ConsoleColor.Green thing
+
+  let private darkGreen pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGreen thing
+
+  let private magenta pat (thing: obj) =
+    withForeground pat ConsoleColor.Magenta thing
+
+  let private darkMagenta pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkMagenta thing
+
+  let private red pat (thing: obj) =
+    withForeground pat ConsoleColor.Red thing
+
+  let private darkRed pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkRed thing
+
+  let private yellow pat (thing: obj) =
+    withForeground pat ConsoleColor.Yellow thing
+
+  let private darkYellow pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkYellow thing
 
   // ** stdout
 
@@ -281,7 +378,32 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-    log |> printfn "%O"
+    if settings.UseColors then
+      darkGreen "{0}" "["
+      match log.LogLevel with
+      | LogLevel.Trace -> gray   "{0,-5}" log.LogLevel
+      | LogLevel.Debug -> white  "{0,-5}" log.LogLevel
+      | LogLevel.Info  -> green  "{0,-5}" log.LogLevel
+      | LogLevel.Warn  -> yellow "{0,-5}" log.LogLevel
+      | LogLevel.Err   -> red    "{0,-5}" log.LogLevel
+      darkGreen "{0}" "] "
+
+      darkGreen "{0}:" "ts"
+      white     "{0} " log.Time
+
+      darkGreen "{0}:" "id"
+      white     "{0} " log.Id.Prefix
+
+      darkGreen "{0}:"    "type"
+      white     "{0,-7} " log.Tier
+
+      darkGreen "{0}:"     "in"
+      yellow    "{0,-30} " log.Tag
+
+      white  "{0}"  log.Message
+      Console.Write(System.Environment.NewLine)
+    else
+      Console.WriteLine("{0}", log)
 
   // ** filter
 
@@ -303,9 +425,13 @@ module Logger =
       stdout log
     | _ -> ()
 
+  // ** subscriptions
+
   let private subscriptions = new ResizeArray<IObserver<LogEvent>>()
 
-  let listener =
+  // ** listener
+
+  let private listener =
     { new IObservable<LogEvent> with
         member self.Subscribe(obs) =
 
@@ -344,6 +470,8 @@ module Logger =
           sub.OnNext log
     }
 
+  // ** subscribe
+
   /// ## subscribe
   ///
   /// Log the given string.
@@ -353,30 +481,6 @@ module Logger =
         member x.OnError(error) = ()
         member x.OnNext(value) = cb value }
     |> listener.Subscribe
-
-  // let filter (level: LogLevel) (logger: LogEvent -> unit) =
-  //     /// ## To `log` or not, that is the question.
-  //     match level with
-  //     /// In Debug, all messages get logged
-  //     | Debug -> onLog log
-
-  //     // In Info mode, all messages except `Debug` ones get logged
-  //     | Info  ->
-  //       match log.LogLevel with
-  //       | Info | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Warn mode, messages of type `Err` and `Warn` get logged
-  //     | Warn  ->
-  //       match log.LogLevel with
-  //       | Warn | Err -> onLog log
-  //       | _ -> ()
-
-  //     // In Err mode, only messages of type `Err` get logged
-  //     | Err   ->
-  //       match log.LogLevel with
-  //       | Err -> onLog log
-  //       | _ -> ()
 
   // ** create
 
@@ -391,27 +495,15 @@ module Logger =
   ///
   /// Returns: LogEvent
   let create (level: LogLevel) (callsite: CallSite) (msg: string) =
-    let tier =
-      #if FABLE_COMPILER
-      Tier.FrontEnd
-      #endif
-      #if IRIS_NODES
-      Tier.Client
-      #endif
-      #if !IRIS_NODES && !FABLE_COMPILER
-      Tier.Service
-      #endif
-
     let now  = DateTime.UtcNow |> Time.unixTime
-
     { Time     = uint32 now
       #if FABLE_COMPILER
       Thread   = 1
       #else
       Thread   = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = tier
-      Id       = id
+      Tier     = settings.Tier
+      Id       = settings.Id
       Tag      = callsite
       LogLevel = level
       Message  = msg }

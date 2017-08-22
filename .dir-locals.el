@@ -4,7 +4,7 @@
                          (basedir (if (stringp d) (file-name-directory d) (car d)))
                          (shell-nix (concat basedir "/dotnet/src/Scripts/Nix/shell.nix"))
                          (nix-cmd  (concat "nix-shell " shell-nix " -A irisEnv"))
-                         (main (concat "--use:" basedir "/dotnet/.paket/load/main.group.fsx"))
+                         (main (concat "--use:" basedir "/dotnet/.paket/load/net461/main.group.fsx"))
                          (iris (concat "--use:" basedir "/dotnet/src/Scripts/Fsx/Iris.Core.fsx"))
                          (fsi  (concat "fsi --readline- " main " " iris))
                          (run  (concat "--run \"" fsi "\"")))

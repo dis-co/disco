@@ -25,6 +25,7 @@ module Observable =
       try subscription.OnNext msg
       with
         | exn ->
+          printfn "%O" exn
           exn.Message
           |> Logger.err (tag "notify")
 
