@@ -1,7 +1,8 @@
 import * as $ from "jquery"
-import { showModal } from "./App"
+import * as React from "react"
 import LoadProject from './modals/LoadProject'
 import ProjectConfig from './modals/ProjectConfig'
+import ContentEditable from "./widgets/ContentEditable"
 
 declare var IrisLib: any;
 
@@ -101,31 +102,82 @@ export function oneIsNull(a: {}, b: {}) {
   return xor(a == null, b == null);
 }
 
-interface ProjectInfo { name: string, username: string, password: string }
+const ESCAPE_KEY = 27;
+const ENTER_KEY = 13;
+const RIGHT_BUTTON = 2;
+const DECIMAL_DIGITS = 2;
 
-export function loadProject() {
-  let cachedInfo: ProjectInfo = null;
-  showModal(LoadProject)
-    .then((info: ProjectInfo) => {
-      cachedInfo = info;
-      return IrisLib.loadProject(info.name, info.username, info.password)
-    })
-    .then((err: any) =>
-      err != null
-      // Get project sites and machine config
-      ? IrisLib.getProjectSites(cachedInfo.name)
-      : null
-    )
-    .then((sites: any) =>
-      sites != null
-      // Ask user to create or select a new config
-      ? showModal(ProjectConfig, { sites })
-      : null
-    )
-    .then((site: any) =>
-      site != null
-      // Try loading the project again with the site config
-      ? IrisLib.loadProject(cachedInfo.name, cachedInfo.username, cachedInfo.password, site)
-      : null
-    );
+interface IUpdater {
+    Update(dragging: boolean, index: number, value: any): void;
+}
+
+function startDragging(posY: number, index: number, value: number, updater: IUpdater) {
+    // console.log("Input drag start", index, posY)
+    $(document)
+        .on("contextmenu.drag", e => {
+            e.preventDefault();
+        })
+        .on("mousemove.drag", e => {
+            var diff = posY - e.clientY;
+            // console.log("Input drag mouse Y diff: ", diff);
+            value += diff;
+            posY = e.clientY;
+            if (diff !== 0)
+                updater.Update(true, index, value);
+        })
+        .on("mouseup.drag", e => {
+            updater.Update(false, index, value);
+            // console.log("Input drag stop", e.clientY)
+            $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
+        })
+}
+
+export function formatValue(value: any) {
+    return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
+}
+
+export function addInputView(index: number, value: any, tagName, useRightClick: boolean, updater: IUpdater) {
+
+    let typeofValue = typeof value,
+        props = {} as any, //{ key: index } as any,
+        formattedValue = formatValue(value);
+
+    // Boolean values, not editable
+    if (typeofValue === "boolean") {
+        if (useRightClick) {
+            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+                ev.preventDefault();
+                updater.Update(false, index, !value);
+            }
+        }
+        else {
+            props.onClick = (ev: React.MouseEvent<HTMLElement>) => {
+                if (ev.button !== RIGHT_BUTTON)
+                    updater.Update(false, index, !value);
+            }
+        }
+
+        return React.createElement(tagName, props, formattedValue);
+    }
+
+    // Numeric values, draggable
+    if (typeofValue === "number") {
+        props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
+            if (xand(ev.button === RIGHT_BUTTON, useRightClick))
+                startDragging(ev.clientY, index, value, updater);
+        }
+        if (useRightClick) {
+            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+                ev.preventDefault();
+            }
+        }
+    }
+
+    return React.createElement(ContentEditable, Object.assign({
+      tagName: tagName,
+      html: formattedValue,
+      onChange(html) {
+        updater.Update(false, index, html);
+      }
+    }, props));
 }
