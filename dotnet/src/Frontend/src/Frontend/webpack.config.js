@@ -40,7 +40,7 @@ module.exports = {
     jquery: 'jQuery'
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.json'],
+    extensions: ['.js', '.json'],
     modules: [resolve("../../../../node_modules/")]
   },
   devServer: {
@@ -83,10 +83,6 @@ module.exports = {
       {
         test: /\.css$/,
         use: [ 'style-loader', 'css-loader' ]
-      },
-      {
-        test: /\.tsx?$/,
-        loader: "awesome-typescript-loader"
       },
     ],
   },

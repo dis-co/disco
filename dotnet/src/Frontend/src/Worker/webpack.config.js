@@ -25,7 +25,7 @@ module.exports = {
     library: "IrisWorker"
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.json'],
+    extensions: ['.js', '.json'],
     modules: [resolve("../../../../node_modules/")]
   },
   module: {
@@ -49,10 +49,6 @@ module.exports = {
           loader: 'babel-loader',
           options: babelOptions
         },
-      },
-      {
-        test: /\.tsx?$/,
-        loader: "awesome-typescript-loader"
       },
     ],
   },

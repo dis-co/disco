@@ -17,10 +17,10 @@ type IUpdater =
   abstract Update: dragging:bool * index:int * value:obj -> unit
 
 let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater): React.ReactElement =
-  importMember "../../js/Util.ts"
+  importMember "../../js/Util"
 
 let formatValue(value: obj): string =
-  importMember "../../js/Util.ts"
+  importMember "../../js/Util"
 
 [<Global>]
 let jQuery(el: obj): obj = jsNative

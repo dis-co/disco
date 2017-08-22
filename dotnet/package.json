@@ -10,7 +10,6 @@
   "devDependencies": {
     "@types/jquery": "^3.2.10",
     "@types/react": "^15.6.0",
-    "awesome-typescript-loader": "^3.2.2",
     "babel-core": "^6.25.0",
     "babel-loader": "^7.1.1",
     "babel-plugin-transform-runtime": "^6.23.0",
@@ -28,7 +27,6 @@
     "mocha-phantomjs-core": "^2.1.2",
     "phantomjs-prebuilt": "^2.1.14",
     "style-loader": "^0.18.2",
-    "typescript": "^2.4.2",
     "webpack": "^3.4.1",
     "webpack-dev-server": "^2.6.1"
   },

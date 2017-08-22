@@ -2,8 +2,8 @@ import * as $ from "jquery"
 import * as React from "react"
 import ContentEditable from "./widgets/ContentEditable"
 
-export function jQueryEventAsPromise(selector: any, events: string) {
-  return new Promise<JQuery.Event<HTMLElement,null>>(resolve => {
+export function jQueryEventAsPromise(selector, events) {
+  return new Promise(resolve => {
     $(selector).on(events, e => {
       $(events).off(events);
       resolve(e);
@@ -11,15 +11,15 @@ export function jQueryEventAsPromise(selector: any, events: string) {
   })
 }
 
-export function raceIndexed(...promises: Promise<any>[]) {
-  return new Promise<[number, any]>(resolve => {
+export function raceIndexed(...promises) {
+  return new Promise(resolve => {
     for (let i = 0; i < promises.length; i++) {
       promises[i].then(x => resolve([i, x]));
     }
   })
 }
 
-export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
+export function map(iterable, map) {
   let ar = [];
   if (iterable != null) {
     let i = 0, iter = iterable[Symbol.iterator](), cur = iter.next();
@@ -31,7 +31,7 @@ export function map<T,U>(iterable: Iterable<T>, map: (x:T,i?:number)=>U) {
   return ar;
 }
 
-export function tryFirst<T>(iterable: Iterable<T>, condition?: (x:T)=>boolean) {
+export function tryFirst(iterable, condition) {
   if (iterable != null) {
     let iter = iterable[Symbol.iterator](), cur = iter.next();
     if (!cur.done && condition(cur.value)) {
@@ -41,7 +41,7 @@ export function tryFirst<T>(iterable: Iterable<T>, condition?: (x:T)=>boolean) {
   return null;
 }
 
-export function head<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
+export function head(iterable, projection) {
   if (iterable != null) {
     let iter = iterable[Symbol.iterator](), cur = iter.next();
     if (!cur.done) {
@@ -51,7 +51,7 @@ export function head<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
   return null;
 }
 
-export function last<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
+export function last(iterable, projection) {
   if (iterable != null) {
     let iter = iterable[Symbol.iterator](), cur = iter.next(), last = null;
     while (!cur.done) {
@@ -63,13 +63,13 @@ export function last<T,U>(iterable: Iterable<T>, projection?: (x:T)=>U) {
   return null;
 }
 
-export function getRandomInt(min: number, max: number) {
+export function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
-export function touchesElement(el: HTMLElement, x: number, y: number) {
+export function touchesElement(el, x, y) {
   if (el != null) {
     var rect = el.getBoundingClientRect();
     // console.log("Touches?", {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom}, {x, y})
@@ -79,22 +79,22 @@ export function touchesElement(el: HTMLElement, x: number, y: number) {
   return false;
 }
 
-export function findParentTag(el: HTMLElement, tagName: string): HTMLElement {
+export function findParentTag(el, tagName) {
   var parent = el.parentElement;
   return parent.tagName.toUpperCase() === tagName.toUpperCase()
     ? parent : findParentTag(parent, tagName);
 }
 
-export function xand(a: boolean, b: boolean) {
+export function xand(a, b) {
   return a === b;
 }
 
-export function xor(a: boolean, b: boolean) {
+export function xor(a, b) {
   return a !== b;
 }
 
 /** Returns true if one and only one of the parameters is null */
-export function oneIsNull(a: {}, b: {}) {
+export function oneIsNull(a, b) {
   return xor(a == null, b == null);
 }
 
@@ -103,11 +103,7 @@ const ENTER_KEY = 13;
 const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
-interface IUpdater {
-    Update(dragging: boolean, index: number, value: any): void;
-}
-
-function startDragging(posY: number, index: number, value: number, updater: IUpdater) {
+function startDragging(posY, index, value, updater) {
     // console.log("Input drag start", index, posY)
     $(document)
         .on("contextmenu.drag", e => {
@@ -128,26 +124,26 @@ function startDragging(posY: number, index: number, value: number, updater: IUpd
         })
 }
 
-export function formatValue(value: any) {
+export function formatValue(value) {
     return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
 }
 
-export function addInputView(index: number, value: any, tagName, useRightClick: boolean, updater: IUpdater) {
+export function addInputView(index, value, tagName, useRightClick, updater) {
 
     let typeofValue = typeof value,
-        props = {} as any, //{ key: index } as any,
-        formattedValue = formatValue(value);
+    props = {}, //{ key: index },
+    formattedValue = formatValue(value);
 
     // Boolean values, not editable
     if (typeofValue === "boolean") {
         if (useRightClick) {
-            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+            props.onContextMenu = (ev) => {
                 ev.preventDefault();
                 updater.Update(false, index, !value);
             }
         }
         else {
-            props.onClick = (ev: React.MouseEvent<HTMLElement>) => {
+            props.onClick = (ev) => {
                 if (ev.button !== RIGHT_BUTTON)
                     updater.Update(false, index, !value);
             }
@@ -158,12 +154,12 @@ export function addInputView(index: number, value: any, tagName, useRightClick: 
 
     // Numeric values, draggable
     if (typeofValue === "number") {
-        props.onMouseDown = (ev: React.MouseEvent<HTMLElement>) => {
+        props.onMouseDown = (ev) => {
             if (xand(ev.button === RIGHT_BUTTON, useRightClick))
                 startDragging(ev.clientY, index, value, updater);
         }
         if (useRightClick) {
-            props.onContextMenu = (ev: React.MouseEvent<HTMLElement>) => {
+            props.onContextMenu = (ev) => {
                 ev.preventDefault();
             }
         }
