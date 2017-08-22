@@ -1609,6 +1609,9 @@ module rec RaftServer =
             member self.IsLeader
               with get () = Raft.isLeader store.State.Raft
 
+            member self.RaftState
+              with get () = store.State.Raft.State
+
             member self.Leader
               with get () = Raft.getLeader store.State.Raft
 

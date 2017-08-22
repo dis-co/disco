@@ -115,6 +115,7 @@ type IRaftServer =
   abstract Connections   : ConcurrentDictionary<Id,ITcpClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
+  abstract RaftState     : RaftState
   abstract Raft          : RaftValue
   // abstract JoinCluster   : IpAddress -> uint16 -> unit
   // abstract LeaveCluster  : unit -> unit

@@ -95,13 +95,18 @@ module IrisService =
     | IrisEvent.Append(_, cmd) ->  store.State.Store.Dispatch cmd
     | _ -> ()
 
+  // ** isLeader
+
+  let private isLeader (store: IAgentStore<IrisState>) =
+    store.State.RaftServer.IsLeader
+
   // ** statePersistor
 
   let private statePersistor (store: IAgentStore<IrisState>) =
     fun _ _ -> function
       | IrisEvent.Append(_, sm) ->
         let state = store.State
-        if state.RaftServer.IsLeader then
+        if isLeader store then
           match sm.PersistenceStrategy with
           | PersistenceStrategy.Save ->
             //  ____
@@ -237,6 +242,20 @@ module IrisService =
 
   // ** sendLocalData
 
+  /// <summary>
+  ///   Send local data to leader upon connection.
+  /// </summary>
+  /// <param name="socket">ITcpClient</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>unit</returns>
+  /// <remarks>
+  ///   <para>
+  ///     Some pieces of data are intrinsically local to the service instance, such as connected
+  ///     browser sessions or locally connected client instances. These pieces of data need to be
+  ///     replicated to the leader once connected. IF those clients/sessions already exist, they
+  ///     will simply be ignored.
+  ///   </para>
+  /// </remarks>
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<IrisState>) =
     if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
       let sessions =
@@ -251,11 +270,20 @@ module IrisService =
         List.append sessions clients
         |> StateMachineBatch
         |> CommandBatch
+
+      (clients.Length,sessions.Length)
+      |> String.format "sending batch command with {0} (clients,session) "
+      |> Logger.debug (tag "sendLocalData")
+
       batch
       |> RaftRequest.AppendEntry
       |> Binary.encode
       |> Request.create (Guid.ofId socket.ClientId)
       |> socket.Request
+    else
+      store.State.RaftServer.RaftState
+      |> String.format "Nothing to send ({0})"
+      |> Logger.debug (tag "sendLocalData")
 
   // ** handleLeaderEvents
 
@@ -281,13 +309,10 @@ module IrisService =
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-
     handleLeaderEvents socket store
     |> socket.Subscribe
     |> ignore
-
     socket.Connect()
-
     Some { Member = leader; Socket = socket }
 
   // ** processEvent
@@ -362,6 +387,27 @@ module IrisService =
 
     | IrisEvent.RaftError _ | _ -> ()
 
+  // ** forwardCommand
+
+  let private forwardCommand (store: IAgentStore<IrisState>) cmd =
+    match store.State.Leader with
+    | Some leader ->
+      cmd
+      |> RaftRequest.AppendEntry
+      |> Binary.encode
+      |> Request.create (Guid.ofId store.State.Member.Id)
+      |> leader.Socket.Request
+    | None ->
+      "Could not forward command; No Leader"
+      |> Logger.err (tag "forwardCommand")
+
+  // ** handleAppend
+
+  let private handleAppend (store: IAgentStore<IrisState>) cmd =
+    if isLeader store
+    then do store.State.RaftServer.Append cmd
+    else do forwardCommand store cmd
+
   // ** replicateEvent
 
   let private replicateEvent (store: IAgentStore<IrisState>) = function
@@ -382,13 +428,13 @@ module IrisService =
     | Append (Origin.Web id, AddSession session) ->
       session
       |> store.State.SocketServer.BuildSession id
-      |> Either.iter (AddSession >> store.State.RaftServer.Append)
+      |> Either.iter (AddSession >> handleAppend store)
 
     // replicate a RemoveSession command if the session exists
     | SessionClosed id ->
       store.State.Store.State.Sessions
       |> Map.tryFind id
-      |> Option.iter (RemoveSession >> store.State.RaftServer.Append)
+      |> Option.iter (RemoveSession >> handleAppend store)
 
     //     _                               _
     //    / \   _ __  _ __   ___ _ __   __| |
@@ -397,13 +443,13 @@ module IrisService =
     // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
     //  _the_  |_|   |_| base case...
 
-    | Append (_, AddMember mem) -> store.State.RaftServer.AddMember mem
-    | Append (_, RemoveMember mem) -> store.State.RaftServer.RemoveMember mem.Id
-    | Append (_, other) ->
-      if store.State.RaftServer.IsLeader then
-        store.State.RaftServer.Append other
-      else
-        printfn "FORWARD: command %A" other
+    | Append (_, AddMember mem) ->
+      if isLeader store then store.State.RaftServer.AddMember mem
+
+    | Append (_, RemoveMember mem) ->
+      if isLeader store then store.State.RaftServer.RemoveMember mem.Id
+
+    | Append (_, other) -> handleAppend store other
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
