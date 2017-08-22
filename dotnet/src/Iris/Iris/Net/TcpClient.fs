@@ -38,6 +38,7 @@ module rec TcpClient =
     abstract ClientId: Id
     abstract ConnectionId: byte array
     abstract Socket: Socket
+    abstract Stream: NetworkStream
     abstract EndPoint: IPEndPoint
     abstract PendingRequests: PendingRequests
     abstract ResponseBuilder: IResponseBuilder
@@ -45,6 +46,63 @@ module rec TcpClient =
     abstract Request: Request -> unit
     abstract Respond: Response -> unit
     abstract StartReceiving: unit -> unit
+
+  // ** handleError
+
+  let private handleError (state:IState) (error: IrisError) =
+    do Logger.debug error.Location error.Message
+    state.Status <- ServiceStatus.Failed error
+    (state.ClientId, error)
+    |> TcpClientEvent.Disconnected
+    |> Observable.onNext state.Subscriptions
+
+  //                     _ _
+  //  ___  ___ _ __   __| (_)_ __   __ _
+  // / __|/ _ \ '_ \ / _` | | '_ \ / _` |
+  // \__ \  __/ | | | (_| | | | | | (_| |
+  // |___/\___|_| |_|\__,_|_|_| |_|\__, |
+  //                               |___/
+  let private sendLoop (state: IState) (inbox: MailboxProcessor<byte array>) =
+    let rec sendLoopImpl () = async {
+      let! msg = inbox.Receive()
+      try
+        do state.Stream.Write(msg, 0, msg.Length)
+        return! sendLoopImpl ()
+      with
+        | exn ->
+          exn.Message
+          |> Error.asSocketError (tag "sendLoop")
+          |> handleError state
+    }
+    sendLoopImpl ()
+
+  //                    _       _
+  //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
+  // | '__/ _ \/ __/ _ \ \ \ / / | '_ \ / _` |
+  // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
+  // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
+  //                                    |___/
+  let private receiveLoop (state: IState) =
+    async {
+      let mutable run = true
+      while run do
+        try
+          let result = state.Stream.ReadByte()
+          if result = -1 then
+            "Reached end of Stream. Disconnected"
+            |> Error.asSocketError (tag "receiveLoop")
+            |> handleError state
+            run <- false
+          else
+            result |> byte |> state.ResponseBuilder.Write
+        with
+          | :? IOException -> run <- false
+          | exn ->
+            exn.Message
+            |> Error.asSocketError (tag "receiveLoop")
+            |> handleError state
+            run <- false
+    }
 
   // ** makeState
 
@@ -74,52 +132,7 @@ module rec TcpClient =
         |> TcpClientEvent.Request
         |> Observable.onNext subscriptions
 
-    //                     _ _
-    //  ___  ___ _ __   __| (_)_ __   __ _
-    // / __|/ _ \ '_ \ / _` | | '_ \ / _` |
-    // \__ \  __/ | | | (_| | | | | | (_| |
-    // |___/\___|_| |_|\__,_|_|_| |_|\__, |
-    //                               |___/
-    let rec sendLoop (inbox: MailboxProcessor<byte array>) = async {
-        let! msg = inbox.Receive()
-        do stream.Write(msg, 0, msg.Length)
-        return! sendLoop inbox
-      }
-
-    //                    _       _
-    //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
-    // | '__/ _ \/ __/ _ \ \ \ / / | '_ \ / _` |
-    // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
-    // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
-    //                                    |___/
-    let receiveLoop =
-      async {
-        let mutable run = true
-        while run do
-          try
-            let result = stream.ReadByte()
-            if result = -1 then
-              let error =
-                "Reached end of Stream. Disconnected"
-                |> Error.asSocketError (tag "receiveLoop")
-              (options.ClientId, error)
-              |> TcpClientEvent.Disconnected
-              |> Observable.onNext subscriptions
-              run <- false
-            else
-              result |> byte |> builder.Write
-          with
-            | :? IOException -> run <- false
-            | exn ->
-              let error = Error.asSocketError (tag "receiveLoop") exn.Message
-              (options.ClientId, error)
-              |> TcpClientEvent.Disconnected
-              |> Observable.onNext subscriptions
-              Logger.err (tag "receiveLoop") exn.Message
-              run <- false
-      }
-
-    let sender = new MailboxProcessor<byte[]>(sendLoop, cts.Token)
+    let mutable sender = Unchecked.defaultof<MailboxProcessor<byte[]>>
 
     { new IState with
         member state.Status
@@ -134,6 +147,9 @@ module rec TcpClient =
 
         member state.Socket
           with get () = client
+
+        member state.Stream
+          with get () = stream
 
         member state.EndPoint
           with get () = endpoint
@@ -166,8 +182,9 @@ module rec TcpClient =
 
         member state.StartReceiving() =
           stream <- new NetworkStream(client)
-          Async.Start(receiveLoop, cts.Token)
+          sender <- new MailboxProcessor<byte[]>(sendLoop state, cts.Token)
           sender.Start()
+          Async.Start(receiveLoop state, cts.Token)
 
         member state.Dispose() =
           if not cts.IsCancellationRequested then
@@ -184,32 +201,26 @@ module rec TcpClient =
 
   let private onError location (args: SocketAsyncEventArgs) =
     let listener, state = args.UserToken :?> IDisposable * IState
-    let msg = String.Format("{0} in socket operation", args.SocketError)
-    let error = Error.asSocketError (tag location) msg
     do dispose listener
-    do Logger.err (tag location) msg
-    state.Status <- ServiceStatus.Failed error
-    (state.ClientId, error)
-    |> TcpClientEvent.Disconnected
-    |> Observable.onNext state.Subscriptions
+    args.SocketError
+    |> String.format "{0} in socket operation"
+    |> Error.asSocketError (tag location)
+    |> handleError state
 
   // ** onSend
 
   let private onSend (args: SocketAsyncEventArgs) =
     let listener, state = args.UserToken :?> IDisposable * IState
+    do dispose listener
     if args.SocketError <> SocketError.Success then
-      let msg = String.Format("{0} in socket operation", args.SocketError)
-      let error = Error.asSocketError (tag "onError") msg
-      do Logger.err (tag "onError") msg
-      state.Status <- ServiceStatus.Failed error
-      (state.ClientId, error)
-      |> TcpClientEvent.Disconnected
-      |> Observable.onNext state.Subscriptions
+      args.SocketError
+      |> String.format "{0} in socket operation"
+      |> Error.asSocketError (tag "onSend")
+      |> handleError state
     else
       args.BytesTransferred
       |> String.format "sent {0} bytes"
       |> Logger.debug (tag "onSend")
-    do dispose listener
 
   // ** sendAsync
 
@@ -231,6 +242,7 @@ module rec TcpClient =
   let private onInitialize (args: SocketAsyncEventArgs) =
     if args.SocketError = SocketError.Success then
       let listener, state = args.UserToken :?> IDisposable * IState
+      do dispose listener
       if args.Buffer = Core.CONNECTED then
         state.Status <- ServiceStatus.Running
         state.StartReceiving()
@@ -238,13 +250,9 @@ module rec TcpClient =
           |> TcpClientEvent.Connected
           |> Observable.onNext state.Subscriptions
       else
-        let msg = "Incorrect response from server, disconnected"
-        let error = Error.asSocketError (tag "onInitialize") msg
-        do Logger.err (tag "onInitialize") msg
-        do (state.ClientId, error)
-          |> TcpClientEvent.Disconnected
-          |> Observable.onNext state.Subscriptions
-      do dispose listener
+        "Incorrect response from server, disconnected"
+        |> Error.asSocketError (tag "onInitialize")
+        |> handleError state
     else onError "onInitialize" args
 
   // ** initializeAsync
@@ -292,12 +300,14 @@ module rec TcpClient =
     let listener =
       flip Observable.subscribe subscriptions <| function
         | TcpClientEvent.Disconnected _ ->
+          "DISCONNECTED"
+          |> Logger.debug (tag "listener")
           dispose state
           Async.Start(async {
-              do! Async.Sleep(500);
-              state <- makeState options subscriptions
-              connectAsync state
-            })
+            do! Async.Sleep(500);
+            state <- makeState options subscriptions
+            connectAsync state
+          })
         | _ -> ()
 
     { new ITcpClient with

@@ -44,6 +44,22 @@ type IrisError =
       | ClientError  (_, error) -> error
       | Other        (_, error) -> error
 
+  // ** Location
+
+  member error.Location
+    with get () =
+      match error with
+      | OK                      -> "Ok"
+      | GitError     (location, _) -> location
+      | ProjectError (location, _) -> location
+      | SocketError  (location, _) -> location
+      | ParseError   (location, _) -> location
+      | IOError      (location, _) -> location
+      | AssetError   (location, _) -> location
+      | RaftError    (location, _) -> location
+      | ClientError  (location, _) -> location
+      | Other        (location, _) -> location
+
   // ** ToString
 
   override error.ToString() =
