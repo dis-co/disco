@@ -16,6 +16,9 @@ open Helpers
 open State
 open Types
 
+let AddMemberModal: React.ComponentClass<ModalProps<obj, string*uint16>> =
+  importDefault "../../../src/modals/AddMember"
+
 let inline padding5() =
   Style [PaddingLeft "5px"]
 
@@ -28,7 +31,9 @@ let inline padding5AndTopBorder() =
 let titleBar dispatch (model: Model) =
   button [
     Class "iris-button"
-    OnClick(fun _ -> failwith "TODO: showModal(AddMember)")
+    OnClick(fun _ ->
+      makeModal dispatch AddMemberModal None
+      |> Promise.iter Lib.addMember)
   ] [str "Add member"]
 
 let body dispatch (model: Model) =

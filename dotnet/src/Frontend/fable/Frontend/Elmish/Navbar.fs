@@ -9,11 +9,6 @@ open Iris.Core
 open Helpers
 open Types
 
-[<Pojo>]
-type ModalProps<'a,'b> =
-  { data: 'a option
-    onSubmit: 'b -> unit }
-
 type IProjectInfo =
   abstract name: Name
   abstract username: UserName
@@ -36,27 +31,22 @@ module Options =
   let [<Literal>] shutdown = "Shutdown"
 
 let onClick dispatch id _ =
-  let makeModal (com: React.ComponentClass<ModalProps<'a,'b>>) data =
-    Promise.create (fun onSuccess _ ->
-      let props =
-        { data = data
-          onSubmit = fun x -> UpdateModal None |> dispatch; onSuccess x }
-      from com props [] |> Some |> UpdateModal |> dispatch)
   let start f msg =
     f() |> Promise.iter (fun () -> printfn "%s" msg)
   match id with
   | Options.createProject ->
-    makeModal CreateProjectModal None |> Promise.iter Lib.createProject
+    makeModal dispatch CreateProjectModal None
+    |> Promise.iter Lib.createProject
   | Options.loadProject ->
     promise {
-      let! info = makeModal LoadProjectModal None
+      let! info = makeModal dispatch LoadProjectModal None
       let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
       match err with
       | Some err ->
         // Get project sites and machine config
         let! sites = Lib.getProjectSites(info.name, info.username, info.password)
         // Ask user to create or select a new config
-        let! site = makeModal ProjectConfigModal (Some sites)
+        let! site = makeModal dispatch ProjectConfigModal (Some sites)
         // Try loading the project again with the site config
         let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
         err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
@@ -104,7 +94,7 @@ let view dispatch (model: Model) =
         let info = Iris.Web.Core.Client.ClientContext.Singleton.ServiceInfo
         info.version, info.buildNumber
       with ex ->
-        printfn "Cannot read ServiceInfo from ClientContext"
+        // printfn "Cannot read ServiceInfo from ClientContext"
         "0.0.0", "123"
     | None -> "0.0.0", "123"
   div [] [

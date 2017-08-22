@@ -99,6 +99,18 @@ let widget (id: Guid) (name: string)
     ]
   ]
 
+[<Pojo>]
+type ModalProps<'a,'b> =
+  { data: 'a option
+    onSubmit: 'b -> unit }
+
+let makeModal dispatch (com: React.ComponentClass<ModalProps<'a,'b>>) data =
+  Fable.PowerPack.Promise.create (fun onSuccess _ ->
+    let props =
+      { data = data
+        onSubmit = fun x -> UpdateModal None |> dispatch; onSuccess x }
+    from com props [] |> Some |> UpdateModal |> dispatch)
+
 module Promise =
   open Fable.PowerPack
 

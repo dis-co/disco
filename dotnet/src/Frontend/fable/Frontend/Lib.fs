@@ -93,7 +93,7 @@ let listProjects() =
   ListProjects
   |> postCommandWithErrorNotifier [||] (ofJson<NameAndId[]> >> Array.map (fun x -> x.Name))
 
-let addMember(info: obj) =
+let addMember(memberIpAddr: string, memberHttpPort: uint16) =
   Promise.start (promise {
   // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
   try
@@ -103,8 +103,6 @@ let addMember(info: obj) =
       | None -> failwith "The client store is not initialized"
 
     let memberIpAndPort =
-      let memberIpAddr: string = !!info?ipAddr
-      let memberHttpPort: uint16 = !!info?httpPort
       sprintf "%s:%i" memberIpAddr memberHttpPort |> Some
 
     memberIpAndPort |> Option.iter (printfn "New member URI: %s")

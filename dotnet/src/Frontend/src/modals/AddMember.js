@@ -1,13 +1,6 @@
-import * as React from 'react';
-import { IIris } from "../Interfaces"
+import * as React from 'react'
 
-declare var IrisLib: IIris;
-
-interface AddMemberProps {
-  onSubmit(): void
-}
-
-export default class AddMember extends React.Component<AddMemberProps,any> {
+export default class AddMember extends React.Component {
   constructor(props) {
       super(props);
       this.state = {
@@ -76,7 +69,7 @@ export default class AddMember extends React.Component<AddMemberProps,any> {
         isValid = false;
         break;
       }
-    }    
+    }
     return (
       <div>
         <p className="title has-text-centered">Node information</p>
@@ -86,8 +79,7 @@ export default class AddMember extends React.Component<AddMemberProps,any> {
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
               ev.preventDefault();
-              IrisLib.addMember(this.state);              
-              this.props.onSubmit();
+              this.props.onSubmit([this.state.ipAddr, this.state.httpPort]);
             }}>
               Submit
             </button>
