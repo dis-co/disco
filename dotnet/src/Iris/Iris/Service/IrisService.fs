@@ -88,22 +88,60 @@ module IrisService =
         dispose self.Dispatcher
         dispose self.LogFile
 
-  // ** stateMutator
-
-  let private stateMutator (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
-    match cmd with
-    | IrisEvent.Append(_, cmd) ->  store.State.Store.Dispatch cmd
-    | _ -> ()
+  //  _   _ _   _ _ _ _   _
+  // | | | | |_(_) (_) |_(_) ___  ___
+  // | | | | __| | | | __| |/ _ \/ __|
+  // | |_| | |_| | | | |_| |  __/\__ \
+  //  \___/ \__|_|_|_|\__|_|\___||___/
 
   // ** isLeader
 
+  /// <summary>
+  ///   isLeader
+  /// </summary>
+  /// <param name="name">type</param>
+  /// <param name="name">type</param>
+  /// <returns>returns</returns>
   let private isLeader (store: IAgentStore<IrisState>) =
     store.State.RaftServer.IsLeader
 
+  //  ____  _            _ _
+  // |  _ \(_)_ __   ___| (_)_ __   ___
+  // | |_) | | '_ \ / _ \ | | '_ \ / _ \
+  // |  __/| | |_) |  __/ | | | | |  __/
+  // |_|   |_| .__/ \___|_|_|_| |_|\___|
+  //         |_|
+  //  _____                 _   _
+  // |  ___|   _ _ __   ___| |_(_) ___  _ __  ___
+  // | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+  // |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
+  // |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+
+  // ** stateMutator
+
+  /// <summary>
+  ///   Dispatch the current event on the store, thereby globally mutating its state.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
+  let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
+    | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
+    | _ -> ()
+
   // ** statePersistor
 
-  let private statePersistor (store: IAgentStore<IrisState>) =
-    fun _ _ -> function
+  /// <summary>
+  ///   Persists events marked as non-volatile to disk, possibly committing changes to git.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
+  let private statePersistor (store: IAgentStore<IrisState>) _ _ = function
       | IrisEvent.Append(_, sm) ->
         let state = store.State
         if isLeader store then
@@ -168,6 +206,14 @@ module IrisService =
 
   // ** logPersistor
 
+  /// <summary>
+  ///   Write all logged messages to a machine-local log file.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
   let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
     match cmd with
     | IrisEvent.Append(_, LogMsg log) ->
@@ -287,6 +333,12 @@ module IrisService =
 
   // ** handleLeaderEvents
 
+  /// <summary>
+  ///   Handle events happening on the socket connection to the current leader.
+  /// </summary>
+  /// <param name="socket">ITcpClient</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>unit</returns>
   let private handleLeaderEvents socket store = function
     | TcpClientEvent.Connected _ ->
       do sendLocalData socket store
