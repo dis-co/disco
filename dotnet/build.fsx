@@ -331,7 +331,7 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
 )
 
@@ -614,7 +614,7 @@ Target "BuildReleaseZeroconf"
 
 
 Target "BuildFrontend" (fun () ->
-  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm "install" __SOURCE_DIRECTORY__ ()
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
 
   DotNet.installDotnetSdk ()
@@ -624,10 +624,10 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
-  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
+  // runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpm "run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css" __SOURCE_DIRECTORY__ ()
   // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runNpm ("run build") __SOURCE_DIRECTORY__ ()
+  runNpm "run build" __SOURCE_DIRECTORY__ ()
 )
 
 
@@ -639,15 +639,15 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
-  runExec "yarn" "install" __SOURCE_DIRECTORY__ isWindows
+  runNpm "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
+  runExec DotNet.dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
 )
 
 Target "BuildWebTestsFast" (fun _ ->
   // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runExec DotNet.dotnetExePath "fable yarn-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
+  runExec DotNet.dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
 )
 
 let runWebTests = (fun _ ->
