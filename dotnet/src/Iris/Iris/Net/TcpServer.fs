@@ -75,7 +75,11 @@ module TcpServer =
     let cleanUp (connections: Connections) = function
       | TcpServerEvent.Disconnect id ->
         match connections.TryRemove id with
-        | true, connection -> connection.Dispose()
+        | true, connection ->
+          connection.Id
+          |> String.format "removing connection: {0}"
+          |> Logger.info (tag "cleanUp")
+          connection.Dispose()
         | false, _ -> ()
       | _ -> ()
 
@@ -178,58 +182,56 @@ module TcpServer =
               if data <> -1 then
                 data |> byte |> builder.Write
               else // once the stream returns -1, the underlying stream has ended
+                id
+                |> String.format "Reached end of Stream. Disconnected. {0}"
+                |> Logger.info (tag "receiveLoop")
+                id
+                |> TcpServerEvent.Disconnect
+                |> Observable.onNext state.Subscriptions
                 run <- false
             with
               | :? IOException -> run <- false
               | exn ->
                 run <- false
+                id
+                |> TcpServerEvent.Disconnect
+                |> Observable.onNext state.Subscriptions
                 Logger.err (tag "receiveLoop") exn.Message
         }
 
       let sender = MailboxProcessor.Start(sendLoop, cts.Token)
       Async.Start(receiveLoop, cts.Token)
 
-      let connection =
-        { new IConnection with
-            member connection.Socket
-              with get () = socket
+      { new IConnection with
+          member connection.Socket
+            with get () = socket
 
-            member connection.PendingRequests
-              with get () = pending
+          member connection.PendingRequests
+            with get () = pending
 
-            member connection.Id
-              with get () = id
+          member connection.Id
+            with get () = id
 
-            member connection.IPAddress
-              with get () = endpoint.Address
+          member connection.IPAddress
+            with get () = endpoint.Address
 
-            member connection.Port
-              with get () = endpoint.Port
+          member connection.Port
+            with get () = endpoint.Port
 
-            member connection.RequestBuilder
-              with get () = builder
+          member connection.RequestBuilder
+            with get () = builder
 
-            member connection.Subscriptions
-              with get () = state.Subscriptions
+          member connection.Subscriptions
+            with get () = state.Subscriptions
 
-            member connection.Send (data: byte array) =
-              sender.Post data
+          member connection.Send (data: byte array) =
+            sender.Post data
 
-            member connection.Dispose() =
-              try cts.Cancel() with | _ -> ()
-              Socket.dispose socket
-              dispose stream
-              dispose builder }
-
-      let checker =
-        Socket.checkState
-          connection.Socket
-          connection.Subscriptions
-          None
-          (connection.Id |> TcpServerEvent.Disconnect |> Some)
-
-      Async.Start(checker, cts.Token)
-      connection
+          member connection.Dispose() =
+            try cts.Cancel() with | _ -> ()
+            Socket.dispose socket
+            dispose stream
+            dispose builder }
 
   // ** Server module
 
@@ -307,7 +309,11 @@ module TcpServer =
         let connection = Connection.create guid state socket
 
         match state.Connections.TryRemove(connection.Id) with
-        | true, connection -> connection.Dispose()
+        | true, connection ->
+          connection.Id
+          |> String.format "removing connection: {0}"
+          |> Logger.info (tag "onConnection")
+          connection.Dispose()
         | _ -> ()
 
         state.Connections.TryAdd(connection.Id, connection) |> ignore
@@ -391,7 +397,13 @@ module TcpServer =
             |> RequestBuilder.serialize
             |> state.Connections.[client].Send
           with
-            | exn -> exn.Message |> Logger.err (tag "Request")
+            | exn ->
+              String.Format("{0} {1}", exn.Message, request.PeerId)
+              |> Logger.err (tag "Request")
+
+              state.Connections.Keys
+              |> sprintf "current peers: %A"
+              |> Logger.err (tag "Request")
 
         member server.Respond (response: Response) =
           try
@@ -399,7 +411,13 @@ module TcpServer =
             |> RequestBuilder.serialize
             |> state.Connections.[response.PeerId].Send
           with
-            | exn -> exn.Message |> Logger.err (tag "Respond")
+            | exn ->
+              String.Format("{0} {1}", exn.Message, response.PeerId)
+              |> Logger.err (tag "Respond")
+
+              state.Connections.Keys
+              |> sprintf "current peers: %A"
+              |> Logger.err (tag "Respond")
 
         member server.Subscribe (callback: TcpServerEvent -> unit) =
           Observable.subscribe callback state.Subscriptions

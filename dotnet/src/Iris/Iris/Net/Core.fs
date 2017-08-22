@@ -650,6 +650,7 @@ module Socket =
 
   // ** checkState
 
+  (*
   let checkState<'t> (socket: Socket)
                      (subscriptions: ConcurrentDictionary<Guid,IObserver<'t>>)
                      (good: 't option)
@@ -669,6 +670,7 @@ module Socket =
             return! impl()
       }
     impl()
+   *)
 
 // * Playground
 

@@ -97,26 +97,29 @@ module rec TcpClient =
         let mutable run = true
         while run do
           try
-            stream.ReadByte()
-            |> byte
-            |> builder.Write
+            let result = stream.ReadByte()
+            if result = -1 then
+              let error =
+                "Reached end of Stream. Disconnected"
+                |> Error.asSocketError (tag "receiveLoop")
+              (options.ClientId, error)
+              |> TcpClientEvent.Disconnected
+              |> Observable.onNext subscriptions
+              run <- false
+            else
+              result |> byte |> builder.Write
           with
             | :? IOException -> run <- false
             | exn ->
+              let error = Error.asSocketError (tag "receiveLoop") exn.Message
+              (options.ClientId, error)
+              |> TcpClientEvent.Disconnected
+              |> Observable.onNext subscriptions
               Logger.err (tag "receiveLoop") exn.Message
               run <- false
       }
 
     let sender = new MailboxProcessor<byte[]>(sendLoop, cts.Token)
-
-    Socket.checkState
-      client
-      subscriptions
-      (TcpClientEvent.Connected options.ClientId |> Some)
-      ((options.ClientId, Error.asSocketError (tag "checkState") "Connection closed")
-       |> TcpClientEvent.Disconnected
-       |> Some)
-    |> fun checkFun -> Async.Start(checkFun, cts.Token)
 
     { new IState with
         member state.Status
@@ -149,10 +152,16 @@ module rec TcpClient =
 
         member state.Request (request: Request) =
           // this socket is asking something, so we need to track this in pending requests
-          pending.TryAdd(request.RequestId, request) |> ignore
+          do request.RequestId
+             |> sprintf "sending to %A (id: %A)" request.PeerId
+             |> Logger.debug (tag "Request")
+          do pending.TryAdd(request.RequestId, request) |> ignore
           do request |> RequestBuilder.serialize |> sender.Post
 
         member state.Respond (response: Response) =
+          do response.RequestId
+             |> sprintf "sending to %A (id: %A)" response.PeerId
+             |> Logger.debug (tag "Respond")
           do response |> RequestBuilder.serialize |> sender.Post
 
         member state.StartReceiving() =
