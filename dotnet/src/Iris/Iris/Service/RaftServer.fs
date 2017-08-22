@@ -511,18 +511,15 @@ module rec RaftServer =
                                  (cmd: StateMachine)
                                  (raw: Request)
                                  (agent: RaftAgent) =
-
     Tracing.trace (tag "processAppendEntry") <| fun () ->
       if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
         match appendCommand state cmd with
         | Right (entry, newstate) ->     // command was appended, now queue a message and the later
-          let response =                // response to check its committed status, eventually
-            entry                       // timing out or responding to the server
-            |> AppendEntryResponse
-            |> Binary.encode
-            |> Response.fromRequest raw
-          (DateTime.Now, entry, response)
-          |> Msg.ReqCommitted
+          entry                         // response to check its committed status, eventually
+          |> AppendEntryResponse         // timing out or responding to the server
+          |> Binary.encode
+          |> Response.fromRequest raw
+          |> fun response -> Msg.ReqCommitted(DateTime.Now, entry, response)
           |> agent.Post
           newstate
         | Left (err, newstate) ->        // Request was unsuccessful, respond immeditately
