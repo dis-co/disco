@@ -1225,8 +1225,7 @@ module Generators =
   //         |_|                    |_|
 
   let apiResponseGen =
-    [ Gen.constant OK
-      Gen.constant Registered
+    [ Gen.constant Registered
       Gen.constant Unregistered
       Gen.map NOK apiErrorGen ]
     |> Gen.oneof

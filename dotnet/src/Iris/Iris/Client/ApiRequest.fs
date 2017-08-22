@@ -1022,17 +1022,12 @@ type ApiRequest =
 //         |_|                    |_|
 
 type ApiResponse =
-  | OK
   | Registered
   | Unregistered
   | NOK of ApiError
 
   member response.ToOffset(builder: FlatBufferBuilder) =
     match response with
-    | OK ->
-      ApiResponseFB.StartApiResponseFB(builder)
-      ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
-      ApiResponseFB.EndApiResponseFB(builder)
     | Registered ->
       ApiResponseFB.StartApiResponseFB(builder)
       ApiResponseFB.AddStatus(builder, StatusFB.RegisteredFB)
@@ -1044,13 +1039,12 @@ type ApiResponse =
     | NOK error ->
       let err = error.ToOffset(builder)
       ApiResponseFB.StartApiResponseFB(builder)
-      ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
+      ApiResponseFB.AddStatus(builder, StatusFB.NOKFB)
       ApiResponseFB.AddError(builder, err)
       ApiResponseFB.EndApiResponseFB(builder)
 
   static member FromFB(fb: ApiResponseFB) =
     match fb.Status with
-    | StatusFB.OKFB           -> Right OK
     | StatusFB.RegisteredFB   -> Right Registered
     | StatusFB.UnregisteredFB -> Right Unregistered
     | StatusFB.NOKFB  ->

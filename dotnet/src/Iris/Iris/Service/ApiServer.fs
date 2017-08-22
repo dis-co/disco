@@ -332,17 +332,20 @@ module ApiServer =
         |> Msg.Update
         |> agent.Post
 
-        OK
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Server.Respond
-
       | Right other -> ()                // ignore Ping et al
 
       | Left error ->
         error
-        |> sprintf "error decoding request: %O"
+        |> String.format "error decoding request: {0}"
         |> Logger.err (tag "handleServerRequest")
+
+        try
+          String.Format("request-id: {0} peer-id: {1} request-length: {2}",
+                        req.RequestId,
+                        req.PeerId,
+                        req.Body.Length)
+          |> Logger.err (tag "handleServerRequest")
+        with | _ -> ()
 
         string error
         |> ApiError.Internal
@@ -370,12 +373,7 @@ module ApiServer =
       (Guid.toId resp.PeerId, ServiceStatus.Failed err)
       |> Msg.SetClientStatus
       |> agent.Post
-    //   ___  _  __
-    //  / _ \| |/ /
-    // | | | | ' /
-    // | |_| | . \
-    //  \___/|_|\_\
-    | Right (ApiResponse.OK _)
+
     | Right (ApiResponse.Registered _)
     | Right (ApiResponse.Unregistered _) -> ()
     //  ____                     _        _____

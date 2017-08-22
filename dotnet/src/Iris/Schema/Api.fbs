@@ -89,7 +89,6 @@ table ApiRequestFB {
 }
 
 enum StatusFB:ushort {
-     OKFB = 0,
      NOKFB,
      RegisteredFB,
      UnregisteredFB
