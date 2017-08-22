@@ -37,14 +37,14 @@ module Values =
   let [<Literal>] jqueryLayoutWestSize = 200
 
 module Tabs =
-  let modalView dispatch (model: Model) content =
+  let modalView dispatch content =
     div [ClassName "modal is-active"] [
       div [
         ClassName "modal-background"
         OnClick (fun _ -> dispatch (UpdateModal None))
       ] []
       div [ClassName "modal-content"] [
-        div [ClassName "box"] [content dispatch model]
+        div [ClassName "box"] [content]
       ]
     ]
 
@@ -72,7 +72,7 @@ module Tabs =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (modalView dispatch model) |> opt
+      model.modal |> Option.map (modalView dispatch) |> opt
     ]
 
 let view dispatch (model: Model) =

@@ -1,17 +1,32 @@
 module Iris.Web.Navbar
 
 open Fable.Helpers.React
-open Fable.Helpers.React.Props
 open Fable.Import
+open Fable.Core
 open Fable.Core.JsInterop
+open Fable.PowerPack
+open Iris.Core
 open Helpers
 open Types
 
-type IOnSubmit<'T> =
-  abstract onSubmit: 'T -> unit
+[<Pojo>]
+type ModalProps<'a,'b> =
+  { data: 'a option
+    onSubmit: 'b -> unit }
 
-let CreateProjectModal: React.ComponentClass<IOnSubmit<string>> =
+type IProjectInfo =
+  abstract name: Name
+  abstract username: UserName
+  abstract password: Password
+
+let CreateProjectModal: React.ComponentClass<ModalProps<obj, string>> =
   importDefault "../../../src/modals/CreateProject"
+
+let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
+  importDefault "../../../src/modals/LoadProject"
+
+let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
+  importDefault "../../../src/modals/ProjectConfig"
 
 module Options =
   let [<Literal>] createProject = "Create Project"
@@ -21,21 +36,42 @@ module Options =
   let [<Literal>] shutdown = "Shutdown"
 
 let onClick dispatch id _ =
+  let makeModal (com: React.ComponentClass<ModalProps<'a,'b>>) data =
+    Promise.create (fun onSuccess _ ->
+      let props =
+        { data = data
+          onSubmit = fun x -> UpdateModal None |> dispatch; onSuccess x }
+      from com props [] |> Some |> UpdateModal |> dispatch)
+  let start f msg =
+    f() |> Promise.iter (fun () -> printfn "%s" msg)
   match id with
   | Options.createProject ->
-    (fun d m ->
-      let props =
-        { new IOnSubmit<string> with
-          member __.onSubmit(name) =
-            Lib.createProject name
-            UpdateModal None |> dispatch }
-      from CreateProjectModal props [])
-    |> Some |> UpdateModal |> dispatch
-  | Options.loadProject -> ()
-  | Options.saveProject -> ()
-  | Options.unloadProject -> ()
-  | Options.shutdown -> ()
-  | o -> failwithf "Unknow navbar option: %s" o
+    makeModal CreateProjectModal None |> Promise.iter Lib.createProject
+  | Options.loadProject ->
+    promise {
+      let! info = makeModal LoadProjectModal None
+      let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
+      match err with
+      | Some err ->
+        // Get project sites and machine config
+        let! sites = Lib.getProjectSites(info.name, info.username, info.password)
+        // Ask user to create or select a new config
+        let! site = makeModal ProjectConfigModal (Some sites)
+        // Try loading the project again with the site config
+        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
+        err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+      | None -> ()
+    } |> Promise.start
+  | Options.saveProject ->
+    start Lib.saveProject "Project has been saved"
+  | Options.unloadProject ->
+    start Lib.unloadProject "Project has been unloaded"
+  | Options.shutdown ->
+    start Lib.shutdown "Iris has been shut down"
+  | other ->
+    failwithf "Unknow navbar option: %s" other
+
+open Fable.Helpers.React.Props
 
 let dropdown dispatch (model: Model) =
   let navbarItem opt =

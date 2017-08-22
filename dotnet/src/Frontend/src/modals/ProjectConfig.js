@@ -19,7 +19,7 @@ export default class ProjectConfig extends Component {
           <p className="control">
             <span className="select">
               <select>
-                {this.props.sites.map((site,i) =>
+                {this.props.data.map((site,i) =>
                   <option key={i} onClick={ev => this.setState({selected: site})}>{site}</option>)}
               </select>
             </span>
@@ -30,7 +30,7 @@ export default class ProjectConfig extends Component {
           <p className="control">
             <input className="input" type="text" value={this.state.selected} onChange={ev => this.setState({selected: ev.target.value})}/>
           </p>
-        </div>        
+        </div>
         <div className="field">
           <p className="control">
             <button className="button is-primary"  disabled={this.state.selected == null} onClick={ev => {

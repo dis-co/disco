@@ -10,12 +10,12 @@ export default class LoadProject extends Component {
       usernameError: "Required",
       password: "",
       passwordError: "Required"
-    };    
+    };
   }
 
   isError(id, name) {
     return typeof name === "string" && name.length > 0 ? null : "Required";
-  }  
+  }
 
   renderGroup(id, label, isError, placeholder = "") {
     const success = this.state[id + "Error"] == null;
@@ -39,14 +39,13 @@ export default class LoadProject extends Component {
   }
 
   render() {
-    const props = this.props;
     let isValid = true;
     for (let key in this.state) {
       if (key.endsWith("Error") && this.state[key] != null) {
         isValid = false;
         break;
       }
-    }    
+    }
     return (
       <div>
         <p className="title has-text-centered">Load Project</p>
@@ -57,7 +56,7 @@ export default class LoadProject extends Component {
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
               ev.preventDefault();
-              props.onSubmit(this.state);
+              this.props.onSubmit(this.state);
             }}>
               Submit
             </button>
