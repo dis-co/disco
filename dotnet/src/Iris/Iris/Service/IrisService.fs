@@ -267,6 +267,13 @@ module IrisService =
 
   // ** makeLeader
 
+  /// <summary>
+  ///   Create a communication socket with the current Raft leader. Its important to note that
+  ///   the current members Id *must* be used to set up the client socket.
+  /// </summary>
+  /// <param name="leader">RaftMember</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>Leader option</returns>
   let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
@@ -285,6 +292,18 @@ module IrisService =
 
   // ** processEvent
 
+  /// <summary>Process events marked DispatchStrategy.Process</summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name="ev">IrisEvent</param>
+  /// <returns>unit</returns>
+  /// <remarks>
+  ///   <para>
+  ///     Process IrisEvents that require special treatment. Events that need to be treated
+  ///     differently than normal state machine comand events come from RaftServer are used
+  ///     to e.g. wire up communication with the leader for forwarding state machine commands to
+  ///     the leader.
+  ///   </para>
+  /// </remarks>
   let private processEvent (store: IAgentStore<IrisState>) ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
@@ -396,9 +415,7 @@ module IrisService =
 
   // ** dispatchEvent
 
-  let private dispatchEvent (store: IAgentStore<IrisState>)
-                            (pipeline: IPipeline<IrisEvent>)
-                            (cmd:IrisEvent) =
+  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
     match cmd.DispatchStrategy with
     | Publish   -> pipeline.Push cmd
     | Process   -> processEvent store cmd
