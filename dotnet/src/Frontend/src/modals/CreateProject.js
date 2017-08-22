@@ -44,7 +44,6 @@ export default class CreateProject extends Component {
     return { value: parsed, error: null };;
   }
 
-
   renderGroup(id, label, validate, placeholder = "") {
     const success = this.state[id + "Error"] == null;
     return (
@@ -67,7 +66,6 @@ export default class CreateProject extends Component {
   }
 
   render() {
-    const props = this.props;
     let isValid = true;
     for (let key in this.state) {
       if (key.endsWith("Error") && this.state[key] != null) {
@@ -83,8 +81,7 @@ export default class CreateProject extends Component {
           <p className="control">
             <button className="button is-primary" disabled={!isValid} onClick={ev => {
               ev.preventDefault();
-              IrisLib.createProject(this.state);
-              props.onSubmit();
+              this.props.onSubmit(this.state.name);
             }}>
               Submit
             </button>

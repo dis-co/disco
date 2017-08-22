@@ -46,10 +46,12 @@ and Msg =
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
+  | UpdateModal of ((Msg->unit)->Model->React.ReactElement) option
 
 and Model =
   { widgets: Map<Guid,IWidget>
     layout: Layout[]
+    modal: ((Msg->unit)->Model->React.ReactElement) option
     state: State option
     logs: LogEvent list
     userConfig: UserConfig

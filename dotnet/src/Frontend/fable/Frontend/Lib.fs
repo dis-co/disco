@@ -14,47 +14,6 @@ open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
 
-// REACT ----------------------------------------------------
-
-let renderApp(domel: obj) =
-  let React: obj = importDefault "react"
-  let ReactDOM: obj = importDefault "react-dom"
-  let App: obj = importDefault "../../src/App.js"
-  ReactDOM?render(React?createElement(App), domel) |> ignore
-
-// TYPES -----------------------------------------------------
-[<NoComparison>]
-type DragEvent = {
-  ``type``: string; value: obj; x: int; y: int;
-}
-
-// VALUES ----------------------------------------------------
-let EMPTY = Constants.EMPTY
-
-// HELPERS ----------------------------------------------------
-let newGuid(): Guid = Guid.NewGuid()
-
-let toString (x: obj) = string x
-
-let createObservable<'T>() =
-  Widgets.GenericObservable<'T>()
-
-let subscribe(obs: IObservable<'T>, f: 'T->unit) =
-  obs.Subscribe(f)
-
-let getClientContext() =
-    ClientContext.Singleton
-
-let private dragObservable =
-    Widgets.GenericObservable<DragEvent>()
-
-let subscribeToDrags (f: DragEvent->unit) =
-  Observable.subscribe f dragObservable
-
-let triggerDragEvent(typ: string, value: obj, x: int, y: int) =
-  { ``type`` = typ; value = value; x = x; y = y}
-  |> dragObservable.Trigger
-
 let notify(msg: string) =
   Browser.console.log(msg)
 
@@ -257,16 +216,15 @@ let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password)
   |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
 
-let createProject(info: obj) =
+let createProject(name: string) =
   Promise.start (promise {
     let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
-
-    do! { name     = !!info?name
-        ; ipAddr   = string machine.BindAddress
-        ; port     = unwrap machine.RaftPort
-        ; apiPort  = unwrap machine.ApiPort
-        ; wsPort   = unwrap machine.WsPort
-        ; gitPort  = unwrap machine.GitPort }
+    do! { name     = name
+          ipAddr   = string machine.BindAddress
+          port     = unwrap machine.RaftPort
+          apiPort  = unwrap machine.ApiPort
+          wsPort   = unwrap machine.WsPort
+          gitPort  = unwrap machine.GitPort }
         |> CreateProject
         |> postCommand (fun _ -> notify "The project has been created successfully") notify
   })

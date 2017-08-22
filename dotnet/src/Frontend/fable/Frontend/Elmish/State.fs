@@ -47,6 +47,7 @@ let init() =
     { widgets = widgets
       layout = layout
       state = None
+      modal = None
       logs = logs
       userConfig = UserConfig.Create() }
   initModel, [startContext]
@@ -101,4 +102,6 @@ let update msg model =
       { model with userConfig = cfg }
     | UpdateState state ->
       { model with state = state }
+    | UpdateModal modal ->
+      { model with modal = modal }
   newModel, []
