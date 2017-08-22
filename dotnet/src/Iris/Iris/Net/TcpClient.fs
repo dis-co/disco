@@ -88,13 +88,13 @@ module rec TcpClient =
       while run do
         try
           let result = state.Stream.ReadByte()
-          if result = -1 then
+          if result <> -1
+          then result |> byte |> state.ResponseBuilder.Write
+          else
             "Reached end of Stream. Disconnected"
             |> Error.asSocketError (tag "receiveLoop")
             |> handleError state
             run <- false
-          else
-            result |> byte |> state.ResponseBuilder.Write
         with
           | :? IOException -> run <- false
           | exn ->

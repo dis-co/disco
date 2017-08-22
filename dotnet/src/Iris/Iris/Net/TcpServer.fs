@@ -179,8 +179,8 @@ module TcpServer =
           while run do
             try
               let data = stream.ReadByte()
-              if data <> -1 then
-                data |> byte |> builder.Write
+              if data <> -1
+              then data |> byte |> builder.Write
               else // once the stream returns -1, the underlying stream has ended
                 id
                 |> String.format "Reached end of Stream. Disconnected. {0}"
