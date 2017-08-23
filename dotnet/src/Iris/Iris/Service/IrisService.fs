@@ -455,20 +455,17 @@ module IrisService =
   // ** replicateEvent
 
   let private replicateEvent (store: IAgentStore<IrisState>) = function
-    //     _                               _
-    //    / \   _ __  _ __   ___ _ __   __| |
-    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
-    //  / ___ \| |_) | |_) |  __/ | | | (_| |
-    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
-    //  _the_  |_|   |_| base case...
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
+    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
     | Append (_, AddMember mem) ->
       if isLeader store then store.State.RaftServer.AddMember mem
 
     | Append (_, RemoveMember mem) ->
       if isLeader store then store.State.RaftServer.RemoveMember mem.Id
-
-    | Append (_, other) -> handleAppend store other
 
     //  ____             _        _
     // / ___|  ___   ___| | _____| |_
@@ -494,6 +491,15 @@ module IrisService =
       store.State.Store.State.Sessions
       |> Map.tryFind id
       |> Option.iter (RemoveSession >> handleAppend store)
+
+    //     _                               _
+    //    / \   _ __  _ __   ___ _ __   __| |
+    //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |
+    //  / ___ \| |_) | |_) |  __/ | | | (_| |
+    // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
+    //  _the_  |_|   |_| base case...
+
+    | Append (_, other) -> handleAppend store other
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __

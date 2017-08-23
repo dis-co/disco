@@ -300,11 +300,12 @@ module rec TcpClient =
     let listener =
       flip Observable.subscribe subscriptions <| function
         | TcpClientEvent.Disconnected _ ->
-          "DISCONNECTED"
-          |> Logger.debug (tag "listener")
           dispose state
           Async.Start(async {
             do! Async.Sleep(500);
+            string options.PeerAddress + string options.PeerPort
+            |> String.format "Reconnecting to {0}"
+            |> Logger.info (tag "listener")
             state <- makeState options subscriptions
             connectAsync state
           })
