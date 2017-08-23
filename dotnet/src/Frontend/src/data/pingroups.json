@@ -1,0 +1,83 @@
+{
+    "VVVV/design.4vp": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25,
+        "hoho1": 1200,
+        "hoho2": 1200,
+        "hoho3": 1200,
+        "hoho4": 1200,
+        "hoho5": 1200,
+        "hoho6": 1200,
+        "hoho7": 1200,
+        "hoho8": 1200,
+        "hoho9": 1200,
+        "hoho10": 1200,
+        "hoho11": 1200,
+        "hoho12": 1200,
+        "hoho13": 1200,
+        "hoho14": 1200,
+        "hoho15": 1200,
+        "hoho16": 1200,
+        "hoho17": 1200,
+        "hoho18": 1200,
+        "hoho19": 1200,
+        "hoho20": 1200,
+        "hoho21": 1200,
+        "hoho22": 1200,
+        "hoho23": 1200,
+        "hoho24": 1200,
+        "hoho25": 1200,
+        "hoho26": 1200,
+        "hoho27": 1200,
+        "hoho28": 1200,
+        "hoho29": 1200
+    },
+    "VVVV/design.4vp II": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    },
+    "VVVV/design.4vp III": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    },
+    "VVVV/design.4vp IV": {
+        "A": 100,
+        "B": true,
+        "C": "Hello World!",
+        "DDD": [
+            ["tagA3", 5],
+            ["tagB4", 7],
+            ["tagC2", 9]
+        ],
+        "X": 1200,
+        "Y": 1200,
+        "Z": 25
+    }
+}
