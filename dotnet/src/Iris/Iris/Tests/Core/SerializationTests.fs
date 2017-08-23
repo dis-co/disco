@@ -59,12 +59,7 @@ module SerializationTests =
         |> Array.max
 
       let check request (rerequest: Request) =
-        try
-          Expect.equal rerequest request "Should be structurally equal"
-        with
-          | exn ->
-            printfn "actual: %A" request
-            raise exn
+        Expect.equal rerequest request "Should be structurally equal"
 
         Interlocked.Increment &count |> ignore
         if count = expected then
