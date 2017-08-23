@@ -1,6 +1,8 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-     "typescript.tsdk": "${workspaceRoot}/../../node_modules/typescript/lib",
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
+    "typescript.tsdk": "${workspaceRoot}/../../node_modules/typescript/lib",
     "less.compile": {
         "main": "${workspaceRoot}/css/main.less",
         "out": "${workspaceRoot}/css/Iris_generated.css"

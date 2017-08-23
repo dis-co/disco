@@ -313,6 +313,7 @@ module Logger =
 
   // ** withForeground
 
+#if !FABLE_COMPILER
   let private withForeground pat fg (o: obj) =
     let prevFg = Console.ForegroundColor
     Console.ForegroundColor <- fg
@@ -366,6 +367,7 @@ module Logger =
 
   let private darkYellow pat (thing: obj) =
     withForeground pat ConsoleColor.DarkYellow thing
+#endif
 
   // ** stdout
 
@@ -378,6 +380,7 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
+#if !FABLE_COMPILER
     if settings.UseColors then
       darkGreen "{0}" "["
       match log.LogLevel with
@@ -403,6 +406,7 @@ module Logger =
       white  "{0}"  log.Message
       Console.Write(System.Environment.NewLine)
     else
+#endif
       Console.WriteLine("{0}", log)
 
   // ** filter

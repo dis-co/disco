@@ -1,0 +1,35 @@
+<Project Sdk="FSharp.NET.Sdk;Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard1.6</TargetFramework>
+    <DefineConstants>FABLE_COMPILER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Browser.fs" />
+    <Compile Include="Crypto.fs" />
+    <Compile Include="Worker.fs" />
+    <Compile Include="MockData.fs" />
+    <Compile Include="Client.fs" />
+    <Compile Include="GlobalModel.fs" />
+    <Compile Include="Keyboard.fs" />
+    <Compile Include="Lib.fs" />
+    <Compile Include="Widgets/Interfaces.fs" />
+    <Compile Include="Elmish/Types.fs" />
+    <Compile Include="Elmish/Helpers.fs" />
+    <Compile Include="Elmish/State.fs" />
+    <Compile Include="Elmish/Drag.fs" />
+    <Compile Include="Elmish/Navbar.fs" />
+    <Compile Include="Elmish/PinView.fs" />
+    <Compile Include="Elmish/GraphView.fs" />
+    <Compile Include="Elmish/ProjectView.fs" />
+    <Compile Include="Elmish/CuePlayer.fs" />
+    <Compile Include="Elmish/Log.fs" />
+    <Compile Include="Elmish/Cluster.fs" />
+    <Compile Include="Elmish/PanelLeft.fs" />
+    <Compile Include="Elmish/App.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
+    <ProjectReference Include="../Core.Frontend/Core.Frontend.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\..\.paket\Paket.Restore.targets" />
+</Project>
