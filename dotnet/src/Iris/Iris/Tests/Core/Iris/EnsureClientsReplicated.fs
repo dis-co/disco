@@ -17,7 +17,7 @@ open Common
 module EnsureClientsReplicated =
 
   let test =
-    ftestCase "ensure connected clients are forwarded to leader" <| fun _ ->
+    testCase "ensure connected clients are forwarded to leader" <| fun _ ->
       either {
         use electionDone = new AutoResetEvent(false)
         use addClientDone = new AutoResetEvent(false)
@@ -29,12 +29,12 @@ module EnsureClientsReplicated =
 
         let! (project, zipped) = mkCluster 2
 
-        let serverHandler = function
+        let serverHandler id = function
           | IrisEvent.GitPush _                        -> pushDone.Set() |> ignore
           | IrisEvent.StateChanged(oldst, Leader)      -> electionDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, AddClient _) -> printfn "AddClient: done"; addClientDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, msg)         -> printfn "msg: %A" msg;  appendDone.Set() |> ignore
-          | _                                          -> ()
+          | IrisEvent.Append(Origin.Raft, AddClient _) -> addClientDone.Set() |> ignore
+          | IrisEvent.Append(Origin.Raft, msg)         -> appendDone.Set() |> ignore
+          | _ -> ()
 
         let handleClient = function
           | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
@@ -59,7 +59,7 @@ module EnsureClientsReplicated =
           SiteId = None
         }
 
-        use oobs1 = service1.Subscribe serverHandler
+        use oobs1 = service1.Subscribe (serverHandler machine1.MachineId)
 
         do! service1.Start()
 
@@ -79,7 +79,7 @@ module EnsureClientsReplicated =
           SiteId = None
         }
 
-        use oobs2 = service2.Subscribe serverHandler
+        use oobs2 = service2.Subscribe (serverHandler machine2.MachineId)
 
         do! service2.Start()
         do! waitOrDie "electionDone" electionDone
@@ -90,7 +90,6 @@ module EnsureClientsReplicated =
         // | |___| | |  __/ | | | |_  | |
         //  \____|_|_|\___|_| |_|\__| |_|
 
-
         let serverAddress1:IrisServer = {
           Port = mem1.ApiPort
           IpAddress = mem1.IpAddr
@@ -100,6 +99,7 @@ module EnsureClientsReplicated =
           Id = Id.Create()
           Name = "Client 1"
           Role = Role.Renderer
+          ServiceId = mem1.Id
           Status = ServiceStatus.Starting
           IpAddress = IpAddress.Localhost
           Port = port 12345us
@@ -116,7 +116,6 @@ module EnsureClientsReplicated =
         // | |___| | |  __/ | | | |_   / __/
         //  \____|_|_|\___|_| |_|\__| |_____|
 
-
         let serverAddress2:IrisServer = {
           Port = mem2.ApiPort
           IpAddress = mem2.IpAddr
@@ -126,6 +125,7 @@ module EnsureClientsReplicated =
           Id = Id.Create()
           Name = "Client 2"
           Role = Role.Renderer
+          ServiceId = mem2.Id
           Status = ServiceStatus.Starting
           IpAddress = IpAddress.Localhost
           Port = port 12345us
@@ -142,15 +142,13 @@ module EnsureClientsReplicated =
         //   | |  __/\__ \ |_\__ \
         //   |_|\___||___/\__|___/
 
-        printfn "Service: 1 %A" service1.State.Sessions
-        printfn "Service: 2 %A" service2.State.Sessions
+        // we need to wait twice more for the append commands that have been forwardecd issued
+        do! waitOrDie "addClientDone" addClientDone
+        do! waitOrDie "addClientDone" addClientDone
 
-        printfn "Service: 1 %A" service1.State.Clients
-        printfn "Service: 2 %A" service2.State.Clients
-
-        expect "Service 1 should have 2 Sessions" 2 id service1.State.Sessions.Count
-        expect "Service 2 should have 2 Sessions" 2 id service2.State.Sessions.Count
-        expect "Service 1 should have 2 Clients" 2 id service1.State.Clients.Count
-        expect "Service 2 should have 2 Clients" 2 id service2.State.Clients.Count
+        expect "Service 1 and Service 2 should have both 2 Clients"
+          service1.State.Clients
+          id
+          service2.State.Clients
       }
       |> noError
