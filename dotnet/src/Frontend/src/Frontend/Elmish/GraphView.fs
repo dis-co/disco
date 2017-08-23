@@ -11,7 +11,6 @@ open Fable.PowerPack
 open Elmish.React
 open Iris.Core
 open Iris.Web.Core
-open Iris.Web.Widgets
 open Helpers
 open State
 open Types

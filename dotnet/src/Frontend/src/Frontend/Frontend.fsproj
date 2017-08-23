@@ -12,7 +12,6 @@
     <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
     <Compile Include="Lib.fs" />
-    <Compile Include="Widgets/Interfaces.fs" />
     <Compile Include="Elmish/Types.fs" />
     <Compile Include="Elmish/Helpers.fs" />
     <Compile Include="Elmish/State.fs" />
