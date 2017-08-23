@@ -471,6 +471,7 @@ module Generators =
 
   let clientGen = gen {
       let! id = idGen
+      let! service = idGen
       let! nm = stringGen
       let! sts = servicestatusGen
       let! ip = ipGen
@@ -481,6 +482,7 @@ module Generators =
           Name = nm
           Status = sts
           IpAddress = ip
+          ServiceId = service
           Port = prt }
     }
 

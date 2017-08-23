@@ -116,6 +116,7 @@ table IrisClientFB {
      Name: string;
      Role: RoleFB;
      Port: ushort;
+     ServiceId: string;
      Status: ServiceStatusFB;
      IpAddress: string;
 }

@@ -72,6 +72,7 @@ module EnsureResolver =
           Id = Id.Create()
           Name = "hi"
           Role = Role.Renderer
+          ServiceId = mem1.Id
           Status = ServiceStatus.Starting
           IpAddress = IpAddress.Localhost
           Port = port 12345us

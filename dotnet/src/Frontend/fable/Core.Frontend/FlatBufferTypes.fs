@@ -192,6 +192,7 @@ type IrisClientFB =
   abstract Id: string
   abstract Name: string
   abstract Role: RoleFB
+  abstract ServiceId: string
   abstract Status: ServiceStatusFB
   abstract IpAddress: string
   abstract Port: uint16
@@ -200,6 +201,7 @@ type IrisClientFBConstructor =
   abstract prototype: IrisClientFB with get, set
   abstract StartIrisClientFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddServiceId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddRole: builder: FlatBufferBuilder * role: RoleFB -> unit
   abstract AddStatus: builder: FlatBufferBuilder * status: Offset<ServiceStatusFB> -> unit
