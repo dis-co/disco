@@ -657,10 +657,10 @@ module LogFile =
   // ** create
 
   let create (machine: Id) (path: FilePath) =
-    let ts = DateTime.Now
-    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
-    let fp = Path.Combine(unwrap path, fn)
     try
+      let ts = DateTime.Now
+      let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
+      let fp = Path.Combine(unwrap path, fn)
       let writer = File.AppendText fp
       writer.AutoFlush <- true
       { FilePath = filepath fp
