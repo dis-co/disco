@@ -611,97 +611,100 @@ module IrisService =
   let inline private forwardEvent (constr: ^a -> IrisEvent) (dispatcher: IDispatcher<IrisEvent>) =
     constr >> dispatcher.Dispatch
 
-  // ** makeStore
+  // ** withValidCredentials
 
-  let private makeStore (iris: IrisServiceOptions) =
+  let private withValidCredentials pw f = function
+    | Some user when isValidPassword user pw -> f user
+    | _ ->
+      "Login rejected"
+      |> Error.asProjectError (tag "loadProject")
+      |> Either.fail
+
+  // ** updateSite
+
+  let private updateSite state (serviceOptions: IrisServiceOptions) =
+    match serviceOptions.SiteId with
+    | Some site ->
+      let site =
+        state.Project.Config.Sites
+        |> Array.tryFind (fun s -> s.Id = site)
+        |> function Some s -> s | None -> ClusterConfig.Default
+
+      // Add current machine if necessary
+      // taking the default ports from MachineConfig
+      let site =
+        let machineId = serviceOptions.Machine.MachineId
+        if Map.containsKey machineId site.Members
+        then site
+        else
+          let selfMember =
+            { Member.create(machineId) with
+                IpAddr  = serviceOptions.Machine.BindAddress
+                GitPort = serviceOptions.Machine.GitPort
+                WsPort  = serviceOptions.Machine.WsPort
+                ApiPort = serviceOptions.Machine.ApiPort
+                Port    = serviceOptions.Machine.RaftPort }
+          { site with Members = Map.add machineId selfMember site.Members }
+
+      let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+      { state with Project = { state.Project with Config = cfg }}
+    | None -> state
+
+  // ** makeState
+
+  let private makeState store state serviceOptions (user: User) =
     either {
       let subscriptions = Subscriptions()
-      let store = AgentStore.create()
+      let state = updateSite state serviceOptions
 
-      do Directory.createDirectory iris.Machine.LogDirectory |> ignore
+      // This will fail if there's no ActiveSite set up in state.Project.Config
+      // The frontend needs to handle that case
+      let! mem = Config.selfMember state.Project.Config
 
-      let! path = Project.checkPath iris.Machine iris.ProjectName
-      let! (state: State) = Asset.loadWithMachine path iris.Machine
+      // ensure that we have all other nodes set-up correctly
+      do! Project.updateRemotes state.Project
 
-      let user =
-        state.Users
-        |> Map.tryPick (fun _ u -> if u.UserName = iris.UserName then Some u else None)
+      let clockService = Clock.create ()
+      do clockService.Stop()
 
-      match user with
-      | Some user when isValidPassword user iris.Password ->
-        let state =
-          match iris.SiteId with
-          | Some site ->
-            let site =
-              state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Id = site)
-              |> function Some s -> s | None -> ClusterConfig.Default
+      let! raftServer =
+        store
+        |> makeRaftCallbacks
+        |> RaftServer.create state.Project.Config
 
-            // Add current machine if necessary
-            // taking the default ports from MachineConfig
-            let site =
-              let machineId = iris.Machine.MachineId
-              if Map.containsKey machineId site.Members
-              then site
-              else
-                let selfMember =
-                 { Member.create(machineId) with
-                      IpAddr  = iris.Machine.BindAddress
-                      GitPort = iris.Machine.GitPort
-                      WsPort  = iris.Machine.WsPort
-                      ApiPort = iris.Machine.ApiPort
-                      Port    = iris.Machine.RaftPort }
-                { site with Members = Map.add machineId selfMember site.Members }
+      let! socketServer = WebSocketServer.create mem
+      let! apiServer =
+        store
+        |> makeApiCallbacks
+        |> ApiServer.create mem state.Project.Id
 
-            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-            { state with Project = { state.Project with Config = cfg }}
-          | None -> state
+      // IMPORTANT: use the projects path here, not the path to project.yml
+      let gitServer = GitServer.create mem state.Project
 
-        // This will fail if there's no ActiveSite set up in state.Project.Config
-        // The frontend needs to handle that case
-        let! mem = Config.selfMember state.Project.Config
+      let dispatcher = createDispatcher store
 
-        // ensure that we have all other nodes set-up correctly
-        do! Project.updateRemotes state.Project
+      let logForwarder =
+        let mkev log =
+          IrisEvent.Append(Origin.Service, LogMsg log)
+        Logger.subscribe (forwardEvent mkev dispatcher)
 
-        let clockService = Clock.create ()
-        do clockService.Stop()
+      // wiring up the sources
+      let disposables = [|
+        gitServer.Subscribe(forwardEvent id dispatcher)
+        apiServer.Subscribe(forwardEvent id dispatcher)
+        socketServer.Subscribe(forwardEvent id dispatcher)
+        raftServer.Subscribe(forwardEvent id dispatcher)
+        clockService.Subscribe(forwardEvent id dispatcher)
+      |]
 
-        let! raftServer =
-          store
-          |> makeRaftCallbacks
-          |> RaftServer.create state.Project.Config
+      let! logFile =
+        LogFile.create
+          serviceOptions.Machine.MachineId
+          serviceOptions.Machine.LogDirectory
 
-        let! socketServer = WebSocketServer.create mem
-        let! apiServer =
-          store
-          |> makeApiCallbacks
-          |> ApiServer.create mem state.Project.Id
-
-        // IMPORTANT: use the projects path here, not the path to project.yml
-        let gitServer = GitServer.create mem state.Project
-
-        let dispatcher = createDispatcher store
-
-        let logForwarder =
-          let mkev log =
-            IrisEvent.Append(Origin.Service, LogMsg log)
-          Logger.subscribe (forwardEvent mkev dispatcher)
-
-        // wiring up the sources
-        let disposables = [|
-          gitServer.Subscribe(forwardEvent id dispatcher)
-          apiServer.Subscribe(forwardEvent id dispatcher)
-          socketServer.Subscribe(forwardEvent id dispatcher)
-          raftServer.Subscribe(forwardEvent id dispatcher)
-          clockService.Subscribe(forwardEvent id dispatcher)
-        |]
-
-        let! logFile = LogFile.create iris.Machine.MachineId iris.Machine.LogDirectory
-
-        // set up the agent state
+      return
         { Member         = mem
-          Machine        = iris.Machine
+          Machine        = serviceOptions.Machine
           Leader         = None
           Dispatcher     = dispatcher
           LogFile        = logFile
@@ -716,15 +719,35 @@ module IrisService =
           BufferedCues   = ConcurrentDictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }
-        |> store.Update                  // and feed it to the store, before we start the services
+    }
 
-        return store
-      | _ ->
-        return!
-          "Login rejected"
-          |> Error.asProjectError (tag "loadProject")
-          |> Either.fail
-      }
+  // ** makeStore
+
+  let private makeStore (serviceOptions: IrisServiceOptions) =
+    either {
+      let store = AgentStore.create()
+
+      let logDir =
+        if isNull (string serviceOptions.Machine.LogDirectory)
+        then serviceOptions.Machine.LogDirectory
+        else IrisMachine.Default.LogDirectory
+
+      let! _ = Directory.createDirectory logDir
+
+      let! path = Project.checkPath serviceOptions.Machine serviceOptions.ProjectName
+
+      let! (state: State) = Asset.loadWithMachine path serviceOptions.Machine
+
+      let! updated =
+        state.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = serviceOptions.UserName then Some u else None)
+        |> withValidCredentials
+            serviceOptions.Password
+            (makeState store state serviceOptions)
+
+      store.Update updated          // and feed it to the store, before we start the services
+      return store
+    }
 
   // ** start
 
