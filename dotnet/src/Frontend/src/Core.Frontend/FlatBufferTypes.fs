@@ -482,6 +482,7 @@ type BoolPinFB =
   abstract PinGroup: string
   abstract IsTrigger: bool
   abstract VecSize: VecSizeFB
+  abstract Persisted: bool
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
@@ -497,6 +498,7 @@ type BoolPinFBConstructor =
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddIsTrigger: builder: FlatBufferBuilder * trigger: bool -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
@@ -525,6 +527,7 @@ type NumberPinFB =
   abstract Max: int
   abstract Unit: string
   abstract Precision: uint32
+  abstract Persisted: bool
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
@@ -545,6 +548,7 @@ type NumberPinFBConstructor =
   abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
@@ -572,6 +576,7 @@ type BytePinFB =
   abstract PinGroup: string
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
+  abstract Persisted: bool
   abstract TagsLength: int
   abstract Tags: int -> string
   abstract Labels: int -> string
@@ -585,6 +590,7 @@ type BytePinFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
@@ -612,6 +618,7 @@ type EnumPinFB =
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
+  abstract Persisted: bool
   abstract TagsLength: int
   abstract Properties: int -> KeyValueFB
   abstract PropertiesLength: int
@@ -628,6 +635,7 @@ type EnumPinFBConstructor =
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
   abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
@@ -656,6 +664,7 @@ type ColorPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
+  abstract Persisted: bool
   abstract Labels: int -> string
   abstract LabelsLength: int
   abstract Values: int -> ColorSpaceFB
@@ -669,6 +678,7 @@ type ColorPinFBConstructor =
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
@@ -696,6 +706,7 @@ type StringPinFB =
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract MaxChars: int
+  abstract Persisted: bool
   abstract Tags: int -> string
   abstract TagsLength: int
   abstract Labels: int -> string
@@ -708,6 +719,7 @@ type StringPinFBConstructor =
   abstract StartStringPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddBehavior: builder: FlatBufferBuilder * tipe: BehaviorFB -> unit
   abstract AddMaxChars: builder: FlatBufferBuilder * max: int -> unit

@@ -315,6 +315,7 @@ table StringPinFB {
       Name       : string;
       PinGroup   : string;
       Tags       : [string];
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
       Behavior   : BehaviorFB;
@@ -332,6 +333,7 @@ table NumberPinFB {
       Max        : int;
       Unit       : string;
       Precision  : uint;
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
       Labels     : [string];
@@ -344,6 +346,7 @@ table BoolPinFB {
       PinGroup   : string;
       Tags       : [string];
       IsTrigger  : bool;
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
       Labels     : [string];
@@ -355,6 +358,7 @@ table BytePinFB {
       Name       : string;
       PinGroup   : string;
       Tags       : [string];
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
       Labels     : [string];
@@ -367,6 +371,7 @@ table EnumPinFB {
       PinGroup   : string;
       Tags       : [string];
       Properties : [KeyValueFB];
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       VecSize    : VecSizeFB;
       Labels     : [string];
@@ -379,6 +384,7 @@ table ColorPinFB {
       PinGroup   : string;
       Tags       : [string];
       VecSize    : VecSizeFB;
+      Persisted  : bool;
       Direction  : ConnectionDirectionFB;
       Labels     : [string];
       Values     : [ColorSpaceFB];
