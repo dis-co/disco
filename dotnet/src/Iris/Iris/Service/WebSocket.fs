@@ -262,11 +262,13 @@ module WebSocketServer =
 
       FleckLog.LogAction <- Action<Fleck.LogLevel,string,exn>(fun level msg ex ->
         match level with
-        | Fleck.LogLevel.Debug -> Logger.debug (tag "logger") msg
-        | Fleck.LogLevel.Info  -> Logger.info  (tag "logger") msg
-        | Fleck.LogLevel.Warn  -> Logger.warn  (tag "logger") msg
-        | Fleck.LogLevel.Error -> Logger.err   (tag "logger") msg
-        |                _     -> Logger.err   (tag "logger") msg)
+        // this will produce a loop due to messages occuring on every send operation, thus procucing
+        // a new send operation and so on.
+        | Fleck.LogLevel.Debug -> ()
+        | Fleck.LogLevel.Info  -> Logger.debug (tag "logger") msg
+        | Fleck.LogLevel.Warn  -> Logger.debug (tag "logger") msg
+        | Fleck.LogLevel.Error -> Logger.debug (tag "logger") msg
+        |                _     -> Logger.debug (tag "logger") msg)
 
       let handler = onNewSocket connections agent
       let server = new WebSocketServer(uri)
