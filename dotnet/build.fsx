@@ -331,7 +331,7 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
 )
 
@@ -617,9 +617,8 @@ Target "BuildFrontendPlugins" (fun () ->
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false)
 
 Target "BuildFrontend" (fun () ->
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
-
   DotNet.installDotnetSdk ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
@@ -627,9 +626,7 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runNpm "install" __SOURCE_DIRECTORY__ ()
   runNpm "run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css" __SOURCE_DIRECTORY__ ()
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm "run build" __SOURCE_DIRECTORY__ ()
 )
 
@@ -642,7 +639,7 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors  "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
