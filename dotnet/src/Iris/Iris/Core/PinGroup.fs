@@ -208,7 +208,10 @@ type PinGroup =
 
   member group.Save (basePath: FilePath) =
     if group.ShouldPersist
-    then IrisData.save basePath group
+    then
+      group
+      |> PinGroup.filterVolatile
+      |> IrisData.save basePath
     else Either.succeed ()
 
   #endif
@@ -236,6 +239,12 @@ type PinGroup =
 // * PinGroup module
 
 module PinGroup =
+
+  // ** filterVolatile
+
+  let filterVolatile (group: PinGroup) =
+    let persisted = Map.filter (fun _ (pin: Pin) -> pin.Persisted) group.Pins
+    { group with Pins = persisted }
 
   // ** assetPath
 
