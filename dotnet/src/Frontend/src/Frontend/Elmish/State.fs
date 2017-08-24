@@ -28,9 +28,16 @@ let init() =
     context.Start()
     |> Promise.iter (fun () ->
       context.OnMessage
-      |> Observable.add (fun _ ->
-        let state = context.Store |> Option.map (fun s -> s.State)
-        UpdateState state |> dispatch))
+      |> Observable.add (function
+        | ClientMessage.Event(_, LogMsg log) ->
+          AddLog log |> dispatch
+        // TODO: Add clock to Elmish state?
+        | ClientMessage.Event(_, UpdateClock _) -> ()
+        // For all other cases, just update the state
+        | _ ->
+          let state = context.Store |> Option.map (fun s -> s.State)
+          UpdateState state |> dispatch)
+      )
   let widgets =
     let factory = Types.getFactory()
     loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
@@ -42,13 +49,16 @@ let init() =
   let layout =
     loadFromLocalStorage<Layout[]> StorageKeys.layout
     |> Option.defaultValue [||]
-  let logs = List.init 50 (fun _ -> Core.MockData.genLog())
   let initModel =
     { widgets = widgets
       layout = layout
       state = None
       modal = None
-      logs = logs
+      #if DESIGN // Mockup data
+      logs = List.init 50 (fun _ -> Core.MockData.genLog())
+      #else
+      logs = []
+      #endif
       userConfig = UserConfig.Create() }
   initModel, [startContext]
 
