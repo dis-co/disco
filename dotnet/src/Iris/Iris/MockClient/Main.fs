@@ -606,7 +606,7 @@ Usage:
       Id = Id.Create()
       Tier = Tier.Client
       UseColors = true
-      LogLevel = LogLevel.Debug
+      Level = LogLevel.Debug
     }
 
     let result =
@@ -628,6 +628,7 @@ Usage:
               then parsed.GetResult <@ Name @>
               else "<empty>"
             Role = Role.Renderer
+            ServiceId = Id.Create()
             Status = ServiceStatus.Starting
             IpAddress = IpAddress.Localhost // these are not used anymore
             Port = port 0us }
