@@ -614,7 +614,7 @@ Target "BuildReleaseZeroconf"
 
 
 Target "BuildFrontendPlugins" (fun () ->
-  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "fable" @@ "FlatBuffersPlugin") false)
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false)
 
 Target "BuildFrontend" (fun () ->
   runNpm "install" __SOURCE_DIRECTORY__ ()
