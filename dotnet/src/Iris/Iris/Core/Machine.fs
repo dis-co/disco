@@ -383,3 +383,19 @@ module MachineConfig =
         |> Either.fail
 
   #endif
+
+
+  // ** validate
+
+  let validate (config: IrisMachine) =
+    let inline check (o: obj) = o |> isNull |> not
+    [ ("LogDirectory", check config.LogDirectory)
+      ("WorkSpace",    check config.WorkSpace)
+      ("MachineId",    check config.MachineId)
+      ("BindAddress",  check config.BindAddress) ]
+    |> List.fold
+        (fun m (name,result) ->
+          if not result then
+            Map.add name result m
+          else m)
+        Map.empty
