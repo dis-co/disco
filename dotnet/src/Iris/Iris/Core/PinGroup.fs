@@ -256,12 +256,16 @@ module PinGroup =
 
   // ** save
 
+  #if !FABLE_COMPILER && !IRIS_NODES
+
   let save basePath (group: PinGroup) =
     if shouldPersist group then
       group
       |> removeVolatile
       |> IrisData.save basePath
     else Either.succeed ()
+
+  #endif
 
   // ** assetPath
 
