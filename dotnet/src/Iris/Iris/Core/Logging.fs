@@ -580,20 +580,27 @@ module LogFile =
   // ** create
 
   let create (machine: Id) (path: FilePath) =
-    try
-      let ts = DateTime.Now
-      let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
-      let fp = Path.Combine(unwrap path, fn)
-      let writer = File.AppendText fp
-      writer.AutoFlush <- true
-      { FilePath = filepath fp
-        Created = ts
-        Stream = writer }
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asIOError (tag "create")
-        |> Either.fail
+    either {
+      try
+        let ts = DateTime.Now
+        let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
+        do! if Directory.exists path |> not then
+              Directory.createDirectory path
+              |> Either.ignore
+            else Either.succeed ()
+        let fp = Path.Combine(unwrap path, fn)
+        let writer = File.AppendText fp
+        writer.AutoFlush <- true
+        return
+          { FilePath = filepath fp
+            Created = ts
+            Stream = writer }
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asIOError (tag "create")
+            |> Either.fail
+    }
 
 #endif
