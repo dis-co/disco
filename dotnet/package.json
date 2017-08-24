@@ -28,7 +28,8 @@
     "phantomjs-prebuilt": "^2.1.14",
     "style-loader": "^0.18.2",
     "webpack": "^3.4.1",
-    "webpack-dev-server": "^2.6.1"
+    "webpack-dev-server": "^2.6.1",
+    "ajv-keywords": "^2.1.0"
   },
   "dependencies": {
     "babel-runtime": "^6.25.0",
