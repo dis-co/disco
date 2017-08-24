@@ -17,7 +17,7 @@ open Common
 module EnsureClientCommandForward =
 
   let test =
-    ftestCase "ensure client commands are forwarded to leader" <| fun _ ->
+    testCase "ensure client commands are forwarded to leader" <| fun _ ->
       either {
         use electionDone = new AutoResetEvent(false)
         use clientReady = new AutoResetEvent(false)

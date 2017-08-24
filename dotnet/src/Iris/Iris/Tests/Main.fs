@@ -10,7 +10,6 @@ let parallelTests =
       utilTests
       pinTests
       stateTests
-      raftTests
       serializationTests
       storeTests
       persistenceTests
@@ -19,6 +18,7 @@ let parallelTests =
 let serialTests =
   testList "serial tests" [
       gitTests
+      raftTests
       apiTests
       assetTests
       configTests
