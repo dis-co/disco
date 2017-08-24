@@ -207,7 +207,9 @@ type PinGroup =
   // |____/ \__,_| \_/ \___|
 
   member group.Save (basePath: FilePath) =
-    IrisData.save basePath group
+    if group.ShouldPersist
+    then IrisData.save basePath group
+    else Either.succeed ()
 
   #endif
 
@@ -221,6 +223,15 @@ type PinGroup =
 
   member pingroup.AssetPath
     with get () = PinGroup.assetPath pingroup
+
+  // ** ShouldPersist
+
+  member group.ShouldPersist
+    with get () =
+      group.Pins
+      |> Map.filter (fun _ (pin: Pin) -> pin.Persisted)
+      |> Map.isEmpty
+      |> not
 
 // * PinGroup module
 
