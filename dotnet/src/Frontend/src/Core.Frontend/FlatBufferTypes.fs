@@ -1814,10 +1814,12 @@ type CommandBatchFBConstructor =
   abstract prototype: CommandBatchFB with get, set
   abstract StartCommandBatchFB: builder:FlatBufferBuilder -> unit
   abstract AddCommands: builder:FlatBufferBuilder * commands:Offset<StateMachineFB> -> unit
-  abstract EndCommandBacthFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
+  abstract EndCommandBatchFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
   abstract GetRootAsCommandBatchFB: bytes:ByteBuffer -> CommandBatchFB
   abstract CreateCommandsVector: builder: FlatBufferBuilder * Offset<StateMachineFB> array -> Offset<'a>
   abstract Create: unit -> CommandBatchFB
+
+let CommandBatchFB: CommandBatchFBConstructor = failwith "JS only"
 
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
