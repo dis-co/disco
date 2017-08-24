@@ -96,8 +96,13 @@ type IrisMachine =
     with get () =
       { MachineId    = Id "<empty>"
         HostName     = name "<empty>"
+        #if FABLE_COMPILER
+        WorkSpace    = filepath "/dev/null"
+        LogDirectory = filepath "/dev/null"
+        #else
         WorkSpace    = filepath Environment.CurrentDirectory
         LogDirectory = filepath Environment.CurrentDirectory
+        #endif
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port Constants.DEFAULT_WEB_PORT
         RaftPort     = port Constants.DEFAULT_RAFT_PORT
