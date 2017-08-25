@@ -866,6 +866,61 @@ module State =
   let updateProject (project: IrisProject) (state: State) =
     { state with Project = project }
 
+  // ** update
+
+  let update (state: State) = function
+    | AddCue            cue           -> addCue         cue     state
+    | UpdateCue         cue           -> updateCue      cue     state
+    | RemoveCue         cue           -> removeCue      cue     state
+
+    | AddCueList    cuelist           -> addCueList     cuelist state
+    | UpdateCueList cuelist           -> updateCueList  cuelist state
+    | RemoveCueList cuelist           -> removeCueList  cuelist state
+
+    | AddCuePlayer    player          -> addCuePlayer    player state
+    | UpdateCuePlayer player          -> updateCuePlayer player state
+    | RemoveCuePlayer player          -> removeCuePlayer player state
+
+    | AddPinGroup     group           -> addPinGroup    group   state
+    | UpdatePinGroup  group           -> updatePinGroup group   state
+    | RemovePinGroup  group           -> removePinGroup group   state
+
+    | AddPin            pin           -> addPin         pin     state
+    | UpdatePin         pin           -> updatePin      pin     state
+    | RemovePin         pin           -> removePin      pin     state
+    | UpdateSlices   slices           -> updateSlices   slices  state
+
+    | AddMember         mem           -> addMember      mem     state
+    | UpdateMember      mem           -> updateMember   mem     state
+    | RemoveMember      mem           -> removeMember   mem     state
+
+    | AddClient      client           -> addClient      client  state
+    | UpdateClient   client           -> updateClient   client  state
+    | RemoveClient   client           -> removeClient   client  state
+
+    | AddSession    session           -> addSession     session state
+    | UpdateSession session           -> updateSession  session state
+    | RemoveSession session           -> removeSession  session state
+
+    | AddUser          user           -> addUser        user    state
+    | UpdateUser       user           -> updateUser     user    state
+    | RemoveUser       user           -> removeUser     user    state
+
+    | UpdateProject project           -> updateProject  project state
+
+    // It may happen that a service didn't make it into the state and an update service
+    // event is received. For those cases just add/update the service into the state.
+    | AddDiscoveredService    service
+    | UpdateDiscoveredService service -> addOrUpdateService    service state
+    | RemoveDiscoveredService service -> removeService         service state
+
+    | _ -> state
+
+  // ** processBatch
+
+  let processBatch (state: State) (batch: StateMachineBatch) =
+    List.fold update state batch.Commands
+
 // * Store Action
 
 //  ____  _                      _        _   _
@@ -1068,57 +1123,15 @@ type Store(state : State)=
                        State = state })  // 4) append to undo history
 
     match ev with
-    | Command (AppCommand.Redo)     -> self.Redo()
-    | Command (AppCommand.Undo)     -> self.Undo()
-    | Command (AppCommand.Reset)    -> ()   // do nothing for now
+    | Command (AppCommand.Redo)  -> self.Redo()
+    | Command (AppCommand.Undo)  -> self.Undo()
+    | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue            cue         -> State.addCue         cue     state |> andRender
-    | UpdateCue         cue         -> State.updateCue      cue     state |> andRender
-    | RemoveCue         cue         -> State.removeCue      cue     state |> andRender
+    | UnloadProject              -> self.Notify(ev) // This event doesn't actually modify the state
 
-    | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
-    | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
-    | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
+    | CommandBatch batch         -> State.processBatch state batch |> andRender
 
-    | AddCuePlayer    player        -> State.addCuePlayer    player state |> andRender
-    | UpdateCuePlayer player        -> State.updateCuePlayer player state |> andRender
-    | RemoveCuePlayer player        -> State.removeCuePlayer player state |> andRender
-
-    | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
-    | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
-    | RemovePinGroup  group         -> State.removePinGroup group   state |> andRender
-
-    | AddPin            pin         -> State.addPin         pin     state |> andRender
-    | UpdatePin         pin         -> State.updatePin      pin     state |> andRender
-    | RemovePin         pin         -> State.removePin      pin     state |> andRender
-    | UpdateSlices   slices         -> State.updateSlices   slices  state |> andRender
-
-    | AddMember         mem         -> State.addMember      mem     state |> andRender
-    | UpdateMember      mem         -> State.updateMember   mem     state |> andRender
-    | RemoveMember      mem         -> State.removeMember   mem     state |> andRender
-
-    | AddClient      client         -> State.addClient      client  state |> andRender
-    | UpdateClient   client         -> State.updateClient   client  state |> andRender
-    | RemoveClient   client         -> State.removeClient   client  state |> andRender
-
-    | AddSession    session         -> State.addSession     session state |> andRender
-    | UpdateSession session         -> State.updateSession  session state |> andRender
-    | RemoveSession session         -> State.removeSession  session state |> andRender
-
-    | AddUser          user         -> State.addUser        user    state |> andRender
-    | UpdateUser       user         -> State.updateUser     user    state |> andRender
-    | RemoveUser       user         -> State.removeUser     user    state |> andRender
-
-    | UpdateProject project         -> State.updateProject  project state |> andRender
-    | UnloadProject                 -> self.Notify(ev) // This event doesn't actually modify the state
-
-    // It may happen that a service didn't make it into the state and an update service
-    // event is received. For those cases just add/update the service into the state.
-    | AddDiscoveredService    service
-    | UpdateDiscoveredService service -> State.addOrUpdateService    service state |> andRender
-    | RemoveDiscoveredService service -> State.removeService service state |> andRender
-
-    | _ -> ()
+    | other                      -> State.update state other |> andRender
 
   // ** Subscribe
 
@@ -1202,6 +1215,79 @@ type Store(state : State)=
 /// Returns: Store -> StateMachine -> unit
 type Listener = Store -> StateMachine -> unit
 
+// * StateMachineBatch
+
+type StateMachineBatch = StateMachineBatch of StateMachine list
+  with
+    // ** Commands
+
+    member batch.Commands
+      with get () = match batch with | StateMachineBatch commands -> commands
+
+    // ** ToOffset
+
+    member batch.ToOffset(builder: FlatBufferBuilder) =
+      let serialized =
+        batch.Commands
+        |> List.map (Binary.toOffset builder)
+        |> List.toArray
+        |> fun arr -> CommandBatchFB.CreateCommandsVector(builder, arr)
+      CommandBatchFB.StartCommandBatchFB(builder)
+      CommandBatchFB.AddCommands(builder, serialized)
+      CommandBatchFB.EndCommandBatchFB(builder)
+
+    // ** FromFB
+
+    static member FromFB(batch: CommandBatchFB) =
+      either {
+        let input = Array.zeroCreate batch.CommandsLength
+
+        let! (_,commands) =
+          #if FABLE_COMPILER
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>) _ -> either {
+                let! (idx, arr) = m
+                let! cmd = batch.Commands(idx) |>  StateMachine.FromFB
+                do arr.[idx] <- cmd
+                return (idx +  1, arr)
+              })
+            (Right (0, input))
+            input
+          #else
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>)  _ -> either {
+                let! (idx, arr) = m
+                let cmdish = batch.Commands(idx)
+                if cmdish.HasValue then
+                  let raw = cmdish.Value
+                  let! cmd = StateMachine.FromFB raw
+                  do arr.[idx] <- cmd
+                  return (idx +  1, arr)
+                else
+                  return!
+                    "Could not parse empty CommandBatch *value* payload"
+                    |> Error.asParseError "StateMachine.FromFB"
+                    |> Either.fail
+              })
+            (Right (0, input))
+            input
+          #endif
+        return StateMachineBatch (List.ofArray commands)
+      }
+
+    // ** ToBytes
+
+    member batch.ToBytes() =
+      Binary.buildBuffer batch
+
+    // ** FromBytes
+
+    static member FromBytes(raw: byte array) =
+      raw
+      |> Binary.createBuffer
+      |> CommandBatchFB.GetRootAsCommandBatchFB
+      |> StateMachineBatch.FromFB
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1248,9 +1334,9 @@ type StateMachine =
   | RemoveCueList           of CueList
 
   // CUEPLAYER
-  | AddCuePlayer          of CuePlayer
-  | UpdateCuePlayer       of CuePlayer
-  | RemoveCuePlayer       of CuePlayer
+  | AddCuePlayer            of CuePlayer
+  | UpdateCuePlayer         of CuePlayer
+  | RemoveCuePlayer         of CuePlayer
 
   // User
   | AddUser                 of User
@@ -1272,6 +1358,8 @@ type StateMachine =
   | Command                 of AppCommand
 
   | DataSnapshot            of State
+
+  | CommandBatch            of StateMachineBatch
 
   | SetLogLevel             of LogLevel
 
@@ -1338,6 +1426,7 @@ type StateMachine =
     | RemoveDiscoveredService _ -> "RemoveDiscoveredService"
 
     | Command                 _ -> "Command"
+    | CommandBatch            _ -> "CommandBatch"
     | DataSnapshot            _ -> "DataSnapshot"
     | SetLogLevel             _ -> "SetLogLevel"
     | LogMsg                  _ -> "LogMsg"
@@ -1404,6 +1493,8 @@ type StateMachine =
       | AddDiscoveredService    _
       | UpdateDiscoveredService _
       | RemoveDiscoveredService _      -> Ignore
+
+      | CommandBatch            _      -> Ignore
 
       | UpdateClock             _      -> Ignore
 
@@ -1630,6 +1721,13 @@ type StateMachine =
     | x when x = StateMachinePayloadFB.ClockFB ->
       UpdateClock(fb.ClockFB.Value)
       |> Either.succeed
+
+    | x when x = StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let fb = fb.CommandBatchFB
+        let! batch = StateMachineBatch.FromFB fb
+        return CommandBatch batch
+      }
 
     | _ ->
       fb.Action
@@ -2047,6 +2145,26 @@ type StateMachine =
         else
           return!
             "Could not parse empty clock payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+    | StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let batchish = fb.Payload<CommandBatchFB> ()
+        if batchish.HasValue then
+          let batch = batchish.Value
+          let! commands = StateMachineBatch.FromFB batch
+          return CommandBatch commands
+        else
+          return!
+            "Could not parse empty CommandBatch payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
       }
@@ -2495,6 +2613,18 @@ type StateMachine =
 
     | RemoveDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
+
+    | CommandBatch commands ->
+      let offset = Binary.toOffset builder commands
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.BatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CommandBatchFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
 
     | UpdateClock value ->
       ClockFB.StartClockFB(builder)

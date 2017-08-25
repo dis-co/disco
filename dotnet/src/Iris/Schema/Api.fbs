@@ -51,6 +51,7 @@ enum ApiCommandFB:ushort {
      RemoveDiscoveredServiceFB,
      UpdateDiscoveredServiceFB,
      LogEventFB,
+     BatchFB,
      UndoFB,
      RedoFB,
      ResetFB,
@@ -78,6 +79,7 @@ union ParameterFB {
      SlicesFB,
      LogEventFB,
      StringFB,
+     CommandBatchFB,
      DiscoveredServiceFB,
 }
 
@@ -87,7 +89,6 @@ table ApiRequestFB {
 }
 
 enum StatusFB:ushort {
-     OKFB = 0,
      NOKFB,
      RegisteredFB,
      UnregisteredFB

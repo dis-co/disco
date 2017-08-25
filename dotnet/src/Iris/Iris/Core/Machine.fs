@@ -96,8 +96,13 @@ type IrisMachine =
     with get () =
       { MachineId    = Id "<empty>"
         HostName     = name "<empty>"
+        #if FABLE_COMPILER
         WorkSpace    = filepath "/dev/null"
         LogDirectory = filepath "/dev/null"
+        #else
+        WorkSpace    = filepath Environment.CurrentDirectory
+        LogDirectory = filepath Environment.CurrentDirectory
+        #endif
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port Constants.DEFAULT_WEB_PORT
         RaftPort     = port Constants.DEFAULT_RAFT_PORT
@@ -383,3 +388,19 @@ module MachineConfig =
         |> Either.fail
 
   #endif
+
+
+  // ** validate
+
+  let validate (config: IrisMachine) =
+    let inline check (o: obj) = o |> isNull |> not
+    [ ("LogDirectory", check config.LogDirectory)
+      ("WorkSpace",    check config.WorkSpace)
+      ("MachineId",    check config.MachineId)
+      ("BindAddress",  check config.BindAddress) ]
+    |> List.fold
+        (fun m (name,result) ->
+          if not result then
+            Map.add name result m
+          else m)
+        Map.empty

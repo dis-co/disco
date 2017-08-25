@@ -3,11 +3,13 @@ namespace Iris.Service
 #if !IRIS_NODES
 
 // * CommandLine
+
 module CommandLine =
 
   let private logtag (str: string) = sprintf "CommandLine.%s" str
 
   // ** Imports
+
   open Argu
   open Iris.Core
   open Iris.Raft
@@ -17,6 +19,7 @@ module CommandLine =
   open Iris.Service.Interfaces
   open System
   open System.Linq
+  open System.Threading
   open System.Collections.Generic
   open System.Text.RegularExpressions
 
@@ -268,6 +271,19 @@ module CommandLine =
     System.AppDomain.CurrentDomain.ProcessExit.Add (fun _ -> dispose context)
     System.AppDomain.CurrentDomain.DomainUnload.Add (fun _ -> dispose context)
 
+  // ** vmSetup
+
+  let vmSetup () =
+    Thread.CurrentThread.GetApartmentState()
+    |> printfn "Using Threading Model: %A"
+
+    let threadCount = System.Environment.ProcessorCount * 2
+    ThreadPool.SetMinThreads(threadCount,threadCount)
+    |> fun result ->
+      printfn "Setting Min. Threads in ThreadPool To %d %s"
+        threadCount
+        (if result then "Successful" else "Unsuccessful")
+
   // ** startService
 
   //  ____  _             _
@@ -308,6 +324,8 @@ module CommandLine =
           |> Either.map ignore
         | None ->
           Either.succeed ()
+
+      do vmSetup ()
 
       let result =
         let kont = ref true

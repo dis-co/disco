@@ -61,7 +61,7 @@ type ApiError =
       |> Error.asClientError "ApiErrorFB.FromFB"
       |> Either.fail
 
-// * ClientApiRequest
+// * ApiRequest
 
 type ApiRequest =
   | Snapshot   of State
@@ -116,6 +116,12 @@ type ApiRequest =
         project
         |> Binary.toOffset builder
         |> withPayload builder ApiCommandFB.UpdateProjectFB ParameterFB.ProjectFB
+
+      // CommandBatch
+      | CommandBatch _ as batch ->
+        batch
+        |> Binary.toOffset builder
+        |> withPayload builder ApiCommandFB.BatchFB ParameterFB.CommandBatchFB
 
       // CuePlayer
       | AddCuePlayer player
@@ -396,6 +402,27 @@ type ApiRequest =
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return ApiRequest.Update (UpdateProject project)
+      }
+
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+    | ApiCommandFB.BatchFB ->
+      either {
+        let! commands =
+          let batchish = fb.Parameter<CommandBatchFB>()
+          if batchish.HasValue then
+            let batch = batchish.Value
+            StateMachineBatch.FromFB batch
+          else
+            "Empty CommandBatchFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+
+        return ApiRequest.Update (CommandBatch commands)
       }
 
     //   ____           ____  _
@@ -995,17 +1022,12 @@ type ApiRequest =
 //         |_|                    |_|
 
 type ApiResponse =
-  | OK
   | Registered
   | Unregistered
   | NOK of ApiError
 
   member response.ToOffset(builder: FlatBufferBuilder) =
     match response with
-    | OK ->
-      ApiResponseFB.StartApiResponseFB(builder)
-      ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
-      ApiResponseFB.EndApiResponseFB(builder)
     | Registered ->
       ApiResponseFB.StartApiResponseFB(builder)
       ApiResponseFB.AddStatus(builder, StatusFB.RegisteredFB)
@@ -1017,13 +1039,12 @@ type ApiResponse =
     | NOK error ->
       let err = error.ToOffset(builder)
       ApiResponseFB.StartApiResponseFB(builder)
-      ApiResponseFB.AddStatus(builder, StatusFB.OKFB)
+      ApiResponseFB.AddStatus(builder, StatusFB.NOKFB)
       ApiResponseFB.AddError(builder, err)
       ApiResponseFB.EndApiResponseFB(builder)
 
   static member FromFB(fb: ApiResponseFB) =
     match fb.Status with
-    | StatusFB.OKFB           -> Right OK
     | StatusFB.RegisteredFB   -> Right Registered
     | StatusFB.UnregisteredFB -> Right Unregistered
     | StatusFB.NOKFB  ->

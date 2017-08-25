@@ -110,6 +110,7 @@ module SerializationTests =
       Name = "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
+      ServiceId = Id.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
@@ -175,6 +176,47 @@ module SerializationTests =
     (* ------------------------------------------------------------------------ *)
     suite "Test.Units.SerializationTests"
     (* ------------------------------------------------------------------------ *)
+
+    test "should serialize/deserialize StateMachineBatch correctly" <| fun finish ->
+      let batch =
+        StateMachineBatch
+          [ AddCue                  <| mkCue ()
+            UpdateCue               <| mkCue ()
+            RemoveCue               <| mkCue ()
+            AddCueList              <| mkCueList ()
+            UpdateCueList           <| mkCueList ()
+            RemoveCueList           <| mkCueList ()
+            AddCuePlayer            <| mkCuePlayer ()
+            UpdateCuePlayer         <| mkCuePlayer ()
+            RemoveCuePlayer         <| mkCuePlayer ()
+            AddSession              <| mkSession ()
+            UpdateSession           <| mkSession ()
+            RemoveSession           <| mkSession ()
+            AddUser                 <| mkUser ()
+            UpdateUser              <| mkUser ()
+            RemoveUser              <| mkUser ()
+            AddPinGroup             <| mkPinGroup ()
+            UpdatePinGroup          <| mkPinGroup ()
+            RemovePinGroup          <| mkPinGroup ()
+            AddClient               <| mkClient ()
+            UpdateSlices            <| mkSlices ()
+            UpdateClient            <| mkClient ()
+            RemoveClient            <| mkClient ()
+            AddPin                  <| mkPin ()
+            UpdatePin               <| mkPin ()
+            RemovePin               <| mkPin ()
+            AddMember               <| Member.create (Id.Create())
+            UpdateMember            <| Member.create (Id.Create())
+            RemoveMember            <| Member.create (Id.Create())
+            AddDiscoveredService    <| mkDiscoveredService ()
+            UpdateDiscoveredService <| mkDiscoveredService ()
+            RemoveDiscoveredService <| mkDiscoveredService ()
+            DataSnapshot            <| mkState ()
+            Command AppCommand.Undo
+            LogMsg(Logger.create Debug "bla" "ohai")
+            SetLogLevel Warn ]
+      check batch
+      finish()
 
     test "should serialize/deserialize cue correctly" <| fun finish ->
       [| for i in 0 .. 20 do
