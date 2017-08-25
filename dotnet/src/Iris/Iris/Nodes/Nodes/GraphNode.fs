@@ -264,10 +264,9 @@ module Graph =
 
   // ** parseTags
 
-  let private parseTags (str: string) =
-    match str with
+  let private parseTags = function
     | null | "" -> [| |]
-    | _ -> str.Split [| ',' |] |> Array.map astag
+    | str -> str.Split [| ',' |] |> Array.map astag
 
   // ** parsePinGroupId
 
@@ -286,10 +285,11 @@ module Graph =
   // ** parseVecSize
 
   let private parseVecSize (pin: IPin2) =
-    either {
-      let mp = pin.ParentNode.FindPin Settings.SLICECOUNT_MODE_PIN
-      match mp.[0] with
-      | "Input" -> return VecSize.Dynamic
+      Settings.SLICECOUNT_MODE_PIN
+      |> pin.ParentNode.FindPin
+      |> fun pin -> pin.[0]
+      |> function
+      | "Input" -> Either.succeed VecSize.Dynamic
       | _ ->
         let cols =
           try
@@ -309,8 +309,8 @@ module Graph =
             |> uint16
           with | _ -> 1us
 
-        return VecSize.Fixed (cols * rows * pages)
-    }
+        VecSize.Fixed (cols * rows * pages)
+        |> Either.succeed
 
   // ** parseBoolValues
 
