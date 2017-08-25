@@ -57,11 +57,11 @@ module EnsureResolver =
         do! waitOrDie "checkGitStarted" checkGitStarted
         do! waitOrDie "electionDone" electionDone
 
-        //  _____
-        // |___ /
-        //   |_ \
-        //  ___) |
-        // |____/ create an API client
+        //  ____
+        // |___ \
+        //   __) |
+        //  / __/
+        // |_____| create an API client
 
         let server:IrisServer = {
           Port = mem1.ApiPort
@@ -91,11 +91,11 @@ module EnsureResolver =
 
         do! waitOrDie "clientRegistered" clientRegistered
 
-        //  _  _
-        // | || |
-        // | || |_
-        // |__   _|
-        //    |_| do some work
+        //  _____
+        // |___ /
+        //   |_ \
+        //  ___) |
+        // |____/ do some work
 
         let pinId = Id.Create()
         let groupId = Id.Create()
