@@ -44,6 +44,14 @@ type DispatchStrategy =
   | Ignore
   | Publish
 
+// * DispatchStrategy module
+
+[<AutoOpen>]
+module DispatchStrategy =
+
+  let inline dispatchStrategy (t: ^t when ^t : (member DispatchStrategy: DispatchStrategy)) =
+    (^t : (member DispatchStrategy: DispatchStrategy) t)
+
 // * DiscoveryEvent
 
 type DiscoveryEvent =

@@ -512,12 +512,12 @@ module IrisService =
 
   // ** dispatchEvent
 
-  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
-    match cmd.DispatchStrategy with
+  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) cmd =
+    cmd |> dispatchStrategy |> function
     | Publish   -> pipeline.Push cmd
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
-    | Ignore    -> ()
+    | Ignore    -> Observable.onNext store.State.Subscriptions cmd
 
   // ** createDispatcher
 

@@ -68,24 +68,26 @@ module FsWatcher =
       NotifyFilters.FileName   |||
       NotifyFilters.DirectoryName
 
+    project.Path
+    |> String.format "Starting new FileSystem watcher in: {0}"
+    |> Logger.info (tag "create")
+
     watcher.Path                  <- string project.Path
     watcher.NotifyFilter          <- filter
     watcher.Filter                <- "*" + Constants.ASSET_EXTENSION
     watcher.IncludeSubdirectories <- true
-    watcher.EnableRaisingEvents   <- true
 
-    let creations = watcher.Created.Subscribe(onCreate subscriptions)
-    let changes   = watcher.Changed.Subscribe(onChange subscriptions)
-    let rename    = watcher.Renamed.Subscribe(onRename subscriptions)
-    let deletions = watcher.Deleted.Subscribe(onDelete subscriptions)
+    watcher.Created.Add(onCreate subscriptions)
+    watcher.Changed.Add(onChange subscriptions)
+    watcher.Renamed.Add(onRename subscriptions)
+    watcher.Deleted.Add(onDelete subscriptions)
+
+    watcher.EnableRaisingEvents   <- true
 
     { new IFsWatcher with
         member watcher.Subscribe(callback) =
           Observable.subscribe callback subscriptions
 
         member self.Dispose () =
-          dispose creations
-          dispose changes
-          dispose rename
-          dispose deletions
-          subscriptions.Clear() }
+          subscriptions.Clear()
+          watcher.Dispose() }
