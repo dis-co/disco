@@ -128,6 +128,7 @@ module Api =
       { Id = state.InClientId.[0]
         Name = name
         Role = Role.Renderer
+        ServiceId = Id.Create()
         Status = ServiceStatus.Starting
         IpAddress = IpAddress.Localhost
         Port = port 0us }

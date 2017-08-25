@@ -278,6 +278,7 @@ module TestData =
       Name = "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
+      ServiceId = Id.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 

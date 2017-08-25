@@ -471,6 +471,7 @@ module Generators =
 
   let clientGen = gen {
       let! id = idGen
+      let! service = idGen
       let! nm = stringGen
       let! sts = servicestatusGen
       let! ip = ipGen
@@ -481,6 +482,7 @@ module Generators =
           Name = nm
           Status = sts
           IpAddress = ip
+          ServiceId = service
           Port = prt }
     }
 
@@ -995,7 +997,7 @@ module Generators =
   //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-  let stateMachineGen =
+  let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
       Gen.constant UnloadProject
       Gen.map AddMember               raftMemberGen
@@ -1035,7 +1037,15 @@ module Generators =
       Gen.map DataSnapshot            stateGen
       Gen.map SetLogLevel             logLevelGen
       Gen.map LogMsg                  logeventGen ]
-    |> Gen.oneof
+
+  let stateMachineBatchGen =
+    Gen.map StateMachineBatch (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
+
+  let private commandBatchGen =
+    Gen.map CommandBatch stateMachineBatchGen
+
+  let stateMachineGen =
+    commandBatchGen :: simpleStateMachineGen |> Gen.oneof
 
   //   ____             __ _        ____ _
   //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -1217,8 +1227,7 @@ module Generators =
   //         |_|                    |_|
 
   let apiResponseGen =
-    [ Gen.constant OK
-      Gen.constant Registered
+    [ Gen.constant Registered
       Gen.constant Unregistered
       Gen.map NOK apiErrorGen ]
     |> Gen.oneof
@@ -1263,3 +1272,4 @@ module Generators =
   let stateMachineArb = Arb.fromGen stateMachineGen
   let stateArb = Arb.fromGen stateGen
   let requestArb = Arb.fromGen requestGen
+  let commandBatchArb = Arb.fromGen stateMachineBatchGen

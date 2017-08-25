@@ -42,7 +42,7 @@ module ApiServer =
   type private ServerState =
     { Id: Id
       Status: ServiceStatus
-      Server: IServer
+      Server: ITcpServer
       PubSub: IPubSub
       Clients: Map<Id,IrisClient>
       Callbacks: IApiServerCallbacks
@@ -177,7 +177,7 @@ module ApiServer =
 
   // ** updateClient
 
-  let private updateClient (sm: StateMachine) (server: IServer) (client: IrisClient) =
+  let private updateClient (sm: StateMachine) (server: ITcpServer) (client: IrisClient) =
     sm
     |> ApiRequest.Update
     |> Binary.encode
@@ -332,17 +332,20 @@ module ApiServer =
         |> Msg.Update
         |> agent.Post
 
-        OK
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Server.Respond
-
       | Right other -> ()                // ignore Ping et al
 
       | Left error ->
         error
-        |> sprintf "error decoding request: %O"
+        |> String.format "error decoding request: {0}"
         |> Logger.err (tag "handleServerRequest")
+
+        try
+          String.Format("request-id: {0} peer-id: {1} request-length: {2}",
+                        req.RequestId,
+                        req.PeerId,
+                        req.Body.Length)
+          |> Logger.err (tag "handleServerRequest")
+        with | _ -> ()
 
         string error
         |> ApiError.Internal
@@ -370,12 +373,7 @@ module ApiServer =
       (Guid.toId resp.PeerId, ServiceStatus.Failed err)
       |> Msg.SetClientStatus
       |> agent.Post
-    //   ___  _  __
-    //  / _ \| |/ /
-    // | | | | ' /
-    // | |_| | . \
-    //  \___/|_|\_\
-    | Right (ApiResponse.OK _)
+
     | Right (ApiResponse.Registered _)
     | Right (ApiResponse.Unregistered _) -> ()
     //  ____                     _        _____
@@ -523,7 +521,7 @@ module ApiServer =
       store.Update {
         Id = mem.Id
         Status = ServiceStatus.Stopped
-        Server = Unchecked.defaultof<IServer>
+        Server = Unchecked.defaultof<ITcpServer>
         PubSub = Unchecked.defaultof<IPubSub>
         Clients = Map.empty
         Subscriptions = Subscriptions()

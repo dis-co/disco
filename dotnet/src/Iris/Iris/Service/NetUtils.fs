@@ -25,7 +25,7 @@ module NetUtils =
   /// - req: the reqest value
   ///
   /// Returns: RaftResponse option
-  let request (sock: IClient) (req: RaftRequest) =
+  let request (sock: ITcpClient) (req: RaftRequest) =
     req
     |> Binary.encode
     |> Request.create (Guid.ofId sock.ClientId)
@@ -42,7 +42,7 @@ module NetUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Req option
-  let getSocket (mem: RaftMember) (connections: Map<Id,IClient>) : IClient option =
+  let getSocket (mem: RaftMember) (connections: Map<Id,ITcpClient>) : ITcpClient option =
     Map.tryFind mem.Id connections
 
   // ** disposeSocket
@@ -56,7 +56,7 @@ module NetUtils =
   /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
-  let disposeSocket (mem: RaftMember) (connections: Map<Id,IClient>) =
+  let disposeSocket (mem: RaftMember) (connections: Map<Id,ITcpClient>) =
     match Map.tryFind mem.Id connections with
     | Some client ->
       dispose client
@@ -75,7 +75,7 @@ module NetUtils =
   /// - state: RaftAppContext to perform request against
   ///
   /// Returns: RaftResponse option
-  let rawRequest (request: RaftRequest) (client: IClient) =
+  let rawRequest (request: RaftRequest) (client: ITcpClient) =
     request
     |> Binary.encode
     |> Request.create (Guid.ofId client.ClientId)
@@ -94,7 +94,7 @@ module NetUtils =
   /// - client:     client socket to use
   ///
   /// Returns: Either<IrisError,RaftResponse>
-  let performRequest (request: RaftRequest) (client: IClient) =
+  let performRequest (request: RaftRequest) (client: ITcpClient) =
     try
       rawRequest request client
     with

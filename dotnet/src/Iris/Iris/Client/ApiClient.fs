@@ -39,7 +39,7 @@ module ApiClient =
   type private ClientState =
     { Client: IrisClient
       Peer: IrisServer
-      Socket: IClient
+      Socket: ITcpClient
       Store:  Store
       Subscriptions: Subscriptions
       SocketSubscription: IDisposable
@@ -178,25 +178,14 @@ module ApiClient =
         state.Socket.Status
         |> String.format "received snapshot (status: {0})"
         |> Logger.info (tag "handleServerResponse")
-
         snapshot
         |> Msg.SetState
         |> agent.Post
-
-        ApiResponse.OK
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Socket.Respond
 
       | Right (ApiRequest.Update sm) ->
         sm
         |> Msg.Update
         |> agent.Post
-
-        ApiResponse.OK
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Socket.Respond
 
       | Right other ->
         string other
@@ -229,6 +218,7 @@ module ApiClient =
     | Right ApiResponse.Registered ->
       Logger.info (tag "handleClientResponse") "registration successful"
       ClientEvent.Registered |> Msg.Notify |> agent.Post
+
     //  _   _       ____            _     _                    _
     // | | | |_ __ |  _ \ ___  __ _(_)___| |_ ___ _ __ ___  __| |
     // | | | | '_ \| |_) / _ \/ _` | / __| __/ _ \ '__/ _ \/ _` |
@@ -239,12 +229,6 @@ module ApiClient =
       Logger.info (tag "handleClientResponse") "un-registration successful"
       ClientEvent.UnRegistered |> Msg.Notify |> agent.Post
       agent.Post Msg.Dispose
-    //   ___  _  __
-    //  / _ \| |/ /
-    // | | | | ' /
-    // | |_| | . \
-    //  \___/|_|\_\
-    | Right ApiResponse.OK -> ()
 
     //  _   _  ___  _  __
     // | \ | |/ _ \| |/ /
@@ -252,6 +236,7 @@ module ApiClient =
     // | |\  | |_| | . \
     // |_| \_|\___/|_|\_\
     | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
+
     //  ____                     _        _____
     // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
     // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|

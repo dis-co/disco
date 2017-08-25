@@ -171,7 +171,7 @@ type SocketMessageConstructor = Guid -> Guid -> byte array -> unit
 [<AllowNullLiteral>]
 type IRequestBuilder =
   inherit IDisposable
-  abstract Process: buffer: IBuffer -> offset: int -> read:int -> unit
+  abstract Write: data: byte -> unit
 
 // * IResponseBuilder
 
@@ -454,30 +454,16 @@ module RequestBuilder =
             dispose request
             dispose body }
 
-  // ** worker
-
-  let private worker (state: IState) (inbox: JobQueue) =
-    async {
-      let! (offset, read, buffer) = inbox.Receive()
-      for idx in offset .. (read - offset - 1) do
-        state.Write buffer.Data.[idx]
-      dispose buffer
-      return! worker state inbox
-    }
-
   // ** create
 
   let create onComplete =
     let mutable disposed = false
     let cts = new CancellationTokenSource()
     let state = State.create onComplete
-    let queue = MailboxProcessor.Start(worker state, cts.Token)
 
     { new IRequestBuilder with
-        member parser.Process (buffer: IBuffer) (offset:int) (read: int) =
-          if read > 0 && not disposed then
-            (offset, read, buffer)
-            |> queue.Post
+        member parser.Write (data: byte) =
+          state.Write data
 
         member parser.Dispose() =
           if not disposed then
@@ -550,9 +536,9 @@ type TcpClientEvent =
   | Request      of Request
   | Response     of Response
 
-// ** IClient
+// ** ITcpClient
 
-type IClient =
+type ITcpClient =
   inherit IDisposable
   abstract Connect: unit -> unit
   abstract Disconnect: unit -> unit
@@ -586,9 +572,9 @@ type TcpServerEvent =
   | Request    of Request
   | Response   of Response
 
-// ** IServer
+// ** ITcpServer
 
-type IServer =
+type ITcpServer =
   inherit IDisposable
   abstract Id: Id
   abstract Start: unit -> Either<IrisError,unit>
@@ -664,6 +650,7 @@ module Socket =
 
   // ** checkState
 
+  (*
   let checkState<'t> (socket: Socket)
                      (subscriptions: ConcurrentDictionary<Guid,IObserver<'t>>)
                      (good: 't option)
@@ -683,6 +670,7 @@ module Socket =
             return! impl()
       }
     impl()
+   *)
 
 // * Playground
 
