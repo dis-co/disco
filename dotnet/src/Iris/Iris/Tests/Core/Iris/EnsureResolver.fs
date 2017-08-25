@@ -107,6 +107,7 @@ module EnsureResolver =
           Tags      = Array.empty
           Direction = ConnectionDirection.Output
           IsTrigger = false
+          Persisted = false
           VecSize   = VecSize.Dynamic
           Labels    = Array.empty
           Values    = [| true |]
