@@ -209,6 +209,17 @@ type PinGroup =
   member group.Save (basePath: FilePath) =
     PinGroup.save basePath group
 
+  // ** Persisted
+
+  member group.Persisted
+    with get () = PinGroup.persisted group
+
+  // ** IsSaved
+
+  member group.Exists (basePath: FilePath) =
+    basePath </> PinGroup.assetPath group
+    |> File.exists
+
   #endif
 
   // ** AssetPath
@@ -221,17 +232,6 @@ type PinGroup =
 
   member pingroup.AssetPath
     with get () = PinGroup.assetPath pingroup
-
-  // ** Persisted
-
-  member group.Persisted
-    with get () = PinGroup.persisted group
-
-  // ** IsSaved
-
-  member group.Exists (basePath: FilePath) =
-    basePath </> PinGroup.assetPath group
-    |> File.exists
 
 // * PinGroup module
 
