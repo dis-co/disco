@@ -595,8 +595,6 @@ type Pin =
       | EnumPin   data -> EnumSlices(data.Id, data.Values)
       | ColorPin  data -> ColorSlices(data.Id, data.Values)
 
-  #if !FABLE_COMPILER
-
   // ** Persisted
 
   member pin.Persisted
@@ -610,6 +608,8 @@ type Pin =
       | ColorPin  data -> data.Persisted
 
   // ** ToSpread
+
+  #if !FABLE_COMPILER
 
   member pin.ToSpread() =
     pin.Values.ToSpread()
