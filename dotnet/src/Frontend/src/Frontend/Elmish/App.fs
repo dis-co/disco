@@ -14,8 +14,8 @@ open Fable.Helpers.React.Props
 open Helpers
 open Types
 
-initFactory
-  { new IFactory with
+initWidgetFactory
+  { new IWidgetFactory with
       member __.CreateWidget(id, name) =
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with

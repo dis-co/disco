@@ -10,7 +10,7 @@ open System
 open Types
 
 let onClick dispatch name _ =
-  let widget = getFactory().CreateWidget(None, name)
+  let widget = getWidgetFactory().CreateWidget(None, name)
   AddWidget(widget.Id, widget) |> dispatch
 
 let card dispatch name letter text =
