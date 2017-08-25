@@ -235,7 +235,7 @@ module TestData =
   let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
       mkPins ()
-      |> Array.map toPair
+      |> Array.map (Pin.setPersisted true >> toPair)
       |> Map.ofArray
 
     { Id = Id.Create()

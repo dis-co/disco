@@ -132,7 +132,7 @@ module Persistence =
       let path = Asset.path group
       if group.Exists(basePath) then
         do! path |> Path.concat basePath |> Asset.delete
-        do! Directory.removeDirectory path
+        Directory.removeDirectory path |> ignore
       else return ()
     }
 
