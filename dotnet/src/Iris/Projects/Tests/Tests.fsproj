@@ -121,6 +121,9 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureResolver.fs">
       <Link>EnsureResolver.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\CorrectPinPersistance.fs">
+      <Link>CorrectPinPersistance.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\IrisServiceTests.fs">
       <Link>IrisServiceTests.fs</Link>
     </Compile>

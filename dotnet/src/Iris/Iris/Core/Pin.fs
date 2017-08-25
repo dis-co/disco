@@ -1609,19 +1609,17 @@ module Pin =
 
   // ** setVecSize
 
-  let setVecSize vecSize pin =
-    match pin with
-    | StringPin   data -> StringPin   { data with VecSize = vecSize }
-    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
-    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
-    | BytePin     data -> BytePin     { data with VecSize = vecSize }
-    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
-    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
+  let setVecSize vecSize = function
+    | StringPin data -> StringPin { data with VecSize = vecSize }
+    | NumberPin data -> NumberPin { data with VecSize = vecSize }
+    | BoolPin   data -> BoolPin   { data with VecSize = vecSize }
+    | BytePin   data -> BytePin   { data with VecSize = vecSize }
+    | EnumPin   data -> EnumPin   { data with VecSize = vecSize }
+    | ColorPin  data -> ColorPin  { data with VecSize = vecSize }
 
   // ** setDirection
 
-  let setDirection direction pin =
-    match pin with
+  let setDirection direction = function
     | StringPin   data -> StringPin   { data with Direction = direction }
     | NumberPin   data -> NumberPin   { data with Direction = direction }
     | BoolPin     data -> BoolPin     { data with Direction = direction }
@@ -1631,8 +1629,7 @@ module Pin =
 
   // ** setName
 
-  let setName name pin =
-    match pin with
+  let setName name = function
     | StringPin   data -> StringPin   { data with Name = name }
     | NumberPin   data -> NumberPin   { data with Name = name }
     | BoolPin     data -> BoolPin     { data with Name = name }
@@ -1642,15 +1639,13 @@ module Pin =
 
   // ** setTags
 
-  let setTags tags pin =
-    match pin with
-    | StringPin   data -> StringPin   { data with Tags = tags }
-    | NumberPin   data -> NumberPin   { data with Tags = tags }
-    | BoolPin     data -> BoolPin     { data with Tags = tags }
-    | BytePin     data -> BytePin     { data with Tags = tags }
-    | EnumPin     data -> EnumPin     { data with Tags = tags }
-    | ColorPin    data -> ColorPin    { data with Tags = tags }
-
+  let setTags tags = function
+    | StringPin data -> StringPin { data with Tags = tags }
+    | NumberPin data -> NumberPin { data with Tags = tags }
+    | BoolPin   data -> BoolPin   { data with Tags = tags }
+    | BytePin   data -> BytePin   { data with Tags = tags }
+    | EnumPin   data -> EnumPin   { data with Tags = tags }
+    | ColorPin  data -> ColorPin  { data with Tags = tags }
 
   // ** setSlice
 
@@ -1719,8 +1714,7 @@ module Pin =
 
   // ** setSlices
 
-  let setSlices slices pin =
-    match pin with
+  let setSlices slices = function
     | StringPin data as value ->
       match slices with
       | StringSlices (id,arr) when id = data.Id ->
@@ -1758,16 +1752,25 @@ module Pin =
       | _ -> value
 
 
+  // ** setPersisted
+
+  let setPersisted (persisted: bool) = function
+    | StringPin data -> StringPin { data with Persisted = persisted }
+    | NumberPin data -> NumberPin { data with Persisted = persisted }
+    | BoolPin   data -> BoolPin   { data with Persisted = persisted }
+    | BytePin   data -> BytePin   { data with Persisted = persisted }
+    | EnumPin   data -> EnumPin   { data with Persisted = persisted }
+    | ColorPin  data -> ColorPin  { data with Persisted = persisted }
+
   // ** str2offset
 
-  let str2offset (builder: FlatBufferBuilder) (str: string) =
-    match str with
+  let str2offset (builder: FlatBufferBuilder) = function
     #if FABLE_COMPILER
     | null -> Unchecked.defaultof<Offset<string>>
     #else
     | null -> Unchecked.defaultof<StringOffset>
     #endif
-    | _ -> builder.CreateString str
+    | str  -> builder.CreateString str
 
 // * NumberPinD
 

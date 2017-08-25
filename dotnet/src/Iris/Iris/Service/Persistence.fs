@@ -125,6 +125,29 @@ module Persistence =
     |> Directory.createDirectory
     |> ignore
 
+  // ** removePinGroup
+
+  let private removePinGroup (basePath: FilePath) (group: PinGroup) =
+    either {
+      let path = Asset.path group
+      if group.Exists(basePath) then
+        do! path |> Path.concat basePath |> Asset.delete
+        do! Directory.removeDirectory path
+      else return ()
+    }
+
+  // ** persistPinGroup
+
+  let private persistPinGroup (basePath: FilePath) (group: PinGroup) =
+    either {
+      if group.Persisted then
+        let path = Asset.path group
+        do ensureDirectory path
+        do! Asset.save basePath group
+      else
+        do! removePinGroup basePath group
+    }
+
   // ** persistEntry
 
   /// ## persistEntry
@@ -180,8 +203,8 @@ module Persistence =
     //                                     |_|
 
     | AddPinGroup    group
-    | UpdatePinGroup group -> save group
-    | RemovePinGroup group -> delete group
+    | UpdatePinGroup group -> persistPinGroup basePath group
+    | RemovePinGroup group -> removePinGroup basePath group
 
     //  _   _
     // | | | |___  ___ _ __
@@ -210,24 +233,17 @@ module Persistence =
     // |_|   |_|_| |_|
 
     | AddPin    pin
-    | UpdatePin pin -> either {
-        let! group =
-          state
-          |> State.tryFindPinGroup pin.PinGroup
-          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        let path = Asset.path group
-        ensureDirectory path
-        return! save group
-      }
-    | RemovePin pin -> either {
-        let! group =
-          state
-          |> State.tryFindPinGroup pin.PinGroup
-          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        let path = Asset.path group
-        ensureDirectory path
-        return! save group
-      }
+    | UpdatePin pin ->
+      state
+      |> State.tryFindPinGroup pin.PinGroup
+      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+      |> Either.bind (persistPinGroup basePath)
+
+    | RemovePin pin ->
+      state
+      |> State.tryFindPinGroup pin.PinGroup
+      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+      |> Either.bind (persistPinGroup basePath)
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __

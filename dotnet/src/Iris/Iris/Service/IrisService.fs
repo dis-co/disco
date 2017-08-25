@@ -163,7 +163,7 @@ module IrisService =
   /// <returns>unit</returns>
   let private statePersistor (store: IAgentStore<IrisState>) _ _ = function
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Save ->
-        if isLeader store && sm.Persisted then
+        if isLeader store then
           do persistWithLogging store sm
 
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Commit ->
@@ -260,11 +260,15 @@ module IrisService =
   let private subscriptionNotifier (store: IAgentStore<IrisState>) =
     fun _ _ -> Observable.onNext store.State.Subscriptions
 
+  // ** preActions
+
+  let private preActions (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (stateMutator   store) |]
+
   // ** processors
 
   let private processors (store: IAgentStore<IrisState>) =
-    [| Pipeline.createHandler (stateMutator   store)
-       Pipeline.createHandler (statePersistor store)
+    [| Pipeline.createHandler (statePersistor store)
        Pipeline.createHandler (logPersistor   store) |]
 
   // ** publishers
@@ -532,7 +536,12 @@ module IrisService =
 
         member dispatcher.Start() =
           if Service.isStopped status then
-            pipeline <- Pipeline.create (processors store) (publishers store) (postActions store)
+            pipeline <- Pipeline.create {
+              PreActions  = preActions store
+              Processors  = processors store
+              Publishers  = publishers store
+              PostActions = postActions store
+            }
             status <- ServiceStatus.Running
 
         member dispatcher.Status

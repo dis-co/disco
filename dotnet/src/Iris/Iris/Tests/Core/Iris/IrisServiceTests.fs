@@ -24,6 +24,7 @@ module IrisServiceTests =
   let irisServiceTests =
     testList "IrisService Tests" [
       ClonesFromLeader.test
+      CorrectPinPersistance.test
       EnsureClientCommandForward.test
       EnsureClientsReplicated.test
       EnsureClientUpdateNoLoop.test

@@ -23,7 +23,7 @@ module FsWatcher =
   // ** onCreate
 
   let private onCreate subscriptions (args: FileSystemEventArgs) =
-    (name args.Name, filepath args.FullPath)
+    (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Created
     |> IrisEvent.FileSystem
     |> Observable.onNext subscriptions
@@ -31,7 +31,7 @@ module FsWatcher =
   // ** onChange
 
   let private onChange subscriptions (args: FileSystemEventArgs) =
-    (name args.Name, filepath args.FullPath)
+    (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Changed
     |> IrisEvent.FileSystem
     |> Observable.onNext subscriptions
@@ -39,9 +39,9 @@ module FsWatcher =
   // ** onRename
 
   let private onRename subscriptions (args: RenamedEventArgs) =
-    ( name args.OldName
+    ( name (Path.GetFileName args.OldName)
     , filepath args.OldFullPath
-    , name args.Name
+    , name (Path.GetFileName args.Name)
     , filepath args.FullPath)
     |> FileSystemEvent.Renamed
     |> IrisEvent.FileSystem
@@ -50,7 +50,7 @@ module FsWatcher =
   // ** onDelete
 
   let private onDelete subscriptions (args: FileSystemEventArgs) =
-    (name args.Name, filepath args.FullPath)
+    (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Deleted
     |> IrisEvent.FileSystem
     |> Observable.onNext subscriptions

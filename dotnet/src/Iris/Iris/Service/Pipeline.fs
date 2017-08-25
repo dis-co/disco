@@ -14,6 +14,15 @@ open Iris.Raft
 open Iris.Net
 open SharpYaml.Serialization
 
+// * PipelineOptions
+
+[<NoComparison;NoEquality>]
+type PipelineOptions =
+  { PreActions:  IHandler<IrisEvent>[]
+    Processors:  IHandler<IrisEvent>[]
+    Publishers:  IHandler<IrisEvent>[]
+    PostActions: IHandler<IrisEvent>[] }
+
 // * Pipeline
 
 module Pipeline =
@@ -71,13 +80,14 @@ module Pipeline =
 
   // ** create
 
-  let create processors publishers postactions =
+  let create (options: PipelineOptions) =
     let disruptor = createDisruptor()
 
     disruptor
-    |> handleEventsWith processors
-    |> thenDo publishers
-    |> thenDo postactions
+    |> handleEventsWith options.PreActions
+    |> thenDo options.Processors
+    |> thenDo options.Publishers
+    |> thenDo options.PostActions
     |> thenDo clearEvent
     |> ignore
 

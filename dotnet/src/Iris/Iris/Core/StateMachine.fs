@@ -664,14 +664,7 @@ module State =
   let removePinGroup (group : PinGroup) (state: State) =
     { state with PinGroups = Map.remove group.Id state.PinGroups }
 
-
   // ** addPin
-
-  //  ____  _
-  // |  _ \(_)_ __
-  // | |_) | | '_ \
-  // |  __/| | | | |
-  // |_|   |_|_| |_|
 
   let addPin (pin: Pin) (state: State) =
     if Map.containsKey pin.PinGroup state.PinGroups then
@@ -694,6 +687,15 @@ module State =
         group
     { state with PinGroups = Map.map mapper state.PinGroups }
 
+  // ** removePin
+
+  let removePin (pin : Pin) (state: State) =
+    let updater _ (group : PinGroup) =
+      if pin.PinGroup = group.Id
+      then PinGroup.removePin pin group
+      else group
+    { state with PinGroups = Map.map updater state.PinGroups }
+
   // ** updateSlices
 
   let updateSlices (slices: Slices) (state: State) =
@@ -704,14 +706,6 @@ module State =
         CuePlayers = Map.map
                       (fun _ player -> CuePlayer.updateSlices slices player)
                       state.CuePlayers }
-  // ** removePin
-
-  let removePin (pin : Pin) (state: State) =
-    let updater _ (group : PinGroup) =
-      if pin.PinGroup = group.Id
-      then PinGroup.removePin pin group
-      else group
-    { state with PinGroups = Map.map updater state.PinGroups }
 
   // ** tryFindPin
 
