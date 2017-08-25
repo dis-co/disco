@@ -250,6 +250,9 @@
     <Compile Include="..\..\Iris\Service\Pipeline.fs">
       <Link>Pipeline.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\FsWatcherService.fs">
+      <Link>FsWatcherService.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>

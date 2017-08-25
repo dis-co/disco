@@ -68,6 +68,7 @@ module IrisService =
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
       ClockService  : IClock
+      FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
       BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
       Disposables   : IDisposable array }
@@ -162,7 +163,7 @@ module IrisService =
   /// <returns>unit</returns>
   let private statePersistor (store: IAgentStore<IrisState>) _ _ = function
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Save ->
-        if isLeader store then
+        if isLeader store && sm.Persisted then
           do persistWithLogging store sm
 
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Commit ->
@@ -678,6 +679,8 @@ module IrisService =
         |> makeApiCallbacks
         |> ApiServer.create mem state.Project.Id
 
+      let fsWatcher = FsWatcher.create state.Project
+
       // IMPORTANT: use the projects path here, not the path to project.yml
       let gitServer = GitServer.create mem state.Project
 
@@ -690,11 +693,12 @@ module IrisService =
 
       // wiring up the sources
       let disposables = [|
-        gitServer.Subscribe(forwardEvent id dispatcher)
-        apiServer.Subscribe(forwardEvent id dispatcher)
-        socketServer.Subscribe(forwardEvent id dispatcher)
-        raftServer.Subscribe(forwardEvent id dispatcher)
-        clockService.Subscribe(forwardEvent id dispatcher)
+        fsWatcher.Subscribe    (forwardEvent id dispatcher)
+        gitServer.Subscribe    (forwardEvent id dispatcher)
+        apiServer.Subscribe    (forwardEvent id dispatcher)
+        socketServer.Subscribe (forwardEvent id dispatcher)
+        raftServer.Subscribe   (forwardEvent id dispatcher)
+        clockService.Subscribe (forwardEvent id dispatcher)
       |]
 
       let! logFile =
@@ -716,6 +720,7 @@ module IrisService =
           RaftServer     = raftServer
           SocketServer   = socketServer
           ClockService   = clockService
+          FsWatcher      = fsWatcher
           BufferedCues   = ConcurrentDictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }

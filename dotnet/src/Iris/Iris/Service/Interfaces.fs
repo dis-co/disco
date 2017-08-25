@@ -91,6 +91,12 @@ type IGitServer =
   abstract Subscribe : (IrisEvent -> unit) -> IDisposable
   abstract Start     : unit -> Either<IrisError,unit>
 
+// * IFsWatcher
+
+type IFsWatcher =
+  inherit IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
+
 // * IRaftSnapshotCallbacks
 
 type IRaftSnapshotCallbacks =
