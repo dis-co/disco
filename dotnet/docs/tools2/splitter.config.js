@@ -1,12 +1,26 @@
 /// @ts-check
-const util = require("./splitter.util.js");
+const path = require("path");
+
+function resolve(filePath) {
+  return path.resolve(__dirname, filePath)
+}
+
+function runScript(scriptPath) {
+  var scriptDir = path.dirname(scriptPath);
+  // Delete files in directory from require cache
+  Object.keys(require.cache).forEach(function(key) {
+    if (key.startsWith(scriptDir))
+      delete require.cache[key]
+  })
+  require(scriptPath);
+}
+
+var outFile = resolve("build/Main.js");
 
 module.exports = {
-  entry: util.resolve("src/XmlParser.fsproj"),
-  outDir: util.resolve("build"),
+  entry: resolve("src/XmlParser.fsproj"),
+  outDir: resolve("build"),
   babel: { plugins: ["transform-es2015-modules-commonjs"] },
   fable: { define: ["DEBUG"] },
-  postbuild() {
-    util.runCommand(".", "node build/Main.js")
-  }
+  postbuild() { runScript(outFile) }
 };

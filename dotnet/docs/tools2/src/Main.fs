@@ -47,5 +47,5 @@ parseAndGetMembersSummary "src/Frontend/src/Frontend/bin/Debug/netstandard1.6/Fr
     let ctx =
         { title = "Iris Frontend Documentation"
           react = reactEl }
-    printPage(ctx, resolve "${entryDir}/template.hbs", resolve "${entryDir}/../public/index.html")
+    printPage(ctx, resolve "${entryDir}/../templates/template.hbs", resolve "${entryDir}/../public/index.html")
 )
