@@ -207,7 +207,18 @@ type PinGroup =
   // |____/ \__,_| \_/ \___|
 
   member group.Save (basePath: FilePath) =
-    IrisData.save basePath group
+    PinGroup.save basePath group
+
+  // ** Persisted
+
+  member group.Persisted
+    with get () = PinGroup.persisted group
+
+  // ** IsSaved
+
+  member group.Exists (basePath: FilePath) =
+    basePath </> PinGroup.assetPath group
+    |> File.exists
 
   #endif
 
@@ -225,6 +236,42 @@ type PinGroup =
 // * PinGroup module
 
 module PinGroup =
+
+  // ** persisted
+
+  let persisted (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ (pin: Pin) -> pin.Persisted)
+    |> Map.isEmpty
+    |> not
+
+  // ** persistedPins
+
+  let persistedPins (group: PinGroup) =
+    Map.filter (fun _ (pin: Pin) -> pin.Persisted) group.Pins
+
+  // ** volatilePins
+
+  let volatilePins (group: PinGroup) =
+    Map.filter (fun _ (pin: Pin) -> not pin.Persisted) group.Pins
+
+  // ** removeVolatile
+
+  let removeVolatile (group: PinGroup) =
+    { group with Pins = persistedPins group }
+
+  // ** save
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  let save basePath (group: PinGroup) =
+    if persisted group then
+      group
+      |> removeVolatile
+      |> IrisData.save basePath
+    else Either.succeed ()
+
+  #endif
 
   // ** assetPath
 

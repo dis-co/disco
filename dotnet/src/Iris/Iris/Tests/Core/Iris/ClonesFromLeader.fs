@@ -114,7 +114,7 @@ module ClonesFromLeader =
         appendDone.Reset() |> ignore
         do! waitOrDie "appendDone" appendDone
 
-        AppCommand.SaveProject
+        AppCommand.Save
         |> Command
         |> leader.Append
 

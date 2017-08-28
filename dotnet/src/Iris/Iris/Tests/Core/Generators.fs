@@ -524,11 +524,13 @@ module Generators =
       let! vs = vecsizeGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf stringGen
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
           Direction = dir
           Behavior = bh
           MaxChars = mx
@@ -550,11 +552,13 @@ module Generators =
       let! prec = Arb.generate<uint32>
       let! lbs = Gen.arrayOf stringGen
       let! vls = Arb.generate<double[]>
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
           Min = min
           Max = max
           Unit = unit
@@ -575,11 +579,13 @@ module Generators =
       let! trig = boolGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Arb.generate<bool[]>
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
           IsTrigger = trig
           Direction = dir
           VecSize = vs
@@ -596,11 +602,13 @@ module Generators =
       let! vs = vecsizeGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf Arb.generate<byte[]>
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
           VecSize = vs
           Direction = dir
           Labels = lbs
@@ -623,11 +631,13 @@ module Generators =
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf propertyGen
       let! props = Gen.arrayOf propertyGen
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
           VecSize = vs
           Direction = dir
           Properties = props
@@ -672,12 +682,14 @@ module Generators =
       let! dir = directionGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf colorGen
+      let! persisted = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Direction = dir
           Tags = tgs
+          Persisted = persisted
           VecSize = vs
           Labels = lbs
           Values = vls }
@@ -1200,11 +1212,12 @@ module Generators =
   //         |_|                   |_|
 
   let apiRequestGen =
-    [ Gen.map      ApiRequest.Snapshot   stateGen
-      Gen.map      ApiRequest.Register   clientGen
-      Gen.map      ApiRequest.UnRegister clientGen
-      Gen.map      ApiRequest.Update     stateMachineGen ]
-    |> Gen.oneof
+    // [ Gen.map      ApiRequest.Snapshot   stateGen
+    //   Gen.map      ApiRequest.Register   clientGen
+    //   Gen.map      ApiRequest.UnRegister clientGen
+    //   Gen.map      ApiRequest.Update     stateMachineGen ]
+
+    Gen.map ApiRequest.Update commandBatchGen
 
   //     _          _ _____
   //    / \   _ __ (_) ____|_ __ _ __ ___  _ __

@@ -51,7 +51,7 @@ type AppCommand =
   | Reset
 
   // PROJECT
-  | SaveProject
+  | Save
 
   // ** ToString
 
@@ -61,17 +61,17 @@ type AppCommand =
     | Redo -> "Redo"
     | Reset -> "Reset"
     // PROJECT
-    | SaveProject -> "SaveProject"
+    | Save -> "Save"
 
   // ** Parse
 
   static member Parse (str: string) =
     match str with
-    | "Undo"        -> Undo
-    | "Redo"        -> Redo
-    | "Reset"       -> Reset
-    | "SaveProject" -> SaveProject
-    | _             -> failwithf "AppCommand: parse error: %s" str
+    | "Undo" -> Undo
+    | "Redo" -> Redo
+    | "Reset"-> Reset
+    | "Save" -> Save
+    | _      -> failwithf "AppCommand: parse error: %s" str
 
   // ** TryParse
 
@@ -91,20 +91,20 @@ type AppCommand =
   static member FromFB (fb: StateMachineActionFB) =
 #if FABLE_COMPILER
     match fb with
-    | x when x = StateMachineActionFB.UndoFB        -> Right Undo
-    | x when x = StateMachineActionFB.RedoFB        -> Right Redo
-    | x when x = StateMachineActionFB.ResetFB       -> Right Reset
-    | x when x = StateMachineActionFB.SaveProjectFB -> Right SaveProject
+    | x when x = StateMachineActionFB.UndoFB  -> Right Undo
+    | x when x = StateMachineActionFB.RedoFB  -> Right Redo
+    | x when x = StateMachineActionFB.ResetFB -> Right Reset
+    | x when x = StateMachineActionFB.SaveFB  -> Right Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #else
     match fb with
-    | StateMachineActionFB.UndoFB        -> Right Undo
-    | StateMachineActionFB.RedoFB        -> Right Redo
-    | StateMachineActionFB.ResetFB       -> Right Reset
-    | StateMachineActionFB.SaveProjectFB -> Right SaveProject
+    | StateMachineActionFB.UndoFB  -> Right Undo
+    | StateMachineActionFB.RedoFB  -> Right Redo
+    | StateMachineActionFB.ResetFB -> Right Reset
+    | StateMachineActionFB.SaveFB  -> Right Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
@@ -115,10 +115,10 @@ type AppCommand =
 
   member self.ToOffset(_: FlatBufferBuilder) : StateMachineActionFB =
     match self with
-    | Undo        -> StateMachineActionFB.UndoFB
-    | Redo        -> StateMachineActionFB.RedoFB
-    | Reset       -> StateMachineActionFB.ResetFB
-    | SaveProject -> StateMachineActionFB.SaveProjectFB
+    | Undo  -> StateMachineActionFB.UndoFB
+    | Redo  -> StateMachineActionFB.RedoFB
+    | Reset -> StateMachineActionFB.ResetFB
+    | Save  -> StateMachineActionFB.SaveFB
 
 // * State Type
 
@@ -664,14 +664,7 @@ module State =
   let removePinGroup (group : PinGroup) (state: State) =
     { state with PinGroups = Map.remove group.Id state.PinGroups }
 
-
   // ** addPin
-
-  //  ____  _
-  // |  _ \(_)_ __
-  // | |_) | | '_ \
-  // |  __/| | | | |
-  // |_|   |_|_| |_|
 
   let addPin (pin: Pin) (state: State) =
     if Map.containsKey pin.PinGroup state.PinGroups then
@@ -694,6 +687,15 @@ module State =
         group
     { state with PinGroups = Map.map mapper state.PinGroups }
 
+  // ** removePin
+
+  let removePin (pin : Pin) (state: State) =
+    let updater _ (group : PinGroup) =
+      if pin.PinGroup = group.Id
+      then PinGroup.removePin pin group
+      else group
+    { state with PinGroups = Map.map updater state.PinGroups }
+
   // ** updateSlices
 
   let updateSlices (slices: Slices) (state: State) =
@@ -704,14 +706,6 @@ module State =
         CuePlayers = Map.map
                       (fun _ player -> CuePlayer.updateSlices slices player)
                       state.CuePlayers }
-  // ** removePin
-
-  let removePin (pin : Pin) (state: State) =
-    let updater _ (group : PinGroup) =
-      if pin.PinGroup = group.Id
-      then PinGroup.removePin pin group
-      else group
-    { state with PinGroups = Map.map updater state.PinGroups }
 
   // ** tryFindPin
 
@@ -1498,7 +1492,7 @@ type StateMachine =
 
       | UpdateClock             _      -> Ignore
 
-      | Command AppCommand.SaveProject -> Commit
+      | Command AppCommand.Save        -> Commit
       | Command                 _      -> Ignore
 
       | DataSnapshot            _      -> Ignore
@@ -1506,6 +1500,131 @@ type StateMachine =
       | SetLogLevel             _      -> Ignore
 
       | LogMsg                  _      -> Ignore
+
+  // ** ApiParameterType
+
+  #if !FABLE_COMPILER
+
+  member cmd.ApiParameterType
+    with get () =
+      match cmd with
+      | UpdateProject           _  -> ParameterFB.ProjectFB
+      | UnloadProject              -> ParameterFB.NONE
+
+      | AddMember               _
+      | UpdateMember            _
+      | RemoveMember            _  -> ParameterFB.RaftMemberFB
+
+      | AddClient               _
+      | UpdateClient            _
+      | RemoveClient            _  -> ParameterFB.IrisClientFB
+
+      | AddPinGroup             _
+      | UpdatePinGroup          _
+      | RemovePinGroup          _  -> ParameterFB.PinGroupFB
+
+      | AddPin                  _
+      | UpdatePin               _
+      | RemovePin               _  -> ParameterFB.PinFB
+
+      | UpdateSlices            _  -> ParameterFB.SlicesFB
+
+      | AddCue                  _
+      | UpdateCue               _
+      | RemoveCue               _
+      | CallCue                 _  -> ParameterFB.CueFB
+
+      | AddCueList              _
+      | UpdateCueList           _
+      | RemoveCueList           _  -> ParameterFB.CueListFB
+
+      | AddCuePlayer            _
+      | UpdateCuePlayer         _
+      | RemoveCuePlayer         _  -> ParameterFB.CuePlayerFB
+
+      | AddUser                 _
+      | UpdateUser              _
+      | RemoveUser              _  -> ParameterFB.UserFB
+
+      | AddSession              _
+      | UpdateSession           _
+      | RemoveSession           _  -> ParameterFB.SessionFB
+
+      | AddDiscoveredService    _
+      | UpdateDiscoveredService _
+      | RemoveDiscoveredService _  -> ParameterFB.DiscoveredServiceFB
+
+      | UpdateClock             _  -> ParameterFB.ClockFB
+
+      | Command                 _  -> ParameterFB.NONE
+
+      | DataSnapshot            _  -> ParameterFB.StateFB
+
+      | CommandBatch            _  -> ParameterFB.CommandBatchFB
+
+      | SetLogLevel             _  -> ParameterFB.StringFB
+
+      | LogMsg                  _  -> ParameterFB.LogEventFB
+
+  // ** ApiCommand
+
+  member cmd.ApiCommand
+    with get () =
+      match cmd with
+      | UnloadProject              -> ApiCommandFB.UnloadFB
+
+      | AddDiscoveredService    _
+      | AddUser                 _
+      | AddSession              _
+      | AddCuePlayer            _
+      | AddCueList              _
+      | AddCue                  _
+      | AddPin                  _
+      | AddPinGroup             _
+      | AddClient               _
+      | AddMember               _ -> ApiCommandFB.AddFB
+
+      | UpdateClock             _
+      | UpdateDiscoveredService _
+      | UpdateUser              _
+      | UpdateSession           _
+      | UpdateCuePlayer         _
+      | UpdateCueList           _
+      | UpdateCue               _
+      | UpdatePin               _
+      | UpdateSlices            _
+      | UpdatePinGroup          _
+      | UpdateClient            _
+      | UpdateMember            _
+      | UpdateProject           _  -> ApiCommandFB.UpdateFB
+
+      | RemoveDiscoveredService _
+      | RemoveUser              _
+      | RemoveSession           _
+      | RemoveCuePlayer         _
+      | RemoveCueList           _
+      | RemoveCue               _
+      | RemovePin               _
+      | RemovePinGroup          _
+      | RemoveClient            _
+      | RemoveMember            _ -> ApiCommandFB.RemoveFB
+
+      | CallCue                 _ -> ApiCommandFB.CallCueFB
+
+      | Command AppCommand.Undo   -> ApiCommandFB.UndoFB
+      | Command AppCommand.Redo   -> ApiCommandFB.RedoFB
+      | Command AppCommand.Reset  -> ApiCommandFB.ResetFB
+      | Command AppCommand.Save   -> ApiCommandFB.SaveFB
+
+      | DataSnapshot            _ -> ApiCommandFB.SnapshotFB
+
+      | CommandBatch            _ -> ApiCommandFB.BatchFB
+
+      | SetLogLevel             _ -> ApiCommandFB.SetLogLevelFB
+
+      | LogMsg                  _ -> ApiCommandFB.LogEventFB
+
+  #endif
 
   // ** FromFB (JavaScript)
 

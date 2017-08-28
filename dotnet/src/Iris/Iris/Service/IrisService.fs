@@ -68,6 +68,7 @@ module IrisService =
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
       ClockService  : IClock
+      FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
       BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
       Disposables   : IDisposable array }
@@ -259,11 +260,15 @@ module IrisService =
   let private subscriptionNotifier (store: IAgentStore<IrisState>) =
     fun _ _ -> Observable.onNext store.State.Subscriptions
 
+  // ** preActions
+
+  let private preActions (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (stateMutator   store) |]
+
   // ** processors
 
   let private processors (store: IAgentStore<IrisState>) =
-    [| Pipeline.createHandler (stateMutator   store)
-       Pipeline.createHandler (statePersistor store)
+    [| Pipeline.createHandler (statePersistor store)
        Pipeline.createHandler (logPersistor   store) |]
 
   // ** publishers
@@ -511,12 +516,12 @@ module IrisService =
 
   // ** dispatchEvent
 
-  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) (cmd:IrisEvent) =
-    match cmd.DispatchStrategy with
+  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) cmd =
+    cmd |> dispatchStrategy |> function
     | Publish   -> pipeline.Push cmd
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
-    | Ignore    -> ()
+    | Ignore    -> Observable.onNext store.State.Subscriptions cmd
 
   // ** createDispatcher
 
@@ -531,7 +536,12 @@ module IrisService =
 
         member dispatcher.Start() =
           if Service.isStopped status then
-            pipeline <- Pipeline.create (processors store) (publishers store) (postActions store)
+            pipeline <- Pipeline.create {
+              PreActions  = preActions store
+              Processors  = processors store
+              Publishers  = publishers store
+              PostActions = postActions store
+            }
             status <- ServiceStatus.Running
 
         member dispatcher.Status
@@ -678,6 +688,8 @@ module IrisService =
         |> makeApiCallbacks
         |> ApiServer.create mem state.Project.Id
 
+      let fsWatcher = FsWatcher.create state.Project
+
       // IMPORTANT: use the projects path here, not the path to project.yml
       let gitServer = GitServer.create mem state.Project
 
@@ -690,11 +702,12 @@ module IrisService =
 
       // wiring up the sources
       let disposables = [|
-        gitServer.Subscribe(forwardEvent id dispatcher)
-        apiServer.Subscribe(forwardEvent id dispatcher)
-        socketServer.Subscribe(forwardEvent id dispatcher)
-        raftServer.Subscribe(forwardEvent id dispatcher)
-        clockService.Subscribe(forwardEvent id dispatcher)
+        fsWatcher.Subscribe    (forwardEvent id dispatcher)
+        gitServer.Subscribe    (forwardEvent id dispatcher)
+        apiServer.Subscribe    (forwardEvent id dispatcher)
+        socketServer.Subscribe (forwardEvent id dispatcher)
+        raftServer.Subscribe   (forwardEvent id dispatcher)
+        clockService.Subscribe (forwardEvent id dispatcher)
       |]
 
       let! logFile =
@@ -716,6 +729,7 @@ module IrisService =
           RaftServer     = raftServer
           SocketServer   = socketServer
           ClockService   = clockService
+          FsWatcher      = fsWatcher
           BufferedCues   = ConcurrentDictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }

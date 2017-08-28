@@ -221,6 +221,18 @@ module Directory =
         |> Error.asIOError (tag "createDirectory")
         |> Either.fail
 
+  // ** removeDirectory
+
+  let removeDirectory (path: FilePath) =
+    try
+      unwrap path
+      |> Directory.Delete
+      |> Either.succeed
+    with | exn ->
+      exn.Message
+      |> Error.asIOError (tag "removeDirectory")
+      |> Either.fail
+
   // ** info
 
   let info (path: FilePath) =

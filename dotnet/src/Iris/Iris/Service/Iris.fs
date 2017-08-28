@@ -139,13 +139,13 @@ module Iris =
             member self.SaveProject() =
               match !iris with
               | Some iris ->
-                AppCommand.SaveProject
+                AppCommand.Save
                 |> StateMachine.Command
                 |> iris.Append
                 |> Either.succeed
               | None ->
                 "No project loaded"
-                |> Error.asOther (tag "SaveProject")
+                |> Error.asOther (tag "Save")
                 |> Either.fail
 
             member self.UnloadProject() = either {

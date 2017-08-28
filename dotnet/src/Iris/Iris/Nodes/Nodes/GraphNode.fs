@@ -264,10 +264,9 @@ module Graph =
 
   // ** parseTags
 
-  let private parseTags (str: string) =
-    match str with
+  let private parseTags = function
     | null | "" -> [| |]
-    | _ -> str.Split [| ',' |] |> Array.map astag
+    | str -> str.Split [| ',' |] |> Array.map astag
 
   // ** parsePinGroupId
 
@@ -286,10 +285,11 @@ module Graph =
   // ** parseVecSize
 
   let private parseVecSize (pin: IPin2) =
-    either {
-      let mp = pin.ParentNode.FindPin Settings.SLICECOUNT_MODE_PIN
-      match mp.[0] with
-      | "Input" -> return VecSize.Dynamic
+      Settings.SLICECOUNT_MODE_PIN
+      |> pin.ParentNode.FindPin
+      |> fun pin -> pin.[0]
+      |> function
+      | "Input" -> Either.succeed VecSize.Dynamic
       | _ ->
         let cols =
           try
@@ -309,8 +309,8 @@ module Graph =
             |> uint16
           with | _ -> 1us
 
-        return VecSize.Fixed (cols * rows * pages)
-    }
+        VecSize.Fixed (cols * rows * pages)
+        |> Either.succeed
 
   // ** parseBoolValues
 
@@ -665,6 +665,7 @@ module Graph =
           PinGroup = grp
           Tags = [| |]
           Direction = dir
+          Persisted = false
           IsTrigger = Behavior.IsTrigger bh
           VecSize = vc
           Labels = [| |]
@@ -682,6 +683,7 @@ module Graph =
           Min = min
           Max = max
           Unit = unit
+          Persisted = false
           Precision = 0ul
           Direction = dir
           VecSize = vc
@@ -701,6 +703,7 @@ module Graph =
           Min = min
           Max = max
           Unit = unit
+          Persisted = false
           Precision = prec
           Direction = dir
           VecSize = vc
@@ -778,6 +781,7 @@ module Graph =
         Name = name
         PinGroup = grp
         Tags = [| |]
+        Persisted = false
         Direction = dir
         Behavior = st
         MaxChars = 1<chars> * maxchars
@@ -812,6 +816,7 @@ module Graph =
       return EnumPin {
         Id = id
         Name = name
+        Persisted = false
         PinGroup = grp
         Direction = dir
         VecSize = vc
@@ -848,6 +853,7 @@ module Graph =
         Name = name
         PinGroup = grp
         Direction = dir
+        Persisted = false
         VecSize = vc
         Tags = [| |]
         Labels = [| |]
