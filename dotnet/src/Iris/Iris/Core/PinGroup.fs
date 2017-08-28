@@ -282,22 +282,20 @@ module PinGroup =
 
   // ** hasPin
 
-  //  _               ____  _
-  // | |__   __ _ ___|  _ \(_)_ __
-  // | '_ \ / _` / __| |_) | | '_ \
-  // | | | | (_| \__ \  __/| | | | |
-  // |_| |_|\__,_|___/_|   |_|_| |_|
-
   let hasPin (id: Id) (group : PinGroup) : bool =
     Map.containsKey id group.Pins
 
-  // ** addPin
+  // ** findPin
 
-  //            _     _ ____  _
-  //   __ _  __| | __| |  _ \(_)_ __
-  //  / _` |/ _` |/ _` | |_) | | '_ \
-  // | (_| | (_| | (_| |  __/| | | | |
-  //  \__,_|\__,_|\__,_|_|   |_|_| |_|
+  let findPin (id: Id) (group: PinGroup) =
+    Map.find id group.Pins
+
+  // ** tryFindPin
+
+  let tryFindPin (id: Id) (group: PinGroup) =
+    Map.tryFind id group.Pins
+
+  // ** addPin
 
   let addPin (pin : Pin) (group : PinGroup) : PinGroup =
     if hasPin pin.Id group
@@ -343,6 +341,10 @@ module PinGroup =
   let removePin (pin : Pin) (group : PinGroup) : PinGroup =
     { group with Pins = Map.remove pin.Id group.Pins }
 
+  // ** setPinsOffline
+
+  let setPinsOffline (group: PinGroup) =
+    { group with Pins = Map.map (fun _ pin -> Pin.setOnline false pin) group.Pins }
 
 // * Map module
 

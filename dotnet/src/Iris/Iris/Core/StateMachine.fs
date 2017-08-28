@@ -646,18 +646,12 @@ module State =
   // |_|   \__,_|\__\___|_| |_|
 
   let addPinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      state
-    else
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
+    { state with PinGroups = Map.add group.Id group state.PinGroups }
 
   // ** updatePinGroup
 
   let updatePinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-    else
-      state
+    { state with PinGroups = Map.add group.Id group state.PinGroups }
 
   // ** removePinGroup
 
@@ -914,6 +908,12 @@ module State =
 
   let processBatch (state: State) (batch: StateMachineBatch) =
     List.fold update state batch.Commands
+
+  // ** initialize
+
+  let initialize (state: State) =
+    { state with
+        PinGroups = Map.map (fun _ group -> PinGroup.setPinsOffline group) state.PinGroups }
 
 // * Store Action
 

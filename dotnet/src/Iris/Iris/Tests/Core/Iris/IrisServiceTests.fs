@@ -29,4 +29,5 @@ module IrisServiceTests =
       EnsureClientsReplicated.test
       EnsureClientUpdateNoLoop.test
       EnsureResolver.test
+      PinBecomesOnlineOnClientConnect.test
     ] |> testSequenced

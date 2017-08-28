@@ -14,26 +14,50 @@ open Iris.Net
 
 open Common
 
-module EnsureClientUpdateNoLoop =
+module PinBecomesOnlineOnClientConnect =
 
   let test =
-    testCase "ensure client slice update does not loop" <| fun _ ->
+    testCase "pin becomes online on client connect" <| fun _ ->
       either {
-        use electionDone = new AutoResetEvent(false)
+        use started = new AutoResetEvent(false)
         use appendDone = new AutoResetEvent(false)
         use clientRegistered = new AutoResetEvent(false)
         use clientAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
+        let mem1, machine1 = List.head zipped
 
         //  _
         // / |
         // | |
         // | |
-        // |_| start
+        // |_| add pin to project
 
-        let mem1, machine1 = List.head zipped
+        let group =
+          { Id = Id "my cool group"
+            Name = name "My Cool Group"
+            Client = mem1.Id
+            Pins = Map.empty }
+
+        let toggle =
+          Pin.toggle
+            (Id "/my/pin")
+            "My Toggle"
+            group.Id
+            Array.empty
+            [| true |]
+
+        let group =
+          { group with
+              Pins = Map.add toggle.Id (Pin.setPersisted true toggle) group.Pins }
+
+        do! Asset.save project.Path group
+
+        //  ____
+        // |___ \
+        //   __) |
+        //  / __/
+        // |_____| load and start
 
         use! service1 = IrisService.create {
           Machine = machine1
@@ -45,13 +69,22 @@ module EnsureClientUpdateNoLoop =
 
         use oobs1 =
           (function
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ())
+          | IrisEvent.Started ServiceType.Raft           -> started.Set() |> ignore
+          | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set() |> ignore
+          | IrisEvent.Append(_, CallCue _)               -> appendDone.Set() |> ignore
+          | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-        do! waitOrDie "electionDone" electionDone
+        do! waitOrDie "started" started
+
+        expect "Should have loaded the Group" true
+          (Map.containsKey toggle.PinGroup)
+          service1.State.PinGroups
+
+        expect "Should have marked pin as offline" true
+          (Map.find group.Id >> PinGroup.findPin toggle.Id >> Pin.isOffline)
+          service1.State.PinGroups
 
         //  _____
         // |___ /
@@ -76,13 +109,10 @@ module EnsureClientUpdateNoLoop =
 
         let handleClient = function
           | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
           | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
-
         do! client.Start()
 
         do! waitOrDie "clientRegistered" clientRegistered
@@ -91,49 +121,15 @@ module EnsureClientUpdateNoLoop =
         // | || |
         // | || |_
         // |__   _|
-        //    |_| do some work
-
-        let pinId = Id.Create()
-        let groupId = Id.Create()
-
-        let pin = BoolPin {
-          Id        = pinId
-          Name      = "hi"
-          PinGroup  = groupId
-          Tags      = Array.empty
-          Direction = ConnectionDirection.Output
-          Online    = true
-          Persisted = false
-          IsTrigger = false
-          VecSize   = VecSize.Dynamic
-          Labels    = Array.empty
-          Values    = [| true |]
-        }
-
-        let group = {
-          Id = groupId
-          Name = name "whatevva"
-          Client = Id.Create()
-          Pins = Map.ofList [(pin.Id, pin)]
-        }
+        //    |_| append group and check its marked 'online'
 
         client.AddPinGroup group
 
         do! waitOrDie "appendDone" appendDone
         do! waitOrDie "clientAppendDone" clientAppendDone
 
-        let update = BoolSlices(pin.Id, [| false |])
-
-        client.UpdateSlices update
-
-        do! waitOrDie "updateDone" updateDone
-
-        let actual: Slices =
-          client.State.PinGroups
-          |> Map.find groupId
-          |> fun group -> Map.find pinId group.Pins
-          |> fun pin -> pin.Values
-
-       expect "should be equal" update id actual
+        expect "Should have marked pin as online" true
+          (Map.find group.Id >> PinGroup.findPin toggle.Id >> Pin.isOnline)
+          service1.State.PinGroups
       }
       |> noError

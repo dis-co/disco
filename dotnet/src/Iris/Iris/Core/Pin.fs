@@ -450,6 +450,7 @@ type PinYaml() =
   [<DefaultValue>] val mutable PinGroup   : string
   [<DefaultValue>] val mutable Tags       : string array
   [<DefaultValue>] val mutable Persisted  : bool
+  [<DefaultValue>] val mutable Online     : bool
   [<DefaultValue>] val mutable Behavior   : string
   [<DefaultValue>] val mutable Direction  : string
   [<DefaultValue>] val mutable MaxChars   : int
@@ -606,6 +607,18 @@ type Pin =
       | BytePin   data -> data.Persisted
       | EnumPin   data -> data.Persisted
       | ColorPin  data -> data.Persisted
+
+  // ** Online
+
+  member pin.Online
+    with get () =
+      match pin with
+      | StringPin data -> data.Online
+      | NumberPin data -> data.Online
+      | BoolPin   data -> data.Online
+      | BytePin   data -> data.Online
+      | EnumPin   data -> data.Online
+      | ColorPin  data -> data.Online
 
   // ** ToSpread
 
@@ -797,6 +810,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.MaxChars   <- int data.MaxChars
       yaml.Behavior   <- string data.Behavior
@@ -811,6 +825,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.Precision  <- data.Precision
       yaml.Min        <- data.Min
@@ -827,6 +842,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.IsTrigger  <- data.IsTrigger
       yaml.VecSize    <- string data.VecSize
@@ -840,6 +856,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -852,6 +869,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -865,6 +883,7 @@ type Pin =
       yaml.Name       <- data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -1127,6 +1146,7 @@ type Pin =
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
             Persisted  = yml.Persisted
+            Online     = yml.Online
             MaxChars   = yml.MaxChars * 1<chars>
             Behavior   = strtype
             VecSize    = vecsize
@@ -1166,6 +1186,7 @@ type Pin =
             VecSize   = vecsize
             Direction = dir
             Persisted = yml.Persisted
+            Online    = yml.Online
             Min       = yml.Min
             Max       = yml.Max
             Unit      = yml.Unit
@@ -1207,6 +1228,7 @@ type Pin =
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
+            Online    = yml.Online
             IsTrigger = yml.IsTrigger
             VecSize   = vecsize
             Direction = dir
@@ -1247,6 +1269,7 @@ type Pin =
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
+            Online    = yml.Online
             VecSize   = vecsize
             Direction = dir
             Labels    = yml.Labels
@@ -1299,7 +1322,8 @@ type Pin =
             Name       = yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
-            Persisted = yml.Persisted
+            Online     = yml.Online
+            Persisted  = yml.Persisted
             Properties = properties
             VecSize    = vecsize
             Direction  = dir
@@ -1341,6 +1365,7 @@ type Pin =
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
+            Online    = yml.Online
             VecSize   = vecsize
             Direction = dir
             Labels    = yml.Labels
@@ -1395,6 +1420,7 @@ module Pin =
               Tags      = tags
               IsTrigger = false
               Persisted = false
+              Online    = true
               Direction = ConnectionDirection.Input
               VecSize   = VecSize.Dynamic
               Labels    = emptyLabels(Array.length values)
@@ -1409,6 +1435,7 @@ module Pin =
               Tags      = tags
               IsTrigger = true
               Persisted = false
+              Online    = true
               Direction = ConnectionDirection.Input
               VecSize   = VecSize.Dynamic
               Labels    = emptyLabels(Array.length values)
@@ -1422,6 +1449,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = Simple
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1437,6 +1465,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = MultiLine
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1452,6 +1481,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = FileName
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1467,6 +1497,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = Directory
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1482,6 +1513,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = Url
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1497,6 +1529,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Behavior  = IP
                 Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
@@ -1512,6 +1545,7 @@ module Pin =
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
+                Online    = true
                 Min       = 0
                 Max       = sizeof<double>
                 Unit      = ""
@@ -1529,6 +1563,7 @@ module Pin =
               PinGroup  = group
               Tags      = tags
               Persisted = false
+              Online    = true
               VecSize   = VecSize.Dynamic
               Direction = ConnectionDirection.Input
               Labels    = emptyLabels(Array.length values)
@@ -1542,6 +1577,7 @@ module Pin =
                PinGroup  = group
                Tags      = tags
                Persisted = false
+               Online    = true
                VecSize   = VecSize.Dynamic
                Direction = ConnectionDirection.Input
                Labels    = emptyLabels(Array.length values)
@@ -1555,6 +1591,7 @@ module Pin =
               PinGroup   = group
               Tags       = tags
               Persisted  = false
+              Online     = true
               Properties = properties
               Direction  = ConnectionDirection.Input
               VecSize    = VecSize.Dynamic
@@ -1574,6 +1611,7 @@ module Pin =
                 Tags       = Array.empty
                 Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1588,6 +1626,7 @@ module Pin =
                 Tags       = Array.empty
                 Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1602,6 +1641,7 @@ module Pin =
                 Tags       = Array.empty
                 Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1762,6 +1802,24 @@ module Pin =
     | EnumPin   data -> EnumPin   { data with Persisted = persisted }
     | ColorPin  data -> ColorPin  { data with Persisted = persisted }
 
+  // ** setOnline
+
+  let setOnline (online: bool) = function
+    | StringPin data -> StringPin { data with Online = online }
+    | NumberPin data -> NumberPin { data with Online = online }
+    | BoolPin   data -> BoolPin   { data with Online = online }
+    | BytePin   data -> BytePin   { data with Online = online }
+    | EnumPin   data -> EnumPin   { data with Online = online }
+    | ColorPin  data -> ColorPin  { data with Online = online }
+
+  // ** isOnline
+
+  let isOnline (pin: Pin) = pin.Online
+
+  // ** isOffline
+
+  let isOffline (pin: Pin) = not pin.Online
+
   // ** str2offset
 
   let str2offset (builder: FlatBufferBuilder) = function
@@ -1787,6 +1845,7 @@ type NumberPinD =
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Min        : int
@@ -1822,6 +1881,7 @@ type NumberPinD =
     Option.iter (fun value -> NumberPinFB.AddName(builder, value)) name
     NumberPinFB.AddPinGroup(builder, group)
     NumberPinFB.AddPersisted(builder, self.Persisted)
+    NumberPinFB.AddOnline(builder, self.Online)
     NumberPinFB.AddTags(builder, tags)
     NumberPinFB.AddVecSize(builder, vecsize)
     NumberPinFB.AddMin(builder, self.Min)
@@ -1852,6 +1912,7 @@ type NumberPinD =
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted
+               Online    = fb.Online
                Min       = fb.Min
                Max       = fb.Max
                Unit      = fb.Unit
@@ -1933,6 +1994,7 @@ type StringPinD =
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     Behavior   : Behavior
     MaxChars   : MaxChars
@@ -1968,6 +2030,7 @@ type StringPinD =
     Option.iter (fun value -> StringPinFB.AddName(builder,value)) name
     StringPinFB.AddPinGroup(builder, group)
     StringPinFB.AddPersisted(builder, self.Persisted)
+    StringPinFB.AddOnline(builder, self.Online)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
     StringPinFB.AddMaxChars(builder, int self.MaxChars)
@@ -1992,6 +2055,7 @@ type StringPinD =
                Name      = fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Online    = fb.Online
                Persisted = fb.Persisted
                Behavior  = tipe
                MaxChars  = 1<chars> * fb.MaxChars
@@ -2026,6 +2090,7 @@ type BoolPinD =
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     IsTrigger  : bool
     VecSize    : VecSize
@@ -2057,6 +2122,7 @@ type BoolPinD =
     Option.iter (fun value -> BoolPinFB.AddName(builder,value)) name
     BoolPinFB.AddPinGroup(builder, group)
     BoolPinFB.AddPersisted(builder, self.Persisted)
+    BoolPinFB.AddOnline(builder, self.Online)
     BoolPinFB.AddIsTrigger(builder, self.IsTrigger)
     BoolPinFB.AddTags(builder, tags)
     BoolPinFB.AddDirection(builder, direction)
@@ -2080,6 +2146,7 @@ type BoolPinD =
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted
+               Online    = fb.Online
                IsTrigger = fb.IsTrigger
                VecSize   = vecsize
                Direction = direction
@@ -2114,6 +2181,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Labels     : string array
@@ -2205,6 +2273,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     Option.iter (fun value -> BytePinFB.AddName(builder,value)) name
     BytePinFB.AddPinGroup(builder, group)
     BytePinFB.AddPersisted(builder, self.Persisted)
+    BytePinFB.AddOnline(builder, self.Online)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
     BytePinFB.AddDirection(builder, direction)
@@ -2228,6 +2297,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
                Name      = fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Online    = fb.Online
                Persisted = fb.Persisted
                VecSize   = vecsize
                Direction = direction
@@ -2260,6 +2330,7 @@ type EnumPinD =
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Properties : Property array
@@ -2294,6 +2365,7 @@ type EnumPinD =
     Option.iter (fun value -> EnumPinFB.AddName(builder,value)) name
     EnumPinFB.AddPinGroup(builder, group)
     EnumPinFB.AddPersisted(builder, self.Persisted)
+    EnumPinFB.AddOnline(builder, self.Online)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
     EnumPinFB.AddDirection(builder, direction)
@@ -2340,6 +2412,7 @@ type EnumPinD =
                Name       = fb.Name
                PinGroup   = Id fb.PinGroup
                Tags       = tags
+               Online     = fb.Online
                Persisted  = fb.Persisted
                Properties = properties
                Direction  = direction
@@ -2373,6 +2446,7 @@ type ColorPinD =
     PinGroup:  Id
     Tags:      Tag array
     Persisted: bool
+    Online:    bool
     Direction: ConnectionDirection
     VecSize:   VecSize
     Labels:    string array
@@ -2404,6 +2478,7 @@ type ColorPinD =
     Option.iter (fun value -> ColorPinFB.AddName(builder,value)) name
     ColorPinFB.AddPinGroup(builder, group)
     ColorPinFB.AddPersisted(builder, self.Persisted)
+    ColorPinFB.AddOnline(builder, self.Online)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
     ColorPinFB.AddDirection(builder, direction)
@@ -2423,6 +2498,7 @@ type ColorPinD =
 
       return { Id        = Id fb.Id
                Name      = fb.Name
+               Online    = fb.Online
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted

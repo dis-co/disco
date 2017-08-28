@@ -51,19 +51,19 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Iris.Serialization">
-      <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
+      <HintPath>..\..\bin\$(Configuration)\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf.Providers.AvahiDBus">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf.Providers.Bonjour">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -123,6 +123,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\CorrectPinPersistance.fs">
       <Link>CorrectPinPersistance.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\PinBecomesOnlineOnClientConnect.fs">
+      <Link>PinBecomesOnlineOnClientConnect.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\IrisServiceTests.fs">
       <Link>IrisServiceTests.fs</Link>
