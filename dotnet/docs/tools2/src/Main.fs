@@ -31,7 +31,12 @@ parseAndGetMembersSummary "src/Frontend/src/Frontend/bin/Debug/netstandard1.6/Fr
                 if m.Success then m.Groups.[1].Value else name
             let summary = summary.Replace("\n", " ")
             // printfn "%-10s%s\n%-10s%s\n" "Name:" name "Summary:" summary
+            let category =
+                if name.StartsWith("T")
+                then "Type"
+                else "Method"
             yield tr [] [
+                td [] [strong [] [str category]]
                 td [] [str name]
                 td [] [str summary]
             ]
