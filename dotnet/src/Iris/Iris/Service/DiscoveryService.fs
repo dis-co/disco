@@ -109,7 +109,6 @@ module DiscoveryService =
 
   let private serviceRegistered (agent: DiscoveryAgent)
                                 (disco: DiscoverableService)
-                                (_: obj)
                                 (args: RegisterServiceEventArgs) =
     match args.ServiceError with
     | ServiceErrorCode.None ->
@@ -126,15 +125,16 @@ module DiscoveryService =
   let private registerService (agent: DiscoveryAgent) (disco: DiscoverableService) =
     try
       let service = Discovery.toDiscoverableService disco
-      let handler = new RegisterServiceEventHandler(serviceRegistered agent disco)
-      service.Response.AddHandler(handler)
+      service.Response.Add(serviceRegistered agent disco)
       service.Register()
       Either.succeed service
-    with
-      | exn ->
-        exn.Message
-        |> Error.asOther (tag "registerService")
-        |> Either.fail
+    with | exn ->
+      printfn "exn> %s" exn.Message
+      printfn "exn> %s" exn.StackTrace
+
+      exn.Message
+      |> Error.asOther (tag "registerService")
+      |> Either.fail
 
   // ** unregisterService
 
