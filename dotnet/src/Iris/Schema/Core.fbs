@@ -679,6 +679,12 @@ table CuePlayerFB {
       LastCaller:    string;
 }
 
+//  ____        _       _
+// | __ )  __ _| |_ ___| |__
+// |  _ \ / _` | __/ __| '_ \
+// | |_) | (_| | || (__| | | |
+// |____/ \__,_|\__\___|_| |_|
+
 table CommandBatchFB {
       Commands: [StateMachineFB];
 }
@@ -738,7 +744,7 @@ enum StateMachineActionFB:ushort {
       UndoFB,
       RedoFB,
       ResetFB,
-      SaveProjectFB,
+      SaveFB,
       SetLogLevelFB,
 }
 

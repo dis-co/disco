@@ -1212,11 +1212,12 @@ module Generators =
   //         |_|                   |_|
 
   let apiRequestGen =
-    [ Gen.map      ApiRequest.Snapshot   stateGen
-      Gen.map      ApiRequest.Register   clientGen
-      Gen.map      ApiRequest.UnRegister clientGen
-      Gen.map      ApiRequest.Update     stateMachineGen ]
-    |> Gen.oneof
+    // [ Gen.map      ApiRequest.Snapshot   stateGen
+    //   Gen.map      ApiRequest.Register   clientGen
+    //   Gen.map      ApiRequest.UnRegister clientGen
+    //   Gen.map      ApiRequest.Update     stateMachineGen ]
+
+    Gen.map ApiRequest.Update commandBatchGen
 
   //     _          _ _____
   //    / \   _ __ (_) ____|_ __ _ __ ___  _ __

@@ -1851,7 +1851,7 @@ type StateMachineActionFBConstructor =
   abstract ResetFB: StateMachineActionFB
   abstract CallFB: StateMachineActionFB
   abstract BatchFB: StateMachineActionFB
-  abstract SaveProjectFB: StateMachineActionFB
+  abstract SaveFB: StateMachineActionFB
   abstract DataSnapshotFB: StateMachineActionFB
   abstract SetLogLevelFB: StateMachineActionFB
 
