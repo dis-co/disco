@@ -28,7 +28,7 @@
 
 using System;
 using System.Net;
-using NDesk.DBus;
+using DBus;
 using Mono.Zeroconf;
 
 namespace Mono.Zeroconf.Providers.AvahiDBus
@@ -52,26 +52,24 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
         public void Dispose ()
         {
             lock (this) {
-                disposed = true;
-                DisposeResolver ();
+                if (!disposed) {
+                    disposed = true;
+                    DisposeResolver ();
+                }
             }
         }
 
         private void DisposeResolver ()
         {
             lock (this) {
-                // FIXME: some multi-thread race condition makes this sin necessary
-                if (resolver != null)
+                IAvahiServiceResolver resolver = this.resolver;
+
+                if (resolver != null) {
+                    this.resolver = null;
                     resolver.Failure -= OnResolveFailure;
-
-                if (resolver != null)
                     resolver.Found -= OnResolveFound;
-
-                if (resolver != null)
                     resolver.Free ();
-
-                if (resolver != null)
-                    resolver = null;
+                }
             }
         }
 
@@ -82,7 +80,7 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
                     " Perhaps this service was removed?");
             }
 
-            DBusManager.Bus.TrapSignals ();
+            // DBusManager.Bus.TrapSignals ();
 
             lock (this) {
                 if (resolver != null) {
@@ -99,7 +97,7 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
             resolver.Failure += OnResolveFailure;
             resolver.Found += OnResolveFound;
 
-            DBusManager.Bus.UntrapSignals ();
+            // DBusManager.Bus.UntrapSignals ();
         }
 
         protected virtual void OnResolved ()
