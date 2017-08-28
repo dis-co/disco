@@ -585,7 +585,8 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   buildDebug "Serialization.csproj" ())
+   buildDebug "Serialization.csproj" ()
+   buildRelease "Serialization.csproj" ())
 
 //  _____                               __
 // |__  /___ _ __ ___   ___ ___  _ __  / _|
@@ -593,17 +594,14 @@ Target "GenerateSerialization"
 //  / /|  __/ | | (_) | (_| (_) | | | |  _|
 // /____\___|_|  \___/ \___\___/|_| |_|_|
 
-Target "BuildDebugZeroconf"
+Target "BuildZeroconf"
   (fun _ ->
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
-
-Target "BuildReleaseZeroconf"
-  (fun _ ->
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
+    buildDebug   "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
+    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
+    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ())
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
@@ -913,16 +911,16 @@ Target "Release" DoNothing
 
 // Zeroconf
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseService"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseSdk"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseCore"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildDebugMockClient"
 
 // Tests

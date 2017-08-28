@@ -42,7 +42,7 @@
     <Reference Include="System.Net" />
     <Reference Include="System.Core" />
     <Reference Include="Iris.Serialization">
-      <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
+      <HintPath>..\..\bin\$(Configuration)\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
