@@ -129,9 +129,6 @@ module DiscoveryService =
       service.Register()
       Either.succeed service
     with | exn ->
-      printfn "exn> %s" exn.Message
-      printfn "exn> %s" exn.StackTrace
-
       exn.Message
       |> Error.asOther (tag "registerService")
       |> Either.fail
