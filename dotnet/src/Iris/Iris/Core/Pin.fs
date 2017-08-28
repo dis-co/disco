@@ -608,6 +608,18 @@ type Pin =
       | EnumPin   data -> data.Persisted
       | ColorPin  data -> data.Persisted
 
+  // ** Online
+
+  member pin.Online
+    with get () =
+      match pin with
+      | StringPin data -> data.Online
+      | NumberPin data -> data.Online
+      | BoolPin   data -> data.Online
+      | BytePin   data -> data.Online
+      | EnumPin   data -> data.Online
+      | ColorPin  data -> data.Online
+
   // ** ToSpread
 
   #if !FABLE_COMPILER
@@ -1789,6 +1801,24 @@ module Pin =
     | BytePin   data -> BytePin   { data with Persisted = persisted }
     | EnumPin   data -> EnumPin   { data with Persisted = persisted }
     | ColorPin  data -> ColorPin  { data with Persisted = persisted }
+
+  // ** setOnline
+
+  let setOnline (online: bool) = function
+    | StringPin data -> StringPin { data with Online = online }
+    | NumberPin data -> NumberPin { data with Online = online }
+    | BoolPin   data -> BoolPin   { data with Online = online }
+    | BytePin   data -> BytePin   { data with Online = online }
+    | EnumPin   data -> EnumPin   { data with Online = online }
+    | ColorPin  data -> ColorPin  { data with Online = online }
+
+  // ** isOnline
+
+  let isOnline (pin: Pin) = pin.Online
+
+  // ** isOffline
+
+  let isOffline (pin: Pin) = not pin.Online
 
   // ** str2offset
 

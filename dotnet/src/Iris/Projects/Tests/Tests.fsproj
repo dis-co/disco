@@ -124,6 +124,9 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\CorrectPinPersistance.fs">
       <Link>CorrectPinPersistance.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\PinBecomesOnlineOnClientConnect.fs">
+      <Link>PinBecomesOnlineOnClientConnect.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\IrisServiceTests.fs">
       <Link>IrisServiceTests.fs</Link>
     </Compile>

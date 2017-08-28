@@ -750,7 +750,9 @@ module IrisService =
 
       let! path = Project.checkPath serviceOptions.Machine serviceOptions.ProjectName
 
-      let! (state: State) = Asset.loadWithMachine path serviceOptions.Machine
+      let! (state: State) =
+        Asset.loadWithMachine path serviceOptions.Machine
+        |> Either.map State.initialize
 
       let! updated =
         state.Users
