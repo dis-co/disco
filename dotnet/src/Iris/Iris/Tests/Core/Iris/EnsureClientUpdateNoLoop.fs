@@ -102,6 +102,7 @@ module EnsureClientUpdateNoLoop =
           PinGroup  = groupId
           Tags      = Array.empty
           Direction = ConnectionDirection.Output
+          Online    = true
           Persisted = false
           IsTrigger = false
           VecSize   = VecSize.Dynamic

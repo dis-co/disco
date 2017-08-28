@@ -496,7 +496,7 @@ module SerializationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/
 
   let serializationTests =
-    testList "Serialization Tests" [
+    ftestList "Serialization Tests" [
       test_command_batch
       test_correct_request_serialization
       tests_parse_state_deserialization
