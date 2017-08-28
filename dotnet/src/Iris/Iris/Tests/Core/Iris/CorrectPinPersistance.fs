@@ -16,8 +16,6 @@ open Common
 
 module CorrectPinPersistance =
 
-  let logger = Logger.subscribe Logger.stdout
-
   let inline fileOnDisk basePath (asset: ^t when ^t : (member AssetPath: FilePath)) =
     basePath </> (^t : (member AssetPath: FilePath) asset)
     |> File.exists
