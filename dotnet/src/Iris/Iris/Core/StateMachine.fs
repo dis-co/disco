@@ -1503,6 +1503,8 @@ type StateMachine =
 
   // ** ApiParameterType
 
+  #if !FABLE_COMPILER
+
   member cmd.ApiParameterType
     with get () =
       match cmd with
@@ -1621,6 +1623,8 @@ type StateMachine =
       | SetLogLevel             _ -> ApiCommandFB.SetLogLevelFB
 
       | LogMsg                  _ -> ApiCommandFB.LogEventFB
+
+  #endif
 
   // ** FromFB (JavaScript)
 

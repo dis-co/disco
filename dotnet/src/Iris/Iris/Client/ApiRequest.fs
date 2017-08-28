@@ -821,7 +821,7 @@ type ApiRequest =
         return ApiRequest.Update (UpdateDiscoveredService service)
       }
 
-    | ApiCommandFB.RemoveFB, ParameterFB.DiscoveredServiceFB as cmd ->
+    | ApiCommandFB.RemoveFB, ParameterFB.DiscoveredServiceFB ->
       either {
         let! service =
           let serviceish = fb.Parameter<DiscoveredServiceFB>()

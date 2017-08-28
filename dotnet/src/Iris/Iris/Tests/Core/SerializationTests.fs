@@ -526,6 +526,5 @@ module SerializationTests =
       test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
       test_validate_api_request_binary_serialization
-
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]
