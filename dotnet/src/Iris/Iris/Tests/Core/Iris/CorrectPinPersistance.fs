@@ -84,7 +84,7 @@ module CorrectPinPersistance =
         let toggle =
           Pin.toggle
             (Id.Create())
-            "My Toggle"
+            (name "My Toggle")
             group.Id
             Array.empty
             Array.empty

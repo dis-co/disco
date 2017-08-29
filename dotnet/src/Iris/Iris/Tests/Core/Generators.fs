@@ -472,7 +472,7 @@ module Generators =
   let clientGen = gen {
       let! id = idGen
       let! service = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! sts = servicestatusGen
       let! ip = ipGen
       let! prt = portGen
@@ -515,7 +515,7 @@ module Generators =
 
   let stringpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -543,7 +543,7 @@ module Generators =
 
   let numberpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -575,7 +575,7 @@ module Generators =
 
   let boolpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -601,7 +601,7 @@ module Generators =
 
   let bytepinGen : Gen<BytePinD> = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -631,7 +631,7 @@ module Generators =
 
   let enumpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! vs = vecsizeGen
       let! tgs = Gen.arrayOf tagGen
@@ -685,7 +685,7 @@ module Generators =
 
   let colorpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! vs = vecsizeGen
       let! tgs = Gen.arrayOf tagGen

@@ -97,7 +97,7 @@ module EnsureClientsReplicated =
 
         use client1 = ApiClient.create serverAddress1 {
           Id = Id.Create()
-          Name = "Client 1"
+          Name = name "Client 1"
           Role = Role.Renderer
           ServiceId = mem1.Id
           Status = ServiceStatus.Starting
@@ -123,7 +123,7 @@ module EnsureClientsReplicated =
 
         use client2 = ApiClient.create serverAddress2 {
           Id = Id.Create()
-          Name = "Client 2"
+          Name = name "Client 2"
           Role = Role.Renderer
           ServiceId = mem2.Id
           Status = ServiceStatus.Starting

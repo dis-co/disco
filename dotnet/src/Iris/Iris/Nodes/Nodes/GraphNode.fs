@@ -32,7 +32,7 @@ module Graph =
     | PinValueChange     of group:Id * slices:Slices
     | PinSubTypeChange   of string       // node id
     | PinVecSizeChange   of group:Id * pin:Id * VecSize
-    | PinNameChange      of group:Id * pin:Id * string
+    | PinNameChange      of group:Id * pin:Id * Name
     | PinTagChange       of group:Id * pin:Id * Tag array
     | PinDirectionChange of group:Id * pin:Id * ConnectionDirection
 
@@ -591,7 +591,7 @@ module Graph =
     let pagesHandler = new EventHandler(vecsizeUpdate)
 
     let nameHandler = new EventHandler(fun _ _ ->
-      (group, id, if isNull np.[0] then "" else np.[0])
+      (group, id, if isNull np.[0] then name "" else name np.[0])
       |> Msg.PinNameChange
       |> state.Events.Enqueue)
 
@@ -655,13 +655,13 @@ module Graph =
       let grp = parsePinGroupId pin
       let! vt = parseValueType pin
       let! bh = parseBehavior pin
-      let! name = parseName pin
+      let! pinName = parseName pin
       let! vc = parseVecSize pin
       match vt with
       | ValueType.Boolean ->
         return BoolPin {
           Id = id
-          Name = name
+          Name = name pinName
           PinGroup = grp
           Tags = [| |]
           Direction = dir
@@ -678,7 +678,7 @@ module Graph =
         let! unit = parseUnits pin
         return NumberPin {
           Id = id
-          Name = name
+          Name = name pinName
           PinGroup = grp
           Tags = [| |]
           Min = min
@@ -699,7 +699,7 @@ module Graph =
         let! prec = parsePrecision pin
         return NumberPin {
           Id = id
-          Name = name
+          Name = name pinName
           PinGroup = grp
           Tags = [| |]
           Min = min
@@ -776,12 +776,12 @@ module Graph =
       let dir = parseDirection pin
       let grp = parsePinGroupId pin
       let! st = parseStringType pin
-      let! name = parseName pin
+      let! pinName = parseName pin
       let! vc = parseVecSize pin
       let! maxchars = parseMaxChars pin
       return StringPin {
         Id = id
-        Name = name
+        Name = name pinName
         PinGroup = grp
         Tags = [| |]
         Persisted = false
@@ -814,12 +814,12 @@ module Graph =
       let id = parseNodePath pin
       let dir = parseDirection pin
       let grp = parsePinGroupId pin
-      let! name = parseName pin
+      let! pinName = parseName pin
       let! vc = parseVecSize pin
       let props = parseEnumProperties pin
       return EnumPin {
         Id = id
-        Name = name
+        Name = name pinName
         Persisted = false
         Online = true
         PinGroup = grp
@@ -851,11 +851,11 @@ module Graph =
       let id = parseNodePath pin
       let dir = parseDirection pin
       let grp = parsePinGroupId pin
-      let! name = parseName pin
+      let! pinName = parseName pin
       let! vc = parseVecSize pin
       return ColorPin {
         Id = id
-        Name = name
+        Name = name pinName
         PinGroup = grp
         Direction = dir
         Persisted = false
@@ -942,7 +942,7 @@ module Graph =
 
   // ** updatePinName
 
-  let private updatePinName (state: PluginState) (group: Id) (pin: Id) (name: string) =
+  let private updatePinName (state: PluginState) (group: Id) (pin: Id) (name: Name) =
     updatePinWith state group pin <| fun oldpin ->
       let updated = Pin.setName name oldpin
       state.Commands.Add (UpdatePin updated)

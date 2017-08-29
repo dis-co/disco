@@ -8,19 +8,19 @@ open Iris.Service
 module PinTests =
 
   let mkStringPin (value: string array) =
-    Pin.string (Id.Create()) "test" (Id.Create()) [| |] value
+    Pin.string (Id.Create()) (name "test") (Id.Create()) [| |] value
 
   let mkNumberPin (value: double array) =
-    Pin.number (Id.Create()) "test" (Id.Create()) [| |] value
+    Pin.number (Id.Create()) (name "test") (Id.Create()) [| |] value
 
   let mkBooleanPin (value: bool array) =
-    Pin.toggle (Id.Create()) "test" (Id.Create()) [| |] value
+    Pin.toggle (Id.Create()) (name "test") (Id.Create()) [| |] value
 
   let mkEnumPin (value: Property array) =
-    Pin.enum (Id.Create()) "test" (Id.Create()) [| |] value value
+    Pin.enum (Id.Create()) (name "test") (Id.Create()) [| |] value value
 
   let mkColorPin (value: ColorSpace array) =
-    Pin.color (Id.Create()) "test" (Id.Create()) [| |] value
+    Pin.color (Id.Create()) (name "test") (Id.Create()) [| |] value
 
   let test_simple_string_pin_to_spread =
     testCase "validate correct string pin ToSpread with non-whitespace" <| fun _ ->

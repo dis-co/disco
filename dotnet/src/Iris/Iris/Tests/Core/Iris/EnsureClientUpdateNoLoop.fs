@@ -66,7 +66,7 @@ module EnsureClientUpdateNoLoop =
 
         use client = ApiClient.create server {
           Id = Id.Create()
-          Name = "hi"
+          Name = name "hi"
           Role = Role.Renderer
           ServiceId = mem1.Id
           Status = ServiceStatus.Starting
@@ -98,7 +98,7 @@ module EnsureClientUpdateNoLoop =
 
         let pin = BoolPin {
           Id        = pinId
-          Name      = "hi"
+          Name      = name "hi"
           PinGroup  = groupId
           Tags      = Array.empty
           Direction = ConnectionDirection.Output

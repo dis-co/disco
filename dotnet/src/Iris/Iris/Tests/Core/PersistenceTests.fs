@@ -10,7 +10,7 @@ open Iris.Service
 module PersistenceTests =
 
   let mkPin group =
-    Pin.toggle (mk()) (rndstr()) group (mkTags()) [| true |]
+    Pin.toggle (mk()) (rndname()) group (mkTags()) [| true |]
 
   let mkProject () =
     either {

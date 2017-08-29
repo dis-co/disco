@@ -80,9 +80,9 @@ type PinView(props) =
 
   member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater) =
     let name =
-      if String.IsNullOrEmpty(this.props.pin.Name)
+      if this.props.pin.Name |> unwrap |> String.IsNullOrEmpty
       then "--"
-      else this.props.pin.Name
+      else unwrap this.props.pin.Name
     let firstRowValue =
       if rowCount > 1 then
         td [ClassName "iris-flex-row"] [
