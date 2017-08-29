@@ -472,7 +472,7 @@ Target "CopyAssets" (fun _ ->
     ; userScripts @@ "runiris.cmd"
     ; userScripts @@ "mockclient.cmd"
     ] |> List.iter (CopyFile "bin/")
-    FileUtils.cp (docsDir @@ "md/test_package.md") "bin/README.md"
+    FileUtils.cp (docsDir @@ "test_package.md") "bin/README.md"
     // Frontend
     SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules

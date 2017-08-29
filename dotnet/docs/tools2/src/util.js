@@ -1,10 +1,8 @@
 /// @ts-check
 
-var fs = require('fs'),
-    path = require('path'),
-    xml2js = require('xml2js'),
-    ReactDOMServer = require('react-dom/server'),
-    Handlebars = require('handlebars');
+var fs = require('fs');
+var path = require('path');
+var xml2js = require('xml2js');
 
 function trim(txt) {
     try {
@@ -19,7 +17,7 @@ function trim(txt) {
 function parseXmlDoc(xmlDocPath) {
     return new Promise(function (resolve, reject) {
         var parser = new xml2js.Parser();
-        fs.readFile(path.join(__dirname, '../../..', xmlDocPath), function (err, data) {
+        fs.readFile(xmlDocPath, function (err, data) {
             if (err) {
                 reject(err);
             }
@@ -37,21 +35,6 @@ function parseXmlDoc(xmlDocPath) {
     });
 }
 
-function parseAndDisplay(xmlDocPath) {
-    parseXmlDoc(xmlDocPath)
-    .then(result => {
-        for (var memb of result.doc.members) {
-            for (var innerMember of memb.member) {
-                // console.dir(JSON.stringify(memb));
-                console.log(innerMember.$.name);
-                console.log(trim(innerMember.summary[0]));
-                console.log("-------");
-            }
-        }
-        console.log('Done');
-    });
-}
-
 function parseAndGetMembersSummary(xmlDocPath) {
     return parseXmlDoc(xmlDocPath)
     .then(result => {
@@ -65,19 +48,25 @@ function parseAndGetMembersSummary(xmlDocPath) {
     });
 }
 
-function printPage(context, templatePath, targetPath) {
-    if (context.react) {
-        context.react = ReactDOMServer.renderToStaticMarkup(context.react);
+function getDirectoryFiles(dir, isRecursive) {
+    var items = fs.readdirSync(dir);
+    var files = [];
+    for (var name of items) {
+        var item = path.join(dir, name);
+        if (fs.lstatSync(item).isDirectory()) {
+            if (isRecursive) {
+                files = files.concat(getDirectoryFiles(item, true));
+            }
+        }
+        else {
+            files.push(item);
+        }
     }
-    var template = fs.readFileSync(templatePath).toString();
-    var compiled = Handlebars.compile(template)(context);
-    fs.writeFileSync(targetPath, compiled);
+    return files;
 }
 
 module.exports = {
     trim,
     parseXmlDoc,
-    parseAndDisplay,
     parseAndGetMembersSummary,
-    printPage
 }

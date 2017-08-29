@@ -1,4 +1,4 @@
-# IRIS FRONTEND DEVELOPMENT
+# IRIS Frontend Quickstart
 
 ## Requirements
 

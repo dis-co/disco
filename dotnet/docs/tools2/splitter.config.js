@@ -18,7 +18,7 @@ function runScript(scriptPath) {
 var outFile = resolve("build/Main.js");
 
 module.exports = {
-  entry: resolve("src/XmlParser.fsproj"),
+  entry: resolve("src/DocGenerator.fsproj"),
   outDir: resolve("build"),
   babel: { plugins: ["transform-es2015-modules-commonjs"] },
   fable: { define: ["DEBUG"] },

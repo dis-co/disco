@@ -3,6 +3,5 @@ FSharp.Core
 Fable.Core
 Fable.PowerPack
 Fable.React
-Fable.Elmish.Bulma
 Fable.Import.Node
 dotnet-fable

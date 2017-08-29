@@ -3,6 +3,7 @@
     <TargetFramework>netstandard1.6</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Helpers.fs" />
     <Compile Include="Main.fs" />
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
   </ItemGroup>
