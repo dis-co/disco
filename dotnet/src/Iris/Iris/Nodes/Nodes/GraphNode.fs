@@ -916,7 +916,7 @@ module Graph =
 
   // ** onGroupRename
 
-  let private onGroupRename (state: PluginState) (id: Id) (old: INamed) (groupName: string) =
+  let private onGroupRename (state: PluginState) (id: Id) (_: INamed) (groupName: string) =
     match state.Pins.TryGetValue(id) with
     | true, group ->
       let node = state.V2Host.GetNodeFromPath(string id)
