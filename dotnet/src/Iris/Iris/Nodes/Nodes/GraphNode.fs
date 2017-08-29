@@ -14,6 +14,7 @@ open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Utils.VColor
 open VVVV.Utils.VMath
 open VVVV.Core.Logging
+open VVVV.Core
 open Iris.Raft
 open Iris.Core
 open Iris.Nodes
@@ -903,15 +904,28 @@ module Graph =
   // ** parseGroupName
 
   let private parseGroupName (node: INode2) =
-    node.Parent.NodeInfo.Name
+    node.NodeInfo.Name
     |> name
 
   // ** parseGroupPath
 
   let private parseGroupPath (node: INode2) =
-    node.Parent.NodeInfo.Filename
+    node.NodeInfo.Filename
     |> filepath
     |> Some
+
+  // ** onGroupRename
+
+  let private onGroupRename (state: PluginState) (id: Id) (old: INamed) (groupName: string) =
+    match state.Pins.TryGetValue(id) with
+    | true, group ->
+      let node = state.V2Host.GetNodeFromPath(string id)
+      { group with
+          Name = name groupName
+          Path = parseGroupPath node }
+      |> UpdatePinGroup
+      |> state.Commands.Add
+    | _,_ -> ()
 
   // ** addPin
 
@@ -922,6 +936,7 @@ module Graph =
       state.Commands.Add (AddPin pin)
     else
       let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
+      node.add_Renamed(new RenamedHandler(onGroupRename state pin.PinGroup))
       let group: PinGroup =
         { Id = pin.PinGroup
           Name = parseGroupName node
