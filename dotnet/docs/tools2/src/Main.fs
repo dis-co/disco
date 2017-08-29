@@ -14,32 +14,37 @@ open Helpers
 let templatePath = resolve "${entryDir}/../templates/template.hbs"
 let docsPath = resolve "${entryDir}/../../files"
 let publicPath = resolve "${entryDir}/../public"
+let xmlDocs =
+    ["Frontend", resolve "${entryDir}/../../../src/Frontend/src/Frontend/bin/Debug/netstandard1.6/Frontend.xml"
+    ]
 
-// let parseAndGetMembersSummary(path: string): JS.Promise<(string*string) array> = importMember "./util.js"
+let parseAndGetMembersSummary(path: string): JS.Promise<(string*string) array> = importMember "./util.js"
 
-// parseAndGetMembersSummary "src/Frontend/src/Frontend/bin/Debug/netstandard1.6/Frontend.xml"
-// |> Promise.map (fun kvs ->
-//     let reg = Regex(@"^(.*?)[(`]")
-//     table [ClassName "table"] [
-//       tbody [] [
-//         for (name, summary) in kvs do
-//             let name =
-//                 let m = reg.Match(name)
-//                 if m.Success then m.Groups.[1].Value else name
-//             let summary = summary.Replace("\n", " ")
-//             // printfn "%-10s%s\n%-10s%s\n" "Name:" name "Summary:" summary
-//             let category =
-//                 if name.StartsWith("T")
-//                 then "Type"
-//                 else "Method"
-//             yield tr [] [
-//                 td [] [strong [] [str category]]
-//                 td [] [str name]
-//                 td [] [str summary]
-//             ]
-//         ]
-//       ]
-// )
+let parseApiReference title xmlDocPath = promise {
+    let! kvs = parseAndGetMembersSummary xmlDocPath
+    let reg = Regex(@"^(\w+):([^(`]+)")
+    return div [] [
+        h1 [ClassName "title is-1"] [str title]
+        table [ClassName "table"] [
+          tbody [] [
+            for (name, summary) in kvs do
+                let m = reg.Match(name)
+                let category, name =
+                    if m.Success then
+                        let cat = if m.Groups.[1].Value = "T" then "Type" else "Method"
+                        cat, m.Groups.[2].Value
+                    else "Method", name
+                let summary = summary.Replace("\n", " ")
+                // printfn "%-10s%s\n%-10s%s\n" "Name:" name "Summary:" summary
+                yield tr [] [
+                    td [] [str category]
+                    td [] [strong [] [str name]]
+                    td [] [str summary]
+                ]
+            ]
+          ]
+    ]
+}
 
 let init() =
     let reg = Regex(@"\.md\b")
@@ -58,5 +63,16 @@ let init() =
         |> parseTemplate templatePath
         |> writeFile targetFile
     )
+
+    promise {
+        for title, xmlDocPath in xmlDocs do
+            let targetFile = Path.join(publicPath, title.ToLower(), "api_reference.html")
+            let title = title + " API Reference"
+            let! reactEl = parseApiReference title xmlDocPath
+            [ "title" ==> title
+              "body" ==> parseReactStatic reactEl ]
+            |> parseTemplate templatePath
+            |> writeFile targetFile
+    } |> Promise.start
 
 init()
