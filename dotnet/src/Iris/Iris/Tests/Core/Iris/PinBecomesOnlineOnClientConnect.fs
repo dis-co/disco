@@ -37,6 +37,7 @@ module PinBecomesOnlineOnClientConnect =
           { Id = Id "my cool group"
             Name = name "My Cool Group"
             Client = mem1.Id
+            Path = None
             Pins = Map.empty }
 
         let toggle =

@@ -240,6 +240,7 @@ module TestData =
 
     { Id = Id.Create()
       Name = rndname ()
+      Path = Some (filepath "/dev/null")
       Client = Id.Create()
       Pins = pins }
 

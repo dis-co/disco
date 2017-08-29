@@ -10,10 +10,10 @@ module StoreTests =
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
       { Id   = Id "0xb4d1d34"
-      ; Name = name "group-1"
-      ; Client = Id.Create()
-      ; Pins = Map.empty
-      }
+        Name = name "group-1"
+        Path = None
+        Client = Id.Create()
+        Pins = Map.empty }
 
     let project = IrisProject.Empty
 

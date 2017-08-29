@@ -900,6 +900,19 @@ module Graph =
           |> Either.fail
     }
 
+  // ** parseGroupName
+
+  let private parseGroupName (node: INode2) =
+    node.Parent.NodeInfo.Name
+    |> name
+
+  // ** parseGroupPath
+
+  let private parseGroupPath (node: INode2) =
+    node.Parent.NodeInfo.Filename
+    |> filepath
+    |> Some
+
   // ** addPin
 
   let private addPin (state: PluginState) (pin: Pin) =
@@ -911,7 +924,8 @@ module Graph =
       let node = state.V2Host.GetNodeFromPath(string pin.PinGroup)
       let group: PinGroup =
         { Id = pin.PinGroup
-          Name = name (node.GetNodePath(true))
+          Name = parseGroupName node
+          Path = parseGroupPath node
           Client = state.InClientId.[0]
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)

@@ -81,6 +81,13 @@ module Generators =
   let tagGen = Gen.map astag stringGen
   let timeoutGen = Gen.map ((*) 1<ms>) intGen
 
+  let maybePathGen = gen {
+      let! value = pathGen
+      if value |> unwrap |> isNull
+      then return None
+      else return Some value
+    }
+
   let inline maybeGen g = Gen.oneof [ Gen.constant None
                                       Gen.map Some g ]
 
@@ -833,9 +840,11 @@ module Generators =
       let! nm = nameGen
       let! clnt = idGen
       let! pins = mapGen pinGen
+      let! path = maybePathGen
       return
         { Id = id
           Name = nm
+          Path = path
           Client = clnt
           Pins = pins }
     }
