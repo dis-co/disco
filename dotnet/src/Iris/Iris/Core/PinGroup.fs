@@ -28,6 +28,7 @@ open SharpYaml.Serialization
 type PinGroupYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Path: string
   [<DefaultValue>] val mutable Client: string
   [<DefaultValue>] val mutable Pins: PinYaml array
 
@@ -36,6 +37,7 @@ type PinGroupYaml() =
     yml.Id <- string group.Id
     yml.Name <- unwrap group.Name
     yml.Client <- string group.Client
+    yml.Path <- Option.defaultValue null (Option.map unwrap group.Path)
     yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
     yml
 
@@ -51,8 +53,14 @@ type PinGroupYaml() =
           (Right Map.empty)
           yml.Pins
 
+      let path =
+        if isNull yml.Path
+        then None
+        else Some (filepath yml.Path)
+
       return { Id = Id yml.Id
                Name = name yml.Name
+               Path = path
                Client = Id yml.Client
                Pins = pins }
     }
@@ -72,6 +80,7 @@ type PinGroup =
   { Id: Id
     Name: Name
     Client: Id
+    Path: FilePath option
     Pins: Map<Id,Pin> }
 
   // ** ToYamlObject
@@ -143,8 +152,14 @@ type PinGroup =
           arr
         |> Either.map snd
 
+      let path =
+        if isNull fb.Path
+        then None
+        else Some (filepath fb.Path)
+
       return { Id = Id fb.Id
                Name = name fb.Name
+               Path = path
                Client = Id fb.Client
                Pins = pins }
     }
@@ -154,6 +169,7 @@ type PinGroup =
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let path = self.Path |> Option.map (unwrap >> builder.CreateString)
     let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
@@ -164,6 +180,7 @@ type PinGroup =
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
     Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
+    Option.iter (fun value -> PinGroupFB.AddPath(builder,value)) path
     PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)

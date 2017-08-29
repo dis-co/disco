@@ -93,7 +93,7 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
@@ -161,7 +161,7 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
@@ -236,7 +236,7 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
@@ -367,7 +367,7 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting

@@ -245,54 +245,54 @@ Usage:
     match str with
     | Add rest ->
       match rest with
-      | Toggle name ->
-        Pin.toggle (Id name) name patchid  [| |]  [| false |]
+      | Toggle pinName ->
+        Pin.toggle (Id pinName) (name pinName) patchid  [| |]  [| false |]
         |> Some
 
-      | Bang name ->
-        Pin.bang (Id name) name patchid [| |] [| false |]
+      | Bang pinName ->
+        Pin.bang (Id pinName) (name pinName) patchid [| |] [| false |]
         |> Some
 
-      | String name ->
-        Pin.string (Id name) name patchid [| |] [| "" |]
+      | String pinName ->
+        Pin.string (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | Multiline name ->
-        Pin.multiLine (Id name) name patchid [| |] [| "" |]
+      | Multiline pinName ->
+        Pin.multiLine (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | File name ->
-        Pin.fileName (Id name) name patchid [| |] [| "" |]
+      | File pinName ->
+        Pin.fileName (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | Dir name ->
-        Pin.directory (Id name) name patchid [| |] [| "" |]
+      | Dir pinName ->
+        Pin.directory (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | Url name ->
-        Pin.url (Id name) name patchid [| |] [| "" |]
+      | Url pinName ->
+        Pin.url (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | IP name ->
-        Pin.ip (Id name) name patchid [| |] [| "" |]
+      | IP pinName ->
+        Pin.ip (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
-      | Float name ->
-        Pin.number (Id name) name patchid [| |] [| 0.0 |]
+      | Float pinName ->
+        Pin.number (Id pinName) (name pinName) patchid [| |] [| 0.0 |]
         |> Some
 
-      | Bytes name ->
-        Pin.bytes (Id name) name patchid [| |] [| [| |] |]
+      | Bytes pinName ->
+        Pin.bytes (Id pinName) (name pinName) patchid [| |] [| [| |] |]
         |> Some
 
-      | Color name ->
+      | Color pinName ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.color (Id name) name patchid [| |] [| color |]
+        Pin.color (Id pinName) (name pinName) patchid [| |] [| color |]
         |> Some
 
-      | Enum name ->
+      | Enum pinName ->
         let prop = { Key = ""; Value = "" }
-        Pin.enum (Id name) name patchid [| |] [| prop |] [| prop |]
+        Pin.enum (Id pinName) (name pinName) patchid [| |] [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None
@@ -314,7 +314,7 @@ Usage:
         printfn "Patch: %A" (string patch.Id)
         Map.iter
           (fun _ (pin: Pin) ->
-            printfn "    id: %s name: %s type: %s" (string pin.Id) pin.Name pin.Type)
+            printfn "    id: %s name: %A type: %s" (string pin.Id) pin.Name pin.Type)
           patch.Pins)
       client.State.PinGroups
     printfn ""
@@ -625,8 +625,8 @@ Usage:
           { Id = Id.Create()
             Name =
               if parsed.Contains <@ Name @>
-              then parsed.GetResult <@ Name @>
-              else "<empty>"
+              then name (parsed.GetResult <@ Name @>)
+              else name "<empty>"
             Role = Role.Renderer
             ServiceId = Id.Create()
             Status = ServiceStatus.Starting
@@ -644,6 +644,7 @@ Usage:
         { Id = patchid
           Name = name "MockClient Patch"
           Client = id
+          Path = None
           Pins = Map.empty }
 
       let loaded =

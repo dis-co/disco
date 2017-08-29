@@ -807,7 +807,7 @@ type Pin =
     | StringPin data ->
       yaml.PinType    <- "StringPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -822,7 +822,7 @@ type Pin =
     | NumberPin data ->
       yaml.PinType    <- "NumberPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -839,7 +839,7 @@ type Pin =
     | BoolPin data ->
       yaml.PinType    <- "BoolPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -853,7 +853,7 @@ type Pin =
     | BytePin data ->
       yaml.PinType    <- "BytePin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -866,7 +866,7 @@ type Pin =
     | EnumPin data ->
       yaml.PinType    <- "EnumPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -880,7 +880,7 @@ type Pin =
     | ColorPin  data ->
       yaml.PinType    <- "ColorPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
@@ -1142,7 +1142,7 @@ type Pin =
 
           return StringPin {
             Id         = Id yml.Id
-            Name       = yml.Name
+            Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
             Persisted  = yml.Persisted
@@ -1180,7 +1180,7 @@ type Pin =
 
           return NumberPin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             VecSize   = vecsize
@@ -1224,7 +1224,7 @@ type Pin =
 
           return BoolPin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
@@ -1265,7 +1265,7 @@ type Pin =
 
           return BytePin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
@@ -1319,7 +1319,7 @@ type Pin =
 
           return EnumPin {
             Id         = Id yml.Id
-            Name       = yml.Name
+            Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
             Online     = yml.Online
@@ -1361,7 +1361,7 @@ type Pin =
 
           return ColorPin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
@@ -1606,7 +1606,7 @@ module Pin =
 
     let next id =
       BoolPin { Id         = Id (sprintf "/%O/next" id)
-                Name       = "Next"
+                Name       = name "Next"
                 PinGroup   = id
                 Tags       = Array.empty
                 Persisted  = true
@@ -1621,7 +1621,7 @@ module Pin =
 
     let previous id =
       BoolPin { Id         = Id (sprintf "/%O/previous" id)
-                Name       = "Previous"
+                Name       = name "Previous"
                 PinGroup   = id
                 Tags       = Array.empty
                 Persisted  = true
@@ -1636,7 +1636,7 @@ module Pin =
 
     let call id =
       BoolPin { Id         = Id (sprintf "/%O/call" id)
-                Name       = "Call"
+                Name       = name "Call"
                 PinGroup   = id
                 Tags       = Array.empty
                 Persisted  = true
@@ -1841,7 +1841,7 @@ module Pin =
 [<CustomComparison; CustomEquality>]
 type NumberPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
@@ -1866,7 +1866,7 @@ type NumberPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let unit = self.Unit |> Option.mapNull builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
@@ -1908,7 +1908,7 @@ type NumberPinD =
         |> Either.map (Array.map double)
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted
@@ -1990,7 +1990,7 @@ type NumberPinD =
 
 type StringPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
@@ -2013,7 +2013,7 @@ type StringPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
@@ -2052,7 +2052,7 @@ type StringPinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Online    = fb.Online
@@ -2086,7 +2086,7 @@ type StringPinD =
 
 type BoolPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
@@ -2108,7 +2108,7 @@ type BoolPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2142,7 +2142,7 @@ type BoolPinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted
@@ -2177,7 +2177,7 @@ type BoolPinD =
 type [<CustomEquality;CustomComparison>] BytePinD =
 
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
@@ -2258,7 +2258,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2294,7 +2294,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
         |> Either.map (Array.map String.decodeBase64)
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Online    = fb.Online
@@ -2326,7 +2326,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
 type EnumPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
     Persisted  : bool
@@ -2348,7 +2348,7 @@ type EnumPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2409,7 +2409,7 @@ type EnumPinD =
         |> Either.map snd
 
       return { Id         = Id fb.Id
-               Name       = fb.Name
+               Name       = name fb.Name
                PinGroup   = Id fb.PinGroup
                Tags       = tags
                Online     = fb.Online
@@ -2442,7 +2442,7 @@ type EnumPinD =
 
 type ColorPinD =
   { Id:        Id
-    Name:      string
+    Name:      Name
     PinGroup:  Id
     Tags:      Tag array
     Persisted: bool
@@ -2463,7 +2463,7 @@ type ColorPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2497,7 +2497,7 @@ type ColorPinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                Online    = fb.Online
                PinGroup  = Id fb.PinGroup
                Tags      = tags

@@ -420,6 +420,7 @@ table PinGroupFB {
       Id:   string;
       Name: string;
       Client: string;
+      Path: string;
       Pins: [PinFB];
 }
 

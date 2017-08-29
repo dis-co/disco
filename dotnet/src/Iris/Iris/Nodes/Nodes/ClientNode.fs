@@ -74,7 +74,7 @@ type ClientNode() =
           if not (Util.isNullReference self.InClient.[n]) then
             let client = self.InClient.[n]
             self.OutId.[n] <- string client.Id
-            self.OutName.[n] <- client.Name
+            self.OutName.[n] <- unwrap client.Name
             self.OutRole.[n] <- string client.Role
             self.OutStatus.[n] <- string client.Status
             self.OutIpAddress.[n] <- string client.IpAddress

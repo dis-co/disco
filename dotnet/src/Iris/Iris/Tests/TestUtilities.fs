@@ -114,7 +114,7 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.toggle (mk()) (rndstr()) (mk()) (mkTags()) [| true |]
+    Pin.toggle (mk()) (rndname()) (mk()) (mkTags()) [| true |]
 
   let mkOptional(f:unit->'T): 'T option =
     if rand.Next(0,2) > 0 then f() |> Some else None
@@ -150,18 +150,18 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.bang      (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.toggle    (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.string    (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.multiLine (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.fileName  (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.directory (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.url       (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.ip        (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.number    (mk()) (rndstr()) (mk()) (mkTags()) (mkNumbers())
-    ;  Pin.bytes     (mk()) (rndstr()) (mk()) (mkTags()) (mkBytes())
-    ;  Pin.color     (mk()) (rndstr()) (mk()) (mkTags()) (mkColors())
-    ;  Pin.enum      (mk()) (rndstr()) (mk()) (mkTags()) (mkProps()) (mkProps())
+    [| Pin.bang      (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.toggle    (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.string    (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.multiLine (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.fileName  (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.directory (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.url       (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.ip        (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.number    (mk()) (rndname()) (mk()) (mkTags()) (mkNumbers())
+    ;  Pin.bytes     (mk()) (rndname()) (mk()) (mkTags()) (mkBytes())
+    ;  Pin.color     (mk()) (rndname()) (mk()) (mkTags()) (mkColors())
+    ;  Pin.enum      (mk()) (rndname()) (mk()) (mkTags()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =
@@ -240,6 +240,7 @@ module TestData =
 
     { Id = Id.Create()
       Name = rndname ()
+      Path = Some (filepath "/dev/null")
       Client = Id.Create()
       Pins = pins }
 
@@ -275,7 +276,7 @@ module TestData =
 
   let mkClient () : IrisClient =
     { Id = Id.Create ()
-      Name = "Nice client"
+      Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
       ServiceId = Id.Create()

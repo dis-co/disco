@@ -60,7 +60,7 @@ type Role =
 
 type IrisClient =
   { Id: Id
-    Name: string
+    Name: Name
     Role: Role
     ServiceId: Id
     Status: ServiceStatus
@@ -72,7 +72,7 @@ type IrisClient =
   member client.ToOffset(builder: FlatBufferBuilder) =
     let id = builder.CreateString (string client.Id)
     let service = builder.CreateString (string client.ServiceId)
-    let name = Option.mapNull builder.CreateString client.Name
+    let name = Option.mapNull builder.CreateString (unwrap client.Name)
     let ip = builder.CreateString (string client.IpAddress)
     let role = client.Role.ToOffset(builder)
     let status = Binary.toOffset builder client.Status
@@ -107,7 +107,7 @@ type IrisClient =
           |> Either.fail
         #endif
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                Status    = status
                IpAddress = ip
                ServiceId = Id fb.ServiceId

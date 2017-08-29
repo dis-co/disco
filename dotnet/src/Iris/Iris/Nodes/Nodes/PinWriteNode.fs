@@ -49,7 +49,7 @@ type PinWriteNode() =
               if pin.Id = mapping.PinId then
                 match mapping.Pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN with
                 | null -> ()
-                | ipin -> ipin.[0] <- pin.Name
+                | ipin -> ipin.[0] <- unwrap pin.Name
                 mapping.Pin.Spread <- pin.Slices.ToSpread()
             | UpdateSlices slices ->
               if slices.Id = mapping.PinId then

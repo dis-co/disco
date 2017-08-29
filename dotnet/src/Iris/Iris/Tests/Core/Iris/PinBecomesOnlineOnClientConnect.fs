@@ -37,12 +37,13 @@ module PinBecomesOnlineOnClientConnect =
           { Id = Id "my cool group"
             Name = name "My Cool Group"
             Client = mem1.Id
+            Path = None
             Pins = Map.empty }
 
         let toggle =
           Pin.toggle
             (Id "/my/pin")
-            "My Toggle"
+            (name "My Toggle")
             group.Id
             Array.empty
             [| true |]
@@ -99,7 +100,7 @@ module PinBecomesOnlineOnClientConnect =
 
         use client = ApiClient.create server {
           Id = Id.Create()
-          Name = "hi"
+          Name = name "hi"
           Role = Role.Renderer
           ServiceId = mem1.Id
           Status = ServiceStatus.Starting
