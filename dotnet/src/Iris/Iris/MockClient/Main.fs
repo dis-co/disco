@@ -602,7 +602,7 @@ Usage:
 
     let id = Id.Create()
 
-    Logger.initialize {
+    do Logger.initialize {
       Id = Id.Create()
       Tier = Tier.Client
       UseColors = true

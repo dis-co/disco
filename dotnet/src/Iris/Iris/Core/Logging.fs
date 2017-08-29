@@ -280,17 +280,30 @@ module Logger =
   open System.Threading
   open Iris.Core
 
-  // ** settings
+  // ** _settings
 
-  let mutable private settings =
+  let mutable private _settings =
     { Id = Id "<uninitialized>"
       Level = LogLevel.Debug
       UseColors = true
       Tier = Tier.Service }
 
+  // ** currentSettings
+
+  let currentSettings () = _settings
+
+  // ** set
+
+  let set config = _settings <- config
+
+  // ** setLevel
+
+  let setLevel level =
+    _settings <- { _settings with Level = level }
+
   // ** initialize
 
-  let initialize config = settings <- config
+  let initialize config = set config
 
   // ** stdout
 
@@ -304,7 +317,7 @@ module Logger =
   /// Returns: unit
   let stdout (log: LogEvent) =
     #if !FABLE_COMPILER && !IRIS_NODES
-    if settings.UseColors then
+    if _settings.UseColors then
       Console.darkGreen "{0}" "["
       match log.LogLevel with
       | LogLevel.Trace -> Console.gray   "{0,-5}" log.LogLevel
@@ -429,8 +442,8 @@ module Logger =
       #else
       Thread   = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = settings.Tier
-      Id       = settings.Id
+      Tier     = _settings.Tier
+      Id       = _settings.Id
       Tag      = callsite
       LogLevel = level
       Message  = msg }
@@ -452,9 +465,10 @@ module Logger =
   ///
   /// Returns: unit
   let log (level: LogLevel) (callsite: CallSite) (msg: string) =
-    msg
-    |> create level callsite
-    |> append
+    if level >= _settings.Level then
+      msg
+      |> create level callsite
+      |> append
 
   // ** trace
 
@@ -468,9 +482,7 @@ module Logger =
   ///
   /// Returns: unit
   let trace (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Trace callsite
-    |> append
+    log LogLevel.Trace callsite msg
 
   // ** debug
 
@@ -484,9 +496,7 @@ module Logger =
   ///
   /// Returns: unit
   let debug (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Debug callsite
-    |> append
+    log LogLevel.Debug callsite msg
 
   // ** info
 
@@ -500,9 +510,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let info (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Info callsite
-    |> append
+    log LogLevel.Info callsite msg
 
   // ** warn
 
@@ -516,9 +524,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let warn (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Warn callsite
-    |> append
+    log LogLevel.Warn callsite msg
 
   // ** err
 
@@ -532,9 +538,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let err (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Err callsite
-    |> append
+    log LogLevel.Err callsite msg
 
 // * LogFile
 

@@ -514,14 +514,23 @@ module IrisService =
 
     | other -> ignore other
 
+  // ** publishEvent
+
+  let private publishEvent (pipeline: IPipeline<IrisEvent>) cmd =
+    match cmd with
+    | IrisEvent.Append(Origin.Raft, SetLogLevel level) ->
+      do Logger.setLevel level
+    | _ -> ()
+    pipeline.Push cmd
+
   // ** dispatchEvent
 
-  let private dispatchEvent store (pipeline: IPipeline<IrisEvent>) cmd =
+  let private dispatchEvent store pipeline cmd =
     cmd |> dispatchStrategy |> function
-    | Publish   -> pipeline.Push cmd
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
     | Ignore    -> Observable.onNext store.State.Subscriptions cmd
+    | Publish   -> publishEvent pipeline cmd
 
   // ** createDispatcher
 

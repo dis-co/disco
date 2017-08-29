@@ -108,7 +108,7 @@ module Main =
     // create a new unique client id (must be a GUID)
     let clientid = Id.Create()
 
-    Logger.initialize {
+    do Logger.initialize {
       Id = clientId
       Tier = Tier.Client
       UseColors = false

@@ -102,7 +102,7 @@ let pinGroups: Map<Id, PinGroup> =
         let pins =
             JS.Object.keys(g)
             |> Seq.choose (fun pk ->
-                box g?(pk) |> makePin gid pk)
+                box g?(pk) |> makePin gid (name pk))
             |> Seq.map (fun pin -> pin.Id, pin)
             |> Map
         let pinGroup =

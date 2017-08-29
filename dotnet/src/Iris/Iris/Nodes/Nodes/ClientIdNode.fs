@@ -45,7 +45,7 @@ type ClientIdNode() =
               Logger.err "ClientId (Iris)" exn.StackTrace
               Id.Create()
 
-        Logger.initialize {
+        do Logger.initialize {
           Id = id
           Tier = Tier.Client
           UseColors = false

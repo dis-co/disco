@@ -298,6 +298,15 @@ module CommandLine =
       let post = CommandActions.postCommand agentRef
       let machine = MachineConfig.get()
 
+      let termSupportsColors = Console.isColorTerm()
+
+      do Logger.initialize {
+        Id = machine.MachineId
+        Tier = Tier.Service
+        UseColors = termSupportsColors
+        Level = LogLevel.Debug
+      }
+
       use _ = Logger.subscribe Logger.stdout
 
       let! irisService = Iris.create post {

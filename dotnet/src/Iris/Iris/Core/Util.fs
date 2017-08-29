@@ -671,6 +671,15 @@ module Console =
   let darkYellow pat (thing: obj) =
     withForeground pat ConsoleColor.DarkYellow thing
 
+  // ** isColorTerm
+
+  let isColorTerm () =
+    match Environment.GetEnvironmentVariable "TERM" with
+    | "st"    | "st-256color"
+    | "xterm" | "xterm-256color" -> true
+    | _ -> false
+
+
 #endif
 
 // * Guid
