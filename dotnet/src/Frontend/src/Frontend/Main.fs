@@ -31,5 +31,5 @@ let getPinValueAt(pin: Pin, idx: int): obj =
     let slice = pin.Values.At(index idx)
     slice.Value
 
-let renderHeadlessWidget(id, name, bodyFn, dispatch, model): React.ReactElement =
-  widget id name None bodyFn dispatch model
+let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement =
+  widget id name headFn bodyFn dispatch model
