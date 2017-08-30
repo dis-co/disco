@@ -11,6 +11,8 @@ open Fable.PowerPack
 open System.Text.RegularExpressions
 open Helpers
 
+let fontawesomePath = resolve "${entryDir}/../public/css/font-awesome/css/font-awesome.min.css"
+let stylesPath = resolve "${entryDir}/../public/css/styles.css"
 let templatePath = resolve "${entryDir}/../templates/template.hbs"
 let docsPath = resolve "${entryDir}/../../files"
 let publicPath = resolve "${entryDir}/../public"
@@ -59,6 +61,8 @@ let init() =
             reg.Replace(parseMarkdown filePath, ".html")
             |> sprintf """<div class="content">%s</div>"""
         [ "title" ==> "Iris Documentation"
+          "fontawesome" ==> Path.relative(targetFile, fontawesomePath)
+          "styles" ==> Path.relative(targetFile, stylesPath)
           "body" ==> body ]
         |> parseTemplate templatePath
         |> writeFile targetFile
@@ -70,6 +74,8 @@ let init() =
             let title = title + " API Reference"
             let! reactEl = parseApiReference title xmlDocPath
             [ "title" ==> title
+              "fontawesome" ==> Path.relative(targetFile, fontawesomePath)
+              "styles" ==> Path.relative(targetFile, stylesPath)
               "body" ==> parseReactStatic reactEl ]
             |> parseTemplate templatePath
             |> writeFile targetFile

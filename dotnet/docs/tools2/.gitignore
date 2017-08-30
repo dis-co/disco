@@ -1,2 +1,3 @@
 build
-public
+public/**/*.html
+public/css/styles.css
