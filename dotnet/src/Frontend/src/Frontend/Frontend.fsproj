@@ -25,6 +25,7 @@
     <Compile Include="Elmish/Cluster.fs" />
     <Compile Include="Elmish/PanelLeft.fs" />
     <Compile Include="Elmish/App.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />

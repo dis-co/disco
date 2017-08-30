@@ -17,6 +17,7 @@ module Widgets =
     let [<Literal>] CuePlayer = "Cue Player"
     let [<Literal>] ProjectView = "Project View"
     let [<Literal>] Cluster = "Cluster"
+    let [<Literal>] Test = "Test"
 
 /// Interface that must be implemented by all widgets
 type IWidget =
