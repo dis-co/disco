@@ -299,53 +299,48 @@ module PinGroup =
 
   // ** hasPin
 
-  let hasPin (id: Id) (group : PinGroup) : bool =
+  let hasPin (group : PinGroup) (id: Id) : bool =
     Map.containsKey id group.Pins
 
   // ** findPin
 
-  let findPin (id: Id) (group: PinGroup) =
+  let findPin (group: PinGroup) (id: Id) =
     Map.find id group.Pins
 
   // ** tryFindPin
 
-  let tryFindPin (id: Id) (group: PinGroup) =
+  let tryFindPin (group: PinGroup) (id: Id) =
     Map.tryFind id group.Pins
 
   // ** addPin
 
-  let addPin (pin : Pin) (group : PinGroup) : PinGroup =
-    if hasPin pin.Id group
+  let addPin (group : PinGroup) (pin : Pin) : PinGroup =
+    if hasPin group pin.Id
     then   group
     else { group with Pins = Map.add pin.Id pin group.Pins }
 
   // ** updatePin
 
-  //                  _       _       ____  _
-  //  _   _ _ __   __| | __ _| |_ ___|  _ \(_)_ __
-  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
-  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
-  //  \__,_| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
-  //       |_|
-
-  let updatePin (pin : Pin) (group : PinGroup) : PinGroup =
-    if hasPin pin.Id group
+  let updatePin (group : PinGroup) (pin : Pin) : PinGroup =
+    if hasPin group pin.Id
     then { group with Pins = Map.add pin.Id pin group.Pins }
     else   group
 
   // ** updateSlices
 
-  //                  _       _       ____  _ _
-  //  _   _ _ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
-  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
-  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
-  //  \__,_| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
-  //       |_|
-
-  let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
+  let updateSlices (group : PinGroup) (slices: Slices) : PinGroup =
     match Map.tryFind slices.Id group.Pins with
-    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
+    | Some pin -> { group with Pins = Map.add pin.Id (Pin.setSlices slices pin) group.Pins }
     | None -> group
+
+  // ** processSlices
+
+  let processSlices (group: PinGroup) (slices: Map<Id,Slices>) : PinGroup =
+    let mapper _ (pin: Pin) =
+      match Map.tryFind pin.Id slices with
+      | Some slices -> Pin.setSlices slices pin
+      | None -> pin
+    { group with Pins = Map.map mapper group.Pins }
 
   // ** removePin
 
@@ -355,7 +350,7 @@ module PinGroup =
   // | | |  __/ | | | | | (_) \ V /  __/  __/| | | | |
   // |_|  \___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
 
-  let removePin (pin : Pin) (group : PinGroup) : PinGroup =
+  let removePin (group : PinGroup) (pin : Pin) : PinGroup =
     { group with Pins = Map.remove pin.Id group.Pins }
 
   // ** setPinsOffline
@@ -389,5 +384,5 @@ module Map =
 
   let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
     let folder m _ group =
-      if m then m else PinGroup.hasPin id group || m
+      if m then m else PinGroup.hasPin group id || m
     Map.fold folder false groups

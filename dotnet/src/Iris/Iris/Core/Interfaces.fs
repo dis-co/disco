@@ -445,3 +445,19 @@ type IrisEvent =
       // |_|  |_|_|___/\___|
 
       | Append (_, SetLogLevel  _)                           -> Replicate
+
+// * IrisEvent module
+
+module IrisEvent =
+
+  // ** append
+
+  let append origin cmd = IrisEvent.Append(origin, cmd)
+
+  // ** appendService
+
+  let appendService cmd = append Origin.Service cmd
+
+  // ** appendRaft
+
+  let appendRaft cmd = append Origin.Raft cmd

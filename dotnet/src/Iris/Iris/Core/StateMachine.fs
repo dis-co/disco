@@ -664,7 +664,7 @@ module State =
     if Map.containsKey pin.PinGroup state.PinGroups then
       let update _ (group: PinGroup) =
         if group.Id = pin.PinGroup then
-          PinGroup.addPin pin group
+          PinGroup.addPin group pin
         else
           group
       { state with PinGroups = Map.map update state.PinGroups }
@@ -676,7 +676,7 @@ module State =
   let updatePin (pin : Pin) (state: State) =
     let mapper (_: Id) (group : PinGroup) =
       if group.Id = pin.PinGroup then
-        PinGroup.updatePin pin group
+        PinGroup.updatePin group pin
       else
         group
     { state with PinGroups = Map.map mapper state.PinGroups }
@@ -686,20 +686,22 @@ module State =
   let removePin (pin : Pin) (state: State) =
     let updater _ (group : PinGroup) =
       if pin.PinGroup = group.Id
-      then PinGroup.removePin pin group
+      then PinGroup.removePin group pin
       else group
     { state with PinGroups = Map.map updater state.PinGroups }
 
   // ** updateSlices
 
-  let updateSlices (slices: Slices) (state: State) =
+  let updateSlices (map: SlicesMap) (state: State) =
     { state with
-        PinGroups = Map.map
-                      (fun _ group -> PinGroup.updateSlices slices group)
-                      state.PinGroups
-        CuePlayers = Map.map
-                      (fun _ player -> CuePlayer.updateSlices slices player)
-                      state.CuePlayers }
+        PinGroups =
+          Map.map
+            (fun _ group -> PinGroup.processSlices group map.Slices)
+            state.PinGroups
+        CuePlayers =
+          Map.map
+            (fun _ player -> CuePlayer.processSlices player map.Slices)
+            state.CuePlayers }
 
   // ** tryFindPin
 
@@ -1282,6 +1284,47 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
       |> CommandBatchFB.GetRootAsCommandBatchFB
       |> StateMachineBatch.FromFB
 
+// * SlicesMap
+
+type SlicesMap = SlicesMap of Map<Id,Slices>
+  with
+    member map.Slices
+      with get () = match map with SlicesMap slices -> slices
+
+    member map.ToOffset(builder: FlatBufferBuilder) =
+      let vector =
+        map.Slices
+        |> Map.toArray
+        |> Array.map (snd >> Binary.toOffset builder)
+        |> fun arr -> SlicesMapFB.CreateSlicesVector(builder, arr)
+      SlicesMapFB.StartSlicesMapFB(builder)
+      SlicesMapFB.AddSlices(builder, vector)
+      SlicesMapFB.EndSlicesMapFB(builder)
+
+    static member FromFB(fb: SlicesMapFB) =
+      [ 0 .. fb.SlicesLength - 1 ]
+      |> List.fold
+        (fun (m: Either<IrisError,Map<Id,Slices>>) (idx: int) -> either {
+            let! output = m
+            #if FABLE_COMPILER
+            let! parsed = fb.Slices(idx) |> Slices.FromFB
+            return Map.add parsed.Id parsed output
+            #else
+            let slicish = fb.Slices(idx)
+            if slicish.HasValue then
+              let slices = slicish.Value
+              let! parsed = Slices.FromFB slices
+              return Map.add parsed.Id parsed output
+            else
+              return!
+                "Could not parse empty SlicesFB value"
+                |> Error.asParseError "SlicesMap"
+                |> Either.fail
+            #endif
+          })
+        (Right Map.empty)
+      |> Either.map SlicesMap
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1314,7 +1357,7 @@ type StateMachine =
   | AddPin                  of Pin
   | UpdatePin               of Pin
   | RemovePin               of Pin
-  | UpdateSlices            of Slices
+  | UpdateSlices            of SlicesMap
 
   // CUE
   | AddCue                  of Cue
@@ -1707,9 +1750,8 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = StateMachinePayloadFB.SlicesFB ->
-
-      let slices = SlicesFB.Create() |> fb.Payload |> Slices.FromFB
+    | x when x = StateMachinePayloadFB.SlicesMapFB ->
+      let slices = fb.SlicesMapFB |> SlicesMap.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
         Either.map UpdateSlices slices
@@ -2071,13 +2113,13 @@ type StateMachine =
     //  ___) | | | (_|  __/\__ \
     // |____/|_|_|\___\___||___/
 
-    | StateMachinePayloadFB.SlicesFB ->
+    | StateMachinePayloadFB.SlicesMapFB ->
       either {
         let! slices =
-          let slicish = fb.Payload<SlicesFB>()
-          if slicish.HasValue then
-            slicish.Value
-            |> Slices.FromFB
+          let slicesMapish = fb.Payload<SlicesMapFB>()
+          if slicesMapish.HasValue then
+            let slicesMap = slicesMapish.Value
+            SlicesMap.FromFB slicesMap
           else
             "Could not parse empty slices payload"
             |> Error.asParseError "StateMachine.FromFB"
@@ -2476,10 +2518,10 @@ type StateMachine =
       StateMachineFB.EndStateMachineFB(builder)
 
     | UpdateSlices slices ->
-      let slices = slices.ToOffset(builder)
+      let slices = Binary.toOffset builder slices
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.SlicesFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.SlicesMapFB)
 #if FABLE_COMPILER
       StateMachineFB.AddPayload(builder, slices)
 #else
@@ -2770,3 +2812,26 @@ type StateMachine =
     Binary.createBuffer bytes
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB
+
+// * UpdateSlices module
+
+module UpdateSlices =
+
+  let ofSlices (slices: Slices) =
+    Map.ofList [(slices.Id, slices)]
+    |> SlicesMap
+    |> UpdateSlices
+
+  let ofArray (slices: Slices array) =
+    slices
+    |> Array.map (fun slices -> slices.Id, slices)
+    |> Map.ofArray
+    |> SlicesMap
+    |> UpdateSlices
+
+  let ofList (slices: Slices list) =
+    slices
+    |> List.map (fun slices -> slices.Id, slices)
+    |> Map.ofList
+    |> SlicesMap
+    |> UpdateSlices

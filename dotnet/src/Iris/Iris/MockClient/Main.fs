@@ -439,7 +439,7 @@ Usage:
     client.AddPin pin
 
   let private updateSlices (client: IApiClient) (slices: Slices) =
-    client.UpdateSlices slices
+    client.UpdateSlices [ slices ]
 
   let private updatePin (client: IApiClient) (pin: Pin) =
     client.UpdatePin pin

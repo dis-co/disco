@@ -1847,6 +1847,28 @@ type CommandBatchFBConstructor =
 
 let CommandBatchFB: CommandBatchFBConstructor = failwith "JS only"
 
+//  ____  _ _               __  __
+// / ___|| (_) ___ ___  ___|  \/  | __ _ _ __
+// \___ \| | |/ __/ _ \/ __| |\/| |/ _` | '_ \
+//  ___) | | | (_|  __/\__ \ |  | | (_| | |_) |
+// |____/|_|_|\___\___||___/_|  |_|\__,_| .__/
+//                                      |_|
+
+type SlicesMapFB =
+  abstract Slices: int -> SlicesFB
+  abstract SlicesLength: int
+
+type SlicesMapFBConstructor =
+  abstract prototype: SlicesMapFB with get, set
+  abstract StartSlicesMapFB: builder:FlatBufferBuilder -> unit
+  abstract AddSlices: builder:FlatBufferBuilder * slices:Offset<SlicesFB> -> unit
+  abstract EndSlicesMapFB: builder:FlatBufferBuilder -> Offset<SlicesMapFB>
+  abstract GetRootAsSlicesMapFB: bytes:ByteBuffer -> SlicesMapFB
+  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<SlicesFB> array -> Offset<'a>
+  abstract Create: unit -> SlicesMapFB
+
+let SlicesMapFB: SlicesMapFBConstructor = failwith "JS only"
+
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -1886,7 +1908,7 @@ type StateMachinePayloadFBConstructor =
   abstract StateFB: StateMachinePayloadFB
   abstract StringFB: StateMachinePayloadFB
   abstract ProjectFB: StateMachinePayloadFB
-  abstract SlicesFB: StateMachinePayloadFB
+  abstract SlicesMapFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
@@ -1913,6 +1935,7 @@ type StateMachineFB =
   abstract IrisClientFB: IrisClientFB
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
+  abstract SlicesMapFB: SlicesMapFB
   abstract CommandBatchFB: CommandBatchFB
   abstract Payload: 'a -> 'a
 

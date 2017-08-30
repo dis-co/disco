@@ -263,25 +263,29 @@ module rec RaftServer =
 
         member self.ApplyLog cmd =
           Tracing.trace (tag "applyLog") <| fun () ->
-            IrisEvent.Append (Origin.Raft, cmd)
+            cmd
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberAdded mem =
           Tracing.trace (tag "memberAdded") <| fun () ->
-            IrisEvent.Append (Origin.Raft, AddMember mem)
+            AddMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberUpdated mem =
           Tracing.trace (tag "memberUpdated") <| fun () ->
-            IrisEvent.Append (Origin.Raft, UpdateMember mem)
+            UpdateMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberRemoved mem =
           Tracing.trace (tag "memberRemoved") <| fun () ->
-            IrisEvent.Append (Origin.Raft, RemoveMember mem)
+            RemoveMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 

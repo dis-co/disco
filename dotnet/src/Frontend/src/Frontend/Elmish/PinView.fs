@@ -48,7 +48,8 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
   | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices |> ClientContext.Singleton.Post
+  |> UpdateSlices.ofSlices
+  |> ClientContext.Singleton.Post
 
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None

@@ -74,7 +74,8 @@ module private PrivateHelpers =
       | ByteSlices   (_, values) -> ByteSlices(pin.Id, values)
       | EnumSlices   (_, values) -> EnumSlices(pin.Id, values)
       | ColorSlices  (_, values) -> ColorSlices(pin.Id, values)
-      |> UpdateSlices |> ClientContext.Singleton.Post
+      |> UpdateSlices.ofSlices
+      |> ClientContext.Singleton.Post
 
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do

@@ -84,7 +84,7 @@ module PinBecomesOnlineOnClientConnect =
           service1.State.PinGroups
 
         expect "Should have marked pin as offline" true
-          (Map.find group.Id >> PinGroup.findPin toggle.Id >> Pin.isOffline)
+          (Map.find group.Id >> flip PinGroup.findPin toggle.Id >> Pin.isOffline)
           service1.State.PinGroups
 
         //  _____
@@ -130,7 +130,7 @@ module PinBecomesOnlineOnClientConnect =
         do! waitOrDie "clientAppendDone" clientAppendDone
 
         expect "Should have marked pin as online" true
-          (Map.find group.Id >> PinGroup.findPin toggle.Id >> Pin.isOnline)
+          (Map.find group.Id >> flip PinGroup.findPin toggle.Id >> Pin.isOnline)
           service1.State.PinGroups
       }
       |> noError

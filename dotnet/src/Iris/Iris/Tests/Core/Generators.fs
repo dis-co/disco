@@ -741,6 +741,12 @@ module Generators =
       Gen.map ColorSlices  (Gen.zip idGen (Gen.arrayOfLength 2 colorGen)) ]
     |> Gen.oneof
 
+  let slicesMapGen =
+    Gen.arrayOf slicesGen
+    |> Gen.map (Array.map (fun (slices: Slices) -> slices.Id, slices))
+    |> Gen.map Map.ofArray
+    |> Gen.map SlicesMap
+
   //   ____
   //  / ___|   _  ___
   // | |  | | | |/ _ \
@@ -1045,7 +1051,7 @@ module Generators =
       Gen.map AddPin                  pinGen
       Gen.map UpdatePin               pinGen
       Gen.map RemovePin               pinGen
-      Gen.map UpdateSlices            slicesGen
+      Gen.map UpdateSlices            slicesMapGen
       Gen.map AddCue                  cueGen
       Gen.map UpdateCue               cueGen
       Gen.map RemoveCue               cueGen
