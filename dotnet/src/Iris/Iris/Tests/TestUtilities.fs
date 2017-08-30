@@ -81,6 +81,9 @@ module TestData =
   let rndint() =
     rand.Next()
 
+  let rndbool() =
+    rand.Next(0,2) |> Convert.ToBoolean
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -201,6 +204,7 @@ module TestData =
 
     { Id = Id.Create()
       Name = rndname ()
+      Locked = rndbool ()
       CueList = rndopt ()
       Selected = index (rand.Next(0,1000))
       Call = mkPin()

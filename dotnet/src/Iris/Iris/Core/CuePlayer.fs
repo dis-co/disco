@@ -25,6 +25,7 @@ open SharpYaml.Serialization
 type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Locked: bool
   [<DefaultValue>] val mutable CueList: string
   [<DefaultValue>] val mutable Selected: int
   [<DefaultValue>] val mutable Call: PinYaml
@@ -44,6 +45,7 @@ type CuePlayerYaml() =
       | None -> null
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
+    yaml.Locked <- player.Locked
     yaml.CueList <- opt2str player.CueList
     yaml.Selected <- int player.Selected
     yaml.Call <- Yaml.toYaml player.Call
@@ -68,6 +70,7 @@ type CuePlayerYaml() =
       let! previous = Yaml.fromYaml yaml.Previous
       return { Id = Id yaml.Id
                Name = name yaml.Name
+               Locked = yaml.Locked
                CueList = str2opt yaml.CueList
                Selected = index yaml.Selected
                Call = call
@@ -85,6 +88,7 @@ type CuePlayerYaml() =
 type CuePlayer =
   { Id: Id
     Name: Name
+    Locked: bool
     CueList: Id option
     Selected: int<index>
     Call: Pin                           // Bang pin type
@@ -109,6 +113,7 @@ type CuePlayer =
     CuePlayerFB.StartCuePlayerFB(builder)
     CuePlayerFB.AddId(builder, id)
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
+    CuePlayerFB.AddLocked(builder, player.Locked)
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
     CuePlayerFB.AddCall(builder, call)
@@ -182,6 +187,7 @@ type CuePlayer =
 
       return { Id = Id fb.Id
                Name = name fb.Name
+               Locked = fb.Locked
                CueList = cuelist
                Selected = index fb.Selected
                Call = call
@@ -265,6 +271,7 @@ module CuePlayer =
     let id = Id.Create()
     { Id = id
       Name = name
+      Locked = false
       CueList = cuelist
       Selected = -1<index>
       Call = Pin.Player.call id

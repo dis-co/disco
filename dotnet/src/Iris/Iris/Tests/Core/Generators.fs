@@ -821,9 +821,11 @@ module Generators =
       let! rmw = intGen
       let! lcd = maybeGen idGen
       let! lcr = maybeGen idGen
+      let! locked = boolGen
       return
         { Id = id
           Name = nm
+          Locked = locked
           CueList = cl
           Selected = sel
           Call = call

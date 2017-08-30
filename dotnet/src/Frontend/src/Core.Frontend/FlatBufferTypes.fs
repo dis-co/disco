@@ -1621,6 +1621,7 @@ let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 type CuePlayerFB =
   abstract Id: string
   abstract Name: string
+  abstract Locked: bool
   abstract CueList: string
   abstract Selected: int
   abstract Call: PinFB
@@ -1635,6 +1636,7 @@ type CuePlayerFBConstructor =
   abstract StartCuePlayerFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddLocked: builder: FlatBufferBuilder * locked:bool -> unit
   abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<string> -> unit
   abstract AddSelected: builder: FlatBufferBuilder * int -> unit
   abstract AddCall: builder: FlatBufferBuilder * call: Offset<PinFB> -> unit
