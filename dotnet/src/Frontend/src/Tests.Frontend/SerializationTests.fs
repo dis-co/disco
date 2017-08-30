@@ -68,6 +68,12 @@ module SerializationTests =
   let mkSlices() =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
 
+  let mkSlicesMap() =
+    let slices = mkSlices ()
+    [ (slices.Id, slices) ]
+    |> Map.ofList
+    |> SlicesMap
+
   let mkCue _ : Cue =
     { Id = Id.Create(); Name = name "Cue 1"; Slices = [| mkSlices() |] }
 
@@ -200,7 +206,7 @@ module SerializationTests =
             UpdatePinGroup          <| mkPinGroup ()
             RemovePinGroup          <| mkPinGroup ()
             AddClient               <| mkClient ()
-            UpdateSlices            <| mkSlices ()
+            UpdateSlices            <| mkSlicesMap ()
             UpdateClient            <| mkClient ()
             RemoveClient            <| mkClient ()
             AddPin                  <| mkPin ()
@@ -331,7 +337,7 @@ module SerializationTests =
       ; UpdatePinGroup          <| mkPinGroup ()
       ; RemovePinGroup          <| mkPinGroup ()
       ; AddClient               <| mkClient ()
-      ; UpdateSlices            <| mkSlices ()
+      ; UpdateSlices            <| mkSlicesMap ()
       ; UpdateClient            <| mkClient ()
       ; RemoveClient            <| mkClient ()
       ; AddPin                  <| mkPin ()

@@ -64,6 +64,6 @@ type IApiClient =
   abstract RemoveCueList: CueList -> unit
   abstract AddPin: Pin -> unit
   abstract UpdatePin: Pin -> unit
-  abstract UpdateSlices: Slices -> unit
+  abstract UpdateSlices: Slices list -> unit
   abstract RemovePin: Pin -> unit
   abstract Append: StateMachine -> unit

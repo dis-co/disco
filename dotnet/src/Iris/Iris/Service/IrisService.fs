@@ -225,12 +225,10 @@ module IrisService =
   // ** dispatchUpdates
 
   let private dispatchUpdates (state: IrisState) (cue: Cue) =
-    Array.iter
-      (fun slices ->
-        (Origin.Service, UpdateSlices slices)
-        |> IrisEvent.Append
-        |> state.Dispatcher.Dispatch)
-      cue.Slices
+    cue.Slices
+    |> UpdateSlices.ofArray
+    |> IrisEvent.appendService
+    |> state.Dispatcher.Dispatch
 
   // ** maybeDispatchUpdate
 
@@ -705,9 +703,7 @@ module IrisService =
       let dispatcher = createDispatcher store
 
       let logForwarder =
-        let mkev log =
-          IrisEvent.Append(Origin.Service, LogMsg log)
-        Logger.subscribe (forwardEvent mkev dispatcher)
+        Logger.subscribe (forwardEvent (LogMsg >> IrisEvent.appendService) dispatcher)
 
       // wiring up the sources
       let disposables = [|
@@ -818,8 +814,8 @@ module IrisService =
   // ** addMember
 
   let private addMember (store: IAgentStore<IrisState>) (mem: RaftMember) =
-    (Origin.Service, AddMember mem)
-    |> IrisEvent.Append
+    AddMember mem
+    |> IrisEvent.appendService
     |> store.State.Dispatcher.Dispatch
 
   // ** removeMember
@@ -827,17 +823,13 @@ module IrisService =
   let private removeMember (store: IAgentStore<IrisState>) (id: Id) =
     store.State.RaftServer.Raft.Peers
     |> Map.tryFind id
-    |> Option.iter
-      (fun mem ->
-        (Origin.Service, RemoveMember mem)
-        |> IrisEvent.Append
-        |> store.State.Dispatcher.Dispatch)
+    |> Option.iter (RemoveMember >> IrisEvent.appendService >> store.State.Dispatcher.Dispatch)
 
   // ** append
 
   let private append (store: IAgentStore<IrisState>) (cmd: StateMachine) =
-    (Origin.Service, cmd)
-    |> IrisEvent.Append
+    cmd
+    |> IrisEvent.appendService
     |> store.State.Dispatcher.Dispatch
 
   // ** makeService

@@ -579,10 +579,10 @@ type ApiRequest =
     | ApiCommandFB.UpdateFB, ParameterFB.SlicesFB ->
       either {
         let! slices =
-          let slicish = fb.Parameter<SlicesFB>()
+          let slicish = fb.Parameter<SlicesMapFB>()
           if slicish.HasValue then
             let value = slicish.Value
-            Slices.FromFB value
+            SlicesMap.FromFB value
           else
             "Empty SlicesFB payload"
             |> Error.asParseError "ApiRequest.FromFB"

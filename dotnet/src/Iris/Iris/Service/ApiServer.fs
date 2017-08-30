@@ -154,12 +154,12 @@ module ApiServer =
     client.Id |> Msg.InstallSnapshot |> agent.Post
     match Map.tryFind client.Id state.Clients with
     | None   ->
-      (Origin.Service, AddClient client)
-      |> IrisEvent.Append
+      AddClient client
+      |> IrisEvent.appendService
       |> Observable.onNext state.Subscriptions
     | Some _ ->
-      (Origin.Service, UpdateClient client)
-      |> IrisEvent.Append
+      UpdateClient client
+      |> IrisEvent.appendService
       |> Observable.onNext state.Subscriptions
     { state with Clients = Map.add client.Id client state.Clients }
 
@@ -169,8 +169,8 @@ module ApiServer =
     Tracing.trace (tag "handleRemoveClient") <| fun () ->
       match Map.tryFind peer.Id state.Clients with
       | Some client ->
-        (Origin.Service, RemoveClient peer)
-        |> IrisEvent.Append
+        RemoveClient peer
+        |> IrisEvent.appendService
         |> Observable.onNext state.Subscriptions
         { state with Clients = Map.remove peer.Id state.Clients }
       | _ -> state
@@ -227,8 +227,8 @@ module ApiServer =
       | oldst, newst ->
         if oldst <> newst then
           let updated = { client with Status = status }
-          (Origin.Service, UpdateClient updated)
-          |> IrisEvent.Append
+          UpdateClient updated
+          |> IrisEvent.appendService
           |> Observable.onNext state.Subscriptions
           { state with Clients = Map.add id updated state.Clients }
         else state
@@ -251,8 +251,8 @@ module ApiServer =
     match origin, cmd with
     | Origin.Api, _ ->
       updateAllClients state cmd        // in order to preserve ordering of the messages
-      (origin, cmd)
-      |> IrisEvent.Append
+      cmd
+      |> IrisEvent.append origin
       |> Observable.onNext state.Subscriptions
 
     | Origin.Raft, _ ->
@@ -263,10 +263,14 @@ module ApiServer =
     | Origin.Client id, UpdateSlices _ ->
       publish state cmd agent
       multicastClients state id cmd     // in order to preserve ordering of the messages
-      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
+      cmd
+      |> IrisEvent.append origin
+      |> Observable.onNext state.Subscriptions
 
     | Origin.Client _, _ ->
-      (origin, cmd) |> IrisEvent.Append |> Observable.onNext state.Subscriptions
+      cmd
+      |> IrisEvent.append origin
+      |> Observable.onNext state.Subscriptions
 
     | Origin.Web _, LogMsg       _
     | Origin.Web _, CallCue      _
@@ -280,8 +284,8 @@ module ApiServer =
     | Origin.Service, AddClient    _
     | Origin.Service, UpdateClient _
     | Origin.Service, RemoveClient _ ->
-      (origin, cmd)
-      |> IrisEvent.Append
+      cmd
+      |> IrisEvent.append origin
       |> Observable.onNext state.Subscriptions
 
     | Origin.Service, LogMsg _
@@ -410,8 +414,8 @@ module ApiServer =
       match Map.tryFind id state.Clients with
       | None -> state
       | Some client ->
-        (Origin.Service, RemoveClient client)
-        |> IrisEvent.Append
+        RemoveClient client
+        |> IrisEvent.appendService
         |> Observable.onNext state.Subscriptions
         { state with Clients = Map.remove id state.Clients }
         // (Guid.toId resp.PeerId, ServiceStatus.Running)

@@ -696,6 +696,17 @@ table CommandBatchFB {
       Commands: [StateMachineFB];
 }
 
+//  ____  _ _          __  __             _____ ____
+// / ___|| (_) ___ ___|  \/  | __ _ _ __ |  ___| __ )
+// \___ \| | |/ __/ _ \ |\/| |/ _` | '_ \| |_  |  _ \
+//  ___) | | | (_|  __/ |  | | (_| | |_) |  _| | |_) |
+// |____/|_|_|\___\___|_|  |_|\__,_| .__/|_|   |____/
+//                                 |_|
+
+table SlicesMapFB {
+      Slices: [SlicesFB];
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -732,7 +743,7 @@ union StateMachinePayloadFB {
       LogEventFB,
       StringFB,
       StateFB,
-      SlicesFB,
+      SlicesMapFB,
       ProjectFB,
       CuePlayerFB,
       DiscoveredServiceFB,

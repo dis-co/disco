@@ -125,7 +125,9 @@ module EnsureClientUpdateNoLoop =
 
         let update = BoolSlices(pin.Id, [| false |])
 
-        client.UpdateSlices update
+        client.UpdateSlices [
+          update
+        ]
 
         do! waitOrDie "updateDone" updateDone
 

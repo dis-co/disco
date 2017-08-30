@@ -503,9 +503,9 @@ module ApiClient =
 
           // **** UpdateSlices
 
-          member self.UpdateSlices(slices: Slices) =
+          member self.UpdateSlices(slices: Slices list) =
             slices
-            |> UpdateSlices
+            |> UpdateSlices.ofList
             |> handleRequest store
 
           // **** RemovePin

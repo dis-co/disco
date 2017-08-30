@@ -965,7 +965,9 @@ module Graph =
   let private updatePinValues (state: PluginState) (group: Id) (slices: Slices) =
     updatePinWith state group slices.Id <| fun oldpin ->
       Pin.setSlices slices oldpin
-    slices
+    [ (slices.Id, slices) ]
+    |> Map.ofList
+    |> SlicesMap
     |> UpdateSlices
     |> state.Commands.Add
 

@@ -281,8 +281,21 @@ module CuePlayer =
 
   // ** updateSlices
 
-  let updateSlices (slices: Slices) (player: CuePlayer) =
+  let updateSlices (player: CuePlayer) (slices: Slices) =
     { player with
         Call = Pin.setSlices slices player.Call
         Next = Pin.setSlices slices player.Next
         Previous = Pin.setSlices slices player.Previous }
+
+  // ** processSlices
+
+  let processSlices (player: CuePlayer) (slices: Map<Id,Slices>) =
+    let maybeUpdate (pin: Pin) =
+      slices
+      |> Map.tryFind pin.Id
+      |> Option.map (flip Pin.setSlices pin)
+      |> Option.defaultValue pin
+    { player with
+        Call     = maybeUpdate player.Call
+        Next     = maybeUpdate player.Next
+        Previous = maybeUpdate player.Previous }
