@@ -188,6 +188,9 @@ module Constants =
   [<Literal>]
   let CUEPLAYER_DIR = "players"
 
+  [<Literal>]
+  let CUEPLAYER_GROUP_DIR = "cue-player"
+
   let GLOBAL_ASSET_DIRS =
     [ USER_DIR
       CUE_DIR

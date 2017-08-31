@@ -1602,10 +1602,22 @@ module Pin =
 
   module Player =
 
+    // *** nextId
+
+    let nextId id = Id (String.format "/{0}/next" id)
+
+    // *** previousId
+
+    let previousId id = Id (String.format "/{0}/next" id)
+
+    // *** previousId
+
+    let callId id = Id (String.format "/{0}/call" id)
+
     // *** next
 
     let next id =
-      BoolPin { Id         = Id (sprintf "/%O/next" id)
+      BoolPin { Id         = nextId id
                 Name       = name "Next"
                 PinGroup   = id
                 Tags       = Array.empty
@@ -1620,7 +1632,7 @@ module Pin =
     // *** previous
 
     let previous id =
-      BoolPin { Id         = Id (sprintf "/%O/previous" id)
+      BoolPin { Id         = previousId id
                 Name       = name "Previous"
                 PinGroup   = id
                 Tags       = Array.empty
@@ -1635,7 +1647,7 @@ module Pin =
     // *** call
 
     let call id =
-      BoolPin { Id         = Id (sprintf "/%O/call" id)
+      BoolPin { Id         = callId id
                 Name       = name "Call"
                 PinGroup   = id
                 Tags       = Array.empty

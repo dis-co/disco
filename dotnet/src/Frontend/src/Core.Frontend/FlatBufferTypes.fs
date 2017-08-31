@@ -1624,9 +1624,9 @@ type CuePlayerFB =
   abstract Locked: bool
   abstract CueList: string
   abstract Selected: int
-  abstract Call: PinFB
-  abstract Next: PinFB
-  abstract Previous: PinFB
+  abstract Call: string
+  abstract Next: string
+  abstract Previous: string
   abstract RemainingWait: int
   abstract LastCaller: string
   abstract LastCalled: string
@@ -1639,9 +1639,9 @@ type CuePlayerFBConstructor =
   abstract AddLocked: builder: FlatBufferBuilder * locked:bool -> unit
   abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<string> -> unit
   abstract AddSelected: builder: FlatBufferBuilder * int -> unit
-  abstract AddCall: builder: FlatBufferBuilder * call: Offset<PinFB> -> unit
-  abstract AddNext: builder: FlatBufferBuilder * next: Offset<PinFB> -> unit
-  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<PinFB> -> unit
+  abstract AddCall: builder: FlatBufferBuilder * call: Offset<string> -> unit
+  abstract AddNext: builder: FlatBufferBuilder * next: Offset<string> -> unit
+  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<string> -> unit
   abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
   abstract AddLastCaller: builder: FlatBufferBuilder * lastcaller: Offset<string> -> unit
   abstract AddLastCalled: builder: FlatBufferBuilder * lastcalled: Offset<string> -> unit

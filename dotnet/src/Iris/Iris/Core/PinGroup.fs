@@ -358,9 +358,26 @@ module PinGroup =
   let setPinsOffline (group: PinGroup) =
     { group with Pins = Map.map (fun _ pin -> Pin.setOnline false pin) group.Pins }
 
+  // ** ofPlayer
+
+  let ofPlayer (player: CuePlayer) =
+    let call = Pin.Player.call player.Id
+    let next = Pin.Player.next player.Id
+    let prev = Pin.Player.previous player.Id
+    { Id = player.Id
+      Name = name (unwrap player.Name + " (Cue Player)")
+      Client = Id Constants.CUEPLAYER_GROUP_DIR
+      Path = None
+      Pins = Map.ofList
+                [ (call.Id, call)
+                  (next.Id, next)
+                  (prev.Id, prev) ] }
+
 // * Map module
 
 module Map =
+
+  // ** tryFindPin
 
   //  _              _____ _           _ ____  _
   // | |_ _ __ _   _|  ___(_)_ __   __| |  _ \(_)_ __
@@ -375,6 +392,8 @@ module Map =
         | Some _ as res -> res
         |      _        -> Map.tryFind id group.Pins
     Map.fold folder None groups
+
+  // ** containsPin
 
   //                  _        _           ____  _
   //   ___ ___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
