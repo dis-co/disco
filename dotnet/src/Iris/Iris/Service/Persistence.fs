@@ -125,6 +125,24 @@ module Persistence =
     |> Directory.createDirectory
     |> ignore
 
+  // ** persistWithSubdir
+
+  let inline private persistWithSubdir (basePath: FilePath) (thing: ^t) =
+    either {
+      let path = Asset.path thing
+      do ensureDirectory path
+      do! Asset.save basePath thing
+    }
+
+  // ** removeWithSubdir
+
+  let inline private removeWithSubdir (basePath: FilePath) (thing: ^t) =
+    either {
+      let path = Asset.path thing
+      do! path |> Path.concat basePath |> Asset.delete
+      Directory.removeDirectory path |> ignore
+    }
+
   // ** removePinGroup
 
   let private removePinGroup (basePath: FilePath) (group: PinGroup) =
@@ -205,6 +223,28 @@ module Persistence =
     | AddPinGroup    group
     | UpdatePinGroup group -> persistPinGroup basePath group
     | RemovePinGroup group -> removePinGroup basePath group
+
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+
+    | AddPinMapping    mapping
+    | UpdatePinMapping mapping -> persistWithSubdir basePath mapping
+    | RemovePinMapping mapping -> removeWithSubdir basePath mapping
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+
+    | AddPinWidget    widget
+    | UpdatePinWidget widget -> persistWithSubdir basePath widget
+    | RemovePinWidget widget -> removeWithSubdir basePath widget
 
     //  _   _
     // | | | |___  ___ _ __

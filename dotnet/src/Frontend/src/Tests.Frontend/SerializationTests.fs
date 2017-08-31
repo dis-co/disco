@@ -178,6 +178,7 @@ module SerializationTests =
     { Project    = mkProject ()
     ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
     ; PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
+    ; PinWidgets = mkPinWidget () |> fun (map: PinWidget) -> Map.ofArray [| (map.Id, map) |]
     ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -217,6 +218,12 @@ module SerializationTests =
             AddPinGroup             <| mkPinGroup ()
             UpdatePinGroup          <| mkPinGroup ()
             RemovePinGroup          <| mkPinGroup ()
+            AddPinMapping           <| mkPinMapping ()
+            UpdatePinMapping        <| mkPinMapping ()
+            RemovePinMapping        <| mkPinMapping ()
+            AddPinWidget            <| mkPinWidget ()
+            UpdatePinWidget         <| mkPinWidget ()
+            RemovePinWidget         <| mkPinWidget ()
             AddClient               <| mkClient ()
             UpdateSlices            <| mkSlicesMap ()
             UpdateClient            <| mkClient ()
@@ -358,6 +365,12 @@ module SerializationTests =
       ; AddPinGroup             <| mkPinGroup ()
       ; UpdatePinGroup          <| mkPinGroup ()
       ; RemovePinGroup          <| mkPinGroup ()
+      ; AddPinMapping           <| mkPinMapping ()
+      ; UpdatePinMapping        <| mkPinMapping ()
+      ; RemovePinMapping        <| mkPinMapping ()
+      ; AddPinWidget            <| mkPinWidget ()
+      ; UpdatePinWidget         <| mkPinWidget ()
+      ; RemovePinWidget         <| mkPinWidget ()
       ; AddClient               <| mkClient ()
       ; UpdateSlices            <| mkSlicesMap ()
       ; UpdateClient            <| mkClient ()

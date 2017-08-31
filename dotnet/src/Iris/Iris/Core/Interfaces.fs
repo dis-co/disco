@@ -230,6 +230,23 @@ type IrisEvent =
       | Append (Origin.Service _, RemovePinMapping _)
       | Append (Origin.Web     _, RemovePinMapping _)        -> Replicate
 
+      // __        ___     _            _
+      // \ \      / (_) __| | __ _  ___| |_
+      //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+      //   \ V  V / | | (_| | (_| |  __/ |_
+      //    \_/\_/  |_|\__,_|\__, |\___|\__|
+      //                     |___/
+
+      | Append (Origin.Client  _, AddPinWidget _)
+      | Append (Origin.Service _, AddPinWidget _)
+      | Append (Origin.Web     _, AddPinWidget _)
+      | Append (Origin.Client  _, UpdatePinWidget _)
+      | Append (Origin.Service _, UpdatePinWidget _)
+      | Append (Origin.Web     _, UpdatePinWidget _)
+      | Append (Origin.Client  _, RemovePinWidget _)
+      | Append (Origin.Service _, RemovePinWidget _)
+      | Append (Origin.Web     _, RemovePinWidget _)         -> Replicate
+
       //  ____            _           _
       // |  _ \ _ __ ___ (_) ___  ___| |_
       // | |_) | '__/ _ \| |/ _ \/ __| __|

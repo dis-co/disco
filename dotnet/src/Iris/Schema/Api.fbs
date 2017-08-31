@@ -40,6 +40,7 @@ union ParameterFB {
      RaftMemberFB,
      PinGroupFB,
      PinMappingFB,
+     PinWidgetFB,
      PinFB,
      CueFB,
      CueListFB,

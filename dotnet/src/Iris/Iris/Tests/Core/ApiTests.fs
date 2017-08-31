@@ -29,6 +29,7 @@ module ApiTests =
     { Project            = project
       PinGroups          = Map.empty
       PinMappings        = Map.empty
+      PinWidgets         = Map.empty
       Cues               = Map.empty
       CueLists           = Map.empty
       Sessions           = Map.empty

@@ -203,6 +203,7 @@ module Constants =
       CUELIST_DIR
       PINGROUP_DIR
       PINMAPPING_DIR
+      PINWIDGET_DIR
       CUEPLAYER_DIR ]
 
   //  __  __            _     _             ____             __ _

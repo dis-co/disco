@@ -1047,6 +1047,7 @@ module Generators =
   let stateGen = gen {
     let! project = projectGen
     let! groups = mapGen pingroupGen
+    let! widgets = mapGen pinWidgetGen
     let! mappings = mapGen pinMappingGen
     let! cues = mapGen cueGen
     let! cuelists = mapGen cuelistGen
@@ -1059,6 +1060,7 @@ module Generators =
       { Project            = project
         PinGroups          = groups
         PinMappings        = mappings
+        PinWidgets         = widgets
         Cues               = cues
         CueLists           = cuelists
         Sessions           = sessions
@@ -1086,6 +1088,9 @@ module Generators =
       Gen.map AddPinMapping           pinMappingGen
       Gen.map UpdatePinMapping        pinMappingGen
       Gen.map RemovePinMapping        pinMappingGen
+      Gen.map AddPinWidget            pinWidgetGen
+      Gen.map UpdatePinWidget         pinWidgetGen
+      Gen.map RemovePinWidget         pinWidgetGen
       Gen.map AddPinGroup             pingroupGen
       Gen.map UpdatePinGroup          pingroupGen
       Gen.map RemovePinGroup          pingroupGen
