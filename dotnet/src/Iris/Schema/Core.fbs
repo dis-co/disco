@@ -680,9 +680,9 @@ table CuePlayerFB {
       CueList:       string;
       Selected:      int;
       LastCalled:    string;
-      Call:          PinFB;
-      Next:          PinFB;
-      Previous:      PinFB;
+      Call:          string;
+      Next:          string;
+      Previous:      string;
       RemainingWait: int;
       LastCaller:    string;
 }

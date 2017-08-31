@@ -753,11 +753,7 @@ module State =
         PinGroups =
           Map.map
             (fun _ group -> PinGroup.processSlices group map.Slices)
-            state.PinGroups
-        CuePlayers =
-          Map.map
-            (fun _ player -> CuePlayer.processSlices player map.Slices)
-            state.CuePlayers }
+            state.PinGroups }
 
   // ** tryFindPin
 

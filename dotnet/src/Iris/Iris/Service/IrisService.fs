@@ -514,10 +514,28 @@ module IrisService =
 
   // ** publishEvent
 
-  let private publishEvent (pipeline: IPipeline<IrisEvent>) cmd =
+  let private publishEvent (store: IAgentStore<IrisState>) (pipeline: IPipeline<IrisEvent>) cmd =
     match cmd with
+    /// globally set the loglevel to the desired value
     | IrisEvent.Append(Origin.Raft, SetLogLevel level) ->
       do Logger.setLevel level
+
+    /// when a cue player is created, also add a special pingroup for that player
+    | IrisEvent.Append(Origin.Raft, AddCuePlayer player) ->
+      player
+      |> PinGroup.ofPlayer
+      |> AddPinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
+    /// when a cue player is deleted, also delete the special pingroup for that player
+    | IrisEvent.Append(Origin.Raft, RemoveCuePlayer player) ->
+      player
+      |> PinGroup.ofPlayer
+      |> RemovePinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
     | _ -> ()
     pipeline.Push cmd
 
@@ -528,7 +546,7 @@ module IrisService =
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
     | Ignore    -> Observable.onNext store.State.Subscriptions cmd
-    | Publish   -> publishEvent pipeline cmd
+    | Publish   -> publishEvent store pipeline cmd
 
   // ** createDispatcher
 

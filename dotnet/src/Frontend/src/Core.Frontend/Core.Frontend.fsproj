@@ -13,10 +13,10 @@
     <Compile Include="../../../Iris/Iris/Core/Error.fs" />
     <Compile Include="../../../Iris/Iris/Core/Serialization.fs" />
     <Compile Include="../../../Iris/Iris/Core/Id.fs" />
+    <Compile Include="../../../Iris/Iris/Core/Aliases.fs" />
     <Compile Include="../../../Iris/Iris/Core/Util.fs" />
     <Compile Include="../../../Iris/Iris/Core/Property.fs" />
     <Compile Include="../../../Iris/Iris/Core/IpAddress.fs" />
-    <Compile Include="../../../Iris/Iris/Core/Aliases.fs" />
     <Compile Include="../../../Iris/Iris/Core/Platform.fs" />
     <Compile Include="../../../Iris/Iris/Core/FileSystem.fs" />
     <Compile Include="../../../Iris/Iris/Core/Network.fs" />
@@ -30,12 +30,12 @@
     <Compile Include="../../../Iris/Iris/Raft/Member.fs" />
     <Compile Include="../../../Iris/Iris/Core/Uri.fs" />
     <Compile Include="../../../Iris/Iris/Core/Pin.fs" />
+    <Compile Include="../../../Iris/Iris/Core/CuePlayer.fs" />
     <Compile Include="../../../Iris/Iris/Core/PinGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/Cue.fs" />
     <Compile Include="../../../Iris/Iris/Core/CueReference.fs" />
     <Compile Include="../../../Iris/Iris/Core/CueGroup.fs" />
     <Compile Include="../../../Iris/Iris/Core/CueList.fs" />
-    <Compile Include="../../../Iris/Iris/Core/CuePlayer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Renderer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Project.fs" />
     <Compile Include="../../../Iris/Iris/Core/Discovery.fs" />

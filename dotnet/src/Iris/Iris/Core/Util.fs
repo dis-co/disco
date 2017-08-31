@@ -312,6 +312,12 @@ module String =
   let format (format: string) (o: obj) =
     String.Format(format, o)
 
+// * NameUtils
+
+module NameUtils =
+
+  let (+) (name1: Name) (name2: Name) = name (unwrap name1 + unwrap name2)
+
 // * Time
 
 //  _____ _
