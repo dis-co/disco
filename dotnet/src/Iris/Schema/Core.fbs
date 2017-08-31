@@ -676,6 +676,7 @@ table ProjectFB {
 table CuePlayerFB {
       Id:            string;
       Name:          string;
+      Locked:        bool;
       CueList:       string;
       Selected:      int;
       LastCalled:    string;

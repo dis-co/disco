@@ -154,6 +154,7 @@ module SerializationTests =
 
     { Id = Id.Create()
       Name = rndname ()
+      Locked = false
       CueList = rndopt ()
       Selected = index (rand.Next(0,1000))
       Call = mkPin()
