@@ -15,6 +15,25 @@ open System.Threading
 [<AutoOpen>]
 module SerializationTests =
 
+  //  ____  _       __  __                   _
+  // |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+  // | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+  // |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+  // |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+  //                            |_|   |_|            |___/
+
+  let test_binary_pin_mapping =
+    testCase "PinMapping binary serialization should work" <| fun _ ->
+      binaryEncDec<PinMapping>
+      |> Prop.forAll Generators.pinMappingArb
+      |> Check.QuickThrowOnFailure
+
+  let test_yaml_pin_mapping =
+    testCase "PinMapping yaml serialization should work" <| fun _ ->
+      yamlEncDec<PinMapping>
+      |> Prop.forAll Generators.pinMappingArb
+      |> Check.QuickThrowOnFailure
+
   //   ____                                          _ ____        _       _
   //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
   // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
@@ -497,6 +516,8 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_binary_pin_mapping
+      test_yaml_pin_mapping
       test_command_batch
       test_correct_request_serialization
       tests_parse_state_deserialization

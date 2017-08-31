@@ -39,6 +39,7 @@ module Store =
     let state =
       { Project            = project
         PinGroups          = Map.empty
+        PinMappings        = Map.empty
         Cues               = Map.empty
         CueLists           = Map.empty
         Users              = Map.empty
@@ -47,7 +48,7 @@ module Store =
         CuePlayers         = Map.empty
         DiscoveredServices = Map.empty }
 
-    let store : Store = new Store(state)
+    let store : Store = Store(state)
     wrap group store
 
   let main () =

@@ -708,6 +708,19 @@ table SlicesMapFB {
       Slices: [SlicesFB];
 }
 
+//  ____  _       __  __                   _
+// |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+// | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+// |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+// |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+//                            |_|   |_|            |___/
+
+table PinMappingFB {
+      Id: string;
+      Source: string;
+      Sinks: [string];
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -717,6 +730,7 @@ table SlicesMapFB {
 table StateFB {
       Project:            ProjectFB;
       PinGroups:          [PinGroupFB];
+      PinMappings:        [PinMappingFB];
       Cues:               [CueFB];
       CueLists:           [CueListFB];
       Sessions:           [SessionFB];
@@ -749,7 +763,8 @@ union StateMachinePayloadFB {
       CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB,
-      CommandBatchFB
+      CommandBatchFB,
+      PinMappingFB
 }
 
 enum StateMachineActionFB:ushort {

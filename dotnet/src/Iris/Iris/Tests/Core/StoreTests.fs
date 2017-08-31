@@ -20,6 +20,7 @@ module StoreTests =
     let state =
       { Project            = project
         PinGroups          = Map.empty
+        PinMappings        = Map.empty
         Cues               = Map.empty
         CueLists           = Map.empty
         Users              = Map.empty

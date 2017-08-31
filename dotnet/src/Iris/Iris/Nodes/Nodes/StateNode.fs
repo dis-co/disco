@@ -40,6 +40,10 @@ type StateNode() =
   val mutable OutPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]
+  [<Output("PinMappings")>]
+  val mutable OutPinMappings: ISpread<PinMapping>
+
+  [<DefaultValue>]
   [<Output("Cues")>]
   val mutable OutCues: ISpread<Cue>
 
@@ -74,6 +78,11 @@ type StateNode() =
           |> Map.toArray
           |> Array.map snd
 
+        let mappings =
+          state.PinMappings
+          |> Map.toArray
+          |> Array.map snd
+
         let cues =
           state.Cues
           |> Map.toArray
@@ -100,6 +109,7 @@ type StateNode() =
           |> Array.map snd
 
         self.OutPinGroups.SliceCount <- Array.length groups
+        self.OutPinMappings.SliceCount <- Array.length mappings
         self.OutCues.SliceCount <- Array.length cues
         self.OutCueLists.SliceCount <- Array.length cuelists
         self.OutSessions.SliceCount <- Array.length sessions
@@ -107,6 +117,7 @@ type StateNode() =
         self.OutClients.SliceCount <- Array.length clients
 
         self.OutPinGroups.AssignFrom groups
+        self.OutPinMappings.AssignFrom mappings
         self.OutCues.AssignFrom cues
         self.OutCueLists.AssignFrom cuelists
         self.OutSessions.AssignFrom sessions

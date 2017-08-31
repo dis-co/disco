@@ -166,6 +166,9 @@
     <Compile Include="..\..\Iris\Core\Discovery.fs">
       <Link>Discovery.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\PinMapping.fs">
+      <Link>PinMapping.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\StateMachine.fs">
       <Link>StateMachine.fs</Link>
     </Compile>

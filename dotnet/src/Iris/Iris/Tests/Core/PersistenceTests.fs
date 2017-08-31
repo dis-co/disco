@@ -30,6 +30,7 @@ module PersistenceTests =
         machine,
         { Project            = project
           PinGroups          = Map.empty
+          PinMappings        = Map.empty
           Cues               = Map.empty
           CueLists           = Map.empty
           Sessions           = Map.empty

@@ -145,6 +145,11 @@ module SerializationTests =
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
 
+  let mkPinMapping _ =
+    { Id = Id.Create()
+      Source = Id.Create()
+      Sinks = Set [| Id.Create(); Id.Create() |] }
+
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
@@ -167,6 +172,7 @@ module SerializationTests =
   let mkState _ =
     { Project    = mkProject ()
     ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
     ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -231,6 +237,11 @@ module SerializationTests =
           yield  mkCue () |]
       |> Array.iter check
       finish()
+
+    testSync "Validate PinMapping Serialization" <| fun () ->
+      let mapping : PinMapping = mkPinMapping ()
+      let remapping = mapping |> Binary.encode |> Binary.decode |> Either.get
+      equals mapping remapping
 
     testSync "Validate Cue Serialization" <| fun () ->
       let cue : Cue = mkCue ()

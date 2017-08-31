@@ -39,6 +39,7 @@
     <Compile Include="../../../Iris/Iris/Core/Renderer.fs" />
     <Compile Include="../../../Iris/Iris/Core/Project.fs" />
     <Compile Include="../../../Iris/Iris/Core/Discovery.fs" />
+    <Compile Include="../../../Iris/Iris/Core/PinMapping.fs" />
     <Compile Include="../../../Iris/Iris/Core/StateMachine.fs" />
     <Compile Include="../../../Iris/Iris/Core/Commands.fs" />
     <Compile Include="../../../Iris/Iris/Core/ClientMessage.fs" />
