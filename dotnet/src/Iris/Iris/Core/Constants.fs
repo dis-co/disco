@@ -183,6 +183,9 @@ module Constants =
   let PINGROUP_DIR = "pingroups"
 
   [<Literal>]
+  let PINMAPPING_DIR = "pinmappings"
+
+  [<Literal>]
   let CUEPLAYER_DIR = "players"
 
   //  __  __            _     _             ____             __ _

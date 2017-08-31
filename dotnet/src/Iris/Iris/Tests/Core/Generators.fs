@@ -803,6 +803,23 @@ module Generators =
           Groups = groups }
     }
 
+  //  ____  _       __  __                   _
+  // |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+  // | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+  // |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+  // |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+  //                            |_|   |_|            |___/
+
+  let pinMappingGen = gen {
+      let! id = idGen
+      let! source = idGen
+      let! sinks = Gen.arrayOf idGen |> Gen.map Set
+      return
+        { Id = id
+          Source = source
+          Sinks = sinks }
+    }
+
   //   ____           ____  _
   //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
   // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
@@ -1315,3 +1332,4 @@ module Generators =
   let stateArb = Arb.fromGen stateGen
   let requestArb = Arb.fromGen requestGen
   let commandBatchArb = Arb.fromGen stateMachineBatchGen
+  let pinMappingArb = Arb.fromGen pinMappingGen

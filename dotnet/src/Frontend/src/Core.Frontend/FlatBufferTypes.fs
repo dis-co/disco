@@ -1871,6 +1871,32 @@ type SlicesMapFBConstructor =
 
 let SlicesMapFB: SlicesMapFBConstructor = failwith "JS only"
 
+//  ____  _       __  __                   _
+// |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+// | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+// |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+// |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+//                            |_|   |_|            |___/
+
+type PinMappingFB =
+  abstract Id: string
+  abstract Source: string
+  abstract Sinks: int -> string
+  abstract SinksLength: int
+
+type PinMappingFBConstructor =
+  abstract prototype: PinMappingFB with get, set
+  abstract StartPinMappingFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddSource: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract AddSinks: builder:FlatBufferBuilder * source:Offset<'a> -> unit
+  abstract EndPinMappingFB: builder:FlatBufferBuilder -> Offset<PinMappingFB>
+  abstract GetRootAsPinMappingFB: bytes:ByteBuffer -> PinMappingFB
+  abstract CreateSinksVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract Create: unit -> PinMappingFB
+
+let PinMappingFB: PinMappingFBConstructor = failwith "JS only"
+
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
