@@ -150,6 +150,11 @@ module SerializationTests =
       Source = Id.Create()
       Sinks = Set [| Id.Create(); Id.Create() |] }
 
+  let mkPinWidget _ =
+    { Id = Id.Create()
+      Name = rndname()
+      WidgetType = Id.Create() }
+
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
@@ -237,6 +242,11 @@ module SerializationTests =
           yield  mkCue () |]
       |> Array.iter check
       finish()
+
+    testSync "Validate PinWidget Serialization" <| fun () ->
+      let widget : PinWidget = mkPinWidget ()
+      let rewidget = widget |> Binary.encode |> Binary.decode |> Either.get
+      equals widget rewidget
 
     testSync "Validate PinMapping Serialization" <| fun () ->
       let mapping : PinMapping = mkPinMapping ()

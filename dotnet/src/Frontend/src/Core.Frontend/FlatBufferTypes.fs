@@ -1901,6 +1901,30 @@ type PinMappingFBConstructor =
 
 let PinMappingFB: PinMappingFBConstructor = failwith "JS only"
 
+//  ____  _    __        ___     _            _
+// |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+// | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+// |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+// |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+//                                 |___/
+
+type PinWidgetFB =
+  abstract Id: string
+  abstract Name: string
+  abstract WidgetType: string
+
+type PinWidgetFBConstructor =
+  abstract prototype: PinWidgetFB with get, set
+  abstract StartPinWidgetFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddName: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract AddWidgetType: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract EndPinWidgetFB: builder:FlatBufferBuilder -> Offset<PinWidgetFB>
+  abstract GetRootAsPinWidgetFB: bytes:ByteBuffer -> PinWidgetFB
+  abstract Create: unit -> PinWidgetFB
+
+let PinWidgetFB: PinWidgetFBConstructor = failwith "JS only"
+
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
