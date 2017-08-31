@@ -182,7 +182,7 @@ let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
 let userScripts = scriptsDir @@ "User"
 let devScripts = scriptsDir @@ "Dev"
 
-let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "files"
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tool2" @@ "public"
 
 let useNix = Directory.Exists("/nix")
 
@@ -472,7 +472,7 @@ Target "CopyAssets" (fun _ ->
     ; userScripts @@ "runiris.cmd"
     ; userScripts @@ "mockclient.cmd"
     ] |> List.iter (CopyFile "bin/")
-    FileUtils.cp (docsDir @@ "test_package.md") "bin/README.md"
+    FileUtils.cp (__SOURCE_DIRECTORY__ @@ "docs/files/test_package.md") "bin/README.md"
     // Frontend
     SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
     SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
@@ -482,6 +482,7 @@ Target "CopyAssets" (fun _ ->
 
 Target "CopyDocs"
   (fun _ ->
+    runExec DotNet.dotnetExePath "fable npm-build" (__SOURCE_DIRECTORY__ @@ "docs/tools2") false
     SilentCopyDir "bin/Docs" docsDir (konst true))
 
 //     _             _     _
@@ -952,7 +953,7 @@ Target "Release" DoNothing
 
 "CopyBinaries"
 ==> "CopyAssets"
-// ==> "CopyDocs"
+==> "CopyDocs"
 ==> "GenerateManifest"
 ==> "CreateArchive"
 
