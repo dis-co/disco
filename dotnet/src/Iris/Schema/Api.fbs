@@ -28,6 +28,7 @@ enum ApiCommandFB:ushort {
      RedoFB,
      ResetFB,
      SaveFB,
+     DataSnapshotFB,
      SetLogLevelFB,
      CallCueFB,
 }
@@ -38,6 +39,7 @@ union ParameterFB {
      ProjectFB,
      RaftMemberFB,
      PinGroupFB,
+     PinMappingFB,
      PinFB,
      CueFB,
      CueListFB,

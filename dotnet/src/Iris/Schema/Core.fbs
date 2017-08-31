@@ -730,6 +730,7 @@ table PinMappingFB {
 table StateFB {
       Project:            ProjectFB;
       PinGroups:          [PinGroupFB];
+      PinMappings:        [PinMappingFB];
       Cues:               [CueFB];
       CueLists:           [CueListFB];
       Sessions:           [SessionFB];
@@ -762,7 +763,8 @@ union StateMachinePayloadFB {
       CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB,
-      CommandBatchFB
+      CommandBatchFB,
+      PinMappingFB
 }
 
 enum StateMachineActionFB:ushort {

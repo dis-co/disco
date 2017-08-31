@@ -1030,6 +1030,7 @@ module Generators =
   let stateGen = gen {
     let! project = projectGen
     let! groups = mapGen pingroupGen
+    let! mappings = mapGen pinMappingGen
     let! cues = mapGen cueGen
     let! cuelists = mapGen cuelistGen
     let! sessions = mapGen sessionGen
@@ -1040,6 +1041,7 @@ module Generators =
     return
       { Project            = project
         PinGroups          = groups
+        PinMappings        = mappings
         Cues               = cues
         CueLists           = cuelists
         Sessions           = sessions
@@ -1064,6 +1066,9 @@ module Generators =
       Gen.map AddClient               clientGen
       Gen.map UpdateClient            clientGen
       Gen.map RemoveClient            clientGen
+      Gen.map AddPinMapping           pinMappingGen
+      Gen.map UpdatePinMapping        pinMappingGen
+      Gen.map RemovePinMapping        pinMappingGen
       Gen.map AddPinGroup             pingroupGen
       Gen.map UpdatePinGroup          pingroupGen
       Gen.map RemovePinGroup          pingroupGen
@@ -1258,12 +1263,11 @@ module Generators =
   //         |_|                   |_|
 
   let apiRequestGen =
-    // [ Gen.map      ApiRequest.Snapshot   stateGen
-    //   Gen.map      ApiRequest.Register   clientGen
-    //   Gen.map      ApiRequest.UnRegister clientGen
-    //   Gen.map      ApiRequest.Update     stateMachineGen ]
-
-    Gen.map ApiRequest.Update commandBatchGen
+    [ Gen.map      ApiRequest.Snapshot   stateGen
+      Gen.map      ApiRequest.Register   clientGen
+      Gen.map      ApiRequest.UnRegister clientGen
+      Gen.map      ApiRequest.Update     stateMachineGen ]
+    |> Gen.oneof
 
   //     _          _ _____
   //    / \   _ __ (_) ____|_ __ _ __ ___  _ __

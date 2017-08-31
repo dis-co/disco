@@ -188,6 +188,14 @@ module Constants =
   [<Literal>]
   let CUEPLAYER_DIR = "players"
 
+  let GLOBAL_ASSET_DIRS =
+    [ USER_DIR
+      CUE_DIR
+      CUELIST_DIR
+      PINGROUP_DIR
+      PINMAPPING_DIR
+      CUEPLAYER_DIR ]
+
   //  __  __            _     _             ____             __ _
   // |  \/  | __ _  ___| |__ (_)_ __   ___ / ___|___  _ __  / _(_) __ _
   // | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \ |   / _ \| '_ \| |_| |/ _` |

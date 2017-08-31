@@ -213,6 +213,23 @@ type IrisEvent =
       | Append (Origin.Service _, CommandBatch _)
       | Append (Origin.Web     _, CommandBatch _)            -> Replicate
 
+      //  __  __                   _
+      // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+      // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+      // | |  | | (_| | |_) | |_) | | | | | (_| |
+      // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+      //              |_|   |_|            |___/
+
+      | Append (Origin.Client  _, AddPinMapping _)
+      | Append (Origin.Service _, AddPinMapping _)
+      | Append (Origin.Web     _, AddPinMapping _)
+      | Append (Origin.Client  _, UpdatePinMapping _)
+      | Append (Origin.Service _, UpdatePinMapping _)
+      | Append (Origin.Web     _, UpdatePinMapping _)
+      | Append (Origin.Client  _, RemovePinMapping _)
+      | Append (Origin.Service _, RemovePinMapping _)
+      | Append (Origin.Web     _, RemovePinMapping _)        -> Replicate
+
       //  ____            _           _
       // |  _ \ _ __ ___ (_) ___  ___| |_
       // | |_) | '__/ _ \| |/ _ \/ __| __|

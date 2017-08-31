@@ -161,6 +161,13 @@ type ApiRequest =
       |> Binary.toOffset builder
       |> withPayload ParameterFB.PinGroupFB cmd.ApiCommand
 
+    | Update (AddPinMapping    mapping as cmd)
+    | Update (UpdatePinMapping mapping as cmd)
+    | Update (RemovePinMapping mapping as cmd) ->
+      mapping
+      |> Binary.toOffset builder
+      |> withPayload ParameterFB.PinMappingFB cmd.ApiCommand
+
     | Update (AddPin    pin as cmd)
     | Update (UpdatePin pin as cmd)
     | Update (RemovePin pin as cmd) ->
@@ -217,7 +224,7 @@ type ApiRequest =
     | Update (DataSnapshot state) ->
       state
       |> Binary.toOffset builder
-      |> withPayload ParameterFB.StateFB ApiCommandFB.SnapshotFB
+      |> withPayload ParameterFB.StateFB ApiCommandFB.DataSnapshotFB
 
     // LOG
     | Update (LogMsg log) ->
@@ -265,6 +272,20 @@ type ApiRequest =
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return Snapshot state
+      }
+
+    | ApiCommandFB.DataSnapshotFB, ParameterFB.StateFB ->
+      either {
+        let! state =
+          let statish = fb.Parameter<StateFB>()
+          if statish.HasValue then
+            let value = statish.Value
+            State.FromFB(value)
+          else
+            "Empty StateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update(DataSnapshot state)
       }
 
     //   ____ _ _            _
@@ -485,11 +506,12 @@ type ApiRequest =
         return ApiRequest.Update (RemoveMember mem)
       }
 
-    //  ____       _       _
-    // |  _ \ __ _| |_ ___| |__
-    // | |_) / _` | __/ __| '_ \
-    // |  __/ (_| | || (__| | | |
-    // |_|   \__,_|\__\___|_| |_|
+    //   ____
+    //  / ___|_ __ ___  _   _ _ __
+    // | |  _| '__/ _ \| | | | '_ \
+    // | |_| | | | (_) | |_| | |_) |
+    //  \____|_|  \___/ \__,_| .__/
+    //                       |_|
 
     | ApiCommandFB.AddFB, ParameterFB.PinGroupFB ->
       either {
@@ -529,6 +551,53 @@ type ApiRequest =
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return ApiRequest.Update (RemovePinGroup group)
+      }
+
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+
+    | ApiCommandFB.AddFB, ParameterFB.PinMappingFB ->
+      either {
+        let! mapping =
+          let mappingish = fb.Parameter<PinMappingFB>()
+          if mappingish.HasValue then
+            let value = mappingish.Value
+            PinMapping.FromFB value
+          else
+            "Empty PinMappingFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (AddPinMapping mapping)
+      }
+    | ApiCommandFB.UpdateFB, ParameterFB.PinMappingFB ->
+      either {
+        let! mapping =
+          let mappingish = fb.Parameter<PinMappingFB>()
+          if mappingish.HasValue then
+            let value = mappingish.Value
+            PinMapping.FromFB value
+          else
+            "Empty PinMappingFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (UpdatePinMapping mapping)
+      }
+    | ApiCommandFB.RemoveFB, ParameterFB.PinMappingFB ->
+      either {
+        let! mapping =
+          let mappingish = fb.Parameter<PinMappingFB>()
+          if mappingish.HasValue then
+            let value = mappingish.Value
+            PinMapping.FromFB value
+          else
+            "Empty PinMappingFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (RemovePinMapping mapping)
       }
 
     //  ____  _

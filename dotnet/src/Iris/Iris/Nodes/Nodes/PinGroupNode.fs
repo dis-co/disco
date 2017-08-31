@@ -11,11 +11,12 @@ open Iris.Raft
 open Iris.Core
 open Iris.Nodes
 
-//  ____       _       _
-// |  _ \ __ _| |_ ___| |__
-// | |_) / _` | __/ __| '_ \
-// |  __/ (_| | || (__| | | |
-// |_|   \__,_|\__\___|_| |_|
+//   ____
+//  / ___|_ __ ___  _   _ _ __
+// | |  _| '__/ _ \| | | | '_ \
+// | |_| | | | (_) | |_| | |_) |
+//  \____|_|  \___/ \__,_| .__/
+//                       |_|
 
 [<PluginInfo(Name="PinGroup", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
 type PinGroupNode() =

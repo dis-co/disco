@@ -172,6 +172,7 @@ module SerializationTests =
   let mkState _ =
     { Project    = mkProject ()
     ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
     ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
