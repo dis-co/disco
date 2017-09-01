@@ -124,7 +124,7 @@ module Clock =
 
           let subscriptions = state.Subscriptions.ToArray()
           for KeyValue(_,obs) in subscriptions do
-            (Origin.Service, ev) |> IrisEvent.Append |> obs.OnNext
+            ev |> IrisEvent.appendService |> obs.OnNext
 
       Thread.Sleep state.Timeout
 

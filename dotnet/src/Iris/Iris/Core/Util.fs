@@ -312,6 +312,12 @@ module String =
   let format (format: string) (o: obj) =
     String.Format(format, o)
 
+// * NameUtils
+
+module NameUtils =
+
+  let (+) (name1: Name) (name2: Name) = name (unwrap name1 + unwrap name2)
+
 // * Time
 
 //  _____ _
@@ -596,9 +602,91 @@ module Console =
     AppDomain.CurrentDomain.ProcessExit.Add  disposer
     AppDomain.CurrentDomain.DomainUnload.Add disposer
 
+  // ** withForeground
+
+  let private withForeground pat fg (o: obj) =
+    let prevFg = Console.ForegroundColor
+    Console.ForegroundColor <- fg
+    Console.Write(pat,o)
+    Console.ForegroundColor <- prevFg
+
+  // ** colors
+
+  // Black         - The color black.
+  // Blue          - The color blue.
+  // Cyan          - The color cyan (blue-green).
+  // DarkBlue      - The color dark blue.
+  // DarkCyan      - The color dark cyan (dark blue-green).
+  // DarkGray      - The color dark gray.
+  // DarkGreen     - The color dark green.
+  // DarkMagenta   - The color dark magenta (dark purplish-red).
+  // DarkRed       - The color dark red.
+  // DarkYellow    - The color dark yellow (ochre).
+  // Gray          - The color gray.
+  // Green         - The color green.
+  // Magenta       - The color magenta (purplish-red).
+  // Red           - The color red.
+  // White         - The color white.
+  // Yellow        - The color yellow.
+
+  let black pat (thing: obj) =
+    withForeground pat ConsoleColor.Black thing
+
+  let white pat (thing: obj) =
+    withForeground pat ConsoleColor.White thing
+
+  let blue pat (thing: obj) =
+    withForeground pat ConsoleColor.Blue thing
+
+  let darkBlue pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkBlue thing
+
+  let cyan pat (thing: obj) =
+    withForeground pat ConsoleColor.Cyan thing
+
+  let darkCyan pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkCyan thing
+
+  let gray pat (thing: obj) =
+    withForeground pat ConsoleColor.Gray thing
+
+  let darkGray pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGray thing
+
+  let green pat (thing: obj) =
+    withForeground pat ConsoleColor.Green thing
+
+  let darkGreen pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkGreen thing
+
+  let magenta pat (thing: obj) =
+    withForeground pat ConsoleColor.Magenta thing
+
+  let darkMagenta pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkMagenta thing
+
+  let red pat (thing: obj) =
+    withForeground pat ConsoleColor.Red thing
+
+  let darkRed pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkRed thing
+
+  let yellow pat (thing: obj) =
+    withForeground pat ConsoleColor.Yellow thing
+
+  let darkYellow pat (thing: obj) =
+    withForeground pat ConsoleColor.DarkYellow thing
+
+  // ** isColorTerm
+
+  let isColorTerm () =
+    match Environment.GetEnvironmentVariable "TERM" with
+    | "st"    | "st-256color"
+    | "xterm" | "xterm-256color" -> true
+    | _ -> false
+
+
 #endif
-
-
 
 // * Guid
 

@@ -14,6 +14,57 @@ open System.Threading
 
 [<AutoOpen>]
 module SerializationTests =
+
+  //  ____  _    __        ___     _            _
+  // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+  // | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  // |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+  // |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+  //                                 |___/
+
+  let test_binary_pin_widget =
+    testCase "PinWidget binary serialization should work" <| fun _ ->
+      binaryEncDec<PinWidget>
+      |> Prop.forAll Generators.pinWidgetArb
+      |> Check.QuickThrowOnFailure
+
+  let test_yaml_pin_widget =
+    testCase "PinWidget yaml serialization should work" <| fun _ ->
+      yamlEncDec<PinWidget>
+      |> Prop.forAll Generators.pinWidgetArb
+      |> Check.QuickThrowOnFailure
+
+  //  ____  _       __  __                   _
+  // |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+  // | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+  // |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+  // |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+  //                            |_|   |_|            |___/
+
+  let test_binary_pin_mapping =
+    testCase "PinMapping binary serialization should work" <| fun _ ->
+      binaryEncDec<PinMapping>
+      |> Prop.forAll Generators.pinMappingArb
+      |> Check.QuickThrowOnFailure
+
+  let test_yaml_pin_mapping =
+    testCase "PinMapping yaml serialization should work" <| fun _ ->
+      yamlEncDec<PinMapping>
+      |> Prop.forAll Generators.pinMappingArb
+      |> Check.QuickThrowOnFailure
+
+  //   ____                                          _ ____        _       _
+  //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+  // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+  // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+  //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+  let test_command_batch =
+    testCase "StateMachineBatch serialization should work" <| fun _ ->
+      binaryEncDec<StateMachineBatch>
+      |> Prop.forAll Generators.commandBatchArb
+      |> Check.QuickThrowOnFailure
+
   //  ____                            _
   // |  _ \ ___  __ _ _   _  ___  ___| |_
   // | |_) / _ \/ _` | | | |/ _ \/ __| __|
@@ -46,12 +97,7 @@ module SerializationTests =
         |> Array.max
 
       let check request (rerequest: Request) =
-        try
-          Expect.equal rerequest request "Should be structurally equal"
-        with
-          | exn ->
-            printfn "actual: %A" request
-            raise exn
+        Expect.equal rerequest request "Should be structurally equal"
 
         Interlocked.Increment &count |> ignore
         if count = expected then
@@ -65,9 +111,8 @@ module SerializationTests =
         |> check request
 
       for binary in codata do
-        let buffer = manager.TakeBuffer()
-        Array.Copy(binary, buffer.Data, binary.Length)
-        builder.Process buffer 0 binary.Length
+        for bte in binary do
+          builder.Write bte
 
       waitOrDie "reset" reset |> noError
 
@@ -115,9 +160,8 @@ module SerializationTests =
 
       let mutable read = 0
       for chunk in chunked do
-        let buffer = manager.TakeBuffer()
-        Array.Copy(chunk, buffer.Data, chunk.Length)
-        parser.Process buffer 0 chunk.Length
+        for bte in chunk do
+          parser.Write bte
         Interlocked.Increment &read |> ignore
 
       waitOrDie "stopper" stopper |> noError
@@ -452,6 +496,13 @@ module SerializationTests =
       |> Prop.forAll Generators.discoveredArb
       |> Check.QuickThrowOnFailure
 
+  //     _          _ ____                            _
+  //    / \   _ __ (_)  _ \ ___  __ _ _   _  ___  ___| |_
+  //   / _ \ | '_ \| | |_) / _ \/ _` | | | |/ _ \/ __| __|
+  //  / ___ \| |_) | |  _ <  __/ (_| | |_| |  __/\__ \ |_
+  // /_/   \_\ .__/|_|_| \_\___|\__, |\__,_|\___||___/\__|
+  //         |_|                   |_|
+
   let test_validate_api_request_binary_serialization =
     testCase "Validate ApiRequest Binary Serialization" <| fun _ ->
       binaryEncDec<ApiRequest>
@@ -484,6 +535,11 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_binary_pin_widget
+      test_yaml_pin_widget
+      test_binary_pin_mapping
+      test_yaml_pin_mapping
+      test_command_batch
       test_correct_request_serialization
       tests_parse_state_deserialization
       test_save_restore_raft_value_correctly
@@ -512,6 +568,5 @@ module SerializationTests =
       test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
       test_validate_api_request_binary_serialization
-
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

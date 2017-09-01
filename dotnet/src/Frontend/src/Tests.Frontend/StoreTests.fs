@@ -18,6 +18,7 @@ module Store =
       { Id = Id "0xb4d1d34"
         Name = name "group-1"
         Client = Id.Create()
+        Path = None
         Pins = Map.empty }
 
     let machine =
@@ -38,6 +39,8 @@ module Store =
     let state =
       { Project            = project
         PinGroups          = Map.empty
+        PinMappings        = Map.empty
+        PinWidgets         = Map.empty
         Cues               = Map.empty
         CueLists           = Map.empty
         Users              = Map.empty
@@ -46,7 +49,7 @@ module Store =
         CuePlayers         = Map.empty
         DiscoveredServices = Map.empty }
 
-    let store : Store = new Store(state)
+    let store : Store = Store(state)
     wrap group store
 
   let main () =
@@ -112,7 +115,7 @@ module Store =
 
         equals 0 store.State.PinGroups.[group.Id].Pins.Count
 
-        let pin : Pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "hey" |]
+        let pin : Pin = Pin.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "hey" |]
 
         store.Dispatch <| AddPin(pin)
 
@@ -123,7 +126,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add an pin to the store if group does not exists" <| fun finish ->
-        let pin = Pin.string (Id "0xb33f") "url input" group.Id Array.empty [| "Ho" |]
+        let pin = Pin.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "Ho" |]
         store.Dispatch <| AddPin(pin)
         equals 0 store.State.PinGroups.Count
         finish ()
@@ -131,8 +134,8 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should update an pin in the store if it already exists" <| fun finish ->
-        let name1 = "can a cat own a cat?"
-        let name2 = "yes, cats are re-entrant."
+        let name1 = name "can a cat own a cat?"
+        let name2 = name "yes, cats are re-entrant."
 
         let pin = Pin.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
 
@@ -155,7 +158,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove an pin from the store if it exists" <| fun finish ->
-        let pin = Pin.string (Id "0xb33f") "hi" (Id "0xb4d1d34") Array.empty [| "oh my" |]
+        let pin =
+          Pin.string
+            (Id "0xb33f")
+            (name "hi")
+            (Id "0xb4d1d34")
+            Array.empty
+            [| "oh my" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)

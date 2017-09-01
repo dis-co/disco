@@ -24,7 +24,7 @@ module rec RaftServer =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,IClient>
+  type private Connections = ConcurrentDictionary<Id,ITcpClient>
 
   // ** Subscriptions
 
@@ -38,9 +38,9 @@ module rec RaftServer =
       Raft:           RaftValue
       Options:        IrisConfig
       Callbacks:      IRaftCallbacks
-      Server:         IServer
+      Server:         ITcpServer
       Disposables:    IDisposable list
-      Connections:    ConcurrentDictionary<Id,IClient>
+      Connections:    ConcurrentDictionary<Id,ITcpClient>
       Subscriptions:  Subscriptions
       Started:        AutoResetEvent
       Stopped:        AutoResetEvent }
@@ -180,13 +180,13 @@ module rec RaftServer =
 
   // ** registerPeerSocket
 
-  let private registerPeerSocket (agent: RaftAgent) (socket: IClient) =
+  let private registerPeerSocket (agent: RaftAgent) (socket: ITcpClient) =
     socket.Subscribe (Msg.ClientEvent >> tryPost agent) |> ignore
     socket
 
   // ** addPeerSocket
 
-  let private addPeerSocket (connections: Connections) (socket: IClient) =
+  let private addPeerSocket (connections: Connections) (socket: ITcpClient) =
     match connections.TryAdd(socket.ClientId, socket) with
     | true -> ()
     | false ->
@@ -263,25 +263,29 @@ module rec RaftServer =
 
         member self.ApplyLog cmd =
           Tracing.trace (tag "applyLog") <| fun () ->
-            IrisEvent.Append (Origin.Raft, cmd)
+            cmd
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberAdded mem =
           Tracing.trace (tag "memberAdded") <| fun () ->
-            IrisEvent.Append (Origin.Raft, AddMember mem)
+            AddMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberUpdated mem =
           Tracing.trace (tag "memberUpdated") <| fun () ->
-            IrisEvent.Append (Origin.Raft, UpdateMember mem)
+            UpdateMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
         member self.MemberRemoved mem =
           Tracing.trace (tag "memberRemoved") <| fun () ->
-            IrisEvent.Append (Origin.Raft, RemoveMember mem)
+            RemoveMember mem
+            |> IrisEvent.appendRaft
             |> Msg.Notify
             |> agent.Post
 
@@ -511,18 +515,15 @@ module rec RaftServer =
                                  (cmd: StateMachine)
                                  (raw: Request)
                                  (agent: RaftAgent) =
-
     Tracing.trace (tag "processAppendEntry") <| fun () ->
       if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
         match appendCommand state cmd with
         | Right (entry, newstate) ->     // command was appended, now queue a message and the later
-          let response =                // response to check its committed status, eventually
-            entry                       // timing out or responding to the server
-            |> AppendEntryResponse
-            |> Binary.encode
-            |> Response.fromRequest raw
-          (DateTime.Now, entry, response)
-          |> Msg.ReqCommitted
+          entry                         // response to check its committed status, eventually
+          |> AppendEntryResponse         // timing out or responding to the server
+          |> Binary.encode
+          |> Response.fromRequest raw
+          |> fun response -> Msg.ReqCommitted(DateTime.Now, entry, response)
           |> agent.Post
           newstate
         | Left (err, newstate) ->        // Request was unsuccessful, respond immeditately
@@ -1493,7 +1494,7 @@ module rec RaftServer =
 
       store.Update
         { Status = ServiceStatus.Stopped
-          Server = Unchecked.defaultof<IServer>
+          Server = Unchecked.defaultof<ITcpServer>
           Raft = raftState
           Options = config
           Callbacks = callbacks
@@ -1608,6 +1609,9 @@ module rec RaftServer =
 
             member self.IsLeader
               with get () = Raft.isLeader store.State.Raft
+
+            member self.RaftState
+              with get () = store.State.Raft.State
 
             member self.Leader
               with get () = Raft.getLeader store.State.Raft

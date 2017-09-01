@@ -44,6 +44,14 @@ type DispatchStrategy =
   | Ignore
   | Publish
 
+// * DispatchStrategy module
+
+[<AutoOpen>]
+module DispatchStrategy =
+
+  let inline dispatchStrategy (t: ^t when ^t : (member DispatchStrategy: DispatchStrategy)) =
+    (^t : (member DispatchStrategy: DispatchStrategy) t)
+
 // * DiscoveryEvent
 
 type DiscoveryEvent =
@@ -77,6 +85,14 @@ type ClockEvent =
   member tick.DispatchStrategy
     with get () = Publish
 
+// * FileSystemEvent
+
+type FileSystemEvent =
+  | Created of name:Name * path:FilePath
+  | Changed of name:Name * path:FilePath
+  | Renamed of oldname:Name * oldpath:FilePath *  name:Name * path:FilePath
+  | Deleted of name:Name * path:FilePath
+
 // * IrisEvent
 
 [<NoComparison;NoEquality>]
@@ -91,6 +107,7 @@ type IrisEvent =
   | Status              of ServiceStatus
   | GitPull             of remote:IpAddress
   | GitPush             of remote:IpAddress
+  | FileSystem          of fs:FileSystemEvent
   | Append              of origin:Origin * cmd:StateMachine
   | SessionOpened       of session:Id
   | SessionClosed       of session:Id
@@ -111,6 +128,7 @@ type IrisEvent =
     | SessionClosed       _  -> "SessionClosed"
     | GitPull             _  -> "GitPull"
     | GitPush             _  -> "GitPush"
+    | FileSystem          e  -> String.format "FileSystem ({0})" e
     | Append (origin,cmd) -> sprintf "Append(%s, %s)" (string origin) (string cmd)
 
   // ** Origin
@@ -129,7 +147,8 @@ type IrisEvent =
       | SessionClosed       _
       | GitPull             _
       | GitPush             _
-      | Status              _  -> None
+      | Status              _
+      | FileSystem          _  -> None
       | Append (origin,     _) -> Some origin
 
   // ** DispatchStrategy
@@ -139,6 +158,15 @@ type IrisEvent =
       match ev with
       | Status  _                                            -> Ignore
       | Started _                                            -> Publish
+
+      //  _____ _ _      ____            _
+      // |  ___(_) | ___/ ___| _   _ ___| |_ ___ _ __ ___
+      // | |_  | | |/ _ \___ \| | | / __| __/ _ \ '_ ` _ \
+      // |  _| | | |  __/___) | |_| \__ \ ||  __/ | | | | |
+      // |_|   |_|_|\___|____/ \__, |___/\__\___|_| |_| |_|
+      //                       |___/
+
+      | FileSystem          _                                -> Ignore
 
       //  ____        __ _
       // |  _ \ __ _ / _| |_
@@ -174,6 +202,50 @@ type IrisEvent =
       // *all* Raft and Api events get processed right away
       | Append (Origin.Raft, _)                              -> Publish
       | Append (Origin.Api,  _)                              -> Publish
+
+      //  ____        _       _
+      // | __ )  __ _| |_ ___| |__
+      // |  _ \ / _` | __/ __| '_ \
+      // | |_) | (_| | || (__| | | |
+      // |____/ \__,_|\__\___|_| |_|
+
+      | Append (Origin.Client  _, CommandBatch _)
+      | Append (Origin.Service _, CommandBatch _)
+      | Append (Origin.Web     _, CommandBatch _)            -> Replicate
+
+      //  __  __                   _
+      // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+      // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+      // | |  | | (_| | |_) | |_) | | | | | (_| |
+      // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+      //              |_|   |_|            |___/
+
+      | Append (Origin.Client  _, AddPinMapping _)
+      | Append (Origin.Service _, AddPinMapping _)
+      | Append (Origin.Web     _, AddPinMapping _)
+      | Append (Origin.Client  _, UpdatePinMapping _)
+      | Append (Origin.Service _, UpdatePinMapping _)
+      | Append (Origin.Web     _, UpdatePinMapping _)
+      | Append (Origin.Client  _, RemovePinMapping _)
+      | Append (Origin.Service _, RemovePinMapping _)
+      | Append (Origin.Web     _, RemovePinMapping _)        -> Replicate
+
+      // __        ___     _            _
+      // \ \      / (_) __| | __ _  ___| |_
+      //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+      //   \ V  V / | | (_| | (_| |  __/ |_
+      //    \_/\_/  |_|\__,_|\__, |\___|\__|
+      //                     |___/
+
+      | Append (Origin.Client  _, AddPinWidget _)
+      | Append (Origin.Service _, AddPinWidget _)
+      | Append (Origin.Web     _, AddPinWidget _)
+      | Append (Origin.Client  _, UpdatePinWidget _)
+      | Append (Origin.Service _, UpdatePinWidget _)
+      | Append (Origin.Web     _, UpdatePinWidget _)
+      | Append (Origin.Client  _, RemovePinWidget _)
+      | Append (Origin.Service _, RemovePinWidget _)
+      | Append (Origin.Web     _, RemovePinWidget _)         -> Replicate
 
       //  ____            _           _
       // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -234,10 +306,10 @@ type IrisEvent =
       | Append (Origin.Web     _, RemovePinGroup _)          -> Ignore
       | Append (Origin.Client  _, AddPinGroup    _)
       | Append (Origin.Client  _, UpdatePinGroup _)
-      | Append (Origin.Client  _, RemovePinGroup _)          -> Replicate
+      | Append (Origin.Client  _, RemovePinGroup _)
       | Append (Origin.Service _, AddPinGroup    _)
       | Append (Origin.Service _, UpdatePinGroup _)
-      | Append (Origin.Service _, RemovePinGroup _)          -> Ignore
+      | Append (Origin.Service _, RemovePinGroup _)          -> Replicate
 
       //  ____  _
       // |  _ \(_)_ __
@@ -250,10 +322,10 @@ type IrisEvent =
       | Append (Origin.Web     _, RemovePin _)               -> Ignore
       | Append (Origin.Client  _, AddPin    _)
       | Append (Origin.Client  _, UpdatePin _)
-      | Append (Origin.Client  _, RemovePin _)               -> Replicate
+      | Append (Origin.Client  _, RemovePin _)
       | Append (Origin.Service _, AddPin    _)
       | Append (Origin.Service _, UpdatePin _)
-      | Append (Origin.Service _, RemovePin _)               -> Ignore
+      | Append (Origin.Service _, RemovePin _)               -> Replicate
 
       //   ____
       //  / ___|   _  ___
@@ -407,3 +479,19 @@ type IrisEvent =
       // |_|  |_|_|___/\___|
 
       | Append (_, SetLogLevel  _)                           -> Replicate
+
+// * IrisEvent module
+
+module IrisEvent =
+
+  // ** append
+
+  let append origin cmd = IrisEvent.Append(origin, cmd)
+
+  // ** appendService
+
+  let appendService cmd = append Origin.Service cmd
+
+  // ** appendRaft
+
+  let appendRaft cmd = append Origin.Raft cmd

@@ -2884,11 +2884,10 @@ module Project =
       do! writeDaemonExportFile repo
       do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
-      do! createAssetDir repo (filepath CUE_DIR)
-      do! createAssetDir repo (filepath USER_DIR)
-      do! createAssetDir repo (filepath CUELIST_DIR)
-      do! createAssetDir repo (filepath PINGROUP_DIR)
-      do! createAssetDir repo (filepath CUEPLAYER_DIR)
+      do! List.fold
+            (fun m dir -> Either.bind (fun () -> createAssetDir repo (filepath dir)) m)
+            Either.nothing
+            Constants.GLOBAL_ASSET_DIRS
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
       let! _ =

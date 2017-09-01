@@ -25,11 +25,12 @@ open SharpYaml.Serialization
 type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Locked: bool
   [<DefaultValue>] val mutable CueList: string
   [<DefaultValue>] val mutable Selected: int
-  [<DefaultValue>] val mutable Call: PinYaml
-  [<DefaultValue>] val mutable Next: PinYaml
-  [<DefaultValue>] val mutable Previous: PinYaml
+  [<DefaultValue>] val mutable Call: string
+  [<DefaultValue>] val mutable Next: string
+  [<DefaultValue>] val mutable Previous: string
   [<DefaultValue>] val mutable RemainingWait: int
   [<DefaultValue>] val mutable LastCalled: string
   [<DefaultValue>] val mutable LastCaller: string
@@ -44,11 +45,12 @@ type CuePlayerYaml() =
       | None -> null
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
+    yaml.Locked <- player.Locked
     yaml.CueList <- opt2str player.CueList
     yaml.Selected <- int player.Selected
-    yaml.Call <- Yaml.toYaml player.Call
-    yaml.Next <- Yaml.toYaml player.Next
-    yaml.Previous <- Yaml.toYaml player.Previous
+    yaml.Call <- string player.Call
+    yaml.Next <- string player.Next
+    yaml.Previous <- string player.Previous
     yaml.RemainingWait <- player.RemainingWait
     yaml.LastCaller <- opt2str player.LastCaller
     yaml.LastCalled <- opt2str player.LastCalled
@@ -62,17 +64,14 @@ type CuePlayerYaml() =
         match str with
         | null -> None
         | thing -> Some (Id thing)
-
-      let! call = Yaml.fromYaml yaml.Call
-      let! next = Yaml.fromYaml yaml.Next
-      let! previous = Yaml.fromYaml yaml.Previous
       return { Id = Id yaml.Id
                Name = name yaml.Name
+               Locked = yaml.Locked
                CueList = str2opt yaml.CueList
                Selected = index yaml.Selected
-               Call = call
-               Next = next
-               Previous = previous
+               Call = Id yaml.Call
+               Next = Id yaml.Next
+               Previous = Id yaml.Previous
                RemainingWait = yaml.RemainingWait
                LastCaller = str2opt yaml.LastCaller
                LastCalled = str2opt yaml.LastCalled }
@@ -85,11 +84,12 @@ type CuePlayerYaml() =
 type CuePlayer =
   { Id: Id
     Name: Name
+    Locked: bool
     CueList: Id option
     Selected: int<index>
-    Call: Pin                           // Bang pin type
-    Next: Pin                           // Bang pin type
-    Previous: Pin                       // Bang pin type
+    Call: Id                           // should be Bang pin type
+    Next: Id                           // should be Bang pin type
+    Previous: Id                       // should be Bang pin type
     RemainingWait: int
     LastCalled: Id option
     LastCaller: Id option }
@@ -100,15 +100,16 @@ type CuePlayer =
     let id = player.Id |> string |> builder.CreateString
     let name = player.Name |> unwrap |> Option.mapNull builder.CreateString
     let cuelist = player.CueList |> Option.map (string >> builder.CreateString)
-    let call = Binary.toOffset builder player.Call
-    let next = Binary.toOffset builder player.Next
-    let previous = Binary.toOffset builder player.Previous
+    let call = player.Call |> string |> builder.CreateString
+    let next = player.Next |> string |> builder.CreateString
+    let previous = player.Previous |> string |> builder.CreateString
     let lastcalled = player.LastCalled |> Option.map (string >> builder.CreateString)
     let lastcaller = player.LastCaller |> Option.map (string >> builder.CreateString)
 
     CuePlayerFB.StartCuePlayerFB(builder)
     CuePlayerFB.AddId(builder, id)
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
+    CuePlayerFB.AddLocked(builder, player.Locked)
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
     CuePlayerFB.AddCall(builder, call)
@@ -138,55 +139,14 @@ type CuePlayer =
           None
         else Some (Id fb.LastCaller)
 
-      let! call =
-        #if FABLE_COMPILER
-        Pin.FromFB fb.Call
-        #else
-        let callish = fb.Call
-        if callish.HasValue then
-          callish.Value
-          |> Pin.FromFB
-        else
-          "Could not parse empty Call field"
-          |> Error.asParseError "CuePlayer"
-          |> Either.fail
-        #endif
-
-      let! next =
-        #if FABLE_COMPILER
-        Pin.FromFB fb.Next
-        #else
-        let nextish = fb.Next
-        if nextish.HasValue then
-          nextish.Value
-          |> Pin.FromFB
-        else
-          "Could not parse empty Next field"
-          |> Error.asParseError "CuePlayer"
-          |> Either.fail
-        #endif
-
-      let! previous =
-        #if FABLE_COMPILER
-        Pin.FromFB fb.Previous
-        #else
-        let previousish = fb.Previous
-        if previousish.HasValue then
-          previousish.Value
-          |> Pin.FromFB
-        else
-          "Could not parse empty Previous field"
-          |> Error.asParseError "CuePlayer"
-          |> Either.fail
-        #endif
-
       return { Id = Id fb.Id
                Name = name fb.Name
+               Locked = fb.Locked
                CueList = cuelist
                Selected = index fb.Selected
-               Call = call
-               Next = next
-               Previous = previous
+               Call = Id fb.Call
+               Next = Id fb.Next
+               Previous = Id fb.Previous
                RemainingWait = fb.RemainingWait
                LastCalled = lastcalled
                LastCaller = lastcaller }
@@ -259,30 +219,25 @@ type CuePlayer =
 
 module CuePlayer =
 
+  open NameUtils
+
   // ** create
 
-  let create (name: Name) (cuelist: Id option) =
+  let create (playerName: Name) (cuelist: Id option) =
     let id = Id.Create()
-    { Id = id
-      Name = name
-      CueList = cuelist
-      Selected = -1<index>
-      Call = Pin.Player.call id
-      Next = Pin.Player.next id
-      Previous = Pin.Player.previous id
+    { Id            = id
+      Name          = playerName
+      Locked        = false
+      CueList       = cuelist
+      Selected      = -1<index>
+      Call          = Pin.Player.callId     id
+      Next          = Pin.Player.nextId     id
+      Previous      = Pin.Player.previousId id
       RemainingWait = -1
-      LastCalled = None
-      LastCaller = None }
+      LastCalled    = None
+      LastCaller    = None }
 
   // ** assetPath
 
   let assetPath (player: CuePlayer) =
-    CUEPLAYER_DIR <.> sprintf "%s%s" (string player.Id) ASSET_EXTENSION
-
-  // ** updateSlices
-
-  let updateSlices (slices: Slices) (player: CuePlayer) =
-    { player with
-        Call = Pin.setSlices slices player.Call
-        Next = Pin.setSlices slices player.Next
-        Previous = Pin.setSlices slices player.Previous }
+    CUEPLAYER_DIR <.> sprintf "%O%s" player.Id ASSET_EXTENSION

@@ -81,6 +81,9 @@ module TestData =
   let rndint() =
     rand.Next()
 
+  let rndbool() =
+    rand.Next(0,2) |> Convert.ToBoolean
+
   let mkTags () =
     [| for n in 0 .. rand.Next(1,20) do
         let guid = Guid.NewGuid()
@@ -114,7 +117,7 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.toggle (mk()) (rndstr()) (mk()) (mkTags()) [| true |]
+    Pin.toggle (mk()) (rndname()) (mk()) (mkTags()) [| true |]
 
   let mkOptional(f:unit->'T): 'T option =
     if rand.Next(0,2) > 0 then f() |> Some else None
@@ -150,18 +153,18 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.bang      (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.toggle    (mk()) (rndstr()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.string    (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.multiLine (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.fileName  (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.directory (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.url       (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.ip        (mk()) (rndstr()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.number    (mk()) (rndstr()) (mk()) (mkTags()) (mkNumbers())
-    ;  Pin.bytes     (mk()) (rndstr()) (mk()) (mkTags()) (mkBytes())
-    ;  Pin.color     (mk()) (rndstr()) (mk()) (mkTags()) (mkColors())
-    ;  Pin.enum      (mk()) (rndstr()) (mk()) (mkTags()) (mkProps()) (mkProps())
+    [| Pin.bang      (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.toggle    (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.string    (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.multiLine (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.fileName  (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.directory (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.url       (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.ip        (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.number    (mk()) (rndname()) (mk()) (mkTags()) (mkNumbers())
+    ;  Pin.bytes     (mk()) (rndname()) (mk()) (mkTags()) (mkBytes())
+    ;  Pin.color     (mk()) (rndname()) (mk()) (mkTags()) (mkColors())
+    ;  Pin.enum      (mk()) (rndname()) (mk()) (mkTags()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =
@@ -201,11 +204,12 @@ module TestData =
 
     { Id = Id.Create()
       Name = rndname ()
+      Locked = rndbool ()
       CueList = rndopt ()
       Selected = index (rand.Next(0,1000))
-      Call = mkPin()
-      Next = mkPin()
-      Previous = mkPin()
+      Call = Id.Create()
+      Next = Id.Create()
+      Previous = Id.Create()
       RemainingWait = rand.Next(0,1000)
       LastCaller = rndopt()
       LastCalled = rndopt() }
@@ -235,17 +239,36 @@ module TestData =
   let mkPinGroup () : Iris.Core.PinGroup =
     let pins =
       mkPins ()
-      |> Array.map toPair
+      |> Array.map (Pin.setPersisted true >> toPair)
       |> Map.ofArray
 
     { Id = Id.Create()
       Name = rndname ()
+      Path = Some (filepath "/dev/null")
       Client = Id.Create()
       Pins = pins }
+
+  let mkPinMapping() =
+    { Id = Id.Create()
+      Source = Id.Create()
+      Sinks = Set [ Id.Create() ] }
+
+  let mkPinWidget() =
+    { Id = Id.Create()
+      Name = rndname()
+      WidgetType = Id.Create() }
 
   let mkPinGroups () : Iris.Core.PinGroup array =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinGroup() |]
+
+  let mkPinMappings () : Iris.Core.PinMapping array =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkPinMapping() |]
+
+  let mkPinWidgets () : Iris.Core.PinWidget array =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkPinWidget() |]
 
   let mkCueList () : CueList =
     { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
@@ -275,9 +298,10 @@ module TestData =
 
   let mkClient () : IrisClient =
     { Id = Id.Create ()
-      Name = "Nice client"
+      Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
+      ServiceId = Id.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
@@ -299,6 +323,8 @@ module TestData =
       return
         { Project            = project
           PinGroups          = mkPinGroups()          |> asMap
+          PinMappings        = mkPinMappings()        |> asMap
+          PinWidgets         = mkPinWidgets()        |> asMap
           Cues               = mkCues()               |> asMap
           CueLists           = mkCueLists()           |> asMap
           Sessions           = mkSessions()           |> asMap

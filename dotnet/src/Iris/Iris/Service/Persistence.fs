@@ -125,6 +125,47 @@ module Persistence =
     |> Directory.createDirectory
     |> ignore
 
+  // ** persistWithSubdir
+
+  let inline private persistWithSubdir (basePath: FilePath) (thing: ^t) =
+    either {
+      let path = Asset.path thing
+      do ensureDirectory path
+      do! Asset.save basePath thing
+    }
+
+  // ** removeWithSubdir
+
+  let inline private removeWithSubdir (basePath: FilePath) (thing: ^t) =
+    either {
+      let path = Asset.path thing
+      do! path |> Path.concat basePath |> Asset.delete
+      Directory.removeDirectory path |> ignore
+    }
+
+  // ** removePinGroup
+
+  let private removePinGroup (basePath: FilePath) (group: PinGroup) =
+    either {
+      let path = Asset.path group
+      if group.Exists(basePath) then
+        do! path |> Path.concat basePath |> Asset.delete
+        Directory.removeDirectory path |> ignore
+      else return ()
+    }
+
+  // ** persistPinGroup
+
+  let private persistPinGroup (basePath: FilePath) (group: PinGroup) =
+    either {
+      if group.Persisted then
+        let path = Asset.path group
+        do ensureDirectory path
+        do! Asset.save basePath group
+      else
+        do! removePinGroup basePath group
+    }
+
   // ** persistEntry
 
   /// ## persistEntry
@@ -180,8 +221,30 @@ module Persistence =
     //                                     |_|
 
     | AddPinGroup    group
-    | UpdatePinGroup group -> save group
-    | RemovePinGroup group -> delete group
+    | UpdatePinGroup group -> persistPinGroup basePath group
+    | RemovePinGroup group -> removePinGroup basePath group
+
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+
+    | AddPinMapping    mapping
+    | UpdatePinMapping mapping -> persistWithSubdir basePath mapping
+    | RemovePinMapping mapping -> removeWithSubdir basePath mapping
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+
+    | AddPinWidget    widget
+    | UpdatePinWidget widget -> persistWithSubdir basePath widget
+    | RemovePinWidget widget -> removeWithSubdir basePath widget
 
     //  _   _
     // | | | |___  ___ _ __
@@ -210,24 +273,17 @@ module Persistence =
     // |_|   |_|_| |_|
 
     | AddPin    pin
-    | UpdatePin pin -> either {
-        let! group =
-          state
-          |> State.tryFindPinGroup pin.PinGroup
-          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        let path = Asset.path group
-        ensureDirectory path
-        return! save group
-      }
-    | RemovePin pin -> either {
-        let! group =
-          state
-          |> State.tryFindPinGroup pin.PinGroup
-          |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-        let path = Asset.path group
-        ensureDirectory path
-        return! save group
-      }
+    | UpdatePin pin ->
+      state
+      |> State.tryFindPinGroup pin.PinGroup
+      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+      |> Either.bind (persistPinGroup basePath)
+
+    | RemovePin pin ->
+      state
+      |> State.tryFindPinGroup pin.PinGroup
+      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
+      |> Either.bind (persistPinGroup basePath)
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __

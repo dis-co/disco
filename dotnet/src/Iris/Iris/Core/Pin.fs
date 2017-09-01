@@ -449,6 +449,8 @@ type PinYaml() =
   [<DefaultValue>] val mutable Name       : string
   [<DefaultValue>] val mutable PinGroup   : string
   [<DefaultValue>] val mutable Tags       : string array
+  [<DefaultValue>] val mutable Persisted  : bool
+  [<DefaultValue>] val mutable Online     : bool
   [<DefaultValue>] val mutable Behavior   : string
   [<DefaultValue>] val mutable Direction  : string
   [<DefaultValue>] val mutable MaxChars   : int
@@ -594,9 +596,33 @@ type Pin =
       | EnumPin   data -> EnumSlices(data.Id, data.Values)
       | ColorPin  data -> ColorSlices(data.Id, data.Values)
 
-  #if !FABLE_COMPILER
+  // ** Persisted
+
+  member pin.Persisted
+    with get () =
+      match pin with
+      | StringPin data -> data.Persisted
+      | NumberPin data -> data.Persisted
+      | BoolPin   data -> data.Persisted
+      | BytePin   data -> data.Persisted
+      | EnumPin   data -> data.Persisted
+      | ColorPin  data -> data.Persisted
+
+  // ** Online
+
+  member pin.Online
+    with get () =
+      match pin with
+      | StringPin data -> data.Online
+      | NumberPin data -> data.Online
+      | BoolPin   data -> data.Online
+      | BytePin   data -> data.Online
+      | EnumPin   data -> data.Online
+      | ColorPin  data -> data.Online
 
   // ** ToSpread
+
+  #if !FABLE_COMPILER
 
   member pin.ToSpread() =
     pin.Values.ToSpread()
@@ -781,8 +807,10 @@ type Pin =
     | StringPin data ->
       yaml.PinType    <- "StringPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.MaxChars   <- int data.MaxChars
       yaml.Behavior   <- string data.Behavior
@@ -794,8 +822,10 @@ type Pin =
     | NumberPin data ->
       yaml.PinType    <- "NumberPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.Precision  <- data.Precision
       yaml.Min        <- data.Min
@@ -809,8 +839,10 @@ type Pin =
     | BoolPin data ->
       yaml.PinType    <- "BoolPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.IsTrigger  <- data.IsTrigger
       yaml.VecSize    <- string data.VecSize
@@ -821,8 +853,10 @@ type Pin =
     | BytePin data ->
       yaml.PinType    <- "BytePin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -832,8 +866,10 @@ type Pin =
     | EnumPin data ->
       yaml.PinType    <- "EnumPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -844,8 +880,10 @@ type Pin =
     | ColorPin  data ->
       yaml.PinType    <- "ColorPin"
       yaml.Id         <- string data.Id
-      yaml.Name       <- data.Name
+      yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
       yaml.Direction  <- string data.Direction
@@ -1104,9 +1142,11 @@ type Pin =
 
           return StringPin {
             Id         = Id yml.Id
-            Name       = yml.Name
+            Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
+            Persisted  = yml.Persisted
+            Online     = yml.Online
             MaxChars   = yml.MaxChars * 1<chars>
             Behavior   = strtype
             VecSize    = vecsize
@@ -1140,11 +1180,13 @@ type Pin =
 
           return NumberPin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
             VecSize   = vecsize
             Direction = dir
+            Persisted = yml.Persisted
+            Online    = yml.Online
             Min       = yml.Min
             Max       = yml.Max
             Unit      = yml.Unit
@@ -1182,9 +1224,11 @@ type Pin =
 
           return BoolPin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
             IsTrigger = yml.IsTrigger
             VecSize   = vecsize
             Direction = dir
@@ -1221,9 +1265,11 @@ type Pin =
 
           return BytePin {
             Id        = Id yml.Id
-            Name      = yml.Name
+            Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
             Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
             VecSize   = vecsize
             Direction = dir
             Labels    = yml.Labels
@@ -1273,9 +1319,11 @@ type Pin =
 
           return EnumPin {
             Id         = Id yml.Id
-            Name       = yml.Name
+            Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
             Tags       = Array.map astag yml.Tags
+            Online     = yml.Online
+            Persisted  = yml.Persisted
             Properties = properties
             VecSize    = vecsize
             Direction  = dir
@@ -1312,14 +1360,16 @@ type Pin =
               yml.Values
 
           return ColorPin {
-            Id         = Id yml.Id
-            Name       = yml.Name
-            PinGroup   = Id yml.PinGroup
-            Tags       = Array.map astag yml.Tags
-            VecSize    = vecsize
-            Direction  = dir
-            Labels     = yml.Labels
-            Values     = slices
+            Id        = Id yml.Id
+            Name      = name yml.Name
+            PinGroup  = Id yml.PinGroup
+            Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
+            VecSize   = vecsize
+            Direction = dir
+            Labels    = yml.Labels
+            Values    = slices
           }
         }
 
@@ -1364,152 +1414,174 @@ module Pin =
   // ** toggle
 
   let toggle id name group tags values =
-    BoolPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              IsTrigger  = false
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = emptyLabels(Array.length values)
-              Values     = values }
+    BoolPin { Id        = id
+              Name      = name
+              PinGroup  = group
+              Tags      = tags
+              IsTrigger = false
+              Persisted = false
+              Online    = true
+              Direction = ConnectionDirection.Input
+              VecSize   = VecSize.Dynamic
+              Labels    = emptyLabels(Array.length values)
+              Values    = values }
 
   // ** bang
 
   let bang id name group tags values =
-    BoolPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              IsTrigger  = true
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = emptyLabels(Array.length values)
-              Values     = values }
+    BoolPin { Id        = id
+              Name      = name
+              PinGroup  = group
+              Tags      = tags
+              IsTrigger = true
+              Persisted = false
+              Online    = true
+              Direction = ConnectionDirection.Input
+              VecSize   = VecSize.Dynamic
+              Labels    = emptyLabels(Array.length values)
+              Values    = values }
 
   // ** string
 
   let string id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = Simple
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = Simple
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** multiLine
 
   let multiLine id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = MultiLine
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = MultiLine
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** fileName
 
   let fileName id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = FileName
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = FileName
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** directory
 
   let directory id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior = Directory
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = Directory
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** url
 
   let url id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = Url
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = Url
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** ip
 
   let ip id name group tags values =
-    StringPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Behavior   = IP
-                Direction  = ConnectionDirection.Input
-                VecSize    = VecSize.Dynamic
-                MaxChars   = sizeof<int> * 1<chars>
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    StringPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Behavior  = IP
+                Direction = ConnectionDirection.Input
+                VecSize   = VecSize.Dynamic
+                MaxChars  = sizeof<int> * 1<chars>
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** number
 
   let number id name group tags values =
-    NumberPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Tags       = tags
-                Min        = 0
-                Max        = sizeof<double>
-                Unit       = ""
-                Precision  = 4u
-                VecSize    = VecSize.Dynamic
-                Direction  = ConnectionDirection.Input
-                Labels     = emptyLabels(Array.length values)
-                Values     = values }
+    NumberPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                Persisted = false
+                Online    = true
+                Min       = 0
+                Max       = sizeof<double>
+                Unit      = ""
+                Precision = 4u
+                VecSize   = VecSize.Dynamic
+                Direction = ConnectionDirection.Input
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
   // ** bytes
 
   let bytes id name group tags values =
-    BytePin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              VecSize    = VecSize.Dynamic
-              Direction  = ConnectionDirection.Input
-              Labels     = emptyLabels(Array.length values)
-              Values     = values }
+    BytePin { Id        = id
+              Name      = name
+              PinGroup  = group
+              Tags      = tags
+              Persisted = false
+              Online    = true
+              VecSize   = VecSize.Dynamic
+              Direction = ConnectionDirection.Input
+              Labels    = emptyLabels(Array.length values)
+              Values    = values }
 
   // ** color
 
   let color id name group tags values =
-    ColorPin { Id         = id
-               Name       = name
-               PinGroup   = group
-               Tags       = tags
-               VecSize    = VecSize.Dynamic
-               Direction  = ConnectionDirection.Input
-               Labels     = emptyLabels(Array.length values)
-               Values     = values }
+    ColorPin { Id        = id
+               Name      = name
+               PinGroup  = group
+               Tags      = tags
+               Persisted = false
+               Online    = true
+               VecSize   = VecSize.Dynamic
+               Direction = ConnectionDirection.Input
+               Labels    = emptyLabels(Array.length values)
+               Values    = values }
 
   // ** enum
 
@@ -1518,6 +1590,8 @@ module Pin =
               Name       = name
               PinGroup   = group
               Tags       = tags
+              Persisted  = false
+              Online     = true
               Properties = properties
               Direction  = ConnectionDirection.Input
               VecSize    = VecSize.Dynamic
@@ -1528,14 +1602,28 @@ module Pin =
 
   module Player =
 
+    // *** nextId
+
+    let nextId id = Id (String.format "/{0}/next" id)
+
+    // *** previousId
+
+    let previousId id = Id (String.format "/{0}/next" id)
+
+    // *** previousId
+
+    let callId id = Id (String.format "/{0}/call" id)
+
     // *** next
 
     let next id =
-      BoolPin { Id         = Id (sprintf "/%O/next" id)
-                Name       = "Next"
+      BoolPin { Id         = nextId id
+                Name       = name "Next"
                 PinGroup   = id
                 Tags       = Array.empty
+                Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1544,11 +1632,13 @@ module Pin =
     // *** previous
 
     let previous id =
-      BoolPin { Id         = Id (sprintf "/%O/previous" id)
-                Name       = "Previous"
+      BoolPin { Id         = previousId id
+                Name       = name "Previous"
                 PinGroup   = id
                 Tags       = Array.empty
+                Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1557,11 +1647,13 @@ module Pin =
     // *** call
 
     let call id =
-      BoolPin { Id         = Id (sprintf "/%O/call" id)
-                Name       = "Call"
+      BoolPin { Id         = callId id
+                Name       = name "Call"
                 PinGroup   = id
                 Tags       = Array.empty
+                Persisted  = true
                 IsTrigger  = true
+                Online     = true
                 Direction  = ConnectionDirection.Input
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
@@ -1569,19 +1661,17 @@ module Pin =
 
   // ** setVecSize
 
-  let setVecSize vecSize pin =
-    match pin with
-    | StringPin   data -> StringPin   { data with VecSize = vecSize }
-    | NumberPin   data -> NumberPin   { data with VecSize = vecSize }
-    | BoolPin     data -> BoolPin     { data with VecSize = vecSize }
-    | BytePin     data -> BytePin     { data with VecSize = vecSize }
-    | EnumPin     data -> EnumPin     { data with VecSize = vecSize }
-    | ColorPin    data -> ColorPin    { data with VecSize = vecSize }
+  let setVecSize vecSize = function
+    | StringPin data -> StringPin { data with VecSize = vecSize }
+    | NumberPin data -> NumberPin { data with VecSize = vecSize }
+    | BoolPin   data -> BoolPin   { data with VecSize = vecSize }
+    | BytePin   data -> BytePin   { data with VecSize = vecSize }
+    | EnumPin   data -> EnumPin   { data with VecSize = vecSize }
+    | ColorPin  data -> ColorPin  { data with VecSize = vecSize }
 
   // ** setDirection
 
-  let setDirection direction pin =
-    match pin with
+  let setDirection direction = function
     | StringPin   data -> StringPin   { data with Direction = direction }
     | NumberPin   data -> NumberPin   { data with Direction = direction }
     | BoolPin     data -> BoolPin     { data with Direction = direction }
@@ -1591,8 +1681,7 @@ module Pin =
 
   // ** setName
 
-  let setName name pin =
-    match pin with
+  let setName name = function
     | StringPin   data -> StringPin   { data with Name = name }
     | NumberPin   data -> NumberPin   { data with Name = name }
     | BoolPin     data -> BoolPin     { data with Name = name }
@@ -1602,15 +1691,13 @@ module Pin =
 
   // ** setTags
 
-  let setTags tags pin =
-    match pin with
-    | StringPin   data -> StringPin   { data with Tags = tags }
-    | NumberPin   data -> NumberPin   { data with Tags = tags }
-    | BoolPin     data -> BoolPin     { data with Tags = tags }
-    | BytePin     data -> BytePin     { data with Tags = tags }
-    | EnumPin     data -> EnumPin     { data with Tags = tags }
-    | ColorPin    data -> ColorPin    { data with Tags = tags }
-
+  let setTags tags = function
+    | StringPin data -> StringPin { data with Tags = tags }
+    | NumberPin data -> NumberPin { data with Tags = tags }
+    | BoolPin   data -> BoolPin   { data with Tags = tags }
+    | BytePin   data -> BytePin   { data with Tags = tags }
+    | EnumPin   data -> EnumPin   { data with Tags = tags }
+    | ColorPin  data -> ColorPin  { data with Tags = tags }
 
   // ** setSlice
 
@@ -1679,8 +1766,7 @@ module Pin =
 
   // ** setSlices
 
-  let setSlices slices pin =
-    match pin with
+  let setSlices slices = function
     | StringPin data as value ->
       match slices with
       | StringSlices (id,arr) when id = data.Id ->
@@ -1718,16 +1804,43 @@ module Pin =
       | _ -> value
 
 
+  // ** setPersisted
+
+  let setPersisted (persisted: bool) = function
+    | StringPin data -> StringPin { data with Persisted = persisted }
+    | NumberPin data -> NumberPin { data with Persisted = persisted }
+    | BoolPin   data -> BoolPin   { data with Persisted = persisted }
+    | BytePin   data -> BytePin   { data with Persisted = persisted }
+    | EnumPin   data -> EnumPin   { data with Persisted = persisted }
+    | ColorPin  data -> ColorPin  { data with Persisted = persisted }
+
+  // ** setOnline
+
+  let setOnline (online: bool) = function
+    | StringPin data -> StringPin { data with Online = online }
+    | NumberPin data -> NumberPin { data with Online = online }
+    | BoolPin   data -> BoolPin   { data with Online = online }
+    | BytePin   data -> BytePin   { data with Online = online }
+    | EnumPin   data -> EnumPin   { data with Online = online }
+    | ColorPin  data -> ColorPin  { data with Online = online }
+
+  // ** isOnline
+
+  let isOnline (pin: Pin) = pin.Online
+
+  // ** isOffline
+
+  let isOffline (pin: Pin) = not pin.Online
+
   // ** str2offset
 
-  let str2offset (builder: FlatBufferBuilder) (str: string) =
-    match str with
+  let str2offset (builder: FlatBufferBuilder) = function
     #if FABLE_COMPILER
     | null -> Unchecked.defaultof<Offset<string>>
     #else
     | null -> Unchecked.defaultof<StringOffset>
     #endif
-    | _ -> builder.CreateString str
+    | str  -> builder.CreateString str
 
 // * NumberPinD
 
@@ -1740,9 +1853,11 @@ module Pin =
 [<CustomComparison; CustomEquality>]
 type NumberPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
+    Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Min        : int
@@ -1763,7 +1878,7 @@ type NumberPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let unit = self.Unit |> Option.mapNull builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
@@ -1777,6 +1892,8 @@ type NumberPinD =
     NumberPinFB.AddId(builder, id)
     Option.iter (fun value -> NumberPinFB.AddName(builder, value)) name
     NumberPinFB.AddPinGroup(builder, group)
+    NumberPinFB.AddPersisted(builder, self.Persisted)
+    NumberPinFB.AddOnline(builder, self.Online)
     NumberPinFB.AddTags(builder, tags)
     NumberPinFB.AddVecSize(builder, vecsize)
     NumberPinFB.AddMin(builder, self.Min)
@@ -1803,9 +1920,11 @@ type NumberPinD =
         |> Either.map (Array.map double)
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Persisted = fb.Persisted
+               Online    = fb.Online
                Min       = fb.Min
                Max       = fb.Max
                Unit      = fb.Unit
@@ -1883,9 +2002,11 @@ type NumberPinD =
 
 type StringPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
+    Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     Behavior   : Behavior
     MaxChars   : MaxChars
@@ -1904,7 +2025,7 @@ type StringPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
@@ -1920,6 +2041,8 @@ type StringPinD =
     StringPinFB.AddId(builder, id)
     Option.iter (fun value -> StringPinFB.AddName(builder,value)) name
     StringPinFB.AddPinGroup(builder, group)
+    StringPinFB.AddPersisted(builder, self.Persisted)
+    StringPinFB.AddOnline(builder, self.Online)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
     StringPinFB.AddMaxChars(builder, int self.MaxChars)
@@ -1941,9 +2064,11 @@ type StringPinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Online    = fb.Online
+               Persisted = fb.Persisted
                Behavior  = tipe
                MaxChars  = 1<chars> * fb.MaxChars
                VecSize   = vecsize
@@ -1973,9 +2098,11 @@ type StringPinD =
 
 type BoolPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
+    Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     IsTrigger  : bool
     VecSize    : VecSize
@@ -1993,7 +2120,7 @@ type BoolPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2006,6 +2133,8 @@ type BoolPinD =
     BoolPinFB.AddId(builder, id)
     Option.iter (fun value -> BoolPinFB.AddName(builder,value)) name
     BoolPinFB.AddPinGroup(builder, group)
+    BoolPinFB.AddPersisted(builder, self.Persisted)
+    BoolPinFB.AddOnline(builder, self.Online)
     BoolPinFB.AddIsTrigger(builder, self.IsTrigger)
     BoolPinFB.AddTags(builder, tags)
     BoolPinFB.AddDirection(builder, direction)
@@ -2024,15 +2153,17 @@ type BoolPinD =
       let! vecsize = Pin.ParseVecSize fb
       let! direction = ConnectionDirection.FromFB fb.Direction
 
-      return { Id         = Id fb.Id
-               Name       = fb.Name
-               PinGroup   = Id fb.PinGroup
-               Tags       = tags
-               IsTrigger  = fb.IsTrigger
-               VecSize    = vecsize
-               Direction  = direction
-               Labels     = labels
-               Values     = slices }
+      return { Id        = Id fb.Id
+               Name      = name fb.Name
+               PinGroup  = Id fb.PinGroup
+               Tags      = tags
+               Persisted = fb.Persisted
+               Online    = fb.Online
+               IsTrigger = fb.IsTrigger
+               VecSize   = vecsize
+               Direction = direction
+               Labels    = labels
+               Values    = slices }
     }
 
   // ** ToBytes
@@ -2058,9 +2189,11 @@ type BoolPinD =
 type [<CustomEquality;CustomComparison>] BytePinD =
 
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
+    Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Labels     : string array
@@ -2137,7 +2270,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2151,6 +2284,8 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     BytePinFB.AddId(builder, id)
     Option.iter (fun value -> BytePinFB.AddName(builder,value)) name
     BytePinFB.AddPinGroup(builder, group)
+    BytePinFB.AddPersisted(builder, self.Persisted)
+    BytePinFB.AddOnline(builder, self.Online)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
     BytePinFB.AddDirection(builder, direction)
@@ -2171,9 +2306,11 @@ type [<CustomEquality;CustomComparison>] BytePinD =
         |> Either.map (Array.map String.decodeBase64)
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Online    = fb.Online
+               Persisted = fb.Persisted
                VecSize   = vecsize
                Direction = direction
                Labels    = labels
@@ -2201,9 +2338,11 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
 type EnumPinD =
   { Id         : Id
-    Name       : string
+    Name       : Name
     PinGroup   : Id
     Tags       : Tag array
+    Persisted  : bool
+    Online     : bool
     Direction  : ConnectionDirection
     VecSize    : VecSize
     Properties : Property array
@@ -2221,7 +2360,7 @@ type EnumPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2237,6 +2376,8 @@ type EnumPinD =
     EnumPinFB.AddId(builder, id)
     Option.iter (fun value -> EnumPinFB.AddName(builder,value)) name
     EnumPinFB.AddPinGroup(builder, group)
+    EnumPinFB.AddPersisted(builder, self.Persisted)
+    EnumPinFB.AddOnline(builder, self.Online)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
     EnumPinFB.AddDirection(builder, direction)
@@ -2280,9 +2421,11 @@ type EnumPinD =
         |> Either.map snd
 
       return { Id         = Id fb.Id
-               Name       = fb.Name
+               Name       = name fb.Name
                PinGroup   = Id fb.PinGroup
                Tags       = tags
+               Online     = fb.Online
+               Persisted  = fb.Persisted
                Properties = properties
                Direction  = direction
                VecSize    = vecsize
@@ -2311,9 +2454,11 @@ type EnumPinD =
 
 type ColorPinD =
   { Id:        Id
-    Name:      string
+    Name:      Name
     PinGroup:  Id
     Tags:      Tag array
+    Persisted: bool
+    Online:    bool
     Direction: ConnectionDirection
     VecSize:   VecSize
     Labels:    string array
@@ -2330,7 +2475,7 @@ type ColorPinD =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = string self.Id |> builder.CreateString
-    let name = self.Name |> Option.mapNull builder.CreateString
+    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2344,6 +2489,8 @@ type ColorPinD =
     ColorPinFB.AddId(builder, id)
     Option.iter (fun value -> ColorPinFB.AddName(builder,value)) name
     ColorPinFB.AddPinGroup(builder, group)
+    ColorPinFB.AddPersisted(builder, self.Persisted)
+    ColorPinFB.AddOnline(builder, self.Online)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
     ColorPinFB.AddDirection(builder, direction)
@@ -2362,9 +2509,11 @@ type ColorPinD =
       let! direction = ConnectionDirection.FromFB fb.Direction
 
       return { Id        = Id fb.Id
-               Name      = fb.Name
+               Name      = name fb.Name
+               Online    = fb.Online
                PinGroup  = Id fb.PinGroup
                Tags      = tags
+               Persisted = fb.Persisted
                VecSize   = vecsize
                Direction = direction
                Labels    = labels

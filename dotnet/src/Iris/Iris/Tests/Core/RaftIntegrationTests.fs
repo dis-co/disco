@@ -369,8 +369,6 @@ module RaftIntegrationTests =
   //  / ___ \| | |   | |  __/\__ \ |_\__ \
   // /_/   \_\_|_|   |_|\___||___/\__|___/ grouped.
 
-  // let logs = Logger.subscribe Logger.stdout
-
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
       // raft

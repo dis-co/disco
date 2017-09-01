@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -24,6 +24,7 @@
     <DefineConstants>TRACE;DEBUG;IRIS_NODES</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <DocumentationFile>..\..\bin\$(Configuration)\Sdk\$(AssemblyName).XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -41,7 +42,7 @@
     <Reference Include="System.Net" />
     <Reference Include="System.Core" />
     <Reference Include="Iris.Serialization">
-      <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
+      <HintPath>..\..\bin\$(Configuration)\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -118,6 +119,12 @@
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
+      <Link>CuePlayer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinWidget.fs">
+      <Link>PinWidget.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\PinGroup.fs">
       <Link>PinGroup.fs</Link>
     </Compile>
@@ -132,9 +139,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\CueList.fs">
       <Link>CueList.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
-      <Link>CuePlayer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Raft\Validation.fs">
       <Link>Validation.fs</Link>
@@ -156,6 +160,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\Discovery.fs">
       <Link>Discovery.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinMapping.fs">
+      <Link>PinMapping.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\StateMachine.fs">
       <Link>StateMachine.fs</Link>

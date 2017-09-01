@@ -31,7 +31,7 @@ module IrisService =
   [<NoComparison;NoEquality>]
   type private Leader =
     { Member: RaftMember
-      Socket: IClient }
+      Socket: ITcpClient }
 
     // *** ISink
 
@@ -68,6 +68,7 @@ module IrisService =
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
       ClockService  : IClock
+      FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
       BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
       Disposables   : IDisposable array }
@@ -88,81 +89,124 @@ module IrisService =
         dispose self.Dispatcher
         dispose self.LogFile
 
+  //  _   _ _   _ _ _ _   _
+  // | | | | |_(_) (_) |_(_) ___  ___
+  // | | | | __| | | | __| |/ _ \/ __|
+  // | |_| | |_| | | | |_| |  __/\__ \
+  //  \___/ \__|_|_|_|\__|_|\___||___/
+
+  // ** isLeader
+
+  /// <summary>
+  ///   isLeader
+  /// </summary>
+  /// <param name="name">type</param>
+  /// <param name="name">type</param>
+  /// <returns>returns</returns>
+  let private isLeader (store: IAgentStore<IrisState>) =
+    store.State.RaftServer.IsLeader
+
+  // ** persistWithLogging
+
+  /// <summary>
+  ///   Persiste a state machine command to disk and log results.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name="sm">StateMachine</param>
+  /// <returns>unit</returns>
+  let private persistWithLogging (store: IAgentStore<IrisState>) sm =
+    match Persistence.persistEntry store.State.Store.State sm with
+    | Right () ->
+      string sm
+      |> String.format "Successfully persisted command {0} to disk"
+      |> Logger.debug (tag "statePersistor")
+    | Left error ->
+      error
+      |> String.format "Error persisting command to disk: {0}"
+      |> Logger.err (tag "statePersistor")
+
+  //  ____  _            _ _
+  // |  _ \(_)_ __   ___| (_)_ __   ___
+  // | |_) | | '_ \ / _ \ | | '_ \ / _ \
+  // |  __/| | |_) |  __/ | | | | |  __/
+  // |_|   |_| .__/ \___|_|_|_| |_|\___|
+  //         |_|
+  //  _____                 _   _
+  // |  ___|   _ _ __   ___| |_(_) ___  _ __  ___
+  // | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+  // |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
+  // |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+
   // ** stateMutator
 
-  let private stateMutator (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
-    match cmd with
-    | IrisEvent.Append(_, cmd) ->  store.State.Store.Dispatch cmd
+  /// <summary>
+  ///   Dispatch the current event on the store, thereby globally mutating its state.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
+  let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
+    | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
 
   // ** statePersistor
 
-  let private statePersistor (store: IAgentStore<IrisState>) =
-    fun _ _ -> function
-      | IrisEvent.Append(_, sm) ->
-        let state = store.State
-        if state.RaftServer.IsLeader then
-          match sm.PersistenceStrategy with
-          | PersistenceStrategy.Save ->
-            //  ____
-            // / ___|  __ ___   _____
-            // \___ \ / _` \ \ / / _ \
-            //  ___) | (_| |\ V /  __/
-            // |____/ \__,_| \_/ \___|
-            match Persistence.persistEntry state.Store.State sm with
-            | Right () ->
-              string sm
-              |> String.format "Successfully persisted command {0} to disk"
-              |> Logger.debug (tag "statePersistor")
-            | Left error ->
-              error |> String.format "Error persisting command to disk: {0}"
-              |> Logger.err (tag "statePersistor")
-          | PersistenceStrategy.Commit ->
-            //  ____
-            // / ___|  __ ___   _____
-            // \___ \ / _` \ \ / / _ \
-            //  ___) | (_| |\ V /  __/
-            // |____/ \__,_| \_/ \___| *and*
-            match Persistence.persistEntry state.Store.State sm with
-            | Right () ->
-              string sm
-              |> String.format "Successfully persisted command {0} to disk"
-              |> Logger.debug (tag "statePersistor")
-            | Left error ->
-              error
-              |> String.format "Error persisting command to disk: {0}"
-              |> Logger.err (tag "statePersistor")
-            //   ____                          _ _
-            //  / ___|___  _ __ ___  _ __ ___ (_) |_
-            // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
-            // | |__| (_) | | | | | | | | | | | | |_
-            //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
-            match Persistence.commitChanges state.Store.State with
-            | Right (repo, commit) ->
-              commit.Sha
-              |> String.format "Successfully committed changes in: {0}"
-              |> Logger.debug (tag "statePersistor")
-              repo
-              |> Persistence.ensureRemotes
-                  state.RaftServer.MemberId
-                  state.Store.State.Project
-                  state.RaftServer.Raft.Peers
-              |> Persistence.pushChanges
-              |> Map.iter
-                (fun name err ->
-                  sprintf "could not push to %s: %O" name err
-                  |> Logger.err (tag "statePersistor"))
-              dispose repo
-            | Left error ->
-              error
-              |> String.format "Error committing changes to disk: {0}"
-              |> Logger.err (tag "statePersistor")
+  /// <summary>
+  ///   Persists events marked as non-volatile to disk, possibly committing changes to git.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
+  let private statePersistor (store: IAgentStore<IrisState>) _ _ = function
+      | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Save ->
+        if isLeader store then
+          do persistWithLogging store sm
 
-          | PersistenceStrategy.Ignore -> ()
+      | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Commit ->
+        if isLeader store then
+          do persistWithLogging store sm
+          let state= store.State
+          //   ____                          _ _
+          //  / ___|___  _ __ ___  _ __ ___ (_) |_
+          // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
+          // | |__| (_) | | | | | | | | | | | | |_
+          //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
+          match Persistence.commitChanges state.Store.State with
+          | Right (repo, commit) ->
+            commit.Sha
+            |> String.format "Successfully committed changes in: {0}"
+            |> Logger.debug (tag "statePersistor")
+            repo
+            |> Persistence.ensureRemotes
+                state.RaftServer.MemberId
+                state.Store.State.Project
+                state.RaftServer.Raft.Peers
+            |> Persistence.pushChanges
+            |> Map.iter
+              (fun name err ->
+                sprintf "could not push to %s: %O" name err
+                |> Logger.err (tag "statePersistor"))
+            dispose repo
+          | Left error ->
+            error
+            |> String.format "Error committing changes to disk: {0}"
+            |> Logger.err (tag "statePersistor")
       | _ -> ()
 
   // ** logPersistor
 
+  /// <summary>
+  ///   Write all logged messages to a machine-local log file.
+  /// </summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name=""></param>
+  /// <param name=""></param>
+  /// <param name="cmd">IrisEvent</param>
+  /// <returns>unit</returns>
   let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
     match cmd with
     | IrisEvent.Append(_, LogMsg log) ->
@@ -181,12 +225,10 @@ module IrisService =
   // ** dispatchUpdates
 
   let private dispatchUpdates (state: IrisState) (cue: Cue) =
-    Array.iter
-      (fun slices ->
-        (Origin.Service, UpdateSlices slices)
-        |> IrisEvent.Append
-        |> state.Dispatcher.Dispatch)
-      cue.Slices
+    cue.Slices
+    |> UpdateSlices.ofArray
+    |> IrisEvent.appendService
+    |> state.Dispatcher.Dispatch
 
   // ** maybeDispatchUpdate
 
@@ -200,8 +242,7 @@ module IrisService =
 
   let private commandResolver (store: IAgentStore<IrisState>) =
     let mutable current = 0<frame>
-    fun _ _ (cmd: IrisEvent) ->
-      match cmd with
+    fun _ _ -> function
       | IrisEvent.Append(_, UpdateClock tick) ->
         current <- int tick * 1<frame>
         maybeDispatchUpdate current store.State
@@ -217,11 +258,15 @@ module IrisService =
   let private subscriptionNotifier (store: IAgentStore<IrisState>) =
     fun _ _ -> Observable.onNext store.State.Subscriptions
 
+  // ** preActions
+
+  let private preActions (store: IAgentStore<IrisState>) =
+    [| Pipeline.createHandler (stateMutator   store) |]
+
   // ** processors
 
   let private processors (store: IAgentStore<IrisState>) =
-    [| Pipeline.createHandler (stateMutator   store)
-       Pipeline.createHandler (statePersistor store)
+    [| Pipeline.createHandler (statePersistor store)
        Pipeline.createHandler (logPersistor   store) |]
 
   // ** publishers
@@ -236,18 +281,82 @@ module IrisService =
   let private postActions (store: IAgentStore<IrisState>) =
     [| Pipeline.createHandler (subscriptionNotifier store) |]
 
+  // ** sendLocalData
+
+  /// <summary>
+  ///   Send local data to leader upon connection.
+  /// </summary>
+  /// <param name="socket">ITcpClient</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>unit</returns>
+  /// <remarks>
+  ///   <para>
+  ///     Some pieces of data are intrinsically local to the service instance, such as connected
+  ///     browser sessions or locally connected client instances. These pieces of data need to be
+  ///     replicated to the leader once connected. IF those clients/sessions already exist, they
+  ///     will simply be ignored.
+  ///   </para>
+  /// </remarks>
+  let private sendLocalData (socket: ITcpClient) (store: IAgentStore<IrisState>) =
+    if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
+      let sessions =
+        store.State.SocketServer.Sessions
+        |> Map.toList
+        |> List.map (snd >> AddSession)
+      let clients =
+        store.State.ApiServer.Clients
+        |> Map.toList
+        |> List.map (snd >> AddClient)
+      let batch =
+        List.append sessions clients
+        |> StateMachineBatch
+        |> CommandBatch
+
+      (clients.Length,sessions.Length)
+      |> String.format "sending batch command with {0} (clients,session) "
+      |> Logger.debug (tag "sendLocalData")
+
+      batch
+      |> RaftRequest.AppendEntry
+      |> Binary.encode
+      |> Request.create (Guid.ofId socket.ClientId)
+      |> socket.Request
+    else
+      store.State.RaftServer.RaftState
+      |> String.format "Nothing to send ({0})"
+      |> Logger.debug (tag "sendLocalData")
+
+  // ** handleLeaderEvents
+
+  /// <summary>
+  ///   Handle events happening on the socket connection to the current leader.
+  /// </summary>
+  /// <param name="socket">ITcpClient</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>unit</returns>
+  let private handleLeaderEvents socket store = function
+    | TcpClientEvent.Connected _ ->
+      do sendLocalData socket store
+    // | TcpClientEvent. -> ()
+    | _ -> ()
+
   // ** makeLeader
 
-  let private makeLeader (leader: RaftMember) =
+  /// <summary>
+  ///   Create a communication socket with the current Raft leader. Its important to note that
+  ///   the current members Id *must* be used to set up the client socket.
+  /// </summary>
+  /// <param name="leader">RaftMember</param>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <returns>Leader option</returns>
+  let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
-      ClientId = leader.Id
+      ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
       PeerAddress = leader.IpAddr
       PeerPort = leader.Port
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    (fun _ ->
-      "TODO: setup leader socket response handler"
-      |> Logger.warn (tag "makeLeader"))
+    handleLeaderEvents socket store
     |> socket.Subscribe
     |> ignore
     socket.Connect()
@@ -255,6 +364,18 @@ module IrisService =
 
   // ** processEvent
 
+  /// <summary>Process events marked DispatchStrategy.Process</summary>
+  /// <param name="store">IAgentStore<IrisState></param>
+  /// <param name="ev">IrisEvent</param>
+  /// <returns>unit</returns>
+  /// <remarks>
+  ///   <para>
+  ///     Process IrisEvents that require special treatment. Events that need to be treated
+  ///     differently than normal state machine comand events come from RaftServer are used
+  ///     to e.g. wire up communication with the leader for forwarding state machine commands to
+  ///     the leader.
+  ///   </para>
+  /// </remarks>
   let private processEvent (store: IAgentStore<IrisState>) ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
@@ -297,7 +418,7 @@ module IrisService =
         if Option.isSome leader && leader <> (Some store.State.Member.Id) then
           match store.State.RaftServer.Leader with
           | Some leader ->
-            makeLeader leader
+            makeLeader leader store
           | None ->
             "Could not start re-direct socket: no leader"
             |> Logger.debug (tag "leaderChanged")
@@ -313,9 +434,42 @@ module IrisService =
 
     | IrisEvent.RaftError _ | _ -> ()
 
+  // ** forwardCommand
+
+  let private forwardCommand (store: IAgentStore<IrisState>) cmd =
+    match store.State.Leader with
+    | Some leader ->
+      cmd
+      |> RaftRequest.AppendEntry
+      |> Binary.encode
+      |> Request.create (Guid.ofId store.State.Member.Id)
+      |> leader.Socket.Request
+    | None ->
+      "Could not forward command; No Leader"
+      |> Logger.err (tag "forwardCommand")
+
+  // ** handleAppend
+
+  let private handleAppend (store: IAgentStore<IrisState>) cmd =
+    if isLeader store
+    then do store.State.RaftServer.Append cmd
+    else do forwardCommand store cmd
+
   // ** replicateEvent
 
   let private replicateEvent (store: IAgentStore<IrisState>) = function
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __ ___
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__/ __|
+    // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
+
+    | Append (_, AddMember mem) ->
+      if isLeader store then store.State.RaftServer.AddMember mem
+
+    | Append (_, RemoveMember mem) ->
+      if isLeader store then store.State.RaftServer.RemoveMember mem.Id
+
     //  ____             _        _
     // / ___|  ___   ___| | _____| |_
     // \___ \ / _ \ / __| |/ / _ \ __|
@@ -333,13 +487,13 @@ module IrisService =
     | Append (Origin.Web id, AddSession session) ->
       session
       |> store.State.SocketServer.BuildSession id
-      |> Either.iter (AddSession >> store.State.RaftServer.Append)
+      |> Either.iter (AddSession >> handleAppend store)
 
     // replicate a RemoveSession command if the session exists
     | SessionClosed id ->
       store.State.Store.State.Sessions
       |> Map.tryFind id
-      |> Option.iter (RemoveSession >> store.State.RaftServer.Append)
+      |> Option.iter (RemoveSession >> handleAppend store)
 
     //     _                               _
     //    / \   _ __  _ __   ___ _ __   __| |
@@ -348,9 +502,7 @@ module IrisService =
     // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|
     //  _the_  |_|   |_| base case...
 
-    | Append (_, AddMember mem) -> store.State.RaftServer.AddMember mem
-    | Append (_, RemoveMember mem) -> store.State.RaftServer.RemoveMember mem.Id
-    | Append (_, other) -> store.State.RaftServer.Append other
+    | Append (_, other) -> handleAppend store other
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
@@ -360,16 +512,57 @@ module IrisService =
 
     | other -> ignore other
 
+  // ** publishEvent
+
+  let private publishEvent (store: IAgentStore<IrisState>) (pipeline: IPipeline<IrisEvent>) cmd =
+    match cmd with
+    /// globally set the loglevel to the desired value
+    | IrisEvent.Append(Origin.Raft, SetLogLevel level) ->
+      do Logger.setLevel level
+
+    /// when a cue player is created, also add a special pingroup for that player
+    | IrisEvent.Append(Origin.Raft, AddCuePlayer player) ->
+      player
+      |> PinGroup.ofPlayer
+      |> AddPinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
+    /// when a cue player is deleted, also delete the special pingroup for that player
+    | IrisEvent.Append(Origin.Raft, RemoveCuePlayer player) ->
+      player
+      |> PinGroup.ofPlayer
+      |> RemovePinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
+    /// when a pin widget is created, also add a special pingroup for that widget
+    | IrisEvent.Append(Origin.Raft, AddPinWidget widget) ->
+      widget
+      |> PinGroup.ofWidget
+      |> AddPinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
+    /// when a pin widget is deleted, also delete the special pingroup for that widget
+    | IrisEvent.Append(Origin.Raft, RemovePinWidget widget) ->
+      widget
+      |> PinGroup.ofWidget
+      |> RemovePinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+    | _ -> ()
+
+    pipeline.Push cmd
+
   // ** dispatchEvent
 
-  let private dispatchEvent (store: IAgentStore<IrisState>)
-                            (pipeline: IPipeline<IrisEvent>)
-                            (cmd:IrisEvent) =
-    match cmd.DispatchStrategy with
-    | Publish   -> pipeline.Push cmd
+  let private dispatchEvent store pipeline cmd =
+    cmd |> dispatchStrategy |> function
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
-    | Ignore    -> ()
+    | Ignore    -> Observable.onNext store.State.Subscriptions cmd
+    | Publish   -> publishEvent store pipeline cmd
 
   // ** createDispatcher
 
@@ -384,7 +577,12 @@ module IrisService =
 
         member dispatcher.Start() =
           if Service.isStopped status then
-            pipeline <- Pipeline.create (processors store) (publishers store) (postActions store)
+            pipeline <- Pipeline.create {
+              PreActions  = preActions store
+              Processors  = processors store
+              Publishers  = publishers store
+              PostActions = postActions store
+            }
             status <- ServiceStatus.Running
 
         member dispatcher.Status
@@ -464,97 +662,101 @@ module IrisService =
   let inline private forwardEvent (constr: ^a -> IrisEvent) (dispatcher: IDispatcher<IrisEvent>) =
     constr >> dispatcher.Dispatch
 
-  // ** makeStore
+  // ** withValidCredentials
 
-  let private makeStore (iris: IrisServiceOptions) =
+  let private withValidCredentials pw f = function
+    | Some user when isValidPassword user pw -> f user
+    | _ ->
+      "Login rejected"
+      |> Error.asProjectError (tag "loadProject")
+      |> Either.fail
+
+  // ** updateSite
+
+  let private updateSite state (serviceOptions: IrisServiceOptions) =
+    match serviceOptions.SiteId with
+    | Some site ->
+      let site =
+        state.Project.Config.Sites
+        |> Array.tryFind (fun s -> s.Id = site)
+        |> function Some s -> s | None -> ClusterConfig.Default
+
+      // Add current machine if necessary
+      // taking the default ports from MachineConfig
+      let site =
+        let machineId = serviceOptions.Machine.MachineId
+        if Map.containsKey machineId site.Members
+        then site
+        else
+          let selfMember =
+            { Member.create(machineId) with
+                IpAddr  = serviceOptions.Machine.BindAddress
+                GitPort = serviceOptions.Machine.GitPort
+                WsPort  = serviceOptions.Machine.WsPort
+                ApiPort = serviceOptions.Machine.ApiPort
+                Port    = serviceOptions.Machine.RaftPort }
+          { site with Members = Map.add machineId selfMember site.Members }
+
+      let cfg = state.Project.Config |> Config.addSiteAndSetActive site
+      { state with Project = { state.Project with Config = cfg }}
+    | None -> state
+
+  // ** makeState
+
+  let private makeState store state serviceOptions (user: User) =
     either {
       let subscriptions = Subscriptions()
-      let store = AgentStore.create()
+      let state = updateSite state serviceOptions
 
-      do Directory.createDirectory iris.Machine.LogDirectory |> ignore
+      // This will fail if there's no ActiveSite set up in state.Project.Config
+      // The frontend needs to handle that case
+      let! mem = Config.selfMember state.Project.Config
 
-      let! path = Project.checkPath iris.Machine iris.ProjectName
-      let! (state: State) = Asset.loadWithMachine path iris.Machine
+      // ensure that we have all other nodes set-up correctly
+      do! Project.updateRemotes state.Project
 
-      let user =
-        state.Users
-        |> Map.tryPick (fun _ u -> if u.UserName = iris.UserName then Some u else None)
+      let clockService = Clock.create ()
+      do clockService.Stop()
 
-      match user with
-      | Some user when isValidPassword user iris.Password ->
-        let state =
-          match iris.SiteId with
-          | Some site ->
-            let site =
-              state.Project.Config.Sites
-              |> Array.tryFind (fun s -> s.Id = site)
-              |> function Some s -> s | None -> ClusterConfig.Default
+      let! raftServer =
+        store
+        |> makeRaftCallbacks
+        |> RaftServer.create state.Project.Config
 
-            // Add current machine if necessary
-            // taking the default ports from MachineConfig
-            let site =
-              let machineId = iris.Machine.MachineId
-              if Map.containsKey machineId site.Members
-              then site
-              else
-                let selfMember =
-                 { Member.create(machineId) with
-                      IpAddr  = iris.Machine.BindAddress
-                      GitPort = iris.Machine.GitPort
-                      WsPort  = iris.Machine.WsPort
-                      ApiPort = iris.Machine.ApiPort
-                      Port    = iris.Machine.RaftPort }
-                { site with Members = Map.add machineId selfMember site.Members }
+      let! socketServer = WebSocketServer.create mem
+      let! apiServer =
+        store
+        |> makeApiCallbacks
+        |> ApiServer.create mem state.Project.Id
 
-            let cfg = state.Project.Config |> Config.addSiteAndSetActive site
-            { state with Project = { state.Project with Config = cfg }}
-          | None -> state
+      let fsWatcher = FsWatcher.create state.Project
 
-        // This will fail if there's no ActiveSite set up in state.Project.Config
-        // The frontend needs to handle that case
-        let! mem = Config.selfMember state.Project.Config
+      // IMPORTANT: use the projects path here, not the path to project.yml
+      let gitServer = GitServer.create mem state.Project
 
-        // ensure that we have all other nodes set-up correctly
-        do! Project.updateRemotes state.Project
+      let dispatcher = createDispatcher store
 
-        let clockService = Clock.create ()
-        do clockService.Stop()
+      let logForwarder =
+        Logger.subscribe (forwardEvent (LogMsg >> IrisEvent.appendService) dispatcher)
 
-        let! raftServer =
-          store
-          |> makeRaftCallbacks
-          |> RaftServer.create state.Project.Config
+      // wiring up the sources
+      let disposables = [|
+        fsWatcher.Subscribe    (forwardEvent id dispatcher)
+        gitServer.Subscribe    (forwardEvent id dispatcher)
+        apiServer.Subscribe    (forwardEvent id dispatcher)
+        socketServer.Subscribe (forwardEvent id dispatcher)
+        raftServer.Subscribe   (forwardEvent id dispatcher)
+        clockService.Subscribe (forwardEvent id dispatcher)
+      |]
 
-        let! socketServer = WebSocketServer.create mem
-        let! apiServer =
-          store
-          |> makeApiCallbacks
-          |> ApiServer.create mem state.Project.Id
+      let! logFile =
+        LogFile.create
+          serviceOptions.Machine.MachineId
+          serviceOptions.Machine.LogDirectory
 
-        // IMPORTANT: use the projects path here, not the path to project.yml
-        let gitServer = GitServer.create mem state.Project
-
-        let dispatcher = createDispatcher store
-
-        let logForwarder =
-          let mkev log =
-            IrisEvent.Append(Origin.Service, LogMsg log)
-          Logger.subscribe (forwardEvent mkev dispatcher)
-
-        // wiring up the sources
-        let disposables = [|
-          gitServer.Subscribe(forwardEvent id dispatcher)
-          apiServer.Subscribe(forwardEvent id dispatcher)
-          socketServer.Subscribe(forwardEvent id dispatcher)
-          raftServer.Subscribe(forwardEvent id dispatcher)
-          clockService.Subscribe(forwardEvent id dispatcher)
-        |]
-
-        let! logFile = LogFile.create iris.Machine.MachineId iris.Machine.LogDirectory
-
-        // set up the agent state
+      return
         { Member         = mem
-          Machine        = iris.Machine
+          Machine        = serviceOptions.Machine
           Leader         = None
           Dispatcher     = dispatcher
           LogFile        = logFile
@@ -566,18 +768,41 @@ module IrisService =
           RaftServer     = raftServer
           SocketServer   = socketServer
           ClockService   = clockService
+          FsWatcher      = fsWatcher
           BufferedCues   = ConcurrentDictionary()
           Subscriptions  = subscriptions
           Disposables    = disposables }
-        |> store.Update                  // and feed it to the store, before we start the services
+    }
 
-        return store
-      | _ ->
-        return!
-          "Login rejected"
-          |> Error.asProjectError (tag "loadProject")
-          |> Either.fail
-      }
+  // ** makeStore
+
+  let private makeStore (serviceOptions: IrisServiceOptions) =
+    either {
+      let store = AgentStore.create()
+
+      let logDir =
+        if isNull (string serviceOptions.Machine.LogDirectory)
+        then serviceOptions.Machine.LogDirectory
+        else IrisMachine.Default.LogDirectory
+
+      let! _ = Directory.createDirectory logDir
+
+      let! path = Project.checkPath serviceOptions.Machine serviceOptions.ProjectName
+
+      let! (state: State) =
+        Asset.loadWithMachine path serviceOptions.Machine
+        |> Either.map State.initialize
+
+      let! updated =
+        state.Users
+        |> Map.tryPick (fun _ u -> if u.UserName = serviceOptions.UserName then Some u else None)
+        |> withValidCredentials
+            serviceOptions.Password
+            (makeState store state serviceOptions)
+
+      store.Update updated          // and feed it to the store, before we start the services
+      return store
+    }
 
   // ** start
 
@@ -623,8 +848,8 @@ module IrisService =
   // ** addMember
 
   let private addMember (store: IAgentStore<IrisState>) (mem: RaftMember) =
-    (Origin.Service, AddMember mem)
-    |> IrisEvent.Append
+    AddMember mem
+    |> IrisEvent.appendService
     |> store.State.Dispatcher.Dispatch
 
   // ** removeMember
@@ -632,17 +857,13 @@ module IrisService =
   let private removeMember (store: IAgentStore<IrisState>) (id: Id) =
     store.State.RaftServer.Raft.Peers
     |> Map.tryFind id
-    |> Option.iter
-      (fun mem ->
-        (Origin.Service, RemoveMember mem)
-        |> IrisEvent.Append
-        |> store.State.Dispatcher.Dispatch)
+    |> Option.iter (RemoveMember >> IrisEvent.appendService >> store.State.Dispatcher.Dispatch)
 
   // ** append
 
   let private append (store: IAgentStore<IrisState>) (cmd: StateMachine) =
-    (Origin.Service, cmd)
-    |> IrisEvent.Append
+    cmd
+    |> IrisEvent.appendService
     |> store.State.Dispatcher.Dispatch
 
   // ** makeService
@@ -650,6 +871,9 @@ module IrisService =
   let private makeService (store: IAgentStore<IrisState>) =
     { new IIrisService with
         member self.Start() = start store
+
+        member self.State
+          with get () = store.State.Store.State
 
         member self.Project
           with get () = store.State.Store.State.Project // :D

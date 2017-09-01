@@ -198,12 +198,40 @@ module File =
 [<AutoOpen>]
 module Directory =
 
+  // ** tag
+
+  let private tag (str: string) = String.Format("Directory.{0}",str)
+
   // ** createDirectory
 
+  /// <summary>
+  ///   Create a new directory. Upon failure, return an IrisError
+  /// </summary>
+  /// <param name="path">FilePath</param>
+  /// <returns>Either<IrisError,DirectoryInfo></returns>
   let createDirectory (path: FilePath) =
-    path
-    |> unwrap
-    |> Directory.CreateDirectory
+    try
+      path
+      |> unwrap
+      |> Directory.CreateDirectory
+      |> Either.succeed
+    with
+      | exn ->
+        exn.Message
+        |> Error.asIOError (tag "createDirectory")
+        |> Either.fail
+
+  // ** removeDirectory
+
+  let removeDirectory (path: FilePath) =
+    try
+      unwrap path
+      |> Directory.Delete
+      |> Either.succeed
+    with | exn ->
+      exn.Message
+      |> Error.asIOError (tag "removeDirectory")
+      |> Either.fail
 
   // ** info
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\..\..\..\packages\LibGit2Sharp.NativeBinaries\build\LibGit2Sharp.NativeBinaries.props')" Label="Paket" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -23,6 +23,7 @@
     <OutputPath>..\..\bin\Debug\Core</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
+    <DocumentationFile>..\..\bin\$(Configuration)\Sdk\$(AssemblyName).XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DebugType>pdbonly</DebugType>
@@ -33,6 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <DocumentationFile>..\..\bin\$(Configuration)\Sdk\$(AssemblyName).XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -125,6 +127,12 @@
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
+      <Link>CuePlayer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinWidget.fs">
+      <Link>PinWidget.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\PinGroup.fs">
       <Link>PinGroup.fs</Link>
     </Compile>
@@ -139,9 +147,6 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\CueList.fs">
       <Link>CueList.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
-      <Link>CuePlayer.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Raft\Validation.fs">
       <Link>Validation.fs</Link>
@@ -163,6 +168,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\Discovery.fs">
       <Link>Discovery.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinMapping.fs">
+      <Link>PinMapping.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Core\StateMachine.fs">
       <Link>StateMachine.fs</Link>
@@ -248,6 +256,9 @@
     <Compile Include="..\..\Iris\Service\Pipeline.fs">
       <Link>Pipeline.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\FsWatcherService.fs">
+      <Link>FsWatcherService.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\IrisService.fs">
       <Link>IrisService.fs</Link>
     </Compile>
@@ -266,19 +277,19 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Iris.Serialization">
-      <HintPath>..\..\bin\Debug\Serialization\Iris.Serialization.dll</HintPath>
+      <HintPath>..\..\bin\$(Configuration)\Serialization\Iris.Serialization.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf.Providers.AvahiDBus">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf.Providers.Bonjour">
-      <HintPath>..\..\..\Zeroconf\bin\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

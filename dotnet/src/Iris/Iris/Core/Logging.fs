@@ -259,7 +259,7 @@ type LoggingSettings =
     UseColors: bool
     Tier: Tier }
 
-// * LoggingSettings
+// * LoggingSettings module
 
 module LoggingSettings =
 
@@ -280,94 +280,30 @@ module Logger =
   open System.Threading
   open Iris.Core
 
-  // ** settings
+  // ** _settings
 
-  let mutable private settings =
+  let mutable private _settings =
     { Id = Id "<uninitialized>"
       Level = LogLevel.Debug
       UseColors = true
       Tier = Tier.Service }
 
+  // ** currentSettings
+
+  let currentSettings () = _settings
+
+  // ** set
+
+  let set config = _settings <- config
+
+  // ** setLevel
+
+  let setLevel level =
+    _settings <- { _settings with Level = level }
+
   // ** initialize
 
-  let initialize config = settings <- config
-
-  // ** colors
-
-  // Black         - The color black.
-  // Blue          - The color blue.
-  // Cyan          - The color cyan (blue-green).
-  // DarkBlue      - The color dark blue.
-  // DarkCyan      - The color dark cyan (dark blue-green).
-  // DarkGray      - The color dark gray.
-  // DarkGreen     - The color dark green.
-  // DarkMagenta   - The color dark magenta (dark purplish-red).
-  // DarkRed       - The color dark red.
-  // DarkYellow    - The color dark yellow (ochre).
-  // Gray          - The color gray.
-  // Green         - The color green.
-  // Magenta       - The color magenta (purplish-red).
-  // Red           - The color red.
-  // White         - The color white.
-  // Yellow        - The color yellow.
-
-  // ** withForeground
-
-#if !FABLE_COMPILER
-  let private withForeground pat fg (o: obj) =
-    let prevFg = Console.ForegroundColor
-    Console.ForegroundColor <- fg
-    Console.Write(pat,o)
-    Console.ForegroundColor <- prevFg
-
-  let private black pat (thing: obj) =
-    withForeground pat ConsoleColor.Black thing
-
-  let private white pat (thing: obj) =
-    withForeground pat ConsoleColor.White thing
-
-  let private blue pat (thing: obj) =
-    withForeground pat ConsoleColor.Blue thing
-
-  let private darkBlue pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkBlue thing
-
-  let private cyan pat (thing: obj) =
-    withForeground pat ConsoleColor.Cyan thing
-
-  let private darkCyan pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkCyan thing
-
-  let private gray pat (thing: obj) =
-    withForeground pat ConsoleColor.Gray thing
-
-  let private darkGray pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkGray thing
-
-  let private green pat (thing: obj) =
-    withForeground pat ConsoleColor.Green thing
-
-  let private darkGreen pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkGreen thing
-
-  let private magenta pat (thing: obj) =
-    withForeground pat ConsoleColor.Magenta thing
-
-  let private darkMagenta pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkMagenta thing
-
-  let private red pat (thing: obj) =
-    withForeground pat ConsoleColor.Red thing
-
-  let private darkRed pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkRed thing
-
-  let private yellow pat (thing: obj) =
-    withForeground pat ConsoleColor.Yellow thing
-
-  let private darkYellow pat (thing: obj) =
-    withForeground pat ConsoleColor.DarkYellow thing
-#endif
+  let initialize config = set config
 
   // ** stdout
 
@@ -380,33 +316,33 @@ module Logger =
   ///
   /// Returns: unit
   let stdout (log: LogEvent) =
-#if !FABLE_COMPILER
-    if settings.UseColors then
-      darkGreen "{0}" "["
+    #if !FABLE_COMPILER && !IRIS_NODES
+    if _settings.UseColors then
+      Console.darkGreen "{0}" "["
       match log.LogLevel with
-      | LogLevel.Trace -> gray   "{0,-5}" log.LogLevel
-      | LogLevel.Debug -> white  "{0,-5}" log.LogLevel
-      | LogLevel.Info  -> green  "{0,-5}" log.LogLevel
-      | LogLevel.Warn  -> yellow "{0,-5}" log.LogLevel
-      | LogLevel.Err   -> red    "{0,-5}" log.LogLevel
-      darkGreen "{0}" "] "
+      | LogLevel.Trace -> Console.gray   "{0,-5}" log.LogLevel
+      | LogLevel.Debug -> Console.white  "{0,-5}" log.LogLevel
+      | LogLevel.Info  -> Console.green  "{0,-5}" log.LogLevel
+      | LogLevel.Warn  -> Console.yellow "{0,-5}" log.LogLevel
+      | LogLevel.Err   -> Console.red    "{0,-5}" log.LogLevel
+      Console.darkGreen "{0}" "] "
 
-      darkGreen "{0}:" "ts"
-      white     "{0} " log.Time
+      Console.darkGreen "{0}:" "ts"
+      Console.white     "{0} " log.Time
 
-      darkGreen "{0}:" "id"
-      white     "{0} " log.Id.Prefix
+      Console.darkGreen "{0}:" "id"
+      Console.white     "{0} " log.Id.Prefix
 
-      darkGreen "{0}:"    "type"
-      white     "{0,-7} " log.Tier
+      Console.darkGreen "{0}:"    "type"
+      Console.white     "{0,-7} " log.Tier
 
-      darkGreen "{0}:"     "in"
-      yellow    "{0,-30} " log.Tag
+      Console.darkGreen "{0}:"     "in"
+      Console.yellow    "{0,-30} " log.Tag
 
-      white  "{0}"  log.Message
+      Console.white  "{0}"  log.Message
       Console.Write(System.Environment.NewLine)
     else
-#endif
+    #endif
       Console.WriteLine("{0}", log)
 
   // ** filter
@@ -506,8 +442,8 @@ module Logger =
       #else
       Thread   = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = settings.Tier
-      Id       = settings.Id
+      Tier     = _settings.Tier
+      Id       = _settings.Id
       Tag      = callsite
       LogLevel = level
       Message  = msg }
@@ -529,9 +465,10 @@ module Logger =
   ///
   /// Returns: unit
   let log (level: LogLevel) (callsite: CallSite) (msg: string) =
-    msg
-    |> create level callsite
-    |> append
+    if level >= _settings.Level then
+      msg
+      |> create level callsite
+      |> append
 
   // ** trace
 
@@ -545,9 +482,7 @@ module Logger =
   ///
   /// Returns: unit
   let trace (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Trace callsite
-    |> append
+    log LogLevel.Trace callsite msg
 
   // ** debug
 
@@ -561,9 +496,7 @@ module Logger =
   ///
   /// Returns: unit
   let debug (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Debug callsite
-    |> append
+    log LogLevel.Debug callsite msg
 
   // ** info
 
@@ -577,9 +510,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let info (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Info callsite
-    |> append
+    log LogLevel.Info callsite msg
 
   // ** warn
 
@@ -593,9 +524,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let warn (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Warn callsite
-    |> append
+    log LogLevel.Warn callsite msg
 
   // ** err
 
@@ -609,9 +538,7 @@ module Logger =
   ///
   /// Returns: LogEvent
   let err (callsite: CallSite) (msg: string) =
-    msg
-    |> create LogLevel.Err callsite
-    |> append
+    log LogLevel.Err callsite msg
 
 // * LogFile
 
@@ -657,20 +584,27 @@ module LogFile =
   // ** create
 
   let create (machine: Id) (path: FilePath) =
-    let ts = DateTime.Now
-    let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
-    let fp = Path.Combine(unwrap path, fn)
-    try
-      let writer = File.AppendText fp
-      writer.AutoFlush <- true
-      { FilePath = filepath fp
-        Created = ts
-        Stream = writer }
-      |> Either.succeed
-    with
-      | exn ->
-        exn.Message
-        |> Error.asIOError (tag "create")
-        |> Either.fail
+    either {
+      try
+        let ts = DateTime.Now
+        let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
+        do! if Directory.exists path |> not then
+              Directory.createDirectory path
+              |> Either.ignore
+            else Either.succeed ()
+        let fp = Path.Combine(unwrap path, fn)
+        let writer = File.AppendText fp
+        writer.AutoFlush <- true
+        return
+          { FilePath = filepath fp
+            Created = ts
+            Stream = writer }
+      with
+        | exn ->
+          return!
+            exn.Message
+            |> Error.asIOError (tag "create")
+            |> Either.fail
+    }
 
 #endif

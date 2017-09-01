@@ -28,6 +28,8 @@ module ApiTests =
 
     { Project            = project
       PinGroups          = Map.empty
+      PinMappings        = Map.empty
+      PinWidgets         = Map.empty
       Cues               = Map.empty
       CueLists           = Map.empty
       Sessions           = Map.empty
@@ -93,8 +95,9 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
+            ServiceId = mem.Id
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
@@ -160,8 +163,9 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
+            ServiceId = mem.Id
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
@@ -234,8 +238,9 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
+            ServiceId = mem.Id
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }
@@ -364,8 +369,9 @@ module ApiTests =
 
         let clnt : IrisClient =
           { Id = Id.Create()
-            Name = "client cool"
+            Name = name "client cool"
             Role = Role.Renderer
+            ServiceId = mem.Id
             Status = ServiceStatus.Starting
             IpAddress = mem.IpAddr
             Port = port (unwrap mem.ApiPort + 1us) }

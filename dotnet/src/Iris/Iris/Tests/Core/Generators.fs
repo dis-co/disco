@@ -81,6 +81,13 @@ module Generators =
   let tagGen = Gen.map astag stringGen
   let timeoutGen = Gen.map ((*) 1<ms>) intGen
 
+  let maybePathGen = gen {
+      let! value = pathGen
+      if value |> unwrap |> isNull
+      then return None
+      else return Some value
+    }
+
   let inline maybeGen g = Gen.oneof [ Gen.constant None
                                       Gen.map Some g ]
 
@@ -471,7 +478,8 @@ module Generators =
 
   let clientGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! service = idGen
+      let! nm = nameGen
       let! sts = servicestatusGen
       let! ip = ipGen
       let! prt = portGen
@@ -481,6 +489,7 @@ module Generators =
           Name = nm
           Status = sts
           IpAddress = ip
+          ServiceId = service
           Port = prt }
     }
 
@@ -513,7 +522,7 @@ module Generators =
 
   let stringpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -522,11 +531,15 @@ module Generators =
       let! vs = vecsizeGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf stringGen
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Online = online
+          Persisted = persisted
           Direction = dir
           Behavior = bh
           MaxChars = mx
@@ -537,7 +550,7 @@ module Generators =
 
   let numberpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -548,11 +561,15 @@ module Generators =
       let! prec = Arb.generate<uint32>
       let! lbs = Gen.arrayOf stringGen
       let! vls = Arb.generate<double[]>
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
+          Online = online
           Min = min
           Max = max
           Unit = unit
@@ -565,7 +582,7 @@ module Generators =
 
   let boolpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
@@ -573,11 +590,15 @@ module Generators =
       let! trig = boolGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Arb.generate<bool[]>
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
+          Online = online
           IsTrigger = trig
           Direction = dir
           VecSize = vs
@@ -587,18 +608,22 @@ module Generators =
 
   let bytepinGen : Gen<BytePinD> = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
       let! vs = vecsizeGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf Arb.generate<byte[]>
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
+          Online = online
           VecSize = vs
           Direction = dir
           Labels = lbs
@@ -613,7 +638,7 @@ module Generators =
 
   let enumpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! vs = vecsizeGen
       let! tgs = Gen.arrayOf tagGen
@@ -621,11 +646,15 @@ module Generators =
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf propertyGen
       let! props = Gen.arrayOf propertyGen
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Tags = tgs
+          Persisted = persisted
+          Online = online
           VecSize = vs
           Direction = dir
           Properties = props
@@ -663,19 +692,23 @@ module Generators =
 
   let colorpinGen = gen {
       let! id = idGen
-      let! nm = stringGen
+      let! nm = nameGen
       let! grp = idGen
       let! vs = vecsizeGen
       let! tgs = Gen.arrayOf tagGen
       let! dir = directionGen
       let! lbs = Gen.arrayOf stringGen
       let! vls = Gen.arrayOf colorGen
+      let! persisted = boolGen
+      let! online = boolGen
       return
         { Id = id
           Name = nm
           PinGroup = grp
           Direction = dir
           Tags = tgs
+          Online = online
+          Persisted = persisted
           VecSize = vs
           Labels = lbs
           Values = vls }
@@ -707,6 +740,12 @@ module Generators =
       Gen.map EnumSlices   (Gen.zip idGen (Gen.arrayOfLength 2 propertyGen))
       Gen.map ColorSlices  (Gen.zip idGen (Gen.arrayOfLength 2 colorGen)) ]
     |> Gen.oneof
+
+  let slicesMapGen =
+    Gen.arrayOf slicesGen
+    |> Gen.map (Array.map (fun (slices: Slices) -> slices.Id, slices))
+    |> Gen.map Map.ofArray
+    |> Gen.map SlicesMap
 
   //   ____
   //  / ___|   _  ___
@@ -764,6 +803,40 @@ module Generators =
           Groups = groups }
     }
 
+  //  ____  _       __  __                   _
+  // |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+  // | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+  // |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+  // |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+  //                            |_|   |_|            |___/
+
+  let pinMappingGen = gen {
+      let! id = idGen
+      let! source = idGen
+      let! sinks = Gen.arrayOf idGen |> Gen.map Set
+      return
+        { Id = id
+          Source = source
+          Sinks = sinks }
+    }
+
+  //  ____  _    __        ___     _            _
+  // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+  // | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  // |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+  // |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+  //                                 |___/
+
+  let pinWidgetGen = gen {
+      let! id = idGen
+      let! name = nameGen
+      let! widgetType = idGen
+      return
+        { Id = id
+          Name = name
+          WidgetType = widgetType }
+    }
+
   //   ____           ____  _
   //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
   // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
@@ -776,15 +849,17 @@ module Generators =
       let! nm = nameGen
       let! cl = maybeGen idGen
       let! sel = indexGen
-      let! call = pinGen
-      let! next = pinGen
-      let! prev = pinGen
+      let! call = idGen
+      let! next = idGen
+      let! prev = idGen
       let! rmw = intGen
       let! lcd = maybeGen idGen
       let! lcr = maybeGen idGen
+      let! locked = boolGen
       return
         { Id = id
           Name = nm
+          Locked = locked
           CueList = cl
           Selected = sel
           Call = call
@@ -807,9 +882,11 @@ module Generators =
       let! nm = nameGen
       let! clnt = idGen
       let! pins = mapGen pinGen
+      let! path = maybePathGen
       return
         { Id = id
           Name = nm
+          Path = path
           Client = clnt
           Pins = pins }
     }
@@ -970,6 +1047,8 @@ module Generators =
   let stateGen = gen {
     let! project = projectGen
     let! groups = mapGen pingroupGen
+    let! widgets = mapGen pinWidgetGen
+    let! mappings = mapGen pinMappingGen
     let! cues = mapGen cueGen
     let! cuelists = mapGen cuelistGen
     let! sessions = mapGen sessionGen
@@ -980,6 +1059,8 @@ module Generators =
     return
       { Project            = project
         PinGroups          = groups
+        PinMappings        = mappings
+        PinWidgets         = widgets
         Cues               = cues
         CueLists           = cuelists
         Sessions           = sessions
@@ -995,7 +1076,7 @@ module Generators =
   //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-  let stateMachineGen =
+  let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
       Gen.constant UnloadProject
       Gen.map AddMember               raftMemberGen
@@ -1004,13 +1085,19 @@ module Generators =
       Gen.map AddClient               clientGen
       Gen.map UpdateClient            clientGen
       Gen.map RemoveClient            clientGen
+      Gen.map AddPinMapping           pinMappingGen
+      Gen.map UpdatePinMapping        pinMappingGen
+      Gen.map RemovePinMapping        pinMappingGen
+      Gen.map AddPinWidget            pinWidgetGen
+      Gen.map UpdatePinWidget         pinWidgetGen
+      Gen.map RemovePinWidget         pinWidgetGen
       Gen.map AddPinGroup             pingroupGen
       Gen.map UpdatePinGroup          pingroupGen
       Gen.map RemovePinGroup          pingroupGen
       Gen.map AddPin                  pinGen
       Gen.map UpdatePin               pinGen
       Gen.map RemovePin               pinGen
-      Gen.map UpdateSlices            slicesGen
+      Gen.map UpdateSlices            slicesMapGen
       Gen.map AddCue                  cueGen
       Gen.map UpdateCue               cueGen
       Gen.map RemoveCue               cueGen
@@ -1035,7 +1122,15 @@ module Generators =
       Gen.map DataSnapshot            stateGen
       Gen.map SetLogLevel             logLevelGen
       Gen.map LogMsg                  logeventGen ]
-    |> Gen.oneof
+
+  let stateMachineBatchGen =
+    Gen.map StateMachineBatch (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
+
+  let private commandBatchGen =
+    Gen.map CommandBatch stateMachineBatchGen
+
+  let stateMachineGen =
+    commandBatchGen :: simpleStateMachineGen |> Gen.oneof
 
   //   ____             __ _        ____ _
   //  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
@@ -1217,8 +1312,7 @@ module Generators =
   //         |_|                    |_|
 
   let apiResponseGen =
-    [ Gen.constant OK
-      Gen.constant Registered
+    [ Gen.constant Registered
       Gen.constant Unregistered
       Gen.map NOK apiErrorGen ]
     |> Gen.oneof
@@ -1263,3 +1357,6 @@ module Generators =
   let stateMachineArb = Arb.fromGen stateMachineGen
   let stateArb = Arb.fromGen stateGen
   let requestArb = Arb.fromGen requestGen
+  let commandBatchArb = Arb.fromGen stateMachineBatchGen
+  let pinMappingArb = Arb.fromGen pinMappingGen
+  let pinWidgetArb = Arb.fromGen pinWidgetGen

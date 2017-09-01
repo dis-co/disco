@@ -66,7 +66,7 @@ namespace Mono.Zeroconf.Providers.Bonjour
         NAPTR     = 35,     /* Naming Authority PoinTeR */
         KX        = 36,     /* Key Exchange */
         CERT      = 37,     /* Certification record */
-        A6        = 38,     /* IPv6 Address (deprecated) */
+        A6        = 38,     /* IPv6 address (deprecated) */
         DNAME     = 39,     /* Non-terminal DNAME (for IPv6) */
         SINK      = 40,     /* Kitchen sink (experimentatl) */
         OPT       = 41,     /* EDNS0 option (meta-RR) */

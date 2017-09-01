@@ -48,7 +48,8 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
   | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices |> ClientContext.Singleton.Post
+  |> UpdateSlices.ofSlices
+  |> ClientContext.Singleton.Post
 
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
@@ -80,9 +81,9 @@ type PinView(props) =
 
   member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater) =
     let name =
-      if String.IsNullOrEmpty(this.props.pin.Name)
+      if this.props.pin.Name |> unwrap |> String.IsNullOrEmpty
       then "--"
-      else this.props.pin.Name
+      else unwrap this.props.pin.Name
     let firstRowValue =
       if rowCount > 1 then
         td [ClassName "iris-flex-row"] [

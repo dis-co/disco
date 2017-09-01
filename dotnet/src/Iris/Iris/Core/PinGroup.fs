@@ -28,6 +28,7 @@ open SharpYaml.Serialization
 type PinGroupYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Path: string
   [<DefaultValue>] val mutable Client: string
   [<DefaultValue>] val mutable Pins: PinYaml array
 
@@ -36,6 +37,7 @@ type PinGroupYaml() =
     yml.Id <- string group.Id
     yml.Name <- unwrap group.Name
     yml.Client <- string group.Client
+    yml.Path <- Option.defaultValue null (Option.map unwrap group.Path)
     yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
     yml
 
@@ -51,8 +53,14 @@ type PinGroupYaml() =
           (Right Map.empty)
           yml.Pins
 
+      let path =
+        if isNull yml.Path
+        then None
+        else Some (filepath yml.Path)
+
       return { Id = Id yml.Id
                Name = name yml.Name
+               Path = path
                Client = Id yml.Client
                Pins = pins }
     }
@@ -72,6 +80,7 @@ type PinGroup =
   { Id: Id
     Name: Name
     Client: Id
+    Path: FilePath option
     Pins: Map<Id,Pin> }
 
   // ** ToYamlObject
@@ -143,8 +152,14 @@ type PinGroup =
           arr
         |> Either.map snd
 
+      let path =
+        if isNull fb.Path
+        then None
+        else Some (filepath fb.Path)
+
       return { Id = Id fb.Id
                Name = name fb.Name
+               Path = path
                Client = Id fb.Client
                Pins = pins }
     }
@@ -154,6 +169,7 @@ type PinGroup =
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let path = self.Path |> Option.map (unwrap >> builder.CreateString)
     let client = self.Client |> string |> builder.CreateString
     let pinoffsets =
       self.Pins
@@ -164,6 +180,7 @@ type PinGroup =
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
     Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
+    Option.iter (fun value -> PinGroupFB.AddPath(builder,value)) path
     PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
@@ -207,7 +224,18 @@ type PinGroup =
   // |____/ \__,_| \_/ \___|
 
   member group.Save (basePath: FilePath) =
-    IrisData.save basePath group
+    PinGroup.save basePath group
+
+  // ** Persisted
+
+  member group.Persisted
+    with get () = PinGroup.persisted group
+
+  // ** IsSaved
+
+  member group.Exists (basePath: FilePath) =
+    basePath </> PinGroup.assetPath group
+    |> File.exists
 
   #endif
 
@@ -226,6 +254,42 @@ type PinGroup =
 
 module PinGroup =
 
+  // ** persisted
+
+  let persisted (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ (pin: Pin) -> pin.Persisted)
+    |> Map.isEmpty
+    |> not
+
+  // ** persistedPins
+
+  let persistedPins (group: PinGroup) =
+    Map.filter (fun _ (pin: Pin) -> pin.Persisted) group.Pins
+
+  // ** volatilePins
+
+  let volatilePins (group: PinGroup) =
+    Map.filter (fun _ (pin: Pin) -> not pin.Persisted) group.Pins
+
+  // ** removeVolatile
+
+  let removeVolatile (group: PinGroup) =
+    { group with Pins = persistedPins group }
+
+  // ** save
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  let save basePath (group: PinGroup) =
+    if persisted group then
+      group
+      |> removeVolatile
+      |> IrisData.save basePath
+    else Either.succeed ()
+
+  #endif
+
   // ** assetPath
 
   let assetPath (group: PinGroup) =
@@ -235,55 +299,48 @@ module PinGroup =
 
   // ** hasPin
 
-  //  _               ____  _
-  // | |__   __ _ ___|  _ \(_)_ __
-  // | '_ \ / _` / __| |_) | | '_ \
-  // | | | | (_| \__ \  __/| | | | |
-  // |_| |_|\__,_|___/_|   |_|_| |_|
-
-  let hasPin (id: Id) (group : PinGroup) : bool =
+  let hasPin (group : PinGroup) (id: Id) : bool =
     Map.containsKey id group.Pins
+
+  // ** findPin
+
+  let findPin (group: PinGroup) (id: Id) =
+    Map.find id group.Pins
+
+  // ** tryFindPin
+
+  let tryFindPin (group: PinGroup) (id: Id) =
+    Map.tryFind id group.Pins
 
   // ** addPin
 
-  //            _     _ ____  _
-  //   __ _  __| | __| |  _ \(_)_ __
-  //  / _` |/ _` |/ _` | |_) | | '_ \
-  // | (_| | (_| | (_| |  __/| | | | |
-  //  \__,_|\__,_|\__,_|_|   |_|_| |_|
-
-  let addPin (pin : Pin) (group : PinGroup) : PinGroup =
-    if hasPin pin.Id group
+  let addPin (group : PinGroup) (pin : Pin) : PinGroup =
+    if hasPin group pin.Id
     then   group
     else { group with Pins = Map.add pin.Id pin group.Pins }
 
   // ** updatePin
 
-  //                  _       _       ____  _
-  //  _   _ _ __   __| | __ _| |_ ___|  _ \(_)_ __
-  // | | | | '_ \ / _` |/ _` | __/ _ \ |_) | | '_ \
-  // | |_| | |_) | (_| | (_| | ||  __/  __/| | | | |
-  //  \__,_| .__/ \__,_|\__,_|\__\___|_|   |_|_| |_|
-  //       |_|
-
-  let updatePin (pin : Pin) (group : PinGroup) : PinGroup =
-    if hasPin pin.Id group
+  let updatePin (group : PinGroup) (pin : Pin) : PinGroup =
+    if hasPin group pin.Id
     then { group with Pins = Map.add pin.Id pin group.Pins }
     else   group
 
   // ** updateSlices
 
-  //                  _       _       ____  _ _
-  //  _   _ _ __   __| | __ _| |_ ___/ ___|| (_) ___ ___  ___
-  // | | | | '_ \ / _` |/ _` | __/ _ \___ \| | |/ __/ _ \/ __|
-  // | |_| | |_) | (_| | (_| | ||  __/___) | | | (_|  __/\__ \
-  //  \__,_| .__/ \__,_|\__,_|\__\___|____/|_|_|\___\___||___/
-  //       |_|
-
-  let updateSlices (slices: Slices) (group : PinGroup): PinGroup =
+  let updateSlices (group : PinGroup) (slices: Slices) : PinGroup =
     match Map.tryFind slices.Id group.Pins with
-    | Some pin -> { group with Pins = Map.add slices.Id (Pin.setSlices slices pin) group.Pins }
+    | Some pin -> { group with Pins = Map.add pin.Id (Pin.setSlices slices pin) group.Pins }
     | None -> group
+
+  // ** processSlices
+
+  let processSlices (group: PinGroup) (slices: Map<Id,Slices>) : PinGroup =
+    let mapper _ (pin: Pin) =
+      match Map.tryFind pin.Id slices with
+      | Some slices -> Pin.setSlices slices pin
+      | None -> pin
+    { group with Pins = Map.map mapper group.Pins }
 
   // ** removePin
 
@@ -293,13 +350,43 @@ module PinGroup =
   // | | |  __/ | | | | | (_) \ V /  __/  __/| | | | |
   // |_|  \___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
 
-  let removePin (pin : Pin) (group : PinGroup) : PinGroup =
+  let removePin (group : PinGroup) (pin : Pin) : PinGroup =
     { group with Pins = Map.remove pin.Id group.Pins }
 
+  // ** setPinsOffline
+
+  let setPinsOffline (group: PinGroup) =
+    { group with Pins = Map.map (fun _ pin -> Pin.setOnline false pin) group.Pins }
+
+  // ** ofPlayer
+
+  let ofPlayer (player: CuePlayer) =
+    let call = Pin.Player.call player.Id
+    let next = Pin.Player.next player.Id
+    let prev = Pin.Player.previous player.Id
+    { Id = player.Id
+      Name = name (unwrap player.Name + " (Cue Player)")
+      Client = Id Constants.CUEPLAYER_GROUP_DIR
+      Path = None
+      Pins = Map.ofList
+                [ (call.Id, call)
+                  (next.Id, next)
+                  (prev.Id, prev) ] }
+
+  // ** ofWidget
+
+  let ofWidget (widget: PinWidget) =
+    { Id = widget.Id
+      Name = name (unwrap widget.Name + " (Widget)")
+      Client = Id Constants.PINWIDGET_GROUP_DIR
+      Path = None
+      Pins = Map.empty }
 
 // * Map module
 
 module Map =
+
+  // ** tryFindPin
 
   //  _              _____ _           _ ____  _
   // | |_ _ __ _   _|  ___(_)_ __   __| |  _ \(_)_ __
@@ -315,6 +402,8 @@ module Map =
         |      _        -> Map.tryFind id group.Pins
     Map.fold folder None groups
 
+  // ** containsPin
+
   //                  _        _           ____  _
   //   ___ ___  _ __ | |_ __ _(_)_ __  ___|  _ \(_)_ __
   //  / __/ _ \| '_ \| __/ _` | | '_ \/ __| |_) | | '_ \
@@ -323,5 +412,5 @@ module Map =
 
   let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
     let folder m _ group =
-      if m then m else PinGroup.hasPin id group || m
+      if m then m else PinGroup.hasPin group id || m
     Map.fold folder false groups

@@ -28,7 +28,7 @@
 
 using System;
 using System.Threading;
-using NDesk.DBus;
+using DBus;
 
 namespace Mono.Zeroconf.Providers.AvahiDBus
 {
@@ -38,6 +38,9 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
         private IAvahiEntryGroup entry_group;
 
         public event RegisterServiceEventHandler Response;
+
+        private string originalName;
+        private int retryNameModifier = 2;
 
         public RegisterService ()
         {
@@ -67,7 +70,7 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
         {
             try {
                 Monitor.Enter (this);
-                DBusManager.Bus.TrapSignals ();
+                // DBusManager.Bus.TrapSignals ();
 
                 if (entry_group != null) {
                     entry_group.Reset ();
@@ -81,16 +84,10 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
                 ObjectPath path = DBusManager.Server.EntryGroupNew ();
                 entry_group = DBusManager.GetObject<IAvahiEntryGroup> (path);
 
-                // Monitor.Exit (this);
-
                 entry_group.StateChanged += OnEntryGroupStateChanged;
             } finally {
-                try {
-                    Monitor.Exit (this);
-                } catch (Exception ex) {
-                    Console.WriteLine(ex.Message);
-                }
-                DBusManager.Bus.UntrapSignals ();
+                Monitor.Exit (this);
+                // DBusManager.Bus.UntrapSignals ();
             }
         }
 
@@ -99,12 +96,20 @@ namespace Mono.Zeroconf.Providers.AvahiDBus
             switch (state) {
                 case EntryGroupState.Collision:
                     if (!OnResponse (ErrorCode.Collision)) {
-                        throw new ApplicationException ();
+                        if (originalName == null) {
+                            originalName = Name;
+                        }
+                        Name = originalName + " (" + retryNameModifier + ")";
+                        retryNameModifier++;
+                        Console.WriteLine("ZeroConf had a name collision, trying: " + Name);
+                        Register();
+                        // throw new ApplicationException ();
                     }
                     break;
                 case EntryGroupState.Failure:
                     if (!OnResponse (ErrorCode.Failure)) {
-                        throw new ApplicationException ();
+                        Console.WriteLine("Mono.ZeroConf failed to register name with AvahiDBus");
+                        // throw new ApplicationException ();
                     }
                     break;
                 case EntryGroupState.Established:

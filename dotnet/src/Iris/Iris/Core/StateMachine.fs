@@ -51,7 +51,7 @@ type AppCommand =
   | Reset
 
   // PROJECT
-  | SaveProject
+  | Save
 
   // ** ToString
 
@@ -61,17 +61,17 @@ type AppCommand =
     | Redo -> "Redo"
     | Reset -> "Reset"
     // PROJECT
-    | SaveProject -> "SaveProject"
+    | Save -> "Save"
 
   // ** Parse
 
   static member Parse (str: string) =
     match str with
-    | "Undo"        -> Undo
-    | "Redo"        -> Redo
-    | "Reset"       -> Reset
-    | "SaveProject" -> SaveProject
-    | _             -> failwithf "AppCommand: parse error: %s" str
+    | "Undo" -> Undo
+    | "Redo" -> Redo
+    | "Reset"-> Reset
+    | "Save" -> Save
+    | _      -> failwithf "AppCommand: parse error: %s" str
 
   // ** TryParse
 
@@ -91,20 +91,20 @@ type AppCommand =
   static member FromFB (fb: StateMachineActionFB) =
 #if FABLE_COMPILER
     match fb with
-    | x when x = StateMachineActionFB.UndoFB        -> Right Undo
-    | x when x = StateMachineActionFB.RedoFB        -> Right Redo
-    | x when x = StateMachineActionFB.ResetFB       -> Right Reset
-    | x when x = StateMachineActionFB.SaveProjectFB -> Right SaveProject
+    | x when x = StateMachineActionFB.UndoFB  -> Right Undo
+    | x when x = StateMachineActionFB.RedoFB  -> Right Redo
+    | x when x = StateMachineActionFB.ResetFB -> Right Reset
+    | x when x = StateMachineActionFB.SaveFB  -> Right Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
       |> Either.fail
 #else
     match fb with
-    | StateMachineActionFB.UndoFB        -> Right Undo
-    | StateMachineActionFB.RedoFB        -> Right Redo
-    | StateMachineActionFB.ResetFB       -> Right Reset
-    | StateMachineActionFB.SaveProjectFB -> Right SaveProject
+    | StateMachineActionFB.UndoFB  -> Right Undo
+    | StateMachineActionFB.RedoFB  -> Right Redo
+    | StateMachineActionFB.ResetFB -> Right Reset
+    | StateMachineActionFB.SaveFB  -> Right Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
@@ -115,10 +115,10 @@ type AppCommand =
 
   member self.ToOffset(_: FlatBufferBuilder) : StateMachineActionFB =
     match self with
-    | Undo        -> StateMachineActionFB.UndoFB
-    | Redo        -> StateMachineActionFB.RedoFB
-    | Reset       -> StateMachineActionFB.ResetFB
-    | SaveProject -> StateMachineActionFB.SaveProjectFB
+    | Undo  -> StateMachineActionFB.UndoFB
+    | Redo  -> StateMachineActionFB.RedoFB
+    | Reset -> StateMachineActionFB.ResetFB
+    | Save  -> StateMachineActionFB.SaveFB
 
 // * State Type
 
@@ -135,6 +135,8 @@ type AppCommand =
 type State =
   { Project:            IrisProject
     PinGroups:          Map<Id,PinGroup>
+    PinMappings:        Map<Id,PinMapping>
+    PinWidgets:         Map<Id,PinWidget>
     Cues:               Map<Id,Cue>
     CueLists:           Map<Id,CueList>
     Sessions:           Map<Id,Session>
@@ -147,14 +149,16 @@ type State =
 
   static member Empty
     with get () =
-      { Project  = IrisProject.Empty
-        PinGroups  = Map.empty
-        Cues       = Map.empty
-        CueLists   = Map.empty
-        Sessions   = Map.empty
-        Users      = Map.empty
-        Clients    = Map.empty
-        CuePlayers = Map.empty
+      { Project     = IrisProject.Empty
+        PinGroups   = Map.empty
+        PinMappings = Map.empty
+        PinWidgets  = Map.empty
+        Cues        = Map.empty
+        CueLists    = Map.empty
+        Sessions    = Map.empty
+        Users       = Map.empty
+        Clients     = Map.empty
+        CuePlayers  = Map.empty
         DiscoveredServices = Map.empty }
 
   // ** Load
@@ -164,20 +168,22 @@ type State =
   static member Load (path: FilePath, machine: IrisMachine) =
     either {
       let inline toMap value = Either.map (Array.map toPair >> Map.ofArray) value
-
       let! project  = Asset.loadWithMachine path machine
+      let! widgets  = Asset.loadAll project.Path |> toMap
+      let! mappings = Asset.loadAll project.Path |> toMap
       let! users    = Asset.loadAll project.Path |> toMap
       let! cues     = Asset.loadAll project.Path |> toMap
       let! cuelists = Asset.loadAll project.Path |> toMap
       let! groups   = Asset.loadAll project.Path |> toMap
       let! players  = Asset.loadAll project.Path |> toMap
-
       return
         { Project            = project
           Users              = users
           Cues               = cues
           CueLists           = cuelists
           PinGroups          = groups
+          PinMappings        = mappings
+          PinWidgets         = widgets
           CuePlayers         = players
           Sessions           = Map.empty
           Clients            = Map.empty
@@ -192,11 +198,13 @@ type State =
 
   member state.Save (basePath: FilePath) =
     either {
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.PinGroups
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Cues
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CueLists
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.Users
-      do! Map.fold (Asset.saveMap basePath) (Right ()) state.CuePlayers
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinGroups
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinMappings
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinWidgets
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.Cues
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.CueLists
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.Users
+      do! Map.fold (Asset.saveMap basePath) Either.nothing state.CuePlayers
       do! Asset.save basePath state.Project
     }
 
@@ -217,61 +225,65 @@ type State =
     let groups =
       Map.toArray self.PinGroups
       |> Array.map (snd >> Binary.toOffset builder)
+      |> fun groups -> StateFB.CreatePinGroupsVector(builder, groups)
 
-    let groupsoffset = StateFB.CreatePinGroupsVector(builder, groups)
+    let mappings =
+      Map.toArray self.PinMappings
+      |> Array.map (snd >> Binary.toOffset builder)
+      |> fun mappings -> StateFB.CreatePinMappingsVector(builder, mappings)
+
+    let widgets =
+      Map.toArray self.PinWidgets
+      |> Array.map (snd >> Binary.toOffset builder)
+      |> fun widgets -> StateFB.CreatePinWidgetsVector(builder, widgets)
 
     let cues =
       Map.toArray self.Cues
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let cuesoffset = StateFB.CreateCuesVector(builder, cues)
+      |> fun cues -> StateFB.CreateCuesVector(builder, cues)
 
     let cuelists =
       Map.toArray self.CueLists
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let cuelistsoffset = StateFB.CreateCueListsVector(builder, cuelists)
+      |> fun cuelists -> StateFB.CreateCueListsVector(builder, cuelists)
 
     let users =
       Map.toArray self.Users
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let usersoffset = StateFB.CreateUsersVector(builder, users)
+      |> fun users -> StateFB.CreateUsersVector(builder, users)
 
     let sessions =
       Map.toArray self.Sessions
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let sessionsoffset = StateFB.CreateSessionsVector(builder, sessions)
+      |> fun sessions -> StateFB.CreateSessionsVector(builder, sessions)
 
     let clients =
       Map.toArray self.Clients
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let clientsoffset = StateFB.CreateClientsVector(builder, clients)
+      |> fun clients -> StateFB.CreateClientsVector(builder, clients)
 
     let players =
       Map.toArray self.CuePlayers
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let playersoffset = StateFB.CreateCuePlayersVector(builder, players)
+      |> fun players -> StateFB.CreateCuePlayersVector(builder, players)
 
     let services =
       Map.toArray self.DiscoveredServices
       |> Array.map (snd >> Binary.toOffset builder)
-
-    let servicesoffset = StateFB.CreateDiscoveredServicesVector(builder, services)
+      |> fun services -> StateFB.CreateDiscoveredServicesVector(builder, services)
 
     StateFB.StartStateFB(builder)
     StateFB.AddProject(builder, project)
-    StateFB.AddPinGroups(builder, groupsoffset)
-    StateFB.AddCues(builder, cuesoffset)
-    StateFB.AddCueLists(builder, cuelistsoffset)
-    StateFB.AddSessions(builder, sessionsoffset)
-    StateFB.AddClients(builder, clientsoffset)
-    StateFB.AddUsers(builder, usersoffset)
-    StateFB.AddCuePlayers(builder, playersoffset)
-    StateFB.AddDiscoveredServices(builder, servicesoffset)
+    StateFB.AddPinGroups(builder, groups)
+    StateFB.AddPinMappings(builder, mappings)
+    StateFB.AddPinWidgets(builder, widgets)
+    StateFB.AddCues(builder, cues)
+    StateFB.AddCueLists(builder, cuelists)
+    StateFB.AddSessions(builder, sessions)
+    StateFB.AddClients(builder, clients)
+    StateFB.AddUsers(builder, users)
+    StateFB.AddCuePlayers(builder, players)
+    StateFB.AddDiscoveredServices(builder, services)
     StateFB.EndStateFB(builder)
 
   // ** ToBytes
@@ -316,6 +328,62 @@ type State =
                 |> PinGroup.FromFB
               else
                 "Could not parse empty group payload"
+                |> Error.asParseError "State.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add group.Id group map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
+      // MAPPINGS
+
+      let! mappings =
+        let arr = Array.zeroCreate fb.PinMappingsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, PinMapping>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! group = fb.PinMappings(i) |> PinMapping.FromFB
+            #else
+            let! group =
+              let value = fb.PinMappings(i)
+              if value.HasValue then
+                value.Value
+                |> PinMapping.FromFB
+              else
+                "Could not parse empty PinMapping payload"
+                |> Error.asParseError "State.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add group.Id group map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
+      // WIDGETS
+
+      let! widgets =
+        let arr = Array.zeroCreate fb.PinWidgetsLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<Id, PinWidget>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! group = fb.PinWidgets(i) |> PinWidget.FromFB
+            #else
+            let! group =
+              let value = fb.PinWidgets(i)
+              if value.HasValue then
+                value.Value
+                |> PinWidget.FromFB
+              else
+                "Could not parse empty PinWidget payload"
                 |> Error.asParseError "State.FromFB"
                 |> Either.fail
             #endif
@@ -524,6 +592,8 @@ type State =
 
       return { Project            = project
                PinGroups          = groups
+               PinMappings        = mappings
+               PinWidgets         = widgets
                Cues               = cues
                CueLists           = cuelists
                Users              = users
@@ -543,6 +613,52 @@ type State =
 // * State module
 
 module State =
+
+  // ** addPinWidget
+
+  let addPinWidget (mappping: PinWidget) (state: State) =
+    if Map.containsKey mappping.Id state.PinWidgets then
+      state
+    else
+      let mapppings = Map.add mappping.Id mappping state.PinWidgets
+      { state with PinWidgets = mapppings }
+
+  // ** updatePinWidget
+
+  let updatePinWidget (mappping: PinWidget) (state: State) =
+    if Map.containsKey mappping.Id state.PinWidgets then
+      let mapppings = Map.add mappping.Id mappping state.PinWidgets
+      { state with PinWidgets = mapppings }
+    else
+      state
+
+  // ** removePinWidget
+
+  let removePinWidget (mappping: PinWidget) (state: State) =
+    { state with PinWidgets = Map.remove mappping.Id state.PinWidgets }
+
+  // ** addPinMapping
+
+  let addPinMapping (mappping: PinMapping) (state: State) =
+    if Map.containsKey mappping.Id state.PinMappings then
+      state
+    else
+      let mapppings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mapppings }
+
+  // ** updatePinMapping
+
+  let updatePinMapping (mappping: PinMapping) (state: State) =
+    if Map.containsKey mappping.Id state.PinMappings then
+      let mapppings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mapppings }
+    else
+      state
+
+  // ** removePinMapping
+
+  let removePinMapping (mappping: PinMapping) (state: State) =
+    { state with PinMappings = Map.remove mappping.Id state.PinMappings }
 
   // ** addCuePlayer
 
@@ -646,38 +762,25 @@ module State =
   // |_|   \__,_|\__\___|_| |_|
 
   let addPinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      state
-    else
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
+    { state with PinGroups = Map.add group.Id group state.PinGroups }
 
   // ** updatePinGroup
 
   let updatePinGroup (group : PinGroup) (state: State) =
-    if Map.containsKey group.Id state.PinGroups then
-      { state with PinGroups = Map.add group.Id group state.PinGroups }
-    else
-      state
+    { state with PinGroups = Map.add group.Id group state.PinGroups }
 
   // ** removePinGroup
 
   let removePinGroup (group : PinGroup) (state: State) =
     { state with PinGroups = Map.remove group.Id state.PinGroups }
 
-
   // ** addPin
-
-  //  ____  _
-  // |  _ \(_)_ __
-  // | |_) | | '_ \
-  // |  __/| | | | |
-  // |_|   |_|_| |_|
 
   let addPin (pin: Pin) (state: State) =
     if Map.containsKey pin.PinGroup state.PinGroups then
       let update _ (group: PinGroup) =
         if group.Id = pin.PinGroup then
-          PinGroup.addPin pin group
+          PinGroup.addPin group pin
         else
           group
       { state with PinGroups = Map.map update state.PinGroups }
@@ -689,29 +792,28 @@ module State =
   let updatePin (pin : Pin) (state: State) =
     let mapper (_: Id) (group : PinGroup) =
       if group.Id = pin.PinGroup then
-        PinGroup.updatePin pin group
+        PinGroup.updatePin group pin
       else
         group
     { state with PinGroups = Map.map mapper state.PinGroups }
 
-  // ** updateSlices
-
-  let updateSlices (slices: Slices) (state: State) =
-    { state with
-        PinGroups = Map.map
-                      (fun _ group -> PinGroup.updateSlices slices group)
-                      state.PinGroups
-        CuePlayers = Map.map
-                      (fun _ player -> CuePlayer.updateSlices slices player)
-                      state.CuePlayers }
   // ** removePin
 
   let removePin (pin : Pin) (state: State) =
     let updater _ (group : PinGroup) =
       if pin.PinGroup = group.Id
-      then PinGroup.removePin pin group
+      then PinGroup.removePin group pin
       else group
     { state with PinGroups = Map.map updater state.PinGroups }
+
+  // ** updateSlices
+
+  let updateSlices (map: SlicesMap) (state: State) =
+    { state with
+        PinGroups =
+          Map.map
+            (fun _ group -> PinGroup.processSlices group map.Slices)
+            state.PinGroups }
 
   // ** tryFindPin
 
@@ -866,6 +968,71 @@ module State =
   let updateProject (project: IrisProject) (state: State) =
     { state with Project = project }
 
+  // ** update
+
+  let update (state: State) = function
+    | AddCue            cue           -> addCue         cue     state
+    | UpdateCue         cue           -> updateCue      cue     state
+    | RemoveCue         cue           -> removeCue      cue     state
+
+    | AddCueList    cuelist           -> addCueList     cuelist state
+    | UpdateCueList cuelist           -> updateCueList  cuelist state
+    | RemoveCueList cuelist           -> removeCueList  cuelist state
+
+    | AddCuePlayer    player          -> addCuePlayer    player state
+    | UpdateCuePlayer player          -> updateCuePlayer player state
+    | RemoveCuePlayer player          -> removeCuePlayer player state
+
+    | AddPinGroup     group           -> addPinGroup    group   state
+    | UpdatePinGroup  group           -> updatePinGroup group   state
+    | RemovePinGroup  group           -> removePinGroup group   state
+
+    | AddPinMapping     mapping       -> addPinMapping    mapping   state
+    | UpdatePinMapping  mapping       -> updatePinMapping mapping   state
+    | RemovePinMapping  mapping       -> removePinMapping mapping   state
+
+    | AddPin            pin           -> addPin         pin     state
+    | UpdatePin         pin           -> updatePin      pin     state
+    | RemovePin         pin           -> removePin      pin     state
+    | UpdateSlices   slices           -> updateSlices   slices  state
+
+    | AddMember         mem           -> addMember      mem     state
+    | UpdateMember      mem           -> updateMember   mem     state
+    | RemoveMember      mem           -> removeMember   mem     state
+
+    | AddClient      client           -> addClient      client  state
+    | UpdateClient   client           -> updateClient   client  state
+    | RemoveClient   client           -> removeClient   client  state
+
+    | AddSession    session           -> addSession     session state
+    | UpdateSession session           -> updateSession  session state
+    | RemoveSession session           -> removeSession  session state
+
+    | AddUser          user           -> addUser        user    state
+    | UpdateUser       user           -> updateUser     user    state
+    | RemoveUser       user           -> removeUser     user    state
+
+    | UpdateProject project           -> updateProject  project state
+
+    // It may happen that a service didn't make it into the state and an update service
+    // event is received. For those cases just add/update the service into the state.
+    | AddDiscoveredService    service
+    | UpdateDiscoveredService service -> addOrUpdateService    service state
+    | RemoveDiscoveredService service -> removeService         service state
+
+    | _ -> state
+
+  // ** processBatch
+
+  let processBatch (state: State) (batch: StateMachineBatch) =
+    List.fold update state batch.Commands
+
+  // ** initialize
+
+  let initialize (state: State) =
+    { state with
+        PinGroups = Map.map (fun _ group -> PinGroup.setPinsOffline group) state.PinGroups }
+
 // * Store Action
 
 //  ____  _                      _        _   _
@@ -885,7 +1052,7 @@ module State =
 /// Returns: StoreAction
 type [<NoComparison>] StoreAction =
   { Event: StateMachine
-  ; State: State }
+    State: State }
 
   override self.ToString() : string =
     sprintf "%s %s" (self.Event.ToString()) (self.State.ToString())
@@ -1068,57 +1235,15 @@ type Store(state : State)=
                        State = state })  // 4) append to undo history
 
     match ev with
-    | Command (AppCommand.Redo)     -> self.Redo()
-    | Command (AppCommand.Undo)     -> self.Undo()
-    | Command (AppCommand.Reset)    -> ()   // do nothing for now
+    | Command (AppCommand.Redo)  -> self.Redo()
+    | Command (AppCommand.Undo)  -> self.Undo()
+    | Command (AppCommand.Reset) -> ()   // do nothing for now
 
-    | AddCue            cue         -> State.addCue         cue     state |> andRender
-    | UpdateCue         cue         -> State.updateCue      cue     state |> andRender
-    | RemoveCue         cue         -> State.removeCue      cue     state |> andRender
+    | UnloadProject              -> self.Notify(ev) // This event doesn't actually modify the state
 
-    | AddCueList    cuelist         -> State.addCueList     cuelist state |> andRender
-    | UpdateCueList cuelist         -> State.updateCueList  cuelist state |> andRender
-    | RemoveCueList cuelist         -> State.removeCueList  cuelist state |> andRender
+    | CommandBatch batch         -> State.processBatch state batch |> andRender
 
-    | AddCuePlayer    player        -> State.addCuePlayer    player state |> andRender
-    | UpdateCuePlayer player        -> State.updateCuePlayer player state |> andRender
-    | RemoveCuePlayer player        -> State.removeCuePlayer player state |> andRender
-
-    | AddPinGroup     group         -> State.addPinGroup    group   state |> andRender
-    | UpdatePinGroup  group         -> State.updatePinGroup group   state |> andRender
-    | RemovePinGroup  group         -> State.removePinGroup group   state |> andRender
-
-    | AddPin            pin         -> State.addPin         pin     state |> andRender
-    | UpdatePin         pin         -> State.updatePin      pin     state |> andRender
-    | RemovePin         pin         -> State.removePin      pin     state |> andRender
-    | UpdateSlices   slices         -> State.updateSlices   slices  state |> andRender
-
-    | AddMember         mem         -> State.addMember      mem     state |> andRender
-    | UpdateMember      mem         -> State.updateMember   mem     state |> andRender
-    | RemoveMember      mem         -> State.removeMember   mem     state |> andRender
-
-    | AddClient      client         -> State.addClient      client  state |> andRender
-    | UpdateClient   client         -> State.updateClient   client  state |> andRender
-    | RemoveClient   client         -> State.removeClient   client  state |> andRender
-
-    | AddSession    session         -> State.addSession     session state |> andRender
-    | UpdateSession session         -> State.updateSession  session state |> andRender
-    | RemoveSession session         -> State.removeSession  session state |> andRender
-
-    | AddUser          user         -> State.addUser        user    state |> andRender
-    | UpdateUser       user         -> State.updateUser     user    state |> andRender
-    | RemoveUser       user         -> State.removeUser     user    state |> andRender
-
-    | UpdateProject project         -> State.updateProject  project state |> andRender
-    | UnloadProject                 -> self.Notify(ev) // This event doesn't actually modify the state
-
-    // It may happen that a service didn't make it into the state and an update service
-    // event is received. For those cases just add/update the service into the state.
-    | AddDiscoveredService    service
-    | UpdateDiscoveredService service -> State.addOrUpdateService    service state |> andRender
-    | RemoveDiscoveredService service -> State.removeService service state |> andRender
-
-    | _ -> ()
+    | other                      -> State.update state other |> andRender
 
   // ** Subscribe
 
@@ -1202,6 +1327,120 @@ type Store(state : State)=
 /// Returns: Store -> StateMachine -> unit
 type Listener = Store -> StateMachine -> unit
 
+// * StateMachineBatch
+
+type StateMachineBatch = StateMachineBatch of StateMachine list
+  with
+    // ** Commands
+
+    member batch.Commands
+      with get () = match batch with | StateMachineBatch commands -> commands
+
+    // ** ToOffset
+
+    member batch.ToOffset(builder: FlatBufferBuilder) =
+      let serialized =
+        batch.Commands
+        |> List.map (Binary.toOffset builder)
+        |> List.toArray
+        |> fun arr -> CommandBatchFB.CreateCommandsVector(builder, arr)
+      CommandBatchFB.StartCommandBatchFB(builder)
+      CommandBatchFB.AddCommands(builder, serialized)
+      CommandBatchFB.EndCommandBatchFB(builder)
+
+    // ** FromFB
+
+    static member FromFB(batch: CommandBatchFB) =
+      either {
+        let input = Array.zeroCreate batch.CommandsLength
+
+        let! (_,commands) =
+          #if FABLE_COMPILER
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>) _ -> either {
+                let! (idx, arr) = m
+                let! cmd = batch.Commands(idx) |>  StateMachine.FromFB
+                do arr.[idx] <- cmd
+                return (idx +  1, arr)
+              })
+            (Right (0, input))
+            input
+          #else
+          Array.fold
+            (fun (m: Either<IrisError, int * StateMachine array>)  _ -> either {
+                let! (idx, arr) = m
+                let cmdish = batch.Commands(idx)
+                if cmdish.HasValue then
+                  let raw = cmdish.Value
+                  let! cmd = StateMachine.FromFB raw
+                  do arr.[idx] <- cmd
+                  return (idx +  1, arr)
+                else
+                  return!
+                    "Could not parse empty CommandBatch *value* payload"
+                    |> Error.asParseError "StateMachine.FromFB"
+                    |> Either.fail
+              })
+            (Right (0, input))
+            input
+          #endif
+        return StateMachineBatch (List.ofArray commands)
+      }
+
+    // ** ToBytes
+
+    member batch.ToBytes() =
+      Binary.buildBuffer batch
+
+    // ** FromBytes
+
+    static member FromBytes(raw: byte array) =
+      raw
+      |> Binary.createBuffer
+      |> CommandBatchFB.GetRootAsCommandBatchFB
+      |> StateMachineBatch.FromFB
+
+// * SlicesMap
+
+type SlicesMap = SlicesMap of Map<Id,Slices>
+  with
+    member map.Slices
+      with get () = match map with SlicesMap slices -> slices
+
+    member map.ToOffset(builder: FlatBufferBuilder) =
+      let vector =
+        map.Slices
+        |> Map.toArray
+        |> Array.map (snd >> Binary.toOffset builder)
+        |> fun arr -> SlicesMapFB.CreateSlicesVector(builder, arr)
+      SlicesMapFB.StartSlicesMapFB(builder)
+      SlicesMapFB.AddSlices(builder, vector)
+      SlicesMapFB.EndSlicesMapFB(builder)
+
+    static member FromFB(fb: SlicesMapFB) =
+      [ 0 .. fb.SlicesLength - 1 ]
+      |> List.fold
+        (fun (m: Either<IrisError,Map<Id,Slices>>) (idx: int) -> either {
+            let! output = m
+            #if FABLE_COMPILER
+            let! parsed = fb.Slices(idx) |> Slices.FromFB
+            return Map.add parsed.Id parsed output
+            #else
+            let slicish = fb.Slices(idx)
+            if slicish.HasValue then
+              let slices = slicish.Value
+              let! parsed = Slices.FromFB slices
+              return Map.add parsed.Id parsed output
+            else
+              return!
+                "Could not parse empty SlicesFB value"
+                |> Error.asParseError "SlicesMap"
+                |> Either.fail
+            #endif
+          })
+        (Right Map.empty)
+      |> Either.map SlicesMap
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1230,11 +1469,21 @@ type StateMachine =
   | UpdatePinGroup          of PinGroup
   | RemovePinGroup          of PinGroup
 
+  // MAPPING
+  | AddPinMapping           of PinMapping
+  | UpdatePinMapping        of PinMapping
+  | RemovePinMapping        of PinMapping
+
+  // WIDGET
+  | AddPinWidget            of PinWidget
+  | UpdatePinWidget         of PinWidget
+  | RemovePinWidget         of PinWidget
+
   // PIN
   | AddPin                  of Pin
   | UpdatePin               of Pin
   | RemovePin               of Pin
-  | UpdateSlices            of Slices
+  | UpdateSlices            of SlicesMap
 
   // CUE
   | AddCue                  of Cue
@@ -1248,9 +1497,9 @@ type StateMachine =
   | RemoveCueList           of CueList
 
   // CUEPLAYER
-  | AddCuePlayer          of CuePlayer
-  | UpdateCuePlayer       of CuePlayer
-  | RemoveCuePlayer       of CuePlayer
+  | AddCuePlayer            of CuePlayer
+  | UpdateCuePlayer         of CuePlayer
+  | RemoveCuePlayer         of CuePlayer
 
   // User
   | AddUser                 of User
@@ -1272,6 +1521,8 @@ type StateMachine =
   | Command                 of AppCommand
 
   | DataSnapshot            of State
+
+  | CommandBatch            of StateMachineBatch
 
   | SetLogLevel             of LogLevel
 
@@ -1299,6 +1550,16 @@ type StateMachine =
     | AddPinGroup             _ -> "AddPinGroup"
     | UpdatePinGroup          _ -> "UpdatePinGroup"
     | RemovePinGroup          _ -> "RemovePinGroup"
+
+    // MAPPING
+    | AddPinMapping           _ -> "AddPinMapping"
+    | UpdatePinMapping        _ -> "UpdatePinMapping"
+    | RemovePinMapping        _ -> "RemovePinMapping"
+
+    // WIDGET
+    | AddPinWidget            _ -> "AddPinWidget"
+    | UpdatePinWidget         _ -> "UpdatePinWidget"
+    | RemovePinWidget         _ -> "RemovePinWidget"
 
     // PIN
     | AddPin                  _ -> "AddPin"
@@ -1338,6 +1599,7 @@ type StateMachine =
     | RemoveDiscoveredService _ -> "RemoveDiscoveredService"
 
     | Command                 _ -> "Command"
+    | CommandBatch            _ -> "CommandBatch"
     | DataSnapshot            _ -> "DataSnapshot"
     | SetLogLevel             _ -> "SetLogLevel"
     | LogMsg                  _ -> "LogMsg"
@@ -1367,6 +1629,16 @@ type StateMachine =
       | AddPinGroup             _
       | UpdatePinGroup          _
       | RemovePinGroup          _      -> Save
+
+      // MAPPING
+      | AddPinMapping           _
+      | UpdatePinMapping        _
+      | RemovePinMapping        _      -> Save
+
+      // WIDGET
+      | AddPinWidget            _
+      | UpdatePinWidget         _
+      | RemovePinWidget         _      -> Save
 
       // PIN
       | AddPin                  _
@@ -1405,9 +1677,11 @@ type StateMachine =
       | UpdateDiscoveredService _
       | RemoveDiscoveredService _      -> Ignore
 
+      | CommandBatch            _      -> Ignore
+
       | UpdateClock             _      -> Ignore
 
-      | Command AppCommand.SaveProject -> Commit
+      | Command AppCommand.Save        -> Commit
       | Command                 _      -> Ignore
 
       | DataSnapshot            _      -> Ignore
@@ -1415,6 +1689,145 @@ type StateMachine =
       | SetLogLevel             _      -> Ignore
 
       | LogMsg                  _      -> Ignore
+
+  // ** ApiParameterType
+
+  #if !FABLE_COMPILER
+
+  member cmd.ApiParameterType
+    with get () =
+      match cmd with
+      | UpdateProject           _  -> ParameterFB.ProjectFB
+      | UnloadProject              -> ParameterFB.NONE
+
+      | AddMember               _
+      | UpdateMember            _
+      | RemoveMember            _  -> ParameterFB.RaftMemberFB
+
+      | AddClient               _
+      | UpdateClient            _
+      | RemoveClient            _  -> ParameterFB.IrisClientFB
+
+      | AddPinGroup             _
+      | UpdatePinGroup          _
+      | RemovePinGroup          _  -> ParameterFB.PinGroupFB
+
+      | AddPinMapping           _
+      | UpdatePinMapping        _
+      | RemovePinMapping        _  -> ParameterFB.PinMappingFB
+
+      | AddPinWidget            _
+      | UpdatePinWidget         _
+      | RemovePinWidget         _  -> ParameterFB.PinWidgetFB
+
+      | AddPin                  _
+      | UpdatePin               _
+      | RemovePin               _  -> ParameterFB.PinFB
+
+      | UpdateSlices            _  -> ParameterFB.SlicesFB
+
+      | AddCue                  _
+      | UpdateCue               _
+      | RemoveCue               _
+      | CallCue                 _  -> ParameterFB.CueFB
+
+      | AddCueList              _
+      | UpdateCueList           _
+      | RemoveCueList           _  -> ParameterFB.CueListFB
+
+      | AddCuePlayer            _
+      | UpdateCuePlayer         _
+      | RemoveCuePlayer         _  -> ParameterFB.CuePlayerFB
+
+      | AddUser                 _
+      | UpdateUser              _
+      | RemoveUser              _  -> ParameterFB.UserFB
+
+      | AddSession              _
+      | UpdateSession           _
+      | RemoveSession           _  -> ParameterFB.SessionFB
+
+      | AddDiscoveredService    _
+      | UpdateDiscoveredService _
+      | RemoveDiscoveredService _  -> ParameterFB.DiscoveredServiceFB
+
+      | UpdateClock             _  -> ParameterFB.ClockFB
+
+      | Command                 _  -> ParameterFB.NONE
+
+      | DataSnapshot            _  -> ParameterFB.StateFB
+
+      | CommandBatch            _  -> ParameterFB.CommandBatchFB
+
+      | SetLogLevel             _  -> ParameterFB.StringFB
+
+      | LogMsg                  _  -> ParameterFB.LogEventFB
+
+  // ** ApiCommand
+
+  member cmd.ApiCommand
+    with get () =
+      match cmd with
+      | UnloadProject              -> ApiCommandFB.UnloadFB
+
+      | AddDiscoveredService    _
+      | AddUser                 _
+      | AddSession              _
+      | AddCuePlayer            _
+      | AddCueList              _
+      | AddCue                  _
+      | AddPin                  _
+      | AddPinGroup             _
+      | AddPinMapping           _
+      | AddPinWidget            _
+      | AddClient               _
+      | AddMember               _ -> ApiCommandFB.AddFB
+
+      | UpdateClock             _
+      | UpdateDiscoveredService _
+      | UpdateUser              _
+      | UpdateSession           _
+      | UpdateCuePlayer         _
+      | UpdateCueList           _
+      | UpdateCue               _
+      | UpdatePin               _
+      | UpdateSlices            _
+      | UpdatePinGroup          _
+      | UpdatePinMapping        _
+      | UpdatePinWidget         _
+      | UpdateClient            _
+      | UpdateMember            _
+      | UpdateProject           _  -> ApiCommandFB.UpdateFB
+
+      | RemoveDiscoveredService _
+      | RemoveUser              _
+      | RemoveSession           _
+      | RemoveCuePlayer         _
+      | RemoveCueList           _
+      | RemoveCue               _
+      | RemovePin               _
+      | RemovePinGroup          _
+      | RemovePinMapping        _
+      | RemovePinWidget         _
+      | RemoveClient            _
+      | RemoveMember            _ -> ApiCommandFB.RemoveFB
+
+      | CallCue                 _ -> ApiCommandFB.CallCueFB
+
+      | Command AppCommand.Undo   -> ApiCommandFB.UndoFB
+      | Command AppCommand.Redo   -> ApiCommandFB.RedoFB
+      | Command AppCommand.Reset  -> ApiCommandFB.ResetFB
+      | Command AppCommand.Save   -> ApiCommandFB.SaveFB
+
+      | DataSnapshot            _ -> ApiCommandFB.SnapshotFB
+
+      | CommandBatch            _ -> ApiCommandFB.BatchFB
+
+      | SetLogLevel             _ -> ApiCommandFB.SetLogLevelFB
+
+      | LogMsg                  _ -> ApiCommandFB.LogEventFB
+
+  #endif
 
   // ** FromFB (JavaScript)
 
@@ -1429,6 +1842,12 @@ type StateMachine =
 
   static member FromFB (fb: StateMachineFB) =
     match fb.PayloadType with
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
     | x when x = StateMachinePayloadFB.ProjectFB ->
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
@@ -1441,6 +1860,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | x when x = StateMachinePayloadFB.RaftMemberFB ->
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
@@ -1455,6 +1879,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____ _ _            _
+    //  / ___| (_) ___ _ __ | |_
+    // | |   | | |/ _ \ '_ \| __|
+    // | |___| | |  __/ | | | |_
+    //  \____|_|_|\___|_| |_|\__|
     | x when x = StateMachinePayloadFB.IrisClientFB ->
       let client = fb.IrisClientFB |> IrisClient.FromFB
       match fb.Action with
@@ -1469,6 +1898,12 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____
+    //  / ___|_ __ ___  _   _ _ __
+    // | |  _| '__/ _ \| | | | '_ \
+    // | |_| | | | (_) | |_| | |_) |
+    //  \____|_|  \___/ \__,_| .__/
+    //                       |_|
     | x when x = StateMachinePayloadFB.PinGroupFB ->
       let group = fb.PinGroupFB |> PinGroup.FromFB
       match fb.Action with
@@ -1483,6 +1918,51 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+    | x when x = StateMachinePayloadFB.PinMappingFB ->
+      let mapping = fb.PinMappingFB |> PinMapping.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddPinMapping mapping
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdatePinMapping mapping
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemovePinMapping mapping
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+    | x when x = StateMachinePayloadFB.PinWidgetFB ->
+      let widget = fb.PinWidgetFB |> PinWidget.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddPinWidget widget
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdatePinWidget widget
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemovePinWidget widget
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
     | x when x = StateMachinePayloadFB.PinFB ->
       let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
@@ -1497,9 +1977,13 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = StateMachinePayloadFB.SlicesFB ->
-
-      let slices = SlicesFB.Create() |> fb.Payload |> Slices.FromFB
+    //  ____  _ _
+    // / ___|| (_) ___ ___  ___
+    // \___ \| | |/ __/ _ \/ __|
+    //  ___) | | | (_|  __/\__ \
+    // |____/|_|_|\___\___||___/
+    | x when x = StateMachinePayloadFB.SlicesMapFB ->
+      let slices = fb.SlicesMapFB |> SlicesMap.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
         Either.map UpdateSlices slices
@@ -1508,6 +1992,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
     | x when x = StateMachinePayloadFB.CueFB ->
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
@@ -1522,6 +2011,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
     | x when x = StateMachinePayloadFB.CueListFB ->
       let cuelist = fb.CueListFB |> CueList.FromFB
       match fb.Action with
@@ -1536,6 +2030,12 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____           ____  _
+    //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
+    // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
+    // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
+    //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
+    //                                |___/
     | x when x = StateMachinePayloadFB.CuePlayerFB ->
       let cuelist = fb.CuePlayerFB |> CuePlayer.FromFB
       match fb.Action with
@@ -1550,6 +2050,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
     | x when x = StateMachinePayloadFB.UserFB ->
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
@@ -1564,20 +2069,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
-    | x when x = StateMachinePayloadFB.IrisClientFB ->
-      let client = fb.IrisClientFB |> IrisClient.FromFB
-      match fb.Action with
-      | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddClient client
-      | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateClient client
-      | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveClient client
-      | x ->
-        sprintf "Could not parse unknown StateMachineActionFB %A" x
-        |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
-
+    //  ____                _
+    // / ___|  ___  ___ ___(_) ___  _ __
+    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+    //  ___) |  __/\__ \__ \ | (_) | | | |
+    // |____/ \___||___/___/_|\___/|_| |_|
     | x when x = StateMachinePayloadFB.SessionFB ->
       let session = fb.SessionFB |> Session.FromFB
       match fb.Action with
@@ -1592,6 +2088,11 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //  ____  _                                     _
+    // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+    // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+    // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+    // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
     | x when x = StateMachinePayloadFB.DiscoveredServiceFB ->
       let discoveredService = fb.DiscoveredServiceFB |> DiscoveredService.FromFB
       match fb.Action with
@@ -1606,16 +2107,34 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //  ____                        _           _
+    // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+    // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+    //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+    // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+    //                   |_|
     | x when x = StateMachinePayloadFB.StateFB && fb.Action = StateMachineActionFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
       |> Either.map DataSnapshot
 
+    //  _                _____                 _
+    // | |    ___   __ _| ____|_   _____ _ __ | |_
+    // | |   / _ \ / _` |  _| \ \ / / _ \ '_ \| __|
+    // | |__| (_) | (_| | |___ \ V /  __/ | | | |_
+    // |_____\___/ \__, |_____| \_/ \___|_| |_|\__|
+    //             |___/
     | x when x = StateMachinePayloadFB.LogEventFB ->
       fb.LogEventFB
       |> LogEvent.FromFB
       |> Either.map LogMsg
 
+    //  ____  _        _
+    // / ___|| |_ _ __(_)_ __   __ _
+    // \___ \| __| '__| | '_ \ / _` |
+    //  ___) | |_| |  | | | | | (_| |
+    // |____/ \__|_|  |_|_| |_|\__, |
+    //                         |___/
     | x when x = StateMachinePayloadFB.StringFB ->
       match fb.Action with
       | x when x = StateMachineActionFB.SetLogLevelFB ->
@@ -1627,10 +2146,32 @@ type StateMachine =
         |> Error.asParseError "StateMachine.FromFB"
         |> Either.fail
 
+    //   ____ _            _
+    //  / ___| | ___   ___| | __
+    // | |   | |/ _ \ / __| |/ /
+    // | |___| | (_) | (__|   <
+    //  \____|_|\___/ \___|_|\_\
     | x when x = StateMachinePayloadFB.ClockFB ->
       UpdateClock(fb.ClockFB.Value)
       |> Either.succeed
 
+    //  ____        _       _
+    // | __ )  __ _| |_ ___| |__
+    // |  _ \ / _` | __/ __| '_ \
+    // | |_) | (_| | || (__| | | |
+    // |____/ \__,_|\__\___|_| |_|
+    | x when x = StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let fb = fb.CommandBatchFB
+        let! batch = StateMachineBatch.FromFB fb
+        return CommandBatch batch
+      }
+
+    //   ____                                          _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
     | _ ->
       fb.Action
       |> AppCommand.FromFB
@@ -1649,7 +2190,6 @@ type StateMachine =
     // |  __/| | | (_) | |  __/ (__| |_
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
-
     | StateMachinePayloadFB.ProjectFB ->
       either {
         match fb.Action with
@@ -1677,7 +2217,6 @@ type StateMachine =
     // | |  | | | |/ _ \
     // | |__| |_| |  __/
     //  \____\__,_|\___|
-
     | StateMachinePayloadFB.CueFB ->
       either {
         let! cue =
@@ -1689,7 +2228,6 @@ type StateMachine =
             "Could not parse empty cue payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCue cue)
         | StateMachineActionFB.UpdateFB -> return (UpdateCue cue)
@@ -1707,7 +2245,6 @@ type StateMachine =
     // | |   | | |/ _ \ '_ \| __|
     // | |___| | |  __/ | | | |_
     //  \____|_|_|\___|_| |_|\__|
-
     | StateMachinePayloadFB.IrisClientFB ->
       either {
         let! client =
@@ -1719,7 +2256,6 @@ type StateMachine =
             "Could not parse empty client payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddClient client)
         | StateMachineActionFB.UpdateFB -> return (UpdateClient client)
@@ -1736,7 +2272,6 @@ type StateMachine =
     // | |  | | | |/ _ \ |   | / __| __|
     // | |__| |_| |  __/ |___| \__ \ |_
     //  \____\__,_|\___|_____|_|___/\__|
-
     | StateMachinePayloadFB.CueListFB ->
       either {
         let! cuelist =
@@ -1748,7 +2283,6 @@ type StateMachine =
             "Could not parse empty cuelist payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCueList    cuelist)
         | StateMachineActionFB.UpdateFB -> return (UpdateCueList cuelist)
@@ -1766,7 +2300,6 @@ type StateMachine =
     // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
     //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
     //                                |___/
-
     | StateMachinePayloadFB.CuePlayerFB ->
       either {
         let! player =
@@ -1778,7 +2311,6 @@ type StateMachine =
             "Could not parse empty player payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCuePlayer    player)
         | StateMachineActionFB.UpdateFB -> return (UpdateCuePlayer player)
@@ -1790,12 +2322,12 @@ type StateMachine =
             |> Either.fail
       }
 
-    //  ____       _       _
-    // |  _ \ __ _| |_ ___| |__
-    // | |_) / _` | __/ __| '_ \
-    // |  __/ (_| | || (__| | | |
-    // |_|   \__,_|\__\___|_| |_|
-
+    //   ____
+    //  / ___|_ __ ___  _   _ _ __
+    // | |  _| '__/ _ \| | | | '_ \
+    // | |_| | | | (_) | |_| | |_) |
+    //  \____|_|  \___/ \__,_| .__/
+    //                       |_|
     | StateMachinePayloadFB.PinGroupFB ->
       either {
         let! group =
@@ -1807,11 +2339,66 @@ type StateMachine =
             "Could not parse empty groupe payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPinGroup    group)
         | StateMachineActionFB.UpdateFB -> return (UpdatePinGroup group)
         | StateMachineActionFB.RemoveFB -> return (RemovePinGroup group)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+    | StateMachinePayloadFB.PinMappingFB ->
+      either {
+        let! mapping =
+          let mappingish = fb.Payload<PinMappingFB>()
+          if mappingish.HasValue then
+            mappingish.Value
+            |> PinMapping.FromFB
+          else
+            "Could not parse empty mapping payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddPinMapping    mapping)
+        | StateMachineActionFB.UpdateFB -> return (UpdatePinMapping mapping)
+        | StateMachineActionFB.RemoveFB -> return (RemovePinMapping mapping)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+    | StateMachinePayloadFB.PinWidgetFB ->
+      either {
+        let! widget =
+          let widgetish = fb.Payload<PinWidgetFB>()
+          if widgetish.HasValue then
+            widgetish.Value
+            |> PinWidget.FromFB
+          else
+            "Could not parse empty widget payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddPinWidget    widget)
+        | StateMachineActionFB.UpdateFB -> return (UpdatePinWidget widget)
+        | StateMachineActionFB.RemoveFB -> return (RemovePinWidget widget)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -1824,7 +2411,6 @@ type StateMachine =
     // | |_) | | '_ \
     // |  __/| | | | |
     // |_|   |_|_| |_|
-
     | StateMachinePayloadFB.PinFB ->
       either {
         let! pin =
@@ -1836,7 +2422,6 @@ type StateMachine =
             "Could not parse empty pin payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPin    pin)
         | StateMachineActionFB.UpdateFB -> return (UpdatePin pin)
@@ -1853,19 +2438,17 @@ type StateMachine =
     // \___ \| | |/ __/ _ \/ __|
     //  ___) | | | (_|  __/\__ \
     // |____/|_|_|\___\___||___/
-
-    | StateMachinePayloadFB.SlicesFB ->
+    | StateMachinePayloadFB.SlicesMapFB ->
       either {
         let! slices =
-          let slicish = fb.Payload<SlicesFB>()
-          if slicish.HasValue then
-            slicish.Value
-            |> Slices.FromFB
+          let slicesMapish = fb.Payload<SlicesMapFB>()
+          if slicesMapish.HasValue then
+            let slicesMap = slicesMapish.Value
+            SlicesMap.FromFB slicesMap
           else
             "Could not parse empty slices payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.UpdateFB -> return (UpdateSlices slices)
         | x ->
@@ -1880,7 +2463,6 @@ type StateMachine =
     // |  \| |/ _ \ / _` |/ _ \
     // | |\  | (_) | (_| |  __/
     // |_| \_|\___/ \__,_|\___|
-
     | StateMachinePayloadFB.RaftMemberFB ->
       either {
         let! mem =
@@ -1892,7 +2474,6 @@ type StateMachine =
             "Could not parse empty mem payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddMember    mem)
         | StateMachineActionFB.UpdateFB -> return (UpdateMember mem)
@@ -1909,7 +2490,6 @@ type StateMachine =
     // | | | / __|/ _ \ '__|
     // | |_| \__ \  __/ |
     //  \___/|___/\___|_|
-
     | StateMachinePayloadFB.UserFB ->
       either {
         let! user =
@@ -1921,7 +2501,6 @@ type StateMachine =
             "Could not parse empty user payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddUser    user)
         | StateMachineActionFB.UpdateFB -> return (UpdateUser user)
@@ -1938,7 +2517,6 @@ type StateMachine =
     // \___ \ / _ \/ __/ __| |/ _ \| '_ \
     //  ___) |  __/\__ \__ \ | (_) | | | |
     // |____/ \___||___/___/_|\___/|_| |_|
-
     | StateMachinePayloadFB.SessionFB ->
       either {
         let! session =
@@ -1950,7 +2528,6 @@ type StateMachine =
             "Could not parse empty session payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddSession    session)
         | StateMachineActionFB.UpdateFB -> return (UpdateSession session)
@@ -1967,7 +2544,6 @@ type StateMachine =
     // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
     // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
     // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
-
     | StateMachinePayloadFB.DiscoveredServiceFB ->
       either {
         let! discoveredService =
@@ -1979,7 +2555,6 @@ type StateMachine =
             "Could not parse empty discoveredService payload"
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
-
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddDiscoveredService    discoveredService)
         | StateMachineActionFB.UpdateFB -> return (UpdateDiscoveredService discoveredService)
@@ -1996,7 +2571,6 @@ type StateMachine =
     // | |\/| | / __|/ __|
     // | |  | | \__ \ (__
     // |_|  |_|_|___/\___|
-
     | StateMachinePayloadFB.LogEventFB ->
       either {
         let logish = fb.Payload<LogEventFB>()
@@ -2010,6 +2584,12 @@ type StateMachine =
             |> Either.fail
       }
 
+    //  ____                        _           _
+    // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+    // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+    //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+    // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+    //                   |_|
     | StateMachinePayloadFB.StateFB ->
       either {
         let stateish = fb.Payload<StateFB>()
@@ -2024,6 +2604,12 @@ type StateMachine =
             |> Either.fail
       }
 
+    //  ____  _        _
+    // / ___|| |_ _ __(_)_ __   __ _
+    // \___ \| __| '__| | '_ \ / _` |
+    //  ___) | |_| |  | | | | | (_| |
+    // |____/ \__|_|  |_|_| |_|\__, |
+    //                         |___/
     | StateMachinePayloadFB.StringFB ->
       either {
         let stringish = fb.Payload<StringFB> ()
@@ -2038,6 +2624,11 @@ type StateMachine =
             |> Either.fail
       }
 
+    //   ____ _            _
+    //  / ___| | ___   ___| | __
+    // | |   | |/ _ \ / __| |/ /
+    // | |___| | (_) | (__|   <
+    //  \____|_|\___/ \___|_|\_\
     | StateMachinePayloadFB.ClockFB ->
       either {
         let clockish = fb.Payload<ClockFB> ()
@@ -2051,10 +2642,34 @@ type StateMachine =
             |> Either.fail
       }
 
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+    | StateMachinePayloadFB.CommandBatchFB ->
+      either {
+        let batchish = fb.Payload<CommandBatchFB> ()
+        if batchish.HasValue then
+          let batch = batchish.Value
+          let! commands = StateMachineBatch.FromFB batch
+          return CommandBatch commands
+        else
+          return!
+            "Could not parse empty CommandBatch payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    //   ____                                          _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
     | _ -> either {
-      let! cmd = AppCommand.FromFB fb.Action
-      return (Command cmd)
-    }
+        let! cmd = AppCommand.FromFB fb.Action
+        return (Command cmd)
+      }
 
   #endif
 
@@ -2074,6 +2689,12 @@ type StateMachine =
       StateMachineFB.EndStateMachineFB(builder)
 
     match self with
+    //  ____            _           _
+    // |  _ \ _ __ ___ (_) ___  ___| |_
+    // | |_) | '__/ _ \| |/ _ \/ __| __|
+    // |  __/| | | (_) | |  __/ (__| |_
+    // |_|   |_|  \___// |\___|\___|\__|
+    //               |__/
     | UpdateProject project ->
       let offset = project.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2094,6 +2715,11 @@ type StateMachine =
       StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ProjectFB)
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | AddMember       mem ->
       let mem = mem.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2130,6 +2756,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //   ____ _ _            _
+    //  / ___| (_) ___ _ __ | |_
+    // | |   | | |/ _ \ '_ \| __|
+    // | |___| | |  __/ | | | |_
+    //  \____|_|_|\___|_| |_|\__|
     | AddClient       client ->
       let client = client.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2166,6 +2797,96 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  __  __                   _
+    // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+    // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+    // | |  | | (_| | |_) | |_) | | | | | (_| |
+    // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+    //              |_|   |_|            |___/
+    | AddPinMapping       mapping ->
+      let mapping = mapping.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinMappingFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mapping)
+#else
+      StateMachineFB.AddPayload(builder, mapping.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdatePinMapping    mapping ->
+      let mapping = mapping.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinMappingFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mapping)
+#else
+      StateMachineFB.AddPayload(builder, mapping.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemovePinMapping    mapping ->
+      let mapping = mapping.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinMappingFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mapping)
+#else
+      StateMachineFB.AddPayload(builder, mapping.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+    | AddPinWidget       widget ->
+      let widget = widget.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinWidgetFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, widget)
+#else
+      StateMachineFB.AddPayload(builder, widget.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdatePinWidget    widget ->
+      let widget = widget.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinWidgetFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, widget)
+#else
+      StateMachineFB.AddPayload(builder, widget.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemovePinWidget    widget ->
+      let widget = widget.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.PinWidgetFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, widget)
+#else
+      StateMachineFB.AddPayload(builder, widget.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    //   ____
+    //  / ___|_ __ ___  _   _ _ __
+    // | |  _| '__/ _ \| | | | '_ \
+    // | |_| | | | (_) | |_| | |_) |
+    //  \____|_|  \___/ \__,_| .__/
+    //                       |_|
     | AddPinGroup       group ->
       let group = group.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2202,6 +2923,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____  _
+    // |  _ \(_)_ __
+    // | |_) | | '_ \
+    // |  __/| | | | |
+    // |_|   |_|_| |_|
     | AddPin       pin ->
       let pin = pin.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2238,11 +2964,16 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____  _ _
+    // / ___|| (_) ___ ___  ___
+    // \___ \| | |/ __/ _ \/ __|
+    //  ___) | | | (_|  __/\__ \
+    // |____/|_|_|\___\___||___/
     | UpdateSlices slices ->
-      let slices = slices.ToOffset(builder)
+      let slices = Binary.toOffset builder slices
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.SlicesFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.SlicesMapFB)
 #if FABLE_COMPILER
       StateMachineFB.AddPayload(builder, slices)
 #else
@@ -2250,6 +2981,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //   ____
+    //  / ___|   _  ___
+    // | |  | | | |/ _ \
+    // | |__| |_| |  __/
+    //  \____\__,_|\___|
     | AddCue cue ->
       let cue = cue.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2298,6 +3034,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //   ____           _     _     _
+    //  / ___|   _  ___| |   (_)___| |_
+    // | |  | | | |/ _ \ |   | / __| __|
+    // | |__| |_| |  __/ |___| \__ \ |_
+    //  \____\__,_|\___|_____|_|___/\__|
     | AddCueList cuelist ->
       let cuelist = cuelist.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2334,6 +3075,12 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____  _
+    // |  _ \| | __ _ _   _  ___ _ __
+    // | |_) | |/ _` | | | |/ _ \ '__|
+    // |  __/| | (_| | |_| |  __/ |
+    // |_|   |_|\__,_|\__, |\___|_|
+    //                |___/
     | AddCuePlayer player ->
       let player = player.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2370,6 +3117,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  _   _
+    // | | | |___  ___ _ __
+    // | | | / __|/ _ \ '__|
+    // | |_| \__ \  __/ |
+    //  \___/|___/\___|_|
     | AddUser user ->
       let user = user.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2406,6 +3158,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____                _
+    // / ___|  ___  ___ ___(_) ___  _ __
+    // \___ \ / _ \/ __/ __| |/ _ \| '_ \
+    //  ___) |  __/\__ \__ \ | (_) | | | |
+    // |____/ \___||___/___/_|\___/|_| |_|
     | AddSession session ->
       let session = session.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2442,12 +3199,23 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //   ____                                          _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
     | Command appcommand ->
       let cmd = appcommand.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, cmd)
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____                        _           _
+    // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+    // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+    //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+    // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+    //                   |_|
     | DataSnapshot state ->
       let offset = state.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2460,6 +3228,12 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  _                __  __
+    // | |    ___   __ _|  \/  |___  __ _
+    // | |   / _ \ / _` | |\/| / __|/ _` |
+    // | |__| (_) | (_| | |  | \__ \ (_| |
+    // |_____\___/ \__, |_|  |_|___/\__, |
+    //             |___/            |___/
     | LogMsg log ->
       let offset = log.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
@@ -2472,6 +3246,12 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____       _   _                _                   _
+    // / ___|  ___| |_| |    ___   __ _| |    _____   _____| |
+    // \___ \ / _ \ __| |   / _ \ / _` | |   / _ \ \ / / _ \ |
+    //  ___) |  __/ |_| |__| (_) | (_| | |__|  __/\ V /  __/ |
+    // |____/ \___|\__|_____\___/ \__, |_____\___| \_/ \___|_|
+    //                            |___/
     | SetLogLevel level ->
       let str = builder.CreateString (string level)
       StringFB.StartStringFB(builder)
@@ -2487,6 +3267,11 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
+    //  ____  _                                     _
+    // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
+    // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
+    // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
+    // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
     | AddDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.AddFB
 
@@ -2496,6 +3281,29 @@ type StateMachine =
     | RemoveDiscoveredService    service ->
       addDiscoveredServicePayload service StateMachineActionFB.RemoveFB
 
+    //   ____                                          _ ____        _       _
+    //  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+    // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+    // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+    //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+    | CommandBatch commands ->
+      let offset = Binary.toOffset builder commands
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.BatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CommandBatchFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, offset)
+#else
+      StateMachineFB.AddPayload(builder, offset.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    //  _   _           _       _        ____ _            _
+    // | | | |_ __   __| | __ _| |_ ___ / ___| | ___   ___| | __
+    // | | | | '_ \ / _` |/ _` | __/ _ \ |   | |/ _ \ / __| |/ /
+    // | |_| | |_) | (_| | (_| | ||  __/ |___| | (_) | (__|   <
+    //  \___/| .__/ \__,_|\__,_|\__\___|\____|_|\___/ \___|_|\_\
+    //       |_|
     | UpdateClock value ->
       ClockFB.StartClockFB(builder)
       ClockFB.AddValue(builder, value)
@@ -2521,3 +3329,26 @@ type StateMachine =
     Binary.createBuffer bytes
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB
+
+// * UpdateSlices module
+
+module UpdateSlices =
+
+  let ofSlices (slices: Slices) =
+    Map.ofList [(slices.Id, slices)]
+    |> SlicesMap
+    |> UpdateSlices
+
+  let ofArray (slices: Slices array) =
+    slices
+    |> Array.map (fun slices -> slices.Id, slices)
+    |> Map.ofArray
+    |> SlicesMap
+    |> UpdateSlices
+
+  let ofList (slices: Slices list) =
+    slices
+    |> List.map (fun slices -> slices.Id, slices)
+    |> Map.ofList
+    |> SlicesMap
+    |> UpdateSlices

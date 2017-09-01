@@ -46,18 +46,17 @@ module Main =
     |> MachineConfig.init getBindIp (parsed.TryGetResult <@ Shift_Defaults @>)
     |> Error.orExit ignore
 
-    Thread.CurrentThread.GetApartmentState()
-    |> printfn "Using Threading Model: %A"
-
-    let threadCount = System.Environment.ProcessorCount * 2
-    ThreadPool.SetMinThreads(threadCount,threadCount)
-    |> fun result ->
-      printfn "Setting Min. Threads in ThreadPool To %d %s"
-        threadCount
-        (if result then "Successful" else "Unsuccessful")
-
     let result =
       let machine = MachineConfig.get()
+      let validation = MachineConfig.validate machine
+
+      if not validation.IsEmpty then
+        printfn "Machine configuration file is invalid, please check the following settings:"
+        printfn ""
+        for KeyValue(name, _) in validation do
+          printfn "    %A must not be empty" name
+        printfn ""
+        exit 1
 
       let dir =
         parsed.TryGetResult <@ Project @>
@@ -67,13 +66,6 @@ module Main =
       let frontend =
         parsed.TryGetResult <@ Frontend @>
         |> Option.map filepath
-
-      Logger.initialize {
-        Id = machine.MachineId
-        Tier = Tier.Service
-        UseColors = false
-        Level = LogLevel.Debug
-      }
 
       match parsed.GetResult <@ Cmd @>, dir with
       | Create,            _ -> createProject parsed

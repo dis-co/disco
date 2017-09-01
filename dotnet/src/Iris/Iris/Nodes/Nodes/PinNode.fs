@@ -45,6 +45,10 @@ type PinNode() =
   val mutable OutName: ISpread<string>
 
   [<DefaultValue>]
+  [<Output("Persisted")>]
+  val mutable OutPersisted: ISpread<bool>
+
+  [<DefaultValue>]
   [<Output("Tags")>]
   val mutable OutTags: ISpread<string>
 
@@ -70,6 +74,7 @@ type PinNode() =
 
         self.OutId.SliceCount   <- self.InPin.SliceCount
         self.OutName.SliceCount <- self.InPin.SliceCount
+        self.OutPersisted.SliceCount <- self.InPin.SliceCount
         self.OutType.SliceCount <- self.InPin.SliceCount
         self.OutTags.SliceCount <- self.InPin.SliceCount
         self.OutDirection.SliceCount <- self.InPin.SliceCount
@@ -83,7 +88,8 @@ type PinNode() =
               let case, _ = FSharpValue.GetUnionFields(pin, pin.GetType())
               case.Name
             self.OutId.[n] <- string pin.Id
-            self.OutName.[n] <- pin.Name
+            self.OutName.[n] <- unwrap pin.Name
+            self.OutPersisted.[n] <- pin.Persisted
             self.OutType.[n] <- tipe
             self.OutTags.[n] <- String.Join(",", pin.GetTags)
             self.OutDirection.[n] <- string pin.Direction

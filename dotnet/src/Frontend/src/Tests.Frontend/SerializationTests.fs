@@ -47,26 +47,32 @@ module SerializationTests =
     IrisProject.Empty
 
   let pins _ =
-    [| Pin.bang      (mk()) "Bang"      (mk()) (mktags()) [| true  |]
-    ;  Pin.toggle    (mk()) "Toggle"    (mk()) (mktags()) [| true  |]
-    ;  Pin.string    (mk()) "string"    (mk()) (mktags()) [| "one" |]
-    ;  Pin.multiLine (mk()) "multiline" (mk()) (mktags()) [| "two" |]
-    ;  Pin.fileName  (mk()) "filename"  (mk()) (mktags()) [| "three" |]
-    ;  Pin.directory (mk()) "directory" (mk()) (mktags()) [| "four"  |]
-    ;  Pin.url       (mk()) "url"       (mk()) (mktags()) [| "five" |]
-    ;  Pin.ip        (mk()) "ip"        (mk()) (mktags()) [| "six"  |]
-    ;  Pin.number    (mk()) "number"    (mk()) (mktags()) [| double 3.0 |]
-    ;  Pin.bytes     (mk()) "bytes"     (mk()) (mktags()) [| mkBytes () |]
-    ;  Pin.color     (mk()) "rgba"      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
-    ;  Pin.color     (mk()) "hsla"      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
-    ;  Pin.enum      (mk()) "enum"      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
+    [| Pin.bang      (mk()) (name "Bang")      (mk()) (mktags()) [| true  |]
+    ;  Pin.toggle    (mk()) (name "Toggle")    (mk()) (mktags()) [| true  |]
+    ;  Pin.string    (mk()) (name "string")    (mk()) (mktags()) [| "one" |]
+    ;  Pin.multiLine (mk()) (name "multiline") (mk()) (mktags()) [| "two" |]
+    ;  Pin.fileName  (mk()) (name "filename")  (mk()) (mktags()) [| "three" |]
+    ;  Pin.directory (mk()) (name "directory") (mk()) (mktags()) [| "four"  |]
+    ;  Pin.url       (mk()) (name "url")       (mk()) (mktags()) [| "five" |]
+    ;  Pin.ip        (mk()) (name "ip")        (mk()) (mktags()) [| "six"  |]
+    ;  Pin.number    (mk()) (name "number")    (mk()) (mktags()) [| double 3.0 |]
+    ;  Pin.bytes     (mk()) (name "bytes")     (mk()) (mktags()) [| mkBytes () |]
+    ;  Pin.color     (mk()) (name "rgba")      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
+    ;  Pin.color     (mk()) (name "hsla")      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
+    ;  Pin.enum      (mk()) (name "enum")      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
     |]
 
   let mkPin _ =
-    Pin.string (Id.Create()) "url input" (Id.Create()) [| |] [| "hello" |]
+    Pin.string (Id.Create()) (name "url input") (Id.Create()) [| |] [| "hello" |]
 
   let mkSlices() =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
+
+  let mkSlicesMap() =
+    let slices = mkSlices ()
+    [ (slices.Id, slices) ]
+    |> Map.ofList
+    |> SlicesMap
 
   let mkCue _ : Cue =
     { Id = Id.Create(); Name = name "Cue 1"; Slices = [| mkSlices() |] }
@@ -88,6 +94,7 @@ module SerializationTests =
     { Id = Id.Create()
       Name = name "PinGroup 3"
       Client = Id.Create()
+      Path = None
       Pins = pins }
 
   let mkCueList _ : CueList =
@@ -107,9 +114,10 @@ module SerializationTests =
 
   let mkClient () : IrisClient =
     { Id = Id.Create ()
-      Name = "Nice client"
+      Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
+      ServiceId = Id.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
@@ -137,6 +145,16 @@ module SerializationTests =
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
 
+  let mkPinMapping _ =
+    { Id = Id.Create()
+      Source = Id.Create()
+      Sinks = Set [| Id.Create(); Id.Create() |] }
+
+  let mkPinWidget _ =
+    { Id = Id.Create()
+      Name = rndname()
+      WidgetType = Id.Create() }
+
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
@@ -146,11 +164,12 @@ module SerializationTests =
 
     { Id = Id.Create()
       Name = rndname ()
+      Locked = false
       CueList = rndopt ()
       Selected = index (rand.Next(0,1000))
-      Call = mkPin()
-      Next = mkPin()
-      Previous = mkPin()
+      Call = Id.Create()
+      Next = Id.Create()
+      Previous = Id.Create()
       RemainingWait = rand.Next(0,1000)
       LastCaller = rndopt()
       LastCalled = rndopt() }
@@ -158,6 +177,8 @@ module SerializationTests =
   let mkState _ =
     { Project    = mkProject ()
     ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
+    ; PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
+    ; PinWidgets = mkPinWidget () |> fun (map: PinWidget) -> Map.ofArray [| (map.Id, map) |]
     ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -176,11 +197,68 @@ module SerializationTests =
     suite "Test.Units.SerializationTests"
     (* ------------------------------------------------------------------------ *)
 
+    test "should serialize/deserialize StateMachineBatch correctly" <| fun finish ->
+      let batch =
+        StateMachineBatch
+          [ AddCue                  <| mkCue ()
+            UpdateCue               <| mkCue ()
+            RemoveCue               <| mkCue ()
+            AddCueList              <| mkCueList ()
+            UpdateCueList           <| mkCueList ()
+            RemoveCueList           <| mkCueList ()
+            AddCuePlayer            <| mkCuePlayer ()
+            UpdateCuePlayer         <| mkCuePlayer ()
+            RemoveCuePlayer         <| mkCuePlayer ()
+            AddSession              <| mkSession ()
+            UpdateSession           <| mkSession ()
+            RemoveSession           <| mkSession ()
+            AddUser                 <| mkUser ()
+            UpdateUser              <| mkUser ()
+            RemoveUser              <| mkUser ()
+            AddPinGroup             <| mkPinGroup ()
+            UpdatePinGroup          <| mkPinGroup ()
+            RemovePinGroup          <| mkPinGroup ()
+            AddPinMapping           <| mkPinMapping ()
+            UpdatePinMapping        <| mkPinMapping ()
+            RemovePinMapping        <| mkPinMapping ()
+            AddPinWidget            <| mkPinWidget ()
+            UpdatePinWidget         <| mkPinWidget ()
+            RemovePinWidget         <| mkPinWidget ()
+            AddClient               <| mkClient ()
+            UpdateSlices            <| mkSlicesMap ()
+            UpdateClient            <| mkClient ()
+            RemoveClient            <| mkClient ()
+            AddPin                  <| mkPin ()
+            UpdatePin               <| mkPin ()
+            RemovePin               <| mkPin ()
+            AddMember               <| Member.create (Id.Create())
+            UpdateMember            <| Member.create (Id.Create())
+            RemoveMember            <| Member.create (Id.Create())
+            AddDiscoveredService    <| mkDiscoveredService ()
+            UpdateDiscoveredService <| mkDiscoveredService ()
+            RemoveDiscoveredService <| mkDiscoveredService ()
+            DataSnapshot            <| mkState ()
+            Command AppCommand.Undo
+            LogMsg(Logger.create Debug "bla" "ohai")
+            SetLogLevel Warn ]
+      check batch
+      finish()
+
     test "should serialize/deserialize cue correctly" <| fun finish ->
       [| for i in 0 .. 20 do
           yield  mkCue () |]
       |> Array.iter check
       finish()
+
+    testSync "Validate PinWidget Serialization" <| fun () ->
+      let widget : PinWidget = mkPinWidget ()
+      let rewidget = widget |> Binary.encode |> Binary.decode |> Either.get
+      equals widget rewidget
+
+    testSync "Validate PinMapping Serialization" <| fun () ->
+      let mapping : PinMapping = mkPinMapping ()
+      let remapping = mapping |> Binary.encode |> Binary.decode |> Either.get
+      equals mapping remapping
 
     testSync "Validate Cue Serialization" <| fun () ->
       let cue : Cue = mkCue ()
@@ -287,8 +365,14 @@ module SerializationTests =
       ; AddPinGroup             <| mkPinGroup ()
       ; UpdatePinGroup          <| mkPinGroup ()
       ; RemovePinGroup          <| mkPinGroup ()
+      ; AddPinMapping           <| mkPinMapping ()
+      ; UpdatePinMapping        <| mkPinMapping ()
+      ; RemovePinMapping        <| mkPinMapping ()
+      ; AddPinWidget            <| mkPinWidget ()
+      ; UpdatePinWidget         <| mkPinWidget ()
+      ; RemovePinWidget         <| mkPinWidget ()
       ; AddClient               <| mkClient ()
-      ; UpdateSlices            <| mkSlices ()
+      ; UpdateSlices            <| mkSlicesMap ()
       ; UpdateClient            <| mkClient ()
       ; RemoveClient            <| mkClient ()
       ; AddPin                  <| mkPin ()

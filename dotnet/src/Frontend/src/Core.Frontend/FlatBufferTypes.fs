@@ -1,4 +1,4 @@
-module Iris.Web.Core.FlatBufferTypes
+module rec Iris.Web.Core.FlatBufferTypes
 
 open Fable.Core
 open Fable.Import
@@ -192,6 +192,7 @@ type IrisClientFB =
   abstract Id: string
   abstract Name: string
   abstract Role: RoleFB
+  abstract ServiceId: string
   abstract Status: ServiceStatusFB
   abstract IpAddress: string
   abstract Port: uint16
@@ -200,6 +201,7 @@ type IrisClientFBConstructor =
   abstract prototype: IrisClientFB with get, set
   abstract StartIrisClientFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddServiceId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddRole: builder: FlatBufferBuilder * role: RoleFB -> unit
   abstract AddStatus: builder: FlatBufferBuilder * status: Offset<ServiceStatusFB> -> unit
@@ -482,6 +484,8 @@ type BoolPinFB =
   abstract PinGroup: string
   abstract IsTrigger: bool
   abstract VecSize: VecSizeFB
+  abstract Persisted: bool
+  abstract Online: bool
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
   abstract TagsLength: int
@@ -497,6 +501,8 @@ type BoolPinFBConstructor =
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddIsTrigger: builder: FlatBufferBuilder * trigger: bool -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
@@ -525,6 +531,8 @@ type NumberPinFB =
   abstract Max: int
   abstract Unit: string
   abstract Precision: uint32
+  abstract Persisted: bool
+  abstract Online: bool
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
@@ -545,6 +553,8 @@ type NumberPinFBConstructor =
   abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
@@ -572,6 +582,8 @@ type BytePinFB =
   abstract PinGroup: string
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
+  abstract Persisted: bool
+  abstract Online: bool
   abstract TagsLength: int
   abstract Tags: int -> string
   abstract Labels: int -> string
@@ -585,6 +597,8 @@ type BytePinFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
@@ -612,6 +626,8 @@ type EnumPinFB =
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract Tags: int -> string
+  abstract Persisted: bool
+  abstract Online: bool
   abstract TagsLength: int
   abstract Properties: int -> KeyValueFB
   abstract PropertiesLength: int
@@ -628,6 +644,8 @@ type EnumPinFBConstructor =
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
   abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
@@ -656,6 +674,8 @@ type ColorPinFB =
   abstract Direction: ConnectionDirectionFB
   abstract TagsLength: int
   abstract Tags: int -> string
+  abstract Persisted: bool
+  abstract Online: bool
   abstract Labels: int -> string
   abstract LabelsLength: int
   abstract Values: int -> ColorSpaceFB
@@ -669,6 +689,8 @@ type ColorPinFBConstructor =
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddDirection: builder: FlatBufferBuilder * ConnectionDirectionFB -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
   abstract AddValues: builder: FlatBufferBuilder * values: Offset<'a> -> unit
@@ -696,6 +718,8 @@ type StringPinFB =
   abstract VecSize: VecSizeFB
   abstract Direction: ConnectionDirectionFB
   abstract MaxChars: int
+  abstract Persisted: bool
+  abstract Online: bool
   abstract Tags: int -> string
   abstract TagsLength: int
   abstract Labels: int -> string
@@ -708,6 +732,8 @@ type StringPinFBConstructor =
   abstract StartStringPinFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
+  abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddBehavior: builder: FlatBufferBuilder * tipe: BehaviorFB -> unit
   abstract AddMaxChars: builder: FlatBufferBuilder * max: int -> unit
@@ -960,6 +986,7 @@ type PinGroupFB =
   abstract Id: string
   abstract Name: string
   abstract Client: string
+  abstract Path: string
   abstract PinsLength: int
   abstract Pins: int -> PinFB
 
@@ -968,6 +995,7 @@ type PinGroupFBConstructor =
   abstract StartPinGroupFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * path: Offset<string> -> unit
   abstract AddClient: builder: FlatBufferBuilder * client: Offset<string> -> unit
   abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
   abstract EndPinGroupFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -1593,11 +1621,12 @@ let DiscoveredServiceFB: DiscoveredServiceFBConstructor = failwith "JS only"
 type CuePlayerFB =
   abstract Id: string
   abstract Name: string
+  abstract Locked: bool
   abstract CueList: string
   abstract Selected: int
-  abstract Call: PinFB
-  abstract Next: PinFB
-  abstract Previous: PinFB
+  abstract Call: string
+  abstract Next: string
+  abstract Previous: string
   abstract RemainingWait: int
   abstract LastCaller: string
   abstract LastCalled: string
@@ -1607,11 +1636,12 @@ type CuePlayerFBConstructor =
   abstract StartCuePlayerFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddLocked: builder: FlatBufferBuilder * locked:bool -> unit
   abstract AddCueList: builder: FlatBufferBuilder * cuelist: Offset<string> -> unit
   abstract AddSelected: builder: FlatBufferBuilder * int -> unit
-  abstract AddCall: builder: FlatBufferBuilder * call: Offset<PinFB> -> unit
-  abstract AddNext: builder: FlatBufferBuilder * next: Offset<PinFB> -> unit
-  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<PinFB> -> unit
+  abstract AddCall: builder: FlatBufferBuilder * call: Offset<string> -> unit
+  abstract AddNext: builder: FlatBufferBuilder * next: Offset<string> -> unit
+  abstract AddPrevious: builder: FlatBufferBuilder * previous: Offset<string> -> unit
   abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
   abstract AddLastCaller: builder: FlatBufferBuilder * lastcaller: Offset<string> -> unit
   abstract AddLastCalled: builder: FlatBufferBuilder * lastcalled: Offset<string> -> unit
@@ -1630,6 +1660,10 @@ type StateFB =
   abstract Project: ProjectFB
   abstract PinGroups: int -> PinGroupFB
   abstract PinGroupsLength: int
+  abstract PinMappings: int -> PinMappingFB
+  abstract PinMappingsLength: int
+  abstract PinWidgets: int -> PinWidgetFB
+  abstract PinWidgetsLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
@@ -1650,6 +1684,8 @@ type StateFBConstructor =
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
+  abstract AddPinMappings: builder: FlatBufferBuilder * mappings: Offset<'a> -> unit
+  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: Offset<'a> -> unit
   abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
   abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
@@ -1660,6 +1696,8 @@ type StateFBConstructor =
   abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
   abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
+  abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> Offset<'a>
+  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> Offset<'a>
   abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
   abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
   abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
@@ -1798,12 +1836,104 @@ type ByteFBConstructor =
 
 let ByteFB: ByteFBConstructor = failwith "JS only"
 
-//     _          _    _        _   _
-//    / \   _ __ (_)  / \   ___| |_(_) ___  _ __
-//   / _ \ | '_ \| | / _ \ / __| __| |/ _ \| '_ \
-//  / ___ \| |_) | |/ ___ \ (__| |_| | (_) | | | |
-// /_/   \_\ .__/|_/_/   \_\___|\__|_|\___/|_| |_|
-//         |_|
+//   ____                                          _ ____        _       _
+//  / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | __ )  __ _| |_ ___| |__
+// | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
+// | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
+//  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
+
+type CommandBatchFB =
+  abstract Commands: int -> StateMachineFB
+  abstract CommandsLength: int
+
+type CommandBatchFBConstructor =
+  abstract prototype: CommandBatchFB with get, set
+  abstract StartCommandBatchFB: builder:FlatBufferBuilder -> unit
+  abstract AddCommands: builder:FlatBufferBuilder * commands:Offset<StateMachineFB> -> unit
+  abstract EndCommandBatchFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
+  abstract GetRootAsCommandBatchFB: bytes:ByteBuffer -> CommandBatchFB
+  abstract CreateCommandsVector: builder: FlatBufferBuilder * Offset<StateMachineFB> array -> Offset<'a>
+  abstract Create: unit -> CommandBatchFB
+
+let CommandBatchFB: CommandBatchFBConstructor = failwith "JS only"
+
+//  ____  _ _               __  __
+// / ___|| (_) ___ ___  ___|  \/  | __ _ _ __
+// \___ \| | |/ __/ _ \/ __| |\/| |/ _` | '_ \
+//  ___) | | | (_|  __/\__ \ |  | | (_| | |_) |
+// |____/|_|_|\___\___||___/_|  |_|\__,_| .__/
+//                                      |_|
+
+type SlicesMapFB =
+  abstract Slices: int -> SlicesFB
+  abstract SlicesLength: int
+
+type SlicesMapFBConstructor =
+  abstract prototype: SlicesMapFB with get, set
+  abstract StartSlicesMapFB: builder:FlatBufferBuilder -> unit
+  abstract AddSlices: builder:FlatBufferBuilder * slices:Offset<SlicesFB> -> unit
+  abstract EndSlicesMapFB: builder:FlatBufferBuilder -> Offset<SlicesMapFB>
+  abstract GetRootAsSlicesMapFB: bytes:ByteBuffer -> SlicesMapFB
+  abstract CreateSlicesVector: builder: FlatBufferBuilder * Offset<SlicesFB> array -> Offset<'a>
+  abstract Create: unit -> SlicesMapFB
+
+let SlicesMapFB: SlicesMapFBConstructor = failwith "JS only"
+
+//  ____  _       __  __                   _
+// |  _ \(_)_ __ |  \/  | __ _ _ __  _ __ (_)_ __   __ _
+// | |_) | | '_ \| |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |
+// |  __/| | | | | |  | | (_| | |_) | |_) | | | | | (_| |
+// |_|   |_|_| |_|_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
+//                            |_|   |_|            |___/
+
+type PinMappingFB =
+  abstract Id: string
+  abstract Source: string
+  abstract Sinks: int -> string
+  abstract SinksLength: int
+
+type PinMappingFBConstructor =
+  abstract prototype: PinMappingFB with get, set
+  abstract StartPinMappingFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddSource: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract AddSinks: builder:FlatBufferBuilder * source:Offset<'a> -> unit
+  abstract EndPinMappingFB: builder:FlatBufferBuilder -> Offset<PinMappingFB>
+  abstract GetRootAsPinMappingFB: bytes:ByteBuffer -> PinMappingFB
+  abstract CreateSinksVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract Create: unit -> PinMappingFB
+
+let PinMappingFB: PinMappingFBConstructor = failwith "JS only"
+
+//  ____  _    __        ___     _            _
+// |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+// | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+// |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+// |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+//                                 |___/
+
+type PinWidgetFB =
+  abstract Id: string
+  abstract Name: string
+  abstract WidgetType: string
+
+type PinWidgetFBConstructor =
+  abstract prototype: PinWidgetFB with get, set
+  abstract StartPinWidgetFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddName: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract AddWidgetType: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract EndPinWidgetFB: builder:FlatBufferBuilder -> Offset<PinWidgetFB>
+  abstract GetRootAsPinWidgetFB: bytes:ByteBuffer -> PinWidgetFB
+  abstract Create: unit -> PinWidgetFB
+
+let PinWidgetFB: PinWidgetFBConstructor = failwith "JS only"
+
+//  ____  _        _       __  __            _     _
+// / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
+// \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+//  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
+// |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type StateMachineActionFB = int
 
@@ -1816,7 +1946,8 @@ type StateMachineActionFBConstructor =
   abstract RedoFB: StateMachineActionFB
   abstract ResetFB: StateMachineActionFB
   abstract CallFB: StateMachineActionFB
-  abstract SaveProjectFB: StateMachineActionFB
+  abstract BatchFB: StateMachineActionFB
+  abstract SaveFB: StateMachineActionFB
   abstract DataSnapshotFB: StateMachineActionFB
   abstract SetLogLevelFB: StateMachineActionFB
 
@@ -1830,6 +1961,8 @@ type StateMachinePayloadFBConstructor =
   abstract CueListFB: StateMachinePayloadFB
   abstract PinFB: StateMachinePayloadFB
   abstract PinGroupFB: StateMachinePayloadFB
+  abstract PinMappingFB: StateMachinePayloadFB
+  abstract PinWidgetFB: StateMachinePayloadFB
   abstract RaftMemberFB: StateMachinePayloadFB
   abstract UserFB: StateMachinePayloadFB
   abstract SessionFB: StateMachinePayloadFB
@@ -1837,11 +1970,12 @@ type StateMachinePayloadFBConstructor =
   abstract StateFB: StateMachinePayloadFB
   abstract StringFB: StateMachinePayloadFB
   abstract ProjectFB: StateMachinePayloadFB
-  abstract SlicesFB: StateMachinePayloadFB
+  abstract SlicesMapFB: StateMachinePayloadFB
   abstract IrisClientFB: StateMachinePayloadFB
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
+  abstract CommandBatchFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -1853,6 +1987,8 @@ type StateMachineFB =
   abstract CueListFB: CueListFB
   abstract PinFB: PinFB
   abstract PinGroupFB: PinGroupFB
+  abstract PinMappingFB: PinMappingFB
+  abstract PinWidgetFB: PinWidgetFB
   abstract RaftMemberFB: RaftMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
@@ -1863,6 +1999,8 @@ type StateMachineFB =
   abstract IrisClientFB: IrisClientFB
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
+  abstract SlicesMapFB: SlicesMapFB
+  abstract CommandBatchFB: CommandBatchFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =

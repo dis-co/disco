@@ -10,7 +10,7 @@ open Iris.Service
 module PersistenceTests =
 
   let mkPin group =
-    Pin.toggle (mk()) (rndstr()) group (mkTags()) [| true |]
+    Pin.toggle (mk()) (rndname()) group (mkTags()) [| true |]
 
   let mkProject () =
     either {
@@ -30,6 +30,8 @@ module PersistenceTests =
         machine,
         { Project            = project
           PinGroups          = Map.empty
+          PinMappings        = Map.empty
+          PinWidgets         = Map.empty
           Cues               = Map.empty
           CueLists           = Map.empty
           Sessions           = Map.empty
@@ -38,6 +40,30 @@ module PersistenceTests =
           CuePlayers         = Map.empty
           DiscoveredServices = Map.empty }
     }
+
+  let test_persist_add_pinwidgets_correctly =
+    testCase "persist add pinwidgets correctly" <| fun _ ->
+      either {
+        let widget = mkPinWidget()
+        let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddPinWidget widget)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        expect "state should contain PinWidget" true (Map.containsKey widget.Id) state.PinWidgets
+        expect "PinWidgets should be the same" state.PinWidgets id loaded.PinWidgets
+      }
+      |> noError
+
+  let test_persist_add_pinmappings_correctly =
+    testCase "persist add pinmappings correctly" <| fun _ ->
+      either {
+        let mapping = mkPinMapping()
+        let! (machine, state) = mkState () |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddPinMapping mapping)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
+        expect "PinMappings should be the same" state.PinMappings id loaded.PinMappings
+      }
+      |> noError
 
   let test_persist_add_pingroups_correctly =
     testCase "persist add pingroups correctly" <| fun _ ->
@@ -48,6 +74,46 @@ module PersistenceTests =
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
         expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
+      }
+      |> noError
+
+  let test_persist_remove_pinwidgets_correctly =
+    testCase "persist remove pinwidgets correctly" <| fun _ ->
+      either {
+        let widget = mkPinWidget()
+        let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddPinWidget widget)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+
+        expect "state should contain PinWidget" true (Map.containsKey widget.Id) state.PinWidgets
+        expect "PinWidgets should be the same" state.PinWidgets id loaded.PinWidgets
+
+        let updated = State.removePinWidget widget loaded
+        let! _ = Persistence.persistEntry state (RemovePinWidget widget)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+
+        expect "state should contain PinWidget" true (Map.containsKey widget.Id >> not)  updated.PinWidgets
+        expect "PinWidgets should be the same" updated.PinWidgets id loaded.PinWidgets
+      }
+      |> noError
+
+  let test_persist_remove_pinmappings_correctly =
+    testCase "persist remove pinmappings correctly" <| fun _ ->
+      either {
+        let mapping = mkPinMapping()
+        let! (machine, state) = mkState () |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+        let! _ = Persistence.persistEntry state (AddPinMapping mapping)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+
+        expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
+        expect "PinMappings should be the same" state.PinMappings id loaded.PinMappings
+
+        let updated = State.removePinMapping mapping loaded
+        let! _ = Persistence.persistEntry state (RemovePinMapping mapping)
+        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+
+        expect "state should contain PinMapping" true (Map.containsKey mapping.Id >> not)  updated.PinMappings
+        expect "PinMappings should be the same" updated.PinMappings id loaded.PinMappings
       }
       |> noError
 
@@ -107,7 +173,7 @@ module PersistenceTests =
     testCase "persist add pin correctly" <| fun _ ->
       either {
         let group = mkPinGroup()
-        let pin = mkPin group.Id
+        let pin =  group.Id |> mkPin |> Pin.setPersisted true
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
@@ -128,7 +194,7 @@ module PersistenceTests =
     testCase "persist remove pin correctly" <| fun _ ->
       either {
         let group = mkPinGroup()
-        let pin = mkPin group.Id
+        let pin = group.Id |> mkPin |> Pin.setPersisted true
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
@@ -154,7 +220,11 @@ module PersistenceTests =
 
   let persistenceTests =
     testList "Persistence Tests" [
+      test_persist_add_pinwidgets_correctly
+      test_persist_add_pinmappings_correctly
       test_persist_add_pingroups_correctly
+      test_persist_remove_pinwidgets_correctly
+      test_persist_remove_pinmappings_correctly
       test_persist_remove_pingroups_correctly
       test_persist_add_pin_correctly
       test_persist_remove_pin_correctly

@@ -38,12 +38,10 @@ module Resolver =
   // ** dispatch
 
   let private dispatch (state: ResolverState) (cue: Cue) =
-    Array.iter
-      (fun slices ->
-        (Origin.Service, UpdateSlices slices)
-        |> IrisEvent.Append
-        |> Observable.onNext state.Subscriptions)
-      cue.Slices
+    cue.Slices
+    |> UpdateSlices.ofArray
+    |> IrisEvent.appendService
+    |> Observable.onNext state.Subscriptions
 
   // ** maybeDispatch
 

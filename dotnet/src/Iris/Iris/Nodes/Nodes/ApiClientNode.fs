@@ -120,14 +120,15 @@ module Api =
 
   let private startClient (state: PluginState) =
     let myself =
-      let name =
+      let clientName =
         match state.InClientName.[0] with
         | null | "" -> "VVVV Client"
         | str -> str
 
       { Id = state.InClientId.[0]
-        Name = name
+        Name = name clientName
         Role = Role.Renderer
+        ServiceId = Id.Create()
         Status = ServiceStatus.Starting
         IpAddress = IpAddress.Localhost
         Port = port 0us }

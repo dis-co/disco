@@ -331,7 +331,7 @@ let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
 
 Target "Bootstrap" (fun _ ->
   Restore(id)                              // restore Paket packages
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
 )
 
@@ -591,7 +591,8 @@ Target "GenerateSerialization"
 
    File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-   buildDebug "Serialization.csproj" ())
+   buildDebug "Serialization.csproj" ()
+   buildRelease "Serialization.csproj" ())
 
 //  _____                               __
 // |__  /___ _ __ ___   ___ ___  _ __  / _|
@@ -599,18 +600,14 @@ Target "GenerateSerialization"
 //  / /|  __/ | | (_) | (_| (_) | | | |  _|
 // /____\___|_|  \___/ \___\___/|_| |_|_|
 
-Target "BuildDebugZeroconf"
+Target "BuildZeroconf"
   (fun _ ->
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj"
-    build (setParams "Debug") "src/Zeroconf/MZClient/MZClient.csproj")
-
-Target "BuildReleaseZeroconf"
-  (fun _ ->
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj"
-    build (setParams "Debug") "src/Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj")
+    buildDebug   "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
+    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
+    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
+    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ())
 
 //  _____                _                 _
 // |  ___| __ ___  _ __ | |_ ___ _ __   __| |
@@ -619,10 +616,12 @@ Target "BuildReleaseZeroconf"
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
 
-Target "BuildFrontend" (fun () ->
-  runNpm "install" __SOURCE_DIRECTORY__ ()
-  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
+Target "BuildFrontendPlugins" (fun () ->
+  runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false)
 
+Target "BuildFrontend" (fun () ->
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
   DotNet.installDotnetSdk ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
@@ -630,9 +629,7 @@ Target "BuildFrontend" (fun () ->
 )
 
 Target "BuildFrontendFast" (fun () ->
-  // runNpm "install" __SOURCE_DIRECTORY__ ()
   runNpm "run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css" __SOURCE_DIRECTORY__ ()
-  // runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm "run build" __SOURCE_DIRECTORY__ ()
 )
 
@@ -645,7 +642,7 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   DotNet.installDotnetSdk ()
-  runNpm "install" __SOURCE_DIRECTORY__ ()
+  runNpmNoErrors  "install" __SOURCE_DIRECTORY__ ()
   DotNet.restore (frontendDir @@ "src") "Iris.Frontend.sln"
   runExec DotNet.dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runExec DotNet.dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
@@ -920,16 +917,16 @@ Target "Release" DoNothing
 
 // Zeroconf
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseService"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseSdk"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildReleaseCore"
 
-"BuildReleaseZeroconf"
+"BuildZeroconf"
 ==> "BuildDebugMockClient"
 
 // Tests
