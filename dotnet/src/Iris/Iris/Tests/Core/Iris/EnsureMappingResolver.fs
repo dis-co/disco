@@ -16,24 +16,22 @@ open Common
 
 module EnsureMappingResolver =
 
-  let logger = Logger.subscribe Logger.stdout
+  let waitFor (count: int ref) (expected: int) =
+    while !count < expected do
+      Thread.Sleep(1)
 
   let test =
-    ftestCase "ensure mapping resolver works" <| fun _ ->
+    testCase "ensure mapping resolver works" <| fun _ ->
       either {
         use electionDone = new AutoResetEvent(false)
-        use clientReady = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
-        use cueAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
 
         let! (project, zipped) = mkCluster 1
 
+        let count = ref 0
+
         let serverHandler (service: IIrisService) = function
           | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-          | IrisEvent.Append(_, AddCue _) ->
-            if not service.RaftServer.IsLeader then
-              cueAppendDone.Set() |> ignore
+          | IrisEvent.Append(_, UpdateSlices map) -> count := !count + 1
           | other -> ()
 
         let group = PinGroup.create (name "My Group")
@@ -56,6 +54,12 @@ module EnsureMappingResolver =
             [| false |]
           |> Pin.setPersisted true
 
+        let mapping =
+          { Id = Id.Create()
+            Source = source.Id
+            Sinks = Set [ sink.Id ] }
+
+        do! Asset.save project.Path mapping
         do! { group with Pins = Map.ofList [ (source.Id,source); (sink.Id, sink) ] }
             |> Asset.save project.Path
 
@@ -86,13 +90,33 @@ module EnsureMappingResolver =
           (Map.containsKey group.Id)
           service.State.PinGroups
 
+        expect "Should have the mapping"
+          true
+          (Map.containsKey mapping.Id)
+          service.State.PinMappings
+
         ///  _____         _
         /// |_   _|__  ___| |_
         ///   | |/ _ \/ __| __|
         ///   | |  __/\__ \ |_
         ///   |_|\___||___/\__|
 
+        let slices = BoolSlices(source.Id, [| true |])
 
+        [ slices ]
+        |> UpdateSlices.ofList
+        |> service.Append
 
+        do waitFor count 2
+
+        expect "Sink should have true in first slice"
+          (Slices.setId sink.Id slices)
+          (Map.find group.Id >> flip PinGroup.findPin sink.Id >> Pin.slices)
+          service.State.PinGroups
+
+        expect "Source should have true in first slice"
+          (Slices.setId source.Id slices)
+          (Map.find group.Id >> flip PinGroup.findPin source.Id >> Pin.slices)
+          service.State.PinGroups
       }
       |> noError

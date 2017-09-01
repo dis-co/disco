@@ -1936,6 +1936,10 @@ module Pin =
       | _ -> value
 
 
+  // ** slices
+
+  let slices (pin: Pin) = pin.Slices
+
   // ** setPersisted
 
   let setPersisted (persisted: bool) = function
