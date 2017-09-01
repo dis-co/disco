@@ -225,16 +225,16 @@ module Persistence =
 
     | AddPin    pin
     | UpdatePin pin ->
-      state
-      |> State.tryFindPinGroup pin.PinGroup
-      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-      |> Either.bind save
+      match State.tryFindPinGroup pin.PinGroup state with
+      | Some group when group.Persisted -> save group
+      | Some group -> delete group
+      | None -> Either.nothing
 
     | RemovePin pin ->
-      state
-      |> State.tryFindPinGroup pin.PinGroup
-      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-      |> Either.bind save
+      match State.tryFindPinGroup pin.PinGroup state with
+      | Some group when group.Persisted -> save group
+      | Some group -> delete group
+      | None -> Either.nothing
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
