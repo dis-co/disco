@@ -21,7 +21,7 @@ module CorrectPinPersistance =
     |> File.exists
 
   let test =
-    ftestCase "ensure pins are correctly persisted" <| fun _ ->
+    testCase "ensure pins are correctly persisted" <| fun _ ->
       either {
         let started = WaitCount.Create()
         let appendDone = WaitCount.Create()

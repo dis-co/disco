@@ -16,22 +16,17 @@ open Common
 
 module EnsureMappingResolver =
 
-  let waitFor (count: int ref) (expected: int) =
-    while !count < expected do
-      Thread.Sleep(1)
-
   let test =
     testCase "ensure mapping resolver works" <| fun _ ->
       either {
-        use electionDone = new AutoResetEvent(false)
+        let electionDone = WaitCount.Create()
+        let counter = WaitCount.Create()
 
         let! (project, zipped) = mkCluster 1
 
-        let count = ref 0
-
         let serverHandler (service: IIrisService) = function
-          | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-          | IrisEvent.Append(_, UpdateSlices map) -> count := !count + 1
+          | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Increment()
+          | IrisEvent.Append(_, UpdateSlices map) -> counter.Increment()
           | other -> ()
 
         let group = PinGroup.create (name "My Group")
@@ -83,7 +78,7 @@ module EnsureMappingResolver =
 
         do! service.Start()
 
-        do! waitOrDie "electionDone" electionDone
+        do! waitFor "electionDone to be 1" electionDone 1
 
         expect "Should have the group"
           true
@@ -107,7 +102,7 @@ module EnsureMappingResolver =
         |> UpdateSlices.ofList
         |> service.Append
 
-        do waitFor count 2
+        do! waitFor "UpdateSlice count" counter 2
 
         expect "Sink should have true in first slice"
           (Slices.setId sink.Id slices)

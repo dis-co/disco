@@ -19,11 +19,11 @@ module EnsureClientUpdateNoLoop =
   let test =
     testCase "ensure client slice update does not loop" <| fun _ ->
       either {
-        use electionDone = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use clientRegistered = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
+        let electionDone = WaitCount.Create()
+        let appendDone = WaitCount.Create()
+        let clientRegistered = WaitCount.Create()
+        let clientAppendDone = WaitCount.Create()
+        let updateDone = WaitCount.Create()
 
         let! (project, zipped) = mkCluster 1
 
@@ -45,13 +45,13 @@ module EnsureClientUpdateNoLoop =
 
         use oobs1 =
           (function
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ())
+            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Increment()
+            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Increment()
+            | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-        do! waitOrDie "electionDone" electionDone
+        do! waitFor "electionDone to be 1" electionDone 1
 
         //  _____
         // |___ /
@@ -75,17 +75,17 @@ module EnsureClientUpdateNoLoop =
         }
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | ClientEvent.Registered              -> clientRegistered.Increment()
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Increment()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Increment()
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Increment()
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
 
         do! client.Start()
 
-        do! waitOrDie "clientRegistered" clientRegistered
+        do! waitFor "clientRegistered 1" clientRegistered 1
 
         //  _  _
         // | || |
@@ -121,8 +121,8 @@ module EnsureClientUpdateNoLoop =
 
         client.AddPinGroup group
 
-        do! waitOrDie "appendDone" appendDone
-        do! waitOrDie "clientAppendDone" clientAppendDone
+        do! waitFor "appendDone to be 1" appendDone 1
+        do! waitFor "clientAppendDone to be 1" clientAppendDone 1
 
         let update = BoolSlices(pin.Id, [| false |])
 
@@ -130,7 +130,7 @@ module EnsureClientUpdateNoLoop =
           update
         ]
 
-        do! waitOrDie "updateDone" updateDone
+        do! waitFor "updateDone to be 1" updateDone 1
 
         let actual: Slices =
           client.State.PinGroups

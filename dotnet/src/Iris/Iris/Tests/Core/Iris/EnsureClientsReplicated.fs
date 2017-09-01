@@ -19,28 +19,28 @@ module EnsureClientsReplicated =
   let test =
     testCase "ensure connected clients are forwarded to leader" <| fun _ ->
       either {
-        use electionDone = new AutoResetEvent(false)
-        use addClientDone = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use clientRegistered = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
-        use pushDone = new AutoResetEvent(false)
+        let electionDone = WaitCount.Create()
+        let addClientDone = WaitCount.Create()
+        let appendDone = WaitCount.Create()
+        let clientRegistered = WaitCount.Create()
+        let clientAppendDone = WaitCount.Create()
+        let updateDone = WaitCount.Create()
+        let pushDone = WaitCount.Create()
 
         let! (project, zipped) = mkCluster 2
 
         let serverHandler id = function
-          | IrisEvent.GitPush _                        -> pushDone.Set() |> ignore
-          | IrisEvent.StateChanged(oldst, Leader)      -> electionDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, AddClient _) -> addClientDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, msg)         -> appendDone.Set() |> ignore
+          | IrisEvent.GitPush _                        -> pushDone.Increment()
+          | IrisEvent.StateChanged(oldst, Leader)      -> electionDone.Increment()
+          | IrisEvent.Append(Origin.Raft, AddClient _) -> addClientDone.Increment()
+          | IrisEvent.Append(Origin.Raft, msg)         -> appendDone.Increment()
           | _ -> ()
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | ClientEvent.Registered              -> clientRegistered.Increment()
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Increment()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Increment()
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Increment()
           | _ -> ()
 
         //  ____                  _            _
@@ -82,7 +82,7 @@ module EnsureClientsReplicated =
         use oobs2 = service2.Subscribe (serverHandler machine2.MachineId)
 
         do! service2.Start()
-        do! waitOrDie "electionDone" electionDone
+        do! waitFor "electionDone to be 1" electionDone 1
 
         //   ____ _ _            _     _
         //  / ___| (_) ___ _ __ | |_  / |
@@ -107,8 +107,9 @@ module EnsureClientsReplicated =
 
         use clobs1 = client1.Subscribe (handleClient)
         do! client1.Start()
-        do! waitOrDie "clientRegistered" clientRegistered
-        do! waitOrDie "addClientDone" addClientDone
+
+        do! waitFor "clientRegistered to be 1" clientRegistered 1
+        do! waitFor "addClientDone to be 1" addClientDone 1
 
         //   ____ _ _            _     ____
         //  / ___| (_) ___ _ __ | |_  |___ \
@@ -133,8 +134,9 @@ module EnsureClientsReplicated =
 
         use clobs2 = client2.Subscribe (handleClient)
         do! client2.Start()
-        do! waitOrDie "clientRegistered" clientRegistered
-        do! waitOrDie "addClientDone" addClientDone
+
+        do! waitFor "clientRegistered to be 2" clientRegistered 2
+        do! waitFor "addClientDone to be 2" addClientDone 2
 
         //  _____         _
         // |_   _|__  ___| |_ ___
@@ -143,8 +145,8 @@ module EnsureClientsReplicated =
         //   |_|\___||___/\__|___/
 
         // we need to wait twice more for the append commands that have been forwardecd issued
-        do! waitOrDie "addClientDone" addClientDone
-        do! waitOrDie "addClientDone" addClientDone
+        do! waitFor "addClientDone to be 3" addClientDone 3
+        do! waitFor "addClientDone to be 4" addClientDone 4
 
         expect "Service 1 and Service 2 should have both 2 Clients"
           service1.State.Clients

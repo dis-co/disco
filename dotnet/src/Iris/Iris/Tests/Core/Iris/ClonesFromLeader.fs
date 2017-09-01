@@ -19,19 +19,20 @@ module ClonesFromLeader =
   let test =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        use checkGitStarted = new AutoResetEvent(false)
-        use electionDone = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use pushDone = new AutoResetEvent(false)
+        let checkGitStarted = WaitCount.Create()
+        let electionDone = WaitCount.Create()
+        let appendDone = WaitCount.Create()
+        let pushDone = WaitCount.Create()
 
         let! (project, zipped) = mkCluster 2
 
         let handler = function
-            | IrisEvent.GitPush _                   -> pushDone.Set() |> ignore
-            | IrisEvent.Started ServiceType.Git     -> checkGitStarted.Set() |> ignore
-            | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, _)      -> appendDone.Set() |> ignore
-            | _                                     -> ()
+            | IrisEvent.GitPush _                      -> pushDone.Increment()
+            | IrisEvent.Started ServiceType.Git        -> checkGitStarted.Increment()
+            | IrisEvent.StateChanged(oldst, Leader)    -> electionDone.Increment()
+            | IrisEvent.Append(Origin.Raft, AddCue _)  -> appendDone.Increment()
+            | IrisEvent.Append(Origin.Raft, Command _) -> appendDone.Increment()
+            | _ -> ()
 
         let! repo1 = Project.repository project
 
@@ -57,7 +58,7 @@ module ClonesFromLeader =
 
         do! service1.Start()
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
+        do! waitFor "checkGitStarted to be 1" checkGitStarted 1
 
         //  ____
         // |___ \
@@ -86,9 +87,8 @@ module ClonesFromLeader =
 
         do! service2.Start()
 
-        do! waitOrDie "checkGitStarted" checkGitStarted
-
-        do! waitOrDie "electionDone" electionDone
+        do! waitFor "checkGitStarted to be 2" checkGitStarted 2
+        do! waitFor "electionDone to be 1" electionDone 1
 
         //  _____
         // |___ /
@@ -110,19 +110,17 @@ module ClonesFromLeader =
         |> AddCue
         |> leader.Append
 
-        do! waitOrDie "appendDone" appendDone
-        appendDone.Reset() |> ignore
-        do! waitOrDie "appendDone" appendDone
+        do! waitFor "appendDone to be 1" appendDone 1
+        do! waitFor "appendDone to be 2" appendDone 2
 
         AppCommand.Save
         |> Command
         |> leader.Append
 
-        do! waitOrDie "appendDone" appendDone
-        appendDone.Reset() |> ignore
-        do! waitOrDie "appendDone" appendDone
+        do! waitFor "appendDone to be 3" appendDone 3
+        do! waitFor "appendDone to be 4" appendDone 4
 
-        do! waitOrDie "pushDone"   pushDone
+        do! waitFor "pushDone to be 1" pushDone 1
 
         dispose service1
         dispose service2
