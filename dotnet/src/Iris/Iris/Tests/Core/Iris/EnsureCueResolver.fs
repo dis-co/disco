@@ -14,7 +14,7 @@ open Iris.Net
 
 open Common
 
-module EnsureResolver =
+module EnsureCueResolver =
 
   let test =
     testCase "ensure cue resolver works" <| fun _ ->

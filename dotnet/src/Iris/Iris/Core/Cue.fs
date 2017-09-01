@@ -186,6 +186,11 @@ type Cue =
     with get () =
       CUE_DIR <.> sprintf "%s%s" (string self.Id) ASSET_EXTENSION
 
+  // ** HasParent
+
+  /// Cues don't live in nested directories, hence false
+  member cue.HasParent with get () = false
+
   // ** Load
 
   //  _                    _
@@ -205,13 +210,12 @@ type Cue =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member cue.Save (basePath: FilePath) =
     IrisData.save basePath cue
+
+  // ** Delete
+
+  member cue.Delete (basePath: FilePath) =
+    IrisData.delete basePath cue
 
   #endif

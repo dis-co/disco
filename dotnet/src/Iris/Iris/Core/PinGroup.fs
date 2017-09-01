@@ -214,8 +214,8 @@ type PinGroup =
   { Id: Id
     Name: Name
     Client: Id
-    RefersTo: ReferencedValue option
-    Path: FilePath option
+    RefersTo: ReferencedValue option    /// optionally add a reference to a player/widget
+    Path: FilePath option               /// optionally the location of this group on disk
     Pins: Map<Id,Pin> }
 
   // ** ToYamlObject
@@ -352,6 +352,11 @@ type PinGroup =
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB
 
+  // ** HasParent
+
+  /// PinGroups do live in nested directories, hence true
+  member widget.HasParent with get () = true
+
   // ** Load
 
   //  _                    _
@@ -373,14 +378,14 @@ type PinGroup =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member group.Save (basePath: FilePath) =
     PinGroup.save basePath group
+
+  // ** Delete
+
+  member group.Delete (basePath: FilePath) =
+    IrisData.delete basePath group
+
 
   // ** Persisted
 
@@ -409,6 +414,16 @@ type PinGroup =
 // * PinGroup module
 
 module PinGroup =
+
+  // ** create
+
+  let create (groupName: Name) =
+    { Id = Id.Create()
+      Name = groupName
+      Client = Id.Create()
+      RefersTo = None
+      Path = None
+      Pins = Map.empty }
 
   // ** persisted
 

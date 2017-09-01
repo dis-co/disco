@@ -9,24 +9,81 @@ open Path
 
 // * Asset
 
+/// ## Contracts for manipulating on-disk data
+
 [<RequireQualifiedAccess>]
 module Asset =
 
-  let private tag (site: string) = sprintf "Asset.%s" site
+  // ** tag
+
+  let private tag (site: string) = String.format "Asset.{0}" site
 
   // ** path
 
-  /// ## path
-  ///
-  /// Return the realive path the given asset should be saved under.
-  ///
-  /// ### Signature:
-  /// - thing: ^t
-  ///
-  /// Returns: FilePath
   let inline path< ^t when ^t : (member AssetPath : FilePath)> (thing: ^t) =
     (^t : (member AssetPath: FilePath) thing)
 
+
+  // ** save
+
+  #if !FABLE_COMPILER
+
+  let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
+                 (path: FilePath)
+                 (t: ^t) =
+    (^t : (member Save: FilePath -> Either<IrisError, unit>) (t, path))
+
+
+  // ** delete
+
+  let inline delete< ^t when ^t : (member Delete: FilePath -> Either<IrisError, unit>)>
+                   (path: FilePath)
+                   (t: ^t) =
+    (^t : (member Delete: FilePath -> Either<IrisError, unit>) (t, path))
+
+  // ** saveMap
+
+
+  let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
+    either {
+      do! guard
+      do! save basepath t
+    }
+
+  // ** load
+
+  let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
+                 (path: FilePath) =
+    (^t : (static member Load: FilePath -> Either<IrisError, ^t>) path)
+
+  // ** loadWithMachine
+
+  let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>)>
+                 (path: FilePath)
+                 (machine: IrisMachine) =
+    (^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>) (path,machine))
+
+  // ** loadAll
+
+  let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>)>
+                    (basePath: FilePath) =
+    (^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>) basePath)
+
+  // ** hasParent
+
+  let inline hasParent< ^t when ^t : (member HasParent: bool)> asset =
+    (^t : (member HasParent: bool) asset)
+
+  #endif
+
+
+// * IrisData
+
+module IrisData =
+
+  // ** tag
+
+  let private tag (str: string) = String.format "IrisData.{0}" str
 
   // ** write
 
@@ -60,7 +117,7 @@ module Asset =
 
   #endif
 
-  // ** delete
+  // ** remove
 
   #if !FABLE_COMPILER
 
@@ -72,7 +129,7 @@ module Asset =
   /// - location: FilePath to asset
   ///
   /// Returns: Either<IrisError,bool>
-  let delete (location: FilePath) =
+  let remove (location: FilePath) =
     either {
       try
         if File.exists location then
@@ -80,12 +137,11 @@ module Asset =
           return ()
         else
           return ()
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asAssetError (tag "delete")
-            |> Either.fail
+      with | exn ->
+        return!
+          exn.Message
+          |> Error.asAssetError (tag "remove")
+          |> Either.fail
     }
 
   #endif
@@ -122,119 +178,11 @@ module Asset =
     }
   #endif
 
-  // ** save
-
-  #if !FABLE_COMPILER
-
-  let inline save< ^t when ^t : (member Save: FilePath -> Either<IrisError, unit>)>
-                 (path: FilePath)
-                 (t: ^t) =
-    (^t : (member Save: FilePath -> Either<IrisError, unit>) (t, path))
-
-  #endif
-
-  // ** saveMap
-
-  #if !FABLE_COMPILER
-
-  let inline saveMap (basepath: FilePath) (guard: Either<IrisError,unit>) _ (t: ^t) =
-    either {
-      do! guard
-      do! save basepath t
-    }
-
-  #endif
-
-  // ** load
-
-  #if !FABLE_COMPILER
-
-  let inline load< ^t when ^t : (static member Load: FilePath -> Either<IrisError, ^t>)>
-                 (path: FilePath) =
-    (^t : (static member Load: FilePath -> Either<IrisError, ^t>) path)
-
-  #endif
-
-  // ** loadWithMachine
-
-  #if !FABLE_COMPILER
-
-  let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>)>
-                 (path: FilePath)
-                 (machine: IrisMachine) =
-    (^t : (static member Load: FilePath * IrisMachine -> Either<IrisError, ^t>) (path,machine))
-
-  #endif
-
-  // ** loadAll
-
-  #if !FABLE_COMPILER && !IRIS_NODES
-
-  let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>)>
-                    (basePath: FilePath) =
-    (^t : (static member LoadAll: FilePath -> Either<IrisError, ^t array>) basePath)
-
-  #endif
-
-  // ** commit
-
-  #if !FABLE_COMPILER
-
-  let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
-      use! repo = Git.Repo.repository basepath
-
-      let target =
-        if Path.isPathRooted basepath then
-          basepath </> path t
-        else
-          Path.getFullPath basepath </> path t
-
-      do! Git.Repo.stage repo target
-      let! commit = Git.Repo.commit repo msg signature
-      return commit
-    }
-
-  #endif
-
-  // ** saveWithCommit
-
-  #if !FABLE_COMPILER
-
-  let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
-      do! save basepath t
-      let filename = t |> path |> Path.getFileName
-      let msg = sprintf "%s saved %A" signature.Name filename
-      return! commit basepath msg signature t
-    }
-
-  #endif
-
-  // ** deleteWithCommit
-
-  #if !FABLE_COMPILER
-
-  let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
-      let filepath = basepath </> path t
-      let! _ = delete filepath
-      let msg = sprintf "%s deleted %A" signature.Name (Path.getFileName filepath)
-      return! commit basepath msg signature t
-    }
-
-  #endif
-
-
-// * IrisData
-
-module IrisData =
-
   // ** load
 
   let inline load (path: FilePath) =
     either {
-      let! data = Asset.read path
+      let! data = read path
       let! group = Yaml.decode data
       return group
     }
@@ -269,12 +217,92 @@ module IrisData =
             |> Either.fail
     }
 
+  // ** ensureDirectoryExists
+
+  let inline ensureDirectoryExists (path: FilePath) asset =
+    if Asset.hasParent asset then
+      path
+      |> Path.getDirectoryName
+      |> Directory.createDirectory
+      |> Either.ignore
+    else
+      Either.nothing
+
+  // ** ensureDirectoryGone
+
+  let inline ensureDirectoryGone (dir: FilePath) asset =
+    if Asset.hasParent asset then
+      if Directory.isEmpty dir then
+        Directory.removeDirectory dir
+        |> Either.ignore
+      else Either.nothing
+    else Either.nothing
+
   // ** save
 
   let inline save (basePath: FilePath) asset =
     either {
       let path = basePath </> Asset.path asset
+      do! ensureDirectoryExists path asset
       let data = Yaml.encode asset
-      let! _ = Asset.write path (Payload data)
+      let! _ = write path (Payload data)
       return ()
     }
+
+  // ** delete
+
+  let inline delete (basePath: FilePath) asset =
+    either {
+      let path = basePath </> Asset.path asset
+      do! path |> Path.concat basePath |> remove
+      do! ensureDirectoryGone (Path.directoryName path) asset
+    }
+
+  // ** commit
+
+  #if !FABLE_COMPILER
+
+  let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
+    either {
+      use! repo = Git.Repo.repository basepath
+
+      let target =
+        if Path.isPathRooted basepath then
+          basepath </> Asset.path t
+        else
+          Path.getFullPath basepath </> Asset.path t
+
+      do! Git.Repo.stage repo target
+      let! commit = Git.Repo.commit repo msg signature
+      return commit
+    }
+
+  #endif
+
+  // ** saveWithCommit
+
+  #if !FABLE_COMPILER
+
+  let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
+    either {
+      do! save basepath t
+      let filename = t |> Asset.path |> Path.getFileName
+      let msg = sprintf "%s saved %A" signature.Name filename
+      return! commit basepath msg signature t
+    }
+
+  #endif
+
+  // ** deleteWithCommit
+
+  #if !FABLE_COMPILER
+
+  let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
+    either {
+      let filepath = basepath </> Asset.path t
+      let! _ = remove filepath
+      let msg = sprintf "%s deleted %A" signature.Name (Path.getFileName filepath)
+      return! commit basepath msg signature t
+    }
+
+  #endif

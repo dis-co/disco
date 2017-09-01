@@ -118,8 +118,11 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureClientUpdateNoLoop.fs">
       <Link>EnsureClientUpdateNoLoop.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureResolver.fs">
-      <Link>EnsureResolver.fs</Link>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureCueResolver.fs">
+      <Link>EnsureCueResolver.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureMappingResolver.fs">
+      <Link>EnsureMappingResolver.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\CorrectPinPersistance.fs">
       <Link>CorrectPinPersistance.fs</Link>

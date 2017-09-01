@@ -39,7 +39,7 @@ module Common =
             Author = Some(author1)
             Config = cfg }
 
-      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+      let! commit = IrisData.saveWithCommit path User.Admin.Signature updated
 
       return updated
     }

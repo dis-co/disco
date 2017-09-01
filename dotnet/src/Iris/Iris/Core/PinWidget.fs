@@ -143,14 +143,13 @@ type PinWidget =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member widget.Save (basePath: FilePath) =
     PinWidget.save basePath widget
+
+  // ** Delete
+
+  member widget.Delete (basePath: FilePath) =
+    IrisData.delete basePath widget
 
   // ** Exists
 
@@ -159,6 +158,11 @@ type PinWidget =
     |> File.exists
 
   #endif
+
+  // ** HasParent
+
+  /// Widgets don't live in nested directories, hence false
+  member widget.HasParent with get () = false
 
   // ** AssetPath
 

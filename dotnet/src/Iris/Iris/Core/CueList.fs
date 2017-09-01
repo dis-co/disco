@@ -168,6 +168,11 @@ type CueList =
     with get () =
       CUELIST_DIR <.> sprintf "%s%s" (string self.Id) ASSET_EXTENSION
 
+  // ** HasParent
+
+  /// CueLists don't live in nested directories, hence false
+  member list.HasParent with get () = false
+
   // ** Load
 
   //  _                    _
@@ -187,13 +192,12 @@ type CueList =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member cuelist.Save (basePath: FilePath) =
+    IrisData.save basePath cuelist
+
+  // ** Delete
+
+  member cuelist.Delete (basePath: FilePath) =
     IrisData.save basePath cuelist
 
   #endif

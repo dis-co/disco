@@ -607,7 +607,7 @@ module IrisService =
     let path = Constants.RAFT_DIRECTORY <.>
                Constants.SNAPSHOT_FILENAME +
                Constants.ASSET_EXTENSION
-    match Asset.read path with
+    match IrisData.read path with
     | Right str ->
       try
         let serializer = Serializer()
@@ -618,14 +618,13 @@ module IrisService =
           | Some site -> site.Members |> Map.toArray |> Array.map snd
           | _ -> [| |]
 
-        Snapshot ( Id yml.Id
-                 , yml.Index
-                 , yml.Term
-                 , yml.LastIndex
-                 , yml.LastTerm
-                 , members
-                 , DataSnapshot state.Store.State
-                 )
+        Snapshot (Id yml.Id
+                 ,yml.Index
+                 ,yml.Term
+                 ,yml.LastIndex
+                 ,yml.LastTerm
+                 ,members
+                 ,DataSnapshot state.Store.State)
         |> Some
       with
         | exn ->
