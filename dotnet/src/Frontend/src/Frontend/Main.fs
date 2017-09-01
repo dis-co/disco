@@ -19,8 +19,8 @@ App.init()
 let findPinByName(model: Model, name: string) =
   model.state |> Option.bind (fun state ->
     let i = name.LastIndexOf("/")
-    let groupName = name.Substring(0, i) //name.[0..(i-1)]
-    let pinName = name.Substring(i+1) // name.[(i+i)..]
+    let groupName = name.[0..(i-1)]
+    let pinName = name.[(i+1)..]
     state.PinGroups |> Map.tryPick (fun _ g ->
       if unwrap g.Name = groupName then Some g else None)
     |> Option.bind (fun group ->
