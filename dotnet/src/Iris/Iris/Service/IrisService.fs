@@ -536,7 +536,23 @@ module IrisService =
       |> IrisEvent.appendRaft
       |> store.State.Dispatcher.Dispatch
 
+    /// when a pin widget is created, also add a special pingroup for that widget
+    | IrisEvent.Append(Origin.Raft, AddPinWidget widget) ->
+      widget
+      |> PinGroup.ofWidget
+      |> AddPinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
+
+    /// when a pin widget is deleted, also delete the special pingroup for that widget
+    | IrisEvent.Append(Origin.Raft, RemovePinWidget widget) ->
+      widget
+      |> PinGroup.ofWidget
+      |> RemovePinGroup
+      |> IrisEvent.appendRaft
+      |> store.State.Dispatcher.Dispatch
     | _ -> ()
+
     pipeline.Push cmd
 
   // ** dispatchEvent

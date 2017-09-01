@@ -1662,6 +1662,8 @@ type StateFB =
   abstract PinGroupsLength: int
   abstract PinMappings: int -> PinMappingFB
   abstract PinMappingsLength: int
+  abstract PinWidgets: int -> PinWidgetFB
+  abstract PinWidgetsLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
@@ -1683,6 +1685,7 @@ type StateFBConstructor =
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
   abstract AddPinMappings: builder: FlatBufferBuilder * mappings: Offset<'a> -> unit
+  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: Offset<'a> -> unit
   abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
   abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
   abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
@@ -1694,6 +1697,7 @@ type StateFBConstructor =
   abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
   abstract CreatePinGroupsVector: builder: FlatBufferBuilder * groups: Offset<PinGroupFB> array -> Offset<'a>
   abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> Offset<'a>
+  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> Offset<'a>
   abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
   abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
   abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
@@ -1901,6 +1905,30 @@ type PinMappingFBConstructor =
 
 let PinMappingFB: PinMappingFBConstructor = failwith "JS only"
 
+//  ____  _    __        ___     _            _
+// |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+// | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+// |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+// |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+//                                 |___/
+
+type PinWidgetFB =
+  abstract Id: string
+  abstract Name: string
+  abstract WidgetType: string
+
+type PinWidgetFBConstructor =
+  abstract prototype: PinWidgetFB with get, set
+  abstract StartPinWidgetFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:Offset<string> -> unit
+  abstract AddName: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract AddWidgetType: builder:FlatBufferBuilder * source:Offset<string> -> unit
+  abstract EndPinWidgetFB: builder:FlatBufferBuilder -> Offset<PinWidgetFB>
+  abstract GetRootAsPinWidgetFB: bytes:ByteBuffer -> PinWidgetFB
+  abstract Create: unit -> PinWidgetFB
+
+let PinWidgetFB: PinWidgetFBConstructor = failwith "JS only"
+
 //  ____  _        _       __  __            _     _
 // / ___|| |_ __ _| |_ ___|  \/  | __ _  ___| |__ (_)_ __   ___
 // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
@@ -1934,6 +1962,7 @@ type StateMachinePayloadFBConstructor =
   abstract PinFB: StateMachinePayloadFB
   abstract PinGroupFB: StateMachinePayloadFB
   abstract PinMappingFB: StateMachinePayloadFB
+  abstract PinWidgetFB: StateMachinePayloadFB
   abstract RaftMemberFB: StateMachinePayloadFB
   abstract UserFB: StateMachinePayloadFB
   abstract SessionFB: StateMachinePayloadFB
@@ -1959,6 +1988,7 @@ type StateMachineFB =
   abstract PinFB: PinFB
   abstract PinGroupFB: PinGroupFB
   abstract PinMappingFB: PinMappingFB
+  abstract PinWidgetFB: PinWidgetFB
   abstract RaftMemberFB: RaftMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB

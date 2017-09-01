@@ -168,6 +168,13 @@ type ApiRequest =
       |> Binary.toOffset builder
       |> withPayload ParameterFB.PinMappingFB cmd.ApiCommand
 
+    | Update (AddPinWidget    widget as cmd)
+    | Update (UpdatePinWidget widget as cmd)
+    | Update (RemovePinWidget widget as cmd) ->
+      widget
+      |> Binary.toOffset builder
+      |> withPayload ParameterFB.PinWidgetFB cmd.ApiCommand
+
     | Update (AddPin    pin as cmd)
     | Update (UpdatePin pin as cmd)
     | Update (RemovePin pin as cmd) ->
@@ -598,6 +605,53 @@ type ApiRequest =
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return ApiRequest.Update (RemovePinMapping mapping)
+      }
+
+    // __        ___     _            _
+    // \ \      / (_) __| | __ _  ___| |_
+    //  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+    //   \ V  V / | | (_| | (_| |  __/ |_
+    //    \_/\_/  |_|\__,_|\__, |\___|\__|
+    //                     |___/
+
+    | ApiCommandFB.AddFB, ParameterFB.PinWidgetFB ->
+      either {
+        let! widget =
+          let widgetish = fb.Parameter<PinWidgetFB>()
+          if widgetish.HasValue then
+            let value = widgetish.Value
+            PinWidget.FromFB value
+          else
+            "Empty PinWidgetFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (AddPinWidget widget)
+      }
+    | ApiCommandFB.UpdateFB, ParameterFB.PinWidgetFB ->
+      either {
+        let! widget =
+          let widgetish = fb.Parameter<PinWidgetFB>()
+          if widgetish.HasValue then
+            let value = widgetish.Value
+            PinWidget.FromFB value
+          else
+            "Empty PinWidgetFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (UpdatePinWidget widget)
+      }
+    | ApiCommandFB.RemoveFB, ParameterFB.PinWidgetFB ->
+      either {
+        let! widget =
+          let widgetish = fb.Parameter<PinWidgetFB>()
+          if widgetish.HasValue then
+            let value = widgetish.Value
+            PinWidget.FromFB value
+          else
+            "Empty PinWidgetFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (RemovePinWidget widget)
       }
 
     //  ____  _

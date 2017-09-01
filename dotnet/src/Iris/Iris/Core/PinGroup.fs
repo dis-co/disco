@@ -373,6 +373,15 @@ module PinGroup =
                   (next.Id, next)
                   (prev.Id, prev) ] }
 
+  // ** ofWidget
+
+  let ofWidget (widget: PinWidget) =
+    { Id = widget.Id
+      Name = name (unwrap widget.Name + " (Widget)")
+      Client = Id Constants.PINWIDGET_GROUP_DIR
+      Path = None
+      Pins = Map.empty }
+
 // * Map module
 
 module Map =

@@ -150,6 +150,11 @@ module SerializationTests =
       Source = Id.Create()
       Sinks = Set [| Id.Create(); Id.Create() |] }
 
+  let mkPinWidget _ =
+    { Id = Id.Create()
+      Name = rndname()
+      WidgetType = Id.Create() }
+
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
@@ -173,6 +178,7 @@ module SerializationTests =
     { Project    = mkProject ()
     ; PinGroups  = mkPinGroup () |> fun (group: PinGroup) -> Map.ofArray [| (group.Id, group) |]
     ; PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
+    ; PinWidgets = mkPinWidget () |> fun (map: PinWidget) -> Map.ofArray [| (map.Id, map) |]
     ; Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
     ; CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
     ; Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
@@ -212,6 +218,12 @@ module SerializationTests =
             AddPinGroup             <| mkPinGroup ()
             UpdatePinGroup          <| mkPinGroup ()
             RemovePinGroup          <| mkPinGroup ()
+            AddPinMapping           <| mkPinMapping ()
+            UpdatePinMapping        <| mkPinMapping ()
+            RemovePinMapping        <| mkPinMapping ()
+            AddPinWidget            <| mkPinWidget ()
+            UpdatePinWidget         <| mkPinWidget ()
+            RemovePinWidget         <| mkPinWidget ()
             AddClient               <| mkClient ()
             UpdateSlices            <| mkSlicesMap ()
             UpdateClient            <| mkClient ()
@@ -237,6 +249,11 @@ module SerializationTests =
           yield  mkCue () |]
       |> Array.iter check
       finish()
+
+    testSync "Validate PinWidget Serialization" <| fun () ->
+      let widget : PinWidget = mkPinWidget ()
+      let rewidget = widget |> Binary.encode |> Binary.decode |> Either.get
+      equals widget rewidget
 
     testSync "Validate PinMapping Serialization" <| fun () ->
       let mapping : PinMapping = mkPinMapping ()
@@ -348,6 +365,12 @@ module SerializationTests =
       ; AddPinGroup             <| mkPinGroup ()
       ; UpdatePinGroup          <| mkPinGroup ()
       ; RemovePinGroup          <| mkPinGroup ()
+      ; AddPinMapping           <| mkPinMapping ()
+      ; UpdatePinMapping        <| mkPinMapping ()
+      ; RemovePinMapping        <| mkPinMapping ()
+      ; AddPinWidget            <| mkPinWidget ()
+      ; UpdatePinWidget         <| mkPinWidget ()
+      ; RemovePinWidget         <| mkPinWidget ()
       ; AddClient               <| mkClient ()
       ; UpdateSlices            <| mkSlicesMap ()
       ; UpdateClient            <| mkClient ()

@@ -122,6 +122,9 @@
     <Compile Include="..\..\Iris\Core\CuePlayer.fs">
       <Link>CuePlayer.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Core\PinWidget.fs">
+      <Link>PinWidget.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Core\PinGroup.fs">
       <Link>PinGroup.fs</Link>
     </Compile>

@@ -40,6 +40,7 @@ module Store =
       { Project            = project
         PinGroups          = Map.empty
         PinMappings        = Map.empty
+        PinWidgets         = Map.empty
         Cues               = Map.empty
         CueLists           = Map.empty
         Users              = Map.empty

@@ -820,6 +820,23 @@ module Generators =
           Sinks = sinks }
     }
 
+  //  ____  _    __        ___     _            _
+  // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+  // | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  // |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+  // |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+  //                                 |___/
+
+  let pinWidgetGen = gen {
+      let! id = idGen
+      let! name = nameGen
+      let! widgetType = idGen
+      return
+        { Id = id
+          Name = name
+          WidgetType = widgetType }
+    }
+
   //   ____           ____  _
   //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
   // | |  | | | |/ _ \ |_) | |/ _` | | | |/ _ \ '__|
@@ -1030,6 +1047,7 @@ module Generators =
   let stateGen = gen {
     let! project = projectGen
     let! groups = mapGen pingroupGen
+    let! widgets = mapGen pinWidgetGen
     let! mappings = mapGen pinMappingGen
     let! cues = mapGen cueGen
     let! cuelists = mapGen cuelistGen
@@ -1042,6 +1060,7 @@ module Generators =
       { Project            = project
         PinGroups          = groups
         PinMappings        = mappings
+        PinWidgets         = widgets
         Cues               = cues
         CueLists           = cuelists
         Sessions           = sessions
@@ -1069,6 +1088,9 @@ module Generators =
       Gen.map AddPinMapping           pinMappingGen
       Gen.map UpdatePinMapping        pinMappingGen
       Gen.map RemovePinMapping        pinMappingGen
+      Gen.map AddPinWidget            pinWidgetGen
+      Gen.map UpdatePinWidget         pinWidgetGen
+      Gen.map RemovePinWidget         pinWidgetGen
       Gen.map AddPinGroup             pingroupGen
       Gen.map UpdatePinGroup          pingroupGen
       Gen.map RemovePinGroup          pingroupGen
@@ -1337,3 +1359,4 @@ module Generators =
   let requestArb = Arb.fromGen requestGen
   let commandBatchArb = Arb.fromGen stateMachineBatchGen
   let pinMappingArb = Arb.fromGen pinMappingGen
+  let pinWidgetArb = Arb.fromGen pinWidgetGen

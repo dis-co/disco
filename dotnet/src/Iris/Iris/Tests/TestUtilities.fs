@@ -253,6 +253,11 @@ module TestData =
       Source = Id.Create()
       Sinks = Set [ Id.Create() ] }
 
+  let mkPinWidget() =
+    { Id = Id.Create()
+      Name = rndname()
+      WidgetType = Id.Create() }
+
   let mkPinGroups () : Iris.Core.PinGroup array =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinGroup() |]
@@ -260,6 +265,10 @@ module TestData =
   let mkPinMappings () : Iris.Core.PinMapping array =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinMapping() |]
+
+  let mkPinWidgets () : Iris.Core.PinWidget array =
+    [| for n in 0 .. rand.Next(1,20) do
+        yield mkPinWidget() |]
 
   let mkCueList () : CueList =
     { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
@@ -315,6 +324,7 @@ module TestData =
         { Project            = project
           PinGroups          = mkPinGroups()          |> asMap
           PinMappings        = mkPinMappings()        |> asMap
+          PinWidgets         = mkPinWidgets()        |> asMap
           Cues               = mkCues()               |> asMap
           CueLists           = mkCueLists()           |> asMap
           Sessions           = mkSessions()           |> asMap

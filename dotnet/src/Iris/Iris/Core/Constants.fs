@@ -189,7 +189,13 @@ module Constants =
   let CUEPLAYER_DIR = "players"
 
   [<Literal>]
-  let CUEPLAYER_GROUP_DIR = "cue-player"
+  let PINWIDGET_DIR = "widgets"
+
+  [<Literal>]
+  let CUEPLAYER_GROUP_DIR = "players"
+
+  [<Literal>]
+  let PINWIDGET_GROUP_DIR = "widgets"
 
   let GLOBAL_ASSET_DIRS =
     [ USER_DIR
@@ -197,6 +203,7 @@ module Constants =
       CUELIST_DIR
       PINGROUP_DIR
       PINMAPPING_DIR
+      PINWIDGET_DIR
       CUEPLAYER_DIR ]
 
   //  __  __            _     _             ____             __ _

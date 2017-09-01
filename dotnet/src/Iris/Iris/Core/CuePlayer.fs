@@ -240,4 +240,4 @@ module CuePlayer =
   // ** assetPath
 
   let assetPath (player: CuePlayer) =
-    CUEPLAYER_DIR <.> sprintf "%A%s" player.Id ASSET_EXTENSION
+    CUEPLAYER_DIR <.> sprintf "%O%s" player.Id ASSET_EXTENSION

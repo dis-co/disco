@@ -721,6 +721,19 @@ table PinMappingFB {
       Sinks: [string];
 }
 
+//  ____  _    __        ___     _            _
+// |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
+// | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+// |  __/| | | | \ V  V / | | (_| | (_| |  __/ |_
+// |_|   |_|_| |_|\_/\_/  |_|\__,_|\__, |\___|\__|
+//                                 |___/
+
+table PinWidgetFB {
+      Id: string;
+      Name: string;
+      WidgetType: string;
+}
+
 //  ____  _        _
 // / ___|| |_ __ _| |_ ___
 // \___ \| __/ _` | __/ _ \
@@ -731,6 +744,7 @@ table StateFB {
       Project:            ProjectFB;
       PinGroups:          [PinGroupFB];
       PinMappings:        [PinMappingFB];
+      PinWidgets:         [PinWidgetFB];
       Cues:               [CueFB];
       CueLists:           [CueListFB];
       Sessions:           [SessionFB];
@@ -764,7 +778,8 @@ union StateMachinePayloadFB {
       DiscoveredServiceFB,
       ClockFB,
       CommandBatchFB,
-      PinMappingFB
+      PinMappingFB,
+      PinWidgetFB
 }
 
 enum StateMachineActionFB:ushort {
