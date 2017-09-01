@@ -4,20 +4,10 @@ var fs = require('fs');
 var path = require('path');
 var xml2js = require('xml2js');
 
-function trim(txt) {
-    try {
-        return /^\s*(\S[\s\S]*?)\s*$/.exec(txt)[1];
-    }
-    catch (err) {
-        console.error("Cannot trim", txt);
-        return txt;
-    }
-}
-
-function parseXmlDoc(xmlDocPath) {
+function parseXml(xmlPath) {
     return new Promise(function (resolve, reject) {
         var parser = new xml2js.Parser();
-        fs.readFile(xmlDocPath, function (err, data) {
+        fs.readFile(xmlPath, function (err, data) {
             if (err) {
                 reject(err);
             }
@@ -35,38 +25,26 @@ function parseXmlDoc(xmlDocPath) {
     });
 }
 
-function parseAndGetMembersSummary(xmlDocPath) {
-    return parseXmlDoc(xmlDocPath)
+function parseXmlDocAndGetMembers(xmlPath) {
+    return parseXml(xmlPath)
     .then(result => {
         var members = result.doc.members[0].member;
         var ar = new Array(members.length);
-        for (var i = 0; i < ar.length; i++) {
-            var m = members[i]
-            ar[i] = [m.$.name, trim(m.summary[0])];
+        for (var i = 0; i < members.length; i++) {
+            var dic = new Map();
+            var m = members[i];
+            dic.set("name", [m.$.name]);
+            Object.keys(m).forEach(k => {
+                if (k !== "$")
+                    dic.set(k, m[k]);
+            })
+            ar.push(dic);
         }
         return ar;
     });
 }
 
-function getDirectoryFiles(dir, isRecursive) {
-    var items = fs.readdirSync(dir);
-    var files = [];
-    for (var name of items) {
-        var item = path.join(dir, name);
-        if (fs.lstatSync(item).isDirectory()) {
-            if (isRecursive) {
-                files = files.concat(getDirectoryFiles(item, true));
-            }
-        }
-        else {
-            files.push(item);
-        }
-    }
-    return files;
-}
-
 module.exports = {
-    trim,
-    parseXmlDoc,
-    parseAndGetMembersSummary,
+    parseXml,
+    parseXmlDocAndGetMembers,
 }

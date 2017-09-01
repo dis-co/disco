@@ -7,9 +7,14 @@ open System.Text.RegularExpressions
 
 let genArgsRegex = Regex @"``(\d)(\()?"
 let argRegex = Regex @"([\w.]+)(\{.*?\})?"
+let surroundingWhitespaceRegex = Regex @"^\s*(.*?)\s*$"
 
 let konst k _ = k
 let apply f x = f x
+
+let trimWhitespace (str: string) =
+    let m = surroundingWhitespaceRegex.Match(str)
+    if m.Success then m.Groups.[1].Value else ""
 
 let concatAndFormat format separator args =
     String.Format(format, String.concat separator args)
@@ -42,7 +47,7 @@ let replacements: Map<string, string seq->string> =
     ] |> Map
 
 let rec processArgs (str: string) =
-    printfn "Process args for %s" str
+    // printfn "Process args for %s" str
     str |> replace argRegex (fun m -> function
         | [Some arg; genArgs] ->
             match Map.tryFind arg replacements with
