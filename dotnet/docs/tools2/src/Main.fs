@@ -67,11 +67,18 @@ let rec addMembers nameParts members types: Map<string, TypeInfo> =
             | None -> addMembers parts members Map.empty |> makeType None []
         Map.add part parent types
 
+let splitMemberName (memb: MemberInfo) =
+    let name = memb.name
+    let parensIndex = name.IndexOf('(')
+    let dotIndex = name.[..parensIndex-1].LastIndexOf('.')
+    name.[..dotIndex-1], name.[dotIndex+1..]
+
 let rec printTypes indent types =
     for (KeyValue(name, typ)) in types do
         printfn "%s%s >> %s" indent name (defaultArg typ.summary "")
         for memb in typ.members do
-            printfn "%s  %s: %s" indent memb.name (defaultArg memb.summary "")
+            let _, name = splitMemberName memb
+            printfn "%s  %s: %s" indent name (defaultArg memb.summary "")
         printTypes (indent + "  ") typ.nestedTypes
 
 let tryAndTrim (k: string) (dic: IDictionary<string, string[]>) =
@@ -101,7 +108,7 @@ let parseApiReference title xmlDocPath = promise {
             | None -> types, members)
     let types =
         members
-        |> Seq.groupBy (fun x -> let i = x.name.LastIndexOf('.') in x.name.[i+1..])
+        |> Seq.groupBy (splitMemberName >> fst)
         |> Seq.fold (fun types (typName, members) ->
             let members = Seq.toList members
             let nameParts = typName.Split('.') |> Array.toList

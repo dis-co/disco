@@ -7,14 +7,15 @@ open System.Text.RegularExpressions
 
 let genArgsRegex = Regex @"``(\d)(\()?"
 let argRegex = Regex @"([\w.]+)(\{.*?\})?"
-let surroundingWhitespaceRegex = Regex @"^\s*(.*?)\s*$"
+let surroundingWhitespaceRegex = Regex @"^\s*([\s\S]*?)\s*$"
+let lineBreakRegex = Regex @"\r?\n"
 
 let konst k _ = k
 let apply f x = f x
 
 let trimWhitespace (str: string) =
     let m = surroundingWhitespaceRegex.Match(str)
-    if m.Success then m.Groups.[1].Value else ""
+    if m.Success then lineBreakRegex.Replace(m.Groups.[1].Value, "") else ""
 
 let concatAndFormat format separator args =
     String.Format(format, String.concat separator args)
