@@ -13,6 +13,7 @@ module StoreTests =
         Name = name "group-1"
         Path = None
         Client = Id.Create()
+        RefersTo = None
         Pins = Map.empty }
 
     let project = IrisProject.Empty

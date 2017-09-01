@@ -645,6 +645,7 @@ Usage:
           Name = name "MockClient Patch"
           Client = id
           Path = None
+          RefersTo = None
           Pins = Map.empty }
 
       let loaded =

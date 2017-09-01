@@ -877,17 +877,31 @@ module Generators =
   // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
   //                                     |_|
 
+  let referencedValueGen =
+    Gen.oneof [
+      Gen.map ReferencedValue.Player idGen
+      Gen.map ReferencedValue.Widget idGen
+    ]
+
+  let maybeReferencedValueGen =
+    Gen.oneof [
+      Gen.map Some referencedValueGen
+      Gen.constant None
+    ]
+
   let pingroupGen = gen {
       let! id = idGen
       let! nm = nameGen
       let! clnt = idGen
       let! pins = mapGen pinGen
       let! path = maybePathGen
+      let! refersTo = maybeReferencedValueGen
       return
         { Id = id
           Name = nm
           Path = path
           Client = clnt
+          RefersTo = refersTo
           Pins = pins }
     }
 
@@ -1360,3 +1374,4 @@ module Generators =
   let commandBatchArb = Arb.fromGen stateMachineBatchGen
   let pinMappingArb = Arb.fromGen pinMappingGen
   let pinWidgetArb = Arb.fromGen pinWidgetGen
+  let referencedValueArb = Arb.fromGen referencedValueGen

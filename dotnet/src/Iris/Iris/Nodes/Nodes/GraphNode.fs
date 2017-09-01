@@ -942,6 +942,7 @@ module Graph =
           Name = parseGroupName node
           Path = parseGroupPath node
           Client = state.InClientId.[0]
+          RefersTo = None
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
       state.Commands.Add (AddPin pin)

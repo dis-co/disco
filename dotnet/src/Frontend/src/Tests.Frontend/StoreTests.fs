@@ -19,6 +19,7 @@ module Store =
         Name = name "group-1"
         Client = Id.Create()
         Path = None
+        RefersTo = None
         Pins = Map.empty }
 
     let machine =

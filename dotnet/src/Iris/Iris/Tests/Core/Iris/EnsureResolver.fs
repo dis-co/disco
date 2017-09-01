@@ -119,6 +119,7 @@ module EnsureResolver =
           Name = name "whatevva"
           Client = Id.Create()
           Path = None
+          RefersTo = None
           Pins = Map.ofList [(pin.Id, pin)]
         }
 

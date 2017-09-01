@@ -246,6 +246,7 @@ module TestData =
       Name = rndname ()
       Path = Some (filepath "/dev/null")
       Client = Id.Create()
+      RefersTo = None
       Pins = pins }
 
   let mkPinMapping() =

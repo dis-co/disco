@@ -95,6 +95,7 @@ module SerializationTests =
       Name = name "PinGroup 3"
       Client = Id.Create()
       Path = None
+      RefersTo = None
       Pins = pins }
 
   let mkCueList _ : CueList =

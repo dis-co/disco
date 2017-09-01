@@ -80,6 +80,7 @@ module CorrectPinPersistance =
             Name   = name "Group 1"
             Client = Id.Create()
             Path   = None
+            RefersTo = None
             Pins   = Map.empty }
 
         let toggle =

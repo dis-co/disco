@@ -30,6 +30,7 @@ type PinGroupYaml() =
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Path: string
   [<DefaultValue>] val mutable Client: string
+  [<DefaultValue>] val mutable RefersTo: ReferencedValueYaml
   [<DefaultValue>] val mutable Pins: PinYaml array
 
   static member From (group: PinGroup) =
@@ -39,6 +40,7 @@ type PinGroupYaml() =
     yml.Client <- string group.Client
     yml.Path <- Option.defaultValue null (Option.map unwrap group.Path)
     yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
+    Option.iter (fun reference -> yml.RefersTo <- Yaml.toYaml reference) group.RefersTo
     yml
 
   member yml.ToPinGroup() =
@@ -58,14 +60,146 @@ type PinGroupYaml() =
         then None
         else Some (filepath yml.Path)
 
+      let! refersTo =
+        if isNull yml.RefersTo then
+          Either.succeed None
+        else
+          Yaml.fromYaml yml.RefersTo
+          |> Either.map Some
+
       return { Id = Id yml.Id
                Name = name yml.Name
                Path = path
+               RefersTo = refersTo
                Client = Id yml.Client
                Pins = pins }
     }
 
+// * ReferencedValueYaml
+
+[<AllowNullLiteral>]
+type ReferencedValueYaml() =
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Type: string
+
+  static member From (value: ReferencedValue) =
+    let yml = ReferencedValueYaml()
+    match value with
+    | ReferencedValue.Player id ->
+      yml.Id <- string id
+      yml.Type <- "Player"
+    | ReferencedValue.Widget id ->
+      yml.Id <- string id
+      yml.Type <- "Widget"
+    yml
+
+  member yml.ToReferencedValue() =
+    match yml.Type.ToLowerInvariant() with
+    | "player" -> ReferencedValue.Player (Id yml.Id) |> Either.succeed
+    | "widget" -> ReferencedValue.Widget (Id yml.Id) |> Either.succeed
+    | other ->
+      other
+      |> String.format "Could not parse ReferencedValue type: {0}"
+      |> Error.asParseError "ReferencedValueYaml.ToReferencedValue"
+      |> Either.fail
+
 #endif
+
+// * ReferencedValue
+
+[<RequireQualifiedAccess>]
+type ReferencedValue =
+  | Player of Id
+  | Widget of Id
+
+  // ** Id
+
+  member reference.Id
+    with get () = match reference with | Player id | Widget id -> id
+
+  // ** ToYamlObject
+
+  // __   __              _
+  // \ \ / /_ _ _ __ ___ | |
+  //  \ V / _` | '_ ` _ \| |
+  //   | | (_| | | | | | | |
+  //   |_|\__,_|_| |_| |_|_|
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  member reference.ToYamlObject () = ReferencedValueYaml.From(reference)
+
+  // ** ToYaml
+
+  member reference.ToYaml (serializer: Serializer) =
+    reference
+    |> Yaml.toYaml
+    |> serializer.Serialize
+
+  // ** FromYamlObject
+
+  static member FromYamlObject (yml: ReferencedValueYaml) = yml.ToReferencedValue()
+
+  // ** FromYaml
+
+  static member FromYaml (str: string) : Either<IrisError,ReferencedValue> =
+    let serializer = Serializer()
+    let yml = serializer.Deserialize<ReferencedValueYaml>(str)
+    Yaml.fromYaml yml
+
+  #endif
+
+  // ** FromFB
+
+  //  ____  _
+  // | __ )(_)_ __   __ _ _ __ _   _
+  // |  _ \| | '_ \ / _` | '__| | | |
+  // | |_) | | | | | (_| | |  | |_| |
+  // |____/|_|_| |_|\__,_|_|   \__, |
+  //                           |___/
+
+  static member FromFB (fb: ReferencedValueFB) =
+    #if FABLE_COMPILER
+    match fb.Type with
+    | x when x = ReferencedValueTypeFB.PlayerFB -> fb.Id |> Id |> Player |> Either.succeed
+    | x when x = ReferencedValueTypeFB.WidgetFB -> fb.Id |> Id |> Widget |> Either.succeed
+    | x ->
+      x
+      |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
+      |> Error.asParseError "ReferencedValue.FromFB"
+      |> Either.fail
+    #else
+    match fb.Type with
+    | ReferencedValueTypeFB.PlayerFB -> fb.Id |> Id |> Player |> Either.succeed
+    | ReferencedValueTypeFB.WidgetFB -> fb.Id |> Id |> Widget |> Either.succeed
+    | other ->
+      other
+      |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
+      |> Error.asParseError "ReferencedValue.FromFB"
+      |> Either.fail
+    #endif
+
+  // ** ToOffset
+
+  member reference.ToOffset(builder: FlatBufferBuilder) : Offset<ReferencedValueFB> =
+    let id = reference.Id |> string |> builder.CreateString
+    ReferencedValueFB.StartReferencedValueFB(builder)
+    ReferencedValueFB.AddId(builder, id)
+    match reference with
+    | Player _ -> ReferencedValueFB.AddType(builder, ReferencedValueTypeFB.PlayerFB)
+    | Widget _ -> ReferencedValueFB.AddType(builder, ReferencedValueTypeFB.WidgetFB)
+    ReferencedValueFB.EndReferencedValueFB(builder)
+
+  // ** ToBytes
+
+  member reference.ToBytes() : byte[] = Binary.buildBuffer reference
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte[]) : Either<IrisError,ReferencedValue> =
+    Binary.createBuffer bytes
+    |> ReferencedValueFB.GetRootAsReferencedValueFB
+    |> ReferencedValue.FromFB
 
 // * PinGroup
 
@@ -80,6 +214,7 @@ type PinGroup =
   { Id: Id
     Name: Name
     Client: Id
+    RefersTo: ReferencedValue option
     Path: FilePath option
     Pins: Map<Id,Pin> }
 
@@ -152,6 +287,24 @@ type PinGroup =
           arr
         |> Either.map snd
 
+      let! refersTo =
+        #if FABLE_COMPILER
+        if isNull fb.RefersTo then
+          Either.succeed None
+        else
+          fb.RefersTo
+          |> ReferencedValue.FromFB
+          |> Either.map Some
+        #else
+        let refish = fb.RefersTo
+        if refish.HasValue then
+          let value = refish.Value
+          ReferencedValue.FromFB value
+          |> Either.map Some
+        else
+          Either.succeed None
+        #endif
+
       let path =
         if isNull fb.Path
         then None
@@ -160,6 +313,7 @@ type PinGroup =
       return { Id = Id fb.Id
                Name = name fb.Name
                Path = path
+               RefersTo = refersTo
                Client = Id fb.Client
                Pins = pins }
     }
@@ -171,6 +325,7 @@ type PinGroup =
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let path = self.Path |> Option.map (unwrap >> builder.CreateString)
     let client = self.Client |> string |> builder.CreateString
+    let refersTo = self.RefersTo |> Option.map (Binary.toOffset builder)
     let pinoffsets =
       self.Pins
       |> Map.toArray
@@ -181,6 +336,7 @@ type PinGroup =
     PinGroupFB.AddId(builder, id)
     Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
     Option.iter (fun value -> PinGroupFB.AddPath(builder,value)) path
+    Option.iter (fun value -> PinGroupFB.AddRefersTo(builder,value)) refersTo
     PinGroupFB.AddClient(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
@@ -368,6 +524,7 @@ module PinGroup =
       Name = name (unwrap player.Name + " (Cue Player)")
       Client = Id Constants.CUEPLAYER_GROUP_DIR
       Path = None
+      RefersTo = Some (ReferencedValue.Player player.Id)
       Pins = Map.ofList
                 [ (call.Id, call)
                   (next.Id, next)
@@ -379,8 +536,33 @@ module PinGroup =
     { Id = widget.Id
       Name = name (unwrap widget.Name + " (Widget)")
       Client = Id Constants.PINWIDGET_GROUP_DIR
+      RefersTo = Some (ReferencedValue.Widget widget.Id)
       Path = None
       Pins = Map.empty }
+
+  // ** sinks
+
+  let sinks (group: PinGroup) =
+    Map.filter (fun _ pin -> Pin.isSink pin) group.Pins
+
+  // ** sources
+
+  let sources (group: PinGroup) =
+    Map.filter (fun _ pin -> Pin.isSource pin) group.Pins
+
+  // ** isPlayer
+
+  let isPlayer (group: PinGroup) =
+    match group.RefersTo with
+    | Some (ReferencedValue.Player _) -> true
+    | _ -> false
+
+  // ** isWidget
+
+  let isWidget (group: PinGroup) =
+    match group.RefersTo with
+    | Some (ReferencedValue.Widget _) -> true
+    | _ -> false
 
 // * Map module
 
