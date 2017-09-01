@@ -117,7 +117,7 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.toggle (mk()) (rndname()) (mk()) (mkTags()) [| true |]
+    Pin.Sink.toggle (mk()) (rndname()) (mk()) (mkTags()) [| true |]
 
   let mkOptional(f:unit->'T): 'T option =
     if rand.Next(0,2) > 0 then f() |> Some else None
@@ -153,18 +153,18 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.bang      (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.toggle    (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.string    (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.multiLine (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.fileName  (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.directory (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.url       (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.ip        (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.number    (mk()) (rndname()) (mk()) (mkTags()) (mkNumbers())
-    ;  Pin.bytes     (mk()) (rndname()) (mk()) (mkTags()) (mkBytes())
-    ;  Pin.color     (mk()) (rndname()) (mk()) (mkTags()) (mkColors())
-    ;  Pin.enum      (mk()) (rndname()) (mk()) (mkTags()) (mkProps()) (mkProps())
+    [| Pin.Sink.bang      (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.Sink.toggle    (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
+    ;  Pin.Sink.string    (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.multiLine (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.fileName  (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.directory (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.url       (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.ip        (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
+    ;  Pin.Sink.number    (mk()) (rndname()) (mk()) (mkTags()) (mkNumbers())
+    ;  Pin.Sink.bytes     (mk()) (rndname()) (mk()) (mkTags()) (mkBytes())
+    ;  Pin.Sink.color     (mk()) (rndname()) (mk()) (mkTags()) (mkColors())
+    ;  Pin.Sink.enum      (mk()) (rndname()) (mk()) (mkTags()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =

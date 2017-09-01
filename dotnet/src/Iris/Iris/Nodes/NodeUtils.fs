@@ -29,8 +29,11 @@ type NodeMapping =
     Properties: Property array option
     ChangedNode: IPin2 }
 
-  member nm.IsOutput
-    with get () = nm.Direction = ConnectionDirection.Output
+  member nm.IsSource
+    with get () = nm.Direction = ConnectionDirection.Source
+
+  member nm.IsSink
+    with get () = nm.Direction = ConnectionDirection.Sink
 
 // * Settings
 

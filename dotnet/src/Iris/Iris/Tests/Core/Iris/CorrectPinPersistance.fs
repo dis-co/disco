@@ -83,7 +83,7 @@ module CorrectPinPersistance =
             Pins   = Map.empty }
 
         let toggle =
-          Pin.toggle
+          Pin.Sink.toggle
             (Id.Create())
             (name "My Toggle")
             group.Id

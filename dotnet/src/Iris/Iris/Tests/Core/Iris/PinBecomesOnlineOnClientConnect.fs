@@ -41,7 +41,7 @@ module PinBecomesOnlineOnClientConnect =
             Pins = Map.empty }
 
         let toggle =
-          Pin.toggle
+          Pin.Sink.toggle
             (Id "/my/pin")
             (name "My Toggle")
             group.Id

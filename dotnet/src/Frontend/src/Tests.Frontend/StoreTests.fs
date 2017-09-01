@@ -115,7 +115,7 @@ module Store =
 
         equals 0 store.State.PinGroups.[group.Id].Pins.Count
 
-        let pin : Pin = Pin.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "hey" |]
+        let pin : Pin = Pin.Sink.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "hey" |]
 
         store.Dispatch <| AddPin(pin)
 
@@ -126,7 +126,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add an pin to the store if group does not exists" <| fun finish ->
-        let pin = Pin.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "Ho" |]
+        let pin = Pin.Sink.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "Ho" |]
         store.Dispatch <| AddPin(pin)
         equals 0 store.State.PinGroups.Count
         finish ()
@@ -137,7 +137,7 @@ module Store =
         let name1 = name "can a cat own a cat?"
         let name2 = name "yes, cats are re-entrant."
 
-        let pin = Pin.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
+        let pin = Pin.Sink.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
 
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| AddPin(pin)
@@ -159,7 +159,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove an pin from the store if it exists" <| fun finish ->
         let pin =
-          Pin.string
+          Pin.Sink.string
             (Id "0xb33f")
             (name "hi")
             (Id "0xb4d1d34")

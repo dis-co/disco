@@ -291,8 +291,8 @@ table SlicesFB {
 }
 
 enum ConnectionDirectionFB:ushort {
-      InputFB = 0,
-      OutputFB = 1,
+      SinkFB = 0,
+      SourceFB = 1,
 }
 
 enum VecSizeTypeFB:ushort {

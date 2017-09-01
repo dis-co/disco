@@ -467,8 +467,8 @@ let VecSizeFB: VecSizeFBConstructor = failwith "JS only"
 type ConnectionDirectionFB = int
 
 type ConnectionDirectionFBConstructor =
-  abstract InputFB: ConnectionDirectionFB
-  abstract OutputFB: ConnectionDirectionFB
+  abstract SinkFB: ConnectionDirectionFB
+  abstract SourceFB: ConnectionDirectionFB
 
 let ConnectionDirectionFB: ConnectionDirectionFBConstructor = failwith "JS only"
 

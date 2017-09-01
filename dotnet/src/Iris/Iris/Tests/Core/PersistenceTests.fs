@@ -10,7 +10,7 @@ open Iris.Service
 module PersistenceTests =
 
   let mkPin group =
-    Pin.toggle (mk()) (rndname()) group (mkTags()) [| true |]
+    Pin.Sink.toggle (mk()) (rndname()) group (mkTags()) [| true |]
 
   let mkProject () =
     either {
@@ -217,6 +217,7 @@ module PersistenceTests =
         expect "PinGroups should be the same" updated.PinGroups id reloaded.PinGroups
       }
       |> noError
+
 
   let persistenceTests =
     testList "Persistence Tests" [

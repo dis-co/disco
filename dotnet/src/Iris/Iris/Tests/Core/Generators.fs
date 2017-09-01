@@ -500,8 +500,8 @@ module Generators =
   // |_|   |_|_| |_|
 
   let directionGen =
-    [ ConnectionDirection.Input
-      ConnectionDirection.Output ]
+    [ ConnectionDirection.Sink
+      ConnectionDirection.Source ]
     |> List.map Gen.constant
     |> Gen.oneof
 
