@@ -3758,6 +3758,20 @@ type Slices =
         | _ -> false
 
 
+// * Slices module
+
+module Slices =
+
+  // ** setId
+
+  let setId id = function
+    | StringSlices (_, values) -> StringSlices (id, values)
+    | NumberSlices (_, values) -> NumberSlices (id, values)
+    | BoolSlices   (_, values) -> BoolSlices   (id, values)
+    | ByteSlices   (_, values) -> ByteSlices   (id, values)
+    | EnumSlices   (_, values) -> EnumSlices   (id, values)
+    | ColorSlices  (_, values) -> ColorSlices  (id, values)
+
 // * Playground
 
 #if INTERACTIVE
