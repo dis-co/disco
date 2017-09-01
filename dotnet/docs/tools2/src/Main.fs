@@ -25,18 +25,22 @@ let parseXmlDocAndGetMembers(path: string): JS.Promise<IDictionary<string, strin
     importMember "./util.js"
 
 type MemberInfo =
-    { name: string
-      summary: string option }
+    { Name: string
+      Summary: string option }
 
 type TypeInfo =
-    { summary: string option
-      members: MemberInfo list
-      nestedTypes: Map<string, TypeInfo> }
+    { Summary: string option
+      Members: MemberInfo list
+      NestedTypes: Map<string, TypeInfo> }
+    member this.IsEmpty =
+        Option.isNone this.Summary
+        && List.isEmpty this.Members
+        && Map.isEmpty this.NestedTypes
 
 let makeType summary members nestedTypes =
-    { summary = summary
-      members = members
-      nestedTypes =nestedTypes }
+    { Summary = summary
+      Members = members
+      NestedTypes =nestedTypes }
 
 let rec addType nameParts summary types: Map<string, TypeInfo> =
     match nameParts with
@@ -47,7 +51,7 @@ let rec addType nameParts summary types: Map<string, TypeInfo> =
     | part::parts ->
         let parent =
             match Map.tryFind part types with
-            | Some parent -> { parent with nestedTypes = addType parts summary parent.nestedTypes }
+            | Some parent -> { parent with NestedTypes = addType parts summary parent.NestedTypes }
             | None -> addType parts summary Map.empty |> makeType None []
         Map.add part parent types
 
@@ -57,29 +61,29 @@ let rec addMembers nameParts members types: Map<string, TypeInfo> =
     | [part] ->
         let typ =
             match Map.tryFind part types with
-            | Some typ -> { typ with members = members }
+            | Some typ -> { typ with Members = members }
             | None -> makeType None members Map.empty
         Map.add part typ types
     | part::parts ->
         let parent =
             match Map.tryFind part types with
-            | Some parent -> { parent with nestedTypes = addMembers parts members parent.nestedTypes }
+            | Some parent -> { parent with NestedTypes = addMembers parts members parent.NestedTypes }
             | None -> addMembers parts members Map.empty |> makeType None []
         Map.add part parent types
 
 let splitMemberName (memb: MemberInfo) =
-    let name = memb.name
+    let name = memb.Name
     let parensIndex = name.IndexOf('(')
     let dotIndex = name.[..parensIndex-1].LastIndexOf('.')
     name.[..dotIndex-1], name.[dotIndex+1..]
 
 let rec printTypes indent types =
     for (KeyValue(name, typ)) in types do
-        printfn "%s%s >> %s" indent name (defaultArg typ.summary "")
-        for memb in typ.members do
+        printfn "%s%s >> %s" indent name (defaultArg typ.Summary "")
+        for memb in typ.Members do
             let _, name = splitMemberName memb
-            printfn "%s  %s: %s" indent name (defaultArg memb.summary "")
-        printTypes (indent + "  ") typ.nestedTypes
+            printfn "%s  %s: %s" indent name (defaultArg memb.Summary "")
+        printTypes (indent + "  ") typ.NestedTypes
 
 let tryAndTrim (k: string) (dic: IDictionary<string, string[]>) =
     match dic.TryGetValue(k) with
@@ -88,6 +92,49 @@ let tryAndTrim (k: string) (dic: IDictionary<string, string[]>) =
         | Some item -> String.trimWhitespace item |> Some
         | None -> None
     | false, _ -> None
+
+let renderMembers (members: MemberInfo list) =
+    match members with
+    | [] -> opt None
+    | members ->
+        table [ClassName "table is-bordered is-striped is-fullwidth"] [
+            tbody [] [
+                for memb in members do
+                    yield tr [] [
+                        td [
+                            Style [CSSProp.Width "50%"]
+                        ] [strong [] [str memb.Name]]
+                        td [] [str (defaultArg memb.Summary "")]
+                    ]
+            ]
+        ] |> Some |> opt
+
+let rec renderTypes depth parent (types: (string*TypeInfo) list) =
+    let getTypeName parent name =
+        match parent with Some p -> p + "." + name | None -> name
+    match types with
+    | [] -> []
+    | [name, typ] when Option.isNone typ.Summary && List.isEmpty typ.Members ->
+        let typeName = getTypeName parent name
+        renderTypes depth (Some typeName) (Map.toList typ.NestedTypes) // Use same depth
+    | types ->
+        types
+        |> Seq.filter (fun (_,t) -> not t.IsEmpty)
+        |> Seq.map (fun (name, typ) ->
+            let size = min 6 (depth + 2) |> string
+            let subSize = min 6 (depth + 4) |> string
+            let typeName = getTypeName parent name
+            let nestedTypes = Map.toList typ.NestedTypes
+            div [] [
+                yield br []
+                yield h1 [ClassName ("title is-" + size)] [str typeName]
+                match typ.Summary with
+                | Some sum -> yield h2 [ClassName ("subtitle is-" + subSize)] [str sum]
+                | None -> ()
+                yield renderMembers typ.Members
+                yield! renderTypes (depth + 1) (Some typeName) nestedTypes
+            ])
+        |> Seq.toList
 
 let parseApiReference title xmlDocPath = promise {
     let! members = parseXmlDocAndGetMembers xmlDocPath
@@ -101,7 +148,7 @@ let parseApiReference title xmlDocPath = promise {
                     let nameParts = name.[2..].Split('.') |> Array.toList
                     addType nameParts summary types, members
                 elif name.StartsWith("M:") then // Method
-                    let memb = { name = name.[2..]; summary = summary; }
+                    let memb = { Name = name.[2..]; Summary = summary; }
                     types, memb::members
                 else
                     failwithf "Unknown member: %s" name
@@ -113,28 +160,9 @@ let parseApiReference title xmlDocPath = promise {
             let members = Seq.toList members
             let nameParts = typName.Split('.') |> Array.toList
             addMembers nameParts members types) types
-    printTypes "" types
-    let reg = Regex(@"^(\w+):([^(`]+)")
     return div [] [
-        h1 [ClassName "title is-1"] [str title]
-        table [ClassName "table"] [
-          tbody [] [
-            // for (name, summary) in members do
-            //     let m = reg.Match(name)
-            //     let category, name =
-            //         if m.Success then
-            //             let cat = if m.Groups.[1].Value = "T" then "Type" else "Method"
-            //             cat, m.Groups.[2].Value
-            //         else "Method", name
-            //     let summary = summary.Replace("\n", " ")
-            //     // printfn "%-10s%s\n%-10s%s\n" "Name:" name "Summary:" summary
-            //     yield tr [] [
-            //         td [] [str category]
-            //         td [] [strong [] [str name]]
-            //         td [] [str summary]
-            //     ]
-            ]
-          ]
+        yield h1 [ClassName "title is-1"] [str title]
+        yield! renderTypes 0 None (Map.toList types)
     ]
 }
 

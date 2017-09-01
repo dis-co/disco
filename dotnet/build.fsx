@@ -482,7 +482,12 @@ Target "CopyAssets" (fun _ ->
 
 Target "CopyDocs"
   (fun _ ->
+    // Build Frontend documentation
+    runExec DotNet.dotnetExePath "restore" (frontendDir @@ "src/Frontend") false
+    runExec DotNet.dotnetExePath "build" (frontendDir @@ "src/Frontend") false
+    // Generate web pages
     runExec DotNet.dotnetExePath "fable npm-build" (__SOURCE_DIRECTORY__ @@ "docs/tools2") false
+    // Copy them to package
     SilentCopyDir "bin/Docs" docsDir (konst true))
 
 //     _             _     _
