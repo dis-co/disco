@@ -215,7 +215,7 @@ type CuePlayer =
   // ** Delete
 
   member player.Delete (basePath: FilePath) =
-    IrisData.save basePath player
+    IrisData.delete basePath player
 
   #endif
 
