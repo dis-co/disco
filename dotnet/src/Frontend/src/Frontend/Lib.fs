@@ -32,14 +32,6 @@ let notify(msg: string) =
         | _ -> ())
   | _ -> ()
 
-let removeMember(config: IrisConfig, memId: Id) =
-  match Config.findMember config memId with
-  | Right mem ->
-    RemoveMember mem
-    |> ClientContext.Singleton.Post
-  | Left error ->
-    printfn "%O" error
-
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 

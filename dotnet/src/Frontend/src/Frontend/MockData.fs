@@ -60,15 +60,18 @@ let inline forcePin<'T> gid pk (values: obj seq) =
 
 let makeNumberPin gid pid pk values =
     let labels, values = forcePin<float> gid pk values
-    Pin.number pid (name pk) gid labels values |> Some
+    // Using Sink makes the pin editable
+    Pin.Sink.number pid (name pk) gid labels values |> Some
 
 let makeTogglePin gid pid pk values =
     let labels, values = forcePin<bool> gid pk values
-    Pin.toggle pid (name pk) gid labels values |> Some
+    // Using Sink makes the pin editable
+    Pin.Sink.toggle pid (name pk) gid labels values |> Some
 
 let makeStringPin gid pid pk values =
     let labels, values = forcePin<string> gid pk values
-    Pin.string pid (name pk) gid labels values |> Some
+    // Using Sink makes the pin editable
+    Pin.Sink.string pid (name pk) gid labels values |> Some
 
 let makePin gid pk (v: obj) =
     let pid = Id (sprintf "%O::%s" gid pk)
@@ -86,11 +89,12 @@ let makePin gid pk (v: obj) =
         | Some(:? string) -> makeStringPin gid pid pk ar
         | _ -> failParse gid pk ar
     | :? float as x ->
-        Pin.number pid (name pk) gid [||] [|x|] |> Some
+        // Using Sink makes the pin editable
+        Pin.Sink.number pid (name pk) gid [||] [|x|] |> Some
     | :? bool as x ->
-        Pin.toggle pid (name pk) gid [||] [|x|] |> Some
+        Pin.Sink.toggle pid (name pk) gid [||] [|x|] |> Some
     | :? string as x ->
-        Pin.string pid (name pk) gid [||] [|x|] |> Some
+        Pin.Sink.string pid (name pk) gid [||] [|x|] |> Some
     | x -> failParse gid pk x
 
 let pinGroups: Map<Id, PinGroup> =
@@ -105,10 +109,11 @@ let pinGroups: Map<Id, PinGroup> =
                 box g?(pk) |> makePin gid pk)
             |> Seq.map (fun pin -> pin.Id, pin)
             |> Map
-        let pinGroup =
+        let pinGroup: PinGroup =
             { Id = gid
               Name = name gk
               Client = Id "mockupclient"
+              RefersTo = None
               Pins = pins
               Path = None }
         pinGroup.Id, pinGroup)
