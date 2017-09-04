@@ -544,7 +544,7 @@ module CommandLine =
             GitPort  = port git }
 
       let! _ =
-        Asset.saveWithCommit
+        IrisData.saveWithCommit
           datadir
           User.Admin.Signature
           (Project.addMember mem project)

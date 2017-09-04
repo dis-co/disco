@@ -64,7 +64,7 @@ module Persistence =
       let! data =
         options
         |> Config.metadataPath
-        |> Asset.read
+        |> IrisData.read
       let! state = Yaml.decode data
       return
         { state with
@@ -109,62 +109,13 @@ module Persistence =
       raft
       |> Yaml.encode
       |> Payload
-      |> Asset.write (Config.metadataPath config)
+      |> IrisData.write (Config.metadataPath config)
       |> Either.succeed
     with
       | exn ->
         sprintf "Project Save Error: %s" exn.Message
         |> Error.asProjectError "Persistence.saveRaft"
         |> Either.fail
-
-  // ** ensureDirectory
-
-  let private ensureDirectory (path: FilePath) =
-    path
-    |> Path.getDirectoryName
-    |> Directory.createDirectory
-    |> ignore
-
-  // ** persistWithSubdir
-
-  let inline private persistWithSubdir (basePath: FilePath) (thing: ^t) =
-    either {
-      let path = Asset.path thing
-      do ensureDirectory path
-      do! Asset.save basePath thing
-    }
-
-  // ** removeWithSubdir
-
-  let inline private removeWithSubdir (basePath: FilePath) (thing: ^t) =
-    either {
-      let path = Asset.path thing
-      do! path |> Path.concat basePath |> Asset.delete
-      Directory.removeDirectory path |> ignore
-    }
-
-  // ** removePinGroup
-
-  let private removePinGroup (basePath: FilePath) (group: PinGroup) =
-    either {
-      let path = Asset.path group
-      if group.Exists(basePath) then
-        do! path |> Path.concat basePath |> Asset.delete
-        Directory.removeDirectory path |> ignore
-      else return ()
-    }
-
-  // ** persistPinGroup
-
-  let private persistPinGroup (basePath: FilePath) (group: PinGroup) =
-    either {
-      if group.Persisted then
-        let path = Asset.path group
-        do ensureDirectory path
-        do! Asset.save basePath group
-      else
-        do! removePinGroup basePath group
-    }
 
   // ** persistEntry
 
@@ -180,7 +131,7 @@ module Persistence =
   let persistEntry (state: State) (sm: StateMachine) =
     let basePath = state.Project.Path
     let inline save t = Asset.save basePath t
-    let inline delete t = t |> Asset.path |> Path.concat basePath |> Asset.delete
+    let inline delete t = Asset.delete basePath t
     match sm with
     //   ____
     //  / ___|   _  ___
@@ -221,8 +172,8 @@ module Persistence =
     //                                     |_|
 
     | AddPinGroup    group
-    | UpdatePinGroup group -> persistPinGroup basePath group
-    | RemovePinGroup group -> removePinGroup basePath group
+    | UpdatePinGroup group -> save group
+    | RemovePinGroup group -> delete group
 
     //  __  __                   _
     // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
@@ -232,8 +183,8 @@ module Persistence =
     //              |_|   |_|            |___/
 
     | AddPinMapping    mapping
-    | UpdatePinMapping mapping -> persistWithSubdir basePath mapping
-    | RemovePinMapping mapping -> removeWithSubdir basePath mapping
+    | UpdatePinMapping mapping -> save mapping
+    | RemovePinMapping mapping -> delete mapping
 
     // __        ___     _            _
     // \ \      / (_) __| | __ _  ___| |_
@@ -243,8 +194,8 @@ module Persistence =
     //                     |___/
 
     | AddPinWidget    widget
-    | UpdatePinWidget widget -> persistWithSubdir basePath widget
-    | RemovePinWidget widget -> removeWithSubdir basePath widget
+    | UpdatePinWidget widget -> save widget
+    | RemovePinWidget widget -> delete widget
 
     //  _   _
     // | | | |___  ___ _ __
@@ -274,16 +225,16 @@ module Persistence =
 
     | AddPin    pin
     | UpdatePin pin ->
-      state
-      |> State.tryFindPinGroup pin.PinGroup
-      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-      |> Either.bind (persistPinGroup basePath)
+      match State.tryFindPinGroup pin.PinGroup state with
+      | Some group when group.Persisted -> save group
+      | Some group -> delete group
+      | None -> Either.nothing
 
     | RemovePin pin ->
-      state
-      |> State.tryFindPinGroup pin.PinGroup
-      |> Either.ofOption (Error.asOther (tag "persistEntry") "PinGroup not found")
-      |> Either.bind (persistPinGroup basePath)
+      match State.tryFindPinGroup pin.PinGroup state with
+      | Some group when group.Persisted -> save group
+      | Some group -> delete group
+      | None -> Either.nothing
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __

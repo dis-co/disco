@@ -10,32 +10,36 @@ open Iris.Core
 
 [<AutoOpen>]
 module AssetTests =
-
   type TestAsset = { Data: string }
     with
+      member self.HasParent with get () = false
+
       member self.AssetPath
         with get () = filepath "test-asset.txt"
+
+      member self.ToYaml(_) = self.Data
 
       member self.Save(basePath: FilePath) =
         either {
           let path = basePath </> Asset.path self
-          let! info = Asset.write path (Payload self.Data)
+          let! info = IrisData.write path (Payload self.Data)
           return ()
         }
 
       static member Load(path: FilePath) : Either<IrisError, TestAsset> =
         either {
-          let! data = Asset.read path
+          let! data = IrisData.read path
           return { Data = data }
         }
+
 
   let test_write_read_asset_correctly =
     testCase "should write and read asset correctly" <| fun _ ->
       either {
         let path = tmpPath()
         let payload = string (Id.Create())
-        let! info = Asset.write path (Payload payload)
-        let! data = Asset.read path
+        let! info = IrisData.write path (Payload payload)
+        let! data = IrisData.read path
         expect "Payload should be the same" payload id data
       }
       |> noError
@@ -59,7 +63,7 @@ module AssetTests =
         let! repo = Git.Repo.init path
         let signature = User.Admin.Signature
         let asset = { Data = (string (Id.Create())) }
-        let! commit = Asset.saveWithCommit path signature asset
+        let! commit = IrisData.saveWithCommit path signature asset
         let path = path </> Asset.path asset
         let! reasset = Asset.load path
         expect "Loaded asset should be the same" reasset id asset

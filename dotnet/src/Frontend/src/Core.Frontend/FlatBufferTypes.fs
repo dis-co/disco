@@ -467,8 +467,8 @@ let VecSizeFB: VecSizeFBConstructor = failwith "JS only"
 type ConnectionDirectionFB = int
 
 type ConnectionDirectionFBConstructor =
-  abstract InputFB: ConnectionDirectionFB
-  abstract OutputFB: ConnectionDirectionFB
+  abstract SinkFB: ConnectionDirectionFB
+  abstract SourceFB: ConnectionDirectionFB
 
 let ConnectionDirectionFB: ConnectionDirectionFBConstructor = failwith "JS only"
 
@@ -976,6 +976,35 @@ type CueGroupFBConstructor =
 
 let CueGroupFB : CueGroupFBConstructor = failwith "JS only"
 
+///  ____       __                                  ___     __    _
+/// |  _ \ ___ / _| ___ _ __ ___ _ __   ___ ___  __| \ \   / /_ _| |_   _  ___
+/// | |_) / _ \ |_ / _ \ '__/ _ \ '_ \ / __/ _ \/ _` |\ \ / / _` | | | | |/ _ \
+/// |  _ <  __/  _|  __/ | |  __/ | | | (_|  __/ (_| | \ V / (_| | | |_| |  __/
+/// |_| \_\___|_|  \___|_|  \___|_| |_|\___\___|\__,_|  \_/ \__,_|_|\__,_|\___|
+
+type ReferencedValueTypeFB = int
+
+type ReferencedValueTypeFBConstructor =
+  abstract PlayerFB: ReferencedValueTypeFB
+  abstract WidgetFB: ReferencedValueTypeFB
+
+let ReferencedValueTypeFB: ReferencedValueTypeFBConstructor = failwith "JS only"
+
+[<AllowNullLiteral>]
+type ReferencedValueFB =
+  abstract Id: string
+  abstract Type: ReferencedValueTypeFB
+
+type ReferencedValueFBConstructor =
+  abstract prototype: ReferencedValueFB with get, set
+  abstract StartReferencedValueFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: ReferencedValueTypeFB -> unit
+  abstract EndReferencedValueFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsReferencedValueFB: buffer: ByteBuffer -> ReferencedValueFB
+
+let ReferencedValueFB : ReferencedValueFBConstructor = failwith "JS only"
+
 //  ____       _       _     _____ ____
 // |  _ \ __ _| |_ ___| |__ |  ___| __ )
 // | |_) / _` | __/ __| '_ \| |_  |  _ \
@@ -987,6 +1016,7 @@ type PinGroupFB =
   abstract Name: string
   abstract Client: string
   abstract Path: string
+  abstract RefersTo: ReferencedValueFB
   abstract PinsLength: int
   abstract Pins: int -> PinFB
 
@@ -996,6 +1026,7 @@ type PinGroupFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPath: builder: FlatBufferBuilder * path: Offset<string> -> unit
+  abstract AddRefersTo: builder: FlatBufferBuilder * path: Offset<ReferencedValueFB> -> unit
   abstract AddClient: builder: FlatBufferBuilder * client: Offset<string> -> unit
   abstract AddPins: builder: FlatBufferBuilder * pins: Offset<'a> -> unit
   abstract EndPinGroupFB: builder: FlatBufferBuilder -> Offset<'a>

@@ -189,6 +189,11 @@ type CuePlayer =
 
   #endif
 
+  // ** HasParent
+
+  /// CuePlayers don't live in nested directories, hence false
+  member player.HasParent with get () = false
+
   // ** Load
 
   #if !FABLE_COMPILER && !IRIS_NODES
@@ -204,8 +209,13 @@ type CuePlayer =
 
   // ** Save
 
-  member player.Save(basePath: FilePath) =
+  member player.Save (basePath: FilePath) =
     IrisData.save basePath player
+
+  // ** Delete
+
+  member player.Delete (basePath: FilePath) =
+    IrisData.delete basePath player
 
   #endif
 

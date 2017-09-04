@@ -119,18 +119,18 @@ type Behavior =
 
 [<RequireQualifiedAccess>]
 type ConnectionDirection =
-  | Input
-  | Output
+  | Source
+  | Sink
 
   override direction.ToString() =
     match direction with
-    | Input  -> "Input"
-    | Output -> "Output"
+    | Source -> "Source"
+    | Sink   -> "Sink"
 
   static member Parse(str: string) =
-    match str with
-    | "Input" -> Input
-    | "Output" -> Output
+    match str.ToLowerInvariant() with
+    | "source" -> Source
+    | "sink" -> Sink
     | _ -> failwithf "Unknown ConnectionDirection %A" str
 
   static member TryParse(str: string) =
@@ -146,22 +146,22 @@ type ConnectionDirection =
 
   member direction.ToOffset(_: FlatBufferBuilder) =
     match direction with
-    | Input -> ConnectionDirectionFB.InputFB
-    | Output -> ConnectionDirectionFB.OutputFB
+    | Sink -> ConnectionDirectionFB.SinkFB
+    | Source -> ConnectionDirectionFB.SourceFB
 
   static member FromFB(fb: ConnectionDirectionFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = ConnectionDirectionFB.InputFB  -> Right Input
-    | x when x = ConnectionDirectionFB.OutputFB -> Right Output
+    | x when x = ConnectionDirectionFB.SinkFB  -> Right Sink
+    | x when x = ConnectionDirectionFB.SourceFB -> Right Source
     | x ->
       sprintf "Unknown ConnectionDirectionFB value: %A" x
       |> Error.asParseError "ConnectionDirection.FromFB"
       |> Either.fail
     #else
     match fb with
-    | ConnectionDirectionFB.InputFB  -> Right Input
-    | ConnectionDirectionFB.OutputFB -> Right Output
+    | ConnectionDirectionFB.SinkFB -> Right Sink
+    | ConnectionDirectionFB.SourceFB -> Right Source
     | x ->
       sprintf "Unknown ConnectionDirectionFB value: %A" x
       |> Error.asParseError "ConnectionDirection.FromFB"
@@ -1411,192 +1411,324 @@ module Pin =
     Array.fill arr 0 count ""
     arr
 
-  // ** toggle
+  // ** Generic module
 
-  let toggle id name group tags values =
-    BoolPin { Id        = id
-              Name      = name
-              PinGroup  = group
-              Tags      = tags
-              IsTrigger = false
-              Persisted = false
-              Online    = true
-              Direction = ConnectionDirection.Input
-              VecSize   = VecSize.Dynamic
-              Labels    = emptyLabels(Array.length values)
-              Values    = values }
+  module Generic =
 
-  // ** bang
+    // *** toggle
 
-  let bang id name group tags values =
-    BoolPin { Id        = id
-              Name      = name
-              PinGroup  = group
-              Tags      = tags
-              IsTrigger = true
-              Persisted = false
-              Online    = true
-              Direction = ConnectionDirection.Input
-              VecSize   = VecSize.Dynamic
-              Labels    = emptyLabels(Array.length values)
-              Values    = values }
+    let toggle id name dir group tags values =
+      BoolPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                IsTrigger = false
+                Persisted = false
+                Online    = true
+                Direction = dir
+                VecSize   = VecSize.Dynamic
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
 
-  // ** string
+    // *** bang
 
-  let string id name group tags values =
-    StringPin { Id        = id
+    let bang id name dir group tags values =
+      BoolPin { Id        = id
+                Name      = name
+                PinGroup  = group
+                Tags      = tags
+                IsTrigger = true
+                Persisted = false
+                Online    = true
+                Direction = dir
+                VecSize   = VecSize.Dynamic
+                Labels    = emptyLabels(Array.length values)
+                Values    = values }
+
+    // *** string
+
+    let string id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = Simple
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** multiLine
+
+    let multiLine id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = MultiLine
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** fileName
+
+    let fileName id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = FileName
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** directory
+
+    let directory id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = Directory
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** url
+
+    let url id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = Url
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** ip
+
+    let ip id name dir group tags values =
+      StringPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Behavior  = IP
+                  Direction = dir
+                  VecSize   = VecSize.Dynamic
+                  MaxChars  = sizeof<int> * 1<chars>
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** number
+
+    let number id name dir group tags values =
+      NumberPin { Id        = id
+                  Name      = name
+                  PinGroup  = group
+                  Tags      = tags
+                  Persisted = false
+                  Online    = true
+                  Min       = 0
+                  Max       = sizeof<double>
+                  Unit      = ""
+                  Precision = 4u
+                  VecSize   = VecSize.Dynamic
+                  Direction = dir
+                  Labels    = emptyLabels(Array.length values)
+                  Values    = values }
+
+    // *** bytes
+
+    let bytes id name dir group tags values =
+      BytePin { Id        = id
                 Name      = name
                 PinGroup  = group
                 Tags      = tags
                 Persisted = false
                 Online    = true
-                Behavior  = Simple
-                Direction = ConnectionDirection.Input
                 VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
+                Direction = dir
                 Labels    = emptyLabels(Array.length values)
                 Values    = values }
 
-  // ** multiLine
+    // *** color
 
-  let multiLine id name group tags values =
-    StringPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Behavior  = MultiLine
-                Direction = ConnectionDirection.Input
-                VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+    let color id name dir group tags values =
+      ColorPin { Id        = id
+                 Name      = name
+                 PinGroup  = group
+                 Tags      = tags
+                 Persisted = false
+                 Online    = true
+                 VecSize   = VecSize.Dynamic
+                 Direction = dir
+                 Labels    = emptyLabels(Array.length values)
+                 Values    = values }
 
-  // ** fileName
+    // *** enum
 
-  let fileName id name group tags values =
-    StringPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Behavior  = FileName
-                Direction = ConnectionDirection.Input
-                VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+    let enum id name dir group tags properties values =
+      EnumPin { Id         = id
+                Name       = name
+                PinGroup   = group
+                Tags       = tags
+                Persisted  = false
+                Online     = true
+                Properties = properties
+                Direction  = dir
+                VecSize    = VecSize.Dynamic
+                Labels     = emptyLabels(Array.length values)
+                Values     = values }
 
-  // ** directory
+  // ** Sink module
 
-  let directory id name group tags values =
-    StringPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Behavior  = Directory
-                Direction = ConnectionDirection.Input
-                VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+  module Sink =
 
-  // ** url
+    // *** toggle
 
-  let url id name group tags values =
-    StringPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Behavior  = Url
-                Direction = ConnectionDirection.Input
-                VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+    let toggle id name group tags values =
+      Generic.toggle id name ConnectionDirection.Sink group tags values
 
-  // ** ip
+    // *** bang
 
-  let ip id name group tags values =
-    StringPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Behavior  = IP
-                Direction = ConnectionDirection.Input
-                VecSize   = VecSize.Dynamic
-                MaxChars  = sizeof<int> * 1<chars>
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+    let bang id name group tags values =
+      Generic.bang id name ConnectionDirection.Sink group tags values
 
-  // ** number
+    // *** string
 
-  let number id name group tags values =
-    NumberPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = tags
-                Persisted = false
-                Online    = true
-                Min       = 0
-                Max       = sizeof<double>
-                Unit      = ""
-                Precision = 4u
-                VecSize   = VecSize.Dynamic
-                Direction = ConnectionDirection.Input
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+    let string id name group tags values =
+      Generic.string id name ConnectionDirection.Sink group tags values
 
-  // ** bytes
+    // *** multiLine
 
-  let bytes id name group tags values =
-    BytePin { Id        = id
-              Name      = name
-              PinGroup  = group
-              Tags      = tags
-              Persisted = false
-              Online    = true
-              VecSize   = VecSize.Dynamic
-              Direction = ConnectionDirection.Input
-              Labels    = emptyLabels(Array.length values)
-              Values    = values }
+    let multiLine id name group tags values =
+      Generic.multiLine id name ConnectionDirection.Sink group tags values
 
-  // ** color
+    // *** fileName
 
-  let color id name group tags values =
-    ColorPin { Id        = id
-               Name      = name
-               PinGroup  = group
-               Tags      = tags
-               Persisted = false
-               Online    = true
-               VecSize   = VecSize.Dynamic
-               Direction = ConnectionDirection.Input
-               Labels    = emptyLabels(Array.length values)
-               Values    = values }
+    let fileName id name group tags values =
+      Generic.fileName id name ConnectionDirection.Sink group tags values
 
-  // ** enum
+    // *** directory
 
-  let enum id name group tags properties values =
-    EnumPin { Id         = id
-              Name       = name
-              PinGroup   = group
-              Tags       = tags
-              Persisted  = false
-              Online     = true
-              Properties = properties
-              Direction  = ConnectionDirection.Input
-              VecSize    = VecSize.Dynamic
-              Labels     = emptyLabels(Array.length values)
-              Values     = values }
+    let directory id name group tags values =
+      Generic.directory id name ConnectionDirection.Sink group tags values
+
+    // *** url
+
+    let url id name group tags values =
+      Generic.url id name ConnectionDirection.Sink group tags values
+
+    // *** ip
+
+    let ip id name group tags values =
+      Generic.ip id name ConnectionDirection.Sink group tags values
+
+    // *** number
+
+    let number id name group tags values =
+      Generic.number id name ConnectionDirection.Sink group tags values
+
+    // *** bytes
+
+    let bytes id name group tags values =
+      Generic.bytes id name ConnectionDirection.Sink group tags values
+
+    // *** color
+
+    let color id name group tags values =
+      Generic.color id name ConnectionDirection.Sink group tags values
+
+    // *** enum
+
+    let enum id name group tags properties values =
+      Generic.enum id name ConnectionDirection.Sink group tags properties values
+
+  // ** Source module
+
+  module Source =
+
+    // *** toggle
+
+    let toggle id name group tags values =
+      Generic.toggle id name ConnectionDirection.Source group tags values
+
+    // *** bang
+
+    let bang id name group tags values =
+      Generic.bang id name ConnectionDirection.Source group tags values
+
+    // *** string
+
+    let string id name group tags values =
+      Generic.string id name ConnectionDirection.Source group tags values
+
+    // *** multiLine
+
+    let multiLine id name group tags values =
+      Generic.multiLine id name ConnectionDirection.Source group tags values
+
+    // *** fileName
+
+    let fileName id name group tags values =
+      Generic.fileName id name ConnectionDirection.Source group tags values
+
+    // *** directory
+
+    let directory id name group tags values =
+      Generic.directory id name ConnectionDirection.Source group tags values
+
+    // *** url
+
+    let url id name group tags values =
+      Generic.url id name ConnectionDirection.Source group tags values
+
+    // *** ip
+
+    let ip id name group tags values =
+      Generic.ip id name ConnectionDirection.Source group tags values
+
+    // *** number
+
+    let number id name group tags values =
+      Generic.number id name ConnectionDirection.Source group tags values
+
+    // *** bytes
+
+    let bytes id name group tags values =
+      Generic.bytes id name ConnectionDirection.Source group tags values
+
+    // *** color
+
+    let color id name group tags values =
+      Generic.color id name ConnectionDirection.Source group tags values
+
+    // *** enum
+
+    let enum id name group tags properties values =
+      Generic.enum id name ConnectionDirection.Source group tags properties values
 
   // ** Player module
 
@@ -1624,7 +1756,7 @@ module Pin =
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Input
+                Direction  = ConnectionDirection.Sink
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
                 Values     = [| false |] }
@@ -1639,7 +1771,7 @@ module Pin =
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Input
+                Direction  = ConnectionDirection.Sink
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
                 Values     = [| false |] }
@@ -1654,7 +1786,7 @@ module Pin =
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Input
+                Direction  = ConnectionDirection.Sink
                 VecSize    = VecSize.Dynamic
                 Labels     = Array.empty
                 Values     = [| false |] }
@@ -1804,6 +1936,10 @@ module Pin =
       | _ -> value
 
 
+  // ** slices
+
+  let slices (pin: Pin) = pin.Slices
+
   // ** setPersisted
 
   let setPersisted (persisted: bool) = function
@@ -1824,6 +1960,10 @@ module Pin =
     | EnumPin   data -> EnumPin   { data with Online = online }
     | ColorPin  data -> ColorPin  { data with Online = online }
 
+  // ** direction
+
+  let direction (pin: Pin) = pin.Direction
+
   // ** isOnline
 
   let isOnline (pin: Pin) = pin.Online
@@ -1831,6 +1971,16 @@ module Pin =
   // ** isOffline
 
   let isOffline (pin: Pin) = not pin.Online
+
+  // ** isSink
+
+  let isSink (pin: Pin) =
+    direction pin = ConnectionDirection.Sink
+
+  // ** isSource
+
+  let isSource (pin: Pin) =
+    direction pin = ConnectionDirection.Source
 
   // ** str2offset
 
@@ -3611,6 +3761,20 @@ type Slices =
         | ColorSlices (sid, svalues) when id = sid -> values = svalues
         | _ -> false
 
+
+// * Slices module
+
+module Slices =
+
+  // ** setId
+
+  let setId id = function
+    | StringSlices (_, values) -> StringSlices (id, values)
+    | NumberSlices (_, values) -> NumberSlices (id, values)
+    | BoolSlices   (_, values) -> BoolSlices   (id, values)
+    | ByteSlices   (_, values) -> ByteSlices   (id, values)
+    | EnumSlices   (_, values) -> EnumSlices   (id, values)
+    | ColorSlices  (_, values) -> ColorSlices  (id, values)
 
 // * Playground
 

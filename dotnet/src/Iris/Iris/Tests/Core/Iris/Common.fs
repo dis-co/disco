@@ -1,5 +1,6 @@
 namespace Iris.Tests
 
+open System.Diagnostics
 open System.IO
 open System.Threading
 open Expecto
@@ -39,7 +40,7 @@ module Common =
             Author = Some(author1)
             Config = cfg }
 
-      let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+      let! commit = IrisData.saveWithCommit path User.Admin.Signature updated
 
       return updated
     }

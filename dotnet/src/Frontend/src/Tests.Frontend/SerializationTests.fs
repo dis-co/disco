@@ -47,23 +47,23 @@ module SerializationTests =
     IrisProject.Empty
 
   let pins _ =
-    [| Pin.bang      (mk()) (name "Bang")      (mk()) (mktags()) [| true  |]
-    ;  Pin.toggle    (mk()) (name "Toggle")    (mk()) (mktags()) [| true  |]
-    ;  Pin.string    (mk()) (name "string")    (mk()) (mktags()) [| "one" |]
-    ;  Pin.multiLine (mk()) (name "multiline") (mk()) (mktags()) [| "two" |]
-    ;  Pin.fileName  (mk()) (name "filename")  (mk()) (mktags()) [| "three" |]
-    ;  Pin.directory (mk()) (name "directory") (mk()) (mktags()) [| "four"  |]
-    ;  Pin.url       (mk()) (name "url")       (mk()) (mktags()) [| "five" |]
-    ;  Pin.ip        (mk()) (name "ip")        (mk()) (mktags()) [| "six"  |]
-    ;  Pin.number    (mk()) (name "number")    (mk()) (mktags()) [| double 3.0 |]
-    ;  Pin.bytes     (mk()) (name "bytes")     (mk()) (mktags()) [| mkBytes () |]
-    ;  Pin.color     (mk()) (name "rgba")      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
-    ;  Pin.color     (mk()) (name "hsla")      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
-    ;  Pin.enum      (mk()) (name "enum")      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
+    [| Pin.Sink.bang      (mk()) (name "Bang")      (mk()) (mktags()) [| true  |]
+    ;  Pin.Sink.toggle    (mk()) (name "Toggle")    (mk()) (mktags()) [| true  |]
+    ;  Pin.Sink.string    (mk()) (name "string")    (mk()) (mktags()) [| "one" |]
+    ;  Pin.Sink.multiLine (mk()) (name "multiline") (mk()) (mktags()) [| "two" |]
+    ;  Pin.Sink.fileName  (mk()) (name "filename")  (mk()) (mktags()) [| "three" |]
+    ;  Pin.Sink.directory (mk()) (name "directory") (mk()) (mktags()) [| "four"  |]
+    ;  Pin.Sink.url       (mk()) (name "url")       (mk()) (mktags()) [| "five" |]
+    ;  Pin.Sink.ip        (mk()) (name "ip")        (mk()) (mktags()) [| "six"  |]
+    ;  Pin.Sink.number    (mk()) (name "number")    (mk()) (mktags()) [| double 3.0 |]
+    ;  Pin.Sink.bytes     (mk()) (name "bytes")     (mk()) (mktags()) [| mkBytes () |]
+    ;  Pin.Sink.color     (mk()) (name "rgba")      (mk()) (mktags()) [| RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy } |]
+    ;  Pin.Sink.color     (mk()) (name "hsla")      (mk()) (mktags()) [| HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy } |]
+    ;  Pin.Sink.enum      (mk()) (name "enum")      (mk()) (mktags()) [| { Key = "one"; Value = "two" }; { Key = "three"; Value = "four"}|]  [| { Key = "one"; Value = "two" } |]
     |]
 
   let mkPin _ =
-    Pin.string (Id.Create()) (name "url input") (Id.Create()) [| |] [| "hello" |]
+    Pin.Sink.string (Id.Create()) (name "url input") (Id.Create()) [| |] [| "hello" |]
 
   let mkSlices() =
     BoolSlices(Id.Create(), [| true; false; true; true; false |])
@@ -95,6 +95,7 @@ module SerializationTests =
       Name = name "PinGroup 3"
       Client = Id.Create()
       Path = None
+      RefersTo = None
       Pins = pins }
 
   let mkCueList _ : CueList =

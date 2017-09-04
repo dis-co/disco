@@ -19,28 +19,28 @@ module EnsureClientsReplicated =
   let test =
     testCase "ensure connected clients are forwarded to leader" <| fun _ ->
       either {
-        use electionDone = new AutoResetEvent(false)
-        use addClientDone = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use clientRegistered = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
-        use pushDone = new AutoResetEvent(false)
+        use electionDone = new WaitEvent()
+        use addClientDone = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use clientRegistered = new WaitEvent()
+        use clientAppendDone = new WaitEvent()
+        use updateDone = new WaitEvent()
+        use pushDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 2
 
         let serverHandler id = function
-          | IrisEvent.GitPush _                        -> pushDone.Set() |> ignore
-          | IrisEvent.StateChanged(oldst, Leader)      -> electionDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, AddClient _) -> addClientDone.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, msg)         -> appendDone.Set() |> ignore
+          | IrisEvent.GitPush _                        -> pushDone.Set()
+          | IrisEvent.StateChanged(oldst, Leader)      -> electionDone.Set()
+          | IrisEvent.Append(Origin.Raft, AddClient _) -> addClientDone.Set()
+          | IrisEvent.Append(Origin.Raft, msg)         -> appendDone.Set()
           | _ -> ()
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | ClientEvent.Registered              -> clientRegistered.Set()
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set()
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set()
           | _ -> ()
 
         //  ____                  _            _
@@ -82,7 +82,7 @@ module EnsureClientsReplicated =
         use oobs2 = service2.Subscribe (serverHandler machine2.MachineId)
 
         do! service2.Start()
-        do! waitOrDie "electionDone" electionDone
+        do! waitFor "electionDone" electionDone
 
         //   ____ _ _            _     _
         //  / ___| (_) ___ _ __ | |_  / |
@@ -107,8 +107,9 @@ module EnsureClientsReplicated =
 
         use clobs1 = client1.Subscribe (handleClient)
         do! client1.Start()
-        do! waitOrDie "clientRegistered" clientRegistered
-        do! waitOrDie "addClientDone" addClientDone
+
+        do! waitFor "clientRegistered" clientRegistered
+        do! waitFor "addClientDone" addClientDone
 
         //   ____ _ _            _     ____
         //  / ___| (_) ___ _ __ | |_  |___ \
@@ -133,8 +134,9 @@ module EnsureClientsReplicated =
 
         use clobs2 = client2.Subscribe (handleClient)
         do! client2.Start()
-        do! waitOrDie "clientRegistered" clientRegistered
-        do! waitOrDie "addClientDone" addClientDone
+
+        do! waitFor "clientRegistered" clientRegistered
+        do! waitFor "addClientDone" addClientDone
 
         //  _____         _
         // |_   _|__  ___| |_ ___
@@ -143,8 +145,8 @@ module EnsureClientsReplicated =
         //   |_|\___||___/\__|___/
 
         // we need to wait twice more for the append commands that have been forwardecd issued
-        do! waitOrDie "addClientDone" addClientDone
-        do! waitOrDie "addClientDone" addClientDone
+        do! waitFor "addClientDone" addClientDone
+        do! waitFor "addClientDone" addClientDone
 
         expect "Service 1 and Service 2 should have both 2 Clients"
           service1.State.Clients

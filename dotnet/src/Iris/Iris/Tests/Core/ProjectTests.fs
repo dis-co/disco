@@ -249,7 +249,7 @@ module ProjectTests =
                 Sites      = [| cluster |] }
             project
 
-        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+        let! commit = IrisData.saveWithCommit path User.Admin.Signature updated
         let! loaded = Asset.loadWithMachine path machine
 
         // the only difference will be the automatically assigned timestamp
@@ -344,7 +344,7 @@ module ProjectTests =
         let! project = Project.create (Project.ofFilePath path) name machine
 
         let updated = { project with Author = Some author1 }
-        let! commit = Asset.saveWithCommit path User.Admin.Signature updated
+        let! commit = IrisData.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
         let! repo = Project.repository loaded
@@ -358,7 +358,7 @@ module ProjectTests =
         let author2 = "ingolf"
 
         let updated = { updated with Author = Some author2 }
-        let! commit2 = Asset.saveWithCommit path User.Admin.Signature updated
+        let! commit2 = IrisData.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
 
@@ -368,7 +368,7 @@ module ProjectTests =
         let author3 = "eno"
 
         let updated = { updated with Author = Some author3 }
-        let! commit3 = Asset.saveWithCommit path User.Admin.Signature updated
+        let! commit3 = IrisData.saveWithCommit path User.Admin.Signature updated
 
         let! loaded = Asset.loadWithMachine path machine
 

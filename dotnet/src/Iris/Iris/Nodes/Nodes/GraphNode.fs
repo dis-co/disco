@@ -279,9 +279,9 @@ module Graph =
 
   let private parseDirection (pin: IPin2) =
     if pin.IsConnected() then
-      ConnectionDirection.Output
+      ConnectionDirection.Source
     else
-      ConnectionDirection.Input
+      ConnectionDirection.Sink
 
   // ** parseVecSize
 
@@ -942,6 +942,7 @@ module Graph =
           Name = parseGroupName node
           Path = parseGroupPath node
           Client = state.InClientId.[0]
+          RefersTo = None
           Pins = Map.ofList [ (pin.Id, pin) ] }
       state.Commands.Add (AddPinGroup group)
       state.Commands.Add (AddPin pin)
@@ -1185,7 +1186,7 @@ module Graph =
     if state.NodeMappings.Count > 0 then
       let mappings = new ResizeArray<NodeMapping>()
       for KeyValue(_,nm) in state.NodeMappings do
-        if not nm.IsOutput then
+        if not nm.IsSource then
           mappings.Add nm
       state.OutNodeMappings.SliceCount <- mappings.Count
       state.OutNodeMappings.AssignFrom mappings
@@ -1250,7 +1251,7 @@ module Graph =
       | _ -> ()
 
     for KeyValue(id,nm) in state.NodeMappings do
-      if nm.IsOutput && nm.ChangedNode.[0] = "1" then
+      if nm.IsSource && nm.ChangedNode.[0] = "1" then
         let slices =
           match nm.Properties with
           | Some props -> parsePinValueWith nm.Type id props nm.Pin

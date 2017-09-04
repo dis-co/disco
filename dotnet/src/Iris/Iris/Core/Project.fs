@@ -2348,6 +2348,10 @@ Config: %A
         Author    = None
         Config    = IrisConfig.Default }
 
+  // ** HasParent
+
+  member project.HasParent with get () = false
+
   // ** AssetPath
 
   //     _                 _   ____       _   _
@@ -2392,9 +2396,7 @@ Config: %A
           |> Error.asProjectError "Project.load"
           |> Either.fail
       else
-        let! str = Asset.read normalizedPath
-        let! project = Yaml.decode str
-
+        let! project = IrisData.load normalizedPath
         return
           { project with
               Path   = Path.getDirectoryName normalizedPath |> unwrap |> filepath
@@ -2410,12 +2412,7 @@ Config: %A
   // |____/ \__,_| \_/ \___|
 
   member project.Save (basepath: FilePath) =
-    either {
-      let path = basepath </> Asset.path project
-      let data = Yaml.encode project
-      let! _ = Asset.write path (Payload data)
-      return ()
-    }
+    IrisData.save basepath project
 
   #endif
 
@@ -2701,7 +2698,7 @@ module Project =
   let private writeDaemonExportFile (repo: Repository) =
     either {
       let path = repo.Info.Path <.> "git-daemon-export-ok"
-      let! _ = Asset.write path (Payload "")
+      let! _ = IrisData.write path (Payload "")
       return ()
     }
 
@@ -2715,7 +2712,7 @@ module Project =
     either {
       let parent = Git.Repo.parentPath repo
       let path = parent </> filepath ".gitignore"
-      let! _ = Asset.write path (Payload GITIGNORE)
+      let! _ = IrisData.write path (Payload GITIGNORE)
       do! Git.Repo.stage repo path
     }
 
@@ -2731,7 +2728,7 @@ module Project =
       let target = parent </> dir
       do! FileSystem.mkDir target
       let gitkeep = target </> filepath ".gitkeep"
-      let! _ = Asset.write gitkeep (Payload "")
+      let! _ = IrisData.write gitkeep (Payload "")
       do! Git.Repo.stage repo gitkeep
     }
 
@@ -2785,7 +2782,7 @@ module Project =
     either {
       let info = File.info path
       do! info.Directory.FullName |> filepath |> FileSystem.mkDir
-      let! _ = Asset.write path (Payload contents)
+      let! _ = IrisData.write path (Payload contents)
       return! commitPath path committer msg project
     }
 
@@ -2801,7 +2798,7 @@ module Project =
                  (project: IrisProject) :
                  Either<IrisError,(Commit * IrisProject)> =
     either {
-      let! _ = Asset.delete path
+      let! _ = IrisData.remove path
       return! commitPath path committer msg project
     }
 
@@ -2894,7 +2891,7 @@ module Project =
         User.Admin
         |> Yaml.encode
         |> Payload
-        |> Asset.write absPath
+        |> IrisData.write absPath
       do! Git.Repo.add repo relPath
       do! Git.Repo.stage repo absPath
     }
@@ -2923,7 +2920,7 @@ module Project =
           Config    = Config.create machine  }
 
       do! initRepo project
-      let! _ = Asset.saveWithCommit (toFilePath path) User.Admin.Signature project
+      let! _ = IrisData.saveWithCommit (toFilePath path) User.Admin.Signature project
       return project
     }
 

@@ -581,7 +581,7 @@ type RaftLogEntry =
     match log with
     | Snapshot(id, idx, term, lastidx, lastterm, mems, _) ->
       either {
-        let serializer = new Serializer()
+        let serializer = Serializer()
         let path = basePath </> Asset.path log
         use! repo = Git.Repo.repository basePath
         let! last = Git.Repo.commits repo |> Git.Repo.elementAt 0
@@ -594,7 +594,7 @@ type RaftLogEntry =
         yaml.Members <- Array.map Yaml.toYaml mems
         yaml.Commit <- last.Sha
         let data = serializer.Serialize yaml
-        let! _ = Asset.write path (Payload data)
+        let! _ = IrisData.write path (Payload data)
         return ()
       }
     | _ ->

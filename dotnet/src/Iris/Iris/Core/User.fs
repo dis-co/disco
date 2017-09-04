@@ -171,6 +171,11 @@ type User =
       let name = String.Format("{0} {1}", user.FirstName, user.LastName)
       Signature(name, unwrap user.Email, DateTimeOffset(user.Created))
 
+  // ** HasParent
+
+  /// Users don't live in nested directories, hence false
+  member user.HasParent with get () = false
+
   // ** AssetPath
 
   member user.AssetPath
@@ -299,14 +304,13 @@ type User =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member user.Save (basePath: FilePath) =
     IrisData.save basePath user
+
+  // ** Delete
+
+  member user.Delete (basePath: FilePath) =
+    IrisData.delete basePath user
 
   #endif
 

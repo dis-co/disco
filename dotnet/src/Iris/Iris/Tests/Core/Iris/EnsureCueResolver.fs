@@ -14,17 +14,17 @@ open Iris.Net
 
 open Common
 
-module EnsureResolver =
+module EnsureCueResolver =
 
   let test =
     testCase "ensure cue resolver works" <| fun _ ->
       either {
-        use checkGitStarted = new AutoResetEvent(false)
-        use electionDone = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use clientRegistered = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
-        use updateDone = new AutoResetEvent(false)
+        use checkGitStarted = new WaitEvent()
+        use electionDone = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use clientRegistered = new WaitEvent()
+        use clientAppendDone = new WaitEvent()
+        use updateDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
 
@@ -46,16 +46,17 @@ module EnsureResolver =
 
         use oobs1 =
           (function
-            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Set() |> ignore
-            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Set() |> ignore
-            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set() |> ignore
-            | IrisEvent.Append(_, CallCue _)               -> appendDone.Set() |> ignore
+            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Set()
+            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Set()
+            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set()
+            | IrisEvent.Append(_, CallCue _)               -> appendDone.Set()
             | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-        do! waitOrDie "checkGitStarted" checkGitStarted
-        do! waitOrDie "electionDone" electionDone
+
+        do! waitFor "checkGitStarted" checkGitStarted
+        do! waitFor "electionDone" electionDone
 
         //  ____
         // |___ \
@@ -79,17 +80,17 @@ module EnsureResolver =
         }
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set() |> ignore
+          | ClientEvent.Registered              -> clientRegistered.Set()
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set()
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set()
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
 
         do! client.Start()
 
-        do! waitOrDie "clientRegistered" clientRegistered
+        do! waitFor "clientRegistered" clientRegistered
 
         //  _____
         // |___ /
@@ -105,7 +106,7 @@ module EnsureResolver =
           Name      = name "hi"
           PinGroup  = groupId
           Tags      = Array.empty
-          Direction = ConnectionDirection.Output
+          Direction = ConnectionDirection.Sink
           IsTrigger = false
           Persisted = false
           Online    = true
@@ -119,13 +120,14 @@ module EnsureResolver =
           Name = name "whatevva"
           Client = Id.Create()
           Path = None
+          RefersTo = None
           Pins = Map.ofList [(pin.Id, pin)]
         }
 
         client.AddPinGroup group
 
-        do! waitOrDie "appendDone" appendDone
-        do! waitOrDie "clientAppendDone" clientAppendDone
+        do! waitFor "appendDone" appendDone
+        do! waitFor "clientAppendDone" clientAppendDone
 
         let cue = {
           Id = Id.Create()
@@ -137,8 +139,8 @@ module EnsureResolver =
         |> CallCue
         |> service1.Append
 
-        do! waitOrDie "appendDone" appendDone
-        do! waitOrDie "updateDone" updateDone
+        do! waitFor "appendDone" appendDone
+        do! waitFor "updateDone" updateDone
 
         let actual: Slices =
           client.State.PinGroups

@@ -147,14 +147,18 @@ type PinMapping =
 
   // ** Save
 
-  //  ____
-  // / ___|  __ ___   _____
-  // \___ \ / _` \ \ / / _ \
-  //  ___) | (_| |\ V /  __/
-  // |____/ \__,_| \_/ \___|
-
   member mapping.Save (basePath: FilePath) =
     PinMapping.save basePath mapping
+
+  // ** Delete
+
+  member mapping.Delete (basePath: FilePath) =
+    IrisData.delete basePath mapping
+
+  // ** HasParent
+
+  /// Mappings don't live in nested directories, hence false
+  member mapping.HasParent with get () = false
 
   // ** IsSaved
 

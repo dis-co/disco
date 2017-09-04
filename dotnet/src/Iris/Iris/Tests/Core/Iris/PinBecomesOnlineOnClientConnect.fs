@@ -19,10 +19,10 @@ module PinBecomesOnlineOnClientConnect =
   let test =
     testCase "pin becomes online on client connect" <| fun _ ->
       either {
-        use started = new AutoResetEvent(false)
-        use appendDone = new AutoResetEvent(false)
-        use clientRegistered = new AutoResetEvent(false)
-        use clientAppendDone = new AutoResetEvent(false)
+        use started = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use clientRegistered = new WaitEvent()
+        use clientAppendDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
         let mem1, machine1 = List.head zipped
@@ -38,10 +38,11 @@ module PinBecomesOnlineOnClientConnect =
             Name = name "My Cool Group"
             Client = mem1.Id
             Path = None
+            RefersTo = None
             Pins = Map.empty }
 
         let toggle =
-          Pin.toggle
+          Pin.Sink.toggle
             (Id "/my/pin")
             (name "My Toggle")
             group.Id
@@ -70,14 +71,14 @@ module PinBecomesOnlineOnClientConnect =
 
         use oobs1 =
           (function
-          | IrisEvent.Started ServiceType.Raft           -> started.Set() |> ignore
-          | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set() |> ignore
-          | IrisEvent.Append(_, CallCue _)               -> appendDone.Set() |> ignore
+          | IrisEvent.Started ServiceType.Raft           -> started.Set()
+          | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set()
+          | IrisEvent.Append(_, CallCue _)               -> appendDone.Set()
           | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
-        do! waitOrDie "started" started
+        do! waitFor "started" started
 
         expect "Should have loaded the Group" true
           (Map.containsKey toggle.PinGroup)
@@ -109,14 +110,14 @@ module PinBecomesOnlineOnClientConnect =
         }
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Set() |> ignore
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set() |> ignore
+          | ClientEvent.Registered              -> clientRegistered.Set()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set()
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
         do! client.Start()
 
-        do! waitOrDie "clientRegistered" clientRegistered
+        do! waitFor "clientRegistered" clientRegistered
 
         //  _  _
         // | || |
@@ -126,8 +127,8 @@ module PinBecomesOnlineOnClientConnect =
 
         client.AddPinGroup group
 
-        do! waitOrDie "appendDone" appendDone
-        do! waitOrDie "clientAppendDone" clientAppendDone
+        do! waitFor "appendDone" appendDone
+        do! waitFor "clientAppendDone" clientAppendDone
 
         expect "Should have marked pin as online" true
           (Map.find group.Id >> flip PinGroup.findPin toggle.Id >> Pin.isOnline)

@@ -1441,6 +1441,37 @@ type SlicesMap = SlicesMap of Map<Id,Slices>
         (Right Map.empty)
       |> Either.map SlicesMap
 
+// * SlicesMap module
+
+module SlicesMap =
+
+  // ** empty
+
+  let empty = SlicesMap Map.empty
+
+  // ** add
+
+  let add (map: SlicesMap) (slices: Slices) =
+    map.Slices
+    |> Map.add slices.Id slices
+    |> SlicesMap
+
+  // ** remove
+
+  let remove (map: SlicesMap) (slices: Slices) =
+    map.Slices
+    |> Map.remove slices.Id
+    |> SlicesMap
+
+  // ** containsKey
+
+  let containsKey (map: SlicesMap) (key: Id) =
+    map.Slices |> Map.containsKey key
+
+  // ** isEmpty
+
+  let isEmpty (map: SlicesMap) = map.Slices.IsEmpty
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _

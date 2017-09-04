@@ -84,9 +84,9 @@ module Path =
   let baseName (path: FilePath) =
     pmap Path.GetFileName path
 
-  // ** dirName
+  // ** directoryName
 
-  let dirName (path: FilePath) =
+  let directoryName (path: FilePath) =
     pmap Path.GetDirectoryName path
 
   // ** getRandomFileName
@@ -252,6 +252,14 @@ module Directory =
     path
     |> unwrap
     |> Directory.Exists
+
+  // ** isEmpty
+
+  let isEmpty (path: FilePath) =
+    try
+      DirectoryInfo(unwrap path).GetFileSystemInfos().Length = 0
+    with exn ->
+      true
 
   // ** getFiles
 

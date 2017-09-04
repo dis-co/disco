@@ -291,8 +291,8 @@ table SlicesFB {
 }
 
 enum ConnectionDirectionFB:ushort {
-      InputFB = 0,
-      OutputFB = 1,
+      SinkFB = 0,
+      SourceFB = 1,
 }
 
 enum VecSizeTypeFB:ushort {
@@ -410,11 +410,12 @@ table PinFB {
       Pin: PinTypeFB;
 }
 
-//  ____       _       _
-// |  _ \ __ _| |_ ___| |__
-// | |_) / _` | __/ __| '_ \
-// |  __/ (_| | || (__| | | |
-// |_|   \__,_|\__\___|_| |_|
+//   ____
+//  / ___|_ __ ___  _   _ _ __
+// | |  _| '__/ _ \| | | | '_ \
+// | |_| | | | (_) | |_| | |_) |
+//  \____|_|  \___/ \__,_| .__/
+//                       |_|
 
 table PinGroupFB {
       Id:   string;
@@ -422,6 +423,17 @@ table PinGroupFB {
       Client: string;
       Path: string;
       Pins: [PinFB];
+      RefersTo: ReferencedValueFB;
+}
+
+enum ReferencedValueTypeFB:ushort {
+     PlayerFB = 0,
+     WidgetFB
+}
+
+table ReferencedValueFB {
+      Type: ReferencedValueTypeFB;
+      Id: string;
 }
 
 //   ____

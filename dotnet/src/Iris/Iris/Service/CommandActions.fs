@@ -83,7 +83,7 @@ let buildProject (machine: IrisMachine)
       |> Project.updateDataDir raftDir
       |> fun p -> Project.updateConfig (Config.addSiteAndSetActive site p.Config) p
 
-    let! _ = Asset.saveWithCommit path User.Admin.Signature updated
+    let! _ = IrisData.saveWithCommit path User.Admin.Signature updated
 
     printfn "project: %A" project.Name
     printfn "created in: %O" project.Path

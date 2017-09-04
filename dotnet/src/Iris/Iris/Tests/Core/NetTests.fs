@@ -25,8 +25,8 @@ module NetIntegrationTests =
         let ip = IpAddress.Localhost
         let prt = port 5555us
 
-        use onConnected = new AutoResetEvent(false)
-        use onDisconnected = new AutoResetEvent(false)
+        use onConnected = new WaitEvent()
+        use onDisconnected = new WaitEvent()
 
         use client = TcpClient.create {
             ClientId = Id.Create()
@@ -43,8 +43,8 @@ module NetIntegrationTests =
 
         do client.Connect()
 
-        do! waitOrDie "onDisconnected" onDisconnected
-        do! waitOrDie "onDisconnected" onDisconnected
+        do! waitFor "onDisconnected" onDisconnected
+        do! waitFor "onDisconnected" onDisconnected
 
         use server = TcpServer.create {
             ServerId = Id.Create()
@@ -54,7 +54,7 @@ module NetIntegrationTests =
 
         do! server.Start()
 
-        do! waitOrDie "onConnected" onConnected
+        do! waitFor "onConnected" onConnected
       }
       |> noError
 
@@ -63,7 +63,7 @@ module NetIntegrationTests =
       either {
 
         let rand = new System.Random()
-        use stopper = new AutoResetEvent(false)
+        use stopper = new WaitEvent()
 
         let numclients = 5
         let numrequests = 2
@@ -103,7 +103,7 @@ module NetIntegrationTests =
 
         let responses = ResizeArray<Response>()
 
-        let clientsLive = new AutoResetEvent(false)
+        let clientsLive = new WaitEvent()
         let mutable liveClients = 0
 
         let cloop (inbox: MailboxProcessor<TcpClientEvent>) =
@@ -143,7 +143,7 @@ module NetIntegrationTests =
                yield socket
            |]
 
-        do! waitOrDie "clientsLive" clientsLive
+        do! waitFor "clientsLive" clientsLive
 
         let mkRequest (client: ITcpClient) =
           async {
@@ -165,7 +165,7 @@ module NetIntegrationTests =
           |> Array.map (Async.Parallel >> Async.RunSynchronously)
           |> Array.concat
 
-        do! waitOrDie "stopper" stopper
+        do! waitFor "stopper" stopper
 
         Array.iter dispose clients
         dispose server

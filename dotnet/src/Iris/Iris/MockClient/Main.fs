@@ -246,53 +246,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle pinName ->
-        Pin.toggle (Id pinName) (name pinName) patchid  [| |]  [| false |]
+        Pin.Sink.toggle (Id pinName) (name pinName) patchid  [| |]  [| false |]
         |> Some
 
       | Bang pinName ->
-        Pin.bang (Id pinName) (name pinName) patchid [| |] [| false |]
+        Pin.Sink.bang (Id pinName) (name pinName) patchid [| |] [| false |]
         |> Some
 
       | String pinName ->
-        Pin.string (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.string (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | Multiline pinName ->
-        Pin.multiLine (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.multiLine (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | File pinName ->
-        Pin.fileName (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.fileName (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | Dir pinName ->
-        Pin.directory (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.directory (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | Url pinName ->
-        Pin.url (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.url (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | IP pinName ->
-        Pin.ip (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.ip (Id pinName) (name pinName) patchid [| |] [| "" |]
         |> Some
 
       | Float pinName ->
-        Pin.number (Id pinName) (name pinName) patchid [| |] [| 0.0 |]
+        Pin.Sink.number (Id pinName) (name pinName) patchid [| |] [| 0.0 |]
         |> Some
 
       | Bytes pinName ->
-        Pin.bytes (Id pinName) (name pinName) patchid [| |] [| [| |] |]
+        Pin.Sink.bytes (Id pinName) (name pinName) patchid [| |] [| [| |] |]
         |> Some
 
       | Color pinName ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.color (Id pinName) (name pinName) patchid [| |] [| color |]
+        Pin.Sink.color (Id pinName) (name pinName) patchid [| |] [| color |]
         |> Some
 
       | Enum pinName ->
         let prop = { Key = ""; Value = "" }
-        Pin.enum (Id pinName) (name pinName) patchid [| |] [| prop |] [| prop |]
+        Pin.Sink.enum (Id pinName) (name pinName) patchid [| |] [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None
@@ -645,6 +645,7 @@ Usage:
           Name = name "MockClient Patch"
           Client = id
           Path = None
+          RefersTo = None
           Pins = Map.empty }
 
       let loaded =

@@ -14,6 +14,23 @@ open System.Threading
 
 [<AutoOpen>]
 module SerializationTests =
+  ///  ____       __                                  ___     __    _
+  /// |  _ \ ___ / _| ___ _ __ ___ _ __   ___ ___  __| \ \   / /_ _| |_   _  ___
+  /// | |_) / _ \ |_ / _ \ '__/ _ \ '_ \ / __/ _ \/ _` |\ \ / / _` | | | | |/ _ \
+  /// |  _ <  __/  _|  __/ | |  __/ | | | (_|  __/ (_| | \ V / (_| | | |_| |  __/
+  /// |_| \_\___|_|  \___|_|  \___|_| |_|\___\___|\__,_|  \_/ \__,_|_|\__,_|\___|
+
+  let test_binary_referenced_value =
+    testCase "ReferencedValue binary serialization should work" <| fun _ ->
+      binaryEncDec<ReferencedValue>
+      |> Prop.forAll Generators.referencedValueArb
+      |> Check.QuickThrowOnFailure
+
+  let test_yaml_referenced_value =
+    testCase "ReferencedValue yaml serialization should work" <| fun _ ->
+      yamlEncDec<ReferencedValue>
+      |> Prop.forAll Generators.referencedValueArb
+      |> Check.QuickThrowOnFailure
 
   //  ____  _    __        ___     _            _
   // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
@@ -74,7 +91,7 @@ module SerializationTests =
 
   let test_correct_request_serialization =
     testCase "RequestResposse serialization should work" <| fun _ ->
-      use reset = new AutoResetEvent(false)
+      use reset = new WaitEvent()
       let rand = System.Random()
 
       let mutable count = 0
@@ -114,7 +131,7 @@ module SerializationTests =
         for bte in binary do
           builder.Write bte
 
-      waitOrDie "reset" reset |> noError
+      waitFor "reset" reset |> noError
 
   //  ____                     ____  _        _
   // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
@@ -130,7 +147,7 @@ module SerializationTests =
       let rerequests = ResizeArray()
       let edges = ResizeArray()
       let blob = ResizeArray()
-      use stopper = new AutoResetEvent(false)
+      use stopper = new WaitEvent()
 
       let collect (request: Request) =
         requests.Add request
@@ -164,7 +181,7 @@ module SerializationTests =
           parser.Write bte
         Interlocked.Increment &read |> ignore
 
-      waitOrDie "stopper" stopper |> noError
+      waitFor "stopper" stopper |> noError
 
       Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
 
@@ -535,6 +552,8 @@ module SerializationTests =
 
   let serializationTests =
     testList "Serialization Tests" [
+      test_binary_referenced_value
+      test_yaml_referenced_value
       test_binary_pin_widget
       test_yaml_pin_widget
       test_binary_pin_mapping

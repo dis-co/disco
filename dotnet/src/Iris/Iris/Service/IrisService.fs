@@ -97,23 +97,12 @@ module IrisService =
 
   // ** isLeader
 
-  /// <summary>
-  ///   isLeader
-  /// </summary>
-  /// <param name="name">type</param>
-  /// <param name="name">type</param>
-  /// <returns>returns</returns>
   let private isLeader (store: IAgentStore<IrisState>) =
     store.State.RaftServer.IsLeader
 
   // ** persistWithLogging
 
-  /// <summary>
-  ///   Persiste a state machine command to disk and log results.
-  /// </summary>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <param name="sm">StateMachine</param>
-  /// <returns>unit</returns>
+  /// Persiste a state machine command to disk and log results.
   let private persistWithLogging (store: IAgentStore<IrisState>) sm =
     match Persistence.persistEntry store.State.Store.State sm with
     | Right () ->
@@ -131,40 +120,20 @@ module IrisService =
   // |  __/| | |_) |  __/ | | | | |  __/
   // |_|   |_| .__/ \___|_|_|_| |_|\___|
   //         |_|
-  //  _____                 _   _
-  // |  ___|   _ _ __   ___| |_(_) ___  _ __  ___
-  // | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
-  // |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
-  // |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
 
   // ** stateMutator
 
-  /// <summary>
-  ///   Dispatch the current event on the store, thereby globally mutating its state.
-  /// </summary>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <param name=""></param>
-  /// <param name=""></param>
-  /// <param name="cmd">IrisEvent</param>
-  /// <returns>unit</returns>
+  /// Dispatch the current event on the store, thereby globally mutating its state.
   let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
 
   // ** statePersistor
 
-  /// <summary>
-  ///   Persists events marked as non-volatile to disk, possibly committing changes to git.
-  /// </summary>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <param name=""></param>
-  /// <param name=""></param>
-  /// <param name="cmd">IrisEvent</param>
-  /// <returns>unit</returns>
+  /// Persists events marked as non-volatile to disk, possibly committing changes to git.
   let private statePersistor (store: IAgentStore<IrisState>) _ _ = function
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Save ->
-        if isLeader store then
-          do persistWithLogging store sm
+        if isLeader store then do persistWithLogging store sm
 
       | IrisEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Commit ->
         if isLeader store then
@@ -197,16 +166,79 @@ module IrisService =
             |> Logger.err (tag "statePersistor")
       | _ -> ()
 
+  // ** mappingResolver
+
+  let private mappingResolver (store: IAgentStore<IrisState>) =
+    /// Group all PinMappings by the Source Id so that we may later just create new Slices
+    /// values for those target sink pins and add them to a new SliceMap. This value is a local,
+    /// voltale cache to make the operation faster by not recomputing the grouped value every
+    /// time there is an UpdateSlice command.
+    let mutable grouped =
+      Map.fold
+        (fun (out: Map<Id,PinMapping list>) _ (mapping: PinMapping) ->
+          match Map.tryFind mapping.Source out with
+          | Some lst -> Map.add mapping.Source (mapping :: lst) out
+          | None -> Map.add mapping.Source [mapping] out)
+        Map.empty
+        store.State.Store.State.PinMappings
+
+    fun _ _ -> function
+    /// Add a new mapping to the Source-Id-grouped mappings. Remove any existing mapping with
+    /// the same Id first.
+    | IrisEvent.Append(_, AddPinMapping mapping)
+    | IrisEvent.Append(_, UpdatePinMapping mapping) ->
+      match Map.tryFind mapping.Source grouped with
+      | Some mappings ->
+        grouped <-
+          mappings
+          |> List.filter (fun (existing: PinMapping) -> existing.Id <> mapping.Id)
+          |> fun mappings -> Map.add mapping.Source (mapping :: mappings) grouped
+      | None ->
+        grouped <- Map.add mapping.Source [mapping] grouped
+
+    /// Remove a mapping from the grouped cache
+    | IrisEvent.Append(_, RemovePinMapping mapping) ->
+      match Map.tryFind mapping.Source grouped with
+      | Some mappings ->
+        let updated = List.filter (fun (existing: PinMapping) -> existing.Id <> mapping.Id) mappings
+        if updated.Length > 0 then
+          grouped <- Map.add mapping.Source updated grouped
+        else
+          grouped <- Map.remove mapping.Source grouped
+      | None -> ()
+
+    | IrisEvent.Append(_, UpdateSlices map) ->
+      /// only engage in processing of mappings if there are any to be processed
+      if not grouped.IsEmpty then
+        /// produce a new SlicesMap by creating a Slices value for each of the Sinks in each mapping,
+        /// *if* a corresponding mapping (current Slices's Id = mapping.Source) was found.
+        let slicesMap =
+          Map.fold
+            (fun output pinid (slices: Slices) ->
+              match Map.tryFind pinid grouped with
+              | Some mappings ->
+                List.fold
+                  (fun (map: SlicesMap) (mapping: PinMapping) ->
+                    mapping.Sinks
+                    |> Set.map (flip Slices.setId slices)
+                    |> Set.fold SlicesMap.add map)
+                  output
+                  mappings
+              | None -> output)
+            SlicesMap.empty
+            map.Slices
+
+        /// unless the resulting map is empty, re-queue the result as a new UpdateSlices command
+        if not (SlicesMap.isEmpty slicesMap) then
+          slicesMap
+          |> UpdateSlices
+          |> IrisEvent.appendService
+          |> store.State.Dispatcher.Dispatch
+    | _ -> ()
+
   // ** logPersistor
 
-  /// <summary>
-  ///   Write all logged messages to a machine-local log file.
-  /// </summary>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <param name=""></param>
-  /// <param name=""></param>
-  /// <param name="cmd">IrisEvent</param>
-  /// <returns>unit</returns>
+  /// Write all logged messages to a local log file.
   let private logPersistor (store: IAgentStore<IrisState>) _ _ (cmd: IrisEvent) =
     match cmd with
     | IrisEvent.Append(_, LogMsg log) ->
@@ -261,13 +293,14 @@ module IrisService =
   // ** preActions
 
   let private preActions (store: IAgentStore<IrisState>) =
-    [| Pipeline.createHandler (stateMutator   store) |]
+    [| Pipeline.createHandler (stateMutator store) |]
 
   // ** processors
 
   let private processors (store: IAgentStore<IrisState>) =
-    [| Pipeline.createHandler (statePersistor store)
-       Pipeline.createHandler (logPersistor   store) |]
+    [| Pipeline.createHandler (statePersistor  store)
+       Pipeline.createHandler (mappingResolver store)
+       Pipeline.createHandler (logPersistor    store) |]
 
   // ** publishers
 
@@ -283,20 +316,12 @@ module IrisService =
 
   // ** sendLocalData
 
-  /// <summary>
-  ///   Send local data to leader upon connection.
-  /// </summary>
-  /// <param name="socket">ITcpClient</param>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <returns>unit</returns>
-  /// <remarks>
-  ///   <para>
-  ///     Some pieces of data are intrinsically local to the service instance, such as connected
-  ///     browser sessions or locally connected client instances. These pieces of data need to be
-  ///     replicated to the leader once connected. IF those clients/sessions already exist, they
-  ///     will simply be ignored.
-  ///   </para>
-  /// </remarks>
+  /// ## Send local data to leader upon connection.
+  ///
+  /// Some pieces of data are intrinsically local to the service instance, such as connected
+  /// browser sessions or locally connected client instances. These pieces of data need to be
+  /// replicated to the leader once connected. IF those clients/sessions already exist, they
+  /// will simply be ignored.
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<IrisState>) =
     if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
       let sessions =
@@ -328,12 +353,8 @@ module IrisService =
 
   // ** handleLeaderEvents
 
-  /// <summary>
-  ///   Handle events happening on the socket connection to the current leader.
-  /// </summary>
-  /// <param name="socket">ITcpClient</param>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <returns>unit</returns>
+  /// Handle events happening on the socket connection to the current leader. When connected, send a
+  /// command to append the locally connected clients and browser sessions to the leader.
   let private handleLeaderEvents socket store = function
     | TcpClientEvent.Connected _ ->
       do sendLocalData socket store
@@ -342,13 +363,8 @@ module IrisService =
 
   // ** makeLeader
 
-  /// <summary>
-  ///   Create a communication socket with the current Raft leader. Its important to note that
-  ///   the current members Id *must* be used to set up the client socket.
-  /// </summary>
-  /// <param name="leader">RaftMember</param>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <returns>Leader option</returns>
+  /// Create a communication socket with the current Raft leader. Its important to note that
+  /// the current members Id *must* be used to set up the client socket.
   let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
@@ -364,18 +380,11 @@ module IrisService =
 
   // ** processEvent
 
-  /// <summary>Process events marked DispatchStrategy.Process</summary>
-  /// <param name="store">IAgentStore<IrisState></param>
-  /// <param name="ev">IrisEvent</param>
-  /// <returns>unit</returns>
-  /// <remarks>
-  ///   <para>
-  ///     Process IrisEvents that require special treatment. Events that need to be treated
-  ///     differently than normal state machine comand events come from RaftServer are used
-  ///     to e.g. wire up communication with the leader for forwarding state machine commands to
-  ///     the leader.
-  ///   </para>
-  /// </remarks>
+  /// ## Process IrisEvents that have special semantics.
+  ///
+  /// Events that need to be treated differently than normal state machine comand events come from
+  /// RaftServer and are used to e.g. wire up communication with the leader for forwarding state
+  /// machine commands to the leader.
   let private processEvent (store: IAgentStore<IrisState>) ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
@@ -598,7 +607,7 @@ module IrisService =
     let path = Constants.RAFT_DIRECTORY <.>
                Constants.SNAPSHOT_FILENAME +
                Constants.ASSET_EXTENSION
-    match Asset.read path with
+    match IrisData.read path with
     | Right str ->
       try
         let serializer = Serializer()
@@ -609,14 +618,13 @@ module IrisService =
           | Some site -> site.Members |> Map.toArray |> Array.map snd
           | _ -> [| |]
 
-        Snapshot ( Id yml.Id
-                 , yml.Index
-                 , yml.Term
-                 , yml.LastIndex
-                 , yml.LastTerm
-                 , members
-                 , DataSnapshot state.Store.State
-                 )
+        Snapshot (Id yml.Id
+                 ,yml.Index
+                 ,yml.Term
+                 ,yml.LastIndex
+                 ,yml.LastTerm
+                 ,members
+                 ,DataSnapshot state.Store.State)
         |> Some
       with
         | exn ->
