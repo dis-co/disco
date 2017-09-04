@@ -60,15 +60,15 @@ let inline forcePin<'T> gid pk (values: obj seq) =
 
 let makeNumberPin gid pid pk values =
     let labels, values = forcePin<float> gid pk values
-    Pin.number pid pk gid labels values |> Some
+    Pin.number pid (name pk) gid labels values |> Some
 
 let makeTogglePin gid pid pk values =
     let labels, values = forcePin<bool> gid pk values
-    Pin.toggle pid pk gid labels values |> Some
+    Pin.toggle pid (name pk) gid labels values |> Some
 
 let makeStringPin gid pid pk values =
     let labels, values = forcePin<string> gid pk values
-    Pin.string pid pk gid labels values |> Some
+    Pin.string pid (name pk) gid labels values |> Some
 
 let makePin gid pk (v: obj) =
     let pid = Id (sprintf "%O::%s" gid pk)
@@ -86,11 +86,11 @@ let makePin gid pk (v: obj) =
         | Some(:? string) -> makeStringPin gid pid pk ar
         | _ -> failParse gid pk ar
     | :? float as x ->
-        Pin.number pid pk gid [||] [|x|] |> Some
+        Pin.number pid (name pk) gid [||] [|x|] |> Some
     | :? bool as x ->
-        Pin.toggle pid pk gid [||] [|x|] |> Some
+        Pin.toggle pid (name pk) gid [||] [|x|] |> Some
     | :? string as x ->
-        Pin.string pid pk gid [||] [|x|] |> Some
+        Pin.string pid (name pk) gid [||] [|x|] |> Some
     | x -> failParse gid pk x
 
 let pinGroups: Map<Id, PinGroup> =
@@ -102,14 +102,15 @@ let pinGroups: Map<Id, PinGroup> =
         let pins =
             JS.Object.keys(g)
             |> Seq.choose (fun pk ->
-                box g?(pk) |> makePin gid (name pk))
+                box g?(pk) |> makePin gid pk)
             |> Seq.map (fun pin -> pin.Id, pin)
             |> Map
         let pinGroup =
             { Id = gid
               Name = name gk
               Client = Id "mockupclient"
-              Pins = pins }
+              Pins = pins
+              Path = None }
         pinGroup.Id, pinGroup)
     |> Map
 
@@ -170,7 +171,7 @@ let cuesAndListsAndPlayers =
     let cue3, cueRef3 = makeCue()
     let cueGroup = { Id = Id "mockcuegroup"; Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
     let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[|cueGroup|]}
-    let cuePlayer, group = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
+    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
     Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
     Map[cueList.Id, cueList],
     Map[cuePlayer.Id, cuePlayer]

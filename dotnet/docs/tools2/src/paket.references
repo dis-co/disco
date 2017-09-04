@@ -1,0 +1,7 @@
+group Fable
+FSharp.Core
+Fable.Core
+Fable.PowerPack
+Fable.React
+Fable.Import.Node
+dotnet-fable

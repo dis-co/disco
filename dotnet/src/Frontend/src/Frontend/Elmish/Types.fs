@@ -5,25 +5,32 @@ open Fable.Core
 open Fable.Import
 open Iris.Core
 
+/// Keys for Browser localStorage
 module StorageKeys =
   let [<Literal>] layout = "iris-layout"
   let [<Literal>] widgets = "iris-widgets"
 
+/// Widget names
 module Widgets =
     let [<Literal>] Log = "LOG"
     let [<Literal>] GraphView = "Graph View"
     let [<Literal>] CuePlayer = "Cue Player"
     let [<Literal>] ProjectView = "Project View"
     let [<Literal>] Cluster = "Cluster"
+    let [<Literal>] Test = "Test"
 
+/// Interface that must be implemented by all widgets
 type IWidget =
   abstract Id: Guid
   abstract Name: string
   abstract InitialLayout: Layout
   abstract Render: Elmish.Dispatch<Msg> * Model -> React.ReactElement
 
+/// Widget data that will be stored in Browser localStorage
+/// (layout is saved separately)
 and WidgetRef = Guid * string
 
+/// Direction of column sorting
 and Direction =
   | Ascending
   | Descending
@@ -32,11 +39,13 @@ and Direction =
     | Ascending -> Descending
     | Descending -> Ascending
 
+/// Column sorting (e.g. in Log wdiget)
 and Sorting =
   { column: string
     direction: Direction
   }
 
+/// Messages that can be dispatched to Elmish
 and Msg =
   | AddWidget of Guid * IWidget
   | RemoveWidget of Guid
@@ -48,6 +57,7 @@ and Msg =
   | UpdateState of State option
   | UpdateModal of React.ReactElement option
 
+/// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
     layout: Layout[]
@@ -57,6 +67,7 @@ and Model =
     userConfig: UserConfig
   }
 
+/// User frontend configuration
 and UserConfig =
   { logTextFilter: string option
     logLevelFilter: LogLevel option
@@ -78,6 +89,7 @@ and UserConfig =
             "Tier", true]
       useRightClick = false }
 
+/// Widget layout as understood by react-grid-layout
 and [<Pojo>] Layout =
   { i: Guid; ``static``: bool
     x: int; y: int
@@ -85,15 +97,17 @@ and [<Pojo>] Layout =
     minW: int; maxW: int
     minH: int; maxH: int }
 
-and IFactory =
+and IWidgetFactory =
   abstract CreateWidget: id: Guid option * name: string -> IWidget
 
-let mutable private singletonFactory = None
+let mutable private singletonWidgetFactory = None
 
-let getFactory() =
-  match singletonFactory with
+let getWidgetFactory() =
+  match singletonWidgetFactory with
   | Some x -> x
   | None -> failwith "Factory hasn't been initialized yet"
 
-let initFactory(factory: IFactory) =
-  singletonFactory <- Some factory
+/// This function should only be called by App.fs
+/// at the start of the program
+let initWidgetFactory(factory: IWidgetFactory) =
+  singletonWidgetFactory <- Some factory

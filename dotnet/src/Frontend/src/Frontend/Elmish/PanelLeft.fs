@@ -10,7 +10,7 @@ open System
 open Types
 
 let onClick dispatch name _ =
-  let widget = getFactory().CreateWidget(None, name)
+  let widget = getWidgetFactory().CreateWidget(None, name)
   AddWidget(widget.Id, widget) |> dispatch
 
 let card dispatch name letter text =
@@ -33,7 +33,7 @@ let render dispatch () =
         card dispatch Widgets.CuePlayer   "C" "Cluster Settings"
         card dispatch Widgets.ProjectView "P" "Cluster Settings"
         card dispatch Widgets.Cluster     "R" "Cluster Settings"
-        card dispatch "Test Widget"       "T" "Cluster Settings"
+        card dispatch Widgets.Test        "T" "Cluster Settings"
         card dispatch "Discovery"         "D" "Cluster Settings"
         card dispatch "Unassigned Hosts"  "H" "Cluster Settings"
         card dispatch "Remotter"          "R" "Cluster Settings"

@@ -105,14 +105,14 @@ type PinView(props) =
         firstRowValue
       ]
     if rowCount > 1 && this.state.isOpen then
-      let tags = this.props.pin.GetTags
+      let labels = this.props.pin.Labels
       tbody [] [
         yield head
         for i=0 to rowCount - 1 do
           let label =
             // The Labels array can be shorter than Values'
-            match Array.tryItem i tags |> Option.map string with
-            | None | Some(NullOrEmpty) -> "Tag"
+            match Array.tryItem i labels with
+            | None | Some(NullOrEmpty) -> sprintf "Slice%i" i
             | Some label -> label
           yield tr [Key (string i); ClassName "iris-pin-child"] [
             td [] [str label]
