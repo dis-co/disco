@@ -54,14 +54,15 @@ let body dispatch (model: Model) =
           th [Class "width-25"] []
           th [Class "width-15"] []
           th [Class "width-15"] []
-          th [Class "width-10"] []
+          th [Class "width-5"] []
+          th [Class "width-5"] []
         ]
       ]
       tbody [] (
         members |> Seq.map (fun kv ->
           let node = kv.Value
           tr [Key (string kv.Key)] [
-            td [Class "width-10"; padding5AndTopBorder()] [
+            td [Class "width-20"; padding5AndTopBorder()] [
               span [Class "iris-output iris-icon icon-host"] [
                 str (unwrap node.HostName)
                 span [Class "iris-icon icon-bull iris-status-off"] []
@@ -71,8 +72,18 @@ let body dispatch (model: Model) =
             td [Class "width-25"; topBorder()] [str (string node.Port)]
             td [Class "width-15"; topBorder()] [str (string node.State)]
             td [Class "width-15"; topBorder()] [str "shortkey"]
-            td [Class "width-10"; topBorder()] [
+            td [Class "width-5"; topBorder()] [
               button [Class "iris-button iris-icon icon-autocall"] []
+            ]
+            td [Class "width-5"; topBorder()] [
+              button [
+                Class "iris-button iris-icon icon-close"
+                OnClick (fun ev ->
+                  ev.stopPropagation()
+                  match Config.findMember config kv.Key with
+                  | Right mem -> RemoveMember mem |> ClientContext.Singleton.Post
+                  | Left error -> printfn "Cannot find member in config: %O" error)
+              ] []
             ]
           ]
         ) |> Seq.toList
