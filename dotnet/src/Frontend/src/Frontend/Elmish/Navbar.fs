@@ -110,7 +110,7 @@ type View(props) =
     div [] [
       nav [Id "app-header"; Class "navbar"] [
         div [Class "navbar-brand"] [
-          a [Class "navbar-item"; Href "http://nsynk.de"] [
+          div [Class "navbar-item"] [
             img [Src "lib/img/nsynk.png"]
           ]
           div [
