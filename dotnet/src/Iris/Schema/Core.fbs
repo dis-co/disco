@@ -436,6 +436,10 @@ table ReferencedValueFB {
       Id: string;
 }
 
+table PinGroupMapFB {
+      Groups: [PinGroupFB];
+}
+
 //   ____
 //  / ___|   _  ___
 // | |  | | | |/ _ \

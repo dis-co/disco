@@ -905,6 +905,22 @@ module Generators =
           Pins = pins }
     }
 
+  ///  ____  _        ____                       __  __
+  /// |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __ |  \/  | __ _ _ __
+  /// | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \| |\/| |/ _` | '_ \
+  /// |  __/| | | | | |_| | | | (_) | |_| | |_) | |  | | (_| | |_) |
+  /// |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/|_|  |_|\__,_| .__/
+  ///                                     |_|                |_|
+
+  let pinGroupMapGen = gen {
+      let! groups = Gen.listOf pingroupGen
+      return
+        List.fold
+        PinGroupMap.add
+        PinGroupMap.empty
+        groups
+    }
+
   //  _   _
   // | | | |___  ___ _ __
   // | | | / __|/ _ \ '__|
@@ -1375,3 +1391,4 @@ module Generators =
   let pinMappingArb = Arb.fromGen pinMappingGen
   let pinWidgetArb = Arb.fromGen pinWidgetGen
   let referencedValueArb = Arb.fromGen referencedValueGen
+  let pinGroupMapArb = Arb.fromGen pinGroupMapGen

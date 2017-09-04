@@ -579,6 +579,103 @@ module PinGroup =
     | Some (ReferencedValue.Widget _) -> true
     | _ -> false
 
+// * PinGroupMap
+
+type GroupMap = Map<PinGroupId, PinGroup>
+
+type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
+  with
+    member map.Groups
+      with get () = match map with PinGroupMap groups -> groups
+
+    member map.ToOffset(builder: FlatBufferBuilder) =
+      let vector =
+        map.Groups
+        |> Map.toArray
+        |> Array.map (snd >> Map.toArray >> Array.map (snd >> Binary.toOffset builder))
+        |> Array.concat
+        |> fun arr -> PinGroupMapFB.CreateGroupsVector(builder, arr)
+      PinGroupMapFB.StartPinGroupMapFB(builder)
+      PinGroupMapFB.AddGroups(builder, vector)
+      PinGroupMapFB.EndPinGroupMapFB(builder)
+
+    static member FromFB(fb: PinGroupMapFB) =
+      [ 0 .. fb.GroupsLength - 1 ]
+      |> List.fold
+        (fun (m: Either<IrisError,Map<ClientId,GroupMap>>) idx -> either {
+            let! current = m
+            let! parsed =
+              #if FABLE_COMPILER
+              fb.Groups(idx)
+              |> PinGroup.FromFB
+              #else
+              let groupish = fb.Groups(idx)
+              if groupish.HasValue then
+                let value = groupish.Value
+                PinGroup.FromFB value
+              else
+                "Could not parse empty PinGroup value"
+                |> Error.asParseError "PinGroupMap.FromFB"
+                |> Either.fail
+              #endif
+            return
+              match Map.tryFind parsed.Client current with
+              | Some group -> Map.add parsed.Client (Map.add parsed.Id parsed group) current
+              | None -> Map.add parsed.Client (Map.ofList [(parsed.Id,parsed)]) current
+          })
+        (Right Map.empty)
+      |> Either.map PinGroupMap
+
+    // ** ToBytes
+
+    member self.ToBytes() : byte[] = Binary.buildBuffer self
+
+    // ** FromBytes
+
+    static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroupMap> =
+      Binary.createBuffer bytes
+      |> PinGroupMapFB.GetRootAsPinGroupMapFB
+      |> PinGroupMap.FromFB
+
+// * PinGroupMap module
+
+module PinGroupMap =
+
+  // ** empty
+
+  let empty = PinGroupMap Map.empty
+
+  // ** add
+
+  let add (map: PinGroupMap) (group: PinGroup) =
+    let current = map.Groups
+    match Map.tryFind group.Client current with
+    | Some groups ->
+      groups
+      |> Map.add group.Id group
+      |> fun m -> Map.add group.Client m current
+      |> PinGroupMap
+    | None ->
+      Map.ofList [(group.Id,group)]
+      |> fun m -> Map.add group.Client m current
+      |> PinGroupMap
+
+  // ** update
+
+  let update = add
+
+  // ** remove
+
+  let remove (map: PinGroupMap) (group: PinGroup) =
+    let current = map.Groups
+    match Map.tryFind group.Client current with
+    | Some groups ->
+      groups
+      |> Map.remove group.Id
+      |> fun m -> Map.add group.Client m current
+      |> PinGroupMap
+    | None -> map
+
 // * Map module
 
 module Map =
