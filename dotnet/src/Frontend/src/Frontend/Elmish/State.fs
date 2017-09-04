@@ -12,16 +12,17 @@ open Types
 open Helpers
 
 [<PassGenerics>]
-let loadFromLocalStorage<'T> (key: string) =
+let private loadFromLocalStorage<'T> (key: string) =
   let g = Fable.Import.Browser.window
   match g.localStorage.getItem(key) with
   | null -> None
   | value -> ofJson<'T> !!value |> Some
 
-let saveToLocalStorage (key: string) (value: obj) =
+let private saveToLocalStorage (key: string) (value: obj) =
   let g = Fable.Import.Browser.window
   g.localStorage.setItem(key, toJson value)
 
+/// Initialization function for Elmish state
 let init() =
   let startContext dispatch =
     let context = ClientContext.Singleton
@@ -39,7 +40,7 @@ let init() =
           UpdateState state |> dispatch)
       )
   let widgets =
-    let factory = Types.getFactory()
+    let factory = Types.getWidgetFactory()
     loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
     |> Option.defaultValue [||]
     |> Array.map (fun (id, name) ->
@@ -62,13 +63,13 @@ let init() =
       userConfig = UserConfig.Create() }
   initModel, [startContext]
 
-let saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
+let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
     |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
     |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
     layout |> saveToLocalStorage StorageKeys.layout
 
-let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // TODO: Select the cue list from the widget
   if cueList.Groups.Length = 0 then
     failwith "A Cue Group must be added first"
@@ -85,6 +86,7 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   AddCue newCue |> ClientContext.Singleton.Post
   UpdateCueList newCueList |> ClientContext.Singleton.Post
 
+/// Update function for Elmish state
 let update msg model =
   let newModel =
     match msg with

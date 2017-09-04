@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
     <DefineConstants>FABLE_COMPILER</DefineConstants>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Browser.fs" />
@@ -9,7 +10,6 @@
     <Compile Include="Worker.fs" />
     <Compile Include="MockData.fs" />
     <Compile Include="Client.fs" />
-    <Compile Include="GlobalModel.fs" />
     <Compile Include="Keyboard.fs" />
     <Compile Include="Lib.fs" />
     <Compile Include="Elmish/Types.fs" />
@@ -25,6 +25,7 @@
     <Compile Include="Elmish/Cluster.fs" />
     <Compile Include="Elmish/PanelLeft.fs" />
     <Compile Include="Elmish/App.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />

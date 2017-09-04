@@ -14,8 +14,12 @@ open Fable.Helpers.React.Props
 open Helpers
 open Types
 
-initFactory
-  { new IFactory with
+importSideEffects "react-grid-layout/css/styles.css"
+let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
+let createTestWidget: Guid -> IWidget = importDefault "../../js/widgets/TestWidget"
+
+initWidgetFactory
+  { new IWidgetFactory with
       member __.CreateWidget(id, name) =
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
@@ -24,11 +28,9 @@ initFactory
         | Widgets.CuePlayer -> CuePlayer.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> Cluster.createWidget(id)
+        | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
-
-importSideEffects "react-grid-layout/css/styles.css"
-let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
 
 module Values =
   let [<Literal>] gridLayoutColumns = 20
@@ -111,11 +113,11 @@ let root model dispatch =
 open Elmish.React
 open Elmish.Debug
 
-// App
-Program.mkProgram init update root
-// |> Program.toNavigable (parseHash pageParser) urlUpdate
-|> Program.withReact "app-container"
-// #if DEBUG
-// |> Program.withDebugger
-// #endif
-|> Program.run
+let init() =
+  Program.mkProgram init update root
+  // |> Program.toNavigable (parseHash pageParser) urlUpdate
+  |> Program.withReact "app-container"
+  // #if DEBUG
+  // |> Program.withDebugger
+  // #endif
+  |> Program.run
