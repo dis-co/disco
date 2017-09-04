@@ -182,7 +182,7 @@ let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
 let userScripts = scriptsDir @@ "User"
 let devScripts = scriptsDir @@ "Dev"
 
-let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tool2" @@ "public"
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tools2" @@ "public"
 
 let useNix = Directory.Exists("/nix")
 
@@ -247,6 +247,7 @@ let setParams cfg defaults =
       Properties = [ "Configuration", cfg ] }
 
 let runMono filepath workdir =
+  printfn "CWD: %s" workdir
   ExecProcess (fun info ->
                   info.FileName <- "mono"
                   info.Arguments <- filepath
@@ -256,6 +257,7 @@ let runMono filepath workdir =
   |> maybeFail
 
 let runExec filepath args workdir shell =
+  printfn "CWD: %s" workdir
   ExecProcess (fun info ->
                   info.FileName <- filepath
                   info.Arguments <- if String.length args > 0 then args else info.Arguments
@@ -265,6 +267,7 @@ let runExec filepath args workdir shell =
   |> maybeFail
 
 let runExecAndReturn filepath args workdir =
+  printfn "CWD: %s" workdir
   ExecProcessAndReturnMessages (fun info ->
     info.FileName <- filepath
     info.Arguments <- if String.length args > 0 then args else info.Arguments
@@ -484,9 +487,11 @@ Target "CopyDocs"
   (fun _ ->
     // Build Frontend documentation
     runExec DotNet.dotnetExePath "restore" (frontendDir @@ "src/Frontend") false
-    runExec DotNet.dotnetExePath "build" (frontendDir @@ "src/Frontend") false
+    runExec DotNet.dotnetExePath "build"   (frontendDir @@ "src/Frontend") false
     // Generate web pages
-    runExec DotNet.dotnetExePath "fable npm-build" (__SOURCE_DIRECTORY__ @@ "docs/tools2") false
+    runNpmNoErrors "install" (__SOURCE_DIRECTORY__ @@ "docs/tools2") ()
+    runExec DotNet.dotnetExePath "restore"         (__SOURCE_DIRECTORY__ @@ "docs/tools2/src") false
+    runExec DotNet.dotnetExePath "fable npm-build" (__SOURCE_DIRECTORY__ @@ "docs/tools2/src") false
     // Copy them to package
     SilentCopyDir "bin/Docs" docsDir (konst true))
 
@@ -955,7 +960,7 @@ Target "Release" DoNothing
 
 "CopyBinaries"
 ==> "CopyAssets"
-==> "CopyDocs"
+// ==> "CopyDocs"
 ==> "GenerateManifest"
 ==> "CreateArchive"
 
