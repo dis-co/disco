@@ -78,7 +78,7 @@ module RaftIntegrationTests =
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
       either {
-        use started = new AutoResetEvent(false)
+        use started = new WaitEvent()
         let port = port 12000us
         let machine = MachineConfig.create "127.0.0.1" None
 
@@ -111,7 +111,7 @@ module RaftIntegrationTests =
 
         do! leader.Start()
 
-        do! waitOrDie "started" started
+        do! waitFor "started" started
 
         expect "Should be running" true Service.isRunning leader.Status
 
@@ -132,9 +132,9 @@ module RaftIntegrationTests =
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
       either {
-        use check1 = new AutoResetEvent(false)
+        use check1 = new WaitEvent()
 
-        let setState (id: Id) (are: AutoResetEvent) = function
+        let setState (id: Id) (are: WaitEvent) = function
           | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
@@ -193,15 +193,15 @@ module RaftIntegrationTests =
 
         do! follower.Start()
 
-        do! waitOrDie "Leader-Check" check1
+        do! waitFor "Leader-Check" check1
       }
       |> noError
 
   let test_log_snapshotting_should_clean_all_logs =
     testCase "log snapshotting should clean all logs" <| fun _ ->
       either {
-        use snapshotCheck = new AutoResetEvent(false)
-        use expectedCheck = new AutoResetEvent(false)
+        use snapshotCheck = new WaitEvent()
+        use expectedCheck = new WaitEvent()
 
         let state = ref None
 
@@ -250,8 +250,8 @@ module RaftIntegrationTests =
               yield AddUser (mkUser ()) ]
           |> List.map leader.Append
 
-        do! waitOrDie "snapshot" snapshotCheck
-        do! waitOrDie "expectedCheck" expectedCheck
+        do! waitFor "snapshot" snapshotCheck
+        do! waitFor "expectedCheck" expectedCheck
 
         expect "Should have expected number of Users" expected id store.State.Users.Count
       }
@@ -260,12 +260,12 @@ module RaftIntegrationTests =
   let test_validate_add_member_works =
     testCase "validate add member works" <| fun _ ->
       either {
-        use added = new AutoResetEvent(false)
-        use configured = new AutoResetEvent(false)
-        use check1 = new AutoResetEvent(false)
-        use check2 = new AutoResetEvent(false)
+        use added = new WaitEvent()
+        use configured = new WaitEvent()
+        use check1 = new WaitEvent()
+        use check2 = new WaitEvent()
 
-        let setState (id: Id) (are: AutoResetEvent) = function
+        let setState (id: Id) (are: WaitEvent) = function
           | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
@@ -341,13 +341,13 @@ module RaftIntegrationTests =
 
         do! follower.Start()
 
-        do! waitOrDie "check1" check1
-        do! waitOrDie "check2" check2
+        do! waitFor "check1" check1
+        do! waitFor "check2" check2
 
         leader.AddMember mem2           // add mem2 to cluster
 
-        do! waitOrDie "added" added
-        do! waitOrDie "configured" configured
+        do! waitFor "added" added
+        do! waitFor "configured" configured
       }
       |> noError
   //                       _ _

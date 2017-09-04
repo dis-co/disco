@@ -23,11 +23,11 @@ module CorrectPinPersistance =
   let test =
     testCase "ensure pins are correctly persisted" <| fun _ ->
       either {
-        let started = WaitCount.Create()
-        let appendDone = WaitCount.Create()
-        let createDone = WaitCount.Create()
-        let changedDone = WaitCount.Create()
-        let deletedDone = WaitCount.Create()
+        use started = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use createDone = new WaitEvent()
+        use changedDone = new WaitEvent()
+        use deletedDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
 
@@ -48,24 +48,24 @@ module CorrectPinPersistance =
         }
 
         use oobs = service.Subscribe <| function
-          | IrisEvent.Started ServiceType.Raft -> started.Increment()
+          | IrisEvent.Started ServiceType.Raft -> started.Set()
 
           | IrisEvent.Append(Origin.Raft, AddPinGroup _)
           | IrisEvent.Append(Origin.Raft, AddPin      _)
           | IrisEvent.Append(Origin.Raft, UpdatePin   _)
-          | IrisEvent.Append(Origin.Raft, RemovePin   _) -> appendDone.Increment()
+          | IrisEvent.Append(Origin.Raft, RemovePin   _) -> appendDone.Set()
 
           | IrisEvent.Append(_, LogMsg _) -> () // ignore log messages
 
-          | IrisEvent.FileSystem(FileSystemEvent.Created _ as data) -> createDone.Increment()
-          | IrisEvent.FileSystem(FileSystemEvent.Changed _ as data) -> changedDone.Increment()
-          | IrisEvent.FileSystem(FileSystemEvent.Deleted _ as data) -> deletedDone.Increment()
+          | IrisEvent.FileSystem(FileSystemEvent.Created _ as data) -> createDone.Set()
+          | IrisEvent.FileSystem(FileSystemEvent.Changed _ as data) -> changedDone.Set()
+          | IrisEvent.FileSystem(FileSystemEvent.Deleted _ as data) -> deletedDone.Set()
 
           | ev -> ()
 
         do! service.Start()
 
-        do! waitFor "started to be 1" started 1
+        do! waitFor "started" started
 
         //  ____
         // |___ \
@@ -93,13 +93,13 @@ module CorrectPinPersistance =
         |> AddPinGroup
         |> service.Append
 
-        do! waitFor "append PinGroup to be 1" appendDone 1
+        do! waitFor "append" appendDone
 
         toggle
         |> AddPin
         |> service.Append
 
-        do! waitFor "append Pin to be 2" appendDone 2
+        do! waitFor "append" appendDone
 
         //  _____
         // |___ /
@@ -120,8 +120,8 @@ module CorrectPinPersistance =
         |> UpdatePin
         |> service.Append
 
-        do! waitFor "created pingroup file to be 1" createDone 1
-        do! waitFor "pingroup file changed to be 1" changedDone 1
+        do! waitFor "created" createDone
+        do! waitFor "pingroup" changedDone
 
         //  ____
         // | ___|
@@ -142,7 +142,7 @@ module CorrectPinPersistance =
         |> UpdatePin
         |> service.Append
 
-        do! waitFor "pingroup file deleted to be 1" deletedDone 1
+        do! waitFor "pingroup" deletedDone
 
         //  _____
         // |___  |

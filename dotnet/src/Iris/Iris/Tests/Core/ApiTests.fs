@@ -104,9 +104,9 @@ module ApiTests =
 
         let client = ApiClient.create srvr clnt
 
-        use registered = new AutoResetEvent(false)
-        use unregistered = new AutoResetEvent(false)
-        use snapshot = new AutoResetEvent(false)
+        use registered = new WaitEvent()
+        use unregistered = new WaitEvent()
+        use snapshot = new WaitEvent()
 
         let handler = function
           | ClientEvent.Registered   -> registered.Set() |> ignore
@@ -118,8 +118,8 @@ module ApiTests =
 
         do! client.Start()
 
-        do! waitOrDie "registered" registered
-        do! waitOrDie "snapshot (1)" snapshot
+        do! waitFor "registered" registered
+        do! waitFor "snapshot (1)" snapshot
 
         expect "Should be equal" store.State id client.State
 
@@ -127,13 +127,13 @@ module ApiTests =
         // snapshot.Reset() |> ignore
         server.SendSnapshot()
 
-        do! waitOrDie "snapshot (2)" snapshot
+        do! waitFor "snapshot (2)" snapshot
 
         expect "Should be equal" store.State id client.State
 
         dispose client
 
-        do! waitOrDie "unregistered" unregistered
+        do! waitFor "unregistered" unregistered
       }
       |> noError
 
@@ -172,8 +172,8 @@ module ApiTests =
 
         use client = ApiClient.create srvr clnt
 
-        use snapshot = new AutoResetEvent(false)
-        use doneCheck = new AutoResetEvent(false)
+        use snapshot = new WaitEvent()
+        use doneCheck = new WaitEvent()
 
         let events = [
           AddCue     (mkCue ())
@@ -200,7 +200,7 @@ module ApiTests =
 
         do! client.Start()
 
-        do! waitOrDie "snapshot" snapshot
+        do! waitFor "snapshot" snapshot
 
         List.iter
           (fun cmd ->
@@ -208,7 +208,7 @@ module ApiTests =
             store.Dispatch cmd)
           events
 
-        do! waitOrDie "doneCheck" doneCheck
+        do! waitFor "doneCheck" doneCheck
 
         expect "Should have emitted correct number of events" (List.length events |> int64) id check
         expect "Should be equal" store.State id client.State
@@ -224,9 +224,9 @@ module ApiTests =
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
       either {
-        use clientRegistered = new AutoResetEvent(false)
-        use clientSnapshot = new AutoResetEvent(false)
-        use clientUpdate = new AutoResetEvent(false)
+        use clientRegistered = new WaitEvent()
+        use clientSnapshot = new WaitEvent()
+        use clientUpdate = new WaitEvent()
 
         let store = Store(mkState ())
 
@@ -282,8 +282,8 @@ module ApiTests =
         do! server.Start()
         do! client.Start()
 
-        do! waitOrDie "clientRegisterd" clientRegistered
-        do! waitOrDie "clientSnaphot" clientSnapshot
+        do! waitFor "clientRegisterd" clientRegistered
+        do! waitFor "clientSnaphot" clientSnapshot
 
         let pin = mkPin() // Toggle
         let cue = mkCue()
@@ -291,15 +291,15 @@ module ApiTests =
 
         client.AddPin pin
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.AddCue cue
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.AddCueList cuelist
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         let len m = m |> Map.toArray |> Array.length
 
@@ -311,29 +311,29 @@ module ApiTests =
 
         client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false)) pin)
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.UpdateCue { cue with Slices = mkSlices() }
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         expect "Should be equal" store.State id client.State //
 
         client.RemovePin pin
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.RemoveCue cue
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         client.RemoveCueList cuelist
 
-        do! waitOrDie "clientUpdate" clientUpdate
+        do! waitFor "clientUpdate" clientUpdate
 
         expect "Server should have zero cues" 0 len store.State.Cues
         expect "Client should have zero cues" 0 len client.State.Cues

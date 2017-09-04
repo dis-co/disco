@@ -15,28 +15,6 @@ open Iris.Net
 
 module Common =
 
-  type WaitCount = { count: int ref }
-    with
-      static member Create() = { count = ref 0 }
-      member lock.Increment() = lock.count := !(lock.count) + 1
-      member lock.Decrement() = lock.count := !(lock.count) - 1
-      member lock.Count with get () = !(lock.count)
-
-  let waitFor msg (count: WaitCount) (expected: int) =
-    let max = 30000L
-    let timer = Stopwatch()
-    timer.Start()
-    while count.Count < expected && timer.ElapsedMilliseconds < max do
-      Thread.Sleep(1)
-    timer.Stop()
-    if timer.ElapsedMilliseconds >= max then
-      msg
-      |> String.format "Timeout in {0}"
-      |> Error.asOther "test"
-      |> Either.fail
-    else
-      Either.nothing
-
   let mkMachine () =
     { MachineConfig.create "127.0.0.1" None with
         WorkSpace = tmpPath() </> Path.getRandomFileName() }

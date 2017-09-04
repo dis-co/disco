@@ -91,7 +91,7 @@ module SerializationTests =
 
   let test_correct_request_serialization =
     testCase "RequestResposse serialization should work" <| fun _ ->
-      use reset = new AutoResetEvent(false)
+      use reset = new WaitEvent()
       let rand = System.Random()
 
       let mutable count = 0
@@ -131,7 +131,7 @@ module SerializationTests =
         for bte in binary do
           builder.Write bte
 
-      waitOrDie "reset" reset |> noError
+      waitFor "reset" reset |> noError
 
   //  ____                     ____  _        _
   // |  _ \ __ _ _ __ ___  ___/ ___|| |_ __ _| |_ ___
@@ -147,7 +147,7 @@ module SerializationTests =
       let rerequests = ResizeArray()
       let edges = ResizeArray()
       let blob = ResizeArray()
-      use stopper = new AutoResetEvent(false)
+      use stopper = new WaitEvent()
 
       let collect (request: Request) =
         requests.Add request
@@ -181,7 +181,7 @@ module SerializationTests =
           parser.Write bte
         Interlocked.Increment &read |> ignore
 
-      waitOrDie "stopper" stopper |> noError
+      waitFor "stopper" stopper |> noError
 
       Expect.equal rerequests.Count requests.Count "Should have the same count of requests"
 

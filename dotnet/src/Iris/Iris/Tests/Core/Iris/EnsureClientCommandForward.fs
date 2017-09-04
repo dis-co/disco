@@ -19,19 +19,19 @@ module EnsureClientCommandForward =
   let test =
     testCase "ensure client commands are forwarded to leader" <| fun _ ->
       either {
-        let electionDone = WaitCount.Create()
-        let clientReady = WaitCount.Create()
-        let clientAppendDone = WaitCount.Create()
-        let cueAppendDone = WaitCount.Create()
-        let updateDone = WaitCount.Create()
+        use electionDone = new WaitEvent()
+        use clientReady = new WaitEvent()
+        use clientAppendDone = new WaitEvent()
+        use cueAppendDone = new WaitEvent()
+        use updateDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 2
 
         let serverHandler (service: IIrisService) = function
-          | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Increment()
+          | IrisEvent.StateChanged(oldst, Leader) -> electionDone.Set()
           | IrisEvent.Append(_, AddCue _) ->
             if not service.RaftServer.IsLeader then
-              cueAppendDone.Increment()
+              cueAppendDone.Set()
           | other -> ()
 
         //  ____                  _            _
@@ -73,7 +73,7 @@ module EnsureClientCommandForward =
         use oobs2 = service2.Subscribe (serverHandler service2)
 
         do! service2.Start()
-        do! waitFor "electionDone to be 1" electionDone 1
+        do! waitFor "electionDone" electionDone
 
         //   ____ _ _            _
         //  / ___| (_) ___ _ __ | |_ ___
@@ -82,10 +82,10 @@ module EnsureClientCommandForward =
         //  \____|_|_|\___|_| |_|\__|___/
 
         let handleClient (service: IIrisService) = function
-          | ClientEvent.Snapshot -> clientReady.Increment()
+          | ClientEvent.Snapshot -> clientReady.Set()
           | ClientEvent.Update (AddCue _) ->
             if not service.RaftServer.IsLeader then
-              clientAppendDone.Increment()
+              clientAppendDone.Set()
           | _ -> ()
 
         //   ____ _ _            _     _
@@ -144,8 +144,8 @@ module EnsureClientCommandForward =
         //  \____|\___|\__|\__|_|_| |_|\__, | |_| \_\___|\__,_|\__,_|\__, |
         //                             |___/                         |___/
 
-        do! waitFor "clientReady to be 1" clientReady 1
-        do! waitFor "clientReady to be 2" clientReady 2
+        do! waitFor "clientReady" clientReady
+        do! waitFor "clientReady" clientReady
 
         //  ____            _ _           _
         // |  _ \ ___ _ __ | (_) ___ __ _| |_ ___
@@ -161,19 +161,16 @@ module EnsureClientCommandForward =
         ]
 
         do! either {
-          let mutable current = 0
           if service1.RaftServer.IsLeader then
             for cue in cues do
               client2.AddCue cue
-              current <- current + 1
-              do! waitFor "addCueFollowerDone" cueAppendDone current
-              do! waitFor "addCueClientDone" clientAppendDone current
+              do! waitFor "addCueFollowerDone" cueAppendDone
+              do! waitFor "addCueClientDone" clientAppendDone
           else
             for cue in cues do
               client1.AddCue cue
-              current <- current + 1
-              do! waitFor "addCueFollowerDone" cueAppendDone current
-              do! waitFor "addCueClientDone" clientAppendDone current
+              do! waitFor "addCueFollowerDone" cueAppendDone
+              do! waitFor "addCueClientDone" clientAppendDone
         }
 
         expect "Services should have same state "

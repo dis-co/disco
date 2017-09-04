@@ -19,12 +19,12 @@ module EnsureCueResolver =
   let test =
     testCase "ensure cue resolver works" <| fun _ ->
       either {
-        let checkGitStarted = WaitCount.Create()
-        let electionDone = WaitCount.Create()
-        let appendDone = WaitCount.Create()
-        let clientRegistered = WaitCount.Create()
-        let clientAppendDone = WaitCount.Create()
-        let updateDone = WaitCount.Create()
+        use checkGitStarted = new WaitEvent()
+        use electionDone = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use clientRegistered = new WaitEvent()
+        use clientAppendDone = new WaitEvent()
+        use updateDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
 
@@ -46,17 +46,17 @@ module EnsureCueResolver =
 
         use oobs1 =
           (function
-            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Increment()
-            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Increment()
-            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Increment()
-            | IrisEvent.Append(_, CallCue _)               -> appendDone.Increment()
+            | IrisEvent.Started ServiceType.Git            -> checkGitStarted.Set()
+            | IrisEvent.StateChanged(oldst, Leader)        -> electionDone.Set()
+            | IrisEvent.Append(Origin.Raft, AddPinGroup _) -> appendDone.Set()
+            | IrisEvent.Append(_, CallCue _)               -> appendDone.Set()
             | _ -> ())
           |> service1.Subscribe
 
         do! service1.Start()
 
-        do! waitFor "checkGitStarted to be 1" checkGitStarted 1
-        do! waitFor "electionDone to be 1" electionDone 1
+        do! waitFor "checkGitStarted" checkGitStarted
+        do! waitFor "electionDone" electionDone
 
         //  ____
         // |___ \
@@ -80,17 +80,17 @@ module EnsureCueResolver =
         }
 
         let handleClient = function
-          | ClientEvent.Registered              -> clientRegistered.Increment()
-          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Increment()
-          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Increment()
-          | ClientEvent.Update (UpdateSlices _) -> updateDone.Increment()
+          | ClientEvent.Registered              -> clientRegistered.Set()
+          | ClientEvent.Update (AddCue _)       -> clientAppendDone.Set()
+          | ClientEvent.Update (AddPinGroup _)  -> clientAppendDone.Set()
+          | ClientEvent.Update (UpdateSlices _) -> updateDone.Set()
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
 
         do! client.Start()
 
-        do! waitFor "clientRegistered to be 1" clientRegistered 1
+        do! waitFor "clientRegistered" clientRegistered
 
         //  _____
         // |___ /
@@ -126,8 +126,8 @@ module EnsureCueResolver =
 
         client.AddPinGroup group
 
-        do! waitFor "appendDone to be 1" appendDone 1
-        do! waitFor "clientAppendDone to be 1" clientAppendDone 1
+        do! waitFor "appendDone" appendDone
+        do! waitFor "clientAppendDone" clientAppendDone
 
         let cue = {
           Id = Id.Create()
@@ -139,8 +139,8 @@ module EnsureCueResolver =
         |> CallCue
         |> service1.Append
 
-        do! waitFor "appendDone to be 2" appendDone 2
-        do! waitFor "updateDone to be 1" updateDone 1
+        do! waitFor "appendDone" appendDone
+        do! waitFor "updateDone" updateDone
 
         let actual: Slices =
           client.State.PinGroups

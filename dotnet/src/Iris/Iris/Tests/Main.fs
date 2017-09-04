@@ -73,6 +73,7 @@ let serialTests =
 
 let all =
   testList "all" [
+      syncTests
       parallelTests
       serialTests
     ]

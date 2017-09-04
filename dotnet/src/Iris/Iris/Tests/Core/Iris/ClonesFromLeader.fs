@@ -19,19 +19,19 @@ module ClonesFromLeader =
   let test =
     testCase "ensure iris server clones changes from leader" <| fun _ ->
       either {
-        let checkGitStarted = WaitCount.Create()
-        let electionDone = WaitCount.Create()
-        let appendDone = WaitCount.Create()
-        let pushDone = WaitCount.Create()
+        use checkGitStarted = new WaitEvent()
+        use electionDone = new WaitEvent()
+        use appendDone = new WaitEvent()
+        use pushDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 2
 
         let handler = function
-            | IrisEvent.GitPush _                      -> pushDone.Increment()
-            | IrisEvent.Started ServiceType.Git        -> checkGitStarted.Increment()
-            | IrisEvent.StateChanged(oldst, Leader)    -> electionDone.Increment()
-            | IrisEvent.Append(Origin.Raft, AddCue _)  -> appendDone.Increment()
-            | IrisEvent.Append(Origin.Raft, Command _) -> appendDone.Increment()
+            | IrisEvent.GitPush _                      -> pushDone.Set()
+            | IrisEvent.Started ServiceType.Git        -> checkGitStarted.Set()
+            | IrisEvent.StateChanged(oldst, Leader)    -> electionDone.Set()
+            | IrisEvent.Append(Origin.Raft, AddCue _)  -> appendDone.Set()
+            | IrisEvent.Append(Origin.Raft, Command _) -> appendDone.Set()
             | _ -> ()
 
         let! repo1 = Project.repository project
@@ -58,7 +58,7 @@ module ClonesFromLeader =
 
         do! service1.Start()
 
-        do! waitFor "checkGitStarted to be 1" checkGitStarted 1
+        do! waitFor "checkGitStarted" checkGitStarted
 
         //  ____
         // |___ \
@@ -87,8 +87,8 @@ module ClonesFromLeader =
 
         do! service2.Start()
 
-        do! waitFor "checkGitStarted to be 2" checkGitStarted 2
-        do! waitFor "electionDone to be 1" electionDone 1
+        do! waitFor "checkGitStarted" checkGitStarted
+        do! waitFor "electionDone" electionDone
 
         //  _____
         // |___ /
@@ -110,17 +110,17 @@ module ClonesFromLeader =
         |> AddCue
         |> leader.Append
 
-        do! waitFor "appendDone to be 1" appendDone 1
-        do! waitFor "appendDone to be 2" appendDone 2
+        do! waitFor "appendDone" appendDone
+        do! waitFor "appendDone" appendDone
 
         AppCommand.Save
         |> Command
         |> leader.Append
 
-        do! waitFor "appendDone to be 3" appendDone 3
-        do! waitFor "appendDone to be 4" appendDone 4
+        do! waitFor "appendDone" appendDone
+        do! waitFor "appendDone" appendDone
 
-        do! waitFor "pushDone to be 1" pushDone 1
+        do! waitFor "pushDone" pushDone
 
         dispose service1
         dispose service2

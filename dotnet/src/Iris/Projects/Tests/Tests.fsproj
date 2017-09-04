@@ -91,6 +91,9 @@
     <Compile Include="..\..\Iris\Tests\TestUtilities.fs">
       <Link>TestUtilities.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Synchronization.fs">
+      <Link>Synchronization.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\StateTests.fs">
       <Link>StateTests.fs</Link>
     </Compile>

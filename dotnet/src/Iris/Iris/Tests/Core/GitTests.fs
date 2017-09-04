@@ -98,7 +98,7 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
-        use started = new AutoResetEvent(false)
+        use started = new WaitEvent()
 
         let handleStarted = function
           | IrisEvent.Started _ -> started.Set() |> ignore
@@ -108,7 +108,7 @@ module GitTests =
         use gobs1 = gitserver1.Subscribe(handleStarted)
         do! gitserver1.Start()
 
-        do! waitOrDie "started" started
+        do! waitFor "started" started
 
         expect "Should be running" true Service.isRunning gitserver1.Status
 
@@ -125,7 +125,7 @@ module GitTests =
     testCase "Server availability" <| fun _ ->
       either {
         let port = 10002us
-        let started = new AutoResetEvent(false)
+        let started = new WaitEvent()
 
         let handleStarted = function
           | IrisEvent.Started _ -> started.Set() |> ignore
@@ -139,7 +139,7 @@ module GitTests =
 
         do! gitserver.Start()
 
-        do! waitOrDie "started" started
+        do! waitFor "started" started
 
         expect "Should be running" true Service.isRunning gitserver.Status
 

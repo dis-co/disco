@@ -4,6 +4,7 @@ open Expecto
 open System
 open System.IO
 open System.Threading
+open System.Collections.Concurrent
 open Iris.Raft
 open Iris.Core
 open SharpYaml.Serialization
@@ -11,12 +12,27 @@ open SharpYaml.Serialization
 [<AutoOpen>]
 module TestUtilities =
 
-  let waitOrDie (tag: string) (are: AutoResetEvent) =
-    let timeout = 30000.0
-    if are.WaitOne(TimeSpan.FromMilliseconds timeout) then
-      Either.succeed()
+  [<Literal>]
+  let IRIS_EVENT_TIMEOUT = 30000.0
+
+  type WaitEvent() =
+    let queue = new BlockingCollection<unit>()
+
+    member ev.Set() =
+      () |> queue.Add
+
+    member ev.WaitOne(tmo: TimeSpan) =
+      let mutable result = ()
+      queue.TryTake(&result, tmo)
+
+    interface IDisposable with
+      member self.Dispose() = queue.Dispose()
+
+  let waitFor (tag: string) (we: WaitEvent) =
+    if we.WaitOne(TimeSpan.FromMilliseconds IRIS_EVENT_TIMEOUT)
+    then Either.succeed()
     else
-      sprintf "Timout after %f waiting for %s" timeout tag
+      sprintf "Timout after %f waiting for %s" IRIS_EVENT_TIMEOUT tag
       |> Error.asOther "test"
       |> Either.fail
 
