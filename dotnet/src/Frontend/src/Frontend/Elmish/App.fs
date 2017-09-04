@@ -79,7 +79,7 @@ module Tabs =
 
 let view dispatch (model: Model) =
   div [Id "app"] [
-    Navbar.view dispatch model
+    com<Navbar.View,_,_> { Dispatch = dispatch; Model = model } []
     div [Id "app-content"] [
       div [Id "ui-layout-container"] [
         div [Class "ui-layout-west"] [

@@ -86,33 +86,49 @@ let dropdown dispatch (model: Model) =
     ]
   ]
 
-let view dispatch (model: Model) =
-  let version, buildNumber =
-    match model.state with
-    | Some state ->
-      try
-        let info = Iris.Web.Core.Client.ClientContext.Singleton.ServiceInfo
-        info.version, info.buildNumber
-      with ex ->
-        // printfn "Cannot read ServiceInfo from ClientContext"
-        "0.0.0", "123"
-    | None -> "0.0.0", "123"
-  div [] [
-    nav [Id "app-header"; Class "navbar "] [
-      div [Class "navbar-brand"] [
-        a [Class "navbar-item"; Href "http://nsynk.de"] [
-          img [Src "lib/img/nsynk.png"]
+type [<Pojo>] ViewProps =
+  { Dispatch: Msg->unit
+    Model: Model }
+
+type [<Pojo>] ViewState =
+  { IsMenuOpen: bool }
+
+type View(props) =
+  inherit React.Component<ViewProps, ViewState>(props)
+  do base.setInitState({ IsMenuOpen = false })
+  member this.render() =
+    let version, buildNumber =
+      match this.props.Model.state with
+      | Some state ->
+        try
+          let info = Iris.Web.Core.Client.ClientContext.Singleton.ServiceInfo
+          info.version, info.buildNumber
+        with ex ->
+          // printfn "Cannot read ServiceInfo from ClientContext"
+          "0.0.0", "123"
+      | None -> "0.0.0", "123"
+    div [] [
+      nav [Id "app-header"; Class "navbar"] [
+        div [Class "navbar-brand"] [
+          a [Class "navbar-item"; Href "http://nsynk.de"] [
+            img [Src "lib/img/nsynk.png"]
+          ]
+          div [
+            classList ["navbar-burger", true; "is-active", this.state.IsMenuOpen]
+            OnClick (fun _ -> this.setState({ IsMenuOpen = not this.state.IsMenuOpen }))
+          ] [
+            span [] []; span [] []; span [] []
+          ]
         ]
-      ]
-      div [Class "navbar-menu is-active"] [
-        div [Class "navbar-start"] [
-          dropdown dispatch model
-        ]
-        div [Class "navbar-end"] [
-          div [Class "navbar-item"] [
-            str(sprintf "Iris v%s - build %s" version buildNumber)
+        div [classList ["navbar-menu", true; "is-active", this.state.IsMenuOpen]] [
+          div [Class "navbar-start"] [
+            dropdown this.props.Dispatch this.props.Model
+          ]
+          div [Class "navbar-end"] [
+            div [Class "navbar-item"] [
+              str(sprintf "Iris v%s - build %s" version buildNumber)
+            ]
           ]
         ]
       ]
     ]
-  ]
