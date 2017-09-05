@@ -8,20 +8,7 @@ open Fable.PowerPack
 open Iris.Core
 open Helpers
 open Types
-
-type IProjectInfo =
-  abstract name: Name
-  abstract username: UserName
-  abstract password: Password
-
-let CreateProjectModal: React.ComponentClass<ModalProps<obj, string>> =
-  importDefault "../../js/modals/CreateProject"
-
-let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
-  importDefault "../../js/modals/LoadProject"
-
-let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
-  importDefault "../../js/modals/ProjectConfig"
+open State
 
 module Options =
   let [<Literal>] createProject = "Create Project"
@@ -38,20 +25,9 @@ let onClick dispatch id _ =
     makeModal dispatch Modals.CreateProject CreateProjectModal None
     |> Promise.iter Lib.createProject
   | Options.loadProject ->
-    promise {
-      let! info = makeModal dispatch Modals.LoadProject LoadProjectModal None
-      let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
-      match err with
-      | Some err ->
-        // Get project sites and machine config
-        let! sites = Lib.getProjectSites(info.name, info.username, info.password)
-        // Ask user to create or select a new config
-        let! site = makeModal dispatch Modals.ProjectConfig ProjectConfigModal (Some sites)
-        // Try loading the project again with the site config
-        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
-        err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
-      | None -> ()
-    } |> Promise.start
+    makeModal dispatch Modals.LoadProject LoadProjectModal None
+    |> Promise.bind (fun info -> State.loadProject dispatch info)
+    |> Promise.start
   | Options.saveProject ->
     start Lib.saveProject "Project has been saved"
   | Options.unloadProject ->

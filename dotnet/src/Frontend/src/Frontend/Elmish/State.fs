@@ -11,11 +11,46 @@ open Elmish
 open Types
 open Helpers
 
+let CreateProjectModal: React.ComponentClass<ModalProps<obj, string>> =
+  importDefault "../../js/modals/CreateProject"
+
+let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
+  importDefault "../../js/modals/LoadProject"
+
+let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
+  importDefault "../../js/modals/ProjectConfig"
+
+let NoProjectModal: React.ComponentClass<ModalProps<Name[], Name option>> =
+  importDefault "../../js/modals/NoProject"
+
+let loadProject dispatch (info: IProjectInfo) = promise {
+    let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
+    match err with
+    | Some err ->
+      // Get project sites and machine config
+      let! sites = Lib.getProjectSites(info.name, info.username, info.password)
+      // Ask user to create or select a new config
+      let! site = makeModal dispatch Modals.ProjectConfig ProjectConfigModal (Some sites)
+      // Try loading the project again with the site config
+      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
+      err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+    | None -> ()
+  }
+
 let private displayNoProjectModal dispatch =
-  let NoProjectModal: React.ComponentClass<ModalProps<obj, unit>> =
-    importDefault "../../js/modals/NoProject"
-  makeModal dispatch Modals.NoProject NoProjectModal None
-  |> Promise.iter (fun () -> ()) // TODO: Load New Project
+  promise {
+    #if DESIGN
+    let projects = [|name "foo"; name "bar"|]
+    #else
+    let! projects = Lib.listProjects()
+    #endif
+    let! project = makeModal dispatch Modals.NoProject NoProjectModal (Some projects)
+    match project with
+    | Some project -> failwith "TODO: Load project"
+    | None ->
+      makeModal dispatch Modals.CreateProject CreateProjectModal None
+      |> Promise.iter Lib.createProject
+  } |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
 /// the jQuery plugin ui-layout
@@ -147,7 +182,10 @@ let update msg model: Model*Cmd<Msg> =
     | None, _ ->
       { model with state = state }, [displayNoProjectModal]
   | UpdateModal modal ->
-    match modal with
-    | Some _ -> toggleUILayoutResizer false
-    | None -> toggleUILayoutResizer true
-    { model with modal = modal }, []
+    let cmd =
+      match modal, model.state with
+      // If no modal and no state, display no project modal
+      | None, None -> [displayNoProjectModal]
+      | None, Some _ -> toggleUILayoutResizer true; []
+      | Some _, _ -> toggleUILayoutResizer false; []
+    { model with modal = modal }, cmd

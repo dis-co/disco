@@ -27,6 +27,11 @@ module Modals =
     let [<Literal>] NoProject = "No Project"
     let [<Literal>] ProjectConfig = "Project Config"
 
+type IProjectInfo =
+  abstract name: Name
+  abstract username: UserName
+  abstract password: Password
+
 /// Interface that must be implemented by all widgets
 type IWidget =
   abstract Id: Guid
