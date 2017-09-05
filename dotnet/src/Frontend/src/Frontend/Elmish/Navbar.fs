@@ -35,18 +35,18 @@ let onClick dispatch id _ =
     f() |> Promise.iter (fun () -> printfn "%s" msg)
   match id with
   | Options.createProject ->
-    makeModal dispatch CreateProjectModal None
+    makeModal dispatch Modals.CreateProject CreateProjectModal None
     |> Promise.iter Lib.createProject
   | Options.loadProject ->
     promise {
-      let! info = makeModal dispatch LoadProjectModal None
+      let! info = makeModal dispatch Modals.LoadProject LoadProjectModal None
       let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
       match err with
       | Some err ->
         // Get project sites and machine config
         let! sites = Lib.getProjectSites(info.name, info.username, info.password)
         // Ask user to create or select a new config
-        let! site = makeModal dispatch ProjectConfigModal (Some sites)
+        let! site = makeModal dispatch Modals.ProjectConfig ProjectConfigModal (Some sites)
         // Try loading the project again with the site config
         let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
         err2 |> Option.iter (printfn "Error when loading site %s: %s" site)

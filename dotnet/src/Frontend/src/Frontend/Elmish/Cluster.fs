@@ -32,7 +32,7 @@ let titleBar dispatch (model: Model) =
   button [
     Class "iris-button"
     OnClick(fun _ ->
-      makeModal dispatch AddMemberModal None
+      makeModal dispatch Modals.AddMember AddMemberModal None
       |> Promise.iter Lib.addMember)
   ] [str "Add member"]
 

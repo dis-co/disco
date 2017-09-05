@@ -113,6 +113,9 @@ let update msg model =
     | UpdateUserConfig cfg ->
       { model with userConfig = cfg }
     | UpdateState state ->
+      // match state with
+      // | Some state ->
+      //   let modal =
       { model with state = state }
     | UpdateModal modal ->
       { model with modal = modal }

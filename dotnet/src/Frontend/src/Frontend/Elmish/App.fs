@@ -74,7 +74,7 @@ module Tabs =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (modalView dispatch) |> opt
+      model.modal |> Option.map (snd >> modalView dispatch) |> opt
     ]
 
 let view dispatch (model: Model) =

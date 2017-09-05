@@ -104,12 +104,12 @@ type ModalProps<'a,'b> =
   { data: 'a option
     onSubmit: 'b -> unit }
 
-let makeModal dispatch (com: React.ComponentClass<ModalProps<'a,'b>>) data =
+let makeModal dispatch name (com: React.ComponentClass<ModalProps<'a,'b>>) data =
   Fable.PowerPack.Promise.create (fun onSuccess _ ->
     let props =
       { data = data
         onSubmit = fun x -> UpdateModal None |> dispatch; onSuccess x }
-    from com props [] |> Some |> UpdateModal |> dispatch)
+    Some(name, from com props []) |> UpdateModal |> dispatch)
 
 module Promise =
   open Fable.PowerPack

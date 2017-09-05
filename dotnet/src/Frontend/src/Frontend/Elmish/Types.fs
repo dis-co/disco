@@ -19,6 +19,14 @@ module Widgets =
     let [<Literal>] Cluster = "Cluster"
     let [<Literal>] Test = "Test"
 
+/// Modal dialog names
+module Modals =
+    let [<Literal>] AddMember = "Add Member"
+    let [<Literal>] CreateProject = "Create Project"
+    let [<Literal>] LoadProject = "Load Project"
+    let [<Literal>] NoProject = "No Project"
+    let [<Literal>] ProjectConfig = "Project Config"
+
 /// Interface that must be implemented by all widgets
 type IWidget =
   abstract Id: Guid
@@ -55,13 +63,13 @@ and Msg =
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
-  | UpdateModal of React.ReactElement option
+  | UpdateModal of (string * React.ReactElement) option
 
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
     layout: Layout[]
-    modal: React.ReactElement option
+    modal: (string * React.ReactElement) option
     state: State option
     logs: LogEvent list
     userConfig: UserConfig
