@@ -11,6 +11,13 @@ open Elmish
 open Types
 open Helpers
 
+let NoProjectModal: React.ComponentClass<ModalProps<obj, unit>> =
+  importDefault "../../js/modals/NoProject"
+
+let private displayNoProjectModal dispatch =
+  makeModal dispatch Modals.NoProject NoProjectModal None
+  |> Promise.iter (fun () -> ()) // TODO: Load New Project
+
 [<PassGenerics>]
 let private loadFromLocalStorage<'T> (key: string) =
   let g = Fable.Import.Browser.window
@@ -61,7 +68,7 @@ let init() =
       logs = []
       #endif
       userConfig = UserConfig.Create() }
-  initModel, [startContext]
+  initModel, [displayNoProjectModal; startContext]
 
 let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
@@ -87,36 +94,39 @@ let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 /// Update function for Elmish state
-let update msg model =
-  let newModel =
-    match msg with
-    | AddWidget(id, widget) ->
-      let widgets = Map.add id widget model.widgets
-      let layout = Array.append model.layout [|widget.InitialLayout|]
-      saveWidgetsAndLayout widgets layout
-      { model with widgets = widgets; layout = layout }
-    | RemoveWidget id ->
-      let widgets = Map.remove id model.widgets
-      let layout = model.layout |> Array.filter (fun x -> x.i <> id)
-      saveWidgetsAndLayout widgets layout
-      { model with widgets = widgets; layout = layout }
-    // | AddTab -> // Add tab and remove widget
-    // | RemoveTab -> // Optional, add widget
-    | AddLog log ->
-      { model with logs = log::model.logs }
-    | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
-      addCue cueList cueGroupIndex cueIndex
-      model
-    | UpdateLayout layout ->
-      saveToLocalStorage StorageKeys.layout layout
-      { model with layout = layout }
-    | UpdateUserConfig cfg ->
-      { model with userConfig = cfg }
-    | UpdateState state ->
-      // match state with
-      // | Some state ->
-      //   let modal =
-      { model with state = state }
-    | UpdateModal modal ->
-      { model with modal = modal }
-  newModel, []
+let update msg model: Model*Cmd<Msg> =
+  match msg with
+  | AddWidget(id, widget) ->
+    let widgets = Map.add id widget model.widgets
+    let layout = Array.append model.layout [|widget.InitialLayout|]
+    saveWidgetsAndLayout widgets layout
+    { model with widgets = widgets; layout = layout }, []
+  | RemoveWidget id ->
+    let widgets = Map.remove id model.widgets
+    let layout = model.layout |> Array.filter (fun x -> x.i <> id)
+    saveWidgetsAndLayout widgets layout
+    { model with widgets = widgets; layout = layout }, []
+  // | AddTab -> // Add tab and remove widget
+  // | RemoveTab -> // Optional, add widget
+  | AddLog log ->
+    { model with logs = log::model.logs }, []
+  | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
+    addCue cueList cueGroupIndex cueIndex
+    model, []
+  | UpdateLayout layout ->
+    saveToLocalStorage StorageKeys.layout layout
+    { model with layout = layout }, []
+  | UpdateUserConfig cfg ->
+    { model with userConfig = cfg }, []
+  | UpdateState state ->
+    match state, model.modal with
+    // When project is loaded, hide NoProject modal if displayed
+    | Some _, Some(Modals.NoProject,_) ->
+      { model with state = state; modal = None }, []
+    | Some _, _
+    | None, Some(Modals.NoProject,_) ->
+      { model with state = state }, []
+    | None, _ ->
+      { model with state = state }, [displayNoProjectModal]
+  | UpdateModal modal ->
+    { model with modal = modal }, []
