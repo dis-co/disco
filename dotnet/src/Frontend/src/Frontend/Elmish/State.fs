@@ -11,12 +11,23 @@ open Elmish
 open Types
 open Helpers
 
-let NoProjectModal: React.ComponentClass<ModalProps<obj, unit>> =
-  importDefault "../../js/modals/NoProject"
-
 let private displayNoProjectModal dispatch =
+  let NoProjectModal: React.ComponentClass<ModalProps<obj, unit>> =
+    importDefault "../../js/modals/NoProject"
   makeModal dispatch Modals.NoProject NoProjectModal None
   |> Promise.iter (fun () -> ()) // TODO: Load New Project
+
+/// Unfortunately this is necessary to hide the resizer of
+/// the jQuery plugin ui-layout
+let private toggleUILayoutResizer (visible: bool) =
+  let setVisibility selector visibility =
+    let results = Browser.document.querySelectorAll(selector)
+    for i = 0 to (!!results.length - 1) do
+      results.[i]?style?visibility <- visibility
+  let visibility =
+    if visible then "visible" else "hidden"
+  setVisibility ".ui-layout-resizer" visibility
+  setVisibility ".ui-layout-toggler" visibility
 
 [<PassGenerics>]
 let private loadFromLocalStorage<'T> (key: string) =
@@ -28,6 +39,11 @@ let private loadFromLocalStorage<'T> (key: string) =
 let private saveToLocalStorage (key: string) (value: obj) =
   let g = Fable.Import.Browser.window
   g.localStorage.setItem(key, toJson value)
+
+let delay ms (f:'T->unit) =
+  fun x ->
+    Promise.sleep ms
+    |> Promise.iter (fun () -> f x)
 
 /// Initialization function for Elmish state
 let init() =
@@ -68,7 +84,9 @@ let init() =
       logs = []
       #endif
       userConfig = UserConfig.Create() }
-  initModel, [displayNoProjectModal; startContext]
+  // Delay the display of the modal dialog to let
+  // other plugins (like jQuery ui-layout) load
+  initModel, [startContext; delay 500 displayNoProjectModal]
 
 let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
@@ -129,4 +147,7 @@ let update msg model: Model*Cmd<Msg> =
     | None, _ ->
       { model with state = state }, [displayNoProjectModal]
   | UpdateModal modal ->
+    match modal with
+    | Some _ -> toggleUILayoutResizer false
+    | None -> toggleUILayoutResizer true
     { model with modal = modal }, []
