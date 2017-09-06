@@ -361,6 +361,9 @@ module ApiClient =
       agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
 
       { new IApiClient with
+          // **** Id
+
+          member self.Id with get () = client.Id
 
           // **** Start
 
@@ -373,6 +376,7 @@ module ApiClient =
               do agent.Start()
               do socket.Connect()
             }
+          // **** Restart
 
           member self.Restart(server: IrisServer) =
             server |> Msg.Restart |> agent.Post |> Either.succeed

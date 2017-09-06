@@ -36,7 +36,7 @@ module EnsureMappingResolver =
             (Id "My First Toggle")
             (name "My First Toggle")
             group.Id
-            Array.empty
+            group.Client
             [| false |]
           |> Pin.setPersisted true
 
@@ -45,7 +45,7 @@ module EnsureMappingResolver =
             (Id "My Second Toggle")
             (name "My Second Toggle")
             group.Id
-            Array.empty
+            group.Client
             [| false |]
           |> Pin.setPersisted true
 
@@ -82,7 +82,7 @@ module EnsureMappingResolver =
 
         expect "Should have the group"
           true
-          (Map.containsKey group.Id)
+          (PinGroupMap.containsGroup group.Client group.Id)
           service.State.PinGroups
 
         expect "Should have the mapping"
@@ -96,7 +96,7 @@ module EnsureMappingResolver =
         ///   | |  __/\__ \ |_
         ///   |_|\___||___/\__|
 
-        let slices = BoolSlices(source.Id, [| true |])
+        let slices = BoolSlices(source.Id, None, [| true |])
 
         [ slices ]
         |> UpdateSlices.ofList
@@ -107,12 +107,18 @@ module EnsureMappingResolver =
 
         expect "Sink should have true in first slice"
           (Slices.setId sink.Id slices)
-          (Map.find group.Id >> flip PinGroup.findPin sink.Id >> Pin.slices)
+          (PinGroupMap.tryFindGroup group.Client group.Id
+           >> Option.map (PinGroup.findPin sink.Id)
+           >> Option.get
+           >> Pin.slices)
           service.State.PinGroups
 
         expect "Source should have true in first slice"
           (Slices.setId source.Id slices)
-          (Map.find group.Id >> flip PinGroup.findPin source.Id >> Pin.slices)
+          (PinGroupMap.tryFindGroup group.Client group.Id
+           >> Option.map (PinGroup.findPin source.Id)
+           >> Option.get
+           >> Pin.slices)
           service.State.PinGroups
       }
       |> noError

@@ -86,7 +86,7 @@ module CorrectPinPersistance =
             (Id.Create())
             (name "My Toggle")
             group.Id
-            Array.empty
+            group.Client
             Array.empty
 
         group

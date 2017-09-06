@@ -102,23 +102,24 @@ module EnsureCueResolver =
         let groupId = Id.Create()
 
         let pin = BoolPin {
-          Id        = pinId
-          Name      = name "hi"
-          PinGroup  = groupId
-          Tags      = Array.empty
-          Direction = ConnectionDirection.Sink
-          IsTrigger = false
-          Persisted = false
-          Online    = true
-          VecSize   = VecSize.Dynamic
-          Labels    = Array.empty
-          Values    = [| true |]
+          Id               = pinId
+          Name             = name "hi"
+          PinGroup         = groupId
+          Client           = client.Id
+          Tags             = Array.empty
+          PinConfiguration = PinConfiguration.Sink
+          IsTrigger        = false
+          Persisted        = false
+          Online           = true
+          VecSize          = VecSize.Dynamic
+          Labels           = Array.empty
+          Values           = [| true |]
         }
 
         let group = {
           Id = groupId
           Name = name "whatevva"
-          Client = Id.Create()
+          Client = client.Id
           Path = None
           RefersTo = None
           Pins = Map.ofList [(pin.Id, pin)]
@@ -132,7 +133,7 @@ module EnsureCueResolver =
         let cue = {
           Id = Id.Create()
           Name = name "hi"
-          Slices = [| BoolSlices(pin.Id, [| false |]) |]
+          Slices = [| BoolSlices(pin.Id, None, [| false |]) |]
         }
 
         cue
@@ -144,9 +145,10 @@ module EnsureCueResolver =
 
         let actual: Slices =
           client.State.PinGroups
-          |> Map.find groupId
-          |> fun group -> Map.find pinId group.Pins
-          |> fun pin -> pin.Values
+          |> PinGroupMap.tryFindGroup client.Id groupId
+          |> Option.bind (PinGroup.tryFindPin pin.Id)
+          |> Option.get
+          |> fun (pin:Pin) -> pin.Slices
 
        expect "should be equal" cue.Slices.[0] id actual
       }

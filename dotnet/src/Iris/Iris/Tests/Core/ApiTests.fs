@@ -27,7 +27,7 @@ module ApiTests =
         Config    = Config.create machine  }
 
     { Project            = project
-      PinGroups          = Map.empty
+      PinGroups          = PinGroupMap.empty
       PinMappings        = Map.empty
       PinWidgets         = Map.empty
       Cues               = Map.empty

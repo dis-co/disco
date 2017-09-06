@@ -286,13 +286,15 @@ union SlicesTypeFB {
 }
 
 table SlicesFB {
-      Id: string;
+      Pin: string;
+      Client: string;
       Slices: SlicesTypeFB;
 }
 
-enum ConnectionDirectionFB:ushort {
+enum PinConfigurationFB:ushort {
       SinkFB = 0,
       SourceFB = 1,
+      PresetFB = 2,
 }
 
 enum VecSizeTypeFB:ushort {
@@ -312,89 +314,95 @@ table VecSizeFB {
 // |_|   |_|_| |_|
 
 table StringPinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      VecSize    : VecSizeFB;
-      Behavior   : BehaviorFB;
-      MaxChars   : int;
-      Labels     : [string];
-      Values     : [string];
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      Persisted:        bool;
+      Online:           bool;
+      PinConfiguration: PinConfigurationFB;
+      VecSize:          VecSizeFB;
+      Behavior:         BehaviorFB;
+      MaxChars:         int;
+      Labels:           [string];
+      Values:           [string];
 }
 
 table NumberPinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      Min        : int;
-      Max        : int;
-      Unit       : string;
-      Precision  : uint;
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      VecSize    : VecSizeFB;
-      Labels     : [string];
-      Values     : [double];
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      Unit:             string;
+      Precision:        uint;
+      Persisted:        bool;
+      Online:           bool;
+      PinConfiguration: PinConfigurationFB;
+      VecSize:          VecSizeFB;
+      Min:              int;
+      Max:              int;
+      Labels:           [string];
+      Values:           [double];
 }
 
 table BoolPinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      IsTrigger  : bool;
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      VecSize    : VecSizeFB;
-      Labels     : [string];
-      Values     : [bool];
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      IsTrigger:        bool;
+      Persisted:        bool;
+      Online:           bool;
+      PinConfiguration: PinConfigurationFB;
+      VecSize:          VecSizeFB;
+      Labels:           [string];
+      Values:           [bool];
 }
 
 table BytePinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      VecSize    : VecSizeFB;
-      Labels     : [string];
-      Values     : [string];
+      Id:          string;
+      Name:        string;
+      PinGroup:    string;
+      Client:      string;
+      Tags:        [string];
+      Persisted:   bool;
+      Online:      bool;
+      PinConfiguration: PinConfigurationFB;
+      VecSize:     VecSizeFB;
+      Labels:      [string];
+      Values:      [string];
 }
 
 table EnumPinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      Properties : [KeyValueFB];
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      VecSize    : VecSizeFB;
-      Labels     : [string];
-      Values     : [KeyValueFB];
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      Properties:       [KeyValueFB];
+      Persisted:        bool;
+      Online:           bool;
+      PinConfiguration: PinConfigurationFB;
+      VecSize:          VecSizeFB;
+      Labels:           [string];
+      Values:           [KeyValueFB];
 }
 
 table ColorPinFB {
-      Id         : string;
-      Name       : string;
-      PinGroup   : string;
-      Tags       : [string];
-      VecSize    : VecSizeFB;
-      Persisted  : bool;
-      Online     : bool;
-      Direction  : ConnectionDirectionFB;
-      Labels     : [string];
-      Values     : [ColorSpaceFB];
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      VecSize:          VecSizeFB;
+      Persisted:        bool;
+      Online:           bool;
+      PinConfiguration: PinConfigurationFB;
+      Labels:           [string];
+      Values:           [ColorSpaceFB];
 }
 
 union PinTypeFB {
@@ -758,7 +766,7 @@ table PinWidgetFB {
 
 table StateFB {
       Project:            ProjectFB;
-      PinGroups:          [PinGroupFB];
+      PinGroups:          PinGroupMapFB;
       PinMappings:        [PinMappingFB];
       PinWidgets:         [PinWidgetFB];
       Cues:               [CueFB];
@@ -781,6 +789,7 @@ union StateMachinePayloadFB {
       CueListFB,
       PinFB,
       PinGroupFB,
+      PinGroupMapFB,
       IrisClientFB,
       RaftMemberFB,
       UserFB,

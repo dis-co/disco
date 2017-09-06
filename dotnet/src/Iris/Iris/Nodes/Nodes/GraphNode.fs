@@ -28,14 +28,14 @@ module Graph =
 
   [<RequireQualifiedAccess>]
   type Msg =
-    | PinAdded           of pin:IPin2 * parsed:Pin
-    | PinRemoved         of group:Id * pin:Id
-    | PinValueChange     of group:Id * slices:Slices
-    | PinSubTypeChange   of string       // node id
-    | PinVecSizeChange   of group:Id * pin:Id * VecSize
-    | PinNameChange      of group:Id * pin:Id * Name
-    | PinTagChange       of group:Id * pin:Id * Tag array
-    | PinDirectionChange of group:Id * pin:Id * ConnectionDirection
+    | PinAdded               of pin:IPin2 * parsed:Pin
+    | PinRemoved             of group:Id * pin:Id
+    | PinValueChange         of group:Id * slices:Slices
+    | PinSubTypeChange       of string       // node id
+    | PinVecSizeChange       of group:Id * pin:Id * VecSize
+    | PinNameChange          of group:Id * pin:Id * Name
+    | PinTagChange           of group:Id * pin:Id * Tag array
+    | PinConfigurationChange of group:Id * pin:Id * PinConfiguration
 
   // ** PluginState
 
@@ -278,10 +278,9 @@ module Graph =
   // ** parseDirection
 
   let private parseDirection (pin: IPin2) =
-    if pin.IsConnected() then
-      ConnectionDirection.Source
-    else
-      ConnectionDirection.Sink
+    if pin.IsConnected()
+    then PinConfiguration.Source
+    else PinConfiguration.Sink
 
   // ** parseVecSize
 

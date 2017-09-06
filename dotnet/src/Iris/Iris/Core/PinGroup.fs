@@ -415,6 +415,11 @@ type PinGroup =
 
 module PinGroup =
 
+  // ** isEmpty
+
+  let isEmpty (group: PinGroup) =
+    group.Pins.IsEmpty
+
   // ** create
 
   let create (groupName: Name) =
@@ -424,6 +429,11 @@ module PinGroup =
       RefersTo = None
       Path = None
       Pins = Map.empty }
+
+  // ** contains
+
+  let contains (pin: PinId) (group: PinGroup) =
+    Map.containsKey pin group.Pins
 
   // ** persisted
 
@@ -468,45 +478,40 @@ module PinGroup =
     let path = (string group.Client) <.> fn
     filepath PINGROUP_DIR </> path
 
-  // ** hasPin
-
-  let hasPin (group : PinGroup) (id: Id) : bool =
-    Map.containsKey id group.Pins
-
   // ** findPin
 
-  let findPin (group: PinGroup) (id: Id) =
+  let findPin (id: Id) (group: PinGroup) =
     Map.find id group.Pins
 
   // ** tryFindPin
 
-  let tryFindPin (group: PinGroup) (id: Id) =
+  let tryFindPin (id: Id) (group: PinGroup) =
     Map.tryFind id group.Pins
 
   // ** addPin
 
-  let addPin (group : PinGroup) (pin : Pin) : PinGroup =
-    if hasPin group pin.Id
+  let addPin (pin : Pin) (group : PinGroup) : PinGroup =
+    if contains pin.Id group
     then   group
     else { group with Pins = Map.add pin.Id pin group.Pins }
 
   // ** updatePin
 
-  let updatePin (group : PinGroup) (pin : Pin) : PinGroup =
-    if hasPin group pin.Id
+  let updatePin (pin : Pin) (group : PinGroup) : PinGroup =
+    if contains pin.Id group
     then { group with Pins = Map.add pin.Id pin group.Pins }
     else   group
 
   // ** updateSlices
 
-  let updateSlices (group : PinGroup) (slices: Slices) : PinGroup =
-    match Map.tryFind slices.Id group.Pins with
+  let updateSlices (slices: Slices) (group : PinGroup) : PinGroup =
+    match Map.tryFind slices.PinId group.Pins with
     | Some pin -> { group with Pins = Map.add pin.Id (Pin.setSlices slices pin) group.Pins }
     | None -> group
 
   // ** processSlices
 
-  let processSlices (group: PinGroup) (slices: Map<Id,Slices>) : PinGroup =
+  let processSlices (slices: Map<Id,Slices>) (group: PinGroup) : PinGroup =
     let mapper _ (pin: Pin) =
       match Map.tryFind pin.Id slices with
       | Some slices -> Pin.setSlices slices pin
@@ -521,7 +526,7 @@ module PinGroup =
   // | | |  __/ | | | | | (_) \ V /  __/  __/| | | | |
   // |_|  \___|_| |_| |_|\___/ \_/ \___|_|   |_|_| |_|
 
-  let removePin (group : PinGroup) (pin : Pin) : PinGroup =
+  let removePin (pin : Pin) (group : PinGroup) : PinGroup =
     { group with Pins = Map.remove pin.Id group.Pins }
 
   // ** setPinsOffline
@@ -532,12 +537,13 @@ module PinGroup =
   // ** ofPlayer
 
   let ofPlayer (player: CuePlayer) =
-    let call = Pin.Player.call player.Id
-    let next = Pin.Player.next player.Id
-    let prev = Pin.Player.previous player.Id
+    let client = Id Constants.CUEPLAYER_GROUP_DIR
+    let call = Pin.Player.call     player.Id client
+    let next = Pin.Player.next     player.Id client
+    let prev = Pin.Player.previous player.Id client
     { Id = player.Id
       Name = name (unwrap player.Name + " (Cue Player)")
-      Client = Id Constants.CUEPLAYER_GROUP_DIR
+      Client = client
       Path = None
       RefersTo = Some (ReferencedValue.Player player.Id)
       Pins = Map.ofList
@@ -555,16 +561,6 @@ module PinGroup =
       Path = None
       Pins = Map.empty }
 
-  // ** sinks
-
-  let sinks (group: PinGroup) =
-    Map.filter (fun _ pin -> Pin.isSink pin) group.Pins
-
-  // ** sources
-
-  let sources (group: PinGroup) =
-    Map.filter (fun _ pin -> Pin.isSource pin) group.Pins
-
   // ** isPlayer
 
   let isPlayer (group: PinGroup) =
@@ -579,14 +575,80 @@ module PinGroup =
     | Some (ReferencedValue.Widget _) -> true
     | _ -> false
 
+  // ** filter
+
+  let filter (pred: Pin -> bool) (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ pin -> pred pin)
+    |> flip updatePins group
+
+  // ** hasPresetPins
+
+  let hasPresetPins (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ (pin: Pin) -> Pin.isPreset pin)
+    |> Map.isEmpty
+    |> not
+
+  // ** hasUnifiedPins
+
+  let hasUnifiedPins (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ (pin: Pin) -> Pin.isPreset pin |> not)
+    |> Map.isEmpty
+    |> not
+
+  // ** updatePins
+
+  let updatePins pins (group: PinGroup) =
+    { group with Pins = pins }
+
+  // ** unifiedPins
+
+  let unifiedPins (group: PinGroup) =
+    filter (Pin.isPreset >> not) group
+
+  // ** presetPins
+
+  let presetPins (group: PinGroup) =
+    filter Pin.isPreset group
+
+  // ** sinks
+
+  let sinks (group: PinGroup) =
+    filter Pin.isSink group
+
+  // ** sources
+
+  let sources (group: PinGroup) =
+    filter Pin.isSource group
+
 // * PinGroupMap
 
 type GroupMap = Map<PinGroupId, PinGroup>
 
 type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
   with
+    // ** Count
+
+    member map.Count with get () = PinGroupMap.count map
+
+    // ** ContainsGroup
+
+    member map.ContainsGroup (client: ClientId) (group: PinGroupId) =
+      PinGroupMap.containsGroup client group map
+
+    // ** Item
+
+    member map.Item (client, group) =
+      PinGroupMap.findGroup client group map
+
+    // ** Groups
+
     member map.Groups
       with get () = match map with PinGroupMap groups -> groups
+
+    // ** ToOffset
 
     member map.ToOffset(builder: FlatBufferBuilder) =
       let vector =
@@ -598,6 +660,8 @@ type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
       PinGroupMapFB.StartPinGroupMapFB(builder)
       PinGroupMapFB.AddGroups(builder, vector)
       PinGroupMapFB.EndPinGroupMapFB(builder)
+
+    // ** FromFB
 
     static member FromFB(fb: PinGroupMapFB) =
       [ 0 .. fb.GroupsLength - 1 ]
@@ -637,6 +701,30 @@ type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
       |> PinGroupMapFB.GetRootAsPinGroupMapFB
       |> PinGroupMap.FromFB
 
+    // ** Load
+
+    #if !FABLE_COMPILER
+
+    static member Load(path: FilePath) : Either<IrisError, PinGroupMap> =
+      either {
+        let! groups = Asset.loadAll path
+        return PinGroupMap.ofArray groups
+      }
+
+    // ** Save
+
+    member map.Save (basePath: FilePath) =
+      Map.fold
+        (fun (m: Either<IrisError,unit>) _ groups ->
+          either {
+            let! _ = m
+            return! Map.fold (Asset.saveMap basePath) Either.nothing groups
+          })
+        Either.nothing
+        map.Groups
+
+    #endif
+
 // * PinGroupMap module
 
 module PinGroupMap =
@@ -645,19 +733,22 @@ module PinGroupMap =
 
   let empty = PinGroupMap Map.empty
 
+  // ** groups
+
+  let groups (map: PinGroupMap) = map.Groups
+
   // ** add
 
-  let add (map: PinGroupMap) (group: PinGroup) =
+  let add (group: PinGroup) (map: PinGroupMap) =
     let current = map.Groups
     match Map.tryFind group.Client current with
     | Some groups ->
-      groups
-      |> Map.add group.Id group
-      |> fun m -> Map.add group.Client m current
+      let groups = Map.add group.Id group groups
+      Map.add group.Client groups current
       |> PinGroupMap
     | None ->
       Map.ofList [(group.Id,group)]
-      |> fun m -> Map.add group.Client m current
+      |> fun groups -> Map.add group.Client groups current
       |> PinGroupMap
 
   // ** update
@@ -666,15 +757,179 @@ module PinGroupMap =
 
   // ** remove
 
-  let remove (map: PinGroupMap) (group: PinGroup) =
+  let remove (group: PinGroup) (map: PinGroupMap) =
     let current = map.Groups
     match Map.tryFind group.Client current with
-    | Some groups ->
-      groups
-      |> Map.remove group.Id
-      |> fun m -> Map.add group.Client m current
-      |> PinGroupMap
     | None -> map
+    | Some groups ->
+      let groups = Map.remove group.Id groups
+      if groups.IsEmpty then
+        Map.remove group.Client current
+        |> PinGroupMap
+      else
+        Map.add group.Client groups current
+        |> PinGroupMap
+
+  // ** containsGroup
+
+  let containsGroup (client: ClientId) (group: PinGroupId) (map: PinGroupMap)  =
+    match Map.tryFind client map.Groups with
+    | Some groups -> Map.containsKey group groups
+    | None -> false
+
+  // ** containsPin
+
+  let containsPin (client: ClientId) (group: PinGroupId) (pin: PinId) (map: PinGroupMap) =
+    match Map.tryFind client map.Groups with
+    | None -> false
+    | Some groups -> Map.tryFind group groups |> function
+      | Some group -> PinGroup.contains pin group
+      | None -> false
+
+  // ** modifyGroup
+
+  let modifyGroup (f: PinGroup -> PinGroup) (client: ClientId) (group: PinGroupId) map =
+    match map |> groups |> Map.tryFind client with
+    | Some groups -> Map.tryFind group groups |> function
+      | Some group ->
+        let group = f group
+        if PinGroup.isEmpty group
+        then remove group map
+        else update group map
+      | None -> map
+    | None -> map
+
+  // ** addPin
+
+  let addPin (pin: Pin) (map: PinGroupMap) =
+    modifyGroup (PinGroup.addPin pin) pin.Client pin.PinGroup map
+
+  // ** updatePin
+
+  let updatePin (pin: Pin) (map: PinGroupMap) =
+    modifyGroup (PinGroup.updatePin pin) pin.Client pin.PinGroup map
+
+  // ** removePin
+
+  let removePin (pin: Pin) (map: PinGroupMap) =
+    modifyGroup (PinGroup.removePin pin) pin.Client pin.PinGroup map
+
+  // ** fold
+
+  let fold (f: 'a -> ClientId -> GroupMap -> 'a) (state: 'a) (map: PinGroupMap) =
+    Map.fold f state map.Groups
+
+  // ** foldGroups
+
+  let foldGroups (f: 'a -> PinGroupId -> PinGroup -> 'a) (state: 'a) (map: PinGroupMap) =
+    fold (fun s _ groups -> Map.fold f s groups) state map
+
+  // ** map
+
+  let map (f: ClientId -> GroupMap -> GroupMap) (map: PinGroupMap) =
+    map.Groups |> Map.map f |> PinGroupMap
+
+  // ** mapGroups
+
+  let mapGroups (f: PinGroup -> PinGroup) (pgm: PinGroupMap) =
+    map (fun _ groups -> Map.map (fun _ group -> f group) groups) pgm
+
+  // ** count
+
+  let count (map: PinGroupMap) =
+    foldGroups (fun count _ _ -> count + 1) 0 map
+
+  // ** updateSlices
+
+  let updateSlices (slices: Map<Id,Slices>) (map: PinGroupMap) =
+    mapGroups (PinGroup.processSlices slices) map
+
+  // ** findPin
+
+  let findPin (id: PinId) (map: PinGroupMap) : Map<ClientId,Pin> =
+    foldGroups
+      (fun out _ group ->
+        group
+        |> PinGroup.tryFindPin id
+        |> Option.map (fun pin -> Map.add pin.Client pin out)
+        |> Option.defaultValue out)
+      Map.empty
+      map
+
+  // ** tryFindGroup
+
+  let tryFindGroup (cid: ClientId) (pid: PinGroupId) (map: PinGroupMap) =
+    foldGroups
+      (fun out gid (group: PinGroup) ->
+        if gid = pid && cid = group.Client
+        then Some group
+        else out)
+      None
+      map
+
+  // ** findGroup
+
+  let findGroup (client: ClientId) (group: PinGroupId) (map: PinGroupMap) =
+    Map.find client map.Groups |> Map.find group
+
+  // ** findGroupBy
+
+  let findGroupBy (pred: PinGroup -> bool) (map: PinGroupMap) : Map<ClientId,PinGroup> =
+    foldGroups
+      (fun out _ group ->
+        if pred group
+        then Map.add group.Client group out
+        else out)
+      Map.empty
+      map
+
+  // ** byGroup
+
+  let byGroup (map: PinGroupMap) =
+    foldGroups
+      (fun out gid group -> Map.add gid group out)
+      Map.empty
+      map
+
+  // ** ofSeq
+
+  let ofSeq (groups: PinGroup seq) =
+    Seq.fold (flip add) empty groups
+
+  // ** ofList
+
+  let ofList (groups: PinGroup list) =
+    ofSeq groups
+
+  // ** ofArray
+
+  let ofArray (groups: PinGroup array) =
+    ofSeq groups
+
+  // ** filter
+
+  let filter (pred: PinGroup -> bool) (map: PinGroupMap) =
+    foldGroups
+      (fun out gid group ->
+        if pred group
+        then add group out
+        else out)
+      PinGroupMap.empty
+      map
+
+  // ** unifiedPins
+
+  let unifiedPins (map: PinGroupMap) =
+    map
+    |> filter PinGroup.hasUnifiedPins
+    |> mapGroups PinGroup.unifiedPins
+
+  // ** presetPins
+
+  let presetPins (map: PinGroupMap) =
+    map
+    |> filter PinGroup.hasPresetPins
+    |> mapGroups PinGroup.presetPins
 
 // * Map module
 
@@ -706,5 +961,5 @@ module Map =
 
   let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
     let folder m _ group =
-      if m then m else PinGroup.hasPin group id || m
+      if m then m else PinGroup.contains id group || m
     Map.fold folder false groups
