@@ -487,7 +487,6 @@ type BoolPinFB =
   abstract IsTrigger: bool
   abstract VecSize: VecSizeFB
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract PinConfiguration: PinConfigurationFB
   abstract Tags: int -> string
@@ -506,7 +505,6 @@ type BoolPinFBConstructor =
   abstract AddClient: builder: FlatBufferBuilder * client: Offset<string> -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddIsTrigger: builder: FlatBufferBuilder * trigger: bool -> unit
   abstract AddPinConfiguration: builder: FlatBufferBuilder * PinConfigurationFB -> unit
@@ -538,7 +536,6 @@ type NumberPinFB =
   abstract Unit: string
   abstract Precision: uint32
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract VecSize: VecSizeFB
   abstract PinConfiguration: PinConfigurationFB
@@ -561,7 +558,6 @@ type NumberPinFBConstructor =
   abstract AddMax: builder: FlatBufferBuilder * max: int -> unit
   abstract AddUnit: builder: FlatBufferBuilder * unit: Offset<string> -> unit
   abstract AddPrecision: builder: FlatBufferBuilder * precision: uint32 -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * preset: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
@@ -593,7 +589,6 @@ type BytePinFB =
   abstract VecSize: VecSizeFB
   abstract PinConfiguration: PinConfigurationFB
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract TagsLength: int
   abstract Tags: int -> string
@@ -610,7 +605,6 @@ type BytePinFBConstructor =
   abstract AddPinGroup: builder: FlatBufferBuilder * group: Offset<string> -> unit
   abstract AddClient: builder: FlatBufferBuilder * client: Offset<string> -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * preset: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddPinConfiguration: builder: FlatBufferBuilder * PinConfigurationFB -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
@@ -641,7 +635,6 @@ type EnumPinFB =
   abstract PinConfiguration: PinConfigurationFB
   abstract Tags: int -> string
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract TagsLength: int
   abstract Properties: int -> KeyValueFB
@@ -661,7 +654,6 @@ type EnumPinFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddPinConfiguration: builder: FlatBufferBuilder * PinConfigurationFB -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddProperties: builder: FlatBufferBuilder * properties: Offset<'a> -> unit
@@ -693,7 +685,6 @@ type ColorPinFB =
   abstract TagsLength: int
   abstract Tags: int -> string
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract Labels: int -> string
   abstract LabelsLength: int
@@ -710,7 +701,6 @@ type ColorPinFBConstructor =
   abstract AddTags: builder: FlatBufferBuilder * tags: Offset<'a> -> unit
   abstract AddPinConfiguration: builder: FlatBufferBuilder * PinConfigurationFB -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * preset: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddVecSize: builder: FlatBufferBuilder * Offset<'a> -> unit
   abstract AddLabels: builder: FlatBufferBuilder * values: Offset<'a> -> unit
@@ -741,7 +731,6 @@ type StringPinFB =
   abstract PinConfiguration: PinConfigurationFB
   abstract MaxChars: int
   abstract Persisted: bool
-  abstract Preset: bool
   abstract Online: bool
   abstract Tags: int -> string
   abstract TagsLength: int
@@ -756,7 +745,6 @@ type StringPinFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddPersisted: builder: FlatBufferBuilder * persisted: bool -> unit
-  abstract AddPreset: builder: FlatBufferBuilder * persisted: bool -> unit
   abstract AddOnline: builder: FlatBufferBuilder * online: bool -> unit
   abstract AddPinGroup: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddClient: builder: FlatBufferBuilder * name: Offset<string> -> unit
