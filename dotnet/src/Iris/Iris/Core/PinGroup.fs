@@ -824,6 +824,16 @@ module PinGroupMap =
   let foldGroups (f: 'a -> PinGroupId -> PinGroup -> 'a) (state: 'a) (map: PinGroupMap) =
     fold (fun s _ groups -> Map.fold f s groups) state map
 
+  // ** iter
+
+  let iter (f: ClientId -> GroupMap -> unit) (map: PinGroupMap) =
+    Map.iter f map.Groups
+
+  // ** iterGroups
+
+  let iterGroups (f: PinGroup -> unit) (map: PinGroupMap) =
+    iter (fun _ map -> Map.iter (fun _ group -> f group) map) map
+
   // ** map
 
   let map (f: ClientId -> GroupMap -> GroupMap) (map: PinGroupMap) =
