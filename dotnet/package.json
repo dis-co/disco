@@ -3,7 +3,7 @@
   "scripts": {
     "start": "cd src/Frontend/src/Frontend && dotnet fable webpack-dev-server -- --config ../../webpack.config.js\" \"cd src/Frontend/src/Worker && dotnet fable webpack --port free -- -w",
     "build": "cd src/Frontend/src/Frontend && dotnet fable webpack -- --config ../../webpack.config.js -p",
-    "build-tests": "cd src/Frontend/src/Tests.Frontend && dotnet fable webpack --config ../../webpack.config.tests.js",
+    "build-tests": "cd src/Frontend/src/Tests.Frontend && dotnet fable webpack -- --config ../../webpack.config.tests.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "lessc": "lessc"
   },
