@@ -21,14 +21,17 @@ let findPinByName(model: Model, name: string) =
     let i = name.LastIndexOf("/")
     let groupName = name.[0..(i-1)]
     let pinName = name.[(i+1)..]
-    state.PinGroups |> Map.tryPick (fun _ g ->
+    state.PinGroups
+    |> PinGroupMap.unifiedPins
+    |> PinGroupMap.byGroup
+    |> Map.tryPick (fun _ g ->
       if unwrap g.Name = groupName then Some g else None)
     |> Option.bind (fun group ->
       group.Pins |> Map.tryPick (fun _ p ->
         if unwrap p.Name = pinName then Some p else None)))
 
 let getPinValueAt(pin: Pin, idx: int): obj =
-    let slice = pin.Values.At(index idx)
+    let slice = pin.Slices.At(index idx)
     slice.Value
 
 let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement =

@@ -30,21 +30,22 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
     let newArray = Array.copy ar
     newArray.[i] <- unbox v
     newArray
+  let client = if Pin.isPreset pin then Some pin.Client else None
   match pin with
   | StringPin pin ->
-    StringSlices(pin.Id, updateArray index value pin.Values)
+    StringSlices(pin.Id, client, updateArray index value pin.Values)
   | NumberPin pin ->
     let value =
       match value with
       | :? string as v -> box(double v)
       | v -> v
-    NumberSlices(pin.Id, updateArray index value pin.Values)
+    NumberSlices(pin.Id, client, updateArray index value pin.Values)
   | BoolPin pin ->
     let value =
       match value with
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
-    BoolSlices(pin.Id, updateArray index value pin.Values)
+    BoolSlices(pin.Id, client, updateArray index value pin.Values)
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
   | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
@@ -77,7 +78,7 @@ type PinView(props) =
   member this.ValueAt(i) =
     match this.props.slices with
     | Some slices -> slices.[index i].Value
-    | None -> this.props.pin.Values.[index i].Value
+    | None -> this.props.pin.Slices.[index i].Value
 
   member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater) =
     let name =
@@ -140,7 +141,7 @@ type PinView(props) =
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
-      | None -> this.props.pin.Values.Length
+      | None -> this.props.pin.Slices.Length
     div [ClassName "iris-pin"] [
       table [] [this.RenderRows(rowCount, this.props.useRightClick, updater)]
     ]

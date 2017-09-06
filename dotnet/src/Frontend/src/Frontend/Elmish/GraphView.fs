@@ -18,7 +18,10 @@ open Types
 let body dispatch (model: Model) =
   let pinGroups =
     match model.state with
-    | Some state -> state.PinGroups
+    | Some state ->
+      state.PinGroups
+      |> PinGroupMap.unifiedPins
+      |> PinGroupMap.byGroup
     | None -> Map.empty
   ul [Class "iris-graphview"] (
     pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
