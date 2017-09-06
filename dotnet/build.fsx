@@ -543,15 +543,15 @@ Target "BuildFrontendFast" (fun () ->
 
 Target "BuildWebTests" (fun _ ->
   installDotnetSdk ()
-  runNpmNoErrors  "install" __SOURCE_DIRECTORY__ ()
   runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runExec dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
+  runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
 )
 
 Target "BuildWebTestsFast" (fun _ ->
   // runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runExec dotnetExePath "fable npm-build-test" (frontendDir @@ "src" @@ "Tests.Frontend") false
+  runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
 )
 
 let runWebTests = (fun _ ->
