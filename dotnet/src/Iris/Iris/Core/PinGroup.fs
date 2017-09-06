@@ -703,7 +703,7 @@ type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
 
     // ** Load
 
-    #if !FABLE_COMPILER
+    #if !FABLE_COMPILER && !IRIS_NODES
 
     static member Load(path: FilePath) : Either<IrisError, PinGroupMap> =
       either {
@@ -906,11 +906,29 @@ module PinGroupMap =
   let ofArray (groups: PinGroup array) =
     ofSeq groups
 
+  // ** toList
+
+  let toList (map: PinGroupMap) =
+    foldGroups
+      (fun groups _ group -> group :: groups)
+      List.empty
+      map
+
+  // ** toSeq
+
+  let toSeq (map: PinGroupMap) =
+    map |> toList |> Seq.ofList
+
+  // ** toArray
+
+  let toArray (map: PinGroupMap) =
+    map |> toList |> Array.ofList
+
   // ** filter
 
   let filter (pred: PinGroup -> bool) (map: PinGroupMap) =
     foldGroups
-      (fun out gid group ->
+      (fun out _ group ->
         if pred group
         then add group out
         else out)

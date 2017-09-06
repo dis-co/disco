@@ -177,27 +177,26 @@ module Api =
   // ** mergeGraphState
 
   let private mergeGraphState (plugstate: PluginState) =
+    let remote = plugstate.ApiClient.State.PinGroups
+
     let local =
       Seq.fold
-        (fun m (grp: PinGroup) ->
-          if not (Util.isNullReference grp) then
-            Map.add grp.Id grp m
+        (fun m (group: PinGroup) ->
+          if not (Util.isNullReference group) then
+            PinGroupMap.add group m
           else m)
-        Map.empty
+        PinGroupMap.empty
         plugstate.InPinGroups
 
-    if local <> plugstate.ApiClient.State.PinGroups then
+    if local <> remote then
       let commands: StateMachine list =
-        Map.fold
-          (fun lst (id: Id) (lgrp: PinGroup) ->
-            match Map.tryFind id plugstate.ApiClient.State.PinGroups with
-            | Some grp ->
-              if lgrp <> grp then
-                (UpdatePinGroup lgrp) :: lst
-              else
-                lst
-            | None -> (AddPinGroup lgrp) :: lst)
-          []
+        PinGroupMap.foldGroups
+          (fun commands _ (local: PinGroup) ->
+            match PinGroupMap.tryFindGroup local.Client local.Id remote with
+            | Some remote when local <> remote -> UpdatePinGroup local :: commands
+            | Some _ -> commands
+            | None -> AddPinGroup local :: commands)
+          List.empty
           local
       for cmd in commands do
         Logger.err "mergeGraphState" (sprintf "cmd: %A" cmd)

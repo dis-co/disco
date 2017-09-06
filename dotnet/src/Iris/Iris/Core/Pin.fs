@@ -1464,7 +1464,7 @@ module Pin =
   // ** emtpyLabels
 
   let private emptyLabels (count: int) =
-    [| for n in 1 .. count -> "" |]
+    [| for _ in 1 .. count -> "" |]
 
   // ** defaultTags
 

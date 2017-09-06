@@ -275,9 +275,9 @@ module Graph =
     let id = pin.ParentNode.Parent.GetNodePath(false)
     Id id
 
-  // ** parseDirection
+  // ** parseConfiguration
 
-  let private parseDirection (pin: IPin2) =
+  let private parseConfiguration (pin: IPin2) =
     if pin.IsConnected()
     then PinConfiguration.Source
     else PinConfiguration.Sink
@@ -478,45 +478,15 @@ module Graph =
       if not (isNull pin) then Some pin else None
     else None
 
-  // ** parsePinValues
-
-  let private parsePinValues (pin: IPin2) =
-    either {
-      let node = pin.ParentNode
-      let id = parseNodePath pin
-      let! bt = IOBoxType.TryParse (node.NodeInfo.ToString())
-      match bt with
-      | IOBoxType.Value ->
-        let! vt =  parseValueType pin
-        match vt with
-        | ValueType.Boolean ->
-          return BoolSlices(id, parseBoolValues pin)
-        | ValueType.Integer | ValueType.Real ->
-          return NumberSlices(id, parseDoubleValues pin)
-      | IOBoxType.String ->
-        return StringSlices(id, parseStringValues pin)
-      | IOBoxType.Color ->
-        return ColorSlices(id, parseColorValues pin)
-      | IOBoxType.Enum ->
-        let props = parseEnumProperties pin
-        return EnumSlices(id, parseEnumValues props pin)
-      | x ->
-        return!
-          x
-          |> sprintf "unsupported type: %A"
-          |> Error.asParseError "parsePinValues"
-          |> Either.fail
-    }
-
   // ** parsePinValueWith
 
-  let private parsePinValueWith (tipe: PinType) (pid: Id) (props: Property array) (pin: IPin2) =
+  let private parsePinValueWith (tipe: PinType) (pid: PinId) (props: Property array) (pin: IPin2) =
     match tipe with
-    | PinType.Boolean -> BoolSlices(pid, parseBoolValues pin)
-    | PinType.Number -> NumberSlices(pid, parseDoubleValues pin)
-    | PinType.String -> StringSlices(pid, parseStringValues pin)
-    | PinType.Color -> ColorSlices(pid, parseColorValues pin)
-    | PinType.Enum -> EnumSlices(pid, parseEnumValues props pin)
+    | PinType.Boolean -> BoolSlices(pid, None, parseBoolValues pin)
+    | PinType.Number  -> NumberSlices(pid, None, parseDoubleValues pin)
+    | PinType.String  -> StringSlices(pid, None, parseStringValues pin)
+    | PinType.Color   -> ColorSlices(pid, None, parseColorValues pin)
+    | PinType.Enum    -> EnumSlices(pid, None, parseEnumValues props pin)
 
   // ** parsePinIds
 
@@ -607,8 +577,8 @@ module Graph =
       |> state.Events.Enqueue)
 
     let directionUpdate _ _ =
-      (group, id, parseDirection pin)
-      |> Msg.PinDirectionChange
+      (group, id, parseConfiguration pin)
+      |> Msg.PinConfigurationChange
       |> state.Events.Enqueue
 
     let connectedHandler = new PinConnectionEventHandler(directionUpdate)
@@ -648,10 +618,10 @@ module Graph =
 
   // ** parseValuePin
 
-  let private parseValuePin (pin: IPin2) =
+  let private parseValuePin client (pin: IPin2) =
     either {
       let id = parseNodePath pin
-      let dir = parseDirection pin
+      let cnf = parseConfiguration pin
       let grp = parsePinGroupId pin
       let! vt = parseValueType pin
       let! bh = parseBehavior pin
@@ -663,8 +633,9 @@ module Graph =
           Id = id
           Name = name pinName
           PinGroup = grp
+          Client = client
           Tags = [| |]
-          Direction = dir
+          PinConfiguration = cnf
           Persisted = false
           Online = true
           IsTrigger = Behavior.IsTrigger bh
@@ -680,6 +651,7 @@ module Graph =
           Id = id
           Name = name pinName
           PinGroup = grp
+          Client = client
           Tags = [| |]
           Min = min
           Max = max
@@ -687,7 +659,7 @@ module Graph =
           Persisted = false
           Online = true
           Precision = 0ul
-          Direction = dir
+          PinConfiguration = cnf
           VecSize = vc
           Labels = [| |]
           Values = parseDoubleValues pin
@@ -701,15 +673,16 @@ module Graph =
           Id = id
           Name = name pinName
           PinGroup = grp
-          Tags = [| |]
+          Client = client
           Min = min
           Max = max
           Unit = unit
           Persisted = false
           Online = true
           Precision = prec
-          Direction = dir
+          PinConfiguration = cnf
           VecSize = vc
+          Tags = [| |]
           Labels = [| |]
           Values = parseDoubleValues pin
         }
@@ -735,15 +708,15 @@ module Graph =
 
   // ** parseValuesPins
 
-  let private parseValuePins (pins: IPin2 seq) =
-    parseSeqWith parseValuePin pins
+  let private parseValuePins client (pins: IPin2 seq) =
+    parseSeqWith (parseValuePin client) pins
 
   // ** parseValueBox
 
-  let private parseValueBox (node: INode2) =
+  let private parseValueBox client (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseValuePins
+    |> parseValuePins client
 
   // ** parseStringType
 
@@ -770,10 +743,10 @@ module Graph =
 
   // ** parseStringPin
 
-  let private parseStringPin (pin: IPin2) =
+  let private parseStringPin client (pin: IPin2) =
     either {
       let id = parseNodePath pin
-      let dir = parseDirection pin
+      let cnf = parseConfiguration pin
       let grp = parsePinGroupId pin
       let! st = parseStringType pin
       let! pinName = parseName pin
@@ -783,10 +756,11 @@ module Graph =
         Id = id
         Name = name pinName
         PinGroup = grp
+        Client = client
         Tags = [| |]
         Persisted = false
         Online = true
-        Direction = dir
+        PinConfiguration = cnf
         Behavior = st
         MaxChars = 1<chars> * maxchars
         VecSize = vc
@@ -797,22 +771,22 @@ module Graph =
 
   // ** parseStringPins
 
-  let private parseStringPins (pins: IPin2 seq) =
-    parseSeqWith parseStringPin pins
+  let private parseStringPins client (pins: IPin2 seq) =
+    parseSeqWith (parseStringPin client) pins
 
   // ** parseStringBox
 
-  let private parseStringBox (node: INode2) =
+  let private parseStringBox client (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseStringPins
+    |> parseStringPins client
 
   // ** parseEnumPin
 
-  let private parseEnumPin (pin: IPin2) =
+  let private parseEnumPin client (pin: IPin2) =
     either {
       let id = parseNodePath pin
-      let dir = parseDirection pin
+      let cnf = parseConfiguration pin
       let grp = parsePinGroupId pin
       let! pinName = parseName pin
       let! vc = parseVecSize pin
@@ -823,7 +797,8 @@ module Graph =
         Persisted = false
         Online = true
         PinGroup = grp
-        Direction = dir
+        Client = client
+        PinConfiguration = cnf
         VecSize = vc
         Properties = props
         Tags = [| |]
@@ -834,22 +809,22 @@ module Graph =
 
   // ** parseEnumPins
 
-  let private parseEnumPins (pins: IPin2 seq) =
-    parseSeqWith parseEnumPin pins
+  let private parseEnumPins client (pins: IPin2 seq) =
+    parseSeqWith (parseEnumPin client) pins
 
   // ** parseEnumBox
 
-  let private parseEnumBox (node: INode2) =
+  let private parseEnumBox client (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseEnumPins
+    |> parseEnumPins client
 
   // ** parseColorPin
 
-  let private parseColorPin (pin: IPin2) =
+  let private parseColorPin client (pin: IPin2) =
     either {
       let id = parseNodePath pin
-      let dir = parseDirection pin
+      let cnf = parseConfiguration pin
       let grp = parsePinGroupId pin
       let! pinName = parseName pin
       let! vc = parseVecSize pin
@@ -857,7 +832,8 @@ module Graph =
         Id = id
         Name = name pinName
         PinGroup = grp
-        Direction = dir
+        Client = client
+        PinConfiguration = cnf
         Persisted = false
         Online = true
         VecSize = vc
@@ -869,30 +845,30 @@ module Graph =
 
   // ** parseColorPins
 
-  let private parseColorPins (pins: IPin2 seq) =
-    parseSeqWith parseColorPin pins
+  let private parseColorPins client (pins: IPin2 seq) =
+    parseSeqWith (parseColorPin client) pins
 
   // ** parseColorBox
 
-  let private parseColorBox (node: INode2) =
+  let private parseColorBox client (node: INode2) =
     node.Pins
     |> visibleInputPins
-    |> parseColorPins
+    |> parseColorPins client
 
   // ** parseINode2
 
-  let private parseINode2 (node: INode2) =
+  let private parseINode2 (client: ClientId) (node: INode2) =
     either {
       let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
       match boxtype with
       | IOBoxType.Value ->
-        return parseValueBox node
+        return parseValueBox client node
       | IOBoxType.String ->
-        return parseStringBox node
+        return parseStringBox client node
       | IOBoxType.Enum ->
-        return parseEnumBox node
+        return parseEnumBox client node
       | IOBoxType.Color ->
-        return parseColorBox node
+        return parseColorBox client node
       | x ->
         return!
           sprintf "unsupported type %A" x
@@ -963,9 +939,9 @@ module Graph =
   // ** updatePinValues
 
   let private updatePinValues (state: PluginState) (group: Id) (slices: Slices) =
-    updatePinWith state group slices.Id <| fun oldpin ->
+    updatePinWith state group slices.PinId <| fun oldpin ->
       Pin.setSlices slices oldpin
-    [ (slices.Id, slices) ]
+    [ (slices.PinId, slices) ]
     |> Map.ofList
     |> SlicesMap
     |> UpdateSlices
@@ -987,11 +963,11 @@ module Graph =
       state.Commands.Add (UpdatePin updated)
       updated
 
-  // ** updatePinDirection
+  // ** updatePinConfiguration
 
-  let private updatePinDirection (state: PluginState) (group: Id) (pin: Id) dir =
+  let private updatePinConfiguration (state: PluginState) (group: Id) (pin: Id) cnf =
     updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setDirection dir oldpin
+      let updated = Pin.setPinConfiguration cnf oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
@@ -1052,7 +1028,7 @@ module Graph =
     let id = parseNodePath pin
     let gid = parsePinGroupId pin
     let cp = pin.ParentNode.FindPin Settings.CHANGED_PIN
-    let dir = parseDirection pin
+    let cnf = parseConfiguration pin
     let tipe, props =
       match parsePinType pin with
       | Right PinType.Enum ->
@@ -1064,7 +1040,7 @@ module Graph =
         GroupId = gid
         Pin = pin
         Type = tipe
-        Direction = dir
+        PinConfiguration = cnf
         Properties = props
         ChangedNode = cp }
     (id, nm)
@@ -1098,7 +1074,7 @@ module Graph =
   // ** onNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
-    match parseINode2 node with
+    match parseINode2 state.InClientId.[0] node with
     | Right [] -> ()
     | Right pins -> List.iter (Msg.PinAdded >> state.Events.Enqueue) pins
     | Left error ->
@@ -1221,8 +1197,8 @@ module Graph =
         | Msg.PinNameChange (group, id, name) ->
           updatePinName state group id name
 
-        | Msg.PinDirectionChange (group, id, dir) ->
-          updatePinDirection state group id dir
+        | Msg.PinConfigurationChange (group, id, dir) ->
+          updatePinConfiguration state group id dir
           id
           |> findPinById state
           |> Option.iter (updateChangedPin state)
@@ -1233,7 +1209,7 @@ module Graph =
         | Msg.PinSubTypeChange nodeid ->
           let node = state.V2Host.GetNodeFromPath(nodeid)
           if not (isNull node) then
-            match parseINode2 node with
+            match parseINode2 state.InClientId.[0] node with
             | Right []     -> ()
             | Left error   ->
               error
