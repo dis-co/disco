@@ -2,6 +2,7 @@ redirects: on
 source https://nuget.org/api/v2
 
 group Main
+  framework: >=net461
   source https://nuget.org/api/v2
   nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
@@ -30,6 +31,7 @@ group Main
   nuget Raspberry.IO.GeneralPurpose
 
 group Fable
+  storage:none
   source https://nuget.org/api/v2
   clitool dotnet-fable
   nuget FSharp.Core
@@ -47,15 +49,12 @@ group Build
 
   nuget SourceLink.Fake
   nuget FAKE
-  nuget FSharp.Formatting
-  nuget FSharp.Core = 4.1.17 redirects:force
-
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
 group Test
+  framework: >=net461
   source https://nuget.org/api/v2
 
-  nuget FSharp.Core = 4.1.17 redirects:force
   nuget Expecto
   nuget Expecto.PerfUtil
   nuget Expecto.FsCheck
