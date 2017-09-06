@@ -1,32 +1,31 @@
-// @ts-check
-
 var path = require('path');
 var webpack = require('webpack');
+var fableUtils = require('fable-utils');
 
 function resolve(filePath) {
   return path.join(__dirname, filePath)
 }
 
 var isProduction = process.argv.indexOf("-p") >= 0;
-console.log("Bundling Worker for " + (isProduction ? "production" : "development") + "...");
+console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
-var babelOptions = {
+var babelOptions = fableUtils.resolveBabelOptions({
   presets: [["es2015", { "modules": false }]],
   plugins: ["transform-runtime"]
-}
+});
 
 module.exports = {
-  devtool: isProduction ? false : 'inline-source-map',
-  entry: resolve('./Worker.fsproj'),
+  devtool: 'source-map',
+  entry: resolve('src/Tests.Frontend/Tests.Frontend.fsproj'),
   output: {
-    filename: 'iris.worker.js', // the output bundle
-    path: resolve('../../js'),
-    libraryTarget: "var",
-    library: "IrisWorker"
+    filename: 'iris.tests.js',
+    path: resolve('js'),
   },
   resolve: {
     extensions: ['.js', '.json'],
-    modules: [resolve("../../../../node_modules/")]
+    modules: [
+      "node_modules", resolve("../../node_modules/")
+    ]
   },
   module: {
     rules: [
@@ -37,19 +36,18 @@ module.exports = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("../FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
-            // extra: { useCache: "readonly" }
+            plugins: resolve("src/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
           }
         }
       },
       {
         test: /\.js$/,
-        exclude: /node_modules/,
+        exclude: /node_modules[\\\/](?!fable-)/,
         use: {
           loader: 'babel-loader',
           options: babelOptions
         },
       },
     ],
-  },
+  }
 };
