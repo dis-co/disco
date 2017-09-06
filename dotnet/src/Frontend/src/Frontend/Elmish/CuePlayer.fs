@@ -28,20 +28,22 @@ module private PrivateHelpers =
     | true, v when v = value -> true
     | _ -> false
 
-  let findPin (pinId: Id) (state: State) =
-      match Map.tryFindPin pinId state.PinGroups with
-      | Some pin -> pin
-      | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+  let findPin (pinId: Id) (state: State) : Pin =
+    let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
+    match Map.tryFindPin pinId groups with
+    | Some pin -> pin
+    | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
 
   let findPinGroup (pinGroupId: Id) (state: State) =
-      match Map.tryFind pinGroupId state.PinGroups with
-      | Some pinGroup -> pinGroup
-      | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+    let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
+    match Map.tryFind pinGroupId groups with
+    | Some pinGroup -> pinGroup
+    | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
 
   let findCue (cueId: Id) (state: State) =
-      match Map.tryFind cueId state.Cues with
-      | Some cue -> cue
-      | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
+    match Map.tryFind cueId state.Cues with
+    | Some cue -> cue
+    | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueListMockup() =
     let cueGroup =
@@ -54,26 +56,36 @@ module private PrivateHelpers =
     // let cuePlayer =
     //   CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
 
+  let private castValue<'a> arr idx (value: obj) =
+    Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
+
   let updateSlicesValue (index: int) (value: obj) slices: Slices =
     match slices with
-    | StringSlices(id, arr) -> StringSlices(id, Array.mapi (fun i el -> if i = index then value :?> string     else el) arr)
-    | NumberSlices(id, arr) -> NumberSlices(id, Array.mapi (fun i el -> if i = index then value :?> double     else el) arr)
-    | BoolSlices  (id, arr) -> BoolSlices  (id, Array.mapi (fun i el -> if i = index then value :?> bool       else el) arr)
-    | ByteSlices  (id, arr) -> ByteSlices  (id, Array.mapi (fun i el -> if i = index then value :?> byte[]     else el) arr)
-    | EnumSlices  (id, arr) -> EnumSlices  (id, Array.mapi (fun i el -> if i = index then value :?> Property   else el) arr)
-    | ColorSlices (id, arr) -> ColorSlices (id, Array.mapi (fun i el -> if i = index then value :?> ColorSpace else el) arr)
+    | StringSlices(id, client, arr) ->
+      StringSlices(id, client, castValue<string> arr index value)
+    | NumberSlices(id, client, arr) ->
+      NumberSlices(id, client, castValue<double> arr index value)
+    | BoolSlices  (id, client, arr) ->
+      BoolSlices  (id, client, castValue<bool> arr index value)
+    | ByteSlices  (id, client, arr) ->
+      ByteSlices  (id, client, castValue<byte[]> arr index value)
+    | EnumSlices  (id, client, arr) ->
+      EnumSlices  (id, client, castValue<Property> arr index value)
+    | ColorSlices (id, client, arr) ->
+      ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the backend
+  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the
+  // backend
   let updatePins (cue: Cue) (state: State) =
     for slices in cue.Slices do
-      let pin = findPin slices.Id state
+      let pin = findPin slices.PinId state
       match slices with
-      | StringSlices (_, values) -> StringSlices(pin.Id, values)
-      | NumberSlices (_, values) -> NumberSlices(pin.Id, values)
-      | BoolSlices   (_, values) -> BoolSlices(pin.Id, values)
-      | ByteSlices   (_, values) -> ByteSlices(pin.Id, values)
-      | EnumSlices   (_, values) -> EnumSlices(pin.Id, values)
-      | ColorSlices  (_, values) -> ColorSlices(pin.Id, values)
+      | StringSlices (_, client, values) -> StringSlices(pin.Id, client, values)
+      | NumberSlices (_, client, values) -> NumberSlices(pin.Id, client, values)
+      | BoolSlices   (_, client, values) -> BoolSlices(pin.Id, client, values)
+      | ByteSlices   (_, client, values) -> ByteSlices(pin.Id, client, values)
+      | EnumSlices   (_, client, values) -> EnumSlices(pin.Id, client, values)
+      | ColorSlices  (_, client, values) -> ColorSlices(pin.Id, client, values)
       |> UpdateSlices.ofSlices
       |> ClientContext.Singleton.Post
 
@@ -123,7 +135,7 @@ type private CueView(props) =
             if not stopped then
               true, this.state.IsOpen
             else
-              if this.props.Cue.Slices |> Array.exists (fun slices -> slices.Id = pin.Id) then
+              if this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = pin.Id) then
                 printfn "The cue already contains this pin"
               else
                 let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|pin.Slices|] }
@@ -214,7 +226,7 @@ type private CueView(props) =
       else
         let pinGroups =
           this.props.Cue.Slices
-          |> Array.mapi (fun i slices -> i, findPin slices.Id this.props.State, slices)
+          |> Array.mapi (fun i slices -> i, findPin slices.PinId this.props.State, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = findPinGroup pinGroupId this.props.State

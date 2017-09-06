@@ -25,6 +25,9 @@ module PinBecomesOnlineOnClientConnect =
         use clientAppendDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
+
+        let clientId = Id.Create()
+
         let mem1, machine1 = List.head zipped
 
         //  _
@@ -36,7 +39,7 @@ module PinBecomesOnlineOnClientConnect =
         let group =
           { Id = Id "my cool group"
             Name = name "My Cool Group"
-            Client = mem1.Id
+            Client = clientId
             Path = None
             RefersTo = None
             Pins = Map.empty }
@@ -46,7 +49,7 @@ module PinBecomesOnlineOnClientConnect =
             (Id "/my/pin")
             (name "My Toggle")
             group.Id
-            Array.empty
+            group.Client
             [| true |]
 
         let group =
@@ -81,11 +84,14 @@ module PinBecomesOnlineOnClientConnect =
         do! waitFor "started" started
 
         expect "Should have loaded the Group" true
-          (Map.containsKey toggle.PinGroup)
+          (PinGroupMap.containsGroup toggle.Client toggle.PinGroup)
           service1.State.PinGroups
 
         expect "Should have marked pin as offline" true
-          (Map.find group.Id >> flip PinGroup.findPin toggle.Id >> Pin.isOffline)
+          (PinGroupMap.tryFindGroup group.Client group.Id
+           >> Option.map (PinGroup.findPin toggle.Id)
+           >> Option.get
+           >> Pin.isOffline)
           service1.State.PinGroups
 
         //  _____
@@ -100,7 +106,7 @@ module PinBecomesOnlineOnClientConnect =
         }
 
         use client = ApiClient.create server {
-          Id = Id.Create()
+          Id = clientId
           Name = name "hi"
           Role = Role.Renderer
           ServiceId = mem1.Id
@@ -131,7 +137,10 @@ module PinBecomesOnlineOnClientConnect =
         do! waitFor "clientAppendDone" clientAppendDone
 
         expect "Should have marked pin as online" true
-          (Map.find group.Id >> flip PinGroup.findPin toggle.Id >> Pin.isOnline)
+          (PinGroupMap.tryFindGroup group.Client group.Id
+           >> Option.map (PinGroup.findPin toggle.Id)
+           >> Option.get
+           >> Pin.isOnline)
           service1.State.PinGroups
       }
       |> noError

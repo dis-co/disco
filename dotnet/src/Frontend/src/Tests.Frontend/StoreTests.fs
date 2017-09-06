@@ -15,7 +15,7 @@ module Store =
 
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
-      { Id = Id "0xb4d1d34"
+      { Id = Id.Create()
         Name = name "group-1"
         Client = Id.Create()
         Path = None
@@ -39,7 +39,7 @@ module Store =
 
     let state =
       { Project            = project
-        PinGroups          = Map.empty
+        PinGroups          = PinGroupMap.empty
         PinMappings        = Map.empty
         PinWidgets         = Map.empty
         Cues               = Map.empty
@@ -85,24 +85,36 @@ module Store =
 
         store.Dispatch <| AddPinGroup(group)
 
-        equals true (store.State.PinGroups.ContainsKey group.Id)
-        equals true (store.State.PinGroups.[group.Id].Name = name1)
+        equals true (store.State.PinGroups.ContainsGroup group.Client group.Id)
+        equals true (store.State.PinGroups.[group.Client,group.Id].Name = name1)
 
         let updated = { group with Name = name2 }
         store.Dispatch <| UpdatePinGroup(updated)
 
-        equals true (store.State.PinGroups.[group.Id].Name = name2)
+        equals true (store.State.PinGroups.[group.Client,group.Id].Name = name2)
 
         finish()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove a group already in the store" <| fun finish ->
-        store.Dispatch <| AddPinGroup(group)
-        equals true (store.State.PinGroups.ContainsKey group.Id)
+        let pin =
+          Pin.Sink.string
+            (Id.Create())
+            (name "url input")
+            group.Id
+            group.Client
+            [| "hey" |]
+          |> Pin.setPersisted true
 
+        group
+        |> PinGroup.addPin pin
+        |> AddPinGroup
+        |> store.Dispatch
+
+        equals true  (store.State.PinGroups.ContainsGroup group.Client group.Id)
         store.Dispatch <| RemovePinGroup(group)
-        equals false (store.State.PinGroups.ContainsKey group.Id)
+        equals false (store.State.PinGroups.ContainsGroup group.Client group.Id)
 
         finish()
 
@@ -111,74 +123,106 @@ module Store =
     (* ---------------------------------------------------------------------- *)
 
     withStore <| fun group store ->
-      test "should add an pin to the store if group exists" <| fun finish ->
-        store.Dispatch <| AddPinGroup(group)
+      test "should add a pin to the store if group exists" <| fun finish ->
+        Pin.Sink.string
+          (Id.Create())
+          (name "url input")
+          group.Id
+          group.Client
+          [| "hey" |]
+        |> Pin.setPersisted true
+        |> flip PinGroup.addPin group
+        |> AddPinGroup
+        |> store.Dispatch
 
-        equals 0 store.State.PinGroups.[group.Id].Pins.Count
+        equals 1 store.State.PinGroups.[group.Client,group.Id].Pins.Count
 
-        let pin : Pin = Pin.Sink.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "hey" |]
+        let pin =
+          Pin.Sink.string
+            (Id "0xb33f")
+            (name "url input")
+            group.Id
+            group.Client
+            [| "hey" |]
 
         store.Dispatch <| AddPin(pin)
-
-        equals 1 store.State.PinGroups.[group.Id].Pins.Count
-
+        equals 2 store.State.PinGroups.[group.Client,group.Id].Pins.Count
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
-      test "should not add an pin to the store if group does not exists" <| fun finish ->
-        let pin = Pin.Sink.string (Id "0xb33f") (name "url input") group.Id Array.empty [| "Ho" |]
+      test "should not add a pin to the store if group does not exists" <| fun finish ->
+        let pin =
+          Pin.Sink.string
+            (Id "0xb33f")
+            (name "url input")
+            group.Id
+            group.Client
+            [| "Ho" |]
         store.Dispatch <| AddPin(pin)
         equals 0 store.State.PinGroups.Count
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
-      test "should update an pin in the store if it already exists" <| fun finish ->
+      test "should update a pin in the store if it already exists" <| fun finish ->
         let name1 = name "can a cat own a cat?"
         let name2 = name "yes, cats are re-entrant."
+        let pin =
+          Pin.Sink.string
+            (Id.Create())
+            name1
+            group.Id
+            group.Client
+            [| "swell" |]
 
-        let pin = Pin.Sink.string (Id "0xb33f") name1 group.Id Array.empty [| "swell" |]
+        group
+        |> PinGroup.addPin pin
+        |> AddPinGroup
+        |> store.Dispatch
 
-        store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| AddPin(pin)
-
-        match Map.tryFindPin pin.Id store.State.PinGroups with
-          | Some(i) -> equals name1 i.Name
-          | None    -> failwith "pin is mysteriously missing"
+        store.State.PinGroups
+        |> PinGroupMap.findPin pin.Id
+        |> fun m -> let i = Map.find pin.Client m in equals name1 i.Name
 
         let updated = Pin.setName name2 pin
         store.Dispatch <| UpdatePin(updated)
 
-        match Map.tryFindPin pin.Id store.State.PinGroups with
-          | Some(i) -> equals name2 i.Name
-          | None    -> failwith "pin is mysteriously missing"
+        store.State.PinGroups
+        |> PinGroupMap.findPin pin.Id
+        |> fun m -> let i = Map.find pin.Client m in equals name2 i.Name
 
         finish ()
 
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
-      test "should remove an pin from the store if it exists" <| fun finish ->
+      test "should remove a pin from the store if it exists" <| fun finish ->
         let pin =
           Pin.Sink.string
-            (Id "0xb33f")
+            (Id.Create())
             (name "hi")
-            (Id "0xb4d1d34")
-            Array.empty
+            group.Id
+            group.Client
             [| "oh my" |]
 
-        store.Dispatch <| AddPinGroup(group)
-        store.Dispatch <| AddPin(pin)
+        group
+        |> PinGroup.addPin pin
+        |> AddPinGroup
+        |> store.Dispatch
 
-        match Map.tryFindPin pin.Id store.State.PinGroups with
-          | Some(_) -> ()
-          | None    -> failwith "pin is mysteriously missing"
+        store.State.PinGroups
+        |> PinGroupMap.findPin pin.Id
+        |> Map.find pin.Client
+        |> ignore                        /// will fail if not found
 
         store.Dispatch <| RemovePin(pin)
 
-        match Map.tryFindPin pin.Id store.State.PinGroups with
-          | Some(_) -> failwith "pin should be missing by now but isn't"
-          | None    -> finish()
+        store.State.PinGroups
+        |> PinGroupMap.findPin pin.Id
+        |> Map.isEmpty
+        |> equals true
+
+        finish()
 
     (* ---------------------------------------------------------------------- *)
     suite "Test.Units.Store - Cue operations"
@@ -186,17 +230,15 @@ module Store =
 
     withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
-
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
+        let cue = {
+          Id = Id.Create()
+          Name = name "My Cue"
+          Slices = [| |] }
 
         equals 0 store.State.Cues.Count
-
         store.Dispatch <| AddCue cue
-
         equals 1 store.State.Cues.Count
-
         store.Dispatch <| AddCue cue
-
         equals 1 store.State.Cues.Count
 
         finish ()
@@ -204,18 +246,17 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
-
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
+        let cue =
+          { Id = Id.Create()
+            Name = name "My Cue"
+            Slices = [| |] }
 
         equals 0 store.State.Cues.Count
-
         store.Dispatch <| AddCue cue
-
         equals 1 store.State.Cues.Count
 
         let newname = name "aww yeah"
         store.Dispatch <| UpdateCue { cue with Name = newname }
-
         equals 1 store.State.Cues.Count
         equals newname store.State.Cues.[cue.Id].Name
 
@@ -224,13 +265,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
-
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
+        let cue =
+          { Id = Id.Create()
+            Name = name "My Cue"
+            Slices = [| |] }
 
         equals 0 store.State.Cues.Count
-
         store.Dispatch <| UpdateCue cue
-
         equals 0 store.State.Cues.Count
 
         finish ()
@@ -238,17 +279,15 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
-
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = [| |] }
+        let cue =
+          { Id = Id.Create()
+            Name = name "My Cue"
+            Slices = [| |] }
 
         equals 0 store.State.Cues.Count
-
         store.Dispatch <| AddCue cue
-
         equals 1 store.State.Cues.Count
-
         store.Dispatch <| RemoveCue cue
-
         equals 0 store.State.Cues.Count
 
         finish ()
@@ -259,17 +298,15 @@ module Store =
 
     withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
-
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
+        let cuelist =
+          { Id = Id.Create()
+            Name = name "My CueList"
+            Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
-
         store.Dispatch <| AddCueList cuelist
-
         equals 1 store.State.CueLists.Count
-
         store.Dispatch <| AddCueList cuelist
-
         equals 1 store.State.CueLists.Count
 
         finish ()
@@ -277,13 +314,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
-
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
+        let cuelist =
+          { Id = Id.Create()
+            Name = name "My CueList"
+            Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
-
         store.Dispatch <| AddCueList cuelist
-
         equals 1 store.State.CueLists.Count
 
         let newname = name "aww yeah"
@@ -297,13 +334,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
-
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
+        let cuelist =
+          { Id = Id.Create()
+            Name = name "My CueList"
+            Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
-
         store.Dispatch <| UpdateCueList cuelist
-
         equals 0 store.State.CueLists.Count
 
         finish ()
@@ -311,17 +348,15 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
-
-        let cuelist : CueList = { Id = Id.Create(); Name = name "My CueList"; Groups = [| |] }
+        let cuelist =
+          { Id = Id.Create()
+            Name = name "My CueList"
+            Groups = [| |] }
 
         equals 0 store.State.CueLists.Count
-
         store.Dispatch <| AddCueList cuelist
-
         equals 1 store.State.CueLists.Count
-
         store.Dispatch <| RemoveCueList cuelist
-
         equals 0 store.State.CueLists.Count
 
         finish ()
@@ -332,8 +367,7 @@ module Store =
 
     withStore <| fun group store ->
       test "should add a user to the store" <| fun finish ->
-
-        let user : User =
+        let user =
           { Id = Id.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
@@ -345,13 +379,9 @@ module Store =
             Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
-
         store.Dispatch <| AddUser user
-
         equals 1 store.State.Users.Count
-
         store.Dispatch <| AddUser user
-
         equals 1 store.State.Users.Count
 
         finish ()
@@ -359,8 +389,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should update a user already in the store" <| fun finish ->
-
-        let user : User =
+        let user =
           { Id = Id.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
@@ -372,9 +401,7 @@ module Store =
             Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
-
         store.Dispatch <| AddUser user
-
         equals 1 store.State.Users.Count
 
         let newname = name "kurt mix master"
@@ -388,8 +415,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add user to the store on update when missing" <| fun finish ->
-
-        let user : User =
+        let user =
           { Id = Id.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
@@ -401,9 +427,7 @@ module Store =
             Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
-
         store.Dispatch <| UpdateUser user
-
         equals 0 store.State.Users.Count
 
         finish ()
@@ -411,8 +435,7 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove user from the store" <| fun finish ->
-
-        let user : User =
+        let user =
           { Id = Id.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
@@ -424,13 +447,9 @@ module Store =
             Created = DateTime.UtcNow.Date.AddDays(-1.) }
 
         equals 0 store.State.Users.Count
-
         store.Dispatch <| AddUser user
-
         equals 1 store.State.Users.Count
-
         store.Dispatch <| RemoveUser user
-
         equals 0 store.State.Users.Count
 
         finish ()
@@ -441,20 +460,15 @@ module Store =
 
     withStore <| fun group store ->
       test "should add a session to the store" <| fun finish ->
-
-        let session : Session =
+        let session =
           { Id = Id.Create()
-          ; IpAddress = IPv4Address "126.0.0.1"
-          ; UserAgent = "Firefuckingfox" }
+            IpAddress = IPv4Address "126.0.0.1"
+            UserAgent = "Firefuckingfox" }
 
         equals 0 store.State.Sessions.Count
-
         store.Dispatch <| AddSession session
-
         equals 1 store.State.Sessions.Count
-
         store.Dispatch <| AddSession session
-
         equals 1 store.State.Sessions.Count
 
         finish ()
@@ -462,16 +476,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should update a Session already in the store" <| fun finish ->
-
-        let session : Session =
+        let session =
           { Id = Id.Create()
-          ; IpAddress = IPv4Address "126.0.0.1"
-          ; UserAgent = "Firefuckingfox" }
+            IpAddress = IPv4Address "126.0.0.1"
+            UserAgent = "Firefuckingfox" }
 
         equals 0 store.State.Sessions.Count
-
         store.Dispatch <| AddSession session
-
         equals 1 store.State.Sessions.Count
 
         let newUserAgent = "Hoogle Magenta"
@@ -485,16 +496,13 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should not add Session to the store on update when missing" <| fun finish ->
-
-        let session : Session =
+        let session =
           { Id = Id.Create()
-          ; IpAddress = IPv4Address "126.0.0.1"
-          ; UserAgent = "Firefuckingfox" }
+            IpAddress = IPv4Address "126.0.0.1"
+            UserAgent = "Firefuckingfox" }
 
         equals 0 store.State.Sessions.Count
-
         store.Dispatch <| UpdateSession session
-
         equals 0 store.State.Sessions.Count
 
         finish ()
@@ -502,20 +510,15 @@ module Store =
     (* ---------------------------------------------------------------------- *)
     withStore <| fun group store ->
       test "should remove Session from the store" <| fun finish ->
-
-        let session : Session =
+        let session =
           { Id = Id.Create()
-          ; IpAddress = IPv4Address "126.0.0.1"
-          ; UserAgent = "Firefuckingfox" }
+            IpAddress = IPv4Address "126.0.0.1"
+            UserAgent = "Firefuckingfox" }
 
         equals 0 store.State.Sessions.Count
-
         store.Dispatch <| AddSession session
-
         equals 1 store.State.Sessions.Count
-
         store.Dispatch <| RemoveSession session
-
         equals 0 store.State.Sessions.Count
 
         finish ()
@@ -532,8 +535,8 @@ module Store =
         // subscribe now, so as to not fire too early ;)
         store.Subscribe(fun st ev ->
           match ev with
-            | AddPinGroup(p) -> if p.Name = group.Name then finish ()
-            | _ -> ())
+          | AddPinGroup(p) -> if p.Name = group.Name then finish ()
+          | _ -> ())
 
         equals 3 store.History.Length
         store.Undo()
@@ -572,7 +575,7 @@ module Store =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
         store.Undo()
-        equals group.Name store.State.PinGroups.[group.Id].Name
+        equals group.Name store.State.PinGroups.[group.Client,group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
@@ -583,7 +586,7 @@ module Store =
         store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
         store.Undo()
         store.Undo()
-        equals group.Name store.State.PinGroups.[group.Id].Name
+        equals group.Name store.State.PinGroups.[group.Client,group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
@@ -607,16 +610,16 @@ module Store =
         store.Undo()
         store.Undo()
 
-        equals (name "dogs") store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Client,group.Id].Name
         store.Redo()
 
-        equals (name "mice") store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Client,group.Id].Name
         store.Redo()
 
-        equals (name "men") store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Client,group.Id].Name
         store.Redo()
 
-        equals (name "men") store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Client,group.Id].Name
         finish()
 
     (* ---------------------------------------------------------------------- *)
@@ -627,34 +630,34 @@ module Store =
         store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
 
         store.Undo()
-        equals (name "cats") store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Redo()
-        equals (name "dogs") store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Undo()
-        equals (name "cats") store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Dispatch <| UpdatePinGroup( { group with Name = name "mice" })
 
         store.Undo()
-        equals (name "dogs") store.State.PinGroups.[group.Id].Name
+        equals (name "dogs") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Redo()
-        equals (name "mice") store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Undo()
         store.Undo()
 
-        equals (name "cats") store.State.PinGroups.[group.Id].Name
+        equals (name "cats") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Dispatch <| UpdatePinGroup( { group with Name = name "men"  })
 
         store.Undo()
-        equals (name "mice") store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Client,group.Id].Name
 
         store.Redo()
-        equals (name "men") store.State.PinGroups.[group.Id].Name
+        equals (name "men") store.State.PinGroups.[group.Client,group.Id].Name
 
         equals 6 store.History.Length
         finish ()
@@ -671,7 +674,7 @@ module Store =
         |> List.iter (fun _ -> store.Undo())
 
         equals 4             store.History.Length
-        equals (name "mice") store.State.PinGroups.[group.Id].Name
+        equals (name "mice") store.State.PinGroups.[group.Client,group.Id].Name
         finish()
 
 

@@ -73,10 +73,7 @@ type StateNode() =
         let state = self.InState.[0]
         self.OutProject.[0] <- state.Project
 
-        let groups =
-          state.PinGroups
-          |> Map.toArray
-          |> Array.map snd
+        let groups = PinGroupMap.toArray state.PinGroups
 
         let mappings =
           state.PinMappings

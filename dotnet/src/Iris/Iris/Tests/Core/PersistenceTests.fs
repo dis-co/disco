@@ -10,7 +10,7 @@ open Iris.Service
 module PersistenceTests =
 
   let mkPin group =
-    Pin.Sink.toggle (mk()) (rndname()) group (mkTags()) [| true |]
+    Pin.Sink.toggle (mk()) (rndname()) group (mk()) [| true |]
 
   let mkProject () =
     either {
@@ -29,7 +29,7 @@ module PersistenceTests =
       return
         machine,
         { Project            = project
-          PinGroups          = Map.empty
+          PinGroups          = PinGroupMap.empty
           PinMappings        = Map.empty
           PinWidgets         = Map.empty
           Cues               = Map.empty
@@ -57,7 +57,9 @@ module PersistenceTests =
     testCase "persist add pinmappings correctly" <| fun _ ->
       either {
         let mapping = mkPinMapping()
-        let! (machine, state) = mkState () |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+        let! (machine, state) =
+          mkState ()
+          |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
         expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
@@ -72,7 +74,12 @@ module PersistenceTests =
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
-        expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
+
+        expect "state should contain PinGroup"
+          true
+          (PinGroupMap.containsGroup group.Client group.Id)
+          state.PinGroups
+
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
       }
       |> noError
@@ -101,7 +108,9 @@ module PersistenceTests =
     testCase "persist remove pinmappings correctly" <| fun _ ->
       either {
         let mapping = mkPinMapping()
-        let! (machine, state) = mkState () |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+        let! (machine, state) =
+          mkState ()
+          |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
@@ -112,7 +121,11 @@ module PersistenceTests =
         let! _ = Persistence.persistEntry state (RemovePinMapping mapping)
         let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
-        expect "state should contain PinMapping" true (Map.containsKey mapping.Id >> not)  updated.PinMappings
+        expect "state should contain PinMapping"
+          true
+          (Map.containsKey mapping.Id >> not)
+          updated.PinMappings
+
         expect "PinMappings should be the same" updated.PinMappings id loaded.PinMappings
       }
       |> noError
@@ -125,14 +138,22 @@ module PersistenceTests =
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
-        expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
+        expect "state should contain PinGroup"
+          true
+          (PinGroupMap.containsGroup group.Client group.Id)
+          state.PinGroups
+
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.removePinGroup group loaded
         let! _ = Persistence.persistEntry state (RemovePinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
-        expect "state should contain PinGroup" true (Map.containsKey group.Id >> not)  updated.PinGroups
+        expect "state should contain PinGroup"
+          true
+          (PinGroupMap.containsGroup group.Client group.Id >> not)
+          updated.PinGroups
+
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
       }
       |> noError
@@ -164,7 +185,11 @@ module PersistenceTests =
         let! _ = Persistence.persistEntry state (RemoveCuePlayer player)
         let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
-        expect "state should not contain CuePlayer" false (Map.containsKey player.Id) updated.CuePlayers
+        expect "state should not contain CuePlayer"
+          false
+          (Map.containsKey player.Id)
+          updated.CuePlayers
+
         expect "Cueplayers should be the same" updated.CuePlayers id loaded.CuePlayers
       }
       |> noError
@@ -173,19 +198,36 @@ module PersistenceTests =
     testCase "persist add pin correctly" <| fun _ ->
       either {
         let group = mkPinGroup()
-        let pin =  group.Id |> mkPin |> Pin.setPersisted true
+
+        let pin =
+          Pin.Sink.toggle
+            (Id.Create())
+            (name "ohai")
+            group.Id
+            group.Client
+            [| true |]
+          |> Pin.setPersisted true
+
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
-        expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
+        expect "state should contain PinGroup"
+          true
+          (PinGroupMap.containsGroup group.Client group.Id)
+          state.PinGroups
+
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
         let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
-        expect "state should contain Pin" true (Map.containsPin pin.Id) updated.PinGroups
+        expect "state should contain Pin"
+          true
+          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id)
+          updated.PinGroups
+
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
       }
       |> noError
@@ -194,26 +236,47 @@ module PersistenceTests =
     testCase "persist remove pin correctly" <| fun _ ->
       either {
         let group = mkPinGroup()
-        let pin = group.Id |> mkPin |> Pin.setPersisted true
+
+        let pin =
+          Pin.Sink.toggle
+            (Id.Create())
+            (name "ohai")
+            group.Id
+            group.Client
+            [| true |]
+          |> Pin.setPersisted true
+
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
 
-        expect "state should contain PinGroup" true (Map.containsKey group.Id) state.PinGroups
+        expect "state should contain PinGroup"
+          true
+          (PinGroupMap.containsGroup group.Client group.Id)
+          state.PinGroups
+
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
         let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
-        expect "state should contain Pin" true (Map.containsPin pin.Id) updated.PinGroups
+        expect "state should contain Pin"
+          true
+          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id)
+          updated.PinGroups
+
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
 
         let updated = State.removePin pin updated
         let! _ = Persistence.persistEntry updated (RemovePin pin)
         let! reloaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
 
-        expect "state should not contain Pin" true (Map.containsPin pin.Id >> not) updated.PinGroups
+        expect "state should not contain Pin"
+          true
+          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id >> not)
+          updated.PinGroups
+
         expect "PinGroups should be the same" updated.PinGroups id reloaded.PinGroups
       }
       |> noError

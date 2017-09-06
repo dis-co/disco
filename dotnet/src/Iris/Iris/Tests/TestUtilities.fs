@@ -107,6 +107,11 @@ module TestData =
 
   let mk() = Id.Create()
 
+  let maybe_mk() =
+    if rand.Next(0,2) > 0
+    then Some(mk())
+    else None
+
   let mkTmpDir () =
     let path = Path.getTempPath() </> Path.getRandomFileName()
     Directory.createDirectory path |> ignore
@@ -133,7 +138,7 @@ module TestData =
     [| for n in 0 .. rand.Next(2,12) -> { Key = rndstr(); Value = rndstr() } |]
 
   let mkPin() =
-    Pin.Sink.toggle (mk()) (rndname()) (mk()) (mkTags()) [| true |]
+    Pin.Sink.toggle (mk()) (rndname()) (mk()) (mk()) [| true |]
 
   let mkOptional(f:unit->'T): 'T option =
     if rand.Next(0,2) > 0 then f() |> Some else None
@@ -169,28 +174,28 @@ module TestData =
                          Alpha      = uint8 (rand.Next(0,255)) } |]
 
   let mkPins () =
-    [| Pin.Sink.bang      (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.Sink.toggle    (mk()) (rndname()) (mk()) (mkTags()) (mkBools())
-    ;  Pin.Sink.string    (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.multiLine (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.fileName  (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.directory (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.url       (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.ip        (mk()) (rndname()) (mk()) (mkTags()) (mkStrings())
-    ;  Pin.Sink.number    (mk()) (rndname()) (mk()) (mkTags()) (mkNumbers())
-    ;  Pin.Sink.bytes     (mk()) (rndname()) (mk()) (mkTags()) (mkBytes())
-    ;  Pin.Sink.color     (mk()) (rndname()) (mk()) (mkTags()) (mkColors())
-    ;  Pin.Sink.enum      (mk()) (rndname()) (mk()) (mkTags()) (mkProps()) (mkProps())
+    [| Pin.Sink.bang      (mk()) (rndname()) (mk()) (mk()) (mkBools())
+    ;  Pin.Sink.toggle    (mk()) (rndname()) (mk()) (mk()) (mkBools())
+    ;  Pin.Sink.string    (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.multiLine (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.fileName  (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.directory (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.url       (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.ip        (mk()) (rndname()) (mk()) (mk()) (mkStrings())
+    ;  Pin.Sink.number    (mk()) (rndname()) (mk()) (mk()) (mkNumbers())
+    ;  Pin.Sink.bytes     (mk()) (rndname()) (mk()) (mk()) (mkBytes())
+    ;  Pin.Sink.color     (mk()) (rndname()) (mk()) (mk()) (mkColors())
+    ;  Pin.Sink.enum      (mk()) (rndname()) (mk()) (mk()) (mkProps()) (mkProps())
     |]
 
   let mkSlice() =
     match rand.Next(0,6) with
-    | 0 -> BoolSlices(mk(), mkBools())
-    | 1 -> StringSlices(mk(), mkStrings())
-    | 2 -> NumberSlices(mk(), mkNumbers())
-    | 3 -> ByteSlices(mk(), mkBytes())
-    | 4 -> ColorSlices(mk(), mkColors())
-    | _ -> EnumSlices(mk(), mkProps())
+    | 0 -> BoolSlices(mk(), maybe_mk(), mkBools())
+    | 1 -> StringSlices(mk(), maybe_mk(), mkStrings())
+    | 2 -> NumberSlices(mk(), maybe_mk(), mkNumbers())
+    | 3 -> ByteSlices(mk(), maybe_mk(), mkBytes())
+    | 4 -> ColorSlices(mk(), maybe_mk(), mkColors())
+    | _ -> EnumSlices(mk(), maybe_mk(), mkProps())
 
   let mkSlices() =
     [| for n in 0 .. rand.Next(2,12) -> mkSlice() |]
@@ -279,6 +284,9 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinGroup() |]
 
+  let mkPinGroupMap() =
+    mkPinGroups () |> PinGroupMap.ofArray
+
   let mkPinMappings () : Iris.Core.PinMapping array =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinMapping() |]
@@ -339,9 +347,9 @@ module TestData =
       let! project = mkProject path
       return
         { Project            = project
-          PinGroups          = mkPinGroups()          |> asMap
+          PinGroups          = mkPinGroupMap()
           PinMappings        = mkPinMappings()        |> asMap
-          PinWidgets         = mkPinWidgets()        |> asMap
+          PinWidgets         = mkPinWidgets()         |> asMap
           Cues               = mkCues()               |> asMap
           CueLists           = mkCueLists()           |> asMap
           Sessions           = mkSessions()           |> asMap

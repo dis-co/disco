@@ -225,13 +225,13 @@ module Persistence =
 
     | AddPin    pin
     | UpdatePin pin ->
-      match State.tryFindPinGroup pin.PinGroup state with
+      match State.tryFindPinGroup pin.Client pin.PinGroup state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
       | None -> Either.nothing
 
     | RemovePin pin ->
-      match State.tryFindPinGroup pin.PinGroup state with
+      match State.tryFindPinGroup pin.Client pin.PinGroup state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
       | None -> Either.nothing

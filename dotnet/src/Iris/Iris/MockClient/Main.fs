@@ -167,6 +167,7 @@ Usage:
   [1] https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
   "
 
+  let private clientid = Id.Create()
   let private patchid = Id.Create()
 
   let private (|Exit|_|) str =
@@ -246,53 +247,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle pinName ->
-        Pin.Sink.toggle (Id pinName) (name pinName) patchid  [| |]  [| false |]
+        Pin.Sink.toggle (Id pinName) (name pinName) patchid clientid [| false |]
         |> Some
 
       | Bang pinName ->
-        Pin.Sink.bang (Id pinName) (name pinName) patchid [| |] [| false |]
+        Pin.Sink.bang (Id pinName) (name pinName) patchid clientid [| false |]
         |> Some
 
       | String pinName ->
-        Pin.Sink.string (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.string (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Multiline pinName ->
-        Pin.Sink.multiLine (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.multiLine (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | File pinName ->
-        Pin.Sink.fileName (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.fileName (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Dir pinName ->
-        Pin.Sink.directory (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.directory (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Url pinName ->
-        Pin.Sink.url (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.url (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | IP pinName ->
-        Pin.Sink.ip (Id pinName) (name pinName) patchid [| |] [| "" |]
+        Pin.Sink.ip (Id pinName) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Float pinName ->
-        Pin.Sink.number (Id pinName) (name pinName) patchid [| |] [| 0.0 |]
+        Pin.Sink.number (Id pinName) (name pinName) patchid clientid [| 0.0 |]
         |> Some
 
       | Bytes pinName ->
-        Pin.Sink.bytes (Id pinName) (name pinName) patchid [| |] [| [| |] |]
+        Pin.Sink.bytes (Id pinName) (name pinName) patchid clientid [| [| |] |]
         |> Some
 
       | Color pinName ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Sink.color (Id pinName) (name pinName) patchid [| |] [| color |]
+        Pin.Sink.color (Id pinName) (name pinName) patchid clientid [| color |]
         |> Some
 
       | Enum pinName ->
         let prop = { Key = ""; Value = "" }
-        Pin.Sink.enum (Id pinName) (name pinName) patchid [| |] [| prop |] [| prop |]
+        Pin.Sink.enum (Id pinName) (name pinName) patchid clientid [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None
@@ -309,8 +310,8 @@ Usage:
     | _ -> None
 
   let private listPins (client: IApiClient) =
-    Map.iter
-      (fun _ (patch: PinGroup) ->
+    PinGroupMap.iterGroups
+      (fun (patch: PinGroup) ->
         printfn "Patch: %A" (string patch.Id)
         Map.iter
           (fun _ (pin: Pin) ->
@@ -500,7 +501,7 @@ Usage:
 
       | Show id ->
         getPin client id
-        |> Option.map showPin
+        |> Map.iter (fun _ pin -> showPin pin)
         |> ignore
 
       //  _   _           _       _
@@ -521,40 +522,32 @@ Usage:
         //    \_/ \__,_|_|\__,_|\___|
 
         | Value value ->
-          match getPin client id with
-          | Some (StringPin data) ->
-            let slices = StringSlices(data.Id, parseStringValues rest)
-            updateSlices client slices
+          getPin client id
+          |> Map.iter (fun _ -> function
+            | StringPin data ->
+              let slices = StringSlices(data.Id, None, parseStringValues rest)
+              updateSlices client slices
 
-//          | Some (IntPin data) ->
-//            let slices = IntSlices(data.Id, parseIntValues rest)
-//            updateSlices client slices
+            | NumberPin data ->
+              let slices = NumberSlices(data.Id, None, parseDoubleValues rest)
+              updateSlices client slices
 
-//          | Some (FloatPin data) ->
-//            let slices = FloatSlices(data.Id, parseFloatValues rest)
-//            updateSlices client slices
+            | BoolPin data ->
+              let slices = BoolSlices(data.Id, None, parseBoolValues rest)
+              updateSlices client slices
 
-          | Some (NumberPin data) ->
-            let slices = NumberSlices(data.Id, parseDoubleValues rest)
-            updateSlices client slices
+            | BytePin data ->
+              let slices = ByteSlices(data.Id, None, parseByteValues rest)
+              updateSlices client slices
 
-          | Some (BoolPin data) ->
-            let slices = BoolSlices(data.Id, parseBoolValues rest)
-            updateSlices client slices
+            | EnumPin data ->
+              let slices = EnumSlices(data.Id, None, parseEnumValues data.Properties rest)
+              updateSlices client slices
 
-          | Some (BytePin data) ->
-            let slices = ByteSlices(data.Id, parseByteValues rest)
-            updateSlices client slices
+            | ColorPin data ->
+              let slices = ColorSlices(data.Id, None, parseColorValues rest)
+              updateSlices client slices)
 
-          | Some (EnumPin data) ->
-            let slices = EnumSlices(data.Id, parseEnumValues data.Properties rest)
-            updateSlices client slices
-
-          | Some (ColorPin data) ->
-            let slices = ColorSlices(data.Id, parseColorValues rest)
-            updateSlices client slices
-
-          | _ -> printfn "could not find pin with id %A" id
 
         //  ____                            _
         // |  _ \ _ __ ___  _ __   ___ _ __| |_ _   _
@@ -564,12 +557,13 @@ Usage:
         //                 |_|                  |___/
 
         | Properties value ->
-          match getPin client id with
-          | Some (EnumPin data) ->
-            let properties = parseProperties value
-            let updated = EnumPin { data with Properties = properties }
-            updatePin client updated
-          | _ -> ()
+          getPin client id
+          |> Map.iter (fun _ -> function
+            | EnumPin data ->
+              let properties = parseProperties value
+              let updated = EnumPin { data with Properties = properties }
+              updatePin client updated
+            | _ -> ())
         | other -> printfn "error: unknown subcommand %A" other
 
       //  ____
@@ -580,7 +574,7 @@ Usage:
 
       | Remove id ->
         getPin client id
-        |> Option.map (removePin client)
+        |> Map.iter (fun _ -> removePin client)
         |> ignore
 
       //  _     _     _

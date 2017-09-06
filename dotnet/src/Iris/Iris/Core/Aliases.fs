@@ -33,6 +33,10 @@ namespace Iris.Core
 
 type NodeId     = Id
 type MemberId   = Id
+type ClientId   = Id
+type PinGroupId = Id
+type PinId      = Id
+
 type Index      = int<index>
 type Term       = int<term>
 type Name       = string<name>

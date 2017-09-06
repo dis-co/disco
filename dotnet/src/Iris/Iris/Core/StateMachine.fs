@@ -134,7 +134,7 @@ type AppCommand =
 
 type State =
   { Project:            IrisProject
-    PinGroups:          Map<Id,PinGroup>
+    PinGroups:          PinGroupMap
     PinMappings:        Map<Id,PinMapping>
     PinWidgets:         Map<Id,PinWidget>
     Cues:               Map<Id,Cue>
@@ -150,7 +150,7 @@ type State =
   static member Empty
     with get () =
       { Project     = IrisProject.Empty
-        PinGroups   = Map.empty
+        PinGroups   = PinGroupMap.empty
         PinMappings = Map.empty
         PinWidgets  = Map.empty
         Cues        = Map.empty
@@ -169,12 +169,12 @@ type State =
     either {
       let inline toMap value = Either.map (Array.map toPair >> Map.ofArray) value
       let! project  = Asset.loadWithMachine path machine
+      let! groups   = Asset.load    project.Path
       let! widgets  = Asset.loadAll project.Path |> toMap
       let! mappings = Asset.loadAll project.Path |> toMap
       let! users    = Asset.loadAll project.Path |> toMap
       let! cues     = Asset.loadAll project.Path |> toMap
       let! cuelists = Asset.loadAll project.Path |> toMap
-      let! groups   = Asset.loadAll project.Path |> toMap
       let! players  = Asset.loadAll project.Path |> toMap
       return
         { Project            = project
@@ -198,13 +198,13 @@ type State =
 
   member state.Save (basePath: FilePath) =
     either {
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinGroups
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinMappings
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinWidgets
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.Cues
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.CueLists
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.Users
       do! Map.fold (Asset.saveMap basePath) Either.nothing state.CuePlayers
+      do! Asset.save basePath state.PinGroups
       do! Asset.save basePath state.Project
     }
 
@@ -221,11 +221,7 @@ type State =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<StateFB> =
     let project = Binary.toOffset builder self.Project
-
-    let groups =
-      Map.toArray self.PinGroups
-      |> Array.map (snd >> Binary.toOffset builder)
-      |> fun groups -> StateFB.CreatePinGroupsVector(builder, groups)
+    let groups = Binary.toOffset builder self.PinGroups
 
     let mappings =
       Map.toArray self.PinMappings
@@ -313,30 +309,18 @@ type State =
       // GROUPS
 
       let! groups =
-        let arr = Array.zeroCreate fb.PinGroupsLength
-        Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, PinGroup>>) _ -> either {
-            let! (i, map) = m
-
-            #if FABLE_COMPILER
-            let! group = fb.PinGroups(i) |> PinGroup.FromFB
-            #else
-            let! group =
-              let value = fb.PinGroups(i)
-              if value.HasValue then
-                value.Value
-                |> PinGroup.FromFB
-              else
-                "Could not parse empty group payload"
-                |> Error.asParseError "State.FromFB"
-                |> Either.fail
-            #endif
-
-            return (i + 1, Map.add group.Id group map)
-          })
-          (Right (0, Map.empty))
-          arr
-        |> Either.map snd
+        #if FABLE_COMPILER
+        fb.PinGroups |> PinGroupMap.FromFB
+        #else
+        let value = fb.PinGroups
+        if value.HasValue then
+          value.Value
+          |> PinGroupMap.FromFB
+        else
+          "Could not parse empty group map payload"
+          |> Error.asParseError "State.FromFB"
+          |> Either.fail
+        #endif
 
       // MAPPINGS
 
@@ -762,87 +746,52 @@ module State =
   // |_|   \__,_|\__\___|_| |_|
 
   let addPinGroup (group : PinGroup) (state: State) =
-    { state with PinGroups = Map.add group.Id group state.PinGroups }
+    { state with PinGroups = PinGroupMap.add group state.PinGroups }
 
   // ** updatePinGroup
 
   let updatePinGroup (group : PinGroup) (state: State) =
-    { state with PinGroups = Map.add group.Id group state.PinGroups }
+    { state with PinGroups = PinGroupMap.add group state.PinGroups }
 
   // ** removePinGroup
 
   let removePinGroup (group : PinGroup) (state: State) =
-    { state with PinGroups = Map.remove group.Id state.PinGroups }
+    { state with PinGroups = PinGroupMap.remove group state.PinGroups }
 
   // ** addPin
 
   let addPin (pin: Pin) (state: State) =
-    if Map.containsKey pin.PinGroup state.PinGroups then
-      let update _ (group: PinGroup) =
-        if group.Id = pin.PinGroup then
-          PinGroup.addPin group pin
-        else
-          group
-      { state with PinGroups = Map.map update state.PinGroups }
-    else
-      state
+    { state with PinGroups = PinGroupMap.addPin pin state.PinGroups }
 
   // ** updatePin
 
   let updatePin (pin : Pin) (state: State) =
-    let mapper (_: Id) (group : PinGroup) =
-      if group.Id = pin.PinGroup then
-        PinGroup.updatePin group pin
-      else
-        group
-    { state with PinGroups = Map.map mapper state.PinGroups }
+    { state with PinGroups = PinGroupMap.updatePin pin state.PinGroups }
 
   // ** removePin
 
   let removePin (pin : Pin) (state: State) =
-    let updater _ (group : PinGroup) =
-      if pin.PinGroup = group.Id
-      then PinGroup.removePin group pin
-      else group
-    { state with PinGroups = Map.map updater state.PinGroups }
+    { state with PinGroups = PinGroupMap.removePin pin state.PinGroups }
 
   // ** updateSlices
 
   let updateSlices (map: SlicesMap) (state: State) =
-    { state with
-        PinGroups =
-          Map.map
-            (fun _ group -> PinGroup.processSlices group map.Slices)
-            state.PinGroups }
+    { state with PinGroups = PinGroupMap.updateSlices map.Slices state.PinGroups }
 
   // ** tryFindPin
 
   let tryFindPin (id: Id) (state: State) =
-    Map.fold
-      (fun (m: Pin option) _ (group: PinGroup) ->
-        match m with
-        | Some _ -> m
-        | _ -> Map.tryFind id group.Pins)
-      None
-      state.PinGroups
+    PinGroupMap.findPin id state.PinGroups
 
   // ** tryFindPinGroup
 
-  let tryFindPinGroup (id: Id) (state: State) =
-    Map.tryFind id state.PinGroups
+  let tryFindPinGroup (client: ClientId) (group: PinGroupId) (state: State) =
+    PinGroupMap.tryFindGroup client group state.PinGroups
 
   // ** findPinGroupBy
 
   let findPinGroupBy (pred: PinGroup -> bool) (state: State) =
-    Map.fold
-      (fun m _ (grp: PinGroup) ->
-        match m with
-        | None when pred grp -> Some grp
-        | None -> None
-        | Some _ -> m)
-      None
-      state.PinGroups
-
+    PinGroupMap.findGroupBy pred state.PinGroups
 
   // ** addCueList
 
@@ -1031,7 +980,7 @@ module State =
 
   let initialize (state: State) =
     { state with
-        PinGroups = Map.map (fun _ group -> PinGroup.setPinsOffline group) state.PinGroups }
+        PinGroups = PinGroupMap.mapGroups PinGroup.setPinsOffline state.PinGroups }
 
 // * Store Action
 
@@ -1424,13 +1373,13 @@ type SlicesMap = SlicesMap of Map<Id,Slices>
             let! output = m
             #if FABLE_COMPILER
             let! parsed = fb.Slices(idx) |> Slices.FromFB
-            return Map.add parsed.Id parsed output
+            return Map.add parsed.PinId parsed output
             #else
             let slicish = fb.Slices(idx)
             if slicish.HasValue then
               let slices = slicish.Value
               let! parsed = Slices.FromFB slices
-              return Map.add parsed.Id parsed output
+              return Map.add parsed.PinId parsed output
             else
               return!
                 "Could not parse empty SlicesFB value"
@@ -1453,14 +1402,14 @@ module SlicesMap =
 
   let add (map: SlicesMap) (slices: Slices) =
     map.Slices
-    |> Map.add slices.Id slices
+    |> Map.add slices.PinId slices
     |> SlicesMap
 
   // ** remove
 
   let remove (map: SlicesMap) (slices: Slices) =
     map.Slices
-    |> Map.remove slices.Id
+    |> Map.remove slices.PinId
     |> SlicesMap
 
   // ** containsKey
@@ -1471,6 +1420,11 @@ module SlicesMap =
   // ** isEmpty
 
   let isEmpty (map: SlicesMap) = map.Slices.IsEmpty
+
+  // ** fold
+
+  let fold (folder: 'a -> Id -> Slices -> 'a) (state: 'a) (map: SlicesMap) =
+    Map.fold folder state map.Slices
 
 // * StateMachine
 
@@ -3366,20 +3320,20 @@ type StateMachine =
 module UpdateSlices =
 
   let ofSlices (slices: Slices) =
-    Map.ofList [(slices.Id, slices)]
+    Map.ofList [(slices.PinId, slices)]
     |> SlicesMap
     |> UpdateSlices
 
   let ofArray (slices: Slices array) =
     slices
-    |> Array.map (fun slices -> slices.Id, slices)
+    |> Array.map (fun slices -> slices.PinId, slices)
     |> Map.ofArray
     |> SlicesMap
     |> UpdateSlices
 
   let ofList (slices: Slices list) =
     slices
-    |> List.map (fun slices -> slices.Id, slices)
+    |> List.map (fun slices -> slices.PinId, slices)
     |> Map.ofList
     |> SlicesMap
     |> UpdateSlices

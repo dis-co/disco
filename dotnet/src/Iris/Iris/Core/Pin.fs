@@ -115,56 +115,82 @@ type Behavior =
     | IP        -> BehaviorFB.IPFB
 
 
-// * ConnectionDirection
+// * PinConfiguration
 
+/// Configuration of the Pin indicating its role in the system. This setting is particularly important
+/// for UI purposes to govern the way the user can interact with a Pin.
 [<RequireQualifiedAccess>]
-type ConnectionDirection =
+type PinConfiguration =
+  /// Source pins, are, as the name suggests, sources of data. That could be anything from a sensor
+  /// delivering values for consumption or VVVV IOBoxes that are connected at the top.
   | Source
+
+  /// Sinks by contrast are pins that are typically written to.
   | Sink
 
-  override direction.ToString() =
-    match direction with
+  /// Preset pins are special sinks which can have individual values per client. This is used in
+  /// scenarios where its important to be able to set values in a per-client fashion,
+  /// e.g. client-specific configurations like display offsets and such.
+  | Preset
+
+  // ** ToString
+
+  override config.ToString() =
+    match config with
     | Source -> "Source"
     | Sink   -> "Sink"
+    | Preset -> "Preset"
+
+  // ** Parse
 
   static member Parse(str: string) =
     match str.ToLowerInvariant() with
     | "source" -> Source
     | "sink" -> Sink
-    | _ -> failwithf "Unknown ConnectionDirection %A" str
+    | "preset" -> Preset
+    | _ -> failwithf "Unknown PinConfiguration %A" str
+
+  // ** TryParse
 
   static member TryParse(str: string) =
     try
       str
-      |> ConnectionDirection.Parse
+      |> PinConfiguration.Parse
       |> Either.succeed
     with
       | x ->
         x.Message
-        |> Error.asParseError "ConnectionDirection.TryParse"
+        |> Error.asParseError "PinConfiguration.TryParse"
         |> Either.fail
 
-  member direction.ToOffset(_: FlatBufferBuilder) =
-    match direction with
-    | Sink -> ConnectionDirectionFB.SinkFB
-    | Source -> ConnectionDirectionFB.SourceFB
+  // ** ToOffset
 
-  static member FromFB(fb: ConnectionDirectionFB) =
+  member configuration.ToOffset(_: FlatBufferBuilder) =
+    match configuration with
+    | Sink   -> PinConfigurationFB.SinkFB
+    | Source -> PinConfigurationFB.SourceFB
+    | Preset -> PinConfigurationFB.PresetFB
+
+  // ** FromFB
+
+  static member FromFB(fb: PinConfigurationFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = ConnectionDirectionFB.SinkFB  -> Right Sink
-    | x when x = ConnectionDirectionFB.SourceFB -> Right Source
+    | x when x = PinConfigurationFB.SinkFB   -> Right Sink
+    | x when x = PinConfigurationFB.SourceFB -> Right Source
+    | x when x = PinConfigurationFB.PresetFB -> Right Preset
     | x ->
-      sprintf "Unknown ConnectionDirectionFB value: %A" x
-      |> Error.asParseError "ConnectionDirection.FromFB"
+      sprintf "Unknown PinConfigurationFB value: %A" x
+      |> Error.asParseError "PinConfiguration.FromFB"
       |> Either.fail
     #else
     match fb with
-    | ConnectionDirectionFB.SinkFB -> Right Sink
-    | ConnectionDirectionFB.SourceFB -> Right Source
+    | PinConfigurationFB.SinkFB   -> Right Sink
+    | PinConfigurationFB.SourceFB -> Right Source
+    | PinConfigurationFB.PresetFB -> Right Preset
     | x ->
-      sprintf "Unknown ConnectionDirectionFB value: %A" x
-      |> Error.asParseError "ConnectionDirection.FromFB"
+      sprintf "Unknown PinConfigurationFB value: %A" x
+      |> Error.asParseError "PinConfiguration.FromFB"
       |> Either.fail
     #endif
 
@@ -175,10 +201,14 @@ type VecSize =
   | Dynamic
   | Fixed of uint16
 
+  // ** ToString
+
   override vecsize.ToString() =
     match vecsize with
     | Dynamic -> "dynamic"
     | Fixed n -> sprintf "fixed %d" n
+
+  // ** Parse
 
   static member Parse(str: string) =
     match str with
@@ -193,6 +223,8 @@ type VecSize =
           | _ -> failwithf "Unable to parse %A in VecSize string %A" n str
       | _ -> failwithf "Unable to parse VecSize string %A" str
 
+  // ** TryParse
+
   static member TryParse(str: string) =
     try
       str
@@ -203,6 +235,8 @@ type VecSize =
         x.Message
         |> Error.asParseError "VecSize.TryParse"
         |> Either.fail
+
+  // ** ToOffset
 
   member vecsize.ToOffset(builder: FlatBufferBuilder) =
     match vecsize with
@@ -215,6 +249,8 @@ type VecSize =
       VecSizeFB.AddType(builder, VecSizeTypeFB.FixedFB)
       VecSizeFB.AddSize(builder, n)
       VecSizeFB.EndVecSizeFB(builder)
+
+  // ** FromFB
 
   static member FromFB(fb: VecSizeFB) =
     #if FABLE_COMPILER
@@ -231,8 +267,8 @@ type VecSize =
     | VecSizeTypeFB.DynamicFB -> Right Dynamic
     | VecSizeTypeFB.FixedFB -> Right (Fixed fb.Size)
     | x ->
-      sprintf "Unknown ConnectionDirectionFB value: %A" x
-      |> Error.asParseError "ConnectionDirection.FromFB"
+      sprintf "Unknown PinConfigurationFB value: %A" x
+      |> Error.asParseError "PinConfiguration.FromFB"
       |> Either.fail
     #endif
 
@@ -343,35 +379,37 @@ type SliceYaml(tipe, idx, value: obj) as self =
 //  ___) | | | (_|  __/\__ \| | (_| | | | | | | |
 // |____/|_|_|\___\___||___/|_|\__,_|_| |_| |_|_|
 
-type SlicesYaml(tipe, id, values: obj array) as self =
-  [<DefaultValue>] val mutable Id: string
+type SlicesYaml(tipe, pinid, clientid, values: obj array) as self =
+  [<DefaultValue>] val mutable PinId: string
+  [<DefaultValue>] val mutable ClientId: string
   [<DefaultValue>] val mutable SliceType: string
   [<DefaultValue>] val mutable Values: obj array
 
-  new () = new SlicesYaml(null,null,null)
+  new () = SlicesYaml(null,null,null,null)
 
   do
-    self.Id        <- id
+    self.PinId     <- pinid
+    self.ClientId  <- clientid
     self.SliceType <- tipe
     self.Values    <- values
 
-  static member StringSlices id (values: string array) =
-    new SlicesYaml("StringSlices", id, Array.map box values)
+  static member StringSlices id client (values: string array) =
+    SlicesYaml("StringSlices", id, client, Array.map box values)
 
-  static member NumberSlices id (values: double array) =
-    new SlicesYaml("NumberSlices", id, Array.map box values)
+  static member NumberSlices id client (values: double array) =
+    SlicesYaml("NumberSlices", id, client, Array.map box values)
 
-  static member BoolSlices id (values: bool array) =
-    new SlicesYaml("BoolSlices", id, Array.map box values)
+  static member BoolSlices id client (values: bool array) =
+    SlicesYaml("BoolSlices", id, client, Array.map box values)
 
-  static member ByteSlices id (values: byte array array) =
-    new SlicesYaml("ByteSlices", id, Array.map (Convert.ToBase64String >> box) values)
+  static member ByteSlices id client (values: byte array array) =
+    SlicesYaml("ByteSlices", id, client, Array.map (Convert.ToBase64String >> box) values)
 
-  static member EnumSlices id (values: Property array) =
-    new SlicesYaml("EnumSlices", id, Array.map (Yaml.toYaml >> box) values)
+  static member EnumSlices id client (values: Property array) =
+    SlicesYaml("EnumSlices", id, client, Array.map (Yaml.toYaml >> box) values)
 
-  static member ColorSlices id (values: ColorSpace array) =
-    new SlicesYaml("ColorSlices", id, Array.map (Yaml.toYaml >> box) values)
+  static member ColorSlices id client (values: ColorSpace array) =
+    SlicesYaml("ColorSlices", id, client, Array.map (Yaml.toYaml >> box) values)
 
   member self.ToSlices() =
     match self.SliceType with
@@ -381,7 +419,8 @@ type SlicesYaml(tipe, id, values: obj array) as self =
           match str with
           | null -> null
           | _ -> str :?> String
-        StringSlices(Id self.Id, Array.map parse self.Values)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        StringSlices(Id self.PinId, client, Array.map parse self.Values)
     | "NumberSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
@@ -398,10 +437,12 @@ type SlicesYaml(tipe, id, values: obj array) as self =
               |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
               |> Logger.err "Slices.ToSlices (Number)"
               0.0
-        NumberSlices(Id self.Id, Array.map parse self.Values)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        NumberSlices(Id self.PinId, client, Array.map parse self.Values)
     | "BoolSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlices(Id self.Id, Array.map unbox<bool> self.Values)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        BoolSlices(Id self.PinId, client, Array.map unbox<bool> self.Values)
     | "ByteSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
         let parse (value: obj) =
@@ -413,13 +454,15 @@ type SlicesYaml(tipe, id, values: obj array) as self =
             printfn "(ByteSlices): offending value: %A" other
             printfn "(ByteSlices): type of offending value: %A" (other.GetType())
             [| |]
-        ByteSlices(Id self.Id, Array.map parse self.Values)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        ByteSlices(Id self.PinId, client, Array.map parse self.Values)
     | "EnumSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
         let ofPyml (o: obj) =
           let pyml: PropertyYaml = unbox o
           { Key = pyml.Key; Value = pyml.Value }
-        EnumSlices(Id self.Id, Array.map ofPyml self.Values)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        EnumSlices(Id self.PinId, client, Array.map ofPyml self.Values)
     | "ColorSlices" ->
       either {
         let! colors =
@@ -434,7 +477,8 @@ type SlicesYaml(tipe, id, values: obj array) as self =
             (Right(0, Array.zeroCreate self.Values.Length))
             self.Values
           |> Either.map snd
-        return ColorSlices(Id self.Id, colors)
+        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
+        return ColorSlices(Id self.PinId, client, colors)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown
@@ -448,11 +492,12 @@ type PinYaml() =
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable Name       : string
   [<DefaultValue>] val mutable PinGroup   : string
+  [<DefaultValue>] val mutable Client     : string
   [<DefaultValue>] val mutable Tags       : string array
   [<DefaultValue>] val mutable Persisted  : bool
   [<DefaultValue>] val mutable Online     : bool
   [<DefaultValue>] val mutable Behavior   : string
-  [<DefaultValue>] val mutable Direction  : string
+  [<DefaultValue>] val mutable PinConfiguration  : string
   [<DefaultValue>] val mutable MaxChars   : int
   [<DefaultValue>] val mutable IsTrigger  : bool
   [<DefaultValue>] val mutable VecSize    : string
@@ -500,17 +545,29 @@ type Pin =
       | EnumPin     data -> data.Name
       | ColorPin    data -> data.Name
 
-  // ** Direction
+  // ** Client
 
-  member self.Direction
+  member self.Client
     with get () =
       match self with
-      | StringPin   data -> data.Direction
-      | NumberPin   data -> data.Direction
-      | BoolPin     data -> data.Direction
-      | BytePin     data -> data.Direction
-      | EnumPin     data -> data.Direction
-      | ColorPin    data -> data.Direction
+      | StringPin   data -> data.Client
+      | NumberPin   data -> data.Client
+      | BoolPin     data -> data.Client
+      | BytePin     data -> data.Client
+      | EnumPin     data -> data.Client
+      | ColorPin    data -> data.Client
+
+  // ** PinConfiguration
+
+  member self.PinConfiguration
+    with get () =
+      match self with
+      | StringPin   data -> data.PinConfiguration
+      | NumberPin   data -> data.PinConfiguration
+      | BoolPin     data -> data.PinConfiguration
+      | BytePin     data -> data.PinConfiguration
+      | EnumPin     data -> data.PinConfiguration
+      | ColorPin    data -> data.PinConfiguration
 
   // ** PinGroup
 
@@ -564,13 +621,14 @@ type Pin =
 
   member pin.Slices
     with get () =
+      let client = if Pin.isPreset pin then Some pin.Client else None
       match pin with
-      | StringPin   data -> StringSlices (pin.Id, data.Values)
-      | NumberPin   data -> NumberSlices (pin.Id, data.Values)
-      | BoolPin     data -> BoolSlices   (pin.Id, data.Values)
-      | BytePin     data -> ByteSlices   (pin.Id, data.Values)
-      | EnumPin     data -> EnumSlices   (pin.Id, data.Values)
-      | ColorPin    data -> ColorSlices  (pin.Id, data.Values)
+      | StringPin   data -> StringSlices (pin.Id, client, data.Values)
+      | NumberPin   data -> NumberSlices (pin.Id, client, data.Values)
+      | BoolPin     data -> BoolSlices   (pin.Id, client, data.Values)
+      | BytePin     data -> ByteSlices   (pin.Id, client, data.Values)
+      | EnumPin     data -> EnumSlices   (pin.Id, client, data.Values)
+      | ColorPin    data -> ColorSlices  (pin.Id, client, data.Values)
 
   // ** Labels
 
@@ -583,18 +641,6 @@ type Pin =
       | BytePin   data -> data.Labels
       | EnumPin   data -> data.Labels
       | ColorPin  data -> data.Labels
-
-  // ** Values
-
-  member pin.Values
-    with get () =
-      match pin with
-      | StringPin data -> StringSlices(data.Id, data.Values)
-      | NumberPin data -> NumberSlices(data.Id, data.Values)
-      | BoolPin   data -> BoolSlices(data.Id, data.Values)
-      | BytePin   data -> ByteSlices(data.Id, data.Values)
-      | EnumPin   data -> EnumSlices(data.Id, data.Values)
-      | ColorPin  data -> ColorSlices(data.Id, data.Values)
 
   // ** Persisted
 
@@ -625,7 +671,7 @@ type Pin =
   #if !FABLE_COMPILER
 
   member pin.ToSpread() =
-    pin.Values.ToSpread()
+    pin.Slices.ToSpread()
 
   #endif
 
@@ -802,19 +848,20 @@ type Pin =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
-    let yaml = new PinYaml()
+    let yaml = PinYaml()
     match self with
     | StringPin data ->
       yaml.PinType    <- "StringPin"
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.MaxChars   <- int data.MaxChars
       yaml.Behavior   <- string data.Behavior
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.VecSize    <- string data.VecSize
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
@@ -824,6 +871,7 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
@@ -832,7 +880,7 @@ type Pin =
       yaml.Max        <- data.Max
       yaml.Unit       <- data.Unit
       yaml.VecSize    <- string data.VecSize
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
 
@@ -841,12 +889,13 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.IsTrigger  <- data.IsTrigger
       yaml.VecSize    <- string data.VecSize
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
 
@@ -855,11 +904,12 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
 
@@ -868,11 +918,12 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.Properties <- Array.map Yaml.toYaml data.Properties
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
@@ -882,11 +933,12 @@ type Pin =
       yaml.Id         <- string data.Id
       yaml.Name       <- unwrap data.Name
       yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
       yaml.Persisted  <- data.Persisted
       yaml.Online     <- data.Online
       yaml.Tags       <- Array.map unwrap data.Tags
       yaml.VecSize    <- string data.VecSize
-      yaml.Direction  <- string data.Direction
+      yaml.PinConfiguration  <- string data.PinConfiguration
       yaml.Labels     <- data.Labels
       yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
 
@@ -1125,7 +1177,7 @@ type Pin =
       match yml.PinType with
       | "StringPin" -> either {
           let! strtype = Behavior.TryParse yml.Behavior
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -1144,20 +1196,21 @@ type Pin =
             Id         = Id yml.Id
             Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
+            Client     = Id yml.Client
             Tags       = Array.map astag yml.Tags
             Persisted  = yml.Persisted
             Online     = yml.Online
             MaxChars   = yml.MaxChars * 1<chars>
             Behavior   = strtype
             VecSize    = vecsize
-            Direction  = dir
+            PinConfiguration  = dir
             Labels     = yml.Labels
             Values     = slices
           }
         }
 
       | "NumberPin" -> either {
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -1182,9 +1235,10 @@ type Pin =
             Id        = Id yml.Id
             Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
             Tags      = Array.map astag yml.Tags
             VecSize   = vecsize
-            Direction = dir
+            PinConfiguration = dir
             Persisted = yml.Persisted
             Online    = yml.Online
             Min       = yml.Min
@@ -1197,7 +1251,7 @@ type Pin =
         }
 
       | "BoolPin" -> either {
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -1226,19 +1280,20 @@ type Pin =
             Id        = Id yml.Id
             Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
             Online    = yml.Online
             IsTrigger = yml.IsTrigger
             VecSize   = vecsize
-            Direction = dir
+            PinConfiguration = dir
             Labels    = yml.Labels
             Values    = slices
           }
         }
 
       | "BytePin" -> either {
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -1267,11 +1322,12 @@ type Pin =
             Id        = Id yml.Id
             Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
             Online    = yml.Online
             VecSize   = vecsize
-            Direction = dir
+            PinConfiguration = dir
             Labels    = yml.Labels
             Values    = slices
           }
@@ -1314,26 +1370,27 @@ type Pin =
               (Right(0, arr))
               yml.Values
 
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
 
           return EnumPin {
             Id         = Id yml.Id
             Name       = name yml.Name
             PinGroup   = Id yml.PinGroup
+            Client     = Id yml.Client
             Tags       = Array.map astag yml.Tags
             Online     = yml.Online
             Persisted  = yml.Persisted
             Properties = properties
             VecSize    = vecsize
-            Direction  = dir
+            PinConfiguration  = dir
             Labels     = yml.Labels
             Values     = slices
           }
         }
 
       | "ColorPin" -> either {
-          let! dir = ConnectionDirection.TryParse yml.Direction
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
 
           let! (_, slices) =
@@ -1363,11 +1420,12 @@ type Pin =
             Id        = Id yml.Id
             Name      = name yml.Name
             PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
             Tags      = Array.map astag yml.Tags
             Persisted = yml.Persisted
             Online    = yml.Online
             VecSize   = vecsize
-            Direction = dir
+            PinConfiguration = dir
             Labels    = yml.Labels
             Values    = slices
           }
@@ -1403,13 +1461,14 @@ type Pin =
 // * Pin module
 
 module Pin =
-
   // ** emtpyLabels
 
   let private emptyLabels (count: int) =
-    let arr = Array.zeroCreate count
-    Array.fill arr 0 count ""
-    arr
+    [| for _ in 1 .. count -> "" |]
+
+  // ** defaultTags
+
+  let private defaultTags = Array.empty
 
   // ** Generic module
 
@@ -1417,61 +1476,65 @@ module Pin =
 
     // *** toggle
 
-    let toggle id name dir group tags values =
+    let toggle id name dir group client values =
       BoolPin { Id        = id
                 Name      = name
                 PinGroup  = group
-                Tags      = tags
+                Tags      = defaultTags
+                Client    = client
                 IsTrigger = false
                 Persisted = false
                 Online    = true
-                Direction = dir
+                PinConfiguration = dir
                 VecSize   = VecSize.Dynamic
-                Labels    = emptyLabels(Array.length values)
+                Labels    = emptyLabels (Array.length values)
                 Values    = values }
 
     // *** bang
 
-    let bang id name dir group tags values =
+    let bang id name dir group client values =
       BoolPin { Id        = id
                 Name      = name
                 PinGroup  = group
-                Tags      = tags
+                Client    = client
+                Tags      = defaultTags
                 IsTrigger = true
                 Persisted = false
                 Online    = true
-                Direction = dir
+                PinConfiguration = dir
                 VecSize   = VecSize.Dynamic
                 Labels    = emptyLabels(Array.length values)
                 Values    = values }
 
     // *** string
 
-    let string id name dir group tags values =
+    let string id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = Simple
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
+                  Labels    = emptyLabels (Array.length values)
                   Values    = values }
 
     // *** multiLine
 
-    let multiLine id name dir group tags values =
+    let multiLine id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = MultiLine
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
                   Labels    = emptyLabels(Array.length values)
@@ -1479,15 +1542,16 @@ module Pin =
 
     // *** fileName
 
-    let fileName id name dir group tags values =
+    let fileName id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = FileName
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
                   Labels    = emptyLabels(Array.length values)
@@ -1495,31 +1559,33 @@ module Pin =
 
     // *** directory
 
-    let directory id name dir group tags values =
+    let directory id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = Directory
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
+                  Labels    = emptyLabels (Array.length values)
                   Values    = values }
 
     // *** url
 
-    let url id name dir group tags values =
+    let url id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = Url
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
                   Labels    = emptyLabels(Array.length values)
@@ -1527,15 +1593,16 @@ module Pin =
 
     // *** ip
 
-    let ip id name dir group tags values =
+    let ip id name dir group client values =
       StringPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Behavior  = IP
-                  Direction = dir
+                  PinConfiguration = dir
                   VecSize   = VecSize.Dynamic
                   MaxChars  = sizeof<int> * 1<chars>
                   Labels    = emptyLabels(Array.length values)
@@ -1543,11 +1610,12 @@ module Pin =
 
     // *** number
 
-    let number id name dir group tags values =
+    let number id name dir group client values =
       NumberPin { Id        = id
                   Name      = name
                   PinGroup  = group
-                  Tags      = tags
+                  Client    = client
+                  Tags      = defaultTags
                   Persisted = false
                   Online    = true
                   Min       = 0
@@ -1555,51 +1623,53 @@ module Pin =
                   Unit      = ""
                   Precision = 4u
                   VecSize   = VecSize.Dynamic
-                  Direction = dir
-                  Labels    = emptyLabels(Array.length values)
+                  PinConfiguration = dir
+                  Labels    = emptyLabels (Array.length values)
                   Values    = values }
 
     // *** bytes
 
-    let bytes id name dir group tags values =
+    let bytes id name dir group client values =
       BytePin { Id        = id
                 Name      = name
                 PinGroup  = group
-                Tags      = tags
+                Client    = client
+                Tags      = defaultTags
                 Persisted = false
                 Online    = true
                 VecSize   = VecSize.Dynamic
-                Direction = dir
-                Labels    = emptyLabels(Array.length values)
+                PinConfiguration = dir
+                Labels    = emptyLabels (Array.length values)
                 Values    = values }
 
     // *** color
 
-    let color id name dir group tags values =
+    let color id name dir group client values =
       ColorPin { Id        = id
                  Name      = name
                  PinGroup  = group
-                 Tags      = tags
+                 Client    = client
+                 Tags      = defaultTags
                  Persisted = false
                  Online    = true
                  VecSize   = VecSize.Dynamic
-                 Direction = dir
-                 Labels    = emptyLabels(Array.length values)
+                 PinConfiguration = dir
+                 Labels    = emptyLabels (Array.length values)
                  Values    = values }
 
     // *** enum
-
-    let enum id name dir group tags properties values =
+    let enum id name dir group client properties values =
       EnumPin { Id         = id
                 Name       = name
                 PinGroup   = group
-                Tags       = tags
+                Client     = client
+                Tags       = defaultTags
                 Persisted  = false
                 Online     = true
                 Properties = properties
-                Direction  = dir
+                PinConfiguration  = dir
                 VecSize    = VecSize.Dynamic
-                Labels     = emptyLabels(Array.length values)
+                Labels     = emptyLabels (Array.length values)
                 Values     = values }
 
   // ** Sink module
@@ -1608,63 +1678,63 @@ module Pin =
 
     // *** toggle
 
-    let toggle id name group tags values =
-      Generic.toggle id name ConnectionDirection.Sink group tags values
+    let toggle id name group client values =
+      Generic.toggle id name PinConfiguration.Sink group client values
 
     // *** bang
 
-    let bang id name group tags values =
-      Generic.bang id name ConnectionDirection.Sink group tags values
+    let bang id name group client values =
+      Generic.bang id name PinConfiguration.Sink group client values
 
     // *** string
 
-    let string id name group tags values =
-      Generic.string id name ConnectionDirection.Sink group tags values
+    let string id name group client values =
+      Generic.string id name PinConfiguration.Sink group client values
 
     // *** multiLine
 
-    let multiLine id name group tags values =
-      Generic.multiLine id name ConnectionDirection.Sink group tags values
+    let multiLine id name group client values =
+      Generic.multiLine id name PinConfiguration.Sink group client values
 
     // *** fileName
 
-    let fileName id name group tags values =
-      Generic.fileName id name ConnectionDirection.Sink group tags values
+    let fileName id name group client values =
+      Generic.fileName id name PinConfiguration.Sink group client values
 
     // *** directory
 
-    let directory id name group tags values =
-      Generic.directory id name ConnectionDirection.Sink group tags values
+    let directory id name group client values =
+      Generic.directory id name PinConfiguration.Sink group client values
 
     // *** url
 
-    let url id name group tags values =
-      Generic.url id name ConnectionDirection.Sink group tags values
+    let url id name group client values =
+      Generic.url id name PinConfiguration.Sink group client values
 
     // *** ip
 
-    let ip id name group tags values =
-      Generic.ip id name ConnectionDirection.Sink group tags values
+    let ip id name group client values =
+      Generic.ip id name PinConfiguration.Sink group client values
 
     // *** number
 
-    let number id name group tags values =
-      Generic.number id name ConnectionDirection.Sink group tags values
+    let number id name group client values =
+      Generic.number id name PinConfiguration.Sink group client values
 
     // *** bytes
 
-    let bytes id name group tags values =
-      Generic.bytes id name ConnectionDirection.Sink group tags values
+    let bytes id name group client values =
+      Generic.bytes id name PinConfiguration.Sink group client values
 
     // *** color
 
-    let color id name group tags values =
-      Generic.color id name ConnectionDirection.Sink group tags values
+    let color id name group client values =
+      Generic.color id name PinConfiguration.Sink group client values
 
     // *** enum
 
-    let enum id name group tags properties values =
-      Generic.enum id name ConnectionDirection.Sink group tags properties values
+    let enum id name group client properties values =
+      Generic.enum id name PinConfiguration.Sink group client properties values
 
   // ** Source module
 
@@ -1672,63 +1742,63 @@ module Pin =
 
     // *** toggle
 
-    let toggle id name group tags values =
-      Generic.toggle id name ConnectionDirection.Source group tags values
+    let toggle id name group client values =
+      Generic.toggle id name PinConfiguration.Source group client values
 
     // *** bang
 
-    let bang id name group tags values =
-      Generic.bang id name ConnectionDirection.Source group tags values
+    let bang id name group client values =
+      Generic.bang id name PinConfiguration.Source group client values
 
     // *** string
 
-    let string id name group tags values =
-      Generic.string id name ConnectionDirection.Source group tags values
+    let string id name group client values =
+      Generic.string id name PinConfiguration.Source group client values
 
     // *** multiLine
 
-    let multiLine id name group tags values =
-      Generic.multiLine id name ConnectionDirection.Source group tags values
+    let multiLine id name group client values =
+      Generic.multiLine id name PinConfiguration.Source group client values
 
     // *** fileName
 
-    let fileName id name group tags values =
-      Generic.fileName id name ConnectionDirection.Source group tags values
+    let fileName id name group client values =
+      Generic.fileName id name PinConfiguration.Source group client values
 
     // *** directory
 
-    let directory id name group tags values =
-      Generic.directory id name ConnectionDirection.Source group tags values
+    let directory id name group client values =
+      Generic.directory id name PinConfiguration.Source group client values
 
     // *** url
 
-    let url id name group tags values =
-      Generic.url id name ConnectionDirection.Source group tags values
+    let url id name group client values =
+      Generic.url id name PinConfiguration.Source group client values
 
     // *** ip
 
-    let ip id name group tags values =
-      Generic.ip id name ConnectionDirection.Source group tags values
+    let ip id name group client values =
+      Generic.ip id name PinConfiguration.Source group client values
 
     // *** number
 
-    let number id name group tags values =
-      Generic.number id name ConnectionDirection.Source group tags values
+    let number id name group client values =
+      Generic.number id name PinConfiguration.Source group client values
 
     // *** bytes
 
-    let bytes id name group tags values =
-      Generic.bytes id name ConnectionDirection.Source group tags values
+    let bytes id name group client values =
+      Generic.bytes id name PinConfiguration.Source group client values
 
     // *** color
 
-    let color id name group tags values =
-      Generic.color id name ConnectionDirection.Source group tags values
+    let color id name group client values =
+      Generic.color id name PinConfiguration.Source group client values
 
     // *** enum
 
-    let enum id name group tags properties values =
-      Generic.enum id name ConnectionDirection.Source group tags properties values
+    let enum id name group client properties values =
+      Generic.enum id name PinConfiguration.Source group client properties values
 
   // ** Player module
 
@@ -1748,47 +1818,50 @@ module Pin =
 
     // *** next
 
-    let next id =
+    let next id client =
       BoolPin { Id         = nextId id
                 Name       = name "Next"
                 PinGroup   = id
                 Tags       = Array.empty
+                Client     = client
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Sink
+                PinConfiguration  = PinConfiguration.Sink
                 VecSize    = VecSize.Dynamic
-                Labels     = Array.empty
+                Labels     = emptyLabels 1
                 Values     = [| false |] }
 
     // *** previous
 
-    let previous id =
+    let previous id client =
       BoolPin { Id         = previousId id
                 Name       = name "Previous"
                 PinGroup   = id
+                Client     = client
                 Tags       = Array.empty
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Sink
+                PinConfiguration  = PinConfiguration.Sink
                 VecSize    = VecSize.Dynamic
-                Labels     = Array.empty
+                Labels     = emptyLabels 1
                 Values     = [| false |] }
 
     // *** call
 
-    let call id =
+    let call id client =
       BoolPin { Id         = callId id
                 Name       = name "Call"
                 PinGroup   = id
+                Client     = client
                 Tags       = Array.empty
                 Persisted  = true
                 IsTrigger  = true
                 Online     = true
-                Direction  = ConnectionDirection.Sink
+                PinConfiguration  = PinConfiguration.Sink
                 VecSize    = VecSize.Dynamic
-                Labels     = Array.empty
+                Labels     = emptyLabels 1
                 Values     = [| false |] }
 
   // ** setVecSize
@@ -1801,15 +1874,15 @@ module Pin =
     | EnumPin   data -> EnumPin   { data with VecSize = vecSize }
     | ColorPin  data -> ColorPin  { data with VecSize = vecSize }
 
-  // ** setDirection
+  // ** setPinConfiguration
 
-  let setDirection direction = function
-    | StringPin   data -> StringPin   { data with Direction = direction }
-    | NumberPin   data -> NumberPin   { data with Direction = direction }
-    | BoolPin     data -> BoolPin     { data with Direction = direction }
-    | BytePin     data -> BytePin     { data with Direction = direction }
-    | EnumPin     data -> EnumPin     { data with Direction = direction }
-    | ColorPin    data -> ColorPin    { data with Direction = direction }
+  let setPinConfiguration config = function
+    | StringPin   data -> StringPin   { data with PinConfiguration = config }
+    | NumberPin   data -> NumberPin   { data with PinConfiguration = config }
+    | BoolPin     data -> BoolPin     { data with PinConfiguration = config }
+    | BytePin     data -> BytePin     { data with PinConfiguration = config }
+    | EnumPin     data -> EnumPin     { data with PinConfiguration = config }
+    | ColorPin    data -> ColorPin    { data with PinConfiguration = config }
 
   // ** setName
 
@@ -1901,37 +1974,49 @@ module Pin =
   let setSlices slices = function
     | StringPin data as value ->
       match slices with
-      | StringSlices (id,arr) when id = data.Id ->
+      | StringSlices (id,None,arr) when id = data.Id ->
+        StringPin { data with Values = arr }
+      | StringSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
         StringPin { data with Values = arr }
       | _ -> value
 
     | NumberPin data as value ->
       match slices with
-      | NumberSlices (id,arr) when id = data.Id ->
+      | NumberSlices (id,None,arr) when id = data.Id ->
+        NumberPin { data with Values = arr }
+      | NumberSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
         NumberPin { data with Values = arr }
       | _ -> value
 
     | BoolPin data as value ->
       match slices with
-      | BoolSlices (id, arr) when id = data.Id ->
+      | BoolSlices (id,None,arr) when id = data.Id ->
+        BoolPin { data with Values = arr }
+      | BoolSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
         BoolPin { data with Values = arr }
       | _ -> value
 
     | BytePin data as value ->
       match slices with
-      | ByteSlices (id, arr) when id = data.Id ->
+      | ByteSlices (id,None,arr) when id = data.Id ->
+        BytePin { data with Values = arr }
+      | ByteSlices (id,Some client, arr) when id = data.Id && client = data.Client ->
         BytePin { data with Values = arr }
       | _ -> value
 
     | EnumPin data as value ->
       match slices with
-      | EnumSlices (id, arr) when id = data.Id ->
+      | EnumSlices (id,None,arr) when id = data.Id ->
+        EnumPin { data with Values = arr }
+      | EnumSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
         EnumPin { data with Values = arr }
       | _ -> value
 
     | ColorPin data as value ->
       match slices with
-      | ColorSlices (id,arr) when id = data.Id ->
+      | ColorSlices (id,None,arr) when id = data.Id ->
+        ColorPin { data with Values = arr }
+      | ColorSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
         ColorPin { data with Values = arr }
       | _ -> value
 
@@ -1960,9 +2045,9 @@ module Pin =
     | EnumPin   data -> EnumPin   { data with Online = online }
     | ColorPin  data -> ColorPin  { data with Online = online }
 
-  // ** direction
+  // ** configuration
 
-  let direction (pin: Pin) = pin.Direction
+  let configuration (pin: Pin) = pin.PinConfiguration
 
   // ** isOnline
 
@@ -1975,12 +2060,17 @@ module Pin =
   // ** isSink
 
   let isSink (pin: Pin) =
-    direction pin = ConnectionDirection.Sink
+    configuration pin = PinConfiguration.Sink
 
   // ** isSource
 
   let isSource (pin: Pin) =
-    direction pin = ConnectionDirection.Source
+    configuration pin = PinConfiguration.Source
+
+  // ** isPreset
+
+  let isPreset (pin: Pin) =
+    pin.PinConfiguration = PinConfiguration.Preset
 
   // ** str2offset
 
@@ -1994,28 +2084,66 @@ module Pin =
 
 // * NumberPinD
 
-//  ____              _     _      ____
-// |  _ \  ___  _   _| |__ | | ___| __ )  _____  __
-// | | | |/ _ \| | | | '_ \| |/ _ \  _ \ / _ \ \/ /
-// | |_| | (_) | |_| | |_) | |  __/ |_) | (_) >  <
-// |____/ \___/ \__,_|_.__/|_|\___|____/ \___/_/\_\
+///  _   _                 _               ____  _       ____
+/// | \ | |_   _ _ __ ___ | |__   ___ _ __|  _ \(_)_ __ |  _ \
+/// |  \| | | | | '_ ` _ \| '_ \ / _ \ '__| |_) | | '_ \| | | |
+/// | |\  | |_| | | | | | | |_) |  __/ |  |  __/| | | | | |_| |
+/// |_| \_|\__,_|_| |_| |_|_.__/ \___|_|  |_|   |_|_| |_|____/
 
 [<CustomComparison; CustomEquality>]
 type NumberPinD =
-  { Id         : Id
-    Name       : Name
-    PinGroup   : Id
-    Tags       : Tag array
-    Persisted  : bool
-    Online     : bool
-    Direction  : ConnectionDirection
-    VecSize    : VecSize
-    Min        : int
-    Max        : int
-    Unit       : string
-    Precision  : uint32
-    Labels     : string array
-    Values     : double array }
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: Id
+
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
+    Persisted: bool
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    /// Minimum value for this number pin
+    Min: int
+
+    /// Maximum value for this number pin
+    Max: int
+
+    /// string unit to display next to the Pin
+    Unit: string
+
+    /// Floating point precision. Zero is equivalent to integers.
+    Precision: uint32
+
+    ///
+    Values: double array }
 
   // ** ToOffset
 
@@ -2030,6 +2158,7 @@ type NumberPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let unit = self.Unit |> Option.mapNull builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2037,11 +2166,12 @@ type NumberPinD =
     let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
     let values = NumberPinFB.CreateValuesVector(builder, self.Values)
     let vecsize = self.VecSize.ToOffset(builder)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
     NumberPinFB.StartNumberPinFB(builder)
     NumberPinFB.AddId(builder, id)
     Option.iter (fun value -> NumberPinFB.AddName(builder, value)) name
     NumberPinFB.AddPinGroup(builder, group)
+    NumberPinFB.AddClient(builder, client)
     NumberPinFB.AddPersisted(builder, self.Persisted)
     NumberPinFB.AddOnline(builder, self.Online)
     NumberPinFB.AddTags(builder, tags)
@@ -2051,7 +2181,7 @@ type NumberPinD =
     Option.iter (fun value -> NumberPinFB.AddUnit(builder, value)) unit
     NumberPinFB.AddPrecision(builder, self.Precision)
     NumberPinFB.AddVecSize(builder, vecsize)
-    NumberPinFB.AddDirection(builder, direction)
+    NumberPinFB.AddPinConfiguration(builder, configuration)
     NumberPinFB.AddLabels(builder, labels)
     NumberPinFB.AddValues(builder, values)
     NumberPinFB.EndNumberPinFB(builder)
@@ -2063,7 +2193,7 @@ type NumberPinD =
       let! tags = Pin.ParseTagsFB fb
       let! labels = Pin.ParseLabelsFB fb
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       let! slices =
         Pin.ParseSimpleValuesFB fb
@@ -2074,13 +2204,14 @@ type NumberPinD =
                PinGroup  = Id fb.PinGroup
                Tags      = tags
                Persisted = fb.Persisted
+               Client    = Id fb.Client
                Online    = fb.Online
                Min       = fb.Min
                Max       = fb.Max
                Unit      = fb.Unit
                Precision = fb.Precision
                VecSize   = vecsize
-               Direction = direction
+               PinConfiguration = configuration
                Labels    = labels
                Values    = slices }
     }
@@ -2127,9 +2258,11 @@ type NumberPinD =
       pin.Id = self.Id &&
       pin.Name = self.Name &&
       pin.PinGroup = self.PinGroup &&
+      pin.Client = self.Client &&
+      pin.PinConfiguration = self.PinConfiguration &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
-      pin.Direction = self.Direction &&
+      pin.PinConfiguration = self.PinConfiguration &&
       pin.Labels = self.Labels &&
       valuesEqual
 
@@ -2143,26 +2276,60 @@ type NumberPinD =
 
 // * StringPinD
 
-//  ____  _        _             ____
-// / ___|| |_ _ __(_)_ __   __ _| __ )  _____  __
-// \___ \| __| '__| | '_ \ / _` |  _ \ / _ \ \/ /
-//  ___) | |_| |  | | | | | (_| | |_) | (_) >  <
-// |____/ \__|_|  |_|_| |_|\__, |____/ \___/_/\_\
-//                         |___/
+///  ____  _        _             ____  _       ____
+/// / ___|| |_ _ __(_)_ __   __ _|  _ \(_)_ __ |  _ \
+/// \___ \| __| '__| | '_ \ / _` | |_) | | '_ \| | | |
+///  ___) | |_| |  | | | | | (_| |  __/| | | | | |_| |
+/// |____/ \__|_|  |_|_| |_|\__, |_|   |_|_| |_|____/
+///                         |___/
 
 type StringPinD =
-  { Id         : Id
-    Name       : Name
-    PinGroup   : Id
-    Tags       : Tag array
-    Persisted  : bool
-    Online     : bool
-    Direction  : ConnectionDirection
-    Behavior   : Behavior
-    MaxChars   : MaxChars
-    VecSize    : VecSize
-    Labels     : string array
-    Values     : string array }
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: PinId
+
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
+    Persisted: bool
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    /// The behavior (string type) of this Pin used by the UI
+    Behavior: Behavior
+
+    /// Maximum number of characters allowed
+    MaxChars: MaxChars
+
+    /// The underlying values
+    Values: string array }
 
   // ** ToOffset
 
@@ -2177,6 +2344,7 @@ type StringPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let tipe = self.Behavior.ToOffset(builder)
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
@@ -2185,19 +2353,20 @@ type StringPinD =
     let labels = StringPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = StringPinFB.CreateValuesVector(builder, sliceoffsets)
     let vecsize = self.VecSize.ToOffset(builder)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
 
     StringPinFB.StartStringPinFB(builder)
     StringPinFB.AddId(builder, id)
     Option.iter (fun value -> StringPinFB.AddName(builder,value)) name
     StringPinFB.AddPinGroup(builder, group)
+    StringPinFB.AddClient(builder, client)
     StringPinFB.AddPersisted(builder, self.Persisted)
     StringPinFB.AddOnline(builder, self.Online)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
     StringPinFB.AddMaxChars(builder, int self.MaxChars)
     StringPinFB.AddVecSize(builder, vecsize)
-    StringPinFB.AddDirection(builder, direction)
+    StringPinFB.AddPinConfiguration(builder, configuration)
     StringPinFB.AddLabels(builder, labels)
     StringPinFB.AddValues(builder, slices)
     StringPinFB.EndStringPinFB(builder)
@@ -2211,7 +2380,7 @@ type StringPinD =
       let! slices = Pin.ParseSimpleValuesFB fb
       let! tipe = Behavior.FromFB fb.Behavior
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
                Name      = name fb.Name
@@ -2219,10 +2388,11 @@ type StringPinD =
                Tags      = tags
                Online    = fb.Online
                Persisted = fb.Persisted
+               Client    = Id fb.Client
                Behavior  = tipe
                MaxChars  = 1<chars> * fb.MaxChars
                VecSize   = vecsize
-               Direction = direction
+               PinConfiguration = configuration
                Labels    = labels
                Values    = slices }
     }
@@ -2240,23 +2410,55 @@ type StringPinD =
 
 // * BoolPinD
 
-//  ____              _ ____
-// | __ )  ___   ___ | | __ )  _____  __
-// |  _ \ / _ \ / _ \| |  _ \ / _ \ \/ /
-// | |_) | (_) | (_) | | |_) | (_) >  <
-// |____/ \___/ \___/|_|____/ \___/_/\_\
+///  ____              _ ____  _       ____
+/// | __ )  ___   ___ | |  _ \(_)_ __ |  _ \
+/// |  _ \ / _ \ / _ \| | |_) | | '_ \| | | |
+/// | |_) | (_) | (_) | |  __/| | | | | |_| |
+/// |____/ \___/ \___/|_|_|   |_|_| |_|____/
 
 type BoolPinD =
-  { Id         : Id
-    Name       : Name
-    PinGroup   : Id
-    Tags       : Tag array
-    Persisted  : bool
-    Online     : bool
-    Direction  : ConnectionDirection
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: PinId
+
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
+    Persisted: bool
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    /// Determines the reset behavior of this pin
     IsTrigger  : bool
-    VecSize    : VecSize
-    Labels     : string array
+
+    /// the underlying values of this pin
     Values     : bool array }
 
   // ** ToOffset
@@ -2272,22 +2474,24 @@ type BoolPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = BoolPinFB.CreateValuesVector(builder, self.Values)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
     BoolPinFB.StartBoolPinFB(builder)
     BoolPinFB.AddId(builder, id)
     Option.iter (fun value -> BoolPinFB.AddName(builder,value)) name
     BoolPinFB.AddPinGroup(builder, group)
+    BoolPinFB.AddClient(builder, client)
     BoolPinFB.AddPersisted(builder, self.Persisted)
     BoolPinFB.AddOnline(builder, self.Online)
     BoolPinFB.AddIsTrigger(builder, self.IsTrigger)
     BoolPinFB.AddTags(builder, tags)
-    BoolPinFB.AddDirection(builder, direction)
+    BoolPinFB.AddPinConfiguration(builder, configuration)
     BoolPinFB.AddVecSize(builder, vecsize)
     BoolPinFB.AddLabels(builder, labels)
     BoolPinFB.AddValues(builder, slices)
@@ -2301,17 +2505,18 @@ type BoolPinD =
       let! labels = Pin.ParseLabelsFB fb
       let! slices = Pin.ParseSimpleValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
                Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
+               Client    = Id fb.Client
                Tags      = tags
                Persisted = fb.Persisted
                Online    = fb.Online
                IsTrigger = fb.IsTrigger
                VecSize   = vecsize
-               Direction = direction
+               PinConfiguration = configuration
                Labels    = labels
                Values    = slices }
     }
@@ -2329,25 +2534,54 @@ type BoolPinD =
 
 // * BytePinD
 
-//  ____        _       ____
-// | __ ) _   _| |_ ___| __ )  _____  __
-// |  _ \| | | | __/ _ \  _ \ / _ \ \/ /
-// | |_) | |_| | ||  __/ |_) | (_) >  <
-// |____/ \__, |\__\___|____/ \___/_/\_\
-//        |___/
+///  ____        _       ____  _       ____
+/// | __ ) _   _| |_ ___|  _ \(_)_ __ |  _ \
+/// |  _ \| | | | __/ _ \ |_) | | '_ \| | | |
+/// | |_) | |_| | ||  __/  __/| | | | | |_| |
+/// |____/ \__, |\__\___|_|   |_|_| |_|____/
+///        |___/
 
 type [<CustomEquality;CustomComparison>] BytePinD =
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: PinId
 
-  { Id         : Id
-    Name       : Name
-    PinGroup   : Id
-    Tags       : Tag array
-    Persisted  : bool
-    Online     : bool
-    Direction  : ConnectionDirection
-    VecSize    : VecSize
-    Labels     : string array
-    Values     : byte[] array }
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
+    Persisted: bool
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    /// The byte array values
+    Values: byte[] array }
 
   // ** Equals
 
@@ -2396,7 +2630,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       pin.PinGroup = self.PinGroup &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
-      pin.Direction = self.Direction &&
+      pin.PinConfiguration = self.PinConfiguration &&
       pin.Labels = self.Labels &&
       lengthEqual &&
       contentsEqual
@@ -2422,6 +2656,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
@@ -2429,16 +2664,17 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     let tags = BytePinFB.CreateTagsVector(builder, tagoffsets)
     let slices = BytePinFB.CreateValuesVector(builder, sliceoffsets)
     let vecsize = self.VecSize.ToOffset(builder)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
     BytePinFB.StartBytePinFB(builder)
     BytePinFB.AddId(builder, id)
     Option.iter (fun value -> BytePinFB.AddName(builder,value)) name
     BytePinFB.AddPinGroup(builder, group)
+    BytePinFB.AddClient(builder, client)
     BytePinFB.AddPersisted(builder, self.Persisted)
     BytePinFB.AddOnline(builder, self.Online)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
-    BytePinFB.AddDirection(builder, direction)
+    BytePinFB.AddPinConfiguration(builder, configuration)
     BytePinFB.AddLabels(builder, labels)
     BytePinFB.AddValues(builder, slices)
     BytePinFB.EndBytePinFB(builder)
@@ -2450,7 +2686,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       let! tags = Pin.ParseTagsFB fb
       let! labels = Pin.ParseLabelsFB fb
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
       let! slices =
         Pin.ParseSimpleValuesFB fb
         |> Either.map (Array.map String.decodeBase64)
@@ -2458,11 +2694,12 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       return { Id        = Id fb.Id
                Name      = name fb.Name
                PinGroup  = Id fb.PinGroup
+               Client    = Id fb.Client
                Tags      = tags
                Online    = fb.Online
                Persisted = fb.Persisted
                VecSize   = vecsize
-               Direction = direction
+               PinConfiguration = configuration
                Labels    = labels
                Values    = slices }
     }
@@ -2487,17 +2724,48 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 // |_____|_| |_|\__,_|_| |_| |_|____/ \___/_/\_\
 
 type EnumPinD =
-  { Id         : Id
-    Name       : Name
-    PinGroup   : Id
-    Tags       : Tag array
-    Persisted  : bool
-    Online     : bool
-    Direction  : ConnectionDirection
-    VecSize    : VecSize
-    Properties : Property array
-    Labels     : string array
-    Values     : Property array }
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: PinId
+
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
+    Persisted: bool
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    /// Properties as Key/Value pairs
+    Properties: Property array
+
+    Values: Property array }
 
   // ** ToOffset
 
@@ -2512,6 +2780,7 @@ type EnumPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
@@ -2520,17 +2789,18 @@ type EnumPinD =
     let labels = EnumPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = EnumPinFB.CreateValuesVector(builder, sliceoffsets)
     let properties = EnumPinFB.CreatePropertiesVector(builder, propoffsets)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
     EnumPinFB.StartEnumPinFB(builder)
     EnumPinFB.AddId(builder, id)
     Option.iter (fun value -> EnumPinFB.AddName(builder,value)) name
     EnumPinFB.AddPinGroup(builder, group)
+    EnumPinFB.AddClient(builder, client)
     EnumPinFB.AddPersisted(builder, self.Persisted)
     EnumPinFB.AddOnline(builder, self.Online)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
-    EnumPinFB.AddDirection(builder, direction)
+    EnumPinFB.AddPinConfiguration(builder, configuration)
     EnumPinFB.AddVecSize(builder, vecsize)
     EnumPinFB.AddLabels(builder, labels)
     EnumPinFB.AddValues(builder, slices)
@@ -2544,7 +2814,7 @@ type EnumPinD =
       let! tags = Pin.ParseTagsFB fb
       let! slices = Pin.ParseComplexValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       let! properties =
         let properties = Array.zeroCreate fb.PropertiesLength
@@ -2573,11 +2843,12 @@ type EnumPinD =
       return { Id         = Id fb.Id
                Name       = name fb.Name
                PinGroup   = Id fb.PinGroup
+               Client     = Id fb.Client
                Tags       = tags
                Online     = fb.Online
                Persisted  = fb.Persisted
                Properties = properties
-               Direction  = direction
+               PinConfiguration  = configuration
                VecSize    = vecsize
                Labels     = labels
                Values     = slices }
@@ -2603,16 +2874,45 @@ type EnumPinD =
 //  \____\___/|_|\___/|_|  |____/ \___/_/\_\
 
 type ColorPinD =
-  { Id:        Id
-    Name:      Name
-    PinGroup:  Id
-    Tags:      Tag array
+  { /// A unique identifier for this Pin. This Id can overlap between clients though, and
+    /// can only be considered unique in the scope of its parent PinGroup and the Client it
+    /// was created on.
+    Id: PinId
+
+    /// Human readable name of a Pin
+    Name: Name
+
+    /// the PinGroup this pin belongs to
+    PinGroup: PinGroupId
+
+    /// the Client this Pin was created on
+    Client: ClientId
+
+    /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
+    /// functions, filtering et al.
+    Tags: Tag array
+
+    /// A Pin with the Persisted flag turned on will be saved to disk together with its
+    /// parent PinGroup.
     Persisted: bool
-    Online:    bool
-    Direction: ConnectionDirection
-    VecSize:   VecSize
-    Labels:    string array
-    Values:    ColorSpace array }
+
+    /// Indicates whether the Client that created this Pin is currently on- or offline.
+    Online: bool
+
+    /// The PinConfiguration of a Pin determines how it can be mapped to other Pins, and whether it
+    /// is editable from the user interface. A Pin with PinConfiguration.Sink can be
+    /// written to, while a Pin with PinConfiguration.Source is read-only in the UI, and
+    /// used for displaying data from a Client.
+    PinConfiguration: PinConfiguration
+
+    /// Determines whether this Pin can dynamically change the length of its underlying
+    /// value array.
+    VecSize: VecSize
+
+    /// String labels for each of the slices
+    Labels: string array
+
+    Values: ColorSpace array }
 
   // ** ToOffset
 
@@ -2627,23 +2927,25 @@ type ColorPinD =
     let id = string self.Id |> builder.CreateString
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = self.PinGroup |> string |> builder.CreateString
+    let client = self.Client |> string |> builder.CreateString
     let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
     let labels = ColorPinFB.CreateLabelsVector(builder, labeloffsets)
     let slices = ColorPinFB.CreateValuesVector(builder, sliceoffsets)
-    let direction = self.Direction.ToOffset(builder)
+    let configuration = self.PinConfiguration.ToOffset(builder)
     let vecsize = self.VecSize.ToOffset(builder)
     ColorPinFB.StartColorPinFB(builder)
     ColorPinFB.AddId(builder, id)
     Option.iter (fun value -> ColorPinFB.AddName(builder,value)) name
     ColorPinFB.AddPinGroup(builder, group)
+    ColorPinFB.AddClient(builder, client)
     ColorPinFB.AddPersisted(builder, self.Persisted)
     ColorPinFB.AddOnline(builder, self.Online)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
-    ColorPinFB.AddDirection(builder, direction)
+    ColorPinFB.AddPinConfiguration(builder, configuration)
     ColorPinFB.AddLabels(builder, labels)
     ColorPinFB.AddValues(builder, slices)
     ColorPinFB.EndColorPinFB(builder)
@@ -2656,16 +2958,17 @@ type ColorPinD =
       let! labels = Pin.ParseLabelsFB fb
       let! slices = Pin.ParseComplexValuesFB fb
       let! vecsize = Pin.ParseVecSize fb
-      let! direction = ConnectionDirection.FromFB fb.Direction
+      let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
                Name      = name fb.Name
                Online    = fb.Online
                PinGroup  = Id fb.PinGroup
+               Client    = Id fb.Client
                Tags      = tags
                Persisted = fb.Persisted
                VecSize   = vecsize
-               Direction = direction
+               PinConfiguration = configuration
                Labels    = labels
                Values    = slices }
     }
@@ -3101,24 +3404,36 @@ type Slice =
 
 [<CustomEquality; CustomComparison>]
 type Slices =
-  | StringSlices   of Id * string array
-  | NumberSlices   of Id * double array
-  | BoolSlices     of Id * bool array
-  | ByteSlices     of Id * byte[] array
-  | EnumSlices     of Id * Property array
-  | ColorSlices    of Id * ColorSpace array
+  | StringSlices of PinId * ClientId option * string array
+  | NumberSlices of PinId * ClientId option * double array
+  | BoolSlices   of PinId * ClientId option * bool array
+  | ByteSlices   of PinId * ClientId option * byte[] array
+  | EnumSlices   of PinId * ClientId option * Property array
+  | ColorSlices  of PinId * ClientId option * ColorSpace array
 
-  // ** Id
+  // ** PinId
 
-  member self.Id
+  member self.PinId
     with get () =
       match self with
-      | StringSlices   (id,_) -> id
-      | NumberSlices   (id,_) -> id
-      | BoolSlices     (id,_) -> id
-      | ByteSlices     (id,_) -> id
-      | EnumSlices     (id,_) -> id
-      | ColorSlices    (id,_) -> id
+      | StringSlices   (id,_,_) -> id
+      | NumberSlices   (id,_,_) -> id
+      | BoolSlices     (id,_,_) -> id
+      | ByteSlices     (id,_,_) -> id
+      | EnumSlices     (id,_,_) -> id
+      | ColorSlices    (id,_,_) -> id
+
+  // ** ClientId
+
+  member self.ClientId
+    with get () =
+      match self with
+      | StringSlices   (_,id,_) -> id
+      | NumberSlices   (_,id,_) -> id
+      | BoolSlices     (_,id,_) -> id
+      | ByteSlices     (_,id,_) -> id
+      | EnumSlices     (_,id,_) -> id
+      | ColorSlices    (_,id,_) -> id
 
   // ** IsString
 
@@ -3178,12 +3493,12 @@ type Slices =
 
   member self.Item (idx: Index) =
     match self with
-    | StringSlices (_,arr) -> StringSlice (idx, arr.[int idx])
-    | NumberSlices (_,arr) -> NumberSlice (idx, arr.[int idx])
-    | BoolSlices   (_,arr) -> BoolSlice   (idx, arr.[int idx])
-    | ByteSlices   (_,arr) -> ByteSlice   (idx, arr.[int idx])
-    | EnumSlices   (_,arr) -> EnumSlice   (idx, arr.[int idx])
-    | ColorSlices  (_,arr) -> ColorSlice  (idx, arr.[int idx])
+    | StringSlices (_,_,arr) -> StringSlice (idx, arr.[int idx])
+    | NumberSlices (_,_,arr) -> NumberSlice (idx, arr.[int idx])
+    | BoolSlices   (_,_,arr) -> BoolSlice   (idx, arr.[int idx])
+    | ByteSlices   (_,_,arr) -> ByteSlice   (idx, arr.[int idx])
+    | EnumSlices   (_,_,arr) -> EnumSlice   (idx, arr.[int idx])
+    | ColorSlices  (_,_,arr) -> ColorSlice  (idx, arr.[int idx])
 
   // ** At
 
@@ -3191,12 +3506,12 @@ type Slices =
 
   member self.Length =
     match self with
-    | StringSlices (_,arr) -> arr.Length
-    | NumberSlices (_,arr) -> arr.Length
-    | BoolSlices   (_,arr) -> arr.Length
-    | ByteSlices   (_,arr) -> arr.Length
-    | EnumSlices   (_,arr) -> arr.Length
-    | ColorSlices  (_,arr) -> arr.Length
+    | StringSlices (_,_,arr) -> arr.Length
+    | NumberSlices (_,_,arr) -> arr.Length
+    | BoolSlices   (_,_,arr) -> arr.Length
+    | ByteSlices   (_,_,arr) -> arr.Length
+    | EnumSlices   (_,_,arr) -> arr.Length
+    | ColorSlices  (_,_,arr) -> arr.Length
 
   // ** Map
 
@@ -3209,12 +3524,12 @@ type Slices =
 
   member self.Map (f: Slice -> 'a) : 'a array =
     match self with
-    | StringSlices   (_,arr) -> Array.mapi (fun i el -> StringSlice (index i, el) |> f) arr
-    | NumberSlices   (_,arr) -> Array.mapi (fun i el -> NumberSlice (index i, el) |> f) arr
-    | BoolSlices     (_,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, el) |> f) arr
-    | ByteSlices     (_,arr) -> Array.mapi (fun i el -> ByteSlice   (index i, el) |> f) arr
-    | EnumSlices     (_,arr) -> Array.mapi (fun i el -> EnumSlice   (index i, el) |> f) arr
-    | ColorSlices    (_,arr) -> Array.mapi (fun i el -> ColorSlice  (index i, el) |> f) arr
+    | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (index i, el) |> f) arr
+    | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (index i, el) |> f) arr
+    | BoolSlices   (_,_,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, el) |> f) arr
+    | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (index i, el) |> f) arr
+    | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (index i, el) |> f) arr
+    | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (index i, el) |> f) arr
 
   #if !FABLE_COMPILER
 
@@ -3223,7 +3538,7 @@ type Slices =
   member self.ToSpread() =
     let sb = new StringBuilder()
     match self with
-    | StringSlices(_,arr) ->
+    | StringSlices(_,_,arr) ->
       Array.iteri
         (fun i (str: string) ->
           let escape =
@@ -3239,13 +3554,13 @@ type Slices =
           sb.Append value |> ignore
           if escape then sb.Append '|' |> ignore)
         arr
-    | NumberSlices(_,arr) ->
+    | NumberSlices(_,_,arr) ->
       Array.iteri
         (fun i (num: double) ->
           if i > 0 then sb.Append ',' |> ignore
           num |> string |> sb.Append |> ignore)
         arr
-    | BoolSlices(_,arr) ->
+    | BoolSlices(_,_,arr) ->
       Array.iteri
         (fun i (value: bool) ->
           if i > 0 then sb.Append ',' |> ignore
@@ -3253,7 +3568,7 @@ type Slices =
           | true  -> "1" |> string |> sb.Append |> ignore
           | false -> "0" |> string |> sb.Append |> ignore)
         arr
-    | ByteSlices(_,arr) ->
+    | ByteSlices(_,_,arr) ->
       Array.iteri
         (fun i (value: byte[]) ->
           if i > 0 then sb.Append ',' |> ignore
@@ -3261,7 +3576,7 @@ type Slices =
           value |> String.encodeBase64 |> sb.Append |> ignore
           sb.Append '|' |> ignore)
         arr
-    | EnumSlices(_,arr) ->
+    | EnumSlices(_,_,arr) ->
       Array.iteri
         (fun i (prop: Property) ->
           let escape = prop.Value.IndexOf ' ' > -1
@@ -3270,7 +3585,7 @@ type Slices =
           prop.Value |> sb.Append |> ignore
           if escape then sb.Append '|' |> ignore)
         arr
-    | ColorSlices(_,arr) ->
+    | ColorSlices(_,_,arr) ->
       Array.iteri
         (fun i (color: ColorSpace) ->
           if i > 0 then sb.Append ',' |> ignore
@@ -3299,13 +3614,18 @@ type Slices =
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYamlObject() =
+    let client =
+      match self.ClientId with
+      | Some id -> string id
+      | None -> null
+    in
     match self with
-    | StringSlices (id, slices) -> SlicesYaml.StringSlices (string id) slices
-    | NumberSlices (id, slices) -> SlicesYaml.NumberSlices (string id) slices
-    | BoolSlices   (id, slices) -> SlicesYaml.BoolSlices   (string id) slices
-    | ByteSlices   (id, slices) -> SlicesYaml.ByteSlices   (string id) slices
-    | EnumSlices   (id, slices) -> SlicesYaml.EnumSlices   (string id) slices
-    | ColorSlices  (id, slices) -> SlicesYaml.ColorSlices  (string id) slices
+    | StringSlices (id, _, slices) -> SlicesYaml.StringSlices (string id) client slices
+    | NumberSlices (id, _, slices) -> SlicesYaml.NumberSlices (string id) client slices
+    | BoolSlices   (id, _, slices) -> SlicesYaml.BoolSlices   (string id) client slices
+    | ByteSlices   (id, _, slices) -> SlicesYaml.ByteSlices   (string id) client slices
+    | EnumSlices   (id, _, slices) -> SlicesYaml.EnumSlices   (string id) client slices
+    | ColorSlices  (id, _, slices) -> SlicesYaml.ColorSlices  (string id) client slices
 
   // ** ToYaml
 
@@ -3339,8 +3659,9 @@ type Slices =
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
     match slices with
-    | StringSlices (id,arr) ->
+    | StringSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
 
       let strings =
         Array.map (Pin.str2offset builder) arr
@@ -3350,7 +3671,8 @@ type Slices =
       let offset = StringsFB.EndStringsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.StringsFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder, offset)
@@ -3359,8 +3681,9 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | NumberSlices (id,arr) ->
+    | NumberSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
 
       let vector = DoublesFB.CreateValuesVector(builder, arr)
       DoublesFB.StartDoublesFB(builder)
@@ -3368,7 +3691,8 @@ type Slices =
       let offset = DoublesFB.EndDoublesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.DoublesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3377,8 +3701,9 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | BoolSlices (id,arr) ->
+    | BoolSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
 
       let vector = BoolsFB.CreateValuesVector(builder, arr)
       BoolsFB.StartBoolsFB(builder)
@@ -3386,7 +3711,8 @@ type Slices =
       let offset = BoolsFB.EndBoolsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BoolsFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3395,8 +3721,9 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | ByteSlices (id,arr) ->
+    | ByteSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
 
       let vector =
         Array.map (String.encodeBase64 >> builder.CreateString) arr
@@ -3407,7 +3734,8 @@ type Slices =
       let offset = BytesFB.EndBytesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BytesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3416,8 +3744,9 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | EnumSlices (id,arr) ->
+    | EnumSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
 
       let vector =
         Array.map (Binary.toOffset builder) arr
@@ -3428,7 +3757,8 @@ type Slices =
       let offset = KeyValuesFB.EndKeyValuesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.KeyValuesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3437,8 +3767,10 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | ColorSlices (id,arr) ->
+    | ColorSlices (id,client,arr) ->
       let id = id |> string |> builder.CreateString
+      let client = client |> Option.map (string >> builder.CreateString)
+
       let vector =
         Array.map (Binary.toOffset builder) arr
         |> fun coll -> ColorSpacesFB.CreateValuesVector(builder,coll)
@@ -3448,7 +3780,8 @@ type Slices =
       let offset = ColorSpacesFB.EndColorSpacesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddId(builder,id)
+      SlicesFB.AddPin(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.ColorSpacesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3461,7 +3794,8 @@ type Slices =
 
   static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
     either {
-      let id = Id fb.Id
+      let id = Id fb.Pin
+      let client = if isNull fb.Client then None else Some (Id fb.Client)
 
       return!
         //      _ ____
@@ -3481,7 +3815,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (strings, _) -> StringSlices(id, strings))
+          |> Either.map (fun (strings, _) -> StringSlices(id,client,strings))
         | x when x = SlicesTypeFB.DoublesFB ->
           let slices = DoublesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3492,7 +3826,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (doubles,_) -> NumberSlices(id, doubles))
+          |> Either.map (fun (doubles,_) -> NumberSlices(id,client,doubles))
         | x when x = SlicesTypeFB.BoolsFB ->
           let slices = BoolsFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3503,7 +3837,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (bools,_) -> BoolSlices(id, bools))
+          |> Either.map (fun (bools,_) -> BoolSlices(id,client,bools))
         | x when x = SlicesTypeFB.BytesFB ->
           let slices = BytesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3515,7 +3849,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (bytes,_) -> ByteSlices(id, bytes))
+          |> Either.map (fun (bytes,_) -> ByteSlices(id,client,bytes))
         | x when x = SlicesTypeFB.KeyValuesFB ->
           let slices = KeyValuesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3529,7 +3863,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (props,_) -> EnumSlices(id, props))
+          |> Either.map (fun (props,_) -> EnumSlices(id,client,props))
         | x when x = SlicesTypeFB.ColorSpacesFB ->
           let slices = ColorSpacesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3543,7 +3877,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (colors,_) -> ColorSlices(id,colors))
+          |> Either.map (fun (colors,_) -> ColorSlices(id,client,colors))
         | x ->
           sprintf "unknown slices type: %O" x
           |> Error.asParseError "Slices.FromFB"
@@ -3573,7 +3907,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (strings, _) -> StringSlices(id, strings))
+            |> Either.map (fun (strings, _) -> StringSlices(id, client, strings))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3590,7 +3924,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (doubles,_) -> NumberSlices(id, doubles))
+            |> Either.map (fun (doubles,_) -> NumberSlices(id, client, doubles))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3607,7 +3941,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (bools,_) -> BoolSlices(id, bools))
+            |> Either.map (fun (bools,_) -> BoolSlices(id, client, bools))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3625,7 +3959,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (bytes,_) -> ByteSlices(id, bytes))
+            |> Either.map (fun (bytes,_) -> ByteSlices(id, client, bytes))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3651,7 +3985,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (props,_) -> EnumSlices(id, props))
+            |> Either.map (fun (props,_) -> EnumSlices(id, client, props))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3677,7 +4011,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (colors,_) -> ColorSlices(id,colors))
+            |> Either.map (fun (colors,_) -> ColorSlices(id,client,colors))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3706,7 +4040,7 @@ type Slices =
   interface System.IComparable with
     member self.CompareTo other =
       match other with
-      | :? Slices as slices -> compare self.Id slices.Id
+      | :? Slices as slices -> compare self.PinId slices.PinId
       | _ -> invalidArg "other" "cannot compare value of different types"
 
   // ** Equals
@@ -3717,20 +4051,20 @@ type Slices =
     | _ -> false
 
   override self.GetHashCode() =
-    self.Id.ToString().GetHashCode()
+    self.PinId.ToString().GetHashCode()
 
   // ** Equals<Slices>
 
   interface System.IEquatable<Slices> with
     member self.Equals(slices: Slices) =
       match slices with
-      | StringSlices (id, values) ->
+      | StringSlices (id, client, values) ->
         match self with
-        | StringSlices (sid, svalues) when id = sid -> values = svalues
+        | StringSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
         | _ -> false
-      | NumberSlices (id, values) ->
+      | NumberSlices (id, client, values) ->
         match self with
-        | NumberSlices (sid, svalues) when id = sid ->
+        | NumberSlices (sid, sclient, svalues) when id = sid && client = sclient ->
           if Array.length values = Array.length svalues then
             Array.fold
               (fun m (left,right) ->
@@ -3744,21 +4078,21 @@ type Slices =
               (Array.zip values svalues)
           else false
         | _ -> false
-      | BoolSlices  (id, values) ->
+      | BoolSlices  (id, client, values) ->
         match self with
-        | BoolSlices (sid, svalues) when id = sid -> values = svalues
+        | BoolSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
         | _ -> false
-      | ByteSlices  (id, values) ->
+      | ByteSlices  (id, client, values) ->
         match self with
-        | ByteSlices (sid, svalues) when id = sid -> values = svalues
+        | ByteSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
         | _ -> false
-      | EnumSlices (id, values) ->
+      | EnumSlices (id, client, values) ->
         match self with
-        | EnumSlices (sid, svalues) when id = sid -> values = svalues
+        | EnumSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
         | _ -> false
-      | ColorSlices (id, values) ->
+      | ColorSlices (id, client, values) ->
         match self with
-        | ColorSlices (sid, svalues) when id = sid -> values = svalues
+        | ColorSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
         | _ -> false
 
 
@@ -3769,14 +4103,22 @@ module Slices =
   // ** setId
 
   let setId id = function
-    | StringSlices (_, values) -> StringSlices (id, values)
-    | NumberSlices (_, values) -> NumberSlices (id, values)
-    | BoolSlices   (_, values) -> BoolSlices   (id, values)
-    | ByteSlices   (_, values) -> ByteSlices   (id, values)
-    | EnumSlices   (_, values) -> EnumSlices   (id, values)
-    | ColorSlices  (_, values) -> ColorSlices  (id, values)
+    | StringSlices (_,c,values) -> StringSlices (id,c,values)
+    | NumberSlices (_,c,values) -> NumberSlices (id,c,values)
+    | BoolSlices   (_,c,values) -> BoolSlices   (id,c,values)
+    | ByteSlices   (_,c,values) -> ByteSlices   (id,c,values)
+    | EnumSlices   (_,c,values) -> EnumSlices   (id,c,values)
+    | ColorSlices  (_,c,values) -> ColorSlices  (id,c,values)
 
-// * Playground
+  // ** setClient
+
+  let setClient id = function
+    | StringSlices (i,_,values) -> StringSlices (i,id,values)
+    | NumberSlices (i,_,values) -> NumberSlices (i,id,values)
+    | BoolSlices   (i,_,values) -> BoolSlices   (i,id,values)
+    | ByteSlices   (i,_,values) -> ByteSlices   (i,id,values)
+    | EnumSlices   (i,_,values) -> EnumSlices   (i,id,values)
+    | ColorSlices  (i,_,values) -> ColorSlices  (i,id,values)
 
 #if INTERACTIVE
 

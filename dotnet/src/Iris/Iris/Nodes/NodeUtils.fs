@@ -25,15 +25,15 @@ type NodeMapping =
     GroupId: Id
     Pin: IPin2
     Type: PinType
-    Direction: ConnectionDirection
+    PinConfiguration: PinConfiguration
     Properties: Property array option
     ChangedNode: IPin2 }
 
   member nm.IsSource
-    with get () = nm.Direction = ConnectionDirection.Source
+    with get () = nm.PinConfiguration = PinConfiguration.Source
 
   member nm.IsSink
-    with get () = nm.Direction = ConnectionDirection.Sink
+    with get () = nm.PinConfiguration = PinConfiguration.Sink
 
 // * Settings
 

@@ -53,8 +53,8 @@ type PinNode() =
   val mutable OutTags: ISpread<string>
 
   [<DefaultValue>]
-  [<Output("Direction")>]
-  val mutable OutDirection: ISpread<string>
+  [<Output("PinConfiguration")>]
+  val mutable OutPinConfiguration: ISpread<string>
 
   [<DefaultValue>]
   [<Output("VecSize")>]
@@ -77,7 +77,7 @@ type PinNode() =
         self.OutPersisted.SliceCount <- self.InPin.SliceCount
         self.OutType.SliceCount <- self.InPin.SliceCount
         self.OutTags.SliceCount <- self.InPin.SliceCount
-        self.OutDirection.SliceCount <- self.InPin.SliceCount
+        self.OutPinConfiguration.SliceCount <- self.InPin.SliceCount
         self.OutVecSize.SliceCount <- self.InPin.SliceCount
         self.OutValues.SliceCount <- self.InPin.SliceCount
 
@@ -92,7 +92,7 @@ type PinNode() =
             self.OutPersisted.[n] <- pin.Persisted
             self.OutType.[n] <- tipe
             self.OutTags.[n] <- String.Join(",", pin.GetTags)
-            self.OutDirection.[n] <- string pin.Direction
+            self.OutPinConfiguration.[n] <- string pin.PinConfiguration
             self.OutVecSize.[n] <- string pin.VecSize
             self.OutValues.[n] <- pin.ToSpread()
 

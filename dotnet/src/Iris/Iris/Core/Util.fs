@@ -551,9 +551,17 @@ module Crypto =
 [<AutoOpen>]
 module Functional =
 
+  // ** konst
+
   let konst (a: 'a) = fun _ -> a
 
+  // ** flip
+
   let flip (f: 'a -> 'b -> 'c) (b: 'b) (a: 'a) = f a b
+
+  // ** flip2
+
+  let flip2 (f: 'a -> 'b -> 'c -> 'd) (b: 'b) (c: 'c) (a: 'a) = f a b c
 
 // * Tuple
 

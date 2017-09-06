@@ -36,11 +36,11 @@ module EnsureClientUpdateNoLoop =
         let mem1, machine1 = List.head zipped
 
         use! service1 = IrisService.create {
-          Machine = machine1
+          Machine     = machine1
           ProjectName = project.Name
-          UserName = User.Admin.UserName
-          Password = password Constants.ADMIN_DEFAULT_PASSWORD
-          SiteId = None
+          UserName    = User.Admin.UserName
+          Password    = password Constants.ADMIN_DEFAULT_PASSWORD
+          SiteId      = None
         }
 
         use oobs1 =
@@ -65,13 +65,13 @@ module EnsureClientUpdateNoLoop =
         }
 
         use client = ApiClient.create server {
-          Id = Id.Create()
-          Name = name "hi"
-          Role = Role.Renderer
+          Id        = Id.Create()
+          Name      = name "hi"
+          Role      = Role.Renderer
           ServiceId = mem1.Id
-          Status = ServiceStatus.Starting
+          Status    = ServiceStatus.Starting
           IpAddress = IpAddress.Localhost
-          Port = port 12345us
+          Port      = port 12345us
         }
 
         let handleClient = function
@@ -97,26 +97,27 @@ module EnsureClientUpdateNoLoop =
         let groupId = Id.Create()
 
         let pin = BoolPin {
-          Id        = pinId
-          Name      = name "hi"
-          PinGroup  = groupId
-          Tags      = Array.empty
-          Direction = ConnectionDirection.Sink
-          Online    = true
-          Persisted = false
-          IsTrigger = false
-          VecSize   = VecSize.Dynamic
-          Labels    = Array.empty
-          Values    = [| true |]
+          Id               = pinId
+          Name             = name "hi"
+          PinGroup         = groupId
+          Client           = client.Id
+          Tags             = Array.empty
+          PinConfiguration = PinConfiguration.Sink
+          Online           = true
+          Persisted        = false
+          IsTrigger        = false
+          VecSize          = VecSize.Dynamic
+          Labels           = Array.empty
+          Values           = [| true |]
         }
 
         let group = {
-          Id = groupId
-          Name = name "whatevva"
-          Client = Id.Create()
-          Path = None
+          Id       = groupId
+          Name     = name "whatevva"
+          Client   = client.Id
+          Path     = None
           RefersTo = None
-          Pins = Map.ofList [(pin.Id, pin)]
+          Pins     = Map.ofList [(pin.Id, pin)]
         }
 
         client.AddPinGroup group
@@ -124,7 +125,7 @@ module EnsureClientUpdateNoLoop =
         do! waitFor "appendDone" appendDone
         do! waitFor "clientAppendDone" clientAppendDone
 
-        let update = BoolSlices(pin.Id, [| false |])
+        let update = BoolSlices(pin.Id, None, [| false |])
 
         client.UpdateSlices [
           update
@@ -134,9 +135,10 @@ module EnsureClientUpdateNoLoop =
 
         let actual: Slices =
           client.State.PinGroups
-          |> Map.find groupId
-          |> fun group -> Map.find pinId group.Pins
-          |> fun pin -> pin.Values
+          |> PinGroupMap.tryFindGroup client.Id groupId
+          |> Option.bind (PinGroup.tryFindPin pin.Id)
+          |> Option.get
+          |> fun (pin: Pin) -> pin.Slices
 
        expect "should be equal" update id actual
       }

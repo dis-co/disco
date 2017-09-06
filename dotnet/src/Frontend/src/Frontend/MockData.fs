@@ -45,23 +45,21 @@ let failParse (gid: Id) (pk: string) (x: obj) =
     printfn "Unexpected value %A when parsing %s in PinGroup %O" x pk gid; None
 
 let inline forcePin<'T> gid pk (values: obj seq) =
-    let labels = ResizeArray()
     let values =
         values
         |> Seq.choose (function
             | IsJsArray ar when ar.Count = 2 ->
                 match ar.[1] with
-                | :? 'T as x -> labels.Add(string ar.[0] |> astag); Some x
+                | :? 'T as x -> Some x
                 | x -> failParse gid pk x
             | :? 'T as x -> Some x
             | x -> failParse gid pk x)
         |> Seq.toArray
-    Seq.toArray labels, values
+    Seq.toArray values
 
 let makeNumberPin gid pid pk values =
-    let labels, values = forcePin<float> gid pk values
-    // Using Sink makes the pin editable
-    Pin.Sink.number pid (name pk) gid labels values |> Some
+    let values = forcePin<float> gid pk values
+    Pin.Sink.number pid (name pk) gid values |> Some
 
 let makeTogglePin gid pid pk values =
     let labels, values = forcePin<bool> gid pk values
