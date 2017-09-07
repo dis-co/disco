@@ -63,22 +63,22 @@ type Property =
     { Key = fb.Key; Value = fb.Value }
     |> Either.succeed
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
+  member self.ToYaml() =
     PropertyYaml(self.Key, self.Value)
 
-  // ** FromYamlObject
+  // ** FromYaml
 
-  static member FromYamlObject(yml: PropertyYaml) : Either<IrisError,Property> =
+  static member FromYaml(yml: PropertyYaml) : Either<IrisError,Property> =
     try
       { Key = yml.Key; Value = yml.Value }
       |> Either.succeed
     with
       | exn ->
-        ("Property.FromYamlObject",sprintf "Could not parse PropteryYaml: %s" exn.Message)
+        ("Property.FromYaml",sprintf "Could not parse PropteryYaml: %s" exn.Message)
         |> ParseError
         |> Either.fail
 

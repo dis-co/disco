@@ -64,7 +64,8 @@ type PinGroupYaml() =
         if isNull yml.RefersTo then
           Either.succeed None
         else
-          Yaml.fromYaml yml.RefersTo
+          yml.RefersTo
+          |> Yaml.fromYaml
           |> Either.map Some
 
       return { Id = Id yml.Id
@@ -117,7 +118,7 @@ type ReferencedValue =
   member reference.Id
     with get () = match reference with | Player id | Widget id -> id
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -127,25 +128,11 @@ type ReferencedValue =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member reference.ToYamlObject () = ReferencedValueYaml.From(reference)
-
-  // ** ToYaml
-
-  member reference.ToYaml (serializer: Serializer) =
-    reference
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: ReferencedValueYaml) = yml.ToReferencedValue()
+  member reference.ToYaml () = ReferencedValueYaml.From(reference)
 
   // ** FromYaml
 
-  static member FromYaml (str: string) : Either<IrisError,ReferencedValue> =
-    let serializer = Serializer()
-    let yml = serializer.Deserialize<ReferencedValueYaml>(str)
-    Yaml.fromYaml yml
+  static member FromYaml(yml: ReferencedValueYaml) = yml.ToReferencedValue()
 
   #endif
 
@@ -218,7 +205,7 @@ type PinGroup =
     Path: FilePath option               /// optionally the location of this group on disk
     Pins: Map<Id,Pin> }
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -228,25 +215,11 @@ type PinGroup =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member group.ToYamlObject () = PinGroupYaml.From(group)
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: PinGroupYaml) = yml.ToPinGroup()
+  member group.ToYaml () = PinGroupYaml.From(group)
 
   // ** FromYaml
 
-  static member FromYaml (str: string) : Either<IrisError,PinGroup> =
-    let serializer = Serializer()
-    let yml = serializer.Deserialize<PinGroupYaml>(str)
-    Yaml.fromYaml yml
+  static member FromYaml (yml: PinGroupYaml) = yml.ToPinGroup()
 
   #endif
 

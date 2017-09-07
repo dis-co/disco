@@ -53,7 +53,7 @@ type PinMapping =
     Source: Id
     Sinks: Set<Id> }
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -63,28 +63,13 @@ type PinMapping =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member mapping.ToYamlObject () = PinMappingYaml.From(mapping)
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: PinMappingYaml) = yml.ToPinMapping()
+  member mapping.ToYaml () = PinMappingYaml.From(mapping)
 
   // ** FromYaml
 
-  static member FromYaml (str: string) : Either<IrisError,PinMapping> =
-    let serializer = Serializer()
-    let yml = serializer.Deserialize<PinMappingYaml>(str)
-    Yaml.fromYaml yml
+  static member FromYaml (yml: PinMappingYaml) = yml.ToPinMapping()
 
   #endif
-
 
   // ** FromFB
 

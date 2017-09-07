@@ -59,6 +59,7 @@ let inline forcePin<'T> gid pk (values: obj seq) =
 
 let makeNumberPin gid pid pk values =
     let values = forcePin<float> gid pk values
+    // Using Sink makes the pin editable
     Pin.Sink.number pid (name pk) gid values |> Some
 
 let makeTogglePin gid pid pk values =

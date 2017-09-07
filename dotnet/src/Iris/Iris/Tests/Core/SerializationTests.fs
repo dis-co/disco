@@ -41,7 +41,7 @@ module SerializationTests =
 
   let test_yaml_referenced_value =
     testCase "ReferencedValue yaml serialization should work" <| fun _ ->
-      yamlEncDec<ReferencedValue>
+      yamlEncDec
       |> Prop.forAll Generators.referencedValueArb
       |> Check.QuickThrowOnFailure
 
@@ -60,7 +60,7 @@ module SerializationTests =
 
   let test_yaml_pin_widget =
     testCase "PinWidget yaml serialization should work" <| fun _ ->
-      yamlEncDec<PinWidget>
+      yamlEncDec
       |> Prop.forAll Generators.pinWidgetArb
       |> Check.QuickThrowOnFailure
 
@@ -79,7 +79,7 @@ module SerializationTests =
 
   let test_yaml_pin_mapping =
     testCase "PinMapping yaml serialization should work" <| fun _ ->
-      yamlEncDec<PinMapping>
+      yamlEncDec
       |> Prop.forAll Generators.pinMappingArb
       |> Check.QuickThrowOnFailure
 
@@ -310,7 +310,7 @@ module SerializationTests =
 
   let test_validate_project_yaml_serialization =
     testCase "Validate IrisProject Yaml Serializaton" <| fun _ ->
-      yamlEncDec<IrisProject>
+      yamlEncDec
       |> Prop.forAll Generators.projectArb
       |> Check.QuickThrowOnFailure
 
@@ -329,7 +329,7 @@ module SerializationTests =
 
   let test_validate_cue_yaml_serialization =
     testCase "Validate Cue Yaml Serialization" <| fun _ ->
-      yamlEncDec<Cue>
+      yamlEncDec
       |> Prop.forAll Generators.cueArb
       |> Check.QuickThrowOnFailure
 
@@ -363,7 +363,7 @@ module SerializationTests =
 
   let test_validate_cuelist_yaml_serialization =
     testCase "Validate CueList Yaml Serialization" <| fun _ ->
-      yamlEncDec<CueList>
+      yamlEncDec
       |> Prop.forAll Generators.cuelistArb
       |> Check.QuickThrowOnFailure
 
@@ -382,7 +382,7 @@ module SerializationTests =
 
   let test_validate_group_yaml_serialization =
     testCase "Validate PinGroup Yaml Serialization" <| fun _ ->
-      yamlEncDec<PinGroup>
+      yamlEncDec
       |> Prop.forAll Generators.pingroupArb
       |> Check.QuickThrowOnFailure
 
@@ -400,7 +400,7 @@ module SerializationTests =
 
   let test_validate_session_yaml_serialization =
     testCase "Validate Session Yaml Serialization" <| fun _ ->
-      yamlEncDec<Session>
+      yamlEncDec
       |> Prop.forAll Generators.sessionArb
       |> Check.QuickThrowOnFailure
 
@@ -419,7 +419,7 @@ module SerializationTests =
 
   let test_validate_user_yaml_serialization =
     testCase "Validate User Yaml Serialization" <| fun _ ->
-      yamlEncDec<User>
+      yamlEncDec
       |> Prop.forAll Generators.userArb
       |> Check.QuickThrowOnFailure
 
@@ -437,7 +437,7 @@ module SerializationTests =
 
   let test_validate_slice_yaml_serialization =
     testCase "Validate Slice Yaml Serialization" <| fun _ ->
-      yamlEncDec<Slice>
+      yamlEncDec
       |> Prop.forAll Generators.sliceArb
       |> Check.QuickThrowOnFailure
 
@@ -456,7 +456,7 @@ module SerializationTests =
 
   let test_validate_slices_yaml_serialization =
     testCase "Validate Slices Yaml Serialization" <| fun _ ->
-      yamlEncDec<Slices>
+      yamlEncDec
       |> Prop.forAll Generators.slicesArb
       |> Check.QuickThrowOnFailure
 
@@ -474,7 +474,7 @@ module SerializationTests =
 
   let test_validate_pin_yaml_serialization =
     testCase "Validate Pin Yaml Serialization" <| fun _ ->
-      yamlEncDec<Pin>
+      yamlEncDec
       |> Prop.forAll Generators.pinArb
       |> Check.QuickThrowOnFailure
 
@@ -553,7 +553,7 @@ module SerializationTests =
 
   let test_validate_cueplayer_yaml_serialization =
     testCase "Validate CuePlayer Yaml Serialization" <| fun _ ->
-      yamlEncDec<CuePlayer>
+      yamlEncDec
       |> Prop.forAll Generators.cuePlayerArb
       |> Check.QuickThrowOnFailure
 

@@ -141,26 +141,14 @@ type CueList =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  // ** ToYamlObject
-
-  member cuelist.ToYamlObject() = CueListYaml.From(cuelist)
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yml: CueListYaml) : Either<IrisError,CueList> =
-    yml.ToCueList()
-
   // ** ToYaml
 
-  member cuelist.ToYaml(serializer: Serializer) =
-    cuelist |> Yaml.toYaml |> serializer.Serialize
+  member cuelist.ToYaml() = CueListYaml.From(cuelist)
 
   // ** FromYaml
 
-  static member FromYaml(str: string) : Either<IrisError, CueList> =
-    let serializer = new Serializer()
-    serializer.Deserialize<CueListYaml>(str)
-    |> Yaml.fromYaml
+  static member FromYaml(yml: CueListYaml) : Either<IrisError,CueList> =
+    yml.ToCueList()
 
   // ** AssetPath
 

@@ -10,28 +10,32 @@ open Iris.Core
 
 [<AutoOpen>]
 module AssetTests =
-  type TestAsset = { Data: string }
-    with
-      member self.HasParent with get () = false
 
-      member self.AssetPath
-        with get () = filepath "test-asset.txt"
+  type TestAsset() as data =
+    [<DefaultValue>] val mutable Data: string
 
-      member self.ToYaml(_) = self.Data
+    do data.Data <- string (Id.Create())
 
-      member self.Save(basePath: FilePath) =
-        either {
-          let path = basePath </> Asset.path self
-          let! info = IrisData.write path (Payload self.Data)
-          return ()
-        }
+    member self.HasParent with get () = false
 
-      static member Load(path: FilePath) : Either<IrisError, TestAsset> =
-        either {
-          let! data = IrisData.read path
-          return { Data = data }
-        }
+    member self.AssetPath
+      with get () = filepath "test-asset.txt"
 
+    member self.ToYaml() = self
+
+    member self.Save(basePath: FilePath) =
+      either {
+        let path = basePath </> Asset.path self
+        let data = Yaml.encode self
+        let! info = IrisData.write path (Payload data)
+        return ()
+      }
+
+    static member Load(path: FilePath) : Either<IrisError, TestAsset> =
+      either {
+        let! data = IrisData.read path
+        return Yaml.deserialize<TestAsset> data
+      }
 
   let test_write_read_asset_correctly =
     testCase "should write and read asset correctly" <| fun _ ->
@@ -48,11 +52,11 @@ module AssetTests =
     testCase "should save and load asset correctly" <| fun _ ->
       either {
         let path = tmpPath()
-        let asset = { Data = string (Id.Create()) }
+        let asset = TestAsset()
         do! Asset.save path asset
         let path = path </> Asset.path asset
-        let! reasset = Asset.load path
-        expect "Loaded asset should be the same" reasset id asset
+        let! (reasset: TestAsset) = Asset.load path
+        expect "Loaded asset should be the same" reasset.Data id asset.Data
       }
       |> noError
 
@@ -62,11 +66,11 @@ module AssetTests =
         let path = tmpPath()
         let! repo = Git.Repo.init path
         let signature = User.Admin.Signature
-        let asset = { Data = (string (Id.Create())) }
+        let asset = TestAsset()
         let! commit = IrisData.saveWithCommit path signature asset
         let path = path </> Asset.path asset
-        let! reasset = Asset.load path
-        expect "Loaded asset should be the same" reasset id asset
+        let! (reasset: TestAsset) = Asset.load path
+        expect "Loaded asset should be the same" reasset.Data id asset.Data
       }
       |> noError
 

@@ -52,7 +52,7 @@ type PinWidget =
     Name: Name
     WidgetType: Id }
 
-  // ** ToYamlObject
+  // ** ToYam
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -62,25 +62,11 @@ type PinWidget =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member widget.ToYamlObject () = PinWidgetYaml.From(widget)
-
-  // ** ToYaml
-
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: PinWidgetYaml) = yml.ToPinWidget()
+  member widget.ToYaml () = PinWidgetYaml.From(widget)
 
   // ** FromYaml
 
-  static member FromYaml (str: string) : Either<IrisError,PinWidget> =
-    let serializer = Serializer()
-    let yml = serializer.Deserialize<PinWidgetYaml>(str)
-    Yaml.fromYaml yml
+  static member FromYaml(yml: PinWidgetYaml) = yml.ToPinWidget()
 
   #endif
 

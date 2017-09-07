@@ -145,7 +145,7 @@ type Cue =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -155,24 +155,12 @@ type Cue =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member cue.ToYamlObject() = CueYaml.From(cue)
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: CueYaml) : Either<IrisError,Cue> =
-    yaml.ToCue()
-
-  // ** ToYaml
-
-  member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+  member cue.ToYaml() = CueYaml.From(cue)
 
   // ** FromYaml
 
-  static member FromYaml(str: string) : Either<IrisError,Cue> =
-    let serializer = Serializer()
-    serializer.Deserialize<CueYaml>(str)
-    |> Yaml.fromYaml
+  static member FromYaml(yaml: CueYaml) : Either<IrisError,Cue> =
+    yaml.ToCue()
 
   // ** AssetPath
 

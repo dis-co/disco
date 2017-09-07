@@ -133,7 +133,7 @@ type RaftMember =
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
@@ -143,7 +143,7 @@ type RaftMember =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYamlObject () =
+  member self.ToYaml () =
     let yaml = RaftMemberYaml()
     yaml.Id         <- string self.Id
     yaml.HostName   <- unwrap self.HostName
@@ -159,9 +159,9 @@ type RaftMember =
     yaml.VotedForMe <- self.VotedForMe
     yaml
 
-  // ** FromYamlObject
+  // ** FromYaml
 
-  static member FromYamlObject (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
+  static member FromYaml (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftMemberState.TryParse yaml.State
@@ -346,18 +346,18 @@ type ConfigChange =
     |> ConfigChangeFB.GetRootAsConfigChangeFB
     |> ConfigChange.FromFB
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
+  member self.ToYaml() =
     match self with
     | MemberAdded mem   -> mem |> Yaml.toYaml |> ConfigChangeYaml.MemberAdded
     | MemberRemoved mem -> mem |> Yaml.toYaml |> ConfigChangeYaml.MemberRemoved
 
-  // ** FromYamlObject
+  // ** FromYaml
 
-  static member FromYamlObject (yml: ConfigChangeYaml) =
+  static member FromYaml (yml: ConfigChangeYaml) =
     match yml.ChangeType with
     | "MemberAdded" -> either {
         let! mem = Yaml.fromYaml yml.Member
@@ -369,7 +369,7 @@ type ConfigChange =
       }
     | x ->
       sprintf "Could not parse %s as ConfigChange" x
-      |> Error.asParseError "ConfigChange.FromYamlObject"
+      |> Error.asParseError "ConfigChange.FromYaml"
       |> Either.fail
 
   #endif

@@ -253,7 +253,7 @@ type User =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -263,23 +263,11 @@ type User =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member user.ToYamlObject () = UserYaml.From(user)
-
-  // ** ToYaml
-
-  member user.ToYaml(serializer: Serializer) =
-    user |> Yaml.toYaml |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yaml: UserYaml) = yaml.ToUser()
+  member user.ToYaml () = UserYaml.From(user)
 
   // ** FromYaml
 
-  static member FromYaml(str: string) =
-    let serializer = Serializer()
-    serializer.Deserialize<UserYaml>(str)
-    |> User.FromYamlObject
+  static member FromYaml (yaml: UserYaml) = yaml.ToUser()
 
   #endif
 
