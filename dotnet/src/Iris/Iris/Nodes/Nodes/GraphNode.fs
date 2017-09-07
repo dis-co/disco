@@ -630,39 +630,41 @@ module Graph =
       match vt with
       | ValueType.Boolean ->
         return BoolPin {
-          Id = id
-          Name = name pinName
-          PinGroup = grp
-          Client = client
-          Tags = [| |]
+          Id               = id
+          Name             = name pinName
+          PinGroup         = grp
+          Client           = client
+          Tags             = [| |]
           PinConfiguration = cnf
-          Persisted = false
-          Online = true
-          IsTrigger = Behavior.IsTrigger bh
-          VecSize = vc
-          Labels = [| |]
-          Values = parseBoolValues pin
+          Persisted        = false
+          Online           = true
+          Dirty            = false
+          IsTrigger        = Behavior.IsTrigger bh
+          VecSize          = vc
+          Labels           = [| |]
+          Values           = parseBoolValues pin
         }
       | ValueType.Integer ->
         let! min = parseMin pin
         let! max = parseMax pin
         let! unit = parseUnits pin
         return NumberPin {
-          Id = id
-          Name = name pinName
-          PinGroup = grp
-          Client = client
-          Tags = [| |]
-          Min = min
-          Max = max
-          Unit = unit
-          Persisted = false
-          Online = true
-          Precision = 0ul
+          Id               = id
+          Name             = name pinName
+          PinGroup         = grp
+          Client           = client
+          Tags             = [| |]
+          Min              = min
+          Max              = max
+          Unit             = unit
+          Persisted        = false
+          Online           = true
+          Dirty            = false
+          Precision        = 0ul
           PinConfiguration = cnf
-          VecSize = vc
-          Labels = [| |]
-          Values = parseDoubleValues pin
+          VecSize          = vc
+          Labels           = [| |]
+          Values           = parseDoubleValues pin
         }
       | ValueType.Real ->
         let! min = parseMin pin
@@ -670,21 +672,22 @@ module Graph =
         let! unit = parseUnits pin
         let! prec = parsePrecision pin
         return NumberPin {
-          Id = id
-          Name = name pinName
-          PinGroup = grp
-          Client = client
-          Min = min
-          Max = max
-          Unit = unit
-          Persisted = false
-          Online = true
-          Precision = prec
+          Id               = id
+          Name             = name pinName
+          PinGroup         = grp
+          Client           = client
+          Min              = min
+          Max              = max
+          Unit             = unit
+          Persisted        = false
+          Online           = true
+          Dirty            = false
+          Precision        = prec
           PinConfiguration = cnf
-          VecSize = vc
-          Tags = [| |]
-          Labels = [| |]
-          Values = parseDoubleValues pin
+          VecSize          = vc
+          Tags             = [| |]
+          Labels           = [| |]
+          Values           = parseDoubleValues pin
         }
     }
 
@@ -753,19 +756,20 @@ module Graph =
       let! vc = parseVecSize pin
       let! maxchars = parseMaxChars pin
       return StringPin {
-        Id = id
-        Name = name pinName
-        PinGroup = grp
-        Client = client
-        Tags = [| |]
-        Persisted = false
-        Online = true
+        Id               = id
+        Name             = name pinName
+        PinGroup         = grp
+        Client           = client
+        Tags             = [| |]
+        Persisted        = false
+        Online           = true
+        Dirty            = false
         PinConfiguration = cnf
-        Behavior = st
-        MaxChars = 1<chars> * maxchars
-        VecSize = vc
-        Labels = [| |]
-        Values = parseStringValues pin
+        Behavior         = st
+        MaxChars         = 1<chars> * maxchars
+        VecSize          = vc
+        Labels           = [| |]
+        Values           = parseStringValues pin
       }
     }
 
@@ -792,18 +796,19 @@ module Graph =
       let! vc = parseVecSize pin
       let props = parseEnumProperties pin
       return EnumPin {
-        Id = id
-        Name = name pinName
-        Persisted = false
-        Online = true
-        PinGroup = grp
-        Client = client
+        Id               = id
+        Name             = name pinName
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        PinGroup         = grp
+        Client           = client
         PinConfiguration = cnf
-        VecSize = vc
-        Properties = props
-        Tags = [| |]
-        Labels = [| |]
-        Values = parseEnumValues props pin
+        VecSize          = vc
+        Properties       = props
+        Tags             = [| |]
+        Labels           = [| |]
+        Values           = parseEnumValues props pin
       }
     }
 
@@ -829,17 +834,18 @@ module Graph =
       let! pinName = parseName pin
       let! vc = parseVecSize pin
       return ColorPin {
-        Id = id
-        Name = name pinName
-        PinGroup = grp
-        Client = client
+        Id               = id
+        Name             = name pinName
+        PinGroup         = grp
+        Client           = client
         PinConfiguration = cnf
-        Persisted = false
-        Online = true
-        VecSize = vc
-        Tags = [| |]
-        Labels = [| |]
-        Values = parseColorValues pin
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        VecSize          = vc
+        Tags             = [| |]
+        Labels           = [| |]
+        Values           = parseColorValues pin
       }
     }
 

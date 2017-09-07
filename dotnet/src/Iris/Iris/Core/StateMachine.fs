@@ -1351,7 +1351,7 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
 
 // * SlicesMap
 
-type SlicesMap = SlicesMap of Map<Id,Slices>
+type SlicesMap = SlicesMap of Map<PinId,Slices>
   with
     member map.Slices
       with get () = match map with SlicesMap slices -> slices
@@ -1369,7 +1369,7 @@ type SlicesMap = SlicesMap of Map<Id,Slices>
     static member FromFB(fb: SlicesMapFB) =
       [ 0 .. fb.SlicesLength - 1 ]
       |> List.fold
-        (fun (m: Either<IrisError,Map<Id,Slices>>) (idx: int) -> either {
+        (fun (m: Either<IrisError,Map<PinId,Slices>>) (idx: int) -> either {
             let! output = m
             #if FABLE_COMPILER
             let! parsed = fb.Slices(idx) |> Slices.FromFB
@@ -1425,6 +1425,11 @@ module SlicesMap =
 
   let fold (folder: 'a -> Id -> Slices -> 'a) (state: 'a) (map: SlicesMap) =
     Map.fold folder state map.Slices
+
+  // ** keys
+
+  let keys (map: SlicesMap) =
+    fold (fun out id _ -> id :: out) List.empty map
 
 // * StateMachine
 

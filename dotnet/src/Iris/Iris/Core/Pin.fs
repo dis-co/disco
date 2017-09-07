@@ -326,6 +326,18 @@ type Pin =
       | EnumPin     data -> data.Name
       | ColorPin    data -> data.Name
 
+  // ** Dirty
+
+  member self.Dirty
+    with get () =
+      match self with
+      | StringPin   data -> data.Dirty
+      | NumberPin   data -> data.Dirty
+      | BoolPin     data -> data.Dirty
+      | BytePin     data -> data.Dirty
+      | EnumPin     data -> data.Dirty
+      | ColorPin    data -> data.Dirty
+
   // ** Client
 
   member self.Client
@@ -840,200 +852,237 @@ module Pin =
     // *** toggle
 
     let toggle id name dir group client values =
-      BoolPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Tags      = defaultTags
-                Client    = client
-                IsTrigger = false
-                Persisted = false
-                Online    = true
-                PinConfiguration = dir
-                VecSize   = VecSize.Dynamic
-                Labels    = emptyLabels (Array.length values)
-                Values    = values }
+      BoolPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Tags             = defaultTags
+        Client           = client
+        IsTrigger        = false
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** bang
 
     let bang id name dir group client values =
-      BoolPin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Client    = client
-                Tags      = defaultTags
-                IsTrigger = true
-                Persisted = false
-                Online    = true
-                PinConfiguration = dir
-                VecSize   = VecSize.Dynamic
-                Labels    = emptyLabels(Array.length values)
-                Values    = values }
+      BoolPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        IsTrigger        = true
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        Labels           = emptyLabels(Array.length values)
+        Values           = values
+      }
 
     // *** string
 
     let string id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = Simple
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels (Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = Simple
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** multiLine
 
     let multiLine id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = MultiLine
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = MultiLine
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels(Array.length values)
+        Values           = values
+      }
 
     // *** fileName
 
     let fileName id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = FileName
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = FileName
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels(Array.length values)
+        Values           = values
+      }
 
     // *** directory
 
     let directory id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = Directory
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels (Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = Directory
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** url
 
     let url id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = Url
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = Url
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels(Array.length values)
+        Values           = values
+      }
 
     // *** ip
 
     let ip id name dir group client values =
-      StringPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Behavior  = IP
-                  PinConfiguration = dir
-                  VecSize   = VecSize.Dynamic
-                  MaxChars  = sizeof<int> * 1<chars>
-                  Labels    = emptyLabels(Array.length values)
-                  Values    = values }
+      StringPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Behavior         = IP
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        MaxChars         = sizeof<int> * 1<chars>
+        Labels           = emptyLabels(Array.length values)
+        Values           = values
+      }
 
     // *** number
 
     let number id name dir group client values =
-      NumberPin { Id        = id
-                  Name      = name
-                  PinGroup  = group
-                  Client    = client
-                  Tags      = defaultTags
-                  Persisted = false
-                  Online    = true
-                  Min       = 0
-                  Max       = sizeof<double>
-                  Unit      = ""
-                  Precision = 4u
-                  VecSize   = VecSize.Dynamic
-                  PinConfiguration = dir
-                  Labels    = emptyLabels (Array.length values)
-                  Values    = values }
+      NumberPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Min              = 0
+        Max              = sizeof<double>
+        Unit             = ""
+        Precision        = 4u
+        VecSize          = VecSize.Dynamic
+        PinConfiguration = dir
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** bytes
 
     let bytes id name dir group client values =
-      BytePin { Id        = id
-                Name      = name
-                PinGroup  = group
-                Client    = client
-                Tags      = defaultTags
-                Persisted = false
-                Online    = true
-                VecSize   = VecSize.Dynamic
-                PinConfiguration = dir
-                Labels    = emptyLabels (Array.length values)
-                Values    = values }
+      BytePin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        VecSize          = VecSize.Dynamic
+        PinConfiguration = dir
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** color
 
     let color id name dir group client values =
-      ColorPin { Id        = id
-                 Name      = name
-                 PinGroup  = group
-                 Client    = client
-                 Tags      = defaultTags
-                 Persisted = false
-                 Online    = true
-                 VecSize   = VecSize.Dynamic
-                 PinConfiguration = dir
-                 Labels    = emptyLabels (Array.length values)
-                 Values    = values }
+      ColorPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        VecSize          = VecSize.Dynamic
+        PinConfiguration = dir
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
     // *** enum
+
     let enum id name dir group client properties values =
-      EnumPin { Id         = id
-                Name       = name
-                PinGroup   = group
-                Client     = client
-                Tags       = defaultTags
-                Persisted  = false
-                Online     = true
-                Properties = properties
-                PinConfiguration  = dir
-                VecSize    = VecSize.Dynamic
-                Labels     = emptyLabels (Array.length values)
-                Values     = values }
+      EnumPin {
+        Id               = id
+        Name             = name
+        PinGroup         = group
+        Client           = client
+        Tags             = defaultTags
+        Persisted        = false
+        Online           = true
+        Dirty            = false
+        Properties       = properties
+        PinConfiguration = dir
+        VecSize          = VecSize.Dynamic
+        Labels           = emptyLabels (Array.length values)
+        Values           = values
+      }
 
   // ** Sink module
 
@@ -1182,50 +1231,59 @@ module Pin =
     // *** next
 
     let next id client =
-      BoolPin { Id         = nextId id
-                Name       = name "Next"
-                PinGroup   = id
-                Tags       = Array.empty
-                Client     = client
-                Persisted  = true
-                IsTrigger  = true
-                Online     = true
-                PinConfiguration  = PinConfiguration.Sink
-                VecSize    = VecSize.Dynamic
-                Labels     = emptyLabels 1
-                Values     = [| false |] }
+      BoolPin {
+        Id               = nextId id
+        Name             = name "Next"
+        PinGroup         = id
+        Tags             = Array.empty
+        Client           = client
+        Persisted        = true
+        IsTrigger        = true
+        Online           = true
+        Dirty            = false
+        PinConfiguration = PinConfiguration.Sink
+        VecSize          = VecSize.Dynamic
+        Labels           = emptyLabels 1
+        Values           = [| false |]
+      }
 
     // *** previous
 
     let previous id client =
-      BoolPin { Id         = previousId id
-                Name       = name "Previous"
-                PinGroup   = id
-                Client     = client
-                Tags       = Array.empty
-                Persisted  = true
-                IsTrigger  = true
-                Online     = true
-                PinConfiguration  = PinConfiguration.Sink
-                VecSize    = VecSize.Dynamic
-                Labels     = emptyLabels 1
-                Values     = [| false |] }
+      BoolPin {
+        Id               = previousId id
+        Name             = name "Previous"
+        PinGroup         = id
+        Client           = client
+        Tags             = Array.empty
+        Persisted        = true
+        IsTrigger        = true
+        Online           = true
+        Dirty            = false
+        PinConfiguration = PinConfiguration.Sink
+        VecSize          = VecSize.Dynamic
+        Labels           = emptyLabels 1
+        Values           = [| false |]
+      }
 
     // *** call
 
     let call id client =
-      BoolPin { Id         = callId id
-                Name       = name "Call"
-                PinGroup   = id
-                Client     = client
-                Tags       = Array.empty
-                Persisted  = true
-                IsTrigger  = true
-                Online     = true
-                PinConfiguration  = PinConfiguration.Sink
-                VecSize    = VecSize.Dynamic
-                Labels     = emptyLabels 1
-                Values     = [| false |] }
+      BoolPin {
+        Id         = callId id
+        Name       = name "Call"
+        PinGroup   = id
+        Client     = client
+        Tags       = Array.empty
+        Persisted  = true
+        IsTrigger  = true
+        Online     = true
+        Dirty      = false
+        PinConfiguration  = PinConfiguration.Sink
+        VecSize    = VecSize.Dynamic
+        Labels     = emptyLabels 1
+        Values     = [| false |]
+      }
 
   // ** setVecSize
 
@@ -1256,6 +1314,16 @@ module Pin =
     | BytePin     data -> BytePin     { data with Name = name }
     | EnumPin     data -> EnumPin     { data with Name = name }
     | ColorPin    data -> ColorPin    { data with Name = name }
+
+  // ** setDirty
+
+  let setDirty dirty = function
+    | StringPin data -> StringPin { data with Dirty = dirty }
+    | NumberPin data -> NumberPin { data with Dirty = dirty }
+    | BoolPin   data -> BoolPin   { data with Dirty = dirty }
+    | BytePin   data -> BytePin   { data with Dirty = dirty }
+    | EnumPin   data -> EnumPin   { data with Dirty = dirty }
+    | ColorPin  data -> ColorPin  { data with Dirty = dirty }
 
   // ** setTags
 
@@ -1435,6 +1503,10 @@ module Pin =
   let isPreset (pin: Pin) =
     pin.PinConfiguration = PinConfiguration.Preset
 
+  // ** isDirty
+
+  let isDirty (pin: Pin) = pin.Dirty
+
   // ** str2offset
 
   let str2offset (builder: FlatBufferBuilder) = function
@@ -1476,6 +1548,9 @@ type NumberPinD =
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
     Persisted: bool
+
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
 
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
@@ -1536,6 +1611,7 @@ type NumberPinD =
     NumberPinFB.AddPinGroup(builder, group)
     NumberPinFB.AddClient(builder, client)
     NumberPinFB.AddPersisted(builder, self.Persisted)
+    NumberPinFB.AddDirty(builder, self.Dirty)
     NumberPinFB.AddOnline(builder, self.Online)
     NumberPinFB.AddTags(builder, tags)
     NumberPinFB.AddVecSize(builder, vecsize)
@@ -1563,21 +1639,22 @@ type NumberPinD =
         |> Pin.parseSimpleValues
         |> Either.map (Array.map double)
 
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               PinGroup  = Id fb.PinGroup
-               Tags      = tags
-               Persisted = fb.Persisted
-               Client    = Id fb.Client
-               Online    = fb.Online
-               Min       = fb.Min
-               Max       = fb.Max
-               Unit      = fb.Unit
-               Precision = fb.Precision
-               VecSize   = vecsize
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               PinGroup         = Id fb.PinGroup
+               Tags             = tags
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               Client           = Id fb.Client
+               Online           = fb.Online
+               Min              = fb.Min
+               Max              = fb.Max
+               Unit             = fb.Unit
+               Precision        = fb.Precision
+               VecSize          = vecsize
                PinConfiguration = configuration
-               Labels    = labels
-               Values    = slices }
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -1670,6 +1747,9 @@ type StringPinD =
     /// parent PinGroup.
     Persisted: bool
 
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
+
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
 
@@ -1725,6 +1805,7 @@ type StringPinD =
     StringPinFB.AddPinGroup(builder, group)
     StringPinFB.AddClient(builder, client)
     StringPinFB.AddPersisted(builder, self.Persisted)
+    StringPinFB.AddDirty(builder, self.Dirty)
     StringPinFB.AddOnline(builder, self.Online)
     StringPinFB.AddTags(builder, tags)
     StringPinFB.AddBehavior(builder, tipe)
@@ -1746,19 +1827,20 @@ type StringPinD =
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               PinGroup  = Id fb.PinGroup
-               Tags      = tags
-               Online    = fb.Online
-               Persisted = fb.Persisted
-               Client    = Id fb.Client
-               Behavior  = tipe
-               MaxChars  = 1<chars> * fb.MaxChars
-               VecSize   = vecsize
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               PinGroup         = Id fb.PinGroup
+               Tags             = tags
+               Online           = fb.Online
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               Client           = Id fb.Client
+               Behavior         = tipe
+               MaxChars         = 1<chars> * fb.MaxChars
+               VecSize          = vecsize
                PinConfiguration = configuration
-               Labels    = labels
-               Values    = slices }
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -1802,6 +1884,9 @@ type BoolPinD =
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
     Persisted: bool
+
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
 
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
@@ -1852,6 +1937,7 @@ type BoolPinD =
     BoolPinFB.AddPinGroup(builder, group)
     BoolPinFB.AddClient(builder, client)
     BoolPinFB.AddPersisted(builder, self.Persisted)
+    BoolPinFB.AddDirty(builder, self.Dirty)
     BoolPinFB.AddOnline(builder, self.Online)
     BoolPinFB.AddIsTrigger(builder, self.IsTrigger)
     BoolPinFB.AddTags(builder, tags)
@@ -1871,18 +1957,19 @@ type BoolPinD =
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               PinGroup  = Id fb.PinGroup
-               Client    = Id fb.Client
-               Tags      = tags
-               Persisted = fb.Persisted
-               Online    = fb.Online
-               IsTrigger = fb.IsTrigger
-               VecSize   = vecsize
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               PinGroup         = Id fb.PinGroup
+               Client           = Id fb.Client
+               Tags             = tags
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               Online           = fb.Online
+               IsTrigger        = fb.IsTrigger
+               VecSize          = vecsize
                PinConfiguration = configuration
-               Labels    = labels
-               Values    = slices }
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -1927,6 +2014,9 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
     Persisted: bool
+
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
 
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
@@ -2035,6 +2125,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     BytePinFB.AddPinGroup(builder, group)
     BytePinFB.AddClient(builder, client)
     BytePinFB.AddPersisted(builder, self.Persisted)
+    BytePinFB.AddDirty(builder, self.Dirty)
     BytePinFB.AddOnline(builder, self.Online)
     BytePinFB.AddTags(builder, tags)
     BytePinFB.AddVecSize(builder, vecsize)
@@ -2056,17 +2147,18 @@ type [<CustomEquality;CustomComparison>] BytePinD =
         |> Pin.parseSimpleValues
         |> Either.map (Array.map String.decodeBase64)
 
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               PinGroup  = Id fb.PinGroup
-               Client    = Id fb.Client
-               Tags      = tags
-               Online    = fb.Online
-               Persisted = fb.Persisted
-               VecSize   = vecsize
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               PinGroup         = Id fb.PinGroup
+               Client           = Id fb.Client
+               Tags             = tags
+               Online           = fb.Online
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               VecSize          = vecsize
                PinConfiguration = configuration
-               Labels    = labels
-               Values    = slices }
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -2110,6 +2202,9 @@ type EnumPinD =
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
     Persisted: bool
+
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
 
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
@@ -2162,6 +2257,7 @@ type EnumPinD =
     EnumPinFB.AddPinGroup(builder, group)
     EnumPinFB.AddClient(builder, client)
     EnumPinFB.AddPersisted(builder, self.Persisted)
+    EnumPinFB.AddDirty(builder, self.Dirty)
     EnumPinFB.AddOnline(builder, self.Online)
     EnumPinFB.AddTags(builder, tags)
     EnumPinFB.AddProperties(builder, properties)
@@ -2205,18 +2301,19 @@ type EnumPinD =
           properties
         |> Either.map snd
 
-      return { Id         = Id fb.Id
-               Name       = name fb.Name
-               PinGroup   = Id fb.PinGroup
-               Client     = Id fb.Client
-               Tags       = tags
-               Online     = fb.Online
-               Persisted  = fb.Persisted
-               Properties = properties
-               PinConfiguration  = configuration
-               VecSize    = vecsize
-               Labels     = labels
-               Values     = slices }
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               PinGroup         = Id fb.PinGroup
+               Client           = Id fb.Client
+               Tags             = tags
+               Online           = fb.Online
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               Properties       = properties
+               PinConfiguration = configuration
+               VecSize          = vecsize
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -2260,6 +2357,9 @@ type ColorPinD =
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
     Persisted: bool
+
+    /// Flag to track whether this Pin value has changed since it was saved last
+    Dirty: bool
 
     /// Indicates whether the Client that created this Pin is currently on- or offline.
     Online: bool
@@ -2307,6 +2407,7 @@ type ColorPinD =
     ColorPinFB.AddPinGroup(builder, group)
     ColorPinFB.AddClient(builder, client)
     ColorPinFB.AddPersisted(builder, self.Persisted)
+    ColorPinFB.AddDirty(builder, self.Dirty)
     ColorPinFB.AddOnline(builder, self.Online)
     ColorPinFB.AddTags(builder, tags)
     ColorPinFB.AddVecSize(builder, vecsize)
@@ -2325,17 +2426,18 @@ type ColorPinD =
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               Online    = fb.Online
-               PinGroup  = Id fb.PinGroup
-               Client    = Id fb.Client
-               Tags      = tags
-               Persisted = fb.Persisted
-               VecSize   = vecsize
+      return { Id               = Id fb.Id
+               Name             = name fb.Name
+               Online           = fb.Online
+               PinGroup         = Id fb.PinGroup
+               Client           = Id fb.Client
+               Tags             = tags
+               Persisted        = fb.Persisted
+               Dirty            = fb.Dirty
+               VecSize          = vecsize
                PinConfiguration = configuration
-               Labels    = labels
-               Values    = slices }
+               Labels           = labels
+               Values           = slices }
     }
 
   // ** ToBytes
@@ -3706,106 +3808,106 @@ module PinYaml =
   let ofPin = function
     | StringPin data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "StringPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.MaxChars   <- int data.MaxChars
-      yaml.Behavior   <- string data.Behavior
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.VecSize    <- string data.VecSize
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
+      yaml.PinType          <- "StringPin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.MaxChars         <- int data.MaxChars
+      yaml.Behavior         <- string data.Behavior
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.VecSize          <- string data.VecSize
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.StringSlice data.Values
       yaml
 
     | NumberPin data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "NumberPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.Precision  <- data.Precision
-      yaml.Min        <- data.Min
-      yaml.Max        <- data.Max
-      yaml.Unit       <- data.Unit
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
+      yaml.PinType          <- "NumberPin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Precision        <- data.Precision
+      yaml.Min              <- data.Min
+      yaml.Max              <- data.Max
+      yaml.Unit             <- data.Unit
+      yaml.VecSize          <- string data.VecSize
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.NumberSlice data.Values
       yaml
 
     | BoolPin data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "BoolPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.IsTrigger  <- data.IsTrigger
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
+      yaml.PinType          <- "BoolPin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.IsTrigger        <- data.IsTrigger
+      yaml.VecSize          <- string data.VecSize
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.BoolSlice data.Values
       yaml
 
     | BytePin data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "BytePin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
+      yaml.PinType          <- "BytePin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.VecSize          <- string data.VecSize
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.ByteSlice data.Values
       yaml
 
     | EnumPin data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "EnumPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Properties <- Array.map Yaml.toYaml data.Properties
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
+      yaml.PinType          <- "EnumPin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.VecSize          <- string data.VecSize
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.Properties       <- Array.map Yaml.toYaml data.Properties
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.EnumSlice data.Values
       yaml
 
     | ColorPin  data ->
       let yaml = PinYaml()
-      yaml.PinType    <- "ColorPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
+      yaml.PinType          <- "ColorPin"
+      yaml.Id               <- string data.Id
+      yaml.Name             <- unwrap data.Name
+      yaml.PinGroup         <- string data.PinGroup
+      yaml.Client           <- string data.Client
+      yaml.Persisted        <- data.Persisted
+      yaml.Online           <- data.Online
+      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.VecSize          <- string data.VecSize
+      yaml.PinConfiguration <- string data.PinConfiguration
+      yaml.Labels           <- data.Labels
+      yaml.Values           <- Array.mapi SliceYaml.ColorSlice data.Values
       yaml
 
 
@@ -3832,19 +3934,20 @@ module PinYaml =
               yml.Values
 
           return StringPin {
-            Id         = Id yml.Id
-            Name       = name yml.Name
-            PinGroup   = Id yml.PinGroup
-            Client     = Id yml.Client
-            Tags       = Array.map astag yml.Tags
-            Persisted  = yml.Persisted
-            Online     = yml.Online
-            MaxChars   = yml.MaxChars * 1<chars>
-            Behavior   = strtype
-            VecSize    = vecsize
-            PinConfiguration  = dir
-            Labels     = yml.Labels
-            Values     = slices
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            Persisted        = yml.Persisted
+            Online           = yml.Online
+            Dirty            = false
+            MaxChars         = yml.MaxChars * 1<chars>
+            Behavior         = strtype
+            VecSize          = vecsize
+            PinConfiguration = dir
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -3871,21 +3974,22 @@ module PinYaml =
               yml.Values
 
           return NumberPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            VecSize   = vecsize
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            VecSize          = vecsize
             PinConfiguration = dir
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            Min       = yml.Min
-            Max       = yml.Max
-            Unit      = yml.Unit
-            Precision = yml.Precision
-            Labels    = yml.Labels
-            Values    = slices
+            Persisted        = yml.Persisted
+            Online           = yml.Online
+            Dirty            = false
+            Min              = yml.Min
+            Max              = yml.Max
+            Unit             = yml.Unit
+            Precision        = yml.Precision
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -3916,18 +4020,19 @@ module PinYaml =
               yml.Values
 
           return BoolPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            IsTrigger = yml.IsTrigger
-            VecSize   = vecsize
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            Persisted        = yml.Persisted
+            Online           = yml.Online
+            Dirty            = false
+            IsTrigger        = yml.IsTrigger
+            VecSize          = vecsize
             PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -3958,17 +4063,18 @@ module PinYaml =
               yml.Values
 
           return BytePin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            VecSize   = vecsize
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            Persisted        = yml.Persisted
+            Online           = yml.Online
+            Dirty            = false
+            VecSize          = vecsize
             PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -4013,18 +4119,19 @@ module PinYaml =
           let! vecsize = VecSize.TryParse yml.VecSize
 
           return EnumPin {
-            Id         = Id yml.Id
-            Name       = name yml.Name
-            PinGroup   = Id yml.PinGroup
-            Client     = Id yml.Client
-            Tags       = Array.map astag yml.Tags
-            Online     = yml.Online
-            Persisted  = yml.Persisted
-            Properties = properties
-            VecSize    = vecsize
-            PinConfiguration  = dir
-            Labels     = yml.Labels
-            Values     = slices
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            Online           = yml.Online
+            Dirty            = false
+            Persisted        = yml.Persisted
+            Properties       = properties
+            VecSize          = vecsize
+            PinConfiguration = dir
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -4056,17 +4163,18 @@ module PinYaml =
               yml.Values
 
           return ColorPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            VecSize   = vecsize
+            Id               = Id yml.Id
+            Name             = name yml.Name
+            PinGroup         = Id yml.PinGroup
+            Client           = Id yml.Client
+            Tags             = Array.map astag yml.Tags
+            Persisted        = yml.Persisted
+            Online           = yml.Online
+            Dirty            = false
+            VecSize          = vecsize
             PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
+            Labels           = yml.Labels
+            Values           = slices
           }
         }
 
@@ -4080,28 +4188,5 @@ module PinYaml =
         sprintf "Could not parse PinYml: %s" exn.Message
         |> Error.asParseError "PynYml.FromYaml"
         |> Either.fail
-
-#endif
-
-// * Playground
-
-#if INTERACTIVE
-
-open SharpYaml
-open SharpYaml.Serialization
-
-
-type F() =
-  [<DefaultValue>] val mutable a : obj
-
-
-let serializer = Serializer()
-
-
-let result = serializer.Serialize (F())
-
-let parsed = serializer.Deserialize<F> result
-
-parsed
 
 #endif

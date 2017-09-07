@@ -321,6 +321,7 @@ table StringPinFB {
       Tags:             [string];
       Persisted:        bool;
       Online:           bool;
+      Dirty:            bool;
       PinConfiguration: PinConfigurationFB;
       VecSize:          VecSizeFB;
       Behavior:         BehaviorFB;
@@ -338,6 +339,7 @@ table NumberPinFB {
       Unit:             string;
       Precision:        uint;
       Persisted:        bool;
+      Dirty:            bool;
       Online:           bool;
       PinConfiguration: PinConfigurationFB;
       VecSize:          VecSizeFB;
@@ -355,6 +357,7 @@ table BoolPinFB {
       Tags:             [string];
       IsTrigger:        bool;
       Persisted:        bool;
+      Dirty:            bool;
       Online:           bool;
       PinConfiguration: PinConfigurationFB;
       VecSize:          VecSizeFB;
@@ -363,17 +366,18 @@ table BoolPinFB {
 }
 
 table BytePinFB {
-      Id:          string;
-      Name:        string;
-      PinGroup:    string;
-      Client:      string;
-      Tags:        [string];
-      Persisted:   bool;
-      Online:      bool;
+      Id:               string;
+      Name:             string;
+      PinGroup:         string;
+      Client:           string;
+      Tags:             [string];
+      Persisted:        bool;
+      Dirty:            bool;
+      Online:           bool;
       PinConfiguration: PinConfigurationFB;
-      VecSize:     VecSizeFB;
-      Labels:      [string];
-      Values:      [string];
+      VecSize:          VecSizeFB;
+      Labels:           [string];
+      Values:           [string];
 }
 
 table EnumPinFB {
@@ -384,6 +388,7 @@ table EnumPinFB {
       Tags:             [string];
       Properties:       [KeyValueFB];
       Persisted:        bool;
+      Dirty:            bool;
       Online:           bool;
       PinConfiguration: PinConfigurationFB;
       VecSize:          VecSizeFB;
@@ -399,6 +404,7 @@ table ColorPinFB {
       Tags:             [string];
       VecSize:          VecSizeFB;
       Persisted:        bool;
+      Dirty:            bool;
       Online:           bool;
       PinConfiguration: PinConfigurationFB;
       Labels:           [string];

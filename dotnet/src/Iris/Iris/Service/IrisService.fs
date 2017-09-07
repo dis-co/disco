@@ -124,7 +124,50 @@ module IrisService =
   // ** stateMutator
 
   /// Dispatch the current event on the store, thereby globally mutating its state.
-  let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
+  let private stateMutator (store: IAgentStore<IrisState>) =
+    fun _ _ -> function
+    | IrisEvent.Append(_, (Command AppCommand.Save as cmd)) when store.State.RaftServer.IsLeader ->
+      /// Since we are saving the project, we can now mark all dirty pins as clean.
+      store.State.Store.State.PinGroups
+      |> PinGroupMap.dirtyPins
+      |> PinGroupMap.mapPins (Pin.setDirty false)
+      |> PinGroupMap.byGroup
+      |> Map.fold
+        (fun out _ group ->
+          group.Pins
+          |> Map.toList
+          |> List.map (snd >> UpdatePin)
+          |> List.append out)
+        List.empty
+      |> StateMachineBatch
+      |> CommandBatch
+      |> store.State.RaftServer.Append
+      /// now dispatch the command normally
+      store.State.Store.Dispatch cmd
+
+    | IrisEvent.Append(_, (UpdateSlices sm as cmd)) when store.State.RaftServer.IsLeader ->
+      /// If this server is leader, create a batched update containing only the pins that are
+      /// 1) persisted
+      /// 2) not yet dirty
+      store.State.Store.State.PinGroups
+      |> PinGroupMap.foldGroups
+        (fun out _ (group: PinGroup) ->
+          List.fold
+            (fun out (pin: PinId) ->
+              match PinGroup.tryFindPin pin group with
+              /// only set pins dirty that are persisted and not already dirty
+              | Some pin when pin.Persisted && not pin.Dirty ->
+                /// build up the list of commands to send in batch
+                UpdatePin (Pin.setDirty true pin) :: out
+              | _ -> out)
+            out
+            (SlicesMap.keys sm))
+        List.empty
+      |> StateMachineBatch
+      |> CommandBatch
+      |> store.State.RaftServer.Append
+      /// now, dispatch the command normally record the state change
+      store.State.Store.Dispatch cmd
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
 

@@ -111,6 +111,7 @@ module EnsureCueResolver =
           IsTrigger        = false
           Persisted        = false
           Online           = true
+          Dirty            = false
           VecSize          = VecSize.Dynamic
           Labels           = Array.empty
           Values           = [| true |]
