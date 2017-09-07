@@ -49,7 +49,7 @@ type CueReferenceYaml() =
 
   member yaml.ToCueReference() =
     { Id          = Id yaml.Id
-      CueId       = Id yaml.CueId    
+      CueId       = Id yaml.CueId
       AutoFollow  = yaml.AutoFollow
       Duration    = yaml.Duration
       Prewait     = yaml.Prewait }
@@ -80,7 +80,7 @@ type CueReference =
 
   static member FromFB(fb: CueReferenceFB) : Either<IrisError,CueReference> =
     { Id          = Id fb.Id
-      CueId       = Id fb.CueId    
+      CueId       = Id fb.CueId
       AutoFollow  = fb.AutoFollow
       Duration    = fb.Duration
       Prewait     = fb.Prewait }
@@ -111,7 +111,7 @@ type CueReference =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -121,23 +121,11 @@ type CueReference =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member cue.ToYamlObject() = CueReferenceYaml.From(cue)
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: CueReferenceYaml) : Either<IrisError,CueReference> =
-    yaml.ToCueReference()
-
-  // ** ToYaml
-
-  member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+  member cue.ToYaml() = CueReferenceYaml.From(cue)
 
   // ** FromYaml
 
-  static member FromYaml(str: string) : Either<IrisError,CueReference> =
-    let serializer = Serializer()
-    serializer.Deserialize<CueReferenceYaml>(str)
-    |> Yaml.fromYaml
+  static member FromYaml(yaml: CueReferenceYaml) : Either<IrisError,CueReference> =
+    yaml.ToCueReference()
 
   #endif

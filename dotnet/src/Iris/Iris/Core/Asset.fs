@@ -163,7 +163,8 @@ module IrisData =
     either {
       if File.exists location then
         try
-          return File.readText location
+          let txt = File.readText location
+          return txt
         with
           | exn ->
             return!

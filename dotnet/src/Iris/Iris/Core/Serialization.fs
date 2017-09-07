@@ -1,5 +1,7 @@
 namespace Iris.Core
 
+// * Imports
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -11,6 +13,8 @@ open Iris.Core.FlatBuffers
 open FlatBuffers
 
 #endif
+
+// * EitherExt module
 
 [<RequireQualifiedAccess>]
 module EitherExt =
@@ -36,6 +40,8 @@ module EitherExt =
     | Some err -> Left err
     | None -> Right arr
 
+// * Binary module
+
 //  ____  _
 // | __ )(_)_ __   __ _ _ __ _   _
 // |  _ \| | '_ \ / _` | '__| | | |
@@ -46,6 +52,8 @@ module EitherExt =
 [<RequireQualifiedAccess>]
 module Binary =
 
+  // ** createBuffer
+
   let createBuffer (bytes: byte[]) : ByteBuffer =
 #if FABLE_COMPILER
     ByteBuffer.Create(bytes)
@@ -53,8 +61,12 @@ module Binary =
     ByteBuffer(bytes)
 #endif
 
+  // ** encode
+
   let inline encode (value : ^t when ^t : (member ToBytes : unit -> byte[])) =
     (^t : (member ToBytes : unit -> byte[]) value)
+
+  // ** decode
 
   let inline decode< ^t when ^t : (static member FromBytes : byte[] -> Either<IrisError, ^t>)>
                                   (bytes: byte[]) :
@@ -66,6 +78,8 @@ module Binary =
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
         |> ParseError
         |> Either.fail
+
+  // ** toOffset
 
   let inline toOffset< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)>
                      (builder: FlatBufferBuilder)
@@ -86,6 +100,8 @@ module Binary =
     builder.SizedByteArray()
 #endif
 
+// * Yaml module
+
 // __   __              _
 // \ \ / /_ _ _ __ ___ | |
 //  \ V / _` | '_ ` _ \| |
@@ -98,31 +114,42 @@ module Binary =
 module Yaml =
   open SharpYaml.Serialization
 
-  let inline encode< ^t when ^t : (member ToYaml : Serializer -> string)> (thing: ^t) =
+  // ** serialize
+
+  let serialize (thing: obj) =
+    let options = SerializerSettings()
+    /// options.EmitTags <- false
+    /// options.EmitAlias <- false
+    let serializer = Serializer(options)
+    serializer.Serialize thing
+
+  // ** deserialize
+
+  let inline deserialize< ^t > (str: string) : ^t =
     let serializer = Serializer()
-    (^t : (member ToYaml : Serializer -> string) thing,serializer)
+    serializer.Deserialize< ^t >(str)
 
-  let inline decode< ^err, ^t when ^t : (static member FromYaml : string -> Either< ^err, ^t >)> (str: string) =
-    (^t : (static member FromYaml : string -> Either< ^err, ^t >) str)
+  // ** toYaml
 
-  let inline toYaml< ^a, ^t when ^t : (member ToYamlObject : unit -> ^a)> (thing: ^t) : ^a =
-    (^t : (member ToYamlObject : unit -> ^a) thing)
+  let inline toYaml< ^a, ^t when ^t : (member ToYaml : unit -> ^a)> (thing: ^t) : ^a =
+    (^t : (member ToYaml : unit -> ^a) thing)
 
-  let inline fromYaml< ^err, ^a, ^t when ^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >)> (thing: ^a) =
-    (^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >) thing)
+  // ** fromYaml
 
-  let inline arrayToMap< ^err, ^i, ^a, ^t when ^t : (static member FromYamlObject : ^a -> Either< ^err, ^t >)
-                                          and  ^t : (member Id : ^i)
-                                          and  ^i : comparison> (things: ^a array)
-                                          : Either< ^err, Map< ^i, ^t > > =
-    Array.fold
-      (fun (m: Either< ^err, Map< ^i, ^t > >) (yml: ^a) -> either {
-        let! things = m
-        let! thing = fromYaml yml
-        let id = (^t : (member Id : ^i) thing)
-        return Map.add id thing things
-      })
-      (Right Map.empty)
-      things
+  let inline fromYaml< ^err, ^a, ^t when ^t : (static member FromYaml : ^a -> Either< ^err, ^t >)>
+                     (thing: ^a) =
+    (^t : (static member FromYaml : ^a -> Either< ^err, ^t >) thing)
+
+  // ** encode
+
+  let inline encode< ^a, ^t when ^t : (member ToYaml : unit -> ^a)> (thing: ^t) =
+    thing |> toYaml |> serialize
+
+  // ** decode
+
+  let inline decode< ^err, ^a, ^t when ^t : (static member FromYaml: ^a -> Either< ^err, ^t >)>
+                   (str: string) =
+    let thing = str |> deserialize< ^a >
+    (^t : (static member FromYaml : ^a -> Either< ^err, ^t >) thing)
 
 #endif

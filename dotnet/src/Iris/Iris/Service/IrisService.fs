@@ -610,8 +610,7 @@ module IrisService =
     match IrisData.read path with
     | Right str ->
       try
-        let serializer = Serializer()
-        let yml = serializer.Deserialize<SnapshotYaml>(str)
+        let yml = Yaml.deserialize<SnapshotYaml> str
 
         let members =
           match Config.getActiveSite state.Store.State.Project.Config with

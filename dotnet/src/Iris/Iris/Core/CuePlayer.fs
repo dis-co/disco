@@ -163,29 +163,15 @@ type CuePlayer =
     |> CuePlayerFB.GetRootAsCuePlayerFB
     |> CuePlayer.FromFB
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member player.ToYamlObject() = CuePlayerYaml.From(player)
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: CuePlayerYaml) = yaml.ToPlayer()
+  member player.ToYaml() = CuePlayerYaml.From(player)
 
   // ** FromYaml
 
-  static member FromYaml(raw: string) : Either<IrisError,CuePlayer> =
-    let serializer = Serializer()
-    serializer.Deserialize<CuePlayerYaml>(raw)
-    |> Yaml.fromYaml
-
-  // ** ToYaml
-
-  member player.ToYaml(serializer: Serializer) =
-    player
-    |> Yaml.toYaml
-    |> serializer.Serialize
+  static member FromYaml(yaml: CuePlayerYaml) = yaml.ToPlayer()
 
   #endif
 

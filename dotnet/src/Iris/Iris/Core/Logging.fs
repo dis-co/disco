@@ -198,7 +198,7 @@ type LogEvent =
                Message  = fb.Message }
     }
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -208,7 +208,7 @@ type LogEvent =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
+  member self.ToYaml() =
     let yaml = LogEventYaml()
     yaml.Time     <- self.Time
     yaml.Thread   <- self.Thread
@@ -219,16 +219,10 @@ type LogEvent =
     yaml.Message  <- self.Message
     yaml
 
-  // ** ToYaml
+  // ** FromYaml
 
-  member self.ToYaml(serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: LogEventYaml) = either {
+  static member FromYaml(yaml: LogEventYaml) : Either<IrisError,LogEvent> =
+    either {
       let id = Id yaml.Id
       let! level = LogLevel.TryParse yaml.LogLevel
       let! tier = Tier.TryParse yaml.Tier
@@ -240,14 +234,6 @@ type LogEvent =
                LogLevel = level
                Message  = yaml.Message }
     }
-
-  // ** FromYaml
-
-  static member FromYaml(str: string) =
-    let serializer = Serializer()
-    str
-    |> serializer.Deserialize
-    |> LogEvent.FromYamlObject
 
   #endif
 

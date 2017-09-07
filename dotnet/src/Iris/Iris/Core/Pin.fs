@@ -30,12 +30,26 @@ open SharpYaml.Serialization
 // | |_) |  __/ | | | (_| |\ V /| | (_) | |
 // |____/ \___|_| |_|\__,_| \_/ |_|\___/|_|
 
+/// Behavior of string based Pins. Used to validate user input.
 type Behavior =
+  /// Regular, single-line string without any special properties.
   | Simple
+
+  /// Multi-line string (text blob)
   | MultiLine
+
+  /// FileName indicates that the values of the Pin are file paths. Will cause the UI to open a file
+  /// chooser dialog.
   | FileName
+
+  /// Directory indicates that the vlaues of the Pin are paths to directory on the target systems. A
+  /// file chooser dialog will handle this type of StringPin in the UI.
   | Directory
+
+  /// A generic URI type.
   | Url
+
+  /// will validate as an IP address
   | IP
 
   // ** TryParse
@@ -121,11 +135,11 @@ type Behavior =
 /// for UI purposes to govern the way the user can interact with a Pin.
 [<RequireQualifiedAccess>]
 type PinConfiguration =
-  /// Source pins, are, as the name suggests, sources of data. That could be anything from a sensor
-  /// delivering values for consumption or VVVV IOBoxes that are connected at the top.
+  /// Source pins, are, as the name suggests, sources of data and not editable. That could be anything
+  /// from a sensor delivering values for consumption or VVVV IOBoxes that are connected at the top.
   | Source
 
-  /// Sinks by contrast are pins that are typically written to.
+  /// Sinks by contrast are pins that are editable.
   | Sink
 
   /// Preset pins are special sinks which can have individual values per client. This is used in
@@ -196,10 +210,16 @@ type PinConfiguration =
 
 // * VecSize
 
+/// Indicates the behavior of the underlying value array. `VecSize.Dynamic` means that the underlying
+/// array can have any length and may change at use request. By contrast, `VecSize.Fixed` in
+/// combination with a specified length will cause the values array to be validated to always have the
+/// length requested by the user.
 [<RequireQualifiedAccess>]
 type VecSize =
+  /// Dynmically size value arrays in Pin
   | Dynamic
-  | Fixed of uint16
+  /// Fixed size value array
+  | Fixed of size:uint16
 
   // ** ToString
 
@@ -271,245 +291,6 @@ type VecSize =
       |> Error.asParseError "PinConfiguration.FromFB"
       |> Either.fail
     #endif
-
-// * SliceYaml
-
-#if !FABLE_COMPILER && !IRIS_NODES
-
-//  ____  _ _        __   __              _
-// / ___|| (_) ___ __\ \ / /_ _ _ __ ___ | |
-// \___ \| | |/ __/ _ \ V / _` | '_ ` _ \| |
-//  ___) | | | (_|  __/| | (_| | | | | | | |
-// |____/|_|_|\___\___||_|\__,_|_| |_| |_|_|
-
-type SliceYaml(tipe, idx, value: obj) as self =
-  [<DefaultValue>] val mutable SliceType : string
-  [<DefaultValue>] val mutable Index     : int
-  [<DefaultValue>] val mutable Value     : obj
-
-  new () = new SliceYaml(null,0,null)
-
-  do
-    self.SliceType <- tipe
-    self.Index     <- idx
-    self.Value     <- value
-
-  static member StringSlice (idx: int) (value: string) =
-    new SliceYaml("StringSlice", idx, value)
-
-  static member NumberSlice (idx: int) (value: double) =
-    new SliceYaml("NumberSlice", idx, value)
-
-  static member BoolSlice idx (value: bool) =
-    new SliceYaml("BoolSlice", idx, value)
-
-  static member ByteSlice idx (value: byte array) =
-    new SliceYaml("ByteSlice", idx, Convert.ToBase64String(value))
-
-  static member EnumSlice idx (value: Property) =
-    new SliceYaml("EnumSlice", idx, Yaml.toYaml value)
-
-  static member ColorSlice idx (value: ColorSpace) =
-    new SliceYaml("ColorSlice", idx, Yaml.toYaml value)
-
-  member self.ToSlice() =
-    match self.SliceType with
-    | "StringSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
-        let parse (str: obj) =
-          match str with
-          | null -> null
-          | _ -> str :?> String
-        StringSlice(index self.Index, parse self.Value)
-    | "NumberSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
-        let parse (value: obj) =
-          try
-            match value with
-            | :? Double -> value :?> Double
-            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
-            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
-            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
-            | _ -> 0.0
-          with
-            | exn ->
-              exn.Message
-              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
-              |> Logger.err "Slices.ToSlices (Number)"
-              0.0
-        NumberSlice(index self.Index, parse self.Value)
-    | "BoolSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlice(index self.Index, self.Value :?> bool)
-    | "ByteSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        // let parse (value: obj) =
-        //   match value with
-        //   | :? String -> (value :?> String) |> Convert.FromBase64String
-        //   | :? Double ->
-        //     printfn "(ByteSlice.Double) offending byte value: %A" value
-        //     (value :?> Double) |> BitConverter.GetBytes
-        //   | :? Int32 ->
-        //     printfn "(ByteSlice.Int32) offending byte value: %A" value
-        //     (value :?> Int32)   |> BitConverter.GetBytes
-        //   | other ->
-        //     printfn "(ByteSlice): offending value: %A" other
-        //     printfn "(ByteSlice): type of offending value: %A" (other.GetType())
-        //     [| |]
-        ByteSlice(index self.Index, self.Value |> string |> Convert.FromBase64String)
-    | "EnumSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
-        let pyml = self.Value :?> PropertyYaml
-        EnumSlice(index self.Index, { Key = pyml.Key; Value = pyml.Value })
-    | "ColorSlice" ->
-      either {
-        let! color = Yaml.fromYaml(self.Value :?> ColorYaml)
-        return ColorSlice(index self.Index, color)
-      }
-    | unknown ->
-      sprintf "Could not de-serialize unknown type: %A" unknown
-      |> Error.asParseError "SliceYaml.ToSlice"
-      |> Either.fail
-
-// * SlicesYaml
-
-//  ____  _ _             __   __              _
-// / ___|| (_) ___ ___  __\ \ / /_ _ _ __ ___ | |
-// \___ \| | |/ __/ _ \/ __\ V / _` | '_ ` _ \| |
-//  ___) | | | (_|  __/\__ \| | (_| | | | | | | |
-// |____/|_|_|\___\___||___/|_|\__,_|_| |_| |_|_|
-
-type SlicesYaml(tipe, pinid, clientid, values: obj array) as self =
-  [<DefaultValue>] val mutable PinId: string
-  [<DefaultValue>] val mutable ClientId: string
-  [<DefaultValue>] val mutable SliceType: string
-  [<DefaultValue>] val mutable Values: obj array
-
-  new () = SlicesYaml(null,null,null,null)
-
-  do
-    self.PinId     <- pinid
-    self.ClientId  <- clientid
-    self.SliceType <- tipe
-    self.Values    <- values
-
-  static member StringSlices id client (values: string array) =
-    SlicesYaml("StringSlices", id, client, Array.map box values)
-
-  static member NumberSlices id client (values: double array) =
-    SlicesYaml("NumberSlices", id, client, Array.map box values)
-
-  static member BoolSlices id client (values: bool array) =
-    SlicesYaml("BoolSlices", id, client, Array.map box values)
-
-  static member ByteSlices id client (values: byte array array) =
-    SlicesYaml("ByteSlices", id, client, Array.map (Convert.ToBase64String >> box) values)
-
-  static member EnumSlices id client (values: Property array) =
-    SlicesYaml("EnumSlices", id, client, Array.map (Yaml.toYaml >> box) values)
-
-  static member ColorSlices id client (values: ColorSpace array) =
-    SlicesYaml("ColorSlices", id, client, Array.map (Yaml.toYaml >> box) values)
-
-  member self.ToSlices() =
-    match self.SliceType with
-    | "StringSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
-        let parse (str: obj) =
-          match str with
-          | null -> null
-          | _ -> str :?> String
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        StringSlices(Id self.PinId, client, Array.map parse self.Values)
-    | "NumberSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
-        let parse (value: obj) =
-          try
-            match value with
-            | :? Double -> value :?> Double
-            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
-            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
-            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
-            | _ -> 0.0
-          with
-            | exn ->
-              exn.Message
-              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
-              |> Logger.err "Slices.ToSlices (Number)"
-              0.0
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        NumberSlices(Id self.PinId, client, Array.map parse self.Values)
-    | "BoolSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        BoolSlices(Id self.PinId, client, Array.map unbox<bool> self.Values)
-    | "ByteSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
-        let parse (value: obj) =
-          match value with
-          | :? String -> (value :?> String) |> Convert.FromBase64String
-          | :? Double -> (value :?> Double) |> BitConverter.GetBytes
-          | :? Int32  -> (value :?> Int32)  |> BitConverter.GetBytes
-          | other ->
-            printfn "(ByteSlices): offending value: %A" other
-            printfn "(ByteSlices): type of offending value: %A" (other.GetType())
-            [| |]
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        ByteSlices(Id self.PinId, client, Array.map parse self.Values)
-    | "EnumSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
-        let ofPyml (o: obj) =
-          let pyml: PropertyYaml = unbox o
-          { Key = pyml.Key; Value = pyml.Value }
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        EnumSlices(Id self.PinId, client, Array.map ofPyml self.Values)
-    | "ColorSlices" ->
-      either {
-        let! colors =
-          Array.fold
-            (fun (m: Either<IrisError,int * ColorSpace array>) value -> either {
-              let! (idx, colors) = m
-              let unboxed: ColorYaml = unbox value
-              let! color = Yaml.fromYaml unboxed
-              colors.[idx] <- color
-              return (idx + 1, colors)
-              })
-            (Right(0, Array.zeroCreate self.Values.Length))
-            self.Values
-          |> Either.map snd
-        let client = if isNull self.ClientId then None else Some (Id self.ClientId)
-        return ColorSlices(Id self.PinId, client, colors)
-      }
-    | unknown ->
-      sprintf "Could not de-serialize unknown type: %A" unknown
-      |> Error.asParseError "SlicesYaml.ToSlice"
-      |> Either.fail
-
-// * PinYaml
-
-type PinYaml() =
-  [<DefaultValue>] val mutable PinType    : string
-  [<DefaultValue>] val mutable Id         : string
-  [<DefaultValue>] val mutable Name       : string
-  [<DefaultValue>] val mutable PinGroup   : string
-  [<DefaultValue>] val mutable Client     : string
-  [<DefaultValue>] val mutable Tags       : string array
-  [<DefaultValue>] val mutable Persisted  : bool
-  [<DefaultValue>] val mutable Online     : bool
-  [<DefaultValue>] val mutable Behavior   : string
-  [<DefaultValue>] val mutable PinConfiguration  : string
-  [<DefaultValue>] val mutable MaxChars   : int
-  [<DefaultValue>] val mutable IsTrigger  : bool
-  [<DefaultValue>] val mutable VecSize    : string
-  [<DefaultValue>] val mutable Precision  : uint32
-  [<DefaultValue>] val mutable Min        : int
-  [<DefaultValue>] val mutable Max        : int
-  [<DefaultValue>] val mutable Unit       : string
-  [<DefaultValue>] val mutable Properties : PropertyYaml array
-  [<DefaultValue>] val mutable Labels     : string array
-  [<DefaultValue>] val mutable Values     : SliceYaml array
-
-#endif
 
 // * Pin
 
@@ -837,7 +618,7 @@ type Pin =
     |> PinFB.GetRootAsPinFB
     |> Pin.FromFB
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -847,272 +628,30 @@ type Pin =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
-    let yaml = PinYaml()
-    match self with
-    | StringPin data ->
-      yaml.PinType    <- "StringPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.MaxChars   <- int data.MaxChars
-      yaml.Behavior   <- string data.Behavior
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.VecSize    <- string data.VecSize
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
-
-    | NumberPin data ->
-      yaml.PinType    <- "NumberPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.Precision  <- data.Precision
-      yaml.Min        <- data.Min
-      yaml.Max        <- data.Max
-      yaml.Unit       <- data.Unit
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
-
-    | BoolPin data ->
-      yaml.PinType    <- "BoolPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.IsTrigger  <- data.IsTrigger
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
-
-    | BytePin data ->
-      yaml.PinType    <- "BytePin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
-
-    | EnumPin data ->
-      yaml.PinType    <- "EnumPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Properties <- Array.map Yaml.toYaml data.Properties
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
-
-    | ColorPin  data ->
-      yaml.PinType    <- "ColorPin"
-      yaml.Id         <- string data.Id
-      yaml.Name       <- unwrap data.Name
-      yaml.PinGroup   <- string data.PinGroup
-      yaml.Client     <- string data.Client
-      yaml.Persisted  <- data.Persisted
-      yaml.Online     <- data.Online
-      yaml.Tags       <- Array.map unwrap data.Tags
-      yaml.VecSize    <- string data.VecSize
-      yaml.PinConfiguration  <- string data.PinConfiguration
-      yaml.Labels     <- data.Labels
-      yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
-
-    yaml
-
-  // ** ParseSliceYamls
-
-  /// ## Parse all SliceYamls for a given Pin data type
-  ///
-  /// Takes an array> of SliceYaml and folds over it, parsing the
-  /// slices. If an error occurs, it will be returned in the left-hand
-  /// side.
-  ///
-  /// ### Signature:
-  /// - slices: SliceYaml array>
-  ///
-  /// Returns: Either<IrisError,^a>
-  static member inline ParseSliceYamls< ^t when ^t : (static member FromYamlObject : SliceYaml -> Either<IrisError, ^t>)>
-                                           (slices: SliceYaml array)
-                                           : Either<IrisError, ^t array> =
-    Array.fold
-      (fun (m: Either<IrisError,int * ^t array>) yml -> either {
-        let! arr = m
-        let! parsed = Yaml.fromYaml yml
-        (snd arr).[fst arr] <- parsed
-        return (fst arr + 1, snd arr)
-      })
-      (Right (0, Array.zeroCreate slices.Length))
-      slices
-    |> Either.map snd
+  member pin.ToYaml() = PinYaml.ofPin pin
 
   #endif
 
-  // ** ParseTags
+  // ** FromYaml
 
-  /// ## Parse all tags in a Flatbuffer-serialized type
-  ///
-  /// Parses all tags in a given Pin inner data type.
-  ///
-  /// ### Signature:
-  /// - fb: the inner Pin data type (BoolPinD, StringPinD, etc.)
-  ///
-  /// Returns: Either<IrisError, Tag array>
-  static member inline ParseTagsFB< ^a when ^a : (member TagsLength : int)
-                                       and  ^a : (member Tags : int -> string)>
-                                       (fb: ^a)
-                                       : Either<IrisError, Tag array> =
-    let len = (^a : (member TagsLength : int) fb)
-    let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
-          let! (i, tags) = result
-          let value =
-            try (^a : (member Tags : int -> string) (fb, i))
-            with | _ -> null
-          tags.[i] <- astag value
-          return (i + 1, tags)
-        })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
+  #if !FABLE_COMPILER && !IRIS_NODES
 
-  // ** ParseLabels
-
-  /// ## Parse all labels in a Flatbuffer-serialized type
-  ///
-  /// Parses all labels in a given Pin inner data type.
-  ///
-  /// ### Signature:
-  /// - fb: the inner Pin data type (BoolPinD, StringPinD, etc.)
-  ///
-  /// Returns: Either<IrisError, Label array>
-  static member inline ParseLabelsFB< ^a when ^a : (member LabelsLength : int)
-                                         and  ^a : (member Labels : int -> string)>
-                                         (fb: ^a)
-                                         : Either<IrisError, string array> =
-    let len = (^a : (member LabelsLength : int) fb)
-    let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * string array>) _ -> either {
-          let! (i, labels) = result
-          let value =
-            try (^a : (member Labels : int -> string) (fb, i))
-            with | _ -> null
-          labels.[i] <- value
-          return (i + 1, labels)
-        })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
-
-  // ** ParseVecSize
-
-  #if FABLE_COMPILER
-  static member inline ParseVecSize< ^a when ^a : (member VecSize : VecSizeFB)> (fb: ^a)=
-    let fb = (^a : (member VecSize : VecSizeFB) fb)
-    VecSize.FromFB fb
-
-  #else
-  static member inline ParseVecSize< ^a when ^a : (member VecSize : Nullable<VecSizeFB>)> (fb: ^a) =
-    let fb = (^a : (member VecSize : Nullable<VecSizeFB>) fb)
-    if fb.HasValue then
-      let sizish = fb.Value
-      VecSize.FromFB sizish
-    else
-      "Cannot parse empty VecSize"
-      |> Error.asParseError "VecSize.FromFB"
-      |> Either.fail
-  #endif
-
-  // ** ParseSimpleValuesFB
-
-  #if FABLE_COMPILER
-
-  static member inline ParseSimpleValuesFB< ^a, ^b when ^b : (member ValuesLength : int)
-                                                   and ^b : (member Values : int -> ^a)>
-                                                   (fb: ^b)
-                                                   : Either<IrisError, ^a array> =
-    let len = (^b : (member ValuesLength : int) fb)
-    let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * ^a array>) _ -> either {
-
-          let! (i, slices) = result
-
-          // In Javascript, Flatbuffer types are not modeled as nullables,
-          // hence parsing code is much simpler
-          let slice = (^b : (member Values : int -> ^a) (fb, i))
-
-          // add the slice to the array> at its correct position
-          slices.[i] <- slice
-          return (i + 1, slices)
-      })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
-
-  #else
-
-  static member inline ParseSimpleValuesFB< ^a, ^b when ^b : (member ValuesLength : int)
-                                                   and ^b : (member Values : int -> ^a)>
-                                                   (fb: ^b)
-                                                   : Either<IrisError, ^a array> =
-    let len = (^b : (member ValuesLength : int) fb)
-    let arr = Array.zeroCreate len
-    Array.fold
-      (fun (result: Either<IrisError,int * ^a array>) _ -> either {
-          let! (i, slices) = result
-
-          // In .NET, Flatbuffers are modelled with nullables, hence
-          // parsing is slightly more elaborate
-          let slice =
-            try (^b : (member Values : int -> ^a) (fb, i))
-            with | _ -> Unchecked.defaultof< ^a >
-
-          // add the slice to the array> at its correct position
-          slices.[i] <- slice
-          return (i + 1, slices)
-      })
-      (Right (0, arr))
-      arr
-    |> Either.map snd
+  static member FromYaml(yml: PinYaml) = PinYaml.toPin yml
 
   #endif
 
-  // ** ParseComplexValuesFB
+// * Pin module
+
+module Pin =
+  // ** parseComplexValues
 
   #if FABLE_COMPILER
 
-  static member inline ParseComplexValuesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
-                                                 and ^b : (member ValuesLength : int)
-                                                 and ^b : (member Values : int -> ^a)>
-                                                 (fb: ^b)
-                                                 : Either<IrisError, ^t array> =
+  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
+                                            and ^b : (member ValuesLength : int)
+                                            and ^b : (member Values : int -> ^a)>
+                                            (fb: ^b)
+                                            : Either<IrisError, ^t array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
@@ -1136,11 +675,11 @@ type Pin =
 
   #else
 
-  static member inline ParseComplexValuesFB< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
-                                                        and ^b : (member ValuesLength : int)
-                                                        and ^b : (member Values : int -> Nullable< ^a >)>
-                                                        (fb: ^b)
-                                                        : Either<IrisError, ^t array> =
+  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<IrisError, ^t>)
+                                            and ^b : (member ValuesLength : int)
+                                            and ^b : (member Values : int -> Nullable< ^a >)>
+                                            (fb: ^b)
+                                            : Either<IrisError, ^t array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
@@ -1168,299 +707,123 @@ type Pin =
 
   #endif
 
-  // ** FromYamlObject
+  // ** parseSimpleValues
 
-  #if !FABLE_COMPILER && !IRIS_NODES
+  #if FABLE_COMPILER
 
-  static member FromYamlObject(yml: PinYaml) =
-    try
-      match yml.PinType with
-      | "StringPin" -> either {
-          let! strtype = Behavior.TryParse yml.Behavior
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * string array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  arr.[i] <- (value.Value :?> String)
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
+  let inline parseSimpleValues< ^a, ^b when ^b : (member ValuesLength : int)
+                                       and  ^b : (member Values : int -> ^a)>
+                                       (fb: ^b)
+                                       : Either<IrisError, ^a array> =
+    let len = (^b : (member ValuesLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * ^a array>) _ -> either {
 
-          return StringPin {
-            Id         = Id yml.Id
-            Name       = name yml.Name
-            PinGroup   = Id yml.PinGroup
-            Client     = Id yml.Client
-            Tags       = Array.map astag yml.Tags
-            Persisted  = yml.Persisted
-            Online     = yml.Online
-            MaxChars   = yml.MaxChars * 1<chars>
-            Behavior   = strtype
-            VecSize    = vecsize
-            PinConfiguration  = dir
-            Labels     = yml.Labels
-            Values     = slices
-          }
-        }
+          let! (i, slices) = result
 
-      | "NumberPin" -> either {
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * double array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  let! value =
-                    try value.Value :?> double |> Either.succeed
-                    with | x ->
-                      sprintf "Could not parse double: %s" x.Message
-                      |> Error.asParseError "FromYamlObject NumberPin"
-                      |> Either.fail
-                  arr.[i] <- value
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
+          // In Javascript, Flatbuffer types are not modeled as nullables,
+          // hence parsing code is much simpler
+          let slice = (^b : (member Values : int -> ^a) (fb, i))
 
-          return NumberPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            VecSize   = vecsize
-            PinConfiguration = dir
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            Min       = yml.Min
-            Max       = yml.Max
-            Unit      = yml.Unit
-            Precision = yml.Precision
-            Labels    = yml.Labels
-            Values    = slices
-          }
-        }
+          // add the slice to the array> at its correct position
+          slices.[i] <- slice
+          return (i + 1, slices)
+      })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
 
-      | "BoolPin" -> either {
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * bool array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  let! value =
-                    try
-                      value.Value
-                      :?> bool
-                      |> Either.succeed
-                    with
-                      | x ->
-                        sprintf "Could not parse double: %s" x.Message
-                        |> Error.asParseError "FromYamlObject NumberPin"
-                        |> Either.fail
-                  arr.[i] <- value
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
+  #else
 
-          return BoolPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            IsTrigger = yml.IsTrigger
-            VecSize   = vecsize
-            PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
-          }
-        }
+  let inline parseSimpleValues< ^a, ^b when ^b : (member ValuesLength : int)
+                                       and ^b : (member Values : int -> ^a)>
+                                       (fb: ^b)
+                                       : Either<IrisError, ^a array> =
+    let len = (^b : (member ValuesLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * ^a array>) _ -> either {
+          let! (i, slices) = result
 
-      | "BytePin" -> either {
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * byte[] array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  let! value =
-                    try
-                      value.Value
-                      :?> byte array
-                      |> Either.succeed
-                    with
-                      | x ->
-                        sprintf "Could not parse double: %s" x.Message
-                        |> Error.asParseError "FromYamlObject NumberPin"
-                        |> Either.fail
-                  arr.[i] <- value
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
+          // In .NET, Flatbuffers are modelled with nullables, hence
+          // parsing is slightly more elaborate
+          let slice =
+            try (^b : (member Values : int -> ^a) (fb, i))
+            with | _ -> Unchecked.defaultof< ^a >
 
-          return BytePin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            VecSize   = vecsize
-            PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
-          }
-        }
-
-      | "EnumPin" -> either {
-          let! properties =
-            Array.fold
-              (fun (m: Either<IrisError, int * Property array>) yml ->
-                either {
-                  let! state = m
-                  let! parsed = Yaml.fromYaml yml
-                  (snd state).[fst state] <- parsed
-                  return (fst state + 1, snd state)
-                })
-              (Right (0, Array.zeroCreate yml.Properties.Length))
-              yml.Properties
-            |> Either.map snd
-
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * Property array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  let! value =
-                    try
-                      value.Value
-                      :?> Property
-                      |> Either.succeed
-                    with
-                      | x ->
-                        sprintf "Could not parse Property: %s" x.Message
-                        |> Error.asParseError "FromYamlObject NumberPin"
-                        |> Either.fail
-                  arr.[i] <- value
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
-
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-
-          return EnumPin {
-            Id         = Id yml.Id
-            Name       = name yml.Name
-            PinGroup   = Id yml.PinGroup
-            Client     = Id yml.Client
-            Tags       = Array.map astag yml.Tags
-            Online     = yml.Online
-            Persisted  = yml.Persisted
-            Properties = properties
-            VecSize    = vecsize
-            PinConfiguration  = dir
-            Labels     = yml.Labels
-            Values     = slices
-          }
-        }
-
-      | "ColorPin" -> either {
-          let! dir = PinConfiguration.TryParse yml.PinConfiguration
-          let! vecsize = VecSize.TryParse yml.VecSize
-
-          let! (_, slices) =
-            let arr = Array.zeroCreate yml.Values.Length
-            Array.fold
-              (fun (m: Either<IrisError,int * ColorSpace array>) (yml: SliceYaml) ->
-                either {
-                  let! (i, arr) = m
-                  let! value = yml.ToSlice()
-                  let! value =
-                    try
-                      value.Value
-                      :?> ColorSpace
-                      |> Either.succeed
-                    with
-                      | x ->
-                        sprintf "Could not parse Property: %s" x.Message
-                        |> Error.asParseError "FromYamlObject NumberPin"
-                        |> Either.fail
-                  arr.[i] <- value
-                  return (i + 1, arr)
-                })
-              (Right(0, arr))
-              yml.Values
-
-          return ColorPin {
-            Id        = Id yml.Id
-            Name      = name yml.Name
-            PinGroup  = Id yml.PinGroup
-            Client    = Id yml.Client
-            Tags      = Array.map astag yml.Tags
-            Persisted = yml.Persisted
-            Online    = yml.Online
-            VecSize   = vecsize
-            PinConfiguration = dir
-            Labels    = yml.Labels
-            Values    = slices
-          }
-        }
-
-      | x ->
-        sprintf "Could not parse PinYml type: %s" x
-        |> Error.asParseError "PynYml.FromYamlObject"
-        |> Either.fail
-
-    with
-      | exn ->
-        sprintf "Could not parse PinYml: %s" exn.Message
-        |> Error.asParseError "PynYml.FromYamlObject"
-        |> Either.fail
-
-  // ** ToYaml
-
-  member self.ToYaml(serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYaml
-
-  static member FromYaml(str: string) =
-    let serializer = new Serializer()
-    serializer.Deserialize<PinYaml>(str)
-    |> Pin.FromYamlObject
+          // add the slice to the array> at its correct position
+          slices.[i] <- slice
+          return (i + 1, slices)
+      })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
 
   #endif
 
-// * Pin module
+  // ** parseVecSize
 
-module Pin =
+  #if FABLE_COMPILER
+  let inline parseVecSize< ^a when ^a : (member VecSize : VecSizeFB)> (fb: ^a)=
+    let fb = (^a : (member VecSize : VecSizeFB) fb)
+    VecSize.FromFB fb
+  #else
+  let inline parseVecSize< ^a when ^a : (member VecSize : Nullable<VecSizeFB>)> (fb: ^a) =
+    let fb = (^a : (member VecSize : Nullable<VecSizeFB>) fb)
+    if fb.HasValue then
+      let sizish = fb.Value
+      VecSize.FromFB sizish
+    else
+      "Cannot parse empty VecSize"
+      |> Error.asParseError "VecSize.FromFB"
+      |> Either.fail
+  #endif
+
+  // ** parseLabels
+
+  /// Parse all labels in a Flatbuffer-serialized type
+  let inline parseLabels< ^a when ^a : (member LabelsLength : int)
+                             and  ^a : (member Labels : int -> string)>
+                            (fb: ^a)
+                            : Either<IrisError, string array> =
+    let len = (^a : (member LabelsLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * string array>) _ -> either {
+          let! (i, labels) = result
+          let value =
+            try (^a : (member Labels : int -> string) (fb, i))
+            with | _ -> null
+          labels.[i] <- value
+          return (i + 1, labels)
+        })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+
+  // ** parseTags
+
+  /// Parses all tags in a Flatbuffer-serialized type as the UoM Tag
+  let inline parseTags< ^a when ^a : (member TagsLength : int)
+                           and  ^a : (member Tags : int -> string)>
+                      (fb: ^a)
+                      : Either<IrisError, Tag array> =
+    let len = (^a : (member TagsLength : int) fb)
+    let arr = Array.zeroCreate len
+    Array.fold
+      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
+          let! (i, tags) = result
+          let value =
+            try (^a : (member Tags : int -> string) (fb, i))
+            with | _ -> null
+          tags.[i] <- astag value
+          return (i + 1, tags)
+        })
+      (Right (0, arr))
+      arr
+    |> Either.map snd
+
   // ** emtpyLabels
 
   let private emptyLabels (count: int) =
@@ -2142,7 +1505,7 @@ type NumberPinD =
     /// Floating point precision. Zero is equivalent to integers.
     Precision: uint32
 
-    ///
+    /// the underlying number values encoded as doubles
     Values: double array }
 
   // ** ToOffset
@@ -2190,13 +1553,14 @@ type NumberPinD =
 
   static member FromFB(fb: NumberPinFB) : Either<IrisError,NumberPinD> =
     either {
-      let! tags = Pin.ParseTagsFB fb
-      let! labels = Pin.ParseLabelsFB fb
-      let! vecsize = Pin.ParseVecSize fb
+      let! tags = Pin.parseTags fb
+      let! labels = Pin.parseLabels fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       let! slices =
-        Pin.ParseSimpleValuesFB fb
+        fb
+        |> Pin.parseSimpleValues
         |> Either.map (Array.map double)
 
       return { Id        = Id fb.Id
@@ -2322,7 +1686,7 @@ type StringPinD =
     /// String labels for each of the slices
     Labels: string array
 
-    /// The behavior (string type) of this Pin used by the UI
+    /// The Behavior (string type) of this Pin used by the UI. See type above for more details.
     Behavior: Behavior
 
     /// Maximum number of characters allowed
@@ -2375,11 +1739,11 @@ type StringPinD =
 
   static member FromFB(fb: StringPinFB) : Either<IrisError,StringPinD> =
     either {
-      let! tags = Pin.ParseTagsFB fb
-      let! labels = Pin.ParseLabelsFB fb
-      let! slices = Pin.ParseSimpleValuesFB fb
+      let! tags = Pin.parseTags fb
+      let! labels = Pin.parseLabels fb
+      let! slices = Pin.parseSimpleValues fb
       let! tipe = Behavior.FromFB fb.Behavior
-      let! vecsize = Pin.ParseVecSize fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
@@ -2501,10 +1865,10 @@ type BoolPinD =
 
   static member FromFB(fb: BoolPinFB) : Either<IrisError,BoolPinD> =
     either {
-      let! tags = Pin.ParseTagsFB fb
-      let! labels = Pin.ParseLabelsFB fb
-      let! slices = Pin.ParseSimpleValuesFB fb
-      let! vecsize = Pin.ParseVecSize fb
+      let! tags = Pin.parseTags fb
+      let! labels = Pin.parseLabels fb
+      let! slices = Pin.parseSimpleValues fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
@@ -2683,12 +2047,13 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   static member FromFB(fb: BytePinFB) : Either<IrisError,BytePinD> =
     either {
-      let! tags = Pin.ParseTagsFB fb
-      let! labels = Pin.ParseLabelsFB fb
-      let! vecsize = Pin.ParseVecSize fb
+      let! tags = Pin.parseTags fb
+      let! labels = Pin.parseLabels fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
       let! slices =
-        Pin.ParseSimpleValuesFB fb
+        fb
+        |> Pin.parseSimpleValues
         |> Either.map (Array.map String.decodeBase64)
 
       return { Id        = Id fb.Id
@@ -2810,10 +2175,10 @@ type EnumPinD =
 
   static member FromFB(fb: EnumPinFB) : Either<IrisError,EnumPinD> =
     either {
-      let! labels = Pin.ParseLabelsFB fb
-      let! tags = Pin.ParseTagsFB fb
-      let! slices = Pin.ParseComplexValuesFB fb
-      let! vecsize = Pin.ParseVecSize fb
+      let! labels = Pin.parseLabels fb
+      let! tags = Pin.parseTags fb
+      let! slices = Pin.parseComplexValues fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       let! properties =
@@ -2954,10 +2319,10 @@ type ColorPinD =
 
   static member FromFB(fb: ColorPinFB) : Either<IrisError,ColorPinD> =
     either {
-      let! tags = Pin.ParseTagsFB fb
-      let! labels = Pin.ParseLabelsFB fb
-      let! slices = Pin.ParseComplexValuesFB fb
-      let! vecsize = Pin.ParseVecSize fb
+      let! tags = Pin.parseTags fb
+      let! labels = Pin.parseLabels fb
+      let! slices = Pin.parseComplexValues fb
+      let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
       return { Id        = Id fb.Id
@@ -3362,35 +2727,11 @@ type Slice =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYaml(serializer: Serializer) =
-    let yaml =
-      match self with
-      | StringSlice (idx, slice) ->
-        SliceYaml.StringSlice (int idx) slice
-
-      | NumberSlice (idx, slice) ->
-        SliceYaml.NumberSlice (int idx) slice
-
-      | BoolSlice (idx, slice) ->
-        SliceYaml.BoolSlice (int idx) slice
-
-      | ByteSlice (idx, slice) ->
-        SliceYaml.ByteSlice (int idx) slice
-
-      | EnumSlice (idx, slice) ->
-        SliceYaml.EnumSlice (int idx) slice
-
-      | ColorSlice (idx, slice) ->
-        SliceYaml.ColorSlice (int idx) slice
-
-    serializer.Serialize yaml
+  member slice.ToYaml() = SliceYaml.ofSlice slice
 
   // ** FromYaml
 
-  static member FromYaml(str: string) =
-    let serializer = new Serializer()
-    let yaml = serializer.Deserialize<SliceYaml>(str)
-    yaml.ToSlice()
+  static member FromYaml(yml: SliceYaml) = SliceYaml.toSlice yml
 
   #endif
 
@@ -3609,42 +2950,15 @@ type Slices =
 
   #endif
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
-    let client =
-      match self.ClientId with
-      | Some id -> string id
-      | None -> null
-    in
-    match self with
-    | StringSlices (id, _, slices) -> SlicesYaml.StringSlices (string id) client slices
-    | NumberSlices (id, _, slices) -> SlicesYaml.NumberSlices (string id) client slices
-    | BoolSlices   (id, _, slices) -> SlicesYaml.BoolSlices   (string id) client slices
-    | ByteSlices   (id, _, slices) -> SlicesYaml.ByteSlices   (string id) client slices
-    | EnumSlices   (id, _, slices) -> SlicesYaml.EnumSlices   (string id) client slices
-    | ColorSlices  (id, _, slices) -> SlicesYaml.ColorSlices  (string id) client slices
-
-  // ** ToYaml
-
-  member self.ToYaml(serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: SlicesYaml) =
-    yaml.ToSlices()
+  member slices.ToYaml() = SlicesYaml.ofSlices slices
 
   // ** FromYaml
 
-  static member FromYaml(str: string) =
-    let serializer = Serializer()
-    let yaml = serializer.Deserialize<SlicesYaml>(str)
-    yaml.ToSlices()
+  static member FromYaml(yaml: SlicesYaml) = SlicesYaml.toSlices yaml
 
   #endif
 
@@ -4119,6 +3433,657 @@ module Slices =
     | ByteSlices   (i,_,values) -> ByteSlices   (i,id,values)
     | EnumSlices   (i,_,values) -> EnumSlices   (i,id,values)
     | ColorSlices  (i,_,values) -> ColorSlices  (i,id,values)
+
+// * SliceYaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+//  ____  _ _        __   __              _
+// / ___|| (_) ___ __\ \ / /_ _ _ __ ___ | |
+// \___ \| | |/ __/ _ \ V / _` | '_ ` _ \| |
+//  ___) | | | (_|  __/| | (_| | | | | | | |
+// |____/|_|_|\___\___||_|\__,_|_| |_| |_|_|
+
+type SliceYaml(tipe, idx, value: obj) as self =
+  [<DefaultValue>] val mutable SliceType : string
+  [<DefaultValue>] val mutable Index     : int
+  [<DefaultValue>] val mutable Value     : obj
+
+  new () = SliceYaml(null,0,null)
+
+  do
+    self.SliceType <- tipe
+    self.Index     <- idx
+    self.Value     <- value
+
+  static member StringSlice (idx: int) (value: string) =
+    SliceYaml("StringSlice", idx, value)
+
+  static member NumberSlice (idx: int) (value: double) =
+    SliceYaml("NumberSlice", idx, value)
+
+  static member BoolSlice idx (value: bool) =
+    SliceYaml("BoolSlice", idx, value)
+
+  static member ByteSlice idx (value: byte array) =
+    SliceYaml("ByteSlice", idx, Convert.ToBase64String(value))
+
+  static member EnumSlice idx (value: Property) =
+    SliceYaml("EnumSlice", idx, Yaml.toYaml value)
+
+  static member ColorSlice idx (value: ColorSpace) =
+    SliceYaml("ColorSlice", idx, Yaml.toYaml value)
+
+// * SliceYaml module
+
+module SliceYaml =
+
+  // ** ofSlice
+
+  let ofSlice = function
+      | StringSlice (idx, slice) -> SliceYaml.StringSlice (int idx) slice
+      | NumberSlice (idx, slice) -> SliceYaml.NumberSlice (int idx) slice
+      | BoolSlice (idx, slice)   -> SliceYaml.BoolSlice (int idx) slice
+      | ByteSlice (idx, slice)   -> SliceYaml.ByteSlice (int idx) slice
+      | EnumSlice (idx, slice)   -> SliceYaml.EnumSlice (int idx) slice
+      | ColorSlice (idx, slice)  -> SliceYaml.ColorSlice (int idx) slice
+
+  // ** toSlice
+
+  let toSlice (yml: SliceYaml) : Either<IrisError,Slice> =
+    match yml.SliceType with
+    | "StringSlice" ->
+      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
+        let parse (str: obj) =
+          match str with
+          | null -> null
+          | _ -> str :?> String
+        StringSlice(index yml.Index, parse yml.Value)
+    | "NumberSlice" ->
+      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
+        let parse (value: obj) =
+          try
+            match value with
+            | :? Double -> value :?> Double
+            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
+            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
+            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
+            | _ -> 0.0
+          with
+            | exn ->
+              exn.Message
+              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
+              |> Logger.err "toSlices (Number)"
+              0.0
+        NumberSlice(index yml.Index, parse yml.Value)
+    | "BoolSlice" ->
+      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
+        BoolSlice(index yml.Index, yml.Value :?> bool)
+    | "ByteSlice" ->
+      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
+        ByteSlice(index yml.Index, yml.Value |> string |> Convert.FromBase64String)
+    | "EnumSlice" ->
+      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
+        let pyml = yml.Value :?> PropertyYaml
+        EnumSlice(index yml.Index, { Key = pyml.Key; Value = pyml.Value })
+    | "ColorSlice" ->
+      either {
+        let! color = Yaml.fromYaml(yml.Value :?> ColorYaml)
+        return ColorSlice(index yml.Index, color)
+      }
+    | unknown ->
+      sprintf "Could not de-serialize unknown type: %A" unknown
+      |> Error.asParseError "SliceYaml.ToSlice"
+      |> Either.fail
+
+// * SlicesYaml
+
+//  ____  _ _             __   __              _
+// / ___|| (_) ___ ___  __\ \ / /_ _ _ __ ___ | |
+// \___ \| | |/ __/ _ \/ __\ V / _` | '_ ` _ \| |
+//  ___) | | | (_|  __/\__ \| | (_| | | | | | | |
+// |____/|_|_|\___\___||___/|_|\__,_|_| |_| |_|_|
+
+type SlicesYaml(tipe, pinid, clientid, values: obj array) as self =
+  [<DefaultValue>] val mutable PinId: string
+  [<DefaultValue>] val mutable ClientId: string
+  [<DefaultValue>] val mutable SliceType: string
+  [<DefaultValue>] val mutable Values: obj array
+
+  new () = SlicesYaml(null,null,null,null)
+
+  do
+    self.PinId     <- pinid
+    self.ClientId  <- clientid
+    self.SliceType <- tipe
+    self.Values    <- values
+
+  static member StringSlices id client (values: string array) =
+    SlicesYaml("StringSlices", id, client, Array.map box values)
+
+  static member NumberSlices id client (values: double array) =
+    SlicesYaml("NumberSlices", id, client, Array.map box values)
+
+  static member BoolSlices id client (values: bool array) =
+    SlicesYaml("BoolSlices", id, client, Array.map box values)
+
+  static member ByteSlices id client (values: byte array array) =
+    SlicesYaml("ByteSlices", id, client, Array.map (Convert.ToBase64String >> box) values)
+
+  static member EnumSlices id client (values: Property array) =
+    SlicesYaml("EnumSlices", id, client, Array.map (Yaml.toYaml >> box) values)
+
+  static member ColorSlices id client (values: ColorSpace array) =
+    SlicesYaml("ColorSlices", id, client, Array.map (Yaml.toYaml >> box) values)
+
+// * SlicesYaml module
+
+module SlicesYaml =
+
+  // ** ofSlices
+
+  let ofSlices (slices: Slices) =
+    let client =
+      match slices.ClientId with
+      | Some id -> string id
+      | None -> null
+    in
+    match slices with
+    | StringSlices (id, _, slices) -> SlicesYaml.StringSlices (string id) client slices
+    | NumberSlices (id, _, slices) -> SlicesYaml.NumberSlices (string id) client slices
+    | BoolSlices   (id, _, slices) -> SlicesYaml.BoolSlices   (string id) client slices
+    | ByteSlices   (id, _, slices) -> SlicesYaml.ByteSlices   (string id) client slices
+    | EnumSlices   (id, _, slices) -> SlicesYaml.EnumSlices   (string id) client slices
+    | ColorSlices  (id, _, slices) -> SlicesYaml.ColorSlices  (string id) client slices
+
+  // ** toSlices
+
+  let toSlices (yml: SlicesYaml) =
+    match yml.SliceType with
+    | "StringSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
+        let parse (str: obj) =
+          match str with
+          | null -> null
+          | _ -> str :?> String
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        StringSlices(Id yml.PinId, client, Array.map parse yml.Values)
+    | "NumberSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
+        let parse (value: obj) =
+          try
+            match value with
+            | :? Double -> value :?> Double
+            | :? String when (value :?> string).Contains "-Infinity" -> Double.NegativeInfinity
+            | :? String when (value :?> string).Contains "Infinity" -> Double.PositiveInfinity
+            | :? String when (value :?> string).Contains "NaN" -> Double.NaN
+            | _ -> 0.0
+          with
+            | exn ->
+              exn.Message
+              |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
+              |> Logger.err "toSlices (Number)"
+              0.0
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        NumberSlices(Id yml.PinId, client, Array.map parse yml.Values)
+    | "BoolSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        BoolSlices(Id yml.PinId, client, Array.map unbox<bool> yml.Values)
+    | "ByteSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
+        let parse (value: obj) =
+          match value with
+          | :? String -> (value :?> String) |> Convert.FromBase64String
+          | :? Double -> (value :?> Double) |> BitConverter.GetBytes
+          | :? Int32  -> (value :?> Int32)  |> BitConverter.GetBytes
+          | other ->
+            printfn "(ByteSlices): offending value: %A" other
+            printfn "(ByteSlices): type of offending value: %A" (other.GetType())
+            [| |]
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        ByteSlices(Id yml.PinId, client, Array.map parse yml.Values)
+    | "EnumSlices" ->
+      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
+        let ofPyml (o: obj) =
+          let pyml: PropertyYaml = unbox o
+          { Key = pyml.Key; Value = pyml.Value }
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        EnumSlices(Id yml.PinId, client, Array.map ofPyml yml.Values)
+    | "ColorSlices" ->
+      either {
+        let! colors =
+          Array.fold
+            (fun (m: Either<IrisError,int * ColorSpace array>) value -> either {
+              let! (idx, colors) = m
+              let unboxed: ColorYaml = unbox value
+              let! color = Yaml.fromYaml unboxed
+              colors.[idx] <- color
+              return (idx + 1, colors)
+              })
+            (Right(0, Array.zeroCreate yml.Values.Length))
+            yml.Values
+          |> Either.map snd
+        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
+        return ColorSlices(Id yml.PinId, client, colors)
+      }
+    | unknown ->
+      sprintf "Could not de-serialize unknown type: %A" unknown
+      |> Error.asParseError "SlicesYaml.ToSlice"
+      |> Either.fail
+
+
+// * PinYaml
+
+type PinYaml() =
+  [<DefaultValue>] val mutable PinType          : string
+  [<DefaultValue>] val mutable Id               : string
+  [<DefaultValue>] val mutable Name             : string
+  [<DefaultValue>] val mutable PinGroup         : string
+  [<DefaultValue>] val mutable Client           : string
+  [<DefaultValue>] val mutable Tags             : string array
+  [<DefaultValue>] val mutable Persisted        : bool
+  [<DefaultValue>] val mutable Online           : bool
+  [<DefaultValue>] val mutable Behavior         : string
+  [<DefaultValue>] val mutable PinConfiguration : string
+  [<DefaultValue>] val mutable MaxChars         : int
+  [<DefaultValue>] val mutable IsTrigger        : bool
+  [<DefaultValue>] val mutable VecSize          : string
+  [<DefaultValue>] val mutable Precision        : uint32
+  [<DefaultValue>] val mutable Min              : int
+  [<DefaultValue>] val mutable Max              : int
+  [<DefaultValue>] val mutable Unit             : string
+  [<DefaultValue>] val mutable Properties       : PropertyYaml array
+  [<DefaultValue>] val mutable Labels           : string array
+  [<DefaultValue>] val mutable Values           : SliceYaml array
+
+// * PinYaml module
+
+module PinYaml =
+
+  // ** ofPin
+
+  let ofPin = function
+    | StringPin data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "StringPin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.MaxChars   <- int data.MaxChars
+      yaml.Behavior   <- string data.Behavior
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.VecSize    <- string data.VecSize
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.StringSlice data.Values
+      yaml
+
+    | NumberPin data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "NumberPin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.Precision  <- data.Precision
+      yaml.Min        <- data.Min
+      yaml.Max        <- data.Max
+      yaml.Unit       <- data.Unit
+      yaml.VecSize    <- string data.VecSize
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.NumberSlice data.Values
+      yaml
+
+    | BoolPin data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "BoolPin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.IsTrigger  <- data.IsTrigger
+      yaml.VecSize    <- string data.VecSize
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.BoolSlice data.Values
+      yaml
+
+    | BytePin data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "BytePin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.VecSize    <- string data.VecSize
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.ByteSlice data.Values
+      yaml
+
+    | EnumPin data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "EnumPin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.VecSize    <- string data.VecSize
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.Properties <- Array.map Yaml.toYaml data.Properties
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.EnumSlice data.Values
+      yaml
+
+    | ColorPin  data ->
+      let yaml = PinYaml()
+      yaml.PinType    <- "ColorPin"
+      yaml.Id         <- string data.Id
+      yaml.Name       <- unwrap data.Name
+      yaml.PinGroup   <- string data.PinGroup
+      yaml.Client     <- string data.Client
+      yaml.Persisted  <- data.Persisted
+      yaml.Online     <- data.Online
+      yaml.Tags       <- Array.map unwrap data.Tags
+      yaml.VecSize    <- string data.VecSize
+      yaml.PinConfiguration  <- string data.PinConfiguration
+      yaml.Labels     <- data.Labels
+      yaml.Values     <- Array.mapi SliceYaml.ColorSlice data.Values
+      yaml
+
+
+  // ** toPin
+
+  let toPin (yml: PinYaml) =
+    try
+      match yml.PinType with
+      | "StringPin" -> either {
+          let! strtype = Behavior.TryParse yml.Behavior
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * string array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  arr.[i] <- (value.Value :?> String)
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          return StringPin {
+            Id         = Id yml.Id
+            Name       = name yml.Name
+            PinGroup   = Id yml.PinGroup
+            Client     = Id yml.Client
+            Tags       = Array.map astag yml.Tags
+            Persisted  = yml.Persisted
+            Online     = yml.Online
+            MaxChars   = yml.MaxChars * 1<chars>
+            Behavior   = strtype
+            VecSize    = vecsize
+            PinConfiguration  = dir
+            Labels     = yml.Labels
+            Values     = slices
+          }
+        }
+
+      | "NumberPin" -> either {
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * double array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  let! value =
+                    try value.Value :?> double |> Either.succeed
+                    with | x ->
+                      sprintf "Could not parse double: %s" x.Message
+                      |> Error.asParseError "FromYaml NumberPin"
+                      |> Either.fail
+                  arr.[i] <- value
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          return NumberPin {
+            Id        = Id yml.Id
+            Name      = name yml.Name
+            PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
+            Tags      = Array.map astag yml.Tags
+            VecSize   = vecsize
+            PinConfiguration = dir
+            Persisted = yml.Persisted
+            Online    = yml.Online
+            Min       = yml.Min
+            Max       = yml.Max
+            Unit      = yml.Unit
+            Precision = yml.Precision
+            Labels    = yml.Labels
+            Values    = slices
+          }
+        }
+
+      | "BoolPin" -> either {
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * bool array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  let! value =
+                    try
+                      value.Value
+                      :?> bool
+                      |> Either.succeed
+                    with
+                      | x ->
+                        sprintf "Could not parse double: %s" x.Message
+                        |> Error.asParseError "FromYaml NumberPin"
+                        |> Either.fail
+                  arr.[i] <- value
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          return BoolPin {
+            Id        = Id yml.Id
+            Name      = name yml.Name
+            PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
+            Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
+            IsTrigger = yml.IsTrigger
+            VecSize   = vecsize
+            PinConfiguration = dir
+            Labels    = yml.Labels
+            Values    = slices
+          }
+        }
+
+      | "BytePin" -> either {
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * byte[] array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  let! value =
+                    try
+                      value.Value
+                      :?> byte array
+                      |> Either.succeed
+                    with
+                      | x ->
+                        sprintf "Could not parse double: %s" x.Message
+                        |> Error.asParseError "FromYaml NumberPin"
+                        |> Either.fail
+                  arr.[i] <- value
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          return BytePin {
+            Id        = Id yml.Id
+            Name      = name yml.Name
+            PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
+            Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
+            VecSize   = vecsize
+            PinConfiguration = dir
+            Labels    = yml.Labels
+            Values    = slices
+          }
+        }
+
+      | "EnumPin" -> either {
+          let! properties =
+            Array.fold
+              (fun (m: Either<IrisError, int * Property array>) yml ->
+                either {
+                  let! state = m
+                  let! parsed = Yaml.fromYaml yml
+                  (snd state).[fst state] <- parsed
+                  return (fst state + 1, snd state)
+                })
+              (Right (0, Array.zeroCreate yml.Properties.Length))
+              yml.Properties
+            |> Either.map snd
+
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * Property array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  let! value =
+                    try
+                      value.Value
+                      :?> Property
+                      |> Either.succeed
+                    with
+                      | x ->
+                        sprintf "Could not parse Property: %s" x.Message
+                        |> Error.asParseError "FromYaml NumberPin"
+                        |> Either.fail
+                  arr.[i] <- value
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+
+          return EnumPin {
+            Id         = Id yml.Id
+            Name       = name yml.Name
+            PinGroup   = Id yml.PinGroup
+            Client     = Id yml.Client
+            Tags       = Array.map astag yml.Tags
+            Online     = yml.Online
+            Persisted  = yml.Persisted
+            Properties = properties
+            VecSize    = vecsize
+            PinConfiguration  = dir
+            Labels     = yml.Labels
+            Values     = slices
+          }
+        }
+
+      | "ColorPin" -> either {
+          let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! vecsize = VecSize.TryParse yml.VecSize
+
+          let! (_, slices) =
+            let arr = Array.zeroCreate yml.Values.Length
+            Array.fold
+              (fun (m: Either<IrisError,int * ColorSpace array>) (yml: SliceYaml) ->
+                either {
+                  let! (i, arr) = m
+                  let! value = SliceYaml.toSlice yml
+                  let! value =
+                    try
+                      value.Value
+                      :?> ColorSpace
+                      |> Either.succeed
+                    with
+                      | x ->
+                        sprintf "Could not parse Property: %s" x.Message
+                        |> Error.asParseError "FromYaml NumberPin"
+                        |> Either.fail
+                  arr.[i] <- value
+                  return (i + 1, arr)
+                })
+              (Right(0, arr))
+              yml.Values
+
+          return ColorPin {
+            Id        = Id yml.Id
+            Name      = name yml.Name
+            PinGroup  = Id yml.PinGroup
+            Client    = Id yml.Client
+            Tags      = Array.map astag yml.Tags
+            Persisted = yml.Persisted
+            Online    = yml.Online
+            VecSize   = vecsize
+            PinConfiguration = dir
+            Labels    = yml.Labels
+            Values    = slices
+          }
+        }
+
+      | x ->
+        sprintf "Could not parse PinYml type: %s" x
+        |> Error.asParseError "PynYml.FromYaml"
+        |> Either.fail
+
+    with
+      | exn ->
+        sprintf "Could not parse PinYml: %s" exn.Message
+        |> Error.asParseError "PynYml.FromYaml"
+        |> Either.fail
+
+#endif
+
+// * Playground
 
 #if INTERACTIVE
 

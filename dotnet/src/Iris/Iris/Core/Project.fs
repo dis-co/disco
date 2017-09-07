@@ -1969,9 +1969,9 @@ module ProjectYaml =
 
   let internal parse (str: string) =
     try
-      let serializer = Serializer()
-      let config = serializer.Deserialize<IrisProjectYaml>(str)
-      Either.succeed config
+      str
+      |> Yaml.deserialize<IrisProjectYaml>
+      |> Either.succeed
     with
       | exn ->
         exn.Message
@@ -2524,7 +2524,7 @@ Config: %A
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYaml(serializer: Serializer) =
+  member self.ToYaml() =
     let config = ProjectYaml.IrisProjectYaml()
 
     Config.toFile self.Config config
@@ -2549,14 +2549,12 @@ Config: %A
       self.LastSaved
     |> ignore
 
-    serializer.Serialize config
+    config
 
   // ** FromYaml
 
-  static member FromYaml(str: string) =
+  static member FromYaml(meta: ProjectYaml.IrisProjectYaml) =
     either {
-      let! meta = ProjectYaml.parse str
-
       let lastSaved =
         match meta.LastSaved with
           | null | "" -> None

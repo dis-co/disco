@@ -282,11 +282,11 @@ type ColorSpace =
     |> ColorSpaceFB.GetRootAsColorSpaceFB
     |> ColorSpace.FromFB
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYamlObject() =
+  member self.ToYaml() =
     match self with
     | RGBA value ->
       let yml = new ColorYaml()
@@ -306,9 +306,9 @@ type ColorSpace =
       yml.Channel3  <- value.Lightness
       yml
 
-  // ** FromYamlObject
+  // ** FromYaml
 
-  static member FromYamlObject(yml: ColorYaml) =
+  static member FromYaml(yml: ColorYaml) =
     match yml.ColorType with
     | "RGBA" ->
       RGBA {
@@ -326,7 +326,7 @@ type ColorSpace =
       } |> Right
     | x ->
       sprintf "Could not parse ColorYaml. Unknown type: %s" x
-      |> Error.asParseError "ColorSpace.FromYamlObject"
+      |> Error.asParseError "ColorSpace.FromYaml"
       |> Either.fail
 
 #endif

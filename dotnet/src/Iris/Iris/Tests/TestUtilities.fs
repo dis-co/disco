@@ -394,9 +394,9 @@ module TestData =
     let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get
     expect "Should be equal" thing id rething
 
-  let inline yamlEncDec< ^t when ^t : (member ToYaml: Serializer -> string)
-                            and ^t : (static member FromYaml: string -> Either<IrisError, ^t>)
-                            and ^t : equality>
-                            (thing: ^t) =
+  let inline yamlEncDec< ^i, ^t when ^t : (member ToYaml: unit -> ^i)
+                                and ^t : (static member FromYaml: ^i -> Either<IrisError, ^t>)
+                                and ^t : equality>
+                                (thing: ^t) =
     let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Either.get
     expect "Should be equal" thing id rething

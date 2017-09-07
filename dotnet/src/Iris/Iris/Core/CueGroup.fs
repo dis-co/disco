@@ -108,7 +108,7 @@ type CueGroup =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -118,23 +118,11 @@ type CueGroup =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member cue.ToYamlObject() = CueGroupYaml.From(cue)
-
-  // ** FromYamlObject
-
-  static member FromYamlObject(yaml: CueGroupYaml) : Either<IrisError,CueGroup> =
-    yaml.ToCueGroup()
-
-  // ** ToYaml
-
-  member self.ToYaml(serializer: Serializer) =
-    Yaml.toYaml self |> serializer.Serialize
+  member cue.ToYaml() = CueGroupYaml.From(cue)
 
   // ** FromYaml
 
-  static member FromYaml(str: string) : Either<IrisError,CueGroup> =
-    let serializer = Serializer()
-    serializer.Deserialize<CueGroupYaml>(str)
-    |> Yaml.fromYaml
+  static member FromYaml(yaml: CueGroupYaml) : Either<IrisError,CueGroup> =
+    yaml.ToCueGroup()
 
   #endif

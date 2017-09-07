@@ -103,7 +103,7 @@ type Session =
 
   member self.ToBytes() = Binary.buildBuffer self
 
-  // ** ToYamlObject
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
@@ -113,34 +113,20 @@ type Session =
   //   | | (_| | | | | | | |
   //   |_|\__,_|_| |_| |_|_|
 
-  member self.ToYamlObject () =
-    new SessionYaml(
+  member self.ToYaml () =
+    SessionYaml(
       string self.Id,
       string self.IpAddress,
       self.UserAgent)
 
-  // ** ToYaml
+  // ** FromYaml
 
-  member self.ToYaml (serializer: Serializer) =
-    self
-    |> Yaml.toYaml
-    |> serializer.Serialize
-
-  // ** FromYamlObject
-
-  static member FromYamlObject (yml: SessionYaml) =
+  static member FromYaml (yml: SessionYaml) =
     either {
       let! ip = IpAddress.TryParse yml.IpAddress
       return { Id = Id yml.Id
                IpAddress = ip
                UserAgent = yml.UserAgent }
     }
-
-  // ** FromYaml
-
-  static member FromYaml (str: string): Either<IrisError,Session> =
-    let serializer = new Serializer()
-    serializer.Deserialize<SessionYaml>(str)
-    |> Yaml.fromYaml
 
   #endif

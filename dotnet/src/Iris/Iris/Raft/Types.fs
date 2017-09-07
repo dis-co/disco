@@ -496,51 +496,40 @@ and RaftValueYaml() =
 
 // * RaftValue
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  ____        __ _                                                                                                                     //
-// |  _ \ __ _ / _| |_                                                                                                                   //
-// | |_) / _` | |_| __|                                                                                                                  //
-// |  _ < (_| |  _| |_                                                                                                                   //
-// |_| \_\__,_|_|  \__|                                                                                                                  //
-//                                                                                                                                       //
-// ## Raft Server:                                                                                                                       //
-//  - `Member`                  - the server's own mem information                                                                        //
-//  - `RaftState`             - follower/leader/candidate indicator                                                                  //
-//  - `CurrentTerm`           - the server's best guess of what the current term is starts at zero                                       //
-//  - `CurrentLeader`         - what this mem thinks is the mem ID of the current leader, or -1 if there isn't a known current leader. //
-//  - `Peers`                 - list of all known mems                                                                                  //
-//  - `NumMembers`              - number of currently known peers                                                                          //
-//  - `VotedFor`              - the candidate the server voted for in its current term or None if it hasn't voted for any yet            //
-//  - `Log`                   - the log which is replicated                                                                              //
-//  - `CommitIdx`             - idx of highest log entry known to be committed                                                           //
-//  - `LastAppliedIdx`        - idx of highest log entry applied to state machine                                                        //
-//  - `TimoutElapsed`         - amount of time left till timeout                                                                         //
-//  - `ElectionTimeout`       - amount of time left till we start a new election                                                         //
-//  - `RequestTimeout`        - amount of time left till we consider request to be failed                                                //
-//  - `Callbacks`             - all callbacks to be invoked                                                                              //
-//  - `MaxLogDepth`           - maximum log depth to reach before snapshotting triggers
-//  - `VotingCfgChangeLogIdx` - the log which has a voting cfg change, otherwise None                                                    //
-//                                                                                                                                       //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 and RaftValue =
-  { Member            : RaftMember
-  ; State             : RaftState
-  ; CurrentTerm       : Term
-  ; CurrentLeader     : MemberId option
-  ; Peers             : Map<MemberId,RaftMember>
-  ; OldPeers          : Map<MemberId,RaftMember> option
-  ; NumMembers        : int
-  ; VotedFor          : MemberId option
-  ; Log               : RaftLog
-  ; CommitIndex       : Index
-  ; LastAppliedIdx    : Index
-  ; TimeoutElapsed    : Timeout
-  ; ElectionTimeout   : Timeout
-  ; RequestTimeout    : Timeout
-  ; MaxLogDepth       : int
-  ; ConfigChangeEntry : RaftLogEntry option
-  }
+  { /// this server's own RaftMember information
+    Member            : RaftMember
+    /// this server's current Raft state, i.e. follower, leader or candidate
+    State             : RaftState
+    /// the server's current term, a monotonic counter for election cycles
+    CurrentTerm       : Term
+    /// tracks the current Leader Id, or None if there isn't currently a leader
+    CurrentLeader     : MemberId option
+    /// map of all known members in the cluster
+    Peers             : Map<MemberId,RaftMember>
+    /// map of the previous cluster configuration. set if currently in a configuration change
+    OldPeers          : Map<MemberId,RaftMember> option
+    /// count of all members in the cluster
+    NumMembers        : int
+    /// the candidate this server voted for in its current term or None if it hasn't voted for any
+    /// other member yet
+    VotedFor          : MemberId option
+    /// the replicated state machine command log
+    Log               : RaftLog
+    /// index of latest log entry known to be committed
+    CommitIndex       : Index
+    /// index of latest log entry applied to state machine
+    LastAppliedIdx    : Index
+    /// amount of time left until a new election will be called
+    TimeoutElapsed    : Timeout
+    /// amount of time that needs to pass before a new election is called
+    ElectionTimeout   : Timeout
+    /// amount of time to pass until we consider requests to be failed
+    RequestTimeout    : Timeout
+    /// maximum log depth to reach before automatic snapshotting triggers
+    MaxLogDepth       : int
+    /// the log entry which has a voting configuration change, otherwise None
+    ConfigChangeEntry : RaftLogEntry option }
 
   // ** ToString
   override self.ToString() =
@@ -581,23 +570,12 @@ ConfigChangeEntry = %s
       | Some lid -> self.Member.Id = lid
       | _ -> false
 
-  // ** Yaml
-  // __   __              _
-  // \ \ / /_ _ _ __ ___ | |
-  //  \ V / _` | '_ ` _ \| |
-  //   | | (_| | | | | | | |
-  //   |_|\__,_|_| |_| |_|_|
-
-  // *** ToYaml
+  // ** ToYaml
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member self.ToYaml(serializer: Serializer) =
-    self |> Yaml.toYaml |> serializer.Serialize
-
-  // *** ToYamlObject
-  member self.ToYamlObject() =
-    let yaml = new RaftValueYaml()
+  member self.ToYaml() =
+    let yaml = RaftValueYaml()
     yaml.Member <- string self.Member.Id
     yaml.Term <- self.CurrentTerm
 
@@ -616,8 +594,9 @@ ConfigChangeEntry = %s
     yaml.MaxLogDepth <- self.MaxLogDepth
     yaml
 
-  // *** FromYamlObject
-  static member FromYamlObject (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
+  // ** FromYaml
+
+  static member FromYaml (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
     either {
       let leader =
         if isNull yaml.Leader then
@@ -649,13 +628,7 @@ ConfigChangeEntry = %s
                ConfigChangeEntry = None }
     }
 
-  // *** FromYaml
-  static member FromYaml (str: string) : Either<IrisError, RaftValue> =
-    let serializer = new Serializer()
-    serializer.Deserialize<RaftValueYaml>(str)
-    |> Yaml.fromYaml
-
-#endif
+  #endif
 
 // * State Monad
 
