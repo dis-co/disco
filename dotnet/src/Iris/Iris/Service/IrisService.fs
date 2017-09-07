@@ -125,6 +125,25 @@ module IrisService =
 
   /// Dispatch the current event on the store, thereby globally mutating its state.
   let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
+    | IrisEvent.Append(_, (Command AppCommand.Save as cmd)) ->
+      /// Since we are saving the project, we can now mark all dirty pins as clean.
+      store.State.Store.State.PinGroups
+      |> PinGroupMap.dirtyPins
+      |> PinGroupMap.mapPins (Pin.setDirty false)
+      |> PinGroupMap.byGroup
+      |> Map.fold
+        (fun out _ group ->
+          group.Pins
+          |> Map.toList
+          |> List.map (snd >> UpdatePin)
+          |> List.append out)
+        List.empty
+      |> StateMachineBatch
+      |> CommandBatch
+      |> store.State.RaftServer.Append
+      store.State.Store.Dispatch cmd
+    | IrisEvent.Append(_, (UpdateSlices sm as cmd)) ->
+      store.State.Store.Dispatch cmd
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
 

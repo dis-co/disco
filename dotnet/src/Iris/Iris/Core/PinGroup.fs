@@ -567,7 +567,15 @@ module PinGroup =
 
   let hasUnifiedPins (group: PinGroup) =
     group.Pins
-    |> Map.filter (fun _ (pin: Pin) -> Pin.isPreset pin |> not)
+    |> Map.filter (fun _ -> Pin.isPreset >> not)
+    |> Map.isEmpty
+    |> not
+
+  // ** hasDirtyPins
+
+  let hasDirtyPins (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ -> Pin.isDirty)
     |> Map.isEmpty
     |> not
 
@@ -595,6 +603,26 @@ module PinGroup =
 
   let sources (group: PinGroup) =
     filter Pin.isSource group
+
+  // ** dirtyPins
+
+  let dirtyPins (group: PinGroup) =
+    filter Pin.isDirty group
+
+  // ** map
+
+  let map (f: Pin -> Pin) (group: PinGroup) =
+    { group with Pins = Map.map (fun _ -> f) group.Pins }
+
+  // ** iter
+
+  let iter (f: Pin -> unit) (group: PinGroup) =
+    Map.iter (fun _ -> f) group.Pins
+
+  // ** fold
+
+  let fold (f: 's -> Pin -> 's) (state: 's) (group: PinGroup) =
+    Map.fold (fun s _ pin -> f s pin) state group.Pins
 
 // * PinGroupMap
 
@@ -817,6 +845,11 @@ module PinGroupMap =
   let mapGroups (f: PinGroup -> PinGroup) (pgm: PinGroupMap) =
     map (fun _ groups -> Map.map (fun _ group -> f group) groups) pgm
 
+  // ** mapPins
+
+  let mapPins (f: Pin -> Pin) (pgm: PinGroupMap) =
+    mapGroups (PinGroup.map f) pgm
+
   // ** count
 
   let count (map: PinGroupMap) =
@@ -931,6 +964,13 @@ module PinGroupMap =
     map
     |> filter PinGroup.hasPresetPins
     |> mapGroups PinGroup.presetPins
+
+  // ** dirtyPins
+
+  let dirtyPins (map: PinGroupMap) =
+    map
+    |> filter PinGroup.hasDirtyPins
+    |> mapGroups PinGroup.dirtyPins
 
 // * Map module
 
