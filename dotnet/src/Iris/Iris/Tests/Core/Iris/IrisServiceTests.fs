@@ -31,4 +31,5 @@ module IrisServiceTests =
       EnsureCueResolver.test
       EnsureMappingResolver.test
       PinBecomesOnlineOnClientConnect.test
+      PinBecomesDirty.test
     ] |> testSequenced

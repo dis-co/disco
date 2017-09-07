@@ -142,10 +142,13 @@ module IrisService =
       |> StateMachineBatch
       |> CommandBatch
       |> store.State.RaftServer.Append
+      /// now dispatch the command normally
       store.State.Store.Dispatch cmd
 
     | IrisEvent.Append(_, (UpdateSlices sm as cmd)) when store.State.RaftServer.IsLeader ->
-      /// create a batched update containing
+      /// If this server is leader, create a batched update containing only the pins that are
+      /// 1) persisted
+      /// 2) not yet dirty
       store.State.Store.State.PinGroups
       |> PinGroupMap.foldGroups
         (fun out _ (group: PinGroup) ->
@@ -163,7 +166,7 @@ module IrisService =
       |> StateMachineBatch
       |> CommandBatch
       |> store.State.RaftServer.Append
-      ///
+      /// now, dispatch the command normally record the state change
       store.State.Store.Dispatch cmd
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
