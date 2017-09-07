@@ -42,7 +42,7 @@ type Behavior =
   /// chooser dialog.
   | FileName
 
-  /// Directory indicates that the vlaues of the Pin are paths to directory on the target systems. A
+  /// Directory indicates that the values of the Pin are paths to directory on the target systems. A
   /// file chooser dialog will handle this type of StringPin in the UI.
   | Directory
 
