@@ -106,6 +106,7 @@ module EnsureClientUpdateNoLoop =
           Online           = true
           Persisted        = false
           IsTrigger        = false
+          Dirty            = false
           VecSize          = VecSize.Dynamic
           Labels           = Array.empty
           Values           = [| true |]
