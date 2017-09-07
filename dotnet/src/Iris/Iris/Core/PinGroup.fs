@@ -453,7 +453,7 @@ module PinGroup =
 
   // ** findPin
 
-  let findPin (id: Id) (group: PinGroup) =
+  let findPin (id: PinId) (group: PinGroup) =
     Map.find id group.Pins
 
   // ** tryFindPin

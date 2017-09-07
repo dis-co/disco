@@ -124,8 +124,9 @@ module IrisService =
   // ** stateMutator
 
   /// Dispatch the current event on the store, thereby globally mutating its state.
-  let private stateMutator (store: IAgentStore<IrisState>) _ _ = function
-    | IrisEvent.Append(_, (Command AppCommand.Save as cmd)) ->
+  let private stateMutator (store: IAgentStore<IrisState>) =
+    fun _ _ -> function
+    | IrisEvent.Append(_, (Command AppCommand.Save as cmd)) when store.State.RaftServer.IsLeader ->
       /// Since we are saving the project, we can now mark all dirty pins as clean.
       store.State.Store.State.PinGroups
       |> PinGroupMap.dirtyPins
@@ -142,7 +143,27 @@ module IrisService =
       |> CommandBatch
       |> store.State.RaftServer.Append
       store.State.Store.Dispatch cmd
-    | IrisEvent.Append(_, (UpdateSlices sm as cmd)) ->
+
+    | IrisEvent.Append(_, (UpdateSlices sm as cmd)) when store.State.RaftServer.IsLeader ->
+      /// create a batched update containing
+      store.State.Store.State.PinGroups
+      |> PinGroupMap.foldGroups
+        (fun out _ (group: PinGroup) ->
+          List.fold
+            (fun out (pin: PinId) ->
+              match PinGroup.tryFindPin pin group with
+              /// only set pins dirty that are persisted and not already dirty
+              | Some pin when pin.Persisted && not pin.Dirty ->
+                /// build up the list of commands to send in batch
+                UpdatePin (Pin.setDirty true pin) :: out
+              | _ -> out)
+            out
+            (SlicesMap.keys sm))
+        List.empty
+      |> StateMachineBatch
+      |> CommandBatch
+      |> store.State.RaftServer.Append
+      ///
       store.State.Store.Dispatch cmd
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
