@@ -23,7 +23,8 @@ let onClick dispatch id _ =
   match id with
   | Options.createProject ->
     makeModal dispatch Modals.CreateProject CreateProjectModal None
-    |> Promise.iter Lib.createProject
+    |> Promise.bind Lib.createProject
+    |> Promise.start
   | Options.loadProject ->
     makeModal dispatch Modals.LoadProject LoadProjectModal None
     |> Promise.bind (fun info -> State.loadProject dispatch info)

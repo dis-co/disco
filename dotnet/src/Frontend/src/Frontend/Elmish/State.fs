@@ -20,7 +20,7 @@ let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
 let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
   importDefault "../../js/modals/ProjectConfig"
 
-let NoProjectModal: React.ComponentClass<ModalProps<Name[], Name option>> =
+let NoProjectModal: React.ComponentClass<ModalProps<Name[], IProjectInfo option>> =
   importDefault "../../js/modals/NoProject"
 
 let loadProject dispatch (info: IProjectInfo) = promise {
@@ -44,12 +44,14 @@ let private displayNoProjectModal dispatch =
     #else
     let! projects = Lib.listProjects()
     #endif
-    let! project = makeModal dispatch Modals.NoProject NoProjectModal (Some projects)
-    match project with
-    | Some project -> failwith "TODO: Load project"
-    | None ->
-      makeModal dispatch Modals.CreateProject CreateProjectModal None
-      |> Promise.iter Lib.createProject
+    let! projectInfo = makeModal dispatch Modals.NoProject NoProjectModal (Some projects)
+    do!
+      match projectInfo with
+      | Some projectInfo ->
+        loadProject dispatch projectInfo
+      | None ->
+        makeModal dispatch Modals.CreateProject CreateProjectModal None
+        |> Promise.bind Lib.createProject
   } |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
@@ -175,6 +177,7 @@ let update msg model: Model*Cmd<Msg> =
     match state, model.modal with
     // When project is loaded, hide NoProject modal if displayed
     | Some _, Some(Modals.NoProject,_) ->
+      toggleUILayoutResizer true
       { model with state = state; modal = None }, []
     | Some _, _
     | None, Some(Modals.NoProject,_) ->
