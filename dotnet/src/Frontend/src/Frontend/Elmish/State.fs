@@ -11,6 +11,49 @@ open Elmish
 open Types
 open Helpers
 
+let loadProject dispatch (info: IProjectInfo) = promise {
+    let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
+    match err with
+    | Some err ->
+      // Get project sites and machine config
+      let! sites = Lib.getProjectSites(info.name, info.username, info.password)
+      // Ask user to create or select a new config
+      let! site = makeModal dispatch (Modal.ProjectConfig sites)
+      // Try loading the project again with the site config
+      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
+      err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+    | None -> ()
+  }
+
+let private displayNoProjectModal dispatch =
+  promise {
+    #if DESIGN
+    let projects = [|name "foo"; name "bar"|]
+    #else
+    let! projects = Lib.listProjects()
+    #endif
+    let! projectInfo = makeModal dispatch (Modal.NoProject projects)
+    do!
+      match projectInfo with
+      | Some projectInfo ->
+        loadProject dispatch projectInfo
+      | None ->
+        makeModal dispatch Modal.CreateProject
+        |> Promise.bind Lib.createProject
+  } |> Promise.start
+
+/// Unfortunately this is necessary to hide the resizer of
+/// the jQuery plugin ui-layout
+let private toggleUILayoutResizer (visible: bool) =
+  let setVisibility selector visibility =
+    let results = Browser.document.querySelectorAll(selector)
+    for i = 0 to (!!results.length - 1) do
+      results.[i]?style?visibility <- visibility
+  let visibility =
+    if visible then "visible" else "hidden"
+  setVisibility ".ui-layout-resizer" visibility
+  setVisibility ".ui-layout-toggler" visibility
+
 [<PassGenerics>]
 let private loadFromLocalStorage<'T> (key: string) =
   let g = Fable.Import.Browser.window
@@ -21,6 +64,11 @@ let private loadFromLocalStorage<'T> (key: string) =
 let private saveToLocalStorage (key: string) (value: obj) =
   let g = Fable.Import.Browser.window
   g.localStorage.setItem(key, toJson value)
+
+let delay ms (f:'T->unit) =
+  fun x ->
+    Promise.sleep ms
+    |> Promise.iter (fun () -> f x)
 
 /// Initialization function for Elmish state
 let init() =
@@ -61,7 +109,9 @@ let init() =
       logs = []
       #endif
       userConfig = UserConfig.Create() }
-  initModel, [startContext]
+  // Delay the display of the modal dialog to let
+  // other plugins (like jQuery ui-layout) load
+  initModel, [startContext; delay 500 displayNoProjectModal]
 
 let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
@@ -87,33 +137,46 @@ let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 /// Update function for Elmish state
-let update msg model =
-  let newModel =
-    match msg with
-    | AddWidget(id, widget) ->
-      let widgets = Map.add id widget model.widgets
-      let layout = Array.append model.layout [|widget.InitialLayout|]
-      saveWidgetsAndLayout widgets layout
-      { model with widgets = widgets; layout = layout }
-    | RemoveWidget id ->
-      let widgets = Map.remove id model.widgets
-      let layout = model.layout |> Array.filter (fun x -> x.i <> id)
-      saveWidgetsAndLayout widgets layout
-      { model with widgets = widgets; layout = layout }
-    // | AddTab -> // Add tab and remove widget
-    // | RemoveTab -> // Optional, add widget
-    | AddLog log ->
-      { model with logs = log::model.logs }
-    | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
-      addCue cueList cueGroupIndex cueIndex
-      model
-    | UpdateLayout layout ->
-      saveToLocalStorage StorageKeys.layout layout
-      { model with layout = layout }
-    | UpdateUserConfig cfg ->
-      { model with userConfig = cfg }
-    | UpdateState state ->
-      { model with state = state }
-    | UpdateModal modal ->
-      { model with modal = modal }
-  newModel, []
+let update msg model: Model*Cmd<Msg> =
+  match msg with
+  | AddWidget(id, widget) ->
+    let widgets = Map.add id widget model.widgets
+    let layout = Array.append model.layout [|widget.InitialLayout|]
+    saveWidgetsAndLayout widgets layout
+    { model with widgets = widgets; layout = layout }, []
+  | RemoveWidget id ->
+    let widgets = Map.remove id model.widgets
+    let layout = model.layout |> Array.filter (fun x -> x.i <> id)
+    saveWidgetsAndLayout widgets layout
+    { model with widgets = widgets; layout = layout }, []
+  // | AddTab -> // Add tab and remove widget
+  // | RemoveTab -> // Optional, add widget
+  | AddLog log ->
+    { model with logs = log::model.logs }, []
+  | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
+    addCue cueList cueGroupIndex cueIndex
+    model, []
+  | UpdateLayout layout ->
+    saveToLocalStorage StorageKeys.layout layout
+    { model with layout = layout }, []
+  | UpdateUserConfig cfg ->
+    { model with userConfig = cfg }, []
+  | UpdateState state ->
+    match state, model.modal with
+    // When project is loaded, hide NoProject modal if displayed
+    | Some _, Some { modal = Modal .NoProject _ } ->
+      toggleUILayoutResizer true
+      { model with state = state; modal = None }, []
+    | Some _, _
+    | None, Some { modal = Modal .NoProject _ } ->
+      { model with state = state }, []
+    | None, _ ->
+      { model with state = state }, [displayNoProjectModal]
+  | UpdateModal modal ->
+    let cmd =
+      match modal, model.state with
+      // If no modal and no state, display no project modal
+      | None, None -> [displayNoProjectModal]
+      | None, Some _ -> toggleUILayoutResizer true; []
+      | Some _, _ -> toggleUILayoutResizer false; []
+    { model with modal = modal }, cmd

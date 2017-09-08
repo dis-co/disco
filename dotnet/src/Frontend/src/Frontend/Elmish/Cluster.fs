@@ -16,9 +16,6 @@ open Helpers
 open State
 open Types
 
-let AddMemberModal: React.ComponentClass<ModalProps<obj, string*uint16>> =
-  importDefault "../../js/modals/AddMember"
-
 let inline padding5() =
   Style [PaddingLeft "5px"]
 
@@ -32,7 +29,7 @@ let titleBar dispatch (model: Model) =
   button [
     Class "iris-button"
     OnClick(fun _ ->
-      makeModal dispatch AddMemberModal None
+      makeModal dispatch Modal.AddMember
       |> Promise.iter Lib.addMember)
   ] [str "Add member"]
 
