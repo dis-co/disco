@@ -85,7 +85,7 @@ module TcpServer =
 
     // *** create
 
-    let create (options: ServerConfig) =
+    let create (options: TcpServerSettings) =
       let socket = Socket.createTcp()
       let endpoint = IPEndPoint(options.Listen.toIPAddress(), int options.Port)
 
@@ -370,7 +370,7 @@ module TcpServer =
 
   // ** create
 
-  let create (options: ServerConfig) =
+  let create (options: TcpServerSettings) =
     let state = SharedState.create options
     { new ITcpServer with
         member Server.Id

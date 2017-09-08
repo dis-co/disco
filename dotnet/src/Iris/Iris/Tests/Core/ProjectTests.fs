@@ -99,111 +99,16 @@ module ProjectTests =
 
         let engineCfg = RaftConfig.Default
 
-        let vvvvCfg =
-          { VvvvConfig.Default with
-              Executables =
-                [| { Executable = filepath "/pth/to/nowhere"
-                  ; Version    = version "0.0.0.0.0.0.1"
-                  ; Required   = true };
-                  { Executable = filepath "/antoher/path"
-                  ; Version    = version "1.2.34.4"
-                  ; Required   = false } |]
-            }
-
-        let display1 =
-          { Id        = Id.Create()
-          ; Name      = name "Nice Display"
-          ; Size      = Rect (1280,1080)
-          ; Signals   =
-              [| { Size    = Rect       (500,500)
-                 ; Position = Coordinate (0,0) };
-                 { Size     = Rect       (800,800)
-                 ; Position = Coordinate (29, 13) } |]
-          ; RegionMap =
-            {
-              SrcViewportId = Id.Create()
-              Regions =
-                [| { Id             = Id.Create()
-                     Name           = name "A Cool Region"
-                     SrcPosition    = Coordinate (0,0)
-                     SrcSize        = Rect       (50,50)
-                     OutputPosition = Coordinate (50,50)
-                     OutputSize     = Rect       (100,100) };
-                   { Id             = Id.Create()
-                     Name           = name "Another Cool Region"
-                     SrcPosition    = Coordinate (8,67)
-                     SrcSize        = Rect       (588,5130)
-                     OutputPosition = Coordinate (10,5300)
-                     OutputSize     = Rect       (800,900) } |]
-            }
-          }
-
-        let display2 =
-          { Id        = Id.Create()
-          ; Name      = name "Cool Display"
-          ; Size      = Rect (180,12080)
-          ; Signals   =
-              [| { Size     = Rect (800,200)
-                ; Position = Coordinate (3,8) };
-                { Size     = Rect (1800,8800)
-                ; Position = Coordinate (2900, 130) } |]
-          ; RegionMap =
-            { SrcViewportId = Id.Create();
-              Regions =
-                [| { Id             = Id.Create()
-                  ; Name           = name "One Region"
-                  ; SrcPosition    = Coordinate (0,8)
-                  ; SrcSize        = Rect       (50,52)
-                  ; OutputPosition = Coordinate (53,50)
-                  ; OutputSize     = Rect       (103,800)
-                  };
-                  { Id             = Id.Create()
-                  ; Name           = name "Premium Region"
-                  ; SrcPosition    = Coordinate (8333,897)
-                  ; SrcSize        = Rect       (83,510)
-                  ; OutputPosition = Coordinate (1580,50)
-                  ; OutputSize     = Rect       (1800,890)
-                  } |]
-            }
-          }
-
-        let viewPort1 =
-          { Id             = Id.Create()
-          ; Name           = name "One fine viewport"
-          ; Position       = Coordinate (22,22)
-          ; Size           = Rect       (666,666)
-          ; OutputPosition = Coordinate (0,0)
-          ; OutputSize     = Rect       (98327,121)
-          ; Overlap        = Rect       (0,0)
-          ; Description    = "Its better than bad, its good."
-          }
-
-        let viewPort2 =
-          { Id             = Id.Create()
-          ; Name           = name "Another fine viewport"
-          ; Position       = Coordinate (82,2)
-          ; Size           = Rect       (466,86)
-          ; OutputPosition = Coordinate (12310,80)
-          ; OutputSize     = Rect       (98,89121)
-          ; Overlap        = Rect       (0,33)
-          ; Description    = "Its awesome actually"
-          }
-
-        let task1 =
-          { Id             = Id.Create()
-          ; Description    = "A very important task, indeed."
-          ; DisplayId      = Id.Create()
-          ; AudioStream    = "hm"
-          ; Arguments      = [| ("key", "to you heart") |]
-          }
-
-        let task2 =
-          { Id             = Id.Create()
-          ; Description    = "yay, its another task"
-          ; DisplayId      = Id.Create()
-          ; AudioStream    = "hoho"
-          ; Arguments      = [| ("mykey", "to my heart") |]
-          }
+        let clientCfg =
+          ClientConfig.ofList
+            [{ Id         = Id.Create()
+               Executable = filepath "/pth/to/nowhere"
+               Version    = version "0.0.0.0.0.0.1"
+               Required   = true };
+             { Id         = Id.Create()
+               Executable = filepath "/antoher/path"
+               Version    = version "1.2.34.4"
+               Required   = false }]
 
         let memA =
           { Member.create (Id.Create()) with
@@ -241,10 +146,7 @@ module ProjectTests =
           Project.updateConfig
             { project.Config with
                 Raft       = engineCfg
-                Vvvv       = vvvvCfg
-                ViewPorts  = [| viewPort1; viewPort2 |]
-                Displays   = [| display1;  display2  |]
-                Tasks      = [| task1;     task2     |]
+                Clients    = clientCfg
                 ActiveSite = Some cluster.Id
                 Sites      = [| cluster |] }
             project
@@ -253,14 +155,25 @@ module ProjectTests =
         let! loaded = Asset.loadWithMachine path machine
 
         // the only difference will be the automatically assigned timestamp
-        expect "CreatedOn should be structurally equal"  true ((=) loaded.CreatedOn) updated.CreatedOn
-        expect "VVVVConfig should be structurally equal" true ((=) loaded.Config.Vvvv) updated.Config.Vvvv
-        expect "RaftCofnig should be structurally equal" true ((=) loaded.Config.Raft) updated.Config.Raft
-        expect "ViewPorts should be structurally equal"  true ((=) loaded.Config.ViewPorts) updated.Config.ViewPorts
-        expect "Timing should be structurally equal"     true ((=) loaded.Config.Timing) updated.Config.Timing
-        expect "Displays should be structurally equal"   true ((=) loaded.Config.Displays) updated.Config.Displays
-        expect "Tasks should be structurally equal"      true ((=) loaded.Config.Tasks) updated.Config.Tasks
-        expect "Sites should be structurally equal"      true ((=) loaded.Config.Sites) updated.Config.Sites
+        expect "CreatedOn should be structurally equal" true
+          ((=) loaded.CreatedOn)
+          updated.CreatedOn
+
+        expect "ClientConfig should be structurally equal" true
+          ((=) loaded.Config.Clients)
+          updated.Config.Clients
+
+        expect "RaftConfig should be structurally equal" true
+          ((=) loaded.Config.Raft)
+          updated.Config.Raft
+
+        expect "Timing should be structurally equal" true
+          ((=) loaded.Config.Timing)
+          updated.Config.Timing
+
+        expect "Sites should be structurally equal" true
+          ((=) loaded.Config.Sites)
+          updated.Config.Sites
       }
       |> noError
 

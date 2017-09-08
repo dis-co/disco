@@ -520,9 +520,9 @@ module Response =
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
 
-// ** ClientConfig
+// ** TcpClientSettings
 
-type ClientConfig =
+type TcpClientSettings =
   { ClientId: Id
     PeerAddress: IpAddress
     PeerPort: Port
@@ -556,9 +556,9 @@ type ITcpClient =
 //  ___) |  __/ |   \ V /  __/ |
 // |____/ \___|_|    \_/ \___|_|
 
-// ** ServerConfig
+// ** TcpServerSettings
 
-type ServerConfig =
+type TcpServerSettings =
   { ServerId: Id
     Listen: IpAddress
     Port: Port }

@@ -222,24 +222,23 @@ module Generators =
     }
 
   let exeGen = gen {
+      let! id = idGen
       let! pth = pathGen
       let! vs = versionGen
       let! req = boolGen
-      return { Executable = pth
+      return { Id = id
+               Executable = pth
                Version = vs
                Required = req }
     }
-
-  let plugGen = gen {
-      let! nm = nameGen
-      let! pth = pathGen
-      return { Name = nm; Path = pth }
-    }
-
-  let vvvvGen = gen {
-      let! exes = Gen.arrayOfLength 2 exeGen
-      let! plugs = Gen.arrayOfLength 2 plugGen
-      return { Executables = exes; Plugins = plugs }
+  let clientConfigGen = gen {
+      let! exes = Gen.arrayOf exeGen
+      let map =
+        Array.fold
+          (fun out (exe: ClientExecutable) -> Map.add exe.Id exe out)
+          Map.empty
+          exes
+      return ClientConfig map
     }
 
   let raftConfigGen = gen {
@@ -292,119 +291,24 @@ module Generators =
           Groups = groups }
     }
 
-  let rectGen = gen {
-      let! w = intGen
-      let! h = intGen
-      return Rect (w, h)
-    }
-
-  let coordinateGen = gen {
-      let! x = intGen
-      let! y = intGen
-      return Coordinate (x, y)
-    }
-
-  let signalGen = gen {
-      let! sz = rectGen
-      let! pos = coordinateGen
-      return { Size = sz; Position = pos }
-    }
-
-  let regionGen = gen {
-      let! id = idGen
-      let! nm = nameGen
-      let! srcpos = coordinateGen
-      let! srcsz = rectGen
-      let! outpos = coordinateGen
-      let! outsz = rectGen
-      return
-        { Id = id
-          Name = nm
-          SrcPosition = srcpos
-          SrcSize = srcsz
-          OutputPosition = outpos
-          OutputSize = outsz }
-    }
-
-  let regionmapGen = gen {
-      let! id = idGen
-      let! regs = Gen.arrayOf regionGen
-      return { SrcViewportId = id; Regions = regs }
-    }
-
-  let displayGen = gen {
-      let! id = idGen
-      let! nm = nameGen
-      let! sz = rectGen
-      let! sigs = Gen.arrayOf signalGen
-      let! rm = regionmapGen
-      return
-        { Id = id
-          Name = nm
-          Size = sz
-          Signals = sigs
-          RegionMap = rm }
-    }
-
-  let viewportGen = gen {
-      let! id = idGen
-      let! nm = nameGen
-      let! pos = coordinateGen
-      let! sz = rectGen
-      let! outpos = coordinateGen
-      let! outsz = rectGen
-      let! ovlp = rectGen
-      let! desc = stringGen
-      return
-        { Id = id
-          Name = nm
-          Position = pos
-          Size = sz
-          OutputPosition = outpos
-          OutputSize = outsz
-          Overlap = ovlp
-          Description = desc }
-    }
-
-  let taskGen = gen {
-      let! id = idGen
-      let! desc = stringGen
-      let! did = idGen
-      let! aus = stringGen
-      let! args = Gen.arrayOf (Gen.zip stringGen
-                                       stringGen)
-      return
-        { Id = id
-          Description = desc
-          DisplayId = did
-          AudioStream = aus
-          Arguments = args }
-    }
-
   let configGen = gen {
       let! machine = machineGen
       let! site = maybeGen idGen
       let! vs = stringGen
       let! ac = audioGen
-      let! vvvv = vvvvGen
+      let! clients = clientConfigGen
       let! raft = raftConfigGen
       let! timing = timingGen
       let! sites = Gen.arrayOf clusterGen
-      let! vps = Gen.arrayOf viewportGen
-      let! disps = Gen.arrayOf displayGen
-      let! tks = Gen.arrayOf taskGen
       return
         { Machine = machine
           ActiveSite = site
           Version = vs
           Audio = ac
-          Vvvv = vvvv
+          Clients = clients
           Raft = raft
           Timing = timing
-          Sites = sites
-          ViewPorts = vps
-          Displays = disps
-          Tasks = tks }
+          Sites = sites }
     }
 
   //  ____            _           _
