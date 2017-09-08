@@ -87,6 +87,8 @@ module Binary =
                      : Offset< ^t > =
     (^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >) (thing,builder))
 
+  // ** buildBuffer
+
   let inline buildBuffer< ^t, ^a when ^a : (member ToOffset : FlatBufferBuilder -> Offset< ^t >)> (thing: ^a) : byte[] =
 #if FABLE_COMPILER
     let builder = FlatBufferBuilder.Create(1)

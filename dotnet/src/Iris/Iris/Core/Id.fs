@@ -1,6 +1,8 @@
-namespace Iris.Core
+namespace rec Iris.Core
 
 // * Imports
+
+open System
 
 #if FABLE_COMPILER
 
@@ -141,7 +143,7 @@ open System.Text.RegularExpressions
 
 [<MeasureAnnotatedAbbreviation>]
 type Id<[<Measure>] 'Measure> = Id
-and Id =
+type Id =
   | Id of string
 
   // ** ToString
@@ -185,5 +187,82 @@ and Id =
   // ** IsUoM
 
   static member IsUoM(_ : Id, _ : Id<'Measure>) = ()
+
+#endif
+
+// * NewId
+
+module IrisId =
+  open FlatBuffers
+  open Iris.Serialization
+
+  [<Struct>]
+  type IrisId private (guid: Guid) =
+    member private self.Value with get () = guid
+
+    static member Create() =
+      IrisId(Guid.NewGuid())
+
+    static member FromGuid(guid) =
+      IrisId(guid)
+
+    member self.ToByteArray() =
+      guid.ToByteArray()
+
+    static member FromByteArray(bytes: byte array) =
+      IrisId(Guid bytes)
+
+    static member Parse(str: string) =
+      IrisId(Guid.Parse str)
+
+    static member TryParse(str: string) =
+      try IrisId.Parse str |> Some
+      with exn -> None
+
+    override id.ToString() =
+      string id.Value
+
+  let encodeWith (t: FlatBufferBuilder * byte[] -> VectorOffset) builder (id: IrisId) =
+    t(builder, id.ToByteArray())
+
+  let decodeWith (t: int -> byte) =
+      [| 0 .. 15 |]
+      |> Array.map t
+      |> IrisId.FromByteArray
+      |> Either.succeed
+
+  let encodeId builder id =
+    encodeWith TestBytesFB.CreateIdVector builder id
+
+  let inline decodeId (fb: ^t) =
+    (fun idx -> (^t : (member Id: int -> byte) fb, idx))
+    |> decodeWith
+
+#if INTERACTIVE
+
+open Iris.Core
+open Iris.Core.IrisId
+open FlatBuffers
+open Iris.Serialization
+
+let encode (id: IrisId) =
+  let builder = FlatBufferBuilder(1)
+  let vec = encodeId builder id
+  TestBytesFB.StartTestBytesFB(builder)
+  TestBytesFB.AddId(builder, vec)
+  let offset = TestBytesFB.EndTestBytesFB(builder)
+  builder.Finish(offset.Value)
+  builder.SizedByteArray()
+
+let decode (raw: byte[]) =
+  raw
+  |> Binary.createBuffer
+  |> TestBytesFB.GetRootAsTestBytesFB
+  |> decodeId
+
+let id = IrisId.Create()
+let reid = id |> encodeBytes |> decodeBytes |> Either.get
+
+id = reid
 
 #endif
