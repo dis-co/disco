@@ -41,10 +41,7 @@ open SharpYaml.Serialization
 // |_| \_\__,_|_|  \__|\____\___/|_| |_|_| |_|\__, |
 //                                            |___/
 
-/// ## RaftConfig
-///
 /// Configuration for Raft-specific, user-facing values.
-///
 type RaftConfig =
   { RequestTimeout:   Timeout
     ElectionTimeout:  Timeout
@@ -70,7 +67,6 @@ type RaftConfig =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let lvl = self.LogLevel |> string |> builder.CreateString
     let dir = self.DataDir |> unwrap |> Option.mapNull builder.CreateString
-
     RaftConfigFB.StartRaftConfigFB(builder)
     RaftConfigFB.AddRequestTimeout(builder, int self.RequestTimeout)
     RaftConfigFB.AddElectionTimeout(builder, int self.ElectionTimeout)
@@ -96,109 +92,121 @@ type RaftConfig =
           PeriodicInterval = fb.PeriodicInterval * 1<ms> }
     }
 
-// * VvvvConfig
+// * ClientExecutable
 
-// __     __                     ____             __ _
-// \ \   / /_   ____   ____   __/ ___|___  _ __  / _(_) __ _
-//  \ \ / /\ \ / /\ \ / /\ \ / / |   / _ \| '_ \| |_| |/ _` |
-//   \ V /  \ V /  \ V /  \ V /| |__| (_) | | | |  _| | (_| |
-//    \_/    \_/    \_/    \_/  \____\___/|_| |_|_| |_|\__, |
-//                                                     |___/
+///   ____ _ _            _   _____                     _        _     _
+///  / ___| (_) ___ _ __ | |_| ____|_  _____  ___ _   _| |_ __ _| |__ | | ___
+/// | |   | | |/ _ \ '_ \| __|  _| \ \/ / _ \/ __| | | | __/ _` | '_ \| |/ _ \
+/// | |___| | |  __/ | | | |_| |___ >  <  __/ (__| |_| | || (_| | |_) | |  __/
+///  \____|_|_|\___|_| |_|\__|_____/_/\_\___|\___|\__,_|\__\__,_|_.__/|_|\___|
 
-type VvvvConfig =
-  { Executables : VvvvExe array
-    Plugins     : VvvvPlugin array }
-
-  // ** Default
-
-  static member Default =
-    { Executables = [| |]
-      Plugins     = [| |] }
+type ClientExecutable =
+  { Id         : ClientId
+    Executable : FilePath
+    Version    : Iris.Core.Version
+    Required   : bool }
 
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let exes =
-      Array.map (Binary.toOffset builder) self.Executables
-      |> fun offsets -> VvvvConfigFB.CreateExecutablesVector(builder,offsets)
-
-    let plugins =
-      Array.map (Binary.toOffset builder) self.Plugins
-      |> fun offsets -> VvvvConfigFB.CreatePluginsVector(builder,offsets)
-
-    VvvvConfigFB.StartVvvvConfigFB(builder)
-    VvvvConfigFB.AddExecutables(builder, exes)
-    VvvvConfigFB.AddPlugins(builder, plugins)
-    VvvvConfigFB.EndVvvvConfigFB(builder)
+    let id = self.Id |> string |> builder.CreateString
+    let path = self.Executable |> unwrap |> Option.mapNull builder.CreateString
+    let version = self.Version |> unwrap |> Option.mapNull builder.CreateString
+    ClientExecutableFB.StartClientExecutableFB(builder)
+    ClientExecutableFB.AddId(builder, id)
+    Option.iter (fun value -> ClientExecutableFB.AddExecutable(builder,value)) path
+    Option.iter (fun value -> ClientExecutableFB.AddVersion(builder,value)) version
+    ClientExecutableFB.AddRequired(builder, self.Required)
+    ClientExecutableFB.EndClientExecutableFB(builder)
 
   // ** FromFB
 
-  static member FromFB(fb: VvvvConfigFB) =
-    either {
-      let! (_,exes) =
-        let arr =
-          fb.ExecutablesLength
-          |> Array.zeroCreate
-        Array.fold
-          (fun (m: Either<IrisError, int * VvvvExe array>) _ ->
-            either {
-              let! (idx, exes) = m
-
-              let! exe =
-                #if FABLE_COMPILER
-                fb.Executables(idx)
-                |> VvvvExe.FromFB
-                #else
-                let exeish = fb.Executables(idx)
-                if exeish.HasValue then
-                  let value = exeish.Value
-                  VvvvExe.FromFB value
-                else
-                  "Could not parse empty VvvvExeFB"
-                  |> Error.asParseError "VvvvConfig.FromFB"
-                  |> Either.fail
-                #endif
-
-              exes.[idx] <- exe
-              return (idx + 1, exes)
-            })
-          (Right(0, arr))
-          arr
-
-      let! (_,plugins) =
-        let arr =
-          fb.PluginsLength
-          |> Array.zeroCreate
-        Array.fold
-          (fun (m: Either<IrisError, int * VvvvPlugin array>) _ ->
-            either {
-              let! (idx, plugins) = m
-
-              let! plugin =
-                #if FABLE_COMPILER
-                fb.Plugins(idx)
-                |> VvvvPlugin.FromFB
-                #else
-                let plugish = fb.Plugins(idx)
-                if plugish.HasValue then
-                  let value = plugish.Value
-                  VvvvPlugin.FromFB value
-                else
-                  "Could not parse empty VvvvPluginFB"
-                  |> Error.asParseError "VvvvConfig.FromFB"
-                  |> Either.fail
-                #endif
-
-              plugins.[idx] <- plugin
-              return (idx + 1, plugins)
-            })
-          (Right(0, arr))
-          arr
-
-      return
-        { Executables = exes
-          Plugins = plugins }
+  static member FromFB(fb: ClientExecutableFB) =
+    Right {
+      Id         = Id fb.Id
+      Executable = filepath fb.Executable
+      Version    = version fb.Version
+      Required   = fb.Required
     }
+
+// * ClientConfig
+
+///   ____ _ _            _    ____             __ _
+///  / ___| (_) ___ _ __ | |_ / ___|___  _ __  / _(_) __ _
+/// | |   | | |/ _ \ '_ \| __| |   / _ \| '_ \| |_| |/ _` |
+/// | |___| | |  __/ | | | |_| |__| (_) | | | |  _| | (_| |
+///  \____|_|_|\___|_| |_|\__|\____\___/|_| |_|_| |_|\__, |
+///                                                  |___/
+
+type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
+  with
+    // ** Default
+
+    static member Default = ClientConfig Map.empty
+
+    // ** Executables
+
+    member config.Executables
+      with get () = ClientConfig.executables config
+
+    // ** ToOffset
+
+    member self.ToOffset(builder: FlatBufferBuilder) =
+      let exes =
+        self.Executables
+        |> Array.map (Binary.toOffset builder)
+        |> fun offsets -> ClientConfigFB.CreateExecutablesVector(builder,offsets)
+      ClientConfigFB.StartClientConfigFB(builder)
+      ClientConfigFB.AddExecutables(builder, exes)
+      ClientConfigFB.EndClientConfigFB(builder)
+
+    // ** FromFB
+
+    static member FromFB(fb: ClientConfigFB) =
+      either {
+        let! executables =
+          List.fold
+            (fun (m: Either<IrisError, Map<ClientId,ClientExecutable>>) idx ->
+              either {
+                let! exes = m
+                let! exe =
+                  #if FABLE_COMPILER
+                  fb.Executables(idx)
+                  |> ClientExecutable.FromFB
+                  #else
+                  let exeish = fb.Executables(idx)
+                  if exeish.HasValue then
+                    let value = exeish.Value
+                    ClientExecutable.FromFB value
+                  else
+                    "Could not parse empty ClientExecutableFB"
+                    |> Error.asParseError "ClientConfig.FromFB"
+                    |> Either.fail
+                  #endif
+                return Map.add exe.Id exe exes
+              })
+            (Right Map.empty)
+            [ for n in 0 .. fb.ExecutablesLength - 1 -> n ]
+        return ClientConfig executables
+      }
+
+// * ClientConfig module
+
+module ClientConfig =
+
+  // ** executables
+
+  let executables = function
+    | ClientConfig map -> map |> Map.toArray |> Array.map snd
+
+  // ** ofList
+
+  let ofList lst =
+    List.fold
+      (fun m (exe: ClientExecutable) -> Map.add exe.Id exe m)
+      Map.empty
+      lst
+    |> ClientConfig
 
 // * TimingConfig
 
@@ -500,13 +508,10 @@ type IrisConfig =
     ActiveSite: Id option
     Version:    string
     Audio:      AudioConfig
-    Vvvv:       VvvvConfig
+    Clients:    ClientConfig
     Raft:       RaftConfig
     Timing:     TimingConfig
-    Sites:      ClusterConfig array
-    ViewPorts:  ViewPort array
-    Displays:   Display  array
-    Tasks:      Task     array }
+    Sites:      ClusterConfig array }
 
   // ** Default
 
@@ -520,13 +525,10 @@ type IrisConfig =
         Version   = System.Version(0,0,0).ToString()
         #endif
         Audio     = AudioConfig.Default
-        Vvvv      = VvvvConfig.Default
+        Clients   = ClientConfig.Default
         Raft      = RaftConfig.Default
         Timing    = TimingConfig.Default
-        Sites     = [| |]
-        ViewPorts = [| |]
-        Displays  = [| |]
-        Tasks     = [| |] }
+        Sites     = [| |] }
 
   // ** ToOffset
 
@@ -540,7 +542,7 @@ type IrisConfig =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let version = Option.mapNull builder.CreateString self.Version
     let audio = Binary.toOffset builder self.Audio
-    let vvvv = Binary.toOffset builder self.Vvvv
+    let clients = Binary.toOffset builder self.Clients
     let raft = Binary.toOffset builder self.Raft
     let timing = Binary.toOffset builder self.Timing
     let machine = Binary.toOffset builder self.Machine
@@ -554,30 +556,15 @@ type IrisConfig =
       Array.map (Binary.toOffset builder) self.Sites
       |> fun sites -> ConfigFB.CreateSitesVector(builder, sites)
 
-    let viewports =
-      Array.map (Binary.toOffset builder) self.ViewPorts
-      |> fun vps -> ConfigFB.CreateViewPortsVector(builder, vps)
-
-    let displays =
-      Array.map (Binary.toOffset builder) self.Displays
-      |> fun disps -> ConfigFB.CreateDisplaysVector(builder, disps)
-
-    let tasks =
-      Array.map (Binary.toOffset builder) self.Tasks
-      |> fun tasks -> ConfigFB.CreateTasksVector(builder, tasks)
-
     ConfigFB.StartConfigFB(builder)
     Option.iter (fun value -> ConfigFB.AddVersion(builder,value)) version
     Option.iter (fun value -> ConfigFB.AddActiveSite(builder, value)) site
     ConfigFB.AddMachine(builder, machine)
     ConfigFB.AddAudioConfig(builder, audio)
-    ConfigFB.AddVvvvConfig(builder, vvvv)
+    ConfigFB.AddClientConfig(builder, clients)
     ConfigFB.AddRaftConfig(builder, raft)
     ConfigFB.AddTimingConfig(builder, timing)
     ConfigFB.AddSites(builder, sites)
-    ConfigFB.AddViewPorts(builder, viewports)
-    ConfigFB.AddDisplays(builder, displays)
-    ConfigFB.AddTasks(builder, tasks)
     ConfigFB.EndConfigFB(builder)
 
   // ** FromFB
@@ -620,16 +607,16 @@ type IrisConfig =
           |> Either.fail
         #endif
 
-      let! vvvv =
+      let! clients =
         #if FABLE_COMPILER
-        VvvvConfig.FromFB fb.VvvvConfig
+        ClientConfig.FromFB fb.ClientConfig
         #else
-        let vvvvish = fb.VvvvConfig
-        if vvvvish.HasValue then
-          let value = vvvvish.Value
-          VvvvConfig.FromFB value
+        let clientish = fb.ClientConfig
+        if clientish.HasValue then
+          let value = clientish.Value
+          ClientConfig.FromFB value
         else
-          "Could not parse empty VvvvConfigFB"
+          "Could not parse empty ClientConfigFB"
           |> Error.asParseError "IrisConfig.FromFB"
           |> Either.fail
         #endif
@@ -690,102 +677,16 @@ type IrisConfig =
             (Right(0, arr))
             arr
 
-      let! (_,viewports) =
-        let arr =
-          fb.ViewPortsLength
-          |> Array.zeroCreate
-        Array.fold
-          (fun (m: Either<IrisError, int * ViewPort array>) _ ->
-            either {
-              let! (idx, viewports) = m
-              let! viewport =
-                #if FABLE_COMPILER
-                fb.ViewPorts(idx)
-                |> ViewPort.FromFB
-                #else
-                let vpish = fb.ViewPorts(idx)
-                if vpish.HasValue then
-                  let value = vpish.Value
-                  ViewPort.FromFB value
-                else
-                  "Could not parse empty ViewPortFB"
-                  |> Error.asParseError "IrisConfig.FromFB"
-                  |> Either.fail
-                #endif
-              viewports.[idx] <- viewport
-              return (idx + 1, viewports)
-            })
-          (Right(0, arr))
-          arr
-
-      let! (_,displays) =
-        let arr =
-          fb.DisplaysLength
-          |> Array.zeroCreate
-        Array.fold
-          (fun (m: Either<IrisError, int * Display array>) _ ->
-            either {
-              let! (idx, displays) = m
-              let! display =
-                #if FABLE_COMPILER
-                fb.Displays(idx)
-                |> Display.FromFB
-                #else
-                let dispish = fb.Displays(idx)
-                if dispish.HasValue then
-                  let value = dispish.Value
-                  Display.FromFB value
-                else
-                  "Could not parse empty DisplayFB"
-                  |> Error.asParseError "IrisConfig.FromFB"
-                  |> Either.fail
-                #endif
-              displays.[idx] <- display
-              return (idx + 1, displays)
-            })
-          (Right(0, arr))
-          arr
-
-      let! (_,tasks) =
-        let arr =
-          fb.TasksLength
-          |> Array.zeroCreate
-        Array.fold
-          (fun (m: Either<IrisError, int * Task array>) _ ->
-            either {
-              let! (idx, tasks) = m
-              let! task =
-                #if FABLE_COMPILER
-                fb.Tasks(idx)
-                |> Task.FromFB
-                #else
-                let taskish = fb.Tasks(idx)
-                if taskish.HasValue then
-                  let value = taskish.Value
-                  Task.FromFB value
-                else
-                  "Could not parse empty TaskFB"
-                  |> Error.asParseError "IrisConfig.FromFB"
-                  |> Either.fail
-                #endif
-              tasks.[idx] <- task
-              return (idx + 1, tasks)
-            })
-          (Right(0, arr))
-          arr
-
-      return
-        { Machine   = machine
-          ActiveSite = site
-          Version   = version
-          Audio     = audio
-          Vvvv      = vvvv
-          Raft      = raft
-          Timing    = timing
-          Sites     = sites
-          ViewPorts = viewports
-          Displays  = displays
-          Tasks     = tasks }
+      return {
+        Machine    = machine
+        ActiveSite = site
+        Version    = version
+        Audio      = audio
+        Clients    = clients
+        Raft       = raft
+        Timing     = timing
+        Sites      = sites
+      }
     }
 
 // * ProjectYaml
@@ -795,24 +696,13 @@ type IrisConfig =
 [<RequireQualifiedAccess>]
 module ProjectYaml =
 
-  // ** VvvvExecutableYaml
+  // ** ClientExecutableYaml
 
-  type VvvvExecutableYaml() =
+  type ClientExecutableYaml() =
+    [<DefaultValue>] val mutable Id: string
     [<DefaultValue>] val mutable Path: string
     [<DefaultValue>] val mutable Version: string
     [<DefaultValue>] val mutable Required: bool
-
-  // ** VvvvPluginYaml
-
-  type VvvvPluginYaml() =
-    [<DefaultValue>] val mutable Path: string
-    [<DefaultValue>] val mutable Name: string
-
-  // ** VvvvYaml
-
-  type VvvvYaml() =
-    [<DefaultValue>] val mutable Executables: VvvvExecutableYaml array
-    [<DefaultValue>] val mutable Plugins:     VvvvPluginYaml array
 
   // ** TimingYaml
 
@@ -828,61 +718,6 @@ module ProjectYaml =
   type AudioYaml() =
     [<DefaultValue>] val mutable SampleRate: int
 
-  // ** RectYaml
-
-  type RectYaml() =
-    [<DefaultValue>] val mutable X: int
-    [<DefaultValue>] val mutable Y: int
-
-  // ** CoordinateYaml
-
-  type CoordinateYaml() =
-    [<DefaultValue>] val mutable X: int
-    [<DefaultValue>] val mutable Y: int
-
-  // ** ViewPortYaml
-
-  type ViewPortYaml() =
-    [<DefaultValue>] val mutable Id: string
-    [<DefaultValue>] val mutable Name: string
-    [<DefaultValue>] val mutable Position: CoordinateYaml
-    [<DefaultValue>] val mutable Size: RectYaml
-    [<DefaultValue>] val mutable OutputPosition: CoordinateYaml
-    [<DefaultValue>] val mutable OutputSize: RectYaml
-    [<DefaultValue>] val mutable Overlap: RectYaml
-    [<DefaultValue>] val mutable Description: string
-
-  // ** SignalYaml
-
-  type SignalYaml () =
-    [<DefaultValue>] val mutable Size: RectYaml
-    [<DefaultValue>] val mutable Position: CoordinateYaml
-
-  // ** RegionYaml
-
-  type RegionYaml() =
-    [<DefaultValue>] val mutable Id: string
-    [<DefaultValue>] val mutable Name: string
-    [<DefaultValue>] val mutable SrcPosition: CoordinateYaml
-    [<DefaultValue>] val mutable SrcSize: RectYaml
-    [<DefaultValue>] val mutable OutputPosition: CoordinateYaml
-    [<DefaultValue>] val mutable OutputSize: RectYaml
-
-  // ** RegionMapYaml
-
-  type RegionMapYaml() =
-    [<DefaultValue>] val mutable SrcViewportId: string
-    [<DefaultValue>] val mutable Regions: RegionYaml array
-
-  // ** DisplayYaml
-
-  type DisplayYaml() =
-    [<DefaultValue>] val mutable Id: string
-    [<DefaultValue>] val mutable Name: string
-    [<DefaultValue>] val mutable Size: RectYaml
-    [<DefaultValue>] val mutable Signals: SignalYaml array
-    [<DefaultValue>] val mutable RegionMap: RegionMapYaml
-
   // ** EngineYaml
 
   type EngineYaml() =
@@ -894,21 +729,6 @@ module ProjectYaml =
     [<DefaultValue>] val mutable PeriodicInterval: int
     [<DefaultValue>] val mutable MaxLogDepth: int
     [<DefaultValue>] val mutable MaxRetries: int
-
-  // ** ArgumentYaml
-
-  type ArgumentYaml() =
-    [<DefaultValue>] val mutable Key: string
-    [<DefaultValue>] val mutable Value: string
-
-  // ** TaskYaml
-
-  type TaskYaml() =
-    [<DefaultValue>] val mutable Id: string
-    [<DefaultValue>] val mutable Description: string
-    [<DefaultValue>] val mutable DisplayId: string
-    [<DefaultValue>] val mutable AudioStream: string
-    [<DefaultValue>] val mutable Arguments: ArgumentYaml array
 
   // ** GroupYaml
 
@@ -935,15 +755,10 @@ module ProjectYaml =
     [<DefaultValue>] val mutable CreatedOn: string
     [<DefaultValue>] val mutable LastSaved: string
     [<DefaultValue>] val mutable ActiveSite: string
-
-    [<DefaultValue>] val mutable VVVV: VvvvYaml
+    [<DefaultValue>] val mutable Clients: ClientExecutableYaml array
     [<DefaultValue>] val mutable Engine: EngineYaml
     [<DefaultValue>] val mutable Timing: TimingYaml
     [<DefaultValue>] val mutable Audio: AudioYaml
-
-    [<DefaultValue>] val mutable ViewPorts: ViewPortYaml array
-    [<DefaultValue>] val mutable Displays:  DisplayYaml array
-    [<DefaultValue>] val mutable Tasks:  TaskYaml array
     [<DefaultValue>] val mutable Sites:  SiteYaml array
 
   // ** parseTuple
@@ -964,20 +779,6 @@ module ProjectYaml =
           sprintf "Cannot parse %A as (int * int) tuple: %s" input exn.Message
           |> Error.asParseError "Config.parseTuple"
           |> Either.fail
-
-  // ** parseRect
-
-  let internal parseRect (rect: RectYaml) : Either<IrisError,Rect> =
-    (rect.X, rect.Y)
-    |> Rect
-    |> Either.succeed
-
-  // ** parseCoordinate
-
-  let internal parseCoordinate (coord: CoordinateYaml) : Either<IrisError,Coordinate> =
-    (coord.X, coord.Y)
-    |> Coordinate
-    |> Either.succeed
 
   // ** parseStringProp
 
@@ -1008,109 +809,44 @@ module ProjectYaml =
     file.Audio <- audio
     (file, config)
 
-  // ** parseExe
+  // ** parseExecutable
 
-  let internal parseExe (exe: VvvvExecutableYaml) : Either<IrisError, VvvvExe> =
-    Right { Executable = filepath exe.Path
-            Version    = version exe.Version
-            Required   = exe.Required }
+  let internal parseExecutable (exe: ClientExecutableYaml) : Either<IrisError, ClientExecutable> =
+    Right {
+      Id         = Id exe.Id
+      Executable = filepath exe.Path
+      Version    = version exe.Version
+      Required   = exe.Required
+    }
 
-  // ** parseExes
+  // ** parseClients
 
-  let internal parseExes exes : Either<IrisError, VvvvExe array> =
+  let internal parseClients (file: IrisProjectYaml) : Either<IrisError,ClientConfig> =
     either {
-      let arr =
-        exes
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,exes) =
+      let! executables =
         Seq.fold
-          (fun (m: Either<IrisError,int * VvvvExe array>) exe -> either {
-            let! (idx, exes) = m
-            let! exe = parseExe exe
-            exes.[idx] <- exe
-            return (idx + 1, exes)
+          (fun (m: Either<IrisError,Map<ClientId,ClientExecutable>>) exe -> either {
+            let! exes = m
+            let! exe = parseExecutable exe
+            return Map.add exe.Id exe exes
           })
-          (Right(0, arr))
-          exes
-
-      return exes
+          (Right Map.empty)
+          file.Clients
+      return ClientConfig executables
     }
 
-  // ** parsePlugin
+  // ** saveClients
 
-  let internal parsePlugin (plugin: VvvvPluginYaml) : Either<IrisError, VvvvPlugin> =
-    Right { Name = name plugin.Name
-            Path = filepath plugin.Path }
-
-  // ** parsePlugins
-
-  let internal parsePlugins plugins : Either<IrisError, VvvvPlugin array> =
-    either {
-      let arr =
-        plugins
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,plugins) =
-        Seq.fold
-          (fun (m: Either<IrisError,int * VvvvPlugin array>) plugin -> either {
-            let! (idx, plugins) = m
-            let! plugin = parsePlugin plugin
-            plugins.[idx] <- plugin
-            return (idx + 1, plugins)
-          })
-          (Right(0, arr))
-          plugins
-
-      return plugins
-    }
-
-  // ** parseVvvv
-
-  /// ### Parses the VVVV configuration
-  ///
-  /// Constructs the VVVV configuration values from the handed config file value.
-  ///
-  /// # Returns: VvvvConfig
-  let internal parseVvvv (config: IrisProjectYaml) : Either<IrisError, VvvvConfig> =
-    either {
-      let! exes = parseExes config.VVVV.Executables
-      let! plugins = parsePlugins config.VVVV.Plugins
-      return { Executables = exes
-               Plugins     = plugins }
-    }
-
-  // ** saveVvvv
-
-  /// ### Save the VVVV configuration
-  ///
-  /// Translate the values from Config into the passed in configuration file.
-  ///
-  /// # Returns: ConfigFile
-  let internal saveVvvv (file: IrisProjectYaml, config: IrisConfig) =
+  let internal saveClients (file: IrisProjectYaml, config: IrisConfig) =
     let exes = ResizeArray()
-    for exe in config.Vvvv.Executables do
-      let entry = VvvvExecutableYaml()
-      entry.Path <- unwrap exe.Executable;
-      entry.Version <- unwrap exe.Version;
+    for exe in config.Clients.Executables do
+      let entry = ClientExecutableYaml()
+      entry.Id <- string exe.Id
+      entry.Path <- unwrap exe.Executable
+      entry.Version <- unwrap exe.Version
       entry.Required <- exe.Required
       exes.Add(entry)
-
-    let plugins = ResizeArray()
-    for plug in config.Vvvv.Plugins do
-      let entry = VvvvPluginYaml()
-      entry.Name <- unwrap plug.Name
-      entry.Path <- unwrap plug.Path
-      plugins.Add(entry)
-
-    let vvvv = VvvvYaml()
-    vvvv.Executables <- exes.ToArray()
-    vvvv.Plugins <- plugins.ToArray()
-
-    file.VVVV <- vvvv
-
+    file.Clients <- exes.ToArray()
     (file, config)
 
   // ** parseRaft
@@ -1237,509 +973,6 @@ module ProjectYaml =
 
     file.Timing <- timing
 
-    (file, config)
-
-  // ** parseViewPort
-
-  //  __     ___               ____            _
-  //  \ \   / (_) _____      _|  _ \ ___  _ __| |_
-  //   \ \ / /| |/ _ \ \ /\ / / |_) / _ \| '__| __|
-  //    \ V / | |  __/\ V  V /|  __/ (_) | |  | |_
-  //     \_/  |_|\___| \_/\_/ |_|   \___/|_|   \__|
-
-  let internal parseViewPort (viewport: ViewPortYaml) =
-    either {
-      let! pos     = parseCoordinate viewport.Position
-      let! size    = parseRect       viewport.Size
-      let! outpos  = parseCoordinate viewport.OutputPosition
-      let! outsize = parseRect       viewport.OutputSize
-      let! overlap = parseRect       viewport.Overlap
-
-      return { Id             = Id viewport.Id
-               Name           = name viewport.Name
-               Position       = pos
-               Size           = size
-               OutputPosition = outpos
-               OutputSize     = outsize
-               Overlap        = overlap
-               Description    = viewport.Description }
-    }
-
-  // ** parseViewPorts
-
-  /// ### Parse all Viewport configs listed in a config file
-  ///
-  /// Parses the ViewPort config section and returns an array of `ViewPort` values.
-  ///
-  /// # Returns: ViewPort array
-  let internal parseViewPorts (config: IrisProjectYaml) : Either<IrisError,ViewPort array> =
-    either {
-      let arr =
-        config.ViewPorts
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,viewports) =
-        Seq.fold
-          (fun (m: Either<IrisError, int * ViewPort array>) vp -> either {
-            let! (idx, viewports) = m
-            let! viewport = parseViewPort vp
-            viewports.[idx] <- viewport
-            return (idx + 1, viewports)
-          })
-          (Right(0, arr))
-          config.ViewPorts
-
-      return viewports
-    }
-
-  // ** saveViewPorts
-
-  /// ### Transfers the passed array of ViewPort values
-  ///
-  /// Adds a config section for each ViewPort value in the passed in Config to the configuration
-  /// file.
-  ///
-  /// # Returns: ConfigFile
-  let internal saveViewPorts (file: IrisProjectYaml, config: IrisConfig) =
-    let viewports = ResizeArray()
-    for vp in config.ViewPorts do
-      let item = ViewPortYaml()
-      item.Id             <- string vp.Id
-      item.Name           <- unwrap vp.Name
-
-      let size = RectYaml()
-      size.X <- vp.Size.X
-      size.Y <- vp.Size.Y
-      item.Size <- size
-
-      let position = CoordinateYaml()
-      position.X <- vp.Position.X
-      position.Y <- vp.Position.Y
-      item.Position <- position
-
-      let overlap = RectYaml()
-      overlap.X <- vp.Overlap.X
-      overlap.Y <- vp.Overlap.Y
-      item.Overlap <- overlap
-
-      let position = CoordinateYaml()
-      position.X <- vp.OutputPosition.X
-      position.Y <- vp.OutputPosition.Y
-      item.OutputPosition <- position
-
-      let size = RectYaml()
-      size.X <- vp.OutputSize.X
-      size.Y <- vp.OutputSize.Y
-      item.OutputSize <- size
-
-      item.Description <- vp.Description
-      viewports.Add(item)
-
-    file.ViewPorts <- viewports.ToArray()
-
-    (file, config)
-
-  // ** parseSignal
-
-  //  ____  _                   _
-  // / ___|(_) __ _ _ __   __ _| |___
-  // \___ \| |/ _` | '_ \ / _` | / __|
-  //  ___) | | (_| | | | | (_| | \__ \
-  // |____/|_|\__, |_| |_|\__,_|_|___/
-  //          |___/
-
-  /// ## Parse a Signal definition
-  ///
-  /// Parse a signal definition. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - signal: SignalYaml
-  ///
-  /// Returns: Either<IrisError, Signal>
-  let internal parseSignal (signal: SignalYaml) : Either<IrisError, Signal> =
-    either {
-      let! size = parseRect signal.Size
-      let! pos = parseCoordinate signal.Position
-
-      return { Size     = size
-               Position = pos }
-    }
-
-  // ** parseSignals
-
-  /// ## Parse an array of signals
-  ///
-  /// Parse an array of signals stored in the ConfigFile. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - signals: SignalYaml collection
-  ///
-  /// Returns: Either<IrisError, Signal array>
-  let internal parseSignals signals =
-    either {
-      let arr =
-        signals
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,parsed) =
-        Seq.fold
-          (fun (m: Either<IrisError,int * Signal array>) signal -> either {
-            let! (idx, signals) = m
-            let! signal = parseSignal signal
-            signals.[idx] <- signal
-            return (idx + 1, signals)
-          })
-          (Right(0, arr))
-          signals
-
-      return parsed
-    }
-
-  // ** parseRegion
-
-  //  ____            _
-  // |  _ \ ___  __ _(_) ___  _ __  ___
-  // | |_) / _ \/ _` | |/ _ \| '_ \/ __|
-  // |  _ <  __/ (_| | | (_) | | | \__ \
-  // |_| \_\___|\__, |_|\___/|_| |_|___/
-  //            |___/
-
-  /// ## Parse a Region definition
-  ///
-  /// Parse a single Region definition. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - region: Region
-  ///
-  /// Returns: Either<IrisError,Region>
-  let internal parseRegion (region: RegionYaml) : Either<IrisError, Region> =
-    either {
-      let! srcpos  = parseCoordinate region.SrcPosition
-      let! srcsize = parseRect       region.SrcSize
-      let! outpos  = parseCoordinate region.OutputPosition
-      let! outsize = parseRect       region.OutputSize
-
-      return
-        { Id             = Id region.Id
-          Name           = name region.Name
-          SrcPosition    = srcpos
-          SrcSize        = srcsize
-          OutputPosition = outpos
-          OutputSize     = outsize }
-    }
-
-  // ** parseRegions
-
-  /// ## Parse an array of Region definitions
-  ///
-  /// Parse an array of Region definitions. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - regions: RegionYaml collection
-  ///
-  /// Returns: Either<IrisError,Region array>
-  let internal parseRegions regions : Either<IrisError, Region array> =
-    either {
-      let arr =
-        regions
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,parsed) =
-        Seq.fold
-          (fun (m: Either<IrisError, int * Region array>) region -> either {
-            let! (idx, regions) = m
-            let! region = parseRegion region
-            regions.[idx] <- region
-            return (idx + 1, regions)
-          })
-          (Right(0, arr))
-          regions
-
-      return parsed
-    }
-
-  // ** parseDisplay
-
-  //   ____  _           _
-  //  |  _ \(_)___ _ __ | | __ _ _   _ ___
-  //  | | | | / __| '_ \| |/ _` | | | / __|
-  //  | |_| | \__ \ |_) | | (_| | |_| \__ \
-  //  |____/|_|___/ .__/|_|\__,_|\__, |___/
-  //              |_|            |___/
-
-  /// ## Parse a Display definition
-  ///
-  /// Parse a Display definition. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - display: DisplayYaml
-  ///
-  /// Returns: Either<IrisError,Display>
-  let internal parseDisplay (display: DisplayYaml) : Either<IrisError, Display> =
-    either {
-      let! size = parseRect display.Size
-      let! signals = parseSignals display.Signals
-      let! regions = parseRegions display.RegionMap.Regions
-
-      let regionmap =
-        { SrcViewportId = Id display.RegionMap.SrcViewportId
-          Regions       = regions }
-
-      return { Id        = Id display.Id
-               Name      = name display.Name
-               Size      = size
-               Signals   = signals
-               RegionMap = regionmap }
-    }
-
-  // ** parseDisplays
-
-  /// ## Parse an array of Display definitionsg
-  ///
-  /// Parses an array of Display definitions. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - displays: DisplayYaml collection
-  ///
-  /// Returns: Either<IrisError,Display array>
-  let internal parseDisplays (config: IrisProjectYaml) : Either<IrisError, Display array> =
-    either {
-      let arr =
-        config.Displays
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,displays) =
-        Seq.fold
-          (fun (m: Either<IrisError, int * Display array>) display -> either {
-            let! (idx, displays) = m
-            let! display = parseDisplay display
-            displays.[idx] <- display
-            return (idx + 1, displays)
-          })
-          (Right(0, arr))
-          config.Displays
-
-      return displays
-    }
-
-  // ** saveDisplays
-
-  /// ### Transfer the Display config to a configuration file
-  ///
-  /// Save all `Display` values in `Config` to the passed configuration file.
-  ///
-  /// # Returns: ConfigFile
-  let internal saveDisplays (file: IrisProjectYaml, config: IrisConfig) =
-    let displays = ResizeArray()
-    for dp in config.Displays do
-      let display = DisplayYaml()
-      display.Id <- string dp.Id
-      display.Name <- unwrap dp.Name
-
-      let size = RectYaml()
-      size.X <- dp.Size.X
-      size.Y <- dp.Size.Y
-      display.Size <- size
-
-      let regionmap = RegionMapYaml()
-      regionmap.SrcViewportId <- string dp.RegionMap.SrcViewportId
-
-      let regions = ResizeArray()
-
-      for region in dp.RegionMap.Regions do
-        let r = RegionYaml()
-        r.Id <- string region.Id
-        r.Name <- unwrap region.Name
-
-        let position = CoordinateYaml()
-        position.X <- region.OutputPosition.X
-        position.Y <- region.OutputPosition.Y
-        r.OutputPosition <- position
-
-        let size = RectYaml()
-        size.X <- region.OutputSize.X
-        size.Y <- region.OutputSize.Y
-        r.OutputSize <- size
-
-        let position = CoordinateYaml()
-        position.X <- region.SrcPosition.X
-        position.Y <- region.SrcPosition.Y
-        r.SrcPosition <- position
-
-        let size = RectYaml()
-        size.X <- region.SrcSize.X
-        size.Y <- region.SrcSize.Y
-        r.SrcSize <- size
-
-        regions.Add(r)
-
-      regionmap.Regions <- regions.ToArray()
-
-      display.RegionMap <- regionmap
-
-      let signals = ResizeArray()
-
-      for signal in dp.Signals do
-        let s = SignalYaml()
-
-        let position = CoordinateYaml()
-        position.X <- signal.Position.X
-        position.Y <- signal.Position.Y
-        s.Position <- position
-
-        let size = RectYaml()
-        size.X <- signal.Size.X
-        size.Y <- signal.Size.Y
-        s.Size <- size
-
-        signals.Add(s)
-
-      display.Signals <- signals.ToArray()
-      displays.Add display
-
-    file.Displays <- displays.ToArray()
-    (file, config)
-
-  // ** parseArgument
-
-  //     _                                         _
-  //    / \   _ __ __ _ _   _ _ __ ___   ___ _ __ | |_
-  //   / _ \ | '__/ _` | | | | '_ ` _ \ / _ \ '_ \| __|
-  //  / ___ \| | | (_| | |_| | | | | | |  __/ | | | |_
-  // /_/   \_\_|  \__, |\__,_|_| |_| |_|\___|_| |_|\__|
-  //              |___/
-
-  /// ## Parse a single Argument key/value pair
-  ///
-  /// Parse a single Argument key/value pair
-  ///
-  /// ### Signature:
-  /// - argument: ArgumentYaml
-  ///
-  /// Returns: Either<IrisError, string * string>
-  let internal parseArgument (argument: ArgumentYaml) =
-    either {
-      return (argument.Key, argument.Value)
-    }
-
-  // ** parseArguments
-
-  /// ## Parse an array of ArgumentYamls
-  ///
-  /// Parse an array of ArgumentYamls
-  ///
-  /// ### Signature:
-  /// - arguments: ArgumentYaml collection
-  ///
-  /// Returns: Either<IrisError, (string * string) array>
-  let internal parseArguments arguments =
-    either {
-      let arr =
-        arguments
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,arguments) =
-        Seq.fold
-          (fun (m: Either<IrisError, int * Argument array>) thing -> either {
-            let! (idx, arguments) = m
-            let! argument = parseArgument thing
-            arguments.[idx] <- argument
-            return (idx + 1, arguments)
-          })
-          (Right(0, arr))
-          arguments
-
-      return arguments
-    }
-
-  // ** parseTask
-
-  //   _____         _
-  //  |_   _|_ _ ___| | _____
-  //    | |/ _` / __| |/ / __|
-  //    | | (_| \__ \   <\__ \
-  //    |_|\__,_|___/_|\_\___/
-  //
-
-  /// ## Parse a Task definition
-  ///
-  /// Parse a single Task definition. Returns a ParseError on failure.
-  ///
-  /// ### Signature:
-  /// - task: TaskYaml
-  ///
-  /// Returns: Either<IrisError, Task>
-  let internal parseTask (task: TaskYaml) : Either<IrisError, Task> =
-    either {
-      let! arguments = parseArguments task.Arguments
-      return { Id          = Id task.Id
-               Description = task.Description
-               DisplayId   = Id task.DisplayId
-               AudioStream = task.AudioStream
-               Arguments   = arguments }
-    }
-
-  // ** parseTasks
-
-  /// ### Parse Task configuration section
-  ///
-  /// Create `Task` values for each entry in the Task config section.
-  ///
-  /// # Returns: Task array
-  let internal parseTasks (config: IrisProjectYaml) : Either<IrisError,Task array> =
-    either {
-      let arr =
-        config.Tasks
-        |> Seq.length
-        |> Array.zeroCreate
-
-      let! (_,tasks) =
-        Seq.fold
-          (fun (m: Either<IrisError, int * Task array>) task -> either {
-            let! (idx, tasks) = m
-            let! task = parseTask task
-            tasks.[idx] <- task
-            return (idx + 1, tasks)
-          })
-          (Right(0, arr))
-          config.Tasks
-
-      return tasks
-    }
-
-  // ** saveTasks
-
-  /// ### Save the Tasks to a config file
-  ///
-  /// Transfers all `Task` values into the configuration file.
-  ///
-  /// # Returns: ConfigFile
-  let internal saveTasks (file: IrisProjectYaml, config: IrisConfig) =
-    let tasks = ResizeArray()
-    for task in config.Tasks do
-      let t = TaskYaml()
-      t.Id <- string task.Id
-      t.AudioStream <- task.AudioStream
-      t.Description <- task.Description
-      t.DisplayId   <- string task.DisplayId
-
-      let args = ResizeArray()
-
-      for arg in task.Arguments do
-        let a = ArgumentYaml()
-        a.Key <- fst arg
-        a.Value <- snd arg
-        args.Add(a)
-
-      t.Arguments <- args.ToArray()
-      tasks.Add t
-
-    file.Tasks <- tasks.ToArray()
     (file, config)
 
   // ** parseMember
@@ -1996,35 +1229,32 @@ module Config =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  let fromFile (file: ProjectYaml.IrisProjectYaml) (machine: IrisMachine) : Either<IrisError, IrisConfig> =
+  let fromFile (file: ProjectYaml.IrisProjectYaml)
+               (machine: IrisMachine)
+               : Either<IrisError, IrisConfig> =
     either {
       let  version   = file.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
-      let! vvvv      = ProjectYaml.parseVvvv      file
+      let! clients   = ProjectYaml.parseClients   file
       let! audio     = ProjectYaml.parseAudio     file
-      let! viewports = ProjectYaml.parseViewPorts file
-      let! displays  = ProjectYaml.parseDisplays  file
-      let! tasks     = ProjectYaml.parseTasks     file
       let! sites     = ProjectYaml.parseSites     file
 
       let site =
-        if isNull file.ActiveSite || file.ActiveSite = "" then
-          None
-        else
-          Some (Id file.ActiveSite)
+        if isNull file.ActiveSite || file.ActiveSite = ""
+        then None
+        else Some (Id file.ActiveSite)
 
-      return { Machine    = machine
-               ActiveSite = site
-               Version    = version
-               Vvvv       = vvvv
-               Audio      = audio
-               Raft       = raftcfg
-               Timing     = timing
-               ViewPorts  = viewports
-               Displays   = displays
-               Tasks      = tasks
-               Sites      = sites }
+      return {
+        Machine    = machine
+        ActiveSite = site
+        Version    = version
+        Clients    = clients
+        Audio      = audio
+        Raft       = raftcfg
+        Timing     = timing
+        Sites      = sites
+      }
     }
 
   #endif
@@ -2036,13 +1266,10 @@ module Config =
   let toFile (config: IrisConfig) (file: ProjectYaml.IrisProjectYaml) =
     file.Version <- string config.Version
     (file, config)
-    |> ProjectYaml.saveVvvv
+    |> ProjectYaml.saveClients
     |> ProjectYaml.saveAudio
     |> ProjectYaml.saveRaft
     |> ProjectYaml.saveTiming
-    |> ProjectYaml.saveViewPorts
-    |> ProjectYaml.saveDisplays
-    |> ProjectYaml.saveTasks
     |> ProjectYaml.saveSites
     |> ignore
 
@@ -2058,13 +1285,10 @@ module Config =
       #else
       Version   = Assembly.GetExecutingAssembly().GetName().Version.ToString()
       #endif
-      Vvvv      = VvvvConfig.Default
+      Clients   = ClientConfig.Default
       Audio     = AudioConfig.Default
       Raft      = RaftConfig.Default
       Timing    = TimingConfig.Default
-      ViewPorts = [| |]
-      Displays  = [| |]
-      Tasks     = [| |]
       Sites     = [| |] }
 
   // ** updateMachine
@@ -2072,10 +1296,10 @@ module Config =
   let updateMachine (machine: IrisMachine) (config: IrisConfig) =
     { config with Machine = machine }
 
-  // ** updateVvvv
+  // ** updateClients
 
-  let updateVvvv (vvvv: VvvvConfig) (config: IrisConfig) =
-    { config with Vvvv = vvvv }
+  let updateClients (clients: ClientConfig) (config: IrisConfig) =
+    { config with Clients = clients }
 
   // ** updateAudio
 
@@ -2091,21 +1315,6 @@ module Config =
 
   let updateTiming (timing: TimingConfig) (config: IrisConfig) =
     { config with Timing = timing }
-
-  // ** updateViewPorts
-
-  let updateViewPorts (viewports: ViewPort array) (config: IrisConfig) =
-    { config with ViewPorts = viewports }
-
-  // ** updateDisplays
-
-  let updateDisplays (displays: Display array) (config: IrisConfig) =
-    { config with Displays = displays }
-
-  // ** updateTasks
-
-  let updateTasks (tasks: Task array) (config: IrisConfig) =
-    { config with Tasks = tasks }
 
   // ** updateCluster
 
@@ -2305,13 +1514,13 @@ module Config =
 
 type IrisProject =
   { Id        : Id
-  ; Name      : Name
-  ; Path      : FilePath
-  ; CreatedOn : TimeStamp
-  ; LastSaved : TimeStamp option
-  ; Copyright : string    option
-  ; Author    : string    option
-  ; Config    : IrisConfig }
+    Name      : Name
+    Path      : FilePath
+    CreatedOn : TimeStamp
+    LastSaved : TimeStamp option
+    Copyright : string    option
+    Author    : string    option
+    Config    : IrisConfig }
 
   // ** ToString
 

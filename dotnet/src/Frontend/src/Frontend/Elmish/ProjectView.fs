@@ -43,14 +43,11 @@ let project2tree (p: IrisProject) =
   let cfg2tree (c: IrisConfig) =
     [| leaf ("MachineId: " + string c.Machine.MachineId)
     ;  obj2tree "Audio" c.Audio
-    ;  obj2tree "Vvvv" c.Vvvv
+    ;  obj2tree "Clients" c.Clients
     ;  obj2tree "Raft" c.Raft
     ;  obj2tree "Timing" c.Timing
     ;  leaf ("ActiveSite" + string c.ActiveSite)
     ;  arr2tree "Sites" (Array.map box c.Sites)
-    ;  arr2tree "ViewPorts" (Array.map box c.ViewPorts)
-    ;  arr2tree "Displays" (Array.map box c.Displays)
-    ;  arr2tree "Tasks" (Array.map box c.Tasks)
     |] |> node "Config"
   [| leaf ("Id: " + string p.Id)
   ;  leaf ("Name: " + unwrap p.Name)

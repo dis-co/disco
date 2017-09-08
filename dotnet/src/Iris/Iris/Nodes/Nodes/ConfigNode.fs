@@ -45,8 +45,8 @@ type ConfigNode() =
   val mutable OutAudio: ISpread<AudioConfig>
 
   [<DefaultValue>]
-  [<Output("Vvvv", IsSingle = true)>]
-  val mutable OutVvvv: ISpread<VvvvConfig>
+  [<Output("Clients", IsSingle = true)>]
+  val mutable OutClients: ISpread<ClientConfig>
 
   [<DefaultValue>]
   [<Output("Raft", IsSingle = true)>]
@@ -59,18 +59,6 @@ type ConfigNode() =
   [<DefaultValue>]
   [<Output("Sites")>]
   val mutable OutSites: ISpread<ClusterConfig>
-
-  [<DefaultValue>]
-  [<Output("Viewports")>]
-  val mutable OutViewports: ISpread<ViewPort>
-
-  [<DefaultValue>]
-  [<Output("Displays")>]
-  val mutable OutDisplays: ISpread<Display>
-
-  [<DefaultValue>]
-  [<Output("Tasks")>]
-  val mutable OutTasks: ISpread<Task>
 
   [<DefaultValue>]
   [<Output("Version", IsSingle = true)>]
@@ -87,17 +75,11 @@ type ConfigNode() =
 
         self.OutMachine.[0] <- config.Machine
         self.OutAudio.[0] <- config.Audio
-        self.OutVvvv.[0] <- config.Vvvv
+        self.OutClients.[0] <- config.Clients
         self.OutRaft.[0] <- config.Raft
         self.OutTiming.[0] <- config.Timing
         self.OutSites.SliceCount <- Array.length config.Sites
         self.OutSites.AssignFrom config.Sites
-        self.OutViewports.SliceCount <- Array.length config.ViewPorts
-        self.OutViewports.AssignFrom config.ViewPorts
-        self.OutDisplays.SliceCount <- Array.length config.Displays
-        self.OutDisplays.AssignFrom config.Displays
-        self.OutTasks.SliceCount <- Array.length config.Tasks
-        self.OutTasks.AssignFrom config.Tasks
         self.OutVersion.[0] <- string config.Version
 
       if self.InUpdate.IsChanged then

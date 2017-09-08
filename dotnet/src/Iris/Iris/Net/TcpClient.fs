@@ -106,7 +106,7 @@ module rec TcpClient =
 
   // ** makeState
 
-  let private makeState (options: ClientConfig) (subscriptions: Subscriptions) =
+  let private makeState (options: TcpClientSettings) (subscriptions: Subscriptions) =
     let guid =
       options.ClientId
       |> Guid.ofId
@@ -293,7 +293,7 @@ module rec TcpClient =
 
   // ** create
 
-  let create (options: ClientConfig) =
+  let create (options: TcpClientSettings) =
     let subscriptions = Subscriptions()
     let mutable state = makeState options subscriptions
 

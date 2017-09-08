@@ -560,20 +560,15 @@ table AudioConfigFB {
       SampleRate: uint;
 }
 
-table VvvvExeFB {
+table ClientExecutableFB {
+      Id: string;
       Executable: string;
       Version: string;
       Required: bool;
 }
 
-table VvvvPluginFB {
-      Name: string;
-      Path: string;
-}
-
-table VvvvConfigFB {
-      Executables: [ VvvvExeFB ];
-      Plugins:     [ VvvvPluginFB ];
+table ClientConfigFB {
+      Executables: [ ClientExecutableFB ];
 }
 
 table RaftConfigFB {
@@ -606,76 +601,15 @@ table ClusterConfigFB {
       Groups: [ HostGroupFB ];
 }
 
-table ViewPortFB {
-      Id: string;
-      Name: string;
-      PositionX: int;
-      PositionY: int;
-      SizeX: int;
-      SizeY: int;
-      OutputPositionX: int;
-      OutputPositionY: int;
-      OutputSizeX: int;
-      OutputSizeY: int;
-      OverlapX: int;
-      OverlapY: int;
-      Description: string;
-}
-
-table TaskFB {
-      Id: string;
-      Description: string;
-      DisplayId: string;
-      AudioStream: string;
-      Arguments: [ string ];
-}
-
-table SignalFB {
-      SizeX: int;
-      SizeY: int;
-      PositionX: int;
-      PositionY: int;
-} 
-
-table RegionFB {
-      Id: string;
-      Name: string;
-      SrcPositionX: int;
-      SrcPositionY: int;
-      SrcSizeX: int;
-      SrcSizeY: int;
-      OutputPositionX: int;
-      OutputPositionY: int;
-      OutputSizeX: int;
-      OutputSizeY: int;
-}
-
-table RegionMapFB {
-      SrcViewportId: string;
-      Regions: [ RegionFB ]; 
-}
-
-table DisplayFB {
-     Id: string;
-     Name: string;
-     SizeX: int;
-     SizeY: int;
-     Signals: [ SignalFB ];
-     RegionMap: RegionMapFB;
-}
-
 table ConfigFB {
       Version:      string;
       Machine:      IrisMachineFB;
       ActiveSite:   string;
       AudioConfig:  AudioConfigFB;
-      VvvvConfig:   VvvvConfigFB;
+      ClientConfig: ClientConfigFB;
       RaftConfig:   RaftConfigFB;
       TimingConfig: TimingConfigFB;
       Sites:        [ ClusterConfigFB ];
-      ViewPorts:    [ ViewPortFB ];
-      Displays:     [ DisplayFB ];
-      Tasks:        [ TaskFB ];
 }
 
 //  ____            _           _
