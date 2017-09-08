@@ -11,18 +11,6 @@ open Elmish
 open Types
 open Helpers
 
-let CreateProjectModal: React.ComponentClass<ModalProps<obj, string>> =
-  importDefault "../../js/modals/CreateProject"
-
-let LoadProjectModal: React.ComponentClass<ModalProps<obj, IProjectInfo>> =
-  importDefault "../../js/modals/LoadProject"
-
-let ProjectConfigModal: React.ComponentClass<ModalProps<string[], string>> =
-  importDefault "../../js/modals/ProjectConfig"
-
-let NoProjectModal: React.ComponentClass<ModalProps<Name[], IProjectInfo option>> =
-  importDefault "../../js/modals/NoProject"
-
 let loadProject dispatch (info: IProjectInfo) = promise {
     let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
     match err with
@@ -30,7 +18,7 @@ let loadProject dispatch (info: IProjectInfo) = promise {
       // Get project sites and machine config
       let! sites = Lib.getProjectSites(info.name, info.username, info.password)
       // Ask user to create or select a new config
-      let! site = makeModal dispatch Modals.ProjectConfig ProjectConfigModal (Some sites)
+      let! site = makeModal dispatch (Modal.ProjectConfig sites)
       // Try loading the project again with the site config
       let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
       err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
@@ -44,13 +32,13 @@ let private displayNoProjectModal dispatch =
     #else
     let! projects = Lib.listProjects()
     #endif
-    let! projectInfo = makeModal dispatch Modals.NoProject NoProjectModal (Some projects)
+    let! projectInfo = makeModal dispatch (Modal.NoProject projects)
     do!
       match projectInfo with
       | Some projectInfo ->
         loadProject dispatch projectInfo
       | None ->
-        makeModal dispatch Modals.CreateProject CreateProjectModal None
+        makeModal dispatch Modal.CreateProject
         |> Promise.bind Lib.createProject
   } |> Promise.start
 
@@ -176,11 +164,11 @@ let update msg model: Model*Cmd<Msg> =
   | UpdateState state ->
     match state, model.modal with
     // When project is loaded, hide NoProject modal if displayed
-    | Some _, Some(Modals.NoProject,_) ->
+    | Some _, Some { modal = Modal .NoProject _ } ->
       toggleUILayoutResizer true
       { model with state = state; modal = None }, []
     | Some _, _
-    | None, Some(Modals.NoProject,_) ->
+    | None, Some { modal = Modal .NoProject _ } ->
       { model with state = state }, []
     | None, _ ->
       { model with state = state }, [displayNoProjectModal]

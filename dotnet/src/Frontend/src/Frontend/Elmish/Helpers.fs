@@ -10,6 +10,7 @@ open Fable.Import
 open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Iris.Core
 open Types
 
 // jQuery
@@ -99,17 +100,23 @@ let widget (id: Guid) (name: string)
     ]
   ]
 
-[<Pojo>]
-type ModalProps<'a,'b> =
-  { data: 'a option
-    onSubmit: 'b -> unit }
+let [<Literal>] private mdir = "../../js/modals/"
 
-let makeModal dispatch name (com: React.ComponentClass<ModalProps<'a,'b>>) data =
+let makeModal<'T> dispatch modal: JS.Promise<'T> =
   Fable.PowerPack.Promise.create (fun onSuccess _ ->
+    let data, com =
+      match modal with
+      | Modal.AddMember          -> None,           importDefault (mdir+"AddMember")
+      | Modal.CreateProject      -> None,           importDefault (mdir+"CreateProject")
+      | Modal.LoadProject        -> None,           importDefault (mdir+"LoadProject")
+      | Modal.NoProject data     -> Some(box data), importDefault (mdir+"NoProject")
+      | Modal.ProjectConfig data -> Some(box data), importDefault (mdir+"ProjectConfig")
     let props =
-      { data = data
-        onSubmit = fun x -> UpdateModal None |> dispatch; onSuccess x }
-    Some(name, from com props []) |> UpdateModal |> dispatch)
+      createObj ["data" ==> data
+                 "onSubmit" ==> fun x ->
+                  UpdateModal None |> dispatch
+                  onSuccess x ]
+    Some { modal = modal; view = from com props [] } |> UpdateModal |> dispatch)
 
 module Promise =
   open Fable.PowerPack

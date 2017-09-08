@@ -22,11 +22,11 @@ let onClick dispatch id _ =
     f() |> Promise.iter (fun () -> printfn "%s" msg)
   match id with
   | Options.createProject ->
-    makeModal dispatch Modals.CreateProject CreateProjectModal None
+    makeModal dispatch Modal.CreateProject
     |> Promise.bind Lib.createProject
     |> Promise.start
   | Options.loadProject ->
-    makeModal dispatch Modals.LoadProject LoadProjectModal None
+    makeModal dispatch Modal.LoadProject
     |> Promise.bind (fun info -> State.loadProject dispatch info)
     |> Promise.start
   | Options.saveProject ->
