@@ -17,6 +17,7 @@ module Widgets =
   let [<Literal>] CuePlayer = "Cue Player"
   let [<Literal>] ProjectView = "Project View"
   let [<Literal>] Cluster = "Cluster"
+  let [<Literal>] PinMappings = "Pin Mappings"
   let [<Literal>] Test = "Test"
 
 /// Modal dialogs
