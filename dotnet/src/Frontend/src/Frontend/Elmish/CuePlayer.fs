@@ -28,23 +28,6 @@ module private PrivateHelpers =
     | true, v when v = value -> true
     | _ -> false
 
-  let findPin (pinId: PinId) (state: State) : Pin =
-    let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
-    match Map.tryFindPin pinId groups with
-    | Some pin -> pin
-    | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
-
-  let findPinGroup (pinGroupId: PinGroupId) (state: State) =
-    let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
-    match Map.tryFind pinGroupId groups with
-    | Some pinGroup -> pinGroup
-    | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
-
-  let findCue (cueId: CueId) (state: State) =
-    match Map.tryFind cueId state.Cues with
-    | Some cue -> cue
-    | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
-
   let cueListMockup() =
     let cueGroup =
       { Id = IrisId.Create()
@@ -78,7 +61,7 @@ module private PrivateHelpers =
   // backend
   let updatePins (cue: Cue) (state: State) =
     for slices in cue.Slices do
-      let pin = findPin slices.PinId state
+      let pin = Lib.findPin slices.PinId state
       match slices with
       | StringSlices (_, client, values) -> StringSlices(pin.Id, client, values)
       | NumberSlices (_, client, values) -> NumberSlices(pin.Id, client, values)
@@ -225,10 +208,15 @@ type private CueView(props) =
       else
         let pinGroups =
           this.props.Cue.Slices
+<<<<<<< HEAD
           |> Array.mapi (fun i slices -> i, findPin slices.PinId this.props.State, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
+=======
+          |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId this.props.State, slices)
+          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
+>>>>>>> PinMappingView: render source and sinks
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
-            let pinGroup = findPinGroup pinGroupId this.props.State
+            let pinGroup = Lib.findPinGroup pinGroupId this.props.State
             li [Key (string pinGroupId)] [
               yield div [] [str (unwrap pinGroup.Name)]
               for i, pin, slices in pinAndSlices do
@@ -238,7 +226,7 @@ type private CueView(props) =
                     useRightClick = this.props.UseRightClick
                     slices = Some slices
                     updater =
-                      Some { new PinView.IUpdater with
+                      Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
                     onDragStart = None } []
@@ -298,7 +286,7 @@ type CuePlayerView(props) =
             { key = string cueRef.Id
               State = state
               UseRightClick = this.props.Model.userConfig.useRightClick
-              Cue = findCue cueRef.CueId state
+              Cue = Lib.findCue cueRef.CueId state
               CueRef = cueRef
               CueGroup = group
               CueList = cueList

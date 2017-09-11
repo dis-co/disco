@@ -244,3 +244,20 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
   |> UpdateSlices.ofSlices
   |> ClientContext.Singleton.Post
+
+let findPin (pinId: Id) (state: State) : Pin =
+  let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
+  match Map.tryFindPin pinId groups with
+  | Some pin -> pin
+  | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+
+let findPinGroup (pinGroupId: Id) (state: State) =
+  let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
+  match Map.tryFind pinGroupId groups with
+  | Some pinGroup -> pinGroup
+  | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+
+let findCue (cueId: Id) (state: State) =
+  match Map.tryFind cueId state.Cues with
+  | Some cue -> cue
+  | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId

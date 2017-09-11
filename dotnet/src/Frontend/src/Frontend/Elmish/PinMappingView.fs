@@ -32,16 +32,19 @@ let titleBar dispatch (model: Model) =
       printfn "TODO: Add PinMapping")
   ] [str "Add"]
 
+let renderPin (model: Model) (pin: Pin) =
+  com<PinView.PinView,_,_>
+    { key = string pin.Id
+      pin = pin
+      useRightClick = model.userConfig.useRightClick
+      slices = Some pin.Slices
+      updater = None
+      onDragStart = None } []
+
 let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
   | Some state ->
-    let config = state.Project.Config
-    let members =
-      config.ActiveSite |> Option.bind (fun activeSite ->
-        config.Sites |> Seq.tryFind (fun site -> site.Id = activeSite))
-      |> Option.map (fun site -> site.Members)
-      |> Option.defaultValue Map.empty
     table [Class "iris-table"] [
       thead [] [
         tr [] [
@@ -51,15 +54,17 @@ let body dispatch (model: Model) =
         ]
       ]
       tbody [] (
-        members |> Seq.map (fun kv ->
-          let node = kv.Value
+        state.PinMappings |> Seq.map (fun kv ->
+          let source =
+            Lib.findPin kv.Value.Source state
+            |> renderPin model
+          let sinks =
+            kv.Value.Sinks
+            |> Seq.map (fun id -> Lib.findPin id state |> renderPin model)
+            |> Seq.toList
           tr [Key (string kv.Key)] [
-            td [Class "width-20"; padding5AndTopBorder()] [
-              // Source pin
-            ]
-            td [Class "width-75"; topBorder()] [
-              // Sink pins
-            ]
+            td [Class "width-20"; padding5AndTopBorder()] [source]
+            td [Class "width-75"; topBorder()] sinks
             td [Class "width-5"; topBorder()] [
               button [
                 Class "iris-button iris-icon icon-close"
