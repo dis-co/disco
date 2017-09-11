@@ -217,3 +217,30 @@ let createProject(name: string): JS.Promise<unit> = promise {
       |> CreateProject
       |> postCommand (fun _ -> notify "The project has been created successfully") notify
 }
+
+let updatePinValue(pin: Pin, index: int, value: obj) =
+  let updateArray (i: int) (v: obj) (ar: 'T[]) =
+    let newArray = Array.copy ar
+    newArray.[i] <- unbox v
+    newArray
+  let client = if Pin.isPreset pin then Some pin.Client else None
+  match pin with
+  | StringPin pin ->
+    StringSlices(pin.Id, client, updateArray index value pin.Values)
+  | NumberPin pin ->
+    let value =
+      match value with
+      | :? string as v -> box(double v)
+      | v -> v
+    NumberSlices(pin.Id, client, updateArray index value pin.Values)
+  | BoolPin pin ->
+    let value =
+      match value with
+      | :? string as v -> box(v.ToLower() = "true")
+      | v -> v
+    BoolSlices(pin.Id, client, updateArray index value pin.Values)
+  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
+  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
+  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
+  |> UpdateSlices.ofSlices
+  |> ClientContext.Singleton.Post

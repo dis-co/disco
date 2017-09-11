@@ -33,7 +33,10 @@ let body dispatch (model: Model) =
               pin = pin
               useRightClick = model.userConfig.useRightClick
               slices = None
-              updater = None
+              updater =
+                Some { new IUpdater with
+                          member __.Update(_, index, value) =
+                            Lib.updatePinValue(pin, index, value) }
               onDragStart = Some(fun el ->
                 Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)

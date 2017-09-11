@@ -107,6 +107,9 @@ and UserConfig =
             "Tier", true]
       useRightClick = false }
 
+and IUpdater =
+  abstract Update: dragging:bool * index:int * value:obj -> unit
+
 /// Widget layout as understood by react-grid-layout
 and [<Pojo>] Layout =
   { i: Guid; ``static``: bool

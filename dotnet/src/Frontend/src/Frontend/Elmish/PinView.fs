@@ -13,10 +13,7 @@ open Types
 type [<Pojo>] InputState =
   { isOpen: bool }
 
-type IUpdater =
-  abstract Update: dragging:bool * index:int * value:obj -> unit
-
-let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater): React.ReactElement =
+let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater option): React.ReactElement =
   importMember "../../js/Util"
 
 let formatValue(value: obj): string =
@@ -24,33 +21,6 @@ let formatValue(value: obj): string =
 
 [<Global>]
 let jQuery(el: obj): obj = jsNative
-
-let private updatePinValue(pin: Pin, index: int, value: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
-  let client = if Pin.isPreset pin then Some pin.ClientId else None
-  match pin with
-  | StringPin pin ->
-    StringSlices(pin.Id, client, updateArray index value pin.Values)
-  | NumberPin pin ->
-    let value =
-      match value with
-      | :? string as v -> box(double v)
-      | v -> v
-    NumberSlices(pin.Id, client, updateArray index value pin.Values)
-  | BoolPin pin ->
-    let value =
-      match value with
-      | :? string as v -> box(v.ToLower() = "true")
-      | v -> v
-    BoolSlices(pin.Id, client, updateArray index value pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices.ofSlices
-  |> ClientContext.Singleton.Post
 
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
@@ -80,7 +50,7 @@ type PinView(props) =
     | Some slices -> slices.[index i].Value
     | None -> this.props.pin.Slices.[index i].Value
 
-  member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater) =
+  member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater option) =
     let name =
       if this.props.pin.Name |> unwrap |> String.IsNullOrEmpty
       then "--"
@@ -131,17 +101,10 @@ type PinView(props) =
     ] []
 
   member this.render() =
-    let updater =
-      match props.updater with
-      | Some updater -> updater
-      | None ->
-        { new IUpdater with
-            member __.Update(_, index, value) =
-              updatePinValue(this.props.pin, index, value) }
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Slices.Length
     div [ClassName "iris-pin"] [
-      table [] [this.RenderRows(rowCount, this.props.useRightClick, updater)]
+      table [] [this.RenderRows(rowCount, this.props.useRightClick, props.updater)]
     ]

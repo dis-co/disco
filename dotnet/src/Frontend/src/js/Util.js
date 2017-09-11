@@ -130,46 +130,47 @@ export function formatValue(value) {
 
 export function addInputView(index, value, tagName, useRightClick, updater) {
 
-    let typeofValue = typeof value,
-    props = {}, //{ key: index },
-    formattedValue = formatValue(value);
+    const typeofValue = typeof value;
+    const formattedValue = formatValue(value);
 
-    // Boolean values, not editable
-    if (typeofValue === "boolean") {
-        if (useRightClick) {
-            props.onContextMenu = (ev) => {
-                ev.preventDefault();
-                updater.Update(false, index, !value);
-            }
-        }
-        else {
-            props.onClick = (ev) => {
-                if (ev.button !== RIGHT_BUTTON)
-                    updater.Update(false, index, !value);
-            }
-        }
+    if (updater != null) {
+      const props = {};
+      if (typeofValue === "boolean") {
+          if (useRightClick) {
+              props.onContextMenu = (ev) => {
+                  ev.preventDefault();
+                  updater.Update(false, index, !value);
+              }
+          }
+          else {
+              props.onClick = (ev) => {
+                  if (ev.button !== RIGHT_BUTTON)
+                      updater.Update(false, index, !value);
+              }
+          }
 
-        return React.createElement(tagName, props, formattedValue);
-    }
-
-    // Numeric values, draggable
-    if (typeofValue === "number") {
-        props.onMouseDown = (ev) => {
-            if (xand(ev.button === RIGHT_BUTTON, useRightClick))
-                startDragging(ev.clientY, index, value, updater);
-        }
-        if (useRightClick) {
-            props.onContextMenu = (ev) => {
-                ev.preventDefault();
-            }
-        }
-    }
-
-    return React.createElement(ContentEditable, Object.assign({
-      tagName: tagName,
-      html: formattedValue,
-      onChange(html) {
-        updater.Update(false, index, html);
+          return React.createElement(tagName, props, formattedValue);
       }
-    }, props));
+      else if (typeofValue === "number") { // Numeric values, draggable
+          props.onMouseDown = (ev) => {
+              if (xand(ev.button === RIGHT_BUTTON, useRightClick))
+                  startDragging(ev.clientY, index, value, updater);
+          }
+          if (useRightClick) {
+              props.onContextMenu = (ev) => {
+                  ev.preventDefault();
+              }
+          }
+      }
+      return React.createElement(ContentEditable, Object.assign({
+        tagName: tagName,
+        html: formattedValue,
+        onChange(html) {
+          updater.Update(false, index, html);
+        }
+      }, props));
+    }
+    else {
+      return React.createElement(tagName, {}, formattedValue);
+    }
 }
