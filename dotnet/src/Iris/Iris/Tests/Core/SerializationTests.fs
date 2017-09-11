@@ -580,7 +580,9 @@ module SerializationTests =
       test_validate_user_yaml_serialization
       test_validate_user_binary_serialization
       test_validate_slice_binary_serialization
+      test_validate_slice_yaml_serialization
       test_validate_slices_binary_serialization
+      test_validate_slices_yaml_serialization
       test_validate_client_binary_serialization
       test_validate_cue_binary_serialization
       test_validate_cue_yaml_serialization

@@ -76,7 +76,7 @@ module CorrectPinPersistance =
         let group =
           { Id     = Id.Create()
             Name   = name "Group 1"
-            Client = Id.Create()
+            ClientId = Id.Create()
             Path   = None
             RefersTo = None
             Pins   = Map.empty }
@@ -86,7 +86,7 @@ module CorrectPinPersistance =
             (Id.Create())
             (name "My Toggle")
             group.Id
-            group.Client
+            group.ClientId
             Array.empty
 
         group

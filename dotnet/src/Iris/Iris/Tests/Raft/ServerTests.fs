@@ -2419,7 +2419,7 @@ module ServerTests =
 
         do! expectM "Should be committed" true (konst committed)
 
-        let peer = Member.create (Id "0xdeadbeef")
+        let peer = Member.create (Id.Create())
         do! Raft.becomeFollower ()
         do! Raft.addMemberM peer
 

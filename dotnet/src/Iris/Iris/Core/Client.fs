@@ -70,8 +70,8 @@ type IrisClient =
   // ** ToOffset
 
   member client.ToOffset(builder: FlatBufferBuilder) =
-    let id = builder.CreateString (string client.Id)
-    let service = builder.CreateString (string client.ServiceId)
+    let id = Id.encodeId<IrisClientFB> builder client.Id
+    let service = Id.encodeServiceId<IrisClientFB> builder client.ServiceId
     let name = Option.mapNull builder.CreateString (unwrap client.Name)
     let ip = builder.CreateString (string client.IpAddress)
     let role = client.Role.ToOffset(builder)
@@ -91,6 +91,8 @@ type IrisClient =
 
   static member FromFB(fb: IrisClientFB) =
     either {
+      let! id = Id.decodeId fb
+      let! serviceId = Id.decodeServiceId fb
       let! role = Role.FromFB fb.Role
       let! ip = IpAddress.TryParse fb.IpAddress
       let! status =
@@ -106,13 +108,15 @@ type IrisClient =
           |> Error.asParseError "IrisClient.FromFB"
           |> Either.fail
         #endif
-      return { Id        = Id fb.Id
-               Name      = name fb.Name
-               Status    = status
-               IpAddress = ip
-               ServiceId = Id fb.ServiceId
-               Port      = port fb.Port
-               Role      = role }
+      return {
+        Id        = id
+        Name      = name fb.Name
+        Status    = status
+        IpAddress = ip
+        ServiceId = serviceId
+        Port      = port fb.Port
+        Role      = role
+      }
     }
 
   // ** ToBytes

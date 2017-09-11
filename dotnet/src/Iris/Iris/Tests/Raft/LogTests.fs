@@ -286,14 +286,18 @@ module Log =
   let log_untilExcluding_should_return_expected_enries =
     testCase "untilExcluding should return expected enries" <| fun _ ->
       let num = 30
-
+      let id = Id.Create()
       [ for n in 1 .. num do
-          yield AddCue { Id = Id (string n); Name = name (string n); Slices = [| |] } ]
+          yield AddCue {
+            Id = id
+            Name = name (string n)
+            Slices = Array.empty
+          } ]
       |> List.fold (fun m s -> Log.append (Log.make (term 0) s) m) Log.empty
       |> assume "Should be at correct index" num Log.length
       |> assume "Should pick correct item"  (index 16) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.getIndex)
-      |> assume "Should have correct index" (AddCue { Id = Id "16"; Name = name "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
-      |> assume "Should have correct index" (AddCue { Id = Id "15"; Name = name "15"; Slices = [| |] } |> Some) (Log.until (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = id; Name = name "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
+      |> assume "Should have correct index" (AddCue { Id = id; Name = name "15"; Slices = [| |] } |> Some) (Log.until (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
       |> ignore
 
   let log_append_should_work_with_snapshots_too =

@@ -33,7 +33,7 @@ module WebSocketServer =
   // ** getConnectionId
 
   let private getConnectionId (socket: IWebSocketConnection) : Id =
-    string socket.ConnectionInfo.Id |> Id
+    Id.FromGuid socket.ConnectionInfo.Id
 
   // ** buildSession
 

@@ -37,19 +37,19 @@ module PinBecomesDirty =
         // |_| add pin to project
 
         let group =
-          { Id = Id "my cool group"
+          { Id = Id.Create()
             Name = name "My Cool Group"
-            Client = clientId
+            ClientId = clientId
             Path = None
             RefersTo = None
             Pins = Map.empty }
 
         let toggle =
           Pin.Sink.toggle
-            (Id "/my/pin")
+            (Id.Create())
             (name "My Toggle")
             group.Id
-            group.Client
+            group.ClientId
             [| true |]
 
         let group =
@@ -83,11 +83,11 @@ module PinBecomesDirty =
         do! waitFor "started" started
 
         expect "Should have loaded the Group" true
-          (PinGroupMap.containsGroup toggle.Client toggle.PinGroup)
+          (PinGroupMap.containsGroup toggle.ClientId toggle.PinGroupId)
           service1.State.PinGroups
 
         expect "Should have marked pin as clean" true
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin toggle.Id)
            >> Option.get
            >> Pin.isDirty
@@ -139,14 +139,14 @@ module PinBecomesDirty =
         do! waitFor "clientBatchDone" clientBatchDone
 
         expect "Should have marked pin as dirty in service state" true
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin toggle.Id)
            >> Option.get
            >> Pin.isDirty)
           service1.State.PinGroups
 
         expect "Should have marked pin as dirty in client state" true
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin toggle.Id)
            >> Option.get
            >> Pin.isDirty)
@@ -166,7 +166,7 @@ module PinBecomesDirty =
         do! waitFor "clientBatchDone" clientBatchDone
 
         expect "Should have marked pin as clean in service state" true
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin toggle.Id)
            >> Option.get
            >> Pin.isDirty
@@ -174,7 +174,7 @@ module PinBecomesDirty =
           service1.State.PinGroups
 
         expect "Should have marked pin as clean in client state" true
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin toggle.Id)
            >> Option.get
            >> Pin.isDirty

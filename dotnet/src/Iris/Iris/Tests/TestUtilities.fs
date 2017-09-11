@@ -219,21 +219,21 @@ module TestData =
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
-        Some (rndstr() |> Id)
+        Some (Id.Create())
       else
         None
 
     { Id = Id.Create()
       Name = rndname ()
       Locked = rndbool ()
-      CueList = rndopt ()
+      CueListId = rndopt ()
       Selected = index (rand.Next(0,1000))
-      Call = Id.Create()
-      Next = Id.Create()
-      Previous = Id.Create()
+      CallId = Id.Create()
+      NextId = Id.Create()
+      PreviousId = Id.Create()
       RemainingWait = rand.Next(0,1000)
-      LastCaller = rndopt()
-      LastCalled = rndopt() }
+      LastCallerId = rndopt()
+      LastCalledId = rndopt() }
 
   let mkUsers () =
     [| for n in 0 .. rand.Next(1,20) do
@@ -246,7 +246,11 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) -> mkCue() |]
 
   let mkCueRef () : CueReference =
-    { Id = Id.Create(); CueId = Id.Create(); AutoFollow = rndint(); Duration = rndint(); Prewait = rndint() }
+    { Id = Id.Create()
+      CueId = Id.Create()
+      AutoFollow = rndint()
+      Duration = rndint()
+      Prewait = rndint() }
 
   let mkCueRefs () : CueReference array =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
@@ -266,7 +270,7 @@ module TestData =
     { Id = Id.Create()
       Name = rndname ()
       Path = Some (filepath "/dev/null")
-      Client = Id.Create()
+      ClientId = Id.Create()
       RefersTo = None
       Pins = pins }
 

@@ -32,38 +32,38 @@ module RaftMsg =
   // ** createAppendEntriesFB
 
   let createAppendEntriesFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendEntries) =
-    let sid = string nid |> builder.CreateString
+    let sid = Id.encodeMemberId<RequestAppendEntriesFB> builder nid
     RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, sid, ar.ToOffset builder)
 
   // ** createAppendResponseFB
 
   let createAppendResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
-    let id = string nid |> builder.CreateString
-    RespondAppendEntriesFB.CreateRespondAppendEntriesFB(builder, id, ar.ToOffset builder)
+    let sid = Id.encodeMemberId<RespondAppendEntriesFB> builder nid
+    RespondAppendEntriesFB.CreateRespondAppendEntriesFB(builder, sid, ar.ToOffset builder)
 
   // ** createRequestVoteFB
 
   let createRequestVoteFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteRequest) =
-    let id = string nid |> builder.CreateString
-    RequestVoteFB.CreateRequestVoteFB(builder, id, vr.ToOffset builder)
+    let sid = Id.encodeMemberId<RequestVoteFB> builder nid
+    RequestVoteFB.CreateRequestVoteFB(builder, sid, vr.ToOffset builder)
 
   // ** createRequestVoteResponseFB
 
   let createRequestVoteResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteResponse) =
-    let id = string nid |> builder.CreateString
-    RespondVoteFB.CreateRespondVoteFB(builder, id, vr.ToOffset builder)
+    let sid = Id.encodeMemberId<RespondVoteFB> builder nid
+    RespondVoteFB.CreateRespondVoteFB(builder, sid, vr.ToOffset builder)
 
   // ** createInstallSnapshotFB
 
   let createInstallSnapshotFB (builder: FlatBufferBuilder) (nid: MemberId) (is: InstallSnapshot) =
-    let id = string nid |> builder.CreateString
-    RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, id, is.ToOffset builder)
+    let sid = Id.encodeMemberId<RequestInstallSnapshotFB> builder nid
+    RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, sid, is.ToOffset builder)
 
   // ** createSnapshotResponseFB
 
   let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
-    let id = string nid |> builder.CreateString
-    RespondInstallSnapshotFB.CreateRespondInstallSnapshotFB(builder, id, ar.ToOffset builder)
+    let sid = Id.encodeMemberId<RespondInstallSnapshotFB> builder nid
+    RespondInstallSnapshotFB.CreateRespondInstallSnapshotFB(builder, sid, ar.ToOffset builder)
 
   // ** createAppendEntryFB
 
@@ -138,8 +138,9 @@ type RaftRequest =
           let rv = entry.Value
           let request = rv.Request
           if request.HasValue then
+            let! id = Id.decodeMemberId rv
             let! request = VoteRequest.FromFB(request.Value)
-            return RequestVote(Id rv.MemberId, request)
+            return RequestVote(id, request)
           else
             return!
               "Could not parse empty VoteRequestFB body"
@@ -158,8 +159,9 @@ type RaftRequest =
           let ae = entry.Value
           let request = ae.Request
           if request.HasValue then
+            let! id = Id.decodeMemberId ae
             let! request = AppendEntries.FromFB request.Value
-            return AppendEntries(Id ae.MemberId, request)
+            return AppendEntries(id, request)
           else
             return!
               "Could not parse empty AppendEntriesFB body"
@@ -178,8 +180,9 @@ type RaftRequest =
           let is = entry.Value
           let request = is.Request
           if request.HasValue then
+            let! id = Id.decodeMemberId is
             let! request = InstallSnapshot.FromFB request.Value
-            return InstallSnapshot(Id is.MemberId, request)
+            return InstallSnapshot(id, request)
           else
             return!
               "Could not parse empty InstallSnapshotFB body"
@@ -297,7 +300,7 @@ type RaftResponse =
       |> RaftMsg.build builder RaftMsgTypeFB.RespondAppendEntryFB
 
     | ErrorResponse (id, err) ->
-      let nid = id |> string |> builder.CreateString
+      let nid = Id.encodeMemberId<ErrorResponseFB> builder id
       ErrorResponseFB.CreateErrorResponseFB(builder, nid, err.ToOffset builder)
       |> RaftMsg.build builder RaftMsgTypeFB.ErrorResponseFB
 
@@ -324,8 +327,9 @@ type RaftResponse =
           let fb = entry.Value
           let response = fb.Response
           if response.HasValue then
+            let! id = Id.decodeMemberId fb
             let! parsed = VoteResponse.FromFB response.Value
-            return RequestVoteResponse(Id fb.MemberId, parsed)
+            return RequestVoteResponse(id, parsed)
           else
             return!
               "Could not parse empty VoteResponseFB body"
@@ -344,8 +348,9 @@ type RaftResponse =
           let fb = entry.Value
           let response = fb.Response
           if response.HasValue then
+            let! id = Id.decodeMemberId fb
             let! response = AppendResponse.FromFB response.Value
-            return AppendEntriesResponse(Id fb.MemberId, response)
+            return AppendEntriesResponse(id, response)
           else
             return!
               "Could not parse empty AppendResponseFB body"
@@ -364,8 +369,9 @@ type RaftResponse =
           let fb = entry.Value
           let response = fb.Response
           if response.HasValue then
+            let! id = Id.decodeMemberId fb
             let! response = AppendResponse.FromFB response.Value
-            return InstallSnapshotResponse(Id fb.MemberId, response)
+            return InstallSnapshotResponse(id, response)
           else
             return!
               "Could not parse empty AppendResponseFB body"
@@ -404,8 +410,9 @@ type RaftResponse =
           let rv = entry.Value
           let err = rv.Error
           if err.HasValue then
+            let! id = Id.decodeMemberId rv
             let! error = IrisError.FromFB err.Value
-            return ErrorResponse (Id rv.MemberId, error)
+            return ErrorResponse (id, error)
           else
             return!
               "Could not parse empty ErrorFB body"

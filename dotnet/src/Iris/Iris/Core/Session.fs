@@ -75,9 +75,12 @@ type Session =
   static member FromFB(fb: SessionFB) : Either<IrisError, Session> =
     either {
       let! ip = IpAddress.TryParse fb.IpAddress
-      return { Id = Id fb.Id
-               IpAddress = ip
-               UserAgent = fb.UserAgent }
+      let! id = Id.decodeId fb
+      return {
+        Id = id
+        IpAddress = ip
+        UserAgent = fb.UserAgent
+      }
     }
 
   // ** FromBytes
@@ -90,7 +93,7 @@ type Session =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let session = self.Id |> string |> builder.CreateString
+    let session = Id.encodeId<SessionFB> builder self.Id
     let ip = self.IpAddress |> string |> builder.CreateString
     let ua = self.UserAgent |> Option.mapNull builder.CreateString
     SessionFB.StartSessionFB(builder)
@@ -124,9 +127,12 @@ type Session =
   static member FromYaml (yml: SessionYaml) =
     either {
       let! ip = IpAddress.TryParse yml.IpAddress
-      return { Id = Id yml.Id
-               IpAddress = ip
-               UserAgent = yml.UserAgent }
+      let! id = Id.TryParse yml.Id
+      return {
+        Id = id
+        IpAddress = ip
+        UserAgent = yml.UserAgent
+      }
     }
 
   #endif

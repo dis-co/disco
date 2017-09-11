@@ -38,10 +38,15 @@ type PinWidgetYaml() =
     yml
 
   member yml.ToPinWidget() =
-    { Id = Id yml.Id
-      Name = name yml.Name
-      WidgetType = Id yml.WidgetType }
-    |> Either.succeed
+    either {
+      let! id = Id.TryParse yml.Id
+      let! widget = Id.TryParse yml.WidgetType
+      return {
+        Id = id
+        Name = name yml.Name
+        WidgetType = widget
+      }
+    }
 
 #endif
 
@@ -80,17 +85,22 @@ type PinWidget =
   //                           |___/
 
   static member FromFB (fb: PinWidgetFB) =
-    { Id = Id fb.Id
-      Name = name fb.Name
-      WidgetType = Id fb.WidgetType }
-    |> Either.succeed
+    either {
+      let! id = Id.decodeId fb
+      let! widget = Id.decodeWidgetType fb
+      return {
+        Id = id
+        Name = name fb.Name
+        WidgetType = widget
+      }
+    }
 
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinWidgetFB> =
-    let id = string self.Id |> builder.CreateString
+    let id = Id.encodeId<PinWidgetFB> builder self.Id
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let widgetType = self.WidgetType |> string |> builder.CreateString
+    let widgetType = Id.encodeWidgetType<PinWidgetFB> builder self.WidgetType
     PinWidgetFB.StartPinWidgetFB(builder)
     PinWidgetFB.AddId(builder, id)
     Option.iter (fun value -> PinWidgetFB.AddName(builder,value)) name

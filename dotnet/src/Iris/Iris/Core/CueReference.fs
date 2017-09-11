@@ -48,12 +48,17 @@ type CueReferenceYaml() =
   // ** ToCueReference
 
   member yaml.ToCueReference() =
-    { Id          = Id yaml.Id
-      CueId       = Id yaml.CueId
-      AutoFollow  = yaml.AutoFollow
-      Duration    = yaml.Duration
-      Prewait     = yaml.Prewait }
-    |> Right
+    either {
+      let! id = Id.TryParse yaml.Id
+      let! cueId = Id.TryParse yaml.CueId
+      return {
+        Id          = id
+        CueId       = cueId
+        AutoFollow  = yaml.AutoFollow
+        Duration    = yaml.Duration
+        Prewait     = yaml.Prewait
+      }
+    }
 
 #endif
 
@@ -79,18 +84,23 @@ type CueReference =
   //                           |___/
 
   static member FromFB(fb: CueReferenceFB) : Either<IrisError,CueReference> =
-    { Id          = Id fb.Id
-      CueId       = Id fb.CueId
-      AutoFollow  = fb.AutoFollow
-      Duration    = fb.Duration
-      Prewait     = fb.Prewait }
-    |> Right
+    either {
+      let! id = Id.decodeId fb
+      let! cueId = Id.decodeCueId fb
+      return {
+        Id          = id
+        CueId       = cueId
+        AutoFollow  = fb.AutoFollow
+        Duration    = fb.Duration
+        Prewait     = fb.Prewait
+      }
+    }
 
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueReferenceFB> =
-    let id = string self.Id |> builder.CreateString
-    let cueId = string self.CueId |> builder.CreateString
+    let id = Id.encodeId<CueReferenceFB> builder self.Id
+    let cueId = Id.encodeCueId<CueReferenceFB> builder self.CueId
     CueReferenceFB.StartCueReferenceFB(builder)
     CueReferenceFB.AddId(builder, id)
     CueReferenceFB.AddCueId(builder, cueId)

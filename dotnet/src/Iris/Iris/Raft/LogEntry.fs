@@ -273,18 +273,15 @@ type RaftLogEntry =
       //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
       //                         |___/
       | Configuration(id,idx,term,mems,_)          ->
-        let id = string id |> builder.CreateString
+        let id = Id.encodeId<ConfigurationFB> builder id
         let mems = Array.map (Binary.toOffset builder) mems
         let nvec = ConfigurationFB.CreateMembersVector(builder, mems)
-
         ConfigurationFB.StartConfigurationFB(builder)
         ConfigurationFB.AddId(builder, id)
         ConfigurationFB.AddIndex(builder, int idx)
         ConfigurationFB.AddTerm(builder, int term)
         ConfigurationFB.AddMembers(builder, nvec)
-
         let entry = ConfigurationFB.EndConfigurationFB(builder)
-
         buildLogFB LogTypeFB.ConfigurationFB entry.Value
 
       //      _       _       _    ____
@@ -293,18 +290,15 @@ type RaftLogEntry =
       // | |_| | (_) | | | | | |_| |__| (_) | | | \__ \  __/ | | \__ \ |_| \__ \
       //  \___/ \___/|_|_| |_|\__|\____\___/|_| |_|___/\___|_| |_|___/\__,_|___/
       | JointConsensus(id,index,term,changes,_) ->
-        let id = string id |> builder.CreateString
+        let id = Id.encodeId<JointConsensusFB> builder id
         let changes = Array.map (Binary.toOffset builder) changes
         let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
-
         JointConsensusFB.StartJointConsensusFB(builder)
         JointConsensusFB.AddId(builder, id)
         JointConsensusFB.AddIndex(builder, int index)
         JointConsensusFB.AddTerm(builder, int term)
         JointConsensusFB.AddChanges(builder, chvec)
-
         let entry = JointConsensusFB.EndJointConsensusFB(builder)
-
         buildLogFB LogTypeFB.JointConsensusFB entry.Value
 
       //  _                _____       _
@@ -314,17 +308,14 @@ type RaftLogEntry =
       // |_____\___/ \__, |_____|_| |_|\__|_|   \__, |
       //             |___/                      |___/
       | LogEntry(id,index,term,data,_) ->
-        let id = string id |> builder.CreateString
+        let id = Id.encodeId<LogEntryFB> builder id
         let data = data.ToOffset(builder)
-
         LogEntryFB.StartLogEntryFB(builder)
         LogEntryFB.AddId(builder, id)
         LogEntryFB.AddIndex(builder, int index)
         LogEntryFB.AddTerm(builder, int term)
         LogEntryFB.AddData(builder, data)
-
         let entry = LogEntryFB.EndLogEntryFB(builder)
-
         buildLogFB LogTypeFB.LogEntryFB entry.Value
 
       //  ____                        _           _
@@ -334,11 +325,10 @@ type RaftLogEntry =
       // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
       //                   |_|
       | Snapshot(id,index,term,lidx,lterm,mems,data) ->
-        let id = string id |> builder.CreateString
+        let id = Id.encodeId<SnapshotFB> builder id
         let mems = Array.map (Binary.toOffset builder) mems
         let nvec = SnapshotFB.CreateMembersVector(builder, mems)
         let data = data.ToOffset(builder)
-
         SnapshotFB.StartSnapshotFB(builder)
         SnapshotFB.AddId(builder, id)
         SnapshotFB.AddIndex(builder, int index)
@@ -347,9 +337,7 @@ type RaftLogEntry =
         SnapshotFB.AddLastTerm(builder, int lterm)
         SnapshotFB.AddMembers(builder, nvec)
         SnapshotFB.AddData(builder, data)
-
         let entry = SnapshotFB.EndSnapshotFB(builder)
-
         buildLogFB LogTypeFB.SnapshotFB entry.Value
 
     let arr = Array.zeroCreate (self.Depth |> int)
@@ -403,12 +391,11 @@ type RaftLogEntry =
                 arr
               |> Either.map snd
 
+            let! id = Id.decodeId logentry
+
             // successfully parsed this LogEntry, so return it wrapped in an option
-            return Configuration(Id logentry.Id,
-                                 index logentry.Index,
-                                 term logentry.Term,
-                                 mems,
-                                 previous)
+            return (id, index logentry.Index, term logentry.Term, mems, previous)
+                   |> Configuration
                    |> Some
           else
             return! "Could not parse empty LogTypeFB.ConfigurationFB"
@@ -446,12 +433,9 @@ type RaftLogEntry =
                 (Right (0, arr))
                 arr
               |> Either.map snd
-
-            return JointConsensus(Id logentry.Id,
-                                  index logentry.Index,
-                                  term logentry.Term,
-                                  changes,
-                                  previous)
+            let! id = Id.decodeId logentry
+            return (id, index logentry.Index, term logentry.Term, changes, previous)
+                   |> JointConsensus
                    |> Some
           else
             return!
@@ -470,13 +454,10 @@ type RaftLogEntry =
             let data = logentry.Data
             if data.HasValue then
               let! command = StateMachine.FromFB data.Value
-
-              return LogEntry(Id logentry.Id,
-                              index logentry.Index,
-                              term logentry.Term,
-                              command,
-                              previous)
-                     |> Some
+              let! id = Id.decodeId logentry
+              return(id, index logentry.Index, term logentry.Term, command, previous)
+                    |> LogEntry
+                    |> Some
             else
               return!
                 "Could not parse empty StateMachineFB"
@@ -497,7 +478,7 @@ type RaftLogEntry =
             let data = logentry.Data
 
             if data.HasValue then
-              let id = Id logentry.Id
+              let! id = Id.decodeId logentry
               let! state = StateMachine.FromFB data.Value
 
               let! mems =

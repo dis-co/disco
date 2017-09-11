@@ -26,14 +26,14 @@ type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Locked: bool
-  [<DefaultValue>] val mutable CueList: string
+  [<DefaultValue>] val mutable CueListId: string
   [<DefaultValue>] val mutable Selected: int
-  [<DefaultValue>] val mutable Call: string
-  [<DefaultValue>] val mutable Next: string
-  [<DefaultValue>] val mutable Previous: string
+  [<DefaultValue>] val mutable CallId: string
+  [<DefaultValue>] val mutable NextId: string
+  [<DefaultValue>] val mutable PreviousId: string
   [<DefaultValue>] val mutable RemainingWait: int
-  [<DefaultValue>] val mutable LastCalled: string
-  [<DefaultValue>] val mutable LastCaller: string
+  [<DefaultValue>] val mutable LastCalledId: string
+  [<DefaultValue>] val mutable LastCallerId: string
 
   // ** From
 
@@ -46,14 +46,14 @@ type CuePlayerYaml() =
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
     yaml.Locked <- player.Locked
-    yaml.CueList <- opt2str player.CueList
+    yaml.CueListId <- opt2str player.CueListId
     yaml.Selected <- int player.Selected
-    yaml.Call <- string player.Call
-    yaml.Next <- string player.Next
-    yaml.Previous <- string player.Previous
+    yaml.CallId <- string player.CallId
+    yaml.NextId <- string player.NextId
+    yaml.PreviousId <- string player.PreviousId
     yaml.RemainingWait <- player.RemainingWait
-    yaml.LastCaller <- opt2str player.LastCaller
-    yaml.LastCalled <- opt2str player.LastCalled
+    yaml.LastCallerId <- opt2str player.LastCallerId
+    yaml.LastCalledId <- opt2str player.LastCalledId
     yaml
 
   // ** ToPlayer
@@ -63,18 +63,24 @@ type CuePlayerYaml() =
       let str2opt str =
         match str with
         | null -> None
-        | thing -> Some (Id thing)
-      return { Id = Id yaml.Id
-               Name = name yaml.Name
-               Locked = yaml.Locked
-               CueList = str2opt yaml.CueList
-               Selected = index yaml.Selected
-               Call = Id yaml.Call
-               Next = Id yaml.Next
-               Previous = Id yaml.Previous
-               RemainingWait = yaml.RemainingWait
-               LastCaller = str2opt yaml.LastCaller
-               LastCalled = str2opt yaml.LastCalled }
+        | _    -> Some (Id.Parse str)
+      let! id = Id.TryParse yaml.Id
+      let! call = Id.TryParse yaml.CallId
+      let! next = Id.TryParse yaml.NextId
+      let! previous = Id.TryParse yaml.PreviousId
+      return {
+        Id = id
+        Name = name yaml.Name
+        Locked = yaml.Locked
+        CueListId = str2opt yaml.CueListId
+        Selected = index yaml.Selected
+        CallId = call
+        NextId = next
+        PreviousId = previous
+        RemainingWait = yaml.RemainingWait
+        LastCallerId = str2opt yaml.LastCallerId
+        LastCalledId = str2opt yaml.LastCalledId
+      }
     }
 
 #endif
@@ -84,72 +90,87 @@ type CuePlayerYaml() =
 type CuePlayer =
   { Id: Id
     Name: Name
+    CueListId: Id option
+    CallId: Id                           // should be Bang pin type
+    NextId: Id                           // should be Bang pin type
+    PreviousId: Id                       // should be Bang pin type
     Locked: bool
-    CueList: Id option
     Selected: int<index>
-    Call: Id                           // should be Bang pin type
-    Next: Id                           // should be Bang pin type
-    Previous: Id                       // should be Bang pin type
     RemainingWait: int
-    LastCalled: Id option
-    LastCaller: Id option }
+    LastCalledId: Id option
+    LastCallerId: Id option }
 
   // ** ToOffset
 
   member player.ToOffset(builder: FlatBufferBuilder) =
-    let id = player.Id |> string |> builder.CreateString
+    let id = Id.encodeId<CuePlayerFB> builder player.Id
     let name = player.Name |> unwrap |> Option.mapNull builder.CreateString
-    let cuelist = player.CueList |> Option.map (string >> builder.CreateString)
-    let call = player.Call |> string |> builder.CreateString
-    let next = player.Next |> string |> builder.CreateString
-    let previous = player.Previous |> string |> builder.CreateString
-    let lastcalled = player.LastCalled |> Option.map (string >> builder.CreateString)
-    let lastcaller = player.LastCaller |> Option.map (string >> builder.CreateString)
-
+    let cuelist = Option.map (Id.encodeId<CuePlayerFB> builder) player.CueListId
+    let call = Id.encodeCallId<CuePlayerFB> builder player.CallId
+    let next = Id.encodeNextId<CuePlayerFB> builder player.NextId
+    let previous = Id.encodePreviousId<CuePlayerFB> builder player.PreviousId
+    let lastcalled = Option.map (Id.encodeLastCalledId<CuePlayerFB> builder) player.LastCalledId
+    let lastcaller = Option.map (Id.encodeLastCallerId<CuePlayerFB> builder) player.LastCallerId
     CuePlayerFB.StartCuePlayerFB(builder)
     CuePlayerFB.AddId(builder, id)
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
     CuePlayerFB.AddLocked(builder, player.Locked)
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
-    CuePlayerFB.AddCall(builder, call)
-    CuePlayerFB.AddNext(builder, next)
-    CuePlayerFB.AddPrevious(builder, previous)
-    Option.iter (fun cl -> CuePlayerFB.AddCueList(builder, cl)) cuelist
-    Option.iter (fun cl -> CuePlayerFB.AddLastCalled(builder, cl)) lastcalled
-    Option.iter (fun cl -> CuePlayerFB.AddLastCaller(builder, cl)) lastcaller
+    CuePlayerFB.AddCallId(builder, call)
+    CuePlayerFB.AddNextId(builder, next)
+    CuePlayerFB.AddPreviousId(builder, previous)
+    Option.iter (fun cl -> CuePlayerFB.AddCueListId(builder, cl)) cuelist
+    Option.iter (fun cl -> CuePlayerFB.AddLastCalledId(builder, cl)) lastcalled
+    Option.iter (fun cl -> CuePlayerFB.AddLastCallerId(builder, cl)) lastcaller
     CuePlayerFB.EndCuePlayerFB(builder)
 
   // ** FromFB
 
   static member FromFB(fb: CuePlayerFB) =
     either {
-      let cuelist =
-        if isNull fb.CueList then
-          None
-         else Some (Id fb.CueList)
+      let! cuelist =
+        try
+          if fb.CueListIdLength = 0
+          then Either.succeed None
+          else Id.decodeCueListId fb |> Either.map Some
+        with exn ->
+          Either.succeed None
 
-      let lastcalled =
-        if isNull fb.LastCalled then
-          None
-        else Some (Id fb.LastCalled)
+      let! lastcalled =
+        try
+          if fb.LastCalledIdLength = 0
+          then Either.succeed None
+          else Id.decodeLastCalledId fb |> Either.map Some
+        with exn ->
+          Either.succeed None
 
-      let lastcaller =
-        if isNull fb.LastCaller then
-          None
-        else Some (Id fb.LastCaller)
+      let! lastcaller =
+        try
+          if fb.LastCallerIdLength = 0
+          then Either.succeed None
+          else Id.decodeLastCallerId fb |> Either.map Some
+        with exn ->
+          Either.succeed None
 
-      return { Id = Id fb.Id
-               Name = name fb.Name
-               Locked = fb.Locked
-               CueList = cuelist
-               Selected = index fb.Selected
-               Call = Id fb.Call
-               Next = Id fb.Next
-               Previous = Id fb.Previous
-               RemainingWait = fb.RemainingWait
-               LastCalled = lastcalled
-               LastCaller = lastcaller }
+      let! id = Id.decodeId fb
+      let! call = Id.decodeCallId fb
+      let! next = Id.decodeNextId fb
+      let! previous = Id.decodePreviousId fb
+
+      return {
+        Id = id
+        Name = name fb.Name
+        Locked = fb.Locked
+        Selected = index fb.Selected
+        RemainingWait = fb.RemainingWait
+        CueListId = cuelist
+        CallId = call
+        NextId = next
+        PreviousId = previous
+        LastCalledId = lastcalled
+        LastCallerId = lastcaller
+      }
     }
 
   // ** ToBytes
@@ -224,14 +245,14 @@ module CuePlayer =
     { Id            = id
       Name          = playerName
       Locked        = false
-      CueList       = cuelist
-      Selected      = -1<index>
-      Call          = Pin.Player.callId     id
-      Next          = Pin.Player.nextId     id
-      Previous      = Pin.Player.previousId id
       RemainingWait = -1
-      LastCalled    = None
-      LastCaller    = None }
+      Selected      = -1<index>
+      CueListId     = cuelist
+      CallId        = Pin.Player.callId     id
+      NextId        = Pin.Player.nextId     id
+      PreviousId    = Pin.Player.previousId id
+      LastCalledId  = None
+      LastCallerId  = None }
 
   // ** assetPath
 

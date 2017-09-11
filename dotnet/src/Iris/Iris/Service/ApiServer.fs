@@ -331,7 +331,7 @@ module ApiServer =
         |> state.Server.Respond
 
       | Right (Update sm) ->
-        let id = req.PeerId |> string |> Id
+        let id = Id.FromGuid req.PeerId
         (Origin.Client id, sm)
         |> Msg.Update
         |> agent.Post

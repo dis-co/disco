@@ -703,9 +703,9 @@ module Guid =
   // ** ofId
 
   let ofId (id: Id) =
-    id |> string |> Guid.Parse
+    id.ToGuid()
 
   // ** toId
 
   let toId (guid: Guid) =
-    guid |> string |> Id
+    Id.FromGuid guid

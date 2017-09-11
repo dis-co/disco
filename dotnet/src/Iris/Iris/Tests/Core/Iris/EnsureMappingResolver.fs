@@ -33,19 +33,19 @@ module EnsureMappingResolver =
 
         let source =
           Pin.Source.toggle
-            (Id "My First Toggle")
+            (Id.Create())
             (name "My First Toggle")
             group.Id
-            group.Client
+            group.ClientId
             [| false |]
           |> Pin.setPersisted true
 
         let sink =
           Pin.Sink.toggle
-            (Id "My Second Toggle")
+            (Id.Create())
             (name "My Second Toggle")
             group.Id
-            group.Client
+            group.ClientId
             [| false |]
           |> Pin.setPersisted true
 
@@ -82,7 +82,7 @@ module EnsureMappingResolver =
 
         expect "Should have the group"
           true
-          (PinGroupMap.containsGroup group.Client group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id)
           service.State.PinGroups
 
         expect "Should have the mapping"
@@ -107,7 +107,7 @@ module EnsureMappingResolver =
 
         expect "Sink should have true in first slice"
           (Slices.setId sink.Id slices)
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin sink.Id)
            >> Option.get
            >> Pin.slices)
@@ -115,7 +115,7 @@ module EnsureMappingResolver =
 
         expect "Source should have true in first slice"
           (Slices.setId source.Id slices)
-          (PinGroupMap.tryFindGroup group.Client group.Id
+          (PinGroupMap.tryFindGroup group.ClientId group.Id
            >> Option.map (PinGroup.findPin source.Id)
            >> Option.get
            >> Pin.slices)

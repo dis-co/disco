@@ -29,7 +29,7 @@ type PinGroupYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Path: string
-  [<DefaultValue>] val mutable Client: string
+  [<DefaultValue>] val mutable ClientId: string
   [<DefaultValue>] val mutable RefersTo: ReferencedValueYaml
   [<DefaultValue>] val mutable Pins: PinYaml array
 
@@ -37,7 +37,7 @@ type PinGroupYaml() =
     let yml = PinGroupYaml()
     yml.Id <- string group.Id
     yml.Name <- unwrap group.Name
-    yml.Client <- string group.Client
+    yml.ClientId <- string group.ClientId
     yml.Path <- Option.defaultValue null (Option.map unwrap group.Path)
     yml.Pins <- group.Pins |> Map.toArray |> Array.map (snd >> Yaml.toYaml)
     Option.iter (fun reference -> yml.RefersTo <- Yaml.toYaml reference) group.RefersTo
@@ -45,6 +45,9 @@ type PinGroupYaml() =
 
   member yml.ToPinGroup() =
     either {
+      let! id = Id.TryParse yml.Id
+      let! client = Id.TryParse yml.ClientId
+
       let! pins =
         Array.fold
           (fun (m: Either<IrisError,Map<Id,Pin>>) pinyml -> either {
@@ -68,12 +71,14 @@ type PinGroupYaml() =
           |> Yaml.fromYaml
           |> Either.map Some
 
-      return { Id = Id yml.Id
-               Name = name yml.Name
-               Path = path
-               RefersTo = refersTo
-               Client = Id yml.Client
-               Pins = pins }
+      return {
+        Id = id
+        Name = name yml.Name
+        ClientId = client
+        Path = path
+        RefersTo = refersTo
+        Pins = pins
+      }
     }
 
 // * ReferencedValueYaml
@@ -96,8 +101,14 @@ type ReferencedValueYaml() =
 
   member yml.ToReferencedValue() =
     match yml.Type.ToLowerInvariant() with
-    | "player" -> ReferencedValue.Player (Id yml.Id) |> Either.succeed
-    | "widget" -> ReferencedValue.Widget (Id yml.Id) |> Either.succeed
+    | "player" -> either {
+        let! id = Id.TryParse yml.Id
+        return ReferencedValue.Player id
+      }
+    | "widget" -> either {
+        let! id = Id.TryParse yml.Id
+        return ReferencedValue.Widget id
+      }
     | other ->
       other
       |> String.format "Could not parse ReferencedValue type: {0}"
@@ -157,8 +168,8 @@ type ReferencedValue =
       |> Either.fail
     #else
     match fb.Type with
-    | ReferencedValueTypeFB.PlayerFB -> fb.Id |> Id |> Player |> Either.succeed
-    | ReferencedValueTypeFB.WidgetFB -> fb.Id |> Id |> Widget |> Either.succeed
+    | ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Either.map Player
+    | ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Either.map Widget
     | other ->
       other
       |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
@@ -169,7 +180,7 @@ type ReferencedValue =
   // ** ToOffset
 
   member reference.ToOffset(builder: FlatBufferBuilder) : Offset<ReferencedValueFB> =
-    let id = reference.Id |> string |> builder.CreateString
+    let id = Id.encodeId<ReferencedValueFB> builder reference.Id
     ReferencedValueFB.StartReferencedValueFB(builder)
     ReferencedValueFB.AddId(builder, id)
     match reference with
@@ -200,7 +211,7 @@ type ReferencedValue =
 type PinGroup =
   { Id: Id
     Name: Name
-    Client: Id
+    ClientId: Id
     RefersTo: ReferencedValue option    /// optionally add a reference to a player/widget
     Path: FilePath option               /// optionally the location of this group on disk
     Pins: Map<Id,Pin> }
@@ -283,34 +294,38 @@ type PinGroup =
         then None
         else Some (filepath fb.Path)
 
-      return { Id = Id fb.Id
-               Name = name fb.Name
-               Path = path
-               RefersTo = refersTo
-               Client = Id fb.Client
-               Pins = pins }
+      let! id = Id.decodeId fb
+      let! client = Id.decodeClientId fb
+
+      return {
+        Id = id
+        Name = name fb.Name
+        Path = path
+        ClientId = client
+        RefersTo = refersTo
+        Pins = pins
+      }
     }
 
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
-    let id = string self.Id |> builder.CreateString
+    let id = Id.encodeId<PinGroupFB> builder self.Id
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let path = self.Path |> Option.map (unwrap >> builder.CreateString)
-    let client = self.Client |> string |> builder.CreateString
+    let client = Id.encodeClientId<PinGroupFB> builder self.ClientId
     let refersTo = self.RefersTo |> Option.map (Binary.toOffset builder)
     let pinoffsets =
       self.Pins
       |> Map.toArray
       |> Array.map (fun (_,pin: Pin) -> pin.ToOffset(builder))
-
     let pins = PinGroupFB.CreatePinsVector(builder, pinoffsets)
     PinGroupFB.StartPinGroupFB(builder)
     PinGroupFB.AddId(builder, id)
     Option.iter (fun value -> PinGroupFB.AddName(builder,value)) name
     Option.iter (fun value -> PinGroupFB.AddPath(builder,value)) path
     Option.iter (fun value -> PinGroupFB.AddRefersTo(builder,value)) refersTo
-    PinGroupFB.AddClient(builder, client)
+    PinGroupFB.AddClientId(builder, client)
     PinGroupFB.AddPins(builder, pins)
     PinGroupFB.EndPinGroupFB(builder)
 
@@ -398,7 +413,7 @@ module PinGroup =
   let create (groupName: Name) =
     { Id = Id.Create()
       Name = groupName
-      Client = Id.Create()
+      ClientId = Id.Create()
       RefersTo = None
       Path = None
       Pins = Map.empty }
@@ -448,7 +463,7 @@ module PinGroup =
 
   let assetPath (group: PinGroup) =
     let fn = (string group.Id |> String.sanitize) + ASSET_EXTENSION
-    let path = (string group.Client) <.> fn
+    let path = (string group.ClientId) <.> fn
     filepath PINGROUP_DIR </> path
 
   // ** findPin
@@ -510,13 +525,13 @@ module PinGroup =
   // ** ofPlayer
 
   let ofPlayer (player: CuePlayer) =
-    let client = Id Constants.CUEPLAYER_GROUP_DIR
+    let client = Id.Parse Constants.CUEPLAYER_GROUP_DIR
     let call = Pin.Player.call     player.Id client
     let next = Pin.Player.next     player.Id client
     let prev = Pin.Player.previous player.Id client
     { Id = player.Id
       Name = name (unwrap player.Name + " (Cue Player)")
-      Client = client
+      ClientId = client
       Path = None
       RefersTo = Some (ReferencedValue.Player player.Id)
       Pins = Map.ofList
@@ -529,7 +544,7 @@ module PinGroup =
   let ofWidget (widget: PinWidget) =
     { Id = widget.Id
       Name = name (unwrap widget.Name + " (Widget)")
-      Client = Id Constants.PINWIDGET_GROUP_DIR
+      ClientId = Id.Parse Constants.PINWIDGET_GROUP_DIR
       RefersTo = Some (ReferencedValue.Widget widget.Id)
       Path = None
       Pins = Map.empty }
@@ -684,9 +699,9 @@ type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
                 |> Either.fail
               #endif
             return
-              match Map.tryFind parsed.Client current with
-              | Some group -> Map.add parsed.Client (Map.add parsed.Id parsed group) current
-              | None -> Map.add parsed.Client (Map.ofList [(parsed.Id,parsed)]) current
+              match Map.tryFind parsed.ClientId current with
+              | Some group -> Map.add parsed.ClientId (Map.add parsed.Id parsed group) current
+              | None -> Map.add parsed.ClientId (Map.ofList [(parsed.Id,parsed)]) current
           })
         (Right Map.empty)
       |> Either.map PinGroupMap
@@ -742,14 +757,14 @@ module PinGroupMap =
 
   let add (group: PinGroup) (map: PinGroupMap) =
     let current = map.Groups
-    match Map.tryFind group.Client current with
+    match Map.tryFind group.ClientId current with
     | Some groups ->
       let groups = Map.add group.Id group groups
-      Map.add group.Client groups current
+      Map.add group.ClientId groups current
       |> PinGroupMap
     | None ->
       Map.ofList [(group.Id,group)]
-      |> fun groups -> Map.add group.Client groups current
+      |> fun groups -> Map.add group.ClientId groups current
       |> PinGroupMap
 
   // ** update
@@ -760,15 +775,15 @@ module PinGroupMap =
 
   let remove (group: PinGroup) (map: PinGroupMap) =
     let current = map.Groups
-    match Map.tryFind group.Client current with
+    match Map.tryFind group.ClientId current with
     | None -> map
     | Some groups ->
       let groups = Map.remove group.Id groups
       if groups.IsEmpty then
-        Map.remove group.Client current
+        Map.remove group.ClientId current
         |> PinGroupMap
       else
-        Map.add group.Client groups current
+        Map.add group.ClientId groups current
         |> PinGroupMap
 
   // ** containsGroup
@@ -803,17 +818,17 @@ module PinGroupMap =
   // ** addPin
 
   let addPin (pin: Pin) (map: PinGroupMap) =
-    modifyGroup (PinGroup.addPin pin) pin.Client pin.PinGroup map
+    modifyGroup (PinGroup.addPin pin) pin.ClientId pin.PinGroupId map
 
   // ** updatePin
 
   let updatePin (pin: Pin) (map: PinGroupMap) =
-    modifyGroup (PinGroup.updatePin pin) pin.Client pin.PinGroup map
+    modifyGroup (PinGroup.updatePin pin) pin.ClientId pin.PinGroupId map
 
   // ** removePin
 
   let removePin (pin: Pin) (map: PinGroupMap) =
-    modifyGroup (PinGroup.removePin pin) pin.Client pin.PinGroup map
+    modifyGroup (PinGroup.removePin pin) pin.ClientId pin.PinGroupId map
 
   // ** fold
 
@@ -867,7 +882,7 @@ module PinGroupMap =
       (fun out _ group ->
         group
         |> PinGroup.tryFindPin id
-        |> Option.map (fun pin -> Map.add pin.Client pin out)
+        |> Option.map (fun pin -> Map.add pin.ClientId pin out)
         |> Option.defaultValue out)
       Map.empty
       map
@@ -877,7 +892,7 @@ module PinGroupMap =
   let tryFindGroup (cid: ClientId) (pid: PinGroupId) (map: PinGroupMap) =
     foldGroups
       (fun out gid (group: PinGroup) ->
-        if gid = pid && cid = group.Client
+        if gid = pid && cid = group.ClientId
         then Some group
         else out)
       None
@@ -894,7 +909,7 @@ module PinGroupMap =
     foldGroups
       (fun out _ group ->
         if pred group
-        then Map.add group.Client group out
+        then Map.add group.ClientId group out
         else out)
       Map.empty
       map

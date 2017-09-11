@@ -42,10 +42,7 @@ module rec PubSub =
         let guid =
           let intermediate = Array.zeroCreate 16
           Array.blit raw 0 intermediate 0 16
-          intermediate
-          |> Guid
-          |> string
-          |> Id
+          Id.FromByteArray intermediate
 
         if guid <> state.Id then
           let payload =

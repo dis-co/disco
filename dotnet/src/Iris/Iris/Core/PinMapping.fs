@@ -39,10 +39,15 @@ type PinMappingYaml() =
     yml
 
   member yml.ToPinMapping() =
-    { Id     = Id yml.Id
-      Source = Id yml.Source
-      Sinks  = Array.map Id yml.Sinks |> Set }
-    |> Either.succeed
+    either {
+      let! id = Id.TryParse yml.Id
+      let! source = Id.TryParse yml.Source
+      return {
+        Id     = id
+        Source = source
+        Sinks  = Array.map Id.Parse yml.Sinks |> Set
+      }
+    }
 
 #endif
 
@@ -75,20 +80,30 @@ type PinMapping =
 
   static member FromFB (fb: PinMappingFB) =
     either {
-      let sinks =
-        [| 0 .. fb.SinksLength - 1 |]
-        |> Array.map (fb.Sinks >> Id)
-        |> Set
-      return { Id = Id fb.Id
-               Source = Id fb.Source
-               Sinks = sinks }
+      try
+        let! id = Id.decodeId fb
+        let! source = Id.decodeSource fb
+        let sinks =
+          [| 0 .. fb.SinksLength - 1 |]
+          |> Array.map (fb.Sinks >> Id.Parse)
+          |> Set
+        return {
+          Id = id
+          Source = source
+          Sinks = sinks
+        }
+      with exn ->
+        return!
+          exn.Message
+          |> Error.asParseError "PinMapping.FromFB"
+          |> Either.fail
     }
 
   // ** ToOffset
 
   member mapping.ToOffset(builder: FlatBufferBuilder) =
-    let id = mapping.Id |> string |> builder.CreateString
-    let source = mapping.Source |> string |> builder.CreateString
+    let id = Id.encodeId<PinMappingFB> builder mapping.Id
+    let source = Id.encodeSource<PinMappingFB> builder mapping.Source
     let sinks =
       mapping.Sinks
       |> Array.ofSeq

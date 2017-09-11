@@ -163,20 +163,23 @@ type RaftMember =
 
   static member FromYaml (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
+      let! id = Id.TryParse yaml.Id
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftMemberState.TryParse yaml.State
-      return { Id         = Id yaml.Id
-             ; HostName   = name yaml.HostName
-             ; IpAddr     = ip
-             ; Port       = port yaml.Port
-             ; WsPort     = port yaml.WsPort
-             ; GitPort    = port yaml.GitPort
-             ; ApiPort    = port yaml.ApiPort
-             ; Voting     = yaml.Voting
-             ; VotedForMe = yaml.VotedForMe
-             ; NextIndex  = yaml.NextIndex
-             ; MatchIndex = yaml.MatchIndex
-             ; State      = state }
+      return {
+        Id         = id
+        HostName   = name yaml.HostName
+        IpAddr     = ip
+        Port       = port yaml.Port
+        WsPort     = port yaml.WsPort
+        GitPort    = port yaml.GitPort
+        ApiPort    = port yaml.ApiPort
+        Voting     = yaml.Voting
+        VotedForMe = yaml.VotedForMe
+        NextIndex  = yaml.NextIndex
+        MatchIndex = yaml.MatchIndex
+        State      = state
+      }
     }
 
   #endif
@@ -184,7 +187,7 @@ type RaftMember =
   // ** ToOffset
 
   member mem.ToOffset (builder: FlatBufferBuilder) =
-    let id = string mem.Id |> builder.CreateString
+    let id = Id.encodeId<RaftMemberFB> builder mem.Id
     let ip = string mem.IpAddr |> builder.CreateString
 
     let hostname =
@@ -219,19 +222,22 @@ type RaftMember =
 
   static member FromFB (fb: RaftMemberFB) : Either<IrisError, RaftMember> =
     either {
+      let! id = Id.decodeId fb
       let! state = RaftMemberState.FromFB fb.State
-      return { Id         = Id fb.Id
-               State      = state
-               HostName   = name fb.HostName
-               IpAddr     = IpAddress.Parse fb.IpAddr
-               Port       = port fb.Port
-               WsPort     = port fb.WsPort
-               GitPort    = port fb.GitPort
-               ApiPort    = port fb.ApiPort
-               Voting     = fb.Voting
-               VotedForMe = fb.VotedForMe
-               NextIndex  = index fb.NextIndex
-               MatchIndex = index fb.MatchIndex }
+      return {
+        Id         = id
+        State      = state
+        HostName   = name fb.HostName
+        IpAddr     = IpAddress.Parse fb.IpAddr
+        Port       = port fb.Port
+        WsPort     = port fb.WsPort
+        GitPort    = port fb.GitPort
+        ApiPort    = port fb.ApiPort
+        Voting     = fb.Voting
+        VotedForMe = fb.VotedForMe
+        NextIndex  = index fb.NextIndex
+        MatchIndex = index fb.MatchIndex
+      }
     }
 
   // ** ToBytes

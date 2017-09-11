@@ -474,8 +474,8 @@ module CommandLine =
     while Option.isNone id do
       let str = readString field
       match Id.TryParse str with
-      | Some parsed -> id <- Some parsed
-      | None -> ()
+      | Right parsed -> id <- Some parsed
+      | Left _ -> ()
     Option.get id
 
   let private readEmail (field: string) =

@@ -168,7 +168,7 @@ type LogEvent =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let tier = builder.CreateString (string self.Tier)
-    let id = builder.CreateString (string self.Id)
+    let id = Id.encodeId<LogEventFB> builder self.Id
     let tag = Option.mapNull builder.CreateString self.Tag
     let level = builder.CreateString (string self.LogLevel)
     let msg = Option.mapNull builder.CreateString self.Message
@@ -186,16 +186,18 @@ type LogEvent =
   // ** FromFB
 
   static member FromFB(fb: LogEventFB) = either {
-      let id = Id fb.Id
+      let! id = Id.decodeId fb
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
-      return { Time     = fb.Time
-               Thread   = fb.Thread
-               Tier     = tier
-               Id       = id
-               Tag      = fb.Tag
-               LogLevel = level
-               Message  = fb.Message }
+      return {
+        Time     = fb.Time
+        Thread   = fb.Thread
+        Tier     = tier
+        Id       = id
+        Tag      = fb.Tag
+        LogLevel = level
+        Message  = fb.Message
+      }
     }
 
   // ** ToYaml
@@ -223,16 +225,18 @@ type LogEvent =
 
   static member FromYaml(yaml: LogEventYaml) : Either<IrisError,LogEvent> =
     either {
-      let id = Id yaml.Id
+      let! id = Id.TryParse yaml.Id
       let! level = LogLevel.TryParse yaml.LogLevel
       let! tier = Tier.TryParse yaml.Tier
-      return { Time     = yaml.Time
-               Thread   = yaml.Thread
-               Tier     = tier
-               Id       = id
-               Tag      = yaml.Tag
-               LogLevel = level
-               Message  = yaml.Message }
+      return {
+        Time     = yaml.Time
+        Thread   = yaml.Thread
+        Tier     = tier
+        Id       = id
+        Tag      = yaml.Tag
+        LogLevel = level
+        Message  = yaml.Message
+      }
     }
 
   #endif
@@ -269,7 +273,7 @@ module Logger =
   // ** _settings
 
   let mutable private _settings =
-    { Id = Id "<uninitialized>"
+    { Id = Id.Empty
       Level = LogLevel.Debug
       UseColors = true
       Tier = Tier.Service }

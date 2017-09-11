@@ -27,28 +27,28 @@ table ConfigChangeFB {
 //             |___/
 
 table ConfigurationFB {
-      Id:    string;
+      Id:    [ubyte];
       Index: int;
       Term : int;
       Members: [ RaftMemberFB ];
 }
 
 table JointConsensusFB {
-      Id:      string;
+      Id:      [ubyte];
       Index:   int;
       Term:    int;
       Changes: [ ConfigChangeFB ];
 }
 
 table LogEntryFB {
-      Id:    string;
+      Id:    [ubyte];
       Index: int;
       Term:  int;
       Data:  StateMachineFB;
 }
 
 table SnapshotFB {
-      Id:         string;
+      Id:         [ubyte];
       Index:      int;
       Term:       int;
       LastIndex:  int;
@@ -120,7 +120,7 @@ table AppendResponseFB {
 
 table InstallSnapshotFB {
       Term      : int;
-      LeaderId  : string;
+      LeaderId  : [ubyte];
       LastIndex : int;
       LastTerm  : int;
       Data      : [ LogFB ];
@@ -134,7 +134,7 @@ table InstallSnapshotFB {
 //                       |___/               |_|
 
 table EntryResponseFB {
-      Id: string;
+      Id: [ubyte];
       Term: int;
       Index: int;
 }
@@ -147,32 +147,32 @@ table EntryResponseFB {
 //                                |___/
 
 table RequestVoteFB {
-      MemberId:  string;
+      MemberId: [ubyte];
       Request: VoteRequestFB;
 }
 
 table RespondVoteFB {
-      MemberId:   string;
+      MemberId: [ubyte];
       Response: VoteResponseFB;
 }
 
 table RequestAppendEntriesFB {
-      MemberId:  string;
+      MemberId: [ubyte];
       Request: AppendEntriesFB;
 }
 
 table RespondAppendEntriesFB {
-      MemberId:   string;
+      MemberId: [ubyte];
       Response: AppendResponseFB;
 }
 
 table RequestInstallSnapshotFB {
-      MemberId:  string;
+      MemberId: [ubyte];
       Request: InstallSnapshotFB;
 }
 
 table RespondInstallSnapshotFB {
-      MemberId:   string;
+      MemberId: [ubyte];
       Response: AppendResponseFB;
 }
 
@@ -204,7 +204,7 @@ table ArrivederciFB {
 }
 
 table ErrorResponseFB {
-      MemberId: string;
+      MemberId: [ubyte];
       Error: ErrorFB;
 }
 

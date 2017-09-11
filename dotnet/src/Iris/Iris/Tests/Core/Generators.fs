@@ -100,8 +100,7 @@ module Generators =
   // |___\__,_|
 
   let idGen = gen {
-      let! value = Arb.generate<Guid>
-      return Id (string value)
+      return Id.Create()
     }
 
   //   ____       _     _
@@ -442,8 +441,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Online = online
           Dirty = false
@@ -475,8 +474,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -507,8 +506,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -535,8 +534,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -569,8 +568,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -625,8 +624,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           PinConfiguration = conf
           Tags = tgs
           Online = online
@@ -783,14 +782,14 @@ module Generators =
         { Id = id
           Name = nm
           Locked = locked
-          CueList = cl
+          CueListId = cl
           Selected = sel
-          Call = call
-          Next = next
-          Previous = prev
+          CallId = call
+          NextId = next
+          PreviousId = prev
           RemainingWait = rmw
-          LastCalled = lcd
-          LastCaller = lcr }
+          LastCalledId = lcd
+          LastCallerId = lcr }
     }
 
   //  ____  _        ____
@@ -823,7 +822,7 @@ module Generators =
         { Id = id
           Name = nm
           Path = path
-          Client = clnt
+          ClientId = clnt
           RefersTo = refersTo
           Pins = pins }
     }

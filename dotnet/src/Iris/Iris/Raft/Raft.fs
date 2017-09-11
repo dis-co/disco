@@ -1769,11 +1769,11 @@ module rec Raft =
           |> Error.asRaftError (tag "receiveEntry")
           |> failM
       elif isLeader state then
-        let str = sprintf "(id: %s) (idx: %d) (term: %d)"
-                      ((LogEntry.getId entry).ToString() )
-                      (Log.getIndex state.Log + 1<index>)
-                      state.CurrentTerm
-        do! debug "receiveEntry" str
+        do! state.CurrentTerm
+            |> sprintf "(id: %A) (idx: %d) (term: %d)"
+              (LogEntry.getId entry)
+              (Log.getIndex state.Log + 1<index>)
+            |> debug "receiveEntry"
 
         let! term = currentTermM ()
 

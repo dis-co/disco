@@ -654,25 +654,19 @@ module IrisService =
     | Right str ->
       try
         let yml = Yaml.deserialize<SnapshotYaml> str
-
+        let id = Id.Parse yml.Id
+        let snapshot = DataSnapshot state.Store.State
         let members =
           match Config.getActiveSite state.Store.State.Project.Config with
           | Some site -> site.Members |> Map.toArray |> Array.map snd
           | _ -> [| |]
-
-        Snapshot (Id yml.Id
-                 ,yml.Index
-                 ,yml.Term
-                 ,yml.LastIndex
-                 ,yml.LastTerm
-                 ,members
-                 ,DataSnapshot state.Store.State)
+        (id,yml.Index ,yml.Term ,yml.LastIndex ,yml.LastTerm ,members , snapshot)
+        |> Snapshot
         |> Some
-      with
-        | exn ->
-          exn.Message
-          |> Logger.err (tag "retrieveSnapshot")
-          None
+      with exn ->
+        exn.Message
+        |> Logger.err (tag "retrieveSnapshot")
+        None
 
     | Left error ->
       error
