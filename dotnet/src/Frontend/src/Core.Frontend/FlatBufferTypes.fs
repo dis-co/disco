@@ -505,7 +505,7 @@ type BoolPinFB =
   abstract Dirty: bool
   abstract Online: bool
   abstract PinConfiguration: PinConfigurationFB
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract TagsLength: int
   abstract Labels: index: int -> string
   abstract LabelsLength: int
@@ -533,7 +533,7 @@ type BoolPinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * byte[] -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * byte[] -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * byte[] -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * slices: bool array -> Offset<'a>
   abstract Create: unit -> BoolPinFB
@@ -563,7 +563,7 @@ type NumberPinFB =
   abstract Online: bool
   abstract VecSize: VecSizeFB
   abstract PinConfiguration: PinConfigurationFB
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract TagsLength: int
   abstract Labels: int -> string
   abstract LabelsLength: int
@@ -595,7 +595,7 @@ type NumberPinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte[] -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * id:byte[] -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * id:byte[] -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * double array -> Offset<'a>
   abstract Create: unit -> NumberPinFB
@@ -623,7 +623,7 @@ type BytePinFB =
   abstract Dirty: bool
   abstract Online: bool
   abstract TagsLength: int
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract Labels: int -> string
   abstract LabelsLength: int
   abstract Values: int -> string
@@ -649,7 +649,7 @@ type BytePinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> BytePinFB
@@ -672,7 +672,7 @@ type EnumPinFB =
   abstract ClientIdLength: int
   abstract VecSize: VecSizeFB
   abstract PinConfiguration: PinConfigurationFB
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract Persisted: bool
   abstract Dirty: bool
   abstract Online: bool
@@ -705,7 +705,7 @@ type EnumPinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreatePropertiesVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
@@ -730,7 +730,7 @@ type ColorPinFB =
   abstract VecSize: VecSizeFB
   abstract PinConfiguration: PinConfigurationFB
   abstract TagsLength: int
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract Persisted: bool
   abstract Dirty: bool
   abstract Online: bool
@@ -759,7 +759,7 @@ type ColorPinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<'a> array -> Offset<'a>
   abstract Create: unit -> ColorPinFB
@@ -788,7 +788,7 @@ type StringPinFB =
   abstract Persisted: bool
   abstract Dirty: bool
   abstract Online: bool
-  abstract Tags: int -> string
+  abstract Tags: int -> KeyValueFB
   abstract TagsLength: int
   abstract Labels: int -> string
   abstract LabelsLength: int
@@ -816,7 +816,7 @@ type StringPinFBConstructor =
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreatePinGroupIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateClientIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
+  abstract CreateTagsVector: builder: FlatBufferBuilder * Offset<KeyValueFB> array -> Offset<'a>
   abstract CreateLabelsVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract CreateValuesVector: builder: FlatBufferBuilder * Offset<string> array -> Offset<'a>
   abstract GetRootAsStringPinFB: buffer: ByteBuffer -> StringPinFB

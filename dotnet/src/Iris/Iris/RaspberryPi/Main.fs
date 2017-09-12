@@ -90,13 +90,13 @@ module Main =
           cts.Cancel()
           connection.Close() }
 
-  let private handleWith (pinid: Id) (updateWith: double -> unit) = function
+  let private handleWith (pinid: PinId) (updateWith: double -> unit) = function
     | ClientEvent.Registered ->
       Logger.info "RaspiExample" "successfully registered with server"
     | ClientEvent.UnRegistered ->
       Logger.info "RaspiExample" "successfully registered with server"
-    | ClientEvent.Update (UpdateSlices(NumberSlices(id, slices))) when id = pinid ->
-      try updateWith slices.[0] with | _ -> ()
+    /// | ClientEvent.Update (UpdateSlices(NumberSlices(id, None, slices))) when id = pinid ->
+    ///   try updateWith slices.[0] with | _ -> ()
     | _ -> ()
 
 
@@ -106,13 +106,13 @@ module Main =
     let parsed = parser.Parse args
 
     // create a new unique client id (must be a GUID)
-    let clientid = Id.Create()
+    let clientId = IrisId.Create()
 
     do Logger.initialize {
-      Id = clientId
+      MachineId = clientId
       Tier = Tier.Client
       UseColors = false
-      LogLevel = LogLevel.Debug
+      Level = LogLevel.Debug
     }
 
     let server =
@@ -126,19 +126,16 @@ module Main =
           else IPv4Address "127.0.0.1" }
 
     let client =
-      { Id = clientid
-        Name = "Raspi Client"
+      { Id = clientId
+        ServiceId = IrisId.Create()
+        Name = name "Raspi Client"
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IpAddress.Localhost
         Port = port 0us }
 
-    let pinid = Id.Create()
-
-    let groupid =
-      client.Port
-      |> sprintf "/%O/%O" client.IpAddress
-      |> Id
+    let pinid = IrisId.Create()
+    let groupid = IrisId.Create()
 
     let client = ApiClient.create server client
 
@@ -148,21 +145,23 @@ module Main =
       let obs = client.Subscribe (handleWith pinid gpio.Update)
 
       let info : Pin =
-        Pin.string (Id.Create()) "Board Info" groupid Array.empty [|
+        Pin.Source.string (IrisId.Create()) (name "Board Info") groupid clientId [|
           string Raspberry.Board.Current.Model
           Raspberry.Board.Current.ProcessorName
           string Raspberry.Board.Current.Firmware
         |]
 
       let pin : Pin =
-        Pin.number pinid "Led Frequency" groupid Array.empty [|
+        Pin.Sink.number pinid (name "Led Frequency") groupid clientId [|
           double defaultValue
         |]
 
       let group : PinGroup =
         { Id = groupid
           Name = name "Raspi PinGroup"
-          Client = clientid
+          ClientId = clientId
+          RefersTo = None
+          Path = None
           Pins =
             Map.ofList [
               (info.Id, info)

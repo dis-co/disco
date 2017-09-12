@@ -831,7 +831,7 @@ module Pin =
       (fun (result: Either<IrisError,int * Property array>) _ -> either {
           let! (i, arr) = result
           #if FABLE_COMPILER
-          let prop = (^a : (member Tags: int -> KeyValuefB) fb, i)
+          let prop = (^a : (member Tags: int -> KeyValueFB) fb, i)
           #else
           let! prop =
             let nullable = (^a : (member Tags: int -> Nullable<KeyValueFB>) fb,i)
@@ -865,7 +865,7 @@ module Pin =
           (fun (m: Either<IrisError, int * Property array>) _ -> either {
             let! (i, arr) = m
             #if FABLE_COMPILER
-            let prop = (^a : (member Properties: int -> KeyValuefB) fb, i)
+            let prop = (^a : (member Properties: int -> KeyValueFB) fb, i)
             #else
             let! prop =
               let nullable = (^a : (member Properties: int -> Nullable<KeyValueFB>) fb,i)
