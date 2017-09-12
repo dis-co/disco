@@ -32,14 +32,18 @@ let private displayNoProjectModal dispatch =
     #else
     let! projects = Lib.listProjects()
     #endif
-    let! projectInfo = makeModal dispatch (Modal.NoProject projects)
-    do!
-      match projectInfo with
-      | Some projectInfo ->
-        loadProject dispatch projectInfo
-      | None ->
-        makeModal dispatch Modal.CreateProject
-        |> Promise.bind Lib.createProject
+    if projects.Length > 0 then
+      let! projectInfo = makeModal dispatch (Modal.NoProject projects)
+      do!
+        match projectInfo with
+        | Some projectInfo ->
+          loadProject dispatch projectInfo
+        | None ->
+          makeModal dispatch Modal.CreateProject
+          |> Promise.bind Lib.createProject
+    else
+      do! makeModal dispatch Modal.CreateProject
+          |> Promise.bind Lib.createProject
   } |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
