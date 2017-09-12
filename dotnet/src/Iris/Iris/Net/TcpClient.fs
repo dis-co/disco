@@ -35,7 +35,7 @@ module rec TcpClient =
     inherit IDisposable
     abstract Disposed: bool
     abstract Status: ServiceStatus with get, set
-    abstract ClientId: Id
+    abstract ClientId: ClientId
     abstract ConnectionId: byte array
     abstract Socket: Socket
     abstract Stream: NetworkStream

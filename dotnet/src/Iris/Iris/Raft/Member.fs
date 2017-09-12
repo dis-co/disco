@@ -163,7 +163,7 @@ type RaftMember =
 
   static member FromYaml (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
-      let! id = Id.TryParse yaml.Id
+      let! id = IrisId.TryParse yaml.Id
       let! ip = IpAddress.TryParse yaml.IpAddr
       let! state = RaftMemberState.TryParse yaml.State
       return {
@@ -187,7 +187,7 @@ type RaftMember =
   // ** ToOffset
 
   member mem.ToOffset (builder: FlatBufferBuilder) =
-    let id = Id.encodeId<RaftMemberFB> builder mem.Id
+    let id = RaftMemberFB.CreateIdVector(builder,mem.Id.ToByteArray())
     let ip = string mem.IpAddr |> builder.CreateString
 
     let hostname =

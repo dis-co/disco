@@ -48,7 +48,7 @@ type ClientEvent =
 
 type IApiClient =
   inherit IDisposable
-  abstract Id: Id
+  abstract Id: ClientId
   abstract Start: unit -> Either<IrisError,unit>
   abstract Restart: server:IrisServer -> Either<IrisError,unit>
   abstract State: State

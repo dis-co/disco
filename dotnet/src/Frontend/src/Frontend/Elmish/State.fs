@@ -74,8 +74,8 @@ let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   if cueList.Groups.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
-  let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-  let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup = cueList.Groups.[max cueGroupIndex 0]
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex

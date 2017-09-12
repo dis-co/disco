@@ -59,10 +59,10 @@ type Role =
 // |___|_|  |_|___/\____|_|_|\___|_| |_|\__|
 
 type IrisClient =
-  { Id: Id
+  { Id: ClientId
     Name: Name
     Role: Role
-    ServiceId: Id
+    ServiceId: ServiceId
     Status: ServiceStatus
     IpAddress: IpAddress
     Port: Port }
@@ -70,8 +70,8 @@ type IrisClient =
   // ** ToOffset
 
   member client.ToOffset(builder: FlatBufferBuilder) =
-    let id = Id.encodeId<IrisClientFB> builder client.Id
-    let service = Id.encodeServiceId<IrisClientFB> builder client.ServiceId
+    let id = IrisClientFB.CreateIdVector(builder,client.Id.ToByteArray())
+    let service = IrisClientFB.CreateServiceIdVector(builder, client.ServiceId.ToByteArray())
     let name = Option.mapNull builder.CreateString (unwrap client.Name)
     let ip = builder.CreateString (string client.IpAddress)
     let role = client.Role.ToOffset(builder)

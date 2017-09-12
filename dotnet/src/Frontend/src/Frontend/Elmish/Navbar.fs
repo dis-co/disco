@@ -48,7 +48,7 @@ let onClick dispatch id _ =
         // Ask user to create or select a new config
         let! site = makeModal dispatch ProjectConfigModal (Some sites)
         // Try loading the project again with the site config
-        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
+        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
         err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
       | None -> ()
     } |> Promise.start

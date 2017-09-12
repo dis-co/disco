@@ -523,7 +523,7 @@ module Response =
 // ** TcpClientSettings
 
 type TcpClientSettings =
-  { ClientId: Id
+  { ClientId: ClientId
     PeerAddress: IpAddress
     PeerPort: Port
     Timeout: Timeout }
@@ -531,8 +531,8 @@ type TcpClientSettings =
 // ** TcpClientEvent
 
 type TcpClientEvent =
-  | Connected    of peerid:Id
-  | Disconnected of peerid:Id * IrisError
+  | Connected    of peerid:PeerId
+  | Disconnected of peerid:PeerId * IrisError
   | Request      of Request
   | Response     of Response
 
@@ -542,7 +542,7 @@ type ITcpClient =
   inherit IDisposable
   abstract Connect: unit -> unit
   abstract Disconnect: unit -> unit
-  abstract ClientId: Id
+  abstract ClientId: ClientId
   abstract Status: ServiceStatus
   abstract Request: Request -> unit
   abstract Respond: Response -> unit
@@ -559,7 +559,7 @@ type ITcpClient =
 // ** TcpServerSettings
 
 type TcpServerSettings =
-  { ServerId: Id
+  { ServerId: PeerId
     Listen: IpAddress
     Port: Port }
 
@@ -576,7 +576,7 @@ type TcpServerEvent =
 
 type ITcpServer =
   inherit IDisposable
-  abstract Id: Id
+  abstract Id: PeerId
   abstract Start: unit -> Either<IrisError,unit>
   abstract Subscribe: (TcpServerEvent -> unit) -> IDisposable
   abstract Request: client:Guid -> Request -> unit
@@ -585,7 +585,7 @@ type ITcpServer =
 // * PubSub
 
 type PubSubEvent =
-  | Request of peer:Id * data:byte array
+  | Request of peer:PeerId * data:byte array
 
 type IPubSub =
   inherit IDisposable

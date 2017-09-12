@@ -40,11 +40,11 @@ module ApiServer =
 
   [<NoComparison;NoEquality>]
   type private ServerState =
-    { Id: Id
+    { Id: ServiceId
       Status: ServiceStatus
       Server: ITcpServer
       PubSub: IPubSub
-      Clients: Map<Id,IrisClient>
+      Clients: Map<ClientId,IrisClient>
       Callbacks: IApiServerCallbacks
       Subscriptions: Subscriptions
       Disposables: IDisposable list
@@ -68,8 +68,8 @@ module ApiServer =
     | SetStatus       of status:ServiceStatus
     | AddClient       of client:IrisClient
     | RemoveClient    of client:IrisClient
-    | SetClientStatus of id:Id * status:ServiceStatus
-    | InstallSnapshot of id:Id
+    | SetClientStatus of id:ClientId * status:ServiceStatus
+    | InstallSnapshot of id:MemberId
     | Update          of origin:Origin * sm:StateMachine
     | ServerEvent     of ev:TcpServerEvent
 
@@ -79,7 +79,7 @@ module ApiServer =
 
   // ** requestInstallSnapshot
 
-  let private requestInstallSnapshot (state: ServerState) (client: Id) =
+  let private requestInstallSnapshot (state: ServerState) (client: ClientId) =
     state.Callbacks.PrepareSnapshot()
     |> ApiRequest.Snapshot
     |> Binary.encode
@@ -118,7 +118,7 @@ module ApiServer =
 
   // ** processSubscriptionEvent
 
-  let private processSubscriptionEvent (mem: Id) (agent: ApiAgent) = function
+  let private processSubscriptionEvent (mem: PeerId) (agent: ApiAgent) = function
     | PubSubEvent.Request(id, bytes) ->
       match Binary.decode bytes with
       | Right command ->
@@ -129,8 +129,8 @@ module ApiServer =
         // process). Hence, we look at the peer Id as supplied from the Sub socket, compare and
         // substitute if necessary. This goes in conjunction with only publishing logs on the Api that
         // are from that service.
-        | LogMsg log when log.Tier = Tier.Service && log.Id <> mem ->
-          Logger.append { log with Id = id }
+        | LogMsg log when log.Tier = Tier.Service && log.MachineId <> mem ->
+          Logger.append { log with MachineId = id }
 
         // Base case for logs:
         //
@@ -219,7 +219,7 @@ module ApiServer =
 
   // ** handleSetClientStatus
 
-  let private handleSetClientStatus (state: ServerState) (id: Id) (status: ServiceStatus) =
+  let private handleSetClientStatus (state: ServerState) (id: ClientId) (status: ServiceStatus) =
     match Map.tryFind id state.Clients with
     | Some client ->
       match client.Status, status with
@@ -236,7 +236,7 @@ module ApiServer =
 
   // ** handleInstallSnapshot
 
-  let private handleInstallSnapshot (state: ServerState) (id: Id) =
+  let private handleInstallSnapshot (state: ServerState) (id: PeerId) =
     match Map.tryFind id state.Clients with
     | Some client -> requestInstallSnapshot state client.Id
     | None -> ()
@@ -331,7 +331,7 @@ module ApiServer =
         |> state.Server.Respond
 
       | Right (Update sm) ->
-        let id = Id.FromGuid req.PeerId
+        let id = IrisId.FromGuid req.PeerId
         (Origin.Client id, sm)
         |> Msg.Update
         |> agent.Post
@@ -471,7 +471,7 @@ module ApiServer =
   // ** start
 
   let private start (mem: RaftMember)
-                    (projectId: Id)
+                    (projectId: ProjectId)
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
     either {
@@ -516,7 +516,7 @@ module ApiServer =
 
   // ** create
 
-  let create (mem: RaftMember) (projectId: Id) callbacks =
+  let create (mem: RaftMember) (projectId: ProjectId) callbacks =
     either {
       let cts = new CancellationTokenSource()
 
@@ -545,7 +545,7 @@ module ApiServer =
             member self.Publish (ev: IrisEvent) =
               if Service.isRunning store.State.Status then
                 match ev with
-                | IrisEvent.Append (_, LogMsg log) when log.Id <> mem.Id -> ()
+                | IrisEvent.Append (_, LogMsg log) when log.MachineId <> mem.Id -> ()
                 | IrisEvent.Append (_, cmd) ->
                   updateAllClients store.State cmd
                   publish store.State cmd agent

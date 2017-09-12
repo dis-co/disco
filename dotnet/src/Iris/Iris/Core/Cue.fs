@@ -57,7 +57,7 @@ type CueYaml() =
           yaml.Slices
         |> Either.map snd
 
-      let! id = Id.TryParse yaml.Id
+      let! id = IrisId.TryParse yaml.Id
 
       return {
         Id = id
@@ -72,7 +72,7 @@ type CueYaml() =
 
 [<StructuralEquality; StructuralComparison>]
 type Cue =
-  { Id:     Id
+  { Id:     CueId
     Name:   Name
     Slices: Slices array }
 
@@ -131,7 +131,7 @@ type Cue =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueFB> =
-    let id = Id.encodeId<CueFB> builder self.Id
+    let id = CueFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Slices
     let slices = CueFB.CreateSlicesVector(builder, sliceoffsets)

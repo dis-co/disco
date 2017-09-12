@@ -28,7 +28,7 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId:    Id
+  { MachineId:    MachineId
     HostName:     Name
     WorkSpace:    FilePath
     LogDirectory: FilePath
@@ -55,7 +55,7 @@ type IrisMachine =
     let workspace = machine.WorkSpace |> unwrap |> mapNull
     let logdir = machine.LogDirectory |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
-    let machineid = Id.encodeMachineId<IrisMachineFB> builder machine.MachineId
+    let machineid = IrisMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
     IrisMachineFB.StartIrisMachineFB(builder)
     IrisMachineFB.AddMachineId(builder, machineid)
@@ -95,7 +95,7 @@ type IrisMachine =
 
   static member Default
     with get () =
-      { MachineId    = Id.Create()
+      { MachineId    = IrisId.Create()
         HostName     = name "<empty>"
         #if FABLE_COMPILER
         WorkSpace    = filepath "/dev/null"
@@ -123,16 +123,11 @@ module MachineStatus =
   [<Literal>]
   let BUSY = "busy"
 
-  // ** encodeProjectId
-
-  let encodeProjectId builder (id: Id) =
-    Id.encodeProjectId<MachineStatusFB> builder id
-
   // ** MachineStatus
 
   type MachineStatus =
     | Idle
-    | Busy of ProjectId:Id * ProjectName:Name
+    | Busy of ProjectId:ProjectId * ProjectName:Name
 
     // *** ToString
 
@@ -153,7 +148,7 @@ module MachineStatus =
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.IdleFB)
         MachineStatusFB.EndMachineStatusFB(builder)
       | Busy (id, name) ->
-        let idoff = encodeProjectId builder id
+        let idoff = MachineStatusFB.CreateProjectIdVector(builder,id.ToByteArray())
         let nameoff = name |> unwrap |> mapNull builder
         MachineStatusFB.StartMachineStatusFB(builder)
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
@@ -273,7 +268,7 @@ module MachineConfig =
     either {
       let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
-      let! id = Id.TryParse yml.MachineId
+      let! id = IrisId.TryParse yml.MachineId
       return
         { MachineId    = id
           HostName     = name hostname
@@ -321,7 +316,7 @@ module MachineConfig =
 
     let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
 
-    { MachineId    = Id.Create()
+    { MachineId    = IrisId.Create()
       HostName     = name hostname
       WorkSpace    = workspace
       LogDirectory = workspace </> filepath "log"

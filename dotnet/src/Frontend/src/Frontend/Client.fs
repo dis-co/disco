@@ -44,7 +44,7 @@ type ClientContext private () =
     #else
     None
     #endif
-  let mutable session : Id option = None
+  let mutable session : SessionId option = None
   let mutable serviceInfo: ServiceInfo option = None
   let mutable worker : SharedWorker<string> option = None
   let ctrls = Dictionary<Guid, IObserver<ClientMessage<State>>>()
@@ -132,9 +132,9 @@ type ClientContext private () =
   member self.HandleClientMessage (data : ClientMessage<State>) : unit =
     match data with
     // initialize this client session variable
-    | ClientMessage.Initialized(Id id as token) ->
+    | ClientMessage.Initialized(token) ->
       session <- Some(token)
-      printfn "Initialized with Session: %s" id // TODO: Log
+      printfn "Initialized with Session: %A" token // TODO: Log
 
     // close this clients session variable
     | ClientMessage.Closed(token) ->
@@ -193,4 +193,3 @@ type ClientContext private () =
       ClientMessage.Close(self.Session)
       |> toJson
       |> self.Worker.Port.PostMessage
-

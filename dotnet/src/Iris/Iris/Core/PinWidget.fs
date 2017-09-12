@@ -39,8 +39,8 @@ type PinWidgetYaml() =
 
   member yml.ToPinWidget() =
     either {
-      let! id = Id.TryParse yml.Id
-      let! widget = Id.TryParse yml.WidgetType
+      let! id = IrisId.TryParse yml.Id
+      let! widget = IrisId.TryParse yml.WidgetType
       return {
         Id = id
         Name = name yml.Name
@@ -53,9 +53,9 @@ type PinWidgetYaml() =
 // * PinWidget
 
 type PinWidget =
-  { Id: Id
+  { Id: WidgetId
     Name: Name
-    WidgetType: Id }
+    WidgetType: WidgetTypeId }
 
   // ** ToYam
 
@@ -98,9 +98,9 @@ type PinWidget =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinWidgetFB> =
-    let id = Id.encodeId<PinWidgetFB> builder self.Id
+    let id = PinWidgetFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let widgetType = Id.encodeWidgetType<PinWidgetFB> builder self.WidgetType
+    let widgetType = PinWidgetFB.CreateWidgetTypeVector(builder,self.WidgetType.ToByteArray())
     PinWidgetFB.StartPinWidgetFB(builder)
     PinWidgetFB.AddId(builder, id)
     Option.iter (fun value -> PinWidgetFB.AddName(builder,value)) name
@@ -177,8 +177,8 @@ module PinWidget =
 
   // ** create
 
-  let create (widget: Id) (widgetName: Name) =
-    { Id = Id.Create()
+  let create (widget: WidgetTypeId) (widgetName: Name) =
+    { Id = IrisId.Create()
       Name = widgetName
       WidgetType = widget }
 

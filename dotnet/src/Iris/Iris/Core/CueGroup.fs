@@ -45,7 +45,7 @@ type CueGroupYaml() =
 
   member yaml.ToCueGroup() =
     either {
-      let! id = Id.TryParse yaml.Id
+      let! id = IrisId.TryParse yaml.Id
       let! cues = Either.bindArray Yaml.fromYaml yaml.CueRefs
       return {
         Id = id
@@ -60,7 +60,7 @@ type CueGroupYaml() =
 
 [<StructuralEquality; StructuralComparison>]
 type CueGroup =
-  { Id:      Id
+  { Id:      CueGroupId
     Name:    Name
     CueRefs: CueReference array }
 
@@ -92,7 +92,7 @@ type CueGroup =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueGroupFB> =
-    let id = Id.encodeId<CueGroupFB> builder self.Id
+    let id = CueGroupFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let cueoffsets = Array.map (Binary.toOffset builder) self.CueRefs
     let cuesvec = CueGroupFB.CreateCueRefsVector(builder, cueoffsets)

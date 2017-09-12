@@ -52,13 +52,13 @@ type SessionYaml(id, ip, ua) as self =
 // |____/ \___||___/___/_|\___/|_| |_|
 
 type Session =
-  { Id:        Id
+  { Id:        SessionId
     IpAddress: IpAddress
     UserAgent: UserAgent }
 
   // ** Empty
 
-  static member Empty(id: Id) =
+  static member Empty(id: SessionId) =
     { Id = id
       IpAddress = IPv4Address "0.0.0.0"
       UserAgent = "" }
@@ -93,7 +93,7 @@ type Session =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let session = Id.encodeId<SessionFB> builder self.Id
+    let session = SessionFB.CreateIdVector(builder,self.Id.ToByteArray())
     let ip = self.IpAddress |> string |> builder.CreateString
     let ua = self.UserAgent |> Option.mapNull builder.CreateString
     SessionFB.StartSessionFB(builder)
@@ -127,7 +127,7 @@ type Session =
   static member FromYaml (yml: SessionYaml) =
     either {
       let! ip = IpAddress.TryParse yml.IpAddress
-      let! id = Id.TryParse yml.Id
+      let! id = IrisId.TryParse yml.Id
       return {
         Id = id
         IpAddress = ip

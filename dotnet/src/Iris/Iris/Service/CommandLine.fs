@@ -301,7 +301,7 @@ module CommandLine =
       let termSupportsColors = Console.isColorTerm()
 
       do Logger.initialize {
-        Id = machine.MachineId
+        MachineId = machine.MachineId
         Tier = Tier.Service
         UseColors = termSupportsColors
         Level = LogLevel.Debug
@@ -473,7 +473,7 @@ module CommandLine =
     let mutable id = None
     while Option.isNone id do
       let str = readString field
-      match Id.TryParse str with
+      match IrisId.TryParse str with
       | Right parsed -> id <- Some parsed
       | Left _ -> ()
     Option.get id
@@ -504,7 +504,7 @@ module CommandLine =
       if password1 = password2 then
         let hash, salt = Crypto.hash password1
         let user =
-          { Id        = Id.Create()
+          { Id        = IrisId.Create()
             UserName  = name username
             FirstName = name firstname
             LastName  = name lastname

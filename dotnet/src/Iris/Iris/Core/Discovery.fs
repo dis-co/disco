@@ -141,7 +141,7 @@ type ExposedService =
 // * DiscoverableService
 
 type DiscoverableService =
-  { Id: Id
+  { Id: ServiceId
     WebPort: Port
     Status: MachineStatus
     Services: ExposedService array
@@ -150,7 +150,7 @@ type DiscoverableService =
 // * DiscoveredService
 
 type DiscoveredService =
-  { Id: Id
+  { Id: ServiceId
     Name: string
     FullName: string
     HostName: string
@@ -165,7 +165,7 @@ type DiscoveredService =
   // ** ToOffset
 
   member service.ToOffset(builder: FlatBufferBuilder) =
-    let id = Id.encodeId<DiscoveredServiceFB> builder service.Id
+    let id = DiscoveredServiceFB.CreateIdVector(builder,service.Id.ToByteArray())
     let name = Option.mapNull builder.CreateString service.Name
     let fullname = Option.mapNull builder.CreateString service.FullName
     let hostname = Option.mapNull builder.CreateString service.HostName
@@ -379,16 +379,16 @@ module Discovery =
 
   // ** createId
 
-  let private createId (id: Id) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
+  let private createId (id: IrisId) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
     /// sprintf "%s%s%s%d" (string id) (string tipe) (string ip) port
     /// |> Encoding.ASCII.GetBytes
     /// |> Crypto.sha1sum
     /// |> unwrap
-    Id.Create()
+    IrisId.Create()
 
   // ** serviceName
 
-  let private serviceName (id: Id) =
+  let private serviceName (id: IrisId) =
     String.Format("{0} [{1}]", Constants.ZEROCONF_SERVICE_NAME, string id)
 
   // ** (|Machine|_|)
@@ -438,7 +438,7 @@ module Discovery =
   let (|ServiceId|_|) (str: string) =
     let m = Regex.Match(str, "^.*\[(.*)\]$")
     if m.Success then
-      m.Groups.[1].Value |> Id.Parse |> Some
+      m.Groups.[1].Value |> IrisId.Parse |> Some
     else None
 
   // ** parseFieldWith
@@ -452,7 +452,7 @@ module Discovery =
 
   let private parseMachine (txt: ITxtRecord) =
     match parseFieldWith (|Machine|_|) txt with
-    | Some id -> id |> Id.Parse |> Either.succeed
+    | Some id -> id |> IrisId.Parse |> Either.succeed
     | _ ->
       "Could not find machine id in metatdata"
       |> Error.asParseError (tag "parseMachine")
@@ -480,7 +480,7 @@ module Discovery =
     | Some MachineStatus.IDLE, _, _ -> Right Idle
     | Some MachineStatus.BUSY, Some id, Some parsed
       when not (isNull id) && not (isNull parsed) ->
-      Busy (Id.Parse id, name parsed) |> Either.succeed
+      Busy (IrisId.Parse id, name parsed) |> Either.succeed
     | _, _, _ ->
       "Failed to parse Machine status: field(s) missing or null"
       |> Error.asParseError (tag "parseStatus")

@@ -48,9 +48,9 @@ type CueReferenceYaml() =
   // ** ToCueReference
 
   member yaml.ToCueReference() =
-    either {
-      let! id = Id.TryParse yaml.Id
-      let! cueId = Id.TryParse yaml.CueId
+     either {
+      let! id = IrisId.TryParse yaml.Id
+      let! cueId = IrisId.TryParse yaml.CueId
       return {
         Id          = id
         CueId       = cueId
@@ -66,8 +66,8 @@ type CueReferenceYaml() =
 
 [<StructuralEquality; StructuralComparison>]
 type CueReference =
-  { Id:         Id
-    CueId:      Id
+  { Id:         CueRefId
+    CueId:      CueId
     AutoFollow: int
     Duration:   int
     Prewait:    int
@@ -99,8 +99,8 @@ type CueReference =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueReferenceFB> =
-    let id = Id.encodeId<CueReferenceFB> builder self.Id
-    let cueId = Id.encodeCueId<CueReferenceFB> builder self.CueId
+    let id = CueReferenceFB.CreateIdVector(builder,self.Id.ToByteArray())
+    let cueId = CueReferenceFB.CreateCueIdVector(builder,self.CueId.ToByteArray())
     CueReferenceFB.StartCueReferenceFB(builder)
     CueReferenceFB.AddId(builder, id)
     CueReferenceFB.AddCueId(builder, cueId)

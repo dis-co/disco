@@ -47,7 +47,7 @@ type RaftState =
 ///  - `Term`  - the entry's term
 ///  - `Index` - the entry's index in the log
 type EntryResponse =
-  {  Id    : Id
+  {  Id    : LogId
      Term  : Term
      Index : Index }
 
@@ -59,7 +59,7 @@ type EntryResponse =
       self.Index
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = Id.encodeId<EntryResponseFB> builder self.Id
+    let id = EntryResponseFB.CreateIdVector(builder,self.Id.ToByteArray())
     EntryResponseFB.StartEntryResponseFB(builder)
     EntryResponseFB.AddId(builder, id)
     EntryResponseFB.AddTerm(builder, int self.Term)
@@ -368,7 +368,7 @@ type InstallSnapshot =
   // ** ToOffset
   member self.ToOffset (builder: FlatBufferBuilder) =
     let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
-    let leaderid = Id.encodeLeaderId<InstallSnapshotFB> builder self.LeaderId
+    let leaderid = InstallSnapshotFB.CreateLeaderIdVector(builder,self.LeaderId.ToByteArray())
     InstallSnapshotFB.StartInstallSnapshotFB(builder)
     InstallSnapshotFB.AddTerm(builder, int self.Term)
     InstallSnapshotFB.AddLeaderId(builder, leaderid)
@@ -603,17 +603,17 @@ ConfigChangeEntry = %s
 
   static member FromYaml (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
     either {
-      let! id = Id.TryParse yaml.Member
+      let! id = IrisId.TryParse yaml.Member
 
       let! leader =
         if isNull yaml.Leader
         then Right None
-        else Id.TryParse yaml.Leader |> Either.map Some
+        else IrisId.TryParse yaml.Leader |> Either.map Some
 
       let! votedfor =
         if isNull yaml.VotedFor
         then Right None
-        else Id.TryParse yaml.VotedFor |> Either.map Some
+        else IrisId.TryParse yaml.VotedFor |> Either.map Some
 
       return {
         Member            = Member.create id

@@ -1,123 +1,33 @@
-namespace rec Iris.Core
+namespace Iris.Core
 
 // * Imports
 
 open System
+open System.Text.RegularExpressions
 
 #if FABLE_COMPILER
 
 open Fable.Core
 open Fable.Core.JsInterop
-open System.Text.RegularExpressions
+open Iris.Core.FlatBuffers
+open Iris.Web.Core.FlatBufferTypes
 
-// * Date
+#else
 
-//  __  __       _   _
-// |  \/  | __ _| |_| |__
-// | |\/| |/ _` | __| '_ \
-// | |  | | (_| | |_| | | |
-// |_|  |_|\__,_|\__|_| |_|
-
-[<AutoOpen>]
-module Date =
-
-  [<Emit("new Date())")>]
-  type JsDate() =
-
-    [<Emit("$0.getTime()")>]
-    member __.GetTime
-      with get () : int = failwith "ONLY IN JS"
-
-[<RequireQualifiedAccess>]
-module Math =
-
-  [<Emit("Math.random()")>]
-  let random _ : int = failwith "ONLY IN JS"
-
-  [<Emit("Math.floor($0)")>]
-  let floor (_: float) : int = failwith "ONLY IN JS"
-
-// * Replacements (Fable)
-
-//  _____  _  _
-// |  ___|| || |_
-// | |_ |_  ..  _|
-// |  _||_      _|
-// |_|    |_||_|
-
-[<AutoOpen>]
-module Replacements =
-
-  // * uint8
-
-  [<Emit("return $0")>]
-  let uint8 (_: 't) : uint8 = failwith "ONLY IN JS"
-
-  // * sizeof
-
-  [<Emit("return 0")>]
-  let sizeof<'t> : int = failwith "ONLY IN JS"
-
-  // * encodeBase16
-
-  [<Emit("($0).toString(16)")>]
-  let inline encodeBase16 (_: ^a) : string = failwith "ONLY IN JS"
-
-  // * charCodeAt
-
-  [<Emit("($0).charCodeAt($1)")>]
-  let charCodeAt (_: string) (_: int) = failwith "ONLY IN JS"
-
-  // * substr
-
-  [<Emit("($1).substring($0)")>]
-  let substr (_: int) (_: string) : string = failwith "ONLY IN JS"
-
-// * JsUtilities (Fable)
-
-[<AutoOpen>]
-module JsUtilities =
-
-  // ** hashCode
-
-  let hashCode (str: string) : int =
-    let mutable hash = 0
-    for n in  0 .. str.Length - 1 do
-      let code = charCodeAt str n
-      hash <- ((hash <<< 5) - hash) + code
-      hash <- hash ||| 0
-    hash
-
-  // ** mkGuid
-
-  let mkGuid _ =
-    let s4 _ =
-      float ((1 + Math.random()) * 65536)
-      |> Math.floor
-      |> encodeBase16
-      |> substr 1
-
-    [| for _ in 0 .. 3 do yield s4() |]
-    |> Array.fold (fun m str -> m + "-" + str) (s4())
-
+open FlatBuffers
+open Iris.Serialization
 
 #endif
 
-// * Id
+// * IrisId<'Measure>
 
-//    _   _ _____ _____
-//   | \ | | ____|_   _|
-//   |  \| |  _|   | |
-//  _| |\  | |___  | |
-// (_)_| \_|_____| |_|
+/// [<MeasureAnnotatedAbbreviation>]
+/// type IrisId<[<Measure>] 'Measure> = IrisId
 
-open System.Text.RegularExpressions
+// * IrisId
 
-[<MeasureAnnotatedAbbreviation>]
-type Id<[<Measure>] 'Measure> = Id
-
-[<Struct>]
-type Id private (guid: Guid) =
+[<Struct;CustomComparison;CustomEquality>]
+type IrisId private (guid: Guid) =
 
   // ** toString
 
@@ -143,15 +53,15 @@ type Id private (guid: Guid) =
 
   // ** Parse
 
-  static member Parse (str: string) = Id (Guid.Parse str)
+  static member Parse (str: string) = IrisId (Guid.Parse str)
 
   // ** TryParse
 
   static member TryParse (str: string) =
-    try Id.Parse str |> Either.succeed
+    try IrisId.Parse str |> Either.succeed
     with exn ->
       exn.Message
-      |> Error.asParseError "Id"
+      |> Error.asParseError "IrisId"
       |> Either.fail
 
   // ** FromGuid
@@ -161,7 +71,7 @@ type Id private (guid: Guid) =
   // ** FromGuid
 
   static member FromGuid(guid) =
-    Id(guid)
+    IrisId(guid)
 
   // ** ToByteArray
 
@@ -171,121 +81,56 @@ type Id private (guid: Guid) =
   // ** FromByteArray
 
   static member FromByteArray(bytes: byte array) =
-    Id(Guid bytes)
+    IrisId(Guid bytes)
 
   // ** Create
 
   /// Create a new Guid.
-  static member Create() = System.Guid.NewGuid() |> Id
+  static member Create() = System.Guid.NewGuid() |> IrisId
 
   // ** Empty
 
-  static member Empty = Id(Guid.Empty)
+  static member Empty = IrisId(Guid.Empty)
 
   // ** IsUoM
 
-  static member IsUoM(_ : Id, _ : Id<'Measure>) = ()
+  /// static member IsUoM(_ : IrisId, _ : IrisId<'Measure>) = ()
+
+  // ** GetHashCode
+
+  override self.GetHashCode() = guid.GetHashCode()
+
+  // ** Equals
+
+  override self.Equals(o: obj) =
+    match o with
+    | :? IrisId as id -> (self :> System.IEquatable<IrisId>).Equals id
+    | _ -> false
+
+  // ** IEquatable.Equals
+
+  interface System.IEquatable<IrisId> with
+    member self.Equals(other: IrisId) =
+      guid = other.ToGuid()
+
+  // ** IComparable.CompareTo
+
+  interface System.IComparable with
+    member me.CompareTo(o: obj) =
+      match o with
+      | :? IrisId as id -> compare guid (id.ToGuid())
+      | _ -> 0
 
 // * Id module
 
 module Id =
-  open FlatBuffers
-  open Iris.Serialization
 
-  let inline encodeSource< ^t when ^t : (static member CreateSourceVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                         (builder: FlatBufferBuilder)
-                         (id: Id) =
-    (^t : (static member CreateSourceVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeActiveSite< ^t when ^t : (static member CreateActiveSiteVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                             (builder: FlatBufferBuilder)
-                             (id: Id) =
-    (^t : (static member CreateActiveSiteVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeId< ^t when ^t : (static member CreateIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                     (builder: FlatBufferBuilder)
-                     (id: Id) =
-    (^t : (static member CreateIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeCueId< ^t when ^t : (static member CreateCueIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                        (builder: FlatBufferBuilder)
-                        (id: Id) =
-    (^t : (static member CreateCueIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeClientId< ^t when ^t : (static member CreateClientIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                           (builder: FlatBufferBuilder)
-                           (id: Id) =
-    (^t : (static member CreateClientIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeServiceId< ^t when ^t : (static member CreateServiceIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                            (builder: FlatBufferBuilder)
-                            (id: Id) =
-    (^t : (static member CreateServiceIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeProjectId< ^t when ^t : (static member CreateProjectIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                            (builder: FlatBufferBuilder)
-                            (id: Id) =
-    (^t : (static member CreateProjectIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeMachineId< ^t when ^t : (static member CreateMachineIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                            (builder: FlatBufferBuilder)
-                            (id: Id) =
-    (^t : (static member CreateMachineIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodePinGroupId< ^t when ^t : (static member CreatePinGroupIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                             (builder: FlatBufferBuilder)
-                             (id: Id) =
-    (^t : (static member CreatePinGroupIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodePinId< ^t when ^t : (static member CreatePinIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                        (builder: FlatBufferBuilder)
-                        (id: Id) =
-    (^t : (static member CreatePinIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeCallId< ^t when ^t : (static member CreateCallIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                        (builder: FlatBufferBuilder)
-                        (id: Id) =
-    (^t : (static member CreateCallIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeNextId< ^t when ^t : (static member CreateNextIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                        (builder: FlatBufferBuilder)
-                        (id: Id) =
-    (^t : (static member CreateNextIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodePreviousId< ^t when ^t : (static member CreatePreviousIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                             (builder: FlatBufferBuilder)
-                             (id: Id) =
-    (^t : (static member CreatePreviousIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeLastCalledId< ^t when ^t : (static member CreateLastCalledIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                               (builder: FlatBufferBuilder)
-                               (id: Id) =
-    (^t : (static member CreateLastCalledIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeLastCallerId< ^t when ^t : (static member CreateLastCallerIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                               (builder: FlatBufferBuilder)
-                               (id: Id) =
-    (^t : (static member CreateLastCallerIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeWidgetType< ^t when ^t : (static member CreateWidgetTypeVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                             (builder: FlatBufferBuilder)
-                             (id: Id) =
-    (^t : (static member CreateWidgetTypeVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeLeaderId< ^t when ^t : (static member CreateLeaderIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                           (builder: FlatBufferBuilder)
-                           (id: Id) =
-    (^t : (static member CreateLeaderIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
-
-  let inline encodeMemberId< ^t when ^t : (static member CreateMemberIdVector: FlatBufferBuilder * byte[] -> VectorOffset)>
-                           (builder: FlatBufferBuilder)
-                           (id: Id) =
-    (^t : (static member CreateMemberIdVector: FlatBufferBuilder * byte[] -> VectorOffset) builder, id.ToByteArray())
+  let create() = IrisId.Create()
 
   let decodeWith (t: int -> byte) =
     [| 0 .. 15 |]
     |> Array.map t
-    |> Id.FromByteArray
+    |> IrisId.FromByteArray
     |> Either.succeed
 
   let inline decodeId (fb: ^t) =

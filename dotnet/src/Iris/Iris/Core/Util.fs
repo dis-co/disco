@@ -702,10 +702,10 @@ module Guid =
 
   // ** ofId
 
-  let ofId (id: Id) =
+  let ofId (id: IrisId) =
     id.ToGuid()
 
   // ** toId
 
   let toId (guid: Guid) =
-    Id.FromGuid guid
+    IrisId.FromGuid guid

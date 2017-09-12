@@ -40,12 +40,12 @@ type PinMappingYaml() =
 
   member yml.ToPinMapping() =
     either {
-      let! id = Id.TryParse yml.Id
-      let! source = Id.TryParse yml.Source
+      let! id = IrisId.TryParse yml.Id
+      let! source = IrisId.TryParse yml.Source
       return {
         Id     = id
         Source = source
-        Sinks  = Array.map Id.Parse yml.Sinks |> Set
+        Sinks  = Array.map IrisId.Parse yml.Sinks |> Set
       }
     }
 
@@ -54,9 +54,9 @@ type PinMappingYaml() =
 // * PinMapping
 
 type PinMapping =
-  { Id: Id
-    Source: Id
-    Sinks: Set<Id> }
+  { Id: PinMappingId
+    Source: PinId
+    Sinks: Set<PinId> }
 
   // ** ToYaml
 
@@ -85,7 +85,7 @@ type PinMapping =
         let! source = Id.decodeSource fb
         let sinks =
           [| 0 .. fb.SinksLength - 1 |]
-          |> Array.map (fb.Sinks >> Id.Parse)
+          |> Array.map (fb.Sinks >> IrisId.Parse)
           |> Set
         return {
           Id = id
@@ -102,8 +102,8 @@ type PinMapping =
   // ** ToOffset
 
   member mapping.ToOffset(builder: FlatBufferBuilder) =
-    let id = Id.encodeId<PinMappingFB> builder mapping.Id
-    let source = Id.encodeSource<PinMappingFB> builder mapping.Source
+    let id = PinMappingFB.CreateIdVector(builder,mapping.Id.ToByteArray())
+    let source = PinMappingFB.CreateSourceVector(builder,mapping.Source.ToByteArray())
     let sinks =
       mapping.Sinks
       |> Array.ofSeq

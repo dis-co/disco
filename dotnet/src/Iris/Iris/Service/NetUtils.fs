@@ -42,7 +42,7 @@ module NetUtils =
   /// - appState: current TVar<AppState>
   ///
   /// Returns: Req option
-  let getSocket (mem: RaftMember) (connections: Map<Id,ITcpClient>) : ITcpClient option =
+  let getSocket (mem: RaftMember) (connections: Map<PeerId,ITcpClient>) : ITcpClient option =
     Map.tryFind mem.Id connections
 
   // ** disposeSocket
@@ -56,7 +56,7 @@ module NetUtils =
   /// - appState: RaftAppContext TVar
   ///
   /// Returns: unit
-  let disposeSocket (mem: RaftMember) (connections: Map<Id,ITcpClient>) =
+  let disposeSocket (mem: RaftMember) (connections: Map<PeerId,ITcpClient>) =
     match Map.tryFind mem.Id connections with
     | Some client ->
       dispose client

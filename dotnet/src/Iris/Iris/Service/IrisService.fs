@@ -70,7 +70,7 @@ module IrisService =
       ClockService  : IClock
       FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
-      BufferedCues  : ConcurrentDictionary<(Frame * Id),Cue>
+      BufferedCues  : ConcurrentDictionary<(Frame * CueId),Cue>
       Disposables   : IDisposable array }
 
     // *** Dispose
@@ -218,7 +218,7 @@ module IrisService =
     /// time there is an UpdateSlice command.
     let mutable grouped =
       Map.fold
-        (fun (out: Map<Id,PinMapping list>) _ (mapping: PinMapping) ->
+        (fun (out: Map<PinMappingId,PinMapping list>) _ (mapping: PinMapping) ->
           match Map.tryFind mapping.Source out with
           | Some lst -> Map.add mapping.Source (mapping :: lst) out
           | None -> Map.add mapping.Source [mapping] out)
@@ -654,7 +654,7 @@ module IrisService =
     | Right str ->
       try
         let yml = Yaml.deserialize<SnapshotYaml> str
-        let id = Id.Parse yml.Id
+        let id = IrisId.Parse yml.Id
         let snapshot = DataSnapshot state.Store.State
         let members =
           match Config.getActiveSite state.Store.State.Project.Config with
@@ -898,7 +898,7 @@ module IrisService =
 
   // ** removeMember
 
-  let private removeMember (store: IAgentStore<IrisState>) (id: Id) =
+  let private removeMember (store: IAgentStore<IrisState>) (id: MemberId) =
     store.State.RaftServer.Raft.Peers
     |> Map.tryFind id
     |> Option.iter (RemoveMember >> IrisEvent.appendService >> store.State.Dispatcher.Dispatch)

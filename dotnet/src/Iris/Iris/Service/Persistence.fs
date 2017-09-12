@@ -334,9 +334,9 @@ module Persistence =
 
   // ** ensureRemotes
 
-  let ensureRemotes (leader: Id)
+  let ensureRemotes (leader: MemberId)
                     (project: IrisProject)
-                    (peers: Map<Id,RaftMember>)
+                    (peers: Map<MemberId,RaftMember>)
                     (repo: Repository) =
     peers
     |> Map.toArray

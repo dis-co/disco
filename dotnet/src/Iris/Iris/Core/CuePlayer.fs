@@ -63,11 +63,11 @@ type CuePlayerYaml() =
       let str2opt str =
         match str with
         | null -> None
-        | _    -> Some (Id.Parse str)
-      let! id = Id.TryParse yaml.Id
-      let! call = Id.TryParse yaml.CallId
-      let! next = Id.TryParse yaml.NextId
-      let! previous = Id.TryParse yaml.PreviousId
+        | _    -> Some (IrisId.Parse str)
+      let! id = IrisId.TryParse yaml.Id
+      let! call = IrisId.TryParse yaml.CallId
+      let! next = IrisId.TryParse yaml.NextId
+      let! previous = IrisId.TryParse yaml.PreviousId
       return {
         Id = id
         Name = name yaml.Name
@@ -88,29 +88,38 @@ type CuePlayerYaml() =
 // * CuePlayer
 
 type CuePlayer =
-  { Id: Id
+  { Id: PlayerId
     Name: Name
-    CueListId: Id option
-    CallId: Id                           // should be Bang pin type
-    NextId: Id                           // should be Bang pin type
-    PreviousId: Id                       // should be Bang pin type
+    CueListId: CueListId option
+    CallId: PinId                           // should be Bang pin type
+    NextId: PinId                           // should be Bang pin type
+    PreviousId: PinId                       // should be Bang pin type
     Locked: bool
     Selected: int<index>
     RemainingWait: int
-    LastCalledId: Id option
-    LastCallerId: Id option }
+    LastCalledId: PinId option
+    LastCallerId: PinId option }
 
   // ** ToOffset
 
   member player.ToOffset(builder: FlatBufferBuilder) =
-    let id = Id.encodeId<CuePlayerFB> builder player.Id
+    let id = CuePlayerFB.CreateIdVector(builder, player.Id.ToByteArray())
     let name = player.Name |> unwrap |> Option.mapNull builder.CreateString
-    let cuelist = Option.map (Id.encodeId<CuePlayerFB> builder) player.CueListId
-    let call = Id.encodeCallId<CuePlayerFB> builder player.CallId
-    let next = Id.encodeNextId<CuePlayerFB> builder player.NextId
-    let previous = Id.encodePreviousId<CuePlayerFB> builder player.PreviousId
-    let lastcalled = Option.map (Id.encodeLastCalledId<CuePlayerFB> builder) player.LastCalledId
-    let lastcaller = Option.map (Id.encodeLastCallerId<CuePlayerFB> builder) player.LastCallerId
+    let cuelist =
+      Option.map
+        (fun (clid:CueListId) -> CuePlayerFB.CreateCueListIdVector(builder,clid.ToByteArray()))
+        player.CueListId
+    let call = CuePlayerFB.CreateCallIdVector(builder,player.CallId.ToByteArray())
+    let next = CuePlayerFB.CreateNextIdVector(builder,player.NextId.ToByteArray())
+    let previous = CuePlayerFB.CreatePreviousIdVector(builder,player.PreviousId.ToByteArray())
+    let lastcalled =
+      Option.map
+        (fun (id:PinId) -> CuePlayerFB.CreateLastCalledIdVector(builder,id.ToByteArray()))
+        player.LastCalledId
+    let lastcaller =
+      Option.map
+        (fun (id:PinId) -> CuePlayerFB.CreateLastCallerIdVector(builder,id.ToByteArray()))
+        player.LastCallerId
     CuePlayerFB.StartCuePlayerFB(builder)
     CuePlayerFB.AddId(builder, id)
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
@@ -240,8 +249,8 @@ module CuePlayer =
 
   // ** create
 
-  let create (playerName: Name) (cuelist: Id option) =
-    let id = Id.Create()
+  let create (playerName: Name) (cuelist: CueListId option) =
+    let id = IrisId.Create()
     { Id            = id
       Name          = playerName
       Locked        = false

@@ -32,37 +32,37 @@ module RaftMsg =
   // ** createAppendEntriesFB
 
   let createAppendEntriesFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendEntries) =
-    let sid = Id.encodeMemberId<RequestAppendEntriesFB> builder nid
+    let sid = RequestAppendEntriesFB.CreateMemberIdVector(builder,nid.ToByteArray())
     RequestAppendEntriesFB.CreateRequestAppendEntriesFB(builder, sid, ar.ToOffset builder)
 
   // ** createAppendResponseFB
 
   let createAppendResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
-    let sid = Id.encodeMemberId<RespondAppendEntriesFB> builder nid
+    let sid = RespondAppendEntriesFB.CreateMemberIdVector(builder,nid.ToByteArray())
     RespondAppendEntriesFB.CreateRespondAppendEntriesFB(builder, sid, ar.ToOffset builder)
 
   // ** createRequestVoteFB
 
   let createRequestVoteFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteRequest) =
-    let sid = Id.encodeMemberId<RequestVoteFB> builder nid
+    let sid = RequestVoteFB.CreateMemberIdVector(builder,nid.ToByteArray())
     RequestVoteFB.CreateRequestVoteFB(builder, sid, vr.ToOffset builder)
 
   // ** createRequestVoteResponseFB
 
   let createRequestVoteResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (vr: VoteResponse) =
-    let sid = Id.encodeMemberId<RespondVoteFB> builder nid
+    let sid = RespondVoteFB.CreateMemberIdVector(builder, nid.ToByteArray())
     RespondVoteFB.CreateRespondVoteFB(builder, sid, vr.ToOffset builder)
 
   // ** createInstallSnapshotFB
 
   let createInstallSnapshotFB (builder: FlatBufferBuilder) (nid: MemberId) (is: InstallSnapshot) =
-    let sid = Id.encodeMemberId<RequestInstallSnapshotFB> builder nid
+    let sid = RequestInstallSnapshotFB.CreateMemberIdVector(builder,nid.ToByteArray())
     RequestInstallSnapshotFB.CreateRequestInstallSnapshotFB(builder, sid, is.ToOffset builder)
 
   // ** createSnapshotResponseFB
 
   let createSnapshotResponseFB (builder: FlatBufferBuilder) (nid: MemberId) (ar: AppendResponse) =
-    let sid = Id.encodeMemberId<RespondInstallSnapshotFB> builder nid
+    let sid = RespondInstallSnapshotFB.CreateMemberIdVector(builder,nid.ToByteArray())
     RespondInstallSnapshotFB.CreateRespondInstallSnapshotFB(builder, sid, ar.ToOffset builder)
 
   // ** createAppendEntryFB
@@ -300,7 +300,7 @@ type RaftResponse =
       |> RaftMsg.build builder RaftMsgTypeFB.RespondAppendEntryFB
 
     | ErrorResponse (id, err) ->
-      let nid = Id.encodeMemberId<ErrorResponseFB> builder id
+      let nid = ErrorResponseFB.CreateMemberIdVector(builder,id.ToByteArray())
       ErrorResponseFB.CreateErrorResponseFB(builder, nid, err.ToOffset builder)
       |> RaftMsg.build builder RaftMsgTypeFB.ErrorResponseFB
 

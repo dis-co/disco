@@ -20,7 +20,7 @@ module WebSocketServer =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,IWebSocketConnection * Session option>
+  type private Connections = ConcurrentDictionary<SessionId,IWebSocketConnection * Session option>
 
   // ** Subscriptions
 
@@ -32,13 +32,13 @@ module WebSocketServer =
 
   // ** getConnectionId
 
-  let private getConnectionId (socket: IWebSocketConnection) : Id =
-    Id.FromGuid socket.ConnectionInfo.Id
+  let private getConnectionId (socket: IWebSocketConnection) : SessionId =
+    IrisId.FromGuid socket.ConnectionInfo.Id
 
   // ** buildSession
 
   let private buildSession (connections: Connections)
-                           (socketId: Id)
+                           (socketId: SessionId)
                            (session: Session) =
     match connections.TryGetValue(socketId) with
     | true, (socket, _ as current) ->
@@ -76,7 +76,7 @@ module WebSocketServer =
   /// - msg: StateMachine command to send
   ///
   /// Returns: Either<IrisError,unit>
-  let private ucast (connections: Connections) (sid: Id) (msg: StateMachine) =
+  let private ucast (connections: Connections) (sid: SessionId) (msg: StateMachine) =
     match connections.TryGetValue(sid) with
     | true, (socket, _) ->
       try
@@ -139,11 +139,10 @@ module WebSocketServer =
   ///
   /// Returns: unit
   let private mcast (connections: Connections)
-                        (id: Id)
-                        (msg: StateMachine) :
-                        Either<IrisError list, unit> =
-
-    let sendAsync (id: Id) = async {
+                    (id: SessionId)
+                    (msg: StateMachine) :
+                    Either<IrisError list, unit> =
+    let sendAsync (id: SessionId) = async {
         let result = ucast connections id msg
         return result
       }
@@ -245,7 +244,7 @@ module WebSocketServer =
 
   // ** send
 
-  let send (id: Id) (cmd: StateMachine) (server: IWebSocketServer) =
+  let send (id: SessionId) (cmd: StateMachine) (server: IWebSocketServer) =
     server.Send id cmd
 
   // ** create
@@ -288,16 +287,16 @@ module WebSocketServer =
                   |> Logger.err (tag "Publish")
               | _ -> ()
 
-            member self.Send (id: Id) (cmd: StateMachine) =
+            member self.Send (id: SessionId) (cmd: StateMachine) =
               ucast connections id cmd
 
             member self.Broadcast (cmd: StateMachine) =
               bcast connections cmd
 
-            member self.Multicast (except: Id) (cmd: StateMachine) =
+            member self.Multicast (except: SessionId) (cmd: StateMachine) =
               mcast connections except cmd
 
-            member self.BuildSession (id: Id) (session: Session) =
+            member self.BuildSession (id: SessionId) (session: Session) =
               buildSession connections id session
 
             member self.Sessions

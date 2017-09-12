@@ -81,13 +81,6 @@ type AppCommand =
 
   // ** FromFB
 
-  //  ____  _
-  // | __ )(_)_ __   __ _ _ __ _   _
-  // |  _ \| | '_ \ / _` | '__| | | |
-  // | |_) | | | | | (_| | |  | |_| |
-  // |____/|_|_| |_|\__,_|_|   \__, |
-  //                           |___/
-
   static member FromFB (fb: StateMachineActionFB) =
 #if FABLE_COMPILER
     match fb with
@@ -135,15 +128,15 @@ type AppCommand =
 type State =
   { Project:            IrisProject
     PinGroups:          PinGroupMap
-    PinMappings:        Map<Id,PinMapping>
-    PinWidgets:         Map<Id,PinWidget>
-    Cues:               Map<Id,Cue>
-    CueLists:           Map<Id,CueList>
-    Sessions:           Map<Id,Session>
-    Users:              Map<Id,User>
-    Clients:            Map<Id,IrisClient>
-    CuePlayers:         Map<Id,CuePlayer>
-    DiscoveredServices: Map<Id,DiscoveredService> }
+    PinMappings:        Map<PinMappingId,PinMapping>
+    PinWidgets:         Map<WidgetId,PinWidget>
+    Cues:               Map<CueId,Cue>
+    CueLists:           Map<CueListId,CueList>
+    Sessions:           Map<SessionId,Session>
+    Users:              Map<UserId,User>
+    Clients:            Map<ClientId,IrisClient>
+    CuePlayers:         Map<PlayerId,CuePlayer>
+    DiscoveredServices: Map<ServiceId,DiscoveredService> }
 
   // ** Empty
 
@@ -327,7 +320,7 @@ type State =
       let! mappings =
         let arr = Array.zeroCreate fb.PinMappingsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, PinMapping>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<PinMappingId, PinMapping>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -355,7 +348,7 @@ type State =
       let! widgets =
         let arr = Array.zeroCreate fb.PinWidgetsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, PinWidget>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<WidgetId, PinWidget>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -383,7 +376,7 @@ type State =
       let! cues =
         let arr = Array.zeroCreate fb.CuesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, Cue>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<CueId, Cue>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -411,7 +404,7 @@ type State =
       let! cuelists =
         let arr = Array.zeroCreate fb.CueListsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, CueList>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<CueListId, CueList>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -439,7 +432,7 @@ type State =
       let! users =
         let arr = Array.zeroCreate fb.UsersLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, User>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<UserId, User>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -467,7 +460,7 @@ type State =
       let! sessions =
         let arr = Array.zeroCreate fb.SessionsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, Session>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<SessionId, Session>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -495,7 +488,7 @@ type State =
       let! clients =
         let arr = Array.zeroCreate fb.ClientsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, IrisClient>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<ClientId, IrisClient>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -523,7 +516,7 @@ type State =
       let! players =
         let arr = Array.zeroCreate fb.CuePlayersLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, CuePlayer>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<PlayerId, CuePlayer>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -551,7 +544,7 @@ type State =
       let! discoveredServices =
         let arr = Array.zeroCreate fb.DiscoveredServicesLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id, DiscoveredService>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<ServiceId, DiscoveredService>>) _ -> either {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -780,7 +773,7 @@ module State =
 
   // ** tryFindPin
 
-  let tryFindPin (id: Id) (state: State) =
+  let tryFindPin (id: PinId) (state: State) =
     PinGroupMap.findPin id state.PinGroups
 
   // ** tryFindPinGroup
@@ -1414,7 +1407,7 @@ module SlicesMap =
 
   // ** containsKey
 
-  let containsKey (map: SlicesMap) (key: Id) =
+  let containsKey (map: SlicesMap) (key: PinId) =
     map.Slices |> Map.containsKey key
 
   // ** isEmpty
@@ -1423,7 +1416,7 @@ module SlicesMap =
 
   // ** fold
 
-  let fold (folder: 'a -> Id -> Slices -> 'a) (state: 'a) (map: SlicesMap) =
+  let fold (folder: 'a -> PinId -> Slices -> 'a) (state: 'a) (map: SlicesMap) =
     Map.fold folder state map.Slices
 
   // ** keys

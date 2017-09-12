@@ -193,7 +193,7 @@ table LogEventFB {
      Time: uint;
      Thread: int;
      Tier: string;
-     Id: [ubyte];
+     MachineId: [ubyte];
      Tag: string;
      LogLevel: string;
      Message: string;

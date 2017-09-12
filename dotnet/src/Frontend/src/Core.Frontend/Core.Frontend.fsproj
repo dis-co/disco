@@ -12,6 +12,7 @@
     <Compile Include="../../../Iris/Iris/Core/Either.fs" />
     <Compile Include="../../../Iris/Iris/Core/Error.fs" />
     <Compile Include="../../../Iris/Iris/Core/Serialization.fs" />
+    <Compile Include="../../../Iris/Iris/Core/FableUtils.fs" />
     <Compile Include="../../../Iris/Iris/Core/Id.fs" />
     <Compile Include="../../../Iris/Iris/Core/Aliases.fs" />
     <Compile Include="../../../Iris/Iris/Core/Util.fs" />

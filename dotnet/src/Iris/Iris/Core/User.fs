@@ -59,7 +59,7 @@ type UserYaml() =
 
   member yaml.ToUser() =
     either {
-      let! id = Id.TryParse yaml.Id
+      let! id = IrisId.TryParse yaml.Id
       return {
         Id        = id
         UserName  = name yaml.UserName
@@ -85,7 +85,7 @@ type UserYaml() =
 
 [<CustomEquality;CustomComparison>]
 type User =
-  { Id:        Id
+  { Id:        UserId
     UserName:  Name
     FirstName: Name
     LastName:  Name
@@ -191,7 +191,7 @@ type User =
 
   static member Admin
     with get () =
-      { Id        = Id.Parse "cb558968-bd42-4de0-a671-18e2ec7cf580"
+      { Id        = IrisId.Parse "cb558968-bd42-4de0-a671-18e2ec7cf580"
         UserName  = name Constants.ADMIN_USER_NAME
         FirstName = name Constants.ADMIN_FIRST_NAME
         LastName  = name Constants.ADMIN_LAST_NAME
@@ -213,7 +213,7 @@ type User =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id        = Id.encodeId<UserFB> builder self.Id
+    let id        = UserFB.CreateIdVector(builder, self.Id.ToByteArray())
     let username  = self.UserName  |> unwrap |> Option.mapNull builder.CreateString
     let firstname = self.FirstName |> unwrap |> Option.mapNull builder.CreateString
     let lastname  = self.LastName  |> unwrap |> Option.mapNull builder.CreateString

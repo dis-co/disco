@@ -45,12 +45,12 @@ type PinGroupYaml() =
 
   member yml.ToPinGroup() =
     either {
-      let! id = Id.TryParse yml.Id
-      let! client = Id.TryParse yml.ClientId
+      let! id = IrisId.TryParse yml.Id
+      let! client = IrisId.TryParse yml.ClientId
 
       let! pins =
         Array.fold
-          (fun (m: Either<IrisError,Map<Id,Pin>>) pinyml -> either {
+          (fun (m: Either<IrisError,Map<PinId,Pin>>) pinyml -> either {
             let! pins = m
             let! (pin : Pin) = Yaml.fromYaml pinyml
             return Map.add pin.Id pin pins
@@ -102,11 +102,11 @@ type ReferencedValueYaml() =
   member yml.ToReferencedValue() =
     match yml.Type.ToLowerInvariant() with
     | "player" -> either {
-        let! id = Id.TryParse yml.Id
+        let! id = IrisId.TryParse yml.Id
         return ReferencedValue.Player id
       }
     | "widget" -> either {
-        let! id = Id.TryParse yml.Id
+        let! id = IrisId.TryParse yml.Id
         return ReferencedValue.Widget id
       }
     | other ->
@@ -121,8 +121,8 @@ type ReferencedValueYaml() =
 
 [<RequireQualifiedAccess>]
 type ReferencedValue =
-  | Player of Id
-  | Widget of Id
+  | Player of PlayerId
+  | Widget of WidgetId
 
   // ** Id
 
@@ -159,8 +159,8 @@ type ReferencedValue =
   static member FromFB (fb: ReferencedValueFB) =
     #if FABLE_COMPILER
     match fb.Type with
-    | x when x = ReferencedValueTypeFB.PlayerFB -> fb.Id |> Id |> Player |> Either.succeed
-    | x when x = ReferencedValueTypeFB.WidgetFB -> fb.Id |> Id |> Widget |> Either.succeed
+    | x when x = ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Either.map Player
+    | x when x = ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Either.map Widget
     | x ->
       x
       |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
@@ -180,7 +180,7 @@ type ReferencedValue =
   // ** ToOffset
 
   member reference.ToOffset(builder: FlatBufferBuilder) : Offset<ReferencedValueFB> =
-    let id = Id.encodeId<ReferencedValueFB> builder reference.Id
+    let id = ReferencedValueFB.CreateIdVector(builder,reference.Id.ToByteArray())
     ReferencedValueFB.StartReferencedValueFB(builder)
     ReferencedValueFB.AddId(builder, id)
     match reference with
@@ -209,12 +209,12 @@ type ReferencedValue =
 //                                     |_|
 
 type PinGroup =
-  { Id: Id
+  { Id: PinGroupId
     Name: Name
-    ClientId: Id
+    ClientId: ClientId
     RefersTo: ReferencedValue option    /// optionally add a reference to a player/widget
     Path: FilePath option               /// optionally the location of this group on disk
-    Pins: Map<Id,Pin> }
+    Pins: Map<PinId,Pin> }
 
   // ** ToYaml
 
@@ -248,7 +248,7 @@ type PinGroup =
       let! pins =
         let arr = Array.zeroCreate fb.PinsLength
         Array.fold
-          (fun (m: Either<IrisError,int * Map<Id,Pin>>) _ -> either {
+          (fun (m: Either<IrisError,int * Map<PinId,Pin>>) _ -> either {
               let! (i, pins) = m
 
               #if FABLE_COMPILER
@@ -310,10 +310,10 @@ type PinGroup =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<PinGroupFB> =
-    let id = Id.encodeId<PinGroupFB> builder self.Id
+    let id = PinGroupFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let path = self.Path |> Option.map (unwrap >> builder.CreateString)
-    let client = Id.encodeClientId<PinGroupFB> builder self.ClientId
+    let client = PinGroupFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
     let refersTo = self.RefersTo |> Option.map (Binary.toOffset builder)
     let pinoffsets =
       self.Pins
@@ -411,9 +411,9 @@ module PinGroup =
   // ** create
 
   let create (groupName: Name) =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = groupName
-      ClientId = Id.Create()
+      ClientId = IrisId.Create()
       RefersTo = None
       Path = None
       Pins = Map.empty }
@@ -473,7 +473,7 @@ module PinGroup =
 
   // ** tryFindPin
 
-  let tryFindPin (id: Id) (group: PinGroup) =
+  let tryFindPin (id: PinId) (group: PinGroup) =
     Map.tryFind id group.Pins
 
   // ** addPin
@@ -499,7 +499,7 @@ module PinGroup =
 
   // ** processSlices
 
-  let processSlices (slices: Map<Id,Slices>) (group: PinGroup) : PinGroup =
+  let processSlices (slices: Map<PinId,Slices>) (group: PinGroup) : PinGroup =
     let mapper _ (pin: Pin) =
       match Map.tryFind pin.Id slices with
       | Some slices -> Pin.setSlices slices pin
@@ -525,7 +525,7 @@ module PinGroup =
   // ** ofPlayer
 
   let ofPlayer (player: CuePlayer) =
-    let client = Id.Parse Constants.CUEPLAYER_GROUP_DIR
+    let client = IrisId.Parse Constants.CUEPLAYER_GROUP_DIR
     let call = Pin.Player.call     player.Id client
     let next = Pin.Player.next     player.Id client
     let prev = Pin.Player.previous player.Id client
@@ -544,7 +544,7 @@ module PinGroup =
   let ofWidget (widget: PinWidget) =
     { Id = widget.Id
       Name = name (unwrap widget.Name + " (Widget)")
-      ClientId = Id.Parse Constants.PINWIDGET_GROUP_DIR
+      ClientId = IrisId.Parse Constants.PINWIDGET_GROUP_DIR
       RefersTo = Some (ReferencedValue.Widget widget.Id)
       Path = None
       Pins = Map.empty }
@@ -872,7 +872,7 @@ module PinGroupMap =
 
   // ** updateSlices
 
-  let updateSlices (slices: Map<Id,Slices>) (map: PinGroupMap) =
+  let updateSlices (slices: Map<PinId,Slices>) (map: PinGroupMap) =
     mapGroups (PinGroup.processSlices slices) map
 
   // ** findPin
@@ -1000,7 +1000,7 @@ module Map =
   //  \__|_|   \__, |_|   |_|_| |_|\__,_|_|   |_|_| |_|
   //           |___/
 
-  let tryFindPin (id : Id) (groups : Map<Id, PinGroup>) : Pin option =
+  let tryFindPin (id: PinId) (groups : Map<PinGroupId, PinGroup>) : Pin option =
     let folder (m : Pin option) _ (group: PinGroup) =
       match m with
         | Some _ as res -> res
@@ -1015,7 +1015,7 @@ module Map =
   // | (_| (_) | | | | || (_| | | | | \__ \  __/| | | | |
   //  \___\___/|_| |_|\__\__,_|_|_| |_|___/_|   |_|_| |_|
 
-  let containsPin (id: Id) (groups : Map<Id,PinGroup>) : bool =
+  let containsPin (id: PinId) (groups : Map<PinGroupId,PinGroup>) : bool =
     let folder m _ group =
       if m then m else PinGroup.contains id group || m
     Map.fold folder false groups

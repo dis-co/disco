@@ -20,7 +20,7 @@ type ServiceInfo =
     version: string
     buildNumber: string }
 
-type NameAndId = { Name: Name; Id: Id }
+type NameAndId = { Name: Name; Id: IrisId }
 
 type Command =
   | Shutdown
@@ -32,8 +32,8 @@ type Command =
   | MachineConfig
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:Name * uri:Url
-  | PullProject of projectId:Id * projectName:Name * uri:Url
-  | LoadProject of projectName:Name * username:UserName * password:Password * site:Id option
+  | PullProject of projectId:ProjectId * projectName:Name * uri:Url
+  | LoadProject of projectName:Name * username:UserName * password:Password * site:SiteId option
   | GetProjectSites of projectName:Name * username:UserName * password:Password
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

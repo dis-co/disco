@@ -30,7 +30,7 @@ let private updatePinValue(pin: Pin, index: int, value: obj) =
     let newArray = Array.copy ar
     newArray.[i] <- unbox v
     newArray
-  let client = if Pin.isPreset pin then Some pin.Client else None
+  let client = if Pin.isPreset pin then Some pin.ClientId else None
   match pin with
   | StringPin pin ->
     StringSlices(pin.Id, client, updateArray index value pin.Values)

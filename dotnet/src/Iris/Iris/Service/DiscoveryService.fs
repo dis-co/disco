@@ -41,8 +41,8 @@ module DiscoveryService =
       Machine: IrisMachine
       Browser: ServiceBrowser
       Subscriptions: Subscriptions
-      RegisteredServices: Map<Id,RegisterService>
-      ResolvedServices: Map<Id,DiscoveredService> }
+      RegisteredServices: Map<ServiceId,RegisterService>
+      ResolvedServices: Map<ServiceId,DiscoveredService> }
 
     interface IDisposable with
       member self.Dispose() =
@@ -61,7 +61,7 @@ module DiscoveryService =
     | UnRegister  of srvc:DiscoverableService
     | RegisterErr of err:string * srvc:DiscoverableService
     | Discovered  of srvc:DiscoveredService
-    | Vanished    of id:Id
+    | Vanished    of id:ServiceId
 
   // ** DiscoveryAgent
 
@@ -242,7 +242,7 @@ module DiscoveryService =
 
   // ** handleVanishing
 
-  let private handleVanishing (state: DiscoveryState) (agent: DiscoveryAgent) (id: Id) =
+  let private handleVanishing (state: DiscoveryState) (agent: DiscoveryAgent) (id: ServiceId) =
     match Map.tryFind id state.ResolvedServices with
     | None -> state
     | Some service ->
