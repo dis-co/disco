@@ -65,7 +65,7 @@ module EnsureClientUpdateNoLoop =
         }
 
         use client = ApiClient.create server {
-          Id        = Id.Create()
+          Id        = IrisId.Create()
           Name      = name "hi"
           Role      = Role.Renderer
           ServiceId = mem1.Id
@@ -93,8 +93,8 @@ module EnsureClientUpdateNoLoop =
         // |__   _|
         //    |_| do some work
 
-        let pinId = Id.Create()
-        let groupId = Id.Create()
+        let pinId = IrisId.Create()
+        let groupId = IrisId.Create()
 
         let pin = BoolPin {
           Id               = pinId

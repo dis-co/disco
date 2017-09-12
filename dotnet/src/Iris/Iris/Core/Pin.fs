@@ -818,23 +818,70 @@ module Pin =
 
   /// Parses all tags in a Flatbuffer-serialized type as the UoM Tag
   let inline parseTags< ^a when ^a : (member TagsLength : int)
-                           and  ^a : (member Tags : int -> string)>
+                           #if FABLE_COMPILER
+                           and  ^a : (member Tags : int -> KeyValueFB)>
+                           #else
+                           and  ^a : (member Tags : int -> Nullable<KeyValueFB>)>
+                           #endif
                       (fb: ^a)
-                      : Either<IrisError, Tag array> =
+                      : Either<IrisError, Property array> =
     let len = (^a : (member TagsLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
-          let! (i, tags) = result
-          let value =
-            try (^a : (member Tags : int -> string) (fb, i))
-            with | _ -> null
-          tags.[i] <- astag value
-          return (i + 1, tags)
+      (fun (result: Either<IrisError,int * Property array>) _ -> either {
+          let! (i, arr) = result
+          #if FABLE_COMPILER
+          let prop = (^a : (member Tags: int -> KeyValuefB) fb, i)
+          #else
+          let! prop =
+            let nullable = (^a : (member Tags: int -> Nullable<KeyValueFB>) fb,i)
+            if nullable.HasValue then
+              Either.succeed nullable.Value
+            else
+              "Cannot parse empty property"
+              |> Error.asParseError "EnumPin.FromFB"
+              |> Either.fail
+          #endif
+          arr.[i] <- { Key = prop.Key; Value = prop.Value }
+          return (i + 1, arr)
         })
       (Right (0, arr))
       arr
     |> Either.map snd
+
+  // ** parseProperties
+
+  let inline parseProperties< ^a when ^a : (member PropertiesLength: int)
+                                 #if FABLE_COMPILER
+                                 and  ^a : (member Properties: int -> KeyValueFB)>
+                                 #else
+                                 and  ^a : (member Properties: int -> Nullable<KeyValueFB>)>
+                                 #endif
+                            (fb: ^a)
+                            : Either<IrisError, Property array> =
+        let len = (^a : (member PropertiesLength: int) fb)
+        let properties = Array.zeroCreate len
+        Array.fold
+          (fun (m: Either<IrisError, int * Property array>) _ -> either {
+            let! (i, arr) = m
+            #if FABLE_COMPILER
+            let prop = (^a : (member Properties: int -> KeyValuefB) fb, i)
+            #else
+            let! prop =
+              let nullable = (^a : (member Properties: int -> Nullable<KeyValueFB>) fb,i)
+              if nullable.HasValue then
+                Either.succeed nullable.Value
+              else
+                "Cannot parse empty property"
+                |> Error.asParseError "EnumPin.FromFB"
+                |> Either.fail
+            #endif
+            arr.[i] <- { Key = prop.Key; Value = prop.Value }
+            return (i + 1, arr)
+          })
+          (Right (0, properties))
+          properties
+        |> Either.map snd
 
   // ** emtpyLabels
 
@@ -1218,15 +1265,15 @@ module Pin =
 
     // *** nextId
 
-    let nextId id = IrisId.Create() // (String.format "/{0}/next" id)
+    let nextId _ = IrisId.Create() // (String.format "/{0}/next" id)
 
     // *** previousId
 
-    let previousId id = IrisId.Create() // (String.format "/{0}/next" id)
+    let previousId _ = IrisId.Create() // (String.format "/{0}/next" id)
 
     // *** previousId
 
-    let callId id = IrisId.Create() // (String.format "/{0}/call" id)
+    let callId _ = IrisId.Create() // (String.format "/{0}/call" id)
 
     // *** next
 
@@ -1543,7 +1590,7 @@ type NumberPinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1598,7 +1645,7 @@ type NumberPinD =
     let group = NumberPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = NumberPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
     let unit = self.Unit |> Option.mapNull builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -1746,7 +1793,7 @@ type StringPinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1795,7 +1842,7 @@ type StringPinD =
     let group = StringPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = StringPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
     let tipe = self.Behavior.ToOffset(builder)
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Pin.str2offset builder) self.Values
     let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
@@ -1889,7 +1936,7 @@ type BoolPinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1934,7 +1981,7 @@ type BoolPinD =
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = BoolPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = BoolPinFB.CreateClientIdVector(builder, self.ClientId.ToByteArray())
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -2024,7 +2071,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2127,7 +2174,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = BytePinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = BytePinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
     let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
@@ -2218,7 +2265,7 @@ type EnumPinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2262,7 +2309,7 @@ type EnumPinD =
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = EnumPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = EnumPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let propoffsets = Array.map (Binary.toOffset builder) self.Properties
@@ -2378,7 +2425,7 @@ type ColorPinD =
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2419,7 +2466,7 @@ type ColorPinD =
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let group = ColorPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
     let client = ColorPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
@@ -3806,7 +3853,7 @@ type PinYaml() =
   [<DefaultValue>] val mutable Name             : string
   [<DefaultValue>] val mutable PinGroupId       : string
   [<DefaultValue>] val mutable ClientId         : string
-  [<DefaultValue>] val mutable Tags             : string array
+  [<DefaultValue>] val mutable Tags             : PropertyYaml array
   [<DefaultValue>] val mutable Persisted        : bool
   [<DefaultValue>] val mutable Online           : bool
   [<DefaultValue>] val mutable Behavior         : string
@@ -3838,7 +3885,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.MaxChars         <- int data.MaxChars
       yaml.Behavior         <- string data.Behavior
       yaml.PinConfiguration <- string data.PinConfiguration
@@ -3856,7 +3903,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.Precision        <- data.Precision
       yaml.Min              <- data.Min
       yaml.Max              <- data.Max
@@ -3876,7 +3923,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.IsTrigger        <- data.IsTrigger
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
@@ -3893,7 +3940,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Labels           <- data.Labels
@@ -3909,7 +3956,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Properties       <- Array.map Yaml.toYaml data.Properties
@@ -3926,7 +3973,7 @@ module PinYaml =
       yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Labels           <- data.Labels
@@ -3937,6 +3984,19 @@ module PinYaml =
   // ** toPin
 
   let toPin (yml: PinYaml) =
+    let parseTags (yaml: PinYaml) =
+      Array.fold
+        (fun (m: Either<IrisError, int * Property array>) yml ->
+          either {
+            let! state = m
+            let! parsed = Yaml.fromYaml yml
+            (snd state).[fst state] <- parsed
+            return (fst state + 1, snd state)
+          })
+        (Right (0, Array.zeroCreate yaml.Tags.Length))
+        yaml.Tags
+      |> Either.map snd
+
     try
       match yml.PinType with
       | "StringPin" ->
@@ -3946,6 +4006,7 @@ module PinYaml =
           let! client = IrisId.TryParse yml.ClientId
           let! strtype = Behavior.TryParse yml.Behavior
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -3965,7 +4026,7 @@ module PinYaml =
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -3983,6 +4044,7 @@ module PinYaml =
           let! group = IrisId.TryParse yml.PinGroupId
           let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -4008,7 +4070,7 @@ module PinYaml =
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             VecSize          = vecsize
             PinConfiguration = dir
             Persisted        = yml.Persisted
@@ -4028,6 +4090,7 @@ module PinYaml =
           let! group = IrisId.TryParse yml.PinGroupId
           let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -4057,7 +4120,7 @@ module PinYaml =
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -4074,6 +4137,7 @@ module PinYaml =
           let! group = IrisId.TryParse yml.PinGroupId
           let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -4103,7 +4167,7 @@ module PinYaml =
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -4156,13 +4220,14 @@ module PinYaml =
           let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
+          let! tags = parseTags yml
 
           return EnumPin {
             Id               = id
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             Online           = yml.Online
             Dirty            = false
             Persisted        = yml.Persisted
@@ -4179,6 +4244,7 @@ module PinYaml =
           let! group = IrisId.TryParse yml.PinGroupId
           let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
 
           let! (_, slices) =
@@ -4209,7 +4275,7 @@ module PinYaml =
             Name             = name yml.Name
             PinGroupId       = group
             ClientId         = client
-            Tags             = Array.map astag yml.Tags
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false

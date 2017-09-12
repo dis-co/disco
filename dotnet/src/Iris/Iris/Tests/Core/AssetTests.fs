@@ -14,7 +14,7 @@ module AssetTests =
   type TestAsset() as data =
     [<DefaultValue>] val mutable Data: string
 
-    do data.Data <- string (Id.Create())
+    do data.Data <- string (IrisId.Create())
 
     member self.HasParent with get () = false
 
@@ -41,7 +41,7 @@ module AssetTests =
     testCase "should write and read asset correctly" <| fun _ ->
       either {
         let path = tmpPath()
-        let payload = string (Id.Create())
+        let payload = string (IrisId.Create())
         let! info = IrisData.write path (Payload payload)
         let! data = IrisData.read path
         expect "Payload should be the same" payload id data

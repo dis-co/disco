@@ -29,7 +29,7 @@ module NetIntegrationTests =
         use onDisconnected = new WaitEvent()
 
         use client = TcpClient.create {
-            ClientId = Id.Create()
+            ClientId = IrisId.Create()
             PeerAddress = ip
             PeerPort = prt
             Timeout = 0<ms>
@@ -47,7 +47,7 @@ module NetIntegrationTests =
         do! waitFor "onDisconnected" onDisconnected
 
         use server = TcpServer.create {
-            ServerId = Id.Create()
+            ServerId = IrisId.Create()
             Listen = ip
             Port = prt
           }
@@ -78,7 +78,7 @@ module NetIntegrationTests =
         let prt = port 5555us
 
         let server = TcpServer.create {
-            ServerId = Id.Create()
+            ServerId = IrisId.Create()
             Listen = ip
             Port = prt
           }
@@ -133,7 +133,7 @@ module NetIntegrationTests =
         let clients =
           [| for n in 0 .. (numclients - 1) do
                let socket = TcpClient.create {
-                  ClientId = Id.Create()
+                  ClientId = IrisId.Create()
                   PeerAddress = ip
                   PeerPort = prt
                   Timeout = 200<ms>
@@ -194,7 +194,7 @@ module NetIntegrationTests =
         let prt = port 5555us
 
         use server1 = TcpServer.create {
-            ServerId = Id.Create()
+            ServerId = IrisId.Create()
             Listen = ip
             Port = prt
           }
@@ -202,7 +202,7 @@ module NetIntegrationTests =
         do! server1.Start()
 
         let server2 = TcpServer.create {
-            ServerId = Id.Create()
+            ServerId = IrisId.Create()
             Listen = ip
             Port = prt
           }
@@ -217,7 +217,7 @@ module NetIntegrationTests =
   let test_pub_socket_disposes_properly =
     testCase "pub socket disposes properly" <| fun _ ->
       either {
-        let id = Id.Create()
+        let id = IrisId.Create()
         use pub = PubSub.create id PubSub.defaultAddress (int Constants.MCAST_PORT)
         do! pub.Start()
       }

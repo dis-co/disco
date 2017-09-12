@@ -152,7 +152,7 @@ module RaftTestUtils =
           Logger.log level site str }
 
   let defaultServer () =
-    Id.Create()
+    IrisId.Create()
     |> Member.create
     |> Raft.create
 

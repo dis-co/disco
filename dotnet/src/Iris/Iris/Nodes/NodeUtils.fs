@@ -21,8 +21,8 @@ type PinType =
 // ** NodeMapping
 
 type NodeMapping =
-  { PinId: Id
-    GroupId: Id
+  { PinId: PinId
+    GroupId: PinGroupId
     Pin: IPin2
     Type: PinType
     PinConfiguration: PinConfiguration

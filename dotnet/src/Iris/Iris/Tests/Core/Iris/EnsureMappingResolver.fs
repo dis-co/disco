@@ -33,7 +33,7 @@ module EnsureMappingResolver =
 
         let source =
           Pin.Source.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "My First Toggle")
             group.Id
             group.ClientId
@@ -42,7 +42,7 @@ module EnsureMappingResolver =
 
         let sink =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "My Second Toggle")
             group.Id
             group.ClientId
@@ -50,7 +50,7 @@ module EnsureMappingResolver =
           |> Pin.setPersisted true
 
         let mapping =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Source = source.Id
             Sinks = Set [ sink.Id ] }
 

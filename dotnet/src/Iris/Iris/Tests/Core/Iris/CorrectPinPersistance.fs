@@ -74,16 +74,16 @@ module CorrectPinPersistance =
         // |_____| append a volatile PinGroup + Pin
 
         let group =
-          { Id     = Id.Create()
+          { Id     = IrisId.Create()
             Name   = name "Group 1"
-            ClientId = Id.Create()
+            ClientId = IrisId.Create()
             Path   = None
             RefersTo = None
             Pins   = Map.empty }
 
         let toggle =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "My Toggle")
             group.Id
             group.ClientId

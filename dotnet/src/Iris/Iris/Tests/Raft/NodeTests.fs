@@ -16,5 +16,5 @@ module NodeTests =
 
   let mem_init_test =
     testCase "When created, Mem should be in Voting state" <| fun _ ->
-      let mem : RaftMember = Member.create (Id.Create())
+      let mem : RaftMember = Member.create (IrisId.Create())
       Expect.equal (Member.isVoting mem) true "Should be voting"

@@ -258,11 +258,11 @@ module SerializationTests =
           |> Member.create
 
         let mem1 =
-          Id.Create()
+          IrisId.Create()
           |> Member.create
 
         let mem2 =
-          Id.Create()
+          IrisId.Create()
           |> Member.create
 
         let site =

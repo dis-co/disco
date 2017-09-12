@@ -53,9 +53,9 @@ module Log =
 
   let log_get_at_index =
     testCase "When I get an entry by index, it should be equal" <| fun _ ->
-      let id1 = Id.Create()
-      let id2 = Id.Create()
-      let id3 = Id.Create()
+      let id1 = IrisId.Create()
+      let id2 = IrisId.Create()
+      let id3 = IrisId.Create()
 
       let log =
         Log.empty
@@ -79,9 +79,9 @@ module Log =
 
   let log_find_by_id =
     testCase "When I get an entry by index, it should be equal" <| fun _ ->
-      let id1 = Id.Create()
-      let id2 = Id.Create()
-      let id3 = Id.Create()
+      let id1 = IrisId.Create()
+      let id2 = IrisId.Create()
+      let id3 = IrisId.Create()
 
       let log =
         Log.empty
@@ -101,7 +101,7 @@ module Log =
       |> assume "Should also be correct one" id3 (LogEntry.getId << Option.get)
       |> ignore
 
-      Log.find (Id.Create()) log
+      Log.find (IrisId.Create()) log
       |> assume "Should find none at invalid index" true Option.isNone
       |> ignore
 
@@ -119,7 +119,7 @@ module Log =
 
   let log_resFold_short_circuit_test =
     testCase "Should short-circuit when folder fails" <| fun _ ->
-      let sm = AddCue { Id = Id.Create(); Name = name "Wonderful"; Slices = [| |] }
+      let sm = AddCue { Id = IrisId.Create(); Name = name "Wonderful"; Slices = [| |] }
       let log =
         Log.empty
         |> Log.append (Log.make (term 1) defSM)
@@ -178,7 +178,7 @@ module Log =
     testCase "Get all entries until (and including) a given index" <| fun _ ->
       let cues : Cue array =
         [| "one"; "two"; "three"; "four"; "five"; "six" |]
-        |> Array.map (fun name' -> { Id = Id.Create(); Name = name name'; Slices = [| |] })
+        |> Array.map (fun name' -> { Id = IrisId.Create(); Name = name name'; Slices = [| |] })
 
       let getData log =
         LogEntry.map
@@ -202,8 +202,8 @@ module Log =
 
   let log_concat_ensure_no_duplicate_entries =
     testCase "concat ensure no duplicate entires" <| fun _ ->
-      let id1 = Id.Create()
-      let id2 = Id.Create()
+      let id1 = IrisId.Create()
+      let id2 = IrisId.Create()
 
       let term = term 1
 
@@ -221,8 +221,8 @@ module Log =
 
   let log_append_ensure_no_duplicate_entries =
     testCase "append ensure no duplicate entires" <| fun _ ->
-      let id1 = Id.Create()
-      let id2 = Id.Create()
+      let id1 = IrisId.Create()
+      let id2 = IrisId.Create()
 
       let term = term 1
       let idx1 = index 1
@@ -239,9 +239,9 @@ module Log =
 
   let log_concat_ensure_no_duplicate_but_unique_entries =
     testCase "concat ensure no duplicate but unique entries" <| fun _ ->
-      let id1 = Id.Create()
-      let id2 = Id.Create()
-      let id3 = Id.Create()
+      let id1 = IrisId.Create()
+      let id2 = IrisId.Create()
+      let id3 = IrisId.Create()
 
       let term = term 1
       let idx1 = index 1
@@ -273,7 +273,7 @@ module Log =
 
       let mems =
         [ for n in 0u .. 5u do
-            yield Member.create (Id.Create()) ]
+            yield Member.create (IrisId.Create()) ]
         |> Array.ofList
 
       let log =
@@ -286,7 +286,7 @@ module Log =
   let log_untilExcluding_should_return_expected_enries =
     testCase "untilExcluding should return expected enries" <| fun _ ->
       let num = 30
-      let id = Id.Create()
+      let id = IrisId.Create()
       [ for n in 1 .. num do
           yield AddCue {
             Id = id
@@ -304,7 +304,7 @@ module Log =
     testCase "append should work with snapshots too" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Snapshot(Id.Create(), index 0, term 0, index 9, term 1, Array.empty, DataSnapshot(State.Empty)))
+        |> Log.append (Snapshot(IrisId.Create(), index 0, term 0, index 9, term 1, Array.empty, DataSnapshot(State.Empty)))
 
       expect "Log should be size 1" 1 Log.length log
 
@@ -317,7 +317,7 @@ module Log =
 
         let combine a b = (a, b)
 
-        let def = LogEntry(Id.Create(),index 0,term 0,defSM,None)
+        let def = LogEntry(IrisId.Create(),index 0,term 0,defSM,None)
 
         let folder log (id,term,index) =
           LogEntry(id,index,term,defSM,Some log)
@@ -325,7 +325,7 @@ module Log =
         [ for trm in 1 .. 4 do
             let offset = random.Next(1,60)
             for idx in offset .. offset + random.Next(10,70) do
-              let (_,t,i) as result = (Id.Create(), term trm, index idx)
+              let (_,t,i) as result = (IrisId.Create(), term trm, index idx)
               if idx = offset then
                 fidxs := (t,i) :: !fidxs
               yield result ]

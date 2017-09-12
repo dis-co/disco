@@ -201,7 +201,7 @@ module PersistenceTests =
 
         let pin =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "ohai")
             group.Id
             group.ClientId
@@ -239,7 +239,7 @@ module PersistenceTests =
 
         let pin =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "ohai")
             group.Id
             group.ClientId

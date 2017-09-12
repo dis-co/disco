@@ -9,10 +9,10 @@ module StoreTests =
 
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
-      { Id   = Id.Create()
+      { Id   = IrisId.Create()
         Name = name "group-1"
         Path = None
-        ClientId = Id.Create()
+        ClientId = IrisId.Create()
         RefersTo = None
         Pins = Map.empty }
 
@@ -93,7 +93,7 @@ module StoreTests =
         group
         |> PinGroup.addPin
           (Pin.Source.string
-            (Id.Create())
+            (IrisId.Create())
             (name "url input")
             group.Id
             group.ClientId
@@ -105,7 +105,7 @@ module StoreTests =
           store.State.PinGroups.[group.ClientId,group.Id].Pins.Count
 
         Pin.Source.string
-          (Id.Create())
+          (IrisId.Create())
           (name "another url input")
           group.Id
           group.ClientId
@@ -121,7 +121,7 @@ module StoreTests =
       withStore <| fun group store ->
         let pin =
           Pin.Source.string
-            (Id.Create())
+            (IrisId.Create())
             (name "url input")
             group.Id
             group.ClientId
@@ -138,7 +138,7 @@ module StoreTests =
 
         let pin =
           Pin.Sink.string
-            (Id.Create())
+            (IrisId.Create())
             name1
             group.Id
             group.ClientId
@@ -167,7 +167,7 @@ module StoreTests =
       withStore <| fun group store ->
         let pin =
           Pin.Sink.string
-            (Id.Create())
+            (IrisId.Create())
             (name "hi")
             group.Id
             group.ClientId
@@ -198,7 +198,7 @@ module StoreTests =
     testCase "should add a cue to the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = IrisId.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -214,7 +214,7 @@ module StoreTests =
     testCase "should update a cue already in the store" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -232,7 +232,7 @@ module StoreTests =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -245,7 +245,7 @@ module StoreTests =
     testCase "should remove cue from the store" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -265,7 +265,7 @@ module StoreTests =
     testCase "should add a cuelist to the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -280,7 +280,7 @@ module StoreTests =
     testCase "should update a cuelist already in the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -299,7 +299,7 @@ module StoreTests =
     testCase "should not add cuelist to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -311,7 +311,7 @@ module StoreTests =
     testCase "should remove cuelist from the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -331,7 +331,7 @@ module StoreTests =
     testCase "should add a user to the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -351,7 +351,7 @@ module StoreTests =
     testCase "should update a user already in the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -376,7 +376,7 @@ module StoreTests =
     testCase "should not add user to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -394,7 +394,7 @@ module StoreTests =
     testCase "should remove user from the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -420,7 +420,7 @@ module StoreTests =
     testCase "should add a session to the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -434,7 +434,7 @@ module StoreTests =
     testCase "should update a session already in the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -453,7 +453,7 @@ module StoreTests =
     testCase "should not add session to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -465,7 +465,7 @@ module StoreTests =
     testCase "should remove session from the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 

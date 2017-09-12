@@ -78,9 +78,13 @@ module Generators =
   let portGen = Gen.map port uint16Gen
   let versionGen = Gen.map version stringGen
   let tsGen = Arb.generate<TimeStamp>
-  let tagGen = Gen.map astag stringGen
   let timeoutGen = Gen.map ((*) 1<ms>) intGen
-
+  let propertyGen = gen {
+      let! key = stringGen
+      let! value = stringGen
+      return { Key = key; Value = value }
+    }
+  let tagGen = propertyGen
   let maybePathGen = gen {
       let! value = pathGen
       if value |> unwrap |> isNull
@@ -100,7 +104,7 @@ module Generators =
   // |___\__,_|
 
   let idGen = gen {
-      return Id.Create()
+      return IrisId.Create()
     }
 
   //   ____       _     _
@@ -546,12 +550,6 @@ module Generators =
           Values = vls }
     }
 
-  let propertyGen = gen {
-      let! key = stringGen
-      let! value = stringGen
-      return { Key = key; Value = value }
-    }
-
   let enumpinGen = gen {
       let! id = idGen
       let! nm = nameGen
@@ -970,7 +968,7 @@ module Generators =
         { Time = time
           Thread = thread
           Tier = tier
-          Id = id
+          MachineId = id
           Tag = tag
           LogLevel = level
           Message = msg }

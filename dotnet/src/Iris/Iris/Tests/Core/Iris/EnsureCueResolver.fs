@@ -70,7 +70,7 @@ module EnsureCueResolver =
         }
 
         use client = ApiClient.create server {
-          Id = Id.Create()
+          Id = IrisId.Create()
           Name = name "hi"
           Role = Role.Renderer
           ServiceId = mem1.Id
@@ -98,8 +98,8 @@ module EnsureCueResolver =
         //  ___) |
         // |____/ do some work
 
-        let pinId = Id.Create()
-        let groupId = Id.Create()
+        let pinId = IrisId.Create()
+        let groupId = IrisId.Create()
 
         let pin = BoolPin {
           Id               = pinId
@@ -132,7 +132,7 @@ module EnsureCueResolver =
         do! waitFor "clientAppendDone" clientAppendDone
 
         let cue = {
-          Id = Id.Create()
+          Id = IrisId.Create()
           Name = name "hi"
           Slices = [| BoolSlices(pin.Id, None, [| false |]) |]
         }

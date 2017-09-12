@@ -251,7 +251,7 @@ restore: paket.restore
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap $(OPTS)"
 
 paket.generate:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts --type fsx
 
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore

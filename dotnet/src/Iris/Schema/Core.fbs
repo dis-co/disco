@@ -318,7 +318,7 @@ table StringPinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       Persisted:        bool;
       Online:           bool;
       Dirty:            bool;
@@ -335,7 +335,7 @@ table NumberPinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       Unit:             string;
       Precision:        uint;
       Persisted:        bool;
@@ -354,7 +354,7 @@ table BoolPinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       IsTrigger:        bool;
       Persisted:        bool;
       Dirty:            bool;
@@ -370,7 +370,7 @@ table BytePinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       Persisted:        bool;
       Dirty:            bool;
       Online:           bool;
@@ -385,7 +385,7 @@ table EnumPinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       Properties:       [KeyValueFB];
       Persisted:        bool;
       Dirty:            bool;
@@ -401,7 +401,7 @@ table ColorPinFB {
       Name:             string;
       PinGroupId:       [ubyte];
       ClientId:         [ubyte];
-      Tags:             [string];
+      Tags:             [KeyValueFB];
       VecSize:          VecSizeFB;
       Persisted:        bool;
       Dirty:            bool;

@@ -26,7 +26,7 @@ module PinBecomesOnlineOnClientConnect =
 
         let! (project, zipped) = mkCluster 1
 
-        let clientId = Id.Create()
+        let clientId = IrisId.Create()
 
         let mem1, machine1 = List.head zipped
 
@@ -37,7 +37,7 @@ module PinBecomesOnlineOnClientConnect =
         // |_| add pin to project
 
         let group =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cool Group"
             ClientId = clientId
             Path = None
@@ -46,7 +46,7 @@ module PinBecomesOnlineOnClientConnect =
 
         let toggle =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "My Toggle")
             group.Id
             group.ClientId

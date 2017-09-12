@@ -208,3 +208,33 @@ module Id =
   let inline decodeMemberId (fb: ^t) =
     (fun idx -> (^t : (member MemberId: int -> byte) fb, idx))
     |> decodeWith
+
+
+#if INTERACTIVE
+
+open System
+open System.Text
+open System.Security.Cryptography
+
+let id = IrisId.Create()
+let path = "/24/41"
+
+let hash (str: string) =
+  use sha1 = new SHA1Managed()
+  str
+  |> Encoding.UTF8.GetBytes
+  |> sha1.ComputeHash
+
+let cut (bytes: byte[]) =
+  [| for n in 0 .. 15 -> bytes.[n] |]
+
+let toString (buf: byte array) =
+  let hashedString = StringBuilder()
+  for byte in buf do
+    hashedString.AppendFormat("{0:x2}", byte)
+    |> ignore
+  hashedString.ToString()
+
+id |> string |> (+) path |> hash |> cut |> Guid
+
+#endif

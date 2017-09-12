@@ -153,7 +153,7 @@ module Scenarios =
 
       let ids =
         [| for n in 0UL .. (numPeers - 1UL) do
-            yield Id.Create() |]
+            yield IrisId.Create() |]
 
       let senders =
         [| for n in 0UL .. (numPeers - 1UL) do
