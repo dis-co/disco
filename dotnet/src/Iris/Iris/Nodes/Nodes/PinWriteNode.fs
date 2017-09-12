@@ -45,13 +45,15 @@ type PinWriteNode() =
         for mapping in self.InNodeMappings do
           for cmd in self.InCommands do
             match cmd with
-            | UpdatePin pin ->
-              if pin.Id = mapping.PinId then
-                match mapping.Pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN with
-                | null -> ()
-                | ipin -> ipin.[0] <- unwrap pin.Name
-                mapping.Pin.Spread <- pin.Slices.ToSpread()
-            | UpdateSlices map ->
-              if Map.containsKey mapping.PinId map.Slices then
-                mapping.Pin.Spread <- map.Slices.[mapping.PinId].ToSpread()
+            /// update the name property and slices
+            | UpdatePin pin when pin.Id = mapping.PinId ->
+              match mapping.Pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN with
+              | null -> ()
+              | ipin -> ipin.[0] <- unwrap pin.Name
+              mapping.Pin.Spread <- pin.Slices.ToSpread()
+
+            /// process updates to pin slices
+            | UpdateSlices map when Map.containsKey mapping.PinId map.Slices ->
+              mapping.Pin.Spread <- map.Slices.[mapping.PinId].ToSpread()
+
             | _ -> ()

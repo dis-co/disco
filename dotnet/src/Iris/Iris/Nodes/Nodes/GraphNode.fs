@@ -24,7 +24,7 @@ open Iris.Nodes
 // * Graph
 
 [<RequireQualifiedAccess>]
-module Graph =
+module rec Graph =
 
   // ** Msg
 
@@ -84,7 +84,7 @@ module Graph =
 
     interface IDisposable with
       member self.Dispose() =
-        Seq.iter (fun (kv: KeyValuePair<IrisId,IDisposable>) -> dispose kv.Value) self.Disposables
+        Seq.iter (fun (KeyValue(_,disposable)) -> dispose disposable) self.Disposables
         dispose self.Hashing
         self.Disposables.Clear()
         self.NodeMappings.Clear()
@@ -101,19 +101,19 @@ module Graph =
 
     override tipe.ToString() =
       match tipe with
-      | Value -> "IOBox (Value Advanced)"
+      | Value  -> "IOBox (Value Advanced)"
       | String -> "IOBox (String)"
-      | Node -> "IOBox (Node)"
-      | Color -> "IOBox (Color)"
-      | Enum -> "IOBox (Enumerations)"
+      | Node   -> "IOBox (Node)"
+      | Color  -> "IOBox (Color)"
+      | Enum   -> "IOBox (Enumerations)"
 
     static member Parse (str: string) =
       match str with
       | "IOBox (Value Advanced)" -> Value
-      | "IOBox (String)" -> String
-      | "IOBox (Node)" -> Node
-      | "IOBox (Color)" -> Color
-      | "IOBox (Enumerations)" -> Enum
+      | "IOBox (String)"         -> String
+      | "IOBox (Node)"           -> Node
+      | "IOBox (Color)"          -> Color
+      | "IOBox (Enumerations)"   -> Enum
       | _ -> failwithf "unknown type: %s" str
 
     static member TryParse (str: string) =
@@ -121,11 +121,10 @@ module Graph =
         str
         |> IOBoxType.Parse
         |> Either.succeed
-      with
-        | exn ->
-          exn.Message
-          |> Error.asParseError "IOBoxType"
-          |> Either.fail
+      with exn ->
+        exn.Message
+        |> Error.asParseError "IOBoxType"
+        |> Either.fail
 
   // ** ValueType
 
@@ -189,11 +188,10 @@ module Graph =
         str
         |> Behavior.Parse
         |> Either.succeed
-      with
-        | exn ->
-          exn.Message
-          |> Error.asParseError "Behavior.TryParse"
-          |> Either.fail
+      with exn ->
+        exn.Message
+        |> Error.asParseError "Behavior.TryParse"
+        |> Either.fail
 
     static member IsTrigger (bh: Behavior) =
       match bh with
@@ -279,15 +277,27 @@ module Graph =
 
   // ** parseTags
 
-  let private parseTags = function
-    | null | "" -> [| |]
-    | str ->
-      str.Split [| ',' |]
-      |> Array.map
-        (fun (pair:string) ->
-          match pair.Split('=') with
-          | [| key; value |] -> { Key = key; Value = value }
-          | _ -> { Key = "<no key>"; Value = pair })
+  let private parseTags (pin: IPin2) =
+    let tp = pin.ParentNode.FindPin Settings.TAG_PIN
+    try
+      match tp.[0] with
+      | null | "" -> Array.empty
+      | str ->
+        Array.map
+          (fun (pair:string) ->
+            match pair.Split('=') with
+            | [| key; value |] -> { Key = key; Value = value }
+            | _ -> { Key = "<no key>"; Value = pair })
+          (str.Split ',')
+    with _ -> Array.empty
+
+  // ** addDefaultTags
+
+  let private addDefaultTags (path: string) props =
+    let path, name = parseIOBoxPath path
+    [| { Key = Settings.PIN_NAME_PROP; Value = name }
+       { Key = Settings.PIN_PATH_PROP; Value = path } |]
+    |> Array.append props
 
   // ** parsePinId
 
@@ -379,9 +389,8 @@ module Graph =
           min.[0]
           |> Int32.Parse
           |> Either.succeed
-        with
-          | _ ->
-            Either.succeed -99999999
+        with  _ ->
+          Either.succeed -99999999
       return value
     }
 
@@ -395,9 +404,8 @@ module Graph =
           max.[0]
           |> Int32.Parse
           |> Either.succeed
-        with
-          | _ ->
-            Either.succeed 99999999
+        with _ ->
+          Either.succeed 99999999
       return value
     }
 
@@ -419,8 +427,8 @@ module Graph =
           precision.[0]
           |> UInt32.Parse
           |> Either.succeed
-        with
-          | _ -> Either.succeed 4ul
+        with _ ->
+          Either.succeed 4ul
       return value
     }
 
@@ -438,8 +446,8 @@ module Graph =
             Alpha = uint8 (float alpha * 255.0) }
           |> RGBA
           |> result.Add
-        with
-          | _ -> result.Add ColorSpace.Black
+        with _ ->
+          result.Add ColorSpace.Black
       | _ -> result.Add ColorSpace.Black
 
     result.ToArray()
@@ -492,8 +500,7 @@ module Graph =
     let parsed = String.split [| '/' |] path
     let idx = Array.length parsed - 1
     match Array.splitAt idx parsed with
-    | nodepath, [| name |] ->
-      (String.Join("/", nodepath), name)
+    | nodepath, [| name |] -> String.Join("/", nodepath), name
     | _ -> failwithf "wrong format: %s" (string id)
 
   // ** findPinById
@@ -565,11 +572,11 @@ module Graph =
     let group = parsePinGroupId state pin
     let path = parseNodePath pin
     let np = pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN
-    let tp = pin.ParentNode.FindPin Settings.TAG_PIN
     let scmp = pin.ParentNode.FindPin Settings.SLICECOUNT_MODE_PIN
     let cp = pin.ParentNode.FindPin Settings.COLUMNS_PIN
     let rp = pin.ParentNode.FindPin Settings.ROWS_PIN
     let pp = pin.ParentNode.FindPin Settings.PAGES_PIN
+    let tp = pin.ParentNode.FindPin Settings.TAG_PIN
     let tipe = parsePinType pin |> Either.get // !!!
     let props = parseEnumProperties pin
 
@@ -595,7 +602,7 @@ module Graph =
       |> state.Events.Enqueue)
 
     let tagHandler = new EventHandler(fun _ _ ->
-      (group, id, parseTags tp.[0])
+      (group, id, pin |> parseTags |> addDefaultTags path)
       |> Msg.PinTagChange
       |> state.Events.Enqueue)
 
@@ -657,6 +664,7 @@ module Graph =
       let! bh = parseBehavior pin
       let! pinName = parseName pin
       let! vc = parseVecSize pin
+      let tags = pin |> parseTags |> addDefaultTags path
       match vt with
       | ValueType.Boolean ->
         return BoolPin {
@@ -664,7 +672,7 @@ module Graph =
           Name             = name pinName
           PinGroupId       = grp
           ClientId         = state.ClientId
-          Tags             = [| |]
+          Tags             = tags
           PinConfiguration = cnf
           Persisted        = false
           Online           = true
@@ -683,7 +691,7 @@ module Graph =
           Name             = name pinName
           PinGroupId       = grp
           ClientId         = state.ClientId
-          Tags             = [| |]
+          Tags             = tags
           Min              = min
           Max              = max
           Unit             = unit
@@ -715,7 +723,7 @@ module Graph =
           Precision        = prec
           PinConfiguration = cnf
           VecSize          = vc
-          Tags             = [| |]
+          Tags             = tags
           Labels           = [| |]
           Values           = parseDoubleValues pin
         }
@@ -767,8 +775,8 @@ module Graph =
           mc.[0]
           |> Int32.Parse
           |> Either.succeed
-        with
-          | _ -> Either.succeed -1
+        with  _ ->
+          Either.succeed -1
       return value
     }
 
@@ -776,6 +784,7 @@ module Graph =
 
   let private parseStringPin state (pin: IPin2) : Either<IrisError,Pin> =
     either {
+      let path = parseNodePath pin
       let id = parsePinId state pin
       let cnf = parseConfiguration pin
       let grp = parsePinGroupId state pin
@@ -783,12 +792,13 @@ module Graph =
       let! pinName = parseName pin
       let! vc = parseVecSize pin
       let! maxchars = parseMaxChars pin
+      let tags = pin |> parseTags |> addDefaultTags path
       return StringPin {
         Id               = id
         Name             = name pinName
         PinGroupId       = grp
         ClientId         = state.ClientId
-        Tags             = [| |]
+        Tags             = tags
         Persisted        = false
         Online           = true
         Dirty            = false
@@ -817,11 +827,13 @@ module Graph =
 
   let private parseEnumPin state (pin: IPin2) : Either<IrisError,Pin> =
     either {
+      let path = parseNodePath pin
       let id = parsePinId state pin
       let cnf = parseConfiguration pin
       let grp = parsePinGroupId state pin
       let! pinName = parseName pin
       let! vc = parseVecSize pin
+      let tags = pin |> parseTags |> addDefaultTags path
       let props = parseEnumProperties pin
       return EnumPin {
         Id               = id
@@ -834,7 +846,7 @@ module Graph =
         PinConfiguration = cnf
         VecSize          = vc
         Properties       = props
-        Tags             = [| |]
+        Tags             = tags
         Labels           = [| |]
         Values           = parseEnumValues props pin
       }
@@ -856,9 +868,11 @@ module Graph =
 
   let private parseColorPin state (pin: IPin2) : Either<IrisError,Pin> =
     either {
+      let path = parseNodePath pin
       let id = parsePinId state pin
       let cnf = parseConfiguration pin
       let grp = parsePinGroupId state pin
+      let tags = pin |> parseTags |> addDefaultTags path
       let! pinName = parseName pin
       let! vc = parseVecSize pin
       return ColorPin {
@@ -871,7 +885,7 @@ module Graph =
         Online           = true
         Dirty            = false
         VecSize          = vc
-        Tags             = [| |]
+        Tags             = tags
         Labels           = [| |]
         Values           = parseColorValues pin
       }
@@ -1061,8 +1075,7 @@ module Graph =
     try
       state.Disposables.Remove(id)
       |> ignore
-    with
-      | _ -> ()
+    with _ -> ()
 
   // ** makeNodeMapping
 
@@ -1110,8 +1123,7 @@ module Graph =
     try
       state.NodeMappings.Remove(id)
       |> ignore
-    with
-      | _ -> ()
+    with _ -> ()
 
   // ** onNodeExposed
 

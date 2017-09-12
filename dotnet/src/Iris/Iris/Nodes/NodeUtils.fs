@@ -94,6 +94,12 @@ module Settings =
   [<Literal>]
   let INPUT_ENUM_PIN = "Input Enum"
 
+  [<Literal>]
+  let PIN_NAME_PROP = "PinName"
+
+  [<Literal>]
+  let PIN_PATH_PROP = "NodePath"
+
 // * Util
 
 [<RequireQualifiedAccess>]
