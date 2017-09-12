@@ -7,6 +7,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.JS
+open System.Collections.Generic
 
 //  __  __                                _____                 _
 // |  \/  | ___  ___ ___  __ _  __ _  ___| ____|_   _____ _ __ | |_
@@ -147,14 +148,14 @@ type WebSocket(_url: string)  =
 /////////////////////////////////////////////////////////////////////////////// *)
 
 type ClientMessagePort = MessagePort<string>
-type PortMap = Map<SessionId,ClientMessagePort>
+type PortMap = Dictionary<SessionId,ClientMessagePort>
 
 type WorkerContext() =
   let id = IrisId.Create()
   let mutable count = 0
   let mutable socket : WebSocket option = None
 
-  let ports : PortMap = PortMap []
+  let ports : PortMap = PortMap()
 
   let toBytes(buffer: ArrayBuffer): byte[] =
     !!JS.Uint8Array.Create(buffer)
@@ -236,7 +237,7 @@ type WorkerContext() =
     count <- count + 1                     // increase the connection count
     let session = IrisId.Create()         // create a session id
     port.OnMessage <- self.OnClientMessage   // register handler for client messages
-    ports.set(session, port)              // remember the port in our map
+    ports.Add(session, port)              // remember the port in our map
     |> ignore
 
     ClientMessage.Initialized(session)    // tell client all is good
@@ -244,7 +245,7 @@ type WorkerContext() =
 
   member self.UnRegister (session: IrisId) =
     count <- count - 1
-    if ports.delete(session) then
+    if ports.Remove(session) then
       self.Broadcast(ClientMessage.Closed(session))
 
   (* -------------------------------------------------------------------------
@@ -270,16 +271,13 @@ type WorkerContext() =
     port.PostMessage(toJson msg)
 
   member self.Broadcast (msg : ClientMessage<State>) : unit =
-    let handler port _ _ = self.SendClient port msg
-    let func = new System.Func<ClientMessagePort,IrisId,PortMap,unit> (handler)
-    ports.forEach(func)
+    for KeyValue(_, port) in ports do
+      self.SendClient port msg
 
   member self.Multicast (session: IrisId, msg: ClientMessage<State>) : unit =
-    let handler port token _ =
+    for KeyValue(token, port) in ports do
       if session <> token then
         self.SendClient port msg
-    let func = new System.Func<ClientMessagePort,IrisId,PortMap,unit> (handler)
-    ports.forEach(func)
 
   member self.Log (logLevel: LogLevel) (message : string) : unit =
     let log = Logger.create logLevel "worker" message
