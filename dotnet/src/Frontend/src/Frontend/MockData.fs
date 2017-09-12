@@ -57,46 +57,47 @@ let inline forcePin<'T> gid pk (values: obj seq) =
         |> Seq.toArray
     Seq.toArray values
 
-let makeNumberPin gid pid pk values =
-    let values = forcePin<float> gid pk values
+let makeNumberPin clientId gid pid pk values =
+    let values = forcePin<double> gid pk values
     // Using Sink makes the pin editable
-    Pin.Sink.number pid (name pk) gid values |> Some
+    Pin.Sink.number pid (name pk) gid clientId values |> Some
 
-let makeTogglePin gid pid pk values =
-    let labels, values = forcePin<bool> gid pk values
+let makeTogglePin clientId gid pid pk values =
+    let values = forcePin<bool> gid pk values
     // Using Sink makes the pin editable
-    Pin.Sink.toggle pid (name pk) gid labels values |> Some
+    Pin.Sink.toggle pid (name pk) gid clientId values |> Some
 
-let makeStringPin gid pid pk values =
-    let labels, values = forcePin<string> gid pk values
+let makeStringPin clientId gid pid pk values =
+    let values = forcePin<string> gid pk values
     // Using Sink makes the pin editable
-    Pin.Sink.string pid (name pk) gid labels values |> Some
+    Pin.Sink.string pid (name pk) gid clientId values |> Some
 
-let makePin gid pk (v: obj) =
-    let pid = Id (sprintf "%O::%s" gid pk)
+let makePin clientId gid pk (v: obj) =
+    let pid = Id (sprintf "%O::%O::%s" clientId gid pk)
     match v with
     | IsJsArray ar ->
         match Seq.tryHead ar with
         | Some (IsJsArray ar2) when ar2.Count = 2 ->
             match ar2.[1] with
-            | :? float -> makeNumberPin gid pid pk ar
-            | :? bool -> makeTogglePin gid pid pk ar
-            | :? string -> makeStringPin gid pid pk ar
+            | :? float -> makeNumberPin clientId gid pid pk ar
+            | :? bool -> makeTogglePin clientId gid pid pk ar
+            | :? string -> makeStringPin clientId gid pid pk ar
             | _ -> failParse gid pk ar
-        | Some(:? float) -> makeNumberPin gid pid pk ar
-        | Some(:? bool) -> makeTogglePin gid pid pk ar
-        | Some(:? string) -> makeStringPin gid pid pk ar
+        | Some(:? float) -> makeNumberPin clientId gid pid pk ar
+        | Some(:? bool) -> makeTogglePin clientId gid pid pk ar
+        | Some(:? string) -> makeStringPin clientId gid pid pk ar
         | _ -> failParse gid pk ar
     | :? float as x ->
         // Using Sink makes the pin editable
-        Pin.Sink.number pid (name pk) gid [||] [|x|] |> Some
+        Pin.Sink.number pid (name pk) gid clientId [|x|] |> Some
     | :? bool as x ->
-        Pin.Sink.toggle pid (name pk) gid [||] [|x|] |> Some
+        Pin.Sink.toggle pid (name pk) gid clientId [|x|] |> Some
     | :? string as x ->
-        Pin.Sink.string pid (name pk) gid [||] [|x|] |> Some
+        Pin.Sink.string pid (name pk) gid clientId [|x|] |> Some
     | x -> failParse gid pk x
 
-let pinGroups: Map<Id, PinGroup> =
+let pinGroups: seq<PinGroup> =
+    let clientId = Id.Create()
     let pinGroups: obj = Node.Globals.require.Invoke("../data/pingroups.json")
     JS.Object.keys(pinGroups)
     |> Seq.map (fun gk ->
@@ -105,18 +106,15 @@ let pinGroups: Map<Id, PinGroup> =
         let pins =
             JS.Object.keys(g)
             |> Seq.choose (fun pk ->
-                box g?(pk) |> makePin gid pk)
+                box g?(pk) |> makePin clientId gid pk)
             |> Seq.map (fun pin -> pin.Id, pin)
             |> Map
-        let pinGroup: PinGroup =
-            { Id = gid
-              Name = name gk
-              Client = Id "mockupclient"
-              RefersTo = None
-              Pins = pins
-              Path = None }
-        pinGroup.Id, pinGroup)
-    |> Map
+        { Id = gid
+          Name = name gk
+          Client = Id "mockupclient"
+          RefersTo = None
+          Pins = pins
+          Path = None })
 
 let project =
     let memb =
@@ -183,7 +181,7 @@ let cuesAndListsAndPlayers =
 let getMockState() =
     { State.Empty with
         Project = project
-        PinGroups = pinGroups
+        PinGroups = PinGroupMap.ofSeq pinGroups
         Cues = _1of3 cuesAndListsAndPlayers
         CueLists = _2of3 cuesAndListsAndPlayers
         CuePlayers = _3of3 cuesAndListsAndPlayers }

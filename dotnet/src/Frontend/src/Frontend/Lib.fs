@@ -206,15 +206,14 @@ let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password)
   |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
 
-let createProject(name: string) =
-  Promise.start (promise {
-    let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
-    do! { name     = name
-          ipAddr   = string machine.BindAddress
-          port     = unwrap machine.RaftPort
-          apiPort  = unwrap machine.ApiPort
-          wsPort   = unwrap machine.WsPort
-          gitPort  = unwrap machine.GitPort }
-        |> CreateProject
-        |> postCommand (fun _ -> notify "The project has been created successfully") notify
-  })
+let createProject(name: string): JS.Promise<unit> = promise {
+  let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
+  do! { name     = name
+        ipAddr   = string machine.BindAddress
+        port     = unwrap machine.RaftPort
+        apiPort  = unwrap machine.ApiPort
+        wsPort   = unwrap machine.WsPort
+        gitPort  = unwrap machine.GitPort }
+      |> CreateProject
+      |> postCommand (fun _ -> notify "The project has been created successfully") notify
+}

@@ -12,12 +12,29 @@ module StorageKeys =
 
 /// Widget names
 module Widgets =
-    let [<Literal>] Log = "LOG"
-    let [<Literal>] GraphView = "Graph View"
-    let [<Literal>] CuePlayer = "Cue Player"
-    let [<Literal>] ProjectView = "Project View"
-    let [<Literal>] Cluster = "Cluster"
-    let [<Literal>] Test = "Test"
+  let [<Literal>] Log = "LOG"
+  let [<Literal>] GraphView = "Graph View"
+  let [<Literal>] CuePlayer = "Cue Player"
+  let [<Literal>] ProjectView = "Project View"
+  let [<Literal>] Cluster = "Cluster"
+  let [<Literal>] Test = "Test"
+
+/// Modal dialogs
+[<RequireQualifiedAccess>]
+type Modal =
+  | AddMember
+  | CreateProject
+  | LoadProject
+  | NoProject of projects:Name[]
+  | ProjectConfig of sites:string[]
+
+type ModalView =
+  { modal: Modal; view: React.ReactElement }
+
+type IProjectInfo =
+  abstract name: Name
+  abstract username: UserName
+  abstract password: Password
 
 /// Interface that must be implemented by all widgets
 type IWidget =
@@ -55,13 +72,13 @@ and Msg =
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
-  | UpdateModal of React.ReactElement option
+  | UpdateModal of ModalView option
 
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
     layout: Layout[]
-    modal: React.ReactElement option
+    modal: ModalView option
     state: State option
     logs: LogEvent list
     userConfig: UserConfig
