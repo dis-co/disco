@@ -1,5 +1,3 @@
-/// @ts-check
-
 import React, { Component } from 'react'
 
 export default class LoadProject extends Component {

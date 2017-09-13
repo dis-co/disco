@@ -25,7 +25,7 @@ type Modal =
   | AddMember
   | CreateProject
   | LoadProject
-  | NoProject of projects:Name[]
+  | AvailableProjects of projects:Name[]
   | ProjectConfig of sites:string[]
 
 type ModalView =

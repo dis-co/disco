@@ -109,7 +109,7 @@ let makeModal<'T> dispatch modal: JS.Promise<Choice<'T,unit>> =
       | Modal.AddMember          -> None,           importDefault (mdir+"AddMember")
       | Modal.CreateProject      -> None,           importDefault (mdir+"CreateProject")
       | Modal.LoadProject        -> None,           importDefault (mdir+"LoadProject")
-      | Modal.NoProject data     -> Some(box data), importDefault (mdir+"NoProject")
+      | Modal.AvailableProjects data     -> Some(box data), importDefault (mdir+"AvailableProjects")
       | Modal.ProjectConfig data -> Some(box data), importDefault (mdir+"ProjectConfig")
     let props =
       createObj ["data" ==> data
