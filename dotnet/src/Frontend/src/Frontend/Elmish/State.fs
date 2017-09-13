@@ -19,14 +19,22 @@ let loadProject dispatch (info: IProjectInfo) = promise {
       let! sites = Lib.getProjectSites(info.name, info.username, info.password)
       // Ask user to create or select a new config
       let! site = makeModal dispatch (Modal.ProjectConfig sites)
-      // Try loading the project again with the site config
-      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
-      err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+      match site with
+      | Choice1Of2 site ->
+        // Try loading the project again with the site config
+        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
+        err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+      | Choice2Of2 () -> ()
     | None -> ()
   }
 
 let private displayNoProjectModal dispatch =
-  promise {
+  let rec createProject dispatch =
+    makeModal dispatch Modal.CreateProject
+    |> Promise.bind (function
+      | Choice1Of2 x -> Lib.createProject x
+      | Choice2Of2 () -> recursiveNoProjectModal dispatch)
+  and recursiveNoProjectModal dispatch = promise {
     #if DESIGN
     let projects = [|name "foo"; name "bar"|]
     #else
@@ -34,17 +42,17 @@ let private displayNoProjectModal dispatch =
     #endif
     if projects.Length > 0 then
       let! projectInfo = makeModal dispatch (Modal.NoProject projects)
-      do!
-        match projectInfo with
-        | Some projectInfo ->
-          loadProject dispatch projectInfo
-        | None ->
-          makeModal dispatch Modal.CreateProject
-          |> Promise.bind Lib.createProject
+      match projectInfo with
+      | Choice1Of2 (Some projectInfo) ->
+        return! loadProject dispatch projectInfo
+      | Choice1Of2 None ->
+        return! createProject dispatch
+      | Choice2Of2 () ->
+        return! recursiveNoProjectModal dispatch
     else
-      do! makeModal dispatch Modal.CreateProject
-          |> Promise.bind Lib.createProject
-  } |> Promise.start
+      return! createProject dispatch
+  }
+  recursiveNoProjectModal dispatch |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
 /// the jQuery plugin ui-layout

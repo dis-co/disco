@@ -30,8 +30,10 @@ let titleBar dispatch (model: Model) =
     Class "iris-button"
     OnClick(fun _ ->
       makeModal dispatch Modal.AddMember
-      |> Promise.iter Lib.addMember)
-  ] [str "Add member"]
+      |> Promise.iter (function
+        | Choice1Of2(ip, port) -> Lib.addMember(ip, port)
+        | Choice2Of2 () -> ()))
+    ] [str "Add member"]
 
 let body dispatch (model: Model) =
   match model.state with

@@ -102,7 +102,7 @@ let widget (id: Guid) (name: string)
 
 let [<Literal>] private mdir = "../../js/modals/"
 
-let makeModal<'T> dispatch modal: JS.Promise<'T> =
+let makeModal<'T> dispatch modal: JS.Promise<Choice<'T,unit>> =
   Fable.PowerPack.Promise.create (fun onSuccess _ ->
     let data, com =
       match modal with
@@ -115,8 +115,20 @@ let makeModal<'T> dispatch modal: JS.Promise<'T> =
       createObj ["data" ==> data
                  "onSubmit" ==> fun x ->
                   UpdateModal None |> dispatch
-                  onSuccess x ]
-    Some { modal = modal; view = from com props [] } |> UpdateModal |> dispatch)
+                  Choice1Of2 x |> onSuccess ]
+    let view =
+      div [ClassName "modal is-active"] [
+        div [
+          ClassName "modal-background"
+          OnClick (fun _ ->
+            UpdateModal None |> dispatch
+            Choice2Of2 () |> onSuccess)
+        ] []
+        div [ClassName "modal-content"] [
+          div [ClassName "box"] [from com props []]
+        ]
+      ]
+    Some { modal = modal; view = view } |> UpdateModal |> dispatch)
 
 module Promise =
   open Fable.PowerPack
