@@ -67,36 +67,30 @@ module WebSocketServer =
 
   // ** ucast
 
-  /// ## ucast
-  ///
   /// Send a `StateMachine` command to the requested session.
-  ///
-  /// ### Signature:
-  /// - sessionid: Id of session to send the command to
-  /// - msg: StateMachine command to send
-  ///
-  /// Returns: Either<IrisError,unit>
   let private ucast (connections: Connections) (sid: SessionId) (msg: StateMachine) =
     match connections.TryGetValue(sid) with
     | true, (socket, _) ->
-      try
-        msg
-        |> Binary.encode
-        |> socket.Send
-        |> ignore
-        |> Either.succeed
-      with
-        | exn ->
-          exn.Message + exn.StackTrace
-          |> Logger.err (tag "send")
-
+      if socket.IsAvailable then
+        try
+          msg
+          |> Binary.encode
+          |> socket.Send
+          |> ignore
+          |> Either.succeed
+        with exn ->
           exn.Message
           |> Error.asSocketError (tag "send")
           |> Either.fail
+      else
+        sid
+        |> String.format "Socket {0} not available"
+        |> Error.asSocketError (tag "send")
+        |> Either.fail
     | false, _ ->
       sid
       |> string
-      |> sprintf "could not send message to session %s. not found."
+      |> sprintf "Could not send message to session %s. Not found."
       |> Error.asSocketError (tag "send")
       |> Either.fail
 
@@ -111,20 +105,20 @@ module WebSocketServer =
   ///
   /// Returns: unit
   let private bcast (connections: Connections) (msg: StateMachine) =
-    let result : IrisError list =
-      connections.Keys
-      |> Seq.toArray
-      |> Array.map (fun id -> ucast connections id msg)
-      |> Array.fold
-        (fun lst (result: Either<IrisError,unit>) ->
-          match result with
-          | Right _ -> lst
-          | Left error -> error :: lst)
-        []
-
-    match result with
-    | [ ] -> Right ()
-    | _   -> Left result
+    connections.Keys
+    |> Seq.choose
+      (fun id ->
+        match ucast connections id msg with
+        | Right ()   -> None
+        | Left error ->
+          error.Message
+          |> String.format "Error broadcasting message: {0}"
+          |> Logger.err (tag "bcast")
+          Some id)
+    |> Seq.toList
+    |> function
+      | [ ]    -> Either.nothing
+      | result -> Either.fail result
 
   // ** mcast
 
@@ -141,28 +135,22 @@ module WebSocketServer =
   let private mcast (connections: Connections)
                     (id: SessionId)
                     (msg: StateMachine) :
-                    Either<IrisError list, unit> =
-    let sendAsync (id: SessionId) = async {
-        let result = ucast connections id msg
-        return result
-      }
-
-    let result : IrisError list =
-      connections.Keys
-      |> Seq.filter (fun sid -> id <> sid)
-      |> Seq.map sendAsync
-      |> Async.Parallel
-      |> Async.RunSynchronously
-      |> Array.fold
-        (fun lst (result: Either<IrisError,unit>) ->
-          match result with
-          | Right _ -> lst
-          | Left error -> error :: lst)
-        []
-
-    match result with
-    | [ ] -> Right ()
-    | _   -> Left result
+                    Either<SessionId list, unit> =
+    connections.Keys
+    |> Seq.filter (fun sid -> id <> sid)
+    |> Seq.choose
+      (fun id ->
+        match ucast connections id msg with
+        | Right ()   -> None
+        | Left error ->
+          error.Message
+          |> String.format "Error multicasting message: {0}"
+          |> Logger.err (tag "mcast")
+          Some id)
+    |> Seq.toList
+    |> function
+      | [ ]    -> Either.nothing
+      | result -> Either.fail result
 
   // ** onNewSocket
 
@@ -193,7 +181,18 @@ module WebSocketServer =
 
     socket.OnClose <- fun () ->
       let sid = getConnectionId socket
-      connections.TryRemove(sid) |> ignore
+
+      match connections.TryRemove(sid) with
+      | true, (socket, _) ->
+        try socket.Close()
+        with _ -> ()
+        sid
+        |> String.format "Successfully removed tracked connection {0}"
+        |> Logger.info (tag "onSocketClose")
+      | false, _ ->
+        sid
+        |> String.format "Could not remove connection {0}: Not Found"
+        |> Logger.info (tag "onSocketClose")
 
       sid
       |> SessionClosed
@@ -215,17 +214,27 @@ module WebSocketServer =
         |> Logger.err (tag "onSocketMessage")
 
     socket.OnError <- fun exn ->
+      exn.Message
+      |> String.format "Error in WebSocket connection: {0}"
+      |> Logger.warn (tag "onSocketError")
+
       let sid = getConnectionId socket
-      connections.TryRemove(sid) |> ignore
+
+      match connections.TryRemove(sid) with
+      | true, (socket, _) ->
+        try socket.Close()
+        with _ -> ()
+        sid
+        |> String.format "Successfully removed tracked connection {0}"
+        |> Logger.info (tag "onSocketError")
+      | false, _ ->
+        sid
+        |> String.format "Could not remove connection {0}: Not Found"
+        |> Logger.info (tag "onSocketError")
 
       sid
       |> SessionClosed
       |> agent.Post
-
-      sid
-      |> string
-      |> sprintf "Error %A on websocket: %s" exn.Message
-      |> Logger.err (tag "onSocketError")
 
   // ** loop
 
@@ -274,27 +283,45 @@ module WebSocketServer =
       server.RestartAfterListenError <- true
       server.ListenerSocket.NoDelay <- true
 
+      let handleBroadcastErrors(ids: SessionId list) =
+        List.iter
+          (fun id ->
+            id |> SessionClosed |> agent.Post
+            match connections.TryRemove(id) with
+            | true, (socket,_) ->
+              try socket.Close()
+              with _ -> ()
+            | false, _ -> ())
+          ids
+
       return
         { new IWebSocketServer with
             member self.Publish (ev: IrisEvent) =
               match ev with
               | IrisEvent.Append (_, cmd) ->
-                match bcast connections cmd with
-                | Right _ -> ()
-                | Left error ->
-                  error
-                  |> string
-                  |> Logger.err (tag "Publish")
+                bcast connections cmd
+                |> Either.mapError handleBroadcastErrors
+                |> ignore
               | _ -> ()
 
             member self.Send (id: SessionId) (cmd: StateMachine) =
               ucast connections id cmd
+              |> Either.mapError
+                (Error.message
+                 >> sprintf "Error sending to %A: %s" id
+                 >> konst [ id ]
+                 >> handleBroadcastErrors)
+              |> ignore
 
             member self.Broadcast (cmd: StateMachine) =
               bcast connections cmd
+              |> Either.mapError handleBroadcastErrors
+              |> ignore
 
             member self.Multicast (except: SessionId) (cmd: StateMachine) =
               mcast connections except cmd
+              |> Either.mapError handleBroadcastErrors
+              |> ignore
 
             member self.BuildSession (id: SessionId) (session: Session) =
               buildSession connections id session
