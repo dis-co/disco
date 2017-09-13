@@ -11,20 +11,31 @@ open Iris.Service.Interfaces
 open Iris.Service.Persistence
 open System.Collections.Concurrent
 
+// * Channel
+
 type private Channel = AsyncReplyChannel<Either<IrisError,string>>
 
-let private tag s = "Iris.Service.Commands." + s
+// * tag
 
+let private tag s = "CommandActions." + s
+
+// * serializeJson
+
+/// Serialize a value to json using Fable.JsonConverter
 let private serializeJson =
     let converter = Fable.JsonConverter()
     fun (o: obj) -> Newtonsoft.Json.JsonConvert.SerializeObject(o, converter)
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '"GetServiceInfo"' \
-//      http://localhost:7000/api/command
+// * getServiceInfo
 
+/// Retrieve the build number, version and current WebSocket port from the currently
+/// running service.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '"GetServiceInfo"' \
+///      http://localhost:7000/api/command
 let getServiceInfo (iris: IIris): Either<IrisError,string> =
   let notLoaded () = null |> serializeJson |> Either.succeed
   match iris.IrisService with
@@ -39,33 +50,37 @@ let getServiceInfo (iris: IIris): Either<IrisError,string> =
     | Left _ -> notLoaded()
   | None -> notLoaded()
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '"ListProjects"' \
-//      http://localhost:7000/api/comman
+// * listProjects
 
+/// Enumerate all projects in the current WorkSpace.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '"ListProjects"' \
+///      http://localhost:7000/api/comman
+///
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   cfg.WorkSpace
   |> Directory.getDirectories
   |> Array.choose (fun dir ->
     match IrisProject.Load(dir, cfg) with
-    | Right project -> { Name = project.Name; Id = project.Id } |> Some
-    | Left error -> printfn "ERROR: %A" error; None)
+    | Right project ->
+      project.Name
+      |> String.format "Found valid project \"{0}\" in current WorkSpace."
+      |> Logger.info (tag "listProjects")
+      Some { Name = project.Name; Id = project.Id }
+    | Left _ ->
+      dir
+      |> String.format "\"{0}\" does not contain a valid project.yaml"
+      |> Logger.info (tag "listProjects")
+      None)
   |> serializeJson
   |> Either.succeed
 
-/// ## buildProject
-///
+// * buildProject
+
 /// Create a new IrisProject data structure with given parameters.
-///
-/// ### Signature:
-/// - name: Name of the Project
-/// - path: destination path of the Project
-/// - raftDir: Raft data directory
-/// - mem: self Member (built from Member Id env var)
-///
-/// Returns: IrisProject
 let buildProject (machine: IrisMachine)
                   (name: string)
                   (path: FilePath)
@@ -85,22 +100,15 @@ let buildProject (machine: IrisMachine)
 
     let! _ = IrisData.saveWithCommit path User.Admin.Signature updated
 
-    printfn "project: %A" project.Name
-    printfn "created in: %O" project.Path
+    project.Path
+    |> sprintf "Created %A in %A" project.Name
+    |> Logger.info (tag "buildProject")
 
     return updated
   }
 
-/// ## initializeRaft
-///
 /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
 /// state in the data directory and commit the result to git.
-///
-/// ### Signature:
-/// - user: User to commit as
-/// - project: IrisProject to initialize
-///
-/// Returns: unit
 let initializeRaft (project: IrisProject) = either {
     let! raft = createRaft project.Config
     let! _ = saveRaft project.Config raft
@@ -143,12 +151,14 @@ let getProjectSites machine projectName =
     return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
   }
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '"MachineStatus"' \
-//      http://localhost:7000/api/comman
-
+/// Gets the current machine's status, i.e. whether its Idle or Busy with a loaded project. This
+/// is necessary in order to determine whether this machine can be added to a cluster or not.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '"MachineStatus"' \
+///      http://localhost:7000/api/comman
 let machineStatus (iris: IIris) =
   match iris.IrisService with
   | Some service -> Busy(service.Project.Id, service.Project.Name)
@@ -156,23 +166,26 @@ let machineStatus (iris: IIris) =
   |> serializeJson
   |> Either.succeed
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '"MachineConfig"' \
-//      http://localhost:7000/api/comman
-
+/// Retrieve the machine configuration. This is used when new projects are constructed.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '"MachineConfig"' \
+///      http://localhost:7000/api/comman
 let machineConfig () =
   MachineConfig.get()
   |> serializeJson
   |> Either.succeed
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
-//      http://localhost:7000/api/command
-
+/// Git clone a project from another server in order to start a service. This is used during
+/// the process of adding a new machine to a cluster.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '{"CloneProject":["meh","git://192.168.2.106:6000/meh/.git"]}' \
+///      http://localhost:7000/api/command
 let cloneProject (name: Name) (uri: Url) =
   let machine = MachineConfig.get()
   let target = machine.WorkSpace </> filepath (unwrap name)
@@ -180,12 +193,14 @@ let cloneProject (name: Name) (uri: Url) =
   Git.Repo.clone target (unwrap uri)
   |> Either.map (konst (serializeJson success))
 
-// Command to test:
-// curl -H "Content-Type: application/json" \
-//      -XPOST \
-//      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
-//      http://localhost:7000/api/command
-
+/// Git pull an already existing project from a remote server. This is used in the process
+/// of adding a machine to a cluster that already has the project in question locally.
+///
+/// Command to test:
+/// curl -H "Content-Type: application/json" \
+///      -XPOST \
+///      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
+///      http://localhost:7000/api/command
 let pullProject (id: ProjectId) (name: Name) (uri: Url) = either {
     let machine = MachineConfig.get()
     let target = machine.WorkSpace </> filepath (unwrap name)
@@ -223,7 +238,6 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
           // TODO: Grab a reference of the http server to dispose it too?
           Async.Start <| async {
             do! Async.Sleep 1000
-            printfn "%s" msg
             dispose iris
             exit 0
           }
@@ -259,7 +273,7 @@ let postCommand (agent: (MailboxProcessor<Command*Channel> option) ref) (cmd: Co
       let! res = agent.PostAndTryAsyncReply((fun ch -> cmd, ch), Constants.COMMAND_TIMEOUT)
       match res with
       | Some res -> return res
-      | None -> return err "Request has timeout"
+      | None -> return err "Request has timed out"
     }
   | None -> err "Command agent hasn't been initialized yet" |> async.Return
 
