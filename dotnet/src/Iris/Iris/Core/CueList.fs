@@ -47,9 +47,13 @@ type CueListYaml() =
           yaml.Groups
         |> Either.map snd
 
-      return { Id = Id yaml.Id
-               Name = name yaml.Name
-               Groups = groups }
+      let! id = IrisId.TryParse yaml.Id
+
+      return {
+        Id = id
+        Name = name yaml.Name
+        Groups = groups
+      }
     }
 
 #endif
@@ -57,7 +61,7 @@ type CueListYaml() =
 // * CueList
 
 type CueList =
-  { Id     : Id
+  { Id     : CueListId
     Name   : Name
     Groups : CueGroup array }
 
@@ -71,7 +75,7 @@ type CueList =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = self.Id |> string |> builder.CreateString
+    let id = CueListFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let groupoffsets = Array.map (Binary.toOffset builder) self.Groups
     let groupsvec = CueListFB.CreateGroupsVector(builder, groupoffsets)
@@ -121,9 +125,13 @@ type CueList =
           arr
         |> Either.map snd
 
-      return { Id = Id fb.Id
-               Name = name fb.Name
-               Groups = groups }
+      let! id = Id.decodeId fb
+
+      return {
+        Id = id
+        Name = name fb.Name
+        Groups = groups
+      }
     }
 
   // ** FromBytes

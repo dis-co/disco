@@ -134,7 +134,7 @@ module RaftIntegrationTests =
       either {
         use check1 = new WaitEvent()
 
-        let setState (id: Id) (are: WaitEvent) = function
+        let setState (id: IrisId) (are: WaitEvent) = function
           | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"
@@ -265,7 +265,7 @@ module RaftIntegrationTests =
         use check1 = new WaitEvent()
         use check2 = new WaitEvent()
 
-        let setState (id: Id) (are: WaitEvent) = function
+        let setState (id: IrisId) (are: WaitEvent) = function
           | IrisEvent.StateChanged (_,Leader) ->
             id
             |> sprintf "%O became leader"

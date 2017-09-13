@@ -8,7 +8,7 @@ SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
 SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
-FRONTEND_IP := 127.0.0.1
+FRONTEND_IP := localhost
 FRONTEND_PORT := 3000
 
 export MONO_THREADS_PER_CPU
@@ -251,7 +251,7 @@ restore: paket.restore
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap $(OPTS)"
 
 paket.generate:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts type fsx
+	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts --type fsx
 
 paket.restore:
 	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore

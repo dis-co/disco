@@ -180,7 +180,7 @@ let setLogLevel(lv) =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: Name, username: UserName, pass: Password, site: Id option, ipAndPort: string option): JS.Promise<string option> =
+let rec loadProject(project: Name, username: UserName, pass: Password, site: SiteId option, ipAndPort: string option): JS.Promise<string option> =
   LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->

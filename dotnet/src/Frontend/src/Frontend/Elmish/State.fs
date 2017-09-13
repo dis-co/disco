@@ -20,7 +20,7 @@ let loadProject dispatch (info: IProjectInfo) = promise {
       // Ask user to create or select a new config
       let! site = makeModal dispatch (Modal.ProjectConfig sites)
       // Try loading the project again with the site config
-      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (Id site), None)
+      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
       err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
     | None -> ()
   }
@@ -32,14 +32,18 @@ let private displayNoProjectModal dispatch =
     #else
     let! projects = Lib.listProjects()
     #endif
-    let! projectInfo = makeModal dispatch (Modal.NoProject projects)
-    do!
-      match projectInfo with
-      | Some projectInfo ->
-        loadProject dispatch projectInfo
-      | None ->
-        makeModal dispatch Modal.CreateProject
-        |> Promise.bind Lib.createProject
+    if projects.Length > 0 then
+      let! projectInfo = makeModal dispatch (Modal.NoProject projects)
+      do!
+        match projectInfo with
+        | Some projectInfo ->
+          loadProject dispatch projectInfo
+        | None ->
+          makeModal dispatch Modal.CreateProject
+          |> Promise.bind Lib.createProject
+    else
+      do! makeModal dispatch Modal.CreateProject
+          |> Promise.bind Lib.createProject
   } |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
@@ -124,8 +128,8 @@ let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   if cueList.Groups.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
-  let newCue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-  let newCueRef = { Id = Id.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup = cueList.Groups.[max cueGroupIndex 0]
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex

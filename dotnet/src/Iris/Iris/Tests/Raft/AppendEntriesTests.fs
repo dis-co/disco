@@ -20,7 +20,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_reply_false_if_term_less_than_currentterm =
     testCase "follower recv appendentries reply false if term less than currentterm" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -44,7 +44,7 @@ module AppendEntries =
   let follower_recv_appendentries_does_not_need_mem =
     testCase "follower recv appendentries does not need mem" <| fun _ ->
       raft {
-        do! Raft.addMemberM (Member.create (Id.Create()))
+        do! Raft.addMemberM (Member.create (IrisId.Create()))
         let msg =
           { Term         = term 1
           ; PrevLogIdx   = index 0
@@ -62,7 +62,7 @@ module AppendEntries =
     testCase "follower recv appendentries updates currentterm if term gt currentterm" <| fun _ ->
 
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         do! Raft.addMemberM peer
         do! Raft.setTermM (term 1)
         do! expectM "Should not have a leader" None Raft.currentLeader
@@ -87,7 +87,7 @@ module AppendEntries =
   let follower_recv_appendentries_does_not_log_if_no_entries_are_specified =
     testCase "follower recv appendentries does not log if no entries are specified" <| fun _ ->
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         do! Raft.addMemberM peer
         do! Raft.setStateM Follower
         do! expectM "Should have 0 log entries" 0 Raft.numLogs
@@ -107,7 +107,7 @@ module AppendEntries =
   let follower_recv_appendentries_increases_log =
     testCase "follower recv appendentries increases log" <| fun _ ->
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         do! Raft.addMemberM peer
         do! Raft.setStateM Follower
         do! expectM "Should log count 0" 0 Raft.numLogs
@@ -130,7 +130,7 @@ module AppendEntries =
   let follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term =
     testCase "follower recv appendentries reply false if doesnt have log at prev log idx which matches prev log term" <| fun _ ->
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         do! Raft.addMemberM peer
         do! Raft.setTermM (term 2)
 
@@ -167,30 +167,40 @@ module AppendEntries =
 
         let data =
           [| "one"; "two"; "three"; |]
-          |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
+          |> Array.map (fun name' -> AddCue {
+            Id = IrisId.Create()
+            Name = name name'
+            Slices = Array.empty
+          })
 
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
 
         do! Raft.addMemberM peer
         do! Raft.setTermM (term 1)
 
         do! _entries_for_conflict_tests data // add some log entries
 
-        let newer =
-          { Term         = term 2
-          ; PrevLogIdx   = index 1
-          ; PrevLogTerm  = term 1
-          ; LeaderCommit = index 5
-          ; Entries      = Log.make (term 2) (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) |> Some
-          }
+        let addCue = AddCue {
+          Id = IrisId.Create()
+          Name = name "four"
+          Slices = [| |]
+        }
+
+        let newer = {
+          Term         = term 2
+          PrevLogIdx   = index 1
+          PrevLogTerm  = term 1
+          LeaderCommit = index 5
+          Entries      = Log.make (term 2) addCue |> Some
+        }
 
         let! response = Raft.receiveAppendEntries (Some peer.Id) newer
         expect "Should have succeeded" true AppendRequest.succeeded response
 
         do! expectM "Should have 2 entries" 2 Raft.numLogs
 
-        do! expectM "First should have 'one' value" (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] }) (getNth (index 1))
-        do! expectM "second should have 'four' value" (AddCue { Id = Id "four"; Name = name "four"; Slices = [| |] }) (getNth (index 2))
+        do! expectM "First should have 'one' value"   (data.[0]) (getNth (index 1))
+        do! expectM "second should have 'four' value" (addCue)   (getNth (index 2))
       }
       |> runWithRaft raft' cbs
       |> ignore
@@ -201,13 +211,17 @@ module AppendEntries =
         raft {
           let! entry = Raft.getEntryAtM n
           return entry |> Option.get |> LogEntry.data
-          }
+        }
 
       let data =
         [| "one"; "two"; "three"; |]
-        |> Array.map (fun name' -> AddCue { Id = Id name'; Name = name name'; Slices = [| |] })
+        |> Array.map (fun name' -> AddCue {
+          Id = IrisId.Create()
+          Name = name name'
+          Slices = Array.empty
+        })
 
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
@@ -228,18 +242,18 @@ module AppendEntries =
         expect "Should have succeeded" true AppendRequest.succeeded response
         do! expectM "Should have 1 log entry" 1 Raft.numLogs
         let! entry = getNth (index 1)
-        expect "Should have correct value" (Some (AddCue { Id = Id "one"; Name = name "one"; Slices = [| |] })) id entry
+        expect "Should have correct value" (Some data.[0]) id entry
       }
       |> runWithRaft raft' cbs
       |> ignore
 
   let follower_recv_appendentries_add_new_entries_not_already_in_log =
     testCase "follower recv appendentries add new entries not already in log" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let log =
-        LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty),
-            Some <| LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty), None))
+        LogEntry((IrisId.Create()), index 2, term 1, DataSnapshot (State.Empty),
+            Some <| LogEntry((IrisId.Create()), index 2, term 1, DataSnapshot (State.Empty), None))
 
       raft {
         do! Raft.addMemberM peer
@@ -262,9 +276,9 @@ module AppendEntries =
 
   let follower_recv_appendentries_does_not_add_dupe_entries_already_in_log =
     testCase "follower recv appendentries does not add dupe entries already in log" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
-      let entry = LogEntry((Id.Create()), index 2, term 1, DataSnapshot (State.Empty), None)
+      let entry = LogEntry((IrisId.Create()), index 2, term 1, DataSnapshot (State.Empty), None)
       let log = Log.fromEntries entry
 
       let next =
@@ -300,13 +314,13 @@ module AppendEntries =
 
   let follower_recv_appendentries_set_commitidx_to_prevLogIdx =
     testCase "follower recv appendentries set commitidx to prevLogIdx" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let log =
-        LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
-            Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
-                Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty),
-                    Some <| LogEntry((Id.Create()), index 0, term 1, DataSnapshot (State.Empty), None))))
+        LogEntry((IrisId.Create()), index 0, term 1, DataSnapshot (State.Empty),
+            Some <| LogEntry((IrisId.Create()), index 0, term 1, DataSnapshot (State.Empty),
+                Some <| LogEntry((IrisId.Create()), index 0, term 1, DataSnapshot (State.Empty),
+                    Some <| LogEntry((IrisId.Create()), index 0, term 1, DataSnapshot (State.Empty), None))))
 
       let msg =
         { Term = term 1
@@ -328,13 +342,13 @@ module AppendEntries =
 
   let follower_recv_appendentries_set_commitidx_to_LeaderCommit =
     testCase "follower recv appendentries set commitidx to LeaderCommit" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let log =
-        LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
-          Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
-              Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty),
-                  Some <| LogEntry((Id.Create()), index 0, term 1,  DataSnapshot (State.Empty), None))))
+        LogEntry((IrisId.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+          Some <| LogEntry((IrisId.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+              Some <| LogEntry((IrisId.Create()), index 0, term 1,  DataSnapshot (State.Empty),
+                  Some <| LogEntry((IrisId.Create()), index 0, term 1,  DataSnapshot (State.Empty), None))))
 
       let msg =
         { Term = term 1
@@ -357,7 +371,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_failure_includes_current_idx =
     testCase "follower recv appendentries failure includes current idx" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let log id = LogEntry(id, index  0, term 1, DataSnapshot (State.Empty), None)
 
@@ -372,13 +386,13 @@ module AppendEntries =
       raft {
         do! Raft.addMemberM peer
         do! Raft.setTermM (term 1)
-        do! Raft.appendEntryM (log (Id.Create())) >>= ignoreM
+        do! Raft.appendEntryM (log (IrisId.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
 
         expect "Should not be successful" true AppendRequest.failed response
         expect "Should have current index 1" (index 1) AppendRequest.currentIndex response
 
-        do! Raft.appendEntryM (log (Id.Create())) >>= ignoreM
+        do! Raft.appendEntryM (log (IrisId.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should not be successful" true AppendRequest.failed response
         expect "Should have current index 2" (index 2) AppendRequest.currentIndex response
@@ -388,7 +402,7 @@ module AppendEntries =
 
   let follower_recv_appendentries_resets_election_timeout =
     testCase "follower recv appendentries resets election timeout" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let msg =
         { Term = term 1

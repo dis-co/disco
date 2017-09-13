@@ -84,34 +84,34 @@ type RaftLogEntry =
 
   // Member Configuration Entry
   | Configuration of
-    Id       : Id              *
-    Index    : Index           *
-    Term     : Term            *
+    Id       : LogId             *
+    Index    : Index             *
+    Term     : Term              *
     Members  : RaftMember array  *
     Previous : RaftLogEntry option
 
   // Entry type for configuration changes
   | JointConsensus of
-    Id       : Id                     *
-    Index    : Index                  *
-    Term     : Term                   *
-    Changes  : ConfigChange array     *
+    Id       : LogId              *
+    Index    : Index              *
+    Term     : Term               *
+    Changes  : ConfigChange array *
     Previous : RaftLogEntry option
 
   // Regular Log Entries
   | LogEntry   of
-    Id       : Id              *
+    Id       : LogId           *
     Index    : Index           *
     Term     : Term            *
     Data     : StateMachine    *
     Previous : RaftLogEntry option
 
   | Snapshot   of
-    Id        : Id             *
-    Index     : Index          *
-    Term      : Term           *
-    LastIndex : Index          *
-    LastTerm  : Term           *
+    Id        : LogId            *
+    Index     : Index            *
+    Term      : Term             *
+    LastIndex : Index            *
+    LastTerm  : Term             *
     Members   : RaftMember array *
     Data      : StateMachine
 
@@ -273,18 +273,15 @@ type RaftLogEntry =
       //  \____\___/|_| |_|_| |_|\__, |\__,_|_|  \__,_|\__|_|\___/|_| |_|
       //                         |___/
       | Configuration(id,idx,term,mems,_)          ->
-        let id = string id |> builder.CreateString
+        let id = ConfigurationFB.CreateIdVector(builder,id.ToByteArray())
         let mems = Array.map (Binary.toOffset builder) mems
         let nvec = ConfigurationFB.CreateMembersVector(builder, mems)
-
         ConfigurationFB.StartConfigurationFB(builder)
         ConfigurationFB.AddId(builder, id)
         ConfigurationFB.AddIndex(builder, int idx)
         ConfigurationFB.AddTerm(builder, int term)
         ConfigurationFB.AddMembers(builder, nvec)
-
         let entry = ConfigurationFB.EndConfigurationFB(builder)
-
         buildLogFB LogTypeFB.ConfigurationFB entry.Value
 
       //      _       _       _    ____
@@ -293,18 +290,15 @@ type RaftLogEntry =
       // | |_| | (_) | | | | | |_| |__| (_) | | | \__ \  __/ | | \__ \ |_| \__ \
       //  \___/ \___/|_|_| |_|\__|\____\___/|_| |_|___/\___|_| |_|___/\__,_|___/
       | JointConsensus(id,index,term,changes,_) ->
-        let id = string id |> builder.CreateString
+        let id = JointConsensusFB.CreateIdVector(builder,id.ToByteArray())
         let changes = Array.map (Binary.toOffset builder) changes
         let chvec = JointConsensusFB.CreateChangesVector(builder, changes)
-
         JointConsensusFB.StartJointConsensusFB(builder)
         JointConsensusFB.AddId(builder, id)
         JointConsensusFB.AddIndex(builder, int index)
         JointConsensusFB.AddTerm(builder, int term)
         JointConsensusFB.AddChanges(builder, chvec)
-
         let entry = JointConsensusFB.EndJointConsensusFB(builder)
-
         buildLogFB LogTypeFB.JointConsensusFB entry.Value
 
       //  _                _____       _
@@ -314,17 +308,14 @@ type RaftLogEntry =
       // |_____\___/ \__, |_____|_| |_|\__|_|   \__, |
       //             |___/                      |___/
       | LogEntry(id,index,term,data,_) ->
-        let id = string id |> builder.CreateString
+        let id = LogEntryFB.CreateIdVector(builder,id.ToByteArray())
         let data = data.ToOffset(builder)
-
         LogEntryFB.StartLogEntryFB(builder)
         LogEntryFB.AddId(builder, id)
         LogEntryFB.AddIndex(builder, int index)
         LogEntryFB.AddTerm(builder, int term)
         LogEntryFB.AddData(builder, data)
-
         let entry = LogEntryFB.EndLogEntryFB(builder)
-
         buildLogFB LogTypeFB.LogEntryFB entry.Value
 
       //  ____                        _           _
@@ -334,11 +325,10 @@ type RaftLogEntry =
       // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
       //                   |_|
       | Snapshot(id,index,term,lidx,lterm,mems,data) ->
-        let id = string id |> builder.CreateString
+        let id = SnapshotFB.CreateIdVector(builder,id.ToByteArray())
         let mems = Array.map (Binary.toOffset builder) mems
         let nvec = SnapshotFB.CreateMembersVector(builder, mems)
         let data = data.ToOffset(builder)
-
         SnapshotFB.StartSnapshotFB(builder)
         SnapshotFB.AddId(builder, id)
         SnapshotFB.AddIndex(builder, int index)
@@ -347,9 +337,7 @@ type RaftLogEntry =
         SnapshotFB.AddLastTerm(builder, int lterm)
         SnapshotFB.AddMembers(builder, nvec)
         SnapshotFB.AddData(builder, data)
-
         let entry = SnapshotFB.EndSnapshotFB(builder)
-
         buildLogFB LogTypeFB.SnapshotFB entry.Value
 
     let arr = Array.zeroCreate (self.Depth |> int)
@@ -403,12 +391,11 @@ type RaftLogEntry =
                 arr
               |> Either.map snd
 
+            let! id = Id.decodeId logentry
+
             // successfully parsed this LogEntry, so return it wrapped in an option
-            return Configuration(Id logentry.Id,
-                                 index logentry.Index,
-                                 term logentry.Term,
-                                 mems,
-                                 previous)
+            return (id, index logentry.Index, term logentry.Term, mems, previous)
+                   |> Configuration
                    |> Some
           else
             return! "Could not parse empty LogTypeFB.ConfigurationFB"
@@ -446,12 +433,9 @@ type RaftLogEntry =
                 (Right (0, arr))
                 arr
               |> Either.map snd
-
-            return JointConsensus(Id logentry.Id,
-                                  index logentry.Index,
-                                  term logentry.Term,
-                                  changes,
-                                  previous)
+            let! id = Id.decodeId logentry
+            return (id, index logentry.Index, term logentry.Term, changes, previous)
+                   |> JointConsensus
                    |> Some
           else
             return!
@@ -470,13 +454,10 @@ type RaftLogEntry =
             let data = logentry.Data
             if data.HasValue then
               let! command = StateMachine.FromFB data.Value
-
-              return LogEntry(Id logentry.Id,
-                              index logentry.Index,
-                              term logentry.Term,
-                              command,
-                              previous)
-                     |> Some
+              let! id = Id.decodeId logentry
+              return(id, index logentry.Index, term logentry.Term, command, previous)
+                    |> LogEntry
+                    |> Some
             else
               return!
                 "Could not parse empty StateMachineFB"
@@ -497,7 +478,7 @@ type RaftLogEntry =
             let data = logentry.Data
 
             if data.HasValue then
-              let id = Id logentry.Id
+              let! id = Id.decodeId logentry
               let! state = StateMachine.FromFB data.Value
 
               let! mems =
@@ -964,7 +945,7 @@ module LogEntry =
   /// |_|  |_|\__,_|_|\_\___|
 
   let make term data =
-    LogEntry(Id.Create(), index 0, term, data, None)
+    LogEntry(IrisId.Create(), index 0, term, data, None)
 
   // ** LogEntry.mkConfig
 
@@ -973,7 +954,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfig term mems =
-    Configuration(Id.Create(), index 0, term, mems, None)
+    Configuration(IrisId.Create(), index 0, term, mems, None)
 
   // ** LogEntry.mkConfigChange
 
@@ -983,7 +964,7 @@ module LogEntry =
   /// ### Complexity: 0(1)
 
   let mkConfigChange term changes =
-    JointConsensus(Id.Create(), index 0, term, changes, None)
+    JointConsensus(IrisId.Create(), index 0, term, changes, None)
 
   let calculateChanges oldmems newmems =
     let changes =
@@ -1041,7 +1022,7 @@ module LogEntry =
       | JointConsensus(_,idx,term,_,_) -> idx,term
       | Snapshot(_,idx,term,_,_,_,_)   -> idx,term
     in
-      Snapshot(Id.Create(),idx + 1<index>,term,idx,term,mems,data)
+      Snapshot(IrisId.Create(),idx + 1<index>,term,idx,term,mems,data)
 
   // ** LogEntry.map
 

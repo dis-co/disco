@@ -20,13 +20,13 @@ module JointConsensus =
 
       let response = { Term = trm; Granted = true; Reason = None }
 
-      let mem1 = Member.create (Id.Create())
-      let mem2 = Member.create (Id.Create())
+      let mem1 = Member.create (IrisId.Create())
+      let mem2 = Member.create (IrisId.Create())
 
       let log =
-        JointConsensus(Id.Create(), index 3, term 0, [| MemberAdded mem2 |],
-                Some <| JointConsensus(Id.Create(), index 2, term 0, [| MemberRemoved mem1 |],
-                           Some <| JointConsensus(Id.Create(), index 1, term 0, [| MemberAdded mem1 |], None)))
+        JointConsensus(IrisId.Create(), index 3, term 0, [| MemberAdded mem2 |],
+                Some <| JointConsensus(IrisId.Create(), index 2, term 0, [| MemberRemoved mem1 |],
+                           Some <| JointConsensus(IrisId.Create(), index 1, term 0, [| MemberAdded mem1 |], None)))
 
       let getstuff r =
         Map.toList r.Peers
@@ -48,14 +48,14 @@ module JointConsensus =
 
   let server_added_mem_should_become_voting_once_it_caught_up =
     testCase "added mem should become voting once it caught up" <| fun _ ->
-      let nid2 = Id.Create()
+      let nid2 = IrisId.Create()
       let mem = Member.create nid2
 
       let mkjc term =
-        JointConsensus(Id.Create(), index 1, term, [| MemberAdded(mem) |] , None)
+        JointConsensus(IrisId.Create(), index 1, term, [| MemberAdded(mem) |] , None)
 
       let mkcnf term mems =
-        Configuration(Id.Create(), index 1, term, mems , None)
+        Configuration(IrisId.Create(), index 1, term, mems , None)
 
       let ci = ref (index 0)
       let state = defaultServer()
@@ -179,7 +179,7 @@ module JointConsensus =
 
       let mems =
         [| for n in 0 .. (n - 1) do      // subtract one for the implicitly
-            let nid = Id.Create()
+            let nid = IrisId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
       let ci = ref (index 0)
@@ -515,7 +515,7 @@ module JointConsensus =
 
       let mems =
         [| for n in 0 .. (n - 1) do      // subtract one for the implicitly
-            let nid = Id.Create()
+            let nid = IrisId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
       let vote = { Granted = true; Term = !trm; Reason = None }
@@ -655,7 +655,7 @@ module JointConsensus =
 
       let mems =
         [| for n in 1 .. (n - 1) do      // subtract one for the implicitly
-            let nid = Id.Create()
+            let nid = IrisId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
         |> Map.ofArray
 
@@ -728,7 +728,7 @@ module JointConsensus =
 
       let mems =
         [| for n in 1 .. (n - 1) do      // subtract one for the implicitly
-            let nid = Id.Create()
+            let nid = IrisId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
       raft {
@@ -783,7 +783,7 @@ module JointConsensus =
 
       let mems =
         [| for n in 0 .. (n - 1) do      // subtract one for the implicitly
-            let nid = Id.Create()
+            let nid = IrisId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
       let self = snd mems.[0]

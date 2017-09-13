@@ -77,7 +77,7 @@ module PersistenceTests =
 
         expect "state should contain PinGroup"
           true
-          (PinGroupMap.containsGroup group.Client group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id)
           state.PinGroups
 
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
@@ -140,7 +140,7 @@ module PersistenceTests =
 
         expect "state should contain PinGroup"
           true
-          (PinGroupMap.containsGroup group.Client group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id)
           state.PinGroups
 
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
@@ -151,7 +151,7 @@ module PersistenceTests =
 
         expect "state should contain PinGroup"
           true
-          (PinGroupMap.containsGroup group.Client group.Id >> not)
+          (PinGroupMap.containsGroup group.ClientId group.Id >> not)
           updated.PinGroups
 
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
@@ -201,10 +201,10 @@ module PersistenceTests =
 
         let pin =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "ohai")
             group.Id
-            group.Client
+            group.ClientId
             [| true |]
           |> Pin.setPersisted true
 
@@ -214,7 +214,7 @@ module PersistenceTests =
 
         expect "state should contain PinGroup"
           true
-          (PinGroupMap.containsGroup group.Client group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id)
           state.PinGroups
 
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
@@ -225,7 +225,7 @@ module PersistenceTests =
 
         expect "state should contain Pin"
           true
-          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id)
+          (PinGroupMap.containsPin pin.ClientId pin.PinGroupId pin.Id)
           updated.PinGroups
 
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
@@ -239,10 +239,10 @@ module PersistenceTests =
 
         let pin =
           Pin.Sink.toggle
-            (Id.Create())
+            (IrisId.Create())
             (name "ohai")
             group.Id
-            group.Client
+            group.ClientId
             [| true |]
           |> Pin.setPersisted true
 
@@ -252,7 +252,7 @@ module PersistenceTests =
 
         expect "state should contain PinGroup"
           true
-          (PinGroupMap.containsGroup group.Client group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id)
           state.PinGroups
 
         expect "PinGroups should be the same" state.PinGroups id loaded.PinGroups
@@ -263,7 +263,7 @@ module PersistenceTests =
 
         expect "state should contain Pin"
           true
-          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id)
+          (PinGroupMap.containsPin pin.ClientId pin.PinGroupId pin.Id)
           updated.PinGroups
 
         expect "PinGroups should be the same" updated.PinGroups id loaded.PinGroups
@@ -274,7 +274,7 @@ module PersistenceTests =
 
         expect "state should not contain Pin"
           true
-          (PinGroupMap.containsPin pin.Client pin.PinGroup pin.Id >> not)
+          (PinGroupMap.containsPin pin.ClientId pin.PinGroupId pin.Id >> not)
           updated.PinGroups
 
         expect "PinGroups should be the same" updated.PinGroups id reloaded.PinGroups

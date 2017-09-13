@@ -28,7 +28,7 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId:    Id
+  { MachineId:    MachineId
     HostName:     Name
     WorkSpace:    FilePath
     LogDirectory: FilePath
@@ -55,7 +55,7 @@ type IrisMachine =
     let workspace = machine.WorkSpace |> unwrap |> mapNull
     let logdir = machine.LogDirectory |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
-    let machineid = machine.MachineId |> string |> builder.CreateString
+    let machineid = IrisMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
     IrisMachineFB.StartIrisMachineFB(builder)
     IrisMachineFB.AddMachineId(builder, machineid)
@@ -75,9 +75,10 @@ type IrisMachine =
 
   static member FromFB (fb: IrisMachineFB) =
     either {
+      let! machineId = Id.decodeMachineId fb
       let! ip = IpAddress.TryParse fb.BindAddress
       return
-        { MachineId    = Id fb.MachineId
+        { MachineId    = machineId
           WorkSpace    = filepath fb.WorkSpace
           LogDirectory = filepath fb.LogDirectory
           HostName     = name fb.HostName
@@ -94,7 +95,7 @@ type IrisMachine =
 
   static member Default
     with get () =
-      { MachineId    = Id "<empty>"
+      { MachineId    = IrisId.Create()
         HostName     = name "<empty>"
         #if FABLE_COMPILER
         WorkSpace    = filepath "/dev/null"
@@ -126,7 +127,7 @@ module MachineStatus =
 
   type MachineStatus =
     | Idle
-    | Busy of ProjectId:Id * ProjectName:Name
+    | Busy of ProjectId:ProjectId * ProjectName:Name
 
     // *** ToString
 
@@ -147,7 +148,7 @@ module MachineStatus =
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.IdleFB)
         MachineStatusFB.EndMachineStatusFB(builder)
       | Busy (id, name) ->
-        let idoff = id |> string |> builder.CreateString
+        let idoff = MachineStatusFB.CreateProjectIdVector(builder,id.ToByteArray())
         let nameoff = name |> unwrap |> mapNull builder
         MachineStatusFB.StartMachineStatusFB(builder)
         MachineStatusFB.AddStatus(builder, MachineStatusEnumFB.BusyFB)
@@ -162,8 +163,10 @@ module MachineStatus =
       match fb.Status with
       | x when x = MachineStatusEnumFB.IdleFB -> Either.succeed Idle
       | x when x = MachineStatusEnumFB.BusyFB ->
-        Busy (Id fb.ProjectId, name fb.ProjectName)
-        |> Either.succeed
+        either {
+          let! id = Id.decodeProjectId fb
+          return Busy (id, name fb.ProjectName)
+        }
       | other ->
         sprintf "Unknown Machine Status: %d" other
         |> Error.asParseError "MachineStatus.FromOffset"
@@ -172,8 +175,10 @@ module MachineStatus =
       match fb.Status with
       | MachineStatusEnumFB.IdleFB -> Either.succeed Idle
       | MachineStatusEnumFB.BusyFB ->
-        Busy (Id fb.ProjectId, name fb.ProjectName)
-        |> Either.succeed
+        either {
+          let! id = Id.decodeProjectId fb
+          return Busy (id, name fb.ProjectName)
+        }
       | other ->
         sprintf "Unknown Machine Status: %O" other
         |> Error.asParseError "MachineStatus.FromOffset"
@@ -263,8 +268,9 @@ module MachineConfig =
     either {
       let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
+      let! id = IrisId.TryParse yml.MachineId
       return
-        { MachineId    = Id yml.MachineId
+        { MachineId    = id
           HostName     = name hostname
           WorkSpace    = filepath yml.WorkSpace
           LogDirectory = filepath yml.LogDirectory
@@ -310,7 +316,7 @@ module MachineConfig =
 
     let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
 
-    { MachineId    = Id.Create()
+    { MachineId    = IrisId.Create()
       HostName     = name hostname
       WorkSpace    = workspace
       LogDirectory = workspace </> filepath "log"

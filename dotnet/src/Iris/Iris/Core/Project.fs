@@ -109,7 +109,7 @@ type ClientExecutable =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = self.Id |> string |> builder.CreateString
+    let id = ClientExecutableFB.CreateIdVector(builder,self.Id.ToByteArray())
     let path = self.Executable |> unwrap |> Option.mapNull builder.CreateString
     let version = self.Version |> unwrap |> Option.mapNull builder.CreateString
     ClientExecutableFB.StartClientExecutableFB(builder)
@@ -122,11 +122,14 @@ type ClientExecutable =
   // ** FromFB
 
   static member FromFB(fb: ClientExecutableFB) =
-    Right {
-      Id         = Id fb.Id
-      Executable = filepath fb.Executable
-      Version    = version fb.Version
-      Required   = fb.Required
+    either {
+      let! id = Id.decodeId fb
+      return {
+        Id         = id
+        Executable = filepath fb.Executable
+        Version    = version fb.Version
+        Required   = fb.Required
+      }
     }
 
 // * ClientConfig
@@ -142,7 +145,7 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
   with
     // ** Default
 
-    static member Default = ClientConfig Map.empty
+    static member Default with get() = ClientConfig Map.empty
 
     // ** Executables
 
@@ -320,7 +323,7 @@ type AudioConfig =
 
 type HostGroup =
   { Name    : Name
-    Members : Id array }
+    Members : MemberId array }
 
   // ** ToString
 
@@ -354,10 +357,10 @@ type HostGroup =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<IrisError, int * Id array>) _ ->
+          (fun (m: Either<IrisError, int * MemberId array>) _ ->
             either {
               let! (idx, ids) = m
-              let id = Id (fb.Members(idx))
+              let! id = IrisId.TryParse (fb.Members(idx))
               ids.[idx] <- id
               return (idx + 1, ids)
             })
@@ -378,7 +381,7 @@ type HostGroup =
 //  \____|_|\__,_|___/\__\___|_|
 
 type ClusterConfig =
-  { Id: Id
+  { Id: ClusterId
     Name: Name
     Members: Map<MemberId,RaftMember>
     Groups: HostGroup array }
@@ -387,7 +390,7 @@ type ClusterConfig =
 
   static member Default
     with get () =
-      { Id      = Id.Create()
+      { Id      = IrisId.Create()
         Name    = name Constants.DEFAULT
         Members = Map.empty
         Groups  = [| |] }
@@ -404,7 +407,7 @@ type ClusterConfig =
   // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = builder.CreateString (string self.Id)
+    let id = ClusterConfigFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
 
     let members =
@@ -487,11 +490,14 @@ type ClusterConfig =
           (Right(0, arr))
           arr
 
-      return
-        { Id      = Id fb.Id
-          Name    = name fb.Name
-          Members = members
-          Groups  = groups }
+      let! id = Id.decodeId fb
+
+      return {
+        Id      = id
+        Name    = name fb.Name
+        Members = members
+        Groups  = groups
+      }
     }
 
 // * IrisConfig
@@ -505,7 +511,7 @@ type ClusterConfig =
 
 type IrisConfig =
   { Machine:    IrisMachine
-    ActiveSite: Id option
+    ActiveSite: SiteId option
     Version:    string
     Audio:      AudioConfig
     Clients:    ClientConfig
@@ -548,9 +554,9 @@ type IrisConfig =
     let machine = Binary.toOffset builder self.Machine
 
     let site =
-      match self.ActiveSite with
-      | Some id -> id |> string |> builder.CreateString |> Some
-      | None -> None
+      Option.map
+        (fun (id:SiteId) -> ConfigFB.CreateActiveSiteVector(builder,id.ToByteArray()))
+        self.ActiveSite
 
     let sites =
       Array.map (Binary.toOffset builder) self.Sites
@@ -573,11 +579,13 @@ type IrisConfig =
     either {
       let version = fb.Version
 
-      let site =
-        if isNull fb.ActiveSite then
-          None
-        else
-          Some (Id fb.ActiveSite)
+      let! site =
+        try
+          if fb.ActiveSiteLength = 0
+          then Either.succeed None
+          else Id.decodeActiveSite fb |> Either.map Some
+        with exn ->
+          Either.succeed None
 
       let! machine =
         #if FABLE_COMPILER
@@ -812,11 +820,14 @@ module ProjectYaml =
   // ** parseExecutable
 
   let internal parseExecutable (exe: ClientExecutableYaml) : Either<IrisError, ClientExecutable> =
-    Right {
-      Id         = Id exe.Id
-      Executable = filepath exe.Path
-      Version    = version exe.Version
-      Required   = exe.Required
+    either {
+      let! id = IrisId.TryParse exe.Id
+      return {
+        Id         = id
+        Executable = filepath exe.Path
+        Version    = version exe.Version
+        Required   = exe.Required
+      }
     }
 
   // ** parseClients
@@ -994,28 +1005,29 @@ module ProjectYaml =
   /// Returns: Either<IrisError, RaftMember>
   let internal parseMember (mem: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
-      let! ip = IpAddress.TryParse mem.IpAddr
-      let! state = RaftMemberState.TryParse mem.State
-
       try
-        return { Id         = Id mem.Id
-                 HostName   = name mem.HostName
-                 IpAddr     = ip
-                 Port       = mem.Port    |> uint16 |> port
-                 WsPort     = mem.WsPort  |> uint16 |> port
-                 GitPort    = mem.GitPort |> uint16 |> port
-                 ApiPort    = mem.ApiPort |> uint16 |> port
-                 State      = state
-                 Voting     = true
-                 VotedForMe = false
-                 NextIndex  = index 1
-                 MatchIndex = index 0 }
-      with
-        | exn ->
-          return!
-            sprintf "Could not parse Member definition: %s" exn.Message
-            |> Error.asParseError "Config.parseMember"
-            |> Either.fail
+        let! id = IrisId.TryParse mem.Id
+        let! ip = IpAddress.TryParse mem.IpAddr
+        let! state = RaftMemberState.TryParse mem.State
+        return {
+          Id         = id
+          HostName   = name mem.HostName
+          IpAddr     = ip
+          Port       = mem.Port    |> uint16 |> port
+          WsPort     = mem.WsPort  |> uint16 |> port
+          GitPort    = mem.GitPort |> uint16 |> port
+          ApiPort    = mem.ApiPort |> uint16 |> port
+          State      = state
+          Voting     = true
+          VotedForMe = false
+          NextIndex  = index 1
+          MatchIndex = index 0
+        }
+      with exn ->
+        return!
+          sprintf "Could not parse Member definition: %s" exn.Message
+          |> Error.asParseError "Config.parseMember"
+          |> Either.fail
     }
 
   // ** parseMember
@@ -1047,9 +1059,11 @@ module ProjectYaml =
 
   let internal parseGroup (group: GroupYaml) : Either<IrisError, HostGroup> =
     either {
-      let ids = Seq.map (string >> Id) group.Members |> Seq.toArray
-      return { Name = name group.Name
-               Members = ids }
+      let ids = Seq.map (string >> IrisId.Parse) group.Members |> Seq.toArray
+      return {
+        Name = name group.Name
+        Members = ids
+      }
     }
 
   // ** parseGroups
@@ -1087,11 +1101,13 @@ module ProjectYaml =
     either {
       let! groups = parseGroups cluster.Groups
       let! mems = parseMembers cluster.Members
-
-      return { Id = Id cluster.Id
-               Name = name cluster.Name
-               Members = mems
-               Groups = groups }
+      let! id = IrisId.TryParse cluster.Id
+      return {
+        Id = id
+        Name = name cluster.Name
+        Members = mems
+        Groups = groups
+      }
     }
 
   // ** parseSites
@@ -1240,10 +1256,10 @@ module Config =
       let! audio     = ProjectYaml.parseAudio     file
       let! sites     = ProjectYaml.parseSites     file
 
-      let site =
+      let! site =
         if isNull file.ActiveSite || file.ActiveSite = ""
-        then None
-        else Some (Id file.ActiveSite)
+        then Right None
+        else IrisId.TryParse file.ActiveSite |> Either.map Some
 
       return {
         Machine    = machine
@@ -1335,7 +1351,7 @@ module Config =
 
   // ** findMember
 
-  let findMember (config: IrisConfig) (id: Id) =
+  let findMember (config: IrisConfig) (id: MemberId) =
     match config.ActiveSite with
     | Some active ->
       match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
@@ -1373,7 +1389,7 @@ module Config =
 
   // ** setActiveSite
 
-  let setActiveSite (id: Id) (config: IrisConfig) =
+  let setActiveSite (id: SiteId) (config: IrisConfig) =
     if config.Sites |> Array.exists (fun x -> x.Id = id)
     then Right { config with ActiveSite = Some id }
     else
@@ -1436,13 +1452,13 @@ module Config =
 
   // ** removeSite
 
-  let removeSite (id: Id) (config: IrisConfig) =
+  let removeSite (id: SiteId) (config: IrisConfig) =
     let sites = Array.filter (fun (site: ClusterConfig) -> site.Id <> id) config.Sites
     { config with Sites = sites }
 
   // ** siteByMember
 
-  let siteByMember (memid: Id) (config: IrisConfig) =
+  let siteByMember (memid: SiteId) (config: IrisConfig) =
     Array.fold
       (fun (m: ClusterConfig option) site ->
         match m with
@@ -1456,7 +1472,7 @@ module Config =
 
   // ** findSite
 
-  let findSite (id: Id) (config: IrisConfig) =
+  let findSite (id: SiteId) (config: IrisConfig) =
     Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
 
   // ** addMember
@@ -1473,7 +1489,7 @@ module Config =
 
   // ** removeMember
 
-  let removeMember (id: Id) (config: IrisConfig) =
+  let removeMember (id: MemberId) (config: IrisConfig) =
     match config.ActiveSite with
     | Some active ->
       match Array.tryFind (fun (clst:ClusterConfig) -> clst.Id = active) config.Sites with
@@ -1513,7 +1529,7 @@ module Config =
 //                              |__/
 
 type IrisProject =
-  { Id        : Id
+  { Id        : ProjectId
     Name      : Name
     Path      : FilePath
     CreatedOn : TimeStamp
@@ -1548,7 +1564,7 @@ Config: %A
 
   static member Empty
     with get () =
-      { Id        = Id Constants.EMPTY
+      { Id        = IrisId.Empty
         Name      = name Constants.EMPTY
         Path      = filepath ""
         CreatedOn = timestamp ""
@@ -1640,7 +1656,7 @@ Config: %A
       match str with
       | null -> nll |> builder.CreateString
       | str -> str |> builder.CreateString
-    let id = builder.CreateString (string self.Id)
+    let id = ProjectFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
     let path = self.Path |> unwrap |> Option.mapNull builder.CreateString
     let created = Option.mapNull builder.CreateString self.CreatedOn
@@ -1712,15 +1728,18 @@ Config: %A
           |> Either.fail
         #endif
 
-      return
-        { Id        = Id fb.Id
-          Name      = name fb.Name
-          Path      = filepath fb.Path
-          CreatedOn = fb.CreatedOn
-          LastSaved = lastsaved
-          Copyright = copyright
-          Author    = author
-          Config    = config }
+      let! id = Id.decodeId fb
+
+      return {
+        Id        = id
+        Name      = name fb.Name
+        Path      = filepath fb.Path
+        CreatedOn = fb.CreatedOn
+        LastSaved = lastsaved
+        Copyright = copyright
+        Author    = author
+        Config    = config
+      }
     }
 
   // ** ToYaml
@@ -1777,15 +1796,18 @@ Config: %A
       let dummy = MachineConfig.create Constants.DEFAULT_IP None
 
       let! config = Config.fromFile meta dummy
+      let! id = IrisId.TryParse meta.Id
 
-      return { Id        = Id meta.Id
-               Name      = name meta.Name
-               Path      = filepath (Path.GetFullPath ".")
-               CreatedOn = timestamp meta.CreatedOn
-               LastSaved = lastSaved
-               Copyright = ProjectYaml.parseStringProp meta.Copyright
-               Author    = ProjectYaml.parseStringProp meta.Author
-               Config    = config }
+      return {
+        Id        = id
+        Name      = name meta.Name
+        Path      = filepath (Path.GetFullPath ".")
+        CreatedOn = timestamp meta.CreatedOn
+        LastSaved = lastSaved
+        Copyright = ProjectYaml.parseStringProp meta.Copyright
+        Author    = ProjectYaml.parseStringProp meta.Author
+        Config    = config
+      }
     }
 
   #endif
@@ -2117,7 +2139,7 @@ module Project =
   let create (path: FilePath) (projectName: string) (machine: IrisMachine) =
     either {
       let project =
-        { Id        = Id.Create()
+        { Id        = IrisId.Create()
           Name      = name projectName
           Path      = path
           CreatedOn = Time.createTimestamp()

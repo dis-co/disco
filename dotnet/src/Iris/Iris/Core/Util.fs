@@ -459,87 +459,44 @@ module Process =
 [<RequireQualifiedAccess>]
 module Crypto =
 
-  /// ## toString
-  ///
   /// Turn a byte array into a string.
-  ///
-  /// ### Signature:
-  /// - buf: byte array to turn into a string
-  ///
-  /// Returns: string
   let private toString (buf: byte array) =
-    let hashedString = new StringBuilder ()
+    let hashedString = StringBuilder()
     for byte in buf do
       hashedString.AppendFormat("{0:x2}", byte)
       |> ignore
     hashedString.ToString()
 
-  /// ## sha1sum
-  ///
   /// Compute the SHA1 checksum of the passed byte array.
-  ///
-  /// ### Signature:
-  /// - buf: byte array to checksum
-  ///
-  /// Returns: Hash
   let sha1sum (buf: byte array) : Hash =
-    let sha256 = new SHA1Managed()
-    sha256.ComputeHash(buf)
+    use sha1 = new SHA1Managed()
+    sha1.ComputeHash(buf)
     |> toString
     |> checksum
 
-  /// ## sha256sum
-  ///
   /// Compute the SHA256 checksum of the passed byte array.
-  ///
-  /// ### Signature:
-  /// - buf: byte array to checksum
-  ///
-  /// Returns: Hash
   let sha256sum (buf: byte array) : Hash =
-    let sha256 = new SHA256Managed()
+    use sha256 = new SHA256Managed()
     sha256.ComputeHash(buf)
     |> toString
     |> checksum
 
-  /// ## generateSalt
-  ///
   /// Generate a random salt value for securing passwords.
-  ///
-  /// ### Signature:
-  /// - n: int number of bytes to generate
-  ///
-  /// Returns: Salt
   let generateSalt (n: int) : Salt =
     let buf : byte array = Array.zeroCreate n
-    let random = new Random()
+    let random = Random()
     random.NextBytes(buf)
     sha1sum buf
 
-  /// ## hashPassword
-  ///
   /// Generate a salted and hashed checksum for the given password.
-  ///
-  /// ### Signature:
-  /// - pw: string password to salt and hash
-  /// - salt: string salt value to concatenate pw with
-  ///
-  /// Returns: string
   let hashPassword (pw: Password) (salt: Salt) : Hash =
     let concat:string = unwrap salt + unwrap pw
     concat
     |> Encoding.UTF8.GetBytes
     |> sha256sum
 
-  /// ## hash
-  ///
   /// Hashes the given password with a generated random salt value. Returns a tuple of the generated
   /// hash and the salt used in the process.
-  ///
-  /// ### Signature:
-  /// - pw: Password to hash
-  ///
-  /// Returns: Hash * Salt
   let hash (pw: Password) : Hash * Salt =
     let salt = generateSalt 50
     hashPassword pw salt, salt
@@ -702,10 +659,10 @@ module Guid =
 
   // ** ofId
 
-  let ofId (id: Id) =
-    id |> string |> Guid.Parse
+  let ofId (id: IrisId) =
+    id.ToGuid()
 
   // ** toId
 
   let toId (guid: Guid) =
-    guid |> string |> Id
+    IrisId.FromGuid guid

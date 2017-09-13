@@ -225,13 +225,13 @@ module Persistence =
 
     | AddPin    pin
     | UpdatePin pin ->
-      match State.tryFindPinGroup pin.Client pin.PinGroup state with
+      match State.tryFindPinGroup pin.ClientId pin.PinGroupId state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
       | None -> Either.nothing
 
     | RemovePin pin ->
-      match State.tryFindPinGroup pin.Client pin.PinGroup state with
+      match State.tryFindPinGroup pin.ClientId pin.PinGroupId state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
       | None -> Either.nothing
@@ -334,9 +334,9 @@ module Persistence =
 
   // ** ensureRemotes
 
-  let ensureRemotes (leader: Id)
+  let ensureRemotes (leader: MemberId)
                     (project: IrisProject)
-                    (peers: Map<Id,RaftMember>)
+                    (peers: Map<MemberId,RaftMember>)
                     (repo: Repository) =
     peers
     |> Map.toArray

@@ -45,13 +45,13 @@ namespace Iris.Core
 
 [<RequireQualifiedAccess; NoComparison>]
 type ClientMessage<'state> =
-  | Initialized  of Id                     // the worker has created a session for this tab/window
-  | Close        of Id                     // client tab/window was closed, so request to remove session
-  | Closed       of Id                     // other client tab/window notified of close
+  | Initialized  of IrisId                 // the worker has created a session for this tab/window
+  | Close        of IrisId                 // client tab/window was closed, so request to remove session
+  | Closed       of IrisId                 // other client tab/window notified of close
   | Stop                                   // SharedWorker is requested to stop
   | Stopped                                // SharedWorker process has stopped
   | Error        of string                 // an error occuring inside the worker
-  | Event        of Id * StateMachine      // encapsulates an action or event that happened on the client
+  | Event        of IrisId * StateMachine  // encapsulates an action or event that happened on the client
   | Connect      of string                 // Connect to the specified endpoint
   | Connected                              // worker websocket is connected to service
   | Disconnect   of string                 // Disconnect from server

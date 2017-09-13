@@ -25,7 +25,7 @@ module rec PubSub =
   // ** IState
 
   type private IState =
-    abstract Id: Id
+    abstract Id: PeerId
     abstract LocalEndPoint: IPEndPoint
     abstract RemoteEndPoint: IPEndPoint
     abstract Client: UdpClient
@@ -42,10 +42,7 @@ module rec PubSub =
         let guid =
           let intermediate = Array.zeroCreate 16
           Array.blit raw 0 intermediate 0 16
-          intermediate
-          |> Guid
-          |> string
-          |> Id
+          IrisId.FromByteArray intermediate
 
         if guid <> state.Id then
           let payload =
@@ -102,7 +99,7 @@ module rec PubSub =
 
   // ** create
 
-  let create (id: Id) (multicastAddress: IPAddress) (port: int) =
+  let create (id: PeerId) (multicastAddress: IPAddress) (port: int) =
     let subscriptions = ConcurrentDictionary<Guid,IObserver<PubSubEvent>>()
 
     let client = new UdpClient()

@@ -21,8 +21,8 @@ type PinType =
 // ** NodeMapping
 
 type NodeMapping =
-  { PinId: Id
-    GroupId: Id
+  { PinId: PinId
+    GroupId: PinGroupId
     Pin: IPin2
     Type: PinType
     PinConfiguration: PinConfiguration
@@ -93,6 +93,12 @@ module Settings =
 
   [<Literal>]
   let INPUT_ENUM_PIN = "Input Enum"
+
+  [<Literal>]
+  let PIN_NAME_PROP = "PinName"
+
+  [<Literal>]
+  let PIN_PATH_PROP = "NodePath"
 
 // * Util
 

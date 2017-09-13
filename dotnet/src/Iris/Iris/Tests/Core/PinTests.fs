@@ -8,19 +8,19 @@ open Iris.Service
 module PinTests =
 
   let mkStringPin (value: string array) =
-    Pin.Sink.string (Id.Create()) (name "test") (Id.Create()) (Id.Create()) value
+    Pin.Sink.string (IrisId.Create()) (name "test") (IrisId.Create()) (IrisId.Create()) value
 
   let mkNumberPin (value: double array) =
-    Pin.Sink.number (Id.Create()) (name "test") (Id.Create()) (Id.Create()) value
+    Pin.Sink.number (IrisId.Create()) (name "test") (IrisId.Create()) (IrisId.Create()) value
 
   let mkBooleanPin (value: bool array) =
-    Pin.Sink.toggle (Id.Create()) (name "test") (Id.Create()) (Id.Create()) value
+    Pin.Sink.toggle (IrisId.Create()) (name "test") (IrisId.Create()) (IrisId.Create()) value
 
   let mkEnumPin (value: Property array) =
-    Pin.Sink.enum (Id.Create()) (name "test") (Id.Create()) (Id.Create()) value value
+    Pin.Sink.enum (IrisId.Create()) (name "test") (IrisId.Create()) (IrisId.Create()) value value
 
   let mkColorPin (value: ColorSpace array) =
-    Pin.Sink.color (Id.Create()) (name "test") (Id.Create()) (Id.Create()) value
+    Pin.Sink.color (IrisId.Create()) (name "test") (IrisId.Create()) (IrisId.Create()) value
 
   let test_simple_string_pin_to_spread =
     testCase "validate correct string pin ToSpread with non-whitespace" <| fun _ ->

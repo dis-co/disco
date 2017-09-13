@@ -86,18 +86,18 @@ GROUP Fable
 STORAGE: NONE
 NUGET
   remote: https://www.nuget.org/api/v2
-    dotnet-fable (1.1.23) - clitool: true
+    dotnet-fable (1.1.24) - clitool: true
       Dotnet.ProjInfo (>= 0.7.4) - restriction: >= netcoreapp1.0
-      Fable.Compiler (>= 1.1.23) - restriction: >= netcoreapp1.0
-      Fable.Core (>= 1.1.16) - restriction: >= netcoreapp1.0
+      Fable.Compiler (>= 1.2.1) - restriction: >= netcoreapp1.0
+      Fable.Core (>= 1.2.1) - restriction: >= netcoreapp1.0
       FSharp.Core (>= 4.2.3) - restriction: >= netcoreapp1.0
       Microsoft.NETCore.App (>= 1.0.4) - restriction: >= netcoreapp1.0
       System.ValueTuple (>= 4.4) - restriction: >= netcoreapp1.0
     Dotnet.ProjInfo (0.7.4) - restriction: >= netcoreapp1.0
       FSharp.Core (>= 4.1.17) - restriction: >= netstandard1.6
       NETStandard.Library (>= 1.6.1) - restriction: >= netstandard1.6
-    Fable.Compiler (1.1.23) - restriction: >= netcoreapp1.0
-      Fable.Core (>= 1.1.16) - restriction: >= netstandard1.6
+    Fable.Compiler (1.2.1) - restriction: >= netcoreapp1.0
+      Fable.Core (>= 1.2.1) - restriction: >= netstandard1.6
       FSharp.Compiler.Service (>= 14.0.2) - restriction: >= netstandard1.6
       FSharp.Core (>= 4.2.3) - restriction: >= netstandard1.6
       NETStandard.Library (>= 1.6.1) - restriction: >= netstandard1.6
@@ -106,7 +106,7 @@ NUGET
       System.Reflection.Metadata (>= 1.5) - restriction: >= netstandard1.6
       System.Runtime.Loader (>= 4.3) - restriction: >= netstandard1.6
       System.ValueTuple (>= 4.4) - restriction: >= netstandard1.6
-    Fable.Core (1.1.16)
+    Fable.Core (1.2.1)
       FSharp.Core (>= 4.2.3) - restriction: >= netstandard1.6
       NETStandard.Library (>= 1.6.1) - restriction: >= netstandard1.6
       System.ValueTuple (>= 4.4) - restriction: >= netstandard1.6

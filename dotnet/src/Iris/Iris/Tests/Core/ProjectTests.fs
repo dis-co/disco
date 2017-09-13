@@ -101,24 +101,24 @@ module ProjectTests =
 
         let clientCfg =
           ClientConfig.ofList
-            [{ Id         = Id.Create()
+            [{ Id         = IrisId.Create()
                Executable = filepath "/pth/to/nowhere"
                Version    = version "0.0.0.0.0.0.1"
                Required   = true };
-             { Id         = Id.Create()
+             { Id         = IrisId.Create()
                Executable = filepath "/antoher/path"
                Version    = version "1.2.34.4"
                Required   = false }]
 
         let memA =
-          { Member.create (Id.Create()) with
+          { Member.create (IrisId.Create()) with
               HostName = name "moomoo"
               IpAddr   = IpAddress.Parse "182.123.18.2"
               State    = Running
               Port     = port 1234us }
 
         let memB =
-          { Member.create (Id.Create()) with
+          { Member.create (IrisId.Create()) with
               HostName = name "taataaa"
               IpAddr   = IpAddress.Parse "118.223.8.12"
               State    = Joining
@@ -126,16 +126,16 @@ module ProjectTests =
 
         let groupA: HostGroup =
           { Name    = name "Group A"
-          ; Members = [| Id.Create() |]
+          ; Members = [| IrisId.Create() |]
           }
 
         let groupB: HostGroup =
           { Name    = name "Group B"
-          ; Members = [| Id.Create() |]
+          ; Members = [| IrisId.Create() |]
           }
 
         let cluster =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name   = name "A mighty cool cluster"
             Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
             Groups = [| groupA; groupB |] }
@@ -323,7 +323,7 @@ module ProjectTests =
         let! project = Project.create (Project.ofFilePath path) fn machine
 
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "karsten"
             LastName = name "gebbert"

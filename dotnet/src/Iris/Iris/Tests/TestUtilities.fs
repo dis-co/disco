@@ -81,11 +81,11 @@ module TestData =
   let rand = new Random()
 
   let rndstr() =
-    Id.Create()
+    IrisId.Create()
     |> string
 
   let rndname() =
-    Id.Create()
+    IrisId.Create()
     |> string
     |> name
 
@@ -105,7 +105,7 @@ module TestData =
         let guid = Guid.NewGuid()
         yield guid.ToString() |> astag |]
 
-  let mk() = Id.Create()
+  let mk() = IrisId.Create()
 
   let maybe_mk() =
     if rand.Next(0,2) > 0
@@ -144,12 +144,12 @@ module TestData =
     if rand.Next(0,2) > 0 then f() |> Some else None
 
   let mkDiscoveredService() =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndstr()
       FullName = rndstr()
       HostName = rndstr()
       HostTarget = rndstr()
-      Status = MachineStatus.Busy (Id.Create(), name (rndstr()))
+      Status = MachineStatus.Busy (IrisId.Create(), name (rndstr()))
       Aliases = [| for n in 0 .. rand.Next(2,4) -> rndstr() |]
       Protocol = IPProtocol.IPv4
       AddressList = [| IPv4Address "127.0.0.1" |]
@@ -206,7 +206,7 @@ module TestData =
     |> Map.ofArray
 
   let mkUser () =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       UserName = rndname ()
       FirstName = rndname ()
       LastName = rndname ()
@@ -219,40 +219,44 @@ module TestData =
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
-        Some (rndstr() |> Id)
+        Some (IrisId.Create())
       else
         None
 
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndname ()
       Locked = rndbool ()
-      CueList = rndopt ()
+      CueListId = rndopt ()
       Selected = index (rand.Next(0,1000))
-      Call = Id.Create()
-      Next = Id.Create()
-      Previous = Id.Create()
+      CallId = IrisId.Create()
+      NextId = IrisId.Create()
+      PreviousId = IrisId.Create()
       RemainingWait = rand.Next(0,1000)
-      LastCaller = rndopt()
-      LastCalled = rndopt() }
+      LastCallerId = rndopt()
+      LastCalledId = rndopt() }
 
   let mkUsers () =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkUser() |]
 
   let mkCue () : Cue =
-    { Id = Id.Create(); Name = rndname(); Slices = mkSlices() }
+    { Id = IrisId.Create(); Name = rndname(); Slices = mkSlices() }
 
   let mkCues () =
     [| for n in 0 .. rand.Next(1,20) -> mkCue() |]
 
   let mkCueRef () : CueReference =
-    { Id = Id.Create(); CueId = Id.Create(); AutoFollow = rndint(); Duration = rndint(); Prewait = rndint() }
+    { Id = IrisId.Create()
+      CueId = IrisId.Create()
+      AutoFollow = rndint()
+      Duration = rndint()
+      Prewait = rndint() }
 
   let mkCueRefs () : CueReference array =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = Id.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
 
   let mkCueGroups () : CueGroup array =
     [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
@@ -263,22 +267,22 @@ module TestData =
       |> Array.map (Pin.setPersisted true >> toPair)
       |> Map.ofArray
 
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndname ()
       Path = Some (filepath "/dev/null")
-      Client = Id.Create()
+      ClientId = IrisId.Create()
       RefersTo = None
       Pins = pins }
 
   let mkPinMapping() =
-    { Id = Id.Create()
-      Source = Id.Create()
-      Sinks = Set [ Id.Create() ] }
+    { Id = IrisId.Create()
+      Source = IrisId.Create()
+      Sinks = Set [ IrisId.Create() ] }
 
   let mkPinWidget() =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndname()
-      WidgetType = Id.Create() }
+      WidgetType = IrisId.Create() }
 
   let mkPinGroups () : Iris.Core.PinGroup array =
     [| for n in 0 .. rand.Next(1,20) do
@@ -296,20 +300,20 @@ module TestData =
         yield mkPinWidget() |]
 
   let mkCueList () : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
+    { Id = IrisId.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkCueList() |]
 
-  let mkMember () = Id.Create() |> Member.create
+  let mkMember () = IrisId.Create() |> Member.create
 
   let mkMembers () =
     [| for _ in 0 .. rand.Next(1, 6) do
         yield mkMember () |]
 
   let mkSession () =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       IpAddress = IPv4Address "127.0.0.1"
       UserAgent = "Oh my goodness" }
 
@@ -322,11 +326,11 @@ module TestData =
     Project.create path (rndstr()) machine
 
   let mkClient () : IrisClient =
-    { Id = Id.Create ()
+    { Id = IrisId.Create ()
       Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
-      ServiceId = Id.Create()
+      ServiceId = IrisId.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
@@ -373,11 +377,11 @@ module TestData =
     either {
       let! state = mkTmpDir() |> Project.ofFilePath |> mkState
       return
-        LogEntry(Id.Create(), index 7, term 1, DataSnapshot(state),
-          Some <| LogEntry(Id.Create(), index 6, term 1, DataSnapshot(state),
-            Some <| Configuration(Id.Create(), index 5, term 1, [| mkMember () |],
-              Some <| JointConsensus(Id.Create(), index 4, term 1, mkChanges (),
-                Some <| Snapshot(Id.Create(), index 3, term 1, index 2, term 1, mkMembers (), DataSnapshot(state))))))
+        LogEntry(IrisId.Create(), index 7, term 1, DataSnapshot(state),
+          Some <| LogEntry(IrisId.Create(), index 6, term 1, DataSnapshot(state),
+            Some <| Configuration(IrisId.Create(), index 5, term 1, [| mkMember () |],
+              Some <| JointConsensus(IrisId.Create(), index 4, term 1, mkChanges (),
+                Some <| Snapshot(IrisId.Create(), index 3, term 1, index 2, term 1, mkMembers (), DataSnapshot(state))))))
         |> Log.fromEntries
     }
 

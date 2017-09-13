@@ -24,7 +24,7 @@ module rec RaftServer =
 
   // ** Connections
 
-  type private Connections = ConcurrentDictionary<Id,ITcpClient>
+  type private Connections = ConcurrentDictionary<PeerId,ITcpClient>
 
   // ** Subscriptions
 
@@ -40,7 +40,7 @@ module rec RaftServer =
       Callbacks:      IRaftCallbacks
       Server:         ITcpServer
       Disposables:    IDisposable list
-      Connections:    ConcurrentDictionary<Id,ITcpClient>
+      Connections:    ConcurrentDictionary<PeerId,ITcpClient>
       Subscriptions:  Subscriptions
       Started:        AutoResetEvent
       Stopped:        AutoResetEvent }
@@ -61,7 +61,7 @@ module rec RaftServer =
     | ClientEvent       of ev:TcpClientEvent
     | AddCmd            of sm:StateMachine
     | AddMember         of mem:RaftMember
-    | RemoveMember      of id:Id
+    | RemoveMember      of id:MemberId
     | ReqCommitted      of started:DateTime * entry:EntryResponse * response:Response
     // | Join           of ip:IpAddress * port:uint16
     // | Leave
@@ -173,7 +173,7 @@ module rec RaftServer =
 
   // ** getPeerSocket
 
-  let private getPeerSocket (connections: Connections) (peer: Id)  =
+  let private getPeerSocket (connections: Connections) (peer: MemberId)  =
     match connections.TryGetValue peer with
     | true, connection -> Some connection
     | _ -> None
@@ -224,7 +224,7 @@ module rec RaftServer =
 
   // ** makeCallbacks
 
-  let private makeCallbacks (id: Id)
+  let private makeCallbacks (id: MemberId)
                             (connections: Connections)
                             (callbacks: IRaftSnapshotCallbacks)
                             (agent: RaftAgent) =
@@ -457,7 +457,7 @@ module rec RaftServer =
 
   // ** removeMember
 
-  let private removeMember (state: RaftServerState) (id: Id) =
+  let private removeMember (state: RaftServerState) (id: MemberId) =
     Tracing.trace (tag "removeMember") <| fun () ->
       if Raft.isLeader state.Raft then
         string id
@@ -484,7 +484,7 @@ module rec RaftServer =
   // ** processAppendEntries
 
   let private processAppendEntries (state: RaftServerState)
-                                   (sender: Id)
+                                   (sender: MemberId)
                                    (ae: AppendEntries)
                                    (raw: Request) =
 
@@ -553,7 +553,10 @@ module rec RaftServer =
 
   // ** processVoteRequest
 
-  let private processVoteRequest (state: RaftServerState) (sender: Id) (vr: VoteRequest) (raw: Request) =
+  let private processVoteRequest (state: RaftServerState)
+                                 (sender: MemberId)
+                                 (vr: VoteRequest)
+                                 (raw: Request) =
     Tracing.trace (tag "processVoteRequest") <| fun () ->
       let result =
         Raft.receiveVoteRequest sender vr
@@ -699,7 +702,7 @@ module rec RaftServer =
   // ** processAppendEntriesResponse
 
   let private processAppendEntriesResponse (state: RaftServerState)
-                                           (mem: Id)
+                                           (mem: MemberId)
                                            (ar: AppendResponse)
                                            (agent: RaftAgent) =
     let result =
@@ -718,7 +721,7 @@ module rec RaftServer =
   // ** processVoteResponse
 
   let private processVoteResponse (state: RaftServerState)
-                                  (sender: Id)
+                                  (sender: MemberId)
                                   (vr: VoteResponse)
                                   (agent: RaftAgent) =
     let result =
@@ -736,7 +739,9 @@ module rec RaftServer =
 
   // ** processSnapshotResponse
 
-  let private processSnapshotResponse (state: RaftServerState) (sender: Id) (ar: AppendResponse) =
+  let private processSnapshotResponse (state: RaftServerState)
+                                      (sender: MemberId)
+                                      (ar: AppendResponse) =
     processAppendEntriesResponse state sender ar
 
   // ** processRedirect
@@ -770,7 +775,9 @@ module rec RaftServer =
 
   // ** processErrorResponse
 
-  let private processErrorResponse (state: RaftServerState) (_: Id) (error: IrisError) =
+  let private processErrorResponse (state: RaftServerState)
+                                   (_: MemberId)
+                                   (error: IrisError) =
     error
     |> sprintf "received error response:  %A"
     |> Logger.err (tag "processErrorResponse")
@@ -1120,7 +1127,9 @@ module rec RaftServer =
 
   // ** handleRemoveMember
 
-  let private handleRemoveMember (state: RaftServerState) (agent: RaftAgent) (id: Id) =
+  let private handleRemoveMember (state: RaftServerState)
+                                 (agent: RaftAgent)
+                                 (id: MemberId) =
     Tracing.trace (tag "handleRemoveMember") <| fun () ->
       match removeMember state id with
       | Right (_, newstate) ->
@@ -1320,7 +1329,9 @@ module rec RaftServer =
 
   // ** handleClientState
 
-  let private handleClientState (state: RaftServerState) (id: Id) raftState =
+  let private handleClientState (state: RaftServerState)
+                                (id: MemberId)
+                                raftState =
     raft {
       let! peer = Raft.getMemberM id
       match peer with

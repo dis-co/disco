@@ -28,29 +28,29 @@ module private PrivateHelpers =
     | true, v when v = value -> true
     | _ -> false
 
-  let findPin (pinId: Id) (state: State) : Pin =
+  let findPin (pinId: PinId) (state: State) : Pin =
     let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
     match Map.tryFindPin pinId groups with
     | Some pin -> pin
     | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
 
-  let findPinGroup (pinGroupId: Id) (state: State) =
+  let findPinGroup (pinGroupId: PinGroupId) (state: State) =
     let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
     match Map.tryFind pinGroupId groups with
     | Some pinGroup -> pinGroup
     | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
 
-  let findCue (cueId: Id) (state: State) =
+  let findCue (cueId: CueId) (state: State) =
     match Map.tryFind cueId state.Cues with
     | Some cue -> cue
     | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
   let cueListMockup() =
     let cueGroup =
-      { Id = Id.Create()
+      { Id = IrisId.Create()
         Name = name "MockCueGroup"
         CueRefs = [||] }
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = name "MockCueList"
       Groups = [|cueGroup|] }
     // let cuePlayer =
@@ -227,7 +227,7 @@ type private CueView(props) =
         let pinGroups =
           this.props.Cue.Slices
           |> Array.mapi (fun i slices -> i, findPin slices.PinId this.props.State, slices)
-          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
+          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = findPinGroup pinGroupId this.props.State
             li [Key (string pinGroupId)] [

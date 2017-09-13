@@ -186,7 +186,7 @@ let cloneProject (name: Name) (uri: Url) =
 //      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
 //      http://localhost:7000/api/command
 
-let pullProject (id: Id) (name: Name) (uri: Url) = either {
+let pullProject (id: ProjectId) (name: Name) (uri: Url) = either {
     let machine = MachineConfig.get()
     let target = machine.WorkSpace </> filepath (unwrap name)
     let! repo = Git.Repo.repository target

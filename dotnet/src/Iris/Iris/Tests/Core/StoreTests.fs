@@ -9,10 +9,10 @@ module StoreTests =
 
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
-      { Id   = Id "0xb4d1d34"
+      { Id   = IrisId.Create()
         Name = name "group-1"
         Path = None
-        Client = Id.Create()
+        ClientId = IrisId.Create()
         RefersTo = None
         Pins = Map.empty }
 
@@ -56,17 +56,17 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.Client group.Id)
+          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
 
         expect "Should be true" true id
-          (store.State.PinGroups.[group.Client,group.Id].Name = name1)
+          (store.State.PinGroups.[group.ClientId,group.Id].Name = name1)
 
         { group with Name = name name2 }
         |> UpdatePinGroup
         |> store.Dispatch
 
         expect "Should be true" true id
-          (store.State.PinGroups.[group.Client,group.Id].Name = name name2)
+          (store.State.PinGroups.[group.ClientId,group.Id].Name = name name2)
 
   let test_should_remove_a_group_already_in_the_store =
     testCase "should remove a group already in the store" <| fun _ ->
@@ -74,12 +74,12 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.Client group.Id)
+          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
 
         store.Dispatch <| RemovePinGroup(group)
 
         expect "Should be false" false id
-          (store.State.PinGroups.ContainsGroup group.Client group.Id)
+          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
 
   ///  ____  _
   /// |  _ \(_)_ __
@@ -93,38 +93,38 @@ module StoreTests =
         group
         |> PinGroup.addPin
           (Pin.Source.string
-            (Id.Create())
+            (IrisId.Create())
             (name "url input")
             group.Id
-            group.Client
+            group.ClientId
             [| "hey" |])
         |> AddPinGroup
         |> store.Dispatch
 
         expect "Should be one" 1 id
-          store.State.PinGroups.[group.Client,group.Id].Pins.Count
+          store.State.PinGroups.[group.ClientId,group.Id].Pins.Count
 
         Pin.Source.string
-          (Id.Create())
+          (IrisId.Create())
           (name "another url input")
           group.Id
-          group.Client
+          group.ClientId
           [| "ho" |]
         |> AddPin
         |> store.Dispatch
 
         expect "Should be two" 2 id
-          store.State.PinGroups.[group.Client,group.Id].Pins.Count
+          store.State.PinGroups.[group.ClientId,group.Id].Pins.Count
 
   let test_should_not_add_a_pin_to_the_store_if_group_does_not_exists =
     testCase "should not add a pin to the store if group does not exists" <| fun _ ->
       withStore <| fun group store ->
         let pin =
           Pin.Source.string
-            (Id "0xb33f")
+            (IrisId.Create())
             (name "url input")
             group.Id
-            group.Client
+            group.ClientId
             [| "ho" |]
 
         store.Dispatch <| AddPin(pin)
@@ -138,10 +138,10 @@ module StoreTests =
 
         let pin =
           Pin.Sink.string
-            (Id "0xb33f")
+            (IrisId.Create())
             name1
             group.Id
-            group.Client
+            group.ClientId
             [| "swell" |]
 
         store.Dispatch <| AddPinGroup(group)
@@ -167,10 +167,10 @@ module StoreTests =
       withStore <| fun group store ->
         let pin =
           Pin.Sink.string
-            (Id "0xb33f")
+            (IrisId.Create())
             (name "hi")
             group.Id
-            group.Client
+            group.ClientId
             [| "swell" |]
 
         group
@@ -198,7 +198,7 @@ module StoreTests =
     testCase "should add a cue to the store" <| fun _ ->
       withStore <| fun group store ->
 
-        let cue : Cue = { Id = Id.Create(); Name = name "My Cue"; Slices = mkSlices() }
+        let cue : Cue = { Id = IrisId.Create(); Name = name "My Cue"; Slices = mkSlices() }
 
         expect "Should be 0" 0 id store.State.Cues.Count
 
@@ -214,7 +214,7 @@ module StoreTests =
     testCase "should update a cue already in the store" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -232,7 +232,7 @@ module StoreTests =
     testCase "should not add cue to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -245,7 +245,7 @@ module StoreTests =
     testCase "should remove cue from the store" <| fun _ ->
       withStore <| fun group store ->
         let cue =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My Cue"
             Slices = mkSlices() }
 
@@ -265,7 +265,7 @@ module StoreTests =
     testCase "should add a cuelist to the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -280,7 +280,7 @@ module StoreTests =
     testCase "should update a cuelist already in the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -299,7 +299,7 @@ module StoreTests =
     testCase "should not add cuelist to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -311,7 +311,7 @@ module StoreTests =
     testCase "should remove cuelist from the store" <| fun _ ->
       withStore <| fun group store ->
         let cuelist =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "My CueList"
             Groups = [| |] }
 
@@ -331,7 +331,7 @@ module StoreTests =
     testCase "should add a user to the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -351,7 +351,7 @@ module StoreTests =
     testCase "should update a user already in the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -376,7 +376,7 @@ module StoreTests =
     testCase "should not add user to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -394,7 +394,7 @@ module StoreTests =
     testCase "should remove user from the store" <| fun _ ->
       withStore <| fun group store ->
         let user =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -420,7 +420,7 @@ module StoreTests =
     testCase "should add a session to the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -434,7 +434,7 @@ module StoreTests =
     testCase "should update a session already in the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -453,7 +453,7 @@ module StoreTests =
     testCase "should not add session to the store on update when missing" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -465,7 +465,7 @@ module StoreTests =
     testCase "should remove session from the store" <| fun _ ->
       withStore <| fun group store ->
         let session =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -578,7 +578,7 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
         store.Dispatch <| UpdatePinGroup( { group with Name = name "cats" })
         store.Undo()
-        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.ClientId,group.Id].Name
 
   let test_should_undo_two_changes =
     testCase "should undo two changes" <| fun _ ->
@@ -588,7 +588,7 @@ module StoreTests =
         store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
         store.Undo()
         store.Undo()
-        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be shoudl corrent name" group.Name id store.State.PinGroups.[group.ClientId,group.Id].Name
 
   let test_should_redo_an_undone_change =
     testCase "should redo an undone change" <| fun _ ->
@@ -610,16 +610,16 @@ module StoreTests =
         store.Undo()
         store.Undo()
 
-        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
         store.Redo()
 
-        expect "Should be mice" "mice" unwrap  store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be mice" "mice" unwrap  store.State.PinGroups.[group.ClientId,group.Id].Name
         store.Redo()
 
-        expect "Should be men" "men" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be men" "men" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
         store.Redo()
 
-        expect "Should be men" "men" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be men" "men" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
   let test_should_undo_redo_interleaved_changes =
     testCase "should undo/redo interleaved changes" <| fun _ ->
@@ -629,34 +629,34 @@ module StoreTests =
         store.Dispatch <| UpdatePinGroup( { group with Name = name "dogs" })
 
         store.Undo()
-        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Redo()
-        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Undo()
-        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Dispatch <| UpdatePinGroup( { group with Name = name "mice" })
 
         store.Undo()
-        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be dogs" "dogs" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Redo()
-        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Undo()
         store.Undo()
 
-        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be cats" "cats" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Dispatch <| UpdatePinGroup( { group with Name = name "men"  })
 
         store.Undo()
-        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         store.Redo()
-        expect "Should be men" "men" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be men" "men" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
         expect "Should be 6" 6 id store.History.Length
 
@@ -671,7 +671,7 @@ module StoreTests =
         |> List.iter (fun _ -> store.Undo())
 
         expect "Should be 4" 4 id store.History.Length
-        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.Client,group.Id].Name
+        expect "Should be mice" "mice" unwrap store.State.PinGroups.[group.ClientId,group.Id].Name
 
   let test_should_keep_all_state_in_history_in_debug_mode =
     testCase "should keep all state in history in debug mode" <| fun _ ->

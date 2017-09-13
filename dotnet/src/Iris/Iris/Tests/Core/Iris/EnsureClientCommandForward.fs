@@ -100,7 +100,7 @@ module EnsureClientCommandForward =
         }
 
         use client1 = ApiClient.create serverAddress1 {
-          Id = Id.Create()
+          Id = IrisId.Create()
           Name = name "Client 1"
           Role = Role.Renderer
           ServiceId = mem1.Id
@@ -125,7 +125,7 @@ module EnsureClientCommandForward =
         }
 
         use client2 = ApiClient.create serverAddress2 {
-          Id = Id.Create()
+          Id = IrisId.Create()
           Name = name "Client 2"
           Role = Role.Renderer
           ServiceId = mem2.Id
@@ -155,9 +155,9 @@ module EnsureClientCommandForward =
         //           |_|
 
         let cues = [
-          { Id = Id.Create(); Name = name "Cue 1"; Slices = [||] }
-          { Id = Id.Create(); Name = name "Cue 2"; Slices = [||] }
-          { Id = Id.Create(); Name = name "Cue 3"; Slices = [||] }
+          { Id = IrisId.Create(); Name = name "Cue 1"; Slices = [||] }
+          { Id = IrisId.Create(); Name = name "Cue 2"; Slices = [||] }
+          { Id = IrisId.Create(); Name = name "Cue 3"; Slices = [||] }
         ]
 
         do! either {

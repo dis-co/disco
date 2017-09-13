@@ -32,7 +32,7 @@ type LoggingNode() =
 
   [<DefaultValue>]
   [<Input("Client ID", IsSingle = true)>]
-  val mutable InId: ISpread<Id>
+  val mutable InClientId: ISpread<ClientId>
 
   [<DefaultValue>]
   [<Input("Log", IsSingle = true)>]
@@ -79,7 +79,7 @@ type LoggingNode() =
         obs <- Logger.subscribe logs.Enqueue
         initialized <- true
 
-      if self.InUpdate.[0] && not (Util.isNullReference self.InId.[0]) then
+      if self.InUpdate.[0] && not (Util.isNullReference self.InClientId.[0]) then
         match LogLevel.TryParse self.InLevel.[0].Name with
         | Right level -> Logger.log level "Log" self.InLog.[0]
         | _ -> ()

@@ -38,7 +38,7 @@ module Api =
       InCommands: ISpread<StateMachine>
       InServerIp: ISpread<string>
       InServerPort: ISpread<int>
-      InClientId: ISpread<Id>
+      InClientId: ISpread<IrisId>
       InClientName: ISpread<string>
       InPinGroups: ISpread<PinGroup>
       InReconnect: ISpread<bool>
@@ -128,7 +128,7 @@ module Api =
       { Id = state.InClientId.[0]
         Name = name clientName
         Role = Role.Renderer
-        ServiceId = Id.Create()
+        ServiceId = IrisId.Create()
         Status = ServiceStatus.Starting
         IpAddress = IpAddress.Localhost
         Port = port 0us }
@@ -192,7 +192,7 @@ module Api =
       let commands: StateMachine list =
         PinGroupMap.foldGroups
           (fun commands _ (local: PinGroup) ->
-            match PinGroupMap.tryFindGroup local.Client local.Id remote with
+            match PinGroupMap.tryFindGroup local.ClientId local.Id remote with
             | Some remote when local <> remote -> UpdatePinGroup local :: commands
             | Some _ -> commands
             | None -> AddPinGroup local :: commands)
@@ -312,7 +312,7 @@ type ApiClientNode() =
 
   [<DefaultValue>]
   [<Input("Client ID", IsSingle = true)>]
-  val mutable InClientId: ISpread<Id>
+  val mutable InClientId: ISpread<IrisId>
 
   [<DefaultValue>]
   [<Input("Reconnect", IsSingle = true, IsBang = true)>]

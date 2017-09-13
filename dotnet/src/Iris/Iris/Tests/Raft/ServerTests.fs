@@ -17,7 +17,7 @@ module ServerTests =
 
   let server_voted_for_records_who_we_voted_for =
     testCase "Raft server voted for records who we voted for" <| fun _ ->
-      let id1 = Id.Create()
+      let id1 = IrisId.Create()
       raft {
          do! expectM  "Should one mem" 1 Raft.numMembers
          do! Raft.addMemberM (Member.create id1)
@@ -64,8 +64,8 @@ module ServerTests =
 
   let server_voting_results_in_voting =
     testCase "Raft server voting should set voted for" <| fun _ ->
-      let mem1 = Member.create (Id.Create())
-      let mem2 = Member.create (Id.Create())
+      let mem1 = Member.create (IrisId.Create())
+      let mem2 = Member.create (IrisId.Create())
 
       raft {
         // add mem and vote for it
@@ -81,7 +81,7 @@ module ServerTests =
 
   let server_add_mem_makes_non_voting_mem_voting =
     testCase "Raft add mem now makes non-voting mem voting" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addNonVotingMemberM mem
@@ -97,8 +97,8 @@ module ServerTests =
 
   let server_remove_mem =
     testCase "Raft remove mem should set correct mem count" <| fun _ ->
-      let mem1 = Member.create (Id.Create())
-      let mem2 = Member.create (Id.Create())
+      let mem1 = Member.create (IrisId.Create())
+      let mem2 = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM mem1
@@ -192,7 +192,7 @@ module ServerTests =
       let mems = // create 5 mems
         Array.map
           (fun _ ->
-            let id = Id.Create()
+            let id = IrisId.Create()
             (id, Member.create id))
           [| 1 .. 5 |]
         |> Map.ofArray
@@ -266,7 +266,7 @@ module ServerTests =
   let server_election_timeout_does_no_promote_us_to_leader_if_there_is_only_1_mem =
     testCase "Election timeout does not promote us to leader if there is only 1 mem" <| fun _ ->
       raft {
-        do! Raft.addMemberM (Member.create (Id.Create()))
+        do! Raft.addMemberM (Member.create (IrisId.Create()))
         do! Raft.setElectionTimeoutM 1000<ms>
         do! Raft.periodic 1001<ms>
         do! expectM "Should not be Leader" false Raft.isLeader
@@ -276,7 +276,7 @@ module ServerTests =
 
   let server_recv_entry_auto_commits_if_we_are_the_only_mem =
     testCase "Receive entry auto-commits if we are the only mem" <| fun _ ->
-      let entry = LogEntry(Id.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
+      let entry = LogEntry(IrisId.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
         do! Raft.becomeLeader ()
@@ -292,9 +292,9 @@ module ServerTests =
 
   let server_recv_entry_fails_if_there_is_already_a_voting_change =
     testCase "Receive entry fails if there is already a voting change" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
+        JointConsensus(IrisId.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -316,10 +316,10 @@ module ServerTests =
 
   let server_recv_entry_adds_missing_mem_on_addmem =
     testCase "recv entry adds missing mem on addmem" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
+        JointConsensus(IrisId.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -336,10 +336,10 @@ module ServerTests =
 
   let server_recv_entry_added_mem_should_be_nonvoting =
     testCase "recv entry added mem should be nonvoting" <| fun _ ->
-      let nid = Id.Create()
+      let nid = IrisId.Create()
       let mem = Member.create nid
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
+        JointConsensus(IrisId.Create(), index 1, term, [| ConfigChange.MemberAdded(mem) |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -361,10 +361,10 @@ module ServerTests =
     testCase "recv entry removes mem on removemem" <| fun _ ->
       let term = ref (term 0)
       let ci = ref (index 0)
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let mklog term =
-        JointConsensus(Id.Create(), index 1, term, [| ConfigChange.MemberRemoved mem |] , None)
+        JointConsensus(IrisId.Create(), index 1, term, [| ConfigChange.MemberRemoved mem |] , None)
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -400,7 +400,7 @@ module ServerTests =
 
       let flip f b a = f b a
       let mems =
-        List.map (fun n -> Member.create (Id.Create())) [1..count]
+        List.map (fun n -> Member.create (IrisId.Create())) [1..count]
 
       raft {
         for mem in mems do
@@ -432,7 +432,7 @@ module ServerTests =
 
   let recv_requestvote_response_dont_increase_votes_for_me_when_not_granted =
     testCase "Receive vote response does not increase votes for me when not granted" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM mem
@@ -450,7 +450,7 @@ module ServerTests =
 
   let recv_requestvote_response_dont_increase_votes_for_me_when_term_is_not_equal =
     testCase "Recv requestvote response does not increase votes for me when term is not equal" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM mem
@@ -466,7 +466,7 @@ module ServerTests =
 
   let recv_requestvote_response_increase_votes_for_me =
     testCase "Recv requestvote response increase votes for me" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
       raft {
         do! Raft.addMemberM mem
         do! Raft.setTermM (term 1)
@@ -480,7 +480,7 @@ module ServerTests =
 
   let recv_requestvote_response_must_be_candidate_to_receive =
     testCase "recv requestvote response must be candidate to receive" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let err =
         "Not Candidate"
@@ -497,7 +497,7 @@ module ServerTests =
 
   let recv_requestvote_fails_if_term_less_than_current_term =
     testCase "recv requestvote fails if term less than current term" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let err =
         "Vote Term Mismatch"
@@ -527,7 +527,7 @@ module ServerTests =
 
   let shouldgrantvote_vote_term_too_small =
     testCase "grantVote should be false when vote term too small" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let vote =
         { Term = term 1
@@ -547,7 +547,7 @@ module ServerTests =
 
   let shouldgrantvote_alredy_voted =
     testCase "grantVote should be false when already voted" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let vote =
         { Term = term 2
@@ -567,7 +567,7 @@ module ServerTests =
 
   let shouldgrantvote_log_empty =
     testCase "grantVote should be true when log is empty" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let vote =
         { Term = term 1
@@ -590,7 +590,7 @@ module ServerTests =
 
   let shouldgrantvote_raft_log_term_smaller_vote_logterm =
     testCase "grantVote should be true if last raft log term is smaller than vote last log term " <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let vote =
         { Term = term 2
@@ -615,7 +615,7 @@ module ServerTests =
 
   let shouldgrantvote_raft_last_log_valid =
     testCase "grantVote should be true if last raft log is valid" <| fun _ ->
-      let mem = Member.create (Id.Create())
+      let mem = Member.create (IrisId.Create())
 
       let vote =
         { Term = term 2
@@ -640,7 +640,7 @@ module ServerTests =
 
   let leader_recv_requestvote_does_not_step_down =
     testCase "leader recv requestvote does not step down" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -663,7 +663,7 @@ module ServerTests =
 
   let recv_requestvote_reply_true_if_term_greater_than_or_equal_to_current_term =
     testCase "recv requestvote reply true if term greater than or equal to current term" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -682,7 +682,7 @@ module ServerTests =
 
   let recv_requestvote_reset_timeout =
     testCase "recv requestvote reset timeout" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -704,7 +704,7 @@ module ServerTests =
 
   let recv_requestvote_candidate_step_down_if_term_is_higher_than_current_term =
     testCase "recv requestvote candidate step down if term is higher than current term" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -728,8 +728,8 @@ module ServerTests =
 
   let recv_requestvote_add_unknown_candidate =
     testCase "recv_requestvote_adds_candidate" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let other = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
+      let other = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addMemberM peer
@@ -751,8 +751,8 @@ module ServerTests =
 
   let recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_candidate =
     testCase "recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_candidate" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
       let request =
         { Term = term 1
         ; Candidate = peer1
@@ -813,7 +813,7 @@ module ServerTests =
       // When the election timeout is reached and we didn't get enougth votes to
       // become leader yet, periodic is expected to re-start the elections (and
       // thereby increasing the term again).
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       raft {
         do! Raft.addMemberM peer
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -829,7 +829,7 @@ module ServerTests =
 
   let follower_becomes_candidate_when_election_timeout_occurs =
     testCase "follower becomes candidate when election timeout occurs" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
@@ -843,9 +843,9 @@ module ServerTests =
 
   let follower_dont_grant_vote_if_candidate_has_a_less_complete_log =
     testCase "follower dont grant vote if candidate has a less complete log" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let log1 = LogEntry(Id.Create(), index 0, term 1, (DataSnapshot (State.Empty)), None)
-      let log2 = LogEntry(Id.Create(), index 0, term 2, (DataSnapshot (State.Empty)), None)
+      let peer = Member.create (IrisId.Create())
+      let log1 = LogEntry(IrisId.Create(), index 0, term 1, (DataSnapshot (State.Empty)), None)
+      let log2 = LogEntry(IrisId.Create(), index 0, term 2, (DataSnapshot (State.Empty)), None)
 
       raft {
         do! Raft.addPeerM peer
@@ -885,7 +885,7 @@ module ServerTests =
   let follower_becoming_candidate_votes_for_self =
     testCase "follower becoming candidate votes for self" <| fun _ ->
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         let! raft' = get
         do! Raft.addMemberM peer
         do! expectM "Should have no VotedFor" None Raft.votedFor
@@ -911,9 +911,9 @@ module ServerTests =
 
   let follower_becoming_candidate_requests_votes_from_other_servers =
     testCase "follower becoming candidate requests votes from other servers" <| fun _ ->
-      let peer0 = Member.create (Id.Create())
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer0 = Member.create (IrisId.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
 
       let state = Raft.create peer0
       let lokk = new System.Object()
@@ -937,7 +937,7 @@ module ServerTests =
     testCase "candidate receives majority of votes becomes leader" <| fun _ ->
       let peers =
         [| for n in 0 .. 3 do
-             let peer = Member.create (Id.Create())
+             let peer = Member.create (IrisId.Create())
              yield (peer.Id, peer) |]
         |> Map.ofArray
 
@@ -960,7 +960,7 @@ module ServerTests =
     testCase "candidate will not respond to voterequest if it has already voted" <| fun _ ->
       raft {
         let! raft' = get
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         let vote : VoteRequest =
           { Term = term 0                // term must be equal or lower that raft's
             Candidate = raft'.Member    // term for this to work
@@ -976,7 +976,7 @@ module ServerTests =
 
   let candidate_requestvote_includes_logidx =
     testCase "candidate requestvote includes logidx" <| fun _ ->
-      let self = Member.create (Id.Create())
+      let self = Member.create (IrisId.Create())
       let raft' = Raft.create self
       let sender = Sender.create
       let response = { Term = term 5; Granted = true; Reason = None }
@@ -986,8 +986,8 @@ module ServerTests =
         :> IRaftCallbacks
 
       raft {
-        let peer1 = Member.create (Id.Create())
-        let peer2 = Member.create (Id.Create())
+        let peer1 = Member.create (IrisId.Create())
+        let peer2 = Member.create (IrisId.Create())
 
         let peers =
           [| peer1; peer2 |]
@@ -995,9 +995,9 @@ module ServerTests =
           |> Map.ofArray
 
         let log =
-          LogEntry(Id.Create(),index 0, term 3, DataSnapshot (State.Empty),
-            Some <| LogEntry(Id.Create(),index 0, term 1, DataSnapshot (State.Empty),
-              Some <| LogEntry(Id.Create(),index 0, term 1, DataSnapshot (State.Empty), None)))
+          LogEntry(IrisId.Create(),index 0, term 3, DataSnapshot (State.Empty),
+            Some <| LogEntry(IrisId.Create(),index 0, term 1, DataSnapshot (State.Empty),
+              Some <| LogEntry(IrisId.Create(),index 0, term 1, DataSnapshot (State.Empty), None)))
 
         do! Raft.addPeersM peers
         do! Raft.setStateM Candidate
@@ -1021,7 +1021,7 @@ module ServerTests =
   let candidate_recv_requestvote_response_becomes_follower_if_current_term_is_less_than_term =
     testCase "candidate recv requestvote response becomes follower if current term is less than term" <| fun _ ->
       raft {
-        let peer = Member.create (Id.Create())
+        let peer = Member.create (IrisId.Create())
         let response = { Term = term 2 ; Granted = false; Reason = None }
         do! Raft.addPeerM peer
         do! Raft.setTermM (term 1)
@@ -1041,7 +1041,7 @@ module ServerTests =
 
   let candidate_recv_appendentries_frm_leader_results_in_follower =
     testCase "candidate recv appendentries frm leader results in follower" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let ae : AppendEntries =
         { Term = term 1
         ; PrevLogIdx = index 0
@@ -1068,7 +1068,7 @@ module ServerTests =
 
   let candidate_recv_appendentries_from_same_term_results_in_step_down =
     testCase "candidate recv appendentries from same term results in step down" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let ae : AppendEntries =
         { Term = term 2
         ; PrevLogIdx = index 1
@@ -1111,8 +1111,8 @@ module ServerTests =
 
   let leader_when_becomes_leader_all_mems_have_nextidx_equal_to_lastlog_idx_plus_1 =
     testCase "leader when becomes leader all mems have nextidx equal to lastlog idx plus 1" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
 
       raft {
         do! Raft.addPeerM peer1
@@ -1131,8 +1131,8 @@ module ServerTests =
 
   let leader_when_it_becomes_a_leader_sends_empty_appendentries =
     testCase "leader when it becomes a leader sends empty appendentries" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
 
       let lokk = new System.Object()
       let count = ref 0
@@ -1155,8 +1155,8 @@ module ServerTests =
 
   let leader_responds_to_entry_msg_when_entry_is_committed =
     testCase "leader responds to entry msg when entry is committed" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
+      let peer = Member.create (IrisId.Create())
+      let log = LogEntry(IrisId.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
 
       raft {
         do! Raft.addPeerM peer
@@ -1176,8 +1176,8 @@ module ServerTests =
 
   let non_leader_recv_entry_msg_fails =
     testCase "non leader recv entry msg fails" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
+      let peer = Member.create (IrisId.Create())
+      let log = LogEntry(IrisId.Create(),index 0,term 0,DataSnapshot (State.Empty),None)
 
       let err =
         "Not Leader"
@@ -1194,10 +1194,10 @@ module ServerTests =
 
   let leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx =
     testCase "leader sends appendentries with NextIdx when PrevIdx gt NextIdx" <| fun _ ->
-      let peer = { Member.create (Id.Create()) with NextIndex = index 4 }
+      let peer = { Member.create (IrisId.Create()) with NextIndex = index 4 }
       let raft' : RaftValue = defaultServer ()
       let sender = Sender.create
-      let log = LogEntry(Id.Create(),index 0, term 1, DataSnapshot (State.Empty), None)
+      let log = LogEntry(IrisId.Create(),index 0, term 1, DataSnapshot (State.Empty), None)
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
             with SendAppendEntries = senderAppendEntries sender None }
@@ -1214,7 +1214,7 @@ module ServerTests =
 
   let leader_sends_appendentries_with_leader_commit =
     testCase "leader sends appendentries with leader commit" <| fun _ ->
-      let peer = { Member.create (Id.Create()) with NextIndex = index 4 }
+      let peer = { Member.create (IrisId.Create()) with NextIndex = index 4 }
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1227,7 +1227,7 @@ module ServerTests =
         do! Raft.setStateM Leader
 
         for n in 0 .. 9 do
-          let l = LogEntry(Id.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
+          let l = LogEntry(IrisId.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
           do! Raft.appendEntryM l >>= ignoreM
 
         do! Raft.setCommitIndexM (index 10)
@@ -1243,7 +1243,7 @@ module ServerTests =
 
   let leader_sends_appendentries_with_prevLogIdx =
     testCase "leader sends appendentries with prevLogIdx" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1262,7 +1262,7 @@ module ServerTests =
         |> getAppendEntries
         |> expect "Should have PrevLogIndex 0" (index 0) (fun ae -> ae.PrevLogIdx)
 
-        let log = LogEntry(Id.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
+        let log = LogEntry(IrisId.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
 
         do! Raft.appendEntryM log >>= ignoreM
         do! Raft.setNextIndexM peer.Id (index 1)
@@ -1295,7 +1295,7 @@ module ServerTests =
 
   let leader_sends_appendentries_when_mem_has_next_idx_of_0 =
     testCase "leader sends appendentries when mem has next idx of 0" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1315,7 +1315,7 @@ module ServerTests =
 
         sender.Outbox := List.empty // reset outbox
 
-        let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty), None)
+        let log = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty), None)
 
         do! Raft.setNextIndexM peer.Id (index 1)
         do! Raft.appendEntryM log >>= ignoreM
@@ -1331,7 +1331,7 @@ module ServerTests =
 
   let leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency =
     testCase "leader retries appendentries with decremented NextIdx log inconsistency" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1352,8 +1352,8 @@ module ServerTests =
 
   let leader_append_entry_to_log_increases_idxno =
     testCase "leader append entry to log increases idxno" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let peer = Member.create (IrisId.Create())
+      let log = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
@@ -1370,10 +1370,10 @@ module ServerTests =
 
   let leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry =
     testCase "leader recv appendentries response increase commit idx when majority have entry and atleast one newer entry" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
-      let peer3 = Member.create (Id.Create())
-      let peer4 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
+      let peer3 = Member.create (IrisId.Create())
+      let peer4 = Member.create (IrisId.Create())
 
       let raft' = defaultServer ()
       let sender = Sender.create
@@ -1382,9 +1382,9 @@ module ServerTests =
             with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log2 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log3 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log1 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = term 1
@@ -1436,8 +1436,8 @@ module ServerTests =
 
   let leader_recv_appendentries_response_duplicate_does_not_decrement_match_idx =
     testCase "leader recv appendentries response duplicate does not decrement match idx" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
 
       let response =
         { Term = term 1
@@ -1450,9 +1450,9 @@ module ServerTests =
       let sender = Sender.create
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log2 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log3 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log1 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
 
       let peers =
         [| peer1; peer2; |]
@@ -1480,10 +1480,10 @@ module ServerTests =
 
   let leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority =
     testCase "leader recv appendentries response do not increase commit idx because of old terms with majority" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
-      let peer3 = Member.create (Id.Create())
-      let peer4 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
+      let peer3 = Member.create (IrisId.Create())
+      let peer4 = Member.create (IrisId.Create())
 
       let response =
         { Term         = term 1
@@ -1493,9 +1493,9 @@ module ServerTests =
 
       let cbs = Callbacks.Create (ref (DataSnapshot (State.Empty))) :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log2 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log3 = LogEntry(Id.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
+      let log1 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(IrisId.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
 
       let peers =
         [| peer1; peer2; peer3; peer4 |]
@@ -1562,7 +1562,7 @@ module ServerTests =
 
   let leader_recv_appendentries_response_jumps_to_lower_next_idx =
     testCase "leader recv appendentries response jumps to lower next idx" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
 
       let lokk = new System.Object()
       let count = ref 0
@@ -1575,10 +1575,10 @@ module ServerTests =
               appendReq := Some ae }
         :> IRaftCallbacks
 
-      let log1 = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
-      let log2 = LogEntry(Id.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
-      let log3 = LogEntry(Id.Create(),index 0,term 3,DataSnapshot (State.Empty),None)
-      let log4 = LogEntry(Id.Create(),index 0,term 4,DataSnapshot (State.Empty),None)
+      let log1 = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log2 = LogEntry(IrisId.Create(),index 0,term 2,DataSnapshot (State.Empty),None)
+      let log3 = LogEntry(IrisId.Create(),index 0,term 3,DataSnapshot (State.Empty),None)
+      let log4 = LogEntry(IrisId.Create(),index 0,term 4,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = term 1
@@ -1628,7 +1628,7 @@ module ServerTests =
 
   let leader_recv_appendentries_response_decrements_to_lower_next_idx =
     testCase "leader recv appendentries response decrements to lower next idx" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let lokk = new System.Object()
 
       let ci = ref (index 0)
@@ -1653,7 +1653,7 @@ module ServerTests =
         do! Raft.setCommitIndexM (index 0)
 
         for n in 1 .. 4 do
-          do! LogEntry(Id.Create(),0<index>,term n,DataSnapshot(State.Empty),None)
+          do! LogEntry(IrisId.Create(),0<index>,term n,DataSnapshot(State.Empty),None)
               |> Raft.appendEntryM
               >>= ignoreM
 
@@ -1690,8 +1690,8 @@ module ServerTests =
 
   let leader_recv_appendentries_response_retry_only_if_leader =
     testCase "leader recv appendentries response retry only if leader" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
 
       let raft' = defaultServer ()
       let sender = Sender.create
@@ -1700,7 +1700,7 @@ module ServerTests =
             with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log = LogEntry(Id.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
+      let log = LogEntry(IrisId.Create(),index 0,term 1,DataSnapshot (State.Empty),None)
 
       let response =
         { Term = term 1
@@ -1740,7 +1740,7 @@ module ServerTests =
 
   let leader_recv_entry_resets_election_timeout =
     testCase "leader recv entry resets election timeout" <| fun _ ->
-      let log = LogEntry(Id.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
+      let log = LogEntry(IrisId.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
       raft {
         do! Raft.setElectionTimeoutM 1000<ms>
         do! Raft.setStateM Leader
@@ -1753,8 +1753,8 @@ module ServerTests =
 
   let leader_recv_entry_is_committed_returns_0_if_not_committed =
     testCase "leader recv entry is committed returns 0 if not committed" <| fun _ ->
-      let peer = Member.create (Id.Create())
-      let log = LogEntry(Id.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
+      let peer = Member.create (IrisId.Create())
+      let log = LogEntry(IrisId.Create(), index 0, term 1, DataSnapshot (State.Empty), None)
 
       raft {
         do! Raft.addPeerM peer
@@ -1775,7 +1775,7 @@ module ServerTests =
 
   let leader_recv_entry_is_committed_returns_neg_1_if_invalidated =
     testCase "leader recv entry is committed returns neg 1 if invalidated" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let log = Log.make (term 1) (DataSnapshot (State.Empty))
 
       let ae =
@@ -1825,7 +1825,7 @@ module ServerTests =
     testCase "leader recv entry does not send new appendentries to slow mems" <| fun _ ->
       skiptest "NO CONGESTION CONTROL CURRENTLY IMPLEMENTED"
 
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1853,7 +1853,7 @@ module ServerTests =
 
   let leader_recv_appendentries_response_failure_does_not_set_mem_nextid_to_0 =
     testCase "leader recv appendentries response failure does not set mem nextid to 0" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1888,7 +1888,7 @@ module ServerTests =
 
   let leader_recv_appendentries_response_increment_idx_of_mem =
     testCase "leader recv appendentries response increment idx of mem" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1917,7 +1917,7 @@ module ServerTests =
 
   let leader_recv_appendentries_response_drop_message_if_term_is_old =
     testCase "leader recv appendentries response drop message if term is old" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let raft' = defaultServer ()
       let sender = Sender.create
       let cbs =
@@ -1944,7 +1944,7 @@ module ServerTests =
 
   let leader_recv_appendentries_steps_down_if_newer =
     testCase "leader recv appendentries steps down if newer" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let ae =
         { Term = term 6
           PrevLogIdx = index 6
@@ -1971,7 +1971,7 @@ module ServerTests =
 
   let leader_recv_appendentries_steps_down_if_newer_term =
     testCase "leader recv appendentries steps down if newer term" <| fun _ ->
-      let peer = Member.create (Id.Create())
+      let peer = Member.create (IrisId.Create())
       let resp =
         { Term = term 6
         ; PrevLogIdx = index 5
@@ -1991,8 +1991,8 @@ module ServerTests =
 
   let leader_sends_empty_appendentries_every_request_timeout =
     testCase "leader sends empty appendentries every request timeout" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
       let raft' = defaultServer ()
 
       let lokk = new System.Object()
@@ -2041,8 +2041,8 @@ module ServerTests =
 
   let leader_recv_requestvote_responds_without_granting =
     testCase "leader recv requestvote responds without granting" <| fun _ ->
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
       let sender = Sender.create
       let resp = { Term = term 1; Granted = true; Reason = None }
 
@@ -2075,8 +2075,8 @@ module ServerTests =
   let leader_recv_requestvote_responds_with_granting_if_term_is_higher =
     testCase "leader recv requestvote responds with granting if term is higher" <| fun _ ->
 
-      let peer1 = Member.create (Id.Create())
-      let peer2 = Member.create (Id.Create())
+      let peer1 = Member.create (IrisId.Create())
+      let peer2 = Member.create (IrisId.Create())
       let sender = Sender.create
       let resp = { Term = term 1; Granted = true; Reason = None }
 
@@ -2109,10 +2109,10 @@ module ServerTests =
 
   let server_should_also_request_vote_from_failed_mems =
     testCase "should also request vote from failed mems" <| fun _ ->
-      let mem1 =   Member.create (Id.Create())
-      let mem2 =   Member.create (Id.Create())
-      let mem3 =   Member.create (Id.Create())
-      let mem4 = { Member.create (Id.Create())  with State = RaftMemberState.Failed }
+      let mem1 =   Member.create (IrisId.Create())
+      let mem2 =   Member.create (IrisId.Create())
+      let mem3 =   Member.create (IrisId.Create())
+      let mem4 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
 
       let mutable i = 0
 
@@ -2138,10 +2138,10 @@ module ServerTests =
 
   let server_should_not_consider_failed_mems_when_deciding_vote_outcome =
     testCase "should not consider failed mems when deciding vote outcome" <| fun _ ->
-      let mem1 =   Member.create (Id.Create())
-      let mem2 =   Member.create (Id.Create())
-      let mem3 = { Member.create (Id.Create())  with State = RaftMemberState.Failed }
-      let mem4 = { Member.create (Id.Create())  with State = RaftMemberState.Failed }
+      let mem1 =   Member.create (IrisId.Create())
+      let mem2 =   Member.create (IrisId.Create())
+      let mem3 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
+      let mem4 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
 
       let resp = { Term = term 1; Granted = true; Reason = None }
 
@@ -2195,14 +2195,14 @@ module ServerTests =
 
       let mems =
         [| "one"; "two"; "three" |]
-        |> Array.mapi (fun i _ -> Member.create (Id.Create()))
+        |> Array.mapi (fun i _ -> Member.create (IrisId.Create()))
 
       let is: InstallSnapshot =
         { Term = trm
-        ; LeaderId = Id.Create()
+        ; LeaderId = IrisId.Create()
         ; LastTerm = trm
         ; LastIndex = idx
-        ; Data = Snapshot(Id.Create(), idx, trm, idx, trm, mems, defSM) }
+        ; Data = Snapshot(IrisId.Create(), idx, trm, idx, trm, mems, defSM) }
 
       raft {
         do! Raft.setTermM trm
@@ -2228,14 +2228,14 @@ module ServerTests =
 
       let mems =
         [| "one"; "two"; "three" |]
-        |> Array.mapi (fun i _ -> Member.create (Id.Create()))
+        |> Array.mapi (fun i _ -> Member.create (IrisId.Create()))
 
       let is: InstallSnapshot =
         { Term = trm
-        ; LeaderId = Id.Create()
+        ; LeaderId = IrisId.Create()
         ; LastTerm = trm
         ; LastIndex = idx
-        ; Data = Snapshot(Id.Create(), idx, trm, idx, trm, mems, defSM)
+        ; Data = Snapshot(IrisId.Create(), idx, trm, idx, trm, mems, defSM)
         }
 
       raft {
@@ -2271,17 +2271,17 @@ module ServerTests =
         } :> IRaftCallbacks
 
       raft {
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         do! Raft.setStateM Leader
 
-        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| ConfigChange.MemberAdded(mem)|] ,None)) >>= ignoreM
+        do! Raft.appendEntryM (JointConsensus(IrisId.Create(), index 0, term 0, [| ConfigChange.MemberAdded(mem)|] ,None)) >>= ignoreM
         do! Raft.setCommitIndexM (index 1)
         do! Raft.applyEntries ()
 
         expect "Should have count 1" 1 id !count
 
-        do! Raft.appendEntryM (JointConsensus(Id.Create(), index 0, term 0, [| ConfigChange.MemberRemoved mem |] ,None)) >>= ignoreM
+        do! Raft.appendEntryM (JointConsensus(IrisId.Create(), index 0, term 0, [| ConfigChange.MemberRemoved mem |] ,None)) >>= ignoreM
         do! Raft.setCommitIndexM (index 3)
         do! Raft.applyEntries ()
 
@@ -2373,7 +2373,7 @@ module ServerTests =
                 :> IRaftCallbacks
 
       raft {
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
         do! Raft.addMemberM mem
         do! Raft.updateMemberM { mem with State = RaftMemberState.Joining }
         do! Raft.updateMemberM { mem with State = RaftMemberState.Running }
@@ -2419,7 +2419,7 @@ module ServerTests =
 
         do! expectM "Should be committed" true (konst committed)
 
-        let peer = Member.create (Id "0xdeadbeef")
+        let peer = Member.create (IrisId.Create())
         do! Raft.becomeFollower ()
         do! Raft.addMemberM peer
 

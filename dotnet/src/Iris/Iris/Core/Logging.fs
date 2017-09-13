@@ -112,7 +112,7 @@ type LogEventYaml() =
   [<DefaultValue>] val mutable Time      : uint32
   [<DefaultValue>] val mutable Thread    : int
   [<DefaultValue>] val mutable Tier      : string
-  [<DefaultValue>] val mutable Id        : string
+  [<DefaultValue>] val mutable MachineId : string
   [<DefaultValue>] val mutable Tag       : string
   [<DefaultValue>] val mutable LogLevel  : string
   [<DefaultValue>] val mutable Message   : string
@@ -140,7 +140,7 @@ type LogEvent =
   { Time      : uint32
     Thread    : int
     Tier      : Tier
-    Id        : Id
+    MachineId : IrisId
     Tag       : string
     LogLevel  : LogLevel
     Message   : string }
@@ -151,7 +151,7 @@ type LogEvent =
     sprintf "[%s - %s - %s - %d - %d - %s]: %s"
       (System.String.Format("{0,-5}",string self.LogLevel))
       (System.String.Format("{0,-8}",string self.Tier))
-      (System.String.Format("{0,-8}",self.Id.Prefix))
+      (System.String.Format("{0,-8}",self.MachineId.Prefix))
       self.Time
       self.Thread
       self.Tag
@@ -168,7 +168,7 @@ type LogEvent =
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let tier = builder.CreateString (string self.Tier)
-    let id = builder.CreateString (string self.Id)
+    let id = LogEventFB.CreateMachineIdVector(builder,self.MachineId.ToByteArray())
     let tag = Option.mapNull builder.CreateString self.Tag
     let level = builder.CreateString (string self.LogLevel)
     let msg = Option.mapNull builder.CreateString self.Message
@@ -177,7 +177,7 @@ type LogEvent =
     LogEventFB.AddTime(builder, self.Time)
     LogEventFB.AddThread(builder, self.Thread)
     LogEventFB.AddTier(builder, tier)
-    LogEventFB.AddId(builder,id)
+    LogEventFB.AddMachineId(builder,id)
     Option.iter (fun value -> LogEventFB.AddTag(builder,value)) tag
     LogEventFB.AddLogLevel(builder, level)
     Option.iter (fun value -> LogEventFB.AddMessage(builder,value)) msg
@@ -186,16 +186,18 @@ type LogEvent =
   // ** FromFB
 
   static member FromFB(fb: LogEventFB) = either {
-      let id = Id fb.Id
+      let! id = Id.decodeMachineId fb
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
-      return { Time     = fb.Time
-               Thread   = fb.Thread
-               Tier     = tier
-               Id       = id
-               Tag      = fb.Tag
-               LogLevel = level
-               Message  = fb.Message }
+      return {
+        Time      = fb.Time
+        Thread    = fb.Thread
+        Tier      = tier
+        MachineId = id
+        Tag       = fb.Tag
+        LogLevel  = level
+        Message   = fb.Message
+      }
     }
 
   // ** ToYaml
@@ -210,29 +212,31 @@ type LogEvent =
 
   member self.ToYaml() =
     let yaml = LogEventYaml()
-    yaml.Time     <- self.Time
-    yaml.Thread   <- self.Thread
-    yaml.Tier     <- string self.Tier
-    yaml.Id       <- string self.Id
-    yaml.Tag      <- self.Tag
-    yaml.LogLevel <- string self.LogLevel
-    yaml.Message  <- self.Message
+    yaml.Time      <- self.Time
+    yaml.Thread    <- self.Thread
+    yaml.Tier      <- string self.Tier
+    yaml.MachineId <- string self.MachineId
+    yaml.Tag       <- self.Tag
+    yaml.LogLevel  <- string self.LogLevel
+    yaml.Message   <- self.Message
     yaml
 
   // ** FromYaml
 
   static member FromYaml(yaml: LogEventYaml) : Either<IrisError,LogEvent> =
     either {
-      let id = Id yaml.Id
+      let! id = IrisId.TryParse yaml.MachineId
       let! level = LogLevel.TryParse yaml.LogLevel
       let! tier = Tier.TryParse yaml.Tier
-      return { Time     = yaml.Time
-               Thread   = yaml.Thread
-               Tier     = tier
-               Id       = id
-               Tag      = yaml.Tag
-               LogLevel = level
-               Message  = yaml.Message }
+      return {
+        Time      = yaml.Time
+        Thread    = yaml.Thread
+        Tier      = tier
+        MachineId = id
+        Tag       = yaml.Tag
+        LogLevel  = level
+        Message   = yaml.Message
+      }
     }
 
   #endif
@@ -240,7 +244,7 @@ type LogEvent =
 // * LoggingSettings
 
 type LoggingSettings =
-  { Id: Id
+  { MachineId: IrisId
     Level: LogLevel
     UseColors: bool
     Tier: Tier }
@@ -250,7 +254,7 @@ type LoggingSettings =
 module LoggingSettings =
 
   let defaultSettings =
-    { Id = Id.Create()
+    { MachineId = IrisId.Empty
       Level = LogLevel.Debug
       UseColors = true
       Tier = Tier.Service }
@@ -269,7 +273,7 @@ module Logger =
   // ** _settings
 
   let mutable private _settings =
-    { Id = Id "<uninitialized>"
+    { MachineId = IrisId.Empty
       Level = LogLevel.Debug
       UseColors = true
       Tier = Tier.Service }
@@ -317,7 +321,7 @@ module Logger =
       Console.white     "{0} " log.Time
 
       Console.darkGreen "{0}:" "id"
-      Console.white     "{0} " log.Id.Prefix
+      Console.white     "{0} " log.MachineId.Prefix
 
       Console.darkGreen "{0}:"    "type"
       Console.white     "{0,-7} " log.Tier
@@ -422,17 +426,17 @@ module Logger =
   /// Returns: LogEvent
   let create (level: LogLevel) (callsite: CallSite) (msg: string) =
     let now  = DateTime.UtcNow |> Time.unixTime
-    { Time     = uint32 now
+    { Time      = uint32 now
       #if FABLE_COMPILER
-      Thread   = 1
+      Thread    = 1
       #else
-      Thread   = Thread.CurrentThread.ManagedThreadId
+      Thread    = Thread.CurrentThread.ManagedThreadId
       #endif
-      Tier     = _settings.Tier
-      Id       = _settings.Id
-      Tag      = callsite
-      LogLevel = level
-      Message  = msg }
+      Tier      = _settings.Tier
+      MachineId = _settings.MachineId
+      Tag       = callsite
+      LogLevel  = level
+      Message   = msg }
 
   // ** append
 
@@ -569,7 +573,7 @@ module LogFile =
 
   // ** create
 
-  let create (machine: Id) (path: FilePath) =
+  let create (machine: MachineId) (path: FilePath) =
     either {
       try
         let ts = DateTime.Now

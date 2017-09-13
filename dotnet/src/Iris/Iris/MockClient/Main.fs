@@ -167,8 +167,8 @@ Usage:
   [1] https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
   "
 
-  let private clientid = Id.Create()
-  let private patchid = Id.Create()
+  let private clientid = IrisId.Create()
+  let private patchid = IrisId.Create()
 
   let private (|Exit|_|) str =
     match str with
@@ -247,53 +247,53 @@ Usage:
     | Add rest ->
       match rest with
       | Toggle pinName ->
-        Pin.Sink.toggle (Id pinName) (name pinName) patchid clientid [| false |]
+        Pin.Sink.toggle (IrisId.Create()) (name pinName) patchid clientid [| false |]
         |> Some
 
       | Bang pinName ->
-        Pin.Sink.bang (Id pinName) (name pinName) patchid clientid [| false |]
+        Pin.Sink.bang (IrisId.Create()) (name pinName) patchid clientid [| false |]
         |> Some
 
       | String pinName ->
-        Pin.Sink.string (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.string (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Multiline pinName ->
-        Pin.Sink.multiLine (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.multiLine (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | File pinName ->
-        Pin.Sink.fileName (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.fileName (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Dir pinName ->
-        Pin.Sink.directory (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.directory (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Url pinName ->
-        Pin.Sink.url (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.url (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | IP pinName ->
-        Pin.Sink.ip (Id pinName) (name pinName) patchid clientid [| "" |]
+        Pin.Sink.ip (IrisId.Create()) (name pinName) patchid clientid [| "" |]
         |> Some
 
       | Float pinName ->
-        Pin.Sink.number (Id pinName) (name pinName) patchid clientid [| 0.0 |]
+        Pin.Sink.number (IrisId.Create()) (name pinName) patchid clientid [| 0.0 |]
         |> Some
 
       | Bytes pinName ->
-        Pin.Sink.bytes (Id pinName) (name pinName) patchid clientid [| [| |] |]
+        Pin.Sink.bytes (IrisId.Create()) (name pinName) patchid clientid [| [| |] |]
         |> Some
 
       | Color pinName ->
         let color = RGBA { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 0uy }
-        Pin.Sink.color (Id pinName) (name pinName) patchid clientid [| color |]
+        Pin.Sink.color (IrisId.Create()) (name pinName) patchid clientid [| color |]
         |> Some
 
       | Enum pinName ->
         let prop = { Key = ""; Value = "" }
-        Pin.Sink.enum (Id pinName) (name pinName) patchid clientid [| prop |] [| prop |]
+        Pin.Sink.enum (IrisId.Create()) (name pinName) patchid clientid [| prop |] [| prop |]
         |> Some
       | _ -> None
     | _ -> None
@@ -328,7 +328,7 @@ Usage:
   let private tryLoad (path: FilePath) =
     let lines = try File.readLines path with | _ -> [| |]
     Array.fold
-      (fun (pins: Map<Id,Pin>) line ->
+      (fun (pins: Map<PinId,Pin>) line ->
         match parseLine line with
         | Some pin -> Map.add pin.Id pin pins
         | _ -> pins)
@@ -449,14 +449,14 @@ Usage:
     client.RemovePin pin
 
   let private getPin (client: IApiClient) (id: string)  =
-    State.tryFindPin (Id (id.Trim())) client.State
+    State.tryFindPin (IrisId.Create()) client.State
 
   let private showPin (pin: Pin)  =
     printfn ""
     printfn "%A" pin
     printfn ""
 
-  let private loop (client: IApiClient) (initial: Map<Id,Pin>) (patch:PinGroup) =
+  let private loop (client: IApiClient) (initial: Map<PinId,Pin>) (patch:PinGroup) =
     let mutable run = true
 
     client.AddPinGroup patch
@@ -594,10 +594,10 @@ Usage:
     let parser = ArgumentParser.Create<CliOptions>(helpTextMessage = help)
     let parsed = parser.Parse args
 
-    let id = Id.Create()
+    let id = IrisId.Create()
 
     do Logger.initialize {
-      Id = Id.Create()
+      MachineId = IrisId.Create()
       Tier = Tier.Client
       UseColors = true
       Level = LogLevel.Debug
@@ -616,13 +616,13 @@ Usage:
               else IPv4Address "127.0.0.1" }
 
         let client =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name =
               if parsed.Contains <@ Name @>
               then name (parsed.GetResult <@ Name @>)
               else name "<empty>"
             Role = Role.Renderer
-            ServiceId = Id.Create()
+            ServiceId = IrisId.Create()
             Status = ServiceStatus.Starting
             IpAddress = IpAddress.Localhost // these are not used anymore
             Port = port 0us }
@@ -637,7 +637,7 @@ Usage:
       let patch : PinGroup =
         { Id = patchid
           Name = name "MockClient Patch"
-          Client = id
+          ClientId = id
           Path = None
           RefersTo = None
           Pins = Map.empty }

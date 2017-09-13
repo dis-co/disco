@@ -33,7 +33,7 @@ let genLog() =
     { Time = rnd.Next() |> uint32
       Thread = rnd.Next()
       Tier = oneOf tiers
-      Id = Guid.NewGuid() |> string |> Id
+      MachineId = IrisId.Create()
       Tag = oneOf tags
       LogLevel = oneOf levels
       Message = oneOf loremIpsum }
@@ -41,7 +41,7 @@ let genLog() =
 let (|IsJsArray|_|) (o: obj) =
     if JS.Array.isArray(o) then Some(o :?> ResizeArray<obj>) else None
 
-let failParse (gid: Id) (pk: string) (x: obj) =
+let failParse (gid: IrisId) (pk: string) (x: obj) =
     printfn "Unexpected value %A when parsing %s in PinGroup %O" x pk gid; None
 
 let inline forcePin<'T> gid pk (values: obj seq) =
@@ -73,7 +73,7 @@ let makeStringPin clientId gid pid pk values =
     Pin.Sink.string pid (name pk) gid clientId values |> Some
 
 let makePin clientId gid pk (v: obj) =
-    let pid = Id (sprintf "%O::%O::%s" clientId gid pk)
+    let pid = IrisId.Create()
     match v with
     | IsJsArray ar ->
         match Seq.tryHead ar with
@@ -97,12 +97,12 @@ let makePin clientId gid pk (v: obj) =
     | x -> failParse gid pk x
 
 let pinGroups: seq<PinGroup> =
-    let clientId = Id.Create()
+    let clientId = IrisId.Create()
     let pinGroups: obj = Node.Globals.require.Invoke("../data/pingroups.json")
     JS.Object.keys(pinGroups)
     |> Seq.map (fun gk ->
         let g = box pinGroups?(gk)
-        let gid = Id gk
+        let gid = IrisId.Create()
         let pins =
             JS.Object.keys(g)
             |> Seq.choose (fun pk ->
@@ -111,22 +111,22 @@ let pinGroups: seq<PinGroup> =
             |> Map
         { Id = gid
           Name = name gk
-          Client = Id "mockupclient"
+          ClientId = clientId
           RefersTo = None
           Pins = pins
           Path = None })
 
 let project =
     let memb =
-        let memb = Id.Create() |> Iris.Raft.Member.create
+        let memb = IrisId.Create() |> Iris.Raft.Member.create
         { memb with HostName = name "Wilhelm" }
     let clusterConfig =
-      { Id = Id.Create()
+      { Id = IrisId.Create()
         Name = name "mockcluster"
         Members = Map[memb.Id, memb]
         Groups = [||] }
     let machine =
-      { MachineId    = Id.Create()
+      { MachineId    = IrisId.Create()
         HostName     = name "mockmachine"
         WorkSpace    = filepath "/Iris"
         LogDirectory = filepath "/Iris"
@@ -141,15 +141,12 @@ let project =
         { Machine    = machine
           ActiveSite = Some clusterConfig.Id
           Version   = "0.0.0"
-          Vvvv      = VvvvConfig.Default
           Audio     = AudioConfig.Default
+          Clients   = ClientConfig.Default
           Raft      = RaftConfig.Default
           Timing    = TimingConfig.Default
-          ViewPorts = [| |]
-          Displays  = [| |]
-          Tasks     = [| |]
           Sites     = [|clusterConfig|] }
-    { Id        = Id.Create()
+    { Id        = IrisId.Create()
       Name      = name "mockproject"
       Path      = filepath "/Iris/mockproject"
       CreatedOn = Time.createTimestamp()
@@ -165,14 +162,14 @@ let _3of3 (_,_,x) = x
 let cuesAndListsAndPlayers =
     let makeCue() =
         // Create new Cue and CueReference
-        let cue = { Id = Id.Create(); Name = name "Untitled"; Slices = [||] }
-        let cueRef = { Id = Id.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+        let cue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+        let cueRef = { Id = IrisId.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
         cue, cueRef
     let cue1, cueRef1 = makeCue()
     let cue2, cueRef2 = makeCue()
     let cue3, cueRef3 = makeCue()
-    let cueGroup = { Id = Id "mockcuegroup"; Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
-    let cueList = { Id=Id "mockcuelist"; Name=name "mockcuelist"; Groups=[|cueGroup|]}
+    let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
+    let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Groups=[|cueGroup|]}
     let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
     Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
     Map[cueList.Id, cueList],

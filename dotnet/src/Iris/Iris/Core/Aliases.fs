@@ -31,11 +31,28 @@ namespace Iris.Core
 //  / ___ \| | | (_| \__ \  __/\__ \
 // /_/   \_\_|_|\__,_|___/\___||___/
 
-type NodeId     = Id
-type MemberId   = Id
-type ClientId   = Id
-type PinGroupId = Id
-type PinId      = Id
+type NodeId       = IrisId
+type MemberId     = IrisId
+type ClientId     = IrisId
+type PinGroupId   = IrisId
+type PinId        = IrisId
+type SessionId    = IrisId
+type SiteId       = IrisId
+type ClusterId    = IrisId
+type ProjectId    = IrisId
+type PlayerId     = IrisId
+type WidgetId     = IrisId
+type WidgetTypeId = IrisId
+type MachineId    = IrisId
+type UserId       = IrisId
+type ServiceId    = IrisId
+type CueListId    = IrisId
+type CueId        = IrisId
+type CueRefId     = IrisId
+type CueGroupId   = IrisId
+type PinMappingId = IrisId
+type LogId        = IrisId
+type PeerId       = IrisId
 
 type Index      = int<index>
 type Term       = int<term>

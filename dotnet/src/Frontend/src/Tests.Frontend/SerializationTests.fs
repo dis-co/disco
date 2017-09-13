@@ -17,7 +17,7 @@ module SerializationTests =
 
   let rand = new System.Random()
 
-  let mk() = Id.Create()
+  let mk() = IrisId.Create()
 
   let rndstr() = mk() |> string
   let rndname() = mk() |> string |> name
@@ -35,7 +35,7 @@ module SerializationTests =
 
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
-        yield Id.Create() |> string |> astag |]
+        yield IrisId.Create() |> string |> astag |]
 
   let mkProp () =
     { Key = rndstr(); Value = rndstr() }
@@ -63,10 +63,15 @@ module SerializationTests =
     |]
 
   let mkPin _ =
-    Pin.Sink.string (Id.Create()) (name "url input") (Id.Create()) (Id.Create()) [| "hello" |]
+    Pin.Sink.string
+      (IrisId.Create())
+      (name "url input")
+      (IrisId.Create())
+      (IrisId.Create())
+      [| "hello" |]
 
   let mkSlices() =
-    BoolSlices(Id.Create(), None, [| true; false; true; true; false |])
+    BoolSlices(IrisId.Create(), None, [| true; false; true; true; false |])
 
   let mkSlicesMap() =
     let slices = mkSlices ()
@@ -75,13 +80,13 @@ module SerializationTests =
     |> SlicesMap
 
   let mkCue _ : Cue =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = name "Cue 1"
       Slices = [| mkSlices() |] }
 
   let mkCueRef () : CueReference =
-    { Id = Id.Create()
-      CueId = Id.Create()
+    { Id = IrisId.Create()
+      CueId = IrisId.Create()
       AutoFollow = rndint()
       Duration = rndint()
       Prewait = rndint() }
@@ -90,16 +95,16 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = Id.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
 
   let mkCueGroups () : CueGroup array =
     [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = name "PinGroup"
-      Client = Id.Create()
+      ClientId = IrisId.Create()
       Path = None
       RefersTo = None
       Pins = pins }
@@ -109,10 +114,10 @@ module SerializationTests =
     |> PinGroupMap.ofList
 
   let mkCueList _ : CueList =
-    { Id = Id.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
+    { Id = IrisId.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
 
   let mkUser _ =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
     ; UserName = name "krgn"
     ; FirstName = name "Karsten"
     ; LastName = name "Gebbert"
@@ -124,16 +129,16 @@ module SerializationTests =
     }
 
   let mkClient () : IrisClient =
-    { Id = Id.Create ()
+    { Id = IrisId.Create ()
       Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
-      ServiceId = Id.Create()
+      ServiceId = IrisId.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
   let mkDiscoveredService(): DiscoveredService =
-    { Id = Id.Create ()
+    { Id = IrisId.Create ()
       Name = "Nice service"
       FullName = "Really nice service"
       HostName = "remotehost"
@@ -149,41 +154,41 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
-  let mkMember _ = Id.Create() |> Member.create
+  let mkMember _ = IrisId.Create() |> Member.create
 
   let mkSession _ =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
 
   let mkPinMapping _ =
-    { Id = Id.Create()
-      Source = Id.Create()
-      Sinks = Set [| Id.Create(); Id.Create() |] }
+    { Id = IrisId.Create()
+      Source = IrisId.Create()
+      Sinks = Set [| IrisId.Create(); IrisId.Create() |] }
 
   let mkPinWidget _ =
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndname()
-      WidgetType = Id.Create() }
+      WidgetType = IrisId.Create() }
 
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
-        Some (rndstr() |> Id)
+        Some (IrisId.Create())
       else
         None
 
-    { Id = Id.Create()
+    { Id = IrisId.Create()
       Name = rndname ()
       Locked = false
-      CueList = rndopt ()
       Selected = index (rand.Next(0,1000))
-      Call = Id.Create()
-      Next = Id.Create()
-      Previous = Id.Create()
       RemainingWait = rand.Next(0,1000)
-      LastCaller = rndopt()
-      LastCalled = rndopt() }
+      CueListId = rndopt ()
+      CallId = IrisId.Create()
+      NextId = IrisId.Create()
+      PreviousId = IrisId.Create()
+      LastCallerId = rndopt()
+      LastCalledId = rndopt() }
 
   let mkState _ =
     { Project    = mkProject ()
@@ -241,9 +246,9 @@ module SerializationTests =
             AddPin                  <| mkPin ()
             UpdatePin               <| mkPin ()
             RemovePin               <| mkPin ()
-            AddMember               <| Member.create (Id.Create())
-            UpdateMember            <| Member.create (Id.Create())
-            RemoveMember            <| Member.create (Id.Create())
+            AddMember               <| Member.create (IrisId.Create())
+            UpdateMember            <| Member.create (IrisId.Create())
+            RemoveMember            <| Member.create (IrisId.Create())
             AddDiscoveredService    <| mkDiscoveredService ()
             UpdateDiscoveredService <| mkDiscoveredService ()
             RemoveDiscoveredService <| mkDiscoveredService ()
@@ -310,7 +315,7 @@ module SerializationTests =
       finish()
 
     test "Validate Member Serialization" <| fun finish ->
-      let mem = Id.Create() |> Member.create
+      let mem = IrisId.Create() |> Member.create
       check mem
       finish ()
 
@@ -388,9 +393,9 @@ module SerializationTests =
       ; AddPin                  <| mkPin ()
       ; UpdatePin               <| mkPin ()
       ; RemovePin               <| mkPin ()
-      ; AddMember               <| Member.create (Id.Create())
-      ; UpdateMember            <| Member.create (Id.Create())
-      ; RemoveMember            <| Member.create (Id.Create())
+      ; AddMember               <| Member.create (IrisId.Create())
+      ; UpdateMember            <| Member.create (IrisId.Create())
+      ; RemoveMember            <| Member.create (IrisId.Create())
       ; AddDiscoveredService    <| mkDiscoveredService ()
       ; UpdateDiscoveredService <| mkDiscoveredService ()
       ; RemoveDiscoveredService <| mkDiscoveredService ()
@@ -434,7 +439,7 @@ module SerializationTests =
       finish()
 
     test "Validate MachineStatus Binary Serialization" <| fun finish ->
-      MachineStatus.Busy (Id.Create(), name (rndstr()))
+      MachineStatus.Busy (IrisId.Create(), name (rndstr()))
       |> check
       finish()
 

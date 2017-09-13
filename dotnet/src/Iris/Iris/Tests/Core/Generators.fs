@@ -78,9 +78,13 @@ module Generators =
   let portGen = Gen.map port uint16Gen
   let versionGen = Gen.map version stringGen
   let tsGen = Arb.generate<TimeStamp>
-  let tagGen = Gen.map astag stringGen
   let timeoutGen = Gen.map ((*) 1<ms>) intGen
-
+  let propertyGen = gen {
+      let! key = stringGen
+      let! value = stringGen
+      return { Key = key; Value = value }
+    }
+  let tagGen = propertyGen
   let maybePathGen = gen {
       let! value = pathGen
       if value |> unwrap |> isNull
@@ -100,8 +104,7 @@ module Generators =
   // |___\__,_|
 
   let idGen = gen {
-      let! value = Arb.generate<Guid>
-      return Id (string value)
+      return IrisId.Create()
     }
 
   //   ____       _     _
@@ -442,8 +445,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Online = online
           Dirty = false
@@ -475,8 +478,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -507,8 +510,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -535,8 +538,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -545,12 +548,6 @@ module Generators =
           PinConfiguration = conf
           Labels = lbs
           Values = vls }
-    }
-
-  let propertyGen = gen {
-      let! key = stringGen
-      let! value = stringGen
-      return { Key = key; Value = value }
     }
 
   let enumpinGen = gen {
@@ -569,8 +566,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           Tags = tgs
           Persisted = persisted
           Online = online
@@ -625,8 +622,8 @@ module Generators =
       return
         { Id = id
           Name = nm
-          PinGroup = group
-          Client = client
+          PinGroupId = group
+          ClientId = client
           PinConfiguration = conf
           Tags = tgs
           Online = online
@@ -783,14 +780,14 @@ module Generators =
         { Id = id
           Name = nm
           Locked = locked
-          CueList = cl
+          CueListId = cl
           Selected = sel
-          Call = call
-          Next = next
-          Previous = prev
+          CallId = call
+          NextId = next
+          PreviousId = prev
           RemainingWait = rmw
-          LastCalled = lcd
-          LastCaller = lcr }
+          LastCalledId = lcd
+          LastCallerId = lcr }
     }
 
   //  ____  _        ____
@@ -823,7 +820,7 @@ module Generators =
         { Id = id
           Name = nm
           Path = path
-          Client = clnt
+          ClientId = clnt
           RefersTo = refersTo
           Pins = pins }
     }
@@ -971,7 +968,7 @@ module Generators =
         { Time = time
           Thread = thread
           Tier = tier
-          Id = id
+          MachineId = id
           Tag = tag
           LogLevel = level
           Message = msg }

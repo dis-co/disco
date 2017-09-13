@@ -1184,7 +1184,7 @@ module rec Raft =
   let createEntryM (entry: StateMachine) =
     raft {
       let! state = get
-      let log = LogEntry(Id.Create(),index 0,state.CurrentTerm,entry,None)
+      let log = LogEntry(IrisId.Create(),index 0,state.CurrentTerm,entry,None)
       return! appendEntryM log
     }
 
@@ -1760,7 +1760,7 @@ module rec Raft =
   let receiveEntry (entry : RaftLogEntry) =
     raft {
       let! state = get
-      let resp = { Id = Id.Create(); Term = term 0; Index = index 0 }
+      let resp = { Id = IrisId.Create(); Term = term 0; Index = index 0 }
 
       if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
         do! debug "receiveEntry" "Error: UnexpectedVotingChange"
@@ -1769,11 +1769,11 @@ module rec Raft =
           |> Error.asRaftError (tag "receiveEntry")
           |> failM
       elif isLeader state then
-        let str = sprintf "(id: %s) (idx: %d) (term: %d)"
-                      ((LogEntry.getId entry).ToString() )
-                      (Log.getIndex state.Log + 1<index>)
-                      state.CurrentTerm
-        do! debug "receiveEntry" str
+        do! state.CurrentTerm
+            |> sprintf "(id: %A) (idx: %d) (term: %d)"
+              (LogEntry.getId entry)
+              (Log.getIndex state.Log + 1<index>)
+            |> debug "receiveEntry"
 
         let! term = currentTermM ()
 
@@ -2548,7 +2548,7 @@ module rec Raft =
           let! waiting = hasNonVotingMembersM () // check if any mems are still marked non-voting/Joining
           if not waiting then                    // are mems are voting and have caught up
             let! term = currentTermM ()
-            let resp = { Id = Id.Create(); Term = term; Index = index 0 }
+            let resp = { Id = IrisId.Create(); Term = term; Index = index 0 }
             let! mems = getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
             let log = Configuration(resp.Id, index 0, term, mems, None)
             do! handleLog log resp >>= ignoreM

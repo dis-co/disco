@@ -340,15 +340,15 @@ type Pin =
 
   // ** Client
 
-  member self.Client
+  member self.ClientId
     with get () =
       match self with
-      | StringPin   data -> data.Client
-      | NumberPin   data -> data.Client
-      | BoolPin     data -> data.Client
-      | BytePin     data -> data.Client
-      | EnumPin     data -> data.Client
-      | ColorPin    data -> data.Client
+      | StringPin   data -> data.ClientId
+      | NumberPin   data -> data.ClientId
+      | BoolPin     data -> data.ClientId
+      | BytePin     data -> data.ClientId
+      | EnumPin     data -> data.ClientId
+      | ColorPin    data -> data.ClientId
 
   // ** PinConfiguration
 
@@ -362,17 +362,17 @@ type Pin =
       | EnumPin     data -> data.PinConfiguration
       | ColorPin    data -> data.PinConfiguration
 
-  // ** PinGroup
+  // ** PinGroupId
 
-  member self.PinGroup
+  member self.PinGroupId
     with get () =
       match self with
-      | StringPin   data -> data.PinGroup
-      | NumberPin   data -> data.PinGroup
-      | BoolPin     data -> data.PinGroup
-      | BytePin     data -> data.PinGroup
-      | EnumPin     data -> data.PinGroup
-      | ColorPin    data -> data.PinGroup
+      | StringPin   data -> data.PinGroupId
+      | NumberPin   data -> data.PinGroupId
+      | BoolPin     data -> data.PinGroupId
+      | BytePin     data -> data.PinGroupId
+      | EnumPin     data -> data.PinGroupId
+      | ColorPin    data -> data.PinGroupId
 
   // ** Type
 
@@ -414,7 +414,7 @@ type Pin =
 
   member pin.Slices
     with get () =
-      let client = if Pin.isPreset pin then Some pin.Client else None
+      let client = if Pin.isPreset pin then Some pin.ClientId else None
       match pin with
       | StringPin   data -> StringSlices (pin.Id, client, data.Values)
       | NumberPin   data -> NumberSlices (pin.Id, client, data.Values)
@@ -818,23 +818,70 @@ module Pin =
 
   /// Parses all tags in a Flatbuffer-serialized type as the UoM Tag
   let inline parseTags< ^a when ^a : (member TagsLength : int)
-                           and  ^a : (member Tags : int -> string)>
+                           #if FABLE_COMPILER
+                           and  ^a : (member Tags : int -> KeyValueFB)>
+                           #else
+                           and  ^a : (member Tags : int -> Nullable<KeyValueFB>)>
+                           #endif
                       (fb: ^a)
-                      : Either<IrisError, Tag array> =
+                      : Either<IrisError, Property array> =
     let len = (^a : (member TagsLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<IrisError,int * Tag array>) _ -> either {
-          let! (i, tags) = result
-          let value =
-            try (^a : (member Tags : int -> string) (fb, i))
-            with | _ -> null
-          tags.[i] <- astag value
-          return (i + 1, tags)
+      (fun (result: Either<IrisError,int * Property array>) _ -> either {
+          let! (i, arr) = result
+          #if FABLE_COMPILER
+          let prop = (^a : (member Tags: int -> KeyValueFB) fb, i)
+          #else
+          let! prop =
+            let nullable = (^a : (member Tags: int -> Nullable<KeyValueFB>) fb,i)
+            if nullable.HasValue then
+              Either.succeed nullable.Value
+            else
+              "Cannot parse empty property"
+              |> Error.asParseError "EnumPin.FromFB"
+              |> Either.fail
+          #endif
+          arr.[i] <- { Key = prop.Key; Value = prop.Value }
+          return (i + 1, arr)
         })
       (Right (0, arr))
       arr
     |> Either.map snd
+
+  // ** parseProperties
+
+  let inline parseProperties< ^a when ^a : (member PropertiesLength: int)
+                                 #if FABLE_COMPILER
+                                 and  ^a : (member Properties: int -> KeyValueFB)>
+                                 #else
+                                 and  ^a : (member Properties: int -> Nullable<KeyValueFB>)>
+                                 #endif
+                            (fb: ^a)
+                            : Either<IrisError, Property array> =
+        let len = (^a : (member PropertiesLength: int) fb)
+        let properties = Array.zeroCreate len
+        Array.fold
+          (fun (m: Either<IrisError, int * Property array>) _ -> either {
+            let! (i, arr) = m
+            #if FABLE_COMPILER
+            let prop = (^a : (member Properties: int -> KeyValueFB) fb, i)
+            #else
+            let! prop =
+              let nullable = (^a : (member Properties: int -> Nullable<KeyValueFB>) fb,i)
+              if nullable.HasValue then
+                Either.succeed nullable.Value
+              else
+                "Cannot parse empty property"
+                |> Error.asParseError "EnumPin.FromFB"
+                |> Either.fail
+            #endif
+            arr.[i] <- { Key = prop.Key; Value = prop.Value }
+            return (i + 1, arr)
+          })
+          (Right (0, properties))
+          properties
+        |> Either.map snd
 
   // ** emtpyLabels
 
@@ -855,9 +902,9 @@ module Pin =
       BoolPin {
         Id               = id
         Name             = name
-        PinGroup         = group
+        PinGroupId       = group
         Tags             = defaultTags
-        Client           = client
+        ClientId         = client
         IsTrigger        = false
         Persisted        = false
         Online           = true
@@ -874,8 +921,8 @@ module Pin =
       BoolPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         IsTrigger        = true
         Persisted        = false
@@ -893,8 +940,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -913,8 +960,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -933,8 +980,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -953,8 +1000,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -973,8 +1020,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -993,8 +1040,8 @@ module Pin =
       StringPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -1013,8 +1060,8 @@ module Pin =
       NumberPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -1035,8 +1082,8 @@ module Pin =
       BytePin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -1053,8 +1100,8 @@ module Pin =
       ColorPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -1071,8 +1118,8 @@ module Pin =
       EnumPin {
         Id               = id
         Name             = name
-        PinGroup         = group
-        Client           = client
+        PinGroupId       = group
+        ClientId         = client
         Tags             = defaultTags
         Persisted        = false
         Online           = true
@@ -1218,15 +1265,15 @@ module Pin =
 
     // *** nextId
 
-    let nextId id = Id (String.format "/{0}/next" id)
+    let nextId _ = IrisId.Create() // (String.format "/{0}/next" id)
 
     // *** previousId
 
-    let previousId id = Id (String.format "/{0}/next" id)
+    let previousId _ = IrisId.Create() // (String.format "/{0}/next" id)
 
     // *** previousId
 
-    let callId id = Id (String.format "/{0}/call" id)
+    let callId _ = IrisId.Create() // (String.format "/{0}/call" id)
 
     // *** next
 
@@ -1234,9 +1281,9 @@ module Pin =
       BoolPin {
         Id               = nextId id
         Name             = name "Next"
-        PinGroup         = id
+        PinGroupId       = id
         Tags             = Array.empty
-        Client           = client
+        ClientId         = client
         Persisted        = true
         IsTrigger        = true
         Online           = true
@@ -1253,8 +1300,8 @@ module Pin =
       BoolPin {
         Id               = previousId id
         Name             = name "Previous"
-        PinGroup         = id
-        Client           = client
+        PinGroupId       = id
+        ClientId         = client
         Tags             = Array.empty
         Persisted        = true
         IsTrigger        = true
@@ -1272,8 +1319,8 @@ module Pin =
       BoolPin {
         Id         = callId id
         Name       = name "Call"
-        PinGroup   = id
-        Client     = client
+        PinGroupId = id
+        ClientId   = client
         Tags       = Array.empty
         Persisted  = true
         IsTrigger  = true
@@ -1407,7 +1454,7 @@ module Pin =
       match slices with
       | StringSlices (id,None,arr) when id = data.Id ->
         StringPin { data with Values = arr }
-      | StringSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
+      | StringSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
         StringPin { data with Values = arr }
       | _ -> value
 
@@ -1415,7 +1462,7 @@ module Pin =
       match slices with
       | NumberSlices (id,None,arr) when id = data.Id ->
         NumberPin { data with Values = arr }
-      | NumberSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
+      | NumberSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
         NumberPin { data with Values = arr }
       | _ -> value
 
@@ -1423,7 +1470,7 @@ module Pin =
       match slices with
       | BoolSlices (id,None,arr) when id = data.Id ->
         BoolPin { data with Values = arr }
-      | BoolSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
+      | BoolSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
         BoolPin { data with Values = arr }
       | _ -> value
 
@@ -1431,7 +1478,7 @@ module Pin =
       match slices with
       | ByteSlices (id,None,arr) when id = data.Id ->
         BytePin { data with Values = arr }
-      | ByteSlices (id,Some client, arr) when id = data.Id && client = data.Client ->
+      | ByteSlices (id,Some client, arr) when id = data.Id && client = data.ClientId ->
         BytePin { data with Values = arr }
       | _ -> value
 
@@ -1439,7 +1486,7 @@ module Pin =
       match slices with
       | EnumSlices (id,None,arr) when id = data.Id ->
         EnumPin { data with Values = arr }
-      | EnumSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
+      | EnumSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
         EnumPin { data with Values = arr }
       | _ -> value
 
@@ -1447,7 +1494,7 @@ module Pin =
       match slices with
       | ColorSlices (id,None,arr) when id = data.Id ->
         ColorPin { data with Values = arr }
-      | ColorSlices (id,Some client,arr) when id = data.Id && client = data.Client ->
+      | ColorSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
         ColorPin { data with Values = arr }
       | _ -> value
 
@@ -1530,20 +1577,20 @@ type NumberPinD =
   { /// A unique identifier for this Pin. This Id can overlap between clients though, and
     /// can only be considered unique in the scope of its parent PinGroup and the Client it
     /// was created on.
-    Id: Id
+    Id: PinId
 
     /// Human readable name of a Pin
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1593,12 +1640,12 @@ type NumberPinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = NumberPinFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
+    let group = NumberPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = NumberPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
     let unit = self.Unit |> Option.mapNull builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let tags = NumberPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = NumberPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -1608,8 +1655,8 @@ type NumberPinD =
     NumberPinFB.StartNumberPinFB(builder)
     NumberPinFB.AddId(builder, id)
     Option.iter (fun value -> NumberPinFB.AddName(builder, value)) name
-    NumberPinFB.AddPinGroup(builder, group)
-    NumberPinFB.AddClient(builder, client)
+    NumberPinFB.AddPinGroupId(builder, group)
+    NumberPinFB.AddClientId(builder, client)
     NumberPinFB.AddPersisted(builder, self.Persisted)
     NumberPinFB.AddDirty(builder, self.Dirty)
     NumberPinFB.AddOnline(builder, self.Online)
@@ -1629,6 +1676,9 @@ type NumberPinD =
 
   static member FromFB(fb: NumberPinFB) : Either<IrisError,NumberPinD> =
     either {
+      let! id = Id.decodeId fb
+      let! groupId = Id.decodePinGroupId fb
+      let! clientId = Id.decodeClientId fb
       let! tags = Pin.parseTags fb
       let! labels = Pin.parseLabels fb
       let! vecsize = Pin.parseVecSize fb
@@ -1639,22 +1689,24 @@ type NumberPinD =
         |> Pin.parseSimpleValues
         |> Either.map (Array.map double)
 
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               PinGroup         = Id fb.PinGroup
-               Tags             = tags
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               Client           = Id fb.Client
-               Online           = fb.Online
-               Min              = fb.Min
-               Max              = fb.Max
-               Unit             = fb.Unit
-               Precision        = fb.Precision
-               VecSize          = vecsize
-               PinConfiguration = configuration
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        PinGroupId       = groupId
+        Tags             = tags
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        ClientId         = clientId
+        Online           = fb.Online
+        Min              = fb.Min
+        Max              = fb.Max
+        Unit             = fb.Unit
+        Precision        = fb.Precision
+        VecSize          = vecsize
+        PinConfiguration = configuration
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -1698,8 +1750,8 @@ type NumberPinD =
 
       pin.Id = self.Id &&
       pin.Name = self.Name &&
-      pin.PinGroup = self.PinGroup &&
-      pin.Client = self.Client &&
+      pin.PinGroupId = self.PinGroupId &&
+      pin.ClientId = self.ClientId &&
       pin.PinConfiguration = self.PinConfiguration &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
@@ -1734,14 +1786,14 @@ type StringPinD =
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1785,12 +1837,12 @@ type StringPinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = StringPinFB.CreateIdVector(builder, self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
+    let group = StringPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = StringPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
     let tipe = self.Behavior.ToOffset(builder)
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Pin.str2offset builder) self.Values
     let tags = StringPinFB.CreateTagsVector(builder, tagoffsets)
@@ -1802,8 +1854,8 @@ type StringPinD =
     StringPinFB.StartStringPinFB(builder)
     StringPinFB.AddId(builder, id)
     Option.iter (fun value -> StringPinFB.AddName(builder,value)) name
-    StringPinFB.AddPinGroup(builder, group)
-    StringPinFB.AddClient(builder, client)
+    StringPinFB.AddPinGroupId(builder, group)
+    StringPinFB.AddClientId(builder, client)
     StringPinFB.AddPersisted(builder, self.Persisted)
     StringPinFB.AddDirty(builder, self.Dirty)
     StringPinFB.AddOnline(builder, self.Online)
@@ -1820,6 +1872,9 @@ type StringPinD =
 
   static member FromFB(fb: StringPinFB) : Either<IrisError,StringPinD> =
     either {
+      let! id = Id.decodeId fb
+      let! groupId = Id.decodePinGroupId fb
+      let! clientId = Id.decodeClientId fb
       let! tags = Pin.parseTags fb
       let! labels = Pin.parseLabels fb
       let! slices = Pin.parseSimpleValues fb
@@ -1827,20 +1882,22 @@ type StringPinD =
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               PinGroup         = Id fb.PinGroup
-               Tags             = tags
-               Online           = fb.Online
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               Client           = Id fb.Client
-               Behavior         = tipe
-               MaxChars         = 1<chars> * fb.MaxChars
-               VecSize          = vecsize
-               PinConfiguration = configuration
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        PinGroupId       = groupId
+        Tags             = tags
+        Online           = fb.Online
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        ClientId         = clientId
+        Behavior         = tipe
+        MaxChars         = 1<chars> * fb.MaxChars
+        VecSize          = vecsize
+        PinConfiguration = configuration
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -1872,14 +1929,14 @@ type BoolPinD =
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -1920,11 +1977,11 @@ type BoolPinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = BoolPinFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let group = BoolPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = BoolPinFB.CreateClientIdVector(builder, self.ClientId.ToByteArray())
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let tags = BoolPinFB.CreateTagsVector(builder, tagoffsets)
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let labels = BoolPinFB.CreateLabelsVector(builder, labeloffsets)
@@ -1934,8 +1991,8 @@ type BoolPinD =
     BoolPinFB.StartBoolPinFB(builder)
     BoolPinFB.AddId(builder, id)
     Option.iter (fun value -> BoolPinFB.AddName(builder,value)) name
-    BoolPinFB.AddPinGroup(builder, group)
-    BoolPinFB.AddClient(builder, client)
+    BoolPinFB.AddPinGroupId(builder, group)
+    BoolPinFB.AddClientId(builder, client)
     BoolPinFB.AddPersisted(builder, self.Persisted)
     BoolPinFB.AddDirty(builder, self.Dirty)
     BoolPinFB.AddOnline(builder, self.Online)
@@ -1951,25 +2008,30 @@ type BoolPinD =
 
   static member FromFB(fb: BoolPinFB) : Either<IrisError,BoolPinD> =
     either {
+      let! id = Id.decodeId fb
+      let! groupId = Id.decodePinGroupId fb
+      let! clientId = Id.decodeClientId fb
       let! tags = Pin.parseTags fb
       let! labels = Pin.parseLabels fb
       let! slices = Pin.parseSimpleValues fb
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
 
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               PinGroup         = Id fb.PinGroup
-               Client           = Id fb.Client
-               Tags             = tags
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               Online           = fb.Online
-               IsTrigger        = fb.IsTrigger
-               VecSize          = vecsize
-               PinConfiguration = configuration
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        PinGroupId       = groupId
+        ClientId         = clientId
+        Tags             = tags
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        Online           = fb.Online
+        IsTrigger        = fb.IsTrigger
+        VecSize          = vecsize
+        PinConfiguration = configuration
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -2002,14 +2064,14 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2081,7 +2143,8 @@ type [<CustomEquality;CustomComparison>] BytePinD =
         #endif
       pin.Id = self.Id &&
       pin.Name = self.Name &&
-      pin.PinGroup = self.PinGroup &&
+      pin.PinGroupId = self.PinGroupId &&
+      pin.ClientId = self.ClientId &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
       pin.PinConfiguration = self.PinConfiguration &&
@@ -2107,11 +2170,11 @@ type [<CustomEquality;CustomComparison>] BytePinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = BytePinFB.CreateIdVector(builder, self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let group = BytePinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = BytePinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (String.encodeBase64 >> builder.CreateString) self.Values
     let labels = BytePinFB.CreateLabelsVector(builder, labeloffsets)
@@ -2122,8 +2185,8 @@ type [<CustomEquality;CustomComparison>] BytePinD =
     BytePinFB.StartBytePinFB(builder)
     BytePinFB.AddId(builder, id)
     Option.iter (fun value -> BytePinFB.AddName(builder,value)) name
-    BytePinFB.AddPinGroup(builder, group)
-    BytePinFB.AddClient(builder, client)
+    BytePinFB.AddPinGroupId(builder, group)
+    BytePinFB.AddClientId(builder, client)
     BytePinFB.AddPersisted(builder, self.Persisted)
     BytePinFB.AddDirty(builder, self.Dirty)
     BytePinFB.AddOnline(builder, self.Online)
@@ -2138,6 +2201,9 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   static member FromFB(fb: BytePinFB) : Either<IrisError,BytePinD> =
     either {
+      let! id = Id.decodeId fb
+      let! group = Id.decodePinGroupId fb
+      let! client = Id.decodeClientId fb
       let! tags = Pin.parseTags fb
       let! labels = Pin.parseLabels fb
       let! vecsize = Pin.parseVecSize fb
@@ -2147,18 +2213,20 @@ type [<CustomEquality;CustomComparison>] BytePinD =
         |> Pin.parseSimpleValues
         |> Either.map (Array.map String.decodeBase64)
 
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               PinGroup         = Id fb.PinGroup
-               Client           = Id fb.Client
-               Tags             = tags
-               Online           = fb.Online
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               VecSize          = vecsize
-               PinConfiguration = configuration
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        PinGroupId       = group
+        ClientId         = client
+        Tags             = tags
+        Online           = fb.Online
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        VecSize          = vecsize
+        PinConfiguration = configuration
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -2190,14 +2258,14 @@ type EnumPinD =
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2237,11 +2305,11 @@ type EnumPinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = EnumPinFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let group = EnumPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = EnumPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let propoffsets = Array.map (Binary.toOffset builder) self.Properties
@@ -2254,8 +2322,8 @@ type EnumPinD =
     EnumPinFB.StartEnumPinFB(builder)
     EnumPinFB.AddId(builder, id)
     Option.iter (fun value -> EnumPinFB.AddName(builder,value)) name
-    EnumPinFB.AddPinGroup(builder, group)
-    EnumPinFB.AddClient(builder, client)
+    EnumPinFB.AddPinGroupId(builder, group)
+    EnumPinFB.AddClientId(builder, client)
     EnumPinFB.AddPersisted(builder, self.Persisted)
     EnumPinFB.AddDirty(builder, self.Dirty)
     EnumPinFB.AddOnline(builder, self.Online)
@@ -2271,6 +2339,9 @@ type EnumPinD =
 
   static member FromFB(fb: EnumPinFB) : Either<IrisError,EnumPinD> =
     either {
+      let! id = Id.decodeId fb
+      let! group = Id.decodePinGroupId fb
+      let! client = Id.decodeClientId fb
       let! labels = Pin.parseLabels fb
       let! tags = Pin.parseTags fb
       let! slices = Pin.parseComplexValues fb
@@ -2301,19 +2372,21 @@ type EnumPinD =
           properties
         |> Either.map snd
 
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               PinGroup         = Id fb.PinGroup
-               Client           = Id fb.Client
-               Tags             = tags
-               Online           = fb.Online
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               Properties       = properties
-               PinConfiguration = configuration
-               VecSize          = vecsize
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        PinGroupId       = group
+        ClientId         = client
+        Tags             = tags
+        Online           = fb.Online
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        Properties       = properties
+        PinConfiguration = configuration
+        VecSize          = vecsize
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -2345,14 +2418,14 @@ type ColorPinD =
     Name: Name
 
     /// the PinGroup this pin belongs to
-    PinGroup: PinGroupId
+    PinGroupId: PinGroupId
 
     /// the Client this Pin was created on
-    Client: ClientId
+    ClientId: ClientId
 
     /// Tags are for adding unstructured meta data to a Pin. This can be used for grouping
     /// functions, filtering et al.
-    Tags: Tag array
+    Tags: Property array
 
     /// A Pin with the Persisted flag turned on will be saved to disk together with its
     /// parent PinGroup.
@@ -2389,11 +2462,11 @@ type ColorPinD =
   //                           |___/
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = string self.Id |> builder.CreateString
+    let id = ColorPinFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let group = self.PinGroup |> string |> builder.CreateString
-    let client = self.Client |> string |> builder.CreateString
-    let tagoffsets = Array.map (unwrap >> Pin.str2offset builder) self.Tags
+    let group = ColorPinFB.CreatePinGroupIdVector(builder,self.PinGroupId.ToByteArray())
+    let client = ColorPinFB.CreateClientIdVector(builder,self.ClientId.ToByteArray())
+    let tagoffsets = Array.map (Binary.toOffset builder) self.Tags
     let labeloffsets = Array.map (Pin.str2offset builder) self.Labels
     let sliceoffsets = Array.map (Binary.toOffset builder) self.Values
     let tags = ColorPinFB.CreateTagsVector(builder, tagoffsets)
@@ -2404,8 +2477,8 @@ type ColorPinD =
     ColorPinFB.StartColorPinFB(builder)
     ColorPinFB.AddId(builder, id)
     Option.iter (fun value -> ColorPinFB.AddName(builder,value)) name
-    ColorPinFB.AddPinGroup(builder, group)
-    ColorPinFB.AddClient(builder, client)
+    ColorPinFB.AddPinGroupId(builder, group)
+    ColorPinFB.AddClientId(builder, client)
     ColorPinFB.AddPersisted(builder, self.Persisted)
     ColorPinFB.AddDirty(builder, self.Dirty)
     ColorPinFB.AddOnline(builder, self.Online)
@@ -2420,24 +2493,28 @@ type ColorPinD =
 
   static member FromFB(fb: ColorPinFB) : Either<IrisError,ColorPinD> =
     either {
+      let! id = Id.decodeId fb
+      let! group = Id.decodePinGroupId fb
+      let! client = Id.decodeClientId fb
       let! tags = Pin.parseTags fb
       let! labels = Pin.parseLabels fb
       let! slices = Pin.parseComplexValues fb
       let! vecsize = Pin.parseVecSize fb
       let! configuration = PinConfiguration.FromFB fb.PinConfiguration
-
-      return { Id               = Id fb.Id
-               Name             = name fb.Name
-               Online           = fb.Online
-               PinGroup         = Id fb.PinGroup
-               Client           = Id fb.Client
-               Tags             = tags
-               Persisted        = fb.Persisted
-               Dirty            = fb.Dirty
-               VecSize          = vecsize
-               PinConfiguration = configuration
-               Labels           = labels
-               Values           = slices }
+      return {
+        Id               = id
+        Name             = name fb.Name
+        Online           = fb.Online
+        PinGroupId       = group
+        ClientId         = client
+        Tags             = tags
+        Persisted        = fb.Persisted
+        Dirty            = fb.Dirty
+        VecSize          = vecsize
+        PinConfiguration = configuration
+        Labels           = labels
+        Values           = slices
+      }
     }
 
   // ** ToBytes
@@ -3074,11 +3151,13 @@ type Slices =
   //                           |___/
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
+    let id = SlicesFB.CreatePinIdVector(builder,slices.PinId.ToByteArray())
+    let client =
+      Option.map
+        (fun (clid: ClientId) -> SlicesFB.CreateClientIdVector(builder,clid.ToByteArray()))
+        slices.ClientId
     match slices with
-    | StringSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | StringSlices (_,_,arr) ->
       let strings =
         Array.map (Pin.str2offset builder) arr
         |> fun coll -> StringsFB.CreateValuesVector(builder,coll)
@@ -3087,8 +3166,8 @@ type Slices =
       let offset = StringsFB.EndStringsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.StringsFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder, offset)
@@ -3097,18 +3176,15 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | NumberSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | NumberSlices (_,_,arr) ->
       let vector = DoublesFB.CreateValuesVector(builder, arr)
       DoublesFB.StartDoublesFB(builder)
       DoublesFB.AddValues(builder, vector)
       let offset = DoublesFB.EndDoublesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.DoublesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3117,18 +3193,15 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | BoolSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | BoolSlices (_,_,arr) ->
       let vector = BoolsFB.CreateValuesVector(builder, arr)
       BoolsFB.StartBoolsFB(builder)
       BoolsFB.AddValues(builder, vector)
       let offset = BoolsFB.EndBoolsFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BoolsFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3137,10 +3210,7 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | ByteSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | ByteSlices (_,_,arr) ->
       let vector =
         Array.map (String.encodeBase64 >> builder.CreateString) arr
         |> fun coll -> BytesFB.CreateValuesVector(builder, coll)
@@ -3150,8 +3220,8 @@ type Slices =
       let offset = BytesFB.EndBytesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.BytesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3160,10 +3230,7 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | EnumSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | EnumSlices (_,_,arr) ->
       let vector =
         Array.map (Binary.toOffset builder) arr
         |> fun coll -> KeyValuesFB.CreateValuesVector(builder, coll)
@@ -3173,8 +3240,8 @@ type Slices =
       let offset = KeyValuesFB.EndKeyValuesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.KeyValuesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3183,10 +3250,7 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | ColorSlices (id,client,arr) ->
-      let id = id |> string |> builder.CreateString
-      let client = client |> Option.map (string >> builder.CreateString)
-
+    | ColorSlices (_,_,arr) ->
       let vector =
         Array.map (Binary.toOffset builder) arr
         |> fun coll -> ColorSpacesFB.CreateValuesVector(builder,coll)
@@ -3196,8 +3260,8 @@ type Slices =
       let offset = ColorSpacesFB.EndColorSpacesFB(builder)
 
       SlicesFB.StartSlicesFB(builder)
-      SlicesFB.AddPin(builder,id)
-      Option.iter (fun value -> SlicesFB.AddClient(builder,value)) client
+      SlicesFB.AddPinId(builder,id)
+      Option.iter (fun value -> SlicesFB.AddClientId(builder,value)) client
       SlicesFB.AddSlicesType(builder,SlicesTypeFB.ColorSpacesFB)
       #if FABLE_COMPILER
       SlicesFB.AddSlices(builder,offset)
@@ -3210,9 +3274,14 @@ type Slices =
 
   static member inline FromFB(fb: SlicesFB) : Either<IrisError,Slices> =
     either {
-      let id = Id fb.Pin
-      let client = if isNull fb.Client then None else Some (Id fb.Client)
-
+      let! id = Id.decodePinId fb
+      let! client =
+        try
+          if fb.ClientIdLength = 0
+          then Either.succeed None
+          else Id.decodeClientId fb |> Either.map Some
+        with exn ->
+          Either.succeed None
       return!
         //      _ ____
         //     | / ___|
@@ -3467,7 +3536,8 @@ type Slices =
     | _ -> false
 
   override self.GetHashCode() =
-    self.PinId.ToString().GetHashCode()
+    let id = self.PinId
+    in id.GetHashCode()
 
   // ** Equals<Slices>
 
@@ -3708,8 +3778,8 @@ module SlicesYaml =
           match str with
           | null -> null
           | _ -> str :?> String
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        StringSlices(Id yml.PinId, client, Array.map parse yml.Values)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        StringSlices(IrisId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "NumberSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
@@ -3726,12 +3796,12 @@ module SlicesYaml =
               |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
               |> Logger.err "toSlices (Number)"
               0.0
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        NumberSlices(Id yml.PinId, client, Array.map parse yml.Values)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        NumberSlices(IrisId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "BoolSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        BoolSlices(Id yml.PinId, client, Array.map unbox<bool> yml.Values)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        BoolSlices(IrisId.Parse yml.PinId, client, Array.map unbox<bool> yml.Values)
     | "ByteSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
         let parse (value: obj) =
@@ -3743,15 +3813,15 @@ module SlicesYaml =
             printfn "(ByteSlices): offending value: %A" other
             printfn "(ByteSlices): type of offending value: %A" (other.GetType())
             [| |]
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        ByteSlices(Id yml.PinId, client, Array.map parse yml.Values)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        ByteSlices(IrisId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "EnumSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
         let ofPyml (o: obj) =
           let pyml: PropertyYaml = unbox o
           { Key = pyml.Key; Value = pyml.Value }
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        EnumSlices(Id yml.PinId, client, Array.map ofPyml yml.Values)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        EnumSlices(IrisId.Parse yml.PinId, client, Array.map ofPyml yml.Values)
     | "ColorSlices" ->
       either {
         let! colors =
@@ -3766,8 +3836,8 @@ module SlicesYaml =
             (Right(0, Array.zeroCreate yml.Values.Length))
             yml.Values
           |> Either.map snd
-        let client = if isNull yml.ClientId then None else Some (Id yml.ClientId)
-        return ColorSlices(Id yml.PinId, client, colors)
+        let client = if isNull yml.ClientId then None else Some (IrisId.Parse yml.ClientId)
+        return ColorSlices(IrisId.Parse yml.PinId, client, colors)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown
@@ -3781,9 +3851,9 @@ type PinYaml() =
   [<DefaultValue>] val mutable PinType          : string
   [<DefaultValue>] val mutable Id               : string
   [<DefaultValue>] val mutable Name             : string
-  [<DefaultValue>] val mutable PinGroup         : string
-  [<DefaultValue>] val mutable Client           : string
-  [<DefaultValue>] val mutable Tags             : string array
+  [<DefaultValue>] val mutable PinGroupId       : string
+  [<DefaultValue>] val mutable ClientId         : string
+  [<DefaultValue>] val mutable Tags             : PropertyYaml array
   [<DefaultValue>] val mutable Persisted        : bool
   [<DefaultValue>] val mutable Online           : bool
   [<DefaultValue>] val mutable Behavior         : string
@@ -3811,11 +3881,11 @@ module PinYaml =
       yaml.PinType          <- "StringPin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.MaxChars         <- int data.MaxChars
       yaml.Behavior         <- string data.Behavior
       yaml.PinConfiguration <- string data.PinConfiguration
@@ -3829,11 +3899,11 @@ module PinYaml =
       yaml.PinType          <- "NumberPin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.Precision        <- data.Precision
       yaml.Min              <- data.Min
       yaml.Max              <- data.Max
@@ -3849,11 +3919,11 @@ module PinYaml =
       yaml.PinType          <- "BoolPin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.IsTrigger        <- data.IsTrigger
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
@@ -3866,11 +3936,11 @@ module PinYaml =
       yaml.PinType          <- "BytePin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Labels           <- data.Labels
@@ -3882,11 +3952,11 @@ module PinYaml =
       yaml.PinType          <- "EnumPin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Properties       <- Array.map Yaml.toYaml data.Properties
@@ -3899,11 +3969,11 @@ module PinYaml =
       yaml.PinType          <- "ColorPin"
       yaml.Id               <- string data.Id
       yaml.Name             <- unwrap data.Name
-      yaml.PinGroup         <- string data.PinGroup
-      yaml.Client           <- string data.Client
+      yaml.PinGroupId       <- string data.PinGroupId
+      yaml.ClientId         <- string data.ClientId
       yaml.Persisted        <- data.Persisted
       yaml.Online           <- data.Online
-      yaml.Tags             <- Array.map unwrap data.Tags
+      yaml.Tags             <- Array.map Yaml.toYaml data.Tags
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Labels           <- data.Labels
@@ -3914,11 +3984,29 @@ module PinYaml =
   // ** toPin
 
   let toPin (yml: PinYaml) =
+    let parseTags (yaml: PinYaml) =
+      Array.fold
+        (fun (m: Either<IrisError, int * Property array>) yml ->
+          either {
+            let! state = m
+            let! parsed = Yaml.fromYaml yml
+            (snd state).[fst state] <- parsed
+            return (fst state + 1, snd state)
+          })
+        (Right (0, Array.zeroCreate yaml.Tags.Length))
+        yaml.Tags
+      |> Either.map snd
+
     try
       match yml.PinType with
-      | "StringPin" -> either {
+      | "StringPin" ->
+        either {
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! strtype = Behavior.TryParse yml.Behavior
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -3934,11 +4022,11 @@ module PinYaml =
               yml.Values
 
           return StringPin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -3952,7 +4040,11 @@ module PinYaml =
         }
 
       | "NumberPin" -> either {
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -3974,11 +4066,11 @@ module PinYaml =
               yml.Values
 
           return NumberPin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             VecSize          = vecsize
             PinConfiguration = dir
             Persisted        = yml.Persisted
@@ -3994,7 +4086,11 @@ module PinYaml =
         }
 
       | "BoolPin" -> either {
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -4020,11 +4116,11 @@ module PinYaml =
               yml.Values
 
           return BoolPin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -4037,7 +4133,11 @@ module PinYaml =
         }
 
       | "BytePin" -> either {
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
@@ -4063,11 +4163,11 @@ module PinYaml =
               yml.Values
 
           return BytePin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false
@@ -4115,15 +4215,19 @@ module PinYaml =
               (Right(0, arr))
               yml.Values
 
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
           let! vecsize = VecSize.TryParse yml.VecSize
+          let! tags = parseTags yml
 
           return EnumPin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             Online           = yml.Online
             Dirty            = false
             Persisted        = yml.Persisted
@@ -4136,7 +4240,11 @@ module PinYaml =
         }
 
       | "ColorPin" -> either {
+          let! id = IrisId.TryParse yml.Id
+          let! group = IrisId.TryParse yml.PinGroupId
+          let! client = IrisId.TryParse yml.ClientId
           let! dir = PinConfiguration.TryParse yml.PinConfiguration
+          let! tags = parseTags yml
           let! vecsize = VecSize.TryParse yml.VecSize
 
           let! (_, slices) =
@@ -4163,11 +4271,11 @@ module PinYaml =
               yml.Values
 
           return ColorPin {
-            Id               = Id yml.Id
+            Id               = id
             Name             = name yml.Name
-            PinGroup         = Id yml.PinGroup
-            Client           = Id yml.Client
-            Tags             = Array.map astag yml.Tags
+            PinGroupId       = group
+            ClientId         = client
+            Tags             = tags
             Persisted        = yml.Persisted
             Online           = yml.Online
             Dirty            = false

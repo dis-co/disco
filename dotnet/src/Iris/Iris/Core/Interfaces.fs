@@ -33,8 +33,8 @@ type Origin =
   | Raft
   | Api
   | Service
-  | Web     of session:Id
-  | Client  of client:Id
+  | Web     of session:SessionId
+  | Client  of client:ClientId
 
 // * DispatchStrategy
 
@@ -109,8 +109,8 @@ type IrisEvent =
   | GitPush             of remote:IpAddress
   | FileSystem          of fs:FileSystemEvent
   | Append              of origin:Origin * cmd:StateMachine
-  | SessionOpened       of session:Id
-  | SessionClosed       of session:Id
+  | SessionOpened       of session:SessionId
+  | SessionClosed       of session:SessionId
 
   // ** ToString
 

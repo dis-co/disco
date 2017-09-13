@@ -17,7 +17,7 @@ module ApiTests =
     let machine = MachineConfig.create "127.0.0.1" None
 
     let project =
-      { Id        = Id.Create()
+      { Id        = IrisId.Create()
         Name      = name "Hello"
         Path      = Path.getTempPath() |> Project.ofFilePath
         CreatedOn = Time.createTimestamp()
@@ -49,7 +49,7 @@ module ApiTests =
       either {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         use! server1 = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
@@ -74,7 +74,7 @@ module ApiTests =
       either {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
@@ -94,7 +94,7 @@ module ApiTests =
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
@@ -142,7 +142,7 @@ module ApiTests =
       either {
         let store = Store(mkState ())
 
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
@@ -162,7 +162,7 @@ module ApiTests =
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
@@ -230,14 +230,14 @@ module ApiTests =
 
         let store = Store(mkState ())
 
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id
@@ -348,7 +348,7 @@ module ApiTests =
     testCase "server should dispose properly" <| fun _ ->
       either {
         let store = Store(mkState ())
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         use! server = ApiServer.create mem store.State.Project.Id {
           new IApiServerCallbacks with
@@ -361,14 +361,14 @@ module ApiTests =
   let test_client_should_dispose_properly =
     testCase "client should dispose properly" <| fun _ ->
       either {
-        let mem = Member.create (Id.Create())
+        let mem = Member.create (IrisId.Create())
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
             IpAddress = mem.IpAddr }
 
         let clnt : IrisClient =
-          { Id = Id.Create()
+          { Id = IrisId.Create()
             Name = name "client cool"
             Role = Role.Renderer
             ServiceId = mem.Id

@@ -47,7 +47,7 @@ type RaftState =
 ///  - `Term`  - the entry's term
 ///  - `Index` - the entry's index in the log
 type EntryResponse =
-  {  Id    : Id
+  {  Id    : LogId
      Term  : Term
      Index : Index }
 
@@ -59,7 +59,7 @@ type EntryResponse =
       self.Index
 
   member self.ToOffset(builder: FlatBufferBuilder) =
-    let id = self.Id |> string |> builder.CreateString
+    let id = EntryResponseFB.CreateIdVector(builder,self.Id.ToByteArray())
     EntryResponseFB.StartEntryResponseFB(builder)
     EntryResponseFB.AddId(builder, id)
     EntryResponseFB.AddTerm(builder, int self.Term)
@@ -67,10 +67,14 @@ type EntryResponse =
     EntryResponseFB.EndEntryResponseFB(builder)
 
   static member FromFB(fb: EntryResponseFB) =
-    { Id = Id fb.Id
-      Term = term fb.Term
-      Index = index fb.Index }
-    |> Either.succeed
+    either {
+      let! id = Id.decodeId fb
+      return {
+        Id = id
+        Term = term fb.Term
+        Index = index fb.Index
+      }
+    }
 
 // * Entry
 
@@ -364,8 +368,7 @@ type InstallSnapshot =
   // ** ToOffset
   member self.ToOffset (builder: FlatBufferBuilder) =
     let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
-    let leaderid = string self.LeaderId |> builder.CreateString
-
+    let leaderid = InstallSnapshotFB.CreateLeaderIdVector(builder,self.LeaderId.ToByteArray())
     InstallSnapshotFB.StartInstallSnapshotFB(builder)
     InstallSnapshotFB.AddTerm(builder, int self.Term)
     InstallSnapshotFB.AddLeaderId(builder, leaderid)
@@ -392,12 +395,14 @@ type InstallSnapshot =
 
       match decoded with
       | Some entries ->
-        return
-          { Term      = term fb.Term
-            LeaderId  = Id fb.LeaderId
-            LastIndex = index fb.LastIndex
-            LastTerm  = term fb.LastTerm
-            Data      = entries }
+        let! leaderId = Id.decodeLeaderId fb
+        return {
+          Term      = term fb.Term
+          LeaderId  = leaderId
+          LastIndex = index fb.LastIndex
+          LastTerm  = term fb.LastTerm
+          Data      = entries
+        }
       | _ ->
         return!
           "Invalid InstallSnapshot (no log data)"
@@ -598,34 +603,36 @@ ConfigChangeEntry = %s
 
   static member FromYaml (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
     either {
-      let leader =
-        if isNull yaml.Leader then
-          None
-        else
-          Some (Id yaml.Leader)
+      let! id = IrisId.TryParse yaml.Member
 
-      let votedfor =
-        if isNull yaml.VotedFor then
-          None
-        else
-          Some (Id yaml.VotedFor)
+      let! leader =
+        if isNull yaml.Leader
+        then Right None
+        else IrisId.TryParse yaml.Leader |> Either.map Some
 
-      return { Member            = Member.create (Id yaml.Member)
-               State             = Follower
-               CurrentTerm       = yaml.Term
-               CurrentLeader     = leader
-               Peers             = Map.empty
-               OldPeers          = None
-               NumMembers        = 0
-               VotedFor          = votedfor
-               Log               = Log.empty
-               CommitIndex       = index 0
-               LastAppliedIdx    = index 0
-               TimeoutElapsed    = 0<ms>
-               ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
-               RequestTimeout    = yaml.RequestTimeout * 1<ms>
-               MaxLogDepth       = yaml.MaxLogDepth
-               ConfigChangeEntry = None }
+      let! votedfor =
+        if isNull yaml.VotedFor
+        then Right None
+        else IrisId.TryParse yaml.VotedFor |> Either.map Some
+
+      return {
+        Member            = Member.create id
+        State             = Follower
+        CurrentTerm       = yaml.Term
+        CurrentLeader     = leader
+        Peers             = Map.empty
+        OldPeers          = None
+        NumMembers        = 0
+        VotedFor          = votedfor
+        Log               = Log.empty
+        CommitIndex       = index 0
+        LastAppliedIdx    = index 0
+        TimeoutElapsed    = 0<ms>
+        ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
+        RequestTimeout    = yaml.RequestTimeout * 1<ms>
+        MaxLogDepth       = yaml.MaxLogDepth
+        ConfigChangeEntry = None
+      }
     }
 
   #endif

@@ -22,7 +22,9 @@ let dotnetcliVersion = "1.0.1"
 let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
 
 let installDotnetSdk () =
-  dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion
+  match environVarOrNone "DEV_MACHINE" with
+  | Some _ -> ()
+  | None -> dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion
 
 let konst x _ = x
 
@@ -533,7 +535,6 @@ Target "BuildFrontendFast" (fun () ->
   runNpm "run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css" __SOURCE_DIRECTORY__ ()
   runNpm "run build" __SOURCE_DIRECTORY__ ()
 )
-
 
 //  _____         _
 // |_   _|__  ___| |_ ___

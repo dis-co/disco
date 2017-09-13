@@ -23,7 +23,7 @@ type ClientIdNode() =
 
   [<DefaultValue>]
   [<Output("Id", IsSingle = true)>]
-  val mutable OutId: ISpread<Id>
+  val mutable OutClientId: ISpread<ClientId>
 
   [<DefaultValue>]
   [<Output("ID String", IsSingle = true)>]
@@ -37,25 +37,25 @@ type ClientIdNode() =
         let id =
           try
             match Environment.GetEnvironmentVariable IRIS_CLIENT_ID_ENV_VAR with
-            | null | "" -> Id.Create()
-            | str -> str |> Guid.Parse |> string |> Id
+            | null | "" -> IrisId.Create()
+            | str -> IrisId.Parse str
           with
             | exn ->
               Logger.err "ClientId (Iris)" exn.Message
               Logger.err "ClientId (Iris)" exn.StackTrace
-              Id.Create()
+              IrisId.Create()
 
         do Logger.initialize {
-          Id = id
+          MachineId = id
           Tier = Tier.Client
           UseColors = false
           Level = LogLevel.Debug
         }
 
-        self.OutId.SliceCount <- 1
+        self.OutClientId.SliceCount <- 1
         self.OutIdStr.SliceCount <- 1
 
-        self.OutId.[0] <- id
+        self.OutClientId.[0] <- id
         self.OutIdStr.[0] <- string id
 
         initialized <- true
