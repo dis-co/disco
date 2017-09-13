@@ -145,7 +145,7 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
   with
     // ** Default
 
-    static member Default = ClientConfig Map.empty
+    static member Default with get() = ClientConfig Map.empty
 
     // ** Executables
 

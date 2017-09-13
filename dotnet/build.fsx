@@ -22,7 +22,9 @@ let dotnetcliVersion = "1.0.1"
 let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
 
 let installDotnetSdk () =
-  dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion
+  match environVarOrNone "DEV_MACHINE" with
+  | Some _ -> ()
+  | None -> dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion
 
 let konst x _ = x
 

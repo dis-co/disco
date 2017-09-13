@@ -14,13 +14,18 @@ var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
 var irisHost = process.env.FRONTEND_IP;
-if (isDevServer && (irisHost == null || irisHost === "localhost")) {
-  // throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
-  isDesignMode = true;
-  console.log("Iris will run in DESIGN MODE")
+var irisPort = process.env.FRONTEND_PORT || "3000";
+if (isDevServer) {
+  if (irisHost == null || irisHost === "localhost") {
+    // throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+    isDesignMode = true;
+    console.log("Iris will run in DESIGN MODE");
+  }
+  else {
+    console.log("Iris will connect to " + irisHost + ":" + irisPort);
+  }
 }
 
-var irisPort = process.env.FRONTEND_PORT || "3000";
 
 var babelOptions = fableUtils.resolveBabelOptions({
   presets: [["es2015", { "modules": false }], "stage-2", "react"],
