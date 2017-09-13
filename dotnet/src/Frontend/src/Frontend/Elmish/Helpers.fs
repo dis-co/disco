@@ -102,7 +102,7 @@ let widget (id: Guid) (name: string)
 
 let [<Literal>] private mdir = "../../js/modals/"
 
-let makeModal<'T> dispatch modal: JS.Promise<Choice<'T,unit>> =
+let makeModal<'T> autoHide dispatch modal: JS.Promise<Choice<'T,unit>> =
   Fable.PowerPack.Promise.create (fun onSuccess _ ->
     let data, com =
       match modal with
@@ -114,15 +114,20 @@ let makeModal<'T> dispatch modal: JS.Promise<Choice<'T,unit>> =
     let props =
       createObj ["data" ==> data
                  "onSubmit" ==> fun x ->
-                  UpdateModal None |> dispatch
+                  // Non-autoHide modals must take
+                  // care of hiding themselves
+                  if autoHide then
+                    UpdateModal None |> dispatch
                   Choice1Of2 x |> onSuccess ]
     let view =
       div [ClassName "modal is-active"] [
         div [
           ClassName "modal-background"
-          OnClick (fun _ ->
-            UpdateModal None |> dispatch
-            Choice2Of2 () |> onSuccess)
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            if autoHide then
+              UpdateModal None |> dispatch
+              Choice2Of2 () |> onSuccess)
         ] []
         div [ClassName "modal-content"] [
           div [ClassName "box"] [from com props []]
