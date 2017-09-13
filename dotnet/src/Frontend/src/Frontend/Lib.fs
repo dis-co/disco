@@ -204,7 +204,7 @@ let rec loadProject(project: Name, username: UserName, pass: Password, site: Sit
 
 let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password)
-  |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
+  |> postCommand ofJson<NameAndId[]> (fun msg -> notify msg; [||])
 
 let createProject(name: string): JS.Promise<unit> = promise {
   let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig

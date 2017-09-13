@@ -20,7 +20,11 @@ export default class ProjectConfig extends Component {
             <span className="select">
               <select>
                 {this.props.data.map((site,i) =>
-                  <option key={i} onClick={ev => this.setState({selected: site})}>{site}</option>)}
+                  <option
+                    key={i}
+                    onClick={ev => this.setState({selected: site.Id.toString()})}>
+                    {site.Name}
+                  </option>)}
               </select>
             </span>
           </p>

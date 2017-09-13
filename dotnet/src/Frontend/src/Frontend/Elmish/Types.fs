@@ -4,6 +4,7 @@ open System
 open Fable.Core
 open Fable.Import
 open Iris.Core
+open Iris.Core.Commands
 
 /// Keys for Browser localStorage
 module StorageKeys =
@@ -25,8 +26,8 @@ type Modal =
   | AddMember
   | CreateProject
   | LoadProject
-  | NoProject of projects:Name[]
-  | ProjectConfig of sites:string[]
+  | NoProject     of projects:Name[]
+  | ProjectConfig of sites:NameAndId[]
 
 type ModalView =
   { modal: Modal; view: React.ReactElement }

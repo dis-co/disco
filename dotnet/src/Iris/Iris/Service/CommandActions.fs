@@ -148,7 +148,10 @@ let getProjectSites machine projectName =
     let! path = Project.checkPath machine projectName
     let! (state: State) = Asset.loadWithMachine path machine
     // TODO: Check username and password?
-    return state.Project.Config.Sites |> Array.map (fun x -> x.Name) |> serializeJson
+    return
+      state.Project.Config.Sites
+      |> Array.map (fun x -> { Name = x.Name; Id = x.Id })
+      |> serializeJson
   }
 
 /// Gets the current machine's status, i.e. whether its Idle or Busy with a loaded project. This

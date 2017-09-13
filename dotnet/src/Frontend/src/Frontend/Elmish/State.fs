@@ -17,11 +17,18 @@ let loadProject dispatch (info: IProjectInfo) = promise {
     | Some err ->
       // Get project sites and machine config
       let! sites = Lib.getProjectSites(info.name, info.username, info.password)
+
       // Ask user to create or select a new config
-      let! site = makeModal dispatch (Modal.ProjectConfig sites)
+      let! site =
+        makeModal dispatch (Modal.ProjectConfig sites)
+        |> Promise.map
+          (fun str ->
+            try IrisId.Parse str |> Some
+            with exn -> None)
+
       // Try loading the project again with the site config
-      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
-      err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
+      let! err2 = Lib.loadProject(info.name, info.username, info.password, site, None)
+      err2 |> Option.iter (printfn "Error when loading site %A: %A" site)
     | None -> ()
   }
 

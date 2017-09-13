@@ -33,7 +33,7 @@ type IrisId private (guid: Guid) =
 
   #if FABLE_COMPILER
 
-  member self.toString() = toJson self
+  member self.toString() = string guid
 
   #endif
 
@@ -64,7 +64,7 @@ type IrisId private (guid: Guid) =
       |> Error.asParseError "IrisId"
       |> Either.fail
 
-  // ** FromGuid
+  // ** ToGuid
 
   member __.ToGuid() = guid
 
