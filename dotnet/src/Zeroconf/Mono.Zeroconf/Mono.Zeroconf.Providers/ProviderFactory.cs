@@ -69,7 +69,7 @@ namespace Mono.Zeroconf.Providers
                         list.Add(provider);
                         Console.WriteLine ("OK");
                     } catch (Exception e) {
-                        Console.WriteLine ("FAILED ({0}: {1})", e.GetType().FullName, e.Message);
+                        Console.WriteLine ("FAILED");
                     }
                 }
             }
