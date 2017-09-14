@@ -14,14 +14,19 @@ var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
 var irisHost = process.env.FRONTEND_IP;
-var irisPort = process.env.FRONTEND_PORT || "3000";
+var irisPort = process.env.FRONTEND_PORT;
 if (isDevServer) {
-  if (irisHost == null || irisHost === "localhost") {
-    // throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+  if (irisHost === "localhost") {
     isDesignMode = true;
-    console.log("Iris will run in DESIGN MODE");
+    console.log("Iris will run in DESIGN MODE (no backend)");
   }
   else {
+    if (!irisPort) {
+      throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+    }
+    if (!irisPort) {
+      throw new Error("Please specify the Iris service HTTP port with the FRONTEND_PORT env var");
+    }
     console.log("Iris will connect to " + irisHost + ":" + irisPort);
   }
 }
@@ -58,7 +63,7 @@ function createWebpackConfig(fsProj, outputFile, libName) {
       // hot: true, // enable HMR on the server
       proxy: {
         '/api/*': {
-          target: 'http://' + irisHost + ':' + irisPort
+          target: 'http://' + irisHost + ':' + (irisPort || '7000')
         }
       },
       headers: {
