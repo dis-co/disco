@@ -39,17 +39,6 @@ module Values =
   let [<Literal>] jqueryLayoutWestSize = 200
 
 module Tabs =
-  let modalView dispatch (modalView: ModalView) =
-    div [ClassName "modal is-active"] [
-      div [
-        ClassName "modal-background"
-        OnClick (fun _ -> dispatch (UpdateModal None))
-      ] []
-      div [ClassName "modal-content"] [
-        div [ClassName "box"] [modalView.view]
-      ]
-    ]
-
   let view dispatch (model: Model) =
     div [Class "iris-tab-container"] [
       div [Class "tabs is-boxed"] [
@@ -74,7 +63,7 @@ module Tabs =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (modalView dispatch) |> opt
+      model.modal |> Option.map (fun m -> m.view) |> opt
     ]
 
 let view dispatch (model: Model) =
