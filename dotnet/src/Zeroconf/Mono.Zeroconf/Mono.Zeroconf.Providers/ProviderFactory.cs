@@ -59,6 +59,7 @@ namespace Mono.Zeroconf.Providers
             string basePath = asm.Location;
             string absPath = Path.Combine(Path.GetDirectoryName(basePath), path);
             Assembly provider_asm = Assembly.LoadFile(absPath);
+            Console.Write("Loading {0} zeroconf provider: ", path);
             foreach(Attribute attr in provider_asm.GetCustomAttributes(false)) {
                 if(attr is ZeroconfProviderAttribute) {
                     Type type = (attr as ZeroconfProviderAttribute).ProviderType;
@@ -66,8 +67,9 @@ namespace Mono.Zeroconf.Providers
                     try {
                         provider.Initialize();
                         list.Add(provider);
+                        Console.WriteLine ("OK");
                     } catch (Exception e) {
-                        Console.WriteLine (e);
+                        Console.WriteLine ("FAILED ({0}: {1})", e.GetType().FullName, e.Message);
                     }
                 }
             }
@@ -81,19 +83,8 @@ namespace Mono.Zeroconf.Providers
 
             List<IZeroconfProvider> providers_list = new List<IZeroconfProvider>();
 
-            switch(Environment.OSVersion.Platform)
-            {
-                case PlatformID.Unix:
-                    LoadProvider(providers_list, "Mono.Zeroconf.Providers.AvahiDBus.dll");
-                    break;
-                default:
-                    LoadProvider(providers_list, "Mono.Zeroconf.Providers.Bonjour.dll");
-                    break;
-            }
-
-            if(providers_list.Count == 0) {
-                throw new Exception("No Zeroconf providers could be found or initialized. Necessary daemon may not be running.");
-            }
+            LoadProvider(providers_list, "Mono.Zeroconf.Providers.Bonjour.dll");
+            LoadProvider(providers_list, "Mono.Zeroconf.Providers.AvahiDBus.dll");
 
             providers = providers_list.ToArray();
 
