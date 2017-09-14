@@ -19,12 +19,10 @@ export default class ProjectConfig extends Component {
           <p className="control">
             <span className="select">
               <select>
-                {this.props.data.map((site,i) =>
-                  <option
-                    key={i}
-                    onClick={ev => this.setState({selected: site.Id.toString()})}>
-                    {site.Name}
-                  </option>)}
+                {this.props.data.map((site,i) => {
+                    let id = IrisLib.toString(site.Id);
+                    return <option key={i} value={id} onClick={ev => this.setState({selected: id})}>{id}</option>
+                  })}
               </select>
             </span>
           </p>

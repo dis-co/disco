@@ -29,14 +29,6 @@ open Iris.Serialization
 [<Struct;CustomComparison;CustomEquality>]
 type IrisId private (guid: Guid) =
 
-  // ** toString
-
-  #if FABLE_COMPILER
-
-  member self.toString() = string guid
-
-  #endif
-
   // ** ToString
 
   override id.ToString() = string guid
@@ -209,32 +201,20 @@ module Id =
     (fun idx -> (^t : (member MemberId: int -> byte) fb, idx))
     |> decodeWith
 
+// * Playground
 
 #if INTERACTIVE
 
-open System
-open System.Text
-open System.Security.Cryptography
+type MyId = struct
+  val mutable Guid: System.Guid
+  new (g: System.Guid) = { Guid = g }
+end
 
-let id = IrisId.Create()
-let path = "/24/41"
+let g = System.Guid.NewGuid()
 
-let hash (str: string) =
-  use sha1 = new SHA1Managed()
-  str
-  |> Encoding.UTF8.GetBytes
-  |> sha1.ComputeHash
+let g1 = MyId(g)
+let g2 = MyId(g)
 
-let cut (bytes: byte[]) =
-  [| for n in 0 .. 15 -> bytes.[n] |]
-
-let toString (buf: byte array) =
-  let hashedString = StringBuilder()
-  for byte in buf do
-    hashedString.AppendFormat("{0:x2}", byte)
-    |> ignore
-  hashedString.ToString()
-
-id |> string |> (+) path |> hash |> cut |> Guid
+g1 = g2
 
 #endif

@@ -36,3 +36,5 @@ let getPinValueAt(pin: Pin, idx: int): obj =
 
 let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement =
   widget id name headFn bodyFn dispatch model
+
+let toString x = string x

@@ -2,6 +2,7 @@ module rec Iris.Web.State
 
 open System
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
@@ -18,16 +19,15 @@ let loadProject dispatch (info: IProjectInfo) = promise {
       // Get project sites and machine config
       let! sites = Lib.getProjectSites(info.name, info.username, info.password)
 
+      Array.iter (fun (x:NameAndId) -> printfn "name: %A id %A" x.Name x.Id) sites
+
       // Ask user to create or select a new config
-      let! site =
-        makeModal dispatch (Modal.ProjectConfig sites)
-        |> Promise.map
-          (fun str ->
-            try IrisId.Parse str |> Some
-            with exn -> None)
+      let! site = makeModal<IrisId> dispatch (Modal.ProjectConfig sites)
+
+      printfn "site: %A" site
 
       // Try loading the project again with the site config
-      let! err2 = Lib.loadProject(info.name, info.username, info.password, site, None)
+      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some site, None)
       err2 |> Option.iter (printfn "Error when loading site %A: %A" site)
     | None -> ()
   }
