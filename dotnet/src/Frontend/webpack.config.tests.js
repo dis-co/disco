@@ -36,7 +36,7 @@ module.exports = {
           options: {
             babel: babelOptions,
             define: isProduction ? [] : ["DEBUG"],
-            plugins: resolve("src/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
+            plugins: resolve("src/FlatBuffersPlugin/bin/Release/netcoreapp2.0/FlatBuffersPlugin.dll"),
           }
         }
       },
