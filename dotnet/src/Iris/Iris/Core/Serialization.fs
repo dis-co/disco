@@ -149,9 +149,14 @@ module Yaml =
 
   // ** decode
 
-  let inline decode< ^err, ^a, ^t when ^t : (static member FromYaml: ^a -> Either< ^err, ^t >)>
+  let inline decode< ^a, ^t when ^t : (static member FromYaml: ^a -> Either<IrisError, ^t >)>
                    (str: string) =
-    let thing = str |> deserialize< ^a >
-    (^t : (static member FromYaml : ^a -> Either< ^err, ^t >) thing)
+    try
+      let thing = str |> deserialize< ^a >
+      (^t : (static member FromYaml : ^a -> Either<IrisError, ^t >) thing)
+    with exn ->
+      exn.Message
+      |> Error.asParseError "Yaml.decode"
+      |> Either.fail
 
 #endif
