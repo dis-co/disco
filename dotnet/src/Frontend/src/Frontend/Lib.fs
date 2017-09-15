@@ -223,7 +223,7 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
     let newArray = Array.copy ar
     newArray.[i] <- unbox v
     newArray
-  let client = if Pin.isPreset pin then Some pin.Client else None
+  let client = if Pin.isPreset pin then Some pin.ClientId else None
   match pin with
   | StringPin pin ->
     StringSlices(pin.Id, client, updateArray index value pin.Values)
@@ -245,19 +245,19 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
   |> UpdateSlices.ofSlices
   |> ClientContext.Singleton.Post
 
-let findPin (pinId: Id) (state: State) : Pin =
+let findPin (pinId: IrisId) (state: State) : Pin =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFindPin pinId groups with
   | Some pin -> pin
   | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
 
-let findPinGroup (pinGroupId: Id) (state: State) =
+let findPinGroup (pinGroupId: IrisId) (state: State) =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFind pinGroupId groups with
   | Some pinGroup -> pinGroup
   | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
 
-let findCue (cueId: Id) (state: State) =
+let findCue (cueId: IrisId) (state: State) =
   match Map.tryFind cueId state.Cues with
   | Some cue -> cue
   | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId

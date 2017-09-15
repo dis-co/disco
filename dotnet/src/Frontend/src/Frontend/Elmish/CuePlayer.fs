@@ -208,13 +208,8 @@ type private CueView(props) =
       else
         let pinGroups =
           this.props.Cue.Slices
-<<<<<<< HEAD
-          |> Array.mapi (fun i slices -> i, findPin slices.PinId this.props.State, slices)
-          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
-=======
           |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId this.props.State, slices)
-          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroup)
->>>>>>> PinMappingView: render source and sinks
+          |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = Lib.findPinGroup pinGroupId this.props.State
             li [Key (string pinGroupId)] [
