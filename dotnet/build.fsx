@@ -80,7 +80,7 @@ let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
 let userScripts = scriptsDir @@ "User"
 let devScripts = scriptsDir @@ "Dev"
 
-let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tools2" @@ "public"
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tools" @@ "public"
 
 let useNix = Directory.Exists("/nix")
 
@@ -381,18 +381,6 @@ Target "CopyAssets" (fun _ ->
     FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
     FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/")
 
-Target "CopyDocs"
-  (fun _ ->
-    // Build Frontend documentation
-    runExec dotnetExePath "restore" (frontendDir @@ "src/Frontend") false
-    runExec dotnetExePath "build"   (frontendDir @@ "src/Frontend") false
-    // Generate web pages
-    runNpmNoErrors "install" (__SOURCE_DIRECTORY__ @@ "docs/tools2") ()
-    runExec dotnetExePath "restore"         (__SOURCE_DIRECTORY__ @@ "docs/tools2/src") false
-    runExec dotnetExePath "fable npm-build" (__SOURCE_DIRECTORY__ @@ "docs/tools2/src") false
-    // Copy them to package
-    SilentCopyDir "bin/Docs" docsDir (konst true))
-
 //     _             _     _
 //    / \   _ __ ___| |__ (_)_   _____
 //   / _ \ | '__/ __| '_ \| \ \ / / _ \
@@ -679,7 +667,7 @@ Target "RunTestsFast" runTests
 
 Target "DevServer"
   (fun _ ->
-    let info = new ProcessStartInfo("fsi", devScripts @@ "DevServer.fsx")
+    let info = ProcessStartInfo("fsi", devScripts @@ "DevServer.fsx")
     info.UseShellExecute <- false
     let proc = Process.Start(info)
     proc.WaitForExit()
@@ -691,47 +679,29 @@ Target "DevServer"
 // | |_| | (_) | (__\__ \
 // |____/ \___/ \___|___/
 
-Target "CleanDocs" (fun _ ->
-    CleanDir ("docs" @@ "output"))
+let generateDocs(watch: bool) =
+  // Build Frontend project to generate XML documentation
+  runExec dotnetExePath "restore" (frontendDir @@ "src/Frontend") false
+  runExec dotnetExePath "build"   (frontendDir @@ "src/Frontend") false
+  // Generate web pages
+  runNpmNoErrors "install" (__SOURCE_DIRECTORY__ @@ "docs/tools") ()
+  runExec dotnetExePath "restore"         (__SOURCE_DIRECTORY__ @@ "docs/tools/src") false
+  let cmd = if watch then "fable npm-start" else "fable npm-build"
+  runExec dotnetExePath cmd (__SOURCE_DIRECTORY__ @@ "docs/tools/src") false
 
-Target "GenerateReferenceDocs"
+Target "GenerateDocs" (fun () ->
+  generateDocs(false))
+
+// TODO: This only watches the Fable project but it should
+// watch also the markdown files
+Target "WatchDocs" (fun () ->
+  generateDocs(true))
+
+Target "CopyDocs"
   (fun _ ->
-    let result =
-      executeFSIWithArgs
-        "docs/tools"
-        "generate.fsx"
-        ["--define:RELEASE"; "--define:REFERENCE"]
-        []
-
-    if not result then
-      failwith "generating reference documentation failed")
-
-let generateHelp' fail debug =
-  let args =
-    if debug then ["--define:HELP"]
-    else ["--define:RELEASE"; "--define:HELP"]
-  if executeFSIWithArgs "docs/tools" "generate.fsx" args [] then
-    traceImportant "Help generated"
-  else
-    if fail then
-      failwith "generating help documentation failed"
-    else
-      traceImportant "generating help documentation failed"
-
-let generateHelp fail =
-  generateHelp' fail false
-
-Target "GenerateHelp" (fun _ ->
-  CopyFile "docs/src/" "CHANGELOG.md"
-  CopyFile "docs/src/" "LICENSE.txt"
-  generateHelp true)
-
-Target "KeepRunning" (fun _ ->
-  use watcher = !! "docs/src/**/*.*" |> WatchChanges (fun changes -> generateHelp false)
-  traceImportant "Waiting for help edits. Press any key to stop."
-  System.Console.ReadKey() |> ignore)
-
-Target "GenerateDocs" DoNothing
+    generateDocs(false)
+    // Copy them to package
+    SilentCopyDir "bin/Docs" docsDir (konst true))
 
 //  _   _       _                 _
 // | | | |_ __ | | ___   __ _  __| |
@@ -857,7 +827,7 @@ Target "Release" DoNothing
 
 "CopyBinaries"
 ==> "CopyAssets"
-// ==> "CopyDocs"
+==> "CopyDocs"
 ==> "GenerateManifest"
 ==> "CreateArchive"
 
@@ -887,11 +857,6 @@ Target "Release" DoNothing
 //   runExec "docker" (startDockerCmd()) baseDir false
 // )
 
-Target "DebugDocs" DoNothing
-
-"GenerateDocs"
-==> "DebugDocs"
-
 //  ____       _                    _    _ _
 // |  _ \  ___| |__  _   _  __ _   / \  | | |
 // | | | |/ _ \ '_ \| | | |/ _` | / _ \ | | |
@@ -909,13 +874,6 @@ Target "DebugAll" DoNothing
 
 "BuildDebugNodes"
 ==> "DebugAll"
-
-//
-// "CleanDocs"
-//   ==> "GenerateHelpDebug"
-//
-// "GenerateHelp"
-//   ==> "KeepRunning"
 
 Target "AllTests" DoNothing
 

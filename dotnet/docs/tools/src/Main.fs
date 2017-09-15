@@ -188,15 +188,18 @@ let init() =
 
     promise {
         for title, xmlDocPath in xmlDocs do
-            let targetFile = Path.join(publicPath, title.ToLower(), "api_reference.html")
-            let title = title + " API Reference"
-            let! reactEl = parseApiReference title xmlDocPath
-            [ "title" ==> title
-              "fontawesome" ==> Path.relative(targetFile, fontawesomePath)
-              "styles" ==> Path.relative(targetFile, stylesPath)
-              "body" ==> parseReactStatic reactEl ]
-            |> parseTemplate templatePath
-            |> writeFile targetFile
+            try
+                let targetFile = Path.join(publicPath, title.ToLower(), "api_reference.html")
+                let title = title + " API Reference"
+                let! reactEl = parseApiReference title xmlDocPath
+                [ "title" ==> title
+                  "fontawesome" ==> Path.relative(targetFile, fontawesomePath)
+                  "styles" ==> Path.relative(targetFile, stylesPath)
+                  "body" ==> parseReactStatic reactEl ]
+                |> parseTemplate templatePath
+                |> writeFile targetFile
+            with er ->
+                printfn "Cannot parse %s: %s" xmlDocPath er.Message
     }
     |> Promise.catch (fun er -> printfn "ERROR: %s" er.Message)
     |> Promise.start
