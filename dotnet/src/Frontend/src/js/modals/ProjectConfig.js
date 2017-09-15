@@ -4,7 +4,6 @@ export default class ProjectConfig extends Component {
   constructor(props) {
     super(props);
     let filtered = props.data ? props.data.filter(nid => nid.Name === "default") : [];
-    console.log(IrisLib.createNameAndId("hello"));
     this.state = {
       selected: filtered[0],
       name: ""
@@ -41,7 +40,6 @@ export default class ProjectConfig extends Component {
           <p className="control">
             <button className="button is-primary"  disabled={this.state.selected == null} onClick={ev => {
                 ev.preventDefault();
-                console.log(this.state.selected);
                 this.props.onSubmit(this.state.selected);
               }}>
               Submit
