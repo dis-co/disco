@@ -11,52 +11,50 @@ open Elmish
 open Types
 open Helpers
 
-let loadProject dispatch (info: IProjectInfo) = promise {
-    let! err = Lib.loadProject(info.name, info.username, info.password, None, None)
-    match err with
-    | Some err ->
-      // Get project sites and machine config
-      let! sites = Lib.getProjectSites(info.name, info.username, info.password)
-      // Ask user to create or select a new config
-      let! site = makeModal true dispatch (Modal.ProjectConfig sites)
-      match site with
-      | Choice1Of2 site ->
-        // Try loading the project again with the site config
-        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some (IrisId.Parse site), None)
-        err2 |> Option.iter (printfn "Error when loading site %s: %s" site)
-      | Choice2Of2 () -> ()
-    | None -> ()
-  }
+let loadProject dispatch (info: IProjectInfo) =
+    Lib.loadProject(info.name, info.username, info.password, None, None)
+    |> Promise.bind (function
+      | Some err ->
+        // Get project sites and machine config
+        Lib.getProjectSites(info.name, info.username, info.password)
+        |> Promise.map (fun sites ->
+          // Ask user to create or select a new config
+          Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
+      | None -> Promise.lift ())
 
-let private hideModal dispatch =
-  UpdateModal None |> dispatch
+let handleModalResult (modal: IModal) dispatch =
+  match modal with
+  | :? Modal.AddMember as m ->
+    m.Result |> Lib.addMember
+  | :? Modal.CreateProject as m ->
+    m.Result |> Lib.createProject |> Promise.start
+  | :? Modal.LoadProject as m ->
+    m.Result |> loadProject dispatch |> Promise.start
+  | :? Modal.AvailableProjects as m ->
+    match m.Result with
+    | Some projInfo -> loadProject dispatch projInfo |> Promise.start
+    | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.ProjectConfig as m ->
+    // Try loading the project again with the site config
+    Lib.loadProject(m.Info.name, m.Info.username, m.Info.password, Some (IrisId.Parse m.Result), None)
+    |> Promise.iter (fun err ->
+      match err with
+      | Some err -> printfn "Error when loading site %s: %s" m.Result err
+      | None -> ())
+  | _ -> failwithf "Cannot handle unknown modal %A" modal
 
 let private displayAvailableProjectsModal dispatch =
-  let rec createProjectModal dispatch =
-    makeModal false dispatch Modal.CreateProject
-    |> Promise.bind (function
-      | Choice1Of2 x ->
-        // TODO: If this doesn't load the project automatically
-        // anymore, we must display the login modal
-        Lib.createProject x
-      | Choice2Of2 () -> recursiveAvailableProjectsModal dispatch)
-  and recursiveAvailableProjectsModal dispatch = promise {
+  promise {
+    #if DESIGN
+    let projects = [|name "foo"; name "bar"|]
+    #else
     let! projects = Lib.listProjects()
-    if projects.Length > 0 then
-      let! projectInfo =
-        Modal.AvailableProjects projects
-        |> makeModal false dispatch
-      match projectInfo with
-      | Choice1Of2 (Some projectInfo) ->
-        return! loadProject dispatch projectInfo
-      | Choice1Of2 None ->
-        return! createProjectModal dispatch
-      | Choice2Of2 () ->
-        return! recursiveAvailableProjectsModal dispatch
-    else
-      return! createProjectModal dispatch
-  }
-  recursiveAvailableProjectsModal dispatch |> Promise.start
+    #endif
+    if projects.Length > 0
+    then Modal.AvailableProjects(projects) :> IModal
+    else Modal.CreateProject() :> IModal
+    |> OpenModal |> dispatch
+  } |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
 /// the jQuery plugin ui-layout
@@ -179,26 +177,42 @@ let update msg model: Model*Cmd<Msg> =
     { model with userConfig = cfg }, []
   | UpdateState state ->
     let cmd =
-      match state with
-      | Some _ ->
-        // Hide AvailableProjects modal if displayed
-        match model.modal with
-        | Some { modal = Modal.AvailableProjects _ } -> [hideModal]
-        | _ -> []
-      | None ->
-        // If no project is loaded, schedule the display of AvailableProjects
-        match model.modal with
-        | Some { modal = Modal.AvailableProjects _ } -> []
-        | _ -> [displayAvailableProjectsModal]
+      match model.state, state, model.modal with
+      // If a project is loaded (model.state from None to Some), hide modals
+      | None, Some _, Some modal -> failwith "TODO"
+      // If a project is unloaded (model.state from None to Some), display AvailableProjects modal
+      | Some _, None, None -> failwith "TODO"
+      | _ -> []
     { model with state = state }, cmd
-  | UpdateModal modal ->
+  | OpenModal modal ->
+    toggleUILayoutResizer false
+    match model.modal with
+    | None -> ()
+    | Some modal -> printfn "Modal to be opened before closing %A" modal
+    match modal, model.state with
+    // If there's already a loaded project (state.IsSome),
+    // ignore AvailableProjects modal
+    | :? Modal.AvailableProjects, Some _ ->
+      toggleUILayoutResizer true
+      { model with modal = None }, []
+    | _ ->
+      { model with modal = Some modal }, []
+  | CloseModal(modal, result) ->
+    toggleUILayoutResizer true
     let cmd =
-      match modal with
-      // If a modal is displayed, hide the UI Layout resizer
-      | Some _ -> toggleUILayoutResizer false; []
+      match model.modal with
       | None ->
-        match model.state with
-        | Some _ -> toggleUILayoutResizer true; []
-        // If no project loaded, schedule the display of AvailableProjects
-        | None -> [displayAvailableProjectsModal]
-    { model with modal = modal }, cmd
+        printfn "Modal is not open: %A (%A)" modal result
+        []
+      | Some currentModal ->
+        if obj.ReferenceEquals(modal, currentModal) |> not then
+          printfn "Modal to be closed, %A (%A), different from open modal %A"
+            modal result currentModal
+          []
+        else
+          match result with
+          | Choice1Of2 result ->
+            modal.SetResult(result)
+            [handleModalResult modal]
+          | Choice2Of2 () -> [] // For now, just ignore cancelled modals
+    { model with modal = None }, cmd

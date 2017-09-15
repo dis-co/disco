@@ -20,22 +20,49 @@ module Widgets =
   let [<Literal>] PinMappings = "Pin Mappings"
   let [<Literal>] Test = "Test"
 
-/// Modal dialogs
-[<RequireQualifiedAccess>]
-type Modal =
-  | AddMember
-  | CreateProject
-  | LoadProject
-  | AvailableProjects of projects:Name[]
-  | ProjectConfig of sites:string[]
-
-type ModalView =
-  { modal: Modal; view: React.ReactElement }
-
 type IProjectInfo =
   abstract name: Name
   abstract username: UserName
   abstract password: Password
+
+type IModal =
+  abstract SetResult:obj->unit
+
+/// Modal dialogs
+[<RequireQualifiedAccess>]
+module Modal =
+  type AddMember() =
+    let mutable res = None
+    member __.Result: string * uint16 = res.Value
+    interface IModal with
+      member this.SetResult(v) = res <- Some(unbox v)
+
+  type CreateProject() =
+    let mutable res = None
+    member __.Result: string = res.Value
+    interface IModal with
+      member this.SetResult(v) = res <- Some(unbox v)
+
+  type LoadProject() =
+    let mutable res = None
+    member __.Result: IProjectInfo = res.Value
+    interface IModal with
+      member this.SetResult(v) = res <- Some(unbox v)
+
+  type AvailableProjects(projects: Name[]) =
+    let mutable res = None
+    member __.Projects = projects
+    member __.Result: IProjectInfo option = res.Value
+    interface IModal with
+      member this.SetResult(v) = res <- Some(unbox v)
+
+  type ProjectConfig(sites: string[], info: IProjectInfo) =
+    let mutable res = None
+    member __.Sites = sites
+    member __.Info = info
+    member __.Result: string = res.Value
+    interface IModal with
+      member this.SetResult(v) = res <- Some(unbox v)
 
 /// Interface that must be implemented by all widgets
 type IWidget =
@@ -73,13 +100,14 @@ and Msg =
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
-  | UpdateModal of ModalView option
+  | OpenModal of IModal
+  | CloseModal of IModal * result: Choice<obj,unit>
 
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
     layout: Layout[]
-    modal: ModalView option
+    modal: IModal option
     state: State option
     logs: LogEvent list
     userConfig: UserConfig
