@@ -58,7 +58,7 @@ let getServiceInfo (iris: IIris): Either<IrisError,string> =
 /// curl -H "Content-Type: application/json" \
 ///      -XPOST \
 ///      -d '"ListProjects"' \
-///      http://localhost:7000/api/comman
+///      http://localhost:7000/api/command
 ///
 let listProjects (cfg: IrisMachine): Either<IrisError,string> =
   cfg.WorkSpace
@@ -107,6 +107,8 @@ let buildProject (machine: IrisMachine)
     return updated
   }
 
+// * initializeRaft
+
 /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
 /// state in the data directory and commit the result to git.
 let initializeRaft (project: IrisProject) = either {
@@ -114,6 +116,8 @@ let initializeRaft (project: IrisProject) = either {
     let! _ = saveRaft project.Config raft
     return ()
   }
+
+// * createProject
 
 let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     let dir = machine.WorkSpace </> filepath opts.name
@@ -142,6 +146,8 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
     return "ok"
   }
 
+// * getProjectSites
+
 let getProjectSites machine projectName =
   either {
     let! path = Project.checkPath machine projectName
@@ -152,6 +158,8 @@ let getProjectSites machine projectName =
       |> Array.map (fun x -> { Name = x.Name; Id = x.Id })
       |> serializeJson
   }
+
+// * machineStatus
 
 /// Gets the current machine's status, i.e. whether its Idle or Busy with a loaded project. This
 /// is necessary in order to determine whether this machine can be added to a cluster or not.
@@ -168,6 +176,8 @@ let machineStatus (iris: IIris) =
   |> serializeJson
   |> Either.succeed
 
+// * machineConfig
+
 /// Retrieve the machine configuration. This is used when new projects are constructed.
 ///
 /// Command to test:
@@ -179,6 +189,8 @@ let machineConfig () =
   MachineConfig.get()
   |> serializeJson
   |> Either.succeed
+
+// * cloneProject
 
 /// Git clone a project from another server in order to start a service. This is used during
 /// the process of adding a new machine to a cluster.
@@ -194,6 +206,8 @@ let cloneProject (name: Name) (uri: Url) =
   let success = sprintf "Successfully cloned project from: %A" uri
   Git.Repo.clone target (unwrap uri)
   |> Either.map (konst (serializeJson success))
+
+// * pullProject
 
 /// Git pull an already existing project from a remote server. This is used in the process
 /// of adding a machine to a cluster that already has the project in question locally.
@@ -227,7 +241,11 @@ let pullProject (id: ProjectId) (name: Name) (uri: Url) = either {
         |> serializeJson
   }
 
+// * registeredServices
+
 let registeredServices = ConcurrentDictionary<string, IDisposable>()
+
+// * startAgent
 
 let startAgent (cfg: IrisMachine) (iris: IIris) =
   MailboxProcessor<Command*Channel>.Start(fun agent ->
@@ -255,8 +273,11 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
           |> Either.map (fun _ -> "Successfully saved project")
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
-        | LoadProject(projectName, username, password, site) ->
-          iris.LoadProject(projectName, username, password, site)
+        | LoadProject(projectName, username, password, Some { Id = siteId; Name = name }) ->
+          iris.LoadProject(projectName, username, password, Some (name, siteId))
+          |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
+        | LoadProject(projectName, username, password, _) ->
+          iris.LoadProject(projectName, username, password, None)
           |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
         | GetProjectSites(projectName, _, _) -> getProjectSites cfg projectName
 
@@ -265,6 +286,8 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
     }
     loop()
   )
+
+// * postCommand
 
 let postCommand (agent: (MailboxProcessor<Command*Channel> option) ref) (cmd: Command) =
   let err msg =

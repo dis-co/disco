@@ -19,16 +19,15 @@ let loadProject dispatch (info: IProjectInfo) = promise {
       // Get project sites and machine config
       let! sites = Lib.getProjectSites(info.name, info.username, info.password)
 
-      Array.iter (fun (x:NameAndId) -> printfn "name: %A id %A" x.Name x.Id) sites
-
       // Ask user to create or select a new config
-      let! site = makeModal<IrisId> dispatch (Modal.ProjectConfig sites)
+      let! site = makeModal<NameAndId> true dispatch (Modal.ProjectConfig sites)
 
-      printfn "site: %A" site
-
-      // Try loading the project again with the site config
-      let! err2 = Lib.loadProject(info.name, info.username, info.password, Some site, None)
-      err2 |> Option.iter (printfn "Error when loading site %A: %A" site)
+      match site with
+      | Choice1Of2 ({ Id = siteId; Name = name } as site) ->
+        // Try loading the project again with the site config
+        let! err2 = Lib.loadProject(info.name, info.username, info.password, Some site, None)
+        err2 |> Option.iter (printfn "Error when loading site %A: %A" site)
+      | Choice2Of2 () -> recursiveAvailableProjectsModal dispatch()
     | None -> ()
   }
 

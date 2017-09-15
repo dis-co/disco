@@ -26,8 +26,8 @@ type Modal =
   | AddMember
   | CreateProject
   | LoadProject
-  | NoProject     of projects:Name[]
-  | ProjectConfig of sites:NameAndId[]
+  | AvailableProjects of projects:Name[]
+  | ProjectConfig     of sites:NameAndId[]
 
 type ModalView =
   { modal: Modal; view: React.ReactElement }
