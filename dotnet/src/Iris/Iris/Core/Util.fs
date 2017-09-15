@@ -660,7 +660,7 @@ module Guid =
   // ** ofId
 
   let ofId (id: IrisId) =
-    id.ToGuid()
+    id.Guid
 
   // ** toId
 

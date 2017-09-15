@@ -151,7 +151,7 @@ type LogEvent =
     sprintf "[%s - %s - %s - %d - %d - %s]: %s"
       (System.String.Format("{0,-5}",string self.LogLevel))
       (System.String.Format("{0,-8}",string self.Tier))
-      (System.String.Format("{0,-8}",self.MachineId.Prefix))
+      (System.String.Format("{0,-8}",self.MachineId.Prefix()))
       self.Time
       self.Thread
       self.Tag
@@ -321,7 +321,7 @@ module Logger =
       Console.white     "{0} " log.Time
 
       Console.darkGreen "{0}:" "id"
-      Console.white     "{0} " log.MachineId.Prefix
+      Console.white     "{0} " (log.MachineId.Prefix())
 
       Console.darkGreen "{0}:"    "type"
       Console.white     "{0,-7} " log.Tier
@@ -577,7 +577,7 @@ module LogFile =
     either {
       try
         let ts = DateTime.Now
-        let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix, ts)
+        let fn = String.Format("iris-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix(), ts)
         do! if Directory.exists path |> not then
               Directory.createDirectory path
               |> Either.ignore

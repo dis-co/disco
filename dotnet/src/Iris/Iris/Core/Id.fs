@@ -26,22 +26,21 @@ open Iris.Serialization
 
 // * IrisId
 
-[<Struct;CustomComparison;CustomEquality>]
-type IrisId private (guid: Guid) =
+[<CustomComparison;CustomEquality>]
+type IrisId =
+  struct
+    val Guid: Guid
+    new (g: Guid) = { Guid = g }
+  end
 
   // ** ToString
 
-  override id.ToString() = string guid
+  override id.ToString() = string id.Guid
 
   // ** Prefix
 
-  member __.Prefix
-    with get () =
-      let str = string guid
-      let m = Regex.Match(str, "^([a-zA-Z0-9]{8})-") // match the first 8 chars of a guid
-      if m.Success
-      then m.Groups.[1].Value           // use the first block of characters
-      else str                          // just use the string as-is
+  member id.Prefix() =
+    id.Guid.ToString().[..7]
 
   // ** Parse
 
@@ -56,10 +55,6 @@ type IrisId private (guid: Guid) =
       |> Error.asParseError "IrisId"
       |> Either.fail
 
-  // ** ToGuid
-
-  member __.ToGuid() = guid
-
   // ** FromGuid
 
   static member FromGuid(guid) =
@@ -67,8 +62,8 @@ type IrisId private (guid: Guid) =
 
   // ** ToByteArray
 
-  member __.ToByteArray() =
-    guid.ToByteArray()
+  member id.ToByteArray() =
+    id.Guid.ToByteArray()
 
   // ** FromByteArray
 
@@ -90,7 +85,7 @@ type IrisId private (guid: Guid) =
 
   // ** GetHashCode
 
-  override self.GetHashCode() = guid.GetHashCode()
+  override id.GetHashCode() = id.Guid.GetHashCode()
 
   // ** Equals
 
@@ -102,15 +97,15 @@ type IrisId private (guid: Guid) =
   // ** IEquatable.Equals
 
   interface System.IEquatable<IrisId> with
-    member self.Equals(other: IrisId) =
-      guid = other.ToGuid()
+    member id.Equals(other: IrisId) =
+      id.Guid = other.Guid
 
   // ** IComparable.CompareTo
 
   interface System.IComparable with
-    member me.CompareTo(o: obj) =
+    member id.CompareTo(o: obj) =
       match o with
-      | :? IrisId as id -> compare guid (id.ToGuid())
+      | :? IrisId as other -> compare id.Guid (other.Guid)
       | _ -> 0
 
 // * Id module

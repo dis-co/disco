@@ -137,7 +137,6 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
           Port    = port opts.port }
 
     let! project = buildProject machine opts.name dir raftDir mem
-
     do! initializeRaft project
 
     return "ok"
