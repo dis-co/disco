@@ -1,5 +1,3 @@
-/// @ts-check
-
 import React, { Component } from 'react'
 
 export default class LoadProject extends Component {
@@ -38,7 +36,6 @@ export default class LoadProject extends Component {
     );
   }
 
-
   render() {
     let isValid = true;
     for (let key in this.state) {
@@ -57,13 +54,15 @@ export default class LoadProject extends Component {
               <tr key={name}>
                 <td className="has-text-centered" style={{cursor: "pointer"}}
                   onClick={ev => {
-                    ev.preventDefault();
                     if (isValid) {
                       this.props.onSubmit({
                         name,
                         username: this.state.username,
                         password: this.state.password
                       });
+                    }
+                    else {
+                      alert("Please login first")
                     }
                   }}>
                   {name}

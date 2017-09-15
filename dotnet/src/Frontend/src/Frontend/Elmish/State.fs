@@ -32,26 +32,35 @@ let loadProject dispatch (info: IProjectInfo) = promise {
     | None -> ()
   }
 
-let private displayNoProjectModal dispatch =
-  promise {
-    #if DESIGN
-    let projects = [|name "foo"; name "bar"|]
-    #else
+let private hideModal dispatch =
+  UpdateModal None |> dispatch
+
+let private displayAvailableProjectsModal dispatch =
+  let rec createProjectModal dispatch =
+    makeModal false dispatch Modal.CreateProject
+    |> Promise.bind (function
+      | Choice1Of2 x ->
+        // TODO: If this doesn't load the project automatically
+        // anymore, we must display the login modal
+        Lib.createProject x
+      | Choice2Of2 () -> recursiveAvailableProjectsModal dispatch)
+  and recursiveAvailableProjectsModal dispatch = promise {
     let! projects = Lib.listProjects()
-    #endif
     if projects.Length > 0 then
-      let! projectInfo = makeModal dispatch (Modal.NoProject projects)
-      do!
-        match projectInfo with
-        | Some projectInfo ->
-          loadProject dispatch projectInfo
-        | None ->
-          makeModal dispatch Modal.CreateProject
-          |> Promise.bind Lib.createProject
+      let! projectInfo =
+        Modal.AvailableProjects projects
+        |> makeModal false dispatch
+      match projectInfo with
+      | Choice1Of2 (Some projectInfo) ->
+        return! loadProject dispatch projectInfo
+      | Choice1Of2 None ->
+        return! createProjectModal dispatch
+      | Choice2Of2 () ->
+        return! recursiveAvailableProjectsModal dispatch
     else
-      do! makeModal dispatch Modal.CreateProject
-          |> Promise.bind Lib.createProject
-  } |> Promise.start
+      return! createProjectModal dispatch
+  }
+  recursiveAvailableProjectsModal dispatch |> Promise.start
 
 /// Unfortunately this is necessary to hide the resizer of
 /// the jQuery plugin ui-layout
@@ -122,7 +131,7 @@ let init() =
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
-  initModel, [startContext; delay 500 displayNoProjectModal]
+  initModel, [startContext; delay 500 displayAvailableProjectsModal]
 
 let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
     widgets
@@ -173,21 +182,27 @@ let update msg model: Model*Cmd<Msg> =
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
   | UpdateState state ->
-    match state, model.modal with
-    // When project is loaded, hide NoProject modal if displayed
-    | Some _, Some { modal = Modal .NoProject _ } ->
-      toggleUILayoutResizer true
-      { model with state = state; modal = None }, []
-    | Some _, _
-    | None, Some { modal = Modal .NoProject _ } ->
-      { model with state = state }, []
-    | None, _ ->
-      { model with state = state }, [displayNoProjectModal]
+    let cmd =
+      match state with
+      | Some _ ->
+        // Hide AvailableProjects modal if displayed
+        match model.modal with
+        | Some { modal = Modal.AvailableProjects _ } -> [hideModal]
+        | _ -> []
+      | None ->
+        // If no project is loaded, schedule the display of AvailableProjects
+        match model.modal with
+        | Some { modal = Modal.AvailableProjects _ } -> []
+        | _ -> [displayAvailableProjectsModal]
+    { model with state = state }, cmd
   | UpdateModal modal ->
     let cmd =
-      match modal, model.state with
-      // If no modal and no state, display no project modal
-      | None, None -> [displayNoProjectModal]
-      | None, Some _ -> toggleUILayoutResizer true; []
-      | Some _, _ -> toggleUILayoutResizer false; []
+      match modal with
+      // If a modal is displayed, hide the UI Layout resizer
+      | Some _ -> toggleUILayoutResizer false; []
+      | None ->
+        match model.state with
+        | Some _ -> toggleUILayoutResizer true; []
+        // If no project loaded, schedule the display of AvailableProjects
+        | None -> [displayAvailableProjectsModal]
     { model with modal = modal }, cmd

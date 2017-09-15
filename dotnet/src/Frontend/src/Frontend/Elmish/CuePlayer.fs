@@ -127,8 +127,7 @@ type private CueView(props) =
       Drag.observe()
       |> Observable.choose(function
         | Drag.Moved(x,y,Drag.Pin pin) -> Some(pin,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true)
-        | _ -> None)
+        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true))
       |> Observable.subscribe(fun (pin,x,y,stopped) ->
         let isHighlit, isOpen =
           if touchesElement(selfRef, x, y) then

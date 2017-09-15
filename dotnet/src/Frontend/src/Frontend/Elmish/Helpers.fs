@@ -102,21 +102,38 @@ let widget (id: Guid) (name: string)
 
 let [<Literal>] private mdir = "../../js/modals/"
 
-let makeModal<'T> dispatch modal: JS.Promise<'T> =
+let makeModal<'T> autoHide dispatch modal: JS.Promise<Choice<'T,unit>> =
   Fable.PowerPack.Promise.create (fun onSuccess _ ->
     let data, com =
       match modal with
       | Modal.AddMember          -> None,           importDefault (mdir+"AddMember")
       | Modal.CreateProject      -> None,           importDefault (mdir+"CreateProject")
       | Modal.LoadProject        -> None,           importDefault (mdir+"LoadProject")
-      | Modal.NoProject data     -> Some(box data), importDefault (mdir+"NoProject")
+      | Modal.AvailableProjects data     -> Some(box data), importDefault (mdir+"AvailableProjects")
       | Modal.ProjectConfig data -> Some(box data), importDefault (mdir+"ProjectConfig")
     let props =
       createObj ["data" ==> data
                  "onSubmit" ==> fun x ->
-                  UpdateModal None |> dispatch
-                  onSuccess x ]
-    Some { modal = modal; view = from com props [] } |> UpdateModal |> dispatch)
+                  // Non-autoHide modals must take
+                  // care of hiding themselves
+                  if autoHide then
+                    UpdateModal None |> dispatch
+                  Choice1Of2 x |> onSuccess ]
+    let view =
+      div [ClassName "modal is-active"] [
+        div [
+          ClassName "modal-background"
+          OnClick (fun ev ->
+            ev.stopPropagation()
+            if autoHide then
+              UpdateModal None |> dispatch
+              Choice2Of2 () |> onSuccess)
+        ] []
+        div [ClassName "modal-content"] [
+          div [ClassName "box"] [from com props []]
+        ]
+      ]
+    Some { modal = modal; view = view } |> UpdateModal |> dispatch)
 
 module Promise =
   open Fable.PowerPack

@@ -140,7 +140,7 @@ let titleBar dispatch (model: Model) =
       input [
         Type "text"
         Placeholder "Filter by regex..."
-        DefaultValue !^filter
+        DefaultValue filter
         OnChange (fun ev ->
           let filter =
             match !!ev.target?value with
