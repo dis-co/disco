@@ -27,7 +27,7 @@ let loadProject dispatch (info: IProjectInfo) = promise {
         // Try loading the project again with the site config
         let! err2 = Lib.loadProject(info.name, info.username, info.password, Some site, None)
         err2 |> Option.iter (printfn "Error when loading site %A: %A" site)
-      | Choice2Of2 () -> recursiveAvailableProjectsModal dispatch()
+      | Choice2Of2 () -> ()
     | None -> ()
   }
 
