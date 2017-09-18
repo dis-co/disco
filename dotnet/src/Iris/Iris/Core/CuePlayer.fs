@@ -16,17 +16,48 @@ open Iris.Serialization
 
 #endif
 
-// * CuePlayerYaml
-
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml.Serialization
+
+#endif
+
+
+// * CuePlayerItemYaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+type CuePlayerItemYaml() =
+  [<DefaultValue>] val mutable Type: string
+  [<DefaultValue>] val mutable Value: string
+
+  static member FromItem(item: CuePlayerItem) =
+    let yaml = CuePlayerItemYaml()
+    yaml.Type <- item.Type
+    yaml.Value <- item.Value
+    yaml
+
+  member yaml.ToItem() =
+    match yaml.Type with
+    | "CueList" ->
+      IrisId.TryParse yaml.Value
+      |> Either.map CuePlayerItem.CueList
+    | "Headline" ->
+      Headline yaml.Value
+      |> Either.succeed
+    | other ->
+      other
+      |> String.format "Could not parse {0} as CuePlayerItem"
+      |> Error.asParseError "CuePlayerItemYaml.ToItem"
+      |> Either.fail
+
+// * CuePlayerYaml
 
 type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Locked: bool
-  [<DefaultValue>] val mutable CueListId: string
+  [<DefaultValue>] val mutable Items: CuePlayerItemYaml array
   [<DefaultValue>] val mutable Selected: int
   [<DefaultValue>] val mutable CallId: string
   [<DefaultValue>] val mutable NextId: string
@@ -37,7 +68,7 @@ type CuePlayerYaml() =
 
   // ** From
 
-  static member From(player: CuePlayer) =
+  static member FromPlayer(player: CuePlayer) =
     let yaml = CuePlayerYaml()
     let opt2str opt =
       match opt with
@@ -46,7 +77,7 @@ type CuePlayerYaml() =
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
     yaml.Locked <- player.Locked
-    yaml.CueListId <- opt2str player.CueListId
+    yaml.Items <- Array.map CuePlayerItemYaml.FromItem player.Items
     yaml.Selected <- int player.Selected
     yaml.CallId <- string player.CallId
     yaml.NextId <- string player.NextId
@@ -68,11 +99,22 @@ type CuePlayerYaml() =
       let! call = IrisId.TryParse yaml.CallId
       let! next = IrisId.TryParse yaml.NextId
       let! previous = IrisId.TryParse yaml.PreviousId
+      let! items =
+        Array.fold
+          (fun (m: Either<IrisError,ResizeArray<CuePlayerItem>>) (yaml: CuePlayerItemYaml) ->
+            either {
+              let! arr = m
+              let! item = yaml.ToItem()
+              do arr.Add(item)
+              return arr
+            })
+          (Right (ResizeArray()))
+          yaml.Items
       return {
         Id = id
         Name = name yaml.Name
         Locked = yaml.Locked
-        CueListId = str2opt yaml.CueListId
+        Items = items.ToArray()
         Selected = index yaml.Selected
         CallId = call
         NextId = next
@@ -85,18 +127,80 @@ type CuePlayerYaml() =
 
 #endif
 
+// * CuePlayerItem
+
+type CuePlayerItem =
+  | CueList  of CueListId
+  | Headline of text:string
+
+  // ** Type
+
+  member item.Type
+    with get () =
+      match item with
+      | CueList  _ -> "CueList"
+      | Headline _ -> "Headline"
+
+  // ** Value
+
+  member item.Value
+    with get () =
+      match item with
+      | CueList id -> string id
+      | Headline txt -> txt
+
+  // ** ToOffset
+
+  member item.ToOffset(builder: FlatBufferBuilder) =
+    match item with
+    | CueList id ->
+      let id = id |> string |> builder.CreateString
+      CuePlayerItemFB.StartCuePlayerItemFB(builder)
+      CuePlayerItemFB.AddType(builder, CuePlayerItemTypeFB.CueListFB)
+      CuePlayerItemFB.AddValue(builder, id)
+      CuePlayerItemFB.EndCuePlayerItemFB(builder)
+    | Headline txt ->
+      let txt = builder.CreateString txt
+      CuePlayerItemFB.StartCuePlayerItemFB(builder)
+      CuePlayerItemFB.AddType(builder, CuePlayerItemTypeFB.HeadlineFB)
+      CuePlayerItemFB.AddValue(builder, txt)
+      CuePlayerItemFB.EndCuePlayerItemFB(builder)
+
+  // ** FromFB
+
+  static member FromFB(fb: CuePlayerItemFB) =
+    match fb.Type with
+    #if FABLE_COMPILER
+    | x when x = CuePlayerItemTypeFB.CueListFB ->
+      fb.Value |> IrisId.TryParse |> Either.map CuePlayerItem.CueList
+    | x when x = CuePlayerItemTypeFB.HeadlinFB ->
+      CuePlayerItem.Headline fb.Value
+      |> Either.succeed
+    #else
+    | CuePlayerItemTypeFB.CueListFB ->
+      fb.Value |> IrisId.TryParse |> Either.map CuePlayerItem.CueList
+    | CuePlayerItemTypeFB.HeadlineFB ->
+      CuePlayerItem.Headline fb.Value
+      |> Either.succeed
+    #endif
+    | other ->
+      other
+      |> String.format "Unknown CuePlayerItemTypeFB value {0}"
+      |> Error.asParseError "CuePlayerItem.FromFB"
+      |> Either.fail
+
 // * CuePlayer
 
 type CuePlayer =
   { Id: PlayerId
     Name: Name
-    CueListId: CueListId option
-    CallId: PinId                           // should be Bang pin type
-    NextId: PinId                           // should be Bang pin type
-    PreviousId: PinId                       // should be Bang pin type
+    Items: CuePlayerItem array
     Locked: bool
     Selected: int<index>
     RemainingWait: int
+    CallId: PinId                           // should be Bang pin type
+    NextId: PinId                           // should be Bang pin type
+    PreviousId: PinId                       // should be Bang pin type
     LastCalledId: CueId option
     LastCallerId: IrisId option }
 
@@ -105,10 +209,10 @@ type CuePlayer =
   member player.ToOffset(builder: FlatBufferBuilder) =
     let id = CuePlayerFB.CreateIdVector(builder, player.Id.ToByteArray())
     let name = player.Name |> unwrap |> Option.mapNull builder.CreateString
-    let cuelist =
-      Option.map
-        (fun (clid:CueListId) -> CuePlayerFB.CreateCueListIdVector(builder,clid.ToByteArray()))
-        player.CueListId
+    let items =
+      player.Items
+      |> Array.map (Binary.toOffset builder)
+      |> fun items -> CuePlayerFB.CreateItemsVector(builder, items)
     let call = CuePlayerFB.CreateCallIdVector(builder,player.CallId.ToByteArray())
     let next = CuePlayerFB.CreateNextIdVector(builder,player.NextId.ToByteArray())
     let previous = CuePlayerFB.CreatePreviousIdVector(builder,player.PreviousId.ToByteArray())
@@ -129,7 +233,7 @@ type CuePlayer =
     CuePlayerFB.AddCallId(builder, call)
     CuePlayerFB.AddNextId(builder, next)
     CuePlayerFB.AddPreviousId(builder, previous)
-    Option.iter (fun cl -> CuePlayerFB.AddCueListId(builder, cl)) cuelist
+    CuePlayerFB.AddItems(builder, items)
     Option.iter (fun cl -> CuePlayerFB.AddLastCalledId(builder, cl)) lastcalled
     Option.iter (fun cl -> CuePlayerFB.AddLastCallerId(builder, cl)) lastcaller
     CuePlayerFB.EndCuePlayerFB(builder)
@@ -138,14 +242,6 @@ type CuePlayer =
 
   static member FromFB(fb: CuePlayerFB) =
     either {
-      let! cuelist =
-        try
-          if fb.CueListIdLength = 0
-          then Either.succeed None
-          else Id.decodeCueListId fb |> Either.map Some
-        with exn ->
-          Either.succeed None
-
       let! lastcalled =
         try
           if fb.LastCalledIdLength = 0
@@ -167,13 +263,38 @@ type CuePlayer =
       let! next = Id.decodeNextId fb
       let! previous = Id.decodePreviousId fb
 
+      let! items =
+        Array.fold
+          (fun (m: Either<IrisError,ResizeArray<CuePlayerItem>>) (idx: int) ->
+            either {
+              let! arr = m
+              let! item =
+              #if FABLE_COMPILER
+                fb.Items(idx)
+                |> CuePlayerItem.FromFB
+              #else
+                let itemish = fb.Items(idx)
+                if itemish.HasValue then
+                  let item = itemish.Value
+                  CuePlayerItem.FromFB item
+                else
+                  "Could not parse empty CuePlayerItem"
+                  |> Error.asParseError "CuePlayer.FromFB"
+                  |> Either.fail
+              #endif
+              do arr.Add(item)
+              return arr
+            })
+          (Right (ResizeArray()))
+          [| 0 .. fb.ItemsLength - 1 |]
+
       return {
         Id = id
         Name = name fb.Name
         Locked = fb.Locked
         Selected = index fb.Selected
         RemainingWait = fb.RemainingWait
-        CueListId = cuelist
+        Items = items.ToArray()
         CallId = call
         NextId = next
         PreviousId = previous
@@ -197,7 +318,7 @@ type CuePlayer =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
-  member player.ToYaml() = CuePlayerYaml.From(player)
+  member player.ToYaml() = CuePlayerYaml.FromPlayer(player)
 
   // ** FromYaml
 
@@ -249,14 +370,14 @@ module CuePlayer =
 
   // ** create
 
-  let create (playerName: Name) (cuelist: CueListId option) =
+  let create (playerName: Name) (items: CuePlayerItem array) =
     let id = IrisId.Create()
     { Id            = id
       Name          = playerName
       Locked        = false
       RemainingWait = -1
       Selected      = -1<index>
-      CueListId     = cuelist
+      Items         = items
       CallId        = Pin.Player.callId     id
       NextId        = Pin.Player.nextId     id
       PreviousId    = Pin.Player.previousId id
