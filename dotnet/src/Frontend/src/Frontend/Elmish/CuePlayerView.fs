@@ -321,7 +321,7 @@ type CuePlayerView(props) =
           th [ClassName "width-10"] [str "Nr."]
           th [ClassName "width-25"] [str "Cue name"]
           th [ClassName "width-20"] [str "Delay"]
-          th [ClassName "width-20"] [str "Shortkey"]
+          th [ClassName "width-20"] [str "Trigger"]
           th [ClassName "width-10"; Style [TextAlign "center"]] [str "Autocall"]
           th [ClassName "width-5"] [str ""]
         ]
