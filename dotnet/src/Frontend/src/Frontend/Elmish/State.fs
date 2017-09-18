@@ -102,7 +102,6 @@ let init() =
         | ClientMessage.Event(_, UpdateClock _) -> ()
         // For all other cases, just update the state
         | _ ->
-          assert false
           let state = context.Store |> Option.map (fun s -> s.State)
           UpdateState state |> dispatch)
       )
@@ -181,7 +180,6 @@ let update msg model: Model*Cmd<Msg> =
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
   | UpdateState state ->
-    assert false
     let cmd =
       match model.state, state, model.modal with
       // If a project is loaded (model.state from None to Some), hide modals

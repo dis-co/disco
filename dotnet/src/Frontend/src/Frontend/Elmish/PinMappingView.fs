@@ -25,13 +25,6 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-let titleBar dispatch (model: Model) =
-  button [
-    Class "iris-button"
-    OnClick(fun _ ->
-      printfn "TODO: Add PinMapping")
-  ] [str "Add"]
-
 let renderPin (model: Model) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pin.Id
@@ -40,6 +33,24 @@ let renderPin (model: Model) (pin: Pin) =
       slices = Some pin.Slices
       updater = None
       onDragStart = None } []
+
+let addPinRow i =
+  tr [
+    Key (sprintf "ADD_MAPPING%i" i)
+    Class "iris-add-pinmapping"
+  ] [
+    td [Class "width-20"; Style [PaddingLeft "5px"]] []
+    td [Class "width-75"] []
+    td [Class "width-5"] [
+      button [
+        // TODO: Enable button only if source and at least one sink are set
+        Class "iris-button iris-icon icon-more"
+        OnClick (fun ev ->
+          ev.stopPropagation()
+          printfn "TODO: Add PinMapping")
+      ] []
+    ]
+  ]
 
 let body dispatch (model: Model) =
   match model.state with
@@ -53,8 +64,8 @@ let body dispatch (model: Model) =
           th [Class "width-5"] []
         ]
       ]
-      tbody [] (
-        state.PinMappings |> Seq.map (fun kv ->
+      tbody [] [
+        for kv in state.PinMappings do
           let source =
             Lib.findPin kv.Value.Source state
             |> renderPin model
@@ -62,7 +73,7 @@ let body dispatch (model: Model) =
             kv.Value.Sinks
             |> Seq.map (fun id -> Lib.findPin id state |> renderPin model)
             |> Seq.toList
-          tr [Key (string kv.Key)] [
+          yield tr [Key (string kv.Key)] [
             td [Class "width-20"; padding5AndTopBorder()] [source]
             td [Class "width-75"; topBorder()] sinks
             td [Class "width-5"; topBorder()] [
@@ -74,8 +85,8 @@ let body dispatch (model: Model) =
               ] []
             ]
           ]
-        ) |> Seq.toList
-      )
+        yield addPinRow 1
+      ]
     ]
 
 let createWidget(id: System.Guid) =
@@ -96,6 +107,6 @@ let createWidget(id: System.Guid) =
             equalsRef s1.Project s2.Project
           | None, None -> true
           | _ -> false)
-        (widget id this.Name (Some titleBar) body dispatch)
+        (widget id this.Name None body dispatch)
         model
   }
