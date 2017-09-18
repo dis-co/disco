@@ -37,12 +37,15 @@ let handleModalResult (modal: IModal) dispatch =
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
   | :? Modal.ProjectConfig as m ->
     // Try loading the project again with the site config
-    Lib.loadProject(m.Info.name, m.Info.username, m.Info.password, Some (IrisId.Parse m.Result), None)
+    Lib.loadProject(m.Info.name, m.Info.username, m.Info.password, Some m.Result, None)
     |> Promise.iter (fun err ->
       match err with
-      | Some err -> printfn "Error when loading site %s: %s" m.Result err
+      | Some err -> printfn "Error when loading site %A: %s"  m.Result err
       | None -> ())
   | _ -> failwithf "Cannot handle unknown modal %A" modal
+
+let private hideModal modal dispatch =
+  CloseModal(modal, Choice2Of2 ()) |> dispatch
 
 let private displayAvailableProjectsModal dispatch =
   promise {
@@ -99,6 +102,7 @@ let init() =
         | ClientMessage.Event(_, UpdateClock _) -> ()
         // For all other cases, just update the state
         | _ ->
+          assert false
           let state = context.Store |> Option.map (fun s -> s.State)
           UpdateState state |> dispatch)
       )
@@ -177,12 +181,13 @@ let update msg model: Model*Cmd<Msg> =
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
   | UpdateState state ->
+    assert false
     let cmd =
       match model.state, state, model.modal with
       // If a project is loaded (model.state from None to Some), hide modals
-      | None, Some _, Some modal -> failwith "TODO"
+      | None, Some _, Some modal -> [hideModal modal]
       // If a project is unloaded (model.state from None to Some), display AvailableProjects modal
-      | Some _, None, None -> failwith "TODO"
+      | Some _, None, None -> [displayAvailableProjectsModal]
       | _ -> []
     { model with state = state }, cmd
   | OpenModal modal ->

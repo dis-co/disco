@@ -51,17 +51,17 @@ module Modal =
       member this.SetResult(v) = res <- Some(unbox v)
 
   type AvailableProjects(projects: Name[]) =
-    let mutable res = None
+    let mutable res = Unchecked.defaultof<_>
     member __.Projects = projects
-    member __.Result: IProjectInfo option = res.Value
+    member __.Result: IProjectInfo option = res
     interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
+      member this.SetResult(v) = res <- unbox v
 
-  type ProjectConfig(sites: string[], info: IProjectInfo) =
+  type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
     let mutable res = None
     member __.Sites = sites
     member __.Info = info
-    member __.Result: string = res.Value
+    member __.Result: NameAndId = res.Value
     interface IModal with
       member this.SetResult(v) = res <- Some(unbox v)
 
