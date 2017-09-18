@@ -1,4 +1,4 @@
-module Iris.Web.PanelLeft
+module Iris.Web.PanelLeftView
 
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
@@ -42,7 +42,7 @@ let render dispatch () =
         card dispatch "Project Overview (Big)" "P" "Cluster Settings"
     ]
 
-let view dispatch () =
+let root dispatch () =
   lazyViewWith
     (fun x y -> obj.ReferenceEquals(x, y))
     (fun () -> render dispatch ())

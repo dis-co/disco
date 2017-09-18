@@ -1,4 +1,4 @@
-module rec Iris.Web.CuePlayer
+module rec Iris.Web.CuePlayerView
 
 open System
 open System.Collections.Generic
