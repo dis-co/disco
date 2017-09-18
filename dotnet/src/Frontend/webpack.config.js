@@ -79,7 +79,7 @@ function createWebpackConfig(fsProj, outputFile, libName) {
             options: {
               babel: babelOptions,
               define: isProduction ? [] : ["DEBUG"].concat(isDesignMode ? "DESIGN" : null).filter(x => x),
-              plugins: resolve("src/FlatBuffersPlugin/bin/Release/netcoreapp2.0/FlatBuffersPlugin.dll"),
+              plugins: resolve("src/FlatBuffersPlugin/bin/Release/netstandard1.6/FlatBuffersPlugin.dll"),
               extra: { projectFile: fsProj }
             }
           }
