@@ -764,23 +764,29 @@ module Generators =
   //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
   //                                |___/
 
+  let cuePlayerItemGen =
+    Gen.oneof [
+      Gen.map CuePlayerItem.CueList  idGen
+      Gen.map CuePlayerItem.Headline stringGen
+    ]
+
   let cuePlayerGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! cl = maybeGen idGen
       let! sel = indexGen
       let! call = idGen
       let! next = idGen
       let! prev = idGen
       let! rmw = intGen
+      let! locked = boolGen
       let! lcd = maybeGen idGen
       let! lcr = maybeGen idGen
-      let! locked = boolGen
+      let! items = Gen.arrayOf cuePlayerItemGen
       return
         { Id = id
           Name = nm
           Locked = locked
-          CueListId = cl
+          Items = items
           Selected = sel
           CallId = call
           NextId = next

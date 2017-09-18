@@ -160,7 +160,10 @@ type CuePlayerItem =
       CuePlayerItemFB.AddValue(builder, id)
       CuePlayerItemFB.EndCuePlayerItemFB(builder)
     | Headline txt ->
-      let txt = builder.CreateString txt
+      let txt =
+        if txt = null
+        then Unchecked.defaultof<StringOffset>
+        else builder.CreateString txt
       CuePlayerItemFB.StartCuePlayerItemFB(builder)
       CuePlayerItemFB.AddType(builder, CuePlayerItemTypeFB.HeadlineFB)
       CuePlayerItemFB.AddValue(builder, txt)
