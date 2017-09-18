@@ -162,7 +162,12 @@ type CuePlayerItem =
     | Headline txt ->
       let txt =
         if txt = null
-        then Unchecked.defaultof<StringOffset>
+        then
+          #if FABLE_COMPILER
+          Unchecked.defaultof<Offset<string>>
+          #else
+          Unchecked.defaultof<StringOffset>
+          #endif
         else builder.CreateString txt
       CuePlayerItemFB.StartCuePlayerItemFB(builder)
       CuePlayerItemFB.AddType(builder, CuePlayerItemTypeFB.HeadlineFB)
@@ -176,7 +181,7 @@ type CuePlayerItem =
     #if FABLE_COMPILER
     | x when x = CuePlayerItemTypeFB.CueListFB ->
       fb.Value |> IrisId.TryParse |> Either.map CuePlayerItem.CueList
-    | x when x = CuePlayerItemTypeFB.HeadlinFB ->
+    | x when x = CuePlayerItemTypeFB.HeadlineFB ->
       CuePlayerItem.Headline fb.Value
       |> Either.succeed
     #else

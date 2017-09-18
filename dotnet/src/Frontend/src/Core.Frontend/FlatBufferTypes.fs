@@ -1592,6 +1592,16 @@ type CuePlayerItemFB  =
   abstract Type: CuePlayerItemTypeFB
   abstract Value: string
 
+type CuePlayerItemFBConstructor =
+  abstract prototype: CuePlayerItemFB with get, set
+  abstract StartCuePlayerItemFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: CuePlayerItemTypeFB -> unit
+  abstract AddValue: builder: FlatBufferBuilder * value: Offset<string> -> unit
+  abstract EndCuePlayerItemFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsCuePlayerItemFB: buffer: ByteBuffer -> CuePlayerItemFB
+
+let CuePlayerItemFB : CuePlayerItemFBConstructor = failwith "JS only"
+
 type CuePlayerFB =
   abstract Id: int -> byte
   abstract IdLength: int
