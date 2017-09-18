@@ -1,4 +1,4 @@
-module Iris.Web.Cluster
+module Iris.Web.ClusterView
 
 open System
 open System.Collections.Generic

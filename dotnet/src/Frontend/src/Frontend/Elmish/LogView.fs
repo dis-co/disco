@@ -1,4 +1,4 @@
-module Iris.Web.Log
+module Iris.Web.LogView
 
 open System.Text.RegularExpressions
 open Fable.Import
