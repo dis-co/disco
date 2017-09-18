@@ -97,8 +97,8 @@ type CuePlayer =
     Locked: bool
     Selected: int<index>
     RemainingWait: int
-    LastCalledId: PinId option
-    LastCallerId: PinId option }
+    LastCalledId: CueId option
+    LastCallerId: IrisId option }
 
   // ** ToOffset
 

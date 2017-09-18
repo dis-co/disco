@@ -719,11 +719,13 @@ module IrisService =
 
   let private updateSite state (serviceOptions: IrisServiceOptions) =
     match serviceOptions.SiteId with
-    | Some site ->
+    | Some (name, site) ->
       let site =
         state.Project.Config.Sites
         |> Array.tryFind (fun s -> s.Id = site)
-        |> function Some s -> s | None -> ClusterConfig.Default
+        |> function
+        | Some s -> s
+        | None -> { ClusterConfig.Default with Name = name }
 
       // Add current machine if necessary
       // taking the default ports from MachineConfig

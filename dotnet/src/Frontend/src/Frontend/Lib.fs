@@ -136,7 +136,9 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     notify commandMsg
 
-    let active = latestState.Project.Config.ActiveSite
+    let active =
+      latestState.Project.Config.ActiveSite
+      |> Option.map (fun id -> { Id = id; Name = name "<unknown>" })
 
     // Load active project in machine B
     // Note that we don't use loadProject from below, since that function
@@ -180,7 +182,7 @@ let setLogLevel(lv) =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: Name, username: UserName, pass: Password, site: SiteId option, ipAndPort: string option): JS.Promise<string option> =
+let rec loadProject(project: Name, username: UserName, pass: Password, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
   LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
@@ -204,7 +206,7 @@ let rec loadProject(project: Name, username: UserName, pass: Password, site: Sit
 
 let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password)
-  |> postCommand ofJson<string[]> (fun msg -> notify msg; [||])
+  |> postCommand ofJson<NameAndId[]> (fun msg -> notify msg; [||])
 
 let createProject(name: string): JS.Promise<unit> = promise {
   let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig

@@ -33,7 +33,7 @@ type Command =
   | CreateProject of CreateProjectOptions
   | CloneProject of projectName:Name * uri:Url
   | PullProject of projectId:ProjectId * projectName:Name * uri:Url
-  | LoadProject of projectName:Name * username:UserName * password:Password * site:SiteId option
+  | LoadProject of projectName:Name * username:UserName * password:Password * site:NameAndId option
   | GetProjectSites of projectName:Name * username:UserName * password:Password
 
 type CommandAgent = Command -> Async<Either<IrisError,string>>

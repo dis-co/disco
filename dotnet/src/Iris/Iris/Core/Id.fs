@@ -26,30 +26,21 @@ open Iris.Serialization
 
 // * IrisId
 
-[<Struct;CustomComparison;CustomEquality>]
-type IrisId private (guid: Guid) =
-
-  // ** toString
-
-  #if FABLE_COMPILER
-
-  member self.toString() = toJson self
-
-  #endif
+[<CustomComparison;CustomEquality>]
+type IrisId =
+  struct
+    val Guid: Guid
+    new (g: Guid) = { Guid = g }
+  end
 
   // ** ToString
 
-  override id.ToString() = string guid
+  override id.ToString() = string id.Guid
 
   // ** Prefix
 
-  member __.Prefix
-    with get () =
-      let str = string guid
-      let m = Regex.Match(str, "^([a-zA-Z0-9]{8})-") // match the first 8 chars of a guid
-      if m.Success
-      then m.Groups.[1].Value           // use the first block of characters
-      else str                          // just use the string as-is
+  member id.Prefix() =
+    id.Guid.ToString().[..7]
 
   // ** Parse
 
@@ -66,17 +57,13 @@ type IrisId private (guid: Guid) =
 
   // ** FromGuid
 
-  member __.ToGuid() = guid
-
-  // ** FromGuid
-
   static member FromGuid(guid) =
     IrisId(guid)
 
   // ** ToByteArray
 
-  member __.ToByteArray() =
-    guid.ToByteArray()
+  member id.ToByteArray() =
+    id.Guid.ToByteArray()
 
   // ** FromByteArray
 
@@ -98,7 +85,7 @@ type IrisId private (guid: Guid) =
 
   // ** GetHashCode
 
-  override self.GetHashCode() = guid.GetHashCode()
+  override id.GetHashCode() = id.Guid.GetHashCode()
 
   // ** Equals
 
@@ -110,15 +97,15 @@ type IrisId private (guid: Guid) =
   // ** IEquatable.Equals
 
   interface System.IEquatable<IrisId> with
-    member self.Equals(other: IrisId) =
-      guid = other.ToGuid()
+    member id.Equals(other: IrisId) =
+      id.Guid = other.Guid
 
   // ** IComparable.CompareTo
 
   interface System.IComparable with
-    member me.CompareTo(o: obj) =
+    member id.CompareTo(o: obj) =
       match o with
-      | :? IrisId as id -> compare guid (id.ToGuid())
+      | :? IrisId as other -> compare id.Guid (other.Guid)
       | _ -> 0
 
 // * Id module
@@ -209,32 +196,20 @@ module Id =
     (fun idx -> (^t : (member MemberId: int -> byte) fb, idx))
     |> decodeWith
 
+// * Playground
 
 #if INTERACTIVE
 
-open System
-open System.Text
-open System.Security.Cryptography
+type MyId = struct
+  val mutable Guid: System.Guid
+  new (g: System.Guid) = { Guid = g }
+end
 
-let id = IrisId.Create()
-let path = "/24/41"
+let g = System.Guid.NewGuid()
 
-let hash (str: string) =
-  use sha1 = new SHA1Managed()
-  str
-  |> Encoding.UTF8.GetBytes
-  |> sha1.ComputeHash
+let g1 = MyId(g)
+let g2 = MyId(g)
 
-let cut (bytes: byte[]) =
-  [| for n in 0 .. 15 -> bytes.[n] |]
-
-let toString (buf: byte array) =
-  let hashedString = StringBuilder()
-  for byte in buf do
-    hashedString.AppendFormat("{0:x2}", byte)
-    |> ignore
-  hashedString.ToString()
-
-id |> string |> (+) path |> hash |> cut |> Guid
+g1 = g2
 
 #endif

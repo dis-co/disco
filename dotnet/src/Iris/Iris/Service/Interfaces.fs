@@ -131,10 +131,10 @@ type IRaftServer =
 type IWebSocketServer =
   inherit IDisposable
   inherit ISink<IrisEvent>
-  abstract Send         : PeerId -> StateMachine -> Either<IrisError,unit>
+  abstract Send         : PeerId -> StateMachine -> unit
   abstract Sessions     : Map<SessionId,Session>
-  abstract Broadcast    : StateMachine -> Either<IrisError list,unit>
-  abstract Multicast    : except:SessionId -> StateMachine -> Either<IrisError list,unit>
+  abstract Broadcast    : StateMachine -> unit
+  abstract Multicast    : except:SessionId -> StateMachine -> unit
   abstract BuildSession : SessionId -> Session -> Either<IrisError,Session>
   abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
@@ -169,7 +169,7 @@ type IrisServiceOptions =
     ProjectName: Name
     UserName: Name
     Password: Password
-    SiteId: SiteId option }
+    SiteId: (Name * SiteId) option }
 
 // * IIrisService
 
@@ -210,5 +210,5 @@ type IIris =
   abstract DiscoveryService: IDiscoveryService option
   abstract IrisService: IIrisService option
   abstract SaveProject: unit -> Either<IrisError,unit>
-  abstract LoadProject: Name * UserName * Password * SiteId option -> Either<IrisError,unit>
+  abstract LoadProject: Name * UserName * Password * (Name * SiteId) option -> Either<IrisError,unit>
   abstract UnloadProject: unit -> Either<IrisError,unit>

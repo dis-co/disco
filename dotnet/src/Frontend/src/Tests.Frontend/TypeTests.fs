@@ -40,5 +40,5 @@ module TypeTests =
 
     test "Validate Id toString is valid json" <| fun finish ->
       let id = IrisId.Create()
-      equals id (id.toString() |> ofJson<IrisId>)
+      equals id (toJson id |> ofJson<IrisId>)
       finish ()
