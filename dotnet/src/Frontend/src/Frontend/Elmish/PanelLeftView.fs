@@ -31,7 +31,7 @@ let render dispatch () =
         card dispatch Widgets.Log         "L" "Cluster Settings"
         card dispatch Widgets.GraphView   "G" "Cluster Settings"
         card dispatch Widgets.CuePlayer   "C" "Cluster Settings"
-        card dispatch Widgets.PinMappings "M" "Cluster Settings"
+        card dispatch Widgets.PinMapping "M" "Cluster Settings"
         card dispatch Widgets.ProjectView "P" "Cluster Settings"
         card dispatch Widgets.Cluster     "R" "Cluster Settings"
         card dispatch Widgets.Test        "T" "Cluster Settings"

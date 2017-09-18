@@ -52,10 +52,26 @@ let addPinRow i =
     ]
   ]
 
-let body dispatch (model: Model) =
-  match model.state with
-  | None -> table [Class "iris-table"] []
-  | Some state ->
+type [<Pojo>] PinMappingProps =
+  { Model: Model }
+
+type [<Pojo>] PinMappingState =
+  { SourceCandidate: Pin option
+    SinkCandidates: Pin list }
+
+type PinMappingView(props) =
+  inherit React.Component<PinMappingProps, PinMappingState>(props)
+  do base.setInitState({ SourceCandidate = None; SinkCandidates = [] })
+
+  member this.shouldComponentUpdate(nextProps, nextState, nextContext) =
+    match this.props.Model.state, nextProps.Model.state with
+    | Some s1, Some s2 ->
+      distinctRef s1.Project s2.Project
+    | None, None -> false
+    | _ -> true
+
+  member this.render() =
+    let model = this.props.Model
     table [Class "iris-table"] [
       thead [] [
         tr [] [
@@ -65,34 +81,37 @@ let body dispatch (model: Model) =
         ]
       ]
       tbody [] [
-        for kv in state.PinMappings do
-          let source =
-            Lib.findPin kv.Value.Source state
-            |> renderPin model
-          let sinks =
-            kv.Value.Sinks
-            |> Seq.map (fun id -> Lib.findPin id state |> renderPin model)
-            |> Seq.toList
-          yield tr [Key (string kv.Key)] [
-            td [Class "width-20"; padding5AndTopBorder()] [source]
-            td [Class "width-75"; topBorder()] sinks
-            td [Class "width-5"; topBorder()] [
-              button [
-                Class "iris-button iris-icon icon-close"
-                OnClick (fun ev ->
-                  ev.stopPropagation()
-                  printfn "TODO: Remove PinMapping")
-              ] []
+        match model.state with
+        | Some state ->
+          for kv in state.PinMappings do
+            let source =
+              Lib.findPin kv.Value.Source state
+              |> renderPin model
+            let sinks =
+              kv.Value.Sinks
+              |> Seq.map (fun id -> Lib.findPin id state |> renderPin model)
+              |> Seq.toList
+            yield tr [Key (string kv.Key)] [
+              td [Class "width-20"; padding5AndTopBorder()] [source]
+              td [Class "width-75"; topBorder()] sinks
+              td [Class "width-5"; topBorder()] [
+                button [
+                  Class "iris-button iris-icon icon-close"
+                  OnClick (fun ev ->
+                    ev.stopPropagation()
+                    printfn "TODO: Remove PinMapping")
+                ] []
+              ]
             ]
-          ]
-        yield addPinRow 1
+          yield addPinRow 1
+        | None -> ()
+        ]
       ]
-    ]
 
 let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
-    member __.Name = Types.Widgets.PinMappings
+    member __.Name = Types.Widgets.PinMapping
     member __.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
@@ -100,13 +119,4 @@ let createWidget(id: System.Guid) =
         minW = 4; maxW = 10
         minH = 1; maxH = 10 }
     member this.Render(dispatch, model) =
-      lazyViewWith
-        (fun m1 m2 ->
-          match m1.state, m2.state with
-          | Some s1, Some s2 ->
-            equalsRef s1.Project s2.Project
-          | None, None -> true
-          | _ -> false)
-        (widget id this.Name None body dispatch)
-        model
-  }
+      com<PinMappingView,_,_> { Model = model } []  }

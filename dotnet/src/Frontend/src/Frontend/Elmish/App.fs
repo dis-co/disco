@@ -28,7 +28,7 @@ initWidgetFactory
         | Widgets.CuePlayer -> CuePlayerView.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> ClusterView.createWidget(id)
-        | Widgets.PinMappings -> PinMappingView.createWidget(id)
+        | Widgets.PinMapping -> PinMappingView.createWidget(id)
         | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
