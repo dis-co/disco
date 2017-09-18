@@ -23,11 +23,11 @@ initWidgetFactory
       member __.CreateWidget(id, name) =
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
-        | Widgets.Log -> Log.createWidget(id)
+        | Widgets.Log -> LogView.createWidget(id)
         | Widgets.GraphView -> GraphView.createWidget(id)
-        | Widgets.CuePlayer -> CuePlayer.createWidget(id)
+        | Widgets.CuePlayer -> CuePlayerView.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
-        | Widgets.Cluster -> Cluster.createWidget(id)
+        | Widgets.Cluster -> ClusterView.createWidget(id)
         | Widgets.PinMappings -> PinMappingView.createWidget(id)
         | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
@@ -66,8 +66,8 @@ module Values =
   let [<Literal>] gridLayoutRowHeight = 30
   let [<Literal>] jqueryLayoutWestSize = 200
 
-module Tabs =
-  let view dispatch (model: Model) =
+module TabsView =
+  let root dispatch (model: Model) =
     div [Class "iris-tab-container"] [
       div [Class "tabs is-boxed"] [
         ul [] [
@@ -100,10 +100,10 @@ let view dispatch (model: Model) =
     div [Id "app-content"] [
       div [Id "ui-layout-container"] [
         div [Class "ui-layout-west"] [
-          PanelLeft.view dispatch ()
+          PanelLeftView.root dispatch ()
         ]
         div [Class "ui-layout-center"] [
-          Tabs.view dispatch model
+          TabsView.root dispatch model
         ]
       ]
     ]

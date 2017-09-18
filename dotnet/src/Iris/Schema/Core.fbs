@@ -637,13 +637,23 @@ table ProjectFB {
 //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
 //                                |___/
 
+enum CuePlayerItemTypeFB:ubyte {
+      CueListFB = 0,
+      HeadlineFB = 1
+}
+
+table CuePlayerItemFB {
+      Type: CuePlayerItemTypeFB;
+      Value: string; 
+}
+
 table CuePlayerFB {
       Id:            [ubyte];
       Name:          string;
       Locked:        bool;
       Selected:      int;
       RemainingWait: int;
-      CueListId:     [ubyte];
+      Items:         [CuePlayerItemFB];
       CallId:        [ubyte];
       NextId:        [ubyte];
       PreviousId:    [ubyte];
