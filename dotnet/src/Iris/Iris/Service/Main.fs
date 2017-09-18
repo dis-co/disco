@@ -38,7 +38,8 @@ module Main =
     let getBindIp() =
         match parsed.TryGetResult <@ Bind @> with
         | Some bindIp -> bindIp
-        | None -> failwith "Please specify a valid IP address to bind Iris services with --bind argument"
+        | None ->
+          failwith "Please specify a valid IP address to bind Iris services with --bind argument"
 
     // Init machine config
     parsed.TryGetResult <@ Machine @>

@@ -5,6 +5,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Iris.Web.State
 open Iris.Core
+open Iris.Core.Commands
 open System
 open Helpers
 open Types
@@ -36,3 +37,8 @@ let getPinValueAt(pin: Pin, idx: int): obj =
 
 let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement =
   widget id name headFn bodyFn dispatch model
+
+let toString x = string x
+let createId () = IrisId.Create()
+let createNameAndId (name: Name) =
+  { Id = IrisId.Create(); Name = name }

@@ -153,7 +153,7 @@ module String =
   /// - arr: string array to join
   ///
   /// Returns: string
-  let join sep (arr: string array) = String.Join(sep, arr)
+  let join (sep: string) (arr: string array) = String.Join(sep, arr)
 
   // ** toLower
 
@@ -660,7 +660,7 @@ module Guid =
   // ** ofId
 
   let ofId (id: IrisId) =
-    id.ToGuid()
+    id.Guid
 
   // ** toId
 

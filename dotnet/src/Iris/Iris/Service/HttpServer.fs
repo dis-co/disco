@@ -184,8 +184,12 @@ module HttpServer =
         let addr = machine.BindAddress |> string |> IPAddress.Parse
         let port = Sockets.Port.Parse (string machine.WebPort)
 
+        port
+        |> sprintf "Suave Web Server ready to start on: %A:%A" addr
+        |> Logger.info (tag "makeConfig")
+
         basePath
-        |> sprintf "Suave Web Server ready to start on: %A:%A\nSuave will serve static files from %O" addr port
+        |> sprintf "Suave will serve static files from %O"
         |> Logger.info (tag "makeConfig")
 
         return

@@ -4,6 +4,7 @@ open System
 open Fable.Core
 open Fable.Import
 open Iris.Core
+open Iris.Core.Commands
 
 /// Keys for Browser localStorage
 module StorageKeys =

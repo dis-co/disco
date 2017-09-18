@@ -2,6 +2,7 @@ module rec Iris.Web.State
 
 open System
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop

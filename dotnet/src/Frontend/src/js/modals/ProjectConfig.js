@@ -3,7 +3,11 @@ import React, { Component } from 'react'
 export default class ProjectConfig extends Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    let filtered = props.data ? props.data.filter(nid => nid.Name === "default") : [];
+    this.state = {
+      selected: filtered[0],
+      name: ""
+    };
   }
 
   render() {
@@ -15,28 +19,29 @@ export default class ProjectConfig extends Component {
           The current machine will be added to the selected cluster if not present.
         </p>
         <div className="field">
-          <label className="label">Sites</label>
+          <label className="label">Available Sites</label>
           <p className="control">
             <span className="select">
-              <select>
-                {this.props.data.map((site,i) =>
-                  <option key={i} onClick={ev => this.setState({selected: site})}>{site}</option>)}
+              <select onChange={ev => this.setState({ selected: this.props.data[ev.target.selectedIndex] })}>
+                {this.props.data.map((site,i) => 
+                    <option key={i} value={site.Id}>{site.Name}</option>
+                )}
               </select>
             </span>
           </p>
         </div>
         <div className="field">
-          <label className="label">Site</label>
+          <label className="label">Create Project Site</label>
           <p className="control">
-            <input className="input" type="text" value={this.state.selected} onChange={ev => this.setState({selected: ev.target.value})}/>
+            <input className="input" type="text" value={this.state.name} onChange={ev => this.setState({ name: ev.target.value, selected: IrisLib.createNameAndId(ev.target.value) }) }/>
           </p>
         </div>
         <div className="field">
           <p className="control">
             <button className="button is-primary"  disabled={this.state.selected == null} onClick={ev => {
-              ev.preventDefault();
-              this.props.onSubmit(this.state.selected);
-            }}>
+                ev.preventDefault();
+                this.props.onSubmit(this.state.selected);
+              }}>
               Submit
             </button>
           </p>

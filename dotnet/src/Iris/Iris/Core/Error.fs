@@ -164,6 +164,10 @@ type IrisError =
 [<RequireQualifiedAccess>]
 module Error =
 
+  // ** message
+
+  let message (error: IrisError) = error.Message
+
   // ** toMessage
 
   /// ## toMessage
