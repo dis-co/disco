@@ -95,8 +95,13 @@ module DiscoveryService =
   // ** serviceAdded
 
   let private serviceAdded (agent: DiscoveryAgent) (_: obj) (args: ServiceBrowseEventArgs) =
-    args.Service.Resolved.AddHandler(new ServiceResolvedEventHandler(addResolved agent))
-    args.Service.Resolve()
+    try
+      args.Service.Resolved.AddHandler(new ServiceResolvedEventHandler(addResolved agent))
+      args.Service.Resolve()
+    with exn ->
+      exn.Message
+      |> String.format "Unable to resolve service: {0}"
+      |> Logger.err (tag "serviceAdded")
 
   // ** serviceRemoved
 
