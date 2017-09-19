@@ -28,9 +28,37 @@ initWidgetFactory
         | Widgets.CuePlayer -> CuePlayerView.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> ClusterView.createWidget(id)
+        | Widgets.PinMapping -> PinMappingView.createWidget(id)
         | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
+
+let [<Literal>] private mdir = "../../js/modals/"
+
+let makeModal dispatch (modal: IModal): React.ReactElement =
+  let data, com =
+    match modal with
+    | :? Modal.AddMember              -> None, importDefault (mdir+"AddMember")
+    | :? Modal.CreateProject          -> None, importDefault (mdir+"CreateProject")
+    | :? Modal.LoadProject            -> None, importDefault (mdir+"LoadProject")
+    | :? Modal.ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
+    | :? Modal.AvailableProjects as m -> Some(box m.Projects), importDefault (mdir+"AvailableProjects")
+    | _ -> failwithf "Cannot render unknown modal %A" modal
+  let props =
+    createObj ["data" ==> data
+               "onSubmit" ==> fun res ->
+                CloseModal(modal, Choice1Of2 res) |> dispatch ]
+  div [ClassName "modal is-active"] [
+    div [
+      ClassName "modal-background"
+      OnClick (fun ev ->
+        ev.stopPropagation()
+        CloseModal(modal, Choice2Of2 ()) |> dispatch )
+    ] []
+    div [ClassName "modal-content"] [
+      div [ClassName "box"] [from com props []]
+    ]
+  ]
 
 module Values =
   let [<Literal>] gridLayoutColumns = 20
@@ -63,7 +91,7 @@ module TabsView =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (fun m -> m.view) |> opt
+      model.modal |> Option.map (makeModal dispatch) |> opt
     ]
 
 let view dispatch (model: Model) =
