@@ -6,6 +6,7 @@ open System
 open System.Collections.Generic
 open Iris.Raft
 open Iris.Core
+open Iris.Web.Notifications
 open Iris.Web.Core
 open Iris.Core.Commands
 open Fable.Core
@@ -13,24 +14,6 @@ open Fable.PowerPack
 open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
-
-let notify(msg: string) =
-  Browser.console.log(msg)
-
-  match !!Browser.window?Notification with
-  // Check if the browser supports notifications
-  | null -> Browser.console.log msg
-
-  // Check whether notification permissions have already been granted
-  | notify when !!notify?permission = "granted" ->
-    !!createNew notify msg
-
-  // Ask the user for permission
-  | notify when !!notify?permission <> "denied" ->
-    !!notify?requestPermission(function
-        | "granted" -> !!createNew notify msg
-        | _ -> ())
-  | _ -> ()
 
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
@@ -76,10 +59,10 @@ let postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
     else res.text() |> Promise.map (failwithf "%s"))
 
 let postCommandWithErrorNotifier defValue onSuccess cmd =
-  postCommand onSuccess (fun msg -> notify msg; defValue) cmd
+  postCommand onSuccess (fun msg -> Notifications.error msg; defValue) cmd
 
 let postCommandAndForget cmd =
-  postCommand ignore notify cmd
+  postCommand ignore Notifications.error cmd
 
 let listProjects() =
   ListProjects
@@ -134,7 +117,7 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
       | None   -> CloneProject(latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
 
-    notify commandMsg
+    Notifications.info commandMsg
 
     let active =
       latestState.Project.Config.ActiveSite
@@ -163,19 +146,27 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
     |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
   with
   | exn ->
-    sprintf "Cannot add new member: %s" exn.Message |> notify
+    exn.Message
+    |> sprintf "Cannot add new member: %s"
+    |> Notifications.error
 })
 
 let shutdown() =
-  Shutdown |> postCommand (fun _ -> notify "The service has been shut down") notify
+  Shutdown |> postCommand
+    (fun _ -> Notifications.info "The service has been shut down")
+    Notifications.error
 
 let saveProject() =
-  SaveProject |> postCommand (fun _ -> notify "The project has been saved") notify
+  SaveProject |> postCommand
+    (fun _ -> Notifications.success "The project has been saved")
+    Notifications.error
 
 let unloadProject() =
-  UnloadProject |> postCommand (fun _ ->
-    notify "The project has been unloaded"
-    Browser.location.reload()) notify
+  UnloadProject |> postCommand
+    (fun _ ->
+      Notifications.success "The project has been unloaded"
+      Browser.location.reload())
+    Notifications.error
 
 let setLogLevel(lv) =
   LogLevel.Parse(lv) |> SetLogLevel |> ClientContext.Singleton.Post
@@ -190,7 +181,7 @@ let loadProject(project: Name, username: UserName, pass: Password, site: NameAnd
     then
       ClientContext.Singleton.ConnectWithWebSocket()
       |> Promise.map (fun _msg -> // TODO: Check message?
-        notify "The project has been loaded successfully"
+        Notifications.success "The project has been loaded successfully"
         Browser.location.reload()
         None)
     else
@@ -200,13 +191,16 @@ let loadProject(project: Name, username: UserName, pass: Password, site: NameAnd
           || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
         then Some msg
         // We cannot deal with the error, just notify it
-        else notify msg; None
+        else
+          Notifications.error msg
+          None
       )
   )
 
 let getProjectSites(project, username, password) =
-  GetProjectSites(project, username, password)
-  |> postCommand ofJson<NameAndId[]> (fun msg -> notify msg; [||])
+  GetProjectSites(project, username, password) |> postCommand
+    ofJson<NameAndId[]>
+    (fun msg -> Notifications.error msg; [||])
 
 let createProject(projectName: string): JS.Promise<Name option> = promise {
   let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
@@ -220,10 +214,10 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
     |> CreateProject
     |> postCommand
       (fun _ ->
-        notify "The project has been created successfully"
+        Notifications.success "The project has been created successfully"
         Some (name projectName))
       (fun error ->
-        notify error
+        Notifications.error error
         None)
   return result
 }

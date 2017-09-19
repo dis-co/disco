@@ -5,6 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Notifications.fs" />
     <Compile Include="Browser.fs" />
     <Compile Include="Crypto.fs" />
     <Compile Include="Worker.fs" />

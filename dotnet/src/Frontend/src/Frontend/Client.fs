@@ -7,6 +7,7 @@ open Fable.Core
 open Fable.Import
 open Fable.Core.JsInterop
 open Fable.PowerPack
+open Iris.Web.Notifications
 open Iris.Core
 open Iris.Core.Commands
 
@@ -64,7 +65,7 @@ type ClientContext private () =
 
   member self.Start() = promise {
     let me = new SharedWorker<string>(Constants.WEB_WORKER_SCRIPT)
-    me.OnError <- fun e -> printfn "%A" e.Message
+    me.OnError <- fun e -> sprintf "%A" e.Message |> Notifications.error
     me.Port.OnMessage <- self.HandleMessageEvent
     worker <- Some me
     #if !DESIGN
@@ -86,7 +87,9 @@ type ClientContext private () =
         | None -> serviceInfo <- None
       with
       | err ->
-        printfn "Error parsing GetServiceInfo reply: %s" err.Message)
+        err.Message
+        |> sprintf "Error parsing GetServiceInfo reply: %s"
+        |> Notifications.error)
 
   member self.Session =
     match session with
@@ -134,14 +137,18 @@ type ClientContext private () =
     // initialize this client session variable
     | ClientMessage.Initialized(token) ->
       session <- Some(token)
-      printfn "Initialized with Session: %A" token // TODO: Log
+      token
+      |> sprintf "Initialized with Session: %A"
+      |> Notifications.info
 
     // close this clients session variable
     | ClientMessage.Closed(token) ->
-      printfn "A client closed its session: %A" token
+      token
+      |> sprintf "A client closed its session: %A"
+      |> Notifications.info
 
     | ClientMessage.Stopped ->
-      printfn "Worker stopped. TODO: Needs to be restarted"  // TODO: Log
+      Notifications.error "Worker stopped. TODO: Needs to be restarted"
       //self.Start() // TODO: Restart worker
 
     | ClientMessage.Event(_,ev) ->
@@ -166,13 +173,15 @@ type ClientContext private () =
 
     | ClientMessage.Connected ->
       Session.Empty self.Session |> AddSession |> self.Post
-      printfn "CONNECTED!" // TODO: Log
+      Notifications.info "WebSocket connection established"
 
     | ClientMessage.Disconnected ->
-      printfn "DISCONNECTED!" // TODO: Log
+      Notifications.warn "WebSocket connection closed"
 
     | ClientMessage.Error(reason) ->
-      printfn "SharedWorker Error: %A" reason // TODO: Log
+      reason
+      |> sprintf "SharedWorker Error: %A"
+      |> Notifications.error
 
     | msg -> printfn "Unknown Event: %A" msg // TODO: Log
 

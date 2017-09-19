@@ -7,6 +7,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Iris.Web.State
+open Iris.Web.Notifications
 open System
 open Fable.Import.React
 open Fable.Helpers.React
@@ -15,6 +16,7 @@ open Helpers
 open Types
 
 importSideEffects "react-grid-layout/css/styles.css"
+
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
 let createTestWidget: Guid -> IWidget = importDefault "../../js/widgets/TestWidget"
 
@@ -96,6 +98,7 @@ module TabsView =
     ]
 
 let view dispatch (model: Model) =
+  let mutable i = 0
   div [Id "app"] [
     com<Navbar.View,_,_> { Dispatch = dispatch; Model = model } []
     div [Id "app-content"] [
@@ -116,6 +119,8 @@ let view dispatch (model: Model) =
         ]
       ]
     ]
+
+    Notifications.root
   ]
 
 let root model dispatch =
