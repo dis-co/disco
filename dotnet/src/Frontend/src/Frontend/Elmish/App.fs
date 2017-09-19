@@ -38,9 +38,10 @@ let [<Literal>] private mdir = "../../js/modals/"
 let makeModal dispatch (modal: IModal): React.ReactElement =
   let data, com =
     match modal with
-    | :? Modal.AddMember              -> None, importDefault (mdir+"AddMember")
-    | :? Modal.CreateProject          -> None, importDefault (mdir+"CreateProject")
-    | :? Modal.LoadProject            -> None, importDefault (mdir+"LoadProject")
+    | :? Modal.AddMember              -> None,                 importDefault (mdir+"AddMember")
+    | :? Modal.CreateProject          -> None,                 importDefault (mdir+"CreateProject")
+    | :? Modal.LoadProject            -> None,                 importDefault (mdir+"LoadProject")
+    | :? Modal.Login as m             -> Some(box m.Project),  importDefault (mdir+"Login")
     | :? Modal.ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
     | :? Modal.AvailableProjects as m -> Some(box m.Projects), importDefault (mdir+"AvailableProjects")
     | _ -> failwithf "Cannot render unknown modal %A" modal

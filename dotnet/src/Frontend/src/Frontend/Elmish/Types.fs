@@ -53,6 +53,13 @@ module Modal =
   type AvailableProjects(projects: Name[]) =
     let mutable res = Unchecked.defaultof<_>
     member __.Projects = projects
+    member __.Result: Name option = res
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
+  type Login(project: Name) =
+    let mutable res = Unchecked.defaultof<_>
+    member __.Project = project
     member __.Result: IProjectInfo option = res
     interface IModal with
       member this.SetResult(v) = res <- unbox v
