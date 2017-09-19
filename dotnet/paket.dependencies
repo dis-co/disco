@@ -33,7 +33,7 @@ group Main
 group Fable
   storage:none
   source https://nuget.org/api/v2
-  clitool dotnet-fable ~> 1.1.24
+  clitool dotnet-fable
   nuget FSharp.Core
   nuget Fable.Core
   nuget Fable.Import.Node
