@@ -12,8 +12,8 @@ open Elmish
 open Types
 open Helpers
 
-let loadProject dispatch (info: IProjectInfo) =
-    Lib.loadProject(info.name, info.username, info.password, None, None)
+let loadProject dispatch site (info: IProjectInfo) =
+    Lib.loadProject(info.name, info.username, info.password, site, None)
     |> Promise.bind (function
       | Some err ->
         // Get project sites and machine config
@@ -28,20 +28,25 @@ let handleModalResult (modal: IModal) dispatch =
   | :? Modal.AddMember as m ->
     m.Result |> Lib.addMember
   | :? Modal.CreateProject as m ->
-    m.Result |> Lib.createProject |> Promise.start
+    m.Result
+    |> Lib.createProject
+    |> Promise.iter (function
+      | Some name -> Modal.Login(name) :> IModal |> OpenModal |> dispatch
+      | None -> ())
   | :? Modal.LoadProject as m ->
-    m.Result |> loadProject dispatch |> Promise.start
+    m.Result |> loadProject dispatch None |> Promise.start
   | :? Modal.AvailableProjects as m ->
     match m.Result with
-    | Some projInfo -> loadProject dispatch projInfo |> Promise.start
+    | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
+    | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.Login as m ->
+    match m.Result with
+    | Some projInfo ->
+      loadProject dispatch None projInfo |> Promise.start
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
   | :? Modal.ProjectConfig as m ->
     // Try loading the project again with the site config
-    Lib.loadProject(m.Info.name, m.Info.username, m.Info.password, Some m.Result, None)
-    |> Promise.iter (fun err ->
-      match err with
-      | Some err -> printfn "Error when loading site %A: %s"  m.Result err
-      | None -> ())
+    loadProject dispatch (Some m.Result) m.Info |> Promise.start
   | _ -> failwithf "Cannot handle unknown modal %A" modal
 
 let private hideModal modal dispatch =

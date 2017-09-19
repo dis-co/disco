@@ -182,7 +182,7 @@ let setLogLevel(lv) =
 
 let nullify _: 'a = null
 
-let rec loadProject(project: Name, username: UserName, pass: Password, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
+let loadProject(project: Name, username: UserName, pass: Password, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
   LoadProject(project, username, pass, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
@@ -208,16 +208,24 @@ let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password)
   |> postCommand ofJson<NameAndId[]> (fun msg -> notify msg; [||])
 
-let createProject(name: string): JS.Promise<unit> = promise {
+let createProject(projectName: string): JS.Promise<Name option> = promise {
   let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
-  do! { name     = name
-        ipAddr   = string machine.BindAddress
-        port     = unwrap machine.RaftPort
-        apiPort  = unwrap machine.ApiPort
-        wsPort   = unwrap machine.WsPort
-        gitPort  = unwrap machine.GitPort }
-      |> CreateProject
-      |> postCommand (fun _ -> notify "The project has been created successfully") notify
+  let! result =
+    { name     = projectName
+      ipAddr   = string machine.BindAddress
+      port     = unwrap machine.RaftPort
+      apiPort  = unwrap machine.ApiPort
+      wsPort   = unwrap machine.WsPort
+      gitPort  = unwrap machine.GitPort }
+    |> CreateProject
+    |> postCommand
+      (fun _ ->
+        notify "The project has been created successfully"
+        Some (name projectName))
+      (fun error ->
+        notify error
+        None)
+  return result
 }
 
 let updatePinValue(pin: Pin, index: int, value: obj) =
