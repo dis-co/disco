@@ -13,13 +13,14 @@ module StorageKeys =
 
 /// Widget names
 module Widgets =
-  let [<Literal>] Log = "LOG"
-  let [<Literal>] GraphView = "Graph View"
-  let [<Literal>] CuePlayer = "Cue Player"
+  let [<Literal>] Log         = "LOG"
+  let [<Literal>] GraphView   = "Graph View"
+  let [<Literal>] CuePlayer   = "Cue Player"
   let [<Literal>] ProjectView = "Project View"
-  let [<Literal>] Cluster = "Cluster"
-  let [<Literal>] PinMapping = "Pin Mappings"
-  let [<Literal>] Test = "Test"
+  let [<Literal>] Cluster     = "Cluster"
+  let [<Literal>] Clients     = "Clients"
+  let [<Literal>] PinMapping  = "Pin Mappings"
+  let [<Literal>] Test        = "Test"
 
 type IProjectInfo =
   abstract name: Name
