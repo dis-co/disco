@@ -34,6 +34,7 @@ let render dispatch () =
         card dispatch Widgets.PinMapping       "M" "Pin Mappings"
         card dispatch Widgets.ProjectView      "P" "Project Overview"
         card dispatch Widgets.Cluster          "R" "Cluster Settings"
+        card dispatch Widgets.Clients          "A" "Clients"
         card dispatch Widgets.Test             "T" "Test Widget"
         card dispatch "Discovery"              "D" "Cluster Settings"
         card dispatch "Unassigned Hosts"       "H" "Cluster Settings"
