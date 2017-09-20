@@ -28,15 +28,21 @@ let body dispatch (model: Model) =
       li [Key (string gid)] [
         yield div [] [str (unwrap group.Name)]
         yield! group.Pins |> Seq.map (fun (KeyValue(pid, pin)) ->
+          let updater =
+            match pin.PinConfiguration with
+            | PinConfiguration.Preset
+            | PinConfiguration.Sink ->
+              Some { new IUpdater with
+                        member __.Update(_, index, value) =
+                          Lib.updatePinValue(pin, index, value) }
+            // Source pins are not editable
+            | PinConfiguration.Source -> None
           com<PinView.PinView,_,_>
             { key = string pid
               pin = pin
               useRightClick = model.userConfig.useRightClick
               slices = None
-              updater =
-                Some { new IUpdater with
-                          member __.Update(_, index, value) =
-                            Lib.updatePinValue(pin, index, value) }
+              updater = updater
               onSelect = fun () -> pin |> Selected.Pin |> Msg.SelectElement |> dispatch
               onDragStart = Some(fun el ->
                 Drag.Pin pin |> Drag.start el) } [])
