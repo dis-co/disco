@@ -31,6 +31,7 @@ initWidgetFactory
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> ClusterView.createWidget(id)
         | Widgets.Clients -> ClientsView.createWidget(id)
+        | Widgets.Sessions -> SessionsView.createWidget(id)
         | Widgets.PinMapping -> PinMappingView.createWidget(id)
         | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name

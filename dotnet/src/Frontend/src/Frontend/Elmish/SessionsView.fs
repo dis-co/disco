@@ -1,4 +1,4 @@
-module Iris.Web.ClientsView
+module Iris.Web.SessionsView
 
 open System
 open System.Collections.Generic
@@ -33,28 +33,28 @@ let body dispatch (model: Model) =
     table [Class "iris-table"] [
       thead [] [
         tr [] [
-          th [Class "width-20"; padding5()] [str "Name"]
+          th [Class "width-20"; padding5()] [str "User"]
+          th [Class "width-20"; padding5()] [str "Id"]
           th [Class "width-15"] [str "IP"]
-          th [Class "width-25"] [str "Port"]
-          th [Class "width-15"] [str "Role"]
-          th [Class "width-15"] [str "Status"]
+          th [Class "width-25"] [str "User Agent"]
         ]
       ]
       tbody [] (
-        state.Clients
+        state.Sessions
         |> Seq.map (function
-          KeyValue(id,client) ->
+          KeyValue(id,session) ->
             tr [Key (string id)] [
               td [Class "width-20"; padding5AndTopBorder()] [
                 span [Class "iris-output iris-icon icon-host"] [
-                  str (unwrap client.Name)
+                  str "Admin"
                   span [Class "iris-icon icon-bull iris-status-on"] []
                 ]
               ]
-              td [Class "width-15"; topBorder()] [str (string client.IpAddress)]
-              td [Class "width-25"; topBorder()] [str (string client.Port)]
-              td [Class "width-15"; topBorder()] [str (string client.Role)]
-              td [Class "width-15"; topBorder()] [str (string client.Status)]
+              td [Class "width-20"; topBorder()] [
+                str (session.Id.Prefix())
+              ]
+              td [Class "width-15"; topBorder()] [str (string session.IpAddress)]
+              td [Class "width-25"; topBorder()] [str (string session.UserAgent)]
             ])
         |> Seq.toList
       )
@@ -63,7 +63,7 @@ let body dispatch (model: Model) =
 let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
-    member __.Name = Types.Widgets.Clients
+    member __.Name = Types.Widgets.Sessions
     member __.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
