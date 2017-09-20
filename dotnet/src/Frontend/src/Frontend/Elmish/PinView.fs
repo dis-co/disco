@@ -101,11 +101,15 @@ type PinView(props) =
     ] []
 
   member this.render() =
+    let pin = this.props.pin
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
-      | None -> this.props.pin.Slices.Length
-    let dirtyClass = if this.props.pin.Dirty then " iris-dirty" else ""
-    div [ClassName ("iris-pin" + dirtyClass) ] [
+      | None -> pin.Slices.Length
+    let classes =
+      ["iris-pin", true
+       "iris-dirty", pin.Dirty
+       "iris-persisted", pin.Persisted ]
+    div [classList classes] [
       table [] [this.RenderRows(rowCount, this.props.useRightClick, props.updater)]
     ]

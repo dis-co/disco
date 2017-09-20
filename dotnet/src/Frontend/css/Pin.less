@@ -51,17 +51,6 @@
   }
 }
 
-.iris-dirty {
-  .iris-pin-child {
-    td {
-      background-color: @pin-bg-color-dirty;
-      &:hover {
-        background-color: @pin-bg-color-dirty-hover;
-      }
-    }
-  }
-}
-
 .iris-pin-child {
   td {
     cursor: default;
@@ -132,3 +121,24 @@
     }
   }
 }
+
+// Special colors: Dirty, persisted
+.iris-dirty {
+  .iris-pin-child {
+    td {
+      background-color: @pin-bg-color-dirty;
+      &:hover {
+        background-color: @pin-bg-color-dirty-hover;
+      }
+    }
+  }
+}
+
+.iris-persisted {
+  .iris-pin-child {
+    td {
+      border: 2px @pin-border-persisted solid;
+    }
+  }
+}
+
