@@ -109,7 +109,9 @@ type PinView(props) =
     let classes =
       ["iris-pin", true
        "iris-dirty", pin.Dirty
-       "iris-persisted", pin.Persisted ]
+       "iris-persisted", pin.Persisted && pin.Online
+       "iris-offline", pin.Persisted && not pin.Online
+       ]
     div [classList classes] [
       table [] [this.RenderRows(rowCount, this.props.useRightClick, props.updater)]
     ]
