@@ -19,6 +19,7 @@ module Widgets =
   let [<Literal>] ProjectView = "Project View"
   let [<Literal>] Cluster     = "Cluster"
   let [<Literal>] Clients     = "Clients"
+  let [<Literal>] Sessions    = "Sessions"
   let [<Literal>] PinMapping  = "Pin Mappings"
   let [<Literal>] Test        = "Test"
 
@@ -28,7 +29,7 @@ type IProjectInfo =
   abstract password: Password
 
 type IModal =
-  abstract SetResult:obj->unit
+  abstract SetResult: obj -> unit
 
 /// Modal dialogs
 [<RequireQualifiedAccess>]
