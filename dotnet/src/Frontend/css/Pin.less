@@ -24,16 +24,10 @@
   background: @odd-row;
   height: 100%;
   > li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    .iris-pin-container;
     background: @odd-row;
-    padding: 4px 5px;
     &:nth-child(even) {
       background: @even-row;
-    }
-    > :first-child {
-      padding-right: 5px;
     }
   }
 }
