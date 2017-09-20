@@ -105,6 +105,7 @@ type PinView(props) =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> this.props.pin.Slices.Length
-    div [ClassName "iris-pin"] [
+    let dirtyClass = if this.props.pin.Dirty then " iris-dirty" else ""
+    div [ClassName ("iris-pin" + dirtyClass) ] [
       table [] [this.RenderRows(rowCount, this.props.useRightClick, props.updater)]
     ]
