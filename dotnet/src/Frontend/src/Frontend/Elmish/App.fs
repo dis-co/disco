@@ -33,6 +33,7 @@ initWidgetFactory
         | Widgets.Clients -> ClientsView.createWidget(id)
         | Widgets.Sessions -> SessionsView.createWidget(id)
         | Widgets.PinMapping -> PinMappingView.createWidget(id)
+        | Widgets.InspectorView -> InspectorView.createWidget(id)
         | Widgets.Test -> createTestWidget(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
@@ -73,7 +74,7 @@ module Values =
 
 module TabsView =
   let root dispatch (model: Model) =
-    div [Class "iris-tab-container"] [
+    div [ Class "iris-tab-container" ] [
       div [Class "tabs is-boxed"] [
         ul [] [
           li [Class "is-active"] [a [] [str "Workspace"]]

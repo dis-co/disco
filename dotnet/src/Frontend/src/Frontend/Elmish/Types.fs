@@ -13,15 +13,16 @@ module StorageKeys =
 
 /// Widget names
 module Widgets =
-  let [<Literal>] Log         = "LOG"
-  let [<Literal>] GraphView   = "Graph View"
-  let [<Literal>] CuePlayer   = "Cue Player"
-  let [<Literal>] ProjectView = "Project View"
-  let [<Literal>] Cluster     = "Cluster"
-  let [<Literal>] Clients     = "Clients"
-  let [<Literal>] Sessions    = "Sessions"
-  let [<Literal>] PinMapping  = "Pin Mappings"
-  let [<Literal>] Test        = "Test"
+  let [<Literal>] Log           = "LOG"
+  let [<Literal>] GraphView     = "Graph View"
+  let [<Literal>] CuePlayer     = "Cue Player"
+  let [<Literal>] ProjectView   = "Project View"
+  let [<Literal>] Cluster       = "Cluster"
+  let [<Literal>] Clients       = "Clients"
+  let [<Literal>] Sessions      = "Sessions"
+  let [<Literal>] PinMapping    = "Pin Mappings"
+  let [<Literal>] InspectorView = "Inspector View"
+  let [<Literal>] Test          = "Test"
 
 type IProjectInfo =
   abstract name: Name
@@ -112,6 +113,11 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
+  | SelectElement of Selected
+
+and Selected =
+  | Pin of Pin
+  | Nothing
 
 /// Elmish state model
 and Model =
@@ -120,6 +126,7 @@ and Model =
     modal: IModal option
     state: State option
     logs: LogEvent list
+    selected: Selected
     userConfig: UserConfig
   }
 

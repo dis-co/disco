@@ -39,7 +39,8 @@ type [<Pojo>] PinProps =
     useRightClick: bool
     slices: Slices option
     updater: IUpdater option
-    onDragStart: (Browser.Element -> unit) option }
+    onDragStart: (Browser.Element -> unit) option
+    onSelect: unit -> unit }
 
 type PinView(props) =
   inherit React.Component<PinProps, InputState>(props)
@@ -72,6 +73,9 @@ type PinView(props) =
             match this.props.onDragStart with
             | Some onDragStart -> onDragStart(el)
             | None -> ())
+          OnMouseUp (fun ev ->
+            ev.stopPropagation()
+            this.props.onSelect())
         ] [str name]
         firstRowValue
       ]
@@ -86,7 +90,7 @@ type PinView(props) =
             | None | Some(NullOrEmpty) -> sprintf "Slice%i" i
             | Some label -> label
           yield tr [Key (string i); ClassName "iris-pin-child"] [
-            td [] [str label]
+            td [] [ str label ]
             addInputView(i, this.ValueAt(i), "td", useRightClick, updater)
           ]
       ]

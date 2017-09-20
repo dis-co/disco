@@ -94,7 +94,8 @@ type [<Pojo>] private CueProps =
     CueGroupIndex: int
     SelectedCueIndex: int
     SelectedCueGroupIndex: int
-    SelectCue: int -> int -> unit }
+    SelectCue: int -> int -> unit
+    Dispatch: Elmish.Dispatch<Msg> }
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
@@ -224,6 +225,7 @@ type private CueView(props) =
                       Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
+                    onSelect = fun () -> pin |> Selected.Pin |> Msg.SelectElement |> this.props.Dispatch
                     onDragStart = None } []
             ])
           |> Array.toList
@@ -280,6 +282,7 @@ type CuePlayerView(props) =
           com<CueView,_,_>
             { key = string cueRef.Id
               State = state
+              Dispatch = this.props.Dispatch
               UseRightClick = this.props.Model.userConfig.useRightClick
               Cue = Lib.findCue cueRef.CueId state
               CueRef = cueRef

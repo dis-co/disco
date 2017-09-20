@@ -37,6 +37,7 @@ let body dispatch (model: Model) =
                 Some { new IUpdater with
                           member __.Update(_, index, value) =
                             Lib.updatePinValue(pin, index, value) }
+              onSelect = fun () -> pin |> Selected.Pin |> Msg.SelectElement |> dispatch
               onDragStart = Some(fun el ->
                 Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)

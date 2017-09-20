@@ -131,6 +131,7 @@ let init() =
       #else
       logs = []
       #endif
+      selected = Selected.Nothing
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -174,6 +175,8 @@ let update msg model: Model*Cmd<Msg> =
     { model with widgets = widgets; layout = layout }, []
   // | AddTab -> // Add tab and remove widget
   // | RemoveTab -> // Optional, add widget
+  | SelectElement selected ->
+    { model with selected = selected }, []
   | AddLog log ->
     { model with logs = log::model.logs }, []
   | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
