@@ -58,13 +58,13 @@
     font-weight: normal;
     padding: 1px 4px 1px 2px;
     color: #fff !important;
-    background-color: #555;
+    background-color: @pin-bg-color;
     &:first-child {
       padding-left: 6px;
       // border-right: white solid 1px
     }
     &:hover {
-      background-color: #7F7F7F;
+      background-color: @pin-bg-color-hover;
       transition: 0.1s;
     }
   }
@@ -99,7 +99,7 @@
 .iris-pin-end {
   padding: 0px;
   background: none;
-  border: 1px #555 solid;
+  border: 1px @pin-bg-color solid;
   border-top-right-radius: 13px;
   border-bottom-right-radius: 13px;
   border-left: none;
@@ -121,3 +121,32 @@
     }
   }
 }
+
+// Special colors: dirty, persisted, offline
+.iris-dirty {
+  .iris-pin-child {
+    td {
+      background-color: @pin-bg-color-dirty;
+      &:hover {
+        background-color: @pin-bg-color-dirty-hover;
+      }
+    }
+  }
+}
+
+.iris-persisted {
+  .iris-pin-child {
+    td {
+      border: 2px @pin-border-persisted solid;
+    }
+  }
+}
+
+.iris-offline {
+  .iris-pin-child {
+    td {
+      border: 2px @pin-border-offline solid;
+    }
+  }
+}
+
