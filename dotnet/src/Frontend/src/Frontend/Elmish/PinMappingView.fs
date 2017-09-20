@@ -27,12 +27,13 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-let renderPin (model: Model) (pin: Pin) =
+let renderPin (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pin.Id
       pin = pin
-      useRightClick = model.userConfig.useRightClick
-      slices = Some pin.Slices
+      // Not needed as the pin is not editable
+      useRightClick = false
+      slices = None
       updater = None
       onDragStart = None } []
 
@@ -40,7 +41,7 @@ type [<Pojo>] PinHoleProps =
   { Classes: string list
     Padding: bool
     AddPin: Pin -> unit
-    Render: unit -> ReactElement }
+    Render: unit -> ReactElement list }
 
 type [<Pojo>] PinHoleState =
   { IsHighlit: bool }
@@ -84,8 +85,9 @@ type PinHole(props) =
     td [classList classes
         Style [PaddingLeft (if this.props.Padding then "5px" else "0")
                Border "2px solid transparent"]
-        Ref (fun el -> selfRef <- Option.ofObj el)]
-       [this.props.Render()]
+        Ref (fun el -> selfRef <- Option.ofObj el)] [
+          div [Class "iris-pin-hole"] (this.props.Render())
+        ]
 
 type [<Pojo>] PinMappingProps =
   { Id: Guid
@@ -95,44 +97,68 @@ type [<Pojo>] PinMappingProps =
 
 type [<Pojo>] PinMappingState =
   { SourceCandidate: Pin option
-    SinkCandidates: Pin list }
+    SinkCandidates: Set<Pin> }
 
 type PinMappingView(props) =
   inherit Component<PinMappingProps, PinMappingState>(props)
-  do base.setInitState({ SourceCandidate = None; SinkCandidates = [] })
+  do base.setInitState({ SourceCandidate = None; SinkCandidates = Set.empty })
 
   member this.shouldComponentUpdate(nextProps, nextState, nextContext) =
-    match this.props.Model.state, nextProps.Model.state with
-    | Some s1, Some s2 ->
-      distinctRef s1.Project s2.Project
-    | None, None -> false
-    | _ -> true
+    if distinctRef this.state nextState then
+      true
+    else
+      match this.props.Model.state, nextProps.Model.state with
+      | Some s1, Some s2 ->
+        distinctRef s1 s2
+      | None, None -> false
+      | _ -> true
 
   member this.renderLastRow() =
     let disabled =
       Option.isNone this.state.SourceCandidate
-        || List.isEmpty this.state.SinkCandidates
+        || Set.isEmpty this.state.SinkCandidates
     tr [
-      Key "iris-add-pinmapping"
+      // Key "iris-add-pinmapping"
       Class "iris-add-pinmapping"
     ] [
       com<PinHole,_,_>
         { Classes = ["width-20"]
           Padding = true
-          AddPin = fun pin -> failwith "Add pin"
-          Render = fun () -> div [] [] } []
+          AddPin = fun pin ->
+            this.setState({ this.state with SourceCandidate = Some pin })
+          Render = fun () ->
+            [ this.state.SourceCandidate
+              |> Option.map renderPin
+              |> opt ]
+        } []
       com<PinHole,_,_>
         { Classes = ["width-75"]
           Padding = true
-          AddPin = fun pin -> failwith "Add pin"
-          Render = fun () -> div [] [] } []
+          AddPin = fun pin ->
+            let sinks = this.state.SinkCandidates
+            this.setState({ this.state with SinkCandidates = Set.add pin sinks })
+          Render = fun () ->
+            this.state.SinkCandidates
+            |> Seq.map renderPin
+            |> Seq.toList
+         } []
       td [Class "width-5"] [
         button [
           Class "iris-button iris-icon icon-more"
           Disabled disabled
           OnClick (fun ev ->
             ev.stopPropagation()
-            printfn "TODO: Add PinMapping")
+            let { SourceCandidate = source; SinkCandidates = sinks } = this.state
+            match source with
+            | Some source when not(Set.isEmpty sinks) ->
+                this.setState({SourceCandidate = None; SinkCandidates = Set.empty})
+                { Id = IrisId.Create()
+                  Source = source.Id
+                  Sinks = sinks |> Set.map (fun s -> s.Id) }
+                |> AddPinMapping |> ClientContext.Singleton.Post
+            // In this case the button shouldn't be enabled, but just in case
+            // don't do anything if source or sinks are empty
+            | _ -> ())
         ] []
       ]
     ]
@@ -151,12 +177,12 @@ type PinMappingView(props) =
         match model.state with
         | Some state ->
           for kv in state.PinMappings do
+            let pinMapping = kv.Value
             let source =
-              Lib.findPin kv.Value.Source state
-              |> renderPin model
+              Lib.findPin pinMapping.Source state |> renderPin
             let sinks =
-              kv.Value.Sinks
-              |> Seq.map (fun id -> Lib.findPin id state |> renderPin model)
+              pinMapping.Sinks
+              |> Seq.map (fun id -> Lib.findPin id state |> renderPin)
               |> Seq.toList
             yield tr [Key (string kv.Key)] [
               td [Class "width-20"; padding5AndTopBorder()] [source]
@@ -166,7 +192,7 @@ type PinMappingView(props) =
                   Class "iris-button iris-icon icon-close"
                   OnClick (fun ev ->
                     ev.stopPropagation()
-                    printfn "TODO: Remove PinMapping")
+                    RemovePinMapping pinMapping |> ClientContext.Singleton.Post)
                 ] []
               ]
             ]
