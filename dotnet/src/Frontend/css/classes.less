@@ -4,19 +4,28 @@
   cursor: pointer;
 }
 
-.iris-add-pinmapping {
-  background-color: lighten(gray, 40%);
-  // height: 100%;
-  // width: 100%;
-  .iris-pin-hole {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    flex-direction: row;
-    padding: 4px 5px;
-    > :first-child {
-      padding-right: 5px;
+.iris-pin-container {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-direction: row;
+  padding: 4px 5px;
+  > :first-child {
+    padding-right: 5px;
+  }
+}
+
+.iris-pinmapping {
+  .iris-pinmapping-row {
+    .iris-pinmapping-source, .iris-pinmapping-sinks {
+      .iris-pin-container;
+    }
+  }
+  .iris-pinmapping-add {
+    background-color: lighten(gray, 40%);
+    .iris-pin-hole {
+      .iris-pin-container;
     }
   }
 }

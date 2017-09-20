@@ -117,10 +117,7 @@ type PinMappingView(props) =
     let disabled =
       Option.isNone this.state.SourceCandidate
         || Set.isEmpty this.state.SinkCandidates
-    tr [
-      // Key "iris-add-pinmapping"
-      Class "iris-add-pinmapping"
-    ] [
+    tr [Class "iris-pinmapping-add"] [
       com<PinHole,_,_>
         { Classes = ["width-20"]
           Padding = true
@@ -165,7 +162,7 @@ type PinMappingView(props) =
 
   member this.renderBody() =
     let model = this.props.Model
-    table [Class "iris-table"] [
+    table [Class "iris-pinmapping iris-table"] [
       thead [] [
         tr [] [
           th [Class "width-20"; padding5()] [str "Source"]
@@ -184,9 +181,13 @@ type PinMappingView(props) =
               pinMapping.Sinks
               |> Seq.map (fun id -> Lib.findPin id state |> renderPin)
               |> Seq.toList
-            yield tr [Key (string kv.Key)] [
-              td [Class "width-20"; padding5AndTopBorder()] [source]
-              td [Class "width-75"; topBorder()] sinks
+            yield tr [Key (string kv.Key); Class "iris-pinmapping-row"] [
+              td [Class "width-20"; padding5AndTopBorder()] [
+                div [Class "iris-pinmapping-source"] [source]
+              ]
+              td [Class "width-75"; topBorder()] [
+                div [Class "iris-pinmapping-sinks"] sinks
+              ]
               td [Class "width-5"; topBorder()] [
                 button [
                   Class "iris-button iris-icon icon-close"
