@@ -31,10 +31,64 @@ let inline private topBorder() =
 let inline private padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-let private renderNameRow (pin: Pin) =
-  tr [Key (string "")] [
-    td [Class "width-15"; topBorder()] [str "Name"]
-    td [Class "width-15"; topBorder()] [str (string pin.Name)]
+let private leftColumn =
+  Style [
+    PaddingLeft  "10px"
+    BorderTop   "1px solid lightgray"
+    BorderRight "1px solid lightgray"
+  ]
+
+let private rightColumn =
+  Style [
+    PaddingLeft "10px"
+    BorderTop   "1px solid lightgray"
+  ]
+
+let private leftSub =
+  Style [
+    BorderRight  "1px solid lightgray"
+  ]
+
+let private rightSub =
+  Style [
+    PaddingLeft "10px"
+  ]
+
+let private renderRow (tag: string) (value: string) =
+  tr [Key tag] [
+    td [Class "width-10";  leftColumn ] [str tag]
+    td [Class "width-30"; rightColumn ] [str value]
+  ]
+
+let private renderSub (tag: string) (value: string) =
+  tr [Key tag] [
+    td [Class "width-5";  leftSub ] [str (tag + ":")]
+    td [Class "width-30"; rightSub ] [str value]
+  ]
+
+let private renderSlices (tag: string) (slices: Slices) =
+  let slices =
+    slices.Map (function
+    | StringSlice(idx, value) -> renderSub (string idx) (string value)
+    | NumberSlice(idx, value) -> renderSub (string idx) (string value)
+    | BoolSlice(idx, value)   -> renderSub (string idx) (string value)
+    | ByteSlice(idx, value)   -> renderSub (string idx) (string value)
+    | EnumSlice(idx, value)   -> renderSub (string idx) (string value)
+    | ColorSlice(idx, value)  -> renderSub (string idx) (string value))
+    |> List.ofArray
+  tr [ Key tag ] [
+    td [Class "width-10"; leftColumn  ] [ str tag ]
+    td [Class "width-30"; rightColumn ] [
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [ leftSub ]  [ str "Index"]
+            th [ rightSub ] [ str "Value"]
+          ]
+        ]
+        tbody [] slices
+      ]
+    ]
   ]
 
 ///  ____        _     _ _
@@ -47,13 +101,25 @@ module PinInspector =
 
   let render (pin: Pin) =
     table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "Name"]
-          th [Class "width-15"] [str "Value"]
-        ]
-      ]
       tbody [] [
-        renderNameRow pin
+        renderRow "Id"            (string pin.Id)
+        renderRow "Name"          (string pin.Name)
+        renderRow "Type"          (string pin.Type)
+        renderRow "Configuration" (string pin.PinConfiguration)
+        renderRow "VecSize"       (string pin.VecSize)
+        renderRow "Clients"       (string pin.ClientId)
+        renderRow "Group"         (string pin.PinGroupId)
+        renderRow "Online"        (string pin.Online)
+        renderRow "Persisted"     (string pin.Persisted)
+        renderRow "Dirty"         (string pin.Dirty)
+        renderRow "Labels"        (string pin.Labels)
+        renderRow "Tags"          (string pin.GetTags)
+        renderSlices "Values"     pin.Slices
+      ]
+      tfoot [] [
+        tr [] [
+          td [ leftColumn  ] []
+          td [ rightColumn ] []
+        ]
       ]
     ]

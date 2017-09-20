@@ -23,7 +23,15 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-let empty = div [] [ str "Nothing selected." ]
+let empty =
+  let styles =
+    Style [
+      PaddingTop "10px"
+      TextAlign "center"
+    ]
+  div [ styles ] [
+    str "Nothing selected."
+  ]
 
 let private body dispatch (model: Model) =
   match model.selected with
