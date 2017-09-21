@@ -73,7 +73,7 @@ module PinInspector =
                   td [ Common.leftSub  ] [ str ((client.Prefix()) + " (orphaned)") ]
                   td [ Common.rightSub ] [ str "Offline" ]
                 ])
-      Common.tableRow tag [ "Name/Id"; "Status" ] clients
+      Common.tableRow tag [ ""; "" ] clients
 
   let private renderGroup (tag: string) dispatch (model: Model) (pin: Pin) =
     match model.state with
@@ -85,14 +85,13 @@ module PinInspector =
       |> List.map
         (fun (client, group) ->
           tr [ Key (string client) ] [
-            td [
-              Style [ Cursor "pointer" ]
-              OnClick (fun _ -> Select.group dispatch group)
-            ] [
-              str (string group.Name + " on " + (group.ClientId.Prefix()))
+            td [] [
+              Common.link
+                (string group.Name)
+                (fun _ -> Select.group dispatch group)
             ]
           ])
-      |> Common.tableRow tag [ "Group on Host" ]
+      |> Common.tableRow tag [ "" ]
 
   let render dispatch (model: Model) (pin: Pin) =
     Common.render "Pin" [
