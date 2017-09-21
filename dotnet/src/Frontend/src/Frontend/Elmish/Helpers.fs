@@ -147,3 +147,17 @@ module Array =
         else
           xs2.[j] <- xs.[j - 1]
       xs2
+
+module Select =
+
+  let pin dispatch pin =
+    pin |> Selected.Pin |> Msg.SelectElement |> dispatch
+
+  let group dispatch group =
+    group |> Selected.PinGroup |> Msg.SelectElement |> dispatch
+
+  let client dispatch client =
+    client |> Selected.Client |> Msg.SelectElement |> dispatch
+
+  let nothing dispatch =
+    Selected.Nothing |> Msg.SelectElement |> dispatch

@@ -1,4 +1,4 @@
-module Iris.Web.Inspectors
+namespace Iris.Web.Inspectors
 
 open System
 open System.Collections.Generic
@@ -12,84 +12,9 @@ open Fable.PowerPack
 open Elmish.React
 open Iris.Core
 open Iris.Web.Core
-open Helpers
+open Iris.Web.Helpers
+open Iris.Web.Types
 open State
-open Types
-
-///  ____       _            _
-/// |  _ \ _ __(_)_   ____ _| |_ ___
-/// | |_) | '__| \ \ / / _` | __/ _ \
-/// |  __/| |  | |\ V / (_| | ||  __/
-/// |_|   |_|  |_| \_/ \__,_|\__\___|
-
-let inline private padding5() =
-  Style [PaddingLeft "5px"]
-
-let inline private topBorder() =
-  Style [BorderTop "1px solid lightgray"]
-
-let inline private padding5AndTopBorder() =
-  Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
-
-let private leftColumn =
-  Style [
-    PaddingLeft  "10px"
-    BorderTop   "1px solid lightgray"
-    BorderRight "1px solid lightgray"
-  ]
-
-let private rightColumn =
-  Style [
-    PaddingLeft "10px"
-    BorderTop   "1px solid lightgray"
-  ]
-
-let private leftSub =
-  Style [
-    BorderRight  "1px solid lightgray"
-  ]
-
-let private rightSub =
-  Style [
-    PaddingLeft "10px"
-  ]
-
-let private renderRow (tag: string) (value: string) =
-  tr [Key tag] [
-    td [Class "width-10";  leftColumn ] [str tag]
-    td [Class "width-30"; rightColumn ] [str value]
-  ]
-
-let private renderSub (tag: string) (value: string) =
-  tr [Key tag] [
-    td [Class "width-5";  leftSub ] [str (tag + ":")]
-    td [Class "width-30"; rightSub ] [str value]
-  ]
-
-let private renderSlices (tag: string) (slices: Slices) =
-  let slices =
-    slices.Map (function
-    | StringSlice(idx, value) -> renderSub (string idx) (string value)
-    | NumberSlice(idx, value) -> renderSub (string idx) (string value)
-    | BoolSlice(idx, value)   -> renderSub (string idx) (string value)
-    | ByteSlice(idx, value)   -> renderSub (string idx) (string value)
-    | EnumSlice(idx, value)   -> renderSub (string idx) (string value)
-    | ColorSlice(idx, value)  -> renderSub (string idx) (string value))
-    |> List.ofArray
-  tr [ Key tag ] [
-    td [Class "width-10"; leftColumn  ] [ str tag ]
-    td [Class "width-30"; rightColumn ] [
-      table [Class "iris-table"] [
-        thead [] [
-          tr [] [
-            th [ leftSub ]  [ str "Index"]
-            th [ rightSub ] [ str "Value"]
-          ]
-        ]
-        tbody [] slices
-      ]
-    ]
-  ]
 
 ///  ____        _     _ _
 /// |  _ \ _   _| |__ | (_) ___
@@ -99,27 +24,89 @@ let private renderSlices (tag: string) (slices: Slices) =
 
 module PinInspector =
 
-  let render (pin: Pin) =
-    table [Class "iris-table"] [
-      tbody [] [
-        renderRow "Id"            (string pin.Id)
-        renderRow "Name"          (string pin.Name)
-        renderRow "Type"          (string pin.Type)
-        renderRow "Configuration" (string pin.PinConfiguration)
-        renderRow "VecSize"       (string pin.VecSize)
-        renderRow "Clients"       (string pin.ClientId)
-        renderRow "Group"         (string pin.PinGroupId)
-        renderRow "Online"        (string pin.Online)
-        renderRow "Persisted"     (string pin.Persisted)
-        renderRow "Dirty"         (string pin.Dirty)
-        renderRow "Labels"        (string pin.Labels)
-        renderRow "Tags"          (string pin.GetTags)
-        renderSlices "Values"     pin.Slices
-      ]
-      tfoot [] [
-        tr [] [
-          td [ leftColumn  ] []
-          td [ rightColumn ] []
-        ]
-      ]
+  let private renderValue (tag: string) (value: string) =
+    tr [Key tag] [
+      td [Class "width-5";  Common.leftSub  ] [str (tag + ":")]
+      td [Class "width-30"; Common.rightSub ] [str value]
+    ]
+
+  let private renderSlices (tag: string) (slices: Slices) =
+    slices.Map (function
+    | StringSlice(idx, value) -> renderValue (string idx) (string value)
+    | NumberSlice(idx, value) -> renderValue (string idx) (string value)
+    | BoolSlice(idx, value)   -> renderValue (string idx) (string value)
+    | ByteSlice(idx, value)   -> renderValue (string idx) (string value)
+    | EnumSlice(idx, value)   -> renderValue (string idx) (string value)
+    | ColorSlice(idx, value)  -> renderValue (string idx) (string value))
+    |> List.ofArray
+    |> Common.tableRow tag [ "Index"; "Value" ]
+
+  let private renderClients (tag: string) dispatch (model: Model) (pin: Pin) =
+    match model.state with
+    | None -> Common.row tag [ str (string pin.ClientId) ]
+    | Some state ->
+      let clients =
+        state.PinGroups
+        |> PinGroupMap.findGroupBy (PinGroup.contains pin.Id)
+        |> Map.toList
+        |> List.map
+          (fun (client,_) ->
+            match Map.tryFind client state.Clients with
+            | Some client ->
+              tr [ Key (string pin.Id) ] [
+                td [
+                  Common.leftSub
+                  Style [ Cursor "pointer" ]
+                  OnClick (fun _ -> Select.client dispatch client)
+                ] [ str (string client.Name)   ]
+                td [ Common.rightSub ] [ str (string client.Status) ]
+              ]
+            | None ->
+              match ClientConfig.tryFind client state.Project.Config.Clients with
+              | Some config ->
+                tr [ Key (string pin.Id) ] [
+                  td [ Common.leftSub  ] [ str (config.Id.Prefix())   ]
+                  td [ Common.rightSub ] [ str "Offline" ]
+                ]
+              | None ->
+                tr [ Key (string pin.Id) ] [
+                  td [ Common.leftSub  ] [ str ((client.Prefix()) + " (orphaned)") ]
+                  td [ Common.rightSub ] [ str "Offline" ]
+                ])
+      Common.tableRow tag [ "Name/Id"; "Status" ] clients
+
+  let private renderGroup (tag: string) dispatch (model: Model) (pin: Pin) =
+    match model.state with
+    | None -> Common.row tag [ str (string pin.PinGroupId) ]
+    | Some state ->
+      state.PinGroups
+      |> PinGroupMap.findGroupBy (fun group -> group.Id = pin.PinGroupId)
+      |> Map.toList
+      |> List.map
+        (fun (client, group) ->
+          tr [ Key (string client) ] [
+            td [
+              Style [ Cursor "pointer" ]
+              OnClick (fun _ -> Select.group dispatch group)
+            ] [
+              str (string group.Name + " on " + (group.ClientId.Prefix()))
+            ]
+          ])
+      |> Common.tableRow tag [ "Group on Host" ]
+
+  let render dispatch (model: Model) (pin: Pin) =
+    Common.render "Pin" [
+      Common.stringRow "Id"            (string pin.Id)
+      Common.stringRow "Name"          (string pin.Name)
+      Common.stringRow "Type"          (string pin.Type)
+      Common.stringRow "Configuration" (string pin.PinConfiguration)
+      Common.stringRow "VecSize"       (string pin.VecSize)
+      renderClients    "Clients"        dispatch model pin
+      renderGroup      "Group"          dispatch model pin
+      Common.stringRow "Online"        (string pin.Online)
+      Common.stringRow "Persisted"     (string pin.Persisted)
+      Common.stringRow "Dirty"         (string pin.Dirty)
+      Common.stringRow "Labels"        (string pin.Labels)
+      Common.stringRow "Tags"          (string pin.GetTags)
+      renderSlices     "Values"         pin.Slices
     ]

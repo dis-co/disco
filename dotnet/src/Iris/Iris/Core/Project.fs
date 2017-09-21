@@ -211,6 +211,11 @@ module ClientConfig =
       lst
     |> ClientConfig
 
+  // ** tryFind
+
+  let tryFind (client: ClientId) = function
+    | ClientConfig map -> Map.tryFind client map
+
 // * TimingConfig
 
 //  _____ _           _              ____             __ _

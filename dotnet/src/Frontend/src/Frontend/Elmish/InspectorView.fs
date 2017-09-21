@@ -35,8 +35,10 @@ let empty =
 
 let private body dispatch (model: Model) =
   match model.selected with
-  | Pin pin -> PinInspector.render pin
-  | Nothing -> empty
+  | Pin      pin    -> PinInspector.render      dispatch model pin
+  | PinGroup group  -> PinGroupInspector.render dispatch model group
+  | Client   client -> ClientInspector.render   dispatch model client
+  | Nothing         -> empty
 
 ///  ____        _     _ _
 /// |  _ \ _   _| |__ | (_) ___
@@ -45,7 +47,6 @@ let private body dispatch (model: Model) =
 /// |_|    \__,_|_.__/|_|_|\___|
 
 let createWidget(id: System.Guid) =
-  let mutable previousPin: Pin option = None
   { new IWidget with
     member __.Id = id
     member __.Name = Types.Widgets.InspectorView

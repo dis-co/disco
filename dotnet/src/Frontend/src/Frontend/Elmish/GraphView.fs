@@ -26,7 +26,10 @@ let body dispatch (model: Model) =
   ul [Class "iris-graphview"] (
     pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
       li [Key (string gid)] [
-        yield div [] [str (unwrap group.Name)]
+        yield div [
+            OnClick (fun _ -> Select.group dispatch group)
+            Style [ Cursor "pointer" ]
+          ] [str (unwrap group.Name)]
         yield! group.Pins |> Seq.map (fun (KeyValue(pid, pin)) ->
           let updater =
             match pin.PinConfiguration with
@@ -43,7 +46,7 @@ let body dispatch (model: Model) =
               useRightClick = model.userConfig.useRightClick
               slices = None
               updater = updater
-              onSelect = fun () -> pin |> Selected.Pin |> Msg.SelectElement |> dispatch
+              onSelect = fun () -> Select.pin dispatch pin
               onDragStart = Some(fun el ->
                 Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)

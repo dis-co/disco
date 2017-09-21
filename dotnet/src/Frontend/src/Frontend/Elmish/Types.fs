@@ -116,7 +116,9 @@ and Msg =
   | SelectElement of Selected
 
 and Selected =
-  | Pin of Pin
+  | Pin      of Pin
+  | PinGroup of PinGroup
+  | Client   of IrisClient
   | Nothing
 
 /// Elmish state model
