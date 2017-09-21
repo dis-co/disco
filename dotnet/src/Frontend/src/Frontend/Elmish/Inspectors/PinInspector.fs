@@ -94,7 +94,7 @@ module PinInspector =
       |> Common.tableRow tag [ "" ]
 
   let render dispatch (model: Model) (pin: Pin) =
-    Common.render "Pin" [
+    Common.render dispatch model "Pin" [
       Common.stringRow "Id"            (string pin.Id)
       Common.stringRow "Name"          (string pin.Name)
       Common.stringRow "Type"          (string pin.Type)

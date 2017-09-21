@@ -131,6 +131,7 @@ let init() =
       #else
       logs = []
       #endif
+      history = []
       selected = Selected.Nothing
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
@@ -175,6 +176,9 @@ let update msg model: Model*Cmd<Msg> =
     { model with widgets = widgets; layout = layout }, []
   // | AddTab -> // Add tab and remove widget
   // | RemoveTab -> // Optional, add widget
+  | Navigate dir ->
+    printfn "direction: %A" dir
+    model, []
   | SelectElement selected ->
     { model with selected = selected }, []
   | AddLog log ->

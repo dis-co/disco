@@ -23,14 +23,17 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-let empty =
-  let styles =
-    Style [
-      PaddingTop "10px"
-      TextAlign "center"
+let empty dispatch model =
+  div [] [
+    Common.bar dispatch model
+    div [
+      Style [
+        PaddingTop "10px"
+        TextAlign "center"
+      ]
+    ] [
+      str "Nothing selected."
     ]
-  div [ styles ] [
-    str "Nothing selected."
   ]
 
 let private body dispatch (model: Model) =
@@ -39,7 +42,7 @@ let private body dispatch (model: Model) =
   | PinGroup group  -> PinGroupInspector.render dispatch model group
   | Client   client -> ClientInspector.render   dispatch model client
   | Member   mem    -> MemberInspector.render   dispatch model mem
-  | Nothing         -> empty
+  | Nothing         -> empty dispatch model
 
 ///  ____        _     _ _
 /// |  _ \ _   _| |__ | (_) ___

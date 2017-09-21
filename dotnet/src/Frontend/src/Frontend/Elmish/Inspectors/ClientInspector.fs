@@ -56,7 +56,7 @@ module ClientInspector =
       |> fun list -> Common.row tag [ list ]
 
   let render dispatch (model: Model) (client: IrisClient) =
-    Common.render "Client" [
+    Common.render dispatch model "Client" [
       Common.stringRow "Id"         (string client.Id)
       Common.stringRow "Name"       (string client.Name)
       Common.stringRow "Role"       (string client.Role)

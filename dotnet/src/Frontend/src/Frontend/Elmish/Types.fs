@@ -115,6 +115,7 @@ and Msg =
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
   | SelectElement of Selected
+  | Navigate of BrowseHistory
 
 and Selected =
   | Pin      of Pin
@@ -123,6 +124,10 @@ and Selected =
   | Member   of RaftMember
   | Nothing
 
+and BrowseHistory =
+  | Previous
+  | Next
+
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
@@ -130,6 +135,7 @@ and Model =
     modal: IModal option
     state: State option
     logs: LogEvent list
+    history: Selected list
     selected: Selected
     userConfig: UserConfig
   }

@@ -164,3 +164,11 @@ module Select =
 
   let nothing dispatch =
     Selected.Nothing |> Msg.SelectElement |> dispatch
+
+module Navigate =
+
+  let back dispatch =
+    BrowseHistory.Previous |> Msg.Navigate |> dispatch
+
+  let forward dispatch =
+    BrowseHistory.Next |> Msg.Navigate |> dispatch

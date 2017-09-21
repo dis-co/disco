@@ -18,6 +18,33 @@ open State
 
 module Common =
 
+  let bar dispatch (model: Model) =
+    let disabled = List.isEmpty model.history
+    div [
+      Style [
+        BackgroundColor "lightgrey"
+        Height "20px"
+        PaddingLeft "6px"
+      ]
+    ] [
+      button [
+        Style [
+          Height "100%"
+          Width "40px"
+        ]
+        Disabled disabled
+        OnClick (fun _ -> Navigate.back dispatch)
+      ] [ str "<"]
+      button [
+        Style [
+          Height "100%"
+          Width "40px"
+        ]
+        Disabled disabled
+        OnClick (fun _ -> Navigate.forward dispatch)
+      ] [ str ">"]
+    ]
+
   let inline padding5() =
     Style [PaddingLeft "5px"]
 
@@ -103,9 +130,12 @@ module Common =
       ]
     ]
 
-  let render (title: string) children =
-    table [Class "iris-table"] [
-      header title
-      tbody [] children
-      footer
+  let render dispatch model (title: string) children =
+    div [] [
+      bar dispatch model
+      table [Class "iris-table"] [
+        header title
+        tbody [] children
+        footer
+      ]
     ]

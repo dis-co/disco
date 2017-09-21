@@ -73,7 +73,7 @@ module PinGroupInspector =
     tr [] []
 
   let render dispatch (model: Model) (group: PinGroup) =
-    Common.render "Pin Group" [
+    Common.render dispatch model "Pin Group" [
       Common.stringRow "Id"         (string group.Id)
       Common.stringRow "Name"       (string group.Name)
       Common.stringRow "Path"       (string group.Path)

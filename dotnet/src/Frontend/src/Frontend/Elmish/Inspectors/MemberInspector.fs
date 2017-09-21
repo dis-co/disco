@@ -37,7 +37,7 @@ module MemberInspector =
       |> fun list -> Common.row tag [ list ]
 
   let render dispatch (model: Model) (mem: RaftMember) =
-    Common.render "Cluster Member" [
+    Common.render dispatch model "Cluster Member" [
       Common.stringRow "Id"             (string mem.Id)
       Common.stringRow "Host Name"      (string mem.HostName)
       Common.stringRow "Raft State"     (string mem.State)
