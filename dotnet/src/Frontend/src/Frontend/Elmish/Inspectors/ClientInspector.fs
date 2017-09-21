@@ -26,6 +26,11 @@ module ClientInspector =
 
   let render dispatch (model: Model) (client: IrisClient) =
     Common.render "Client" [
-      Common.stringRow "Id"   (string client.Id)
-      Common.stringRow "Name" (string client.Name)
+      Common.stringRow "Id"         (string client.Id)
+      Common.stringRow "Name"       (string client.Name)
+      Common.stringRow "Role"       (string client.Role)
+      Common.stringRow "Status"     (string client.Status)
+      Common.stringRow "IP Address" (string client.IpAddress)
+      Common.stringRow "Port"       (string client.Port)
+      Common.stringRow "Machine"    (string client.ServiceId)
     ]

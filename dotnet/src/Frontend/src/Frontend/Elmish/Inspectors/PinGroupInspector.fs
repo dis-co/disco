@@ -47,9 +47,9 @@ module PinGroupInspector =
       ul [ Class "iris-graphview" ] pins
     ]
 
-  let private renderClients tag dispatch model group =
+  let private renderClients tag dispatch model (group: PinGroup) =
     match model.state with
-    | None -> []
+    | None -> Common.row tag []
     | Some state ->
       state.PinGroups
       |> PinGroupMap.findGroupBy (fun g -> g.Id = group.Id)
@@ -57,13 +57,16 @@ module PinGroupInspector =
       |> List.map
         (fun (clientId,group) ->
           match Map.tryFind clientId state.Clients with
-          | Some client -> li [] [ str (string client.Name) ]
+          | Some client ->
+            li [
+              OnClick (fun _ -> Select.client dispatch client)
+              Style [ Cursor "pointer" ]
+            ] [ str (string client.Name) ]
           | None ->
             match ClientConfig.tryFind clientId state.Project.Config.Clients with
             | Some exe -> li [] [ str (string exe.Id) ]
             | None -> li [] [ str (string clientId + " (orphaned)") ])
-      |> fun clients -> [ ul [] clients ]
-      |> Common.row tag
+      |> fun clients -> Common.row tag [ ul [] clients ]
 
   let private renderRefersTo tag dispatch (model: Model) (group: PinGroup) =
     tr [] []

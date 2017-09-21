@@ -45,7 +45,11 @@ let body dispatch (model: Model) =
         |> Seq.map (function
           KeyValue(id,client) ->
             tr [Key (string id)] [
-              td [Class "width-20"; padding5AndTopBorder()] [
+              td [
+                Class "width-20"
+                padding5AndTopBorder()
+                OnClick (fun _ -> Select.client dispatch client)
+              ] [
                 span [Class "iris-output iris-icon icon-host"] [
                   str (unwrap client.Name)
                   span [Class "iris-icon icon-bull iris-status-on"] []

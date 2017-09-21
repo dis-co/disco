@@ -72,7 +72,7 @@ let makeStringPin clientId gid pid pk values =
     // Using Sink makes the pin editable
     Pin.Sink.string pid (name pk) gid clientId values |> Some
 
-let makePin clientId gid pk (v: obj) =
+let makePin gid clientId pk (v: obj) =
     let pid = IrisId.Create()
     match v with
     | IsJsArray ar ->
@@ -96,47 +96,70 @@ let makePin clientId gid pk (v: obj) =
         Pin.Sink.string pid (name pk) gid clientId [|x|] |> Some
     | x -> failParse gid pk x
 
-let pinGroups: seq<PinGroup> =
-    let clientId = IrisId.Create()
-    let pinGroups: obj = Node.Globals.require.Invoke("../data/pingroups.json")
-    JS.Object.keys(pinGroups)
-    |> Seq.map (fun gk ->
-        let g = box pinGroups?(gk)
-        let gid = IrisId.Create()
-        let pins =
-            JS.Object.keys(g)
-            |> Seq.choose (fun pk ->
-                box g?(pk) |> makePin clientId gid pk)
-            |> Seq.map (fun pin -> pin.Id, pin)
-            |> Map
-        { Id = gid
-          Name = name gk
-          ClientId = clientId
-          RefersTo = None
-          Pins = pins
-          Path = None })
+let pinGroups clientId : seq<PinGroup> =
+  let pinGroups: obj = Node.Globals.require.Invoke("../data/pingroups.json")
+  JS.Object.keys(pinGroups)
+  |> Seq.map (fun gk ->
+      let g = box pinGroups?(gk)
+      let gid = IrisId.Create()
+      let pins =
+          JS.Object.keys(g)
+          |> Seq.choose (fun pk ->
+              box g?(pk) |> makePin gid clientId pk)
+          |> Seq.map (fun pin -> pin.Id, pin)
+          |> Map
+      { Id = gid
+        Name = name gk
+        ClientId = clientId
+        RefersTo = None
+        Pins = pins
+        Path = None })
+
+let makeClient service (name: Name) : IrisClient =
+  { Id = IrisId.Create()
+    Name = name
+    Role = Role.Renderer
+    ServiceId = service
+    Status = ServiceStatus.Running
+    IpAddress = IpAddress.Localhost
+    Port = port 5000us }
+
+let machines =
+  List.map (fun idx ->
+    { MachineId    = IrisId.Create()
+      HostName     = name ("mockmachine-" + string idx)
+      WorkSpace    = filepath "/Iris"
+      LogDirectory = filepath "/Iris"
+      BindAddress  = IPv4Address "127.0.0.1"
+      WebPort      = port Constants.DEFAULT_WEB_PORT
+      RaftPort     = port Constants.DEFAULT_RAFT_PORT
+      WsPort       = port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort      = port Constants.DEFAULT_GIT_PORT
+      ApiPort      = port Constants.DEFAULT_API_PORT
+      Version      = version "0.0.0" })
+    [ 0 .. 3 ]
+
+let clients =
+  Seq.map
+    (fun (service:IrisMachine) ->
+      makeClient service.MachineId (sprintf "%A Client" service.HostName |> name))
+    machines
+  |> List.ofSeq
 
 let project =
-    let memb =
-        let memb = IrisId.Create() |> Iris.Raft.Member.create
-        { memb with HostName = name "Wilhelm" }
+    let members =
+      List.map
+        (fun (machine: IrisMachine) ->
+          let mem = { Iris.Raft.Member.create machine.MachineId with HostName = machine.HostName }
+          (mem.Id, mem))
+        machines
+      |> Map.ofList
+    let machine = machines.[0]
     let clusterConfig =
       { Id = IrisId.Create()
         Name = name "mockcluster"
-        Members = Map[memb.Id, memb]
+        Members = members
         Groups = [||] }
-    let machine =
-      { MachineId    = IrisId.Create()
-        HostName     = name "mockmachine"
-        WorkSpace    = filepath "/Iris"
-        LogDirectory = filepath "/Iris"
-        BindAddress  = IPv4Address "127.0.0.1"
-        WebPort      = port Constants.DEFAULT_WEB_PORT
-        RaftPort     = port Constants.DEFAULT_RAFT_PORT
-        WsPort       = port Constants.DEFAULT_WEB_SOCKET_PORT
-        GitPort      = port Constants.DEFAULT_GIT_PORT
-        ApiPort      = port Constants.DEFAULT_API_PORT
-        Version      = version "0.0.0" }
     let irisConfig =
         { Machine    = machine
           ActiveSite = Some clusterConfig.Id
@@ -145,7 +168,7 @@ let project =
           Clients   = ClientConfig.Default
           Raft      = RaftConfig.Default
           Timing    = TimingConfig.Default
-          Sites     = [|clusterConfig|] }
+          Sites     = [| clusterConfig |] }
     { Id        = IrisId.Create()
       Name      = name "mockproject"
       Path      = filepath "/Iris/mockproject"
@@ -181,9 +204,18 @@ let cuesAndListsAndPlayers =
     Map[cuePlayer.Id, cuePlayer]
 
 let getMockState() =
-    { State.Empty with
-        Project = project
-        PinGroups = PinGroupMap.ofSeq pinGroups
-        Cues = _1of3 cuesAndListsAndPlayers
-        CueLists = _2of3 cuesAndListsAndPlayers
-        CuePlayers = _3of3 cuesAndListsAndPlayers }
+  let groups =
+    clients
+    |> List.collect (fun client -> pinGroups client.Id |> List.ofSeq)
+    |> PinGroupMap.ofSeq
+  let clients =
+    clients
+    |> List.map (fun client -> client.Id, client)
+    |> Map.ofList
+  { State.Empty with
+      Project = project
+      Clients = clients
+      PinGroups = groups
+      Cues = _1of3 cuesAndListsAndPlayers
+      CueLists = _2of3 cuesAndListsAndPlayers
+      CuePlayers = _3of3 cuesAndListsAndPlayers }
