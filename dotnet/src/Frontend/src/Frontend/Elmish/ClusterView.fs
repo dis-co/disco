@@ -57,8 +57,12 @@ let body dispatch (model: Model) =
         members |> Seq.map (fun kv ->
           let node = kv.Value
           tr [Key (string kv.Key)] [
-            td [Class "width-20"; padding5AndTopBorder()] [
-              span [Class "iris-output iris-icon icon-host"] [
+            td [Class "width-20";padding5AndTopBorder()] [
+              span [
+                Class "iris-output iris-icon icon-host"
+                OnClick (fun _ -> Select.clusterMember dispatch node)
+                Style [ Cursor "pointer" ]
+              ] [
                 str (unwrap node.HostName)
                 span [Class "iris-icon icon-bull iris-status-off"] []
               ]

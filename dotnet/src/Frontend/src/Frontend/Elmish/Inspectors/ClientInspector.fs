@@ -24,6 +24,22 @@ open State
 
 module ClientInspector =
 
+  let private renderMachine tag dispatch (model: Model) (client: IrisClient) =
+    match model.state with
+    | None -> Common.stringRow tag (string client.ServiceId)
+    | Some state ->
+      match Config.tryFindMember state.Project.Config client.ServiceId with
+      | None -> Common.stringRow tag (string client.ServiceId)
+      | Some mem ->
+        Common.row tag [
+          div [
+            OnClick (fun _ -> Select.clusterMember dispatch mem)
+            Style [ Cursor "pointer" ]
+          ] [
+            str (string mem.HostName)
+          ]
+        ]
+
   let render dispatch (model: Model) (client: IrisClient) =
     Common.render "Client" [
       Common.stringRow "Id"         (string client.Id)
@@ -32,5 +48,5 @@ module ClientInspector =
       Common.stringRow "Status"     (string client.Status)
       Common.stringRow "IP Address" (string client.IpAddress)
       Common.stringRow "Port"       (string client.Port)
-      Common.stringRow "Machine"    (string client.ServiceId)
+      renderMachine    "Machine"    dispatch model client
     ]

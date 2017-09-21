@@ -1376,6 +1376,13 @@ module Config =
       |> Error.asProjectError "Config.findMember"
       |> Either.fail
 
+  // ** tryFindMember
+
+  let tryFindMember (config: IrisConfig) (id: MemberId) =
+    match findMember config id with
+    | Right mem -> Some mem
+    | _ -> None
+
   // ** getMembers
 
   let getMembers (config: IrisConfig) : Either<IrisError,Map<MemberId,RaftMember>> =

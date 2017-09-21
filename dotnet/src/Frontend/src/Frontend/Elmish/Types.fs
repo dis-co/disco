@@ -3,6 +3,7 @@ module Iris.Web.Types
 open System
 open Fable.Core
 open Fable.Import
+open Iris.Raft
 open Iris.Core
 open Iris.Core.Commands
 
@@ -119,6 +120,7 @@ and Selected =
   | Pin      of Pin
   | PinGroup of PinGroup
   | Client   of IrisClient
+  | Member   of RaftMember
   | Nothing
 
 /// Elmish state model

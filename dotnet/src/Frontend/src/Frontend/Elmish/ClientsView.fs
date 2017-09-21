@@ -49,6 +49,7 @@ let body dispatch (model: Model) =
                 Class "width-20"
                 padding5AndTopBorder()
                 OnClick (fun _ -> Select.client dispatch client)
+                Style [ Cursor "pointer" ]
               ] [
                 span [Class "iris-output iris-icon icon-host"] [
                   str (unwrap client.Name)

@@ -159,5 +159,8 @@ module Select =
   let client dispatch client =
     client |> Selected.Client |> Msg.SelectElement |> dispatch
 
+  let clusterMember dispatch mem =
+    mem |> Selected.Member |> Msg.SelectElement |> dispatch
+
   let nothing dispatch =
     Selected.Nothing |> Msg.SelectElement |> dispatch

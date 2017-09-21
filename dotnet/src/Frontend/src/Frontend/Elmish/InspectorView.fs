@@ -38,6 +38,7 @@ let private body dispatch (model: Model) =
   | Pin      pin    -> PinInspector.render      dispatch model pin
   | PinGroup group  -> PinGroupInspector.render dispatch model group
   | Client   client -> ClientInspector.render   dispatch model client
+  | Member   mem    -> MemberInspector.render   dispatch model mem
   | Nothing         -> empty
 
 ///  ____        _     _ _
