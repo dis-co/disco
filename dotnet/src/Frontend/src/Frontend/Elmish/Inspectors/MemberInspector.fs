@@ -18,6 +18,24 @@ open Iris.Web.Types
 open State
 
 module MemberInspector =
+  let private buildClient dispatch (client: IrisClient) =
+    li [
+      OnClick (fun _ -> Select.client dispatch client)
+      Style [ Cursor "pointer" ]
+    ] [
+      str (string client.Name)
+    ]
+
+  let private renderClients tag dispatch (model: Model) (mem: RaftMember) =
+    match model.state with
+    | None -> Common.row tag []
+    | Some state ->
+      state.Clients
+      |> Map.filter (fun _ client -> client.ServiceId = mem.Id)
+      |> Map.toList
+      |> List.map (snd >> buildClient dispatch)
+      |> ul []
+      |> fun list -> Common.row tag [ list ]
 
   let render dispatch (model: Model) (mem: RaftMember) =
     Common.render "Cluster Member" [
@@ -29,4 +47,5 @@ module MemberInspector =
       Common.stringRow "API Port"       (string mem.ApiPort)
       Common.stringRow "Git Port"       (string mem.GitPort)
       Common.stringRow "WebSocket Port" (string mem.WsPort)
+      renderClients    "Clients"        dispatch model mem
     ]

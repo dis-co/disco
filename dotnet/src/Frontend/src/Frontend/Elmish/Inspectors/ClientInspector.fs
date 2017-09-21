@@ -40,6 +40,25 @@ module ClientInspector =
           ]
         ]
 
+  let buildGroup dispatch (group: PinGroup) =
+    li [
+      OnClick (fun _ -> Select.group dispatch group)
+      Style [ Cursor "pointer" ]
+    ] [
+      str (string group.Name)
+    ]
+
+  let private renderGroups tag dispatch (model: Model) (client: IrisClient) =
+    match model.state with
+    | None -> Common.row tag []
+    | Some state ->
+      state.PinGroups
+      |> PinGroupMap.findGroupBy (fun group -> group.ClientId = client.Id)
+      |> Map.toList
+      |> List.map (snd >> buildGroup dispatch)
+      |> ul []
+      |> fun list -> Common.row tag [ list ]
+
   let render dispatch (model: Model) (client: IrisClient) =
     Common.render "Client" [
       Common.stringRow "Id"         (string client.Id)
@@ -48,5 +67,6 @@ module ClientInspector =
       Common.stringRow "Status"     (string client.Status)
       Common.stringRow "IP Address" (string client.IpAddress)
       Common.stringRow "Port"       (string client.Port)
-      renderMachine    "Machine"    dispatch model client
+      renderMachine    "Machine"     dispatch model client
+      renderGroups     "Pin Groups"  dispatch model client
     ]
