@@ -58,10 +58,11 @@ module PinGroupInspector =
         (fun (clientId,group) ->
           match Map.tryFind clientId state.Clients with
           | Some client ->
-            li [
-              OnClick (fun _ -> Select.client dispatch client)
-              Style [ Cursor "pointer" ]
-            ] [ str (string client.Name) ]
+            li [] [
+              Common.link
+                (string client.Name)
+                (fun _ -> Select.client dispatch client)
+            ]
           | None ->
             match ClientConfig.tryFind clientId state.Project.Config.Clients with
             | Some exe -> li [] [ str (string exe.Id) ]

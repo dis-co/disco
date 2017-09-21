@@ -27,6 +27,12 @@ module Common =
   let inline padding5AndTopBorder() =
     Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
+  let link (content: string) f =
+    div [
+      Class "iris-link"
+      OnClick (fun _ -> f())
+    ] [ str content ]
+
   let leftColumn =
     Style [
       PaddingLeft  "10px"

@@ -54,11 +54,11 @@ module PinInspector =
             match Map.tryFind client state.Clients with
             | Some client ->
               tr [ Key (string pin.Id) ] [
-                td [
-                  Common.leftSub
-                  Style [ Cursor "pointer" ]
-                  OnClick (fun _ -> Select.client dispatch client)
-                ] [ str (string client.Name)   ]
+                td [ Common.leftSub ] [
+                  Common.link
+                    (string client.Name)
+                    (fun _ -> Select.client dispatch client)
+                ]
                 td [ Common.rightSub ] [ str (string client.Status) ]
               ]
             | None ->

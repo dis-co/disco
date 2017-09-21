@@ -30,6 +30,20 @@
   }
 }
 
+.iris-link {
+  border: 1px solid lighten(gray,10%);
+  background: lighten(gray, 40%);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-block;
+  padding: 2px;
+  margin: 3px;
+}
+
+.iris-link::after {
+  clear: both;
+}
+
 .iris-status-on {
   color: @status-on;
 }

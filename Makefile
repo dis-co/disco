@@ -110,6 +110,9 @@ run.service.1.project.profile:
 # |  _| | | (_) | | | | ||  __/ | | | (_| |
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
+css:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildCss $(OPTS)"
+
 frontend:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"
 

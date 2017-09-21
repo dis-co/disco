@@ -32,20 +32,16 @@ module ClientInspector =
       | None -> Common.stringRow tag (string client.ServiceId)
       | Some mem ->
         Common.row tag [
-          div [
-            OnClick (fun _ -> Select.clusterMember dispatch mem)
-            Style [ Cursor "pointer" ]
-          ] [
-            str (string mem.HostName)
-          ]
+          Common.link
+            (string mem.HostName)
+            (fun _ -> Select.clusterMember dispatch mem)
         ]
 
   let buildGroup dispatch (group: PinGroup) =
-    li [
-      OnClick (fun _ -> Select.group dispatch group)
-      Style [ Cursor "pointer" ]
-    ] [
-      str (string group.Name)
+    li [] [
+      Common.link
+        (string group.Name)
+        (fun _ -> Select.group dispatch group)
     ]
 
   let private renderGroups tag dispatch (model: Model) (client: IrisClient) =

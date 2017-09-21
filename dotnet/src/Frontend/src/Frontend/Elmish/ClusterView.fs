@@ -58,6 +58,7 @@ let body dispatch (model: Model) =
           let node = kv.Value
           tr [Key (string kv.Key)] [
             td [Class "width-20";padding5AndTopBorder()] [
+
               span [
                 Class "iris-output iris-icon icon-host"
                 OnClick (fun _ -> Select.clusterMember dispatch node)

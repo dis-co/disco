@@ -19,11 +19,10 @@ open State
 
 module MemberInspector =
   let private buildClient dispatch (client: IrisClient) =
-    li [
-      OnClick (fun _ -> Select.client dispatch client)
-      Style [ Cursor "pointer" ]
-    ] [
-      str (string client.Name)
+    li [] [
+      Common.link
+        (string client.Name)
+        (fun _ -> Select.client dispatch client)
     ]
 
   let private renderClients tag dispatch (model: Model) (mem: RaftMember) =
