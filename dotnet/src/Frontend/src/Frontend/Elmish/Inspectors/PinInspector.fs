@@ -93,6 +93,26 @@ module PinInspector =
           ])
       |> Common.tableRow tag [ "" ]
 
+  let private renderCues (tag: string) dispatch (model: Model) (pin: Pin) =
+    match model.state with
+    | None -> Common.row tag [ ]
+    | Some state ->
+      state.Cues
+      |> Map.fold
+        (fun lst _ (cue: Cue) ->
+          match Array.tryFindIndex (fun (slices: Slices) -> slices.PinId = pin.Id) cue.Slices with
+          | Some _ -> cue :: lst
+          | None -> lst)
+        List.empty
+      |> List.map
+        (fun (cue: Cue) ->
+          li [] [
+            Common.link
+              (string cue.Name)
+              (fun _ -> Select.cue dispatch cue)
+          ])
+      |> fun list -> Common.row tag [ ul [] list ]
+
   let render dispatch (model: Model) (pin: Pin) =
     Common.render dispatch model "Pin" [
       Common.stringRow "Id"            (string pin.Id)
@@ -108,4 +128,5 @@ module PinInspector =
       Common.stringRow "Labels"        (string pin.Labels)
       Common.stringRow "Tags"          (string pin.GetTags)
       renderSlices     "Values"         pin.Slices
+      renderCues       "Cues With Pin"  dispatch model pin
     ]
