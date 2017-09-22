@@ -16,11 +16,11 @@ open Iris.Web.Helpers
 open Iris.Web.Types
 open State
 
-module CueInspector =
+module CueListInspector =
 
-  let render dispatch (model: Model) (cue: Cue) =
-    Common.render dispatch model "Cue" [
-      Common.stringRow "Id"     (string cue.Id)
-      Common.stringRow "Name"   (string cue.Name)
-      Common.stringRow "Values" (string cue.Slices)
+  let render dispatch (model: Model) (cuelist: CueList) =
+    Common.render dispatch model "Cue List" [
+      Common.stringRow "Id"     (string cuelist.Id)
+      Common.stringRow "Name"   (string cuelist.Name)
+      Common.stringRow "Groups" (string cuelist.Groups)
     ]
