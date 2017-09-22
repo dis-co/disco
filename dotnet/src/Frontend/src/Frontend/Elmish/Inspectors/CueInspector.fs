@@ -19,8 +19,22 @@ open State
 
 module CueInspector =
 
+  let private renderCueList dispatch (model:Model) (cuelist: CueList)  =
+    li [] [
+      Common.link
+        (string cuelist.Name)
+        (fun () -> Select.cuelist dispatch cuelist)
+    ]
+
   let private renderCueLists tag dispatch (model: Model) (cue: Cue) =
-    failwith "some time soon"
+    match model.state with
+    | None -> Common.row tag []
+    | Some state ->
+      state.CueLists
+      |> CueList.filter (CueList.contains cue.Id)
+      |> Map.toList
+      |> List.map (snd >> renderCueList dispatch model)
+      |> fun cuelists -> Common.row tag [ ul [] cuelists ]
 
   let private buildPin dispatch (model: Model) (pin: Pin) =
     li [] [
@@ -65,7 +79,8 @@ module CueInspector =
 
   let render dispatch (model: Model) (cue: Cue) =
     Common.render dispatch model "Cue" [
-      Common.stringRow "Id"     (string cue.Id)
-      Common.stringRow "Name"   (string cue.Name)
-      renderSlices     "Values"  dispatch model cue
+      Common.stringRow "Id"       (string cue.Id)
+      Common.stringRow "Name"     (string cue.Name)
+      renderSlices     "Values"    dispatch model cue
+      renderCueLists   "Cue Lists" dispatch model cue
     ]
