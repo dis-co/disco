@@ -189,6 +189,7 @@ type private CueView(props) =
     let cueHeader =
       tr [
         OnClick (fun _ ->
+          Select.cue this.props.Dispatch this.props.Cue
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
             this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
@@ -321,8 +322,10 @@ type CuePlayerView(props) =
       ClassName "iris-button"
       Disabled (Option.isNone this.props.CueList)
       OnClick (fun _ ->
-        this.props.CueList |> Option.iter (fun cueList ->
-          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex) |> this.props.Dispatch))
+        this.props.CueList
+        |> Option.iter (fun cueList ->
+          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex)
+          |> this.props.Dispatch))
     ] [str "Add Cue"]
 
   member this.render() =
