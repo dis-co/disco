@@ -131,8 +131,7 @@ let init() =
       #else
       logs = []
       #endif
-      history = []
-      selected = Selected.Nothing
+      history = { index = 0; selected = Selected.Nothing; previous = [] }
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -161,6 +160,13 @@ let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   AddCue newCue |> ClientContext.Singleton.Post
   UpdateCueList newCueList |> ClientContext.Singleton.Post
 
+let [<Literal>] maxLength = 4
+let chop (list: 'a list) =
+  match list with
+  | list when list.Length > maxLength ->
+    list |> List.rev |> List.tail |> List.rev
+  | _ -> list
+
 /// Update function for Elmish state
 let update msg model: Model*Cmd<Msg> =
   match msg with
@@ -176,11 +182,29 @@ let update msg model: Model*Cmd<Msg> =
     { model with widgets = widgets; layout = layout }, []
   // | AddTab -> // Add tab and remove widget
   // | RemoveTab -> // Optional, add widget
-  | Navigate dir ->
-    printfn "direction: %A" dir
-    model, []
+
+  | Navigate (_ as cmd) when not (List.isEmpty model.history.previous) ->
+    let op = cmd |> function
+      | Browse.Previous -> (+)
+      | Browse.Next     -> (-)
+    let history =
+      try
+        let index = op model.history.index 1
+        { model.history with
+            index = index
+            selected = model.history.previous.[index] }
+      with _ -> model.history
+    { model with history = history }, []
+
+  | Navigate _ -> model, []
+
   | SelectElement selected ->
-    { model with selected = selected }, []
+    let history = selected :: model.history.previous |> chop
+    { model with
+        history = { model.history with
+                     selected = selected
+                     index = 0
+                     previous = history } }, []
   | AddLog log ->
     { model with logs = log::model.logs }, []
   | AddCueUI(cueList, cueGroupIndex, cueIndex) ->

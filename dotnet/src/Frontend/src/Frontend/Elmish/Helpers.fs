@@ -168,7 +168,7 @@ module Select =
 module Navigate =
 
   let back dispatch =
-    BrowseHistory.Previous |> Msg.Navigate |> dispatch
+    Browse.Previous |> Msg.Navigate |> dispatch
 
   let forward dispatch =
-    BrowseHistory.Next |> Msg.Navigate |> dispatch
+    Browse.Next |> Msg.Navigate |> dispatch

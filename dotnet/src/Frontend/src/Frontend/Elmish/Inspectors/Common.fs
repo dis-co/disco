@@ -18,12 +18,64 @@ open State
 
 module Common =
 
+  let link (content: string) f =
+    div [
+      Class "iris-link"
+      OnClick (fun _ -> f())
+    ] [ str content ]
+
+  let activeLink (content: string) f =
+    div [
+      Class "iris-link iris-link-active"
+      OnClick (fun _ -> f())
+    ] [ str content ]
+
+  let makeLink (history: BrowseHistory) (idx: int) (content: string) f =
+    if idx = abs (history.index - (history.previous.Length - 1))
+    then activeLink content f
+    else link content f
+
+  let breadcrumb dispatch (history: BrowseHistory) (idx: int) (selected: Selected) =
+    let content =
+      match selected with
+      | Selected.Pin pin ->
+        let link = makeLink history idx (string pin.Name) <| fun () ->
+          Select.pin dispatch pin
+        if idx < history.previous.Length - 1
+        then [link; str ">"]
+        else [link]
+      | Selected.PinGroup group ->
+        let link = makeLink history idx (string group.Name) <| fun () ->
+          Select.group dispatch group
+        if idx < history.previous.Length - 1
+        then [link; str ">"]
+        else [link]
+      | Selected.Client client ->
+        let link = makeLink history idx (string client.Name) <| fun () ->
+          Select.client dispatch client
+        if idx < history.previous.Length - 1
+        then [link; str ">"]
+        else [link]
+      | Selected.Member mem ->
+        let link = makeLink history idx (string mem.HostName) <| fun () ->
+          Select.clusterMember dispatch mem
+        if idx < history.previous.Length - 1
+        then [link; str ">"]
+        else [link]
+      | Selected.Nothing -> [str ""]
+    li [ Style [ Display "inline-block" ] ] content
+
   let bar dispatch (model: Model) =
-    let disabled = List.isEmpty model.history
+    let disabled = List.isEmpty model.history.previous
+    let history =
+      model.history.previous
+      |> List.rev
+      |> List.mapi (breadcrumb dispatch model.history)
     div [
       Style [
+        Display "flex"
         BackgroundColor "lightgrey"
-        Height "20px"
+        Height "25px"
         PaddingLeft "6px"
       ]
     ] [
@@ -43,6 +95,7 @@ module Common =
         Disabled disabled
         OnClick (fun _ -> Navigate.forward dispatch)
       ] [ str ">"]
+      ul [] history
     ]
 
   let inline padding5() =
@@ -53,12 +106,6 @@ module Common =
 
   let inline padding5AndTopBorder() =
     Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
-
-  let link (content: string) f =
-    div [
-      Class "iris-link"
-      OnClick (fun _ -> f())
-    ] [ str content ]
 
   let leftColumn =
     Style [

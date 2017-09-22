@@ -115,7 +115,7 @@ and Msg =
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
   | SelectElement of Selected
-  | Navigate of BrowseHistory
+  | Navigate of Browse
 
 and Selected =
   | Pin      of Pin
@@ -125,6 +125,11 @@ and Selected =
   | Nothing
 
 and BrowseHistory =
+  { index: int
+    selected: Selected
+    previous: Selected list }
+
+and Browse =
   | Previous
   | Next
 
@@ -135,8 +140,7 @@ and Model =
     modal: IModal option
     state: State option
     logs: LogEvent list
-    history: Selected list
-    selected: Selected
+    history: BrowseHistory
     userConfig: UserConfig
   }
 
