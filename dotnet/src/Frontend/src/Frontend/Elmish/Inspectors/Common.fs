@@ -31,37 +31,47 @@ module Common =
     ] [ str content ]
 
   let makeLink (history: BrowseHistory) (idx: int) (content: string) f =
-    if idx = abs (history.index - (history.previous.Length - 1))
-    then activeLink content f
-    else link content f
+    let link =
+      if idx = abs (history.index - (history.previous.Length - 1))
+      then activeLink content f
+      else link content f
+    if idx < history.previous.Length - 1
+    then [link; str ">"]
+    else [link]
 
   let breadcrumb dispatch (history: BrowseHistory) (idx: int) (selected: Selected) =
     let content =
       match selected with
       | Selected.Pin pin ->
-        let link = makeLink history idx (string pin.Name) <| fun () ->
+        makeLink history idx (string pin.Name) <| fun () ->
           Select.pin dispatch pin
-        if idx < history.previous.Length - 1
-        then [link; str ">"]
-        else [link]
       | Selected.PinGroup group ->
-        let link = makeLink history idx (string group.Name) <| fun () ->
+        makeLink history idx (string group.Name) <| fun () ->
           Select.group dispatch group
-        if idx < history.previous.Length - 1
-        then [link; str ">"]
-        else [link]
       | Selected.Client client ->
-        let link = makeLink history idx (string client.Name) <| fun () ->
+        makeLink history idx (string client.Name) <| fun () ->
           Select.client dispatch client
-        if idx < history.previous.Length - 1
-        then [link; str ">"]
-        else [link]
       | Selected.Member mem ->
-        let link = makeLink history idx (string mem.HostName) <| fun () ->
+        makeLink history idx (string mem.HostName) <| fun () ->
           Select.clusterMember dispatch mem
-        if idx < history.previous.Length - 1
-        then [link; str ">"]
-        else [link]
+      | Selected.Cue cue ->
+        makeLink history idx (string cue.Name) <| fun () ->
+          Select.cue dispatch cue
+      | Selected.CueList cuelist ->
+        makeLink history idx (string cuelist.Name) <| fun () ->
+          Select.cuelist dispatch cuelist
+      | Selected.Player player ->
+        makeLink history idx (string player.Name) <| fun () ->
+          Select.player dispatch player
+      | Selected.Session session ->
+        makeLink history idx (string session.IpAddress) <| fun () ->
+          Select.session dispatch session
+      | Selected.User user ->
+        makeLink history idx (string user.UserName) <| fun () ->
+          Select.user dispatch user
+      | Selected.Mapping mapping ->
+        makeLink history idx (mapping.Id.Prefix()) <| fun () ->
+          Select.mapping dispatch mapping
       | Selected.Nothing -> [str ""]
     li [ Style [ Display "inline-block" ] ] content
 

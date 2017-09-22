@@ -122,6 +122,12 @@ and Selected =
   | PinGroup of PinGroup
   | Client   of IrisClient
   | Member   of RaftMember
+  | Cue      of Cue
+  | CueList  of CueList
+  | Player   of CuePlayer
+  | Mapping  of PinMapping
+  | Session  of Session
+  | User     of User
   | Nothing
 
 and BrowseHistory =

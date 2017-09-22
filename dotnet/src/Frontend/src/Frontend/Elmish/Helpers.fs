@@ -162,6 +162,24 @@ module Select =
   let clusterMember dispatch mem =
     mem |> Selected.Member |> Msg.SelectElement |> dispatch
 
+  let cue dispatch cue =
+    cue |> Selected.Cue |> Msg.SelectElement |> dispatch
+
+  let cuelist dispatch cuelist =
+    cuelist |> Selected.CueList |> Msg.SelectElement |> dispatch
+
+  let player dispatch player =
+    player |> Selected.Player |> Msg.SelectElement |> dispatch
+
+  let session dispatch session =
+    session |> Selected.Session |> Msg.SelectElement |> dispatch
+
+  let user dispatch user =
+    user |> Selected.User |> Msg.SelectElement |> dispatch
+
+  let mapping dispatch mapping =
+    mapping |> Selected.Mapping |> Msg.SelectElement |> dispatch
+
   let nothing dispatch =
     Selected.Nothing |> Msg.SelectElement |> dispatch
 
