@@ -22,7 +22,7 @@ module MemberInspector =
     li [] [
       Common.link
         (string client.Name)
-        (fun _ -> Select.client dispatch client)
+        (fun _ -> Select.client dispatch client.Id)
     ]
 
   let private renderClients tag dispatch (model: Model) (mem: RaftMember) =
@@ -36,15 +36,27 @@ module MemberInspector =
       |> ul []
       |> fun list -> Common.row tag [ list ]
 
-  let render dispatch (model: Model) (mem: RaftMember) =
-    Common.render dispatch model "Cluster Member" [
-      Common.stringRow "Id"             (string mem.Id)
-      Common.stringRow "Host Name"      (string mem.HostName)
-      Common.stringRow "Raft State"     (string mem.State)
-      Common.stringRow "IP Address"     (string mem.IpAddr)
-      Common.stringRow "Raft Port"      (string mem.Port)
-      Common.stringRow "API Port"       (string mem.ApiPort)
-      Common.stringRow "Git Port"       (string mem.GitPort)
-      Common.stringRow "WebSocket Port" (string mem.WsPort)
-      renderClients    "Clients"        dispatch model mem
-    ]
+  let render dispatch (model: Model) (mem: MemberId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Cluster Member" [
+        str (string mem + " (orphaned)")
+      ]
+    | Some state ->
+      match Config.tryFindMember state.Project.Config mem with
+      | None ->
+        Common.render dispatch model "Cluster Member" [
+          str (string mem + " (orphaned)")
+        ]
+      | Some mem ->
+        Common.render dispatch model "Cluster Member" [
+          Common.stringRow "Id"             (string mem.Id)
+          Common.stringRow "Host Name"      (string mem.HostName)
+          Common.stringRow "Raft State"     (string mem.State)
+          Common.stringRow "IP Address"     (string mem.IpAddr)
+          Common.stringRow "Raft Port"      (string mem.Port)
+          Common.stringRow "API Port"       (string mem.ApiPort)
+          Common.stringRow "Git Port"       (string mem.GitPort)
+          Common.stringRow "WebSocket Port" (string mem.WsPort)
+          renderClients    "Clients"        dispatch model mem
+        ]

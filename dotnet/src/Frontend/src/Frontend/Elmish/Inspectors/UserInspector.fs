@@ -18,13 +18,25 @@ open State
 
 module UserInspector =
 
-  let render dispatch (model: Model) (user: User) =
-    Common.render dispatch model "User" [
-      Common.stringRow "Id"         (string user.Id)
-      Common.stringRow "User Name"  (string user.UserName)
-      Common.stringRow "First Name" (string user.FirstName)
-      Common.stringRow "Last Name"  (string user.LastName)
-      Common.stringRow "Email"      (string user.Email)
-      Common.stringRow "Joined"     (string user.Joined)
-      Common.stringRow "Created"    (string user.Created)
-    ]
+  let render dispatch (model: Model) (user: UserId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "User" [
+        str (string user + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind user state.Users with
+      | None ->
+        Common.render dispatch model "User" [
+          str (string user + " (orphaned)")
+        ]
+      | Some user ->
+        Common.render dispatch model "User" [
+          Common.stringRow "Id"         (string user.Id)
+          Common.stringRow "User Name"  (string user.UserName)
+          Common.stringRow "First Name" (string user.FirstName)
+          Common.stringRow "Last Name"  (string user.LastName)
+          Common.stringRow "Email"      (string user.Email)
+          Common.stringRow "Joined"     (string user.Joined)
+          Common.stringRow "Created"    (string user.Created)
+        ]

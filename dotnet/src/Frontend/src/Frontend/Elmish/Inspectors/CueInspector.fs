@@ -23,7 +23,7 @@ module CueInspector =
     li [] [
       Common.link
         (string cuelist.Name)
-        (fun () -> Select.cuelist dispatch cuelist)
+        (fun () -> Select.cuelist dispatch cuelist.Id)
     ]
 
   let private renderCueLists tag dispatch (model: Model) (cue: Cue) =
@@ -44,7 +44,7 @@ module CueInspector =
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin
+        onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
         onDragStart = None
       } []
     ]
@@ -77,10 +77,22 @@ module CueInspector =
           ul [ Class "iris-graphview" ] items
         ]
 
-  let render dispatch (model: Model) (cue: Cue) =
-    Common.render dispatch model "Cue" [
-      Common.stringRow "Id"       (string cue.Id)
-      Common.stringRow "Name"     (string cue.Name)
-      renderSlices     "Values"    dispatch model cue
-      renderCueLists   "Cue Lists" dispatch model cue
-    ]
+  let render dispatch (model: Model) (cue: CueId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Cue" [
+        str (string cue + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind cue state.Cues with
+      | None ->
+        Common.render dispatch model "Cue" [
+          str (string cue + " (orphaned)")
+        ]
+      | Some cue ->
+        Common.render dispatch model "Cue" [
+          Common.stringRow "Id"       (string cue.Id)
+          Common.stringRow "Name"     (string cue.Name)
+          renderSlices     "Values"    dispatch model cue
+          renderCueLists   "Cue Lists" dispatch model cue
+        ]

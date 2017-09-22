@@ -38,17 +38,17 @@ let empty dispatch model =
 
 let private body dispatch (model: Model) =
   match model.history.selected with
-  | Pin      pin     -> PinInspector.render        dispatch model pin
-  | PinGroup group   -> PinGroupInspector.render   dispatch model group
-  | Client   client  -> ClientInspector.render     dispatch model client
-  | Member   mem     -> MemberInspector.render     dispatch model mem
-  | Cue      cue     -> CueInspector.render        dispatch model cue
-  | CueList  cuelist -> CueListInspector.render    dispatch model cuelist
-  | Player   player  -> CuePlayerInspector.render  dispatch model player
-  | Mapping  mapping -> PinMappingInspector.render dispatch model mapping
-  | Session  session -> SessionInspector.render    dispatch model session
-  | User     user    -> UserInspector.render       dispatch model user
-  | Nothing          -> empty dispatch model
+  | Pin      (client,pin)   -> PinInspector.render        dispatch model client pin
+  | PinGroup (client,group) -> PinGroupInspector.render   dispatch model client group
+  | Client   client         -> ClientInspector.render     dispatch model client
+  | Member   mem            -> MemberInspector.render     dispatch model mem
+  | Cue      cue            -> CueInspector.render        dispatch model cue
+  | CueList  cuelist        -> CueListInspector.render    dispatch model cuelist
+  | Player   player         -> CuePlayerInspector.render  dispatch model player
+  | Mapping  mapping        -> PinMappingInspector.render dispatch model mapping
+  | Session  session        -> SessionInspector.render    dispatch model session
+  | User     user           -> UserInspector.render       dispatch model user
+  | Nothing                 -> empty dispatch model
 
 ///  ____        _     _ _
 /// |  _ \ _   _| |__ | (_) ___

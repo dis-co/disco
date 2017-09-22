@@ -57,7 +57,7 @@ module PinInspector =
                 td [ Common.leftSub ] [
                   Common.link
                     (string client.Name)
-                    (fun _ -> Select.client dispatch client)
+                    (fun _ -> Select.client dispatch client.Id)
                 ]
                 td [ Common.rightSub ] [ str (string client.Status) ]
               ]
@@ -88,7 +88,7 @@ module PinInspector =
             td [] [
               Common.link
                 (string group.Name)
-                (fun _ -> Select.group dispatch group)
+                (fun _ -> Select.group dispatch group.ClientId group.Id)
             ]
           ])
       |> Common.tableRow tag [ "" ]
@@ -109,24 +109,36 @@ module PinInspector =
           li [] [
             Common.link
               (string cue.Name)
-              (fun _ -> Select.cue dispatch cue)
+              (fun _ -> Select.cue dispatch cue.Id)
           ])
       |> fun list -> Common.row tag [ ul [] list ]
 
-  let render dispatch (model: Model) (pin: Pin) =
-    Common.render dispatch model "Pin" [
-      Common.stringRow "Id"            (string pin.Id)
-      Common.stringRow "Name"          (string pin.Name)
-      Common.stringRow "Type"          (string pin.Type)
-      Common.stringRow "Configuration" (string pin.PinConfiguration)
-      Common.stringRow "VecSize"       (string pin.VecSize)
-      renderClients    "Clients"        dispatch model pin
-      renderGroup      "Group"          dispatch model pin
-      Common.stringRow "Online"        (string pin.Online)
-      Common.stringRow "Persisted"     (string pin.Persisted)
-      Common.stringRow "Dirty"         (string pin.Dirty)
-      Common.stringRow "Labels"        (string pin.Labels)
-      Common.stringRow "Tags"          (string pin.GetTags)
-      renderSlices     "Values"         pin.Slices
-      renderCues       "Cues With Pin"  dispatch model pin
-    ]
+  let render dispatch (model: Model) (client: ClientId) (pin: PinId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Pin" [
+        str (string pin + " (orphaned)")
+      ]
+    | Some state ->
+      match PinGroupMap.findPin pin state.PinGroups |> Map.tryFind client with
+      | None ->
+        Common.render dispatch model "Pin" [
+          str (string pin + " (orphaned)")
+        ]
+      | Some pin ->
+        Common.render dispatch model "Pin" [
+          Common.stringRow "Id"            (string pin.Id)
+          Common.stringRow "Name"          (string pin.Name)
+          Common.stringRow "Type"          (string pin.Type)
+          Common.stringRow "Configuration" (string pin.PinConfiguration)
+          Common.stringRow "VecSize"       (string pin.VecSize)
+          renderClients    "Clients"        dispatch model pin
+          renderGroup      "Group"          dispatch model pin
+          Common.stringRow "Online"        (string pin.Online)
+          Common.stringRow "Persisted"     (string pin.Persisted)
+          Common.stringRow "Dirty"         (string pin.Dirty)
+          Common.stringRow "Labels"        (string pin.Labels)
+          Common.stringRow "Tags"          (string pin.GetTags)
+          renderSlices     "Values"         pin.Slices
+          renderCues       "Cues With Pin"  dispatch model pin
+        ]

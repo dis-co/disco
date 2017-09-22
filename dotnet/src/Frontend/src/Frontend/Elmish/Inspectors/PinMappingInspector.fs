@@ -18,9 +18,21 @@ open State
 
 module PinMappingInspector =
 
-  let render dispatch (model: Model) (mapping: PinMapping) =
-    Common.render dispatch model "Pin Mapping" [
-      Common.stringRow "Id"     (string mapping.Id)
-      Common.stringRow "Source" (string mapping.Source)
-      Common.stringRow "Sinks"  (string mapping.Sinks)
-    ]
+  let render dispatch (model: Model) (mapping: PinMappingId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Pin Mapping" [
+        str (string mapping + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind mapping state.PinMappings with
+      | None ->
+        Common.render dispatch model "Pin Mapping" [
+          str (string mapping + " (orphaned)")
+        ]
+      | Some mapping ->
+        Common.render dispatch model "Pin Mapping" [
+          Common.stringRow "Id"     (string mapping.Id)
+          Common.stringRow "Source" (string mapping.Source)
+          Common.stringRow "Sinks"  (string mapping.Sinks)
+        ]

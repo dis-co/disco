@@ -39,7 +39,7 @@ module CuePlayerInspector =
             str "Cue List:"
             Common.link
               (string cuelist.Name)
-              (fun () -> Select.cuelist dispatch cuelist)
+              (fun () -> Select.cuelist dispatch id)
           ]
 
   let private renderItems tag dispatch (model: Model) (player: CuePlayer) =
@@ -48,17 +48,29 @@ module CuePlayerInspector =
     |> List.ofArray
     |> fun items -> Common.row tag [ ul [] items ]
 
-  let render dispatch (model: Model) (player: CuePlayer) =
-    Common.render dispatch model "Player" [
-      Common.stringRow "Id"            (string player.Id)
-      Common.stringRow "Name"          (string player.Name)
-      Common.stringRow "Locked"        (string player.Locked)
-      Common.stringRow "Selected"      (string player.Selected)
-      Common.stringRow "RemainingWait" (string player.RemainingWait)
-      Common.stringRow "Call"          (string player.CallId)
-      Common.stringRow "Next"          (string player.NextId)
-      Common.stringRow "Previous"      (string player.PreviousId)
-      Common.stringRow "Last Called"   (string player.LastCalledId)
-      Common.stringRow "Last Caller"   (string player.LastCallerId)
-      renderItems      "Items"          dispatch model player
-    ]
+  let render dispatch (model: Model) (player: PlayerId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Player" [
+        str (string player + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind player state.CuePlayers with
+      | None ->
+        Common.render dispatch model "Player" [
+          str (string player + " (orphaned)")
+        ]
+      | Some player ->
+        Common.render dispatch model "Player" [
+          Common.stringRow "Id"            (string player.Id)
+          Common.stringRow "Name"          (string player.Name)
+          Common.stringRow "Locked"        (string player.Locked)
+          Common.stringRow "Selected"      (string player.Selected)
+          Common.stringRow "RemainingWait" (string player.RemainingWait)
+          Common.stringRow "Call"          (string player.CallId)
+          Common.stringRow "Next"          (string player.NextId)
+          Common.stringRow "Previous"      (string player.PreviousId)
+          Common.stringRow "Last Called"   (string player.LastCalledId)
+          Common.stringRow "Last Caller"   (string player.LastCallerId)
+          renderItems      "Items"          dispatch model player
+        ]

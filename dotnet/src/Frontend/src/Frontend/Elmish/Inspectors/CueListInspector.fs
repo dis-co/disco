@@ -52,7 +52,7 @@ module CueListInspector =
           ul [] [
             li [] [
               strong [] [ str "Cue:" ]
-              Common.link (string cue.Name) (fun () -> Select.cue dispatch cue)
+              Common.link (string cue.Name) (fun () -> Select.cue dispatch cue.Id)
             ]
             li [] [
               table [ Class "iris-table" ] [
@@ -97,7 +97,7 @@ module CueListInspector =
     li [] [
       Common.link
         (string player.Name)
-        (fun () -> Select.player dispatch player)
+        (fun () -> Select.player dispatch player.Id)
     ]
 
   let private renderPlayers tag dispatch (model: Model) (cuelist: CueList) =
@@ -110,10 +110,22 @@ module CueListInspector =
       |> List.map (snd >> renderPlayer dispatch model)
       |> fun players -> Common.row tag [ ul [] players ]
 
-  let render dispatch (model: Model) (cuelist: CueList) =
-    Common.render dispatch model "Cue List" [
-      Common.stringRow "Id"     (string cuelist.Id)
-      Common.stringRow "Name"   (string cuelist.Name)
-      renderItems      "Items"   dispatch model cuelist
-      renderPlayers    "Players" dispatch model cuelist
-    ]
+  let render dispatch (model: Model) (cuelist: CueListId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Cue List" [
+        str (string cuelist + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind cuelist state.CueLists with
+      | None ->
+        Common.render dispatch model "Cue List" [
+          str (string cuelist + " (orphaned)")
+        ]
+      | Some cuelist ->
+        Common.render dispatch model "Cue List" [
+          Common.stringRow "Id"     (string cuelist.Id)
+          Common.stringRow "Name"   (string cuelist.Name)
+          renderItems      "Items"   dispatch model cuelist
+          renderPlayers    "Players" dispatch model cuelist
+        ]

@@ -42,35 +42,35 @@ module Common =
   let breadcrumb dispatch (history: BrowseHistory) (idx: int) (selected: Selected) =
     let content =
       match selected with
-      | Selected.Pin pin ->
-        makeLink history idx (string pin.Name) <| fun () ->
-          Select.pin dispatch pin
-      | Selected.PinGroup group ->
-        makeLink history idx (string group.Name) <| fun () ->
-          Select.group dispatch group
+      | Selected.Pin (client, pin) ->
+        makeLink history idx (pin.Prefix()) <| fun () ->
+          Select.pin dispatch client pin
+      | Selected.PinGroup (client, group) ->
+        makeLink history idx (group.Prefix()) <| fun () ->
+          Select.group dispatch client group
       | Selected.Client client ->
-        makeLink history idx (string client.Name) <| fun () ->
+        makeLink history idx (client.Prefix()) <| fun () ->
           Select.client dispatch client
       | Selected.Member mem ->
-        makeLink history idx (string mem.HostName) <| fun () ->
+        makeLink history idx (mem.Prefix()) <| fun () ->
           Select.clusterMember dispatch mem
       | Selected.Cue cue ->
-        makeLink history idx (string cue.Name) <| fun () ->
+        makeLink history idx (cue.Prefix()) <| fun () ->
           Select.cue dispatch cue
       | Selected.CueList cuelist ->
-        makeLink history idx (string cuelist.Name) <| fun () ->
+        makeLink history idx (cuelist.Prefix()) <| fun () ->
           Select.cuelist dispatch cuelist
       | Selected.Player player ->
-        makeLink history idx (string player.Name) <| fun () ->
+        makeLink history idx (player.Prefix()) <| fun () ->
           Select.player dispatch player
       | Selected.Session session ->
-        makeLink history idx (string session.IpAddress) <| fun () ->
+        makeLink history idx (session.Prefix()) <| fun () ->
           Select.session dispatch session
       | Selected.User user ->
-        makeLink history idx (string user.UserName) <| fun () ->
+        makeLink history idx (user.Prefix()) <| fun () ->
           Select.user dispatch user
       | Selected.Mapping mapping ->
-        makeLink history idx (mapping.Id.Prefix()) <| fun () ->
+        makeLink history idx (mapping.Prefix()) <| fun () ->
           Select.mapping dispatch mapping
       | Selected.Nothing -> [str ""]
     li [ Style [ Display "inline-block" ] ] content

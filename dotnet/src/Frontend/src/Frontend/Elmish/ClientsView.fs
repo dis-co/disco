@@ -48,7 +48,7 @@ let body dispatch (model: Model) =
               td [
                 Class "width-20"
                 padding5AndTopBorder()
-                OnClick (fun _ -> Select.client dispatch client)
+                OnClick (fun _ -> Select.client dispatch id)
                 Style [ Cursor "pointer" ]
               ] [
                 span [Class "iris-output iris-icon icon-host"] [

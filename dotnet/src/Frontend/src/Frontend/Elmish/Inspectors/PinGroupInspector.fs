@@ -32,7 +32,7 @@ module PinGroupInspector =
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin
+        onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
         onDragStart = None
       } []
     ]
@@ -61,7 +61,7 @@ module PinGroupInspector =
             li [] [
               Common.link
                 (string client.Name)
-                (fun _ -> Select.client dispatch client)
+                (fun _ -> Select.client dispatch client.Id)
             ]
           | None ->
             match ClientConfig.tryFind clientId state.Project.Config.Clients with
@@ -72,13 +72,25 @@ module PinGroupInspector =
   let private renderRefersTo tag dispatch (model: Model) (group: PinGroup) =
     tr [] []
 
-  let render dispatch (model: Model) (group: PinGroup) =
-    Common.render dispatch model "Pin Group" [
-      Common.stringRow "Id"         (string group.Id)
-      Common.stringRow "Name"       (string group.Name)
-      Common.stringRow "Path"       (string group.Path)
-      Common.stringRow "Asset Path" (string group.AssetPath)
-      renderRefersTo   "Belongs To"  dispatch model group
-      renderClients    "Clients"     dispatch model group
-      renderPins       "Pins"        dispatch model group
-    ]
+  let render dispatch (model: Model) (client: ClientId) (group: PinGroupId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Pin Group" [
+        str (string group + " (orphaned)")
+      ]
+    | Some state ->
+      match PinGroupMap.tryFindGroup client group state.PinGroups with
+      | None ->
+        Common.render dispatch model "Pin Group" [
+          str (string group + " (orphaned)")
+        ]
+      | Some group ->
+        Common.render dispatch model "Pin Group" [
+          Common.stringRow "Id"         (string group.Id)
+          Common.stringRow "Name"       (string group.Name)
+          Common.stringRow "Path"       (string group.Path)
+          Common.stringRow "Asset Path" (string group.AssetPath)
+          renderRefersTo   "Belongs To"  dispatch model group
+          renderClients    "Clients"     dispatch model group
+          renderPins       "Pins"        dispatch model group
+        ]

@@ -150,11 +150,11 @@ module Array =
 
 module Select =
 
-  let pin dispatch pin =
-    pin |> Selected.Pin |> Msg.SelectElement |> dispatch
+  let pin dispatch client pin =
+    (client, pin) |> Selected.Pin |> Msg.SelectElement |> dispatch
 
-  let group dispatch group =
-    group |> Selected.PinGroup |> Msg.SelectElement |> dispatch
+  let group dispatch client group =
+    (client, group) |> Selected.PinGroup |> Msg.SelectElement |> dispatch
 
   let client dispatch client =
     client |> Selected.Client |> Msg.SelectElement |> dispatch

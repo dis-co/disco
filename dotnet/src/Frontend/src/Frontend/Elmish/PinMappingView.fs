@@ -35,7 +35,7 @@ let renderPin dispatch (pin: Pin) =
       useRightClick = false
       slices = None
       updater = None
-      onSelect = fun () -> Select.pin dispatch pin
+      onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
       onDragStart = None } []
 
 type [<Pojo>] PinHoleProps =

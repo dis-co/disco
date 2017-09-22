@@ -18,9 +18,21 @@ open State
 
 module SessionInspector =
 
-  let render dispatch (model: Model) (session: Session) =
-    Common.render dispatch model "Session" [
-      Common.stringRow "Id"         (string session.Id)
-      Common.stringRow "IP Address" (string session.IpAddress)
-      Common.stringRow "User Agent" (string session.UserAgent)
-    ]
+  let render dispatch (model: Model) (session: SessionId) =
+    match model.state with
+    | None ->
+      Common.render dispatch model "Session" [
+        str (string session + " (orphaned)")
+      ]
+    | Some state ->
+      match Map.tryFind session state.Sessions with
+      | None ->
+        Common.render dispatch model "Session" [
+          str (string session + " (orphaned)")
+        ]
+      | Some session ->
+        Common.render dispatch model "Session" [
+          Common.stringRow "Id"         (string session.Id)
+          Common.stringRow "IP Address" (string session.IpAddress)
+          Common.stringRow "User Agent" (string session.UserAgent)
+        ]

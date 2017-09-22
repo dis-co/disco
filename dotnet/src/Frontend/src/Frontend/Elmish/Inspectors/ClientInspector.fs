@@ -34,14 +34,14 @@ module ClientInspector =
         Common.row tag [
           Common.link
             (string mem.HostName)
-            (fun _ -> Select.clusterMember dispatch mem)
+            (fun _ -> Select.clusterMember dispatch mem.Id)
         ]
 
   let buildGroup dispatch (group: PinGroup) =
     li [] [
       Common.link
         (string group.Name)
-        (fun _ -> Select.group dispatch group)
+        (fun _ -> Select.group dispatch group.ClientId group.Id)
     ]
 
   let private renderGroups tag dispatch (model: Model) (client: IrisClient) =
@@ -55,14 +55,23 @@ module ClientInspector =
       |> ul []
       |> fun list -> Common.row tag [ list ]
 
-  let render dispatch (model: Model) (client: IrisClient) =
-    Common.render dispatch model "Client" [
-      Common.stringRow "Id"         (string client.Id)
-      Common.stringRow "Name"       (string client.Name)
-      Common.stringRow "Role"       (string client.Role)
-      Common.stringRow "Status"     (string client.Status)
-      Common.stringRow "IP Address" (string client.IpAddress)
-      Common.stringRow "Port"       (string client.Port)
-      renderMachine    "Machine"     dispatch model client
-      renderGroups     "Pin Groups"  dispatch model client
-    ]
+  let render dispatch (model: Model) (client: ClientId) =
+    match model.state with
+    | None -> Common.render dispatch model "Client" []
+    | Some state ->
+      match Map.tryFind client state.Clients with
+      | None ->
+        Common.render dispatch model "Client" [
+          Common.stringRow "Id" (string client + " (orphaned)")
+        ]
+      | Some client ->
+        Common.render dispatch model "Client" [
+          Common.stringRow "Id"         (string client.Id)
+          Common.stringRow "Name"       (string client.Name)
+          Common.stringRow "Role"       (string client.Role)
+          Common.stringRow "Status"     (string client.Status)
+          Common.stringRow "IP Address" (string client.IpAddress)
+          Common.stringRow "Port"       (string client.Port)
+          renderMachine    "Machine"     dispatch model client
+          renderGroups     "Pin Groups"  dispatch model client
+        ]
