@@ -93,9 +93,27 @@ module CueListInspector =
     |> List.ofArray
     |> Common.row tag
 
+  let private renderPlayer dispatch model (player: CuePlayer) =
+    li [] [
+      Common.link
+        (string player.Name)
+        (fun () -> Select.player dispatch player)
+    ]
+
+  let private renderPlayers tag dispatch (model: Model) (cuelist: CueList) =
+    match model.state with
+    | None -> Common.row tag []
+    | Some state ->
+      state.CuePlayers
+      |> Map.filter (fun _ -> CuePlayer.contains cuelist.Id)
+      |> Map.toList
+      |> List.map (snd >> renderPlayer dispatch model)
+      |> fun players -> Common.row tag [ ul [] players ]
+
   let render dispatch (model: Model) (cuelist: CueList) =
     Common.render dispatch model "Cue List" [
-      Common.stringRow "Id"    (string cuelist.Id)
-      Common.stringRow "Name"  (string cuelist.Name)
-      renderItems      "Items"  dispatch model cuelist
+      Common.stringRow "Id"     (string cuelist.Id)
+      Common.stringRow "Name"   (string cuelist.Name)
+      renderItems      "Items"   dispatch model cuelist
+      renderPlayers    "Players" dispatch model cuelist
     ]

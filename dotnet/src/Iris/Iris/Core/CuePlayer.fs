@@ -396,3 +396,14 @@ module CuePlayer =
 
   let assetPath (player: CuePlayer) =
     CUEPLAYER_DIR <.> sprintf "%O%s" player.Id ASSET_EXTENSION
+
+  // ** contains
+
+  let contains (cuelistId: CueListId) (player: CuePlayer) =
+    Array.fold
+      (fun result -> function
+        | _  when result -> result
+        | CuePlayerItem.CueList id when id = cuelistId -> true
+        | _ -> false)
+      false
+      player.Items
