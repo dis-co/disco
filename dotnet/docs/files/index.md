@@ -11,6 +11,7 @@ IRIS is a software product developed by [Nsynk](http://nsynk.de/) to aid in the 
 - [Quickstart](frontend/quickstart.md)
 - [Development](frontend/development.md)
 - [API Reference](frontend/api_reference.md)
+- [IDE Installation Instructions](frontend/requirements.md)
 
 ## Other
 

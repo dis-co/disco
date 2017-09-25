@@ -11,6 +11,7 @@ let private templateCache = Dictionary<string, obj->string>()
 let private handleBarsCompile (templateString: string): obj->string = import "compile" "handlebars"
 let private marked (markdown: string): string = importDefault "marked"
 let private ReactDomServer: obj = importDefault "react-dom/server"
+let private fsExtra: obj = importAll "fs-extra"
 
 /// Resolves a path to prevent using location of target JS file
 /// Note the function is inline so `__dirname` will belong to the calling file
@@ -68,3 +69,8 @@ let rec getDirectoryFiles isRecursive (dir: string) =
         else
             files.Add(item)
     files
+
+/// Copy a file or directory. The directory can have contents. Like cp -r.
+/// Overwrites target files
+let copy (source: string) (target: string): unit =
+    !!fsExtra?copySync(source, target, createObj["overwrite" ==> true])

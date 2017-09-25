@@ -167,6 +167,10 @@ let parseApiReference title xmlDocPath = promise {
 }
 
 let init() =
+    // Copy img directory
+    copy (resolve "${entryDir}/../../files/img") (resolve "${entryDir}/../public/img")
+
+    // Markdown files
     let reg = Regex(@"\.md\b")
     getDirectoryFiles true docsPath
     |> Seq.filter reg.IsMatch
@@ -186,6 +190,7 @@ let init() =
         |> writeFile targetFile
     )
 
+    // API reference
     promise {
         for title, xmlDocPath in xmlDocs do
             try
