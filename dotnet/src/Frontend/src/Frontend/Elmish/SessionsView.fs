@@ -75,7 +75,7 @@ let createWidget(id: System.Guid) =
         (fun m1 m2 ->
           match m1.state, m2.state with
           | Some s1, Some s2 ->
-            equalsRef s1.Project s2.Project
+            equalsRef s1.Sessions s2.Sessions
           | None, None -> true
           | _ -> false)
         (widget id this.Name None body dispatch)
