@@ -211,6 +211,11 @@ module ClientConfig =
       lst
     |> ClientConfig
 
+  // ** tryFind
+
+  let tryFind (client: ClientId) = function
+    | ClientConfig map -> Map.tryFind client map
+
 // * TimingConfig
 
 //  _____ _           _              ____             __ _
@@ -1370,6 +1375,13 @@ module Config =
       ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.findMember"
       |> Either.fail
+
+  // ** tryFindMember
+
+  let tryFindMember (config: IrisConfig) (id: MemberId) =
+    match findMember config id with
+    | Right mem -> Some mem
+    | _ -> None
 
   // ** getMembers
 

@@ -3,6 +3,7 @@ module Iris.Web.Types
 open System
 open Fable.Core
 open Fable.Import
+open Iris.Raft
 open Iris.Core
 open Iris.Core.Commands
 
@@ -13,15 +14,16 @@ module StorageKeys =
 
 /// Widget names
 module Widgets =
-  let [<Literal>] Log         = "LOG"
-  let [<Literal>] GraphView   = "Graph View"
-  let [<Literal>] CuePlayer   = "Cue Player"
-  let [<Literal>] ProjectView = "Project View"
-  let [<Literal>] Cluster     = "Cluster"
-  let [<Literal>] Clients     = "Clients"
-  let [<Literal>] Sessions    = "Sessions"
-  let [<Literal>] PinMapping  = "Pin Mappings"
-  let [<Literal>] Test        = "Test"
+  let [<Literal>] Log           = "LOG"
+  let [<Literal>] GraphView     = "Graph View"
+  let [<Literal>] CuePlayer     = "Cue Player"
+  let [<Literal>] ProjectView   = "Project View"
+  let [<Literal>] Cluster       = "Cluster"
+  let [<Literal>] Clients       = "Clients"
+  let [<Literal>] Sessions      = "Sessions"
+  let [<Literal>] PinMapping    = "Pin Mappings"
+  let [<Literal>] InspectorView = "Inspector View"
+  let [<Literal>] Test          = "Test"
 
 type IProjectInfo =
   abstract name: Name
@@ -112,6 +114,31 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
+  | SelectElement of InspectorSelection
+  | Navigate of InspectorNavigate
+
+and InspectorSelection =
+  | Pin      of Name * ClientId * PinId
+  | PinGroup of Name * ClientId * PinGroupId
+  | Client   of Name * ClientId
+  | Member   of Name * MemberId
+  | Cue      of Name * CueId
+  | CueList  of Name * CueListId
+  | Player   of Name * PlayerId
+  | Mapping  of PinMappingId
+  | Session  of SessionId
+  | User     of Name * UserId
+  | Nothing
+
+and InspectorHistory =
+  { index: int
+    selected: InspectorSelection
+    previous: InspectorSelection list }
+
+and InspectorNavigate =
+  | Previous
+  | Next
+  | Set of int
 
 /// Elmish state model
 and Model =
@@ -120,6 +147,7 @@ and Model =
     modal: IModal option
     state: State option
     logs: LogEvent list
+    history: InspectorHistory
     userConfig: UserConfig
   }
 

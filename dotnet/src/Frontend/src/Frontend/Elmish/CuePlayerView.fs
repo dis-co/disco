@@ -94,7 +94,8 @@ type [<Pojo>] private CueProps =
     CueGroupIndex: int
     SelectedCueIndex: int
     SelectedCueGroupIndex: int
-    SelectCue: int -> int -> unit }
+    SelectCue: int -> int -> unit
+    Dispatch: Elmish.Dispatch<Msg> }
 
 type private CueView(props) =
   inherit React.Component<CueProps, CueState>(props)
@@ -188,6 +189,7 @@ type private CueView(props) =
     let cueHeader =
       tr [
         OnClick (fun _ ->
+          Select.cue this.props.Dispatch this.props.Cue
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
             this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
@@ -224,6 +226,7 @@ type private CueView(props) =
                       Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
+                    onSelect = fun () ->  Select.pin this.props.Dispatch pin
                     onDragStart = None } []
             ])
           |> Array.toList
@@ -280,6 +283,7 @@ type CuePlayerView(props) =
           com<CueView,_,_>
             { key = string cueRef.Id
               State = state
+              Dispatch = this.props.Dispatch
               UseRightClick = this.props.Model.userConfig.useRightClick
               Cue = Lib.findCue cueRef.CueId state
               CueRef = cueRef
@@ -318,8 +322,10 @@ type CuePlayerView(props) =
       ClassName "iris-button"
       Disabled (Option.isNone this.props.CueList)
       OnClick (fun _ ->
-        this.props.CueList |> Option.iter (fun cueList ->
-          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex) |> this.props.Dispatch))
+        this.props.CueList
+        |> Option.iter (fun cueList ->
+          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex)
+          |> this.props.Dispatch))
     ] [str "Add Cue"]
 
   member this.render() =

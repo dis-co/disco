@@ -8,7 +8,7 @@ SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
 SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
-FRONTEND_IP := 192.168.2.108
+FRONTEND_IP := localhost
 FRONTEND_PORT := 7000
 
 export MONO_THREADS_PER_CPU
@@ -109,6 +109,9 @@ run.service.1.project.profile:
 # | |_| '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
 # |  _| | | (_) | | | | ||  __/ | | | (_| |
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
+
+css:
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildCss $(OPTS)"
 
 frontend:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"

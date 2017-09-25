@@ -506,6 +506,8 @@ Target "BuildZeroconf"
 // |  _|| | | (_) | | | | ||  __/ | | | (_| |
 // |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
 
+Target "BuildCss" (fun () ->
+  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ())
 
 Target "BuildFrontendPlugins" (fun () ->
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false)

@@ -11,6 +11,7 @@ open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Iris.Core
+open Iris.Raft
 open Types
 
 // jQuery
@@ -147,3 +148,73 @@ module Array =
         else
           xs2.[j] <- xs.[j - 1]
       xs2
+
+module Select =
+
+  let pin dispatch (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id)
+    |> InspectorSelection.Pin
+    |> Msg.SelectElement
+    |> dispatch
+
+  let group dispatch (group: PinGroup) =
+    (group.Name, group.ClientId, group.Id)
+    |> InspectorSelection.PinGroup
+    |> Msg.SelectElement
+    |> dispatch
+
+  let client dispatch (client: IrisClient) =
+    (client.Name, client.Id)
+    |> InspectorSelection.Client
+    |> Msg.SelectElement
+    |> dispatch
+
+  let clusterMember dispatch (mem: RaftMember) =
+    (mem.HostName, mem.Id)
+    |> InspectorSelection.Member
+    |> Msg.SelectElement
+    |> dispatch
+
+  let cue dispatch (cue: Cue) =
+    (cue.Name, cue.Id)
+    |> InspectorSelection.Cue
+    |> Msg.SelectElement
+    |> dispatch
+
+  let cuelist dispatch (cuelist: CueList) =
+    (cuelist.Name, cuelist.Id)
+    |> InspectorSelection.CueList
+    |> Msg.SelectElement
+    |> dispatch
+
+  let player dispatch (player: CuePlayer) =
+    (player.Name, player.Id)
+    |> InspectorSelection.Player
+    |> Msg.SelectElement
+    |> dispatch
+
+  let session dispatch session =
+    session |> InspectorSelection.Session |> Msg.SelectElement |> dispatch
+
+  let user dispatch (user: User) =
+    (user.UserName, user.Id)
+    |> InspectorSelection.User
+    |> Msg.SelectElement
+    |> dispatch
+
+  let mapping dispatch mapping =
+    mapping |> InspectorSelection.Mapping |> Msg.SelectElement |> dispatch
+
+  let nothing dispatch name =
+    InspectorSelection.Nothing |> Msg.SelectElement |> dispatch
+
+module Navigate =
+
+  let set idx dispatch =
+    InspectorNavigate.Set idx |> Msg.Navigate |> dispatch
+
+  let back dispatch =
+    InspectorNavigate.Previous |> Msg.Navigate |> dispatch
+
+  let forward dispatch =
+    InspectorNavigate.Next |> Msg.Navigate |> dispatch

@@ -197,3 +197,23 @@ type CueList =
     IrisData.save basePath cuelist
 
   #endif
+
+// * CueList module
+
+module CueList =
+
+  // ** filter
+
+  let filter (f: CueList -> bool) (map: Map<CueListId,CueList>) =
+    Map.filter (fun _ -> f) map
+
+  // ** contains
+
+  let contains (cueId: CueId) (cuelist: CueList) =
+    Array.fold
+      (fun result group ->
+        if not result
+        then CueGroup.contains cueId group
+        else result)
+      true
+      cuelist.Groups

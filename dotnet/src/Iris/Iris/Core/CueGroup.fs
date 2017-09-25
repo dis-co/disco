@@ -132,3 +132,23 @@ type CueGroup =
     yaml.ToCueGroup()
 
   #endif
+
+// * CueGroup module
+
+module CueGroup =
+
+  // ** filter
+
+  let filter (f: CueGroup -> bool) (groups: CueGroup array) =
+    Array.filter f groups
+
+  // ** contains
+
+  let contains (cueId: CueId) (group: CueGroup) =
+    Array.fold
+      (fun result ref ->
+        if not result
+        then ref.CueId = cueId
+        else result)
+      false
+      group.CueRefs
