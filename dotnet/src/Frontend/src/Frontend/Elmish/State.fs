@@ -131,7 +131,7 @@ let init() =
       #else
       logs = []
       #endif
-      history = { index = 0; selected = Selected.Nothing; previous = [] }
+      history = { index = 0; selected = InspectorSelection.Nothing; previous = [] }
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -187,9 +187,9 @@ let update msg model: Model*Cmd<Msg> =
     let history =
       try
         let index = cmd |> function
-          | Browse.Previous -> model.history.index + 1
-          | Browse.Next     -> model.history.index - 1
-          | Browse.Set idx  -> idx
+          | InspectorNavigate.Previous -> model.history.index + 1
+          | InspectorNavigate.Next     -> model.history.index - 1
+          | InspectorNavigate.Set idx  -> idx
         { model.history with
             index = index
             selected = model.history.previous.[index] }

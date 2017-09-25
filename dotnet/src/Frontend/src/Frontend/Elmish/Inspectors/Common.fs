@@ -30,7 +30,7 @@ module Common =
       OnClick (fun _ -> f())
     ] [ str content ]
 
-  let makeLink dispatch (history: BrowseHistory) (idx: int) (content: string) =
+  let makeLink dispatch (history: InspectorHistory) (idx: int) (content: string) =
     let link =
       let inverted = abs (history.previous.Length - 1 - idx)
       let selected = abs (history.index - (history.previous.Length - 1))
@@ -47,21 +47,21 @@ module Common =
     then [link; str ">"]
     else [link]
 
-  let breadcrumb dispatch (history: BrowseHistory) (idx: int) (selected: Selected) =
+  let breadcrumb dispatch (history: InspectorHistory) (idx: int) (selected: InspectorSelection) =
     let makeLink = makeLink dispatch history idx
     let content =
       match selected with
-      | Selected.Pin (name,client,pin)        -> makeLink (string name)
-      | Selected.PinGroup (name,client,group) -> makeLink (string name)
-      | Selected.Client (name,client)         -> makeLink (string name)
-      | Selected.Member (name,mem)            -> makeLink (string name)
-      | Selected.Cue (name,cue)               -> makeLink (string name)
-      | Selected.CueList (name,cuelist)       -> makeLink (string name)
-      | Selected.Player (name,player)         -> makeLink (string name)
-      | Selected.User (name,user)             -> makeLink (string name)
-      | Selected.Session session              -> makeLink (session.Prefix())
-      | Selected.Mapping mapping              -> makeLink (mapping.Prefix())
-      | Selected.Nothing                      -> [str ""]
+      | InspectorSelection.Pin (name,client,pin)        -> makeLink (string name)
+      | InspectorSelection.PinGroup (name,client,group) -> makeLink (string name)
+      | InspectorSelection.Client (name,client)         -> makeLink (string name)
+      | InspectorSelection.Member (name,mem)            -> makeLink (string name)
+      | InspectorSelection.Cue (name,cue)               -> makeLink (string name)
+      | InspectorSelection.CueList (name,cuelist)       -> makeLink (string name)
+      | InspectorSelection.Player (name,player)         -> makeLink (string name)
+      | InspectorSelection.User (name,user)             -> makeLink (string name)
+      | InspectorSelection.Session session              -> makeLink (session.Prefix())
+      | InspectorSelection.Mapping mapping              -> makeLink (mapping.Prefix())
+      | InspectorSelection.Nothing                      -> [str ""]
     li [ Style [ Display "inline-block" ] ] content
 
   let bar dispatch (model: Model) =

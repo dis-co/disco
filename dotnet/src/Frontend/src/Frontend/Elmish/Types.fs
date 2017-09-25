@@ -114,10 +114,10 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
-  | SelectElement of Selected
-  | Navigate of Browse
+  | SelectElement of InspectorSelection
+  | Navigate of InspectorNavigate
 
-and Selected =
+and InspectorSelection =
   | Pin      of Name * ClientId * PinId
   | PinGroup of Name * ClientId * PinGroupId
   | Client   of Name * ClientId
@@ -130,12 +130,12 @@ and Selected =
   | User     of Name * UserId
   | Nothing
 
-and BrowseHistory =
+and InspectorHistory =
   { index: int
-    selected: Selected
-    previous: Selected list }
+    selected: InspectorSelection
+    previous: InspectorSelection list }
 
-and Browse =
+and InspectorNavigate =
   | Previous
   | Next
   | Set of int
@@ -147,7 +147,7 @@ and Model =
     modal: IModal option
     state: State option
     logs: LogEvent list
-    history: BrowseHistory
+    history: InspectorHistory
     userConfig: UserConfig
   }
 

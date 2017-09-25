@@ -153,68 +153,68 @@ module Select =
 
   let pin dispatch (pin: Pin) =
     (pin.Name, pin.ClientId, pin.Id)
-    |> Selected.Pin
+    |> InspectorSelection.Pin
     |> Msg.SelectElement
     |> dispatch
 
   let group dispatch (group: PinGroup) =
     (group.Name, group.ClientId, group.Id)
-    |> Selected.PinGroup
+    |> InspectorSelection.PinGroup
     |> Msg.SelectElement
     |> dispatch
 
   let client dispatch (client: IrisClient) =
     (client.Name, client.Id)
-    |> Selected.Client
+    |> InspectorSelection.Client
     |> Msg.SelectElement
     |> dispatch
 
   let clusterMember dispatch (mem: RaftMember) =
     (mem.HostName, mem.Id)
-    |> Selected.Member
+    |> InspectorSelection.Member
     |> Msg.SelectElement
     |> dispatch
 
   let cue dispatch (cue: Cue) =
     (cue.Name, cue.Id)
-    |> Selected.Cue
+    |> InspectorSelection.Cue
     |> Msg.SelectElement
     |> dispatch
 
   let cuelist dispatch (cuelist: CueList) =
     (cuelist.Name, cuelist.Id)
-    |> Selected.CueList
+    |> InspectorSelection.CueList
     |> Msg.SelectElement
     |> dispatch
 
   let player dispatch (player: CuePlayer) =
     (player.Name, player.Id)
-    |> Selected.Player
+    |> InspectorSelection.Player
     |> Msg.SelectElement
     |> dispatch
 
   let session dispatch session =
-    session |> Selected.Session |> Msg.SelectElement |> dispatch
+    session |> InspectorSelection.Session |> Msg.SelectElement |> dispatch
 
   let user dispatch (user: User) =
     (user.UserName, user.Id)
-    |> Selected.User
+    |> InspectorSelection.User
     |> Msg.SelectElement
     |> dispatch
 
   let mapping dispatch mapping =
-    mapping |> Selected.Mapping |> Msg.SelectElement |> dispatch
+    mapping |> InspectorSelection.Mapping |> Msg.SelectElement |> dispatch
 
   let nothing dispatch name =
-    Selected.Nothing |> Msg.SelectElement |> dispatch
+    InspectorSelection.Nothing |> Msg.SelectElement |> dispatch
 
 module Navigate =
 
   let set idx dispatch =
-    Browse.Set idx |> Msg.Navigate |> dispatch
+    InspectorNavigate.Set idx |> Msg.Navigate |> dispatch
 
   let back dispatch =
-    Browse.Previous |> Msg.Navigate |> dispatch
+    InspectorNavigate.Previous |> Msg.Navigate |> dispatch
 
   let forward dispatch =
-    Browse.Next |> Msg.Navigate |> dispatch
+    InspectorNavigate.Next |> Msg.Navigate |> dispatch
