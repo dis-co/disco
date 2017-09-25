@@ -687,9 +687,8 @@ let generateDocs(watch: bool) =
   runExec dotnetExePath "build"   (frontendDir @@ "src/Frontend") false
   // Generate web pages
   runNpmNoErrors "install" (__SOURCE_DIRECTORY__ @@ "docs/tools") ()
-  runExec dotnetExePath "restore"         (__SOURCE_DIRECTORY__ @@ "docs/tools/src") false
-  let cmd = if watch then "fable npm-start" else "fable npm-build"
-  runExec dotnetExePath cmd (__SOURCE_DIRECTORY__ @@ "docs/tools/src") false
+  let cmd = if watch then "run start" else "run build"
+  runNpmNoErrors cmd (__SOURCE_DIRECTORY__ @@ "docs/tools") ()
 
 Target "GenerateDocs" (fun () ->
   generateDocs(false))
