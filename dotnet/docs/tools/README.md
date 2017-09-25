@@ -2,12 +2,24 @@
 
 Fable Node.js app to generate Iris documentation as static web pages.
 
-## Installing and building
+## Installing dependencies
 
-- Install JS dependencies: `npm install`
-- **Move to src folder**: `cd src`
-- Install F# dependencies: `dotnet restore`
+```shell
+npm install
+```
 
-To generate the web pages, _still in src folder_ (where the .fsproj is), run `dotnet fable npm-start`. This will start Fable in watch mode, so any time you edit one of the F# files, the page(s) will be generated again. If you just want to run Fable once, use `dotnet fable npm-build` instead.
+## Developing
 
-The web pages will be output to `public` directory. To start a static server to display them in a browser, _in a new terminal and from the repo root_, run `npm run server`.
+To start Fable in watch mode and launch a local server so you can see results in real time, run:
+
+```shell
+npm run start
+```
+
+> The first compilation will take some seconds so you will have to refresh the browser after that.
+
+To just generate the `.html` pages once, run:
+
+```shell
+npm run build
+```
