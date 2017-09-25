@@ -4,10 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "fable-splitter -c splitter.config.js -w",
-    "build": "fable-splitter -c splitter.config.js",
+    "preinstall": "dotnet restore src",
+    "fable-splitter": "fable-splitter",
+    "fable": "cd src && dotnet fable npm-run fable-splitter --port free -- -c splitter.config.js",
     "server": "cd public && reload -b",
-    "publish": "gh-pages -d public"
+    "start": "concurrently -k \"npm run fable -- -w\" \"npm run server\"",
+    "build": "npm run fable"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "babel-plugin-transform-es2015-modules-commonjs": "^6.26.0",
     "bulma": "^0.5.1",
+    "concurrently": "^3.5.0",
     "fable-splitter": "^0.1.10",
     "reload": "^2.2.2"
   }
