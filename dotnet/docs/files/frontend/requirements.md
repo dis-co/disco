@@ -5,7 +5,7 @@
 
 - open visual studio code and under add-ons search for „ionide“. install all 3 packages
 
-<!— SCREENSHOT —>
+[install ionide] (img/install_ionide.png)
 
 - install [fsharp] (http://fsharp.org/use/mac/) using option #5:
   
@@ -37,11 +37,11 @@
   - git: **choco install git**
   - dotnet: **choco install dotnetcore-sdk**
 
-- dosnload and install [.NET Core 2.0] (https://www.microsoft.com/net/download/core)
+- download and install [.NET Core 2.0] (https://www.microsoft.com/net/download/core)
 - install „build tools for visual studio 2017“ [from here] ( https://www.visualstudio.com/de/downloads/)
 
-<!— SCREENSHOT—>
+[build tools] (img/build_tools.png)
 
 - pick the following selection (summary)
 
-<!— SCREENSHOT —>
+[checkbox summary] (img/summary.png)
