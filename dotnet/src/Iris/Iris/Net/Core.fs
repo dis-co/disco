@@ -546,6 +546,8 @@ type ITcpClient =
   abstract Status: ServiceStatus
   abstract Request: Request -> unit
   abstract Respond: Response -> unit
+  abstract LocalEndPoint: IPEndPoint
+  abstract RemoteEndPoint: IPEndPoint
   abstract Subscribe: (TcpClientEvent -> unit) -> IDisposable
 
 // * Server

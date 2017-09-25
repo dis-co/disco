@@ -80,15 +80,24 @@ module ApiClient =
   // ** requestRegister
 
   let private requestRegister (state: ClientState) =
-    state.Peer.Port
-    |> sprintf "registering with %O:%O" state.Peer.IpAddress
+    let updated =
+      { state with
+          Client =
+            { state.Client with
+                IpAddress = IpAddress.ofIPAddress state.Socket.LocalEndPoint.Address
+                Port = port (uint16 state.Socket.LocalEndPoint.Port) } }
+
+    updated.Peer.Port
+    |> sprintf "registering with %O:%O" updated.Peer.IpAddress
     |> Logger.info (tag "requestRegister")
 
-    state.Client
+    updated.Client
     |> ApiRequest.Register
     |> Binary.encode
     |> Request.create (Guid.ofId state.Client.Id)
-    |> state.Socket.Request
+    |> updated.Socket.Request
+
+    updated
 
   // ** requestUnRegister
 
@@ -107,7 +116,6 @@ module ApiClient =
 
   let private handleStart (state: ClientState) (_: ApiAgent) =
     requestRegister state
-    state
 
   // ** handleSetStatus
 
