@@ -154,6 +154,19 @@ module Common =
       ]
     ]
 
+  let buttonRow (tag: string) (value: bool) (f: bool -> unit) =
+    let active = if value then "pressed" else ""
+    row tag [
+      div [
+        Style [
+          Height "15px"
+          Width "15px"
+        ]
+        Class ("iris-button " + active)
+        OnClick (fun _ -> f (not value))
+      ] []
+    ]
+
   let header (title: string) =
     thead [] [
       tr [] [

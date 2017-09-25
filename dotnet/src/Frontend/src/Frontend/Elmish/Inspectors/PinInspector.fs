@@ -151,6 +151,7 @@ module PinInspector =
     ]
 
   let render dispatch (model: Model) (client: ClientId) (pin: PinId) =
+    let updatePin = UpdatePin >> ClientContext.Singleton.Post
     match model.state with
     | None ->
       Common.render dispatch model "Pin" [
@@ -167,12 +168,12 @@ module PinInspector =
           Common.stringRow "Id"            (string pin.Id)
           Common.stringRow "Name"          (string pin.Name)
           Common.stringRow "Type"          (string pin.Type)
-          configurationRow "Configuration" dispatch model pin
+          configurationRow "Configuration"  dispatch model pin
           Common.stringRow "VecSize"       (string pin.VecSize)
           renderClients    "Clients"        dispatch model pin
           renderGroup      "Group"          dispatch model pin
           onlineRow        "Online"         pin
-          Common.stringRow "Persisted"     (string pin.Persisted)
+          Common.buttonRow "Persisted"      pin.Persisted (flip Pin.setPersisted pin >> updatePin)
           Common.stringRow "Dirty"         (string pin.Dirty)
           Common.stringRow "Labels"        (string pin.Labels)
           Common.stringRow "Tags"          (string pin.GetTags)
