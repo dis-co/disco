@@ -113,6 +113,43 @@ module PinInspector =
           ])
       |> fun list -> Common.row tag [ ul [] list ]
 
+  let private configurationRow tag dispatch (model: Model) (pin: Pin) =
+    let selected config = pin.PinConfiguration = config
+    let handler str =
+      let parsed = str |> PinConfiguration.Parse
+      pin
+      |> Pin.setPinConfiguration parsed
+      |> UpdatePin
+      |> ClientContext.Singleton.Post
+    Common.row tag [
+      select [
+        Value (string pin.PinConfiguration)
+        OnChange (fun ev -> handler !!ev.target?value)
+      ] [
+        option [] [
+          str (string PinConfiguration.Sink)
+        ]
+        option [] [
+          str (string PinConfiguration.Source)
+        ]
+        option [] [
+          str (string PinConfiguration.Preset)
+        ]
+      ]
+    ]
+
+  let private onlineRow tag (pin: Pin) =
+    let icon =
+      if pin.Online
+      then "iris-status-on"
+      else "iris-status-off"
+
+    Common.row tag [
+      span [] [
+        span [Class ("iris-icon icon-bull " + icon)] []
+      ]
+    ]
+
   let render dispatch (model: Model) (client: ClientId) (pin: PinId) =
     match model.state with
     | None ->
@@ -130,11 +167,11 @@ module PinInspector =
           Common.stringRow "Id"            (string pin.Id)
           Common.stringRow "Name"          (string pin.Name)
           Common.stringRow "Type"          (string pin.Type)
-          Common.stringRow "Configuration" (string pin.PinConfiguration)
+          configurationRow "Configuration" dispatch model pin
           Common.stringRow "VecSize"       (string pin.VecSize)
           renderClients    "Clients"        dispatch model pin
           renderGroup      "Group"          dispatch model pin
-          Common.stringRow "Online"        (string pin.Online)
+          onlineRow        "Online"         pin
           Common.stringRow "Persisted"     (string pin.Persisted)
           Common.stringRow "Dirty"         (string pin.Dirty)
           Common.stringRow "Labels"        (string pin.Labels)
