@@ -49,6 +49,7 @@ module WebSocketServer =
           "<no user agent specified>"
       let updated =
         { session with
+            Id = socketId
             IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
             UserAgent = ua }
       if connections.TryUpdate(socketId, (socket, Some updated), current) then
