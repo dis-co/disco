@@ -66,5 +66,9 @@ let createWidget(id: System.Guid) =
         w = 4; h = 12
         minW = 4; maxW = 10
         minH = 1; maxH = 20 }
-    member this.Render(dispatch, model) =
-      widget id this.Name None body dispatch model }
+    member this.Render(dispatch, model: Model) =
+      lazyViewWith
+        (fun m1 m2 -> equalsRef m1.history.selected m2.history.selected)
+        (widget id this.Name None body dispatch)
+        model
+  }
