@@ -343,6 +343,9 @@ module rec TcpClient =
         member socket.Subscribe (callback: TcpClientEvent -> unit) =
           Observable.subscribe callback subscriptions
 
+        member socket.LocalEndPoint = state.Socket.LocalEndPoint :?> IPEndPoint
+        member socket.RemoteEndPoint = state.Socket.RemoteEndPoint :?> IPEndPoint
+
         member socket.Dispose () =
           listener.Dispose()
           state.Dispose() }
