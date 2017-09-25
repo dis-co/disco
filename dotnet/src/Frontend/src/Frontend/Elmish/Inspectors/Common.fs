@@ -30,49 +30,38 @@ module Common =
       OnClick (fun _ -> f())
     ] [ str content ]
 
-  let makeLink (history: BrowseHistory) (idx: int) (content: string) f =
+  let makeLink dispatch (history: BrowseHistory) (idx: int) (content: string) =
     let link =
-      if idx = abs (history.index - (history.previous.Length - 1))
-      then activeLink content f
-      else link content f
+      let inverted = abs (history.previous.Length - 1 - idx)
+      let selected = abs (history.index - (history.previous.Length - 1))
+      if idx = selected
+      then
+        activeLink
+          content
+          (fun () -> Navigate.set inverted dispatch)
+      else
+        link
+          content
+          (fun () -> Navigate.set inverted dispatch)
     if idx < history.previous.Length - 1
     then [link; str ">"]
     else [link]
 
   let breadcrumb dispatch (history: BrowseHistory) (idx: int) (selected: Selected) =
+    let makeLink = makeLink dispatch history idx
     let content =
       match selected with
-      | Selected.Pin (client, pin) ->
-        makeLink history idx (pin.Prefix()) <| fun () ->
-          Select.pin dispatch client pin
-      | Selected.PinGroup (client, group) ->
-        makeLink history idx (group.Prefix()) <| fun () ->
-          Select.group dispatch client group
-      | Selected.Client client ->
-        makeLink history idx (client.Prefix()) <| fun () ->
-          Select.client dispatch client
-      | Selected.Member mem ->
-        makeLink history idx (mem.Prefix()) <| fun () ->
-          Select.clusterMember dispatch mem
-      | Selected.Cue cue ->
-        makeLink history idx (cue.Prefix()) <| fun () ->
-          Select.cue dispatch cue
-      | Selected.CueList cuelist ->
-        makeLink history idx (cuelist.Prefix()) <| fun () ->
-          Select.cuelist dispatch cuelist
-      | Selected.Player player ->
-        makeLink history idx (player.Prefix()) <| fun () ->
-          Select.player dispatch player
-      | Selected.Session session ->
-        makeLink history idx (session.Prefix()) <| fun () ->
-          Select.session dispatch session
-      | Selected.User user ->
-        makeLink history idx (user.Prefix()) <| fun () ->
-          Select.user dispatch user
-      | Selected.Mapping mapping ->
-        makeLink history idx (mapping.Prefix()) <| fun () ->
-          Select.mapping dispatch mapping
-      | Selected.Nothing -> [str ""]
+      | Selected.Pin (name,client,pin)        -> makeLink (string name)
+      | Selected.PinGroup (name,client,group) -> makeLink (string name)
+      | Selected.Client (name,client)         -> makeLink (string name)
+      | Selected.Member (name,mem)            -> makeLink (string name)
+      | Selected.Cue (name,cue)               -> makeLink (string name)
+      | Selected.CueList (name,cuelist)       -> makeLink (string name)
+      | Selected.Player (name,player)         -> makeLink (string name)
+      | Selected.User (name,user)             -> makeLink (string name)
+      | Selected.Session session              -> makeLink (session.Prefix())
+      | Selected.Mapping mapping              -> makeLink (mapping.Prefix())
+      | Selected.Nothing                      -> [str ""]
     li [ Style [ Display "inline-block" ] ] content
 
   let bar dispatch (model: Model) =

@@ -39,7 +39,7 @@ module CuePlayerInspector =
             str "Cue List:"
             Common.link
               (string cuelist.Name)
-              (fun () -> Select.cuelist dispatch id)
+              (fun () -> Select.cuelist dispatch cuelist)
           ]
 
   let private renderItems tag dispatch (model: Model) (player: CuePlayer) =

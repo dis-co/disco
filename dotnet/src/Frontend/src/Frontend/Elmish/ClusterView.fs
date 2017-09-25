@@ -61,7 +61,7 @@ let body dispatch (model: Model) =
 
               span [
                 Class "iris-output iris-icon icon-host"
-                OnClick (fun _ -> Select.clusterMember dispatch node.Id)
+                OnClick (fun _ -> Select.clusterMember dispatch node)
                 Style [ Cursor "pointer" ]
               ] [
                 str (unwrap node.HostName)

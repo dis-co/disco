@@ -52,7 +52,7 @@ module CueListInspector =
           ul [] [
             li [] [
               strong [] [ str "Cue:" ]
-              Common.link (string cue.Name) (fun () -> Select.cue dispatch cue.Id)
+              Common.link (string cue.Name) (fun () -> Select.cue dispatch cue)
             ]
             li [] [
               table [ Class "iris-table" ] [
@@ -97,7 +97,7 @@ module CueListInspector =
     li [] [
       Common.link
         (string player.Name)
-        (fun () -> Select.player dispatch player.Id)
+        (fun () -> Select.player dispatch player)
     ]
 
   let private renderPlayers tag dispatch (model: Model) (cuelist: CueList) =

@@ -118,16 +118,16 @@ and Msg =
   | Navigate of Browse
 
 and Selected =
-  | Pin      of ClientId * PinId
-  | PinGroup of ClientId * PinGroupId
-  | Client   of ClientId
-  | Member   of MemberId
-  | Cue      of CueId
-  | CueList  of CueListId
-  | Player   of PlayerId
+  | Pin      of Name * ClientId * PinId
+  | PinGroup of Name * ClientId * PinGroupId
+  | Client   of Name * ClientId
+  | Member   of Name * MemberId
+  | Cue      of Name * CueId
+  | CueList  of Name * CueListId
+  | Player   of Name * PlayerId
   | Mapping  of PinMappingId
   | Session  of SessionId
-  | User     of UserId
+  | User     of Name * UserId
   | Nothing
 
 and BrowseHistory =
@@ -138,6 +138,7 @@ and BrowseHistory =
 and Browse =
   | Previous
   | Next
+  | Set of int
 
 /// Elmish state model
 and Model =

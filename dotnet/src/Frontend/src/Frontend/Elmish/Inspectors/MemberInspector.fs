@@ -22,7 +22,7 @@ module MemberInspector =
     li [] [
       Common.link
         (string client.Name)
-        (fun _ -> Select.client dispatch client.Id)
+        (fun _ -> Select.client dispatch client)
     ]
 
   let private renderClients tag dispatch (model: Model) (mem: RaftMember) =

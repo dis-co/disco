@@ -11,6 +11,7 @@ open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Iris.Core
+open Iris.Raft
 open Types
 
 // jQuery
@@ -150,40 +151,67 @@ module Array =
 
 module Select =
 
-  let pin dispatch client pin =
-    (client, pin) |> Selected.Pin |> Msg.SelectElement |> dispatch
+  let pin dispatch (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id)
+    |> Selected.Pin
+    |> Msg.SelectElement
+    |> dispatch
 
-  let group dispatch client group =
-    (client, group) |> Selected.PinGroup |> Msg.SelectElement |> dispatch
+  let group dispatch (group: PinGroup) =
+    (group.Name, group.ClientId, group.Id)
+    |> Selected.PinGroup
+    |> Msg.SelectElement
+    |> dispatch
 
-  let client dispatch client =
-    client |> Selected.Client |> Msg.SelectElement |> dispatch
+  let client dispatch (client: IrisClient) =
+    (client.Name, client.Id)
+    |> Selected.Client
+    |> Msg.SelectElement
+    |> dispatch
 
-  let clusterMember dispatch mem =
-    mem |> Selected.Member |> Msg.SelectElement |> dispatch
+  let clusterMember dispatch (mem: RaftMember) =
+    (mem.HostName, mem.Id)
+    |> Selected.Member
+    |> Msg.SelectElement
+    |> dispatch
 
-  let cue dispatch cue =
-    cue |> Selected.Cue |> Msg.SelectElement |> dispatch
+  let cue dispatch (cue: Cue) =
+    (cue.Name, cue.Id)
+    |> Selected.Cue
+    |> Msg.SelectElement
+    |> dispatch
 
-  let cuelist dispatch cuelist =
-    cuelist |> Selected.CueList |> Msg.SelectElement |> dispatch
+  let cuelist dispatch (cuelist: CueList) =
+    (cuelist.Name, cuelist.Id)
+    |> Selected.CueList
+    |> Msg.SelectElement
+    |> dispatch
 
-  let player dispatch player =
-    player |> Selected.Player |> Msg.SelectElement |> dispatch
+  let player dispatch (player: CuePlayer) =
+    (player.Name, player.Id)
+    |> Selected.Player
+    |> Msg.SelectElement
+    |> dispatch
 
   let session dispatch session =
     session |> Selected.Session |> Msg.SelectElement |> dispatch
 
-  let user dispatch user =
-    user |> Selected.User |> Msg.SelectElement |> dispatch
+  let user dispatch (user: User) =
+    (user.UserName, user.Id)
+    |> Selected.User
+    |> Msg.SelectElement
+    |> dispatch
 
   let mapping dispatch mapping =
     mapping |> Selected.Mapping |> Msg.SelectElement |> dispatch
 
-  let nothing dispatch =
+  let nothing dispatch name =
     Selected.Nothing |> Msg.SelectElement |> dispatch
 
 module Navigate =
+
+  let set idx dispatch =
+    Browse.Set idx |> Msg.Navigate |> dispatch
 
   let back dispatch =
     Browse.Previous |> Msg.Navigate |> dispatch

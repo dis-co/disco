@@ -32,7 +32,7 @@ module PinGroupInspector =
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
+        onSelect = fun () -> Select.pin dispatch pin
         onDragStart = None
       } []
     ]
@@ -61,7 +61,7 @@ module PinGroupInspector =
             li [] [
               Common.link
                 (string client.Name)
-                (fun _ -> Select.client dispatch client.Id)
+                (fun _ -> Select.client dispatch client)
             ]
           | None ->
             match ClientConfig.tryFind clientId state.Project.Config.Clients with

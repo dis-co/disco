@@ -23,7 +23,7 @@ module CueInspector =
     li [] [
       Common.link
         (string cuelist.Name)
-        (fun () -> Select.cuelist dispatch cuelist.Id)
+        (fun () -> Select.cuelist dispatch cuelist)
     ]
 
   let private renderCueLists tag dispatch (model: Model) (cue: Cue) =
@@ -44,7 +44,7 @@ module CueInspector =
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
+        onSelect = fun () -> Select.pin dispatch pin
         onDragStart = None
       } []
     ]

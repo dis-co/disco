@@ -57,7 +57,7 @@ module PinInspector =
                 td [ Common.leftSub ] [
                   Common.link
                     (string client.Name)
-                    (fun _ -> Select.client dispatch client.Id)
+                    (fun _ -> Select.client dispatch client)
                 ]
                 td [ Common.rightSub ] [ str (string client.Status) ]
               ]
@@ -88,7 +88,7 @@ module PinInspector =
             td [] [
               Common.link
                 (string group.Name)
-                (fun _ -> Select.group dispatch group.ClientId group.Id)
+                (fun _ -> Select.group dispatch group)
             ]
           ])
       |> Common.tableRow tag [ "" ]
@@ -109,7 +109,7 @@ module PinInspector =
           li [] [
             Common.link
               (string cue.Name)
-              (fun _ -> Select.cue dispatch cue.Id)
+              (fun _ -> Select.cue dispatch cue)
           ])
       |> fun list -> Common.row tag [ ul [] list ]
 

@@ -27,7 +27,7 @@ let body dispatch (model: Model) =
     pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
       li [Key (string gid)] [
         yield div [
-            OnClick (fun _ -> Select.group dispatch group.ClientId group.Id)
+            OnClick (fun _ -> Select.group dispatch group)
             Style [ Cursor "pointer" ]
           ] [str (unwrap group.Name)]
         yield! group.Pins |> Seq.map (fun (KeyValue(pid, pin)) ->
@@ -46,7 +46,7 @@ let body dispatch (model: Model) =
               useRightClick = model.userConfig.useRightClick
               slices = None
               updater = updater
-              onSelect = fun () -> Select.pin dispatch pin.ClientId pin.Id
+              onSelect = fun () -> Select.pin dispatch pin
               onDragStart = Some(fun el ->
                 Drag.Pin pin |> Drag.start el) } [])
       ]) |> Seq.toList)

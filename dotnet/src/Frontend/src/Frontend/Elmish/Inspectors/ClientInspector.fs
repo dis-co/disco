@@ -34,14 +34,14 @@ module ClientInspector =
         Common.row tag [
           Common.link
             (string mem.HostName)
-            (fun _ -> Select.clusterMember dispatch mem.Id)
+            (fun _ -> Select.clusterMember dispatch mem)
         ]
 
   let buildGroup dispatch (group: PinGroup) =
     li [] [
       Common.link
         (string group.Name)
-        (fun _ -> Select.group dispatch group.ClientId group.Id)
+        (fun _ -> Select.group dispatch group)
     ]
 
   let private renderGroups tag dispatch (model: Model) (client: IrisClient) =

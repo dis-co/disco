@@ -183,13 +183,13 @@ let update msg model: Model*Cmd<Msg> =
   // | AddTab -> // Add tab and remove widget
   // | RemoveTab -> // Optional, add widget
 
-  | Navigate (_ as cmd) when not (List.isEmpty model.history.previous) ->
-    let op = cmd |> function
-      | Browse.Previous -> (+)
-      | Browse.Next     -> (-)
+  | Navigate cmd when not (List.isEmpty model.history.previous) ->
     let history =
       try
-        let index = op model.history.index 1
+        let index = cmd |> function
+          | Browse.Previous -> model.history.index + 1
+          | Browse.Next     -> model.history.index - 1
+          | Browse.Set idx  -> idx
         { model.history with
             index = index
             selected = model.history.previous.[index] }

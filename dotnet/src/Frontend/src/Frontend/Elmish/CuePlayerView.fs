@@ -189,7 +189,7 @@ type private CueView(props) =
     let cueHeader =
       tr [
         OnClick (fun _ ->
-          Select.cue this.props.Dispatch this.props.Cue.Id
+          Select.cue this.props.Dispatch this.props.Cue
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
             this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
@@ -226,7 +226,7 @@ type private CueView(props) =
                       Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun () ->  Select.pin this.props.Dispatch pin.ClientId pin.Id
+                    onSelect = fun () ->  Select.pin this.props.Dispatch pin
                     onDragStart = None } []
             ])
           |> Array.toList
