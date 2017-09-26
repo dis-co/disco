@@ -244,11 +244,14 @@ module Api =
             else
               /// the list of additions
               let additions = newPins |> Map.toList |> List.map (snd >> AddPin)
-              /// and processing the list known, offline pins to become online
+              /// and processing the list of known, offline pins to become online
               rpins
               |> Map.toList
-              |> List.filter (fun (pinId,_) -> Map.containsKey pinId lpins)
-              |> List.map (snd >> Pin.setOnline true >> UpdatePin)
+              |> List.choose
+                (fun (pinId,rpin) ->
+                  if Map.containsKey pinId lpins
+                  then rpin |> Pin.setOnline true |> UpdatePin |> Some
+                  else None)
               |> List.append additions
               |> (StateMachineBatch >> CommandBatch)
               |> plugstate.ApiClient.Append
