@@ -97,11 +97,11 @@ brew install flatbuffers
 - Download and install [.NET Core 2.0](https://www.microsoft.com/net/download/core)
 - Install „Build Tools for Visual Studio 2017“ [from here]( https://www.visualstudio.com/de/downloads/)
 
-![build tools](..img/build_tools.png)
+![build tools](../img/build_tools.png)
 
 - Pick the following selection (Summary)
 
-![checkbox summary](..img/summary.png)
+![checkbox summary](../img/summary.png)
 
 ## Setting up Visual Studio Code
 
@@ -109,7 +109,7 @@ brew install flatbuffers
 
 - Open Visual Studio Code and under add-ons search for „ionide“. Install all 3 packages
 
-![install ionide](..img/install_ionide.png)
+![install ionide](../img/install_ionide.png)
 
 ## Setting up the Git repository
 
