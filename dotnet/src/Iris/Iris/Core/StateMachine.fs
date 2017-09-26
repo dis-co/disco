@@ -886,7 +886,9 @@ module State =
   // ** removeClient
 
   let removeClient (client: IrisClient) (state: State) =
-    { state with Clients = Map.remove client.Id state.Clients }
+    { state with
+        Clients = Map.remove client.Id state.Clients
+        PinGroups = PinGroupMap.removeByClient client.Id state.PinGroups }
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_

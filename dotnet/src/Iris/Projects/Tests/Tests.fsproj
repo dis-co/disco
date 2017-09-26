@@ -136,6 +136,9 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\PinBecomesDirty.fs">
       <Link>PinBecomesDirty.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\StateShouldBeCleanedOnClientRemove.fs">
+      <Link>StateShouldBeCleanedOnClientRemove.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\IrisServiceTests.fs">
       <Link>IrisServiceTests.fs</Link>
     </Compile>
