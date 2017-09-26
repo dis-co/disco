@@ -597,10 +597,7 @@ module PinGroup =
   // ** hasPersistedPins
 
   let hasPersistedPins (group: PinGroup) =
-    group.Pins
-    |> Map.filter (fun _ -> Pin.isPersisted)
-    |> Map.isEmpty
-    |> not
+    Seq.exists (function KeyValue(_,pin) -> Pin.isPersisted pin) group.Pins
 
   // ** updatePins
 
