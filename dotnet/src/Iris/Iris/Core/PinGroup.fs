@@ -594,6 +594,14 @@ module PinGroup =
     |> Map.isEmpty
     |> not
 
+  // ** hasPersistedPins
+
+  let hasPersistedPins (group: PinGroup) =
+    group.Pins
+    |> Map.filter (fun _ -> Pin.isPersisted)
+    |> Map.isEmpty
+    |> not
+
   // ** updatePins
 
   let updatePins pins (group: PinGroup) =
@@ -986,6 +994,24 @@ module PinGroupMap =
     map
     |> filter PinGroup.hasDirtyPins
     |> mapGroups PinGroup.dirtyPins
+
+  // ** removeByClient
+
+  let removeByClient (client: ClientId) (groups: PinGroupMap) =
+    let filterAndMark (group: PinGroup) =
+      group
+      |> PinGroup.filter Pin.isPersisted
+      |> PinGroup.map (Pin.setOnline false)
+
+    foldGroups
+      (fun map _ group ->
+        if group.ClientId = client then
+          if PinGroup.hasPersistedPins group
+          then PinGroupMap.add (filterAndMark group) map
+          else map
+        else PinGroupMap.add group map)
+      empty
+      groups
 
 // * Map module
 

@@ -32,4 +32,5 @@ module IrisServiceTests =
       EnsureMappingResolver.test
       PinBecomesOnlineOnClientConnect.test
       PinBecomesDirty.test
+      StateShouldBeCleanedOnClientRemove.test
     ] |> testSequenced

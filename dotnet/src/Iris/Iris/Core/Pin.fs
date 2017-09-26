@@ -1535,6 +1535,10 @@ module Pin =
 
   let isOffline (pin: Pin) = not pin.Online
 
+  // ** isPersisted
+
+  let isPersisted (pin: Pin) = pin.Persisted
+
   // ** isSink
 
   let isSink (pin: Pin) =
