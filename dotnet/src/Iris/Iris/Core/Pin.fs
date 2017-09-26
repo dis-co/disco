@@ -1280,7 +1280,7 @@ module Pin =
     let next id client =
       BoolPin {
         Id               = nextId id
-        Name             = name "Next"
+        Name             = Measure.name "Next"
         PinGroupId       = id
         Tags             = Array.empty
         ClientId         = client
@@ -1299,7 +1299,7 @@ module Pin =
     let previous id client =
       BoolPin {
         Id               = previousId id
-        Name             = name "Previous"
+        Name             = Measure.name "Previous"
         PinGroupId       = id
         ClientId         = client
         Tags             = Array.empty
@@ -1318,7 +1318,7 @@ module Pin =
     let call id client =
       BoolPin {
         Id         = callId id
-        Name       = name "Call"
+        Name       = Measure.name "Call"
         PinGroupId = id
         ClientId   = client
         Tags       = Array.empty
@@ -1502,6 +1502,18 @@ module Pin =
   // ** slices
 
   let slices (pin: Pin) = pin.Slices
+
+  // ** name
+
+  let name (pin: Pin) = pin.Name
+
+  // ** tags
+
+  let tags (pin: Pin) = pin.GetTags
+
+  // ** vecSize
+
+  let vecSize (pin: Pin) = pin.VecSize
 
   // ** setPersisted
 
