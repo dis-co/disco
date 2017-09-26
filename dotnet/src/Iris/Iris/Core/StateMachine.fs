@@ -3315,6 +3315,12 @@ type StateMachine =
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB
 
+// * CommandBatch
+
+module CommandBatch =
+
+  let ofList = StateMachineBatch >> CommandBatch
+
 // * UpdateSlices module
 
 module UpdateSlices =

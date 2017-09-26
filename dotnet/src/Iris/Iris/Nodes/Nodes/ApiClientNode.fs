@@ -33,6 +33,7 @@ module Api =
       Initialized: bool
       Status: ServiceStatus
       ApiClient: IApiClient
+      Commands: ResizeArray<StateMachine>
       Events: ConcurrentQueue<ClientEvent>
       Logger: ILogger
       InCommands: ISpread<StateMachine>
@@ -56,6 +57,7 @@ module Api =
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
         Events = new ConcurrentQueue<ClientEvent>()
+        Commands = ResizeArray()
         Logger = null
         InCommands = null
         InServerIp = null
@@ -169,38 +171,96 @@ module Api =
     state.OutState.[0] <- state.ApiClient.State
     state
 
-  let private updateCommands (state: PluginState) (cmds: StateMachine array) =
+  // ** updateCommands
+
+  let private updateCommands (state: PluginState) =
     Logger.debug "updateCommands" "update command output pins"
-    state.OutCommands.SliceCount <- (Array.length cmds)
-    state.OutCommands.AssignFrom cmds
+    state.OutCommands.SliceCount <- state.Commands.Count
+    state.OutCommands.AssignFrom state.Commands
 
   // ** mergeGraphState
 
   let private mergeGraphState (plugstate: PluginState) =
-    let remote = plugstate.ApiClient.State.PinGroups
+    let remoteState = plugstate.ApiClient.State.PinGroups
 
-    let local =
-      Seq.fold
-        (fun m (group: PinGroup) ->
-          if not (Util.isNullReference group) then
-            PinGroupMap.add group m
-          else m)
-        PinGroupMap.empty
-        plugstate.InPinGroups
+    for local in plugstate.InPinGroups do
+      if not (Util.isNullReference local) then
+        match PinGroupMap.tryFindGroup local.ClientId local.Id remoteState with
+        | Some remote when local <> remote ->
+          match local, remote with
+          | { Id = _; ClientId = _; RefersTo = _; Path = lpath; Name = lname; Pins = lpins },
+            { Id = _; ClientId = _; RefersTo = _; Path = rpath; Name = rname; Pins = rpins } ->
 
-    if local <> remote then
-      let commands: StateMachine list =
-        PinGroupMap.foldGroups
-          (fun commands _ (local: PinGroup) ->
-            match PinGroupMap.tryFindGroup local.ClientId local.Id remote with
-            | Some remote when local <> remote -> UpdatePinGroup local :: commands
-            | Some _ -> commands
-            | None -> AddPinGroup local :: commands)
-          List.empty
+            /// basecase: update local graph with remote pin states
+            rpins
+            |> Map.toList
+            |> List.map (snd >> Pin.slices)
+            |> UpdateSlices.ofList
+            |> plugstate.Commands.Add
+
+            /// pins that are exposed locally, which need to be added to the remote state
+            let newPins =
+              Map.filter (fun pinId _ -> not (Map.containsKey pinId rpins)) lpins
+
+            /// take an update function, and a getter (lenses, anyone?) and check if the
+            /// two pins differ for that field. if they do, apply updater to the gotten value
+            /// and return the new, updated pin
+            let updateWith (updater: 'a -> Pin -> Pin) (get: Pin -> 'a) l r =
+              let lval = get l
+              let rval = get r
+              if lval <> rval
+              then updater lval r
+              else r
+
+            /// apply a series of updates to the remote pin
+            let mergeAndUpdate (lpin: Pin) (rpin: Pin) =
+              rpin
+              |> updateWith Pin.setName    Pin.name    lpin
+              |> updateWith Pin.setTags    Pin.tags    lpin
+              |> updateWith Pin.setVecSize Pin.vecSize lpin
+              |> Pin.setOnline true
+
+            if lpath <> rpath || lname <> rname then
+              let pins =
+                /// update the remote pins to be online and with the names parsed
+                /// from the graph (they might have changed in the mean time)
+                let updatedRemote =
+                  Map.map
+                    (fun rpinId rpin ->
+                      match Map.tryFind rpinId lpins with
+                      | Some lpin -> mergeAndUpdate lpin rpin
+                      | None -> rpin)
+                    rpins
+                /// now add all new pins to the ones that have been marked online and updater
+                Map.fold (fun m pinId pin -> Map.add pinId pin m) updatedRemote newPins
+
+              /// update the group with the new and updated pins
+              { remote with
+                  Name = lname
+                  Path = lpath
+                  Pins = pins }
+              |> UpdatePinGroup
+              |> plugstate.ApiClient.Append
+            else
+              /// the list of additions
+              let additions = newPins |> Map.toList |> List.map (snd >> AddPin)
+              /// and processing the list of known, offline pins to become online
+              rpins
+              |> Map.toList
+              |> List.choose
+                (fun (pinId,rpin) ->
+                  if Map.containsKey pinId lpins
+                  then rpin |> Pin.setOnline true |> UpdatePin |> Some
+                  else None)
+              |> List.append additions
+              |> (StateMachineBatch >> CommandBatch)
+              |> plugstate.ApiClient.Append
+
+        | Some _ -> ()                   /// no need to do anything apparently
+        | None ->                        /// remote does not yet have this patch
           local
-      for cmd in commands do
-        Logger.err "mergeGraphState" (sprintf "cmd: %A" cmd)
-        plugstate.ApiClient.Append cmd
+          |> AddPinGroup
+          |> plugstate.ApiClient.Append
     plugstate
 
   // ** processInputs
@@ -230,7 +290,6 @@ module Api =
       let mutable run = true
       let mutable newstate = state
       let mutable stateUpdates = 0
-      let mutable cmdUpdates = new ResizeArray<StateMachine>()
       while run do
         match state.Events.TryDequeue() with
         | true, ClientEvent.Registered ->
@@ -241,7 +300,7 @@ module Api =
           newstate <- { newstate with Status = status } |> setStatus
         | true, ClientEvent.Update cmd ->
           stateUpdates <- stateUpdates + 1
-          cmdUpdates.Add cmd
+          state.Commands.Add cmd
           newstate <- state
         | true, ClientEvent.Snapshot ->
           Logger.err "ClientEvent.Snapshot" "event received"
@@ -249,11 +308,13 @@ module Api =
           newstate <- mergeGraphState state
         | false, _ -> run <- false
 
-      cmdUpdates.ToArray()
-      |> updateCommands newstate
+      /// assign all StateMachine commands to the output
+      do updateCommands newstate
 
-      if stateUpdates > 0 || cmdUpdates.Count > 0 then
+      /// signal the need for downstream nodes to update themselves
+      if stateUpdates > 0 || state.Commands.Count > 0 then
         state.OutUpdate.[0] <- true
+        state.Commands.Clear()          /// clear out the commands array now
         updateState newstate
       else
         state.OutUpdate.[0] <- false
