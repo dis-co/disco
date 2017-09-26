@@ -1752,9 +1752,11 @@ type NumberPinD =
       pin.Name = self.Name &&
       pin.PinGroupId = self.PinGroupId &&
       pin.ClientId = self.ClientId &&
-      pin.PinConfiguration = self.PinConfiguration &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
+      pin.Dirty = self.Dirty &&
+      pin.Online = self.Online &&
+      pin.Persisted = self.Persisted &&
       pin.PinConfiguration = self.PinConfiguration &&
       pin.Labels = self.Labels &&
       valuesEqual
@@ -2147,6 +2149,9 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       pin.ClientId = self.ClientId &&
       pin.Tags = self.Tags &&
       pin.VecSize = self.VecSize &&
+      pin.Dirty = self.Dirty &&
+      pin.Online = self.Online &&
+      pin.Persisted = self.Persisted &&
       pin.PinConfiguration = self.PinConfiguration &&
       pin.Labels = self.Labels &&
       lengthEqual &&
