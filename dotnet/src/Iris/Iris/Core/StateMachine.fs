@@ -758,8 +758,26 @@ module State =
 
   // ** updatePin
 
-  let updatePin (pin : Pin) (state: State) =
-    { state with PinGroups = PinGroupMap.updatePin pin state.PinGroups }
+  let updatePin (pin: Pin) (state: State) =
+    if Map.containsKey pin.ClientId state.Clients || pin.Persisted
+    /// base case: update the pin since its parent process is running
+    then { state with PinGroups = PinGroupMap.updatePin pin state.PinGroups }
+    else
+      /// find the correct pin group and remove the pin by folding over all groups
+      PinGroupMap.foldGroups
+        (fun map gid group ->
+          if gid = pin.PinGroupId && group.ClientId = pin.ClientId then
+            /// if the group still has other pins, then remove only the one
+            if group.Pins.Count > 1 then
+              group
+              |> PinGroup.removePin pin
+              |> flip PinGroupMap.add map
+            /// else just skip this group (and thereby remove)
+            else map
+          else PinGroupMap.add group map)
+        PinGroupMap.empty
+        state.PinGroups
+      |> fun groups -> { state with PinGroups = groups }
 
   // ** removePin
 
