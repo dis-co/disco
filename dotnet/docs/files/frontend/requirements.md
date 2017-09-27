@@ -1,47 +1,156 @@
-###ide installation instruction
-####for mac
+# IDE Installation Instruction 
+## For Mac 
 
-- install [visual studio code] (https://code.visualstudio.com/Download)
+- Install [fsharp](http://fsharp.org/use/mac/) using option #5:
+  
+  - Install [homebrew](https://brew.sh/index_de.html)
 
-- open visual studio code and under add-ons search for „ionide“. install all 3 packages
+  ```shell
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/	install)“
+```
+  
+  - The script explains what it will do and then pauses before it does it. There are more installation options.
 
-[install ionide] (../img/install_ionide.png)
+  - After installation run:
 
-- install [fsharp] (http://fsharp.org/use/mac/) using option #5:
+  ```shell
+  brew install mono
+  ```
+   in the terminal to install mono and f#
 
-  - install [homebrew] (https://brew.sh/index_de.html) by pasting the following command at a terminal prompt:
-**/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/	install)“**
 
-  - the script explains what it will do and then pauses before it does it. there are more installation options.
+- Install node.js:
 
-  - after installation run: **brew install mono** in the terminal to install mono and f#
+```shell
+brew install node.js
+```
 
-- install node.js:	**brew install node.js**
-- install npm:		**brew install npm**
-- install git:		**brew install git**
-- install flatbuffers:	**brew install flatbuffers**
+- Install npm:	
 
-- download and install [.NET Core SDK] (https://www.microsoft.com/net/core#macos)
+```shell
+brew install npm
+```
 
-####for windows
+- Install git:	
 
-- install [chocolatey] (https://chocolatey.org/install)
+```shell
+brew install git
+```
 
-- via chocolatey install:
+- Install flatbuffers:
 
-  - visual studio code: **choco install visualstudiocode**
-  - microsoft build tools: **choco install microsoft-build-tools**
-  - windows sdk: **choco install windows-sdk-8.0 -y**
-  - visual fsharp tools: **choco install visualfsharptools -y**
-  - node.js: **choco install nodejs**
-  - git: **choco install git**
-  - dotnet: **choco install dotnetcore-sdk**
+```shell
+brew install flatbuffers
+```
 
-- download and install [.NET Core 2.0] (https://www.microsoft.com/net/download/core)
-- install „build tools for visual studio 2017“ [from here] ( https://www.visualstudio.com/de/downloads/)
+- Download and install [.NET Core SDK](https://www.microsoft.com/net/core#macos)
 
-[build tools] (../img/build_tools.png)
+## For Windows
 
-- pick the following selection (summary)
+- Install [chocolatey](https://chocolatey.org/install)
 
-[checkbox summary] (../img/summary.png)
+- Via chocolatey install:
+ 
+  - Visual Studio Code: 
+
+  ```shell
+  choco install visualstudiocode
+  ```
+
+  - Microsoft Build Tools: 
+
+  ```shell
+  choco install microsoft-build-tools
+  ```
+
+  - Windows SDK: 
+
+  ```shell
+  choco install windows-sdk-8.0 -y
+  ```
+  
+  - Visual Fsharp Tools: 
+
+  ```shell
+  choco install visualfsharptools -y
+  ```
+
+  - node.js: 
+
+  ```shell
+  choco install nodejs
+  ```
+
+  - Git: 
+
+  ```shell
+  choco install git
+  ```
+
+  - dotnet:
+
+  ```shell
+  choco install dotnetcore-sdk
+  ```
+
+
+- Download and install [.NET Core 2.0](https://www.microsoft.com/net/download/core)
+- Install „Build Tools for Visual Studio 2017“ [from here]( https://www.visualstudio.com/de/downloads/)
+
+![build tools](../img/build_tools.png)
+
+- Pick the following selection (Summary)
+
+![checkbox summary](../img/summary.png)
+
+## Setting up Visual Studio Code
+
+- For Mac, install [Visual Studio Code](https://code.visualstudio.com/Download)
+
+- Open Visual Studio Code and under add-ons search for „ionide“. Install all 3 packages
+
+![install ionide](../img/install_ionide.png)
+
+## Setting up the Git repository
+
+- Got to [Bitbucket](https://bitbucket.org/nsynk/iris/src/d3a8c95ab2762f9eb8b74da12d5e11ee7ac16cbe/dotnet/docs/files/frontend/quickstart.md?at=master&fileviewer=file-view-default)
+- Select "Clone this repository" and copy the clone command
+- Open a Terminal window and change to the local directory you want to clone to
+- Paste the command you copied from Bitbucket
+
+## Building
+
+All of these will be executed if you run a full build. All commands must be run from `dotnet` directory.
+
+- Install dependencies:
+
+```shell
+npm install
+dotnet restore src/Frontend/src/Iris.Frontend.sln
+```
+
+- Build Fable plugin:
+
+```shell
+dotnet build -c Release src/Frontend/src/FlatBuffersPlugin
+```
+
+- Build Worker & Frontend (not necessary in development, see Watching below):
+
+```shell
+npm run build
+```
+
+## Watching
+
+Make sure you have installed dependencies and built the plugin (see Building above). Also you must set the `FRONTEND_IP` and `FRONTEND_PORT` environment variables with the IP and HTTP port exposed by Iris server. Then run:
+
+```shell
+npm start
+```
+
+When the webpack-dev-server has finished compiling the code, you can open `[FRONTEND_IP]:3000` in your browser.
+
+> To run Iris Frontend in **Design Mode** (using mock data instead of connecting with Iris server), set the environmental variable `FRONTEND_IP` to `localhost` (e.g. `export FRONTEND_IP=localhost`), and open `localhost:3000` in your browser.
+
+
