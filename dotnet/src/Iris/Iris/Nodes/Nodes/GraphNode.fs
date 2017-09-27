@@ -923,7 +923,10 @@ module rec Graph =
   // ** parseGroupName
 
   let private parseGroupName (node: INode2) =
-    name node.NodeInfo.Name
+    let nodeName = node.NodeInfo.Name
+    match node.FindPin(Settings.DESCRIPTIVE_NAME_PIN).[0] with
+    | null | ""   -> name nodeName
+    | description -> name (sprintf "%s - %s" nodeName description)
 
   // ** parseGroupPath
 
@@ -934,12 +937,11 @@ module rec Graph =
 
   // ** onGroupRename
 
-  let private onGroupRename (state: PluginState) (id: PinGroupId) (_: INamed) (groupName: string) =
+  let private onGroupRename (state: PluginState) (node: INode2) id _ _ =
     match state.Pins.TryGetValue(id) with
     | true, group ->
-      let node = state.V2Host.GetNodeFromPath(string id)
       { group with
-          Name = name groupName
+          Name = parseGroupName node
           Path = parseGroupPath node }
       |> UpdatePinGroup
       |> state.Commands.Add
@@ -976,7 +978,9 @@ module rec Graph =
     else
       /// no group found for pin, hence we just create it
       let node = pin.ParentNode.Parent
-      node.add_Renamed(new RenamedHandler(onGroupRename state parsed.PinGroupId))
+      node.add_Renamed(new RenamedHandler(onGroupRename state node parsed.PinGroupId))
+      /// BUG: this callback never fires
+      /// node.FindPin(Settings.DESCRIPTIVE_NAME_PIN).add_Changed(new EventHandler(onGroupRename state node parsed.PinGroupId))
       let group: PinGroup =
         { Id = parsed.PinGroupId
           Name = parseGroupName node
