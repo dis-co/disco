@@ -23,7 +23,9 @@ module Widgets =
   let [<Literal>] Sessions      = "Sessions"
   let [<Literal>] PinMapping    = "Pin Mappings"
   let [<Literal>] InspectorView = "Inspector View"
-  let [<Literal>] Test          = "Test"
+  let [<Literal>] Test1         = "Test1"
+  let [<Literal>] Test2         = "Test2"
+  let [<Literal>] Test3         = "Test3"
 
 type IProjectInfo =
   abstract name: Name

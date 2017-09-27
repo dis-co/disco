@@ -44,7 +44,7 @@ class TestWidget extends React.Component {
 // and returns an object with the following properties, this may
 // change a little bit to make the API more usable from JS.
 export default function createWidget (id) {
-  var name = "Test";
+  var name = "Test 3";
   return {
     Id: id ,
     Name: name,

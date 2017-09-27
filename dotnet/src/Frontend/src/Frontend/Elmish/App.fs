@@ -18,7 +18,9 @@ open Types
 importSideEffects "react-grid-layout/css/styles.css"
 
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
-let createTestWidget: Guid -> IWidget = importDefault "../../js/widgets/TestWidget"
+let createTestWidget1: Guid -> IWidget = importDefault "../../js/widgets/TestWidget1"
+let createTestWidget2: Guid -> IWidget = importDefault "../../js/widgets/TestWidget2"
+let createTestWidget3: Guid -> IWidget = importDefault "../../js/widgets/TestWidget3"
 
 initWidgetFactory
   { new IWidgetFactory with
@@ -34,7 +36,9 @@ initWidgetFactory
         | Widgets.Sessions -> SessionsView.createWidget(id)
         | Widgets.PinMapping -> PinMappingView.createWidget(id)
         | Widgets.InspectorView -> InspectorView.createWidget(id)
-        | Widgets.Test -> createTestWidget(id)
+        | Widgets.Test1 -> createTestWidget1(id)
+        | Widgets.Test2 -> createTestWidget2(id)
+        | Widgets.Test3 -> createTestWidget3(id)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
