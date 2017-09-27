@@ -18,9 +18,122 @@ open System.IO
 open System.Diagnostics
 open System.Text
 
+// ---------------------------------------------------------------------
+// VALUES
+// ---------------------------------------------------------------------
+
+// Project Info
+let project = "Iris"
+let summary = "VVVV Automation Infrastructure"
+let description = "Lorem Ipsum Dolor Sit Amet"
+let authors = [ "Karsten Gebbert <karsten@nsynk.de>" ]
+let tags = "cool funky special shiny"
+
+// Paths
+let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
+let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
+let userScripts = scriptsDir @@ "User"
+let devScripts = scriptsDir @@ "Dev"
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tools" @@ "public"
+let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
+
+// System
+let useNix = Directory.Exists("/nix")
+let isUnix = Environment.OSVersion.Platform = PlatformID.Unix
 let dotnetcliVersion = "2.0.0"
 let mutable dotnetExePath = environVarOrDefault "DOTNET" "dotnet"
 
+let npmPath =
+  if File.Exists "/run/current-system/sw/bin/npm"
+  then "/run/current-system/sw/bin/npm"
+  elif File.Exists "/usr/bin/npm"
+  then "/usr/bin/npm"
+  elif File.Exists "/usr/local/bin/npm"
+  then "/usr/local/bin/npm"
+  elif Environment.GetEnvironmentVariable("APPVEYOR_CI_BUILD") = "true"
+  then @"C:\Users\appveyor\AppData\Roamiug\npm\node_modules\npm\bin\npm.cmd"
+  else "npm"
+
+let flatcPath : string =
+  if Environment.OSVersion.Platform = PlatformID.Unix
+  then "flatc"
+  else __SOURCE_DIRECTORY__ </> "src/Lib/flatc.exe"
+
+// Read additional information from the release notes document
+let release = LoadReleaseNotes "CHANGELOG.md"
+
+//  __  __             _  __           _
+// |  \/  | __ _ _ __ (_)/ _| ___  ___| |_
+// | |\/| |/ _` | '_ \| | |_ / _ \/ __| __|
+// | |  | | (_| | | | | |  _|  __/\__ \ |_
+// |_|  |_|\__,_|_| |_|_|_|  \___||___/\__|
+
+let buildFile = baseDir @@ "Iris/Core/Build.fs"
+let buildFileTmpl = @"
+namespace Iris.Core
+
+module Build =
+
+  [<Literal>]
+  let VERSION = ""{0}""
+
+  [<Literal>]
+  let BUILD_ID = ""{1}""
+
+  [<Literal>]
+  let BUILD_NUMBER = ""{2}""
+
+  [<Literal>]
+  let BUILD_VERSION = ""{3}""
+
+  [<Literal>]
+  let BUILD_TIME_UTC = ""{4}""
+
+  [<Literal>]
+  let COMMIT = ""{5}""
+
+  [<Literal>]
+  let BRANCH = ""{6}""
+"
+
+let manifestFile = __SOURCE_DIRECTORY__ @@ "bin/MANIFEST"
+let manifestTmpl = @"
+Iris Version: {0}
+Build Id: {1}
+Build Number: {2}
+Build Version: {3}
+Build Time (UTC): {4}
+Commit: {5}
+Branch: {6}
+"
+
+let comment = @"
+##  ___      _
+## |_ _|_ __(_)___
+##  | || '__| / __|
+##  | || |  | \__ \
+## |___|_|  |_|___/ Automation Toolkit
+## NsynK GmbH, 2016
+
+Let us do something, while we have the chance! It is not every day that we are
+needed. Not indeed that we personally are needed. Others would meet the case
+equally well, if not better. To all mankind they were addressed, those cries for
+help still ringing in our ears! But at this place, at this moment of time, all
+mankind is us, whether we like it or not. Let us make the most of it, before it
+is too late! Let us represent worthily for one the foul brood to which a cruel
+fate consigned us! What do you say? It is true that when with folded arms we
+weigh the pros and cons we are no less a credit to our species. The tiger bounds
+to the help of his congeners without the least reflexion, or else he slinks away
+into the depths of the thickets. But that is not the question. What are we doing
+here, that is the question. And we are blessed in this, that we happen to know
+the answer. Yes, in the immense confusion one thing alone is clear. We are
+waiting for Godot to come --
+
+"
+
+// ---------------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------------
 let installDotnetSdk () =
   match environVarOrNone "DEV_MACHINE" with
   | Some _ -> ()
@@ -40,95 +153,16 @@ let SilentCopyDir target source filterFile =
     Directory.GetFiles(source, "*.*", SearchOption.AllDirectories)
     |> Seq.filter filterFile
     |> Seq.iter (fun file ->
-           let fi =
-               file
-               |> replaceFirst source ""
-               |> trimSeparator
-
-           let newFile = target @@ fi
-          //  logVerbosefn "%s => %s" file newFile
-           DirectoryName newFile |> ensureDirectory
-           File.Copy(file, newFile, true))
+      let fi = file |> replaceFirst source "" |> trimSeparator
+      let newFile = target @@ fi
+      //  logVerbosefn "%s => %s" file newFile
+      DirectoryName newFile |> ensureDirectory
+      File.Copy(file, newFile, true))
     |> ignore
-
-// The name of the project
-// (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
-let project = "Iris"
-
-// Short summary of the project
-// (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary = "VVVV Automation Infrastructure"
-
-// Longer description of the project
-// (used as a description for NuGet package; line breaks are automatically cleaned up)
-let description = "Lorem Ipsum Dolor Sit Amet"
-
-// List of author names (for NuGet package)
-let authors = [ "Karsten Gebbert <karsten@nsynk.de>" ]
-
-// Tags for your project (for NuGet package)
-let tags = "cool funky special shiny"
-
-// File system information
-let solutionFile  = "Iris.sln"
-
-// Project code base directory
-let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
-
-// scripts
-let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
-let userScripts = scriptsDir @@ "User"
-let devScripts = scriptsDir @@ "Dev"
-
-let docsDir = __SOURCE_DIRECTORY__ @@ "docs" @@ "tools" @@ "public"
-
-let useNix = Directory.Exists("/nix")
-
-let isUnix = Environment.OSVersion.Platform = PlatformID.Unix
 
 let maybeFail = function
   | 0    -> ()
   | code -> failwithf "Command failed with exit code %d" code
-
-let npmPath =
-  if File.Exists "/run/current-system/sw/bin/npm" then
-    "/run/current-system/sw/bin/npm"
-  elif File.Exists "/usr/bin/npm" then
-    "/usr/bin/npm"
-  elif File.Exists "/usr/local/bin/npm" then
-    "/usr/local/bin/npm"
-  elif Environment.GetEnvironmentVariable("APPVEYOR_CI_BUILD") = "true" then
-    @"C:\Users\appveyor\AppData\Roamiug\npm\node_modules\npm\bin\npm.cmd"
-  else
-    "npm"
-
-let flatcPath : string =
-  if Environment.OSVersion.Platform = PlatformID.Unix then
-    "flatc"
-    // let info = new ProcessStartInfo("which","flatc")
-    // info.StandardOutputEncoding <- System.Text.Encoding.UTF8
-    // info.RedirectStandardOutput <- true
-    // info.UseShellExecute        <- false
-    // info.CreateNoWindow         <- true
-    // use proc = Process.Start info
-    // proc.WaitForExit()
-    // match proc.ExitCode with
-    //   | 0 when not proc.StandardOutput.EndOfStream ->
-    //     proc.StandardOutput.ReadLine()
-    //   | _ -> failwith "flatc was not found. Please install FlatBuffers first"
-  else __SOURCE_DIRECTORY__ </> "src/Lib/flatc.exe"
-
-// Read additional information from the release notes document
-let release = LoadReleaseNotes "CHANGELOG.md"
-
-let nativeProjects =
-  [ baseDir @@ "Nodes.fsproj"
-    baseDir @@ "Service.fsproj"
-    baseDir @@ "Tests.fsproj" ]
-
-let jsProjects =
-  [ baseDir @@ "Frontend.fsproj"
-    baseDir @@ "Web.Tests.fsproj" ]
 
 // Helper active pattern for project types
 let (|Fsproj|Csproj|) (projFileName:string) =
@@ -221,467 +255,228 @@ let buildDebug fsproj _ =
 let buildRelease fsproj _ =
   build (setParams "Release") (baseDir @@ fsproj)
 
-let frontendDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Frontend"
-
-//  ____              _       _
-// | __ )  ___   ___ | |_ ___| |_ _ __ __ _ _ __
-// |  _ \ / _ \ / _ \| __/ __| __| '__/ _` | '_ \
-// | |_) | (_) | (_) | |_\__ \ |_| | | (_| | |_) |
-// |____/ \___/ \___/ \__|___/\__|_|  \__,_| .__/
-//                                         |_|
-
-Target "Bootstrap" (fun _ ->
-  Restore(id)                              // restore Paket packages
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
-)
-
-//     _                           _     _       ___        __
-//    / \   ___ ___  ___ _ __ ___ | |__ | |_   _|_ _|_ __  / _| ___
-//   / _ \ / __/ __|/ _ \ '_ ` _ \| '_ \| | | | || || '_ \| |_ / _ \
-//  / ___ \\__ \__ \  __/ | | | | | |_) | | |_| || || | | |  _| (_) |
-// /_/   \_\___/___/\___|_| |_| |_|_.__/|_|\__, |___|_| |_|_|  \___/
-//                                         |___/
-
-Target "AssemblyInfo" (fun _ ->
-    let getAssemblyInfoAttributes projectName =
-        [ Attribute.Title (projectName)
-          Attribute.Product project
-          Attribute.Description summary
-          Attribute.Version release.AssemblyVersion
-          Attribute.FileVersion release.AssemblyVersion ]
-
-    let getProjectDetails projectPath =
-        let projectName = System.IO.Path.GetFileNameWithoutExtension(projectPath)
-        ( projectPath,
-          projectName,
-          System.IO.Path.GetDirectoryName(projectPath),
-          (getAssemblyInfoAttributes projectName)
-        )
-
-    let assemblyFileName (fn: string) (suffix: string) =
-      fn.Substring(0,fn.Length - 7) + "Info." + suffix
-
-    !! "src/**/*.??proj"
-    |> Seq.map getProjectDetails
-    |> Seq.iter (fun (projFileName, projectName, folderName, attributes) ->
-        let createPath suffix =
-          let filename = assemblyFileName (projFileName.Substring(folderName.Length)) suffix
-          (folderName @@ "AssemblyInfo") @@ filename
-
-        match projFileName with
-        | Fsproj -> CreateFSharpAssemblyInfo (createPath "fs") attributes
-        | Csproj -> CreateCSharpAssemblyInfo (createPath "cs") attributes))
-
-//  __  __             _  __           _
-// |  \/  | __ _ _ __ (_)/ _| ___  ___| |_
-// | |\/| |/ _` | '_ \| | |_ / _ \/ __| __|
-// | |  | | (_| | | | | |  _|  __/\__ \ |_
-// |_|  |_|\__,_|_| |_|_|_|  \___||___/\__|
-
-let buildFile = baseDir @@ "Iris/Core/Build.fs"
-let buildFileTmpl = @"
-namespace Iris.Core
-
-module Build =
-
-  [<Literal>]
-  let VERSION = ""{0}""
-
-  [<Literal>]
-  let BUILD_ID = ""{1}""
-
-  [<Literal>]
-  let BUILD_NUMBER = ""{2}""
-
-  [<Literal>]
-  let BUILD_VERSION = ""{3}""
-
-  [<Literal>]
-  let BUILD_TIME_UTC = ""{4}""
-
-  [<Literal>]
-  let COMMIT = ""{5}""
-
-  [<Literal>]
-  let BRANCH = ""{6}""
-"
-
-let manifestFile = __SOURCE_DIRECTORY__ @@ "bin/MANIFEST"
-let manifestTmpl = @"
-Iris Version: {0}
-Build Id: {1}
-Build Number: {2}
-Build Version: {3}
-Build Time (UTC): {4}
-Commit: {5}
-Branch: {6}
-"
-
-Target "GenerateBuildFile" (
-  fun () ->
-    match Environment.GetEnvironmentVariable "APPVEYOR" with
-    | "True" ->
-      let time = DateTime.Now.ToUniversalTime().ToString()
-      String.Format(buildFileTmpl,
-        release.AssemblyVersion,
-        AppVeyorEnvironment.BuildId,
-        AppVeyorEnvironment.BuildNumber,
-        AppVeyorEnvironment.BuildVersion,
-        time,
-        AppVeyorEnvironment.RepoCommit,
-        AppVeyorEnvironment.RepoBranch)
-      |> fun src -> File.WriteAllText(buildFile, src)
-    | _ -> ())
-
-Target "GenerateManifest" (
-  fun () ->
-    match Environment.GetEnvironmentVariable "APPVEYOR" with
-    | "True" ->
-      let time = DateTime.Now.ToUniversalTime().ToString()
-      String.Format(manifestTmpl,
-        release.AssemblyVersion,
-        AppVeyorEnvironment.BuildId,
-        AppVeyorEnvironment.BuildNumber,
-        AppVeyorEnvironment.BuildVersion,
-        time,
-        AppVeyorEnvironment.RepoCommit,
-        AppVeyorEnvironment.RepoBranch)
-      |> fun src -> File.WriteAllText(manifestFile, src)
-    | _ -> ())
-
-//   ____
-//  / ___|___  _ __  _   _
-// | |   / _ \| '_ \| | | |
-// | |__| (_) | |_) | |_| |
-//  \____\___/| .__/ \__, |
-//            |_|    |___/
-
 let withoutNodeModules (path: string) =
   path.Contains("node_modules") |> not
 
-Target "CopyBinaries" (fun _ ->
-    SilentCopyDir "bin/Iris"       (baseDir @@ "bin/Release/Iris")       withoutNodeModules
-    SilentCopyDir "bin/Nodes"      (baseDir @@ "bin/Release/Nodes")      withoutNodeModules
-    SilentCopyDir "bin/Sdk"        (baseDir @@ "bin/Release/Sdk")        withoutNodeModules
-    SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules)
+// ---------------------------------------------------------------------
+// ACTIONS
+// ---------------------------------------------------------------------
 
-Target "CopyAssets" (fun _ ->
-    [ "CHANGELOG.md"
-    // ; userScripts @@ "runiris.sh"
-    ; userScripts @@ "createproject.cmd"
-    ; userScripts @@ "runiris.cmd"
-    ; userScripts @@ "mockclient.cmd"
-    ] |> List.iter (CopyFile "bin/")
-    FileUtils.cp (__SOURCE_DIRECTORY__ @@ "docs/files/test_package.md") "bin/README.md"
-    // Frontend
-    SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
-    SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
-    SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
-    FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
-    FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/")
+let bootStrap () =
+  Restore(id)                              // restore Paket packages
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
+  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
+  // TODO: Bootstrap frontend: plugin, etc
 
-//     _             _     _
-//    / \   _ __ ___| |__ (_)_   _____
-//   / _ \ | '__/ __| '_ \| \ \ / / _ \
-//  / ___ \| | | (__| | | | |\ V /  __/
-// /_/   \_\_|  \___|_| |_|_| \_/ \___|
+let assemblyInfo () =
+  let getAssemblyInfoAttributes projectName =
+      [ Attribute.Title (projectName)
+        Attribute.Product project
+        Attribute.Description summary
+        Attribute.Version release.AssemblyVersion
+        Attribute.FileVersion release.AssemblyVersion ]
 
-let comment = @"
-##  ___      _
-## |_ _|_ __(_)___
-##  | || '__| / __|
-##  | || |  | \__ \
-## |___|_|  |_|___/ Automation Toolkit
-## NsynK GmbH, 2016
+  let getProjectDetails projectPath =
+      let projectName = System.IO.Path.GetFileNameWithoutExtension(projectPath)
+      ( projectPath,
+        projectName,
+        System.IO.Path.GetDirectoryName(projectPath),
+        (getAssemblyInfoAttributes projectName)
+      )
 
-Let us do something, while we have the chance! It is not every day that we are
-needed. Not indeed that we personally are needed. Others would meet the case
-equally well, if not better. To all mankind they were addressed, those cries for
-help still ringing in our ears! But at this place, at this moment of time, all
-mankind is us, whether we like it or not. Let us make the most of it, before it
-is too late! Let us represent worthily for one the foul brood to which a cruel
-fate consigned us! What do you say? It is true that when with folded arms we
-weigh the pros and cons we are no less a credit to our species. The tiger bounds
-to the help of his congeners without the least reflexion, or else he slinks away
-into the depths of the thickets. But that is not the question. What are we doing
-here, that is the question. And we are blessed in this, that we happen to know
-the answer. Yes, in the immense confusion one thing alone is clear. We are
-waiting for Godot to come --
+  let assemblyFileName (fn: string) (suffix: string) =
+    fn.Substring(0,fn.Length - 7) + "Info." + suffix
 
-"
+  !! "src/**/*.??proj"
+  |> Seq.map getProjectDetails
+  |> Seq.iter (fun (projFileName, projectName, folderName, attributes) ->
+      let createPath suffix =
+        let filename = assemblyFileName (projFileName.Substring(folderName.Length)) suffix
+        (folderName @@ "AssemblyInfo") @@ filename
 
-Target "CreateArchive"
-  (fun _ ->
-     let ext = ".zip"
-     let nameWithVersion = "Iris-" + release.NugetVersion
-     let genericName = "Iris-latest.zip"
-     let filename = nameWithVersion + ext
-     let folder = "temp" @@ nameWithVersion
+      match projFileName with
+      | Fsproj -> CreateFSharpAssemblyInfo (createPath "fs") attributes
+      | Csproj -> CreateCSharpAssemblyInfo (createPath "cs") attributes)
 
-     if Directory.Exists folder then
-       FileUtils.rm_rf folder
+let generateBuildFile () =
+  match Environment.GetEnvironmentVariable "APPVEYOR" with
+  | "True" ->
+    let time = DateTime.Now.ToUniversalTime().ToString()
+    String.Format(buildFileTmpl,
+      release.AssemblyVersion,
+      AppVeyorEnvironment.BuildId,
+      AppVeyorEnvironment.BuildNumber,
+      AppVeyorEnvironment.BuildVersion,
+      time,
+      AppVeyorEnvironment.RepoCommit,
+      AppVeyorEnvironment.RepoBranch)
+    |> fun src -> File.WriteAllText(buildFile, src)
+  | _ -> ()
 
-     CopyDir folder "bin/" (konst true)
+let generateManifest () =
+  match Environment.GetEnvironmentVariable "APPVEYOR" with
+  | "True" ->
+    let time = DateTime.Now.ToUniversalTime().ToString()
+    String.Format(manifestTmpl,
+      release.AssemblyVersion,
+      AppVeyorEnvironment.BuildId,
+      AppVeyorEnvironment.BuildNumber,
+      AppVeyorEnvironment.BuildVersion,
+      time,
+      AppVeyorEnvironment.RepoCommit,
+      AppVeyorEnvironment.RepoBranch)
+    |> fun src -> File.WriteAllText(manifestFile, src)
+  | _ -> ()
 
-     let files = !!(folder @@ "**")
-     CreateZip "temp" filename comment 7 false files
-     CopyFile genericName filename
-     let checksum = Checksum.CalculateFileHash(filename).ToLowerInvariant()
-     let contents = sprintf "%s  %s\n%s  %s" checksum filename checksum genericName
-     File.WriteAllText("Iris.sha256sum",contents))
+let copyBinaries () =
+  SilentCopyDir "bin/Iris"       (baseDir @@ "bin/Release/Iris")       withoutNodeModules
+  SilentCopyDir "bin/Nodes"      (baseDir @@ "bin/Release/Nodes")      withoutNodeModules
+  SilentCopyDir "bin/Sdk"        (baseDir @@ "bin/Release/Sdk")        withoutNodeModules
+  SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules
 
+let copyAssets () =
+  [ "CHANGELOG.md"
+  // userScripts @@ "runiris.sh"
+    userScripts @@ "createproject.cmd"
+    userScripts @@ "runiris.cmd"
+    userScripts @@ "mockclient.cmd"
+  ] |> List.iter (CopyFile "bin/")
+  FileUtils.cp (__SOURCE_DIRECTORY__ @@ "docs/files/test_package.md") "bin/README.md"
+  // Frontend
+  SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
+  SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
+  SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
+  FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
+  FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/"
 
-//   ____ _
-//  / ___| | ___  __ _ _ __
-// | |   | |/ _ \/ _` | '_ \
-// | |___| |  __/ (_| | | | |
-//  \____|_|\___|\__,_|_| |_|
+let createArchive () =
+   let ext = ".zip"
+   let nameWithVersion = "Iris-" + release.NugetVersion
+   let genericName = "Iris-latest.zip"
+   let filename = nameWithVersion + ext
+   let folder = "temp" @@ nameWithVersion
 
-Target "Clean" (fun _ ->
-    CleanDirs [
-      "bin"
-      "temp"
-      "src/Iris/bin"
-      "src/Iris/obj"
-    ])
+   if Directory.Exists folder then
+     FileUtils.rm_rf folder
 
-//  ____            _       _ _          _   _
-// / ___|  ___ _ __(_) __ _| (_)______ _| |_(_) ___  _ __
-// \___ \ / _ \ '__| |/ _` | | |_  / _` | __| |/ _ \| '_ \
-//  ___) |  __/ |  | | (_| | | |/ / (_| | |_| | (_) | | | |
-// |____/ \___|_|  |_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+   CopyDir folder "bin/" (konst true)
 
-Target "GenerateSerialization"
-  (fun _ ->
-   printfn "Cleaning up previous"
+   let files = !!(folder @@ "**")
+   CreateZip "temp" filename comment 7 false files
+   CopyFile genericName filename
+   let checksum = Checksum.CalculateFileHash(filename).ToLowerInvariant()
+   let contents = sprintf "%s  %s\n%s  %s" checksum filename checksum genericName
+   File.WriteAllText("Iris.sha256sum",contents)
 
-   DeleteFile (baseDir @@ "Serialization.csproj")
-   CleanDirs [ baseDir @@ "Iris/Serialization" ]
+// TODO: Add another target to run `git clean -xfd`?
+let clean () =
+  // TODO: Delete also frontend, doc, web files
+  CleanDirs ["bin"; "temp"]
 
-   let fbs =
-      !! (baseDir @@ "Schema/**/*.fbs")
-      |> Seq.map (fun p -> " " + p)
-      |> Seq.fold ((+)) ""
+  !!"src/**/bin"
+  ++ "docs/**/bin"
+  |> CleanDirs
 
-   // CSHARP
-   let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
-   runExec flatcPath args baseDir false
+  // Don't delete whole `obj` folders to speed up restoration
+  !! "src/**/obj/*.nuspec"
+  ++ "test/**/obj/*.nuspec"
+  |> DeleteFiles
 
-   // JAVASCRIPT
-   let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "../Frontend/js") + " --js " + fbs
-   runExec flatcPath args baseDir false
+let generateSerialization () =
+  printfn "Cleaning up previous"
 
-   let files =
-      !! (baseDir @@ "Iris/Serialization/**/*.cs")
-      |> Seq.map (fun p -> "    <Compile Include=\"" + p + "\" />" + Environment.NewLine)
-      |> Seq.fold ((+)) ""
+  DeleteFile (baseDir @@ "Serialization.csproj")
+  CleanDirs [ baseDir @@ "Iris/Serialization" ]
 
-   let top = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.top.xml")
-   let bot = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.bottom.xml")
+  let fbs =
+    !! (baseDir @@ "Schema/**/*.fbs")
+    |> Seq.map (fun p -> " " + p)
+    |> Seq.fold ((+)) ""
 
-   File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
+  // CSHARP
+  let args = "-I " + (baseDir @@ "Schema") + " --csharp " + fbs
+  runExec flatcPath args baseDir false
 
-   buildDebug "Serialization.csproj" ()
-   buildRelease "Serialization.csproj" ())
+  // JAVASCRIPT
+  let args = "-I " + (baseDir @@ "Schema") + " -o " + (baseDir @@ "../Frontend/js") + " --js " + fbs
+  runExec flatcPath args baseDir false
 
-//  _____                               __
-// |__  /___ _ __ ___   ___ ___  _ __  / _|
-//   / // _ \ '__/ _ \ / __/ _ \| '_ \| |_
-//  / /|  __/ | | (_) | (_| (_) | | | |  _|
-// /____\___|_|  \___/ \___\___/|_| |_|_|
+  let files =
+    !! (baseDir @@ "Iris/Serialization/**/*.cs")
+    |> Seq.map (fun p -> "    <Compile Include=\"" + p + "\" />" + Environment.NewLine)
+    |> Seq.fold ((+)) ""
 
-Target "BuildZeroconf"
-  (fun _ ->
+  let top = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.top.xml")
+  let bot = File.ReadAllText (baseDir @@ "assets/csproj/Serialization.bottom.xml")
+
+  File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
+
+  buildDebug "Serialization.csproj" ()
+  buildRelease "Serialization.csproj" ()
+
+let buildZeroconf () =
     buildDebug   "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
     buildRelease "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
     buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
     buildRelease "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
     buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
-    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ())
+    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
 
-//  _____                _                 _
-// |  ___| __ ___  _ __ | |_ ___ _ __   __| |
-// | |_ | '__/ _ \| '_ \| __/ _ \ '_ \ / _` |
-// |  _|| | | (_) | | | | ||  __/ | | | (_| |
-// |_|  |_|  \___/|_| |_|\__\___|_| |_|\__,_| JS!
+let buildCss () =
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
 
-Target "BuildCss" (fun () ->
-  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ())
+let buildFrontendPlugins () =
+  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
 
-Target "BuildFrontendPlugins" (fun () ->
-  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false)
-
-Target "BuildFrontend" (fun () ->
+let buildFrontend () =
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runNpm ("run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css") __SOURCE_DIRECTORY__ ()
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
   installDotnetSdk ()
   runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm ("run build") __SOURCE_DIRECTORY__ ()
-)
 
-Target "BuildFrontendFast" (fun () ->
-  runNpm "run lessc -- ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css" __SOURCE_DIRECTORY__ ()
+let buildFrontendFast () =
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
   runNpm "run build" __SOURCE_DIRECTORY__ ()
-)
 
-//  _____         _
-// |_   _|__  ___| |_ ___
-//   | |/ _ \/ __| __/ __|
-//   | |  __/\__ \ |_\__ \
-// JS|_|\___||___/\__|___/
-
-Target "BuildWebTests" (fun _ ->
+let buildWebTests () =
   installDotnetSdk ()
   runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
-)
 
-Target "BuildWebTestsFast" (fun _ ->
+let buildWebTestsFast () =
   // runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
-)
 
-let runWebTests = (fun _ ->
+let runWebTests () =
   // Please leave for Karsten's tests to keep working :)
   if useNix then
     let phantomJsPath = environVarOrDefault "PHANTOMJS_PATH" "phantomjs"
     runExec phantomJsPath "node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js src/Frontend/tests.html tap" __SOURCE_DIRECTORY__ false
   else
     runNpm "test" __SOURCE_DIRECTORY__ ()
-)
 
-Target "RunWebTests" runWebTests
-Target "RunWebTestsFast" runWebTests
-
-//   ____
-//  / ___|___  _ __ ___
-// | |   / _ \| '__/ _ \
-// | |__| (_) | | |  __/
-//  \____\___/|_|  \___|
-
-
-Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
-
-Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
-
-//  ____                  _
-// / ___|  ___ _ ____   _(_) ___ ___
-// \___ \ / _ \ '__\ \ / / |/ __/ _ \
-//  ___) |  __/ |   \ V /| | (_|  __/
-// |____/ \___|_|    \_/ |_|\___\___|
-
-Target "BuildDebugService" (fun () ->
-  buildDebug "Projects/Service/Service.fsproj" ()
-  // let assetsTargetDir = (baseDir @@ "bin" @@ "Debug" @@ "Iris" @@ "assets")
-  // FileUtils.cp_r (baseDir @@ "assets/frontend") assetsTargetDir
-  // runNpmNoErrors "install" assetsTargetDir ()
-)
-
-Target "BuildReleaseService" (fun () ->
-  buildRelease "Projects/Service/Service.fsproj" ()
-  // let targetDir = (baseDir @@ "bin/Release/Iris/assets")
-  // FileUtils.cp_r (baseDir @@ "assets/frontend") targetDir
-  // runNpmNoErrors "install" targetDir ()
-)
-
-//  _   _           _
-// | \ | | ___   __| | ___  ___
-// |  \| |/ _ \ / _` |/ _ \/ __|
-// | |\  | (_) | (_| |  __/\__ \
-// |_| \_|\___/ \__,_|\___||___/
-
-Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
-
-Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
-
-//  ____      _ _
-// / ___|  __| | | __
-// \___ \ / _` | |/ /
-//  ___) | (_| |   <
-// |____/ \__,_|_|\_\
-
-Target "BuildDebugSdk" (buildDebug "Projects/Sdk/Sdk.fsproj")
-
-Target "BuildReleaseSdk" (buildRelease "Projects/Sdk/Sdk.fsproj")
-
-//  ____                 _
-// |  _ \ __ _ ___ _ __ (_)
-// | |_) / _` / __| '_ \| |
-// |  _ < (_| \__ \ |_) | |
-// |_| \_\__,_|___/ .__/|_|
-//                |_|
-
-Target "BuildDebugRaspi" (buildDebug "Projects/RaspberryPi/RaspberryPi.fsproj")
-
-//  __  __            _     ____ _ _            _
-// |  \/  | ___   ___| | __/ ___| (_) ___ _ __ | |_
-// | |\/| |/ _ \ / __| |/ / |   | | |/ _ \ '_ \| __|
-// | |  | | (_) | (__|   <| |___| | |  __/ | | | |_
-// |_|  |_|\___/ \___|_|\_\\____|_|_|\___|_| |_|\__|
-
-
-Target "BuildDebugMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
-
-Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fsproj")
-
-//  _____         _
-// |_   _|__  ___| |_ ___
-//   | |/ _ \/ __| __/ __|
-//   | |  __/\__ \ |_\__ \
-//   |_|\___||___/\__|___/
-
-(*
-   Working with libgit2 native libraries:
-
-   - see ldd bin/Debug/NativeBinaries/linux/amd64/libgit...so for dependencies
-   - set MONO_LOG_LEVEL=debug for more VM info
-   - ln -s bin/Debug/NativeBinaries bin/Debug/libNativeBinaries
-   - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/
-
-   now it *should* work. YMMV.
-
-   Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
-*)
-
-Target "BuildTests" (buildDebug "Projects/Tests/Tests.fsproj")
-Target "BuildTestsFast" (buildDebug "Projects/Tests/Tests.fsproj")
-
-let runTests = (fun _ ->
+///  Working with libgit2 native libraries:
+///
+///  - see ldd bin/Debug/NativeBinaries/linux/amd64/libgit...so for dependencies
+///  - set MONO_LOG_LEVEL=debug for more VM info
+///  - ln -s bin/Debug/NativeBinaries bin/Debug/libNativeBinaries
+///  - set LD_LIBRARY_PATH=....:/run/current-system/sw/lib/
+///
+///  now it *should* work. YMMV.
+///
+///  Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
+let runTests () =
   let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
+  if isUnix
+  then runMono "Iris.Tests.exe" testsDir
+  else runTestsOnWindows "Iris.Tests.exe" testsDir
 
-  if isUnix then
-    runMono "Iris.Tests.exe" testsDir
-  else
-    runTestsOnWindows "Iris.Tests.exe" testsDir)
-
-Target "RunTests" runTests
-Target "RunTestsFast" runTests
-
-//  ____
-// / ___|  ___ _ ____   _____ _ __
-// \___ \ / _ \ '__\ \ / / _ \ '__|
-//  ___) |  __/ |   \ V /  __/ |
-// |____/ \___|_|    \_/ \___|_|
-
-Target "DevServer"
-  (fun _ ->
-    let info = ProcessStartInfo("fsi", devScripts @@ "DevServer.fsx")
-    info.UseShellExecute <- false
-    let proc = Process.Start(info)
-    proc.WaitForExit()
-    printfn "done.")
-
-//  ____
-// |  _ \  ___   ___ ___
-// | | | |/ _ \ / __/ __|
-// | |_| | (_) | (__\__ \
-// |____/ \___/ \___|___/
-
-let generateDocs(watch: bool) =
+// TODO: Watch only handles Fable project but it should watch also markdown files
+let generateDocs (watch: bool) () =
   // Build Frontend project to generate XML documentation
   runExec dotnetExePath "restore" (frontendDir @@ "src/Frontend") false
   runExec dotnetExePath "build"   (frontendDir @@ "src/Frontend") false
@@ -690,28 +485,12 @@ let generateDocs(watch: bool) =
   let cmd = if watch then "run start" else "run build"
   runNpmNoErrors cmd (__SOURCE_DIRECTORY__ @@ "docs/tools") ()
 
-Target "GenerateDocs" (fun () ->
-  generateDocs(false))
+let copyDocs () =
+  generateDocs false ()
+  // Copy them to package
+  SilentCopyDir "bin/Docs" docsDir (konst true)
 
-// TODO: This only watches the Fable project but it should
-// watch also the markdown files
-Target "WatchDocs" (fun () ->
-  generateDocs(true))
-
-Target "CopyDocs"
-  (fun _ ->
-    generateDocs(false)
-    // Copy them to package
-    SilentCopyDir "bin/Docs" docsDir (konst true))
-
-//  _   _       _                 _
-// | | | |_ __ | | ___   __ _  __| |
-// | | | | '_ \| |/ _ \ / _` |/ _` |
-// | |_| | |_) | | (_) | (_| | (_| |
-//  \___/| .__/|_|\___/ \__,_|\__,_|
-//       |_|
-
-Target "UploadArtifact" (fun () ->
+let uploadArtifact () =
   if AppVeyorEnvironment.RepoBranch = "master" || AppVeyorEnvironment.RepoTag then
     let fn =
       if AppVeyorEnvironment.RepoTag then
@@ -725,163 +504,83 @@ Target "UploadArtifact" (fun () ->
     let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
     let args = String.Format(tpl, user, pw, url, fn)
     runExec "curl" args __SOURCE_DIRECTORY__ false
-)
-
-//  ____       _                 ____             _
-// |  _ \  ___| |__  _   _  __ _|  _ \  ___   ___| | _____ _ __
-// | | | |/ _ \ '_ \| | | |/ _` | | | |/ _ \ / __| |/ / _ \ '__|
-// | |_| |  __/ |_) | |_| | (_| | |_| | (_) | (__|   <  __/ |
-// |____/ \___|_.__/ \__,_|\__, |____/ \___/ \___|_|\_\___|_|
-//                         |___/
-
-let getCommitHash() =
-  let log = runExecAndReturn "git" "log -n1 --oneline" baseDir
-  log.Substring(0, log.IndexOf(" "))
-
-let dockerCreateImage hash workingDir =
-  let cmd = sprintf "build --label iris --tag iris:%s ." hash
-  runExec "docker" cmd workingDir false
-
-Target "DockerCreateBaseImage" (fun () ->
-  runExec "docker" "build --label iris --tag iris:base ../Docker/iris_base" baseDir false
-)
-
-Target "DockerRunTests" (fun () ->
-  let testsDir = "src/Iris/bin/Debug/Tests"
-  FileUtils.cp_r "src/Docker/iris/" testsDir
-  let hash = getCommitHash()
-  dockerCreateImage hash testsDir
-  let irisNodeId = Guid.NewGuid().ToString()
-  let img = runExecAndReturn "docker" ("images -q iris:" + hash) baseDir
-  let runCmd = sprintf "run -i --rm -e IRIS_NODE_ID=%s -e COMMAND=tests %s" irisNodeId img
-  runExec "docker" runCmd  baseDir false
-)
 
 // --------------------------------------------------------------------------------------
-// Run all targets by default. Invoke 'build <Target>' to override
+// TARGETS
+// --------------------------------------------------------------------------------------
 
-Target "Release" DoNothing
+Target "Bootstrap" bootStrap
+Target "AssemblyInfo" assemblyInfo
+Target "GenerateBuildFile" generateBuildFile
+Target "GenerateManifest" generateManifest
+Target "CopyBinaries" copyBinaries
+Target "CopyAssets" copyAssets
+Target "CreateArchive" createArchive
+Target "Clean" clean
+Target "GenerateSerialization" generateSerialization
+Target "BuildCss" buildCss
+Target "BuildFrontendPlugins" buildFrontendPlugins
+Target "BuildFrontend" buildFrontend
+Target "BuildWebTests" buildWebTests
+Target "RunWebTests" runWebTests
+Target "BuildZeroconf" buildZeroconf
+Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
+Target "BuildDebugService" (buildDebug "Projects/Service/Service.fsproj")
+Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
+Target "BuildDebugSdk" (buildDebug "Projects/Sdk/Sdk.fsproj")
+Target "BuildDebugMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
+Target "BuildDebugRaspi" (buildDebug "Projects/RaspberryPi/RaspberryPi.fsproj")
+Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
+Target "BuildReleaseService" (buildRelease "Projects/Service/Service.fsproj")
+Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
+Target "BuildReleaseSdk" (buildRelease "Projects/Sdk/Sdk.fsproj")
+Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fsproj")
+Target "BuildTests" (buildRelease "Projects/Tests/Tests.fsproj")
+Target "RunTests" runTests
+Target "GenerateDocs" (generateDocs false)
+Target "WatchDocs" (generateDocs true)
+Target "GenerateDocs" (generateDocs false)
+Target "WatchDocs" (generateDocs true)
+Target "CopyDocs" copyDocs
+Target "UploadArtifact" uploadArtifact
 
-"Clean"
-==> "GenerateSerialization"
+// TODO: Remove "Fast" targets? (they're called from Makefile)
+Target "BuildFrontendFast" buildFrontendFast
+Target "BuildTestsFast" (buildDebug "Projects/Tests/Tests.fsproj")
+Target "BuildWebTestsFast" buildWebTestsFast
+Target "RunTestsFast" (fun () ->
+  buildDebug "Projects/Tests/Tests.fsproj" ()
+  runTests ())
+Target "RunWebTestsFast" (fun () ->
+  buildWebTestsFast ()
+  runWebTests ())
 
-// Serialization
+Target "Release" (fun () ->
+  clean ()
+  generateBuildFile ()
+  generateSerialization ()
+  buildZeroconf ()
+  buildRelease "Projects/Sdk/Sdk.fsproj" ()
+  buildRelease "Projects/Nodes/Nodes.fsproj" ()
+  buildRelease "Projects/Service/Service.fsproj" ()
+  // buildRelease "Projects/MockClient/MockClient.fsproj" ()
+  buildFrontend ()
+  copyBinaries ()
+  copyAssets ()
+  copyDocs ()
+  generateManifest ()
+  createArchive ()
+)
 
-"GenerateBuildFile"
-==> "GenerateSerialization"
-
-"GenerateSerialization"
-==> "BuildWebTests"
-
-"GenerateSerialization"
-==> "BuildFrontend"
-
-"GenerateSerialization"
-==> "BuildReleaseService"
-
-"GenerateSerialization"
-==> "BuildReleaseSdk"
-
-"GenerateSerialization"
-==> "BuildReleaseNodes"
-
-"GenerateSerialization"
-==> "BuildDebugMockClient"
-
-// Zeroconf
-
-"BuildZeroconf"
-==> "BuildReleaseService"
-
-"BuildZeroconf"
-==> "BuildReleaseSdk"
-
-"BuildZeroconf"
-==> "BuildReleaseCore"
-
-"BuildZeroconf"
-==> "BuildDebugMockClient"
-
-// Tests
-
-"GenerateSerialization"
-==> "BuildTests"
-
-"BuildTests"
-==> "RunTests"
-
-"BuildTestsFast"
-==> "RunTestsFast"
-
-// ONWARDS!
-
-"BuildReleaseSdk"
-==> "BuildReleaseNodes"
-==> "BuildReleaseService"
-==> "BuildFrontend"
-// ==> "BuildReleaseCore"
-==> "BuildReleaseMockClient"
-==> "CopyBinaries"
-
-// "BuildWebTests"
-// ==> "CopyAssets"
-
-"CopyBinaries"
-==> "CopyAssets"
-==> "CopyDocs"
-==> "GenerateManifest"
-==> "CreateArchive"
-
-"CreateArchive"
-==> "Release"
-
-"BuildWebTests"
-==> "RunWebTests"
-
-"BuildWebTestsFast"
-==> "RunWebTestsFast"
-
-"BuildTests"
-==> "DockerRunTests"
-
-// let startDockerCmd() =
-//   let project, irisNodeId, image = "foo", "foo", "foo"
-//   sprintf """run -p 7000:7000 -i --rm -v %s:/project \
-//     -e IRIS_NODE_ID=%s -e COMMAND=start %s""" project irisNodeId image
-
-// Target "CreateDocker" (fun () ->
-//   FileUtils.cp_r "src/Docker/iris/" "src/Iris/bin/Debug/Iris"
-//   runExec "docker" (createDockerCmd()) baseDir false
-// )
-
-// Target "StartDockerImage" (fun () ->
-//   runExec "docker" (startDockerCmd()) baseDir false
-// )
-
-//  ____       _                    _    _ _
-// |  _ \  ___| |__  _   _  __ _   / \  | | |
-// | | | |/ _ \ '_ \| | | |/ _` | / _ \ | | |
-// | |_| |  __/ |_) | |_| | (_| |/ ___ \| | |
-// |____/ \___|_.__/ \__,_|\__, /_/   \_\_|_|
-//                         |___/
-
-Target "DebugAll" DoNothing
-
-"BuildFrontend"
-==> "DebugAll"
-
-"BuildDebugService"
-==> "DebugAll"
-
-"BuildDebugNodes"
-==> "DebugAll"
-
-Target "AllTests" DoNothing
-
-"RunTests"
-==> "AllTests"
-
-"RunWebTests"
-==> "AllTests"
+Target "AllTests" (fun () ->
+  clean ()
+  generateBuildFile ()
+  generateSerialization ()
+  // TODO: Use debug mode? (as previously)
+  buildRelease "Projects/Tests/Tests.fsproj" ()
+  runTests ()
+  buildWebTests ()
+  runWebTests ()
+)
 
 RunTargetOrDefault "Release"
