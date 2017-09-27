@@ -923,8 +923,7 @@ module rec Graph =
   // ** parseGroupName
 
   let private parseGroupName (node: INode2) =
-    node.NodeInfo.Name
-    |> name
+    name node.NodeInfo.Name
 
   // ** parseGroupPath
 
@@ -935,7 +934,7 @@ module rec Graph =
 
   // ** onGroupRename
 
-  let private onGroupRename (state: PluginState) (id: PinId) (_: INamed) (groupName: string) =
+  let private onGroupRename (state: PluginState) (id: PinGroupId) (_: INamed) (groupName: string) =
     match state.Pins.TryGetValue(id) with
     | true, group ->
       let node = state.V2Host.GetNodeFromPath(string id)
@@ -948,23 +947,44 @@ module rec Graph =
 
   // ** addPin
 
-  let private addPin (state: PluginState) (pin: Pin) =
-    if state.Pins.ContainsKey pin.PinGroupId then
-      let group = state.Pins.[pin.PinGroupId]
-      state.Pins.[group.Id] <- { group with Pins = Map.add pin.Id pin group.Pins }
-      state.Commands.Add (AddPin pin)
+  let private addPin (state: PluginState) (pin: IPin2) (parsed: Pin) =
+    /// register a disposable for the variaous callbacks that need to be tracked
+    let id = parsePinId state pin
+
+    /// dispose of previously registered disposable for this pin id
+    state.Disposables
+    |> Seq.choose (function KeyValue(pid, disp) -> if pid = id then Some disp else None)
+    |> Seq.iter dispose
+
+    /// register event handlers for this pin and track them
+    pin
+    |> registerHandlers state
+    |> fun disposable -> state.Disposables.Add(id, disposable)
+    |> ignore
+
+    /// create a NodeMapping, tracking the connection between Iris Pin and VVVV Pin
+    let _, nm = makeNodeMapping state pin
+    if not (state.NodeMappings.ContainsKey id)
+    then state.NodeMappings.Add(id, nm) |> ignore
+    else state.NodeMappings.[id] <- nm
+
+    /// add the pin an existing group
+    if state.Pins.ContainsKey parsed.PinGroupId then
+      let group = state.Pins.[parsed.PinGroupId]
+      state.Pins.[group.Id] <- { group with Pins = Map.add parsed.Id parsed group.Pins }
+      state.Commands.Add (AddPin parsed)
     else
-      let node = state.V2Host.GetNodeFromPath(string pin.PinGroupId)
-      node.add_Renamed(new RenamedHandler(onGroupRename state pin.PinGroupId))
+      /// no group found for pin, hence we just create it
+      let node = pin.ParentNode.Parent
+      node.add_Renamed(new RenamedHandler(onGroupRename state parsed.PinGroupId))
       let group: PinGroup =
-        { Id = pin.PinGroupId
+        { Id = parsed.PinGroupId
           Name = parseGroupName node
           Path = parseGroupPath node
           ClientId = state.ClientId
           RefersTo = None
-          Pins = Map.ofList [ (pin.Id, pin) ] }
+          Pins = Map.ofList [ (parsed.Id, parsed) ] }
       state.Commands.Add (AddPinGroup group)
-      state.Commands.Add (AddPin pin)
       state.Pins.Add(group.Id, group) |> ignore
 
   // ** updatePinWith
@@ -1058,17 +1078,6 @@ module rec Graph =
       | _ -> ()
     | _ -> ()
 
-  // ** addDisposable
-
-  let private addDisposable (state: PluginState) (pin: IPin2) =
-    let id = parsePinId state pin
-    let disposable = registerHandlers state pin
-    if state.Disposables.ContainsKey id then
-      dispose disposable                // should not happen, and if it does prevent it from working
-    else
-      state.Disposables.Add(id, disposable)
-      |> ignore
-
   // ** removeDisposable
 
   let private removeDisposable (state: PluginState) (id: PinId) =
@@ -1086,10 +1095,9 @@ module rec Graph =
     let cnf = parseConfiguration pin
     let tipe, props =
       match parsePinType pin with
-      | Right PinType.Enum ->
-        PinType.Enum, Some (parseEnumProperties pin)
-      | Right tipe -> tipe, None
-      | Left error -> failwith (string error)
+      | Right PinType.Enum -> PinType.Enum, Some (parseEnumProperties pin)
+      | Right tipe         -> tipe, None
+      | Left  _            -> PinType.String, None /// default is string
     let nm =
       { PinId = id
         GroupId = gid
@@ -1099,14 +1107,6 @@ module rec Graph =
         Properties = props
         ChangedNode = cp }
     (id, nm)
-
-  // ** addChangedPin
-
-  let private addChangedPin (state: PluginState) (pin: IPin2) =
-    let id, nm = makeNodeMapping state pin
-    if not (state.NodeMappings.ContainsKey id) then
-      state.NodeMappings.Add(id, nm)
-      |> ignore
 
   // ** updateChangedPin
 
@@ -1232,10 +1232,7 @@ module rec Graph =
       match state.Events.TryDequeue() with
       | true, msg ->
         match msg with
-        | Msg.PinAdded (pin, parsed) ->
-          addDisposable state pin
-          addChangedPin state pin
-          addPin state parsed
+        | Msg.PinAdded (pin, parsed) -> addPin state pin parsed
 
         | Msg.PinRemoved (group, pin) ->
           removeDisposable state pin
