@@ -8,8 +8,8 @@ native/src/Iris.*/net40
 /vvvv/plugins/src/Iris.Tests/NativeBinaries
 node_modules
 /npm-debug.log
-/dotnet/Iris.sha256sum
-/dotnet/docs/src/CHANGELOG.md
-/dotnet/docs/src/LICENSE.txt
+/Iris.sha256sum
+/docs/src/CHANGELOG.md
+/docs/src/LICENSE.txt
 /.markdown-preview.html
-/dotnet/.paket/load/*
+/.paket/load/*

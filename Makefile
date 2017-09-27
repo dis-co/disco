@@ -4,7 +4,7 @@ OPTSS="parallel-jobs=4"
 BUILD=cd $(VVVV_BASEDIR) && mono packages/build/FAKE/tools/FAKE.exe build.fsx
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-SCRIPT_DIR=$(CURRENT_DIR)/dotnet/src/Scripts
+SCRIPT_DIR=$(CURRENT_DIR)/src/Scripts
 SHELL_NIX=$(SCRIPT_DIR)/Nix/shell.nix
 
 MONO_THREADS_PER_CPU := 100
@@ -171,7 +171,7 @@ shell:
 	@nix-shell $(SHELL_NIX) -A irisEnv
 
 nixfsi:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "fsi --use:dotnet/.paket/load/main.group.fsx --use:$(SCRIPT_DIR)/Fsx/Iris.Core.fsx"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "fsi --use:.paket/load/main.group.fsx --use:$(SCRIPT_DIR)/Fsx/Iris.Core.fsx"
 
 #  ____             _
 # |  _ \  ___   ___| | _____ _ __
@@ -186,13 +186,13 @@ image_base:
 	@docker build \
 		--label iris \
 		--tag iris:base \
-		${CURRENT_DIR}/dotnet/src/Iris/Dockerbase/
+		${CURRENT_DIR}/src/Iris/Dockerbase/
 
 image: docker
 	@docker build \
 		--label iris \
 		--tag iris:$(shell git log -n1 --oneline | cut -d\  -f1) \
-		${CURRENT_DIR}/dotnet/src/Iris/bin/Debug/Iris/
+		${CURRENT_DIR}/src/Iris/bin/Debug/Iris/
 
 create:
 	@mkdir -p ${PROJECT}
