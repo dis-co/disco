@@ -249,11 +249,13 @@ let runTestsOnWindows filepath workdir =
               TimeSpan.MaxValue
   |> maybeFail
 
-let buildDebug fsproj _ =
-  build (setParams "Debug") (baseDir @@ fsproj)
+type BuildConfig =
+  | Debug
+  | Release
 
-let buildRelease fsproj _ =
-  build (setParams "Release") (baseDir @@ fsproj)
+let build config fsproj _ =
+  let config = match config with Debug -> "Debug" | Release -> "Release"
+  build (setParams config) (baseDir @@ fsproj)
 
 let withoutNodeModules (path: string) =
   path.Contains("node_modules") |> not
@@ -261,12 +263,6 @@ let withoutNodeModules (path: string) =
 // ---------------------------------------------------------------------
 // ACTIONS
 // ---------------------------------------------------------------------
-
-let bootStrap () =
-  Restore(id)                              // restore Paket packages
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
-  // TODO: Bootstrap frontend: plugin, etc
 
 let assemblyInfo () =
   let getAssemblyInfoAttributes projectName =
@@ -411,16 +407,21 @@ let generateSerialization () =
 
   File.WriteAllText((baseDir @@ "Serialization.csproj"), top + files + bot)
 
-  buildDebug "Serialization.csproj" ()
-  buildRelease "Serialization.csproj" ()
+  build Debug "Serialization.csproj" ()
+  build Release "Serialization.csproj" ()
 
-let buildZeroconf () =
-    buildDebug   "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
-    buildRelease "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
-    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
-    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
-    buildDebug   "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
-    buildRelease "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
+let bootStrap () =
+  installDotnetSdk ()
+  generateSerialization ()
+  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
+  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
+
+let buildZeroconf config () =
+    build config "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
+    build config "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
+    build config "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
 
 let buildCss () =
   runNpm "run lessc" __SOURCE_DIRECTORY__ ()
@@ -469,8 +470,9 @@ let runWebTests () =
 ///  now it *should* work. YMMV.
 ///
 ///  Good Fix: use a nix-shell environment that exposes LD_LIBRARY_PATH correctly.
-let runTests () =
-  let testsDir = baseDir @@ "bin" @@ "Debug" @@ "Tests"
+let runTests config () =
+  let config = match config with Debug -> "Debug" | Release -> "Release"
+  let testsDir = baseDir @@ "bin" @@ config @@ "Tests"
   if isUnix
   then runMono "Iris.Tests.exe" testsDir
   else runTestsOnWindows "Iris.Tests.exe" testsDir
@@ -509,61 +511,71 @@ let uploadArtifact () =
 // TARGETS
 // --------------------------------------------------------------------------------------
 
+// Initialization
+Target "Clean" clean
 Target "Bootstrap" bootStrap
 Target "AssemblyInfo" assemblyInfo
 Target "GenerateBuildFile" generateBuildFile
 Target "GenerateManifest" generateManifest
-Target "CopyBinaries" copyBinaries
-Target "CopyAssets" copyAssets
-Target "CreateArchive" createArchive
-Target "Clean" clean
 Target "GenerateSerialization" generateSerialization
+
+// Frontend
 Target "BuildCss" buildCss
 Target "BuildFrontendPlugins" buildFrontendPlugins
 Target "BuildFrontend" buildFrontend
 Target "BuildWebTests" buildWebTests
 Target "RunWebTests" runWebTests
-Target "BuildZeroconf" buildZeroconf
-Target "BuildDebugCore" (buildDebug "Projects/Core/Core.fsproj")
-Target "BuildDebugService" (buildDebug "Projects/Service/Service.fsproj")
-Target "BuildDebugNodes" (buildDebug "Projects/Nodes/Nodes.fsproj")
-Target "BuildDebugSdk" (buildDebug "Projects/Sdk/Sdk.fsproj")
-Target "BuildDebugMockClient" (buildDebug "Projects/MockClient/MockClient.fsproj")
-Target "BuildDebugRaspi" (buildDebug "Projects/RaspberryPi/RaspberryPi.fsproj")
-Target "BuildReleaseCore" (buildRelease "Projects/Core/Core.fsproj")
-Target "BuildReleaseService" (buildRelease "Projects/Service/Service.fsproj")
-Target "BuildReleaseNodes" (buildRelease "Projects/Nodes/Nodes.fsproj")
-Target "BuildReleaseSdk" (buildRelease "Projects/Sdk/Sdk.fsproj")
-Target "BuildReleaseMockClient" (buildRelease "Projects/MockClient/MockClient.fsproj")
-Target "BuildTests" (buildRelease "Projects/Tests/Tests.fsproj")
-Target "RunTests" runTests
-Target "GenerateDocs" (generateDocs false)
-Target "WatchDocs" (generateDocs true)
-Target "GenerateDocs" (generateDocs false)
-Target "WatchDocs" (generateDocs true)
-Target "CopyDocs" copyDocs
-Target "UploadArtifact" uploadArtifact
+
+// Service
+Target "BuildDebugZeroconf"   (buildZeroconf Debug)
+Target "BuildDebugCore"       (build Debug "Projects/Core/Core.fsproj")
+Target "BuildDebugService"    (build Debug "Projects/Service/Service.fsproj")
+Target "BuildDebugNodes"      (build Debug "Projects/Nodes/Nodes.fsproj")
+Target "BuildDebugSdk"        (build Debug "Projects/Sdk/Sdk.fsproj")
+Target "BuildDebugMockClient" (build Debug "Projects/MockClient/MockClient.fsproj")
+Target "BuildDebugRaspi"      (build Debug "Projects/RaspberryPi/RaspberryPi.fsproj")
+Target "BuildDebugTests"      (build Debug "Projects/Tests/Tests.fsproj")
+Target "RunDebugTests"        (runTests Debug)
+
+Target "BuildReleaseZeroconf"   (buildZeroconf Release)
+Target "BuildReleaseCore"       (build Release "Projects/Core/Core.fsproj")
+Target "BuildReleaseService"    (build Release "Projects/Service/Service.fsproj")
+Target "BuildReleaseNodes"      (build Release "Projects/Nodes/Nodes.fsproj")
+Target "BuildReleaseSdk"        (build Release "Projects/Sdk/Sdk.fsproj")
+Target "BuildReleaseMockClient" (build Release "Projects/MockClient/MockClient.fsproj")
+Target "BuildReleaseRaspi"      (build Release "Projects/RaspberryPi/RaspberryPi.fsproj")
+Target "BuildReleaseTests"      (build Release "Projects/Tests/Tests.fsproj")
+Target "RunReleaseTests"        (runTests Release)
 
 // TODO: Remove "Fast" targets? (they're called from Makefile)
 Target "BuildFrontendFast" buildFrontendFast
-Target "BuildTestsFast" (buildDebug "Projects/Tests/Tests.fsproj")
-Target "BuildWebTestsFast" buildWebTestsFast
+Target "BuildTestsFast" (build Debug "Projects/Tests/Tests.fsproj")
 Target "RunTestsFast" (fun () ->
-  buildDebug "Projects/Tests/Tests.fsproj" ()
-  runTests ())
+  build Debug "Projects/Tests/Tests.fsproj" ()
+  runTests Debug ())
+Target "BuildWebTestsFast" buildWebTestsFast
 Target "RunWebTestsFast" (fun () ->
   buildWebTestsFast ()
   runWebTests ())
+
+// Docs and archiving
+Target "GenerateDocs" (generateDocs false)
+Target "WatchDocs" (generateDocs true)
+Target "CopyDocs" copyDocs
+Target "CopyBinaries" copyBinaries
+Target "CopyAssets" copyAssets
+Target "CreateArchive" createArchive
+Target "UploadArtifact" uploadArtifact
 
 Target "Release" (fun () ->
   clean ()
   generateBuildFile ()
   generateSerialization ()
-  buildZeroconf ()
-  buildRelease "Projects/Sdk/Sdk.fsproj" ()
-  buildRelease "Projects/Nodes/Nodes.fsproj" ()
-  buildRelease "Projects/Service/Service.fsproj" ()
-  // buildRelease "Projects/MockClient/MockClient.fsproj" ()
+  buildZeroconf Release ()
+  build Release "Projects/Sdk/Sdk.fsproj" ()
+  build Release "Projects/Nodes/Nodes.fsproj" ()
+  build Release "Projects/Service/Service.fsproj" ()
+  build Release "Projects/MockClient/MockClient.fsproj" ()
   buildFrontend ()
   copyBinaries ()
   copyAssets ()
@@ -576,9 +588,10 @@ Target "AllTests" (fun () ->
   clean ()
   generateBuildFile ()
   generateSerialization ()
+  buildZeroconf Release ()
   // TODO: Use debug mode? (as previously)
-  buildRelease "Projects/Tests/Tests.fsproj" ()
-  runTests ()
+  build Release "Projects/Tests/Tests.fsproj" ()
+  runTests Release ()
   buildWebTests ()
   runWebTests ()
 )
