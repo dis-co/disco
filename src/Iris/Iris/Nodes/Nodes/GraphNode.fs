@@ -26,6 +26,47 @@ open Iris.Nodes
 [<RequireQualifiedAccess>]
 module rec Graph =
 
+  type PatchPath = string
+
+
+  // ** NodePatch
+
+  type NodePatch =
+    { NodeId: int
+      Content: string }
+
+    member patch.Render () =
+      String.Format(
+        @"<NODE id=""{0}"">
+          <PIN pinname=""Tag"" slicecount=""1"" values=""{1}""/>
+        </NODE>",
+        patch.NodeId,
+        HttpUtility.HtmlEncode(patch.Content))
+
+  // ** Patch
+
+  type Patch =
+    { PatchId: int
+      FileName: PatchPath
+      NodePatches: NodePatch list }
+
+    member patch.Render() =
+      String.Format(
+        @"<PATCH id=""{0}"">
+          {1}
+        </PATCH>",
+        patch.PatchId,
+        Seq.fold (fun m (node: NodePatch) -> m + node.Render()) "" patch.NodePatches)
+
+  // ** Patch module
+
+  module private Patch =
+
+    // *** append
+
+    let append (fragment: NodePatch) patch =
+      { patch with NodePatches = fragment :: patch.NodePatches }
+
   // ** Msg
 
   [<RequireQualifiedAccess>]
@@ -46,6 +87,7 @@ module rec Graph =
       Initialized: bool
       Update: bool ref
       Pins: Dictionary<PinGroupId,PinGroup>
+      Patches: Dictionary<PatchPath,Patch>
       Commands: ResizeArray<StateMachine>
       NodeMappings: Dictionary<PinId,NodeMapping>
       Hashing: SHA1Managed
@@ -65,6 +107,7 @@ module rec Graph =
         Initialized = false
         Update = ref false
         Pins = new Dictionary<PinId,PinGroup>()
+        Patches = Dictionary()
         Commands = new ResizeArray<StateMachine>()
         NodeMappings = new Dictionary<PinId,NodeMapping>()
         Hashing = new SHA1Managed()
@@ -970,6 +1013,26 @@ module rec Graph =
     then state.NodeMappings.Add(id, nm) |> ignore
     else state.NodeMappings.[id] <- nm
 
+    /// patch the VVVV graph
+    let node = pin.ParentNode
+    let parent = node.Parent
+
+    HAHAAHHAHA
+
+    do patchGraph state {
+      PatchId = parent.Parent.ID
+      FileName = parent.Parent.NodeInfo.Filename
+      NodePatches = [{ NodeId = parent.ID; Content = Guid.NewGuid().ToString() }]
+    }
+
+    HAHAAHHAHA
+
+    do patchGraph state {
+      PatchId = parent.ID
+      FileName = parent.NodeInfo.Filename
+      NodePatches = [{ NodeId = node.ID; Content = Guid.NewGuid().ToString() }]
+    }
+
     /// add the pin an existing group
     if state.Pins.ContainsKey parsed.PinGroupId then
       let group = state.Pins.[parsed.PinGroupId]
@@ -977,14 +1040,13 @@ module rec Graph =
       state.Commands.Add (AddPin parsed)
     else
       /// no group found for pin, hence we just create it
-      let node = pin.ParentNode.Parent
-      node.add_Renamed(new RenamedHandler(onGroupRename state node parsed.PinGroupId))
+      parent.add_Renamed(new RenamedHandler(onGroupRename state parent parsed.PinGroupId))
       /// BUG: this callback never fires
       /// node.FindPin(Settings.DESCRIPTIVE_NAME_PIN).add_Changed(new EventHandler(onGroupRename state node parsed.PinGroupId))
       let group: PinGroup =
         { Id = parsed.PinGroupId
-          Name = parseGroupName node
-          Path = parseGroupPath node
+          Name = parseGroupName parent
+          Path = parseGroupPath parent
           ClientId = state.ClientId
           RefersTo = None
           Pins = Map.ofList [ (parsed.Id, parsed) ] }
@@ -1229,6 +1291,11 @@ module rec Graph =
 
     state.OutUpdate.[0] <- true
 
+  // ** patchGraph
+
+  let private patchGraph (state: PluginState) (patch: Patch) =
+    state.V2Host.SendXMLSnippet(patch.FileName, patch.Render(), false);
+
   // ** processing
 
   let private processing (state: PluginState) =
@@ -1318,24 +1385,19 @@ type GraphNode() =
   [<Import();DefaultValue>]
   val mutable Logger: ILogger
 
-  [<DefaultValue>]
-  [<Input("Client ID", IsSingle = true)>]
+  [<Input("Client ID", IsSingle = true);DefaultValue>]
   val mutable InClientId: ISpread<ClientId>
 
-  [<DefaultValue>]
-  [<Output("Commands")>]
+  [<Output("Commands");DefaultValue>]
   val mutable OutCommands: ISpread<StateMachine>
 
-  [<DefaultValue>]
-  [<Output("PinGroups")>]
+  [<Output("PinGroups");DefaultValue>]
   val mutable OutPinGroups: ISpread<PinGroup>
 
-  [<DefaultValue>]
-  [<Output("NodeMappings")>]
+  [<Output("NodeMappings");DefaultValue>]
   val mutable OutNodeMappings: ISpread<NodeMapping>
 
-  [<DefaultValue>]
-  [<Output("Update", IsSingle = true, IsBang = true)>]
+  [<Output("Update", IsSingle = true, IsBang = true);DefaultValue>]
   val mutable OutUpdate: ISpread<bool>
 
   let mutable initialized = false
