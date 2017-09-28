@@ -43,8 +43,7 @@ class TestWidget extends React.Component {
 // The widget scripts must export a function that receives an id
 // and returns an object with the following properties, this may
 // change a little bit to make the API more usable from JS.
-export default function createWidget (id) {
-  var name = "Test 2";
+export default function createWidget (id, name) {
   return {
     Id: id ,
     Name: name,

@@ -27,6 +27,7 @@
     "mocha": "^3.5.3",
     "mocha-phantomjs-core": "^2.1.2",
     "phantomjs-prebuilt": "^2.1.15",
+    "remotedev": "^0.2.7",
     "style-loader": "^0.18.2",
     "webpack": "^3.5.6",
     "webpack-dev-server": "^2.8.1"

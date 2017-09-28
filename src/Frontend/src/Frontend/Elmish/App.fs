@@ -18,9 +18,9 @@ open Types
 importSideEffects "react-grid-layout/css/styles.css"
 
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
-let createTestWidget1: Guid -> IWidget = importDefault "../../js/widgets/TestWidget1"
-let createTestWidget2: Guid -> IWidget = importDefault "../../js/widgets/TestWidget2"
-let createTestWidget3: Guid -> IWidget = importDefault "../../js/widgets/TestWidget3"
+let createTestWidget1(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget1"
+let createTestWidget2(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget2"
+let createTestWidget3(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget3"
 
 initWidgetFactory
   { new IWidgetFactory with
@@ -36,9 +36,9 @@ initWidgetFactory
         | Widgets.Sessions -> SessionsView.createWidget(id)
         | Widgets.PinMapping -> PinMappingView.createWidget(id)
         | Widgets.InspectorView -> InspectorView.createWidget(id)
-        | Widgets.Test1 -> createTestWidget1(id)
-        | Widgets.Test2 -> createTestWidget2(id)
-        | Widgets.Test3 -> createTestWidget3(id)
+        | Widgets.Test1 -> createTestWidget1(id, name)
+        | Widgets.Test2 -> createTestWidget2(id, name)
+        | Widgets.Test3 -> createTestWidget3(id, name)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
@@ -147,7 +147,7 @@ let init() =
   Program.mkProgram init update root
   // |> Program.toNavigable (parseHash pageParser) urlUpdate
   |> Program.withReact "app-container"
-  // #if DEBUG
-  // |> Program.withDebugger
-  // #endif
+  #if DEBUG
+  |> Program.withDebugger
+  #endif
   |> Program.run
