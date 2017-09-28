@@ -175,7 +175,8 @@ module Store =
             group.Id
             group.ClientId
             [| "swell" |]
-
+          |> Pin.setPersisted true       /// this is necessary because otherwise the group will be
+                                        /// removed since the corresponding client does not exist
         group
         |> PinGroup.addPin pin
         |> AddPinGroup
