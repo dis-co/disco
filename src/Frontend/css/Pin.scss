@@ -1,9 +1,9 @@
-@base-height: 25px;
-@row-height: 17px;
-@pin-width: 120px;
-@arrow-size: 14px;
-@odd-row: #F3F3F3;
-@even-row: #EBEBEB;
+$base-height: 25px;
+$row-height: 17px;
+$pin-width: 120px;
+$arrow-size: 14px;
+$odd-row: #F3F3F3;
+$even-row: #EBEBEB;
 
 .iris-cue {
   border-left: 3px solid transparent;
@@ -15,19 +15,19 @@
     border-top-width: 2px;
   }
   &.iris-selected {
-    background-color: @highlight-lightblue;
-    border-color: @highlight-lightblue
+    background-color: $highlight-lightblue;
+    border-color: $highlight-lightblue
   }
 }
 
 .iris-graphview {
-  background: @odd-row;
+  background: $odd-row;
   height: 100%;
   > li {
-    .iris-pin-container;
-    background: @odd-row;
+    @include iris-pin-container;
+    background: $odd-row;
     &:nth-child(even) {
-      background: @even-row;
+      background: $even-row;
     }
   }
 }
@@ -58,21 +58,21 @@
     font-weight: normal;
     padding: 1px 4px 1px 2px;
     color: #fff !important;
-    background-color: @pin-bg-color;
+    background-color: $pin-bg-color;
     &:first-child {
       padding-left: 6px;
       // border-right: white solid 1px
     }
     &:hover {
-      background-color: @pin-bg-color-hover;
+      background-color: $pin-bg-color-hover;
       transition: 0.1s;
     }
   }
 
   .icon-control {
     color: white;
-    width: @arrow-size;
-    height: @arrow-size;
+    width: $arrow-size;
+    height: $arrow-size;
     padding: 1px 0 0 0 ;
   }
 
@@ -99,7 +99,7 @@
 .iris-pin-end {
   padding: 0px;
   background: none;
-  border: 1px @pin-bg-color solid;
+  border: 1px $pin-bg-color solid;
   border-top-right-radius: 13px;
   border-bottom-right-radius: 13px;
   border-left: none;
@@ -126,9 +126,9 @@
 .iris-dirty {
   .iris-pin-child {
     td {
-      background-color: @pin-bg-color-dirty;
+      background-color: $pin-bg-color-dirty;
       &:hover {
-        background-color: @pin-bg-color-dirty-hover;
+        background-color: $pin-bg-color-dirty-hover;
       }
     }
   }
@@ -137,7 +137,7 @@
 .iris-persisted {
   .iris-pin-child {
     td {
-      border: 2px @pin-border-persisted solid;
+      border: 2px $pin-border-persisted solid;
     }
   }
 }
@@ -145,7 +145,7 @@
 .iris-offline {
   .iris-pin-child {
     td {
-      border: 2px @pin-border-offline solid;
+      border: 2px $pin-border-offline solid;
     }
   }
 }

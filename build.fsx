@@ -429,21 +429,15 @@ let bootStrap () =
   restoreFrontend ()
   buildFrontendPlugins ()
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
-
-let buildCss () =
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
 
 let buildFrontend () =
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
   installDotnetSdk ()
   restoreFrontend ()
   buildFrontendPlugins ()
   runNpm ("run build") __SOURCE_DIRECTORY__ ()
 
 let buildFrontendFast () =
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
   runNpm "run build" __SOURCE_DIRECTORY__ ()
 
 let buildWebTests () =
@@ -524,7 +518,6 @@ Target "GenerateManifest" generateManifest
 Target "GenerateSerialization" generateSerialization
 
 // Frontend
-Target "BuildCss" buildCss
 Target "BuildFrontendPlugins" buildFrontendPlugins
 Target "BuildFrontend" buildFrontend
 Target "BuildWebTests" buildWebTests
