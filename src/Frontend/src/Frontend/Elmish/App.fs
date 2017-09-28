@@ -147,7 +147,7 @@ let init() =
   Program.mkProgram init update root
   // |> Program.toNavigable (parseHash pageParser) urlUpdate
   |> Program.withReact "app-container"
-  // #if DEBUG
-  // |> Program.withDebugger
-  // #endif
+  #if DEBUG
+  |> Program.withDebugger
+  #endif
   |> Program.run
