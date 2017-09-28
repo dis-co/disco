@@ -5,7 +5,7 @@ environment:
   NODE_PATH: C:\Users\appveyor\AppData\Roaming\npm\node_modules
   APPVEYOR_CI_BUILD: true
 install:
-- ps: "netsh advfirewall set currentprofile state off\n\nGet-ExecutionPolicy -List\nSet-ExecutionPolicy -ExecutionPolicy Unrestricted -Force\n\n\nInstall-Product node \"6.9.2\" x64\nnpm --loglevel=error -g install npm\nchoco install cmake\nchoco install wget\nchoco install git\n\n$env:Path += \";C:\\Program Files\\CMake\\bin\"\n\nwget \"https://github.com/google/flatbuffers/archive/master.zip\" -o flatbuffers.zip\n7z x flatbuffers.zip\ncd flatbuffers-master\ncmake -Wno-dev -G \"Visual Studio 14 2015\"\nmsbuild flatc.vcxproj \n \n$env:Path += \";C:\\projects\\iris\\flatbuffers-master\\Debug\\\"\n\ncd ..\ncd dotnet\nnpm install --loglevel=error --no-optional"
+- ps: "netsh advfirewall set currentprofile state off\n\nGet-ExecutionPolicy -List\nSet-ExecutionPolicy -ExecutionPolicy Unrestricted -Force\n\n\nInstall-Product node \"6.9.2\" x64\nnpm --loglevel=error -g install npm\nchoco install cmake\nchoco install wget\nchoco install git\n\n$env:Path += \";C:\\Program Files\\CMake\\bin\"\n\nwget \"https://github.com/google/flatbuffers/archive/master.zip\" -o flatbuffers.zip\n7z x flatbuffers.zip\ncd flatbuffers-master\ncmake -Wno-dev -G \"Visual Studio 14 2015\"\nmsbuild flatc.vcxproj \n \n$env:Path += \";C:\\projects\\iris\\flatbuffers-master\\Debug\\\"\n\ncd ..\nnpm install --loglevel=error --no-optional"
 cache:
 - C:\Users\appveyor\AppData\Roaming\npm\node_modules
 - C:/projects/iris/flatbuffers-master
@@ -30,5 +30,5 @@ notifications:
 on_finish:
 - ps: Get-ChildItem .\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 cache:
-  - dotnet\packages -> dotnet\paket.lock
-  - dotnet\node_modules -> dotnet\package.json
+  - packages -> paket.lock
+  - node_modules -> package.json

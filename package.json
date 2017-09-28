@@ -5,7 +5,7 @@
     "build": "cd src/Frontend/src/Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.js -p",
     "build-tests": "cd src/Frontend/src/Tests.Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.tests.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
-    "lessc": "lessc"
+    "lessc": "lessc ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css"
   },
   "devDependencies": {
     "@types/jquery": "^3.2.12",
