@@ -410,31 +410,36 @@ let generateSerialization () =
   build Debug "Serialization.csproj" ()
   build Release "Serialization.csproj" ()
 
-let bootStrap () =
-  installDotnetSdk ()
-  generateSerialization ()
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
-  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
-  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
-
 let buildZeroconf config () =
     build config "../Zeroconf/Mono.Zeroconf/Mono.Zeroconf.csproj" ()
     build config "../Zeroconf/Mono.Zeroconf.Providers.AvahiDBus/Mono.Zeroconf.Providers.AvahiDBus.csproj" ()
     build config "../Zeroconf/Mono.Zeroconf.Providers.Bonjour/Mono.Zeroconf.Providers.Bonjour.csproj" ()
 
-let buildCss () =
-  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
-
 let buildFrontendPlugins () =
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+
+let restoreFrontend () =
+  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
+
+let bootStrap () =
+  installDotnetSdk ()
+  generateSerialization ()
+  buildZeroconf Debug ()
+  buildZeroconf Release ()
+  restoreFrontend ()
+  buildFrontendPlugins ()
+  runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
+
+let buildCss () =
+  runNpm "run lessc" __SOURCE_DIRECTORY__ ()
 
 let buildFrontend () =
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runNpm "run lessc" __SOURCE_DIRECTORY__ ()
   installDotnetSdk ()
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
-  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+  restoreFrontend ()
+  buildFrontendPlugins ()
   runNpm ("run build") __SOURCE_DIRECTORY__ ()
 
 let buildFrontendFast () =
@@ -443,13 +448,12 @@ let buildFrontendFast () =
 
 let buildWebTests () =
   installDotnetSdk ()
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
-  runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
+  restoreFrontend ()
+  buildFrontendPlugins ()
   runNpmNoErrors "install" __SOURCE_DIRECTORY__ ()
   runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
 
 let buildWebTestsFast () =
-  // runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
   runNpm ("run build-tests") __SOURCE_DIRECTORY__ ()
 
 let runWebTests () =
