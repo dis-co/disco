@@ -7,7 +7,7 @@
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "sass": "node-sass ./src/Frontend/css/main.scss ./src/Frontend/css/Iris_generated.css",
     "start": "concurrently -k \"npm run start-fable\" \"npm run sass && npm run sass -- -w\"",
-    "build": "concurrently -k \"npm run build-fable\" \"npm run sass\""
+    "build": "concurrently \"npm run build-fable\" \"npm run sass\""
   },
   "devDependencies": {
     "@types/jquery": "^3.2.12",
