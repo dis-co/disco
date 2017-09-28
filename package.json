@@ -6,8 +6,8 @@
     "build-tests": "cd src/Frontend/src/Tests.Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.tests.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
     "sass": "node-sass ./src/Frontend/css/main.scss ./src/Frontend/css/Iris_generated.css",
-    "start": "concurrently -k \"npm run start-fable\" \"npm run sass && npm run sass -- -w\"",
-    "build": "concurrently \"npm run build-fable\" \"npm run sass\""
+    "start": "concurrently -k -p \" \" \"npm run start-fable\" \"npm run sass && npm run sass -- -w\"",
+    "build": "concurrently -p \" \" \"npm run build-fable\" \"npm run sass\""
   },
   "devDependencies": {
     "@types/jquery": "^3.2.12",
