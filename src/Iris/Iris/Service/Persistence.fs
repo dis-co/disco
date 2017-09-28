@@ -228,13 +228,26 @@ module Persistence =
       match State.tryFindPinGroup pin.ClientId pin.PinGroupId state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
-      | None -> Either.nothing
+      | None ->
+        /// it can happen that a group was removed from the state in the mean time
+        /// hence we check if a stale file still exists and remove it
+        let path = PinGroup.absolutePath basePath pin.ClientId pin.PinGroupId
+        if File.exists path
+        then File.delete path
+        else Either.nothing
+
 
     | RemovePin pin ->
       match State.tryFindPinGroup pin.ClientId pin.PinGroupId state with
       | Some group when group.Persisted -> save group
       | Some group -> delete group
-      | None -> Either.nothing
+      | None ->
+        /// it can happen that a group was removed from the state in the mean time
+        /// hence we check if a stale file still exists and remove it
+        let path = PinGroup.absolutePath basePath pin.ClientId pin.PinGroupId
+        if File.exists path
+        then File.delete path
+        else Either.nothing
 
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
