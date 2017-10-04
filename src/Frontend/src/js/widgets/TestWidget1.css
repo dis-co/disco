@@ -1,0 +1,16 @@
+.slider {
+    
+    
+      padding: 10px;
+      margin: 10px;
+      display:flex;
+    
+    
+    }
+    
+.rangeslider__fill{
+      width:12px !important;
+      background-color: black !important;
+      height:24px !important;
+    
+    }

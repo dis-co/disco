@@ -41,6 +41,8 @@
     "react-dom": "^15.6.1",
     "react-grid-layout": "^0.15.2",
     "react-notification-system": "^0.2.15",
-    "react-skylight": "^0.4.2"
+    "react-skylight": "^0.4.2",
+    "react-rangeslider": "^2.2.0",
+    "react-rc-slider":"^8.3.1"
   }
 }

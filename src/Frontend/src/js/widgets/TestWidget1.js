@@ -1,4 +1,10 @@
 import React, { Component } from 'react'
+import Slider from 'react-rangeslider';
+import './TestWidget1.css';
+// To include the default styles
+import 'react-rangeslider/lib/index.css';
+
+
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -9,12 +15,32 @@ import React, { Component } from 'react'
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
+//var Slider = require('react-rangeslider');
+
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    this.state = {
+      pinVal:0
+    }
+  
   }
 
+  /*handles slider change
+  should update pin value with value 
+  and set pinVal to current pinValue*/
+  handleChange = (value) => {
+    this.setState(
+      {pinVal : IrisLib.updatePinValueAt(pin, 0, value)}
+    );
+  };
+  
+
   render() {
+
+    //not sure about this
+    let {pinVal} = this.state;
+
     var active = false;
     var pin = IrisLib.findPinByName(this.props.model, this.props.pinName);
     if (pin != null) {
@@ -35,6 +61,16 @@ class TestWidget extends React.Component {
           border: "2px solid black",
           backgroundColor: active ? "black" : "inherit"
         }} />
+        <div className="slider">
+          <Slider 
+            value={pinVal}
+            orientation="horizontal"
+            onChange={this.handleChange}
+            min={parseInt("-100",10)}
+            max={parseInt("100", 10)}
+            />
+            </div>
+      
       </div>
     )
   }
