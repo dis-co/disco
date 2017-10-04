@@ -20,11 +20,14 @@ import 'react-rangeslider/lib/index.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    this.state={
+      pinName:"VVVV/design.4vp/C"
+    };
   }
 
   render() {
     var pinVal = 0;
-    var pin = IrisLib.findPinByName(this.props.model, this.props.pinName);
+    var pin = IrisLib.findPinByName(this.props.model, this.state.pinName);
     if (pin != null) {
       pinVal = IrisLib.getPinValueAt(pin, 0);
     }
@@ -35,6 +38,12 @@ class TestWidget extends React.Component {
         justifyContent: "center",
         height: "100%"
       }}>
+      <div>
+        <input type="text" placeholder="pin name"
+        onChange={(event) => this.setState({pinName: "VVVV/design.4vp/" + event.target.value})} />
+        <button type="submit" onClick={() => {
+          console.log('name has been changed: ', this.state.pinName)}}>submit</button>
+      </div>
         <div style={{margin: "0 10px"}}>
           <Slider
             value={pinVal}
