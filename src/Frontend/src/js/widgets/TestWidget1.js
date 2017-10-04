@@ -20,32 +20,13 @@ import 'react-rangeslider/lib/index.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      pinVal:0
-    }
-  
   }
 
-  /*handles slider change
-  should update pin value with value 
-  and set pinVal to current pinValue*/
-  handleChange = (value) => {
-    this.setState(
-      {pinVal : IrisLib.updatePinValueAt(pin, 0, value)}
-    );
-  };
-  
-
   render() {
-
-    //not sure about this
-    let {pinVal} = this.state;
-
-    var active = false;
+    var pinVal = 0;
     var pin = IrisLib.findPinByName(this.props.model, this.props.pinName);
     if (pin != null) {
-      var pinValue = IrisLib.getPinValueAt(pin, 0);
-      active = typeof pinValue === "number" && pinValue > 10;
+      pinVal = IrisLib.getPinValueAt(pin, 0);
     }
     return (
       <div style={{
@@ -54,23 +35,16 @@ class TestWidget extends React.Component {
         justifyContent: "center",
         height: "100%"
       }}>
-        <div style={{
-          width: "30px",
-          height: "30px",
-          margin: "0px auto",
-          border: "2px solid black",
-          backgroundColor: active ? "black" : "inherit"
-        }} />
-        <div className="slider">
-          <Slider 
+        <div style={{margin: "0 10px"}}>
+          <Slider
             value={pinVal}
-            orientation="horizontal"
-            onChange={this.handleChange}
+            onChange={(value) => {
+              IrisLib.updatePinValueAt(pin, 0, value)
+            }}
             min={parseInt("-100",10)}
             max={parseInt("100", 10)}
             />
-            </div>
-      
+        </div>
       </div>
     )
   }
