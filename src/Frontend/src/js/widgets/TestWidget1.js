@@ -1,4 +1,10 @@
 import React, { Component } from 'react'
+import Slider from 'react-rangeslider';
+import './TestWidget1.css';
+// To include the default styles
+import 'react-rangeslider/lib/index.css';
+
+
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -9,17 +15,21 @@ import React, { Component } from 'react'
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
+//var Slider = require('react-rangeslider');
+
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    this.state={
+      pinName:"VVVV/design.4vp/C"
+    };
   }
 
   render() {
-    var active = false;
-    var pin = IrisLib.findPinByName(this.props.model, this.props.pinName);
+    var pinVal = 0;
+    var pin = IrisLib.findPinByName(this.props.model, this.state.pinName);
     if (pin != null) {
-      var pinValue = IrisLib.getPinValueAt(pin, 0);
-      active = typeof pinValue === "number" && pinValue > 10;
+      pinVal = IrisLib.getPinValueAt(pin, 0);
     }
     return (
       <div style={{
@@ -28,13 +38,22 @@ class TestWidget extends React.Component {
         justifyContent: "center",
         height: "100%"
       }}>
-        <div style={{
-          width: "30px",
-          height: "30px",
-          margin: "0px auto",
-          border: "2px solid black",
-          backgroundColor: active ? "black" : "inherit"
-        }} />
+      <div>
+        <input type="text" placeholder="pin name"
+        onChange={(event) => this.setState({pinName: "VVVV/design.4vp/" + event.target.value})} />
+        <button type="submit" onClick={() => {
+          console.log('name has been changed: ', this.state.pinName)}}>submit</button>
+      </div>
+        <div style={{margin: "0 10px"}}>
+          <Slider
+            value={pinVal}
+            onChange={(value) => {
+              IrisLib.updatePinValueAt(pin, 0, value)
+            }}
+            min={parseInt("-100",10)}
+            max={parseInt("100", 10)}
+            />
+        </div>
       </div>
     )
   }

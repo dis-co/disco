@@ -40,10 +40,12 @@
     "dom-to-image": "^2.5.2",
     "fixed-data-table": "^0.6.4",
     "js-tree": "^1.1.0",
+    "rc-slider": "^8.3.1",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "react-grid-layout": "^0.15.2",
     "react-notification-system": "^0.2.15",
+    "react-rangeslider": "^2.2.0",
     "react-skylight": "^0.4.2"
   }
 }
