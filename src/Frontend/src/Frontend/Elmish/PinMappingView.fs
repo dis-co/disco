@@ -31,6 +31,7 @@ let renderPin dispatch (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pin.Id
       pin = pin
+      output = false
       // Not needed as the pin is not editable
       useRightClick = false
       slices = None

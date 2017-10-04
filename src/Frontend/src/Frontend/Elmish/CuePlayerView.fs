@@ -220,6 +220,7 @@ type private CueView(props) =
                 yield com<PinView.PinView,_,_>
                   { key = string pin.Id
                     pin = pin
+                    output = false
                     useRightClick = this.props.UseRightClick
                     slices = Some slices
                     updater =

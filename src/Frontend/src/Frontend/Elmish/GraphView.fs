@@ -33,6 +33,7 @@ let makeInputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
+      output = false
       useRightClick = useRightClick
       slices = None
       updater = Some { new IUpdater with
@@ -46,6 +47,7 @@ let makeOutputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
+      output = true
       useRightClick = useRightClick
       slices = None
       updater = None
@@ -68,7 +70,7 @@ type PinGroupView(props) =
             ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
         ] []
-        div [
+        span [
             OnClick (fun _ -> Select.group dispatch group)
             Style [ Cursor "pointer" ]
           ] [str (unwrap group.Name)]

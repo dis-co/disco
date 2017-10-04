@@ -41,6 +41,7 @@ module CueInspector =
       com<PinView,_,_> {
         key = string pin.Id
         pin = pin
+        output = false
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None

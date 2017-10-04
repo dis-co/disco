@@ -36,6 +36,7 @@ let rec findWithClassUpwards (className: string) (el: Browser.Element) =
 type [<Pojo>] PinProps =
   { key: string
     pin: Pin
+    output: bool
     useRightClick: bool
     slices: Slices option
     updater: IUpdater option
@@ -112,8 +113,9 @@ type PinView(props) =
       | None -> pin.Slices.Length
     let classes =
       ["iris-pin", true
+       "iris-pin-output", this.props.output
        "iris-dirty", pin.Dirty
-       "iris-persisted", not pin.Persisted && pin.Online
+       "iris-persisted", pin.Persisted && pin.Online
        "iris-offline", pin.Persisted && not pin.Online
        ]
     div [classList classes] [

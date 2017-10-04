@@ -29,6 +29,7 @@ module PinGroupInspector =
       com<PinView,_,_> {
         key = string pinId
         pin = pin
+        output = false
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
