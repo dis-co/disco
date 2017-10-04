@@ -21,11 +21,15 @@ class TestWidget extends React.Component {
   constructor(props) {
     super(props);
     this.state={
-      pinName:"VVVV/design.4vp/C"
+      pinName:"VVVV/design.4vp/C",
+      sliderMin: -100,
+      sliderMax: 100
     };
   }
 
+
   render() {
+
     var pinVal = 0;
     var pin = IrisLib.findPinByName(this.props.model, this.state.pinName);
     if (pin != null) {
@@ -39,19 +43,37 @@ class TestWidget extends React.Component {
         height: "100%"
       }}>
       <div>
-        <input type="text" placeholder="pin name"
+        {/*input to select a pin*/}
+        <label>
+          pin name
+        <input type="text"
         onChange={(event) => this.setState({pinName: "VVVV/design.4vp/" + event.target.value})} />
+        </label>
+        {/*input to set minimum value*/}
+        <label>
+          minimum value
+          <input type="text" 
+          onChange={(event) => this.setState({sliderMin: event.target.value})}/>
+        </label>
+        {/*input to set maximum value*/}
+        <label>
+          maximum value
+          <input type="text"
+          onChange={(event) => this.setState({sliderMax: event.target.value})}/>
+          </label>
+          {/*button atm useless*/}
         <button type="submit" onClick={() => {
-          console.log('name has been changed: ', this.state.pinName)}}>submit</button>
+          console.log('pin has been changed: ', this.state.pinName)
+          console.log(pinVal);}}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
           <Slider
-            value={pinVal}
+            value={parseInt(pinVal, 10)}
             onChange={(value) => {
               IrisLib.updatePinValueAt(pin, 0, value)
             }}
-            min={parseInt("-100",10)}
-            max={parseInt("100", 10)}
+            min={parseInt(this.state.sliderMin, 10)}
+            max={parseInt(this.state.sliderMax, 10)}
             />
         </div>
       </div>
