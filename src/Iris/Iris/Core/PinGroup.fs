@@ -459,12 +459,22 @@ module PinGroup =
 
   #endif
 
+  // ** relativePath
+
+  let relativePath (client: ClientId) (group: PinGroupId) =
+    let fn = string group + ASSET_EXTENSION
+    let path = (string client) <.> fn
+    filepath PINGROUP_DIR </> path
+
+  // ** absolutePath
+
+  let absolutePath (basePath: FilePath) (client: ClientId) (group: PinGroupId) =
+    basePath </> relativePath client group
+
   // ** assetPath
 
   let assetPath (group: PinGroup) =
-    let fn = (string group.Id |> String.sanitize) + ASSET_EXTENSION
-    let path = (string group.ClientId) <.> fn
-    filepath PINGROUP_DIR </> path
+    relativePath group.ClientId group.Id
 
   // ** findPin
 

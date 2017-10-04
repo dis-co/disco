@@ -175,6 +175,19 @@ module File =
     |> unwrap
     |> File.Exists
 
+  // ** delete
+
+  let delete (path: FilePath) =
+    try
+      path
+      |> unwrap
+      |> File.Delete
+      |> Either.succeed
+    with exn ->
+      exn.Message
+      |> Error.asIOError (tag "delete")
+      |> Either.fail
+
   // ** ensurePath
 
   let ensurePath (path: FilePath) =
@@ -183,11 +196,10 @@ module File =
       |> Path.getDirectoryName
       |> Directory.createDirectory
       |> Either.ignore
-    with
-      | exn ->
-        exn.Message
-        |> Error.asIOError (tag "ensurePath")
-        |> Either.fail
+    with exn ->
+      exn.Message
+      |> Error.asIOError (tag "ensurePath")
+      |> Either.fail
 
 #endif
 

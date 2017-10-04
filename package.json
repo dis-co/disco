@@ -1,11 +1,13 @@
 {
   "private": true,
   "scripts": {
-    "start": "cd src/Frontend/src/Frontend && dotnet fable webpack-dev-server --port free -- --config ../../webpack.config.js",
-    "build": "cd src/Frontend/src/Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.js -p",
+    "start-fable": "cd src/Frontend/src/Frontend && dotnet fable webpack-dev-server --port free -- --config ../../webpack.config.js",
+    "build-fable": "cd src/Frontend/src/Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.js -p",
     "build-tests": "cd src/Frontend/src/Tests.Frontend && dotnet fable webpack --port free -- --config ../../webpack.config.tests.js",
     "test": "phantomjs ./node_modules/mocha-phantomjs-core/mocha-phantomjs-core.js ./src/Frontend/tests.html tap",
-    "lessc": "lessc ./src/Frontend/css/main.less ./src/Frontend/css/Iris_generated.css"
+    "sass": "node-sass ./src/Frontend/css/main.scss ./src/Frontend/css/Iris_generated.css",
+    "start": "concurrently -k -p \" \" \"npm run start-fable\" \"npm run sass && npm run sass -- -w\"",
+    "build": "concurrently -p \" \" \"npm run build-fable\" \"npm run sass\""
   },
   "devDependencies": {
     "@types/jquery": "^3.2.12",
@@ -26,6 +28,7 @@
     "loglevel": "^1.5.0",
     "mocha": "^3.5.3",
     "mocha-phantomjs-core": "^2.1.2",
+    "node-sass": "^4.5.3",
     "phantomjs-prebuilt": "^2.1.15",
     "remotedev": "^0.2.7",
     "style-loader": "^0.18.2",

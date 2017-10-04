@@ -1,7 +1,5 @@
-VVVV_BASEDIR=dotnet
-
 OPTSS="parallel-jobs=4"
-BUILD=cd $(VVVV_BASEDIR) && mono packages/build/FAKE/tools/FAKE.exe build.fsx
+BUILD=mono packages/build/FAKE/tools/FAKE.exe build.fsx
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SCRIPT_DIR=$(CURRENT_DIR)/src/Scripts
@@ -72,37 +70,37 @@ raspi:
 # |_|   \__,_|_| |_|
 
 run.client:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
 
 run.frontend:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && npm start"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "npm start"
 
 run.service:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --bind=${FRONTEND_IP}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --bind=${FRONTEND_IP}"
 
 run.service.1:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one"
 
 run.service.2:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two"
 
 run.service.3:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three"
 
 run.service.1.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
 
 run.service.2.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two --project=${PROJECT}"
 
 run.service.3.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
 
 run.web.tests:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast $(OPTS)"
 
 run.service.1.project.profile:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc $(VVVV_BASEDIR)/src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
@@ -121,9 +119,6 @@ frontend.plugins:
 
 frontend.full:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend $(OPTS)"
-
-frontend.watch:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "cd $(VVVV_BASEDIR) && npm start"
 
 web.tests:
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast $(OPTS)"
@@ -251,16 +246,16 @@ enter:
 # |_|
 
 restore: paket.restore
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BootStrap $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) Bootstrap $(OPTS)"
 
 paket.generate:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe generate-load-scripts --type fsx
+	@mono .paket/paket.exe generate-load-scripts --type fsx
 
 paket.restore:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe restore
+	@mono .paket/paket.exe restore
 
 paket.update:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe update
+	@mono .paket/paket.exe update
 
 paket.install:
-	@cd $(VVVV_BASEDIR); mono .paket/paket.exe install
+	@mono .paket/paket.exe install
