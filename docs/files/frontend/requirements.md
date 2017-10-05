@@ -6,7 +6,7 @@
   - Install [homebrew](https://brew.sh/index_de.html)
 
   ```shell
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/	install)“
+  /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/	install)“
 ```
   
   - The script explains what it will do and then pauses before it does it. There are more installation options.
@@ -120,34 +120,30 @@ brew install flatbuffers
 
 ## Building
 
-All of these will be executed if you run a full build. All commands must be run from `dotnet` directory.
-
-- Install dependencies:
+- In your local repository run: 
 
 ```shell
-npm install
-dotnet restore src/Frontend/src/Iris.Frontend.sln
+  git checkout master
 ```
 
-- Build Fable plugin:
+- Make sure you don't have any unsaved changes since you will loose them otherwise. Switch to root folder (Iris) and run:
 
 ```shell
-dotnet build -c Release src/Frontend/src/FlatBuffersPlugin
+  git clean -xfd
 ```
-
-- Build Worker & Frontend (not necessary in development, see Watching below):
 
 ```shell
-npm run build
+  git pull
 ```
-
-## Watching
-
-Make sure you have installed dependencies and built the plugin (see Building above). Also you must set the `FRONTEND_IP` and `FRONTEND_PORT` environment variables with the IP and HTTP port exposed by Iris server. Then run:
 
 ```shell
-npm start
+  sh build.sh BootStrap
 ```
+
+```shell
+  npm run build
+```
+
 
 When the webpack-dev-server has finished compiling the code, you can open `[FRONTEND_IP]:3000` in your browser.
 
