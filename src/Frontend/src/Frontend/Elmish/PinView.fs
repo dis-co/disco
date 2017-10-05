@@ -114,7 +114,7 @@ type PinView(props) =
     let classes =
       ["iris-pin", true
        "iris-pin-output",    this.props.output
-       "iris-dirty",         pin.Dirty
+       "iris-dirty",         not this.props.output && pin.Dirty
        "iris-non-persisted", not pin.Persisted
        "iris-offline",       pin.Persisted && not pin.Online
        ]
