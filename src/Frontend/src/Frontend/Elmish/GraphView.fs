@@ -52,8 +52,8 @@ let makeOutputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
       slices = None
       updater = None
       onSelect = fun () -> Select.pin dispatch pin
-      // TODO: Should output pins be draggable?
-      onDragStart = None } []
+      onDragStart = Some(fun el ->
+        Drag.Pin pin |> Drag.start el) } []
 
 type PinGroupView(props) =
   inherit React.Component<PinGroupProps, PinGroupState>(props)
