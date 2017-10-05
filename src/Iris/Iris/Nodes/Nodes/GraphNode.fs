@@ -3,6 +3,7 @@ namespace VVVV.Nodes
 // * Imports
 
 open System
+open System.IO
 open System.Web
 open System.Text
 open System.Threading
@@ -80,12 +81,30 @@ module rec Graph =
     | PinTagChange           of group:PinGroupId * pin:PinId * Property array
     | PinConfigurationChange of group:PinGroupId * pin:PinId * path:string * PinConfiguration
 
+  // ** PinGroupMapping
+
+  type PinGroupMapping =
+    { PinGroupId: PinGroupId
+      NodePath: string
+      Pins: Dictionary<PinId, IPin2> }
+
+    override mapping.ToString() =
+      let pins =
+        Seq.map
+          (function KeyValue(id, pin) -> sprintf "Id: %A Type: %O" id pin)
+          mapping.Pins
+        |> Seq.toList
+      sprintf "Group: %A Path: %A"
+        mapping.PinGroupId
+        mapping.NodePath
+
   // ** PluginState
 
   type PluginState =
     { Frame: uint64
       Initialized: bool
       Update: bool ref
+      TmpPins: Dictionary<PinGroupId,PinGroupMapping>
       Pins: Dictionary<PinGroupId,PinGroup>
       Patches: Dictionary<PatchPath,Patch>
       Commands: ResizeArray<StateMachine>
@@ -106,6 +125,7 @@ module rec Graph =
       { Frame = 0UL
         Initialized = false
         Update = ref false
+        TmpPins = Dictionary()
         Pins = new Dictionary<PinId,PinGroup>()
         Patches = Dictionary()
         Commands = new ResizeArray<StateMachine>()
@@ -1202,48 +1222,126 @@ module rec Graph =
 
   // ** printGraph
 
-  let private printGraph (state: PluginState) (leaf: INode2) =
+  let private printGraph (state: PluginState) (node: INode2) =
     let log str = state.Logger.Log(LogType.Debug, str)
 
-    let tagNode (node: INode2) =
-      log ("Trying to get tag for " + node.NodeInfo.Name)
-      match node.FindPin Settings.TAG_PIN with
-      | null -> log ("Tag node missing on " + (node.GetNodePath(false)))
-      | tagPin when isNull tagPin.[0] ->
-        try
-          do patchGraph state {
-            PatchId = node.Parent.ID
-            FileName = node.Parent.NodeInfo.Filename
-            NodePatches = [{ NodeId = node.ID; Content = Guid.NewGuid().ToString() }]
-          }
-        with exn ->
-          log ("Could not tag parent of " + (node.GetNodePath(false)) + " " + exn.Message)
-      | tagPin ->
-        for child in node.Parent.Parent do
-          log ("checking: " + child.NodeInfo.Name +
-               " id: "      + string child.ID +
-               " self id:  "+ string node.ID)
-          if child.ID <> node.ID then
-            match child.FindPin Settings.TAG_PIN with
-            | null -> log "Could not find tag pin for sibling"
-            | siblingTag when tagPin.[0] = siblingTag.[0] ->
-              log ("Found a duplicate: " + siblingTag.[0])
-            | _ -> ()
+    let toGuid (input: string) =
+      use sha1 = new SHA1Managed()
+      input
+      |> Encoding.UTF8.GetBytes
+      |> sha1.ComputeHash
+      |> fun hash -> Guid hash.[..15]
 
-        tagPin.[0]
-        |> sprintf "Node already tagged with %A"
-        |> log
+    let patchNode (node: INode2) content =
+      sprintf "Tagging %s with %s (parent: %d node: %d)"
+        (node.GetNodePath(false))
+        content
+        node.Parent.ID
+        node.ID
+      |> log
+      do patchGraph state {
+        PatchId = node.Parent.ID
+        FileName = node.Parent.NodeInfo.Filename
+        NodePatches = [{ NodeId = node.ID; Content = content }]
+      }
 
-    let rec traverse (node: INode2) =
-      log ("traverse " + node.NodeInfo.Name)
+    let parseParentPath (node: INode2) =
+      node.Parent.GetNodePath(false)
+
+    let parseParentId (node: INode2) =
       match node.Parent with
-      | null -> log ("Node " + (node.GetNodePath(true)) + " has no parent")
-      | parent when parent.NodeInfo.Name <> "root" ->
-        do tagNode node
-        do traverse parent
-      | _ -> log ("Node " + (node.GetNodePath(true)) + " is already at root")
+      | null ->
+        log "parseParentId: INode2 is null. Generating Id."
+        IrisId.Create()
+      | parent ->
+        let defaultId () =
+          parent.NodeInfo.Filename
+          |> toGuid
+          |> IrisId.FromGuid
+        match parent.FindPin Settings.TAG_PIN with
+        | null ->
+          log "parseParentId: Tag pin is null. Using default Id."
+          defaultId ()
+        | tagPin when isNull tagPin.[0] ->
+          log "parseParentId: Tag pin has no value. Using default Id."
+          defaultId ()
+        | tagPin ->
+          try
+            log "parseParentId: Tag pin has a value. Parsing."
+            IrisId.Parse tagPin.[0]
+          with exn ->
+            log (sprintf "parseParentId: Parsing %A failed. Using default Id." tagPin.[0])
+            defaultId ()
 
-    traverse leaf
+    let parseNodeId (node: INode2) =
+      match node.FindPin Settings.TAG_PIN with
+      | null ->
+        log "parseNodeId: Tag pin is null. Generating Id."
+        IrisId.Create()
+      | tagPin when isNull tagPin.[0] ->
+        log "parseNodeId: Tag pin is empty. Generating Id."
+        IrisId.Create()
+      | tagPin ->
+        try
+          log "parseNodeId: Tag pin has a value. Parsing."
+          IrisId.Parse tagPin.[0]
+        with exn ->
+          log (sprintf "parseNodeId: Parsing %A failed. Generating." tagPin.[0])
+          IrisId.Create()
+
+    let parentPath = parseParentPath node
+    let parentId = parseParentId node
+    let nodeId = parseNodeId node
+    let pin = node.FindPin "Y Input Value"
+
+    try
+      /// the mapping is already in our cache but the newly added pin is in the same patch
+      let mapping = state.TmpPins.[parentId]
+      if mapping.NodePath = parentPath then
+        do patchNode node.Parent (string parentId)
+        do mapping.Pins.Add(nodeId, pin)
+        do state.TmpPins.[parentId] <- mapping
+      else
+        /// mapping is already present, so we
+        let newGroupId = IrisId.Create()
+        /// patch parent with this id instead
+        do patchNode node.Parent (string newGroupId)
+        let dict = Dictionary()
+        dict.Add(nodeId, pin)
+        let mapping =
+          { PinGroupId = newGroupId
+            NodePath = parentPath
+            Pins = dict }
+        do state.TmpPins.Add(newGroupId, mapping)
+    with exn ->
+      let dict = Dictionary()
+      dict.Add(nodeId, pin)
+      let mapping =
+        { PinGroupId = parentId
+          NodePath = parentPath
+          Pins = dict }
+      do state.TmpPins.Add(parentId, mapping)
+      do patchNode node.Parent (string parentId)
+
+    /// patch the node itself
+    do patchNode node (string nodeId)
+
+    if node.Parent.Parent.NodeInfo.Name = "root" then
+      log "Is in root, not tagging containing module."
+    else
+      log "Is *NOT* in root"
+
+    if File.Exists(node.Parent.NodeInfo.Filename)
+    then log ("Has Filename: " + node.Parent.NodeInfo.Filename)
+
+    log "----------------------Mapping--------------------"
+
+    for KeyValue(_,mapping) in state.TmpPins do
+      mapping
+      |> sprintf "%O"
+      |> log
+
+    log "---------------------------------------------------------------"
 
   // ** onNodeExposed
 
