@@ -27,8 +27,8 @@ open Iris.Nodes
 [<RequireQualifiedAccess>]
 module rec Graph =
 
+  type NodePath = string
   type PatchPath = string
-
 
   // ** NodePatch
 
@@ -85,18 +85,12 @@ module rec Graph =
 
   type PinGroupMapping =
     { PinGroupId: PinGroupId
-      NodePath: string
-      Pins: Dictionary<PinId, IPin2> }
+      Pins: Dictionary<PinId, NodePath> }
 
     override mapping.ToString() =
-      let pins =
-        Seq.map
-          (function KeyValue(id, pin) -> sprintf "Id: %A Type: %O" id pin)
-          mapping.Pins
-        |> Seq.toList
-      sprintf "Group: %A Path: %A"
+      sprintf "Group: %A Pins: %A"
         mapping.PinGroupId
-        mapping.NodePath
+        mapping.Pins
 
   // ** PluginState
 
@@ -1248,91 +1242,76 @@ module rec Graph =
     let parseParentPath (node: INode2) =
       node.Parent.GetNodePath(false)
 
-    let parseParentId (node: INode2) =
-      match node.Parent with
-      | null ->
-        log "parseParentId: INode2 is null. Generating Id."
-        IrisId.Create()
-      | parent ->
-        let defaultId () =
-          parent.NodeInfo.Filename
-          |> toGuid
-          |> IrisId.FromGuid
-        match parent.FindPin Settings.TAG_PIN with
-        | null ->
-          log "parseParentId: Tag pin is null. Using default Id."
-          defaultId ()
-        | tagPin when isNull tagPin.[0] ->
-          log "parseParentId: Tag pin has no value. Using default Id."
-          defaultId ()
-        | tagPin ->
-          try
-            log "parseParentId: Tag pin has a value. Parsing."
-            IrisId.Parse tagPin.[0]
-          with exn ->
-            log (sprintf "parseParentId: Parsing %A failed. Using default Id." tagPin.[0])
-            defaultId ()
-
-    let parseNodeId (node: INode2) =
-      match node.FindPin Settings.TAG_PIN with
-      | null ->
-        log "parseNodeId: Tag pin is null. Generating Id."
-        IrisId.Create()
-      | tagPin when isNull tagPin.[0] ->
-        log "parseNodeId: Tag pin is empty. Generating Id."
-        IrisId.Create()
-      | tagPin ->
-        try
-          log "parseNodeId: Tag pin has a value. Parsing."
-          IrisId.Parse tagPin.[0]
+    let nodeId =
+      let pin = node.FindPin Settings.TAG_PIN
+      match pin.[0] with
+      | null | "" ->
+        let id = IrisId.Create()
+        do patchNode node (string id)
+        id
+      | content ->
+        try IrisId.Parse content
         with exn ->
-          log (sprintf "parseNodeId: Parsing %A failed. Generating." tagPin.[0])
-          IrisId.Create()
+          let id = IrisId.Create()
+          do patchNode node (string id)
+          id
 
-    let parentPath = parseParentPath node
-    let parentId = parseParentId node
-    let nodeId = parseNodeId node
-    let pin = node.FindPin "Y Input Value"
-
-    try
-      /// the mapping is already in our cache but the newly added pin is in the same patch
-      let mapping = state.TmpPins.[parentId]
-      if mapping.NodePath = parentPath then
-        do patchNode node.Parent (string parentId)
-        do mapping.Pins.Add(nodeId, pin)
-        do state.TmpPins.[parentId] <- mapping
+    if node.Parent.NodeInfo.Name = "root" then
+      ///  We have an IOBox exposed at the top level, so we talk to the pin directly.
+      ///  Also, we don't tag the parent in this case.
+      let absoluteNodePath = node.GetNodePath(false)
+      if state.TmpPins.ContainsKey Settings.TOP_LEVEL_GROUP_ID then
+        if not (state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.ContainsKey nodeId) then
+          /// the group seems to exist, but does not contain this pin so we add it
+          do state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.Add(nodeId, absoluteNodePath)
+        else
+          /// the group exists and the pin as well possibly because it was copy/pasted,
+          /// so we need to add it
+          let existing = state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.[nodeId]
+          if existing <> absoluteNodePath then
+            /// check if this node was pasted (it gets a new id),
+            /// in which case we assign a new id and add it
+            let newId = IrisId.Create()
+            do patchNode node (string newId)
+            do state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.Add(newId, absoluteNodePath)
+          else
+            /// This node is the same as the one we already track, so we ignore it
+            ignore existing
       else
-        /// mapping is already present, so we
-        let newGroupId = IrisId.Create()
-        /// patch parent with this id instead
-        do patchNode node.Parent (string newGroupId)
         let dict = Dictionary()
-        dict.Add(nodeId, pin)
+        dict.Add(nodeId, absoluteNodePath)
         let mapping =
-          { PinGroupId = newGroupId
-            NodePath = parentPath
+          { PinGroupId = Settings.TOP_LEVEL_GROUP_ID
             Pins = dict }
-        do state.TmpPins.Add(newGroupId, mapping)
-    with exn ->
-      let dict = Dictionary()
-      dict.Add(nodeId, pin)
-      let mapping =
-        { PinGroupId = parentId
-          NodePath = parentPath
-          Pins = dict }
-      do state.TmpPins.Add(parentId, mapping)
-      do patchNode node.Parent (string parentId)
-
-    /// patch the node itself
-    do patchNode node (string nodeId)
-
-    if node.Parent.Parent.NodeInfo.Name = "root" then
-      log "Is in root, not tagging containing module."
+        do state.TmpPins.Add(Settings.TOP_LEVEL_GROUP_ID,mapping)
     else
-      log "Is *NOT* in root"
-
-    if File.Exists(node.Parent.NodeInfo.Filename)
-    then log ("Has Filename: " + node.Parent.NodeInfo.Filename)
+      let pin = node.Parent.FindPin Settings.TAG_PIN
+      /// A sub-patch contains this module
+      let parentId =
+        match pin.[0] with
+        | null | "" ->
+          /// no id present, so we add it
+          let id = IrisId.Create()
+          do patchNode node.Parent (string id)
+          id
+        | content ->
+          /// something is present, so we try parse it. if it fails, we generate again and patch it
+          /// into the graph
+          try IrisId.Parse content
+          with exn ->
+            let id = IrisId.Create()
+            do patchNode node.Parent (string id)
+            id
+      if not (state.TmpPins.ContainsKey parentId) then
+        let dict = Dictionary()
+        dict.Add(nodeId, node.GetNodePath(false))
+        let mapping =
+          { PinGroupId = parentId
+            Pins = dict }
+        do state.TmpPins.Add(parentId, mapping)
+      else
+        /// ignore this node
+        ignore node
 
     log "----------------------Mapping--------------------"
 
