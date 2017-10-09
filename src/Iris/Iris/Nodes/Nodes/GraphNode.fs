@@ -1214,9 +1214,9 @@ module rec Graph =
       |> ignore
     with _ -> ()
 
-  // ** printGraph
+  // ** onNodeExposed2
 
-  let private printGraph (state: PluginState) (node: INode2) =
+  let private onNodeExposed2 (state: PluginState) (node: INode2) =
     let log str = state.Logger.Log(LogType.Debug, str)
 
     let toGuid (input: string) =
@@ -1302,6 +1302,14 @@ module rec Graph =
             let id = IrisId.Create()
             do patchNode node.Parent (string id)
             id
+
+      for pin in node.Parent.Pins do
+        sprintf "%s/%d/%s"
+          (node.Parent.GetNodePath(false))
+          node.ID
+          pin.Name
+        |> log
+
       if not (state.TmpPins.ContainsKey parentId) then
         let dict = Dictionary()
         dict.Add(nodeId, node.GetNodePath(false))
@@ -1313,7 +1321,7 @@ module rec Graph =
         /// ignore this node
         ignore node
 
-    log "----------------------Mapping--------------------"
+    log "----------------------(Removed) Mapping--------------------"
 
     for KeyValue(_,mapping) in state.TmpPins do
       mapping
@@ -1322,7 +1330,59 @@ module rec Graph =
 
     log "---------------------------------------------------------------"
 
-  // ** onNodeExposed
+  // ** onNodeUnExposed2
+
+  let private onNodeUnExposed2 (state: PluginState) (node: INode2) =
+    let log str = state.Logger.Log(LogType.Debug, str)
+
+    let nodeId =
+      let pin = node.FindPin Settings.TAG_PIN
+      match pin.[0] with
+      | null | "" -> None
+      | content ->
+        try IrisId.Parse content |> Some
+        with exn -> None
+
+    match nodeId with
+    | None -> log "Node has Id, ignoring"
+    | Some nodeId ->
+      if node.Parent.NodeInfo.Name = "root" then
+        if state.TmpPins.ContainsKey Settings.TOP_LEVEL_GROUP_ID &&
+           state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.ContainsKey nodeId
+        then
+          state.TmpPins.[Settings.TOP_LEVEL_GROUP_ID].Pins.Remove nodeId |> ignore
+      else
+        let pin = node.Parent.FindPin Settings.TAG_PIN
+
+        /// A sub-patch contains this module
+        let parentId =
+          match pin.[0] with
+          | null | "" -> None
+          | content ->
+            /// something is present, so we try parse it. if it fails, we generate again and patch it
+            /// into the graph
+            try IrisId.Parse content |> Some
+            with exn -> None
+
+        match parentId with
+        | None -> log "Parent has no Id, ignoring"
+        | Some parentId ->
+          if state.TmpPins.ContainsKey parentId then
+            if state.TmpPins.[parentId].Pins.ContainsKey nodeId then
+              if state.TmpPins.[parentId].Pins.Count = 1
+              then state.TmpPins.Remove parentId |> ignore
+              else state.TmpPins.[parentId].Pins.Remove nodeId |> ignore
+
+    log "----------------------(Added) Mappings--------------------"
+
+    for KeyValue(_,mapping) in state.TmpPins do
+      mapping
+      |> sprintf "%O"
+      |> log
+
+    log "---------------------------------------------------------------"
+
+  // ** OnNodeExposed
 
   let private onNodeExposed (state: PluginState) (node: INode2) =
     /// match parseINode2 state node with
@@ -1332,12 +1392,12 @@ module rec Graph =
     ///   error
     ///   |> string
     ///   |> Logger.err "onNodeExposed"
-    printGraph state node
+    onNodeExposed2 state node
 
   let private onNodeUnExposed (state: PluginState) (node: INode2) =
     /// parseINode2Ids state node
     /// |> List.iter (Msg.PinRemoved >> state.Events.Enqueue)
-    ()
+    onNodeUnExposed2 state node
 
   // ** setupVvvv
 
