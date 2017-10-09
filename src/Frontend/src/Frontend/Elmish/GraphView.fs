@@ -29,6 +29,11 @@ let isInput (pin: Pin) =
   | PinConfiguration.Preset | PinConfiguration.Sink -> true
   | PinConfiguration.Source -> false
 
+let isNumberOrBool (pin: Pin) =
+  match pin with
+  | NumberPin _ | BoolPin _ -> true
+  | _ -> false
+
 let makeInputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
@@ -81,7 +86,7 @@ type PinGroupView(props) =
           then makeInputPin dispatch rightClick pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(isInput pin)
+          if not(isInput pin) && isNumberOrBool pin
           then makeOutputPin dispatch rightClick pid pin |> Some
           else None) |> Seq.toList)
     ]

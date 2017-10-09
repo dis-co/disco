@@ -164,6 +164,7 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
       }
       return React.createElement(ContentEditable, Object.assign({
         tagName: tagName,
+        className: "iris-" + typeofValue,
         html: formattedValue,
         onChange(html) {
           updater.Update(false, index, html);
@@ -171,6 +172,8 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
       }, props));
     }
     else {
-      return React.createElement(tagName, {}, formattedValue);
+      return React.createElement(tagName, {
+        className: "iris-" + typeofValue,
+      }, formattedValue);
     }
 }
