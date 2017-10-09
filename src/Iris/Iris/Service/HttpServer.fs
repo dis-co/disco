@@ -85,11 +85,10 @@ module HttpServer =
 
   let private getDefaultBasePath() =
     #if INTERACTIVE
-    Path.GetFullPath(".") </> "assets" </> "frontend"
+    Path.Combine(__SOURCE_DIRECTORY__, "../../../Frontend")
     #else
     let asm = System.Reflection.Assembly.GetExecutingAssembly()
-    let dir = Path.GetDirectoryName(asm.Location)
-    dir <.> "assets"
+    Path.Combine(Path.GetDirectoryName(asm.Location), "../Frontend")
     #endif
 
   // ** pathWithArgs
@@ -214,8 +213,7 @@ module HttpServer =
       let status = ref ServiceStatus.Stopped
 
       let basePath =
-        getDefaultBasePath()
-        |> defaultArg frontend
+        Option.defaultWith (getDefaultBasePath >> filepath) frontend
         |> Path.getFullPath
 
       let cts = new CancellationTokenSource()
