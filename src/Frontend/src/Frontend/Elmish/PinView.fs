@@ -16,6 +16,9 @@ type [<Pojo>] InputState =
 let addInputView(index: int, value: obj, tagName: string, useRigthClick: bool, updater: IUpdater option): React.ReactElement =
   importMember "../../js/Util"
 
+let getTypeofAndClass(value: obj): string*string =
+  importMember "../../js/Util"
+
 let formatValue(value: obj): string =
   importMember "../../js/Util"
 
@@ -59,12 +62,14 @@ type PinView(props) =
       else unwrap this.props.pin.Name
     let firstRowValue =
       if rowCount > 1 then
+        let value = this.ValueAt(0)
+        let _, className = getTypeofAndClass(value)
         td [ClassName "iris-flex-row"] [
-          span [ClassName "iris-flex-1"] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
+          div [ClassName ("iris-flex-1 " + className)] [str (sprintf "%s (%d)" (formatValue(this.ValueAt(0))) rowCount)]
           this.RenderArrow()
         ]
       else
-        addInputView(0, this.ValueAt(0), "td", useRightClick, updater)
+        td [] [addInputView(0, this.ValueAt(0), "div", useRightClick, updater)]
     let head =
       tr [ClassName "iris-pin-child"] [
         td [
@@ -91,8 +96,8 @@ type PinView(props) =
             | None | Some(NullOrEmpty) -> sprintf "Slice%i" i
             | Some label -> label
           yield tr [Key (string i); ClassName "iris-pin-child"] [
-            td [] [ str label ]
-            addInputView(i, this.ValueAt(i), "td", useRightClick, updater)
+            td [] [str label]
+            td [] [addInputView(i, this.ValueAt(i), "div", useRightClick, updater)]
           ]
       ]
     else tbody [] [head]
