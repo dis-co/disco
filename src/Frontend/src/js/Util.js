@@ -124,17 +124,22 @@ function startDragging(posY, index, value, updater) {
         })
 }
 
-export function formatValue(value) {
-    return typeof value === "number" ? value.toFixed(DECIMAL_DIGITS) : String(value);
+export function formatValue(value, typeofValue) {
+    typeofValue = typeofValue || typeof value;
+    return typeofValue === "number" ? value.toFixed(DECIMAL_DIGITS) : IrisLib.toString(value);
+}
+
+export function getTypeofAndClass(value) {
+  const typeofValue = typeof value;
+  return [typeofValue, "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
 }
 
 export function addInputView(index, value, tagName, useRightClick, updater) {
-
-    const typeofValue = typeof value;
-    const formattedValue = formatValue(value);
+    const [typeofValue, className] = getTypeofAndClass(value)
+    const formattedValue = formatValue(value, typeofValue);
+    const props = { className };
 
     if (updater != null) {
-      const props = {};
       if (typeofValue === "boolean") {
           if (useRightClick) {
               props.onContextMenu = (ev) => {
@@ -164,7 +169,6 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
       }
       return React.createElement(ContentEditable, Object.assign({
         tagName: tagName,
-        className: "iris-" + typeofValue,
         html: formattedValue,
         onChange(html) {
           updater.Update(false, index, html);
@@ -172,8 +176,6 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
       }, props));
     }
     else {
-      return React.createElement(tagName, {
-        className: "iris-" + typeofValue,
-      }, formattedValue);
+      return React.createElement(tagName, props, formattedValue);
     }
 }
