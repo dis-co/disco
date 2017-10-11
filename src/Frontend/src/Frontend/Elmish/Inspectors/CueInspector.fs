@@ -45,7 +45,7 @@ module CueInspector =
         useRightClick = model.userConfig.useRightClick
         slices = None
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin
+        onSelect = fun multiple -> Select.pin dispatch multiple pin
         onDragStart = None
       } []
     ]

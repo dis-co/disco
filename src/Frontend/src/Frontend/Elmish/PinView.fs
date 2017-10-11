@@ -44,7 +44,7 @@ type [<Pojo>] PinProps =
     slices: Slices option
     updater: IUpdater option
     onDragStart: (Browser.Element -> unit) option
-    onSelect: unit -> unit }
+    onSelect: bool -> unit }
 
 type PinView(props) =
   inherit React.Component<PinProps, PinState>(props)
@@ -92,7 +92,8 @@ type PinView(props) =
             | None -> ())
           OnMouseUp (fun ev ->
             ev.stopPropagation()
-            this.props.onSelect())
+            // TODO: Use nother key for multiple selections? Make it configurable?
+            this.props.onSelect(ev.ctrlKey))
         ] [str name]
         firstRowValue
       ]

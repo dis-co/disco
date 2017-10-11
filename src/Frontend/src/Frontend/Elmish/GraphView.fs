@@ -39,7 +39,7 @@ let makeInputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
       updater = Some { new IUpdater with
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
-      onSelect = fun () -> Select.pin dispatch pin
+      onSelect = fun multiple -> Select.pin dispatch multiple pin
       onDragStart = Some(fun el ->
         Drag.Pin pin |> Drag.start el) } []
 
@@ -51,7 +51,7 @@ let makeOutputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
       useRightClick = useRightClick
       slices = None
       updater = None
-      onSelect = fun () -> Select.pin dispatch pin
+      onSelect = fun multiple -> Select.pin dispatch multiple pin
       onDragStart = Some(fun el ->
         Drag.Pin pin |> Drag.start el) } []
 

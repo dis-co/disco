@@ -38,7 +38,7 @@ let empty dispatch model =
 
 let private body dispatch (model: Model) =
   match model.history.selected with
-  | Pin      (_,client,pin)   -> PinInspector.render        dispatch model client pin
+  | Pin      (_,client,pin,_) -> PinInspector.render        dispatch model client pin
   | PinGroup (_,client,group) -> PinGroupInspector.render   dispatch model client group
   | Client   (_,client)       -> ClientInspector.render     dispatch model client
   | Member   (_,mem)          -> MemberInspector.render     dispatch model mem

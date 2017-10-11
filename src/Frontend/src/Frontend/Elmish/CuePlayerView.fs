@@ -227,7 +227,7 @@ type private CueView(props) =
                       Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun () ->  Select.pin this.props.Dispatch pin
+                    onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
                     onDragStart = None } []
             ])
           |> Array.toList

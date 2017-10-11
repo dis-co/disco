@@ -151,8 +151,8 @@ module Array =
 
 module Select =
 
-  let pin dispatch (pin: Pin) =
-    (pin.Name, pin.ClientId, pin.Id)
+  let pin dispatch multiple (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id, multiple)
     |> InspectorSelection.Pin
     |> Msg.SelectElement
     |> dispatch
