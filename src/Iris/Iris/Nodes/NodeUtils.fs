@@ -8,7 +8,7 @@ open VVVV.PluginInterfaces.V2
 open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Core.Logging
 
-// ** PinType
+// * PinType
 
 [<RequireQualifiedAccess>]
 type PinType =
@@ -18,7 +18,7 @@ type PinType =
   | Color
   | String
 
-// ** NodeMapping
+// * NodeMapping
 
 type NodeMapping =
   { PinId: PinId
