@@ -27,14 +27,14 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-let renderPin dispatch (pin: Pin) =
+let renderPin model dispatch (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pin.Id
       pin = pin
       output = false
       // Not needed as the pin is not editable
-      useRightClick = false
       slices = None
+      model = model
       updater = None
       onSelect = fun multiple -> Select.pin dispatch multiple pin
       onDragStart = None } []
@@ -127,7 +127,7 @@ type PinMappingView(props) =
             this.setState({ this.state with SourceCandidate = Some pin })
           Render = fun () ->
             [ this.state.SourceCandidate
-              |> Option.map (renderPin this.props.Dispatch)
+              |> Option.map (renderPin this.props.Model this.props.Dispatch)
               |> opt ]
         } []
       com<PinHole,_,_>
@@ -138,7 +138,7 @@ type PinMappingView(props) =
             this.setState({ this.state with SinkCandidates = Set.add pin sinks })
           Render = fun () ->
             this.state.SinkCandidates
-            |> Seq.map (renderPin this.props.Dispatch)
+            |> Seq.map (renderPin this.props.Model this.props.Dispatch)
             |> Seq.toList
          } []
       td [Class "width-5"] [
@@ -178,10 +178,13 @@ type PinMappingView(props) =
           for kv in state.PinMappings do
             let pinMapping = kv.Value
             let source =
-              Lib.findPin pinMapping.Source state |> renderPin this.props.Dispatch
+              Lib.findPin pinMapping.Source state
+              |> renderPin this.props.Model this.props.Dispatch
             let sinks =
               pinMapping.Sinks
-              |> Seq.map (fun id -> Lib.findPin id state |> renderPin this.props.Dispatch)
+              |> Seq.map (fun id ->
+                Lib.findPin id state
+                |> renderPin this.props.Model this.props.Dispatch)
               |> Seq.toList
             yield tr [Key (string kv.Key); Class "iris-pinmapping-row"] [
               td [Class "width-20"; padding5AndTopBorder()] [

@@ -64,6 +64,9 @@ $even-row: #EBEBEB;
       }
     }
   }
+  &.iris-selected {
+    background-color: $highlight-lightblue
+  }
   // Default sizes of IOBoxes according to data type
   .iris-boolean {
     width: 50px;

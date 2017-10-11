@@ -84,8 +84,8 @@ type [<Pojo>] private CueState =
 
 type [<Pojo>] private CueProps =
   { key: string
+    Model: Model
     State: State
-    UseRightClick: bool
     Cue: Cue
     CueRef: CueReference
     CueGroup: CueGroup
@@ -221,14 +221,15 @@ type private CueView(props) =
                   { key = string pin.Id
                     pin = pin
                     output = false
-                    useRightClick = this.props.UseRightClick
                     slices = Some slices
+                    model = this.props.Model
                     updater =
                       Some { new IUpdater with
                               member __.Update(dragging, valueIndex, value) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
                     onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
-                    onDragStart = None } []
+                    onDragStart = None
+                  } []
             ])
           |> Array.toList
         [cueHeader; tr [] [td [ColSpan 8.] [ul [ClassName "iris-graphview"] pinGroups]]]
@@ -283,9 +284,9 @@ type CuePlayerView(props) =
         |> Array.mapi (fun i cueRef ->
           com<CueView,_,_>
             { key = string cueRef.Id
+              Model = this.props.Model
               State = state
               Dispatch = this.props.Dispatch
-              UseRightClick = this.props.Model.userConfig.useRightClick
               Cue = Lib.findCue cueRef.CueId state
               CueRef = cueRef
               CueGroup = group
