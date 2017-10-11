@@ -1,3 +1,5 @@
+// @ts-check
+
 import * as $ from "jquery"
 import * as React from "react"
 import ContentEditable from "./widgets/ContentEditable"
@@ -124,33 +126,39 @@ function startDragging(posY, index, value, updater) {
         })
 }
 
-export function formatValue(value, typeofValue) {
-    typeofValue = typeofValue || typeof value;
-    return typeofValue === "number" ? value.toFixed(DECIMAL_DIGITS) : IrisLib.toString(value);
+function formatValue(value, typeofValue, precision) {
+    if ((typeofValue || typeof value) === "number") {
+      return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
+    }
+    else {
+      return IrisLib.toString(value);
+    }
 }
 
-export function getTypeofAndClass(value) {
+function getTypeofAndClass(value) {
   const typeofValue = typeof value;
   return [typeofValue, "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
 }
 
-export function addInputView(index, value, tagName, useRightClick, updater) {
-    const [typeofValue, className] = getTypeofAndClass(value)
-    const formattedValue = formatValue(value, typeofValue);
-    const props = { className };
+export function createElement(tagName, options, value) {
+    const [typeofValue, classOfValue] = getTypeofAndClass(value)
+    const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
+    const props = {
+      className: (options.classes || []).concat(classOfValue).join(" ")
+    };
 
-    if (updater != null) {
+    if (options.updater != null) {
       if (typeofValue === "boolean") {
-          if (useRightClick) {
+          if (options.useRightClick) {
               props.onContextMenu = (ev) => {
                   ev.preventDefault();
-                  updater.Update(false, index, !value);
+                  options.updater.Update(false, options.index, !value);
               }
           }
           else {
               props.onClick = (ev) => {
                   if (ev.button !== RIGHT_BUTTON)
-                      updater.Update(false, index, !value);
+                      options.updater.Update(false, options.index, !value);
               }
           }
 
@@ -158,10 +166,10 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
       }
       else if (typeofValue === "number") { // Numeric values, draggable
           props.onMouseDown = (ev) => {
-              if (xand(ev.button === RIGHT_BUTTON, useRightClick))
-                  startDragging(ev.clientY, index, value, updater);
+              if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
+                  startDragging(ev.clientY, options.index, value, options.updater);
           }
-          if (useRightClick) {
+          if (options.useRightClick) {
               props.onContextMenu = (ev) => {
                   ev.preventDefault();
               }
@@ -171,7 +179,7 @@ export function addInputView(index, value, tagName, useRightClick, updater) {
         tagName: tagName,
         html: formattedValue,
         onChange(html) {
-          updater.Update(false, index, html);
+          options.updater.Update(false, options.index, html);
         }
       }, props));
     }
