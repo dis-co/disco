@@ -1093,7 +1093,7 @@ module rec Graph =
         | Some id -> id
         | None ->
           let id = IrisId.Create()
-          do patchNode state node (string id)
+          do patchNode state node.Parent (string id)
           id
 
     node.NodeInfo.Name
