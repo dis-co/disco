@@ -264,6 +264,13 @@ module rec Graph =
     |> sha1.ComputeHash
     |> fun hash -> Guid(hash.[..15])
 
+  // ** isTopLevel
+
+  let private isTopLevel (node: INode2) =
+    match node.Parent.Parent.NodeInfo.Name with
+    | "root" | "super_root" -> true
+    | _ -> false
+
   // ** findPin
 
   let private findPin (name: string) (pins: IPin2 seq) =
@@ -590,9 +597,12 @@ module rec Graph =
       (fun lst (pin: IPin2) ->
         let node = pin.ParentNode
         let nodeId = parseNodeId node
-        let groupId = parseNodeId node.Parent
-        match nodeId, groupId with
-        | Some nodeId, Some groupId ->
+        let groupId =
+          parseNodeId node.Parent
+          |> Option.defaultValue Settings.TOP_LEVEL_GROUP_ID
+
+        match nodeId with
+        | Some nodeId ->
           let pinId = parsePinId nodeId pin
           (groupId,pinId) :: lst
         | _ -> lst)
@@ -717,7 +727,7 @@ module rec Graph =
       |> state.Events.Enqueue
 
     let renamedHandler = new RenamedHandler(onNodeRename)
-    node.add_Renamed(renamedHandler)
+    node.Parent.add_Renamed(renamedHandler)
     { new IDisposable with
         member self.Dispose() =
           node.remove_Renamed(renamedHandler) }
@@ -989,15 +999,16 @@ module rec Graph =
   // ** parseGroupName
 
   let private parseGroupName (node: INode2) =
-    let nodeName = node.NodeInfo.Name
-    match node.FindPin(Settings.DESCRIPTIVE_NAME_PIN).[0] with
+    let parent = node.Parent
+    let nodeName = parent.NodeInfo.Name
+    match parent.FindPin(Settings.DESCRIPTIVE_NAME_PIN).[0] with
     | null | ""   -> name nodeName
     | description -> name (sprintf "%s - %s" nodeName description)
 
   // ** parseGroupPath
 
   let private parseGroupPath (node: INode2) =
-    node.NodeInfo.Filename
+    node.Parent.NodeInfo.Filename
     |> filepath
     |> Some
 
@@ -1030,17 +1041,15 @@ module rec Graph =
     | Some _ -> state
     /// the group does not exist yet
     | None ->
-      let parent = pin.ParentNode.Parent
-
       /// register event handlers for this node to track them
-      do registerNodeHandlers state parent
-          |> fun disposable -> state.Disposables.Add(parsed.PinGroupId, disposable)
-          |> ignore
+      do registerNodeHandlers state pin.ParentNode
+         |> fun disposable -> state.Disposables.Add(parsed.PinGroupId, disposable)
+         |> ignore
 
       let group: PinGroup =
         { Id = parsed.PinGroupId
-          Name = parseGroupName parent
-          Path = parseGroupPath parent
+          Name = parseGroupName pin.ParentNode
+          Path = parseGroupPath pin.ParentNode
           ClientId = state.ClientId
           RefersTo = None
           Pins = Map.ofList [ (parsed.Id, parsed) ] }
@@ -1069,8 +1078,9 @@ module rec Graph =
         id
 
     let groupId =
-      if node.Parent.NodeInfo.Name = "root"
-      then Settings.TOP_LEVEL_GROUP_ID else
+      if isTopLevel node then
+        Settings.TOP_LEVEL_GROUP_ID
+      else
         match parseNodeId node.Parent with
         | Some id -> id
         | None ->
@@ -1104,10 +1114,10 @@ module rec Graph =
 
   // ** groupUpdated
 
-  let private groupUpdated (state: PluginState) (parent: INode2) =
-    let name = parseGroupName parent
-    let path = parseGroupPath parent
-    if parent.Parent.NodeInfo.Name = "root" then
+  let private groupUpdated (state: PluginState) (node: INode2) =
+    let name = parseGroupName node
+    let path = parseGroupPath node
+    if isTopLevel node then
       let groupId = Settings.TOP_LEVEL_GROUP_ID
       match Map.tryFind groupId state.PinGroups with
       | Some group ->
@@ -1116,7 +1126,7 @@ module rec Graph =
         { state with PinGroups = Map.add groupId group state.PinGroups }
       | None -> state
     else
-      match parseNodeId parent with
+      match parseNodeId node.Parent with
       | Some groupId ->
         match Map.tryFind groupId state.PinGroups with
         | Some group ->
@@ -1273,7 +1283,7 @@ module rec Graph =
     match parseNodeId node with
     | None        -> state
     | Some nodeId ->
-      if node.Parent.NodeInfo.Name = "root" then
+      if isTopLevel node then
         let groupId = Settings.TOP_LEVEL_GROUP_ID
         let nm = makeNodeMapping nodeId groupId pin
         { state with NodeMappings = Map.add nm.PinId nm state.NodeMappings }
@@ -1530,13 +1540,11 @@ module rec Graph =
             match nm.Properties with
             | Some props -> parsePinValueWith id nm.Type props nm.Pin
             | _ ->  parsePinValueWith id nm.Type [| |] nm.Pin
-
           [ (id, slices) ]
           |> Map.ofList
           |> SlicesMap
           |> UpdateSlices
           |> state.Commands.Add
-
           slices
           |> Pin.setSlices
           |> updatePinWith state nm.GroupId id
@@ -1572,10 +1580,14 @@ module rec Graph =
   // ** evaluate
 
   let evaluate (state: PluginState) (_: int) =
-    state
-    |> initialize
-    |> processing
-    |> bumpFrame
+    try
+      state
+      |> initialize
+      |> processing
+      |> bumpFrame
+    with exn ->
+      Logger.err (tag "evaluate") (string exn)
+      state
 
 // * GraphNode
 
