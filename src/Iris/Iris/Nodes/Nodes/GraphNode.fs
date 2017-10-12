@@ -722,25 +722,25 @@ module rec Graph =
   // ** registerNodeHandlers
 
   let private registerNodeHandlers (state:PluginState) (node: INode2) =
-    let onNodeRename _ _ =
+    let onGroupRename _ _ =
       (!state.Frame,node)
       |> Msg.UpdateGroup
       |> state.Events.Enqueue
 
-    let renamedHandler = new RenamedHandler(onNodeRename)
-    node.Parent.add_Renamed(renamedHandler)
+    let renamedHandler = new EventHandler(onGroupRename)
+    let parent = node.Parent
+    let pin = parent.FindPin Settings.DESCRIPTIVE_NAME_PIN
+
+    pin.Changed.AddHandler(renamedHandler)
+
     { new IDisposable with
         member self.Dispose() =
-          node.remove_Renamed(renamedHandler) }
+          pin.Changed.RemoveHandler(renamedHandler) }
 
   // ** parseValuePin
 
   let private parseValuePin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
-      node.NodeInfo.Name
-      |> sprintf "parsing pin of %s"
-      |> Logger.debug (tag "parseValuePin")
-
       let path  = parseNodePath node pin
       let pinId = parsePinId nodeId pin
       let cnf = parseConfiguration pin
@@ -988,9 +988,6 @@ module rec Graph =
 
   let private parseINode2 clientId nodeId groupId (node: INode2) =
     either {
-      node.NodeInfo.Name
-      |> sprintf "parse node pins of %s"
-      |> Logger.debug (tag "parseINode2")
       let! boxtype = IOBoxType.TryParse (string node.NodeInfo)
       match boxtype with
       | IOBoxType.Value  -> return parseValueBox  clientId nodeId groupId node
@@ -1007,11 +1004,14 @@ module rec Graph =
   // ** parseGroupName
 
   let private parseGroupName (node: INode2) =
-    let parent = node.Parent
-    let nodeName = parent.NodeInfo.Name
-    match parent.FindPin(Settings.DESCRIPTIVE_NAME_PIN).[0] with
-    | null | ""   -> name nodeName
-    | description -> name (sprintf "%s - %s" nodeName description)
+    if isTopLevel node
+    then name Settings.TOP_LEVEL_GROUP_NAME
+    else
+      let parent = node.Parent
+      let nodeName = parent.NodeInfo.Name
+      match parent.FindPin(Settings.DESCRIPTIVE_NAME_PIN).[0] with
+      | null | ""   -> name nodeName
+      | description -> name (sprintf "%s - %s" nodeName description)
 
   // ** parseGroupPath
 

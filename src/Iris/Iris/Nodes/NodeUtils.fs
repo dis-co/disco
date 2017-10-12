@@ -100,7 +100,10 @@ module Settings =
   [<Literal>]
   let PIN_PATH_PROP = "NodePath"
 
-  let TOP_LEVEL_GROUP_ID = IrisId.Parse "04361b0d-2ae7-4e52-97e4-5a9fe94eac80"
+  [<Literal>]
+  let TOP_LEVEL_GROUP_NAME = "VVVV Default Group"
+
+  let TOP_LEVEL_GROUP_ID = IrisId.Parse "d7b5c489-0772-47ac-8433-8d8911aa1cd5"
 
 // * Util
 
