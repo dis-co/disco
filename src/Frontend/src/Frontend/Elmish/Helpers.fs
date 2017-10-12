@@ -101,6 +101,11 @@ let widget (id: Guid) (name: string)
     ]
   ]
 
+let isOutputPin (pin: Pin) =
+  match pin.PinConfiguration with
+  | PinConfiguration.Preset | PinConfiguration.Sink -> false
+  | PinConfiguration.Source -> true
+
 module Promise =
   open Fable.PowerPack
 

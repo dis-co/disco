@@ -135,7 +135,9 @@ type PinView(props) =
     let useRightClick =
       this.props.model.userConfig.useRightClick
     let isSelected =
-      this.props.model.selectedPins |> Seq.exists ((=) pin.Id)
+      match this.props.onDragStart with
+      | Some _ -> this.props.model.selectedPins |> Seq.exists ((=) pin.Id)
+      | None -> false
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length

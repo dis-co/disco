@@ -118,15 +118,18 @@ type private CueView(props) =
             if not stopped then
               true, this.state.IsOpen
             else
-              // Filter out pins already contained by the cue
+              // Filter out output pins and pins already contained by the cue
               let sliceses =
                 pins |> Seq.choose (fun pin ->
-                  let id = pin.Id
-                  let existing = this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = id)
-                  if existing then
-                    printfn "The cue already contains pin %O" id
+                  if isOutputPin pin then
                     None
-                  else Some pin.Slices)
+                  else
+                    let id = pin.Id
+                    let existing = this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = id)
+                    if existing then
+                      printfn "The cue already contains pin %O" id
+                      None
+                    else Some pin.Slices)
                 |> Seq.toArray
               let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices sliceses }
               UpdateCue newCue |> ClientContext.Singleton.Post
@@ -146,22 +149,22 @@ type private CueView(props) =
             "html" ==> content
             "onChange" ==> update] []
       | None -> span [] [str content]
-    td [ClassName ("width-" + string widthPercentage)] [content]
+    td [Class ("width-" + string widthPercentage)] [content]
 
   member this.render() =
     let arrowButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+          Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
             ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
         ] []
       ]
     let playButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName "iris-button iris-icon icon-play"
+          Class "iris-button iris-icon icon-play"
           OnClick (fun ev ->
             ev.stopPropagation()
             updatePins this.props.Cue this.props.State // TODO: Send CallCue event instead
@@ -169,9 +172,9 @@ type private CueView(props) =
         ] []
       ]
     let autocallButton =
-      td [ClassName "width-10"; Style [TextAlign "center"]] [
+      td [Class "width-10"; Style [TextAlign "center"]] [
         button [
-          ClassName "iris-button iris-icon icon-autocall"
+          Class "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
             ev.stopPropagation()
             // Browser.window.alert("Auto call!")
@@ -179,9 +182,9 @@ type private CueView(props) =
         ] []
       ]
     let removeButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName "iris-button iris-icon icon-control icon-close"
+          Class "iris-button iris-icon icon-control icon-close"
           OnClick (fun ev ->
             ev.stopPropagation()
             let id = this.props.CueRef.Id
@@ -222,9 +225,10 @@ type private CueView(props) =
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = Lib.findPinGroup pinGroupId this.props.State
             li [Key (string pinGroupId)] [
-              yield div [] [str (unwrap pinGroup.Name)]
-              for i, pin, slices in pinAndSlices do
-                yield com<PinView.PinView,_,_>
+              div [] [str (unwrap pinGroup.Name)]
+              // Use iris-wrap class to cancel the effects of iris-table wrapping CSS rules
+              div [Class "iris-wrap"] (pinAndSlices |> Seq.map (fun (i, pin, slices) ->
+                com<PinView.PinView,_,_>
                   { key = string pin.Id
                     pin = pin
                     output = false
@@ -236,10 +240,10 @@ type private CueView(props) =
                                 this.updateCueValue(dragging, i, valueIndex, value) }
                     onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
                     onDragStart = None
-                  } []
+                  } []) |> Seq.toList)
             ])
           |> Array.toList
-        [cueHeader; tr [] [td [ColSpan 8.] [ul [ClassName "iris-graphview"] pinGroups]]]
+        [cueHeader; tr [] [td [ColSpan 8.] [ul [Class "iris-graphview"] pinGroups]]]
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
@@ -309,17 +313,17 @@ type CuePlayerView(props) =
     | _ -> []
 
   member this.renderBody() =
-    table [ClassName "iris-table"] [
+    table [Class "iris-table"] [
       thead [Key "header"] [
         tr [] [
-          th [ClassName "width-5"] [str ""]
-          th [ClassName "width-5"] [str ""]
-          th [ClassName "width-10"] [str "Nr."]
-          th [ClassName "width-25"] [str "Cue name"]
-          th [ClassName "width-20"] [str "Delay"]
-          th [ClassName "width-20"] [str "Trigger"]
-          th [ClassName "width-10"; Style [TextAlign "center"]] [str "Autocall"]
-          th [ClassName "width-5"] [str ""]
+          th [Class "width-5"] [str ""]
+          th [Class "width-5"] [str ""]
+          th [Class "width-10"] [str "Nr."]
+          th [Class "width-25"] [str "Cue name"]
+          th [Class "width-20"] [str "Delay"]
+          th [Class "width-20"] [str "Trigger"]
+          th [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
+          th [Class "width-5"] [str ""]
         ]
       ]
       tbody [] (this.renderCues())
@@ -328,7 +332,7 @@ type CuePlayerView(props) =
   member this.renderTitleBar() =
     // TODO: Use a dropdown to choose the player/list
     button [
-      ClassName "iris-button"
+      Class "iris-button"
       Disabled (Option.isNone this.props.CueList)
       OnClick (fun _ ->
         this.props.CueList
@@ -359,8 +363,8 @@ let createWidget(id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0;
         w = 8; h = 5;
-        minW = 4; maxW = 10;
-        minH = 4; maxH = 10; }
+        minW = 4; maxW = 20
+        minH = 4; maxH = 20 }
     member this.Render(dispatch, model) =
       let cueList =
         model.state |> Option.bind (fun state ->

@@ -154,7 +154,7 @@ $even-row: #EBEBEB;
 .iris-selected {
   .iris-pin-child {
     td {
-      background-color: $highlight-lightblue;
+      background-color: $highlight-lightblue !important;
     }
   }
 }

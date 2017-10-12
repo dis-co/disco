@@ -25,11 +25,6 @@ type [<Pojo>] PinGroupProps =
 type [<Pojo>] PinGroupState =
   { IsOpen: bool }
 
-let isInput (pin: Pin) =
-  match pin.PinConfiguration with
-  | PinConfiguration.Preset | PinConfiguration.Sink -> true
-  | PinConfiguration.Source -> false
-
 let onDragStart (model: Model) pin el multiple =
   match multiple, model.state with
   | true, Some state ->
@@ -86,11 +81,11 @@ type PinGroupView(props) =
       ]
       if this.state.IsOpen then
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if isInput pin
+          if not(isOutputPin pin)
           then makeInputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(isInput pin)
+          if isOutputPin pin
           then makeOutputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
     ]
