@@ -1518,21 +1518,40 @@ module rec Graph =
       else state                        /// there were no "ready" events
     else state                          /// there were no events at all
 
+  // ** processSources
+
+
+  let private processSources (state: PluginState) =
+    Seq.fold
+      (fun (state:PluginState) (KeyValue(id,nm):KeyValuePair<PinId,NodeMapping>) ->
+        if nm.IsSource && nm.ChangedNode.[0] = "1"
+        then
+          let slices =
+            match nm.Properties with
+            | Some props -> parsePinValueWith id nm.Type props nm.Pin
+            | _ ->  parsePinValueWith id nm.Type [| |] nm.Pin
+
+          [ (id, slices) ]
+          |> Map.ofList
+          |> SlicesMap
+          |> UpdateSlices
+          |> state.Commands.Add
+
+          slices
+          |> Pin.setSlices
+          |> updatePinWith state nm.GroupId id
+          |> requestUpdate
+        else state)
+      state
+      state.NodeMappings
+
   // ** processing
 
   let private processing (state: PluginState) =
-    let state = processEvents state
-
-    (*
-    for KeyValue(id,nm) in state.NodeMappings do
-      if nm.IsSource && nm.ChangedNode.[0] = "1" then
-        let slices =
-          match nm.Properties with
-          | Some props -> parsePinValueWith nm.Type id props nm.Pin
-          | _ ->  parsePinValueWith nm.Type id [| |] nm.Pin
-        updatePinValues state nm.GroupId slices
-        requestUpdate state |> ignore
-    *)
+    let state =
+      state
+      |> processEvents
+      |> processSources
 
     if updateRequested state then
       updateOutputs state
