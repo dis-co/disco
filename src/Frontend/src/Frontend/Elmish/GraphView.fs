@@ -30,6 +30,14 @@ let isInput (pin: Pin) =
   | PinConfiguration.Preset | PinConfiguration.Sink -> true
   | PinConfiguration.Source -> false
 
+let onDragStart (model: Model) pin el multiple =
+  match multiple, model.state with
+  | true, Some state ->
+    let previousPins = model.selectedPins |> Seq.map (fun id -> Lib.findPin id state)
+    pin::(Seq.toList previousPins)
+  | _ -> [pin]
+  |> Drag.Pin |> Drag.start el
+
 let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
@@ -41,8 +49,7 @@ let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
       onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(fun el ->
-        Drag.Pin pin |> Drag.start el)
+      onDragStart = Some(onDragStart model pin)
     } []
 
 let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
@@ -54,8 +61,7 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
       model = model
       updater = None
       onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(fun el ->
-        Drag.Pin pin |> Drag.start el)
+      onDragStart = Some(onDragStart model pin)
     } []
 
 type PinGroupView(props) =

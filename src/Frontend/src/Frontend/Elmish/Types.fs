@@ -150,7 +150,7 @@ and Model =
     state: State option
     logs: LogEvent list
     history: InspectorHistory
-    selectedPins: PinId list
+    selectedPins: Set<PinId>
     userConfig: UserConfig
   }
 

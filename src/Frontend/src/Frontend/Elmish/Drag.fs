@@ -20,7 +20,7 @@ let domtoimage: IDomToImage = importDefault "dom-to-image"
 let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../js/Util"
 
 type Data =
-  | Pin of Pin
+  | Pin of Pin list
 
 type Event =
   | Moved of x:float * y:float * data:Data

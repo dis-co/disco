@@ -42,7 +42,7 @@ let renderPin model dispatch (pin: Pin) =
 type [<Pojo>] PinHoleProps =
   { Classes: string list
     Padding: bool
-    AddPin: Pin -> unit
+    AddPins: Pin list -> unit
     Render: unit -> ReactElement list }
 
 type [<Pojo>] PinHoleState =
@@ -61,15 +61,15 @@ type PinHole(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pin) -> Some(pin,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true))
-      |> Observable.subscribe(fun (pin,x,y,stopped) ->
+        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
+        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
+      |> Observable.subscribe(fun (pins,x,y,stopped) ->
         let isHighlit  =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true
             else
-              this.props.AddPin(pin)
+              this.props.AddPins(pins)
               false
           else
             false
@@ -123,8 +123,9 @@ type PinMappingView(props) =
       com<PinHole,_,_>
         { Classes = ["width-20"]
           Padding = true
-          AddPin = fun pin ->
-            this.setState({ this.state with SourceCandidate = Some pin })
+          AddPins = function
+            | pin::_ -> this.setState({ this.state with SourceCandidate = Some pin })
+            | _ -> ()
           Render = fun () ->
             [ this.state.SourceCandidate
               |> Option.map (renderPin this.props.Model this.props.Dispatch)
@@ -133,9 +134,10 @@ type PinMappingView(props) =
       com<PinHole,_,_>
         { Classes = ["width-75"]
           Padding = true
-          AddPin = fun pin ->
-            let sinks = this.state.SinkCandidates
-            this.setState({ this.state with SinkCandidates = Set.add pin sinks })
+          AddPins = fun pins ->
+            let sinks = (this.state.SinkCandidates, pins)
+                        ||> List.fold (fun sinks pin -> Set.add pin sinks)
+            this.setState({ this.state with SinkCandidates = sinks })
           Render = fun () ->
             this.state.SinkCandidates
             |> Seq.map (renderPin this.props.Model this.props.Dispatch)

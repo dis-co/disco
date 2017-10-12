@@ -132,7 +132,7 @@ let init() =
       logs = []
       #endif
       history = { index = 0; selected = InspectorSelection.Nothing; previous = [] }
-      selectedPins = []
+      selectedPins = Set.empty
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -205,7 +205,7 @@ let update msg model: Model*Cmd<Msg> =
         selectedPins =
           match selected with
           | InspectorSelection.Pin(_,_,pinId,multi) ->
-            if multi then pinId::model.selectedPins else [pinId]
+            if multi then Set.add pinId model.selectedPins else set [pinId]
           | _ -> model.selectedPins
         history = { model.history with
                      selected = selected

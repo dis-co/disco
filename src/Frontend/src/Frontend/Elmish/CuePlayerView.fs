@@ -110,19 +110,26 @@ type private CueView(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pin) -> Some(pin,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true))
-      |> Observable.subscribe(fun (pin,x,y,stopped) ->
+        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
+        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
+      |> Observable.subscribe(fun (pins,x,y,stopped) ->
         let isHighlit, isOpen =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true, this.state.IsOpen
             else
-              if this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = pin.Id) then
-                printfn "The cue already contains this pin"
-              else
-                let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|pin.Slices|] }
-                UpdateCue newCue |> ClientContext.Singleton.Post
+              // Filter out pins already contained by the cue
+              let sliceses =
+                pins |> Seq.choose (fun pin ->
+                  let id = pin.Id
+                  let existing = this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = id)
+                  if existing then
+                    printfn "The cue already contains pin %O" id
+                    None
+                  else Some pin.Slices)
+                |> Seq.toArray
+              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices sliceses }
+              UpdateCue newCue |> ClientContext.Singleton.Post
               false, true
           else
             false, this.state.IsOpen

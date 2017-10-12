@@ -43,7 +43,7 @@ type [<Pojo>] PinProps =
     slices: Slices option
     model: Model
     updater: IUpdater option
-    onDragStart: (Browser.Element -> unit) option
+    onDragStart: (Browser.Element -> bool -> unit) option
     onSelect: bool -> unit
   }
 
@@ -90,12 +90,11 @@ type PinView(props) =
             match this.props.onDragStart with
             | Some onDragStart ->
               let el = findWithClassUpwards "iris-pin" !!ev.target
-              onDragStart(el)
-            | None -> ())
-          OnMouseUp (fun ev ->
-            ev.stopPropagation()
-            // TODO: Use nother key for multiple selections? Make it configurable?
-            this.props.onSelect(ev.ctrlKey))
+              // TODO: Use another key for multiple selections? Make it configurable? (See below too)
+              onDragStart el ev.ctrlKey
+            | None -> ()
+            this.props.onSelect(ev.ctrlKey)
+          )
         ] [str name]
         firstRowValue
       ]
