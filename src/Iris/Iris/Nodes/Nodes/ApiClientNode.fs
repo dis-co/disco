@@ -148,9 +148,7 @@ module Api =
           ApiClient = client
           Disposables = [ apiobs ] }
     | Left error ->
-      error
-      |> string
-      |> Logger.err "startClient"
+      Logger.err "startClient" error.Message
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -167,14 +165,12 @@ module Api =
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Logger.debug "updateState" "updating state output pins with new state"
     state.OutState.[0] <- state.ApiClient.State
     state
 
   // ** updateCommands
 
   let private updateCommands (state: PluginState) =
-    Logger.debug "updateCommands" "update command output pins"
     state.OutCommands.SliceCount <- state.Commands.Count
     state.OutCommands.AssignFrom state.Commands
 
@@ -263,12 +259,36 @@ module Api =
           |> plugstate.ApiClient.Append
     plugstate
 
+  // ** purgeEvents
+
+  let private purgeEvents (state: PluginState) =
+    while state.Events.TryDequeue() |> fst do
+      ignore "purging event"
+
+  // ** mergePin
+
+  let private mergePin (state: PluginState) (local: Pin) =
+    let groups = state.ApiClient.State.PinGroups
+    match PinGroupMap.tryFindPin local.ClientId local.PinGroupId local.Id groups with
+    | Some pin ->
+      local
+      |> Pin.setPersisted pin.Persisted
+      |> Pin.setPinConfiguration pin.PinConfiguration
+    | None -> local
+
+  // ** mergeGroup
+
+  let private mergeGroup (state: PluginState) (local: PinGroup) =
+    let groups = state.ApiClient.State.PinGroups
+    match PinGroupMap.tryFindGroup local.ClientId local.Id groups with
+    | Some group -> PinGroup.setPins group.Pins local
+    | None -> local
+
   // ** processInputs
 
   let private processInputs (state: PluginState) =
     if state.InReconnect.[0] then
-      while state.Events.TryDequeue() |> fst do
-        ignore "purging event"
+      do purgeEvents state
       state
       |> serverInfo
       |> state.ApiClient.Restart
@@ -278,7 +298,18 @@ module Api =
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
-          state.ApiClient.Append cmd
+          match cmd with
+          | UpdatePin pin ->
+            pin
+            |> mergePin state
+            |> UpdatePin
+            |> state.ApiClient.Append
+          | UpdatePinGroup group ->
+            group
+            |> mergeGroup state
+            |> UpdatePinGroup
+            |> state.ApiClient.Append
+          | other -> state.ApiClient.Append other
       state
     else
       state
@@ -303,7 +334,6 @@ module Api =
           state.Commands.Add cmd
           newstate <- state
         | true, ClientEvent.Snapshot ->
-          Logger.err "ClientEvent.Snapshot" "event received"
           stateUpdates <- stateUpdates + 1
           newstate <- mergeGraphState state
         | false, _ -> run <- false
@@ -356,7 +386,7 @@ type ApiClientNode() =
   val mutable InCommands: ISpread<StateMachine>
 
   [<DefaultValue>]
-  [<Input("PinGroups")>]
+  [<Input("Local PinGroups")>]
   val mutable InPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]
