@@ -80,12 +80,12 @@ module rec Graph =
     | NodeAdded              of frame:uint64 * node:INode2
     | NodeRemoved            of frame:uint64 * node:INode2
     | UpdateGroup            of frame:uint64 * node:INode2
+    | PinSubTypeChange       of groupId:PinGroupId * pinId:PinId * pin:IPin2
     | PinVecSizeChange       of groupId:PinGroupId * pinId:PinId * pin:IPin2
     | PinNameChange          of groupId:PinGroupId * pinId:PinId * pin:IPin2
-    | PinSubTypeChange       of groupId:PinGroupId * pinId:PinId * pin:IPin2
     | PinConfigurationChange of groupId:PinGroupId * pinId:PinId * pin:IPin2
     | PinTagChange           of groupId:PinGroupId * pinId:PinId * pin:IPin2
-    | PinValueChange         of groupId:PinGroupId * pinId:PinId * pin:IPin2
+    | PinValueChange         of groupId:PinGroupId * pinId:PinId * slices:Slices
 
     member msg.Frame
       with get () =
@@ -575,7 +575,7 @@ module rec Graph =
 
   // ** parsePinValueWith
 
-  let private parsePinValueWith (tipe: PinType) (pid: PinId) (props: Property array) (pin: IPin2) =
+  let private parsePinValueWith (pid: PinId) (tipe: PinType) (props: Property array) (pin: IPin2) =
     match tipe with
     | PinType.Boolean -> BoolSlices(pid, None, parseBoolValues pin)
     | PinType.Number  -> NumberSlices(pid, None, parseDoubleValues pin)
@@ -664,7 +664,8 @@ module rec Graph =
       |> state.Events.Enqueue)
 
     let changedHandler = new EventHandler(fun _ _ ->
-      (parsed.PinGroupId, parsed.Id, pin)
+      let slices = parsePinValueWith parsed.Id tipe props pin
+      (parsed.PinGroupId, parsed.Id, slices)
       |> Msg.PinValueChange
       |> state.Events.Enqueue)
 
@@ -1092,17 +1093,14 @@ module rec Graph =
   // ** nodeRemoved
 
   let private nodeRemoved (state: PluginState) (node: INode2) =
-    match parseNodeId node with
-    | None        -> state
-    | Some nodeId ->
-      /// parse all IDs for pins in this node
-      let ids = parseINode2Ids node
-      /// remove them all by aggregating a new state
-      Seq.fold
-        (fun (state: PluginState) (groupId, pinId) ->
-          removePin state groupId pinId)
-        state
-        ids
+    /// parse all IDs for pins in this node
+    let ids = parseINode2Ids node
+    /// remove them all by aggregating a new state
+    Seq.fold
+      (fun (state: PluginState) (groupId, pinId) ->
+        removePin state groupId pinId)
+      state
+      ids
 
   // ** groupUpdated
 
@@ -1128,37 +1126,6 @@ module rec Graph =
         | None -> state
       | None -> state
 
-  // ** pinValueChange
-
-  let private pinValueChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
-  // ** pinTagChange
-
-  let private pinTagChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
-  // ** pinNameChange
-
-  let private pinNameChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
-
-  // ** pinConfigurationChange
-
-  let private pinConfigurationChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
-  // ** pinVecSizeChange
-
-  let private pinVecSizeChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
-  // ** pinSubTypeChange
-
-  let private pinSubTypeChange (state: PluginState) groupId pinId (pin: IPin2) =
-    state
-
   // ** updatePinWith
 
   type private Updater = Pin -> Pin
@@ -1176,62 +1143,76 @@ module rec Graph =
       | _ -> state
     | _ -> state
 
-  // ** updatePinValues
+  // ** pinValueChange
 
-  let private updatePinValues (state: PluginState) (group: PinGroupId) (slices: Slices) =
+  let private pinValueChange (state: PluginState) groupId pinId (slices:Slices) =
     [ (slices.PinId, slices) ]
     |> Map.ofList
     |> SlicesMap
     |> UpdateSlices
     |> state.Commands.Add
-    updatePinWith state group slices.PinId <| fun oldpin ->
-      Pin.setSlices slices oldpin
+    updatePinWith state groupId pinId (Pin.setSlices slices)
 
-  // ** updatePinName
+  // ** pinTagChange
 
-  let private updatePinName (state: PluginState) (group: PinGroupId) (pin: PinId) (name: Name) =
-    updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setName name oldpin
-      state.Commands.Add (UpdatePin updated)
-      updated
-
-  // ** updatePinTags
-
-  let private updatePinTags (state: PluginState)
-                            (group: PinGroupId)
-                            (pin: PinId)
-                            (tags: Property array) =
-    updatePinWith state group pin <| fun oldpin ->
+  let private pinTagChange (state: PluginState) groupId pinId (pin: IPin2) =
+    updatePinWith state groupId pinId <| fun oldpin ->
+      let nodePath = parseNodePath pin
+      let tags = pin |> parseTags |> addDefaultTags nodePath
       let updated = Pin.setTags tags oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
-  // ** updatePinConfiguration
+  // ** pinNameChange
 
-  let private updatePinConfiguration (state: PluginState)
-                                     (group: PinGroupId)
-                                     (pin: PinId)
-                                     cnf =
-    updatePinWith state group pin <| fun oldpin ->
+  let private pinNameChange (state: PluginState) groupId pinId (pin: IPin2) =
+    updatePinWith state groupId pinId <| fun oldpin ->
+      let np = pin.ParentNode.FindPin Settings.DESCRIPTIVE_NAME_PIN
+      let name = if isNull np.[0] then name "" else name np.[0]
+      let updated = Pin.setName name oldpin
+      state.Commands.Add (UpdatePin updated)
+      updated
+
+   // ** pinConfigurationChange
+
+  let private pinConfigurationChange (state: PluginState) groupId pinId (pin: IPin2) =
+    updatePinWith state groupId pinId <| fun oldpin ->
+      let cnf = parseConfiguration pin
       let updated = Pin.setPinConfiguration cnf oldpin
       state.Commands.Add (UpdatePin updated)
       updated
 
-  // ** updatePinVecSize
+  // ** pinVecSizeChange
 
-  let private updatePinVecSize (state: PluginState)
-                               (group: PinGroupId)
-                               (pin: PinId)
-                               vecsize =
-    updatePinWith state group pin <| fun oldpin ->
-      let updated = Pin.setVecSize vecsize oldpin
-      state.Commands.Add (UpdatePin updated)
-      updated
+  let private pinVecSizeChange (state: PluginState) groupId pinId (pin: IPin2) =
+    match parseVecSize pin with
+    | Right vecsize ->
+      updatePinWith state groupId pinId <| fun oldpin ->
+        let updated = Pin.setVecSize vecsize oldpin
+        state.Commands.Add (UpdatePin updated)
+        updated
+    | Left error ->
+      Logger.err "pinVecSizeChange" error.Message
+      state
 
-  // ** updatePin
+  // ** pinSubTypeChange
 
-  let private updatePin (state: PluginState) (pin: Pin) =
-    updatePinWith state pin.PinGroupId pin.Id (konst pin)
+  let private pinSubTypeChange (state: PluginState) groupId pinId (pin: IPin2) =
+    match parseNodeId pin.ParentNode with
+    | None -> state
+    | Some nodeId ->
+      match parseINode2 state.ClientId nodeId groupId pin.ParentNode with
+      | Right []     -> state
+      | Left error   -> Logger.err "processing" error.Message; state
+      | Right parsed ->
+        List.fold
+          (fun (state:PluginState) (pin,parsed) ->
+            pin
+            |> updateChangedPin state
+            |> fun state ->
+              updatePinWith state groupId pinId (konst parsed))
+          state
+          parsed
 
   // ** removePin
 
@@ -1512,8 +1493,8 @@ module rec Graph =
               | Msg.NodeAdded   (_, node) -> nodeAdded    state node
               | Msg.NodeRemoved (_, node) -> nodeRemoved  state node
               | Msg.UpdateGroup (_, node) -> groupUpdated state node
-              | Msg.PinValueChange (groupId, pinId, pin) ->
-                pinValueChange state groupId pinId pin
+              | Msg.PinValueChange (groupId, pinId, slices) ->
+                pinValueChange state groupId pinId slices
 
               | Msg.PinTagChange (groupId, pinId, pin) ->
                 pinTagChange state groupId pinId pin
