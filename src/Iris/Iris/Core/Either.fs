@@ -270,6 +270,12 @@ module Either =
     | Right _ as good -> good
     | Left _ -> Right value
 
+  // ** defaultValue
+
+  let defaultValue def = function
+    | Right value -> value
+    | Left _ -> def
+
 // * Either Builder
 
 //  _____ _ _   _                 ____        _ _     _
