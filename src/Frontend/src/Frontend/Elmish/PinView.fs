@@ -40,11 +40,12 @@ type [<Pojo>] PinProps =
   { key: string
     pin: Pin
     output: bool
-    useRightClick: bool
     slices: Slices option
+    model: Model
     updater: IUpdater option
-    onDragStart: (Browser.Element -> unit) option
-    onSelect: unit -> unit }
+    onDragStart: (Browser.Element -> bool -> unit) option
+    onSelect: bool -> unit
+  }
 
 type PinView(props) =
   inherit React.Component<PinProps, PinState>(props)
@@ -86,13 +87,14 @@ type PinView(props) =
         td [
           OnMouseDown (fun ev ->
             ev.stopPropagation()
-            let el = findWithClassUpwards "iris-pin" !!ev.target
             match this.props.onDragStart with
-            | Some onDragStart -> onDragStart(el)
-            | None -> ())
-          OnMouseUp (fun ev ->
-            ev.stopPropagation()
-            this.props.onSelect())
+            | Some onDragStart ->
+              let el = findWithClassUpwards "iris-pin" !!ev.target
+              // TODO: Use another key for multiple selections? Make it configurable? (See below too)
+              onDragStart el ev.ctrlKey
+            | None -> ()
+            this.props.onSelect(ev.ctrlKey)
+          )
         ] [str name]
         firstRowValue
       ]
@@ -130,6 +132,12 @@ type PinView(props) =
 
   member this.render() =
     let pin = this.props.pin
+    let useRightClick =
+      this.props.model.userConfig.useRightClick
+    let isSelected =
+      match this.props.onDragStart with
+      | Some _ -> this.props.model.selectedPins |> Seq.exists ((=) pin.Id)
+      | None -> false
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
@@ -140,7 +148,8 @@ type PinView(props) =
        "iris-dirty",         not this.props.output && pin.Dirty
        "iris-non-persisted", not pin.Persisted
        "iris-offline",       pin.Persisted && not pin.Online
+       "iris-selected",      isSelected
        ]
     div [classList classes] [
-      table [] [this.RenderRows(rowCount, this.props.useRightClick, props.updater)]
+      table [] [this.RenderRows(rowCount, useRightClick, props.updater)]
     ]

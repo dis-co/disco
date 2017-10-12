@@ -78,6 +78,13 @@ html, body {
   position: absolute;
   opacity: 0.8;
   display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  background-color: black;
+  color: white;
+  width: 80px;
+  height: 80px;
 }
 
 .iris-tab-container {

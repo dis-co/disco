@@ -18,49 +18,53 @@ open Types
 type [<Pojo>] PinGroupProps =
   { key: string
     Group: PinGroup
+    Model: Model
     Dispatch: Msg -> unit
-    UseRightClick: bool }
+  }
 
 type [<Pojo>] PinGroupState =
   { IsOpen: bool }
 
-let isInput (pin: Pin) =
-  match pin.PinConfiguration with
-  | PinConfiguration.Preset | PinConfiguration.Sink -> true
-  | PinConfiguration.Source -> false
+let onDragStart (model: Model) pin el multiple =
+  match multiple, model.state with
+  | true, Some state ->
+    let previousPins = model.selectedPins |> Seq.map (fun id -> Lib.findPin id state)
+    pin::(Seq.toList previousPins)
+  | _ -> [pin]
+  |> Drag.Pin |> Drag.start el
 
-let makeInputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
+let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
       output = false
-      useRightClick = useRightClick
       slices = None
+      model = model
       updater = Some { new IUpdater with
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
-      onSelect = fun () -> Select.pin dispatch pin
-      onDragStart = Some(fun el ->
-        Drag.Pin pin |> Drag.start el) } []
+      onSelect = fun multiple -> Select.pin dispatch multiple pin
+      onDragStart = Some(onDragStart model pin)
+    } []
 
-let makeOutputPin dispatch useRightClick (pid: PinId) (pin: Pin) =
+let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
       output = true
-      useRightClick = useRightClick
       slices = None
+      model = model
       updater = None
-      onSelect = fun () -> Select.pin dispatch pin
-      onDragStart = Some(fun el ->
-        Drag.Pin pin |> Drag.start el) } []
+      onSelect = fun multiple -> Select.pin dispatch multiple pin
+      onDragStart = Some(onDragStart model pin)
+    } []
 
 type PinGroupView(props) =
   inherit React.Component<PinGroupProps, PinGroupState>(props)
   do base.setInitState({ IsOpen = false })
 
   member this.render() =
-    let { Group = group; Dispatch = dispatch; UseRightClick = rightClick } = this.props
+    let { Group = group; Dispatch = dispatch; Model = model } = this.props
     li [] [
       yield div [] [
         button [
@@ -77,12 +81,12 @@ type PinGroupView(props) =
       ]
       if this.state.IsOpen then
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if isInput pin
-          then makeInputPin dispatch rightClick pid pin |> Some
+          if not(isOutputPin pin)
+          then makeInputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(isInput pin)
-          then makeOutputPin dispatch rightClick pid pin |> Some
+          if isOutputPin pin
+          then makeOutputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
     ]
 
@@ -99,7 +103,7 @@ let body dispatch (model: Model) =
       com<PinGroupView,_,_> { key = string gid
                               Group = group
                               Dispatch = dispatch
-                              UseRightClick = model.userConfig.useRightClick } [])
+                              Model = model } [])
     |> Seq.toList)
 
 let createWidget (id: System.Guid) =
@@ -118,6 +122,7 @@ let createWidget (id: System.Guid) =
           match m1.state, m2.state with
           | Some s1, Some s2 ->
             equalsRef s1.PinGroups s2.PinGroups
+              && equalsRef m1.selectedPins m2.selectedPins
           | None, None -> true
           | _ -> false)
         (widget id this.Name None body dispatch)

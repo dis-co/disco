@@ -150,7 +150,16 @@ $even-row: #EBEBEB;
   }
 }
 
-// Special colors: dirty, persisted, offline
+// Special colors: selected, dirty, persisted, offline
+.iris-selected {
+  .iris-pin-child {
+    td {
+      background-color: $highlight-lightblue !important;
+    }
+  }
+}
+
+
 .iris-dirty {
   .iris-pin-child {
     td {
