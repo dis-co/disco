@@ -267,6 +267,9 @@ module Api =
 
   // ** mergePin
 
+  /// When a local pin gets updated, it contains some default data for fields like Persisted or the
+  /// PinConfiguration, which, if passed along to the service would reset manual configurations done
+  /// by the user. This function merges the local and global versions of the same pin.
   let private mergePin (state: PluginState) (local: Pin) =
     let groups = state.ApiClient.State.PinGroups
     match PinGroupMap.tryFindPin local.ClientId local.PinGroupId local.Id groups with
@@ -278,6 +281,9 @@ module Api =
 
   // ** mergeGroup
 
+  /// When a group is updated (i.e. its name changed) we need to ensure that the pin data isn't
+  /// accidentally overwritten with some of the defaults that are parsed from the graph. This function
+  /// merges the local and remote versions of the group.
   let private mergeGroup (state: PluginState) (local: PinGroup) =
     let groups = state.ApiClient.State.PinGroups
     match PinGroupMap.tryFindGroup local.ClientId local.Id groups with
@@ -286,6 +292,8 @@ module Api =
 
   // ** processInputs
 
+  /// Process commands at the Commands input and send them to the service. If a reconnect is requested
+  /// by the user, purge all events in the queue and restart the ApiClient
   let private processInputs (state: PluginState) =
     if state.InReconnect.[0] then
       do purgeEvents state
