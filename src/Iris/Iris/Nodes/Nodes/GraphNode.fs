@@ -105,7 +105,7 @@ module rec Graph =
   type PluginState =
     { Frame: uint64 ref
       Initialized: bool
-      Update: bool ref
+      Update: bool
       Events: ConcurrentQueue<Msg>
       PinGroups: Map<PinGroupId,PinGroup>
       NodeMappings: Map<PinId,NodeMapping>
@@ -123,7 +123,7 @@ module rec Graph =
     static member Create () =
       { Frame = ref 0UL
         Initialized = false
-        Update = ref false
+        Update = false
         Commands = ResizeArray()
         Events = ConcurrentQueue()
         PinGroups = Map.empty
@@ -1390,27 +1390,23 @@ module rec Graph =
   // ** parseExposedNodes
 
   let private parseExposedNodes (state: PluginState) =
-    for node in state.V2Host.ExposedNodeService.Nodes do
-      onNodeExposed state node
-    state
+    Seq.fold nodeAdded state state.V2Host.ExposedNodeService.Nodes
 
   // ** requestUpdate
 
   let private requestUpdate (state: PluginState) =
-    state.Update := true
-    state
+    { state with Update = true }
 
   // ** updateRequested
 
   let private updateRequested (state: PluginState) =
-    !state.Update
-
+    state.Update
 
   // ** resetState
 
   let private resetState (state: PluginState) =
-    state.Update := false
     state.Commands.Clear()
+    { state with Update = false }
 
   // ** initialize
 
@@ -1519,12 +1515,11 @@ module rec Graph =
                 pinVecSizeChange state groupId pinId pin
 
               | Msg.PinSubTypeChange (groupId, pinId, pin) ->
-                pinSubTypeChange state groupId pinId pin
-              |> requestUpdate)
+                pinSubTypeChange state groupId pinId pin)
             state
             msgs
         msgs.Clear()
-        updated                         /// return updated state
+        requestUpdate updated           /// return updated state and request outputs update
       else state                        /// there were no "ready" events
     else state                          /// there were no events at all
 
@@ -1568,8 +1563,7 @@ module rec Graph =
       state.OutCommands.SliceCount <- 1
       state.OutCommands.AssignFrom [| |]
       state.OutUpdate.[0] <- false
-
-    state
+      state
 
   // ** bumpFrame
 
