@@ -121,6 +121,7 @@ let createWidget (id: System.Guid) =
           match m1.state, m2.state with
           | Some s1, Some s2 ->
             equalsRef s1.PinGroups s2.PinGroups
+              && equalsRef m1.selectedPins m2.selectedPins
           | None, None -> true
           | _ -> false)
         (widget id this.Name None body dispatch)
