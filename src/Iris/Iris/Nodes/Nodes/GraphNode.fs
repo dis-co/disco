@@ -573,16 +573,6 @@ module rec Graph =
     | nodepath, [| name |] -> String.Join("/", nodepath), name
     | _ -> failwithf "wrong format: %s" (string id)
 
-  // ** findPinById
-
-  let private findPinById (state: PluginState) (path: string) =
-    let path, name = parseIOBoxPath path
-    let node = state.V2Host.GetNodeFromPath(path)
-    if not (isNull node) then
-      let pin = node.FindPin name
-      if not (isNull pin) then Some pin else None
-    else None
-
   // ** parsePinValueWith
 
   let private parsePinValueWith (pid: PinId) (tipe: PinType) (props: Property array) (pin: IPin2) =
@@ -611,7 +601,7 @@ module rec Graph =
       []
       pins
 
-  // ** parsePintype
+  // ** parsePinType
 
   let private parsePinType (node: INode2) =
     either {
@@ -633,13 +623,6 @@ module rec Graph =
           |> Error.asParseError "parsePinType"
           |> Either.fail
     }
-
-  // ** parseINode2Ids
-
-  let private parseINode2Ids (node: INode2)  =
-    node.Pins
-    |> visibleInputPins
-    |> parsePinIds node
 
   // ** registerPinHandlers
 
