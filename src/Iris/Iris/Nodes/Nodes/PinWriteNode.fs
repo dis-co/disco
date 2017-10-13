@@ -56,15 +56,11 @@ type PinWriteNode() as node =
     builder.Append '|' |> ignore
     string builder
 
-  let log str = node.Logger.Log(LogType.Debug, str)
-
   let processResets () =
     for _ in 0 .. resetEvents.Count - 1 do
       match resetEvents.TryPeek() with
       | true, (prevFrame, mapping) when prevFrame < frame ->
-        let spread = makeSpread mapping.Pin.SliceCount
-        log spread
-        mapping.Pin.Spread <- spread
+        mapping.Pin.Spread <- makeSpread mapping.Pin.SliceCount
         do resetEvents.TryDequeue() |> ignore
       | _ -> ()
 
