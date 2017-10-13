@@ -59,8 +59,10 @@ let inline forcePin<'T> gid pk (values: obj seq) =
 
 let makeNumberPin clientId gid pid pk values =
     let values = forcePin<double> gid pk values
+    if rnd.Next() % 2 = 0
     // Using Sink makes the pin editable
-    Pin.Sink.number pid (name pk) gid clientId values |> Some
+    then Pin.Sink.number pid (name pk) gid clientId values |> Some
+    else Pin.Source.number pid (name pk) gid clientId values |> Some
 
 let makeTogglePin clientId gid pid pk values =
     let values = forcePin<bool> gid pk values
@@ -88,12 +90,11 @@ let makePin gid clientId pk (v: obj) =
         | Some(:? string) -> makeStringPin clientId gid pid pk ar
         | _ -> failParse gid pk ar
     | :? float as x ->
-        // Using Sink makes the pin editable
-        Pin.Sink.number pid (name pk) gid clientId [|x|] |> Some
+        makeNumberPin clientId gid pid pk [|x|]
     | :? bool as x ->
-        Pin.Sink.toggle pid (name pk) gid clientId [|x|] |> Some
+        makeTogglePin clientId gid pid pk [|x|]
     | :? string as x ->
-        Pin.Sink.string pid (name pk) gid clientId [|x|] |> Some
+        makeStringPin clientId gid pid pk [|x|]
     | x -> failParse gid pk x
 
 let pinGroups clientId : seq<PinGroup> =

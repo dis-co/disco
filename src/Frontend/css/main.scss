@@ -43,14 +43,14 @@ html, body {
 }
 
 #app-header {
-  background: @iris-grey;
-  // height: @header-height;
+  background: $iris-grey;
+  // height: $header-height;
 }
 
 #app-footer {
-  background: @iris-grey;
-  height: @footer-height;
-  padding-top: @footer-padding-top;
+  background: $iris-grey;
+  height: $footer-height;
+  padding-top: $footer-padding-top;
 }
 
 #app-content {
@@ -66,11 +66,11 @@ html, body {
     padding: 0;
     display: flex !important;
     flex-direction: column;
-    background-color: @background-grey !important;
+    background-color: $background-grey !important;
   }
 
   .ui-layout-west {
-    background: @iris-grey;
+    background: $iris-grey;
   }
 }
 
@@ -78,6 +78,13 @@ html, body {
   position: absolute;
   opacity: 0.8;
   display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  background-color: black;
+  color: white;
+  width: 80px;
+  height: 80px;
 }
 
 .iris-tab-container {
@@ -86,7 +93,7 @@ html, body {
   flex-direction: column;
 
   .tabs {
-    background: @tab-background;
+    background: $tab-background;
     margin-bottom: 0; // Override Bulma
   }
 
@@ -112,7 +119,7 @@ html, body {
     margin: 0;
     height: 35px;
     padding: 7px;
-    background: @iris-grey;
+    background: $iris-grey;
     display: flex;
     align-items: baseline;
 

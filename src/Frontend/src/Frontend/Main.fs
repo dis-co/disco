@@ -42,3 +42,6 @@ let toString x = string x
 let createId () = IrisId.Create()
 let createNameAndId (name: Name) =
   { Id = IrisId.Create(); Name = name }
+
+let updatePinValueAt(pin: Pin, idx: int, value: obj): unit =
+  Lib.updatePinValue(pin, idx, value)

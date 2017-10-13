@@ -4,7 +4,7 @@
   cursor: pointer;
 }
 
-.iris-pin-container {
+@mixin iris-pin-container {
   width: 100%;
   display: flex;
   flex-wrap: wrap;
@@ -19,13 +19,13 @@
 .iris-pinmapping {
   .iris-pinmapping-row {
     .iris-pinmapping-source, .iris-pinmapping-sinks {
-      .iris-pin-container;
+      @include iris-pin-container;
     }
   }
   .iris-pinmapping-add {
     background-color: lighten(gray, 40%);
     .iris-pin-hole {
-      .iris-pin-container;
+      @include iris-pin-container;
     }
   }
 }
@@ -56,16 +56,16 @@
 }
 
 .iris-status-on {
-  color: @status-on;
+  color: $status-on;
 }
 
 .iris-status-off {
-  color: @status-off;
+  color: $status-off;
 }
 
 .iris-highlight.iris-blue {
-  // border: 2px solid @highlight-blue !important;
-  border-color: @highlight-blue !important;
+  // border: 2px solid $highlight-blue !important;
+  border-color: $highlight-blue !important;
 }
 
 .iris-button {
@@ -97,14 +97,16 @@
 .iris-table {
   border-spacing: 0px;
   width: 100%;
-  [contenteditable] {
-    padding: 3px;
-  }
-  [contenteditable]:focus {
-    outline: none;
-    box-shadow: 0px 0px 1px grey;
-    border-radius: 5px;
-  }
+  // Don't remember exactly why these lines are here. For now,
+  // just comment them out as they cause issues with pins in cues.
+  // [contenteditable] {
+  //   padding: 3px;
+  // }
+  // [contenteditable]:focus {
+  //   outline: none;
+  //   box-shadow: 0px 0px 1px grey;
+  //   border-radius: 5px;
+  // }
   th, td {
     text-align: left;
     white-space: nowrap;
@@ -117,6 +119,10 @@
   th.width-20, td.width-20 { width: 20% }
   th.width-25, td.width-25 { width: 25% }
   th.width-30, td.width-30 { width: 30% }
+}
+
+.iris-wrap {
+  white-space: normal;
 }
 
 // FLEX --------------------
@@ -213,7 +219,7 @@
 //   margin: 5px;
 //   text-align: center;
 //   padding: 0 auto;
-//   background: @iris-grey;
+//   background: $iris-grey;
 //   width: 150px;
 //   height: 50px;
 //   line-height: 50px;
@@ -223,7 +229,7 @@
 
 //   &.enabled {
 //     cursor: move;
-//     background: @background-grey;
+//     background: $background-grey;
 //   }
 // }
 

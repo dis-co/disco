@@ -101,6 +101,11 @@ let widget (id: Guid) (name: string)
     ]
   ]
 
+let isOutputPin (pin: Pin) =
+  match pin.PinConfiguration with
+  | PinConfiguration.Preset | PinConfiguration.Sink -> false
+  | PinConfiguration.Source -> true
+
 module Promise =
   open Fable.PowerPack
 
@@ -151,8 +156,8 @@ module Array =
 
 module Select =
 
-  let pin dispatch (pin: Pin) =
-    (pin.Name, pin.ClientId, pin.Id)
+  let pin dispatch multiple (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id, multiple)
     |> InspectorSelection.Pin
     |> Msg.SelectElement
     |> dispatch

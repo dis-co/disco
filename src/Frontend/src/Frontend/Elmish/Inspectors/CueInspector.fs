@@ -41,10 +41,11 @@ module CueInspector =
       com<PinView,_,_> {
         key = string pin.Id
         pin = pin
-        useRightClick = model.userConfig.useRightClick
+        output = false
         slices = None
+        model = model
         updater = None
-        onSelect = fun () -> Select.pin dispatch pin
+        onSelect = fun multiple -> Select.pin dispatch multiple pin
         onDragStart = None
       } []
     ]

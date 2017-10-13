@@ -16,3 +16,4 @@ IRIS is a software product developed by [Nsynk](http://nsynk.de/) to aid in the 
 ## Other
 
 - [Running the test package](test_package.md)
+- [Connecting with VVVV](connecting_v4.md)
