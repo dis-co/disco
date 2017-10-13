@@ -77,10 +77,29 @@ module ApiServer =
 
   type private ApiAgent = MailboxProcessor<Msg>
 
+  // ** pruneStaleClientData
+
+  /// This works around an edge case where, when a client quickly reconnects, the respective
+  /// StateMachine commands that remove this clients' state globally have not been processed
+  /// yet. Thus, the client believes its local state is already up-to-date, and doesn't merge back
+  /// it's own local state into the global one. As a quick workaround we pretend that the clients'
+  /// still-online pin groups & data are offline by filtering out the respective data.
+  let private pruneStaleClientData (client: ClientId) (state:State) =
+    let mapper map _ (group: PinGroup) =
+      if group.ClientId = client && PinGroup.hasPersistedPins group
+      then
+        let filtered = PinGroup.filter Pin.isPersisted group
+        if PinGroup.isEmpty filtered
+        then map
+        else PinGroupMap.add filtered map
+      else map
+    { state with PinGroups = PinGroupMap.foldGroups mapper PinGroupMap.empty state.PinGroups }
+
   // ** requestInstallSnapshot
 
   let private requestInstallSnapshot (state: ServerState) (client: ClientId) =
     state.Callbacks.PrepareSnapshot()
+    |> pruneStaleClientData client
     |> ApiRequest.Snapshot
     |> Binary.encode
     |> Request.create (Guid.ofId state.Server.Id)

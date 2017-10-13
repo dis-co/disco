@@ -105,9 +105,7 @@ module Api =
       match IpAddress.TryParse state.InServerIp.[0] with
       | Right ip ->  ip
       | Left error ->
-        error
-        |> string
-        |> Logger.err "startClient"
+        Logger.err "serverInfo" error.Message
         IPv4Address "127.0.0.1"
 
     let port =
@@ -178,7 +176,7 @@ module Api =
 
   let private mergeGraphState (plugstate: PluginState) =
     let remoteState = plugstate.ApiClient.State.PinGroups
-
+    let updates = ResizeArray()
     for local in plugstate.InPinGroups do
       if not (Util.isNullReference local) then
         match PinGroupMap.tryFindGroup local.ClientId local.Id remoteState with
@@ -236,7 +234,7 @@ module Api =
                   Path = lpath
                   Pins = pins }
               |> UpdatePinGroup
-              |> plugstate.ApiClient.Append
+              |> updates.Add
             else
               /// the list of additions
               let additions = newPins |> Map.toList |> List.map (snd >> AddPin)
@@ -249,21 +247,31 @@ module Api =
                   then rpin |> Pin.setOnline true |> UpdatePin |> Some
                   else None)
               |> List.append additions
-              |> (StateMachineBatch >> CommandBatch)
-              |> plugstate.ApiClient.Append
-
-        | Some _ -> ()                   /// no need to do anything apparently
+              |> List.iter updates.Add
+        | Some _ ->
+          plugstate.Logger.Log(LogType.Debug, "local and remote apparently are the same")
+          plugstate.Logger.Log(LogType.Debug, string remoteState)
         | None ->                        /// remote does not yet have this patch
           local
           |> AddPinGroup
-          |> plugstate.ApiClient.Append
+          |> updates.Add
+
+    updates.ToArray()
+    |> List.ofArray
+    |> (StateMachineBatch >> CommandBatch)
+    |> plugstate.ApiClient.Append
+
     plugstate
 
-  // ** purgeEvents
+  // ** stopClient
 
-  let private purgeEvents (state: PluginState) =
-    while state.Events.TryDequeue() |> fst do
-      ignore "purging event"
+  let private stopClient (state: PluginState) =
+    List.iter dispose state.Disposables
+    dispose state.ApiClient
+    { state with
+        Initialized = false
+        Events = ConcurrentQueue()
+        Status = ServiceStatus.Stopping }
 
   // ** mergePin
 
@@ -296,12 +304,7 @@ module Api =
   /// by the user, purge all events in the queue and restart the ApiClient
   let private processInputs (state: PluginState) =
     if state.InReconnect.[0] then
-      do purgeEvents state
-      state
-      |> serverInfo
-      |> state.ApiClient.Restart
-      |> ignore
-      state
+      stopClient state
     elif state.InUpdate.[0] && state.Initialized then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]

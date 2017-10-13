@@ -313,10 +313,10 @@ module rec Graph =
       try IrisId.Parse content |> Some
       with _ -> None
 
-  // ** parseNodePath
+  // ** generateNodePath
 
-  let private parseNodePath (node: INode2) (pin: IPin2) =
-    sprintf "%s/%s" (node.GetNodePath(false)) pin.Name
+  let private generateNodePath (node: INode2) (pin: IPin2) =
+    node.GetNodePath(false) + "/" + pin.Name
 
   // ** parseValueType
 
@@ -728,7 +728,7 @@ module rec Graph =
 
   let private parseValuePin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
-      let path  = parseNodePath node pin
+      let path  = generateNodePath node pin
       let pinId = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! vt = parseValueType node
@@ -855,7 +855,7 @@ module rec Graph =
 
   let private parseStringPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
-      let path = parseNodePath node pin
+      let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! st = parseStringType node
@@ -897,7 +897,7 @@ module rec Graph =
 
   let private parseEnumPin clientId nodeId groupId (node: INode2) (pin: IPin2) =
     either {
-      let path = parseNodePath node pin
+      let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! pinName = parseName node
@@ -937,7 +937,7 @@ module rec Graph =
 
   let private parseColorPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
-      let path = parseNodePath node pin
+      let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let tags = node |> parseTags |> addDefaultTags path
@@ -1168,7 +1168,7 @@ module rec Graph =
 
   let private pinTagChange (state: PluginState) groupId pinId (node: INode2) (pin: IPin2) =
     updatePinWith state groupId pinId <| fun oldpin ->
-      let nodePath = parseNodePath node pin
+      let nodePath = generateNodePath node pin
       let tags = node |> parseTags |> addDefaultTags nodePath
       let updated = Pin.setTags tags oldpin
       state.Commands.Add (UpdatePin updated)
@@ -1462,7 +1462,7 @@ module rec Graph =
 
   // ** processSources
 
-
+  /// process pins marked Source by polling its values
   let private processSources (state: PluginState) =
     Seq.fold
       (fun (state:PluginState) (KeyValue(id,nm):KeyValuePair<PinId,NodeMapping>) ->
@@ -1487,6 +1487,9 @@ module rec Graph =
 
   // ** processing
 
+  /// Function to tie together the different stages of processing on the loop.
+  ///
+  /// First, all events coming from the graph are processed.
   let private processing (state: PluginState) =
     let state =
       state
