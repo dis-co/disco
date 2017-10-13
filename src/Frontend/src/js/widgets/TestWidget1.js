@@ -20,6 +20,7 @@ import 'react-rangeslider/lib/index.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    //initialize pinName, sliderMin and sliderMax
     this.state={
       pinName:"VVVV/design.4vp/C",
       sliderMin: -100,
@@ -29,8 +30,9 @@ class TestWidget extends React.Component {
 
 
   render() {
-
+    //initialize pinVal
     var pinVal = 0;
+    //set pin to this states current pin by pinName
     var pin = IrisLib.findPinByName(this.props.model, this.state.pinName);
     if (pin != null) {
       pinVal = IrisLib.getPinValueAt(pin, 0);
@@ -46,18 +48,21 @@ class TestWidget extends React.Component {
         {/*input to select a pin*/}
         <label>
           pin name
+          {/*onChange updates state with new pinName as read from input field*/}
         <input type="text"
         onChange={(event) => this.setState({pinName: "VVVV/design.4vp/" + event.target.value})} />
         </label>
         {/*input to set minimum value*/}
         <label>
           minimum value
+          {/*onChange updates the state with new slider minimum value*/}
           <input type="text" 
           onChange={(event) => this.setState({sliderMin: event.target.value})}/>
         </label>
         {/*input to set maximum value*/}
         <label>
           maximum value
+          {/*onChhange updates the state with new slider maximum value*/}
           <input type="text"
           onChange={(event) => this.setState({sliderMax: event.target.value})}/>
           </label>
@@ -67,6 +72,8 @@ class TestWidget extends React.Component {
           console.log(pinVal);}}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
+        {/*slider has an onChange function that updates the selected pins value to sliders 
+        current value pinVal. gets its min and max values from state*/}
           <Slider
             value={parseInt(pinVal, 10)}
             onChange={(value) => {
