@@ -318,13 +318,6 @@ module rec Graph =
   let private parseNodePath (node: INode2) (pin: IPin2) =
     sprintf "%s/%s" (node.GetNodePath(false)) pin.Name
 
-  // ** parseDescriptivePath
-
-  let private parseDescriptivePath (node:INode2) (pin: IPin2) =
-    sprintf "%s/%s"
-      (node.GetNodePath(true))
-      pin.Name
-
   // ** parseValueType
 
   let private parseValueType (node: INode2) =
@@ -383,9 +376,9 @@ module rec Graph =
        { Key = Settings.PIN_PATH_PROP; Value = path } |]
     |> Array.append props
 
-  // ** parsePinId
+  // ** generatePinId
 
-  let private parsePinId nodeId groupId (pin: IPin2) =
+  let private generatePinId nodeId groupId (pin: IPin2) =
     string groupId + string nodeId + pin.Name
     |> toGuid
     |> IrisId.FromGuid
@@ -612,7 +605,7 @@ module rec Graph =
 
         match nodeId with
         | Some nodeId ->
-          let pinId = parsePinId nodeId groupId pin
+          let pinId = generatePinId nodeId groupId pin
           (groupId,pinId) :: lst
         | _ -> lst)
       []
@@ -753,7 +746,7 @@ module rec Graph =
   let private parseValuePin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
       let path  = parseNodePath node pin
-      let pinId = parsePinId nodeId groupId pin
+      let pinId = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! vt = parseValueType node
       let! bh = parseBehavior node
@@ -880,7 +873,7 @@ module rec Graph =
   let private parseStringPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
       let path = parseNodePath node pin
-      let id = parsePinId nodeId groupId pin
+      let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! st = parseStringType node
       let! pinName = parseName node
@@ -922,7 +915,7 @@ module rec Graph =
   let private parseEnumPin clientId nodeId groupId (node: INode2) (pin: IPin2) =
     either {
       let path = parseNodePath node pin
-      let id = parsePinId nodeId groupId pin
+      let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let! pinName = parseName node
       let! vc = parseVecSize node
@@ -962,7 +955,7 @@ module rec Graph =
   let private parseColorPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
     either {
       let path = parseNodePath node pin
-      let id = parsePinId nodeId groupId pin
+      let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
       let tags = node |> parseTags |> addDefaultTags path
       let! pinName = parseName node
@@ -1280,7 +1273,7 @@ module rec Graph =
   // ** makeNodeMapping
 
   let private makeNodeMapping nodeId groupId (node:INode2) (pin: IPin2) =
-    let id = parsePinId nodeId groupId pin
+    let id = generatePinId nodeId groupId pin
     let cp = node.FindPin Settings.CHANGED_PIN
     let cnf = parseConfiguration pin
     let tipe, props =
