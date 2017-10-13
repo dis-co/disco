@@ -109,7 +109,7 @@ module rec Graph =
       Events: ConcurrentQueue<Msg>
       PinGroups: Map<PinGroupId,PinGroup>
       NodeMappings: Map<PinId,NodeMapping>
-      Commands: ResizeArray<StateMachine>
+      Commands: StateMachine list
       Logger: ILogger
       V1Host: IPluginHost
       V2Host: IHDEHost
@@ -118,13 +118,13 @@ module rec Graph =
       OutCommands: ISpread<StateMachine>
       OutNodeMappings: ISpread<NodeMapping>
       OutUpdate: ISpread<bool>
-      Disposables: Dictionary<IrisId,IDisposable> }
+      Disposables: Map<IrisId,IDisposable> }
 
     static member Create () =
       { Frame = ref 0UL
         Initialized = false
         Update = false
-        Commands = ResizeArray()
+        Commands = List.empty
         Events = ConcurrentQueue()
         PinGroups = Map.empty
         NodeMappings = Map.empty
@@ -136,7 +136,7 @@ module rec Graph =
         OutCommands = null
         OutUpdate = null
         OutNodeMappings = null
-        Disposables = new Dictionary<IrisId,IDisposable>() }
+        Disposables = Map.empty }
 
     member state.ClientId
       with get () = state.InClientId.[0]
@@ -144,7 +144,6 @@ module rec Graph =
     interface IDisposable with
       member self.Dispose() =
         Seq.iter (fun (KeyValue(_,disposable)) -> dispose disposable) self.Disposables
-        self.Disposables.Clear()
 
   // ** IOBoxType
 
@@ -624,9 +623,24 @@ module rec Graph =
           |> Either.fail
     }
 
+  // ** addCommand
+
+  let private addCommand cmd (state: PluginState) =
+    { state with Commands = cmd :: state.Commands }
+
+  // ** addMapping
+
+  let private addMapping id mapping (state: PluginState) =
+    { state with NodeMappings = Map.add id mapping state.NodeMappings }
+
+  // ** updateGroups
+
+  let private updateGroups groups (state: PluginState) =
+    { state with PinGroups = groups }
+
   // ** registerPinHandlers
 
-  let private registerPinHandlers (state: PluginState) (node:INode2) (pin: IPin2) (parsed:Pin) =
+  let private registerPinHandlers (node:INode2) (pin: IPin2) (parsed:Pin) (state: PluginState) =
     let np    = node.FindPin Settings.DESCRIPTIVE_NAME_PIN
     let scmp  = node.FindPin Settings.SLICECOUNT_MODE_PIN
     let cp    = node.FindPin Settings.COLUMNS_PIN
@@ -706,7 +720,7 @@ module rec Graph =
 
   // ** registerNodeHandlers
 
-  let private registerNodeHandlers (state:PluginState) groupId (node: INode2) =
+  let private registerNodeHandlers groupId (node: INode2) (state:PluginState) =
     let onGroupRename _ _ =
       (!state.Frame,node)
       |> Msg.UpdateGroup
@@ -1009,18 +1023,18 @@ module rec Graph =
 
   // ** untrackHandlers
 
-  let private untrackHandlers (state:PluginState) (id: IrisId) =
-    try
-      let disposable = state.Disposables.[id]
+  let private untrackHandlers (id: IrisId) (state:PluginState) =
+    match Map.tryFind id state.Disposables with
+    | Some disposable ->
       dispose disposable
-      state.Disposables.Remove id |> ignore
-    with _ -> ()
+      { state with Disposables = Map.remove id state.Disposables }
+    | None -> state
 
   // ** trackHandler
 
   let private trackHandlers (state:PluginState) id handlers =
-    do untrackHandlers state id
-    do state.Disposables.Add(id, handlers)
+    let state = untrackHandlers id state
+    { state with Disposables = Map.add id handlers state.Disposables }
 
   // ** addPin
 
@@ -1028,29 +1042,16 @@ module rec Graph =
     match Map.tryFind parsed.PinGroupId state.PinGroups with
     /// the pin does not exist in this group yet, so we simply add it
     | Some group when not (PinGroup.contains parsed.Id group) ->
-      /// register event handlers for this pin and track them
-      do registerPinHandlers state node pin parsed
-
-      /// add command to send to the service
-      do state.Commands.Add (AddPin parsed)
-
-      /// create a NodeMapping, tracking the connection between Iris Pin and VVVV Pin
-      let nm = makeNodeMapping nodeId parsed.PinGroupId node pin
-      let mappings = Map.add parsed.Id nm state.NodeMappings
-
-      { state with
-          PinGroups = Map.add group.Id (PinGroup.addPin parsed group) state.PinGroups
-          NodeMappings = mappings }
+      let groups = Map.add group.Id (PinGroup.addPin parsed group) state.PinGroups
+      state
+      |> registerPinHandlers node pin parsed /// register event handlers for this pin and track them
+      |> addCommand (AddPin parsed) /// add command to send to the service
+      |> addMapping parsed.Id (makeNodeMapping nodeId parsed.PinGroupId node pin)
+      |> updateGroups groups
     /// the pin already exists, so we ignore it, since this might just
     | Some _ -> state
     /// the group does not exist yet
     | None ->
-      /// register event handlers for this pin and track them
-      do registerPinHandlers state node pin parsed
-
-      /// register event handlers for this node to track them
-      do registerNodeHandlers state parsed.PinGroupId node
-
       let group: PinGroup =
         { Id = parsed.PinGroupId
           Name = parseGroupName node
@@ -1058,16 +1059,13 @@ module rec Graph =
           ClientId = state.ClientId
           RefersTo = None
           Pins = Map.ofList [ (parsed.Id, parsed) ] }
-
-      state.Commands.Add (AddPinGroup group)
-
-      /// create a NodeMapping, tracking the connection between Iris Pin and VVVV Pin
-      let nm = makeNodeMapping nodeId parsed.PinGroupId node pin
-      let mappings = Map.add parsed.Id nm state.NodeMappings
-
-      { state with
-          PinGroups = Map.add group.Id (PinGroup.addPin parsed group) state.PinGroups
-          NodeMappings = mappings }
+      let groups = Map.add group.Id (PinGroup.addPin parsed group) state.PinGroups
+      state
+      |> registerPinHandlers node pin parsed /// event handlers for this node/pin
+      |> registerNodeHandlers parsed.PinGroupId node /// renamed handler for Group node
+      |> addCommand (AddPinGroup group)
+      |> addMapping parsed.Id (makeNodeMapping nodeId parsed.PinGroupId node pin)
+      |> updateGroups groups
 
   // ** nodeAdded
 
@@ -1123,8 +1121,9 @@ module rec Graph =
       match Map.tryFind groupId state.PinGroups with
       | Some group ->
         let group = { group with Name = name; Path = path }
-        state.Commands.Add (UpdatePinGroup group)
-        { state with PinGroups = Map.add groupId group state.PinGroups }
+        { state with
+            Commands  = UpdatePinGroup group :: state.Commands
+            PinGroups = Map.add groupId group state.PinGroups }
       | None -> state
     else
       match parseNodeId node.Parent with
@@ -1132,78 +1131,84 @@ module rec Graph =
         match Map.tryFind groupId state.PinGroups with
         | Some group ->
           let group = { group with Name = name; Path = path }
-          state.Commands.Add (UpdatePinGroup group)
-          { state with PinGroups = Map.add groupId group state.PinGroups }
+          { state with
+              Commands  = UpdatePinGroup group :: state.Commands
+              PinGroups = Map.add groupId group state.PinGroups }
         | None -> state
       | None -> state
 
   // ** updatePinWith
 
   type private Updater = Pin -> Pin
+  type private CmdFun = (Pin -> StateMachine) option
 
-  let private updatePinWith (state: PluginState)
-                            (groupId: PinGroupId)
-                            (pinId: PinId)
-                            (updater: Updater) =
+  let private updatePinWith
+    (state: PluginState)
+    (groupId: PinGroupId)
+    (pinId: PinId)
+    (cmdfun: CmdFun)
+    (updater: Updater) =
     match Map.tryFind groupId state.PinGroups with
     | Some group ->
       match Map.tryFind pinId group.Pins with
       | Some pin ->
-        let group = PinGroup.updatePin (updater pin) group
-        { state with PinGroups = Map.add groupId group state.PinGroups }
+        let pin = updater pin
+        let group = PinGroup.updatePin pin group
+        match cmdfun with
+        | Some constr ->
+          { state with
+              Commands  = constr pin :: state.Commands
+              PinGroups = Map.add groupId group state.PinGroups }
+        | None ->
+          { state with PinGroups = Map.add groupId group state.PinGroups }
       | _ -> state
     | _ -> state
 
   // ** pinValueChange
 
   let private pinValueChange (state: PluginState) groupId pinId (slices:Slices) =
-    [ (slices.PinId, slices) ]
-    |> Map.ofList
-    |> SlicesMap
-    |> UpdateSlices
-    |> state.Commands.Add
-    updatePinWith state groupId pinId (Pin.setSlices slices)
+    let cmd =
+      [ (slices.PinId, slices) ]
+      |> Map.ofList
+      |> SlicesMap
+      |> UpdateSlices
+    Pin.setSlices slices
+    |> updatePinWith state groupId pinId None
+    |> addCommand cmd
 
   // ** pinTagChange
 
   let private pinTagChange (state: PluginState) groupId pinId (node: INode2) (pin: IPin2) =
-    updatePinWith state groupId pinId <| fun oldpin ->
-      let nodePath = generateNodePath node pin
-      let tags = node |> parseTags |> addDefaultTags nodePath
-      let updated = Pin.setTags tags oldpin
-      state.Commands.Add (UpdatePin updated)
-      updated
+    let nodePath = generateNodePath node pin
+    node
+    |> parseTags
+    |> addDefaultTags nodePath
+    |> Pin.setTags
+    |> updatePinWith state groupId pinId (Some UpdatePin)
 
   // ** pinNameChange
 
   let private pinNameChange (state: PluginState) groupId pinId (node:INode2) =
-    updatePinWith state groupId pinId <| fun oldpin ->
-      let name = parseName node |> Either.defaultValue "" |> name
-      let updated = Pin.setName name oldpin
-      state.Commands.Add (UpdatePin updated)
-      updated
+    parseName node
+    |> Either.defaultValue ""
+    |> name
+    |> Pin.setName
+    |> updatePinWith state groupId pinId (Some UpdatePin)
 
    // ** pinConfigurationChange
 
   let private pinConfigurationChange (state: PluginState) groupId pinId (pin: IPin2) =
-    updatePinWith state groupId pinId <| fun oldpin ->
-      let cnf = parseConfiguration pin
-      let updated = Pin.setPinConfiguration cnf oldpin
-      state.Commands.Add (UpdatePin updated)
-      updated
+    parseConfiguration pin
+    |> Pin.setPinConfiguration
+    |> updatePinWith state groupId pinId (Some UpdatePin)
 
   // ** pinVecSizeChange
 
   let private pinVecSizeChange (state: PluginState) groupId pinId node =
-    match parseVecSize node with
-    | Right vecsize ->
-      updatePinWith state groupId pinId <| fun oldpin ->
-        let updated = Pin.setVecSize vecsize oldpin
-        state.Commands.Add (UpdatePin updated)
-        updated
-    | Left error ->
-      Logger.err "pinVecSizeChange" error.Message
-      state
+    parseVecSize node
+    |> Either.defaultValue VecSize.Dynamic
+    |> Pin.setVecSize
+    |> updatePinWith state groupId pinId (Some UpdatePin)
 
   // ** pinSubTypeChange
 
@@ -1220,8 +1225,7 @@ module rec Graph =
             (fun (state:PluginState) (pin,parsed) ->
               pin
               |> updateChangedPin state node
-              |> fun state ->
-                updatePinWith state groupId pinId (konst parsed))
+              |> fun state -> updatePinWith state groupId pinId (Some UpdatePin) (konst parsed))
             state
             parsed
     with _ -> state
@@ -1234,22 +1238,17 @@ module rec Graph =
       match Map.tryFind nm.PinId group.Pins with
       | Some _ when group.Pins.Count = 1 ->
         /// communicate the removal of this group to the host service
-        state.Commands.Add (RemovePinGroup group)
-        /// dispose and remove registrations for group
-        do untrackHandlers state nm.GroupId
-        /// dispose and remove registrations for pin
-        do untrackHandlers state nm.PinId
-        /// remove the group from the state
-        { state with PinGroups = Map.remove nm.GroupId state.PinGroups }
+        state
+        |> untrackHandlers nm.GroupId /// dispose and remove registrations for group
+        |> untrackHandlers nm.PinId /// dispose and remove registrations for pin
+        |> addCommand (RemovePinGroup group)
+        |> updateGroups (Map.remove nm.GroupId state.PinGroups)
       | Some pin ->
-        /// communicate the disappearance of this pin to the host service
-        state.Commands.Add (RemovePin pin)
-        /// dispose and remove registrations for pin
-        do untrackHandlers state nm.PinId
-        /// remove pin from group
-        let group = PinGroup.removePin pin group
-        /// update state with updated group
-        { state with PinGroups = Map.add nm.GroupId group state.PinGroups }
+        let group = PinGroup.removePin pin group /// remove pin from group
+        state
+        |> untrackHandlers nm.PinId /// dispose and remove registrations for pin
+        |> addCommand (RemovePin pin)
+        |> updateGroups (Map.add nm.GroupId group state.PinGroups)
       | _ -> state
     | _ -> state
 
@@ -1308,7 +1307,7 @@ module rec Graph =
 
   let private setupVvvv (state: PluginState) =
     let globals = IrisId.Create()
-    if not (state.Disposables.ContainsKey globals) then
+    if not (Map.containsKey globals state.Disposables) then
       let onNodeAdded = new NodeEventHandler(onNodeExposed state)
       let onNodeRemoved = new NodeEventHandler(onNodeUnExposed state)
       state.V2Host.ExposedNodeService.add_NodeAdded(onNodeAdded)
@@ -1318,8 +1317,9 @@ module rec Graph =
             member self.Dispose () =
               state.V2Host.ExposedNodeService.remove_NodeAdded(onNodeAdded)
               state.V2Host.ExposedNodeService.remove_NodeRemoved(onNodeRemoved) }
-      state.Disposables.Add(globals,disposable) |> ignore
-      { state with Initialized = true }
+      { state with
+          Initialized = true
+          Disposables = Map.add globals disposable state.Disposables }
     else
       state
 
@@ -1341,8 +1341,9 @@ module rec Graph =
   // ** resetState
 
   let private resetState (state: PluginState) =
-    state.Commands.Clear()
-    { state with Update = false }
+    { state with
+        Commands = List.empty
+        Update = false }
 
   // ** initialize
 
@@ -1353,6 +1354,18 @@ module rec Graph =
       |> requestUpdate
     else
       state
+
+  // ** optimize
+
+  let private optimize (cmds: StateMachine list) =
+    cmds
+    |> List.fold                         /// separate into 2 lists of batched and direct commands
+      (fun (batched, direct) -> function
+        | UpdateSlices _ as cmd -> batched, cmd :: direct
+        | other -> other :: batched, direct)
+      (List.empty, List.empty)
+    |> fun (batched, direct) ->             /// add a batch command to direct list
+      (batched |> StateMachineBatch |> CommandBatch) :: direct
 
   // ** updateOutputs
 
@@ -1369,8 +1382,8 @@ module rec Graph =
       state.OutPinGroups.SliceCount <- 1
       state.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
 
-    state.OutCommands.SliceCount <- state.Commands.Count
-    state.OutCommands.AssignFrom state.Commands
+    state.OutCommands.SliceCount <- state.Commands.Length
+    state.OutCommands.AssignFrom (optimize state.Commands)
 
     if state.NodeMappings.Count > 0 then
       let mappings = new ResizeArray<NodeMapping>()
@@ -1472,14 +1485,15 @@ module rec Graph =
             match nm.Properties with
             | Some props -> parsePinValueWith id nm.Type props nm.Pin
             | _ ->  parsePinValueWith id nm.Type [| |] nm.Pin
-          [ (id, slices) ]
-          |> Map.ofList
-          |> SlicesMap
-          |> UpdateSlices
-          |> state.Commands.Add
+          let cmd =
+            [ (id, slices) ]
+            |> Map.ofList
+            |> SlicesMap
+            |> UpdateSlices
           slices
           |> Pin.setSlices
-          |> updatePinWith state nm.GroupId id
+          |> updatePinWith state nm.GroupId id None
+          |> addCommand cmd
           |> requestUpdate
         else state)
       state
@@ -1501,7 +1515,7 @@ module rec Graph =
       resetState state
     else
       state.OutCommands.SliceCount <- 1
-      state.OutCommands.AssignFrom [| |]
+      state.OutCommands.AssignFrom List.empty
       state.OutUpdate.[0] <- false
       state
 
