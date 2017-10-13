@@ -25,6 +25,7 @@ type NodeMapping =
     GroupId: PinGroupId
     Pin: IPin2
     Type: PinType
+    Trigger: bool
     PinConfiguration: PinConfiguration
     Properties: Property array option
     ChangedNode: IPin2 }

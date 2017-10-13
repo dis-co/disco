@@ -341,6 +341,13 @@ module rec Graph =
       return! Behavior.TryParse bhp.[0]
     }
 
+  // ** isTrigger
+
+  let private isTrigger (node: INode2) =
+    match parseBehavior node with
+    | Right bh -> Behavior.IsTrigger bh
+    | _ -> false
+
   // ** parseName
 
   let private parseName (node: INode2) =
@@ -1285,6 +1292,7 @@ module rec Graph =
       | Left  _            -> PinType.String, None /// default is string
     { PinId = id
       GroupId = groupId
+      Trigger = isTrigger node
       Pin = pin
       Type = tipe
       PinConfiguration = cnf
