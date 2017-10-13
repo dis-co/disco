@@ -24,7 +24,7 @@ open FSharp.Reflection
 
 
 [<PluginInfo(Name="PinWrite", Category=Settings.NODES_CATEGORY, AutoEvaluate=true)>]
-type PinWriteNode() as node =
+type PinWriteNode() =
 
   [<Import();DefaultValue>]
   val mutable Logger: ILogger
