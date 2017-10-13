@@ -1382,8 +1382,9 @@ module rec Graph =
       state.OutPinGroups.SliceCount <- 1
       state.OutPinGroups.AssignFrom(new ResizeArray<PinGroup>())
 
-    state.OutCommands.SliceCount <- state.Commands.Length
-    state.OutCommands.AssignFrom (optimize state.Commands)
+    let commands = optimize state.Commands
+    state.OutCommands.SliceCount <- commands.Length
+    state.OutCommands.AssignFrom commands
 
     if state.NodeMappings.Count > 0 then
       let mappings = new ResizeArray<NodeMapping>()
