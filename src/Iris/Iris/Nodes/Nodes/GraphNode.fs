@@ -705,7 +705,8 @@ module rec Graph =
     pin.Disconnected.AddHandler(disconnectedHandler)
     pin.SubtypeChanged.AddHandler(subtypeHandler)
 
-    { new IDisposable with
+    trackHandlers state parsed.Id {
+      new IDisposable with
         member disp.Dispose () =
           tp.Changed.RemoveHandler(tagHandler)
           np.Changed.RemoveHandler(nameHandler)
@@ -717,11 +718,12 @@ module rec Graph =
           pin.Changed.RemoveHandler(changedHandler)
           pin.Connected.RemoveHandler(connectedHandler)
           pin.Disconnected.RemoveHandler(disconnectedHandler)
-          pin.SubtypeChanged.RemoveHandler(subtypeHandler) }
+          pin.SubtypeChanged.RemoveHandler(subtypeHandler)
+    }
 
   // ** registerNodeHandlers
 
-  let private registerNodeHandlers (state:PluginState) (node: INode2) =
+  let private registerNodeHandlers (state:PluginState) groupId (node: INode2) =
     let onGroupRename _ _ =
       (!state.Frame,node)
       |> Msg.UpdateGroup
@@ -733,9 +735,11 @@ module rec Graph =
 
     pin.Changed.AddHandler(renamedHandler)
 
-    { new IDisposable with
-        member self.Dispose() =
-          pin.Changed.RemoveHandler(renamedHandler) }
+    trackHandlers state groupId {
+      new IDisposable with
+          member self.Dispose() =
+            pin.Changed.RemoveHandler(renamedHandler)
+    }
 
   // ** parseValuePin
 
@@ -1020,23 +1024,32 @@ module rec Graph =
     |> filepath
     |> Some
 
+  // ** untrackHandlers
+
+  let private untrackHandlers (state:PluginState) (id: IrisId) =
+    try
+      let disposable = state.Disposables.[id]
+      dispose disposable
+      state.Disposables.Remove id |> ignore
+    with _ -> ()
+
+  // ** trackHandler
+
+  let private trackHandlers (state:PluginState) id handlers =
+    do untrackHandlers state id
+    do state.Disposables.Add(id, handlers)
+
   // ** addPin
 
   let private addPin (state: PluginState) nodeId node (pin: IPin2) (parsed: Pin) : PluginState =
-    /// dispose of previously registered disposable for this pin id
-    state.Disposables
-    |> Seq.choose (function KeyValue(pid, disp) -> if pid = parsed.Id then Some disp else None)
-    |> Seq.iter dispose
-
-    /// register event handlers for this pin and track them
-    do registerPinHandlers state node pin parsed
-       |> fun disposable -> state.Disposables.Add(parsed.Id, disposable)
-       |> ignore
-
     match Map.tryFind parsed.PinGroupId state.PinGroups with
     /// the pin does not exist in this group yet, so we simply add it
     | Some group when not (PinGroup.contains parsed.Id group) ->
-      state.Commands.Add (AddPin parsed)
+      /// register event handlers for this pin and track them
+      do registerPinHandlers state node pin parsed
+
+      /// add command to send to the service
+      do state.Commands.Add (AddPin parsed)
 
       /// create a NodeMapping, tracking the connection between Iris Pin and VVVV Pin
       let nm = makeNodeMapping nodeId parsed.PinGroupId node pin
@@ -1049,10 +1062,11 @@ module rec Graph =
     | Some _ -> state
     /// the group does not exist yet
     | None ->
+      /// register event handlers for this pin and track them
+      do registerPinHandlers state node pin parsed
+
       /// register event handlers for this node to track them
-      do registerNodeHandlers state node
-         |> fun disposable -> state.Disposables.Add(parsed.PinGroupId, disposable)
-         |> ignore
+      do registerNodeHandlers state parsed.PinGroupId node
 
       let group: PinGroup =
         { Id = parsed.PinGroupId
@@ -1095,10 +1109,6 @@ module rec Graph =
           let id = IrisId.Create()
           do patchNode state node.Parent (string id)
           id
-
-    node.NodeInfo.Name
-    |> sprintf "adding node %s"
-    |> Logger.debug (tag "nodeAdded")
 
     /// parse all visibile pin on this node and
     match parseINode2 clientId nodeId groupId node with
@@ -1245,22 +1255,16 @@ module rec Graph =
         /// communicate the removal of this group to the host service
         state.Commands.Add (RemovePinGroup group)
         /// dispose and remove registrations for group
-        if state.Disposables.ContainsKey groupId then
-          dispose state.Disposables.[groupId]
-          state.Disposables.Remove(groupId) |> ignore
+        do untrackHandlers state groupId
         /// dispose and remove registrations for pin
-        if state.Disposables.ContainsKey pinId then
-          dispose state.Disposables.[pinId]
-          state.Disposables.Remove(pinId) |> ignore
+        do untrackHandlers state pinId
         /// remove the group from the state
         { state with PinGroups = Map.remove groupId state.PinGroups }
       | Some pin ->
         /// communicate the disappearance of this pin to the host service
         state.Commands.Add (RemovePin pin)
         /// dispose and remove registrations for pin
-        if state.Disposables.ContainsKey pinId then
-          dispose state.Disposables.[pinId]
-          state.Disposables.Remove(pinId) |> ignore
+        do untrackHandlers state pinId
         /// remove pin from group
         let group = PinGroup.removePin pin group
         /// update state with updated group
