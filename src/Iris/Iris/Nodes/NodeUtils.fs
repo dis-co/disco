@@ -23,6 +23,7 @@ type PinType =
 type NodeMapping =
   { PinId: PinId
     GroupId: PinGroupId
+    NodePath: NodePath
     Pin: IPin2
     Type: PinType
     Trigger: bool
