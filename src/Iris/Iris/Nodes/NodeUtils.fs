@@ -8,7 +8,7 @@ open VVVV.PluginInterfaces.V2
 open VVVV.PluginInterfaces.V2.Graph
 open VVVV.Core.Logging
 
-// ** PinType
+// * PinType
 
 [<RequireQualifiedAccess>]
 type PinType =
@@ -18,13 +18,15 @@ type PinType =
   | Color
   | String
 
-// ** NodeMapping
+// * NodeMapping
 
 type NodeMapping =
   { PinId: PinId
     GroupId: PinGroupId
+    NodePath: NodePath
     Pin: IPin2
     Type: PinType
+    Trigger: bool
     PinConfiguration: PinConfiguration
     Properties: Property array option
     ChangedNode: IPin2 }
@@ -99,6 +101,11 @@ module Settings =
 
   [<Literal>]
   let PIN_PATH_PROP = "NodePath"
+
+  [<Literal>]
+  let TOP_LEVEL_GROUP_NAME = "VVVV Default Group"
+
+  let TOP_LEVEL_GROUP_ID = IrisId.Parse "d7b5c489-0772-47ac-8433-8d8911aa1cd5"
 
 // * Util
 

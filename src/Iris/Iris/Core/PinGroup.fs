@@ -532,6 +532,11 @@ module PinGroup =
   let setPinsOffline (group: PinGroup) =
     { group with Pins = Map.map (fun _ pin -> Pin.setOnline false pin) group.Pins }
 
+  // ** setPins
+
+  let setPins (pins: Map<PinId,Pin>) group =
+    { group with Pins = pins }
+
   // ** ofPlayer
 
   let ofPlayer (player: CuePlayer) =
@@ -900,6 +905,19 @@ module PinGroupMap =
         |> Option.map (fun pin -> Map.add pin.ClientId pin out)
         |> Option.defaultValue out)
       Map.empty
+      map
+
+  // ** tryFindPin
+
+  let tryFindPin (clientId: ClientId) (groupId: PinGroupId) (pinId: PinId) map =
+    foldGroups
+      (fun out _ (group: PinGroup) ->
+        if Option.isSome out then
+          out
+        elif group.ClientId = clientId && group.Id = groupId then
+          Map.tryFind pinId group.Pins
+        else out)
+      None
       map
 
   // ** tryFindGroup
