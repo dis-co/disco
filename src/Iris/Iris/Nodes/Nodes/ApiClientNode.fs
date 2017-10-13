@@ -31,6 +31,7 @@ module Api =
   type PluginState =
     { Frame: uint64
       Initialized: bool
+      Ready: bool
       Status: ServiceStatus
       ApiClient: IApiClient
       Commands: ResizeArray<StateMachine>
@@ -54,6 +55,7 @@ module Api =
     static member Create () =
       { Frame = 0UL
         Initialized = false
+        Ready = false
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
         Events = new ConcurrentQueue<ClientEvent>()
@@ -142,7 +144,7 @@ module Api =
       Logger.info "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
-          Status = ServiceStatus.Running
+          Status = ServiceStatus.Starting
           ApiClient = client
           Disposables = [ apiobs ] }
     | Left error ->
@@ -259,7 +261,9 @@ module Api =
     |> (StateMachineBatch >> CommandBatch)
     |> plugstate.ApiClient.Append
 
-    plugstate
+    { plugstate with
+        Ready = true
+        Status = ServiceStatus.Running }
 
   // ** stopClient
 
@@ -268,6 +272,7 @@ module Api =
     dispose state.ApiClient
     { state with
         Initialized = false
+        Ready = false
         Events = ConcurrentQueue()
         Status = ServiceStatus.Stopping }
 
@@ -303,7 +308,11 @@ module Api =
   let private processInputs (state: PluginState) =
     if state.InReconnect.[0] then
       stopClient state
-    elif state.InUpdate.[0] && state.Initialized then
+    /// only process commands on the input when:
+    /// - an update was requested upstream
+    /// - the state is Initialized (i.e. the ApiClient was started successfully)
+    /// - the client is Ready (i.e. the snapshot has been received and merged)
+    elif state.InUpdate.[0] && state.Initialized && state.Ready then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
@@ -344,7 +353,7 @@ module Api =
           newstate <- state
         | true, ClientEvent.Snapshot ->
           stateUpdates <- stateUpdates + 1
-          newstate <- mergeGraphState state
+          newstate <- state |> mergeGraphState |> updateState
         | false, _ -> run <- false
 
       /// assign all StateMachine commands to the output
