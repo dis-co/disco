@@ -248,9 +248,7 @@ module Api =
                   else None)
               |> List.append additions
               |> List.iter updates.Add
-        | Some _ ->
-          plugstate.Logger.Log(LogType.Debug, "local and remote apparently are the same")
-          plugstate.Logger.Log(LogType.Debug, string remoteState)
+        | Some _ -> ()                   /// states are currently the same
         | None ->                        /// remote does not yet have this patch
           local
           |> AddPinGroup
