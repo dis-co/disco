@@ -1131,15 +1131,11 @@ module rec Graph =
 
   // ** nodeRemoved
 
+  /// find all mappings that contain the given node path and remove those pins & group if applicable
   let private nodeRemoved (state: PluginState) nodePath =
-    /// remove them all by aggregating a new state
     state.NodeMappings
-    |> Seq.filter (function KeyValue(_, nm) -> nm.NodePath = nodePath)
-    |> Seq.map (function KeyValue(_,nm) -> nm.GroupId,nm.PinId)
-    |> Seq.fold
-        (fun (state: PluginState) (groupId, pinId) ->
-          removePin state groupId pinId)
-        state
+    |> Seq.choose (function KeyValue(_, nm) -> if nm.NodePath = nodePath then Some nm else None)
+    |> Seq.fold removePin state
 
   // ** groupUpdated
 
@@ -1256,28 +1252,28 @@ module rec Graph =
 
   // ** removePin
 
-  let private removePin (state: PluginState) (groupId: PinGroupId) (pinId: PinId) =
-    match Map.tryFind groupId state.PinGroups with
+  let private removePin (state: PluginState) (nm: NodeMapping) =
+    match Map.tryFind nm.GroupId state.PinGroups with
     | Some group ->
-      match Map.tryFind pinId group.Pins with
+      match Map.tryFind nm.PinId group.Pins with
       | Some _ when group.Pins.Count = 1 ->
         /// communicate the removal of this group to the host service
         state.Commands.Add (RemovePinGroup group)
         /// dispose and remove registrations for group
-        do untrackHandlers state groupId
+        do untrackHandlers state nm.GroupId
         /// dispose and remove registrations for pin
-        do untrackHandlers state pinId
+        do untrackHandlers state nm.PinId
         /// remove the group from the state
-        { state with PinGroups = Map.remove groupId state.PinGroups }
+        { state with PinGroups = Map.remove nm.GroupId state.PinGroups }
       | Some pin ->
         /// communicate the disappearance of this pin to the host service
         state.Commands.Add (RemovePin pin)
         /// dispose and remove registrations for pin
-        do untrackHandlers state pinId
+        do untrackHandlers state nm.PinId
         /// remove pin from group
         let group = PinGroup.removePin pin group
         /// update state with updated group
-        { state with PinGroups = Map.add groupId group state.PinGroups }
+        { state with PinGroups = Map.add nm.GroupId group state.PinGroups }
       | _ -> state
     | _ -> state
 
