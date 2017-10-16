@@ -757,6 +757,7 @@ module IrisService =
       // This will fail if there's no ActiveSite set up in state.Project.Config
       // The frontend needs to handle that case
       let! mem = Config.selfMember state.Project.Config
+      do! Config.validateSettings mem serviceOptions.Machine
 
       // ensure that we have all other nodes set-up correctly
       do! Project.updateRemotes state.Project
@@ -836,7 +837,8 @@ module IrisService =
       let! path = Project.checkPath serviceOptions.Machine serviceOptions.ProjectName
 
       let! (state: State) =
-        Asset.loadWithMachine path serviceOptions.Machine
+        serviceOptions.Machine
+        |> Asset.loadWithMachine path
         |> Either.map State.initialize
 
       let! updated =

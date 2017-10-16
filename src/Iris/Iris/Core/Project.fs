@@ -1245,6 +1245,9 @@ module ProjectYaml =
 
 [<RequireQualifiedAccess>]
 module Config =
+  // ** tag
+
+  let private tag (str:string) = String.format "Client.{0}" str
 
   // ** fromFile
 
@@ -1436,8 +1439,35 @@ module Config =
 
   // ** selfMember
 
+  /// Find the current machine in the active site configuration.
   let selfMember (options: IrisConfig) =
     findMember options options.Machine.MachineId
+
+  // ** validateSettings
+
+  /// Cross-check the settins in a given cluster member definition with this machines settings
+  let validateSettings (mem: RaftMember) (machine:IrisMachine): Either<IrisError,unit> =
+    let errorMsg tag a b =
+      sprintf "Member %s: %O is different from Machine %s: %O" tag a tag b
+    let errors = [
+      if mem.IpAddr <> machine.BindAddress then
+        yield errorMsg "IP" mem.IpAddr machine.BindAddress
+      if mem.Port <> machine.RaftPort then
+        yield errorMsg "Raft Port" mem.Port machine.RaftPort
+      if mem.GitPort <> machine.GitPort then
+        yield errorMsg "Git Port" mem.GitPort machine.GitPort
+      if mem.ApiPort <> machine.ApiPort then
+        yield errorMsg "Api Port" mem.ApiPort machine.ApiPort
+      if mem.WsPort <> machine.WsPort then
+        yield errorMsg "WS Post" mem.WsPort machine.WsPort
+    ]
+    if List.isEmpty errors
+    then Either.nothing
+    else
+      errors
+      |> List.fold ((+) "\n" >> (+)) ""
+      |> Error.asProjectError (tag "validateSettings")
+      |> Either.fail
 
   // ** addSitePrivate
 
@@ -2236,6 +2266,8 @@ module Project =
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
+  /// Using the current active site configuration, update git remotes to reflect the configured
+  /// members' details. This allows the service to use `git push` to those peers.
   let updateRemotes (project: IrisProject) = either {
       let! repo = repository project
 
