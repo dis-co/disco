@@ -180,7 +180,8 @@ type ReferencedValue =
   // ** ToOffset
 
   member reference.ToOffset(builder: FlatBufferBuilder) : Offset<ReferencedValueFB> =
-    let id = ReferencedValueFB.CreateIdVector(builder,reference.Id.ToByteArray())
+    let refid = reference.Id
+    let id = ReferencedValueFB.CreateIdVector(builder,refid.ToByteArray())
     ReferencedValueFB.StartReferencedValueFB(builder)
     ReferencedValueFB.AddId(builder, id)
     match reference with
