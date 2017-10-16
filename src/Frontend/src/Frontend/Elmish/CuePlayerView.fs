@@ -77,6 +77,10 @@ module private PrivateHelpers =
 
 open PrivateHelpers
 
+let CueSortableHandle = Sortable.Handle(fun props ->
+  td [Class "width-10"
+      Style [Cursor "move"]] [str props.value])
+
 type [<Pojo>] private CueState =
   { IsOpen: bool
     IsHighlit: bool }
@@ -205,7 +209,7 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.renderInput(10, String.Format("{0:0000}", this.props.CueIndex + 1))
+        td [Class "width-10"] [from CueSortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []]
         this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
           { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
         this.renderInput(20, "00:00:00")
@@ -315,7 +319,11 @@ type CuePlayerView(props) =
                 SelectedCueIndex = this.state.SelectedCueIndex
                 SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
                 SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
-        Some(from CueSortableContainer { items=cueProps; onSortEnd=fun _ -> ()} [])
+        Some(from CueSortableContainer
+              { items = cueProps
+                useDragHandle = true
+                onSortEnd= fun _ -> ()
+              } [])
       | None -> None
     | _ -> None
 
