@@ -192,7 +192,7 @@ type private CueView(props) =
             if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
               this.props.SelectCue this.props.CueGroupIndex 0
             let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
-            { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
+            { this.props.CueList with Groups = Lib.replaceById cueGroup this.props.CueList.Groups }
             |> UpdateCueList |> ClientContext.Singleton.Post)
         ] []
       ]
@@ -335,10 +335,9 @@ type CuePlayerView(props) =
       Class "iris-button"
       Disabled (Option.isNone this.props.CueList)
       OnClick (fun _ ->
-        this.props.CueList
-        |> Option.iter (fun cueList ->
-          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex)
-          |> this.props.Dispatch))
+        match this.props.CueList with
+        | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
+        | None -> ())
     ] [str "Add Cue"]
 
   member this.render() =
