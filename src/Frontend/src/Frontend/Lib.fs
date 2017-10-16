@@ -189,6 +189,7 @@ let loadProject(project: Name, username: UserName, pass: Password, site: NameAnd
         if msg.Contains(ErrorMessages.PROJECT_NO_ACTIVE_CONFIG)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_CLUSTER)
           || msg.Contains(ErrorMessages.PROJECT_MISSING_MEMBER)
+          || msg.Contains(ErrorMessages.PROJECT_MEMBER_MISMATCH)
         then Some msg
         // We cannot deal with the error, just notify it
         else

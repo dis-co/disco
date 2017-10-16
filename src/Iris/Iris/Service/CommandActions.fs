@@ -254,14 +254,13 @@ let startAgent (cfg: IrisMachine) (iris: IIris) =
       let res =
         match input with
         | Shutdown ->
-          let msg = "Disposing service..."
           // TODO: Grab a reference of the http server to dispose it too?
           Async.Start <| async {
             do! Async.Sleep 1000
             dispose iris
             exit 0
           }
-          Right msg
+          Right "Disposing service..."
         | Command.UnloadProject -> iris.UnloadProject() |> Either.map (konst "Project unloaded")
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo iris
