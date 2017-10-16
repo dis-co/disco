@@ -1448,7 +1448,7 @@ module Config =
   /// Cross-check the settins in a given cluster member definition with this machines settings
   let validateSettings (mem: RaftMember) (machine:IrisMachine): Either<IrisError,unit> =
     let errorMsg tag a b =
-      sprintf "Member %s: %O is different from Machine %s: %O" tag a tag b
+      sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
       if mem.IpAddr <> machine.BindAddress then
         yield errorMsg "IP" mem.IpAddr machine.BindAddress
@@ -1465,7 +1465,7 @@ module Config =
     then Either.nothing
     else
       errors
-      |> List.fold ((+) "\n" >> (+)) ""
+      |> List.fold ((+)) ""
       |> Error.asProjectError (tag "validateSettings")
       |> Either.fail
 
