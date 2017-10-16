@@ -184,14 +184,14 @@ let _2of3 (_,x,_) = x
 let _3of3 (_,_,x) = x
 
 let cuesAndListsAndPlayers =
-    let makeCue() =
+    let makeCue i =
         // Create new Cue and CueReference
-        let cue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+        let cue = { Id = IrisId.Create(); Name = name ("Cue " + (string i)); Slices = [||] }
         let cueRef = { Id = IrisId.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
         cue, cueRef
-    let cue1, cueRef1 = makeCue()
-    let cue2, cueRef2 = makeCue()
-    let cue3, cueRef3 = makeCue()
+    let cue1, cueRef1 = makeCue 1
+    let cue2, cueRef2 = makeCue 2
+    let cue3, cueRef3 = makeCue 3
     let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
     let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Groups=[|cueGroup|]}
     let cuePlayer =

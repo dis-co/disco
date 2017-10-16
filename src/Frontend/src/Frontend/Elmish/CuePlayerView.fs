@@ -1,4 +1,4 @@
-module rec Iris.Web.CuePlayerView
+module Iris.Web.CuePlayerView
 
 open System
 open System.Collections.Generic
@@ -12,9 +12,6 @@ open Fable.Helpers.React.Props
 open Elmish.React
 open Types
 open Helpers
-open PrivateHelpers
-
-type RCom = React.ComponentClass<obj>
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
 
@@ -77,6 +74,8 @@ module private PrivateHelpers =
       printfn "CueGroup: %O (%O)" group.Name group.Id
       for cueRef in group.CueRefs do
         printfn "    CueRef: %O" cueRef.Id
+
+open PrivateHelpers
 
 type [<Pojo>] private CueState =
   { IsOpen: bool
@@ -270,6 +269,15 @@ type private CueView(props) =
     then ClientContext.Singleton.PostLocal command
     else ClientContext.Singleton.Post command
 
+let private CueSortableItem = Sortable.Element <| fun props ->
+  com<CueView,_,_> props.value []
+
+let private CueSortableContainer = Sortable.Container <| fun props ->
+    let items =
+      props.items |> Array.mapi (fun i props ->
+        from CueSortableItem { key=props.key; index=i; value=props } [])
+    tbody [] (Array.toList items)
+
 type [<Pojo>] CuePlayerProps =
   { CueList: CueList option
     Model: Model
@@ -291,26 +299,25 @@ type CuePlayerView(props) =
       // TODO: Temporarily assume just one group
       match Seq.tryHead cueList.Groups with
       | Some group ->
-        group.CueRefs
-        |> Array.mapi (fun i cueRef ->
-          com<CueView,_,_>
-            { key = string cueRef.Id
-              Model = this.props.Model
-              State = state
-              Dispatch = this.props.Dispatch
-              Cue = Lib.findCue cueRef.CueId state
-              CueRef = cueRef
-              CueGroup = group
-              CueList = cueList
-              CueIndex = i
-              CueGroupIndex = 0 //this.props.CueGroupIndex
-              SelectedCueIndex = this.state.SelectedCueIndex
-              SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-              SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
-            [])
-        |> Array.toList
-      | None -> []
-    | _ -> []
+        let cueProps =
+          group.CueRefs
+          |> Array.mapi (fun i cueRef ->
+              { key = string cueRef.Id
+                Model = this.props.Model
+                State = state
+                Dispatch = this.props.Dispatch
+                Cue = Lib.findCue cueRef.CueId state
+                CueRef = cueRef
+                CueGroup = group
+                CueList = cueList
+                CueIndex = i
+                CueGroupIndex = 0 //this.props.CueGroupIndex
+                SelectedCueIndex = this.state.SelectedCueIndex
+                SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+                SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
+        Some(from CueSortableContainer { items=cueProps; onSortEnd=fun _ -> ()} [])
+      | None -> None
+    | _ -> None
 
   member this.renderBody() =
     table [Class "iris-table"] [
@@ -326,7 +333,7 @@ type CuePlayerView(props) =
           th [Class "width-5"] [str ""]
         ]
       ]
-      tbody [] (this.renderCues())
+      opt (this.renderCues())
     ]
 
   member this.renderTitleBar() =
