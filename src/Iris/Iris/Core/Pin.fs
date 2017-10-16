@@ -3172,7 +3172,8 @@ type Slices =
   //                           |___/
 
   member slices.ToOffset(builder: FlatBufferBuilder) =
-    let id = SlicesFB.CreatePinIdVector(builder,slices.PinId.ToByteArray())
+    let pid = slices.PinId
+    let id = SlicesFB.CreatePinIdVector(builder,pid.ToByteArray())
     let client =
       Option.map
         (fun (clid: ClientId) -> SlicesFB.CreateClientIdVector(builder,clid.ToByteArray()))

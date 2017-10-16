@@ -15,8 +15,12 @@ open Iris.Net
 
 module Common =
 
-  let mkMachine () =
+  let mkMachine basePort =
     { MachineConfig.create "127.0.0.1" None with
+        RaftPort = port (basePort + 1us)
+        ApiPort = port (basePort + 2us)
+        GitPort = port (basePort + 3us)
+        WsPort = port (basePort + 4us)
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let mkProject (machine: IrisMachine) (site: ClusterConfig) =
@@ -45,25 +49,23 @@ module Common =
       return updated
     }
 
-  let mkMember baseport (machine: IrisMachine) =
+  let mkMember (machine: IrisMachine) =
     { Member.create machine.MachineId with
-        Port = port  baseport
-        ApiPort = port (baseport + 1us)
-        GitPort = port (baseport + 2us)
-        WsPort = port (baseport + 3us) }
+        Port = machine.RaftPort
+        ApiPort = machine.ApiPort
+        GitPort = machine.GitPort
+        WsPort = machine.WsPort }
 
   let mkCluster (num: int) =
     either {
-      let machines = [ for n in 0 .. num - 1 -> mkMachine () ]
-
       let baseport = 4000us
 
-      let members =
-        List.mapi
-          (fun i machine ->
-            let port = baseport + uint16 (i * 1000)
-            mkMember port machine)
-          machines
+      let machines =
+        [ for n in 1 .. num do
+            let port = baseport + uint16 (n * 1000)
+            yield mkMachine port ]
+
+      let members = List.map mkMember machines
 
       let site =
         { ClusterConfig.Default with

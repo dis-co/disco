@@ -21,7 +21,10 @@ let loadProject dispatch site (info: IProjectInfo) =
         |> Promise.map (fun sites ->
           // Ask user to create or select a new config
           Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
-      | None -> Promise.lift ())
+      | None ->
+        dispatch
+        |> displayAvailableProjectsModal
+        |> Promise.lift)
 
 let handleModalResult (modal: IModal) dispatch =
   match modal with
