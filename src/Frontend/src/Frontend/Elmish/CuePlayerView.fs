@@ -322,7 +322,11 @@ type CuePlayerView(props) =
         Some(from CueSortableContainer
               { items = cueProps
                 useDragHandle = true
-                onSortEnd= fun _ -> ()
+                onSortEnd = fun ev ->
+                  // Update the CueList with the new CueRefs order
+                  let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
+                  let newCueList = { cueList with Groups = Lib.replaceById newCueGroup cueList.Groups }
+                  UpdateCueList newCueList |> ClientContext.Singleton.Post
               } [])
       | None -> None
     | _ -> None
