@@ -930,6 +930,12 @@ module State =
   let updateProject (project: IrisProject) (state: State) =
     { state with Project = project }
 
+  // ** onSave
+
+  /// resets dirty flags on pins that are marked as persisted
+  let onSave (state: State) =
+    { state with PinGroups = PinGroupMap.mapPins (Pin.setDirty false) state.PinGroups }
+
   // ** update
 
   let update (state: State) = function
@@ -981,6 +987,8 @@ module State =
     | AddDiscoveredService    service
     | UpdateDiscoveredService service -> addOrUpdateService    service state
     | RemoveDiscoveredService service -> removeService         service state
+
+    | Command AppCommand.Save         -> onSave state
 
     | _ -> state
 

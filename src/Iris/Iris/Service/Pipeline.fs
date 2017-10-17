@@ -40,6 +40,10 @@ module Pipeline =
 
   let private tag (str: string) = String.format "Pipeline.{0}" str
 
+  // ** push
+
+  let push (pipeline: IPipeline<_>) = pipeline.Push
+
   // ** createDisruptor
 
   let private createDisruptor () =
