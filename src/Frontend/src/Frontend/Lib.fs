@@ -282,13 +282,27 @@ let findPin (pinId: PinId) (state: State) : Pin =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFindPin pinId groups with
   | Some pin -> pin
-  | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+  | None ->
+    // failwithf "Cannot find pin with Id %O in GlobalState" pinId
+    // Placeholder pin
+    let id = IrisId.FromGuid(Guid.Empty)
+    Pin.Sink.string pinId (name "MISSING") id id [|"Missing pin"|]
 
 let findPinGroup (pinGroupId: PinGroupId) (state: State) =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFind pinGroupId groups with
   | Some pinGroup -> pinGroup
-  | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+  | None ->
+    // failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+    // Placeholder pin group
+    let id = IrisId.FromGuid(Guid.Empty)
+    { Id = pinGroupId
+      Name = name "MISSING"
+      ClientId = id
+      RefersTo = None
+      Pins = Map.empty
+      Path = None }
+
 
 let findCue (cueId: CueId) (state: State) =
   match Map.tryFind cueId state.Cues with
