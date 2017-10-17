@@ -156,11 +156,7 @@ type private CueView(props) =
           OnClick (fun ev ->
             // Don't stop propagation to allow the item to be selected
             // ev.stopPropagation()
-
-            // TODO: CallCue doesn't update the pins linked to the cue
             CallCue this.props.Cue |> ClientContext.Singleton.Post
-
-            // updatePins this.props.Cue this.props.State
           )
         ] []
       ]
@@ -229,9 +225,11 @@ type private CueView(props) =
                     slices = Some slices
                     model = this.props.Model
                     updater =
-                      Some { new IUpdater with
-                              member __.Update(dragging, valueIndex, value) =
-                                this.updateCueValue(dragging, i, valueIndex, value) }
+                      if Lib.isMissingPin pin
+                      then None
+                      else Some { new IUpdater with
+                                      member __.Update(dragging, valueIndex, value) =
+                                        this.updateCueValue(dragging, i, valueIndex, value) }
                     onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
                     onDragStart = None
                   } []) |> Seq.toList)
@@ -364,6 +362,7 @@ type CuePlayerView(props) =
         distinctRef s1.CueLists s2.CueLists
           || distinctRef s1.CuePlayers s2.CuePlayers
           || distinctRef s1.Cues s2.Cues
+          || distinctRef s1.PinGroups s2.PinGroups
       | None, None -> false
       | _ -> true
 

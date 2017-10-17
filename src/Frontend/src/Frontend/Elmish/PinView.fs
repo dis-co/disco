@@ -142,12 +142,16 @@ type PinView(props) =
       match this.props.slices with
       | Some slices -> slices.Length
       | None -> pin.Slices.Length
+    let isOffline =
+      (pin.Persisted && not pin.Online)
+      // Make placeholder pins (with empty Ids) look as if they were offline
+      || Lib.isMissingPin pin
     let classes =
       ["iris-pin", true
        "iris-pin-output",    this.props.output
        "iris-dirty",         not this.props.output && pin.Dirty
        "iris-non-persisted", not pin.Persisted
-       "iris-offline",       pin.Persisted && not pin.Online
+       "iris-offline",       isOffline
        "iris-pin-selected",  isSelected
        ]
     div [classList classes] [
