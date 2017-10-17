@@ -102,6 +102,7 @@ let init() =
     let context = ClientContext.Singleton
     context.Start()
     |> Promise.iter (fun () ->
+      do Keyboard.registerKeyHandlers context
       context.OnMessage
       |> Observable.add (function
         | ClientMessage.Event(_, LogMsg log) ->
