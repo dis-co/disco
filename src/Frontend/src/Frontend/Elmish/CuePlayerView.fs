@@ -54,7 +54,7 @@ module private PrivateHelpers =
     | ColorSlices (id, client, arr) ->
       ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call AddCue
+  // TODO: Temporary solution, we should actually just call CallCue
   // so the operation is done in the backend
   let updatePins (cue: Cue) (state: State) =
     for slices in cue.Slices do
@@ -170,8 +170,13 @@ type private CueView(props) =
         button [
           Class "iris-button iris-icon icon-play"
           OnClick (fun ev ->
+            // Don't stop propagation to allow the item to be selected
             // ev.stopPropagation()
-            updatePins this.props.Cue this.props.State
+
+            // TODO: CallCue doesn't update the pins linked to the cue
+            CallCue this.props.Cue |> ClientContext.Singleton.Post
+
+            // updatePins this.props.Cue this.props.State
           )
         ] []
       ]
@@ -180,6 +185,7 @@ type private CueView(props) =
         button [
           Class "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
+            // Don't stop propagation to allow the item to be selected
             // ev.stopPropagation()
             Browser.window.alert("Auto call!")
           )
