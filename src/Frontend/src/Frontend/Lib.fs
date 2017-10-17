@@ -248,43 +248,63 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
 }
 
 let updatePinValue(pin: Pin, index: int, value: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
+  let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
+    if i >= 0 && i < ar.Length && box ar.[i] <> v then
+      let newArray = Array.copy ar
+      newArray.[i] <- unbox v
+      Some newArray
+    else None
   let client = if Pin.isPreset pin then Some pin.ClientId else None
   match pin with
   | StringPin pin ->
-    StringSlices(pin.Id, client, updateArray index value pin.Values)
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> StringSlices(pin.Id, client, values))
   | NumberPin pin ->
     let value =
       match value with
       | :? string as v -> box(double v)
       | v -> v
-    NumberSlices(pin.Id, client, updateArray index value pin.Values)
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> NumberSlices(pin.Id, client, values))
   | BoolPin pin ->
     let value =
       match value with
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
-    BoolSlices(pin.Id, client, updateArray index value pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices.ofSlices
-  |> ClientContext.Singleton.Post
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> BoolSlices(pin.Id, client, values))
+  | BytePin   _pin -> failwith "TO BE IMPLEMENTED: Update byte pins"
+  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED: Update enum pins"
+  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
+  |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 
 let findPin (pinId: PinId) (state: State) : Pin =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFindPin pinId groups with
   | Some pin -> pin
-  | None -> failwithf "Cannot find pin with Id %O in GlobalState" pinId
+  | None ->
+    // failwithf "Cannot find pin with Id %O in GlobalState" pinId
+    // Placeholder pin
+    let emptyId = IrisId.FromGuid(Guid.Empty)
+    Pin.Sink.string pinId (name "MISSING") emptyId emptyId [|""|]
 
 let findPinGroup (pinGroupId: PinGroupId) (state: State) =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFind pinGroupId groups with
   | Some pinGroup -> pinGroup
-  | None -> failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+  | None ->
+    // failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
+    // Placeholder pin group
+    let emptyId = IrisId.FromGuid(Guid.Empty)
+    { Id = emptyId
+      Name = name "MISSING"
+      ClientId = emptyId
+      RefersTo = None
+      Pins = Map.empty
+      Path = None }
+
+let isMissingPin (pin: Pin) =
+  pin.PinGroupId.Guid = Guid.Empty
 
 let findCue (cueId: CueId) (state: State) =
   match Map.tryFind cueId state.Cues with
@@ -305,5 +325,5 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // Update the CueList
   let newCueList = { cueList with Groups = replaceById newCueGroup cueList.Groups }
   // Send messages to backend
-  AddCue newCue |> ClientContext.Singleton.Post
-  UpdateCueList newCueList |> ClientContext.Singleton.Post
+  let commands = [AddCue newCue; UpdateCueList newCueList]
+  StateMachineBatch commands |> CommandBatch |> ClientContext.Singleton.Post

@@ -54,21 +54,6 @@ module private PrivateHelpers =
     | ColorSlices (id, client, arr) ->
       ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call CallCue
-  // so the operation is done in the backend
-  let updatePins (cue: Cue) (state: State) =
-    for slices in cue.Slices do
-      let pin = Lib.findPin slices.PinId state
-      match slices with
-      | StringSlices (_, client, values) -> StringSlices(pin.Id, client, values)
-      | NumberSlices (_, client, values) -> NumberSlices(pin.Id, client, values)
-      | BoolSlices   (_, client, values) -> BoolSlices(pin.Id, client, values)
-      | ByteSlices   (_, client, values) -> ByteSlices(pin.Id, client, values)
-      | EnumSlices   (_, client, values) -> EnumSlices(pin.Id, client, values)
-      | ColorSlices  (_, client, values) -> ColorSlices(pin.Id, client, values)
-      |> UpdateSlices.ofSlices
-      |> ClientContext.Singleton.Post
-
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do
       printfn "CueGroup: %O (%O)" group.Name group.Id
@@ -78,8 +63,7 @@ module private PrivateHelpers =
 open PrivateHelpers
 
 let CueSortableHandle = Sortable.Handle(fun props ->
-  td [Class "width-10"
-      Style [Cursor "move"]] [str props.value])
+  td [Class "width-10"; Style [Cursor "move"]] [str props.value])
 
 type [<Pojo>] private CueState =
   { IsOpen: bool
@@ -172,11 +156,7 @@ type private CueView(props) =
           OnClick (fun ev ->
             // Don't stop propagation to allow the item to be selected
             // ev.stopPropagation()
-
-            // TODO: CallCue doesn't update the pins linked to the cue
             CallCue this.props.Cue |> ClientContext.Singleton.Post
-
-            // updatePins this.props.Cue this.props.State
           )
         ] []
       ]
@@ -216,7 +196,7 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        td [Class "width-10"] [from CueSortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []]
+        from CueSortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
         this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
           { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
         this.renderInput(20, "00:00:00")
@@ -245,9 +225,11 @@ type private CueView(props) =
                     slices = Some slices
                     model = this.props.Model
                     updater =
-                      Some { new IUpdater with
-                              member __.Update(dragging, valueIndex, value) =
-                                this.updateCueValue(dragging, i, valueIndex, value) }
+                      if Lib.isMissingPin pin
+                      then None
+                      else Some { new IUpdater with
+                                      member __.Update(dragging, valueIndex, value) =
+                                        this.updateCueValue(dragging, i, valueIndex, value) }
                     onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
                     onDragStart = None
                   } []) |> Seq.toList)
@@ -380,6 +362,7 @@ type CuePlayerView(props) =
         distinctRef s1.CueLists s2.CueLists
           || distinctRef s1.CuePlayers s2.CuePlayers
           || distinctRef s1.Cues s2.Cues
+          || distinctRef s1.PinGroups s2.PinGroups
       | None, None -> false
       | _ -> true
 
