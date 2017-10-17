@@ -194,12 +194,7 @@ let cuesAndListsAndPlayers =
     let cue3, cueRef3 = makeCue 3
     let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
     let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Groups=[|cueGroup|]}
-    let cuePlayer =
-      CuePlayer.create (name "mockcueplayer") [|
-        CuePlayerItem.Headline "Hello."
-        CuePlayerItem.CueList cueList.Id
-        CuePlayerItem.Headline "Bye."
-      |]
+    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
     Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
     Map[cueList.Id, cueList],
     Map[cuePlayer.Id, cuePlayer]
