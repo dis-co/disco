@@ -309,5 +309,5 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // Update the CueList
   let newCueList = { cueList with Groups = replaceById newCueGroup cueList.Groups }
   // Send messages to backend
-  AddCue newCue |> ClientContext.Singleton.Post
-  UpdateCueList newCueList |> ClientContext.Singleton.Post
+  let commands = [AddCue newCue; UpdateCueList newCueList]
+  StateMachineBatch commands |> CommandBatch |> ClientContext.Singleton.Post
