@@ -1447,55 +1447,62 @@ module Pin =
         | ColorSlice (i,slice)  -> ColorPin { data with Values = update data.Values i slice }
         | _                     -> current
 
+  // ** maybeDirty
+
+  let maybeSetDirty (pin:Pin) =
+    if pin.Persisted
+    then Pin.setDirty true pin
+    else pin
+
   // ** setSlices
 
   let setSlices slices = function
     | StringPin data as value ->
       match slices with
       | StringSlices (id,None,arr) when id = data.Id ->
-        StringPin { data with Values = arr }
+        StringPin { data with Values = arr } |> maybeSetDirty
       | StringSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
-        StringPin { data with Values = arr }
+        StringPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
     | NumberPin data as value ->
       match slices with
       | NumberSlices (id,None,arr) when id = data.Id ->
-        NumberPin { data with Values = arr }
+        NumberPin { data with Values = arr } |> maybeSetDirty
       | NumberSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
-        NumberPin { data with Values = arr }
+        NumberPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
     | BoolPin data as value ->
       match slices with
       | BoolSlices (id,None,arr) when id = data.Id ->
-        BoolPin { data with Values = arr }
+        BoolPin { data with Values = arr } |> maybeSetDirty
       | BoolSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
-        BoolPin { data with Values = arr }
+        BoolPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
     | BytePin data as value ->
       match slices with
       | ByteSlices (id,None,arr) when id = data.Id ->
-        BytePin { data with Values = arr }
+        BytePin { data with Values = arr } |> maybeSetDirty
       | ByteSlices (id,Some client, arr) when id = data.Id && client = data.ClientId ->
-        BytePin { data with Values = arr }
+        BytePin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
     | EnumPin data as value ->
       match slices with
       | EnumSlices (id,None,arr) when id = data.Id ->
-        EnumPin { data with Values = arr }
+        EnumPin { data with Values = arr } |> maybeSetDirty
       | EnumSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
-        EnumPin { data with Values = arr }
+        EnumPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
     | ColorPin data as value ->
       match slices with
       | ColorSlices (id,None,arr) when id = data.Id ->
-        ColorPin { data with Values = arr }
+        ColorPin { data with Values = arr } |> maybeSetDirty
       | ColorSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
-        ColorPin { data with Values = arr }
+        ColorPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
 

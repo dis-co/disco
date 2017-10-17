@@ -126,48 +126,8 @@ module IrisService =
   /// Dispatch the current event on the store, thereby globally mutating its state.
   let private stateMutator (store: IAgentStore<IrisState>) =
     fun _ _ -> function
-    | IrisEvent.Append(_, (Command AppCommand.Save as cmd)) when store.State.RaftServer.IsLeader ->
-      /// Since we are saving the project, we can now mark all dirty pins as clean.
-      store.State.Store.State.PinGroups
-      |> PinGroupMap.dirtyPins
-      |> PinGroupMap.mapPins (Pin.setDirty false)
-      |> PinGroupMap.byGroup
-      |> Map.fold
-        (fun out _ group ->
-          group.Pins
-          |> Map.toList
-          |> List.map (snd >> UpdatePin)
-          |> List.append out)
-        List.empty
-      |> StateMachineBatch
-      |> CommandBatch
-      |> store.State.RaftServer.Append
-      /// now dispatch the command normally
-      store.State.Store.Dispatch cmd
-
-    | IrisEvent.Append(_, (UpdateSlices sm as cmd)) when store.State.RaftServer.IsLeader ->
-      /// If this server is leader, create a batched update containing only the pins that are
-      /// 1) persisted
-      /// 2) not yet dirty
-      store.State.Store.State.PinGroups
-      |> PinGroupMap.foldGroups
-        (fun out _ (group: PinGroup) ->
-          List.fold
-            (fun out (pin: PinId) ->
-              match PinGroup.tryFindPin pin group with
-              /// only set pins dirty that are persisted and not already dirty
-              | Some pin when pin.Persisted && not pin.Dirty ->
-                /// build up the list of commands to send in batch
-                UpdatePin (Pin.setDirty true pin) :: out
-              | _ -> out)
-            out
-            (SlicesMap.keys sm))
-        List.empty
-      |> StateMachineBatch
-      |> CommandBatch
-      |> store.State.RaftServer.Append
-      /// now, dispatch the command normally record the state change
-      store.State.Store.Dispatch cmd
+    | IrisEvent.Append(_, Command AppCommand.Undo) -> store.State.Store.Undo()
+    | IrisEvent.Append(_, Command AppCommand.Redo) -> store.State.Store.Redo()
     | IrisEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
     | _ -> ()
 
@@ -566,46 +526,44 @@ module IrisService =
 
   // ** publishEvent
 
-  let private publishEvent (store: IAgentStore<IrisState>) (pipeline: IPipeline<IrisEvent>) cmd =
-    match cmd with
+  let private publishEvent (store: IAgentStore<IrisState>) pipeline = function
     /// globally set the loglevel to the desired value
-    | IrisEvent.Append(Origin.Raft, SetLogLevel level) ->
+    | IrisEvent.Append(Origin.Raft, SetLogLevel level) as cmd ->
       do Logger.setLevel level
-
+      do Pipeline.push pipeline cmd
     /// when a cue player is created, also add a special pingroup for that player
-    | IrisEvent.Append(Origin.Raft, AddCuePlayer player) ->
+    | IrisEvent.Append(Origin.Raft, AddCuePlayer player) as cmd ->
       player
       |> PinGroup.ofPlayer
       |> AddPinGroup
       |> IrisEvent.appendRaft
       |> store.State.Dispatcher.Dispatch
-
+      do Pipeline.push pipeline cmd
     /// when a cue player is deleted, also delete the special pingroup for that player
-    | IrisEvent.Append(Origin.Raft, RemoveCuePlayer player) ->
+    | IrisEvent.Append(Origin.Raft, RemoveCuePlayer player) as cmd ->
       player
       |> PinGroup.ofPlayer
       |> RemovePinGroup
       |> IrisEvent.appendRaft
       |> store.State.Dispatcher.Dispatch
-
+      do Pipeline.push pipeline cmd
     /// when a pin widget is created, also add a special pingroup for that widget
-    | IrisEvent.Append(Origin.Raft, AddPinWidget widget) ->
+    | IrisEvent.Append(Origin.Raft, AddPinWidget widget) as cmd->
       widget
       |> PinGroup.ofWidget
       |> AddPinGroup
       |> IrisEvent.appendRaft
       |> store.State.Dispatcher.Dispatch
-
+      do Pipeline.push pipeline cmd
     /// when a pin widget is deleted, also delete the special pingroup for that widget
-    | IrisEvent.Append(Origin.Raft, RemovePinWidget widget) ->
+    | IrisEvent.Append(Origin.Raft, RemovePinWidget widget) as cmd ->
       widget
       |> PinGroup.ofWidget
       |> RemovePinGroup
       |> IrisEvent.appendRaft
       |> store.State.Dispatcher.Dispatch
-    | _ -> ()
-
-    pipeline.Push cmd
+      do Pipeline.push pipeline cmd
+    | cmd -> do Pipeline.push pipeline cmd
 
   // ** dispatchEvent
 
