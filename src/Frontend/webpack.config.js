@@ -21,7 +21,7 @@ if (isDevServer) {
     console.log("Iris will run in DESIGN MODE (no backend)");
   }
   else {
-    if (!irisPort) {
+    if (!irisHost) {
       throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
     }
     if (!irisPort) {

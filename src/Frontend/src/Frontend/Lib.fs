@@ -15,6 +15,30 @@ open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
 
+let inline replaceById< ^t when ^t : (member Id : IrisId)> (newItem : ^t) (ar: ^t[]) =
+  Array.map (fun (x: ^t) -> if (^t : (member Id : IrisId) newItem) = (^t : (member Id : IrisId) x) then newItem else x) ar
+
+let insertAfter (i: int) (x: 't) (xs: 't[]) =
+  let len = xs.Length
+  if len = 0 (* && i = 0 *) then
+    [|x|]
+  elif i >= len then
+    failwith "Index out of array bounds"
+  elif i < 0 then
+    Array.append [|x|] xs
+  elif i = (len - 1) then
+    Array.append xs [|x|]
+  else
+    let xs2 = Array.zeroCreate<'t> (len + 1)
+    for j = 0 to len do
+      if j <= i then
+        xs2.[j] <- xs.[j]
+      elif j = (i + 1) then
+        xs2.[j] <- x
+      else
+        xs2.[j] <- xs.[j - 1]
+    xs2
+
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
 
@@ -266,3 +290,20 @@ let findCue (cueId: CueId) (state: State) =
   match Map.tryFind cueId state.Cues with
   | Some cue -> cue
   | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
+
+let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+  // TODO: Select the cue list from the widget
+  if cueList.Groups.Length = 0 then
+    failwith "A Cue Group must be added first"
+  // Create new Cue and CueReference
+  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+  // Insert new CueRef in the selected CueGroup after the selected cue
+  let cueGroup = cueList.Groups.[max cueGroupIndex 0]
+  let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
+  let newCueGroup = { cueGroup with CueRefs = insertAfter idx newCueRef cueGroup.CueRefs }
+  // Update the CueList
+  let newCueList = { cueList with Groups = replaceById newCueGroup cueList.Groups }
+  // Send messages to backend
+  AddCue newCue |> ClientContext.Singleton.Post
+  UpdateCueList newCueList |> ClientContext.Singleton.Post

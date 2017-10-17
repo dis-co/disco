@@ -148,23 +148,6 @@ let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[])
     |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
     layout |> saveToLocalStorage StorageKeys.layout
 
-let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
-  // TODO: Select the cue list from the widget
-  if cueList.Groups.Length = 0 then
-    failwith "A Cue Group must be added first"
-  // Create new Cue and CueReference
-  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
-  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-  // Insert new CueRef in the selected CueGroup after the selected cue
-  let cueGroup = cueList.Groups.[max cueGroupIndex 0]
-  let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
-  let newCueGroup = { cueGroup with CueRefs = Array.insertAfter idx newCueRef cueGroup.CueRefs }
-  // Update the CueList
-  let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
-  // Send messages to backend
-  AddCue newCue |> ClientContext.Singleton.Post
-  UpdateCueList newCueList |> ClientContext.Singleton.Post
-
 let [<Literal>] maxLength = 4
 let chop (list: 'a list) =
   match list with
@@ -217,9 +200,6 @@ let update msg model: Model*Cmd<Msg> =
                      previous = history } }, []
   | AddLog log ->
     { model with logs = log::model.logs }, []
-  | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
-    addCue cueList cueGroupIndex cueIndex
-    model, []
   | UpdateLayout layout ->
     saveToLocalStorage StorageKeys.layout layout
     { model with layout = layout }, []

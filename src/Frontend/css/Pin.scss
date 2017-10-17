@@ -14,7 +14,7 @@ $even-row: #EBEBEB;
     // When hightlighted we want a stronger top border
     border-top-width: 2px;
   }
-  &.iris-selected {
+  &.iris-cue-selected {
     background-color: $highlight-lightblue;
     border-color: $highlight-lightblue
   }
@@ -151,7 +151,7 @@ $even-row: #EBEBEB;
 }
 
 // Special colors: selected, dirty, persisted, offline
-.iris-selected {
+.iris-pin-selected {
   .iris-pin-child {
     td {
       background-color: $highlight-lightblue !important;

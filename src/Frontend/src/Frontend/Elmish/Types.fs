@@ -110,7 +110,6 @@ and Msg =
   | RemoveWidget of Guid
   // | AddTab | RemoveTab
   | AddLog of LogEvent
-  | AddCueUI of cueList:CueList * cueGroupIndex:int * cueIndex:int
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option

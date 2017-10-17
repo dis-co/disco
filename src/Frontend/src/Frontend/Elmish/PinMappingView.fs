@@ -82,8 +82,7 @@ type PinHole(props) =
     let classes =
       [ for c in this.props.Classes do
           yield c, true
-        yield "iris-highlight", isHighlit
-        yield "iris-blue", isHighlit]
+        yield "iris-highlight", isHighlit]
     td [classList classes
         Style [PaddingLeft (if this.props.Padding then "5px" else "0")
                Border "2px solid transparent"]
