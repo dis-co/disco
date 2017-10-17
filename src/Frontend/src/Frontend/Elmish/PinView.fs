@@ -148,7 +148,7 @@ type PinView(props) =
        "iris-dirty",         not this.props.output && pin.Dirty
        "iris-non-persisted", not pin.Persisted
        "iris-offline",       pin.Persisted && not pin.Online
-       "iris-selected",      isSelected
+       "iris-pin-selected",  isSelected
        ]
     div [classList classes] [
       table [] [this.RenderRows(rowCount, useRightClick, props.updater)]

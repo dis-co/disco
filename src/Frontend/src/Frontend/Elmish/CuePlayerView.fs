@@ -54,8 +54,8 @@ module private PrivateHelpers =
     | ColorSlices (id, client, arr) ->
       ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the
-  // backend
+  // TODO: Temporary solution, we should actually just call AddCue
+  // so the operation is done in the backend
   let updatePins (cue: Cue) (state: State) =
     for slices in cue.Slices do
       let pin = Lib.findPin slices.PinId state
@@ -171,7 +171,7 @@ type private CueView(props) =
           Class "iris-button iris-icon icon-play"
           OnClick (fun ev ->
             // ev.stopPropagation()
-            updatePins this.props.Cue this.props.State // TODO: Send CallCue event instead
+            updatePins this.props.Cue this.props.State
           )
         ] []
       ]
@@ -258,9 +258,8 @@ type private CueView(props) =
         table [
           classList ["iris-table", true
                      "iris-cue", true
-                     "iris-selected", isSelected
-                     "iris-highlight", isHighlit
-                     "iris-blue", isHighlit]
+                     "iris-cue-selected", isSelected
+                     "iris-highlight", isHighlit]
           Ref (fun el -> selfRef <- Option.ofObj el)
         ] [tbody [] rows]]
     ]
