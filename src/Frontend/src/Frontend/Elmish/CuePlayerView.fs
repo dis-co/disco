@@ -54,21 +54,6 @@ module private PrivateHelpers =
     | ColorSlices (id, client, arr) ->
       ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call CallCue
-  // so the operation is done in the backend
-  let updatePins (cue: Cue) (state: State) =
-    for slices in cue.Slices do
-      let pin = Lib.findPin slices.PinId state
-      match slices with
-      | StringSlices (_, client, values) -> StringSlices(pin.Id, client, values)
-      | NumberSlices (_, client, values) -> NumberSlices(pin.Id, client, values)
-      | BoolSlices   (_, client, values) -> BoolSlices(pin.Id, client, values)
-      | ByteSlices   (_, client, values) -> ByteSlices(pin.Id, client, values)
-      | EnumSlices   (_, client, values) -> EnumSlices(pin.Id, client, values)
-      | ColorSlices  (_, client, values) -> ColorSlices(pin.Id, client, values)
-      |> UpdateSlices.ofSlices
-      |> ClientContext.Singleton.Post
-
   let printCueList (cueList: CueList) =
     for group in cueList.Groups do
       printfn "CueGroup: %O (%O)" group.Name group.Id
