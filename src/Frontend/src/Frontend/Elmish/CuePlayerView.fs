@@ -160,7 +160,8 @@ type private CueView(props) =
         button [
           Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
-            ev.stopPropagation()
+            // Don't stop propagation to allow the item to be selected
+            // ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
         ] []
       ]
@@ -169,7 +170,7 @@ type private CueView(props) =
         button [
           Class "iris-button iris-icon icon-play"
           OnClick (fun ev ->
-            ev.stopPropagation()
+            // ev.stopPropagation()
             updatePins this.props.Cue this.props.State // TODO: Send CallCue event instead
           )
         ] []
@@ -179,8 +180,8 @@ type private CueView(props) =
         button [
           Class "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
-            ev.stopPropagation()
-            // Browser.window.alert("Auto call!")
+            // ev.stopPropagation()
+            Browser.window.alert("Auto call!")
           )
         ] []
       ]
@@ -316,10 +317,10 @@ type CuePlayerView(props) =
                 CueGroup = group
                 CueList = cueList
                 CueIndex = i
-                CueGroupIndex = 0 //this.props.CueGroupIndex
+                CueGroupIndex = 0 // TODO: this.props.CueGroupIndex
                 SelectedCueIndex = this.state.SelectedCueIndex
                 SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-                SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
+                SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
         Some(from CueSortableContainer
               { items = cueProps
                 useDragHandle = true
@@ -328,6 +329,8 @@ type CuePlayerView(props) =
                   let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
                   let newCueList = { cueList with Groups = Lib.replaceById newCueGroup cueList.Groups }
                   UpdateCueList newCueList |> ClientContext.Singleton.Post
+                  // TODO: CueGroupIndex
+                  this.setState({ SelectedCueGroupIndex = 0; SelectedCueIndex = ev.newIndex })
               } [])
       | None -> None
     | _ -> None
@@ -365,14 +368,15 @@ type CuePlayerView(props) =
       (Some (fun _ _ -> this.renderTitleBar()))
       (fun _ _ -> this.renderBody()) this.props.Dispatch this.props.Model
 
-  member this.shouldComponentUpdate(nextProps, nextState, nextContext) =
-    match this.props.Model.state, nextProps.Model.state with
-    | Some s1, Some s2 ->
-      distinctRef s1.CueLists s2.CueLists
-        || distinctRef s1.CuePlayers s2.CuePlayers
-        || distinctRef s1.Cues s2.Cues
-    | None, None -> false
-    | _ -> true
+  member this.shouldComponentUpdate(nextProps: CuePlayerProps, nextState: CuePlayerState) =
+    this.state <> nextState ||
+      match this.props.Model.state, nextProps.Model.state with
+      | Some s1, Some s2 ->
+        distinctRef s1.CueLists s2.CueLists
+          || distinctRef s1.CuePlayers s2.CuePlayers
+          || distinctRef s1.Cues s2.Cues
+      | None, None -> false
+      | _ -> true
 
 let createWidget(id: System.Guid) =
   { new IWidget with
