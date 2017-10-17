@@ -248,31 +248,35 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
 }
 
 let updatePinValue(pin: Pin, index: int, value: obj) =
-  let updateArray (i: int) (v: obj) (ar: 'T[]) =
-    let newArray = Array.copy ar
-    newArray.[i] <- unbox v
-    newArray
+  let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
+    if i >= 0 && i < ar.Length && box ar.[i] <> v then
+      let newArray = Array.copy ar
+      newArray.[i] <- unbox v
+      Some newArray
+    else None
   let client = if Pin.isPreset pin then Some pin.ClientId else None
   match pin with
   | StringPin pin ->
-    StringSlices(pin.Id, client, updateArray index value pin.Values)
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> StringSlices(pin.Id, client, values))
   | NumberPin pin ->
     let value =
       match value with
       | :? string as v -> box(double v)
       | v -> v
-    NumberSlices(pin.Id, client, updateArray index value pin.Values)
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> NumberSlices(pin.Id, client, values))
   | BoolPin pin ->
     let value =
       match value with
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
-    BoolSlices(pin.Id, client, updateArray index value pin.Values)
-  | BytePin   _pin -> failwith "TO BE IMPLEMENTED"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED"
-  |> UpdateSlices.ofSlices
-  |> ClientContext.Singleton.Post
+    tryUpdateArray index value pin.Values
+    |> Option.map (fun values -> BoolSlices(pin.Id, client, values))
+  | BytePin   _pin -> failwith "TO BE IMPLEMENTED: Update byte pins"
+  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED: Update enum pins"
+  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
+  |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 
 let findPin (pinId: PinId) (state: State) : Pin =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
