@@ -252,7 +252,8 @@ type private CueView(props) =
         && this.props.CueIndex = this.props.SelectedCueIndex
     let isHighlit = this.state.IsHighlit
     tr [] [
-      td [ColSpan 8.] [
+      // Set min-width so the row doesn't look too compressed when dragging
+      td [ColSpan 8.; Style [MinWidth 500]] [
         table [
           classList ["iris-table", true
                      "iris-cue", true
