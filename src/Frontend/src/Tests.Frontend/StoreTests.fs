@@ -302,7 +302,7 @@ module Store =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         equals 0 store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist
@@ -318,7 +318,7 @@ module Store =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         equals 0 store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist
@@ -338,7 +338,7 @@ module Store =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         equals 0 store.State.CueLists.Count
         store.Dispatch <| UpdateCueList cuelist
@@ -352,7 +352,7 @@ module Store =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         equals 0 store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist

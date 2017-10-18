@@ -32,7 +32,7 @@ module private PrivateHelpers =
         CueRefs = [||] }
     { Id = IrisId.Create()
       Name = name "MockCueList"
-      Groups = [|cueGroup|] }
+      Items = [| CueGroup cueGroup |] }
     // let cuePlayer =
     //   CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
 
@@ -70,10 +70,14 @@ module private PrivateHelpers =
       |> ClientContext.Singleton.Post
 
   let printCueList (cueList: CueList) =
-    for group in cueList.Groups do
-      printfn "CueGroup: %O (%O)" group.Name group.Id
-      for cueRef in group.CueRefs do
-        printfn "    CueRef: %O" cueRef.Id
+    for item in cueList.Items do
+      match item with
+      | Headline (_, headline) ->
+        printfn "Headline: %s" headline
+      | CueGroup group ->
+        printfn "CueGroup: %O (%O)" group.Name group.Id
+        for cueRef in group.CueRefs do
+          printfn "    CueRef: %O" cueRef.Id
 
 open PrivateHelpers
 
@@ -201,9 +205,16 @@ type private CueView(props) =
             // Change selection if this item was selected
             if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
               this.props.SelectCue this.props.CueGroupIndex 0
-            let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
-            { this.props.CueList with Groups = Lib.replaceById cueGroup this.props.CueList.Groups }
-            |> UpdateCueList |> ClientContext.Singleton.Post)
+            let cueGroup = {
+              this.props.CueGroup with
+                CueRefs =
+                  this.props.CueGroup.CueRefs
+                  |> Array.filter (fun c -> c.Id <> id)
+            }
+            this.props.CueList
+            |> CueList.replace (CueGroup cueGroup)
+            |> UpdateCueList
+            |> ClientContext.Singleton.Post)
         ] []
       ]
     let cueHeader =
@@ -308,8 +319,8 @@ type CuePlayerView(props) =
     match this.props.CueList, this.props.Model.state with
     | Some cueList, Some state ->
       // TODO: Temporarily assume just one group
-      match Seq.tryHead cueList.Groups with
-      | Some group ->
+      match Seq.tryHead cueList.Items with
+      | Some (CueGroup group) ->
         let cueProps =
           group.CueRefs
           |> Array.mapi (fun i cueRef ->
@@ -332,12 +343,12 @@ type CuePlayerView(props) =
                 onSortEnd = fun ev ->
                   // Update the CueList with the new CueRefs order
                   let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
-                  let newCueList = { cueList with Groups = Lib.replaceById newCueGroup cueList.Groups }
+                  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
                   UpdateCueList newCueList |> ClientContext.Singleton.Post
                   // TODO: CueGroupIndex
                   this.setState({ SelectedCueGroupIndex = 0; SelectedCueIndex = ev.newIndex })
               } [])
-      | None -> None
+      | _ -> None
     | _ -> None
 
   member this.renderBody() =

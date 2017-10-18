@@ -486,10 +486,24 @@ table CueGroupFB {
 // | |__| |_| |  __/ |___| \__ \ |_
 //  \____\__,_|\___|_____|_|___/\__|
 
+table HeadlineFB {
+      Id: [ubyte];
+      Content: string;
+}
+
+union CueListItemTypeFB {
+      HeadlineFB,
+      CueGroupFB
+}
+
+table CueListItemFB {
+      Item: CueListItemTypeFB;
+}
+
 table CueListFB {
       Id:   [ubyte];
       Name: string;
-      Groups: [CueGroupFB];
+      Items: [CueListItemFB];
 }
 
 //  _   _

@@ -81,14 +81,25 @@ module CueListInspector =
     |> List.ofArray
     |> ul []
 
-  let private renderItem dispatch (model: Model) (cuegroup: CueGroup) =
+  let private renderGroup dispatch (model: Model) (cuegroup: CueGroup) =
     ul [] [
       li [] [ strong [] [ str (string cuegroup.Name) ] ]
       li [] [ renderCues dispatch model cuegroup ]
     ]
 
+  let private renderHeadline dispatch (model: Model) (text: string) =
+    ul [] [
+      li [] [ ]
+      li [] [  strong [] [ str text ] ]
+    ]
+
+  let private renderItem dispatch (model: Model) (item: CueListItem) =
+    match item with
+    | Headline (_,headline) -> renderHeadline dispatch model headline
+    | CueGroup group -> renderGroup dispatch model group
+
   let private renderItems tag dispatch model (cuelist: CueList) =
-    cuelist.Groups
+    cuelist.Items
     |> Array.map (renderItem dispatch model)
     |> List.ofArray
     |> Common.row tag

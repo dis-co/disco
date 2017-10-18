@@ -293,17 +293,41 @@ let findCue (cueId: CueId) (state: State) =
 
 let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // TODO: Select the cue list from the widget
-  if cueList.Groups.Length = 0 then
+  if cueList.Items.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
-  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
-  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
+  let newCue = {
+    Id = IrisId.Create()
+    Name = name "Untitled"
+    Slices = [||]
+  }
+  // create a reference to the constructed cue
+  let newCueRef = {
+    Id = IrisId.Create()
+    CueId = newCue.Id
+    AutoFollow = -1
+    Duration = -1
+    Prewait = -1
+  }
   // Insert new CueRef in the selected CueGroup after the selected cue
-  let cueGroup = cueList.Groups.[max cueGroupIndex 0]
+  let cueGroup =
+    let idx = max cueGroupIndex 0
+    match cueList.Items.[idx] with
+    | CueGroup group -> group
+    | _ -> failwithf "No group found at index: %d" idx
+
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
-  let newCueGroup = { cueGroup with CueRefs = insertAfter idx newCueRef cueGroup.CueRefs }
+
+  let newCueGroup = {
+    cueGroup with CueRefs = insertAfter idx newCueRef cueGroup.CueRefs
+  }
+
   // Update the CueList
-  let newCueList = { cueList with Groups = replaceById newCueGroup cueList.Groups }
+  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
+
   // Send messages to backend
-  AddCue newCue |> ClientContext.Singleton.Post
-  UpdateCueList newCueList |> ClientContext.Singleton.Post
+  CommandBatch.ofList [
+    AddCue newCue
+    UpdateCueList newCueList
+  ]
+  |> ClientContext.Singleton.Post

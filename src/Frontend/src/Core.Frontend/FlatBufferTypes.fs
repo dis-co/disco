@@ -1060,6 +1060,7 @@ type CueGroupFBConstructor =
   abstract GetRootAsCueGroupFB: buffer: ByteBuffer -> CueGroupFB
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateCueRefsVector: builder: FlatBufferBuilder * Offset<CueReferenceFB> array -> Offset<'a>
+  abstract Create: unit -> CueGroupFB
 
 let CueGroupFB : CueGroupFBConstructor = failwith "JS only"
 
@@ -1156,23 +1157,62 @@ let PinGroupMapFB : PinGroupMapFBConstructor = failwith "JS only"
 // | |__| |_| |  __/ |___| \__ \ |_|  _| | |_) |
 //  \____\__,_|\___|_____|_|___/\__|_|   |____/
 
+type HeadlineFB =
+  abstract Id: int -> byte
+  abstract IdLength: int
+  abstract Content: string
+
+type HeadlineFBConstructor =
+  abstract prototype: HeadlineFB with get, set
+  abstract StartHeadlineFB: builder:FlatBufferBuilder -> unit
+  abstract AddId: builder:FlatBufferBuilder * id:VectorOffset -> unit
+  abstract AddContent: builder:FlatBufferBuilder * content:Offset<'a> -> unit
+  abstract EndHeadlineFB: builder:FlatBufferBuilder -> Offset<HeadlineFB>
+  abstract GetRootAsHeadlineFB: buffer: ByteBuffer -> HeadlineFB
+  abstract CreateIdVector: builder: FlatBufferBuilder * byte array -> VectorOffset
+  abstract Create: unit -> HeadlineFB
+
+let HeadlineFB: HeadlineFBConstructor = failwith "JS onlye"
+
+type CueListItemTypeFB = int
+
+type CueListItemTypeFBConstructor =
+  abstract HeadlineFB: CueListItemTypeFB
+  abstract CueGroupFB: CueListItemTypeFB
+
+let CueListItemTypeFB: CueListItemTypeFBConstructor = failwith "JS only"
+
+type CueListItemFB =
+  abstract Item: 'a -> 'a
+  abstract ItemType: int
+
+type CueListItemFBConstructor =
+  abstract prototype: CueListItemFB with get, set
+  abstract StartCueListItemFB: builder:FlatBufferBuilder -> unit
+  abstract AddItemType: builder:FlatBufferBuilder * tipe:CueListItemTypeFB -> unit
+  abstract AddItem: builder:FlatBufferBuilder * offset:Offset<'a> -> unit
+  abstract GetRootAsCueListItemFB: buffer: ByteBuffer -> CueListItemFB
+  abstract EndCueListItemFB: builder:FlatBufferBuilder -> Offset<CueListItemFB>
+
+let CueListItemFB : CueListItemFBConstructor = failwith "JS only"
+
 type CueListFB =
   abstract Id: int -> byte
   abstract IdLength: int
   abstract Name: string
-  abstract GroupsLength: int
-  abstract Groups: int -> CueGroupFB
+  abstract ItemsLength: int
+  abstract Items: int -> CueListItemFB
 
 type CueListFBConstructor =
   abstract prototype: CueListFB with get, set
   abstract StartCueListFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddGroups: builder: FlatBufferBuilder * groups: Offset<'a> -> unit
+  abstract AddItems: builder: FlatBufferBuilder * items: Offset<'a> -> unit
   abstract EndCueListFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueListFB: buffer: ByteBuffer -> CueListFB
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateGroupsVector: builder: FlatBufferBuilder * Offset<CueGroupFB> array -> Offset<'a>
+  abstract CreateItemsVector: builder: FlatBufferBuilder * Offset<CueListItemFB> array -> Offset<'a>
 
 let CueListFB : CueListFBConstructor = failwith "JS only"
 
