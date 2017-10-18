@@ -1,7 +1,7 @@
-module Iris.Web.CuePlayerView
+[<RequireQualifiedAccess>]
+module Iris.Web.Cues.CueView
 
 open System
-open System.Collections.Generic
 open Iris.Core
 open Iris.Web.Core
 open Fable.Core
@@ -9,74 +9,44 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Elmish.React
+open Iris.Web
 open Types
 open Helpers
 
-let [<Literal>] SELECTION_COLOR = "lightblue"
+// ** Helpers
 
-module private PrivateHelpers =
-  type RCom = React.ComponentClass<obj>
-  let ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
-  let touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../js/Util"
+type private RCom = React.ComponentClass<obj>
+let  private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
+let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../js/Util"
 
-  let tryDic key value (dic: IDictionary<string, obj>) =
-    match dic.TryGetValue(key) with
-    | true, v when v = value -> true
-    | _ -> false
+let private castValue<'a> arr idx (value: obj) =
+  Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
 
-  let cueListMockup() =
-    let cueGroup =
-      { Id = IrisId.Create()
-        Name = name "MockCueGroup"
-        CueRefs = [||] }
-    { Id = IrisId.Create()
-      Name = name "MockCueList"
-      Items = [| CueGroup cueGroup |] }
-    // let cuePlayer =
-    //   CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
+let private updateSlicesValue (index: int) (value: obj) slices: Slices =
+  match slices with
+  | StringSlices(id, client, arr) ->
+    StringSlices(id, client, castValue<string> arr index value)
+  | NumberSlices(id, client, arr) ->
+    NumberSlices(id, client, castValue<double> arr index value)
+  | BoolSlices  (id, client, arr) ->
+    BoolSlices  (id, client, castValue<bool> arr index value)
+  | ByteSlices  (id, client, arr) ->
+    ByteSlices  (id, client, castValue<byte[]> arr index value)
+  | EnumSlices  (id, client, arr) ->
+    EnumSlices  (id, client, castValue<Property> arr index value)
+  | ColorSlices (id, client, arr) ->
+    ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  let private castValue<'a> arr idx (value: obj) =
-    Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
+// ** Types
 
-  let updateSlicesValue (index: int) (value: obj) slices: Slices =
-    match slices with
-    | StringSlices(id, client, arr) ->
-      StringSlices(id, client, castValue<string> arr index value)
-    | NumberSlices(id, client, arr) ->
-      NumberSlices(id, client, castValue<double> arr index value)
-    | BoolSlices  (id, client, arr) ->
-      BoolSlices  (id, client, castValue<bool> arr index value)
-    | ByteSlices  (id, client, arr) ->
-      ByteSlices  (id, client, castValue<byte[]> arr index value)
-    | EnumSlices  (id, client, arr) ->
-      EnumSlices  (id, client, castValue<Property> arr index value)
-    | ColorSlices (id, client, arr) ->
-      ColorSlices (id, client, castValue<ColorSpace> arr index value)
-
-  let printCueList (cueList: CueList) =
-    for item in cueList.Items do
-      match item with
-      | Headline (_, headline) ->
-        printfn "Headline: %s" headline
-      | CueGroup group ->
-        printfn "CueGroup: %O (%O)" group.Name group.Id
-        for cueRef in group.CueRefs do
-          printfn "    CueRef: %O" cueRef.Id
-
-open PrivateHelpers
-
-let CueSortableHandle = Sortable.Handle(fun props ->
-  td [Class "width-10"; Style [Cursor "move"]] [str props.value])
-
-type [<Pojo>] private CueState =
+type [<Pojo>] State =
   { IsOpen: bool
     IsHighlit: bool }
 
-type [<Pojo>] private CueProps =
+type [<Pojo>] Props =
   { key: string
     Model: Model
-    State: State
+    State: Iris.Core.State
     Cue: Cue
     CueRef: CueReference
     CueGroup: CueGroup
@@ -88,8 +58,15 @@ type [<Pojo>] private CueProps =
     SelectCue: int -> int -> unit
     Dispatch: Elmish.Dispatch<Msg> }
 
-type private CueView(props) =
-  inherit React.Component<CueProps, CueState>(props)
+// ** Sortable components
+
+let SortableHandle = Sortable.Handle(fun props ->
+  td [Class "width-10"; Style [Cursor "move"]] [str props.value])
+
+// ** React components
+
+type Component(props) =
+  inherit React.Component<Props, State>(props)
   let mutable selfRef: Browser.Element option = None
   let mutable disposable: IDisposable option = None
   do base.setInitState({ IsOpen = false; IsHighlit = false })
@@ -207,7 +184,7 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        from CueSortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
+        from SortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
         this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
           { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
         this.renderInput(20, "00:00:00")
@@ -272,132 +249,3 @@ type private CueView(props) =
     if local
     then ClientContext.Singleton.PostLocal command
     else ClientContext.Singleton.Post command
-
-let private CueSortableItem = Sortable.Element <| fun props ->
-  com<CueView,_,_> props.value []
-
-let private CueSortableContainer = Sortable.Container <| fun props ->
-    let items =
-      props.items |> Array.mapi (fun i props ->
-        from CueSortableItem { key=props.key; index=i; value=props } [])
-    tbody [] (Array.toList items)
-
-type [<Pojo>] CuePlayerProps =
-  { CueList: CueList option
-    Model: Model
-    Dispatch: Msg->unit
-    Id: Guid
-    Name: string }
-
-type [<Pojo>] CuePlayerState =
-  { SelectedCueGroupIndex: int
-    SelectedCueIndex: int }
-
-type CuePlayerView(props) =
-  inherit React.Component<CuePlayerProps, CuePlayerState>(props)
-  do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
-
-  member this.renderCues() =
-    match this.props.CueList, this.props.Model.state with
-    | Some cueList, Some state ->
-      // TODO: Temporarily assume just one group
-      match Seq.tryHead cueList.Items with
-      | Some (CueGroup group) ->
-        let cueProps =
-          group.CueRefs
-          |> Array.mapi (fun i cueRef ->
-              { key = string cueRef.Id
-                Model = this.props.Model
-                State = state
-                Dispatch = this.props.Dispatch
-                Cue = Lib.findCue cueRef.CueId state
-                CueRef = cueRef
-                CueGroup = group
-                CueList = cueList
-                CueIndex = i
-                CueGroupIndex = 0 // TODO: this.props.CueGroupIndex
-                SelectedCueIndex = this.state.SelectedCueIndex
-                SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-                SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
-        Some(from CueSortableContainer
-              { items = cueProps
-                useDragHandle = true
-                onSortEnd = fun ev ->
-                  // Update the CueList with the new CueRefs order
-                  let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
-                  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
-                  UpdateCueList newCueList |> ClientContext.Singleton.Post
-                  // TODO: CueGroupIndex
-                  this.setState({ SelectedCueGroupIndex = 0; SelectedCueIndex = ev.newIndex })
-              } [])
-      | _ -> None
-    | _ -> None
-
-  member this.renderBody() =
-    table [Class "iris-table"] [
-      thead [Key "header"] [
-        tr [] [
-          th [Class "width-5"] [str ""]
-          th [Class "width-5"] [str ""]
-          th [Class "width-10"] [str "Nr."]
-          th [Class "width-25"] [str "Cue name"]
-          th [Class "width-20"] [str "Delay"]
-          th [Class "width-20"] [str "Trigger"]
-          th [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
-          th [Class "width-5"] [str ""]
-        ]
-      ]
-      opt (this.renderCues())
-    ]
-
-  member this.renderTitleBar() =
-    // TODO: Use a dropdown to choose the player/list
-    button [
-      Class "iris-button"
-      Disabled (Option.isNone this.props.CueList)
-      OnClick (fun _ ->
-        match this.props.CueList with
-        | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
-        | None -> ())
-    ] [str "Add Cue"]
-
-  member this.render() =
-    widget this.props.Id this.props.Name
-      (Some (fun _ _ -> this.renderTitleBar()))
-      (fun _ _ -> this.renderBody()) this.props.Dispatch this.props.Model
-
-  member this.shouldComponentUpdate(nextProps: CuePlayerProps, nextState: CuePlayerState) =
-    this.state <> nextState ||
-      match this.props.Model.state, nextProps.Model.state with
-      | Some s1, Some s2 ->
-        distinctRef s1.CueLists s2.CueLists
-          || distinctRef s1.CuePlayers s2.CuePlayers
-          || distinctRef s1.Cues s2.Cues
-          || distinctRef s1.PinGroups s2.PinGroups
-      | None, None -> false
-      | _ -> true
-
-let createWidget(id: System.Guid) =
-  { new IWidget with
-    member __.Id = id
-    member __.Name = Types.Widgets.CuePlayer
-    member __.InitialLayout =
-      { i = id; ``static`` = false
-        x = 0; y = 0;
-        w = 8; h = 5;
-        minW = 4; maxW = 20
-        minH = 4; maxH = 20 }
-    member this.Render(dispatch, model) =
-      let cueList =
-        model.state |> Option.bind (fun state ->
-          match Seq.tryHead state.CueLists with
-          // TODO: Mock code, create player if it doesn't exist
-          | None -> cueListMockup() |> AddCueList |> ClientContext.Singleton.Post; None
-          | Some kv -> Some kv.Value)
-      com<CuePlayerView,_,_>
-        { CueList = cueList
-          Model = model
-          Dispatch = dispatch
-          Id = this.Id
-          Name = this.Name } []
-  }
