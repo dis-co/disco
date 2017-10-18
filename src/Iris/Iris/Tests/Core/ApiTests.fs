@@ -317,7 +317,7 @@ module ApiTests =
 
         do! waitFor "clientUpdate" clientUpdate
 
-        client.UpdateCueList { cuelist with Groups = [| mkCueGroup() |] }
+        client.UpdateCueList { cuelist with Items = mkCueListItems() }
 
         do! waitFor "clientUpdate" clientUpdate
 

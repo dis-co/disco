@@ -713,14 +713,26 @@ module Generators =
           CueRefs = refs }
     }
 
+  let headlineGen = gen {
+      let! id = idGen
+      let! content = stringGen
+      return Headline (id, content)
+    }
+
+  let cuelistItemGen =
+    Gen.oneof [
+      headlineGen
+      Gen.map CueGroup cueGroupGen
+    ]
+
   let cuelistGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! groups = Gen.arrayOf cueGroupGen
+      let! items = Gen.arrayOf cuelistItemGen
       return
         { Id = id
           Name = nm
-          Groups = groups }
+          Items = items }
     }
 
   //  ____  _       __  __                   _
@@ -764,12 +776,6 @@ module Generators =
   //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
   //                                |___/
 
-  let cuePlayerItemGen =
-    Gen.oneof [
-      Gen.map CuePlayerItem.CueList  idGen
-      Gen.map CuePlayerItem.Headline stringGen
-    ]
-
   let cuePlayerGen = gen {
       let! id = idGen
       let! nm = nameGen
@@ -781,12 +787,12 @@ module Generators =
       let! locked = boolGen
       let! lcd = maybeGen idGen
       let! lcr = maybeGen idGen
-      let! items = Gen.arrayOf cuePlayerItemGen
+      let! cuelist = maybeGen idGen
       return
         { Id = id
           Name = nm
           Locked = locked
-          Items = items
+          CueListId = cuelist
           Selected = sel
           CallId = call
           NextId = next

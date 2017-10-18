@@ -267,7 +267,7 @@ module StoreTests =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist
@@ -282,7 +282,7 @@ module StoreTests =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist
@@ -301,7 +301,7 @@ module StoreTests =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
         store.Dispatch <| UpdateCueList cuelist
@@ -313,7 +313,7 @@ module StoreTests =
         let cuelist =
           { Id = IrisId.Create()
             Name = name "My CueList"
-            Groups = [| |] }
+            Items = [| |] }
 
         expect "Should be 0" 0 id store.State.CueLists.Count
         store.Dispatch <| AddCueList cuelist

@@ -226,7 +226,7 @@ module TestData =
     { Id = IrisId.Create()
       Name = rndname ()
       Locked = rndbool ()
-      Items = Array.empty
+      CueListId = rndopt()
       Selected = index (rand.Next(0,1000))
       CallId = IrisId.Create()
       NextId = IrisId.Create()
@@ -299,8 +299,11 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkPinWidget() |]
 
+  let mkCueListItems() =
+    Array.empty
+
   let mkCueList () : CueList =
-    { Id = IrisId.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
+    { Id = IrisId.Create(); Name = name "PinGroup 3"; Items = mkCueListItems() }
 
   let mkCueLists () =
     [| for n in 0 .. rand.Next(1,20) do

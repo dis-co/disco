@@ -486,10 +486,24 @@ table CueGroupFB {
 // | |__| |_| |  __/ |___| \__ \ |_
 //  \____\__,_|\___|_____|_|___/\__|
 
+table HeadlineFB {
+      Id: [ubyte];
+      Content: string;
+}
+
+union CueListItemTypeFB {
+      HeadlineFB,
+      CueGroupFB
+}
+
+table CueListItemFB {
+      Item: CueListItemTypeFB;
+}
+
 table CueListFB {
       Id:   [ubyte];
       Name: string;
-      Groups: [CueGroupFB];
+      Items: [CueListItemFB];
 }
 
 //  _   _
@@ -637,23 +651,13 @@ table ProjectFB {
 //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
 //                                |___/
 
-enum CuePlayerItemTypeFB:ubyte {
-      CueListFB = 0,
-      HeadlineFB = 1
-}
-
-table CuePlayerItemFB {
-      Type: CuePlayerItemTypeFB;
-      Value: string; 
-}
-
 table CuePlayerFB {
       Id:            [ubyte];
       Name:          string;
       Locked:        bool;
       Selected:      int;
       RemainingWait: int;
-      Items:         [CuePlayerItemFB];
+      CueListId:     [ubyte];
       CallId:        [ubyte];
       NextId:        [ubyte];
       PreviousId:    [ubyte];
