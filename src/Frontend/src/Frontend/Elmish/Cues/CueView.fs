@@ -174,7 +174,8 @@ type Component(props) =
         div [Class "width-5"] [arrowButton]
         div [Class "width-5"] [playButton]
         div [Class "width-10"] [
-          from SortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
+          from SortableHandle
+            { value = String.Format("{0:0000}", this.props.CueIndex + 1) } []
         ]
         div [Class "width-20"] [
           renderInput (unwrap this.props.Cue.Name) (fun txt ->

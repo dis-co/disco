@@ -28,6 +28,17 @@ type [<Pojo>] State =
   { SelectedCueGroupIndex: int
     SelectedCueIndex: int }
 
+// ** Sortable components
+
+let private CueGroupSortableItem = Sortable.Element <| fun props ->
+  com<CueGroupView.Component,_,_> props.value []
+
+let private CueGroupSortableContainer = Sortable.Container <| fun props ->
+    let items =
+      props.items |> Array.mapi (fun i (props: CueGroupView.Props) ->
+        from CueGroupSortableItem { key=props.key; index=i; value=props } [])
+    ul [] (Array.toList items)
+
 // ** Helpers
 
 let private cueListMockup() =
@@ -61,13 +72,13 @@ type Component(props) =
   member this.renderGroups() =
     match this.props.CueList, this.props.Model.state with
     | Some cueList, Some state ->
-      cueList.Items |> Array.mapi (fun i item ->
-        match item with
-        | Headline _ ->
-          printfn "TODO: Render Cue Headlines"
-          None
-        | CueGroup group ->
-          com<CueGroupView.Component,_,_>
+      let itemProps =
+        cueList.Items |> Array.mapi (fun i item ->
+          match item with
+          | Headline _ ->
+            printfn "TODO: Render Cue Headlines"
+            None
+          | CueGroup group ->
             { CG.key = string group.Id
               CG.Dispatch = this.props.Dispatch
               CG.Model = this.props.Model
@@ -79,14 +90,25 @@ type Component(props) =
               CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
               CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
               CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
-            } [] |> Some
-      )
-      |> Array.choose id
-    | _ -> [||]
+            } |> Some)
+        |> Array.choose id
+      from CueGroupSortableContainer
+        { items = itemProps
+          useDragHandle = true
+          onSortEnd = fun ev ->
+            // Update the CueList with the new order
+            let newItems = Sortable.arrayMove(cueList.Items, ev.oldIndex, ev.newIndex)
+            { cueList with Items = newItems }
+            |> UpdateCueList |> ClientContext.Singleton.Post
+            // Select the dragged group
+            { this.state with SelectedCueGroupIndex = ev.newIndex }
+            |> this.setState
+        } [] |> Some
+    | _ -> None
 
   member this.renderBody() =
     ul [] [
-      yield li [Key "header"] [
+      li [Key "header"] [
         // Three columns for arrow icon and play button
         // (The extra column is for the cue offset)
         div [Class "width-5"] [str ""]
@@ -104,7 +126,7 @@ type Component(props) =
         div [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
         div [Class "width-5"] [str ""]
       ]
-      yield! this.renderGroups()
+      opt <| this.renderGroups()
     ]
 
   member this.renderTitleBar() =

@@ -133,7 +133,9 @@ type Component(props) =
         div [Class "width-5"] [arrowButton]
         div [Class "width-5"] [playButton]
         div [Class "width-5"] [] // offset
-        div [Class "width-10"] [str <| String.Format("{0:0000}", this.props.CueGroupIndex + 1)]
+        div [Class "width-10"] [
+          from CueView.SortableHandle
+            { value = String.Format("{0:0000}", this.props.CueGroupIndex + 1) } []]
         div [Class "width-20"] [
           CueView.renderInput (unwrap this.props.CueGroup.Name) (fun txt ->
             assert false
