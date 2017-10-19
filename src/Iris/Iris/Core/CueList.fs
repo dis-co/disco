@@ -411,7 +411,7 @@ module CueList =
     flip map cueList <| fun existing ->
       if existing.Id = item.Id
       then item
-      else item
+      else existing
 
   // ** foldi
 
