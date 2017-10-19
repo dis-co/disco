@@ -1,4 +1,4 @@
-module rec Iris.Web.CuePlayerView
+module Iris.Web.CuePlayerView
 
 open System
 open System.Collections.Generic
@@ -12,9 +12,6 @@ open Fable.Helpers.React.Props
 open Elmish.React
 open Types
 open Helpers
-open PrivateHelpers
-
-type RCom = React.ComponentClass<obj>
 
 let [<Literal>] SELECTION_COLOR = "lightblue"
 
@@ -35,7 +32,7 @@ module private PrivateHelpers =
         CueRefs = [||] }
     { Id = IrisId.Create()
       Name = name "MockCueList"
-      Groups = [|cueGroup|] }
+      Items = [| CueGroup cueGroup |] }
     // let cuePlayer =
     //   CuePlayer.create (name "MockCuePlayer") (Some cueList.Id)
 
@@ -57,26 +54,20 @@ module private PrivateHelpers =
     | ColorSlices (id, client, arr) ->
       ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-  // TODO: Temporary solution, we should actually just call AddCue and the operation be done in the
-  // backend
-  let updatePins (cue: Cue) (state: State) =
-    for slices in cue.Slices do
-      let pin = Lib.findPin slices.PinId state
-      match slices with
-      | StringSlices (_, client, values) -> StringSlices(pin.Id, client, values)
-      | NumberSlices (_, client, values) -> NumberSlices(pin.Id, client, values)
-      | BoolSlices   (_, client, values) -> BoolSlices(pin.Id, client, values)
-      | ByteSlices   (_, client, values) -> ByteSlices(pin.Id, client, values)
-      | EnumSlices   (_, client, values) -> EnumSlices(pin.Id, client, values)
-      | ColorSlices  (_, client, values) -> ColorSlices(pin.Id, client, values)
-      |> UpdateSlices.ofSlices
-      |> ClientContext.Singleton.Post
-
   let printCueList (cueList: CueList) =
-    for group in cueList.Groups do
-      printfn "CueGroup: %O (%O)" group.Name group.Id
-      for cueRef in group.CueRefs do
-        printfn "    CueRef: %O" cueRef.Id
+    for item in cueList.Items do
+      match item with
+      | Headline (_, headline) ->
+        printfn "Headline: %s" headline
+      | CueGroup group ->
+        printfn "CueGroup: %O (%O)" group.Name group.Id
+        for cueRef in group.CueRefs do
+          printfn "    CueRef: %O" cueRef.Id
+
+open PrivateHelpers
+
+let CueSortableHandle = Sortable.Handle(fun props ->
+  td [Class "width-10"; Style [Cursor "move"]] [str props.value])
 
 type [<Pojo>] private CueState =
   { IsOpen: bool
@@ -84,8 +75,8 @@ type [<Pojo>] private CueState =
 
 type [<Pojo>] private CueProps =
   { key: string
+    Model: Model
     State: State
-    UseRightClick: bool
     Cue: Cue
     CueRef: CueReference
     CueGroup: CueGroup
@@ -110,19 +101,29 @@ type private CueView(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pin) -> Some(pin,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pin) -> Some(pin,x,y,true))
-      |> Observable.subscribe(fun (pin,x,y,stopped) ->
+        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
+        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
+      |> Observable.subscribe(fun (pins,x,y,stopped) ->
         let isHighlit, isOpen =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true, this.state.IsOpen
             else
-              if this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = pin.Id) then
-                printfn "The cue already contains this pin"
-              else
-                let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices [|pin.Slices|] }
-                UpdateCue newCue |> ClientContext.Singleton.Post
+              // Filter out output pins and pins already contained by the cue
+              let sliceses =
+                pins |> Seq.choose (fun pin ->
+                  if isOutputPin pin then
+                    None
+                  else
+                    let id = pin.Id
+                    let existing = this.props.Cue.Slices |> Array.exists (fun slices -> slices.PinId = id)
+                    if existing then
+                      printfn "The cue already contains pin %O" id
+                      None
+                    else Some pin.Slices)
+                |> Seq.toArray
+              let newCue = { this.props.Cue with Slices = Array.append this.props.Cue.Slices sliceses }
+              UpdateCue newCue |> ClientContext.Singleton.Post
               false, true
           else
             false, this.state.IsOpen
@@ -139,51 +140,61 @@ type private CueView(props) =
             "html" ==> content
             "onChange" ==> update] []
       | None -> span [] [str content]
-    td [ClassName ("width-" + string widthPercentage)] [content]
+    td [Class ("width-" + string widthPercentage)] [content]
 
   member this.render() =
     let arrowButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+          Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
-            ev.stopPropagation()
+            // Don't stop propagation to allow the item to be selected
+            // ev.stopPropagation()
             this.setState({ this.state with IsOpen = not this.state.IsOpen}))
         ] []
       ]
     let playButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName "iris-button iris-icon icon-play"
+          Class "iris-button iris-icon icon-play"
           OnClick (fun ev ->
-            ev.stopPropagation()
-            updatePins this.props.Cue this.props.State // TODO: Send CallCue event instead
+            // Don't stop propagation to allow the item to be selected
+            // ev.stopPropagation()
+            CallCue this.props.Cue |> ClientContext.Singleton.Post
           )
         ] []
       ]
     let autocallButton =
-      td [ClassName "width-10"; Style [TextAlign "center"]] [
+      td [Class "width-10"; Style [TextAlign "center"]] [
         button [
-          ClassName "iris-button iris-icon icon-autocall"
+          Class "iris-button iris-icon icon-autocall"
           OnClick (fun ev ->
-            ev.stopPropagation()
-            // Browser.window.alert("Auto call!")
+            // Don't stop propagation to allow the item to be selected
+            // ev.stopPropagation()
+            Browser.window.alert("Auto call!")
           )
         ] []
       ]
     let removeButton =
-      td [ClassName "width-5"] [
+      td [Class "width-5"] [
         button [
-          ClassName "iris-button iris-icon icon-control icon-close"
+          Class "iris-button iris-icon icon-control icon-close"
           OnClick (fun ev ->
             ev.stopPropagation()
             let id = this.props.CueRef.Id
             // Change selection if this item was selected
             if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
               this.props.SelectCue this.props.CueGroupIndex 0
-            let cueGroup = { this.props.CueGroup with CueRefs = this.props.CueGroup.CueRefs |> Array.filter (fun c -> c.Id <> id) }
-            { this.props.CueList with Groups = Array.replaceById cueGroup this.props.CueList.Groups }
-            |> UpdateCueList |> ClientContext.Singleton.Post)
+            let cueGroup = {
+              this.props.CueGroup with
+                CueRefs =
+                  this.props.CueGroup.CueRefs
+                  |> Array.filter (fun c -> c.Id <> id)
+            }
+            this.props.CueList
+            |> CueList.replace (CueGroup cueGroup)
+            |> UpdateCueList
+            |> ClientContext.Singleton.Post)
         ] []
       ]
     let cueHeader =
@@ -196,7 +207,7 @@ type private CueView(props) =
       ] [
         arrowButton
         playButton
-        this.renderInput(10, String.Format("{0:0000}", this.props.CueIndex + 1))
+        from CueSortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
         this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
           { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
         this.renderInput(20, "00:00:00")
@@ -215,34 +226,39 @@ type private CueView(props) =
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
             let pinGroup = Lib.findPinGroup pinGroupId this.props.State
             li [Key (string pinGroupId)] [
-              yield div [] [str (unwrap pinGroup.Name)]
-              for i, pin, slices in pinAndSlices do
-                yield com<PinView.PinView,_,_>
+              div [] [str (unwrap pinGroup.Name)]
+              // Use iris-wrap class to cancel the effects of iris-table wrapping CSS rules
+              div [Class "iris-wrap"] (pinAndSlices |> Seq.map (fun (i, pin, slices) ->
+                com<PinView.PinView,_,_>
                   { key = string pin.Id
                     pin = pin
-                    useRightClick = this.props.UseRightClick
+                    output = false
                     slices = Some slices
+                    model = this.props.Model
                     updater =
-                      Some { new IUpdater with
-                              member __.Update(dragging, valueIndex, value) =
-                                this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun () ->  Select.pin this.props.Dispatch pin
-                    onDragStart = None } []
+                      if Lib.isMissingPin pin
+                      then None
+                      else Some { new IUpdater with
+                                      member __.Update(dragging, valueIndex, value) =
+                                        this.updateCueValue(dragging, i, valueIndex, value) }
+                    onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
+                    onDragStart = None
+                  } []) |> Seq.toList)
             ])
           |> Array.toList
-        [cueHeader; tr [] [td [ColSpan 8.] [ul [ClassName "iris-graphview"] pinGroups]]]
+        [cueHeader; tr [] [td [ColSpan 8.] [ul [Class "iris-graphview"] pinGroups]]]
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
     let isHighlit = this.state.IsHighlit
     tr [] [
-      td [ColSpan 8.] [
+      // Set min-width so the row doesn't look too compressed when dragging
+      td [ColSpan 8.; Style [MinWidth 500]] [
         table [
           classList ["iris-table", true
                      "iris-cue", true
-                     "iris-selected", isSelected
-                     "iris-highlight", isHighlit
-                     "iris-blue", isHighlit]
+                     "iris-cue-selected", isSelected
+                     "iris-highlight", isHighlit]
           Ref (fun el -> selfRef <- Option.ofObj el)
         ] [tbody [] rows]]
     ]
@@ -256,6 +272,15 @@ type private CueView(props) =
     if local
     then ClientContext.Singleton.PostLocal command
     else ClientContext.Singleton.Post command
+
+let private CueSortableItem = Sortable.Element <| fun props ->
+  com<CueView,_,_> props.value []
+
+let private CueSortableContainer = Sortable.Container <| fun props ->
+    let items =
+      props.items |> Array.mapi (fun i props ->
+        from CueSortableItem { key=props.key; index=i; value=props } [])
+    tbody [] (Array.toList items)
 
 type [<Pojo>] CuePlayerProps =
   { CueList: CueList option
@@ -276,56 +301,64 @@ type CuePlayerView(props) =
     match this.props.CueList, this.props.Model.state with
     | Some cueList, Some state ->
       // TODO: Temporarily assume just one group
-      match Seq.tryHead cueList.Groups with
-      | Some group ->
-        group.CueRefs
-        |> Array.mapi (fun i cueRef ->
-          com<CueView,_,_>
-            { key = string cueRef.Id
-              State = state
-              Dispatch = this.props.Dispatch
-              UseRightClick = this.props.Model.userConfig.useRightClick
-              Cue = Lib.findCue cueRef.CueId state
-              CueRef = cueRef
-              CueGroup = group
-              CueList = cueList
-              CueIndex = i
-              CueGroupIndex = 0 //this.props.CueGroupIndex
-              SelectedCueIndex = this.state.SelectedCueIndex
-              SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-              SelectCue = fun g c -> this.setState({this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c }) }
-            [])
-        |> Array.toList
-      | None -> []
-    | _ -> []
+      match Seq.tryHead cueList.Items with
+      | Some (CueGroup group) ->
+        let cueProps =
+          group.CueRefs
+          |> Array.mapi (fun i cueRef ->
+              { key = string cueRef.Id
+                Model = this.props.Model
+                State = state
+                Dispatch = this.props.Dispatch
+                Cue = Lib.findCue cueRef.CueId state
+                CueRef = cueRef
+                CueGroup = group
+                CueList = cueList
+                CueIndex = i
+                CueGroupIndex = 0 // TODO: this.props.CueGroupIndex
+                SelectedCueIndex = this.state.SelectedCueIndex
+                SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+                SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
+        Some(from CueSortableContainer
+              { items = cueProps
+                useDragHandle = true
+                onSortEnd = fun ev ->
+                  // Update the CueList with the new CueRefs order
+                  let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
+                  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
+                  UpdateCueList newCueList |> ClientContext.Singleton.Post
+                  // TODO: CueGroupIndex
+                  this.setState({ SelectedCueGroupIndex = 0; SelectedCueIndex = ev.newIndex })
+              } [])
+      | _ -> None
+    | _ -> None
 
   member this.renderBody() =
-    table [ClassName "iris-table"] [
+    table [Class "iris-table"] [
       thead [Key "header"] [
         tr [] [
-          th [ClassName "width-5"] [str ""]
-          th [ClassName "width-5"] [str ""]
-          th [ClassName "width-10"] [str "Nr."]
-          th [ClassName "width-25"] [str "Cue name"]
-          th [ClassName "width-20"] [str "Delay"]
-          th [ClassName "width-20"] [str "Trigger"]
-          th [ClassName "width-10"; Style [TextAlign "center"]] [str "Autocall"]
-          th [ClassName "width-5"] [str ""]
+          th [Class "width-5"] [str ""]
+          th [Class "width-5"] [str ""]
+          th [Class "width-10"] [str "Nr."]
+          th [Class "width-25"] [str "Cue name"]
+          th [Class "width-20"] [str "Delay"]
+          th [Class "width-20"] [str "Trigger"]
+          th [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
+          th [Class "width-5"] [str ""]
         ]
       ]
-      tbody [] (this.renderCues())
+      opt (this.renderCues())
     ]
 
   member this.renderTitleBar() =
     // TODO: Use a dropdown to choose the player/list
     button [
-      ClassName "iris-button"
+      Class "iris-button"
       Disabled (Option.isNone this.props.CueList)
       OnClick (fun _ ->
-        this.props.CueList
-        |> Option.iter (fun cueList ->
-          AddCueUI(cueList, this.state.SelectedCueGroupIndex, this.state.SelectedCueIndex)
-          |> this.props.Dispatch))
+        match this.props.CueList with
+        | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
+        | None -> ())
     ] [str "Add Cue"]
 
   member this.render() =
@@ -333,14 +366,16 @@ type CuePlayerView(props) =
       (Some (fun _ _ -> this.renderTitleBar()))
       (fun _ _ -> this.renderBody()) this.props.Dispatch this.props.Model
 
-  member this.shouldComponentUpdate(nextProps, nextState, nextContext) =
-    match this.props.Model.state, nextProps.Model.state with
-    | Some s1, Some s2 ->
-      distinctRef s1.CueLists s2.CueLists
-        || distinctRef s1.CuePlayers s2.CuePlayers
-        || distinctRef s1.Cues s2.Cues
-    | None, None -> false
-    | _ -> true
+  member this.shouldComponentUpdate(nextProps: CuePlayerProps, nextState: CuePlayerState) =
+    this.state <> nextState ||
+      match this.props.Model.state, nextProps.Model.state with
+      | Some s1, Some s2 ->
+        distinctRef s1.CueLists s2.CueLists
+          || distinctRef s1.CuePlayers s2.CuePlayers
+          || distinctRef s1.Cues s2.Cues
+          || distinctRef s1.PinGroups s2.PinGroups
+      | None, None -> false
+      | _ -> true
 
 let createWidget(id: System.Guid) =
   { new IWidget with
@@ -350,8 +385,8 @@ let createWidget(id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0;
         w = 8; h = 5;
-        minW = 4; maxW = 10;
-        minH = 4; maxH = 10; }
+        minW = 4; maxW = 20
+        minH = 4; maxH = 20 }
     member this.Render(dispatch, model) =
       let cueList =
         model.state |> Option.bind (fun state ->

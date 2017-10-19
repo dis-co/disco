@@ -97,8 +97,12 @@ module SerializationTests =
   let mkCueGroup () : CueGroup =
     { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
 
-  let mkCueGroups () : CueGroup array =
-    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
+  let mkCueListItems () =
+    [| for n in 0 .. rand.Next(1,20) do
+        if n % 2 = 0 then
+          yield CueListItem.createHeadline (sprintf "Hello %d" n)
+        else
+          yield CueGroup (mkCueGroup()) |]
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
@@ -114,7 +118,7 @@ module SerializationTests =
     |> PinGroupMap.ofList
 
   let mkCueList _ : CueList =
-    { Id = IrisId.Create(); Name = name "PinGroup 3"; Groups = mkCueGroups() }
+    { Id = IrisId.Create(); Name = name "PinGroup 3"; Items = mkCueListItems() }
 
   let mkUser _ =
     { Id = IrisId.Create()
@@ -183,7 +187,7 @@ module SerializationTests =
       Locked = false
       Selected = index (rand.Next(0,1000))
       RemainingWait = rand.Next(0,1000)
-      Items = Array.empty
+      CueListId = rndopt ()
       CallId = IrisId.Create()
       NextId = IrisId.Create()
       PreviousId = IrisId.Create()

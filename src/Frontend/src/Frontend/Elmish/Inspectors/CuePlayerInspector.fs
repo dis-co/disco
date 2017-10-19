@@ -18,35 +18,24 @@ open State
 
 module CuePlayerInspector =
 
-  let private renderItem dispatch (model: Model) = function
-    | CuePlayerItem.Headline headline ->
-      li [] [
-        str "Headline:"
-        strong [] [str headline]
-      ]
-    | CuePlayerItem.CueList id ->
-      match model.state with
-      | None ->
-        li [] [
-          str "Cue List:"
-          str (string id + " (orphaned)")
-        ]
-      | Some state ->
-        match Map.tryFind id state.CueLists with
-        | None -> li [] [ str (string id + " (orphaned)") ]
-        | Some cuelist ->
-          li [] [
-            str "Cue List:"
-            Common.link
-              (string cuelist.Name)
-              (fun () -> Select.cuelist dispatch cuelist)
-          ]
+  let orphanedCueList tag id =
+    Common.row tag [ str (string id + " (orphaned)") ]
 
-  let private renderItems tag dispatch (model: Model) (player: CuePlayer) =
-    player.Items
-    |> Array.map (renderItem dispatch model)
-    |> List.ofArray
-    |> fun items -> Common.row tag [ ul [] items ]
+  let renderLink tag dispatch (model:Model) (cuelistId: CueListId) =
+    model.state
+    |> Option.bind (fun state -> Map.tryFind cuelistId state.CueLists)
+    |> function
+    | None -> orphanedCueList tag id
+    | Some cuelist ->
+      Common.row tag [
+        Common.link
+          (string cuelist.Name)
+          (fun () -> Select.cuelist dispatch cuelist)
+      ]
+
+  let renderCueList tag dispatch model = function
+    | Some cuelistId -> renderLink tag dispatch model cuelistId
+    | None -> Common.row tag []
 
   let render dispatch (model: Model) (player: PlayerId) =
     match model.state with
@@ -72,5 +61,5 @@ module CuePlayerInspector =
           Common.stringRow "Previous"      (string player.PreviousId)
           Common.stringRow "Last Called"   (string player.LastCalledId)
           Common.stringRow "Last Caller"   (string player.LastCallerId)
-          renderItems      "Items"          dispatch model player
+          renderCueList    "Cue List"      dispatch model player.CueListId
         ]

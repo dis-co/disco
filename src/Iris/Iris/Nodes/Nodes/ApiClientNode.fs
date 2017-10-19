@@ -31,6 +31,7 @@ module Api =
   type PluginState =
     { Frame: uint64
       Initialized: bool
+      Ready: bool
       Status: ServiceStatus
       ApiClient: IApiClient
       Commands: ResizeArray<StateMachine>
@@ -54,6 +55,7 @@ module Api =
     static member Create () =
       { Frame = 0UL
         Initialized = false
+        Ready = false
         Status = ServiceStatus.Starting
         ApiClient = Unchecked.defaultof<IApiClient>
         Events = new ConcurrentQueue<ClientEvent>()
@@ -105,9 +107,7 @@ module Api =
       match IpAddress.TryParse state.InServerIp.[0] with
       | Right ip ->  ip
       | Left error ->
-        error
-        |> string
-        |> Logger.err "startClient"
+        Logger.err "serverInfo" error.Message
         IPv4Address "127.0.0.1"
 
     let port =
@@ -144,13 +144,11 @@ module Api =
       Logger.info "startClient" "successfully started ApiClient"
       { state with
           Initialized = true
-          Status = ServiceStatus.Running
+          Status = ServiceStatus.Starting
           ApiClient = client
           Disposables = [ apiobs ] }
     | Left error ->
-      error
-      |> string
-      |> Logger.err "startClient"
+      Logger.err "startClient" error.Message
       { state with
           Initialized = true
           Status = ServiceStatus.Failed error }
@@ -167,14 +165,12 @@ module Api =
   // ** updateState
 
   let private updateState (state: PluginState) =
-    Logger.debug "updateState" "updating state output pins with new state"
     state.OutState.[0] <- state.ApiClient.State
     state
 
   // ** updateCommands
 
   let private updateCommands (state: PluginState) =
-    Logger.debug "updateCommands" "update command output pins"
     state.OutCommands.SliceCount <- state.Commands.Count
     state.OutCommands.AssignFrom state.Commands
 
@@ -182,7 +178,7 @@ module Api =
 
   let private mergeGraphState (plugstate: PluginState) =
     let remoteState = plugstate.ApiClient.State.PinGroups
-
+    let updates = ResizeArray()
     for local in plugstate.InPinGroups do
       if not (Util.isNullReference local) then
         match PinGroupMap.tryFindGroup local.ClientId local.Id remoteState with
@@ -240,7 +236,7 @@ module Api =
                   Path = lpath
                   Pins = pins }
               |> UpdatePinGroup
-              |> plugstate.ApiClient.Append
+              |> updates.Add
             else
               /// the list of additions
               let additions = newPins |> Map.toList |> List.map (snd >> AddPin)
@@ -253,44 +249,96 @@ module Api =
                   then rpin |> Pin.setOnline true |> UpdatePin |> Some
                   else None)
               |> List.append additions
-              |> (StateMachineBatch >> CommandBatch)
-              |> plugstate.ApiClient.Append
-
-        | Some _ -> ()                   /// no need to do anything apparently
+              |> List.iter updates.Add
+        | Some _ -> ()                   /// states are currently the same
         | None ->                        /// remote does not yet have this patch
           local
           |> AddPinGroup
-          |> plugstate.ApiClient.Append
-    plugstate
+          |> updates.Add
+
+    updates.ToArray()
+    |> List.ofArray
+    |> CommandBatch.ofList
+    |> plugstate.ApiClient.Append
+
+    { plugstate with
+        Ready = true
+        Status = ServiceStatus.Running }
+
+  // ** stopClient
+
+  let private stopClient (state: PluginState) =
+    List.iter dispose state.Disposables
+    dispose state.ApiClient
+    { state with
+        Initialized = false
+        Ready = false
+        Events = ConcurrentQueue()
+        Status = ServiceStatus.Stopping }
+
+  // ** mergePin
+
+  /// When a local pin gets updated, it contains some default data for fields like Persisted or the
+  /// PinConfiguration, which, if passed along to the service would reset manual configurations done
+  /// by the user. This function merges the local and global versions of the same pin.
+  let private mergePin (state: PluginState) (local: Pin) =
+    let groups = state.ApiClient.State.PinGroups
+    match PinGroupMap.tryFindPin local.ClientId local.PinGroupId local.Id groups with
+    | Some pin ->
+      local
+      |> Pin.setPersisted pin.Persisted
+      |> Pin.setPinConfiguration pin.PinConfiguration
+    | None -> local
+
+  // ** mergeGroup
+
+  /// When a group is updated (i.e. its name changed) we need to ensure that the pin data isn't
+  /// accidentally overwritten with some of the defaults that are parsed from the graph. This function
+  /// merges the local and remote versions of the group.
+  let private mergeGroup (state: PluginState) (local: PinGroup) =
+    let groups = state.ApiClient.State.PinGroups
+    match PinGroupMap.tryFindGroup local.ClientId local.Id groups with
+    | Some group -> PinGroup.setPins group.Pins local
+    | None -> local
 
   // ** processInputs
 
+  /// Process commands at the Commands input and send them to the service. If a reconnect is requested
+  /// by the user, purge all events in the queue and restart the ApiClient
   let private processInputs (state: PluginState) =
     if state.InReconnect.[0] then
-      while state.Events.TryDequeue() |> fst do
-        ignore "purging event"
-      state
-      |> serverInfo
-      |> state.ApiClient.Restart
-      |> ignore
-      state
-    elif state.InUpdate.[0] && state.Initialized then
+      stopClient state
+    /// only process commands on the input when:
+    /// - an update was requested upstream
+    /// - the state is Initialized (i.e. the ApiClient was started successfully)
+    /// - the client is Ready (i.e. the snapshot has been received and merged)
+    elif state.InUpdate.[0] && state.Initialized && state.Ready then
       for slice in 0 .. state.InCommands.SliceCount - 1 do
         let cmd: StateMachine = state.InCommands.[slice]
         if not (Util.isNullReference cmd) then
-          state.ApiClient.Append cmd
+          match cmd with
+          | UpdatePin pin ->
+            pin
+            |> mergePin state
+            |> UpdatePin
+            |> state.ApiClient.Append
+          | UpdatePinGroup group ->
+            group
+            |> mergeGroup state
+            |> UpdatePinGroup
+            |> state.ApiClient.Append
+          | other -> state.ApiClient.Append other
       state
-    else
-      state
+    else state
 
   // ** processMsgs
 
   let private processMsgs (state: PluginState) =
     if state.Events.Count > 0 then
-      let mutable run = true
+      /// TODO: this is nasty and needs to be refactored
       let mutable newstate = state
       let mutable stateUpdates = 0
-      while run do
+      for _ in 0 .. state.Events.Count - 1 do
         match state.Events.TryDequeue() with
         | true, ClientEvent.Registered ->
           newstate <- { newstate with Status = ServiceStatus.Running } |> setStatus
@@ -301,12 +349,11 @@ module Api =
         | true, ClientEvent.Update cmd ->
           stateUpdates <- stateUpdates + 1
           state.Commands.Add cmd
-          newstate <- state
+          newstate <- newstate
         | true, ClientEvent.Snapshot ->
-          Logger.err "ClientEvent.Snapshot" "event received"
           stateUpdates <- stateUpdates + 1
-          newstate <- mergeGraphState state
-        | false, _ -> run <- false
+          newstate <- newstate |> mergeGraphState |> updateState
+        | _ -> ()
 
       /// assign all StateMachine commands to the output
       do updateCommands newstate
@@ -356,7 +403,7 @@ type ApiClientNode() =
   val mutable InCommands: ISpread<StateMachine>
 
   [<DefaultValue>]
-  [<Input("PinGroups")>]
+  [<Input("Local PinGroups")>]
   val mutable InPinGroups: ISpread<PinGroup>
 
   [<DefaultValue>]

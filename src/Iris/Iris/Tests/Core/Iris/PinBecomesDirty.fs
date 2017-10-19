@@ -20,9 +20,9 @@ module PinBecomesDirty =
     testCase "pin becomes dirty" <| fun _ ->
       either {
         use started = new WaitEvent()
-        use batchDone = new WaitEvent()
+        use updateDone = new WaitEvent()
+        use saveDone = new WaitEvent()
         use clientRegistered = new WaitEvent()
-        use clientBatchDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 1
 
@@ -75,7 +75,8 @@ module PinBecomesDirty =
         use oobs1 =
           (function
           | IrisEvent.Started ServiceType.Raft  -> started.Set()
-          | IrisEvent.Append(Origin.Raft, CommandBatch _) -> batchDone.Set()
+          | IrisEvent.Append(_, UpdateSlices _) -> updateDone.Set()
+          | IrisEvent.Append(_, Command AppCommand.Save) -> saveDone.Set()
           | _ -> ())
           |> service1.Subscribe
 
@@ -117,7 +118,6 @@ module PinBecomesDirty =
 
         let handleClient = function
           | ClientEvent.Registered              -> clientRegistered.Set()
-          | ClientEvent.Update (CommandBatch _) -> clientBatchDone.Set()
           | _ -> ()
 
         use clobs = client.Subscribe (handleClient)
@@ -135,8 +135,7 @@ module PinBecomesDirty =
           BoolSlices(toggle.Id, None, [| false |])
         ]
 
-        do! waitFor "batchDone" batchDone
-        do! waitFor "clientBatchDone" clientBatchDone
+        do! waitFor "updateDone" updateDone
 
         expect "Should have marked pin as dirty in service state" true
           (PinGroupMap.tryFindGroup group.ClientId group.Id
@@ -144,13 +143,6 @@ module PinBecomesDirty =
            >> Option.get
            >> Pin.isDirty)
           service1.State.PinGroups
-
-        expect "Should have marked pin as dirty in client state" true
-          (PinGroupMap.tryFindGroup group.ClientId group.Id
-           >> Option.map (PinGroup.findPin toggle.Id)
-           >> Option.get
-           >> Pin.isDirty)
-          client.State.PinGroups
 
         ///  ____
         /// | ___|
@@ -162,8 +154,7 @@ module PinBecomesDirty =
         |> Command
         |> service1.Append
 
-        do! waitFor "batchDone" batchDone
-        do! waitFor "clientBatchDone" clientBatchDone
+        do! waitFor "saveDone" saveDone
 
         expect "Should have marked pin as clean in service state" true
           (PinGroupMap.tryFindGroup group.ClientId group.Id
@@ -172,14 +163,5 @@ module PinBecomesDirty =
            >> Pin.isDirty
            >> not)
           service1.State.PinGroups
-
-        expect "Should have marked pin as clean in client state" true
-          (PinGroupMap.tryFindGroup group.ClientId group.Id
-           >> Option.map (PinGroup.findPin toggle.Id)
-           >> Option.get
-           >> Pin.isDirty
-           >> not)
-          client.State.PinGroups
-
       }
       |> noError

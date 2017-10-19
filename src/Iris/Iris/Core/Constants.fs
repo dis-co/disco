@@ -247,3 +247,6 @@ module Constants =
 
     [<Literal>]
     let PROJECT_MISSING_MEMBER = "Missing member"
+
+    [<Literal>]
+    let PROJECT_MEMBER_MISMATCH = "is different from Machine"

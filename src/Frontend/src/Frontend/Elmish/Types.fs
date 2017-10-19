@@ -110,7 +110,6 @@ and Msg =
   | RemoveWidget of Guid
   // | AddTab | RemoveTab
   | AddLog of LogEvent
-  | AddCueUI of cueList:CueList * cueGroupIndex:int * cueIndex:int
   | UpdateLayout of Layout[]
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
@@ -120,7 +119,7 @@ and Msg =
   | Navigate of InspectorNavigate
 
 and InspectorSelection =
-  | Pin      of Name * ClientId * PinId
+  | Pin      of Name * ClientId * PinId * multiple: bool
   | PinGroup of Name * ClientId * PinGroupId
   | Client   of Name * ClientId
   | Member   of Name * MemberId
@@ -150,6 +149,7 @@ and Model =
     state: State option
     logs: LogEvent list
     history: InspectorHistory
+    selectedPins: Set<PinId>
     userConfig: UserConfig
   }
 

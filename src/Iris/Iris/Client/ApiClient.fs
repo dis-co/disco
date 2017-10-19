@@ -428,7 +428,8 @@ module ApiClient =
             dispose store.State
             store.Update {
               store.State with
-                Client = { client with Status = ServiceStatus.Disposed } }
+                Client = { client with Status = ServiceStatus.Disposed }
+            }
 
           // **** AddCue
 

@@ -18,33 +18,223 @@ open Iris.Serialization
 #if !FABLE_COMPILER && !IRIS_NODES
 
 open SharpYaml.Serialization
+
+#endif
+
+// * CueListItem
+
+type CueListItem =
+  | Headline of IrisId * string
+  | CueGroup of CueGroup
+
+  // ** Id
+
+  member item.Id =
+    match item with
+    | Headline (id, _) -> id
+    | CueGroup group -> group.Id
+
+  // ** FromFB
+
+  static member FromFB(fb: CueListItemFB) =
+    either {
+      match fb.ItemType with
+      #if FABLE_COMPILER
+      | x when x = CueListItemTypeFB.HeadlineFB ->
+        let hfb = fb.Item(HeadlineFB.Create())
+        let! id = Id.decodeId hfb
+        return Headline (id, hfb.Content)
+      | x when x = CueListItemTypeFB.CueGroupFB ->
+        let group = fb.Item(CueGroupFB.Create())
+        let! parsed = CueGroup.FromFB group
+        return CueGroup parsed
+      | x ->
+        return!
+          x
+          |> String.format "Could not parse unknown CueListItemTypeFB {0}"
+          |> Error.asParseError "CueListItem.FromFB"
+          |> Either.fail
+      #else
+      | CueListItemTypeFB.HeadlineFB ->
+        let hlish = fb.Item<HeadlineFB>()
+        if hlish.HasValue then
+          let value = hlish.Value
+          let! id = Id.decodeId value
+          return Headline (id, value.Content)
+        else
+          return!
+            "Could not parse empty HeadlineFB"
+            |> Error.asParseError "CueListItem.FromFB"
+            |> Either.fail
+      | CueListItemTypeFB.CueGroupFB ->
+        let groupish = fb.Item<CueGroupFB>()
+        if groupish.HasValue then
+          let value = groupish.Value
+          let! group = CueGroup.FromFB value
+          return CueGroup group
+        else
+          return!
+            "Could not parse empty CueGroup value"
+            |> Error.asParseError "CueListItem.FromFB"
+            |> Either.fail
+      | x ->
+        return!
+          x
+          |> String.format "Could not parse unknown CueListItemTypeFB {0}"
+          |> Error.asParseError "CueListItem.FromFB"
+          |> Either.fail
+      #endif
+    }
+
+  // ** ToOffset
+
+  member item.ToOffset(builder: FlatBufferBuilder): Offset<CueListItemFB> =
+      match item with
+      | Headline (id, headline) when isNull headline ->
+        let hid = id.ToByteArray()
+        let idoffset = HeadlineFB.CreateIdVector(builder, hid)
+        HeadlineFB.StartHeadlineFB(builder)
+        HeadlineFB.AddId(builder, idoffset)
+        let offset = HeadlineFB.EndHeadlineFB(builder)
+        CueListItemFB.StartCueListItemFB(builder)
+        CueListItemFB.AddItemType(builder, CueListItemTypeFB.HeadlineFB)
+        #if FABLE_COMPILER
+        CueListItemFB.AddItem(builder, offset)
+        #else
+        CueListItemFB.AddItem(builder, offset.Value)
+        #endif
+        CueListItemFB.EndCueListItemFB(builder)
+      | Headline (id,headline) ->
+        let hid = id.ToByteArray()
+        let idoffset = HeadlineFB.CreateIdVector(builder, hid)
+        let headline = builder.CreateString headline
+        HeadlineFB.StartHeadlineFB(builder)
+        HeadlineFB.AddId(builder, idoffset)
+        HeadlineFB.AddContent(builder,headline)
+        let offset = HeadlineFB.EndHeadlineFB(builder)
+        CueListItemFB.StartCueListItemFB(builder)
+        CueListItemFB.AddItemType(builder, CueListItemTypeFB.HeadlineFB)
+        #if FABLE_COMPILER
+        CueListItemFB.AddItem(builder, offset)
+        #else
+        CueListItemFB.AddItem(builder, offset.Value)
+        #endif
+        CueListItemFB.EndCueListItemFB(builder)
+      | CueGroup group ->
+        let offset = Binary.toOffset builder group
+        CueListItemFB.StartCueListItemFB(builder)
+        CueListItemFB.AddItemType(builder, CueListItemTypeFB.CueGroupFB)
+        #if FABLE_COMPILER
+        CueListItemFB.AddItem(builder, offset)
+        #else
+        CueListItemFB.AddItem(builder, offset.Value)
+        #endif
+        CueListItemFB.EndCueListItemFB(builder)
+
+  // ** ToBytes
+
+  member item.ToBytes() = Binary.buildBuffer item
+
+  // ** FromBytes
+
+  static member FromBytes(bytes: byte[]) : Either<IrisError,CueListItem> =
+    bytes
+    |> Binary.createBuffer
+    |> CueListItemFB.GetRootAsCueListItemFB
+    |> CueListItem.FromFB
+
+  // ** ToYaml
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  member item.ToYaml() = CueListItemYaml.From(item)
+
+  // ** FromYaml
+
+  static member FromYaml(yaml: CueListItemYaml) : Either<IrisError,CueListItem> =
+    yaml.ToCueListItem()
+
+  #endif
+
+// * CueListItemYaml
+
+#if !FABLE_COMPILER && !IRIS_NODES
+
+type HeadlineYaml() =
+  [<DefaultValue>] val mutable Id:string
+  [<DefaultValue>] val mutable Headline:string
+
+  static member From id headline =
+    let yaml = HeadlineYaml()
+    yaml.Id <- string id
+    yaml.Headline <- headline
+    yaml
+
+type CueListItemYaml() =
+  [<DefaultValue>] val mutable Type:string
+  [<DefaultValue>] val mutable Value:obj
+
+  // ** From
+
+  static member From(item: CueListItem) =
+    let yaml = CueListItemYaml()
+    match item with
+    | Headline (id, str) ->
+      yaml.Type <- "Headline"
+      yaml.Value <- HeadlineYaml.From id str
+    | CueGroup group ->
+      yaml.Type <- "CueGroup"
+      yaml.Value <- CueGroupYaml.From group
+    yaml
+
+  // ** ToCueListItem
+
+  member yaml.ToCueListItem() =
+    either {
+      match yaml.Type with
+      | "Headline" ->
+        let headline = yaml.Value :?> HeadlineYaml
+        let! id = IrisId.TryParse headline.Id
+        return CueListItem.Headline (id, headline.Headline)
+      | "CueGroup" ->
+        let yaml = yaml.Value :?> CueGroupYaml
+        let! group = yaml.ToCueGroup()
+        return CueListItem.CueGroup group
+      | other ->
+        return!
+          other
+          |> String.format "Unsuppored CueList item type: {0}"
+          |> Error.asParseError "CueListItem.ToCueListItem"
+          |> Either.fail
+    }
+
 // * CueList Yaml
 
 type CueListYaml() =
-  [<DefaultValue>] val mutable Id   : string
-  [<DefaultValue>] val mutable Name : string
-  [<DefaultValue>] val mutable Groups : CueGroupYaml array
+  [<DefaultValue>] val mutable Id: string
+  [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable Items: CueListItemYaml array
 
   static member From(cuelist: CueList) =
     let yaml = CueListYaml()
     yaml.Id   <- string cuelist.Id
     yaml.Name <- unwrap cuelist.Name
-    yaml.Groups <- Array.map Yaml.toYaml cuelist.Groups
+    yaml.Items <- Array.map Yaml.toYaml cuelist.Items
     yaml
 
   member yaml.ToCueList() =
     either {
-      let! groups =
-        let arr = Array.zeroCreate yaml.Groups.Length
+      let! items =
+        let arr = Array.zeroCreate yaml.Items.Length
         Array.fold
-          (fun (m: Either<IrisError,int * CueGroup array>) cueish -> either {
+          (fun (m: Either<IrisError,int * CueListItem array>) itemish -> either {
             let! (i, arr) = m
-            let! (group: CueGroup) = Yaml.fromYaml cueish
-            arr.[i] <- group
+            let! (item: CueListItem) = Yaml.fromYaml itemish
+            arr.[i] <- item
             return (i + 1, arr)
           })
           (Right (0, arr))
-          yaml.Groups
+          yaml.Items
         |> Either.map snd
 
       let! id = IrisId.TryParse yaml.Id
@@ -52,18 +242,26 @@ type CueListYaml() =
       return {
         Id = id
         Name = name yaml.Name
-        Groups = groups
+        Items = items
       }
     }
 
 #endif
 
+// * CueListItem module
+
+module CueListItem =
+
+  // ** createHeadline
+
+  let inline createHeadline str = Headline(IrisId.Create(), str)
+
 // * CueList
 
 type CueList =
-  { Id     : CueListId
-    Name   : Name
-    Groups : CueGroup array }
+  { Id: CueListId
+    Name: Name
+    Items: CueListItem array }
 
   // ** ToOffset
 
@@ -77,12 +275,12 @@ type CueList =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = CueListFB.CreateIdVector(builder,self.Id.ToByteArray())
     let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
-    let groupoffsets = Array.map (Binary.toOffset builder) self.Groups
-    let groupsvec = CueListFB.CreateGroupsVector(builder, groupoffsets)
+    let itemoffsets = Array.map (Binary.toOffset builder) self.Items
+    let itemsvec = CueListFB.CreateItemsVector(builder, itemoffsets)
     CueListFB.StartCueListFB(builder)
     CueListFB.AddId(builder, id)
     Option.iter (fun value -> CueListFB.AddName(builder, value)) name
-    CueListFB.AddGroups(builder, groupsvec)
+    CueListFB.AddItems(builder, itemsvec)
     CueListFB.EndCueListFB(builder)
 
   // ** ToBytes
@@ -93,33 +291,31 @@ type CueList =
 
   static member FromFB(fb: CueListFB) : Either<IrisError, CueList> =
     either {
-      let! groups =
-        let arr = Array.zeroCreate fb.GroupsLength
+      let! items =
+        let arr = Array.zeroCreate fb.ItemsLength
         Array.fold
-          (fun (m: Either<IrisError,int * CueGroup array>) _ -> either {
-            let! (i, groups) = m
+          (fun (m: Either<IrisError,int * CueListItem array>) _ -> either {
+            let! (i, items) = m
 
             #if FABLE_COMPILER
 
-            let! group =
-              fb.Groups(i)
-              |> CueGroup.FromFB
+            let! item =
+              fb.Items(i) |> CueListItem.FromFB
             #else
 
-            let! group =
-              let value = fb.Groups(i)
+            let! item =
+              let value = fb.Items(i)
               if value.HasValue then
-                value.Value
-                |> CueGroup.FromFB
+                CueListItem.FromFB value.Value
               else
-                "Could not parse empty CueGroupFB"
+                "Could not parse empty CueListItemFB"
                 |> Error.asParseError "CueList.FromFB"
                 |> Either.fail
 
             #endif
 
-            groups.[i] <- group
-            return (i + 1, groups)
+            items.[i] <- item
+            return (i + 1, items)
           })
           (Right (0, arr))
           arr
@@ -130,7 +326,7 @@ type CueList =
       return {
         Id = id
         Name = name fb.Name
-        Groups = groups
+        Items = items
       }
     }
 
@@ -202,6 +398,53 @@ type CueList =
 
 module CueList =
 
+  // ** map
+
+  /// execute a function on each of the CueLists items and return the updated CueList
+  let map (f: CueListItem -> CueListItem) (cueList:CueList) =
+    { cueList with Items = Array.map f cueList.Items }
+
+  // ** replace
+
+  /// replace a CueGroup
+  let replace (item:CueListItem) cueList =
+    flip map cueList <| fun existing ->
+      if existing.Id = item.Id
+      then item
+      else item
+
+  // ** foldi
+
+  let foldi (f: 'm -> int -> CueListItem -> 'm) (state:'m) (cueList:CueList) =
+    cueList.Items
+    |> Array.fold (fun (s,i) t -> (f s i t, i + 1)) (state,0)
+    |> fst
+
+  // ** fold
+
+  let fold (f: 'm -> CueListItem -> 'm) (state:'m) (cueList:CueList) =
+    Array.fold f state cueList.Items
+
+  // ** insertAfter
+
+  let insertAfter (idx:int) (item:CueListItem) cueList =
+    let folder (state:ResizeArray<_>) curr existing =
+      if curr = idx + 1
+      then
+        state.Add item
+        state.Add existing
+        state
+      else
+        state.Add existing
+        state
+    let items = foldi folder (ResizeArray()) cueList
+    { cueList with Items = items.ToArray() }
+
+  // ** filterItems
+
+  let filterItems (f: CueListItem -> bool) (cueList:CueList) =
+    { cueList with Items = Array.filter f cueList.Items }
+
   // ** filter
 
   let filter (f: CueList -> bool) (map: Map<CueListId,CueList>) =
@@ -211,9 +454,9 @@ module CueList =
 
   let contains (cueId: CueId) (cuelist: CueList) =
     Array.fold
-      (fun result group ->
-        if not result
-        then CueGroup.contains cueId group
-        else result)
+      (fun result -> function
+        | CueGroup group when not result ->
+          CueGroup.contains cueId group
+        | _ -> result)
       true
-      cuelist.Groups
+      cuelist.Items

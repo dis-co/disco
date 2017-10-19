@@ -101,6 +101,11 @@ let widget (id: Guid) (name: string)
     ]
   ]
 
+let isOutputPin (pin: Pin) =
+  match pin.PinConfiguration with
+  | PinConfiguration.Preset | PinConfiguration.Sink -> false
+  | PinConfiguration.Source -> true
+
 module Promise =
   open Fable.PowerPack
 
@@ -122,37 +127,10 @@ module Promise =
       p2 |> iterOrError (onSuccess resolve Choice2Of2) (onError reject)
     )
 
-module Array =
-  open Iris.Core
-
-  let inline replaceById< ^t when ^t : (member Id : IrisId)> (newItem : ^t) (ar: ^t[]) =
-    Array.map (fun (x: ^t) -> if (^t : (member Id : IrisId) newItem) = (^t : (member Id : IrisId) x) then newItem else x) ar
-
-  let insertAfter (i: int) (x: 't) (xs: 't[]) =
-    let len = xs.Length
-    if len = 0 (* && i = 0 *) then
-      [|x|]
-    elif i >= len then
-      failwith "Index out of array bounds"
-    elif i < 0 then
-      Array.append [|x|] xs
-    elif i = (len - 1) then
-      Array.append xs [|x|]
-    else
-      let xs2 = Array.zeroCreate<'t> (len + 1)
-      for j = 0 to len do
-        if j <= i then
-          xs2.[j] <- xs.[j]
-        elif j = (i + 1) then
-          xs2.[j] <- x
-        else
-          xs2.[j] <- xs.[j - 1]
-      xs2
-
 module Select =
 
-  let pin dispatch (pin: Pin) =
-    (pin.Name, pin.ClientId, pin.Id)
+  let pin dispatch multiple (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id, multiple)
     |> InspectorSelection.Pin
     |> Msg.SelectElement
     |> dispatch

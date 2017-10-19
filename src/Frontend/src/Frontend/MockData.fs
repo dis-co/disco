@@ -59,8 +59,10 @@ let inline forcePin<'T> gid pk (values: obj seq) =
 
 let makeNumberPin clientId gid pid pk values =
     let values = forcePin<double> gid pk values
+    if rnd.Next() % 2 = 0
     // Using Sink makes the pin editable
-    Pin.Sink.number pid (name pk) gid clientId values |> Some
+    then Pin.Sink.number pid (name pk) gid clientId values |> Some
+    else Pin.Source.number pid (name pk) gid clientId values |> Some
 
 let makeTogglePin clientId gid pid pk values =
     let values = forcePin<bool> gid pk values
@@ -88,12 +90,11 @@ let makePin gid clientId pk (v: obj) =
         | Some(:? string) -> makeStringPin clientId gid pid pk ar
         | _ -> failParse gid pk ar
     | :? float as x ->
-        // Using Sink makes the pin editable
-        Pin.Sink.number pid (name pk) gid clientId [|x|] |> Some
+        makeNumberPin clientId gid pid pk [|x|]
     | :? bool as x ->
-        Pin.Sink.toggle pid (name pk) gid clientId [|x|] |> Some
+        makeTogglePin clientId gid pid pk [|x|]
     | :? string as x ->
-        Pin.Sink.string pid (name pk) gid clientId [|x|] |> Some
+        makeStringPin clientId gid pid pk [|x|]
     | x -> failParse gid pk x
 
 let pinGroups clientId : seq<PinGroup> =
@@ -183,22 +184,17 @@ let _2of3 (_,x,_) = x
 let _3of3 (_,_,x) = x
 
 let cuesAndListsAndPlayers =
-    let makeCue() =
+    let makeCue i =
         // Create new Cue and CueReference
-        let cue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
+        let cue = { Id = IrisId.Create(); Name = name ("Cue " + (string i)); Slices = [||] }
         let cueRef = { Id = IrisId.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
         cue, cueRef
-    let cue1, cueRef1 = makeCue()
-    let cue2, cueRef2 = makeCue()
-    let cue3, cueRef3 = makeCue()
+    let cue1, cueRef1 = makeCue 1
+    let cue2, cueRef2 = makeCue 2
+    let cue3, cueRef3 = makeCue 3
     let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
-    let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Groups=[|cueGroup|]}
-    let cuePlayer =
-      CuePlayer.create (name "mockcueplayer") [|
-        CuePlayerItem.Headline "Hello."
-        CuePlayerItem.CueList cueList.Id
-        CuePlayerItem.Headline "Bye."
-      |]
+    let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Items=[| CueGroup cueGroup |]}
+    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
     Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
     Map[cueList.Id, cueList],
     Map[cuePlayer.Id, cuePlayer]

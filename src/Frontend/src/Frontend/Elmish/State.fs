@@ -21,7 +21,10 @@ let loadProject dispatch site (info: IProjectInfo) =
         |> Promise.map (fun sites ->
           // Ask user to create or select a new config
           Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
-      | None -> Promise.lift ())
+      | None ->
+        dispatch
+        |> displayAvailableProjectsModal
+        |> Promise.lift)
 
 let handleModalResult (modal: IModal) dispatch =
   match modal with
@@ -99,6 +102,7 @@ let init() =
     let context = ClientContext.Singleton
     context.Start()
     |> Promise.iter (fun () ->
+      do Keyboard.registerKeyHandlers context
       context.OnMessage
       |> Observable.add (function
         | ClientMessage.Event(_, LogMsg log) ->
@@ -132,6 +136,7 @@ let init() =
       logs = []
       #endif
       history = { index = 0; selected = InspectorSelection.Nothing; previous = [] }
+      selectedPins = Set.empty
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -142,23 +147,6 @@ let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[])
     |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
     |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
     layout |> saveToLocalStorage StorageKeys.layout
-
-let private addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
-  // TODO: Select the cue list from the widget
-  if cueList.Groups.Length = 0 then
-    failwith "A Cue Group must be added first"
-  // Create new Cue and CueReference
-  let newCue = { Id = IrisId.Create(); Name = name "Untitled"; Slices = [||] }
-  let newCueRef = { Id = IrisId.Create(); CueId = newCue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-  // Insert new CueRef in the selected CueGroup after the selected cue
-  let cueGroup = cueList.Groups.[max cueGroupIndex 0]
-  let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
-  let newCueGroup = { cueGroup with CueRefs = Array.insertAfter idx newCueRef cueGroup.CueRefs }
-  // Update the CueList
-  let newCueList = { cueList with Groups = Array.replaceById newCueGroup cueList.Groups }
-  // Send messages to backend
-  AddCue newCue |> ClientContext.Singleton.Post
-  UpdateCueList newCueList |> ClientContext.Singleton.Post
 
 let [<Literal>] maxLength = 4
 let chop (list: 'a list) =
@@ -201,15 +189,17 @@ let update msg model: Model*Cmd<Msg> =
   | SelectElement selected ->
     let history = selected :: model.history.previous |> chop
     { model with
+        selectedPins =
+          match selected with
+          | InspectorSelection.Pin(_,_,pinId,multi) ->
+            if multi then Set.add pinId model.selectedPins else set [pinId]
+          | _ -> model.selectedPins
         history = { model.history with
                      selected = selected
                      index = 0
                      previous = history } }, []
   | AddLog log ->
     { model with logs = log::model.logs }, []
-  | AddCueUI(cueList, cueGroupIndex, cueIndex) ->
-    addCue cueList cueGroupIndex cueIndex
-    model, []
   | UpdateLayout layout ->
     saveToLocalStorage StorageKeys.layout layout
     { model with layout = layout }, []

@@ -249,6 +249,8 @@ module Persistence =
         then File.delete path
         else Either.nothing
 
+    | Command AppCommand.Save -> save state
+
     //   ___  _   _
     //  / _ \| |_| |__   ___ _ __
     // | | | | __| '_ \ / _ \ '__|
