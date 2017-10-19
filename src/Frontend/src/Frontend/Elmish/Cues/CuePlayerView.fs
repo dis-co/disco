@@ -13,18 +13,9 @@ open Iris.Web
 open Types
 open Helpers
 
-// ** Helpers
-
-let private cueListMockup() =
-  let cueGroup =
-    { Id = IrisId.Create()
-      Name = name "MockCueGroup"
-      CueRefs = [||] }
-  { Id = IrisId.Create()
-    Name = name "MockCueList"
-    Items = [| CueGroup cueGroup |] }
-
 // ** Types
+
+type CG = CueGroupView.Props
 
 type [<Pojo>] Props =
   { CueList: CueList option
@@ -37,16 +28,16 @@ type [<Pojo>] State =
   { SelectedCueGroupIndex: int
     SelectedCueIndex: int }
 
-// ** Sortable components
+// ** Helpers
 
-let private CueSortableItem = Sortable.Element <| fun props ->
-  com<CueView.Component,_,_> props.value []
-
-let private CueSortableContainer = Sortable.Container <| fun props ->
-    let items =
-      props.items |> Array.mapi (fun i (props: CueView.Props) ->
-        from CueSortableItem { key=props.key; index=i; value=props } [])
-    tbody [] (Array.toList items)
+let private cueListMockup() =
+  let cueGroup =
+    { Id = IrisId.Create()
+      Name = name "MockCueGroup"
+      CueRefs = [||] }
+  { Id = IrisId.Create()
+    Name = name "MockCueList"
+    Items = [| CueGroup cueGroup |] }
 
 // ** React components
 
@@ -54,69 +45,75 @@ type Component(props) =
   inherit React.Component<Props, State>(props)
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
 
-  member this.renderCues() =
+  member this.renderGroups() =
     match this.props.CueList, this.props.Model.state with
     | Some cueList, Some state ->
-      // TODO: Temporarily assume just one group
-      match Seq.tryHead cueList.Items with
-      | Some (CueGroup group) ->
-        let cueProps: CueView.Props[] =
-          group.CueRefs
-          |> Array.mapi (fun i cueRef ->
-              { key = string cueRef.Id
-                Model = this.props.Model
-                State = state
-                Dispatch = this.props.Dispatch
-                Cue = Lib.findCue cueRef.CueId state
-                CueRef = cueRef
-                CueGroup = group
-                CueList = cueList
-                CueIndex = i
-                CueGroupIndex = 0 // TODO: this.props.CueGroupIndex
-                SelectedCueIndex = this.state.SelectedCueIndex
-                SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-                SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c }) })
-        Some(from CueSortableContainer
-              { items = cueProps
-                useDragHandle = true
-                onSortEnd = fun ev ->
-                  // Update the CueList with the new CueRefs order
-                  let newCueGroup = { group with CueRefs = Sortable.arrayMove(group.CueRefs, ev.oldIndex, ev.newIndex) }
-                  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
-                  UpdateCueList newCueList |> ClientContext.Singleton.Post
-                  // TODO: CueGroupIndex
-                  this.setState({ SelectedCueGroupIndex = 0; SelectedCueIndex = ev.newIndex })
-              } [])
-      | _ -> None
-    | _ -> None
+      cueList.Items |> Array.mapi (fun i item ->
+        match item with
+        | Headline _ ->
+          printfn "TODO: Render Cue Headlines"
+          None
+        | CueGroup group ->
+          com<CueGroupView.Component,_,_>
+            { CG.key = string group.Id
+              CG.Dispatch = this.props.Dispatch
+              CG.Model = this.props.Model
+              CG.State = state
+              CG.CueGroup = group
+              CG.CueList = cueList
+              CG.CueGroupIndex = i
+              CG.SelectedCueIndex = this.state.SelectedCueIndex
+              CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+              CG.SelectGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
+              CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
+            } [] |> Some
+      )
+      |> Array.choose id
+    | _ -> [||]
 
   member this.renderBody() =
-    table [Class "iris-table"] [
-      thead [Key "header"] [
-        tr [] [
-          th [Class "width-5"] [str ""]
-          th [Class "width-5"] [str ""]
-          th [Class "width-10"] [str "Nr."]
-          th [Class "width-25"] [str "Cue name"]
-          th [Class "width-20"] [str "Delay"]
-          th [Class "width-20"] [str "Trigger"]
-          th [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
-          th [Class "width-5"] [str ""]
-        ]
+    ul [] [
+      yield li [Key "header"] [
+        // Three columns for arrow icon and play button
+        // (The extra column is for the cue offset)
+        div [Class "width-5"] [str ""]
+        div [Class "width-5"] [str ""]
+        div [Class "width-5"] [str ""]
+
+        // Central columns: position, name...
+        div [Class "width-10"] [str "Nr."]
+        div [Class "width-20"] [str "Cue name"]
+        div [Class "width-20"] [str "Delay"]
+        div [Class "width-20"] [str "Trigger"]
+
+        // Other buttons: autocall, remove
+        // TODO: Add copy button
+        div [Class "width-10"; Style [TextAlign "center"]] [str "Autocall"]
+        div [Class "width-5"] [str ""]
       ]
-      opt (this.renderCues())
+      yield! this.renderGroups()
     ]
 
   member this.renderTitleBar() =
-    // TODO: Use a dropdown to choose the player/list
-    button [
-      Class "iris-button"
-      Disabled (Option.isNone this.props.CueList)
-      OnClick (fun _ ->
-        match this.props.CueList with
-        | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
-        | None -> ())
-    ] [str "Add Cue"]
+    // TODO: Use a dropdown to choose the CueList
+    div [] [
+      button [
+        Class "iris-button"
+        Disabled (Option.isNone this.props.CueList)
+        OnClick (fun _ ->
+          match this.props.CueList with
+          | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
+          | None -> ())
+      ] [str "Add Cue"]
+      button [
+        Class "iris-button"
+        Disabled (Option.isNone this.props.CueList)
+        OnClick (fun _ ->
+          match this.props.CueList with
+          | Some cueList -> failwith "TODO: Add group"
+          | None -> ())
+      ] [str "Add Group"]
+    ]
 
   member this.render() =
     widget this.props.Id this.props.Name

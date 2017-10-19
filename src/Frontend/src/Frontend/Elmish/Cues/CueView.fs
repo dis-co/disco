@@ -16,8 +16,8 @@ open Helpers
 // ** Helpers
 
 type private RCom = React.ComponentClass<obj>
-let  private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
-let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../js/Util"
+let  private ContentEditable: RCom = importDefault "../../../js/widgets/ContentEditable"
+let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
 
 let private castValue<'a> arr idx (value: obj) =
   Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
@@ -61,7 +61,7 @@ type [<Pojo>] Props =
 // ** Sortable components
 
 let SortableHandle = Sortable.Handle(fun props ->
-  td [Class "width-10"; Style [Cursor "move"]] [str props.value])
+  div [Style [Cursor "move"]] [str props.value])
 
 // ** React components
 
@@ -108,89 +108,84 @@ type Component(props) =
           this.setState({ this.state with IsOpen = isOpen; IsHighlit = isHighlit })
       ) |> Some
 
-  member this.renderInput(widthPercentage: int, content: string, ?update: string->unit) =
-    let content =
-      match update with
-      | Some update ->
-        from ContentEditable
-          %["tagName" ==> "span"
-            "html" ==> content
-            "onChange" ==> update] []
-      | None -> span [] [str content]
-    td [Class ("width-" + string widthPercentage)] [content]
+  member this.renderInput(content: string, ?update: string->unit) =
+    match update with
+    | Some update ->
+      from ContentEditable
+        %["tagName" ==> "span"
+          "html" ==> content
+          "onChange" ==> update] []
+    | None -> span [] [str content]
 
   member this.render() =
     let arrowButton =
-      td [Class "width-5"] [
-        button [
-          Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
-          OnClick (fun ev ->
-            // Don't stop propagation to allow the item to be selected
-            // ev.stopPropagation()
-            this.setState({ this.state with IsOpen = not this.state.IsOpen}))
-        ] []
-      ]
+      button [
+        Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          this.setState({ this.state with IsOpen = not this.state.IsOpen}))
+      ] []
     let playButton =
-      td [Class "width-5"] [
-        button [
-          Class "iris-button iris-icon icon-play"
-          OnClick (fun ev ->
-            // Don't stop propagation to allow the item to be selected
-            // ev.stopPropagation()
-            CallCue this.props.Cue |> ClientContext.Singleton.Post
-          )
-        ] []
-      ]
+      button [
+        Class "iris-button iris-icon icon-play"
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          CallCue this.props.Cue |> ClientContext.Singleton.Post
+        )
+      ] []
     let autocallButton =
-      td [Class "width-10"; Style [TextAlign "center"]] [
-        button [
-          Class "iris-button iris-icon icon-autocall"
-          OnClick (fun ev ->
-            // Don't stop propagation to allow the item to be selected
-            // ev.stopPropagation()
-            Browser.window.alert("Auto call!")
-          )
-        ] []
-      ]
+      button [
+        Class "iris-button iris-icon icon-autocall"
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          Browser.window.alert("Auto call!")
+        )
+      ] []
     let removeButton =
-      td [Class "width-5"] [
-        button [
-          Class "iris-button iris-icon icon-control icon-close"
-          OnClick (fun ev ->
-            ev.stopPropagation()
-            let id = this.props.CueRef.Id
-            // Change selection if this item was selected
-            if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
-              this.props.SelectCue this.props.CueGroupIndex 0
-            let cueGroup = {
-              this.props.CueGroup with
-                CueRefs =
-                  this.props.CueGroup.CueRefs
-                  |> Array.filter (fun c -> c.Id <> id)
-            }
-            this.props.CueList
-            |> CueList.replace (CueGroup cueGroup)
-            |> UpdateCueList
-            |> ClientContext.Singleton.Post)
-        ] []
-      ]
+      button [
+        Class "iris-button iris-icon icon-control icon-close"
+        OnClick (fun ev ->
+          ev.stopPropagation()
+          let id = this.props.CueRef.Id
+          // Change selection if this item was selected
+          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+            this.props.SelectCue this.props.CueGroupIndex 0
+          let cueGroup = {
+            this.props.CueGroup with
+              CueRefs =
+                this.props.CueGroup.CueRefs
+                |> Array.filter (fun c -> c.Id <> id)
+          }
+          this.props.CueList
+          |> CueList.replace (CueGroup cueGroup)
+          |> UpdateCueList
+          |> ClientContext.Singleton.Post)
+      ] []
     let cueHeader =
-      tr [
+      div [
         OnClick (fun _ ->
           Select.cue this.props.Dispatch this.props.Cue
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex
             || this.props.CueIndex <> this.props.SelectedCueIndex then
             this.props.SelectCue this.props.CueGroupIndex this.props.CueIndex  )
       ] [
-        arrowButton
-        playButton
-        from SortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
-        this.renderInput(25, unwrap this.props.Cue.Name, (fun txt ->
-          { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
-        this.renderInput(20, "00:00:00")
-        this.renderInput(20, "shortkey")
-        autocallButton
-        removeButton
+        div [Class "width-5"] [] // offset
+        div [Class "width-5"] [arrowButton]
+        div [Class "width-5"] [playButton]
+        div [Class "width-10"] [
+          from SortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
+        ]
+        div [Class "width-20"] [
+          this.renderInput(unwrap this.props.Cue.Name, (fun txt ->
+            { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
+        ]
+        div [Class "width-20"] [this.renderInput("00:00:00")]
+        div [Class "width-20"] [this.renderInput("shortkey")]
+        div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
+        div [Class "width-5"] [removeButton]
       ]
     let rows =
       if not this.state.IsOpen then
@@ -223,22 +218,18 @@ type Component(props) =
                   } []) |> Seq.toList)
             ])
           |> Array.toList
-        [cueHeader; tr [] [td [ColSpan 8.] [ul [Class "iris-graphview"] pinGroups]]]
+        [cueHeader; div [] [ul [Class "iris-graphview"] pinGroups]]
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
     let isHighlit = this.state.IsHighlit
-    tr [] [
-      // Set min-width so the row doesn't look too compressed when dragging
-      td [ColSpan 8.; Style [MinWidth 500]] [
-        table [
-          classList ["iris-table", true
-                     "iris-cue", true
-                     "iris-cue-selected", isSelected
-                     "iris-highlight", isHighlit]
-          Ref (fun el -> selfRef <- Option.ofObj el)
-        ] [tbody [] rows]]
-    ]
+    // Set min-width so the row doesn't look too compressed when dragging
+    div [
+      classList ["iris-cue", true
+                 "iris-cue-selected", isSelected
+                 "iris-highlight", isHighlit]
+      Ref (fun el -> selfRef <- Option.ofObj el)
+    ] rows
 
   member this.updateCueValue(local: bool, sliceIndex: int, valueIndex: int, value: obj) =
     let newSlices =

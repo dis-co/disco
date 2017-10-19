@@ -113,17 +113,18 @@
     vertical-align: middle;
   }
   tr { width: 100% }
-  th.width-5, td.width-5 { width: 5% }
-  th.width-10, td.width-10 { width: 10% }
-  th.width-15, td.width-15 { width: 15% }
-  th.width-20, td.width-20 { width: 20% }
-  th.width-25, td.width-25 { width: 25% }
-  th.width-30, td.width-30 { width: 30% }
 }
 
 .iris-wrap {
   white-space: normal;
 }
+
+.width-5  { display: inline-block; width: 5% }
+.width-10 { display: inline-block; width: 10% }
+.width-15 { display: inline-block; width: 15% }
+.width-20 { display: inline-block; width: 20% }
+.width-25 { display: inline-block; width: 20% }
+.width-30 { display: inline-block; width: 30% }
 
 // FLEX --------------------
 
