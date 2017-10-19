@@ -178,7 +178,8 @@ type Component(props) =
         ]
         div [Class "width-20"] [
           renderInput (unwrap this.props.Cue.Name) (fun txt ->
-            { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post)
+            { this.props.Cue with Name = name txt }
+            |> UpdateCue |> ClientContext.Singleton.Post)
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]

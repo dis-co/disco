@@ -39,6 +39,19 @@ let private cueListMockup() =
     Name = name "MockCueList"
     Items = [| CueGroup cueGroup |] }
 
+let addGroup (cueList: CueList) (cueGroupIndex: int) =
+  let cueGroup =
+    { Id = IrisId.Create()
+      Name = name "Untitled"
+      CueRefs = [||] }
+  // TODO: This doesn't work when selecting the last group is selected
+  // CueList.insertAfter cueGroupIndex (CueGroup cueGroup) cueList
+  let newItems =
+    Lib.insertAfter cueGroupIndex (CueGroup cueGroup) cueList.Items
+  { cueList with Items = newItems }
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
+
 // ** React components
 
 type Component(props) =
@@ -64,7 +77,7 @@ type Component(props) =
               CG.CueGroupIndex = i
               CG.SelectedCueIndex = this.state.SelectedCueIndex
               CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-              CG.SelectGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
+              CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
               CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
             } [] |> Some
       )
@@ -102,17 +115,19 @@ type Component(props) =
         Disabled (Option.isNone this.props.CueList)
         OnClick (fun _ ->
           match this.props.CueList with
-          | Some cueList -> Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
+          | Some cueList -> addGroup cueList this.state.SelectedCueGroupIndex
           | None -> ())
-      ] [str "Add Cue"]
+      ] [str "Add Group"]
       button [
         Class "iris-button"
         Disabled (Option.isNone this.props.CueList)
         OnClick (fun _ ->
           match this.props.CueList with
-          | Some cueList -> failwith "TODO: Add group"
+          | Some cueList ->
+            // TODO: Open group automatically
+            Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
           | None -> ())
-      ] [str "Add Group"]
+      ] [str "Add Cue"]
     ]
 
   member this.render() =

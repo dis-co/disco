@@ -27,7 +27,7 @@ type [<Pojo>] Props =
     CueGroupIndex: int
     SelectedCueIndex: int
     SelectedCueGroupIndex: int
-    SelectGroup: int -> unit
+    SelectCueGroup: int -> unit
     SelectCue: int -> int -> unit
   }
 
@@ -113,7 +113,7 @@ type Component(props) =
           ev.stopPropagation()
           // Change selection if this item was selected
           if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
-            this.props.SelectGroup 0
+            this.props.SelectCueGroup 0
           let gid = this.props.CueGroup.Id
           this.props.CueList |> CueList.filterItems (function
             | CueGroup g -> g.Id <> gid
@@ -128,7 +128,7 @@ type Component(props) =
         classList ["iris-cuegroup-selected", isSelected]
         OnClick (fun _ ->
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex then
-            this.props.SelectGroup this.props.CueGroupIndex  )
+            this.props.SelectCueGroup this.props.CueGroupIndex  )
       ] [
         div [Class "width-5"] [arrowButton]
         div [Class "width-5"] [playButton]
@@ -136,6 +136,7 @@ type Component(props) =
         div [Class "width-10"] [str <| String.Format("{0:0000}", this.props.CueGroupIndex + 1)]
         div [Class "width-20"] [
           CueView.renderInput (unwrap this.props.CueGroup.Name) (fun txt ->
+            assert false
             { this.props.CueGroup with Name = name txt }
             |> CueView.updateCueGroup this.props.CueList)
         ]
