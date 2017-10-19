@@ -69,9 +69,9 @@ let private renderCues (state: State) (props: Props) =
         useDragHandle = true
         onSortEnd = fun ev ->
           // Update the CueList with the new CueRefs order
-          let newCueGroup = { props.CueGroup with CueRefs = Sortable.arrayMove(props.CueGroup.CueRefs, ev.oldIndex, ev.newIndex) }
-          let newCueList = CueList.replace (CueGroup newCueGroup) props.CueList
-          UpdateCueList newCueList |> ClientContext.Singleton.Post
+          let newCueRefs = Sortable.arrayMove(props.CueGroup.CueRefs, ev.oldIndex, ev.newIndex)
+          { props.CueGroup with CueRefs = newCueRefs }
+          |> CueView.updateCueGroup props.CueList
           props.SelectCue props.CueGroupIndex ev.newIndex
       } []
 
@@ -82,4 +82,69 @@ type Component(props) =
   do base.setInitState({ IsOpen = false })
 
   member this.render() =
-    renderCues this.state this.props
+    let arrowButton =
+      button [
+        Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          this.setState({ this.state with IsOpen = not this.state.IsOpen}))
+      ] []
+    let playButton =
+      button [
+        Class "iris-button iris-icon icon-play"
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          Browser.window.alert("Call cue group!"))
+      ] []
+    let autocallButton =
+      button [
+        Class "iris-button iris-icon icon-autocall"
+        OnClick (fun ev ->
+          // Don't stop propagation to allow the item to be selected
+          // ev.stopPropagation()
+          Browser.window.alert("Auto call cue group!"))
+      ] []
+    let removeButton =
+      button [
+        Class "iris-button iris-icon icon-control icon-close"
+        OnClick (fun ev ->
+          ev.stopPropagation()
+          // Change selection if this item was selected
+          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+            this.props.SelectGroup 0
+          let gid = this.props.CueGroup.Id
+          this.props.CueList |> CueList.filterItems (function
+            | CueGroup g -> g.Id <> gid
+            | _ -> false)
+          |> UpdateCueList
+          |> ClientContext.Singleton.Post)
+      ] []
+    let isSelected =
+      this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+    let groupHeader =
+      div [
+        classList ["iris-cuegroup-selected", isSelected]
+        OnClick (fun _ ->
+          if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex then
+            this.props.SelectGroup this.props.CueGroupIndex  )
+      ] [
+        div [Class "width-5"] [arrowButton]
+        div [Class "width-5"] [playButton]
+        div [Class "width-5"] [] // offset
+        div [Class "width-10"] [str <| String.Format("{0:0000}", this.props.CueGroupIndex + 1)]
+        div [Class "width-20"] [
+          CueView.renderInput (unwrap this.props.CueGroup.Name) (fun txt ->
+            { this.props.CueGroup with Name = name txt }
+            |> CueView.updateCueGroup this.props.CueList)
+        ]
+        div [Class "width-20"] [str "00:00:00"]
+        div [Class "width-20"] [str "shortkey"]
+        div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
+        div [Class "width-5"] [removeButton]
+      ]
+    div [Class "iris-cuegroup"]
+      (if not this.state.IsOpen
+       then [groupHeader]
+       else [groupHeader; renderCues this.state this.props])

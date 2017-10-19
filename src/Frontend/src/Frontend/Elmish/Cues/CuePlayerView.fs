@@ -82,7 +82,7 @@ type Component(props) =
 
         // Central columns: position, name...
         div [Class "width-10"] [str "Nr."]
-        div [Class "width-20"] [str "Cue name"]
+        div [Class "width-20"] [str "Name"]
         div [Class "width-20"] [str "Delay"]
         div [Class "width-20"] [str "Trigger"]
 

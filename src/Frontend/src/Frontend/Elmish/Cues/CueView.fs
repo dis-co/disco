@@ -37,6 +37,17 @@ let private updateSlicesValue (index: int) (value: obj) slices: Slices =
   | ColorSlices (id, client, arr) ->
     ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
+let renderInput (content: string) (update: string->unit) =
+  from ContentEditable
+    %["tagName" ==> "span"
+      "html" ==> content
+      "onChange" ==> update] []
+
+let updateCueGroup cueList cueGroup =
+  CueList.replace (CueGroup cueGroup) cueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
+
 // ** Types
 
 type [<Pojo>] State =
@@ -108,20 +119,11 @@ type Component(props) =
           this.setState({ this.state with IsOpen = isOpen; IsHighlit = isHighlit })
       ) |> Some
 
-  member this.renderInput(content: string, ?update: string->unit) =
-    match update with
-    | Some update ->
-      from ContentEditable
-        %["tagName" ==> "span"
-          "html" ==> content
-          "onChange" ==> update] []
-    | None -> span [] [str content]
-
   member this.render() =
     let arrowButton =
       button [
         Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
-        OnClick (fun ev ->
+        OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
           this.setState({ this.state with IsOpen = not this.state.IsOpen}))
@@ -129,7 +131,7 @@ type Component(props) =
     let playButton =
       button [
         Class "iris-button iris-icon icon-play"
-        OnClick (fun ev ->
+        OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
           CallCue this.props.Cue |> ClientContext.Singleton.Post
@@ -138,10 +140,10 @@ type Component(props) =
     let autocallButton =
       button [
         Class "iris-button iris-icon icon-autocall"
-        OnClick (fun ev ->
+        OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          Browser.window.alert("Auto call!")
+          Browser.window.alert("Auto call cue!")
         )
       ] []
     let removeButton =
@@ -151,18 +153,14 @@ type Component(props) =
           ev.stopPropagation()
           let id = this.props.CueRef.Id
           // Change selection if this item was selected
-          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
+          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+            && this.props.CueIndex = this.props.SelectedCueIndex then
             this.props.SelectCue this.props.CueGroupIndex 0
-          let cueGroup = {
-            this.props.CueGroup with
-              CueRefs =
-                this.props.CueGroup.CueRefs
-                |> Array.filter (fun c -> c.Id <> id)
-          }
-          this.props.CueList
-          |> CueList.replace (CueGroup cueGroup)
-          |> UpdateCueList
-          |> ClientContext.Singleton.Post)
+          let newCueRefs =
+            this.props.CueGroup.CueRefs
+            |> Array.filter (fun c -> c.Id <> id)
+          { this.props.CueGroup with CueRefs = newCueRefs }
+          |> updateCueGroup this.props.CueList)
       ] []
     let cueHeader =
       div [
@@ -179,11 +177,11 @@ type Component(props) =
           from SortableHandle { value = String.Format("{0:0000}", this.props.CueIndex + 1)} []
         ]
         div [Class "width-20"] [
-          this.renderInput(unwrap this.props.Cue.Name, (fun txt ->
-            { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post))
+          renderInput (unwrap this.props.Cue.Name) (fun txt ->
+            { this.props.Cue with Name = name txt } |> UpdateCue |> ClientContext.Singleton.Post)
         ]
-        div [Class "width-20"] [this.renderInput("00:00:00")]
-        div [Class "width-20"] [this.renderInput("shortkey")]
+        div [Class "width-20"] [str "00:00:00"]
+        div [Class "width-20"] [str "shortkey"]
         div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
         div [Class "width-5"] [removeButton]
       ]
@@ -223,7 +221,6 @@ type Component(props) =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
     let isHighlit = this.state.IsHighlit
-    // Set min-width so the row doesn't look too compressed when dragging
     div [
       classList ["iris-cue", true
                  "iris-cue-selected", isSelected

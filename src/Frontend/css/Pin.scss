@@ -20,6 +20,13 @@ $even-row: #EBEBEB;
   }
 }
 
+.iris-cuegroup {
+  & .iris-cuegroup-selected {
+    background-color: $highlight-lightblue;
+    border-color: $highlight-lightblue
+  }
+}
+
 .iris-graphview {
   background: $odd-row;
   height: 100%;
