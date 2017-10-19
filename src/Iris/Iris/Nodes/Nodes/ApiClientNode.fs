@@ -258,7 +258,7 @@ module Api =
 
     updates.ToArray()
     |> List.ofArray
-    |> (StateMachineBatch >> CommandBatch)
+    |> CommandBatch.ofList
     |> plugstate.ApiClient.Append
 
     { plugstate with
@@ -329,17 +329,16 @@ module Api =
             |> state.ApiClient.Append
           | other -> state.ApiClient.Append other
       state
-    else
-      state
+    else state
 
   // ** processMsgs
 
   let private processMsgs (state: PluginState) =
     if state.Events.Count > 0 then
-      let mutable run = true
+      /// TODO: this is nasty and needs to be refactored
       let mutable newstate = state
       let mutable stateUpdates = 0
-      while run do
+      for _ in 0 .. state.Events.Count - 1 do
         match state.Events.TryDequeue() with
         | true, ClientEvent.Registered ->
           newstate <- { newstate with Status = ServiceStatus.Running } |> setStatus
@@ -350,11 +349,11 @@ module Api =
         | true, ClientEvent.Update cmd ->
           stateUpdates <- stateUpdates + 1
           state.Commands.Add cmd
-          newstate <- state
+          newstate <- newstate
         | true, ClientEvent.Snapshot ->
           stateUpdates <- stateUpdates + 1
-          newstate <- state |> mergeGraphState |> updateState
-        | false, _ -> run <- false
+          newstate <- newstate |> mergeGraphState |> updateState
+        | _ -> ()
 
       /// assign all StateMachine commands to the output
       do updateCommands newstate

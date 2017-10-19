@@ -1447,6 +1447,13 @@ module SlicesMap =
   let fold (folder: 'a -> PinId -> Slices -> 'a) (state: 'a) (map: SlicesMap) =
     Map.fold folder state map.Slices
 
+  // ** merge
+
+  /// Merge two slices maps, wherein the pin slices inside the first argument are superceded by the
+  /// values inside the second argument SlicesMap.
+  let merge (current: SlicesMap) (updates:SlicesMap): SlicesMap =
+    fold (fun next _ slices -> add next slices) current updates
+
   // ** keys
 
   let keys (map: SlicesMap) =

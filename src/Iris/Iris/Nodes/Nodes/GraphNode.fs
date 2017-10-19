@@ -1357,15 +1357,23 @@ module rec Graph =
 
   // ** optimize
 
+  /// optimize messages in multiple ways:
+  /// - all `UpdateSlices` in one evaluation frame are merged into one SlicesMap,
+  ///   reducing the messages sent to one `UpdateSlices` per frame
+  /// - all other commands are batched into a `CommandBatch`
+  /// If the command batch is empty or the SlicesMap is empty, the respective message
+  /// is not sent at all (naturally).
   let private optimize (cmds: StateMachine list) =
     cmds
     |> List.fold                         /// separate into 2 lists of batched and direct commands
-      (fun (batched, direct) -> function
-        | UpdateSlices _ as cmd -> batched, cmd :: direct
-        | other -> other :: batched, direct)
-      (List.empty, List.empty)
-    |> fun (batched, direct) ->             /// add a batch command to direct list
-      (batched |> StateMachineBatch |> CommandBatch) :: direct
+      (fun (batched, slices) -> function
+        | UpdateSlices updates -> batched, SlicesMap.merge slices updates
+        | other -> other :: batched, slices)
+      (List.empty, SlicesMap.empty)
+    |> function
+      | [], map when not (SlicesMap.isEmpty map) -> [ UpdateSlices map ]
+      | [], _ -> []
+      | batched, map -> [ UpdateSlices map; CommandBatch.ofList batched ]
 
   // ** updateOutputs
 

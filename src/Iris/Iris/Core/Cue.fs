@@ -215,3 +215,44 @@ type Cue =
     IrisData.delete basePath cue
 
   #endif
+
+// * Cue
+
+module Cue =
+
+  // ** setSlices
+
+  let setSlices slices cue =
+    { cue with Slices = slices }
+
+  // ** map
+
+  let map (f: Slices -> Slices) cue =
+    Array.map f cue.Slices |> flip setSlices cue
+
+  // ** contains
+
+  let contains pin (cue:Cue) =
+    Array.exists (fun (slices:Slices) -> slices.PinId = pin) cue.Slices
+
+  // ** addSlices
+
+  let addSlices (slices: Slices) cue  =
+    if contains slices.PinId cue
+    then cue
+    else { cue with Slices = Array.append cue.Slices [| slices |] }
+
+  // ** updateSlices
+
+  let updateSlices (slices:Slices) cue =
+    flip map cue <| fun (existing:Slices) ->
+      if existing.PinId = slices.PinId
+      then slices
+      else existing
+
+  // ** removeSlices
+
+  let removeSlices (id: PinId) cue =
+    cue.Slices
+    |> Array.filter (fun (slices:Slices) -> slices.PinId <> id)
+    |> flip setSlices cue
