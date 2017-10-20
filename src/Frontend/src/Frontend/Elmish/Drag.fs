@@ -65,5 +65,8 @@ let start (data: DragItems) =
       Stopped(!!e?clientX, !!e?clientY, data) |> trigger
       jQuery(Browser.window.document)?off("mousemove.drag mouseup.drag"))
 
-let selectPin dispatch multiple (pin: Pin) =
-  SelectDragItems(DragItems.Pins [pin.Id], multiple) |> dispatch
+let selectPin dispatch multiple pinId =
+  SelectDragItems(DragItems.Pins [pinId], multiple) |> dispatch
+
+let selectCueAtom dispatch multiple pinId =
+  SelectDragItems(DragItems.CueAtoms [pinId], multiple) |> dispatch

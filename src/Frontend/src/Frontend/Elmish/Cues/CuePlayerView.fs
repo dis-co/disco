@@ -158,15 +158,16 @@ type Component(props) =
       (fun _ _ -> this.renderBody()) this.props.Dispatch this.props.Model
 
   member this.shouldComponentUpdate(nextProps: Props, nextState: State) =
-    this.state <> nextState ||
-      match this.props.Model.state, nextProps.Model.state with
-      | Some s1, Some s2 ->
-        distinctRef s1.CueLists s2.CueLists
-          || distinctRef s1.CuePlayers s2.CuePlayers
-          || distinctRef s1.Cues s2.Cues
-          || distinctRef s1.PinGroups s2.PinGroups
-      | None, None -> false
-      | _ -> true
+    this.state <> nextState
+      || distinctRef this.props.Model.selectedDragItems nextProps.Model.selectedDragItems
+      || match this.props.Model.state, nextProps.Model.state with
+         | Some s1, Some s2 ->
+           distinctRef s1.CueLists s2.CueLists
+             || distinctRef s1.CuePlayers s2.CuePlayers
+             || distinctRef s1.Cues s2.Cues
+             || distinctRef s1.PinGroups s2.PinGroups
+         | None, None -> false
+         | _ -> true
 
 // ** createWidget
 

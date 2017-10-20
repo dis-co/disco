@@ -48,6 +48,17 @@ let updateCueGroup cueList cueGroup =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
+let isAtomSelected (model: Model) pinId =
+  match model.selectedDragItems with
+  | DragItems.CueAtoms pinIds ->
+    Seq.exists ((=) pinId) pinIds
+  | _ -> false
+
+let onDragStart (model: Model) pinId multiple =
+  let newItems = DragItems.CueAtoms [pinId]
+  if multiple then model.selectedDragItems.Append(newItems) else newItems
+  |> Drag.start
+
 // ** Types
 
 type [<Pojo>] State =
@@ -97,7 +108,6 @@ type Component(props) =
             if not stopped then
               true, this.state.IsOpen
             else
-              assert false
               match data with
               | DragItems.Pins pinIds ->
                 List.map (fun id -> Lib.findPin id this.props.State) pinIds
@@ -182,12 +192,13 @@ type Component(props) =
       if not this.state.IsOpen then
         [cueHeader]
       else
+        let { Model = model; State = state; Dispatch = dispatch } = this.props
         let pinGroups =
           this.props.Cue.Slices
-          |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId this.props.State, slices)
+          |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId state, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
-            let pinGroup = Lib.findPinGroup pinGroupId this.props.State
+            let pinGroup = Lib.findPinGroup pinGroupId state
             li [Key (string pinGroupId)] [
               div [] [str (unwrap pinGroup.Name)]
               // Use iris-wrap class to cancel the effects of iris-table wrapping CSS rules
@@ -196,18 +207,19 @@ type Component(props) =
                   { key = string pin.Id
                     pin = pin
                     output = false
-                    selected = false // TODO TODO TODO
+                    selected = isAtomSelected model pin.Id
                     slices = Some slices
-                    model = this.props.Model
+                    model = model
                     updater =
                       if Lib.isMissingPin pin
                       then None
                       else Some { new IUpdater with
                                       member __.Update(dragging, valueIndex, value) =
                                         this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun _ ->
-                      Select.pin this.props.Dispatch pin // TODO TODO TODO
-                    onDragStart = None
+                    onSelect = fun multi ->
+                      Select.pin dispatch pin
+                      Drag.selectCueAtom dispatch multi pin.Id
+                    onDragStart = Some(onDragStart model pin.Id)
                   } []) |> Seq.toList)
             ])
           |> Array.toList

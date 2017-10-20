@@ -44,7 +44,7 @@ let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
                           Lib.updatePinValue(pin, index, value) }
       onSelect = fun multi ->
         Select.pin dispatch pin
-        Drag.selectPin dispatch multi pin
+        Drag.selectPin dispatch multi pin.Id
       onDragStart = Some(onDragStart model pin.Id)
     } []
 
@@ -59,7 +59,7 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
       updater = None
       onSelect = fun multi ->
         Select.pin dispatch pin
-        Drag.selectPin dispatch multi pin
+        Drag.selectPin dispatch multi pin.Id
       onDragStart = Some(onDragStart model pin.Id)
     } []
 
