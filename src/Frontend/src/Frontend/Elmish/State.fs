@@ -136,7 +136,7 @@ let init() =
       logs = []
       #endif
       history = { index = 0; selected = InspectorSelection.Nothing; previous = [] }
-      selectedPins = Set.empty
+      selectedDragItems = DragItems.Pins []
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -186,14 +186,16 @@ let update msg model: Model*Cmd<Msg> =
 
   | Navigate _ -> model, []
 
+  | SelectDragItems(newItems, multi) ->
+    { model with selectedDragItems =
+                  if multi
+                  then model.selectedDragItems.Append(newItems)
+                  else newItems
+    }, []
+
   | SelectElement selected ->
     let history = selected :: model.history.previous |> chop
     { model with
-        selectedPins =
-          match selected with
-          | InspectorSelection.Pin(_,_,pinId,multi) ->
-            if multi then Set.add pinId model.selectedPins else set [pinId]
-          | _ -> model.selectedPins
         history = { model.history with
                      selected = selected
                      index = 0

@@ -89,15 +89,19 @@ type Component(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
-      |> Observable.subscribe(fun (pins,x,y,stopped) ->
+        | Drag.Moved(x,y,data) -> Some(data,x,y,false)
+        | Drag.Stopped(x,y,data) -> Some(data,x,y,true))
+      |> Observable.subscribe(fun (data,x,y,stopped) ->
         let isHighlit, isOpen =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true, this.state.IsOpen
             else
-              Lib.addSlicesToCue this.props.Cue pins
+              match data with
+              | DragItems.Pins pinIds ->
+                List.map (fun id -> Lib.findPin id this.props.State) pinIds
+                |> Lib.addSlicesToCue this.props.Cue
+              | _ -> () // TODO: CueAtoms
               false, true
           else
             false, this.state.IsOpen
@@ -199,7 +203,8 @@ type Component(props) =
                       else Some { new IUpdater with
                                       member __.Update(dragging, valueIndex, value) =
                                         this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
+                    onSelect = fun multiple ->
+                      Select.pin this.props.Dispatch pin
                     onDragStart = None
                   } []) |> Seq.toList)
             ])

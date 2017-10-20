@@ -4,14 +4,11 @@ module Iris.Web.Drag
 open System
 open System.Collections.Generic
 open Iris.Core
-open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
-open Fable.PowerPack
 open Fable.Import
-open Elmish
-open Types
 open Helpers
+open Types
 
 type IDomToImage =
   abstract toPng: el:Browser.Element * options:obj -> JS.Promise<string>
@@ -19,15 +16,9 @@ type IDomToImage =
 let domtoimage: IDomToImage = importDefault "dom-to-image"
 let jQueryEventAsPromise(selector:obj, events:string): JS.Promise<obj> = importMember "../../js/Util"
 
-type Data =
-  | Pin of Pin list
-  member this.Length =
-    match this with
-    | Pin pins -> List.length pins
-
 type Event =
-  | Moved of x:float * y:float * data:Data
-  | Stopped of x:float * y:float * data:Data
+  | Moved of x:float * y:float * data: DragItems
+  | Stopped of x:float * y:float * data: DragItems
 
 let private observers = Dictionary<Guid, IObserver<Event>>()
 
@@ -43,7 +34,12 @@ let private trigger (ev: Event) =
   for obs in observers.Values do
     obs.OnNext(ev)
 
-let start el (data:Data) =
+let length (items: DragItems) =
+  match items with
+  | DragItems.Pins ids -> List.length ids
+  | DragItems.CueAtoms ids -> List.length ids
+
+let start el (data: DragItems) =
   let mutable prev: Point option = None
   let img = jQuery("#iris-drag-image")
   !!jQuery(Browser.window.document)
@@ -52,11 +48,16 @@ let start el (data:Data) =
       match prev with
       | None ->
         prev <- Some cur
-        !!jQuery(img)?text(data.Length)?css(%["display" => "flex"; "left" => cur.x; "top" => cur.y])
+        let styles = %["display" => "flex"
+                       "left" => cur.x
+                       "top" => cur.y]
+        !!jQuery(img)?text(length data)?css(styles)
         Moved(cur.x, cur.y, data) |> trigger
       | Some p when distance p cur > 5. ->
         prev <- Some cur
-        !!jQuery(img)?css(%["left" => cur.x; "top" => cur.y])
+        let styles = %["left" => cur.x
+                       "top" => cur.y]
+        !!jQuery(img)?css(styles)
         Moved(cur.x, cur.y, data) |> trigger
       | Some _ -> ())
     ?on("mouseup.drag", fun e ->

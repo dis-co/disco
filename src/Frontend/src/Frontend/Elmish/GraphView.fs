@@ -26,12 +26,9 @@ type [<Pojo>] PinGroupState =
   { IsOpen: bool }
 
 let onDragStart (model: Model) pin el multiple =
-  match multiple, model.state with
-  | true, Some state ->
-    let previousPins = model.selectedPins |> Seq.map (fun id -> Lib.findPin id state)
-    pin::(Seq.toList previousPins)
-  | _ -> [pin]
-  |> Drag.Pin |> Drag.start el
+  let newItems = DragItems.Pins [pin]
+  if multiple then model.selectedDragItems.Append(newItems) else newItems
+  |> Drag.start el
 
 let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
@@ -43,8 +40,8 @@ let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
       updater = Some { new IUpdater with
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
-      onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(onDragStart model pin)
+      onSelect = fun _ -> Select.pin dispatch pin
+      onDragStart = Some(onDragStart model pin.Id)
     } []
 
 let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
@@ -55,8 +52,8 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
       slices = None
       model = model
       updater = None
-      onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(onDragStart model pin)
+      onSelect = fun _ -> Select.pin dispatch pin
+      onDragStart = Some(onDragStart model pin.Id)
     } []
 
 type PinGroupView(props) =
@@ -122,7 +119,7 @@ let createWidget (id: System.Guid) =
           match m1.state, m2.state with
           | Some s1, Some s2 ->
             equalsRef s1.PinGroups s2.PinGroups
-              && equalsRef m1.selectedPins m2.selectedPins
+              && equalsRef m1.selectedDragItems m2.selectedDragItems
           | None, None -> true
           | _ -> false)
         (widget id this.Name None body dispatch)

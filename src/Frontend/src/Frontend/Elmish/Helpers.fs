@@ -124,8 +124,8 @@ module Promise =
 
 module Select =
 
-  let pin dispatch multiple (pin: Pin) =
-    (pin.Name, pin.ClientId, pin.Id, multiple)
+  let pin dispatch (pin: Pin) =
+    (pin.Name, pin.ClientId, pin.Id)
     |> InspectorSelection.Pin
     |> Msg.SelectElement
     |> dispatch
