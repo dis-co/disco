@@ -81,11 +81,11 @@ type PinGroupView(props) =
       ]
       if this.state.IsOpen then
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(isOutputPin pin)
+          if not(Lib.isOutputPin pin)
           then makeInputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if isOutputPin pin
+          if Lib.isOutputPin pin
           then makeOutputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
     ]

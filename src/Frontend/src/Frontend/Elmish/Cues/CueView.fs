@@ -97,28 +97,7 @@ type Component(props) =
             if not stopped then
               true, this.state.IsOpen
             else
-              // Filter out output pins and pins already contained by the cue
-              let persistPins, updatedCue =
-                Seq.fold
-                  (fun (persistedPins, cue) pin ->
-                    if isOutputPin pin || Cue.contains pin.Id this.props.Cue
-                    then persistedPins, cue
-                    else
-                      let cue = Cue.addSlices pin.Slices cue
-                      match pin.Persisted with
-                      | true  -> persistedPins, cue    /// the pin already is persisted, do nothing
-                      | false -> pin :: persistedPins,cue)
-                  (List.empty, this.props.Cue)
-                  pins
-
-              let cueUpdate = UpdateCue updatedCue
-              if List.isEmpty persistPins then
-                ClientContext.Singleton.Post cueUpdate
-              else
-                let pinUpdates = List.map (Pin.setPersisted true >> UpdatePin) persistPins
-                cueUpdate :: pinUpdates
-                |> CommandBatch.ofList
-                |> ClientContext.Singleton.Post
+              Lib.addSlicesToCue this.props.Cue pins
               false, true
           else
             false, this.state.IsOpen
