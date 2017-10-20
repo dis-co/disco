@@ -32,11 +32,12 @@ let renderPin model dispatch (pin: Pin) =
     { key = string pin.Id
       pin = pin
       output = false
+      selected = false
       // Not needed as the pin is not editable
       slices = None
       model = model
       updater = None
-      onSelect = fun multiple -> Select.pin dispatch pin
+      onSelect = fun _ -> Select.pin dispatch pin
       onDragStart = None } []
 
 type [<Pojo>] PinHoleProps =

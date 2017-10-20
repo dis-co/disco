@@ -39,7 +39,7 @@ let length (items: DragItems) =
   | DragItems.Pins ids -> List.length ids
   | DragItems.CueAtoms ids -> List.length ids
 
-let start el (data: DragItems) =
+let start (data: DragItems) =
   let mutable prev: Point option = None
   let img = jQuery("#iris-drag-image")
   !!jQuery(Browser.window.document)
@@ -64,3 +64,6 @@ let start el (data: DragItems) =
       !!jQuery(img)?css(%["display" => "none"])
       Stopped(!!e?clientX, !!e?clientY, data) |> trigger
       jQuery(Browser.window.document)?off("mousemove.drag mouseup.drag"))
+
+let selectPin dispatch multiple (pin: Pin) =
+  SelectDragItems(DragItems.Pins [pin.Id], multiple) |> dispatch

@@ -30,6 +30,7 @@ module PinGroupInspector =
         key = string pinId
         pin = pin
         output = false
+        selected = false
         slices = None
         model = model
         updater = None

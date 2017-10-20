@@ -97,6 +97,7 @@ type Component(props) =
             if not stopped then
               true, this.state.IsOpen
             else
+              assert false
               match data with
               | DragItems.Pins pinIds ->
                 List.map (fun id -> Lib.findPin id this.props.State) pinIds
@@ -195,6 +196,7 @@ type Component(props) =
                   { key = string pin.Id
                     pin = pin
                     output = false
+                    selected = false // TODO TODO TODO
                     slices = Some slices
                     model = this.props.Model
                     updater =
@@ -203,8 +205,8 @@ type Component(props) =
                       else Some { new IUpdater with
                                       member __.Update(dragging, valueIndex, value) =
                                         this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun multiple ->
-                      Select.pin this.props.Dispatch pin
+                    onSelect = fun _ ->
+                      Select.pin this.props.Dispatch pin // TODO TODO TODO
                     onDragStart = None
                   } []) |> Seq.toList)
             ])

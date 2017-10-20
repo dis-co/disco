@@ -1,18 +1,13 @@
 module Iris.Web.GraphView
 
 open System
-open System.Collections.Generic
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Fable.Core
-open Fable.Core.JsInterop
-open Fable.PowerPack
 open Elmish.React
 open Iris.Core
-open Iris.Web.Core
 open Helpers
-open State
 open Types
 
 type [<Pojo>] PinGroupProps =
@@ -25,22 +20,31 @@ type [<Pojo>] PinGroupProps =
 type [<Pojo>] PinGroupState =
   { IsOpen: bool }
 
-let onDragStart (model: Model) pin el multiple =
+let onDragStart (model: Model) pin multiple =
   let newItems = DragItems.Pins [pin]
   if multiple then model.selectedDragItems.Append(newItems) else newItems
-  |> Drag.start el
+  |> Drag.start
+
+let isSelected (model: Model) (pin: Pin) =
+  match model.selectedDragItems with
+  | DragItems.Pins pinIds ->
+    Seq.exists ((=) pin.Id) pinIds
+  | _ -> false
 
 let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
       output = false
+      selected = isSelected model pin
       slices = None
       model = model
       updater = Some { new IUpdater with
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
-      onSelect = fun _ -> Select.pin dispatch pin
+      onSelect = fun multi ->
+        Select.pin dispatch pin
+        Drag.selectPin dispatch multi pin
       onDragStart = Some(onDragStart model pin.Id)
     } []
 
@@ -49,10 +53,13 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
     { key = string pid
       pin = pin
       output = true
+      selected = isSelected model pin
       slices = None
       model = model
       updater = None
-      onSelect = fun _ -> Select.pin dispatch pin
+      onSelect = fun multi ->
+        Select.pin dispatch pin
+        Drag.selectPin dispatch multi pin
       onDragStart = Some(onDragStart model pin.Id)
     } []
 

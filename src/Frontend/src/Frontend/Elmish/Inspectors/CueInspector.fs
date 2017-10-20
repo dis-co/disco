@@ -42,6 +42,7 @@ module CueInspector =
         key = string pin.Id
         pin = pin
         output = false
+        selected = false
         slices = None
         model = model
         updater = None
