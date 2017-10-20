@@ -1,11 +1,10 @@
 [<AutoOpen>]
 module Iris.Web.Core.Keyboard
 
-open Fable.Core
-open Fable.Import
-open Fable.Import.Browser
 open Iris.Core
 open Iris.Web.Core
+open Fable.Import
+open Fable.Import.Browser
 
 type KeyBinding = (bool * bool * float * StateMachine)
 
@@ -31,3 +30,7 @@ let registerKeyHandlers (ctx : ClientContext) =
   Browser.window.onkeydown <- fun e ->
     keydownHandler ctx e
     new obj()
+
+/// Sets the modifier key used for multiple selection
+let isMultiSelection (ev: Browser.MouseEvent) =
+  ev.altKey // ev.ctrlKey

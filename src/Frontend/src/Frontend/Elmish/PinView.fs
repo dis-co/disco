@@ -87,13 +87,13 @@ type PinView(props) =
         td [
           OnMouseDown (fun ev ->
             ev.stopPropagation()
+            let ev = ev :?> Browser.MouseEvent
             match this.props.onDragStart with
             | Some onDragStart ->
               let el = findWithClassUpwards "iris-pin" !!ev.target
-              // TODO: Use another key for multiple selections? Make it configurable? (See below too)
-              onDragStart el ev.ctrlKey
+              Keyboard.isMultiSelection ev |> onDragStart el
             | None -> ()
-            this.props.onSelect(ev.ctrlKey)
+            this.props.onSelect(Keyboard.isMultiSelection ev)
           )
         ] [str name]
         firstRowValue
