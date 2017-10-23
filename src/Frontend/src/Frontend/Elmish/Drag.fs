@@ -68,5 +68,5 @@ let start (data: DragItems) =
 let selectPin dispatch multiple pinId =
   SelectDragItems(DragItems.Pins [pinId], multiple) |> dispatch
 
-let selectCueAtom dispatch multiple pinId =
-  SelectDragItems(DragItems.CueAtoms [pinId], multiple) |> dispatch
+let selectCueAtom dispatch multiple cueId pinId =
+  SelectDragItems(DragItems.CueAtoms [cueId, pinId], multiple) |> dispatch

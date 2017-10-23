@@ -48,14 +48,14 @@ let updateCueGroup cueList cueGroup =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
-let isAtomSelected (model: Model) pinId =
+let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
   match model.selectedDragItems with
-  | DragItems.CueAtoms pinIds ->
-    Seq.exists ((=) pinId) pinIds
+  | DragItems.CueAtoms ids ->
+    Seq.exists ((=) cueAndPinIds) ids
   | _ -> false
 
-let onDragStart (model: Model) pinId multiple =
-  let newItems = DragItems.CueAtoms [pinId]
+let onDragStart (model: Model) cueId pinId multiple =
+  let newItems = DragItems.CueAtoms [cueId, pinId]
   if multiple then model.selectedDragItems.Append(newItems) else newItems
   |> Drag.start
 
@@ -192,9 +192,12 @@ type Component(props) =
       if not this.state.IsOpen then
         [cueHeader]
       else
-        let { Model = model; State = state; Dispatch = dispatch } = this.props
+        let { Model = model
+              State = state
+              Dispatch = dispatch
+              Cue = cue } = this.props
         let pinGroups =
-          this.props.Cue.Slices
+          cue.Slices
           |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId state, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
@@ -207,7 +210,7 @@ type Component(props) =
                   { key = string pin.Id
                     pin = pin
                     output = false
-                    selected = isAtomSelected model pin.Id
+                    selected = isAtomSelected model (cue.Id, pin.Id)
                     slices = Some slices
                     model = model
                     updater =
@@ -218,8 +221,8 @@ type Component(props) =
                                         this.updateCueValue(dragging, i, valueIndex, value) }
                     onSelect = fun multi ->
                       Select.pin dispatch pin
-                      Drag.selectCueAtom dispatch multi pin.Id
-                    onDragStart = Some(onDragStart model pin.Id)
+                      Drag.selectCueAtom dispatch multi cue.Id pin.Id
+                    onDragStart = Some(onDragStart model cue.Id pin.Id)
                   } []) |> Seq.toList)
             ])
           |> Array.toList

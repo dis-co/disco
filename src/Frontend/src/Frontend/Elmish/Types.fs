@@ -115,8 +115,9 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
-  | SelectElement of InspectorSelection
+  | RemoveSelectedDragItems
   | SelectDragItems of DragItems * multiple: bool
+  | SelectElement of InspectorSelection
   | Navigate of InspectorNavigate
 
 and InspectorSelection =
@@ -144,7 +145,7 @@ and InspectorNavigate =
 
 and [<RequireQualifiedAccess>] DragItems =
   | Pins of PinId list
-  | CueAtoms of PinId list
+  | CueAtoms of (CueId * PinId) list
   /// Merge selected items if they have the same case
   /// Otherwise, it just returns the new items
   member oldItems.Append(newItems: DragItems) =

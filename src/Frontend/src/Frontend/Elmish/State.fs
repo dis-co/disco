@@ -96,13 +96,24 @@ let delay ms (f:'T->unit) =
     Promise.sleep ms
     |> Promise.iter (fun () -> f x)
 
+let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
+  let postCmd cmd =
+    fun () -> StateMachine.Command cmd |> ClientContext.Singleton.Post
+  //  ctrl, shift, key, action
+  [| true,  false, Codes.z,         postCmd AppCommand.Undo
+     true,  true,  Codes.z,         postCmd AppCommand.Redo
+     true,  false, Codes.s,         postCmd AppCommand.Save
+     false, false, Codes.backspace, fun () -> dispatch RemoveSelectedDragItems
+  |]
+
 /// Initialization function for Elmish state
 let init() =
   let startContext dispatch =
     let context = ClientContext.Singleton
     context.Start()
     |> Promise.iter (fun () ->
-      do Keyboard.registerKeyHandlers context
+      getKeyBindings dispatch
+      |> Keyboard.registerKeyHandlers
       context.OnMessage
       |> Observable.add (function
         | ClientMessage.Event(_, LogMsg log) ->
@@ -185,6 +196,23 @@ let update msg model: Model*Cmd<Msg> =
     { model with history = history }, []
 
   | Navigate _ -> model, []
+
+  | RemoveSelectedDragItems ->
+    match model.state, model.selectedDragItems with
+    | Some state, DragItems.CueAtoms ids ->
+      // Group id tuples by CueId (first one)
+      ([], Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+        let pinIds = ids |> Seq.map snd |> set
+        let cue = Lib.findCue cueId state
+        cue.Slices |> Array.filter (fun slices ->
+          Set.contains slices.PinId pinIds |> not)
+        |> flip Cue.setSlices cue
+        |> UpdateCue
+        |> cons cmds)
+      |> CommandBatch.ofList
+      |> ClientContext.Singleton.Post
+    | _ -> ()
+    model, []
 
   | SelectDragItems(newItems, multi) ->
     { model with selectedDragItems =
