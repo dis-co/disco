@@ -76,6 +76,15 @@ type EmptyComponent(props) =
       this.props.Dispatch
       this.props.Model
 
+let private orphanedWidget dispatch model id name =
+  com<EmptyComponent,_,_> {
+    CueList = None
+    Model = model
+    Dispatch = dispatch
+    Id = id
+    Name = name
+  } []
+
 type Component(props) =
   inherit React.Component<Props, State>(props)
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
@@ -182,15 +191,6 @@ type Component(props) =
 
 // ** createWidget
 
-let orphanedWidget dispatch model id name =
-  com<EmptyComponent,_,_> {
-    CueList = None
-    Model = model
-    Dispatch = dispatch
-    Id = id
-    Name = name
-  } []
-
 let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
@@ -209,8 +209,9 @@ let createWidget(id: System.Guid) =
         | None -> orphanedWidget dispatch model this.Id this.Name
         | Some player ->
           let cueList =
-            player.CueListId
-            |> Option.bind (flip Map.tryFind state.CueLists)
+            Option.bind
+              (flip Map.tryFind state.CueLists)
+              player.CueListId
           com<Component,_,_>
             { CueList = cueList
               Model = model
