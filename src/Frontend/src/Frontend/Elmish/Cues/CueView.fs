@@ -110,9 +110,21 @@ type Component(props) =
             else
               match data with
               | DragItems.Pins pinIds ->
-                List.map (fun id -> Lib.findPin id this.props.State) pinIds
+                Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
                 |> Lib.addSlicesToCue this.props.Cue
-              | _ -> () // TODO: CueAtoms
+                |> Lib.postStateCommands
+              | DragItems.CueAtoms ids ->
+                let addCommands =
+                  Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                  |> Lib.addSlicesToCue this.props.Cue
+                // Group id tuples by CueId (first one)
+                (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+                  if cueId <> this.props.Cue.Id then
+                    let cue = Lib.findCue cueId this.props.State
+                    Lib.removeSlicesFromCue cue (Seq.map snd ids)
+                    |> cons cmds
+                  else cmds)
+                |> Lib.postStateCommands
               false, true
           else
             false, this.state.IsOpen

@@ -247,6 +247,10 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
   return result
 }
 
+let postStateCommands (cmds: StateMachine list) =
+  CommandBatch.ofList cmds
+  |> ClientContext.Singleton.Post
+
 let updatePinValue(pin: Pin, index: int, value: obj) =
   let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
     if i >= 0 && i < ar.Length && box ar.[i] <> v then
@@ -350,13 +354,11 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   let newCueList = CueList.replace (CueGroup newCueGroup) cueList
 
   // Send messages to backend
-  CommandBatch.ofList [
-    AddCue newCue
-    UpdateCueList newCueList
-  ]
-  |> ClientContext.Singleton.Post
+  [AddCue newCue; UpdateCueList newCueList]
+  |> postStateCommands
 
-let addSlicesToCue (cue: Cue) (pins: Pin list) =
+/// Returns the list of state machine commands to add the slices to the cue
+let addSlicesToCue (cue: Cue) (pins: Pin seq) =
   // Filter out output pins and pins already contained by the cue
   let persistPins, updatedCue =
     Seq.fold
@@ -373,9 +375,16 @@ let addSlicesToCue (cue: Cue) (pins: Pin list) =
       pins
   let cueUpdate = UpdateCue updatedCue
   if List.isEmpty persistPins then
-    ClientContext.Singleton.Post cueUpdate
+    [cueUpdate]
   else
     let pinUpdates = List.map (Pin.setPersisted true >> UpdatePin) persistPins
     cueUpdate :: pinUpdates
-    |> CommandBatch.ofList
-    |> ClientContext.Singleton.Post
+
+/// Returns the state machine command to remove the slices from the cue
+let removeSlicesFromCue (cue: Cue) (pinIds: PinId seq) =
+  // Create a set for faster comparison
+  let pinIds = set pinIds
+  cue.Slices |> Array.filter (fun slices ->
+    Set.contains slices.PinId pinIds |> not)
+  |> flip Cue.setSlices cue
+  |> UpdateCue

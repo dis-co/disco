@@ -202,15 +202,10 @@ let update msg model: Model*Cmd<Msg> =
     | Some state, DragItems.CueAtoms ids ->
       // Group id tuples by CueId (first one)
       ([], Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
-        let pinIds = ids |> Seq.map snd |> set
         let cue = Lib.findCue cueId state
-        cue.Slices |> Array.filter (fun slices ->
-          Set.contains slices.PinId pinIds |> not)
-        |> flip Cue.setSlices cue
-        |> UpdateCue
+        Lib.removeSlicesFromCue cue (Seq.map snd ids)
         |> cons cmds)
-      |> CommandBatch.ofList
-      |> ClientContext.Singleton.Post
+      |> Lib.postStateCommands
     | _ -> ()
     model, []
 
