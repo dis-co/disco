@@ -40,6 +40,7 @@ initWidgetFactory
         | Widgets.Test1 -> createTestWidget1(id, name)
         | Widgets.Test2 -> createTestWidget2(id, name)
         | Widgets.Test3 -> createTestWidget3(id, name)
+        | Widgets.Test4 -> createTestWidget4(id, name)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
