@@ -69,6 +69,17 @@ let private update (player:CuePlayer) (value:string) =
   |> UpdateCuePlayer
   |> ClientContext.Singleton.Post
 
+let private boolButton value f =
+  let active = if value then "pressed" else ""
+  div [
+    Style [
+      Height "15px"
+      Width "15px"
+    ]
+    Class ("iris-button " + active)
+    OnClick (fun _ -> f (not value))
+  ] []
+
 let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
@@ -111,10 +122,18 @@ let body dispatch (model: Model) =
                 str cueList
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
-                str (string player.Locked)
+                boolButton
+                  player.Locked
+                  (flip CuePlayer.setLocked player
+                   >> UpdateCuePlayer
+                   >> ClientContext.Singleton.Post)
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
-                str (string player.Active)
+                boolButton
+                  player.Active
+                  (flip CuePlayer.setActive player
+                   >> UpdateCuePlayer
+                   >> ClientContext.Singleton.Post)
               ]
               td [Class "width-25"; padding5() ] [
                 viewButton dispatch player
