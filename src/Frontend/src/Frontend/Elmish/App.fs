@@ -21,6 +21,7 @@ let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
 let createTestWidget1(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget1"
 let createTestWidget2(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget2"
 let createTestWidget3(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget3"
+let createTestWidget4(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget4"
 
 initWidgetFactory
   { new IWidgetFactory with
