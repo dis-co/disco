@@ -655,6 +655,7 @@ table CuePlayerFB {
       Id:            [ubyte];
       Name:          string;
       Locked:        bool;
+      Active:        bool;
       Selected:      int;
       RemainingWait: int;
       CueListId:     [ubyte];

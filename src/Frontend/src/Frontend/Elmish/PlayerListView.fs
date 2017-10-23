@@ -114,7 +114,7 @@ let body dispatch (model: Model) =
                 str (string player.Locked)
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
-                str (string true)
+                str (string player.Active)
               ]
               td [Class "width-25"; padding5() ] [
                 viewButton dispatch player

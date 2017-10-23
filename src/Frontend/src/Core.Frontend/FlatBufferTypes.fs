@@ -1625,6 +1625,7 @@ type CuePlayerFB =
   abstract IdLength: int
   abstract Name: string
   abstract Locked: bool
+  abstract Active: bool
   abstract Selected: int
   abstract RemainingWait: int
   abstract CueListId: int -> byte
@@ -1646,6 +1647,7 @@ type CuePlayerFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddLocked: builder: FlatBufferBuilder * locked:bool -> unit
+  abstract AddActive: builder: FlatBufferBuilder * active:bool -> unit
   abstract AddSelected: builder: FlatBufferBuilder * int -> unit
   abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
   abstract AddCueListId: builder: FlatBufferBuilder * id: VectorOffset -> unit

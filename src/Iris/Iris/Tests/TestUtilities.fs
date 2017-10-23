@@ -226,6 +226,7 @@ module TestData =
     { Id = IrisId.Create()
       Name = rndname ()
       Locked = rndbool ()
+      Active = rndbool ()
       CueListId = rndopt()
       Selected = index (rand.Next(0,1000))
       CallId = IrisId.Create()
