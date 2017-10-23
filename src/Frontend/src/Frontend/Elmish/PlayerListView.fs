@@ -25,6 +25,9 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
+type private RCom = React.ComponentClass<obj>
+let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
+
 let private viewButton dispatch (player:CuePlayer) =
   button [
     Class "iris-button iris-icon"
@@ -60,6 +63,12 @@ let private deleteButton dispatch (player:CuePlayer) =
     )
   ] []
 
+let private update (player:CuePlayer) (value:string) =
+  player
+  |> CuePlayer.setName (name value)
+  |> UpdateCuePlayer
+  |> ClientContext.Singleton.Post
+
 let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
@@ -89,8 +98,14 @@ let body dispatch (model: Model) =
                 |> Option.defaultValue (cueList |> Id.prefix |> String.format "{0} (orphaned)")
               | None -> "--"
             tr [Key (string id)] [
-              td [Class "width-20"; padding5AndTopBorder()] [
-                str (string player.Name)
+              td [
+                Class "width-20"
+                padding5AndTopBorder()
+              ] [
+                from ContentEditable
+                  %["tagName" ==> "span"
+                    "html" ==> string player.Name
+                    "onChange" ==> (update player)] []
               ]
               td [Class "width-20"; padding5AndTopBorder()] [
                 str cueList

@@ -264,6 +264,11 @@ module CuePlayer =
       LastCalledId  = None
       LastCallerId  = None }
 
+  // ** setName
+
+  let setName (name:Name) (player:CuePlayer) =
+    { player with Name = name }
+
   // ** assetPath
 
   let assetPath (player: CuePlayer) =
