@@ -29,6 +29,7 @@ initWidgetFactory
         match name with
         | Widgets.Log -> LogView.createWidget(id)
         | Widgets.GraphView -> GraphView.createWidget(id)
+        | Widgets.Players -> PlayerListView.createWidget(id)
         | Widgets.CuePlayer -> Cues.CuePlayerView.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> ClusterView.createWidget(id)

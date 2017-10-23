@@ -567,17 +567,19 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project            = project
-               PinGroups          = groups
-               PinMappings        = mappings
-               PinWidgets         = widgets
-               Cues               = cues
-               CueLists           = cuelists
-               Users              = users
-               Sessions           = sessions
-               Clients            = clients
-               CuePlayers         = players
-               DiscoveredServices = discoveredServices }
+      return {
+        Project            = project
+        PinGroups          = groups
+        PinMappings        = mappings
+        PinWidgets         = widgets
+        Cues               = cues
+        CueLists           = cuelists
+        Users              = users
+        Sessions           = sessions
+        Clients            = clients
+        CuePlayers         = players
+        DiscoveredServices = discoveredServices
+      }
     }
 
   // ** FromBytes
@@ -590,6 +592,9 @@ type State =
 // * State module
 
 module State =
+  // ** cueLists
+
+  let cueLists (state:State) = state.CueLists
 
   // ** addPinWidget
 

@@ -398,6 +398,10 @@ type CueList =
 
 module CueList =
 
+  // ** name =
+
+  let name (cuelist:CueList) = cuelist.Name
+
   // ** map
 
   /// execute a function on each of the CueLists items and return the updated CueList
