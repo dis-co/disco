@@ -8,7 +8,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Types
+open Iris.Web.Types
 
 type [<Pojo>] ElProps =
   { index: int
@@ -25,14 +25,6 @@ let createElement(tagName: string, opts: ElProps, value: obj): React.ReactElemen
 let (|NullOrEmpty|_|) str =
   if String.IsNullOrEmpty(str) then Some NullOrEmpty else None
 
-let rec findWithClassUpwards (className: string) (el: Browser.Element) =
-  if el.classList.contains(className)
-  then el
-  else
-    match el.parentElement with
-    | null -> failwithf "Couldn't find any element with class %s in parent hierarchy" className
-    | el -> findWithClassUpwards className el
-
 type [<Pojo>] PinState =
   { isOpen: bool }
 
@@ -40,10 +32,11 @@ type [<Pojo>] PinProps =
   { key: string
     pin: Pin
     output: bool
+    selected: bool
     slices: Slices option
     model: Model
     updater: IUpdater option
-    onDragStart: (Browser.Element -> bool -> unit) option
+    onDragStart: (bool -> unit) option
     onSelect: bool -> unit
   }
 
@@ -87,13 +80,12 @@ type PinView(props) =
         td [
           OnMouseDown (fun ev ->
             ev.stopPropagation()
+            let ev = ev :?> Browser.MouseEvent
             match this.props.onDragStart with
             | Some onDragStart ->
-              let el = findWithClassUpwards "iris-pin" !!ev.target
-              // TODO: Use another key for multiple selections? Make it configurable? (See below too)
-              onDragStart el ev.ctrlKey
+              Keyboard.isMultiSelection ev |> onDragStart
             | None -> ()
-            this.props.onSelect(ev.ctrlKey)
+            this.props.onSelect(Keyboard.isMultiSelection ev)
           )
         ] [str name]
         firstRowValue
@@ -134,10 +126,6 @@ type PinView(props) =
     let pin = this.props.pin
     let useRightClick =
       this.props.model.userConfig.useRightClick
-    let isSelected =
-      match this.props.onDragStart with
-      | Some _ -> this.props.model.selectedPins |> Seq.exists ((=) pin.Id)
-      | None -> false
     let rowCount =
       match this.props.slices with
       | Some slices -> slices.Length
@@ -152,7 +140,7 @@ type PinView(props) =
        "iris-dirty",         not this.props.output && pin.Dirty
        "iris-non-persisted", not pin.Persisted
        "iris-offline",       isOffline
-       "iris-pin-selected",  isSelected
+       "iris-pin-selected",  this.props.selected
        ]
     div [classList classes] [
       table [] [this.RenderRows(rowCount, useRightClick, props.updater)]

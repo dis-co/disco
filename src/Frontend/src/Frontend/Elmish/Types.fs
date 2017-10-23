@@ -115,11 +115,13 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
+  | RemoveSelectedDragItems
+  | SelectDragItems of DragItems * multiple: bool
   | SelectElement of InspectorSelection
   | Navigate of InspectorNavigate
 
 and InspectorSelection =
-  | Pin      of Name * ClientId * PinId * multiple: bool
+  | Pin      of Name * ClientId * PinId
   | PinGroup of Name * ClientId * PinGroupId
   | Client   of Name * ClientId
   | Member   of Name * MemberId
@@ -141,6 +143,19 @@ and InspectorNavigate =
   | Next
   | Set of int
 
+and [<RequireQualifiedAccess>] DragItems =
+  | Pins of PinId list
+  | CueAtoms of (CueId * PinId) list
+  /// Merge selected items if they have the same case
+  /// Otherwise, it just returns the new items
+  member oldItems.Append(newItems: DragItems) =
+    let appendDistinct x y =
+      List.append x y |> List.distinct
+    match oldItems, newItems with
+    | Pins x, Pins y -> appendDistinct x y |> Pins
+    | CueAtoms x, CueAtoms y -> appendDistinct x y |> CueAtoms
+    | _ -> newItems
+
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
@@ -149,7 +164,7 @@ and Model =
     state: State option
     logs: LogEvent list
     history: InspectorHistory
-    selectedPins: Set<PinId>
+    selectedDragItems: DragItems
     userConfig: UserConfig
   }
 

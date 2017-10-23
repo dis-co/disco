@@ -48,6 +48,17 @@ let updateCueGroup cueList cueGroup =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
+let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
+  match model.selectedDragItems with
+  | DragItems.CueAtoms ids ->
+    Seq.exists ((=) cueAndPinIds) ids
+  | _ -> false
+
+let onDragStart (model: Model) cueId pinId multiple =
+  let newItems = DragItems.CueAtoms [cueId, pinId]
+  if multiple then model.selectedDragItems.Append(newItems) else newItems
+  |> Drag.start
+
 // ** Types
 
 type [<Pojo>] State =
@@ -89,36 +100,31 @@ type Component(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
-      |> Observable.subscribe(fun (pins,x,y,stopped) ->
+        | Drag.Moved(x,y,data) -> Some(data,x,y,false)
+        | Drag.Stopped(x,y,data) -> Some(data,x,y,true))
+      |> Observable.subscribe(fun (data,x,y,stopped) ->
         let isHighlit, isOpen =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true, this.state.IsOpen
             else
-              // Filter out output pins and pins already contained by the cue
-              let persistPins, updatedCue =
-                Seq.fold
-                  (fun (persistedPins, cue) pin ->
-                    if isOutputPin pin || Cue.contains pin.Id this.props.Cue
-                    then persistedPins, cue
-                    else
-                      let cue = Cue.addSlices pin.Slices cue
-                      match pin.Persisted with
-                      | true  -> persistedPins, cue    /// the pin already is persisted, do nothing
-                      | false -> pin :: persistedPins,cue)
-                  (List.empty, this.props.Cue)
-                  pins
-
-              let cueUpdate = UpdateCue updatedCue
-              if List.isEmpty persistPins then
-                ClientContext.Singleton.Post cueUpdate
-              else
-                let pinUpdates = List.map (Pin.setPersisted true >> UpdatePin) persistPins
-                cueUpdate :: pinUpdates
-                |> CommandBatch.ofList
-                |> ClientContext.Singleton.Post
+              match data with
+              | DragItems.Pins pinIds ->
+                Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
+                |> Lib.addSlicesToCue this.props.Cue
+                |> Lib.postStateCommands
+              | DragItems.CueAtoms ids ->
+                let addCommands =
+                  Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                  |> Lib.addSlicesToCue this.props.Cue
+                // Group id tuples by CueId (first one)
+                (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+                  if cueId <> this.props.Cue.Id then
+                    let cue = Lib.findCue cueId this.props.State
+                    Lib.removeSlicesFromCue cue (Seq.map snd ids)
+                    |> cons cmds
+                  else cmds)
+                |> Lib.postStateCommands
               false, true
           else
             false, this.state.IsOpen
@@ -198,12 +204,16 @@ type Component(props) =
       if not this.state.IsOpen then
         [cueHeader]
       else
+        let { Model = model
+              State = state
+              Dispatch = dispatch
+              Cue = cue } = this.props
         let pinGroups =
-          this.props.Cue.Slices
-          |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId this.props.State, slices)
+          cue.Slices
+          |> Array.mapi (fun i slices -> i, Lib.findPin slices.PinId state, slices)
           |> Array.groupBy (fun (_, pin, _) -> pin.PinGroupId)
           |> Array.map(fun (pinGroupId, pinAndSlices) ->
-            let pinGroup = Lib.findPinGroup pinGroupId this.props.State
+            let pinGroup = Lib.findPinGroup pinGroupId state
             li [Key (string pinGroupId)] [
               div [] [str (unwrap pinGroup.Name)]
               // Use iris-wrap class to cancel the effects of iris-table wrapping CSS rules
@@ -212,16 +222,19 @@ type Component(props) =
                   { key = string pin.Id
                     pin = pin
                     output = false
+                    selected = isAtomSelected model (cue.Id, pin.Id)
                     slices = Some slices
-                    model = this.props.Model
+                    model = model
                     updater =
                       if Lib.isMissingPin pin
                       then None
                       else Some { new IUpdater with
                                       member __.Update(dragging, valueIndex, value) =
                                         this.updateCueValue(dragging, i, valueIndex, value) }
-                    onSelect = fun multiple -> Select.pin this.props.Dispatch multiple pin
-                    onDragStart = None
+                    onSelect = fun multi ->
+                      Select.pin dispatch pin
+                      Drag.selectCueAtom dispatch multi cue.Id pin.Id
+                    onDragStart = Some(onDragStart model cue.Id pin.Id)
                   } []) |> Seq.toList)
             ])
           |> Array.toList

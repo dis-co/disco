@@ -1,18 +1,13 @@
 module Iris.Web.GraphView
 
 open System
-open System.Collections.Generic
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Fable.Core
-open Fable.Core.JsInterop
-open Fable.PowerPack
 open Elmish.React
 open Iris.Core
-open Iris.Web.Core
 open Helpers
-open State
 open Types
 
 type [<Pojo>] PinGroupProps =
@@ -25,26 +20,32 @@ type [<Pojo>] PinGroupProps =
 type [<Pojo>] PinGroupState =
   { IsOpen: bool }
 
-let onDragStart (model: Model) pin el multiple =
-  match multiple, model.state with
-  | true, Some state ->
-    let previousPins = model.selectedPins |> Seq.map (fun id -> Lib.findPin id state)
-    pin::(Seq.toList previousPins)
-  | _ -> [pin]
-  |> Drag.Pin |> Drag.start el
+let onDragStart (model: Model) pin multiple =
+  let newItems = DragItems.Pins [pin]
+  if multiple then model.selectedDragItems.Append(newItems) else newItems
+  |> Drag.start
+
+let isSelected (model: Model) (pin: Pin) =
+  match model.selectedDragItems with
+  | DragItems.Pins pinIds ->
+    Seq.exists ((=) pin.Id) pinIds
+  | _ -> false
 
 let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
   com<PinView.PinView,_,_>
     { key = string pid
       pin = pin
       output = false
+      selected = isSelected model pin
       slices = None
       model = model
       updater = Some { new IUpdater with
                         member __.Update(_, index, value) =
                           Lib.updatePinValue(pin, index, value) }
-      onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(onDragStart model pin)
+      onSelect = fun multi ->
+        Select.pin dispatch pin
+        Drag.selectPin dispatch multi pin.Id
+      onDragStart = Some(onDragStart model pin.Id)
     } []
 
 let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
@@ -52,11 +53,14 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
     { key = string pid
       pin = pin
       output = true
+      selected = isSelected model pin
       slices = None
       model = model
       updater = None
-      onSelect = fun multiple -> Select.pin dispatch multiple pin
-      onDragStart = Some(onDragStart model pin)
+      onSelect = fun multi ->
+        Select.pin dispatch pin
+        Drag.selectPin dispatch multi pin.Id
+      onDragStart = Some(onDragStart model pin.Id)
     } []
 
 type PinGroupView(props) =
@@ -81,11 +85,11 @@ type PinGroupView(props) =
       ]
       if this.state.IsOpen then
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(isOutputPin pin)
+          if not(Lib.isOutputPin pin)
           then makeInputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if isOutputPin pin
+          if Lib.isOutputPin pin
           then makeOutputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
     ]
@@ -122,7 +126,7 @@ let createWidget (id: System.Guid) =
           match m1.state, m2.state with
           | Some s1, Some s2 ->
             equalsRef s1.PinGroups s2.PinGroups
-              && equalsRef m1.selectedPins m2.selectedPins
+              && equalsRef m1.selectedDragItems m2.selectedDragItems
           | None, None -> true
           | _ -> false)
         (widget id this.Name None body dispatch)
