@@ -520,6 +520,10 @@ module Functional =
 
   let flip2 (f: 'a -> 'b -> 'c -> 'd) (b: 'b) (c: 'c) (a: 'a) = f a b c
 
+  // ** cons
+
+  let cons (xs: 'a list) (x: 'a) = x::xs
+
 // * Tuple
 
 module Tuple =

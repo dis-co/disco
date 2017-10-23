@@ -247,6 +247,10 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
   return result
 }
 
+let postStateCommands (cmds: StateMachine list) =
+  CommandBatch.ofList cmds
+  |> ClientContext.Singleton.Post
+
 let updatePinValue(pin: Pin, index: int, value: obj) =
   let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
     if i >= 0 && i < ar.Length && box ar.[i] <> v then
@@ -306,13 +310,17 @@ let findPinGroup (pinGroupId: PinGroupId) (state: State) =
 let isMissingPin (pin: Pin) =
   pin.PinGroupId.Guid = Guid.Empty
 
+let isOutputPin (pin: Pin) =
+  match pin.PinConfiguration with
+  | PinConfiguration.Preset | PinConfiguration.Sink -> false
+  | PinConfiguration.Source -> true
+
 let findCue (cueId: CueId) (state: State) =
   match Map.tryFind cueId state.Cues with
   | Some cue -> cue
   | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
 let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
-  // TODO: Select the cue list from the widget
   if cueList.Items.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
@@ -346,8 +354,37 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   let newCueList = CueList.replace (CueGroup newCueGroup) cueList
 
   // Send messages to backend
-  CommandBatch.ofList [
-    AddCue newCue
-    UpdateCueList newCueList
-  ]
-  |> ClientContext.Singleton.Post
+  [AddCue newCue; UpdateCueList newCueList]
+  |> postStateCommands
+
+/// Returns the list of state machine commands to add the slices to the cue
+let addSlicesToCue (cue: Cue) (pins: Pin seq) =
+  // Filter out output pins and pins already contained by the cue
+  let persistPins, updatedCue =
+    Seq.fold
+      (fun (persistedPins, cue) pin ->
+        if isOutputPin pin || Cue.contains pin.Id cue
+        then persistedPins, cue
+        else
+          let cue = Cue.addSlices pin.Slices cue
+          match pin.Persisted with
+          // the pin already is persisted, do nothing
+          | true  -> persistedPins, cue
+          | false -> pin :: persistedPins,cue)
+      (List.empty, cue)
+      pins
+  let cueUpdate = UpdateCue updatedCue
+  if List.isEmpty persistPins then
+    [cueUpdate]
+  else
+    let pinUpdates = List.map (Pin.setPersisted true >> UpdatePin) persistPins
+    cueUpdate :: pinUpdates
+
+/// Returns the state machine command to remove the slices from the cue
+let removeSlicesFromCue (cue: Cue) (pinIds: PinId seq) =
+  // Create a set for faster comparison
+  let pinIds = set pinIds
+  cue.Slices |> Array.filter (fun slices ->
+    Set.contains slices.PinId pinIds |> not)
+  |> flip Cue.setSlices cue
+  |> UpdateCue

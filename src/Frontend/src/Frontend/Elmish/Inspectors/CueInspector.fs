@@ -42,10 +42,11 @@ module CueInspector =
         key = string pin.Id
         pin = pin
         output = false
+        selected = false
         slices = None
         model = model
         updater = None
-        onSelect = fun multiple -> Select.pin dispatch multiple pin
+        onSelect = fun _ -> Select.pin dispatch pin
         onDragStart = None
       } []
     ]

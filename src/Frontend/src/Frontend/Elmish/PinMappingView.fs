@@ -32,15 +32,17 @@ let renderPin model dispatch (pin: Pin) =
     { key = string pin.Id
       pin = pin
       output = false
+      selected = false
       // Not needed as the pin is not editable
       slices = None
       model = model
       updater = None
-      onSelect = fun multiple -> Select.pin dispatch multiple pin
+      onSelect = fun _ -> Select.pin dispatch pin
       onDragStart = None } []
 
 type [<Pojo>] PinHoleProps =
-  { Classes: string list
+  { Model: Model
+    Classes: string list
     Padding: bool
     AddPins: Pin list -> unit
     Render: unit -> ReactElement list }
@@ -61,15 +63,19 @@ type PinHole(props) =
     disposable <-
       Drag.observe()
       |> Observable.choose(function
-        | Drag.Moved(x,y,Drag.Pin pins) -> Some(pins,x,y,false)
-        | Drag.Stopped(x,y,Drag.Pin pins) -> Some(pins,x,y,true))
-      |> Observable.subscribe(fun (pins,x,y,stopped) ->
+        | Drag.Moved(x,y,data) -> Some(data,x,y,false)
+        | Drag.Stopped(x,y,data) -> Some(data,x,y,true))
+      |> Observable.subscribe(fun (data,x,y,stopped) ->
         let isHighlit  =
           if touchesElement(selfRef, x, y) then
             if not stopped then
               true
             else
-              this.props.AddPins(pins)
+              match this.props.Model.state, data with
+              | Some state, DragItems.Pins pinIds ->
+                List.map (fun id -> Lib.findPin id state) pinIds
+                |> this.props.AddPins
+              | _ -> ()
               false
           else
             false
@@ -122,6 +128,7 @@ type PinMappingView(props) =
       com<PinHole,_,_>
         { Classes = ["width-20"]
           Padding = true
+          Model = props.Model
           AddPins = function
             | pin::_ -> this.setState({ this.state with SourceCandidate = Some pin })
             | _ -> ()
@@ -131,7 +138,8 @@ type PinMappingView(props) =
               |> opt ]
         } []
       com<PinHole,_,_>
-        { Classes = ["width-75"]
+        { Model = this.props.Model
+          Classes = ["width-75"]
           Padding = true
           AddPins = fun pins ->
             let sinks = (this.state.SinkCandidates, pins)

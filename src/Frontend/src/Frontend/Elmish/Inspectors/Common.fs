@@ -51,7 +51,7 @@ module Common =
     let makeLink = makeLink dispatch history idx
     let content =
       match selected with
-      | InspectorSelection.Pin (name,client,pin,_)      -> makeLink (string name)
+      | InspectorSelection.Pin (name,client,pin)        -> makeLink (string name)
       | InspectorSelection.PinGroup (name,client,group) -> makeLink (string name)
       | InspectorSelection.Client (name,client)         -> makeLink (string name)
       | InspectorSelection.Member (name,mem)            -> makeLink (string name)
