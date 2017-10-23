@@ -302,3 +302,8 @@ module CuePlayer =
 
   let setCueList id player =
     { player with CueListId = Some id }
+
+  // ** unsetCueList
+
+  let unsetCueList player =
+    { player with CueListId = None }

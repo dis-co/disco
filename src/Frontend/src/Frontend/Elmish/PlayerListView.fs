@@ -27,6 +27,7 @@ let inline padding5AndTopBorder() =
 
 type private RCom = React.ComponentClass<obj>
 let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
+let private DropdownEditable: RCom = importDefault "../../js/widgets/DropdownEditable"
 
 let private viewButton dispatch (player:CuePlayer) =
   button [
@@ -63,11 +64,24 @@ let private deleteButton dispatch (player:CuePlayer) =
     )
   ] []
 
-let private update (player:CuePlayer) (value:string) =
+let private updateName (player:CuePlayer) (value:string) =
   player
   |> CuePlayer.setName (name value)
   |> UpdateCuePlayer
   |> ClientContext.Singleton.Post
+
+let private updateCueList (player:CuePlayer) = function
+  | Some id ->
+    match IrisId.TryParse id with
+    | Left error -> printfn "Got error trying to parse Cuelist id: %s" error.Message
+    | Right id ->
+      CuePlayer.setCueList id player
+      |> UpdateCuePlayer
+      |> ClientContext.Singleton.Post
+  | None ->
+    CuePlayer.unsetCueList player
+    |> UpdateCuePlayer
+    |> ClientContext.Singleton.Post
 
 let private boolButton value f =
   let active = if value then "pressed" else ""
@@ -116,10 +130,18 @@ let body dispatch (model: Model) =
                 from ContentEditable
                   %["tagName" ==> "span"
                     "html" ==> string player.Name
-                    "onChange" ==> (update player)] []
+                    "onChange" ==> (updateName player)] []
               ]
               td [Class "width-20"; padding5AndTopBorder()] [
-                str cueList
+                from DropdownEditable
+                  %["tagName" ==> "span"
+                    "html" ==> cueList
+                    "data-selected" ==> Option.map string player.CueListId
+                    "data-options" ==> [|
+                      "hello","db484167-98c3-4272-bf3b-52b3f64d0027"
+                      "bye", "232fcb0b-1d91-43a2-bc1e-9efc26848f14"
+                    |]
+                    "onChange" ==> (updateCueList player)] []
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
                 boolButton
