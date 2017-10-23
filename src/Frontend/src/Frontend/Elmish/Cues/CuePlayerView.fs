@@ -65,6 +65,17 @@ let addGroup (cueList: CueList) (cueGroupIndex: int) =
 
 // ** React components
 
+type EmptyComponent(props) =
+  inherit React.Component<Props, State>(props)
+  do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
+
+  member this.render() =
+    widget this.props.Id this.props.Name
+      (Some (fun _ _ -> str "orphaned"))
+      (fun _ _ -> str "orphaned :'(")
+      this.props.Dispatch
+      this.props.Model
+
 type Component(props) =
   inherit React.Component<Props, State>(props)
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
@@ -171,6 +182,15 @@ type Component(props) =
 
 // ** createWidget
 
+let orphanedWidget dispatch model id name =
+  com<EmptyComponent,_,_> {
+    CueList = None
+    Model = model
+    Dispatch = dispatch
+    Id = id
+    Name = name
+  } []
+
 let createWidget(id: System.Guid) =
   { new IWidget with
     member __.Id = id
@@ -182,16 +202,19 @@ let createWidget(id: System.Guid) =
         minW = 4; maxW = 20
         minH = 4; maxH = 20 }
     member this.Render(dispatch, model) =
-      let cueList =
-        model.state |> Option.bind (fun state ->
-          match Seq.tryHead state.CueLists with
-          // TODO: Mock code, create player if it doesn't exist
-          | None -> cueListMockup() |> AddCueList |> ClientContext.Singleton.Post; None
-          | Some kv -> Some kv.Value)
-      com<Component,_,_>
-        { CueList = cueList
-          Model = model
-          Dispatch = dispatch
-          Id = this.Id
-          Name = this.Name } []
+      match model.state with
+      | None -> orphanedWidget dispatch model this.Id this.Name
+      | Some state ->
+        match Map.tryFind (IrisId.FromGuid id) state.CuePlayers with
+        | None -> orphanedWidget dispatch model this.Id this.Name
+        | Some player ->
+          let cueList =
+            player.CueListId
+            |> Option.bind (flip Map.tryFind state.CueLists)
+          com<Component,_,_>
+            { CueList = cueList
+              Model = model
+              Dispatch = dispatch
+              Id = this.Id
+              Name = this.Name } []
   }
