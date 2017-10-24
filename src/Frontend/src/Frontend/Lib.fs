@@ -300,7 +300,7 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   if cueList.Items.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
-  let newCue = Cue.create "Untitled"
+  let newCue = Cue.create "Untitled" [| |]
 
   // create a reference to the constructed cue
   let newCueRef = CueReference.create newCue

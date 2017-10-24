@@ -184,20 +184,28 @@ let _2of3 (_,x,_) = x
 let _3of3 (_,_,x) = x
 
 let cuesAndListsAndPlayers =
-    let makeCue i =
-        // Create new Cue and CueReference
-        let cue = { Id = IrisId.Create(); Name = name ("Cue " + (string i)); Slices = [||] }
-        let cueRef = { Id = IrisId.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-        cue, cueRef
-    let cue1, cueRef1 = makeCue 1
-    let cue2, cueRef2 = makeCue 2
-    let cue3, cueRef3 = makeCue 3
-    let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
-    let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Items=[| CueGroup cueGroup |]}
-    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
-    Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
-    Map[cueList.Id, cueList],
-    Map[cuePlayer.Id, cuePlayer]
+  let makeCue i =
+    // Create new Cue and CueReference
+    let cue = Cue.create ("Cue " + string i) [| |]
+    let cueRef = CueReference.create cue
+    cue, cueRef
+  let cue1, cueRef1 = makeCue 1
+  let cue2, cueRef2 = makeCue 2
+  let cue3, cueRef3 = makeCue 3
+  let cueGroup =
+    CueGroup.create "mockcuegroup" [|
+      cueRef1
+      cueRef2
+      cueRef3
+    |]
+  let cueList =
+    CueList.create "mockcuelist" [|
+      CueGroup cueGroup
+    |]
+  let cuePlayer = CuePlayer.create "mockcueplayer" (Some cueList.Id)
+  Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
+  Map[cueList.Id, cueList],
+  Map[cuePlayer.Id, cuePlayer]
 
 let getMockState() =
   let groups =

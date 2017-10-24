@@ -180,7 +180,7 @@ let titleBar dispatch model =
       Class "iris-button"
       OnClick (fun _ ->
         None
-        |> CuePlayer.create (name "Player")
+        |> CuePlayer.create "Player"
         |> AddCuePlayer
         |> ClientContext.Singleton.Post
       )

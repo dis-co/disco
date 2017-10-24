@@ -256,10 +256,10 @@ module CuePlayer =
 
   // ** create
 
-  let create (playerName: Name) (cuelist: CueListId option) =
+  let create (playerName: string) (cuelist: CueListId option) =
     let id = IrisId.Create()
     { Id            = id
-      Name          = playerName
+      Name          = name playerName
       Active        = false
       Locked        = false
       RemainingWait = -1

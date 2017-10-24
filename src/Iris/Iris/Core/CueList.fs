@@ -406,6 +406,13 @@ module CueList =
 
   let name (cuelist:CueList) = cuelist.Name
 
+  // ** create
+
+  let create (title:string) items =
+    { Id = IrisId.Create()
+      Name = Measure.name title
+      Items = items }
+
   // ** map
 
   /// execute a function on each of the CueLists items and return the updated CueList
