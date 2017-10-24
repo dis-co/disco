@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
-
+//import { Switch, Case } from "switch-case"
+import Switch, { Case, Default } from 'react-switch-case';
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -10,6 +11,43 @@ import React, { Component } from 'react'
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
+const Wat = (props) => {
+
+  if(props.pinpin !== null){
+    switch(props.pinpin){
+      case 'Simple':
+        return <input type="text"
+        onChange={(event) => {
+            changeVal(props.context, 'pinVal', () => {
+                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
+            })
+            }} />
+           
+      break;
+      case 'MultiLine':
+        return <textarea
+        onChange={(event) => {
+            changeVal(props.context, 'pinVal', () => {
+                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
+            })
+            }} />
+      break;
+
+      default:
+            return <h1> nene </h1>
+            break;
+  
+    }
+  }
+}
+
+const changeVal = (context, prop) => {
+    return (event) => {
+      var state = {}
+      state[prop] = event.target.value
+      context.setState(state)
+    }
+} 
 
 class TestWidget extends React.Component {
   constructor(props) {
@@ -21,8 +59,8 @@ class TestWidget extends React.Component {
       groupPin: "",
       pinVal: "",
     };
+    //this.changeVal = this.changeVal.bind(this);
   }
-
 
   render() {
     //initialize pinVal
@@ -45,21 +83,23 @@ class TestWidget extends React.Component {
           group name
            {/*onChange updates state with new groupName as read from input field*/}
         <input type="text"
-        onChange={(event) => this.setState({groupName : event.target.value})} />
+        onChange={changeVal(this, "groupName")} />
         </label>
         {/*input to select a pins name*/}
         <label>
           pin name
           {/*onChange updates state with new pinName as read from input field*/}
         <input type="text"
-        onChange={(event) => this.setState({pinName: event.target.value})} />
+        onChange={changeVal(this, "pinName")} />
         </label>
           {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
         <button type="submit" onClick={() => {
           this.setState({groupPin: this.state.groupName + '/'+ this.state.pinName}, () => {
             console.log('pin has been changed: ', this.state.groupPin)
             console.log(pinVal)
-            console.log(pin)
+            console.log("pin " + pin)
+            if(pin !== null)
+              console.log(pin.data.Behavior.ToString())
           })
           
           ;}}>submit</button>
@@ -68,14 +108,15 @@ class TestWidget extends React.Component {
         {/*onChhange updates the state with new slider maximum value*/}
         <label>
             value
-        <input type="text"
-          onChange={(event) => {
-              this.setState({pinVal: event.target.value}, () => {
-                if(pin != null)
-                IrisLib.updatePinValueAt(pin, 0, this.state.pinVal)
-              })
-              }} />
-          </label>
+            </label>
+            {
+              pin !== null ?
+              <Wat pinpin={pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} context={this} />
+              :
+              <h1>nene</h1>
+            }
+             
+            
         </div>
       </div>
     )

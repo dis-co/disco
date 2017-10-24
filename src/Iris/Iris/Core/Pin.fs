@@ -1381,7 +1381,13 @@ module Pin =
     | BytePin   data -> BytePin   { data with Tags = tags }
     | EnumPin   data -> EnumPin   { data with Tags = tags }
     | ColorPin  data -> ColorPin  { data with Tags = tags }
+  
+  // ** setBehavior 
 
+  let setBehavior behavior = function
+    | StringPin data -> StringPin { data with Behavior = behavior }
+    | other -> other
+    
   // ** setSlice
 
   //  ____       _   ____  _ _

@@ -1,8 +1,13 @@
 {
-    "VVVV/design.4vp": {
+    "one": {
         "A": 100,
         "B": true,
-        "C": "Hello World!",
+        "C (Simple)": "Hello Simple!",
+        "C (MultiLine)": "Hello Multiline!",
+        "C (IP)": "127.0.0.1",
+        "C (Url)": "http://google.com",
+        "C (FileName)": "/home/k/funny.gif",
+        "C (Directory)": "/home/k/src/projects/iris",
         "DDD": [
             ["tagA3", 5],
             ["tagB4", 7],
@@ -13,38 +18,17 @@
         "Z": 25,
         "hoho1": 1200,
         "hoho2": 1200,
-        "hoho3": 1200,
-        "hoho4": 1200,
-        "hoho5": 1200,
-        "hoho6": 1200,
-        "hoho7": 1200,
-        "hoho8": 1200,
-        "hoho9": 1200,
-        "hoho10": 1200,
-        "hoho11": 1200,
-        "hoho12": 1200,
-        "hoho13": 1200,
-        "hoho14": 1200,
-        "hoho15": 1200,
-        "hoho16": 1200,
-        "hoho17": 1200,
-        "hoho18": 1200,
-        "hoho19": 1200,
-        "hoho20": 1200,
-        "hoho21": 1200,
-        "hoho22": 1200,
-        "hoho23": 1200,
-        "hoho24": 1200,
-        "hoho25": 1200,
-        "hoho26": 1200,
-        "hoho27": 1200,
-        "hoho28": 1200,
-        "hoho29": 1200
+        "hoho3": 1200
     },
-    "VVVV/design.4vp II": {
+    "two": {
         "A": 100,
         "B": true,
-        "C": "Hello World!",
+        "C (Simple)": "Hello Simple!",
+        "C (MultiLine)": "Hello Multiline!",
+        "C (IP)": "127.0.0.1",
+        "C (Url)": "http://google.com",
+        "C (FileName)": "/home/k/funny.gif",
+        "C (Directory)": "/home/k/src/projects/iris",
         "DDD": [
             ["tagA3", 5],
             ["tagB4", 7],
@@ -54,10 +38,15 @@
         "Y": 1200,
         "Z": 25
     },
-    "VVVV/design.4vp III": {
+    "three": {
         "A": 100,
         "B": true,
-        "C": "Hello World!",
+        "C (Simple)": "Hello Simple!",
+        "C (MultiLine)": "Hello Multiline!",
+        "C (IP)": "127.0.0.1",
+        "C (Url)": "http://google.com",
+        "C (FileName)": "/home/k/funny.gif",
+        "C (Directory)": "/home/k/src/projects/iris",
         "DDD": [
             ["tagA3", 5],
             ["tagB4", 7],
@@ -67,10 +56,15 @@
         "Y": 1200,
         "Z": 25
     },
-    "VVVV/design.4vp IV": {
+    "four": {
         "A": 100,
         "B": true,
-        "C": "Hello World!",
+        "C (Simple)": "Hello Simple!",
+        "C (MultiLine)": "Hello Multiline!",
+        "C (IP)": "127.0.0.1",
+        "C (Url)": "http://google.com",
+        "C (FileName)": "/home/k/funny.gif",
+        "C (Directory)": "/home/k/src/projects/iris",
         "DDD": [
             ["tagA3", 5],
             ["tagB4", 7],

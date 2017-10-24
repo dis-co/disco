@@ -69,10 +69,33 @@ let makeTogglePin clientId gid pid pk values =
     // Using Sink makes the pin editable
     Pin.Sink.toggle pid (name pk) gid clientId values |> Some
 
+let (|Behavior|_|) (str:string) =
+    if str.Contains("Simple")
+    then Some Behavior.Simple
+    elif str.Contains("MultiLine")
+    then Some Behavior.MultiLine
+    elif str.Contains("FileName")
+    then Some Behavior.FileName
+    elif str.Contains("Directory")
+    then Some Behavior.Directory
+    elif str.Contains("IP")
+    then Some Behavior.IP
+    elif str.Contains("Url")
+    then Some Behavior.Url
+    else None
+
+let parseBehavior (name:string) =
+    match name with 
+    | Behavior b -> b
+    | _ -> Behavior.Simple
+
 let makeStringPin clientId gid pid pk values =
     let values = forcePin<string> gid pk values
+    let behavior = parseBehavior pk
     // Using Sink makes the pin editable
-    Pin.Sink.string pid (name pk) gid clientId values |> Some
+    Pin.Sink.string pid (name pk) gid clientId values
+    |> Pin.setBehavior behavior 
+    |> Some
 
 let makePin gid clientId pk (v: obj) =
     let pid = IrisId.Create()
@@ -138,7 +161,7 @@ let machines =
       GitPort      = port Constants.DEFAULT_GIT_PORT
       ApiPort      = port Constants.DEFAULT_API_PORT
       Version      = version "0.0.0" })
-    [ 0 .. 3 ]
+    [ 0 .. 0 ]
 
 let clients =
   Seq.map

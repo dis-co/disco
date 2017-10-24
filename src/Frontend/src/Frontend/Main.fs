@@ -22,6 +22,7 @@ let findPinByName(model: Model, name: string) =
     let i = name.LastIndexOf("/")
     let groupName = name.[0..(i-1)]
     let pinName = name.[(i+1)..]
+    printfn "group: %s pin: %s" groupName pinName
     state.PinGroups
     |> PinGroupMap.unifiedPins
     |> PinGroupMap.byGroup

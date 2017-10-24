@@ -47,6 +47,7 @@
     "react-notification-system": "^0.2.15",
     "react-rangeslider": "^2.2.0",
     "react-skylight": "^0.4.2",
-    "react-sortable-hoc": "^0.6.8"
+    "react-sortable-hoc": "^0.6.8",
+    "react-switch-case": "^1.0.3"
   }
 }
