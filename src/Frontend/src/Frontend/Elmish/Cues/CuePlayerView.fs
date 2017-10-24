@@ -13,7 +13,7 @@ open Iris.Web
 open Types
 open Helpers
 
-// ** Types
+// * Types
 
 type CG = CueGroupView.Props
 
@@ -22,13 +22,14 @@ type [<Pojo>] Props =
     Model: Model
     Dispatch: Msg->unit
     Id: Guid
-    Name: string }
+    Name: string
+    Player: CuePlayer option }
 
 type [<Pojo>] State =
   { SelectedCueGroupIndex: int
     SelectedCueIndex: int }
 
-// ** Sortable components
+// * Sortable components
 
 let private CueGroupSortableItem = Sortable.Element <| fun props ->
   com<CueGroupView.Component,_,_> props.value []
@@ -39,7 +40,7 @@ let private CueGroupSortableContainer = Sortable.Container <| fun props ->
         from CueGroupSortableItem { key=props.key; index=i; value=props } [])
     ul [] (Array.toList items)
 
-// ** Helpers
+// * Helpers
 
 let private cueListMockup() =
   let cueGroup =
@@ -63,7 +64,8 @@ let addGroup (cueList: CueList) (cueGroupIndex: int) =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
-// ** React components
+// * React components
+// ** EmptyComponent
 
 type EmptyComponent(props) =
   inherit React.Component<Props, State>(props)
@@ -76,18 +78,25 @@ type EmptyComponent(props) =
       this.props.Dispatch
       this.props.Model
 
-let private orphanedWidget dispatch model id name =
+// ** createEmpty
+
+let private createEmpty dispatch model id name =
   com<EmptyComponent,_,_> {
     CueList = None
     Model = model
     Dispatch = dispatch
     Id = id
     Name = name
+    Player = None
   } []
+
+// ** Component
 
 type Component(props) =
   inherit React.Component<Props, State>(props)
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
+
+  // *** renderGroups
 
   member this.renderGroups() =
     match this.props.CueList, this.props.Model.state with
@@ -126,6 +135,8 @@ type Component(props) =
         } [] |> Some
     | _ -> None
 
+  // *** renderBody
+
   member this.renderBody() =
     ul [] [
       li [Key "header"] [
@@ -149,8 +160,45 @@ type Component(props) =
       opt <| this.renderGroups()
     ]
 
+
+  // *** updatePlayer
+
+  member this.updatePlayer(id:string) =
+    match this.props.Player with
+    | None -> ()
+    | Some player ->
+      id |> IrisId.TryParse |> function
+        | Either.Left _ ->
+          CuePlayer.unsetCueList player
+          |> UpdateCuePlayer
+          |> ClientContext.Singleton.Post
+        | Either.Right id ->
+          CuePlayer.setCueList id player
+          |> UpdateCuePlayer
+          |> ClientContext.Singleton.Post
+
+  // *** renderTitleBar
+
   member this.renderTitleBar() =
-    // TODO: Use a dropdown to choose the CueList
+    let empty = "--"
+    let current =
+      this.props.CueList
+      |> Option.map (CueList.id >> string)
+      |> Option.defaultValue empty
+
+    let makeOpt (id,name) =
+      option [ Value id ] [ str name ]
+
+    let cueLists =
+      this.props.Model.state
+      |> Option.map
+        (State.cueLists
+         >> Map.toList
+         >> List.map (fun (id,cueList) -> string id,string cueList.Name))
+      |> Option.defaultValue List.empty
+      |> List.map makeOpt
+      |> fun list -> makeOpt (empty,empty) :: list
+
     div [] [
       button [
         Class "iris-button"
@@ -170,12 +218,21 @@ type Component(props) =
             Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
           | None -> ())
       ] [str "Add Cue"]
+      select [
+        Class "iris-control iris-select"
+        Value current
+        OnChange (fun ev -> this.updatePlayer !!ev.target?value)
+      ] cueLists
     ]
+
+  // *** render
 
   member this.render() =
     widget this.props.Id this.props.Name
       (Some (fun _ _ -> this.renderTitleBar()))
       (fun _ _ -> this.renderBody()) this.props.Dispatch this.props.Model
+
+  // *** shouldComponentUpdate
 
   member this.shouldComponentUpdate(nextProps: Props, nextState: State) =
     this.state <> nextState
@@ -203,10 +260,10 @@ let createWidget(id: System.Guid) =
         minH = 4; maxH = 20 }
     member this.Render(dispatch, model) =
       match model.state with
-      | None -> orphanedWidget dispatch model this.Id this.Name
+      | None -> createEmpty dispatch model this.Id this.Name
       | Some state ->
         match Map.tryFind (IrisId.FromGuid id) state.CuePlayers with
-        | None -> orphanedWidget dispatch model this.Id this.Name
+        | None -> createEmpty dispatch model this.Id this.Name
         | Some player ->
           let cueList =
             Option.bind
@@ -217,5 +274,6 @@ let createWidget(id: System.Guid) =
               Model = model
               Dispatch = dispatch
               Id = this.Id
-              Name = this.Name } []
+              Name = this.Name
+              Player = Some player } []
   }

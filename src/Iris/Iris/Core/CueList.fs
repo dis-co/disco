@@ -398,6 +398,10 @@ type CueList =
 
 module CueList =
 
+  // ** id =
+
+  let id (cuelist:CueList) = cuelist.Id
+
   // ** name =
 
   let name (cuelist:CueList) = cuelist.Name
