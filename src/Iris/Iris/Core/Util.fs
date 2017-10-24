@@ -670,3 +670,44 @@ module Guid =
 
   let toId (guid: Guid) =
     IrisId.FromGuid guid
+
+
+// * Array
+
+module Array =
+
+  // ** insertAfter
+
+  let insertAfter (i: int) (x: 't) (xs: 't[]) =
+    let len = xs.Length
+    if len = 0 (* && i = 0 *) then
+      [|x|]
+    elif i >= len then
+      printfn "Array.insertAfter: Index out of array bounds"
+      xs
+    elif i < 0 then
+      Array.append [|x|] xs
+    elif i = (len - 1) then
+      Array.append xs [|x|]
+    else
+      let xs2 = Array.zeroCreate<'t> (len + 1)
+      for j = 0 to len do
+        if j <= i then
+          xs2.[j] <- xs.[j]
+        elif j = (i + 1) then
+          xs2.[j] <- x
+        else
+          xs2.[j] <- xs.[j - 1]
+      xs2
+
+  // ** replaceById
+
+  let inline replaceById< ^t when ^t : (member Id : IrisId)> (newItem : ^t) (arr: ^t[]) =
+    Array.map
+      (fun (x: ^t) ->
+        let newId = (^t : (member Id : IrisId) newItem)
+        let xId = (^t : (member Id : IrisId) x)
+        if newId = xId
+        then newItem
+        else x)
+      arr

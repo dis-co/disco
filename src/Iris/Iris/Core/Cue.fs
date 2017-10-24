@@ -216,9 +216,16 @@ type Cue =
 
   #endif
 
-// * Cue
+// * Cue module
 
 module Cue =
+
+  // ** create
+
+  let create (title: string) =
+    { Id = IrisId.Create()
+      Name = name title
+      Slices = Array.empty }
 
   // ** setSlices
 

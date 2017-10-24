@@ -228,9 +228,11 @@ type Component(props) =
                     updater =
                       if Lib.isMissingPin pin
                       then None
-                      else Some { new IUpdater with
-                                      member __.Update(dragging, valueIndex, value) =
-                                        this.updateCueValue(dragging, i, valueIndex, value) }
+                      else Some {
+                        new IUpdater with
+                          member __.Update(dragging, valueIndex, value) =
+                            this.updateCueValue(dragging, i, valueIndex, value)
+                      }
                     onSelect = fun multi ->
                       Select.pin dispatch pin
                       Drag.selectCueAtom dispatch multi cue.Id pin.Id
