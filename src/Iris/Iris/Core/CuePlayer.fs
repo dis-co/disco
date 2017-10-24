@@ -26,6 +26,7 @@ type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Locked: bool
+  [<DefaultValue>] val mutable Active: bool
   [<DefaultValue>] val mutable CueListId: string
   [<DefaultValue>] val mutable Selected: int
   [<DefaultValue>] val mutable CallId: string
@@ -46,6 +47,7 @@ type CuePlayerYaml() =
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
     yaml.Locked <- player.Locked
+    yaml.Active <- player.Active
     Option.iter (fun id -> yaml.CueListId <- string id) player.CueListId
     yaml.Selected <- int player.Selected
     yaml.CallId <- string player.CallId
@@ -72,6 +74,7 @@ type CuePlayerYaml() =
         Id = id
         Name = name yaml.Name
         Locked = yaml.Locked
+        Active = yaml.Active
         CueListId = str2opt yaml.CueListId
         Selected = index yaml.Selected
         CallId = call
@@ -92,6 +95,7 @@ type CuePlayer =
     Name: Name
     CueListId: CueListId option
     Locked: bool
+    Active: bool
     Selected: int<index>
     RemainingWait: int
     CallId: PinId                           // should be Bang pin type
@@ -126,6 +130,7 @@ type CuePlayer =
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
     Option.iter (fun value -> CuePlayerFB.AddCueListId(builder,value)) cuelist
     CuePlayerFB.AddLocked(builder, player.Locked)
+    CuePlayerFB.AddActive(builder, player.Active)
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
     CuePlayerFB.AddCallId(builder, call)
@@ -172,6 +177,7 @@ type CuePlayer =
         Id = id
         Name = name fb.Name
         Locked = fb.Locked
+        Active = fb.Active
         Selected = index fb.Selected
         RemainingWait = fb.RemainingWait
         CueListId = cuelist
@@ -254,6 +260,7 @@ module CuePlayer =
     let id = IrisId.Create()
     { Id            = id
       Name          = playerName
+      Active        = false
       Locked        = false
       RemainingWait = -1
       Selected      = -1<index>
@@ -263,6 +270,21 @@ module CuePlayer =
       PreviousId    = Pin.Player.previousId id
       LastCalledId  = None
       LastCallerId  = None }
+
+  // ** setName
+
+  let setName (name:Name) (player:CuePlayer) =
+    { player with Name = name }
+
+  // ** setLocked
+
+  let setLocked locked (player: CuePlayer) =
+    { player with Locked = locked }
+
+  // ** setActive
+
+  let setActive active (player: CuePlayer) =
+    { player with Active = active }
 
   // ** assetPath
 
@@ -280,3 +302,8 @@ module CuePlayer =
 
   let setCueList id player =
     { player with CueListId = Some id }
+
+  // ** unsetCueList
+
+  let unsetCueList player =
+    { player with CueListId = None }

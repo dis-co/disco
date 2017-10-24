@@ -185,6 +185,7 @@ module SerializationTests =
     { Id = IrisId.Create()
       Name = rndname ()
       Locked = false
+      Active = false
       Selected = index (rand.Next(0,1000))
       RemainingWait = rand.Next(0,1000)
       CueListId = rndopt ()

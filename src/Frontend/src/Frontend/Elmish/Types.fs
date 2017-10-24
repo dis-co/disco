@@ -16,6 +16,7 @@ module StorageKeys =
 module Widgets =
   let [<Literal>] Log           = "LOG"
   let [<Literal>] GraphView     = "Graph View"
+  let [<Literal>] Players       = "Cue Players"
   let [<Literal>] CuePlayer     = "Cue Player"
   let [<Literal>] ProjectView   = "Project View"
   let [<Literal>] Cluster       = "Cluster"

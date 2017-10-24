@@ -6,7 +6,6 @@
   <ItemGroup>
     <Compile Include="../Frontend/Browser.fs" />
     <Compile Include="../Frontend/Crypto.fs" />
-    <Compile Include="../Frontend/Html.fs" />
     <Compile Include="../Frontend/Worker.fs" />
     <Compile Include="../Frontend/Client.fs" />
     <Compile Include="../Frontend/Keyboard.fs" />
