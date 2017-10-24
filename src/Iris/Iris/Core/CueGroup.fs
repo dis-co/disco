@@ -159,3 +159,8 @@ module CueGroup =
         else result)
       false
       group.CueRefs
+
+  // ** insertAfter
+
+  let insertAfter (idx:int) (item:CueReference) cueGroup =
+    { cueGroup with CueRefs = Array.insertAfter idx item cueGroup.CueRefs }

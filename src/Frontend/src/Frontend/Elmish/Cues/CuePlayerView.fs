@@ -42,25 +42,10 @@ let private CueGroupSortableContainer = Sortable.Container <| fun props ->
 
 // * Helpers
 
-let private cueListMockup() =
-  let cueGroup =
-    { Id = IrisId.Create()
-      Name = name "MockCueGroup"
-      CueRefs = [||] }
-  { Id = IrisId.Create()
-    Name = name "MockCueList"
-    Items = [| CueGroup cueGroup |] }
-
 let addGroup (cueList: CueList) (cueGroupIndex: int) =
-  let cueGroup =
-    { Id = IrisId.Create()
-      Name = name "Untitled"
-      CueRefs = [||] }
-  // TODO: This doesn't work when selecting the last group is selected
-  // CueList.insertAfter cueGroupIndex (CueGroup cueGroup) cueList
-  let newItems =
-    Lib.insertAfter cueGroupIndex (CueGroup cueGroup) cueList.Items
-  { cueList with Items = newItems }
+  let cueGroup = CueGroup.create "Untitled"
+  cueList
+  |> CueList.insertAfter cueGroupIndex (CueGroup cueGroup)
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 

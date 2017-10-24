@@ -216,9 +216,16 @@ type Cue =
 
   #endif
 
-// * Cue
+// * Cue module
 
 module Cue =
+
+  // ** create
+
+  let create (title: string) =
+    { Id = IrisId.Create()
+      Name = name title
+      Slices = Array.empty }
 
   // ** setSlices
 
@@ -256,15 +263,3 @@ module Cue =
     cue.Slices
     |> Array.filter (fun (slices:Slices) -> slices.PinId <> id)
     |> flip setSlices cue
-
-
-// * Cue module
-
-module Cue =
-
-  // ** create
-
-  let create (title: string) =
-    { Id = IrisId.Create()
-      Name = name title
-      Slices = Array.empty }

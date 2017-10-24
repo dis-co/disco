@@ -436,17 +436,7 @@ module CueList =
   // ** insertAfter
 
   let insertAfter (idx:int) (item:CueListItem) cueList =
-    let folder (state:ResizeArray<_>) curr existing =
-      if curr = idx + 1
-      then
-        state.Add item
-        state.Add existing
-        state
-      else
-        state.Add existing
-        state
-    let items = foldi folder (ResizeArray()) cueList
-    { cueList with Items = items.ToArray() }
+    { cueList with Items = Array.insertAfter idx item cueList.Items }
 
   // ** filterItems
 

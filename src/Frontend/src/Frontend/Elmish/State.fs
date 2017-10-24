@@ -103,7 +103,7 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
   [| true,  false, Codes.z,         postCmd AppCommand.Undo
      true,  true,  Codes.z,         postCmd AppCommand.Redo
      true,  false, Codes.s,         postCmd AppCommand.Save
-     false, false, Codes.backspace, fun () -> dispatch RemoveSelectedDragItems
+     false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 
 /// Initialization function for Elmish state
