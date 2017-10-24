@@ -73,7 +73,10 @@ let private updateName (player:CuePlayer) (value:string) =
 let private updateCueList (player:CuePlayer) = function
   | Some id ->
     match IrisId.TryParse id with
-    | Left error -> printfn "Got error trying to parse Cuelist id: %s" error.Message
+    | Left _ ->
+      CuePlayer.unsetCueList player
+      |> UpdateCuePlayer
+      |> ClientContext.Singleton.Post
     | Right id ->
       CuePlayer.setCueList id player
       |> UpdateCuePlayer

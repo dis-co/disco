@@ -54,6 +54,8 @@ export default class DropdownEditable extends React.Component {
               let emptyStr = "--"
               let cueList = this.props["data-selected"]
               var select = document.createElement('select')
+              select.classList.add("iris-control")
+              select.classList.add("iris-select")
 
               select.appendChild(createOpt(emptyStr, null, cueList === null))
               options.forEach(([ name, id ]) => {
