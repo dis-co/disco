@@ -98,7 +98,12 @@ let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
   | Some state ->
-    let config = state.Project.Config
+    /// all name * id pairs of existing Cue Lists for use in the dropdown menu
+    let cueLists =
+      state.CueLists
+      |> Map.toArray
+      |> Array.map (fun (id,cueList) -> string cueList.Name, string id)
+
     table [Class "iris-table"] [
       thead [] [
         tr [] [
@@ -116,6 +121,7 @@ let body dispatch (model: Model) =
             let cueList =
               match player.CueListId with
               | Some cueList ->
+                /// try find the currently used Cue List for this player
                 model.state
                 |> Option.map State.cueLists
                 |> Option.bind (Map.tryFind cueList)
@@ -127,20 +133,19 @@ let body dispatch (model: Model) =
                 Class "width-20"
                 padding5AndTopBorder()
               ] [
+                /// provide inline editing capabilities for the CuePlayer Name field
                 from ContentEditable
                   %["tagName" ==> "span"
                     "html" ==> string player.Name
                     "onChange" ==> (updateName player)] []
               ]
               td [Class "width-20"; padding5AndTopBorder()] [
+                /// provies inline selection method for the Cue List used by the player
                 from DropdownEditable
                   %["tagName" ==> "span"
                     "html" ==> cueList
                     "data-selected" ==> Option.map string player.CueListId
-                    "data-options" ==> [|
-                      "hello","db484167-98c3-4272-bf3b-52b3f64d0027"
-                      "bye", "232fcb0b-1d91-43a2-bc1e-9efc26848f14"
-                    |]
+                    "data-options" ==> cueLists
                     "onChange" ==> (updateCueList player)] []
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
