@@ -139,3 +139,16 @@ type CueReference =
     yaml.ToCueReference()
 
   #endif
+
+// * CueReference module
+
+module CueReference =
+
+  // ** create
+
+  let create (cue: Cue) =
+    { Id = IrisId.Create()
+      CueId = cue.Id
+      AutoFollow = -1
+      Duration = -1
+      Prewait = -1 }

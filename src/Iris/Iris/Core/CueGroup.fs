@@ -137,6 +137,13 @@ type CueGroup =
 
 module CueGroup =
 
+  // ** create
+
+  let create (title: string) =
+    { Id = IrisId.Create()
+      Name = name title
+      CueRefs = Array.empty }
+
   // ** filter
 
   let filter (f: CueGroup -> bool) (groups: CueGroup array) =
