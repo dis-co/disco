@@ -1023,7 +1023,7 @@ type CueReferenceFB =
   abstract IdLength: int
   abstract CueId: int -> byte
   abstract CueIdLength: int -> byte
-  abstract AutoFollow: int
+  abstract AutoFollow: bool
   abstract Duration: int
   abstract Prewait: int
 
@@ -1032,7 +1032,7 @@ type CueReferenceFBConstructor =
   abstract StartCueReferenceFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddCueId: builder: FlatBufferBuilder * id: VectorOffset -> unit
-  abstract AddAutoFollow: builder: FlatBufferBuilder * value: int -> unit
+  abstract AddAutoFollow: builder: FlatBufferBuilder * value:bool -> unit
   abstract AddDuration: builder: FlatBufferBuilder * value: int -> unit
   abstract AddPrewait: builder: FlatBufferBuilder * value: int -> unit
   abstract EndCueReferenceFB: builder: FlatBufferBuilder -> Offset<'a>

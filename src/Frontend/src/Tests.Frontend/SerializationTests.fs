@@ -24,6 +24,10 @@ module SerializationTests =
 
   let rndport() = rand.Next(0,65535) |> uint16 |> port
 
+  let rndbool() = rand.Next(0,2) |> function
+    | 0 -> false
+    | _ -> true
+
   let rndint() = rand.Next()
 
   let mkBytes _ =
@@ -87,7 +91,7 @@ module SerializationTests =
   let mkCueRef () : CueReference =
     { Id = IrisId.Create()
       CueId = IrisId.Create()
-      AutoFollow = rndint()
+      AutoFollow = rndbool()
       Duration = rndint()
       Prewait = rndint() }
 

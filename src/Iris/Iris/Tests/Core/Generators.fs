@@ -692,7 +692,7 @@ module Generators =
   let cueReferenceGen = gen {
       let! id = idGen
       let! cue = idGen
-      let! af = intGen
+      let! af = boolGen
       let! dur = intGen
       let! pw = intGen
       return

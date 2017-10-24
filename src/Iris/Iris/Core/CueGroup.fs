@@ -139,10 +139,10 @@ module CueGroup =
 
   // ** create
 
-  let create (title: string) =
+  let create (title: string) refs =
     { Id = IrisId.Create()
       Name = name title
-      CueRefs = Array.empty }
+      CueRefs = refs }
 
   // ** filter
 

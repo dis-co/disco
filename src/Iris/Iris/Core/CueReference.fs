@@ -30,7 +30,7 @@ open SharpYaml.Serialization
 type CueReferenceYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable CueId: string
-  [<DefaultValue>] val mutable AutoFollow: int
+  [<DefaultValue>] val mutable AutoFollow: bool
   [<DefaultValue>] val mutable Duration: int
   [<DefaultValue>] val mutable Prewait: int
 
@@ -68,10 +68,10 @@ type CueReferenceYaml() =
 type CueReference =
   { Id:         CueRefId
     CueId:      CueId
-    AutoFollow: int
+    AutoFollow: bool
     Duration:   int
     Prewait:    int
-    //Trigger:  Event option
+   //Trigger:  Event option
   }
 
   // ** FromFB
@@ -149,6 +149,6 @@ module CueReference =
   let create (cue: Cue) =
     { Id = IrisId.Create()
       CueId = cue.Id
-      AutoFollow = -1
+      AutoFollow = false
       Duration = -1
       Prewait = -1 }

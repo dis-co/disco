@@ -222,10 +222,10 @@ module Cue =
 
   // ** create
 
-  let create (title: string) =
+  let create (title: string) slices =
     { Id = IrisId.Create()
       Name = name title
-      Slices = Array.empty }
+      Slices = slices }
 
   // ** setSlices
 

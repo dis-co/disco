@@ -469,7 +469,7 @@ table CueFB {
 table CueReferenceFB {
       Id: [ubyte];
       CueId: [ubyte];
-      AutoFollow: int;
+      AutoFollow: bool;
       Duration: int;
       Prewait: int;
 }

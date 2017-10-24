@@ -249,7 +249,7 @@ module TestData =
   let mkCueRef () : CueReference =
     { Id = IrisId.Create()
       CueId = IrisId.Create()
-      AutoFollow = rndint()
+      AutoFollow = rndbool()
       Duration = rndint()
       Prewait = rndint() }
 

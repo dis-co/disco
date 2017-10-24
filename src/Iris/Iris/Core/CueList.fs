@@ -402,9 +402,21 @@ module CueList =
 
   let id (cuelist:CueList) = cuelist.Id
 
-  // ** name =
+  // ** name
 
   let name (cuelist:CueList) = cuelist.Name
+
+  // ** setName
+
+  let setName name (cueList:CueList) =
+    { cueList with Name = name }
+
+  // ** create
+
+  let create (title:string) items =
+    { Id = IrisId.Create()
+      Name = Measure.name title
+      Items = items }
 
   // ** map
 

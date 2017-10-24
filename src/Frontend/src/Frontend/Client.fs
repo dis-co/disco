@@ -163,8 +163,7 @@ type ClientContext private () =
       | ev ->
         match store with
         | Some store ->
-          try
-            store.Dispatch ev
+          try store.Dispatch ev
           with exn ->
             self.Log LogLevel.Err (sprintf "Error when updating store: %s" exn.Message)
         | None ->
