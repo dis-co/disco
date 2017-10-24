@@ -31,6 +31,7 @@ initWidgetFactory
         | Widgets.GraphView -> GraphView.createWidget(id)
         | Widgets.Players -> PlayerListView.createWidget(id)
         | Widgets.CuePlayer -> Cues.CuePlayerView.createWidget(id)
+        | Widgets.CueLists -> CueListView.createWidget(id)
         | Widgets.ProjectView -> ProjectView.createWidget(id)
         | Widgets.Cluster -> ClusterView.createWidget(id)
         | Widgets.Clients -> ClientsView.createWidget(id)

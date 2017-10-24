@@ -818,10 +818,9 @@ module State =
   //  \____\__,_|\___|_____|_|___/\__|___/
 
   let addCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      state
-    else
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+    if Map.containsKey cuelist.Id state.CueLists
+    then state
+    else { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
 
   // ** updateCueList
 
