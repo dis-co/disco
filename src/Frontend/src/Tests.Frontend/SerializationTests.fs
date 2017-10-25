@@ -99,14 +99,10 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create(); Name = Some (rndname()); CueRefs = mkCueRefs() }
 
   let mkCueListItems () =
-    [| for n in 0 .. rand.Next(1,20) do
-        if n % 2 = 0 then
-          yield CueListItem.createHeadline (sprintf "Hello %d" n)
-        else
-          yield CueGroup (mkCueGroup()) |]
+    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray

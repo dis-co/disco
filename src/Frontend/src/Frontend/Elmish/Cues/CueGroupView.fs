@@ -115,14 +115,19 @@ type Component(props) =
           if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
             this.props.SelectCueGroup 0
           let gid = this.props.CueGroup.Id
-          this.props.CueList |> CueList.filterItems (function
-            | CueGroup g -> g.Id <> gid
-            | _ -> false)
+          this.props.CueList
+          |> CueList.filterItems (function { Id = id } -> id <> gid)
           |> UpdateCueList
           |> ClientContext.Singleton.Post)
       ] []
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
+    let groupHeadline name =
+      div [
+        classList ["iris-cuegroup-headline",true]
+      ] [
+        strong [] [ str (string name)]
+      ]
     let groupHeader =
       div [
         classList ["iris-cuegroup-selected", isSelected]
@@ -137,10 +142,15 @@ type Component(props) =
           from CueView.SortableHandle
             { value = String.Format("{0:0000}", this.props.CueGroupIndex + 1) } []]
         div [Class "width-20"] [
-          CueView.renderInput (unwrap this.props.CueGroup.Name) (fun txt ->
-            assert false
-            { this.props.CueGroup with Name = name txt }
-            |> CueView.updateCueGroup this.props.CueList)
+          CueView.renderInput
+            (this.props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
+            (fun txt ->
+              let name =
+                if String.IsNullOrWhiteSpace txt
+                then None
+                else Some (name txt)
+              { this.props.CueGroup with Name = name }
+              |> CueView.updateCueGroup this.props.CueList)
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
@@ -148,6 +158,11 @@ type Component(props) =
         div [Class "width-5"] [removeButton]
       ]
     div [Class "iris-cuegroup"]
-      (if not this.state.IsOpen
-       then [groupHeader]
-       else [groupHeader; renderCues this.state this.props])
+      (match this.state.IsOpen, this.props.CueGroup.Name with
+        | false, None -> [groupHeader]
+        | false, Some name -> [groupHeadline name; groupHeader]
+        | true, None -> [groupHeader; renderCues this.state this.props]
+        | true, Some name ->
+          [ groupHeadline name
+            groupHeader
+            renderCues this.state this.props ])

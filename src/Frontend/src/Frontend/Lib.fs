@@ -308,9 +308,7 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup =
     let idx = max cueGroupIndex 0
-    match cueList.Items.[idx] with
-    | CueGroup group -> group
-    | _ -> failwithf "No group found at index: %d" idx
+    cueList.Items.[idx]
 
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
 
@@ -318,7 +316,7 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
 
   // Update the CueList
-  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
+  let newCueList = CueList.replace newCueGroup cueList
 
   // Send messages to backend
   [AddCue newCue; UpdateCueList newCueList]

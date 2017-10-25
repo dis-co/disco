@@ -43,9 +43,9 @@ let private CueGroupSortableContainer = Sortable.Container <| fun props ->
 // * Helpers
 
 let addGroup (cueList: CueList) (cueGroupIndex: int) =
-  let cueGroup = CueGroup.create "Untitled" [| |]
+  let cueGroup = CueGroup.create [| |]
   cueList
-  |> CueList.insertAfter cueGroupIndex (CueGroup cueGroup)
+  |> CueList.insertAfter cueGroupIndex cueGroup
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
@@ -87,24 +87,20 @@ type Component(props) =
     match this.props.CueList, this.props.Model.state with
     | Some cueList, Some state ->
       let itemProps =
-        cueList.Items |> Array.mapi (fun i item ->
-          match item with
-          | Headline _ ->
-            printfn "TODO: Render Cue Headlines"
-            None
-          | CueGroup group ->
-            { CG.key = string group.Id
-              CG.Dispatch = this.props.Dispatch
-              CG.Model = this.props.Model
-              CG.State = state
-              CG.CueGroup = group
-              CG.CueList = cueList
-              CG.CueGroupIndex = i
-              CG.SelectedCueIndex = this.state.SelectedCueIndex
-              CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-              CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
-              CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
-            } |> Some)
+        cueList.Items
+        |> Array.mapi (fun i group ->
+          { CG.key = string group.Id
+            CG.Dispatch = this.props.Dispatch
+            CG.Model = this.props.Model
+            CG.State = state
+            CG.CueGroup = group
+            CG.CueList = cueList
+            CG.CueGroupIndex = i
+            CG.SelectedCueIndex = this.state.SelectedCueIndex
+            CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
+            CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
+            CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
+          } |> Some)
         |> Array.choose id
       from CueGroupSortableContainer
         { items = itemProps
