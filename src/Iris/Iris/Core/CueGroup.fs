@@ -37,7 +37,7 @@ type CueGroupYaml() =
   static member From(cueGroup: CueGroup) =
     let yaml = CueGroupYaml()
     yaml.Id <- string cueGroup.Id
-    yaml.Name <- unwrap cueGroup.Name
+    yaml.Name <- cueGroup.Name |> Option.map unwrap |> Option.defaultValue null
     yaml.CueRefs <- Array.map Yaml.toYaml cueGroup.CueRefs
     yaml
 
@@ -47,9 +47,13 @@ type CueGroupYaml() =
     either {
       let! id = IrisId.TryParse yaml.Id
       let! cues = Either.bindArray Yaml.fromYaml yaml.CueRefs
+      let name =
+        if System.String.IsNullOrWhiteSpace yaml.Name
+        then None
+        else Some (name yaml.Name)
       return {
         Id = id
-        Name = name yaml.Name
+        Name = name
         CueRefs = cues
       }
     }

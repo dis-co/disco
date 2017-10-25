@@ -55,6 +55,7 @@ module Generators =
     | null -> null
     | _ -> str |> Encoding.UTF8.GetBytes |> Convert.ToBase64String
 
+  let nonNullStringGen = Arb.generate<Guid> |> Gen.map string
   let stringGen = Arb.generate<string> |> Gen.map maybeEncode
   let stringsGen = Gen.arrayOfLength 2 stringGen
   let intGen = Arb.generate<int>
@@ -705,7 +706,7 @@ module Generators =
 
   let cueGroupGen = gen {
       let! id = idGen
-      let! nm = nameGen
+      let! nm = maybeGen (Gen.map Measure.name nonNullStringGen)
       let! refs = Gen.arrayOf cueReferenceGen
       return
         { Id = id
