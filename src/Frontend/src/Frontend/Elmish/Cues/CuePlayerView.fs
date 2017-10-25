@@ -43,7 +43,7 @@ let private CueGroupSortableContainer = Sortable.Container <| fun props ->
 // * Helpers
 
 let addGroup (cueList: CueList) (cueGroupIndex: int) =
-  let cueGroup = CueGroup.create "Untitled" [| |]
+  let cueGroup = CueGroup.create [| |]
   cueList
   |> CueList.insertAfter cueGroupIndex cueGroup
   |> UpdateCueList

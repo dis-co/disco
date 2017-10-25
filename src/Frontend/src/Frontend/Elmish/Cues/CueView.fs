@@ -39,8 +39,9 @@ let private updateSlicesValue (index: int) (value: obj) slices: Slices =
 
 let renderInput (content: string) (update: string->unit) =
   from ContentEditable
-    %["tagName" ==> "span"
+    %["tagName" ==> "div"
       "html" ==> content
+      "className" ==> "iris-contenteditable"
       "onChange" ==> update] []
 
 let updateCueGroup cueList cueGroup =

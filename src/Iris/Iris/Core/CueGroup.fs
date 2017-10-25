@@ -61,7 +61,7 @@ type CueGroupYaml() =
 [<StructuralEquality; StructuralComparison>]
 type CueGroup =
   { Id:      CueGroupId
-    Name:    Name
+    Name:    Name option
     CueRefs: CueReference array }
 
   // ** FromFB
@@ -82,9 +82,13 @@ type CueGroup =
           fb.CueRefs
           CueReference.FromFB
       let! id = Id.decodeId fb
+      let name =
+        match fb.Name with
+        | null -> None
+        | str -> Some (name str)
       return {
         Id = id
-        Name = name fb.Name
+        Name = name
         CueRefs = cues
       }
     }
@@ -93,7 +97,7 @@ type CueGroup =
 
   member self.ToOffset(builder: FlatBufferBuilder) : Offset<CueGroupFB> =
     let id = CueGroupFB.CreateIdVector(builder,self.Id.ToByteArray())
-    let name = self.Name |> unwrap |> Option.mapNull builder.CreateString
+    let name = self.Name |> Option.map (unwrap >> builder.CreateString)
     let cueoffsets = Array.map (Binary.toOffset builder) self.CueRefs
     let cuesvec = CueGroupFB.CreateCueRefsVector(builder, cueoffsets)
     CueGroupFB.StartCueGroupFB(builder)
@@ -139,9 +143,9 @@ module CueGroup =
 
   // ** create
 
-  let create (title: string) refs =
+  let create refs =
     { Id = IrisId.Create()
-      Name = name title
+      Name = None
       CueRefs = refs }
 
   // ** filter

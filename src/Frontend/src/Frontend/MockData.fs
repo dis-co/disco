@@ -193,7 +193,7 @@ let cuesAndListsAndPlayers =
   let cue2, cueRef2 = makeCue 2
   let cue3, cueRef3 = makeCue 3
   let cueGroup =
-    CueGroup.create "mockcuegroup" [|
+    CueGroup.create [|
       cueRef1
       cueRef2
       cueRef3
