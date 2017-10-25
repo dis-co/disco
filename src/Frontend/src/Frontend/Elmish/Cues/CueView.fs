@@ -13,7 +13,7 @@ open Iris.Web
 open Types
 open Helpers
 
-// ** Helpers
+// * Helpers
 
 type private RCom = React.ComponentClass<obj>
 let  private ContentEditable: RCom = importDefault "../../../js/widgets/ContentEditable"
@@ -60,7 +60,7 @@ let onDragStart (model: Model) cueId pinId multiple =
   if multiple then model.selectedDragItems.Append(newItems) else newItems
   |> Drag.start
 
-// ** Types
+// * Types
 
 type [<Pojo>] State =
   { IsOpen: bool
@@ -81,12 +81,12 @@ type [<Pojo>] Props =
     SelectCue: int -> int -> unit
     Dispatch: Elmish.Dispatch<Msg> }
 
-// ** Sortable components
+// * Sortable components
 
 let SortableHandle = Sortable.Handle(fun props ->
   div [Style [Cursor "move"]] [str props.value])
 
-// ** React components
+// * React components
 
 type Component(props) =
   inherit React.Component<Props, State>(props)

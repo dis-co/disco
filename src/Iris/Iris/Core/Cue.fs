@@ -242,13 +242,6 @@ module Cue =
   let contains pin (cue:Cue) =
     Array.exists (fun (slices:Slices) -> slices.PinId = pin) cue.Slices
 
-  // ** addSlices
-
-  let addSlices (slices: Slices) cue  =
-    if contains slices.PinId cue
-    then cue
-    else { cue with Slices = Array.append cue.Slices [| slices |] }
-
   // ** updateSlices
 
   let updateSlices (slices:Slices) cue =
@@ -256,6 +249,13 @@ module Cue =
       if existing.PinId = slices.PinId
       then slices
       else existing
+
+  // ** addSlices
+
+  let addSlices (slices: Slices) cue  =
+    if contains slices.PinId cue
+    then updateSlices slices cue
+    else { cue with Slices = Array.append cue.Slices [| slices |] }
 
   // ** removeSlices
 
