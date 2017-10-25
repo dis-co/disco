@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="FlatBuffers.fs" />
     <Compile Include="FlatBufferTypes.fs" />
+    <Compile Include="../Frontend/Aether.fs" />
     <Compile Include="../../../Iris/Iris/Core/Build.fs" />
     <Compile Include="../../../Iris/Iris/Core/Measure.fs" />
     <Compile Include="../../../Iris/Iris/Core/Constants.fs" />
