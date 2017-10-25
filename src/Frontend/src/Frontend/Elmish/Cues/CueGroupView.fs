@@ -115,9 +115,8 @@ type Component(props) =
           if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
             this.props.SelectCueGroup 0
           let gid = this.props.CueGroup.Id
-          this.props.CueList |> CueList.filterItems (function
-            | CueGroup g -> g.Id <> gid
-            | _ -> false)
+          this.props.CueList
+          |> CueList.filterItems (function { Id = id } -> id <> gid)
           |> UpdateCueList
           |> ClientContext.Singleton.Post)
       ] []

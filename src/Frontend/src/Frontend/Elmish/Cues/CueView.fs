@@ -44,7 +44,7 @@ let renderInput (content: string) (update: string->unit) =
       "onChange" ==> update] []
 
 let updateCueGroup cueList cueGroup =
-  CueList.replace (CueGroup cueGroup) cueList
+  CueList.replace cueGroup cueList
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 

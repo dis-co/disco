@@ -200,7 +200,7 @@ let cuesAndListsAndPlayers =
     |]
   let cueList =
     CueList.create "mockcuelist" [|
-      CueGroup cueGroup
+      cueGroup
     |]
   let cuePlayer = CuePlayer.create "mockcueplayer" (Some cueList.Id)
   Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],

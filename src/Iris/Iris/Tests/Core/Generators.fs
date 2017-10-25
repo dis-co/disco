@@ -713,22 +713,10 @@ module Generators =
           CueRefs = refs }
     }
 
-  let headlineGen = gen {
-      let! id = idGen
-      let! content = stringGen
-      return Headline (id, content)
-    }
-
-  let cuelistItemGen =
-    Gen.oneof [
-      headlineGen
-      Gen.map CueGroup cueGroupGen
-    ]
-
   let cuelistGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! items = Gen.arrayOf cuelistItemGen
+      let! items = Gen.arrayOf cueGroupGen
       return
         { Id = id
           Name = nm
