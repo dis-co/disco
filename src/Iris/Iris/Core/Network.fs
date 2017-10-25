@@ -155,7 +155,8 @@ module Network =
       with
         | exn ->
           return!
-            exn.Message
+            port
+            |> sprintf "Address %O:%O already in use" ip
             |> Error.asSocketError (tag "ensureAvailability")
             |> Either.fail
     }
