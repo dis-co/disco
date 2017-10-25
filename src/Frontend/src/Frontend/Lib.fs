@@ -328,7 +328,7 @@ let addSlicesToCue (cue: Cue) (pins: Pin seq) =
   let persistPins, updatedCue =
     Seq.fold
       (fun (persistedPins, cue) pin ->
-        if isOutputPin pin || Cue.contains pin.Id cue
+        if isOutputPin pin
         then persistedPins, cue
         else
           let cue = Cue.addSlices pin.Slices cue
