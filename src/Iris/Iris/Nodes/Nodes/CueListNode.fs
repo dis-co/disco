@@ -41,7 +41,7 @@ type CueListNode() =
 
   [<DefaultValue>]
   [<Output("CueGroups")>]
-  val mutable OutCues: ISpread<ISpread<CueListItem>>
+  val mutable OutCues: ISpread<ISpread<CueGroup>>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
