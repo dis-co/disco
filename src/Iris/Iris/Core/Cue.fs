@@ -76,6 +76,20 @@ type Cue =
     Name:   Name
     Slices: Slices array }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (cue:Cue) -> cue.Id),
+    (fun id (cue:Cue) -> { cue with Id = id })
+
+  static member Name_ =
+    (fun (cue:Cue) -> cue.Name),
+    (fun name (cue:Cue) -> { cue with Name = name })
+
+  static member Slices_ =
+    (fun (cue:Cue) -> cue.Slices),
+    (fun slices (cue:Cue) -> { cue with Slices = slices })
+
   // ** FromFB
 
   //  ____  _
@@ -219,6 +233,7 @@ type Cue =
 // * Cue module
 
 module Cue =
+  open Aether
 
   // ** create
 
@@ -227,15 +242,19 @@ module Cue =
       Name = name title
       Slices = slices }
 
-  // ** setSlices
+  // ** id
 
-  let setSlices slices cue =
-    { cue with Slices = slices }
+  let id = Optic.get Cue.Id_
+  let setId = Optic.set Cue.Id_
+
+  // ** slices
+
+  let slices = Optic.get Cue.Slices_
+  let setSlices = Optic.set Cue.Slices_
 
   // ** map
 
-  let map (f: Slices -> Slices) cue =
-    Array.map f cue.Slices |> flip setSlices cue
+  let map (f: Slices -> Slices) = Optic.map Cue.Slices_ (Array.map f)
 
   // ** contains
 
@@ -245,10 +264,12 @@ module Cue =
   // ** updateSlices
 
   let updateSlices (slices:Slices) cue =
-    flip map cue <| fun (existing:Slices) ->
-      if existing.PinId = slices.PinId
-      then slices
-      else existing
+    map
+      (fun (existing:Slices) ->
+        if existing.PinId = slices.PinId
+        then slices
+        else existing)
+      cue
 
   // ** addSlices
 

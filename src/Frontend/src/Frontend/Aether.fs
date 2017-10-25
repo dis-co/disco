@@ -147,7 +147,7 @@ module Optic =
                                                          | _ -> a) : 'a -> 'a
 
     /// Modify a value using an optic.
-    let inline map optic f =
+    let inline map (optic: 'a) f =
         (Map ^% optic) f
 
 /// Functions for creating or using lenses.
