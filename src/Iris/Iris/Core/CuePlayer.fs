@@ -104,6 +104,24 @@ type CuePlayer =
     LastCalledId: CueId option
     LastCallerId: IrisId option }
 
+  // ** optics
+
+  static member Name_ =
+    (fun (player:CuePlayer) -> player.Name),
+    (fun name (player:CuePlayer) -> { player with Name = name })
+
+  static member Locked_ =
+    (fun (player:CuePlayer) -> player.Locked),
+    (fun locked (player:CuePlayer) -> { player with Locked = locked })
+
+  static member Active_ =
+    (fun (player:CuePlayer) -> player.Active),
+    (fun active (player:CuePlayer) -> { player with Active = active })
+
+  static member CueListId_ =
+    (fun (player:CuePlayer) -> player.CueListId),
+    (fun cueListId (player:CuePlayer) -> { player with CueListId = cueListId })
+
   // ** ToOffset
 
   member player.ToOffset(builder: FlatBufferBuilder) =
@@ -252,6 +270,7 @@ type CuePlayer =
 
 module CuePlayer =
 
+  open Aether
   open NameUtils
 
   // ** create
@@ -273,22 +292,19 @@ module CuePlayer =
 
   // ** locked
 
-  let locked (player:CuePlayer) = player.Locked
+  let locked = Optic.get CuePlayer.Locked_
 
   // ** setName
 
-  let setName (name:Name) (player:CuePlayer) =
-    { player with Name = name }
+  let setName = Optic.set CuePlayer.Name_
 
   // ** setLocked
 
-  let setLocked locked (player: CuePlayer) =
-    { player with Locked = locked }
+  let setLocked = Optic.set CuePlayer.Locked_
 
   // ** setActive
 
-  let setActive active (player: CuePlayer) =
-    { player with Active = active }
+  let setActive = Optic.set CuePlayer.Active_
 
   // ** assetPath
 
@@ -304,10 +320,8 @@ module CuePlayer =
 
   // ** setCueList
 
-  let setCueList id player =
-    { player with CueListId = Some id }
+  let setCueList id player = Optic.set CuePlayer.CueListId_ (Some id) player
 
   // ** unsetCueList
 
-  let unsetCueList player =
-    { player with CueListId = None }
+  let unsetCueList player = Optic.set CuePlayer.CueListId_ None player
