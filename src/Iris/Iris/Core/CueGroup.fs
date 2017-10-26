@@ -68,6 +68,20 @@ type CueGroup =
     Name:    Name option
     CueRefs: CueReference array }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (group:CueGroup) -> group.Id),
+    (fun id (group:CueGroup) -> { group with Id = id })
+
+  static member Name_ =
+    (fun (group:CueGroup) -> group.Name),
+    (fun name (group:CueGroup) -> { group with Name = name })
+
+  static member CueRefs_ =
+    (fun (group:CueGroup) -> group.CueRefs),
+    (fun cueRefs (group:CueGroup) -> { group with CueRefs = cueRefs })
+
   // ** FromFB
 
   //  ____  _
@@ -145,6 +159,8 @@ type CueGroup =
 
 module CueGroup =
 
+  open Aether
+
   // ** create
 
   let create refs =
@@ -152,10 +168,35 @@ module CueGroup =
       Name = None
       CueRefs = refs }
 
+  // ** getters
+
+  let id = Optic.get CueGroup.Id_
+  let name = Optic.get CueGroup.Name_
+  let cueRefs = Optic.get CueGroup.CueRefs_
+
+  // ** setters
+
+  let setId = Optic.set CueGroup.Id_
+  let setName = Optic.set CueGroup.Name_
+  let setCueRefs = Optic.set CueGroup.CueRefs_
+
+  // ** map
+
+  let map f (group:CueGroup) = Optic.map CueGroup.CueRefs_ f group
+
   // ** filter
 
   let filter (f: CueGroup -> bool) (groups: CueGroup array) =
     Array.filter f groups
+
+  // ** update
+
+  let updateRef (ref:CueReference) group =
+    map
+      (Array.map <| function
+        | { Id = id } when id = ref.Id -> ref
+        | other -> other)
+      group
 
   // ** contains
 

@@ -117,6 +117,14 @@ let onDragStart (model: Model) cueId pinId multiple =
   if multiple then model.selectedDragItems.Append(newItems) else newItems
   |> Drag.start
 
+let updateCueAutoCall (props:Props) =
+  props.CueRef
+  |> CueReference.setAutoFollow (not props.CueRef.AutoFollow)
+  |> flip CueGroup.updateRef props.CueGroup
+  |> flip CueList.replace props.CueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
+
 // * React components
 
 type Component(props) =
@@ -190,14 +198,16 @@ type Component(props) =
           CallCue this.props.Cue |> ClientContext.Singleton.Post
         )
       ] []
-    let autocallButton =
+    let autocallButton autoCall =
       button [
-        Class "iris-button iris-icon icon-autocall"
+        classList [
+          "iris-button iris-icon icon-autocall", true
+          "warning", autoCall
+        ]
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          Notifications.error "TODO: Auto call cue!"
-        )
+          updateCueAutoCall this.props)
       ] []
     let cueHeader =
       div [
@@ -218,7 +228,9 @@ type Component(props) =
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
-        div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
+        div [Class "width-10"; Style [TextAlign "center"]] [
+          autocallButton this.props.CueRef.AutoFollow
+        ]
         div [Class "width-5"] [
           renderRemoveButton this.props
         ]
