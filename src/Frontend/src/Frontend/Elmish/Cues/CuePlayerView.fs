@@ -220,7 +220,10 @@ type Component(props) =
           | None -> ())
       ] [str "Add Cue"]
       button [
-        Class "iris-button"
+        classList [
+          "iris-button",true
+          "warning", locked
+        ]
         OnClick (fun _ -> toggleLocked this.props.Player)
       ] [
         i [

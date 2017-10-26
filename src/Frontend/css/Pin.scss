@@ -17,8 +17,8 @@ $even-row: #EBEBEB;
   &.iris-forbidden {
     // When hightlighted we want a stronger top border
     cursor: not-allowed;
-    border-color: red !important;
-    background-color: #f9a9ab !important;
+    border-color: $pin-border-offline !important;
+    background-color: $warning !important;
   }
   &.iris-cue-selected {
     background-color: $highlight-lightblue;
