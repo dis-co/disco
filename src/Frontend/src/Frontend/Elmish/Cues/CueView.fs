@@ -70,6 +70,7 @@ type [<Pojo>] Props =
   { key: string
     Model: Model
     State: Iris.Core.State
+    Locked: bool
     Cue: Cue
     CueRef: CueReference
     CueGroup: CueGroup

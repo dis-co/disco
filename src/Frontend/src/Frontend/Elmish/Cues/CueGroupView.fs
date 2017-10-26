@@ -12,7 +12,7 @@ open Iris.Web
 open Types
 open Helpers
 
-// ** Types
+// * Types
 
 type [<Pojo>] State =
   { IsOpen: bool }
@@ -22,6 +22,7 @@ type [<Pojo>] Props =
     Dispatch: Elmish.Dispatch<Msg>
     Model: Model
     State: Iris.Core.State
+    Locked: bool
     CueGroup: CueGroup
     CueList: CueList
     CueGroupIndex: int
@@ -31,7 +32,7 @@ type [<Pojo>] Props =
     SelectCue: int -> int -> unit
   }
 
-// ** Sortable components
+// * Sortable components
 
 let private CueSortableItem = Sortable.Element <| fun props ->
   com<CueView.Component,_,_> props.value []
@@ -42,40 +43,80 @@ let private CueSortableContainer = Sortable.Container <| fun props ->
         from CueSortableItem { key=props.key; index=i; value=props } [])
     ul [] (Array.toList items)
 
-// ** Helpers
+// * Helpers
 
 let private renderCues (state: State) (props: Props) =
-    let cueProps: CueView.Props[] =
-      if true then //state.IsOpen then
-        props.CueGroup.CueRefs
-        |> Array.mapi (fun i cueRef ->
-          { key = string cueRef.Id
-            Model = props.Model
-            State = props.State
-            Dispatch = props.Dispatch
-            Cue = Lib.findCue cueRef.CueId props.State
-            CueRef = cueRef
-            CueGroup = props.CueGroup
-            CueList = props.CueList
-            CueIndex = i
-            CueGroupIndex = props.CueGroupIndex
-            SelectedCueIndex = props.SelectedCueIndex
-            SelectedCueGroupIndex = props.SelectedCueGroupIndex
-            SelectCue = props.SelectCue
-          })
-      else [||]
-    from CueSortableContainer
-      { items = cueProps
-        useDragHandle = true
-        onSortEnd = fun ev ->
-          // Update the CueList with the new CueRefs order
-          let newCueRefs = Sortable.arrayMove(props.CueGroup.CueRefs, ev.oldIndex, ev.newIndex)
-          { props.CueGroup with CueRefs = newCueRefs }
-          |> CueView.updateCueGroup props.CueList
-          props.SelectCue props.CueGroupIndex ev.newIndex
-      } []
+  let cueProps: CueView.Props[] =
+    if true then //state.IsOpen then
+      props.CueGroup.CueRefs
+      |> Array.mapi (fun i cueRef ->
+        { key = string cueRef.Id
+          Model = props.Model
+          State = props.State
+          Locked = props.Locked
+          Dispatch = props.Dispatch
+          Cue = Lib.findCue cueRef.CueId props.State
+          CueRef = cueRef
+          CueGroup = props.CueGroup
+          CueList = props.CueList
+          CueIndex = i
+          CueGroupIndex = props.CueGroupIndex
+          SelectedCueIndex = props.SelectedCueIndex
+          SelectedCueGroupIndex = props.SelectedCueGroupIndex
+          SelectCue = props.SelectCue
+        })
+    else [||]
+  from CueSortableContainer
+    { items = cueProps
+      useDragHandle = true
+      onSortEnd = fun ev ->
+        // Update the CueList with the new CueRefs order
+        let newCueRefs = Sortable.arrayMove(props.CueGroup.CueRefs, ev.oldIndex, ev.newIndex)
+        { props.CueGroup with CueRefs = newCueRefs }
+        |> CueView.updateCueGroup props.CueList
+        props.SelectCue props.CueGroupIndex ev.newIndex
+    } []
 
-// ** React components
+
+let private renderNameInput (props:Props) =
+  if props.Locked then
+    let name = props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue ""
+    str name
+  else
+    CueView.renderInput
+      (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
+      (fun txt ->
+        let name =
+          if String.IsNullOrWhiteSpace txt
+          then None
+          else Some (name txt)
+        { props.CueGroup with Name = name }
+        |> CueView.updateCueGroup props.CueList)
+
+let private renderGroupIndex (props:Props) =
+  let content = String.Format("{0:0000}", props.CueGroupIndex + 1)
+  if props.Locked
+  then str content
+  else from CueView.SortableHandle { value = content } []
+
+let private renderRemoveButton (props:Props) =
+  if props.Locked
+  then str ""
+  else
+    button [
+      Class "iris-button iris-icon icon-control icon-close"
+      OnClick (fun ev ->
+        ev.stopPropagation()
+        // Change selection if this item was selected
+        if props.CueGroupIndex = props.SelectedCueGroupIndex then
+          props.SelectCueGroup 0
+        props.CueList
+        |> CueList.filterItems (function { Id = id } -> id <> props.CueGroup.Id)
+        |> UpdateCueList
+        |> ClientContext.Singleton.Post)
+    ] []
+
+// * React components
 
 type Component(props) =
   inherit React.Component<Props, State>(props)
@@ -106,20 +147,6 @@ type Component(props) =
           // ev.stopPropagation()
           Browser.window.alert("Auto call cue group!"))
       ] []
-    let removeButton =
-      button [
-        Class "iris-button iris-icon icon-control icon-close"
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          // Change selection if this item was selected
-          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex then
-            this.props.SelectCueGroup 0
-          let gid = this.props.CueGroup.Id
-          this.props.CueList
-          |> CueList.filterItems (function { Id = id } -> id <> gid)
-          |> UpdateCueList
-          |> ClientContext.Singleton.Post)
-      ] []
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
     let groupHeadline name =
@@ -139,23 +166,17 @@ type Component(props) =
         div [Class "width-5"] [playButton]
         div [Class "width-5"] [] // offset
         div [Class "width-10"] [
-          from CueView.SortableHandle
-            { value = String.Format("{0:0000}", this.props.CueGroupIndex + 1) } []]
+          renderGroupIndex this.props
+        ]
         div [Class "width-20"] [
-          CueView.renderInput
-            (this.props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
-            (fun txt ->
-              let name =
-                if String.IsNullOrWhiteSpace txt
-                then None
-                else Some (name txt)
-              { this.props.CueGroup with Name = name }
-              |> CueView.updateCueGroup this.props.CueList)
+          renderNameInput this.props
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
         div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
-        div [Class "width-5"] [removeButton]
+        div [Class "width-5"] [
+          renderRemoveButton this.props
+        ]
       ]
     div [Class "iris-cuegroup"]
       (match this.state.IsOpen, this.props.CueGroup.Name with
