@@ -99,7 +99,10 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = IrisId.Create(); Name = Some (rndname()); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create()
+      Name = Some (rndname())
+      AutoFollow = false
+      CueRefs = mkCueRefs() }
 
   let mkCueListItems () =
     [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]

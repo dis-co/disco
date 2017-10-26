@@ -1047,6 +1047,7 @@ type CueGroupFB =
   abstract Id: int -> byte
   abstract IdLength: int -> byte
   abstract Name: string
+  abstract AutoFollow: bool
   abstract CueRefs: int -> CueReferenceFB
   abstract CueRefsLength: int
 
@@ -1055,6 +1056,7 @@ type CueGroupFBConstructor =
   abstract StartCueGroupFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddAutoFollow: builder: FlatBufferBuilder * flag: bool -> unit
   abstract AddCueRefs: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
   abstract EndCueGroupFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueGroupFB: buffer: ByteBuffer -> CueGroupFB

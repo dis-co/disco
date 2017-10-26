@@ -116,14 +116,24 @@ let private renderRemoveButton (props:Props) =
         |> ClientContext.Singleton.Post)
     ] []
 
+let private updateAutoFollow (props:Props) =
+  props.CueGroup
+  |> CueGroup.setAutoFollow (not props.CueGroup.AutoFollow)
+  |> flip CueList.replace props.CueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
+
 let private autocallButton (props:Props) =
   button [
-    Class "iris-button iris-icon icon-autocall"
+    classList [
+      "iris-button iris-icon icon-autocall", true
+      "warning", props.CueGroup.AutoFollow
+    ]
     Disabled props.Locked
-    OnClick (fun ev ->
+    OnClick (fun _ ->
       // Don't stop propagation to allow the item to be selected
       // ev.stopPropagation()
-      Notifications.error "TODO: Auto call cue group!")
+      updateAutoFollow props)
   ] []
 
 // * React components

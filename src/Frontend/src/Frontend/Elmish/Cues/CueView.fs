@@ -198,12 +198,13 @@ type Component(props) =
           CallCue this.props.Cue |> ClientContext.Singleton.Post
         )
       ] []
-    let autocallButton autoCall =
+    let autocallButton (props:Props) =
       button [
         classList [
           "iris-button iris-icon icon-autocall", true
-          "warning", autoCall
+          "warning", props.CueRef.AutoFollow
         ]
+        Disabled props.Locked
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -229,7 +230,7 @@ type Component(props) =
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
         div [Class "width-10"; Style [TextAlign "center"]] [
-          autocallButton this.props.CueRef.AutoFollow
+          autocallButton this.props
         ]
         div [Class "width-5"] [
           renderRemoveButton this.props
