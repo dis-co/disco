@@ -38,7 +38,8 @@ let private viewButton dispatch (player:CuePlayer) =
     i [
       Class "fa fa-eye fa-lg"
       Style [
-        FontSize "1.33333333em"
+        LineHeight "14px"
+        FontSize "1.11111111em"
       ]
     ] []
   ]

@@ -228,15 +228,15 @@ type Component(props) =
       ] [
         i [
           classList [
-            "fa", true
-            "fa-lg", true
+            "fa fa-lg", true
             "fa-lock", locked
             "fa-unlock", not locked
           ]
           Style [
-            FontSize "1.33333333em"
+            LineHeight "14px"
+            FontSize "1.11111111em"
           ]
-        ] []
+        ] [ ]
       ]
       select [
         Class "iris-control iris-select"
