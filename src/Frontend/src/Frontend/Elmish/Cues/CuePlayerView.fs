@@ -203,7 +203,7 @@ type Component(props) =
     div [] [
       button [
         Class "iris-button"
-        Disabled (Option.isNone this.props.CueList)
+        Disabled (Option.isNone this.props.CueList || locked)
         OnClick (fun _ ->
           match this.props.CueList with
           | Some cueList -> addGroup cueList this.state.SelectedCueGroupIndex
@@ -211,7 +211,7 @@ type Component(props) =
       ] [str "Add Group"]
       button [
         Class "iris-button"
-        Disabled (Option.isNone this.props.CueList)
+        Disabled (Option.isNone this.props.CueList || locked)
         OnClick (fun _ ->
           match this.props.CueList with
           | Some cueList ->
@@ -241,6 +241,7 @@ type Component(props) =
       select [
         Class "iris-control iris-select"
         Value current
+        Disabled locked
         OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
       ] cueLists
     ]
