@@ -49,6 +49,34 @@ let addGroup (cueList: CueList) (cueGroupIndex: int) =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
+let toggleLocked (player: CuePlayer option) =
+  match player with
+  | None -> ()
+  | Some player ->
+    player
+    |> CuePlayer.setLocked (not player.Locked)
+    |> UpdateCuePlayer
+    |> ClientContext.Singleton.Post
+
+let updateCueList (player: CuePlayer option) (str:string) =
+  match player with
+  | None -> ()
+  | Some player ->
+    str |> IrisId.TryParse |> function
+      | Either.Left _ ->
+        CuePlayer.unsetCueList player
+        |> UpdateCuePlayer
+        |> ClientContext.Singleton.Post
+      | Either.Right id ->
+        CuePlayer.setCueList id player
+        |> UpdateCuePlayer
+        |> ClientContext.Singleton.Post
+
+let isLocked (player: CuePlayer option) =
+  player
+  |> Option.map CuePlayer.locked
+  |> Option.defaultValue false
+
 // * React components
 // ** EmptyComponent
 
@@ -98,6 +126,7 @@ type Component(props) =
           { CG.key = string group.Id
             CG.Dispatch = this.props.Dispatch
             CG.Model = this.props.Model
+            CG.Locked = isLocked this.props.Player
             CG.State = state
             CG.CueGroup = group
             CG.CueList = cueList
@@ -147,23 +176,6 @@ type Component(props) =
       opt <| this.renderGroups()
     ]
 
-
-  // *** updatePlayer
-
-  member this.updatePlayer(id:string) =
-    match this.props.Player with
-    | None -> ()
-    | Some player ->
-      id |> IrisId.TryParse |> function
-        | Either.Left _ ->
-          CuePlayer.unsetCueList player
-          |> UpdateCuePlayer
-          |> ClientContext.Singleton.Post
-        | Either.Right id ->
-          CuePlayer.setCueList id player
-          |> UpdateCuePlayer
-          |> ClientContext.Singleton.Post
-
   // *** renderTitleBar
 
   member this.renderTitleBar() =
@@ -186,6 +198,8 @@ type Component(props) =
       |> List.map makeOpt
       |> fun list -> makeOpt (empty,empty) :: list
 
+    let locked = isLocked this.props.Player
+
     div [] [
       button [
         Class "iris-button"
@@ -205,10 +219,26 @@ type Component(props) =
             Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
           | None -> ())
       ] [str "Add Cue"]
+      button [
+        Class "iris-button"
+        OnClick (fun _ -> toggleLocked this.props.Player)
+      ] [
+        i [
+          classList [
+            "fa", true
+            "fa-lg", true
+            "fa-lock", locked
+            "fa-unlock", not locked
+          ]
+          Style [
+            FontSize "1.33333333em"
+          ]
+        ] []
+      ]
       select [
         Class "iris-control iris-select"
         Value current
-        OnChange (fun ev -> this.updatePlayer !!ev.target?value)
+        OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
       ] cueLists
     ]
 

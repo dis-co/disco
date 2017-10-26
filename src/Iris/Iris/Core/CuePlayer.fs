@@ -271,6 +271,10 @@ module CuePlayer =
       LastCalledId  = None
       LastCallerId  = None }
 
+  // ** locked
+
+  let locked (player:CuePlayer) = player.Locked
+
   // ** setName
 
   let setName (name:Name) (player:CuePlayer) =
