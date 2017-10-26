@@ -57,9 +57,15 @@ type EmptyComponent(props) =
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
 
   member this.render() =
+    let sadString =
+      div [ Style [ TextAlign "center"; PaddingTop "20px" ] ] [
+        strong [] [
+          str (sprintf "Could not find %A." this.props.Id)
+        ]
+      ]
     widget this.props.Id this.props.Name
-      (Some (fun _ _ -> str "orphaned"))
-      (fun _ _ -> str "orphaned :'(")
+      None
+      (fun _ _ -> sadString)
       this.props.Dispatch
       this.props.Model
 
