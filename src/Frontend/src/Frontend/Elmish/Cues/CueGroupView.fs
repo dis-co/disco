@@ -83,7 +83,7 @@ let private renderNameInput (props:Props) =
   if props.Locked then
     str (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "")
   else
-    Common.editableString
+    Editable.string
       (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
       (fun txt ->
         let name =

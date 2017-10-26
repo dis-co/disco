@@ -71,7 +71,7 @@ let body dispatch (model: Model) =
             ]
             td [Class "width-15"; topBorder()] [
                 /// provide inline editing capabilities for the CuePlayer Name field
-                Common.editableString (string cueList.Name) (updateName cueList)
+                Editable.string (string cueList.Name) (updateName cueList)
             ]
             td [Class "width-5"; padding5()] [
               deleteButton dispatch cueList

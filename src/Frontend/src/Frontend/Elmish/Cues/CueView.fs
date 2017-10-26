@@ -68,7 +68,7 @@ let renderInput (props:Props) =
   let content = unwrap props.Cue.Name
   if props.Locked
   then str content
-  else Common.editableString content (updateCueName props)
+  else Editable.string content (updateCueName props)
 
 let updateCueGroup cueList cueGroup =
   CueList.replace cueGroup cueList

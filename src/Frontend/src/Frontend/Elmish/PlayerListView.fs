@@ -94,7 +94,7 @@ let private boolButton value f =
   ] []
 
 let private renderNameInput (player:CuePlayer) =
-  Common.editableString (string player.Name) (updateName player)
+  Editable.string (string player.Name) (updateName player)
 
 let private renderCueListDropdown (state:State) (player:CuePlayer) =
   let cueList =
@@ -114,7 +114,7 @@ let private renderCueListDropdown (state:State) (player:CuePlayer) =
       state.CueLists
       |> Map.toArray
       |> Array.map (fun (id,cueList) -> string cueList.Name, string id)
-    Common.editableDropdown
+    Editable.dropdown
       cueList
       (Option.map string player.CueListId)
       cueLists

@@ -1,5 +1,5 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Common
+module Iris.Web.Editable
 
 open System
 open Iris.Core
@@ -17,14 +17,14 @@ type private RCom = React.ComponentClass<obj>
 let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
 let private DropdownEditable: RCom = importDefault "../../js/widgets/DropdownEditable"
 
-let editableString content (update: string -> unit) =
+let string content (update: string -> unit) =
   from ContentEditable
     %["tagName" ==> "div"
       "html" ==> content
       "className" ==> "iris-contenteditable"
       "onChange" ==> update] []
 
-let editableDropdown
+let dropdown
   (content:string)
   (selected: string option)
   (props: (string*string)[])
