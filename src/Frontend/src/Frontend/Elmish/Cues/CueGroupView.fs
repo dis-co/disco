@@ -9,6 +9,7 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Iris.Web
+open Iris.Web.Notifications
 open Types
 open Helpers
 
@@ -80,10 +81,9 @@ let private renderCues (state: State) (props: Props) =
 
 let private renderNameInput (props:Props) =
   if props.Locked then
-    let name = props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue ""
-    str name
+    str (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "")
   else
-    CueView.renderInput
+    Common.editableString
       (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
       (fun txt ->
         let name =
@@ -116,6 +116,16 @@ let private renderRemoveButton (props:Props) =
         |> ClientContext.Singleton.Post)
     ] []
 
+let private autocallButton (props:Props) =
+  button [
+    Class "iris-button iris-icon icon-autocall"
+    Disabled props.Locked
+    OnClick (fun ev ->
+      // Don't stop propagation to allow the item to be selected
+      // ev.stopPropagation()
+      Notifications.error "TODO: Auto call cue group!")
+  ] []
+
 // * React components
 
 type Component(props) =
@@ -125,11 +135,17 @@ type Component(props) =
   member this.render() =
     let arrowButton =
       button [
-        Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+        classList [
+          "iris-button",  true
+          "iris-icon",    true
+          "icon-control", true
+          "icon-less",    this.state.IsOpen
+          "icon-more",    not this.state.IsOpen
+        ]
         OnClick (fun ev ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          this.setState({ this.state with IsOpen = not this.state.IsOpen}))
+          this.setState({ this.state with IsOpen = not this.state.IsOpen }))
       ] []
     let playButton =
       button [
@@ -137,15 +153,7 @@ type Component(props) =
         OnClick (fun ev ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          Browser.window.alert("Call cue group!"))
-      ] []
-    let autocallButton =
-      button [
-        Class "iris-button iris-icon icon-autocall"
-        OnClick (fun ev ->
-          // Don't stop propagation to allow the item to be selected
-          // ev.stopPropagation()
-          Browser.window.alert("Auto call cue group!"))
+          Notifications.error "TODO: Call cue group!")
       ] []
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
@@ -173,7 +181,9 @@ type Component(props) =
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
-        div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
+        div [Class "width-10"; Style [TextAlign "center"]] [
+          autocallButton this.props
+        ]
         div [Class "width-5"] [
           renderRemoveButton this.props
         ]

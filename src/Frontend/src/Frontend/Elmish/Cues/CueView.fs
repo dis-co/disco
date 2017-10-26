@@ -10,55 +10,9 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Iris.Web
+open Iris.Web.Notifications
 open Types
 open Helpers
-
-// * Helpers
-
-type private RCom = React.ComponentClass<obj>
-let  private ContentEditable: RCom = importDefault "../../../js/widgets/ContentEditable"
-let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
-
-let private castValue<'a> arr idx (value: obj) =
-  Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
-
-let private updateSlicesValue (index: int) (value: obj) slices: Slices =
-  match slices with
-  | StringSlices(id, client, arr) ->
-    StringSlices(id, client, castValue<string> arr index value)
-  | NumberSlices(id, client, arr) ->
-    NumberSlices(id, client, castValue<double> arr index value)
-  | BoolSlices  (id, client, arr) ->
-    BoolSlices  (id, client, castValue<bool> arr index value)
-  | ByteSlices  (id, client, arr) ->
-    ByteSlices  (id, client, castValue<byte[]> arr index value)
-  | EnumSlices  (id, client, arr) ->
-    EnumSlices  (id, client, castValue<Property> arr index value)
-  | ColorSlices (id, client, arr) ->
-    ColorSlices (id, client, castValue<ColorSpace> arr index value)
-
-let renderInput (content: string) (update: string->unit) =
-  from ContentEditable
-    %["tagName" ==> "div"
-      "html" ==> content
-      "className" ==> "iris-contenteditable"
-      "onChange" ==> update] []
-
-let updateCueGroup cueList cueGroup =
-  CueList.replace cueGroup cueList
-  |> UpdateCueList
-  |> ClientContext.Singleton.Post
-
-let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
-  match model.selectedDragItems with
-  | DragItems.CueAtoms ids ->
-    Seq.exists ((=) cueAndPinIds) ids
-  | _ -> false
-
-let onDragStart (model: Model) cueId pinId multiple =
-  let newItems = DragItems.CueAtoms [cueId, pinId]
-  if multiple then model.selectedDragItems.Append(newItems) else newItems
-  |> Drag.start
 
 // * Types
 
@@ -81,6 +35,76 @@ type [<Pojo>] Props =
     SelectedCueGroupIndex: int
     SelectCue: int -> int -> unit
     Dispatch: Elmish.Dispatch<Msg> }
+
+// * Helpers
+
+let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
+
+let private castValue<'a> arr idx (value: obj) =
+  Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
+
+let private updateSlicesValue (index: int) (value: obj) slices: Slices =
+  match slices with
+  | StringSlices(id, client, arr) ->
+    StringSlices(id, client, castValue<string> arr index value)
+  | NumberSlices(id, client, arr) ->
+    NumberSlices(id, client, castValue<double> arr index value)
+  | BoolSlices  (id, client, arr) ->
+    BoolSlices  (id, client, castValue<bool> arr index value)
+  | ByteSlices  (id, client, arr) ->
+    ByteSlices  (id, client, castValue<byte[]> arr index value)
+  | EnumSlices  (id, client, arr) ->
+    EnumSlices  (id, client, castValue<Property> arr index value)
+  | ColorSlices (id, client, arr) ->
+    ColorSlices (id, client, castValue<ColorSpace> arr index value)
+
+let updateCueName (props:Props) (name:string) =
+  props.Cue
+  |> Cue.setName (Measure.name name)
+  |> UpdateCue
+  |> ClientContext.Singleton.Post
+
+let renderInput (props:Props) =
+  let content = unwrap props.Cue.Name
+  if props.Locked
+  then str content
+  else Common.editableString content (updateCueName props)
+
+let updateCueGroup cueList cueGroup =
+  CueList.replace cueGroup cueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
+
+let private renderRemoveButton (props:Props) =
+  if props.Locked
+  then str ""
+  else
+    button [
+      Class "iris-button iris-icon icon-control icon-close"
+      OnClick (fun ev ->
+        ev.stopPropagation()
+        let id = props.CueRef.Id
+        // Change selection if item was selected
+        if props.CueGroupIndex = props.SelectedCueGroupIndex
+          && props.CueIndex = props.SelectedCueIndex then
+          props.SelectCue props.CueGroupIndex 0
+        let newCueRefs =
+          props.CueGroup.CueRefs
+          |> Array.filter (fun c -> c.Id <> id)
+        { props.CueGroup with CueRefs = newCueRefs }
+        |> updateCueGroup props.CueList)
+    ] []
+
+let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
+  match model.selectedDragItems with
+  | DragItems.CueAtoms ids ->
+    Seq.exists ((=) cueAndPinIds) ids
+  | _ -> false
+
+let onDragStart (model: Model) cueId pinId multiple =
+  let newItems = DragItems.CueAtoms [cueId, pinId]
+  if multiple then model.selectedDragItems.Append(newItems) else newItems
+  |> Drag.start
 
 // * Sortable components
 
@@ -158,24 +182,8 @@ type Component(props) =
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          Browser.window.alert("Auto call cue!")
+          Notifications.error "TODO: Auto call cue!"
         )
-      ] []
-    let removeButton =
-      button [
-        Class "iris-button iris-icon icon-control icon-close"
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          let id = this.props.CueRef.Id
-          // Change selection if this item was selected
-          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
-            && this.props.CueIndex = this.props.SelectedCueIndex then
-            this.props.SelectCue this.props.CueGroupIndex 0
-          let newCueRefs =
-            this.props.CueGroup.CueRefs
-            |> Array.filter (fun c -> c.Id <> id)
-          { this.props.CueGroup with CueRefs = newCueRefs }
-          |> updateCueGroup this.props.CueList)
       ] []
     let cueHeader =
       div [
@@ -193,14 +201,14 @@ type Component(props) =
             { value = String.Format("{0:0000}", this.props.CueIndex + 1) } []
         ]
         div [Class "width-20"] [
-          renderInput (unwrap this.props.Cue.Name) (fun txt ->
-            { this.props.Cue with Name = name txt }
-            |> UpdateCue |> ClientContext.Singleton.Post)
+          renderInput this.props
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
         div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
-        div [Class "width-5"] [removeButton]
+        div [Class "width-5"] [
+          renderRemoveButton this.props
+        ]
       ]
     let rows =
       if not this.state.IsOpen then

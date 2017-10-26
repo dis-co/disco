@@ -25,9 +25,6 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-type private RCom = React.ComponentClass<obj>
-let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
-
 let private updateName (cueList:CueList) (value:string) =
   cueList
   |> CueList.setName (name value)
@@ -74,10 +71,7 @@ let body dispatch (model: Model) =
             ]
             td [Class "width-15"; topBorder()] [
                 /// provide inline editing capabilities for the CuePlayer Name field
-                from ContentEditable
-                  %["tagName" ==> "span"
-                    "html" ==> string cueList.Name
-                    "onChange" ==> (updateName cueList)] []
+                Common.editableString (string cueList.Name) (updateName cueList)
             ]
             td [Class "width-5"; padding5()] [
               deleteButton dispatch cueList

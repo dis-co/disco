@@ -25,10 +25,6 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-type private RCom = React.ComponentClass<obj>
-let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
-let private DropdownEditable: RCom = importDefault "../../js/widgets/DropdownEditable"
-
 let private viewButton dispatch (player:CuePlayer) =
   button [
     Class "iris-button iris-icon"
@@ -97,16 +93,38 @@ let private boolButton value f =
     OnClick (fun _ -> f (not value))
   ] []
 
+let private renderNameInput (player:CuePlayer) =
+  Common.editableString (string player.Name) (updateName player)
+
+let private renderCueListDropdown (state:State) (player:CuePlayer) =
+  let cueList =
+    match player.CueListId with
+    | Some cueList ->
+      /// try find the currently used Cue List for this player
+      state
+      |> State.cueLists
+      |> Map.tryFind cueList
+      |> Option.map (CueList.name >> string)
+      |> Option.defaultValue (cueList |> Id.prefix |> String.format "{0} (orphaned)")
+    | None -> "--"
+  if player.Locked
+  then str cueList
+  else
+    let cueLists =
+      state.CueLists
+      |> Map.toArray
+      |> Array.map (fun (id,cueList) -> string cueList.Name, string id)
+    Common.editableDropdown
+      cueList
+      (Option.map string player.CueListId)
+      cueLists
+      (updateCueList player)
+
 let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
   | Some state ->
     /// all name * id pairs of existing Cue Lists for use in the dropdown menu
-    let cueLists =
-      state.CueLists
-      |> Map.toArray
-      |> Array.map (fun (id,cueList) -> string cueList.Name, string id)
-
     table [Class "iris-table"] [
       thead [] [
         tr [] [
@@ -121,35 +139,17 @@ let body dispatch (model: Model) =
         state.CuePlayers
         |> Seq.map (function
           KeyValue(id,player) ->
-            let cueList =
-              match player.CueListId with
-              | Some cueList ->
-                /// try find the currently used Cue List for this player
-                model.state
-                |> Option.map State.cueLists
-                |> Option.bind (Map.tryFind cueList)
-                |> Option.map (CueList.name >> string)
-                |> Option.defaultValue (cueList |> Id.prefix |> String.format "{0} (orphaned)")
-              | None -> "--"
             tr [Key (string id)] [
               td [
                 Class "width-20"
                 padding5AndTopBorder()
               ] [
                 /// provide inline editing capabilities for the CuePlayer Name field
-                from ContentEditable
-                  %["tagName" ==> "span"
-                    "html" ==> string player.Name
-                    "onChange" ==> (updateName player)] []
+                renderNameInput player
               ]
               td [Class "width-20"; padding5AndTopBorder()] [
                 /// provies inline selection method for the Cue List used by the player
-                from DropdownEditable
-                  %["tagName" ==> "span"
-                    "html" ==> cueList
-                    "data-selected" ==> Option.map string player.CueListId
-                    "data-options" ==> cueLists
-                    "onChange" ==> (updateCueList player)] []
+                renderCueListDropdown state player
               ]
               td [Class "width-15"; padding5AndTopBorder()] [
                 boolButton
