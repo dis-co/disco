@@ -9,7 +9,7 @@
     <RootNamespace>Iris</RootNamespace>
     <AssemblyName>Iris.Sdk</AssemblyName>
     <Name>Iris.Sdk</Name>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>/TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <ResolveNuGetPackages>false</ResolveNuGetPackages>
