@@ -94,7 +94,10 @@ let private boolButton value f =
   ] []
 
 let private renderNameInput (player:CuePlayer) =
-  Editable.string (string player.Name) (updateName player)
+  if player.Locked then
+    str (string player.Name)
+  else
+    Editable.string (string player.Name) (updateName player)
 
 let private renderCueListDropdown (state:State) (player:CuePlayer) =
   let cueList =
