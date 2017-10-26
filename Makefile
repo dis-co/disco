@@ -50,7 +50,7 @@ serialization:
 	${BUILD} GenerateSerialization ${OPTS}
 
 zeroconf:
-	${BUILD} BuildZeroconf ${OPTS}
+	${BUILD} BuildDebugZeroconf ${OPTS}
 
 sdk:
 	${BUILD} BuildDebugSdk ${OPTS}

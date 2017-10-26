@@ -9,7 +9,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Iris</RootNamespace>
     <AssemblyName>iris</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Service</Name>
     <TargetFrameworkProfile />

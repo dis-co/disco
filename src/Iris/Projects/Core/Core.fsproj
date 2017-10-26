@@ -8,7 +8,7 @@
     <ProjectGuid>{7D6918E9-1494-41E9-9BEB-638616110A60}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Iris</RootNamespace>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Iris.Core</Name>
     <TargetFrameworkProfile />
