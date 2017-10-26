@@ -239,7 +239,7 @@ module Cue =
 
   let create (title: string) slices =
     { Id = IrisId.Create()
-      Name = name title
+      Name = Measure.name title
       Slices = slices }
 
   // ** id
@@ -251,6 +251,11 @@ module Cue =
 
   let slices = Optic.get Cue.Slices_
   let setSlices = Optic.set Cue.Slices_
+
+  // ** name
+
+  let name (cue:Cue): Name = Optic.get Cue.Name_ cue
+  let setName = Optic.set Cue.Name_
 
   // ** map
 

@@ -30,6 +30,7 @@ open SharpYaml.Serialization
 type CueGroupYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
+  [<DefaultValue>] val mutable AutoFollow: bool
   [<DefaultValue>] val mutable CueRefs: CueReferenceYaml array
 
   // ** From
@@ -38,6 +39,7 @@ type CueGroupYaml() =
     let yaml = CueGroupYaml()
     yaml.Id <- string cueGroup.Id
     yaml.Name <- cueGroup.Name |> Option.map unwrap |> Option.defaultValue null
+    yaml.AutoFollow <- cueGroup.AutoFollow
     yaml.CueRefs <- Array.map Yaml.toYaml cueGroup.CueRefs
     yaml
 
@@ -54,6 +56,7 @@ type CueGroupYaml() =
       return {
         Id = id
         Name = name
+        AutoFollow = yaml.AutoFollow
         CueRefs = cues
       }
     }
@@ -64,9 +67,28 @@ type CueGroupYaml() =
 
 [<StructuralEquality; StructuralComparison>]
 type CueGroup =
-  { Id:      CueGroupId
-    Name:    Name option
-    CueRefs: CueReference array }
+  { Id:         CueGroupId
+    Name:       Name option
+    AutoFollow: bool
+    CueRefs:    CueReference array }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (group:CueGroup) -> group.Id),
+    (fun id (group:CueGroup) -> { group with Id = id })
+
+  static member Name_ =
+    (fun (group:CueGroup) -> group.Name),
+    (fun name (group:CueGroup) -> { group with Name = name })
+
+  static member AutoFollow_ =
+    (fun (group:CueGroup) -> group.AutoFollow),
+    (fun autoFollow (group:CueGroup) -> { group with AutoFollow = autoFollow })
+
+  static member CueRefs_ =
+    (fun (group:CueGroup) -> group.CueRefs),
+    (fun cueRefs (group:CueGroup) -> { group with CueRefs = cueRefs })
 
   // ** FromFB
 
@@ -93,6 +115,7 @@ type CueGroup =
       return {
         Id = id
         Name = name
+        AutoFollow = fb.AutoFollow
         CueRefs = cues
       }
     }
@@ -106,6 +129,7 @@ type CueGroup =
     let cuesvec = CueGroupFB.CreateCueRefsVector(builder, cueoffsets)
     CueGroupFB.StartCueGroupFB(builder)
     CueGroupFB.AddId(builder, id)
+    CueGroupFB.AddAutoFollow(builder, self.AutoFollow)
     Option.iter (fun value -> CueGroupFB.AddName(builder,value)) name
     CueGroupFB.AddCueRefs(builder, cuesvec)
     CueGroupFB.EndCueGroupFB(builder)
@@ -145,17 +169,47 @@ type CueGroup =
 
 module CueGroup =
 
+  open Aether
+
   // ** create
 
   let create refs =
     { Id = IrisId.Create()
       Name = None
+      AutoFollow = false
       CueRefs = refs }
+
+  // ** getters
+
+  let id = Optic.get CueGroup.Id_
+  let name = Optic.get CueGroup.Name_
+  let autoFollow = Optic.get CueGroup.AutoFollow_
+  let cueRefs = Optic.get CueGroup.CueRefs_
+
+  // ** setters
+
+  let setId = Optic.set CueGroup.Id_
+  let setName = Optic.set CueGroup.Name_
+  let setAutoFollow = Optic.set CueGroup.AutoFollow_
+  let setCueRefs = Optic.set CueGroup.CueRefs_
+
+  // ** map
+
+  let map f (group:CueGroup) = Optic.map CueGroup.CueRefs_ f group
 
   // ** filter
 
   let filter (f: CueGroup -> bool) (groups: CueGroup array) =
     Array.filter f groups
+
+  // ** update
+
+  let updateRef (ref:CueReference) group =
+    map
+      (Array.map <| function
+        | { Id = id } when id = ref.Id -> ref
+        | other -> other)
+      group
 
   // ** contains
 

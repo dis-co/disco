@@ -224,8 +224,10 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
 }
 
 let postStateCommands (cmds: StateMachine list) =
-  CommandBatch.ofList cmds
-  |> ClientContext.Singleton.Post
+  if not (List.isEmpty cmds) then
+    cmds
+    |> CommandBatch.ofList
+    |> ClientContext.Singleton.Post
 
 let updatePinValue(pin: Pin, index: int, value: obj) =
   let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
@@ -353,3 +355,20 @@ let removeSlicesFromCue (cue: Cue) (pinIds: PinId seq) =
     Set.contains slices.PinId pinIds |> not)
   |> flip Cue.setSlices cue
   |> UpdateCue
+
+let mayAlterCue (state:State) (cue:Cue) =
+  Map.fold
+    (fun forbidden _ player ->
+      if not forbidden
+      then
+        if CuePlayer.locked player then
+          player
+          |> CuePlayer.cueListId
+          |> Option.bind (flip Map.tryFind state.CueLists)
+          |> Option.map (CueList.contains cue.Id)
+          |> Option.defaultValue false
+        else false
+      else forbidden)
+    false
+    state.CuePlayers
+  |> not

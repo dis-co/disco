@@ -49,6 +49,34 @@ let addGroup (cueList: CueList) (cueGroupIndex: int) =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
+let toggleLocked (player: CuePlayer option) =
+  match player with
+  | None -> ()
+  | Some player ->
+    player
+    |> CuePlayer.setLocked (not player.Locked)
+    |> UpdateCuePlayer
+    |> ClientContext.Singleton.Post
+
+let updateCueList (player: CuePlayer option) (str:string) =
+  match player with
+  | None -> ()
+  | Some player ->
+    str |> IrisId.TryParse |> function
+      | Either.Left _ ->
+        CuePlayer.unsetCueList player
+        |> UpdateCuePlayer
+        |> ClientContext.Singleton.Post
+      | Either.Right id ->
+        CuePlayer.setCueList id player
+        |> UpdateCuePlayer
+        |> ClientContext.Singleton.Post
+
+let isLocked (player: CuePlayer option) =
+  player
+  |> Option.map CuePlayer.locked
+  |> Option.defaultValue false
+
 // * React components
 // ** EmptyComponent
 
@@ -57,9 +85,15 @@ type EmptyComponent(props) =
   do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
 
   member this.render() =
+    let sadString =
+      div [ Style [ TextAlign "center"; PaddingTop "20px" ] ] [
+        strong [] [
+          str (sprintf "Could not find %A." this.props.Id)
+        ]
+      ]
     widget this.props.Id this.props.Name
-      (Some (fun _ _ -> str "orphaned"))
-      (fun _ _ -> str "orphaned :'(")
+      None
+      (fun _ _ -> sadString)
       this.props.Dispatch
       this.props.Model
 
@@ -92,6 +126,7 @@ type Component(props) =
           { CG.key = string group.Id
             CG.Dispatch = this.props.Dispatch
             CG.Model = this.props.Model
+            CG.Locked = isLocked this.props.Player
             CG.State = state
             CG.CueGroup = group
             CG.CueList = cueList
@@ -141,23 +176,6 @@ type Component(props) =
       opt <| this.renderGroups()
     ]
 
-
-  // *** updatePlayer
-
-  member this.updatePlayer(id:string) =
-    match this.props.Player with
-    | None -> ()
-    | Some player ->
-      id |> IrisId.TryParse |> function
-        | Either.Left _ ->
-          CuePlayer.unsetCueList player
-          |> UpdateCuePlayer
-          |> ClientContext.Singleton.Post
-        | Either.Right id ->
-          CuePlayer.setCueList id player
-          |> UpdateCuePlayer
-          |> ClientContext.Singleton.Post
-
   // *** renderTitleBar
 
   member this.renderTitleBar() =
@@ -180,10 +198,12 @@ type Component(props) =
       |> List.map makeOpt
       |> fun list -> makeOpt (empty,empty) :: list
 
+    let locked = isLocked this.props.Player
+
     div [] [
       button [
         Class "iris-button"
-        Disabled (Option.isNone this.props.CueList)
+        Disabled (Option.isNone this.props.CueList || locked)
         OnClick (fun _ ->
           match this.props.CueList with
           | Some cueList -> addGroup cueList this.state.SelectedCueGroupIndex
@@ -191,7 +211,7 @@ type Component(props) =
       ] [str "Add Group"]
       button [
         Class "iris-button"
-        Disabled (Option.isNone this.props.CueList)
+        Disabled (Option.isNone this.props.CueList || locked)
         OnClick (fun _ ->
           match this.props.CueList with
           | Some cueList ->
@@ -199,10 +219,30 @@ type Component(props) =
             Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
           | None -> ())
       ] [str "Add Cue"]
+      button [
+        classList [
+          "iris-button",true
+          "warning", locked
+        ]
+        OnClick (fun _ -> toggleLocked this.props.Player)
+      ] [
+        i [
+          classList [
+            "fa fa-lg", true
+            "fa-lock", locked
+            "fa-unlock", not locked
+          ]
+          Style [
+            LineHeight "14px"
+            FontSize "1.11111111em"
+          ]
+        ] [ ]
+      ]
       select [
         Class "iris-control iris-select"
         Value current
-        OnChange (fun ev -> this.updatePlayer !!ev.target?value)
+        Disabled locked
+        OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
       ] cueLists
     ]
 

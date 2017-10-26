@@ -203,8 +203,10 @@ let update msg model: Model*Cmd<Msg> =
       // Group id tuples by CueId (first one)
       ([], Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
         let cue = Lib.findCue cueId state
-        Lib.removeSlicesFromCue cue (Seq.map snd ids)
-        |> cons cmds)
+        if Lib.mayAlterCue state cue then
+          Lib.removeSlicesFromCue cue (Seq.map snd ids)
+          |> cons cmds
+        else cmds)
       |> Lib.postStateCommands
     | _ -> ()
     model, []

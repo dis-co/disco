@@ -74,6 +74,28 @@ type CueReference =
    //Trigger:  Event option
   }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (ref:CueReference) -> ref.Id),
+    (fun id (ref:CueReference) -> { ref with Id = id })
+
+  static member CueId_ =
+    (fun (ref:CueReference) -> ref.CueId),
+    (fun cueId (ref:CueReference) -> { ref with CueId = cueId })
+
+  static member AutoFollow_ =
+    (fun (ref:CueReference) -> ref.AutoFollow),
+    (fun autoFollow (ref:CueReference) -> { ref with AutoFollow = autoFollow })
+
+  static member Duration_ =
+    (fun (ref:CueReference) -> ref.Duration),
+    (fun duration (ref:CueReference) -> { ref with Duration = duration })
+
+  static member Prewait_ =
+    (fun (ref:CueReference) -> ref.Prewait),
+    (fun prewait (ref:CueReference) -> { ref with Prewait = prewait })
+
   // ** FromFB
 
   //  ____  _
@@ -142,7 +164,10 @@ type CueReference =
 
 // * CueReference module
 
+[<RequireQualifiedAccess>]
 module CueReference =
+
+  open Aether
 
   // ** create
 
@@ -152,3 +177,19 @@ module CueReference =
       AutoFollow = false
       Duration = -1
       Prewait = -1 }
+
+  // ** getters
+
+  let id = Optic.get CueReference.Id_
+  let cueId = Optic.get CueReference.CueId_
+  let autoFollow = Optic.get CueReference.AutoFollow_
+  let duration = Optic.get CueReference.Duration_
+  let prewait = Optic.get CueReference.Prewait_
+
+  // ** setters
+
+  let setId = Optic.set CueReference.Id_
+  let setCueId = Optic.set CueReference.CueId_
+  let setAutoFollow = Optic.set CueReference.AutoFollow_
+  let setDuration = Optic.set CueReference.Duration_
+  let setPrewait = Optic.set CueReference.Prewait_

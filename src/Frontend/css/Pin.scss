@@ -14,6 +14,12 @@ $even-row: #EBEBEB;
     // When hightlighted we want a stronger top border
     border-top-width: 2px;
   }
+  &.iris-forbidden {
+    // When hightlighted we want a stronger top border
+    cursor: not-allowed;
+    border-color: $pin-border-offline !important;
+    background-color: $warning !important;
+  }
   &.iris-cue-selected {
     background-color: $highlight-lightblue;
     border-color: $highlight-lightblue
@@ -193,4 +199,3 @@ $even-row: #EBEBEB;
     }
   }
 }
-

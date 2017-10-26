@@ -707,10 +707,12 @@ module Generators =
   let cueGroupGen = gen {
       let! id = idGen
       let! nm = maybeGen (Gen.map Measure.name nonNullStringGen)
+      let! af = boolGen
       let! refs = Gen.arrayOf cueReferenceGen
       return
         { Id = id
           Name = nm
+          AutoFollow = af
           CueRefs = refs }
     }
 

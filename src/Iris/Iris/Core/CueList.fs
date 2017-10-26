@@ -70,6 +70,20 @@ type CueList =
     Name: Name
     Items: CueGroup array }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (cuelist:CueList) -> cuelist.Id),
+    (fun id (cuelist:CueList) -> { cuelist with Id = id })
+
+  static member Name_ =
+    (fun (cuelist:CueList) -> cuelist.Name),
+    (fun name (cuelist:CueList) -> { cuelist with Name = name })
+
+  static member Items_ =
+    (fun (cuelist:CueList) -> cuelist.Items),
+    (fun items (cuelist:CueList) -> { cuelist with Items = items })
+
   // ** ToOffset
 
   //  ____  _
@@ -201,18 +215,17 @@ type CueList =
 
 module CueList =
 
+  open Aether
+
   // ** id =
 
-  let id (cuelist:CueList) = cuelist.Id
+  let id = Optic.get CueList.Id_
+  let setId = Optic.set CueList.Id_
 
   // ** name
 
-  let name (cuelist:CueList) = cuelist.Name
-
-  // ** setName
-
-  let setName name (cueList:CueList) =
-    { cueList with Name = name }
+  let name = Optic.get CueList.Name_
+  let setName = Optic.set CueList.Name_
 
   // ** create
 
@@ -231,10 +244,11 @@ module CueList =
 
   /// replace a CueGroup
   let replace (item:CueGroup) cueList =
-    flip map cueList <| fun existing ->
-      if existing.Id = item.Id
-      then item
-      else existing
+    map
+      (function
+       | { Id = id } when id = item.Id -> item
+       | existing -> existing)
+      cueList
 
   // ** foldi
 

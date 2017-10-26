@@ -10,13 +10,39 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Iris.Web
+open Iris.Web.Notifications
 open Types
 open Helpers
 
+// * Types
+
+type [<Pojo>] State =
+  { IsOpen: bool
+    IsHighlit: bool }
+
+type [<Pojo>] Props =
+  { key: string
+    Model: Model
+    State: Iris.Core.State
+    Locked: bool
+    Cue: Cue
+    CueRef: CueReference
+    CueGroup: CueGroup
+    CueList: CueList
+    CueIndex: int
+    CueGroupIndex: int
+    SelectedCueIndex: int
+    SelectedCueGroupIndex: int
+    SelectCue: int -> int -> unit
+    Dispatch: Elmish.Dispatch<Msg> }
+
+// * Sortable components
+
+let SortableHandle = Sortable.Handle(fun props ->
+  div [Style [Cursor "move"]] [str props.value])
+
 // * Helpers
 
-type private RCom = React.ComponentClass<obj>
-let  private ContentEditable: RCom = importDefault "../../../js/widgets/ContentEditable"
 let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
 
 let private castValue<'a> arr idx (value: obj) =
@@ -37,17 +63,48 @@ let private updateSlicesValue (index: int) (value: obj) slices: Slices =
   | ColorSlices (id, client, arr) ->
     ColorSlices (id, client, castValue<ColorSpace> arr index value)
 
-let renderInput (content: string) (update: string->unit) =
-  from ContentEditable
-    %["tagName" ==> "div"
-      "html" ==> content
-      "className" ==> "iris-contenteditable"
-      "onChange" ==> update] []
+let updateCueName (props:Props) (name:string) =
+  props.Cue
+  |> Cue.setName (Measure.name name)
+  |> UpdateCue
+  |> ClientContext.Singleton.Post
+
+let renderInput (props:Props) =
+  let content = unwrap props.Cue.Name
+  if props.Locked
+  then str content
+  else Editable.string content (updateCueName props)
 
 let updateCueGroup cueList cueGroup =
   CueList.replace cueGroup cueList
   |> UpdateCueList
   |> ClientContext.Singleton.Post
+
+let private renderRemoveButton (props:Props) =
+  if props.Locked
+  then str ""
+  else
+    button [
+      Class "iris-button iris-icon icon-control icon-close"
+      OnClick (fun ev ->
+        ev.stopPropagation()
+        let id = props.CueRef.Id
+        // Change selection if item was selected
+        if props.CueGroupIndex = props.SelectedCueGroupIndex
+          && props.CueIndex = props.SelectedCueIndex then
+          props.SelectCue props.CueGroupIndex 0
+        let newCueRefs =
+          props.CueGroup.CueRefs
+          |> Array.filter (fun c -> c.Id <> id)
+        { props.CueGroup with CueRefs = newCueRefs }
+        |> updateCueGroup props.CueList)
+    ] []
+
+let private renderCueIndex (props:Props) =
+  let content = String.Format("{0:0000}", props.CueIndex + 1)
+  if props.Locked
+  then str content
+  else from SortableHandle { value = content } []
 
 let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
   match model.selectedDragItems with
@@ -60,31 +117,13 @@ let onDragStart (model: Model) cueId pinId multiple =
   if multiple then model.selectedDragItems.Append(newItems) else newItems
   |> Drag.start
 
-// * Types
-
-type [<Pojo>] State =
-  { IsOpen: bool
-    IsHighlit: bool }
-
-type [<Pojo>] Props =
-  { key: string
-    Model: Model
-    State: Iris.Core.State
-    Cue: Cue
-    CueRef: CueReference
-    CueGroup: CueGroup
-    CueList: CueList
-    CueIndex: int
-    CueGroupIndex: int
-    SelectedCueIndex: int
-    SelectedCueGroupIndex: int
-    SelectCue: int -> int -> unit
-    Dispatch: Elmish.Dispatch<Msg> }
-
-// * Sortable components
-
-let SortableHandle = Sortable.Handle(fun props ->
-  div [Style [Cursor "move"]] [str props.value])
+let updateCueAutoCall (props:Props) =
+  props.CueRef
+  |> CueReference.setAutoFollow (not props.CueRef.AutoFollow)
+  |> flip CueGroup.updateRef props.CueGroup
+  |> flip CueList.replace props.CueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
 
 // * React components
 
@@ -111,21 +150,23 @@ type Component(props) =
             else
               match data with
               | DragItems.Pins pinIds ->
-                Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
-                |> Lib.addSlicesToCue this.props.Cue
-                |> Lib.postStateCommands
-              | DragItems.CueAtoms ids ->
-                let addCommands =
-                  Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                if not this.props.Locked then
+                  Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
                   |> Lib.addSlicesToCue this.props.Cue
-                // Group id tuples by CueId (first one)
-                (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
-                  if cueId <> this.props.Cue.Id then
-                    let cue = Lib.findCue cueId this.props.State
-                    Lib.removeSlicesFromCue cue (Seq.map snd ids)
-                    |> cons cmds
-                  else cmds)
-                |> Lib.postStateCommands
+                  |> Lib.postStateCommands
+              | DragItems.CueAtoms ids ->
+                if not this.props.Locked then
+                  let addCommands =
+                    Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                    |> Lib.addSlicesToCue this.props.Cue
+                  // Group id tuples by CueId (first one)
+                  (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+                    if cueId <> this.props.Cue.Id then
+                      let cue = Lib.findCue cueId this.props.State
+                      Lib.removeSlicesFromCue cue (Seq.map snd ids)
+                      |> cons cmds
+                    else cmds)
+                  |> Lib.postStateCommands
               false, true
           else
             false, this.state.IsOpen
@@ -134,9 +175,16 @@ type Component(props) =
       ) |> Some
 
   member this.render() =
+    let locked = props.Locked
     let arrowButton =
       button [
-        Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+        classList [
+          "iris-button", true
+          "iris-icon", true
+          "icon-control", true
+          "icon-less", this.state.IsOpen
+          "icon-more", not this.state.IsOpen
+        ]
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -151,30 +199,17 @@ type Component(props) =
           CallCue this.props.Cue |> ClientContext.Singleton.Post
         )
       ] []
-    let autocallButton =
+    let autocallButton (props:Props) =
       button [
-        Class "iris-button iris-icon icon-autocall"
+        classList [
+          "iris-button iris-icon icon-autocall", true
+          "warning", props.CueRef.AutoFollow
+        ]
+        Disabled locked
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
-          Browser.window.alert("Auto call cue!")
-        )
-      ] []
-    let removeButton =
-      button [
-        Class "iris-button iris-icon icon-control icon-close"
-        OnClick (fun ev ->
-          ev.stopPropagation()
-          let id = this.props.CueRef.Id
-          // Change selection if this item was selected
-          if this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
-            && this.props.CueIndex = this.props.SelectedCueIndex then
-            this.props.SelectCue this.props.CueGroupIndex 0
-          let newCueRefs =
-            this.props.CueGroup.CueRefs
-            |> Array.filter (fun c -> c.Id <> id)
-          { this.props.CueGroup with CueRefs = newCueRefs }
-          |> updateCueGroup this.props.CueList)
+          updateCueAutoCall this.props)
       ] []
     let cueHeader =
       div [
@@ -188,18 +223,19 @@ type Component(props) =
         div [Class "width-5"] [arrowButton]
         div [Class "width-5"] [playButton]
         div [Class "width-10"] [
-          from SortableHandle
-            { value = String.Format("{0:0000}", this.props.CueIndex + 1) } []
+          renderCueIndex this.props
         ]
         div [Class "width-20"] [
-          renderInput (unwrap this.props.Cue.Name) (fun txt ->
-            { this.props.Cue with Name = name txt }
-            |> UpdateCue |> ClientContext.Singleton.Post)
+          renderInput this.props
         ]
         div [Class "width-20"] [str "00:00:00"]
         div [Class "width-20"] [str "shortkey"]
-        div [Class "width-10"; Style [TextAlign "center"]] [autocallButton]
-        div [Class "width-5"] [removeButton]
+        div [Class "width-10"; Style [TextAlign "center"]] [
+          autocallButton this.props
+        ]
+        div [Class "width-5"] [
+          renderRemoveButton this.props
+        ]
       ]
     let rows =
       if not this.state.IsOpen then
@@ -227,7 +263,7 @@ type Component(props) =
                     slices = Some slices
                     model = model
                     updater =
-                      if Lib.isMissingPin pin
+                      if Lib.isMissingPin pin || locked
                       then None
                       else Some {
                         new IUpdater with
@@ -235,9 +271,13 @@ type Component(props) =
                             this.updateCueValue(dragging, i, valueIndex, value)
                       }
                     onSelect = fun multi ->
-                      Select.pin dispatch pin
-                      Drag.selectCueAtom dispatch multi cue.Id pin.Id
-                    onDragStart = Some(onDragStart model cue.Id pin.Id)
+                      if not locked then
+                        Select.pin dispatch pin
+                        Drag.selectCueAtom dispatch multi cue.Id pin.Id
+                    onDragStart =
+                      if locked
+                      then None
+                      else Some(onDragStart model cue.Id pin.Id)
                   } []) |> Seq.toList)
             ])
           |> Array.toList
@@ -249,7 +289,8 @@ type Component(props) =
     div [
       classList ["iris-cue", true
                  "iris-cue-selected", isSelected
-                 "iris-highlight", isHighlit]
+                 "iris-highlight", isHighlit
+                 "iris-forbidden", isHighlit && locked ]
       Ref (fun el -> selfRef <- Option.ofObj el)
     ] rows
 
