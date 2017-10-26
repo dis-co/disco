@@ -175,6 +175,7 @@ type Component(props) =
       ) |> Some
 
   member this.render() =
+    let locked = props.Locked
     let arrowButton =
       button [
         classList [
@@ -204,7 +205,7 @@ type Component(props) =
           "iris-button iris-icon icon-autocall", true
           "warning", props.CueRef.AutoFollow
         ]
-        Disabled props.Locked
+        Disabled locked
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -262,7 +263,7 @@ type Component(props) =
                     slices = Some slices
                     model = model
                     updater =
-                      if Lib.isMissingPin pin
+                      if Lib.isMissingPin pin || locked
                       then None
                       else Some {
                         new IUpdater with
@@ -270,9 +271,13 @@ type Component(props) =
                             this.updateCueValue(dragging, i, valueIndex, value)
                       }
                     onSelect = fun multi ->
-                      Select.pin dispatch pin
-                      Drag.selectCueAtom dispatch multi cue.Id pin.Id
-                    onDragStart = Some(onDragStart model cue.Id pin.Id)
+                      if not locked then
+                        Select.pin dispatch pin
+                        Drag.selectCueAtom dispatch multi cue.Id pin.Id
+                    onDragStart =
+                      if locked
+                      then None
+                      else Some(onDragStart model cue.Id pin.Id)
                   } []) |> Seq.toList)
             ])
           |> Array.toList
@@ -285,7 +290,7 @@ type Component(props) =
       classList ["iris-cue", true
                  "iris-cue-selected", isSelected
                  "iris-highlight", isHighlit
-                 "iris-forbidden", isHighlit && this.props.Locked ]
+                 "iris-forbidden", isHighlit && locked ]
       Ref (fun el -> selfRef <- Option.ofObj el)
     ] rows
 
