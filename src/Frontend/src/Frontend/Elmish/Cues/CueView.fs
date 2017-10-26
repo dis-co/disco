@@ -36,6 +36,11 @@ type [<Pojo>] Props =
     SelectCue: int -> int -> unit
     Dispatch: Elmish.Dispatch<Msg> }
 
+// * Sortable components
+
+let SortableHandle = Sortable.Handle(fun props ->
+  div [Style [Cursor "move"]] [str props.value])
+
 // * Helpers
 
 let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
@@ -95,6 +100,12 @@ let private renderRemoveButton (props:Props) =
         |> updateCueGroup props.CueList)
     ] []
 
+let private renderCueIndex (props:Props) =
+  let content = String.Format("{0:0000}", props.CueIndex + 1)
+  if props.Locked
+  then str content
+  else from SortableHandle { value = content } []
+
 let isAtomSelected (model: Model) (cueAndPinIds: CueId * PinId) =
   match model.selectedDragItems with
   | DragItems.CueAtoms ids ->
@@ -105,11 +116,6 @@ let onDragStart (model: Model) cueId pinId multiple =
   let newItems = DragItems.CueAtoms [cueId, pinId]
   if multiple then model.selectedDragItems.Append(newItems) else newItems
   |> Drag.start
-
-// * Sortable components
-
-let SortableHandle = Sortable.Handle(fun props ->
-  div [Style [Cursor "move"]] [str props.value])
 
 // * React components
 
@@ -136,21 +142,23 @@ type Component(props) =
             else
               match data with
               | DragItems.Pins pinIds ->
-                Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
-                |> Lib.addSlicesToCue this.props.Cue
-                |> Lib.postStateCommands
-              | DragItems.CueAtoms ids ->
-                let addCommands =
-                  Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                if not this.props.Locked then
+                  Seq.map (fun id -> Lib.findPin id this.props.State) pinIds
                   |> Lib.addSlicesToCue this.props.Cue
-                // Group id tuples by CueId (first one)
-                (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
-                  if cueId <> this.props.Cue.Id then
-                    let cue = Lib.findCue cueId this.props.State
-                    Lib.removeSlicesFromCue cue (Seq.map snd ids)
-                    |> cons cmds
-                  else cmds)
-                |> Lib.postStateCommands
+                  |> Lib.postStateCommands
+              | DragItems.CueAtoms ids ->
+                if not this.props.Locked then
+                  let addCommands =
+                    Seq.map (fun (_, pid) -> Lib.findPin pid this.props.State) ids
+                    |> Lib.addSlicesToCue this.props.Cue
+                  // Group id tuples by CueId (first one)
+                  (addCommands, Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+                    if cueId <> this.props.Cue.Id then
+                      let cue = Lib.findCue cueId this.props.State
+                      Lib.removeSlicesFromCue cue (Seq.map snd ids)
+                      |> cons cmds
+                    else cmds)
+                  |> Lib.postStateCommands
               false, true
           else
             false, this.state.IsOpen
@@ -161,7 +169,13 @@ type Component(props) =
   member this.render() =
     let arrowButton =
       button [
-        Class ("iris-button iris-icon icon-control " + (if this.state.IsOpen then "icon-less" else "icon-more"))
+        classList [
+          "iris-button", true
+          "iris-icon", true
+          "icon-control", true
+          "icon-less", this.state.IsOpen
+          "icon-more", not this.state.IsOpen
+        ]
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -197,8 +211,7 @@ type Component(props) =
         div [Class "width-5"] [arrowButton]
         div [Class "width-5"] [playButton]
         div [Class "width-10"] [
-          from SortableHandle
-            { value = String.Format("{0:0000}", this.props.CueIndex + 1) } []
+          renderCueIndex this.props
         ]
         div [Class "width-20"] [
           renderInput this.props
@@ -258,7 +271,8 @@ type Component(props) =
     div [
       classList ["iris-cue", true
                  "iris-cue-selected", isSelected
-                 "iris-highlight", isHighlit]
+                 "iris-highlight", isHighlit
+                 "iris-forbidden", isHighlit && this.props.Locked ]
       Ref (fun el -> selfRef <- Option.ofObj el)
     ] rows
 

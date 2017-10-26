@@ -294,6 +294,11 @@ module CuePlayer =
 
   let locked = Optic.get CuePlayer.Locked_
 
+  // ** cueList
+
+  let cueListId = Optic.get CuePlayer.CueListId_
+  let setCueListId = Optic.set CuePlayer.CueListId_
+
   // ** setName
 
   let setName = Optic.set CuePlayer.Name_
