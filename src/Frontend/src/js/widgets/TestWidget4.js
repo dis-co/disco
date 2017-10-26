@@ -33,6 +33,16 @@ const Wat = (props) => {
             }} />
       break;
 
+      case 'IP':
+        return <input type="text"
+        onChange={(event) => {
+            if(valid(event.target.value)){
+            changeVal(props.context, 'pinVal', () => {
+                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
+            })
+            }
+          }} />
+
       default:
             return <h1> nene </h1>
             break;
@@ -41,6 +51,24 @@ const Wat = (props) => {
   }
 }
 
+//check if ip address is valid (4*[0-255]) returns true if so
+const valid = function (str) {
+  var bool = true;
+  var arr = str.split('.');
+  if(arr.length === 3){
+    arr.forEach(function(elem){
+      if(elem < 0 || elem>255)
+        bool=false
+      })
+    return bool
+  }
+  return false;
+  
+}
+
+//event handler for onChange methods, to set parents state
+//from child component
+//param: context (this), prop (property as string)
 const changeVal = (context, prop) => {
     return (event) => {
       var state = {}
