@@ -18,8 +18,9 @@ const Wat = (props) => {
       case 'Simple':
         return <input type="text"
         onChange={(event) => {
-            changeVal(props.context, 'pinVal', () => {
-                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
+          console.log('context: ' + this.props.context)
+            changeVal(this.props.context, 'pinVal', () => {
+                IrisLib.updatePinValueAt(pin, 0, this.props.pinVal)
             })
             }} />
            
