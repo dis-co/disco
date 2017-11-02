@@ -82,11 +82,17 @@ let private spacer space =
                 Display "inline-block" ] ]
       []
 
-let private nextItem cueList =
-  printfn "Next Item please"
+let private nextItem (player:CuePlayer) =
+  UpdateSlices.ofList [
+    BoolSlices(player.NextId, None, [| true |])
+  ]
+  |> ClientContext.Singleton.Post
 
-let private previousItem cueList =
-  printfn "Previous Item please"
+let private previousItem (player:CuePlayer) =
+  UpdateSlices.ofList [
+    BoolSlices(player.PreviousId, None, [| true |])
+  ]
+  |> ClientContext.Singleton.Post
 
 // * React components
 // ** EmptyComponent
@@ -288,10 +294,7 @@ type Component(props) =
       button [
         Class "iris-button pull-right"
         Disabled (Option.isNone this.props.CueList)
-        OnClick (fun _ ->
-          match this.props.CueList with
-          | Some cueList -> nextItem cueList
-          | None -> ())
+        OnClick (fun _ -> Option.iter nextItem this.props.Player)
       ] [
         str "Next"
         spacer 5
@@ -312,10 +315,7 @@ type Component(props) =
       button [
         Class "iris-button pull-right"
         Disabled (Option.isNone this.props.CueList)
-        OnClick (fun _ ->
-          match this.props.CueList with
-          | Some cueList -> previousItem cueList
-          | None -> ())
+        OnClick (fun _ -> Option.iter previousItem this.props.Player)
       ] [
         i [
           Class "fa fa-lg fa-backward"
