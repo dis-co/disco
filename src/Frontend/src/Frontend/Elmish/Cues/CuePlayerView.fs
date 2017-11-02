@@ -42,14 +42,14 @@ let private CueGroupSortableContainer = Sortable.Container <| fun props ->
 
 // * Helpers
 
-let addGroup (cueList: CueList) (cueGroupIndex: int) =
+let private addGroup (cueList: CueList) (cueGroupIndex: int) =
   let cueGroup = CueGroup.create [| |]
   cueList
   |> CueList.insertAfter cueGroupIndex cueGroup
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
-let toggleLocked (player: CuePlayer option) =
+let private toggleLocked (player: CuePlayer option) =
   match player with
   | None -> ()
   | Some player ->
@@ -58,7 +58,7 @@ let toggleLocked (player: CuePlayer option) =
     |> UpdateCuePlayer
     |> ClientContext.Singleton.Post
 
-let updateCueList (player: CuePlayer option) (str:string) =
+let private updateCueList (player: CuePlayer option) (str:string) =
   match player with
   | None -> ()
   | Some player ->
@@ -72,10 +72,21 @@ let updateCueList (player: CuePlayer option) (str:string) =
         |> UpdateCuePlayer
         |> ClientContext.Singleton.Post
 
-let isLocked (player: CuePlayer option) =
+let private isLocked (player: CuePlayer option) =
   player
   |> Option.map CuePlayer.locked
   |> Option.defaultValue false
+
+let private spacer space =
+  div [ Style [ Width (string space + "px")
+                Display "inline-block" ] ]
+      []
+
+let private nextItem cueList =
+  printfn "Next Item please"
+
+let private previousItem cueList =
+  printfn "Previous Item please"
 
 // * React components
 // ** EmptyComponent
@@ -201,6 +212,12 @@ type Component(props) =
     let locked = isLocked this.props.Player
 
     div [] [
+      ///     _       _     _    ____
+      ///    / \   __| | __| |  / ___|_ __ ___  _   _ _ __
+      ///   / _ \ / _` |/ _` | | |  _| '__/ _ \| | | | '_ \
+      ///  / ___ \ (_| | (_| | | |_| | | | (_) | |_| | |_) |
+      /// /_/   \_\__,_|\__,_|  \____|_|  \___/ \__,_| .__/
+      ///                                            |_|
       button [
         Class "iris-button"
         Disabled (Option.isNone this.props.CueList || locked)
@@ -209,6 +226,12 @@ type Component(props) =
           | Some cueList -> addGroup cueList this.state.SelectedCueGroupIndex
           | None -> ())
       ] [str "Add Group"]
+
+      ///     _       _     _    ____
+      ///    / \   __| | __| |  / ___|   _  ___
+      ///   / _ \ / _` |/ _` | | |  | | | |/ _ \
+      ///  / ___ \ (_| | (_| | | |__| |_| |  __/
+      /// /_/   \_\__,_|\__,_|  \____\__,_|\___|
       button [
         Class "iris-button"
         Disabled (Option.isNone this.props.CueList || locked)
@@ -219,6 +242,12 @@ type Component(props) =
             Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
           | None -> ())
       ] [str "Add Cue"]
+
+      ///  _               _
+      /// | |    ___   ___| | __
+      /// | |   / _ \ / __| |/ /
+      /// | |__| (_) | (__|   <
+      /// |_____\___/ \___|_|\_\
       button [
         classList [
           "iris-button",true
@@ -238,12 +267,66 @@ type Component(props) =
           ]
         ] [ ]
       ]
+
+      ///   ____           _     _     _
+      ///  / ___|   _  ___| |   (_)___| |_
+      /// | |  | | | |/ _ \ |   | / __| __|
+      /// | |__| |_| |  __/ |___| \__ \ |_
+      ///  \____\__,_|\___|_____|_|___/\__|
       select [
         Class "iris-control iris-select"
         Value current
         Disabled locked
         OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
       ] cueLists
+
+      ///  _   _           _
+      /// | \ | | _____  _| |_
+      /// |  \| |/ _ \ \/ / __|
+      /// | |\  |  __/>  <| |_
+      /// |_| \_|\___/_/\_\\__|
+      button [
+        Class "iris-button pull-right"
+        Disabled (Option.isNone this.props.CueList)
+        OnClick (fun _ ->
+          match this.props.CueList with
+          | Some cueList -> nextItem cueList
+          | None -> ())
+      ] [
+        str "Next"
+        spacer 5
+        i [
+          Class "fa fa-lg fa-forward"
+          Style [
+            LineHeight "14px"
+            FontSize "1.11111111em"
+          ]
+        ] [ ]
+      ]
+
+      ///  ____                 _
+      /// |  _ \ _ __ _____   _(_) ___  _   _ ___
+      /// | |_) | '__/ _ \ \ / / |/ _ \| | | / __|
+      /// |  __/| | |  __/\ V /| | (_) | |_| \__ \
+      /// |_|   |_|  \___| \_/ |_|\___/ \__,_|___/
+      button [
+        Class "iris-button pull-right"
+        Disabled (Option.isNone this.props.CueList)
+        OnClick (fun _ ->
+          match this.props.CueList with
+          | Some cueList -> previousItem cueList
+          | None -> ())
+      ] [
+        i [
+          Class "fa fa-lg fa-backward"
+          Style [
+            LineHeight "14px"
+            FontSize "1.11111111em"
+          ]
+        ] [ ]
+        spacer 5
+        str "Previous"
+      ]
     ]
 
   // *** render
