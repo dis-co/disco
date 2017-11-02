@@ -127,10 +127,33 @@ type ReferencedValue =
   | Player of PlayerId
   | Widget of WidgetId
 
+  // ** optics
+
+  static member Player_ =
+    (function
+      | Player id -> Some id
+      | _ -> None),
+    (fun id -> function
+      | Player _ -> Player id
+      | other -> other)
+
+  static member Widget_ =
+    (function
+      | Widget id -> Some id
+      | _ -> None),
+    (fun id -> function
+      | Widget _ -> Widget id
+      | other -> other)
+
+  static member Id_ =
+    (function | Player id | Widget id -> id),
+    (fun id -> function
+      | Player _ -> Player id
+      | Widget _ -> Widget id)
+
   // ** Id
 
-  member reference.Id
-    with get () = match reference with | Player id | Widget id -> id
+  member reference.Id = Optic.get ReferencedValue.Id_ reference
 
   // ** ToYaml
 
@@ -219,6 +242,32 @@ type PinGroup =
     RefersTo: ReferencedValue option    /// optionally add a reference to a player/widget
     Path: FilePath option               /// optionally the location of this group on disk
     Pins: Map<PinId,Pin> }
+
+  // ** optics
+
+  /// static member Id_ =
+  ///   (fun (group:PinGroup) -> group.Id),
+  ///   (fun id (group:PinGroup) -> { group with Id = id })
+
+  /// static member Name_ =
+  ///   (fun (group:PinGroup) -> group.Name),
+  ///   (fun name (group:PinGroup) -> { group with Name = name })
+
+  /// static member ClientId_ =
+  ///   (fun (group:PinGroup) -> group.ClientId),
+  ///   (fun clientId (group:PinGroup) -> { group with ClientId = clientId })
+
+  /// static member RefersTo_ =
+  ///   (fun (group:PinGroup) -> group.RefersTo),
+  ///   (fun refersTo (group:PinGroup) -> { group with RefersTo = refersTo })
+
+  /// static member Path_ =
+  ///   (fun (group:PinGroup) -> group.Path),
+  ///   (fun path (group:PinGroup) -> { group with Path = path })
+
+  /// static member Pins_ =
+  ///   (fun (group:PinGroup) -> group.Pins),
+  ///   (fun pins (group:PinGroup) -> { group with Pins = pins })
 
   // ** ToYaml
 
@@ -675,15 +724,15 @@ type PinGroupMap =
   // ** optics
 
   static member Groups_ =
-    (function { Groups = groups } -> groups),
+    (fun (map:PinGroupMap) -> map.Groups),
     (fun groups (pgm:PinGroupMap) -> { pgm with Groups = groups })
 
   static member Players_ =
-    (function { Players = players } -> players),
+    (fun (map:PinGroupMap) -> map.Players),
     (fun players (pgm:PinGroupMap) -> { pgm with Players = players })
 
   static member Widgets_ =
-    (function { Widgets = widgets } -> widgets),
+    (fun (map:PinGroupMap) -> map.Widgets),
     (fun widgets (pgm:PinGroupMap) -> { pgm with Widgets = widgets })
 
   static member ByClient_ (clientId:ClientId) =
@@ -803,6 +852,9 @@ module PinGroupMap =
 
   let byClient id = Optic.get (PinGroupMap.ByClient_ id)
 
+  let group clientId groupId map =
+    Optic.get (PinGroupMap.ByClient_ clientId >?> Map.value_ groupId) map
+
   // ** setters
 
   let setGroups = Optic.set PinGroupMap.Groups_
@@ -827,24 +879,46 @@ module PinGroupMap =
 
   // ** addPlayer
 
-  let addPlayer (group:PinGroup) (map:PinGroupMap) =
+  let addPlayer (player:CuePlayer) (map:PinGroupMap) =
+    let group = PinGroup.ofPlayer player
     players map
     |> Map.add group.Id group
     |> fun players -> setPlayers players map
 
+  // ** removePlayer
+
+  let removePlayer (player:CuePlayer) (map:PinGroupMap) =
+    map.Players
+    |> Map.filter
+      (fun _ -> function
+        | { RefersTo = Some reference } as group when reference.Id = player.Id -> false
+        | _ -> true)
+    |> fun players -> setPlayers players map
+
   // ** addWidget
 
-  let addWidget (group:PinGroup) (map:PinGroupMap) =
+  let addWidget (widget:PinWidget) (map:PinGroupMap) =
+    let group = PinGroup.ofWidget widget
     widgets map
     |> Map.add group.Id group
+    |> fun widgets -> setWidgets widgets map
+
+  // ** removeWidget
+
+  let removeWidget (widget:PinWidget) (map:PinGroupMap) =
+    map.Widgets
+    |> Map.filter
+      (fun _ -> function
+        | { RefersTo = Some reference } as group when reference.Id = widget.Id -> false
+        | _ -> true)
     |> fun widgets -> setWidgets widgets map
 
   // ** add
 
   let add (group: PinGroup) (map: PinGroupMap) =
     match group.RefersTo with
-    | Some (ReferencedValue.Player _) -> addPlayer group map
-    | Some (ReferencedValue.Widget _) -> addWidget group map
+    | Some (ReferencedValue.Player _) -> { map with Players = Map.add group.Id group map.Players }
+    | Some (ReferencedValue.Widget _) -> { map with Widgets = Map.add group.Id group map.Widgets }
     | None -> addGroup group map
 
   // ** update

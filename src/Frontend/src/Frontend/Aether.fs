@@ -56,7 +56,7 @@ module Compose =
                 (fun c a -> s (t c) a) : Prism<'a,'c>
 
     /// Compose a lens with an optic or morphism.
-    let inline lens l o =
+    let inline lens (l: 'a) (o: 'b) =
         (Lens >-> o) l
 
     /// Static overloads of the composition function for prisms (>?>).
@@ -88,7 +88,7 @@ module Compose =
                 (fun c a -> s (t c) a) : Prism<'a,'c>
 
     /// Compose a prism with an optic or morphism.
-    let inline prism p o =
+    let inline prism (p: 'a) (o: 'b) =
         (Prism >?> o) p
 
 /// Functions for using optics to operate on data structures, using the basic optic
@@ -261,11 +261,7 @@ module Optics =
 
         /// Prism to an indexed position in a list.
         let pos_ (i: int) : Prism<'v list, 'v> =
-#if NET35
-            (function | l when List.length l > i -> Some (List.nth l i)
-#else
             (function | l when List.length l > i -> Some (List.item i l)
-#endif
                       | _ -> None),
             (fun v l ->
                 List.mapi (fun i' x -> if i = i' then v else x) l)
@@ -326,11 +322,11 @@ module Optics =
 module Operators =
 
     /// Compose a lens with an optic or morphism.
-    let inline (>->) l o =
+    let inline (>->) (l: 'a) (o: 'b) =
         Compose.lens l o
 
     /// Compose a prism with an optic or morphism.
-    let inline (>?>) p o =
+    let inline (>?>) (p: 'a) (o: 'b) =
         Compose.prism p o
 
     /// Get a value using an optic.

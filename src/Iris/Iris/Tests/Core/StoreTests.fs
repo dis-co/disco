@@ -703,6 +703,83 @@ module StoreTests =
         store.Debug <- false
         expect "Should be 3" 3 id store.History.Length
 
+  ///  ____  _
+  /// |  _ \| | __ _ _   _  ___ _ __
+  /// | |_) | |/ _` | | | |/ _ \ '__|
+  /// |  __/| | (_| | |_| |  __/ |
+  /// |_|   |_|\__,_|\__, |\___|_|
+  ///                |___/
+
+  let test_should_add_player_and_corresponding_group =
+    testCase "should add player and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let player = CuePlayer.create "My Player" None
+
+        player
+        |> AddCuePlayer
+        |> store.Dispatch
+
+        expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+
+  let test_should_remove_player_and_corresponding_group =
+    testCase "should remove player and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let player = CuePlayer.create "My Player" None
+
+        player
+        |> AddCuePlayer
+        |> store.Dispatch
+
+        expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+
+        player
+        |> RemoveCuePlayer
+        |> store.Dispatch
+
+        expect "Should have no player" 0 Map.count (State.cuePlayers store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroups store.State)
+
+  /// __        ___     _            _
+  /// \ \      / (_) __| | __ _  ___| |_
+  ///  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  ///   \ V  V / | | (_| | (_| |  __/ |_
+  ///    \_/\_/  |_|\__,_|\__, |\___|\__|
+  ///                     |___/
+
+  let test_should_add_widget_and_corresponding_group =
+    testCase "should add widget and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let widget = PinWidget.create "My Widget" (IrisId.Create())
+
+        widget
+        |> AddPinWidget
+        |> store.Dispatch
+
+        expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+
+  let test_should_remove_widget_and_corresponding_group =
+    testCase "should remove widget and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let widget = PinWidget.create "My Widget" (IrisId.Create())
+
+        widget
+        |> AddPinWidget
+        |> store.Dispatch
+
+        expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+
+        widget
+        |> RemovePinWidget
+        |> store.Dispatch
+
+        expect "Should have no widget" 0 Map.count (State.pinWidgets store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroups store.State)
+
+
   let storeTests =
     testList "Store Tests" [
       test_should_add_a_group_to_the_store
@@ -743,4 +820,8 @@ module StoreTests =
       test_should_only_keep_specified_number_of_undo_steps
       test_should_keep_all_state_in_history_in_debug_mode
       test_should_shrink_history_to_UndoSteps_after_leaving_debug_mode
+      test_should_add_player_and_corresponding_group
+      test_should_remove_player_and_corresponding_group
+      test_should_add_widget_and_corresponding_group
+      test_should_remove_widget_and_corresponding_group
     ]

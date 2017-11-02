@@ -9,6 +9,8 @@ namespace rec Iris.Core
 // |___|_| |_| |_| .__/ \___/|_|   \__|___/
 //               |_|
 
+open Aether
+open Aether.Operators
 open Iris.Raft
 
 #if FABLE_COMPILER
@@ -20,6 +22,7 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
+
 #endif
 
 #if !FABLE_COMPILER && !IRIS_NODES
@@ -137,6 +140,52 @@ type State =
     Clients:            Map<ClientId,IrisClient>
     CuePlayers:         Map<PlayerId,CuePlayer>
     DiscoveredServices: Map<ServiceId,DiscoveredService> }
+
+  // ** optics
+
+  static member Project_ =
+    (fun (state:State) -> state.Project),
+    (fun project (state:State) -> { state with Project = project })
+
+  static member PinGroups_ =
+    (fun (state:State) -> state.PinGroups),
+    (fun pinGroups (state:State) -> { state with PinGroups = pinGroups })
+
+  static member PinMappings_ =
+    (fun (state:State) -> state.PinMappings),
+    (fun pinMappings (state:State) -> { state with PinMappings = pinMappings })
+
+  static member PinWidgets_ =
+    (fun (state:State) -> state.PinWidgets),
+    (fun pinWidgets (state:State) -> { state with PinWidgets = pinWidgets })
+
+  static member Cues_ =
+    (fun (state:State) -> state.Cues),
+    (fun cues (state:State) -> { state with Cues = cues })
+
+  static member CueLists_ =
+    (fun (state:State) -> state.CueLists),
+    (fun cueLists (state:State) -> { state with CueLists = cueLists })
+
+  static member Sessions_ =
+    (fun (state:State) -> state.Sessions),
+    (fun sessions (state:State) -> { state with Sessions = sessions })
+
+  static member Users_ =
+    (fun (state:State) -> state.Users),
+    (fun users (state:State) -> { state with Users = users })
+
+  static member Clients_ =
+    (fun (state:State) -> state.Clients),
+    (fun clients (state:State) -> { state with Clients = clients })
+
+  static member CuePlayers_ =
+    (fun (state:State) -> state.CuePlayers),
+    (fun cuePlayers (state:State) -> { state with CuePlayers = cuePlayers })
+
+  static member DiscoveredServices_ =
+    (fun (state:State) -> state.DiscoveredServices),
+    (fun discoveredServices (state:State) -> { state with DiscoveredServices = discoveredServices })
 
   // ** Empty
 
@@ -592,32 +641,60 @@ type State =
 // * State module
 
 module State =
-  // ** cueLists
 
-  let cueLists (state:State) = state.CueLists
+  // ** getters
+
+  let project = Optic.get State.Project_
+  let pinGroups = Optic.get State.PinGroups_
+  let pinMappings = Optic.get State.PinMappings_
+  let pinWidgets = Optic.get State.PinWidgets_
+  let cues = Optic.get State.Cues_
+  let cueLists = Optic.get State.CueLists_
+  let sessions = Optic.get State.Sessions_
+  let users = Optic.get State.Users_
+  let clients = Optic.get State.Clients_
+  let cuePlayers = Optic.get State.CuePlayers_
+  let discoveredServices = Optic.get State.DiscoveredServices_
+
+  // ** setters
+
+  let setProject = Optic.set State.Project_
+  let setPinGroups = Optic.set State.PinGroups_
+  let setPinMappings = Optic.set State.PinMappings_
+  let setPinWidgets = Optic.set State.PinWidgets_
+  let setCues = Optic.set State.Cues_
+  let setCueLists = Optic.set State.CueLists_
+  let setSessions = Optic.set State.Sessions_
+  let setUsers = Optic.set State.Users_
+  let setClients = Optic.set State.Clients_
+  let setCuePlayers = Optic.set State.CuePlayers_
+  let setDiscoveredServices = Optic.set State.DiscoveredServices_
 
   // ** addPinWidget
 
-  let addPinWidget (mappping: PinWidget) (state: State) =
-    if Map.containsKey mappping.Id state.PinWidgets then
+  let addPinWidget (widget: PinWidget) (state: State) =
+    if Map.containsKey widget.Id state.PinWidgets then
       state
     else
-      let mapppings = Map.add mappping.Id mappping state.PinWidgets
-      { state with PinWidgets = mapppings }
+      { state with
+          PinWidgets = Map.add widget.Id widget state.PinWidgets
+          PinGroups = PinGroupMap.addWidget widget state.PinGroups }
 
   // ** updatePinWidget
 
   let updatePinWidget (mappping: PinWidget) (state: State) =
     if Map.containsKey mappping.Id state.PinWidgets then
-      let mapppings = Map.add mappping.Id mappping state.PinWidgets
-      { state with PinWidgets = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinWidgets
+      { state with PinWidgets = mappings }
     else
       state
 
   // ** removePinWidget
 
-  let removePinWidget (mappping: PinWidget) (state: State) =
-    { state with PinWidgets = Map.remove mappping.Id state.PinWidgets }
+  let removePinWidget (widget: PinWidget) (state: State) =
+    { state with
+        PinGroups = PinGroupMap.removeWidget widget state.PinGroups
+        PinWidgets = Map.remove widget.Id state.PinWidgets }
 
   // ** addPinMapping
 
@@ -625,15 +702,15 @@ module State =
     if Map.containsKey mappping.Id state.PinMappings then
       state
     else
-      let mapppings = Map.add mappping.Id mappping state.PinMappings
-      { state with PinMappings = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mappings }
 
   // ** updatePinMapping
 
   let updatePinMapping (mappping: PinMapping) (state: State) =
     if Map.containsKey mappping.Id state.PinMappings then
-      let mapppings = Map.add mappping.Id mappping state.PinMappings
-      { state with PinMappings = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mappings }
     else
       state
 
@@ -648,8 +725,9 @@ module State =
     if Map.containsKey player.Id state.CuePlayers then
       state
     else
-      let players = Map.add player.Id player state.CuePlayers
-      { state with CuePlayers = players }
+      { state with
+          PinGroups = PinGroupMap.addPlayer player state.PinGroups
+          CuePlayers = Map.add player.Id player state.CuePlayers }
 
   // ** updateCuePlayer
 
@@ -663,7 +741,9 @@ module State =
   // ** removeCuePlayer
 
   let removeCuePlayer (player: CuePlayer) (state: State) =
-    { state with CuePlayers = Map.remove player.Id state.CuePlayers }
+    { state with
+        PinGroups = PinGroupMap.removePlayer player state.PinGroups
+        CuePlayers = Map.remove player.Id state.CuePlayers }
 
   // ** addUser
 
@@ -958,6 +1038,10 @@ module State =
     | AddPinGroup     group           -> addPinGroup    group   state
     | UpdatePinGroup  group           -> updatePinGroup group   state
     | RemovePinGroup  group           -> removePinGroup group   state
+
+    | AddPinWidget     widget         -> addPinWidget    widget   state
+    | UpdatePinWidget  widget         -> updatePinWidget widget   state
+    | RemovePinWidget  widget         -> removePinWidget widget   state
 
     | AddPinMapping     mapping       -> addPinMapping    mapping   state
     | UpdatePinMapping  mapping       -> updatePinMapping mapping   state

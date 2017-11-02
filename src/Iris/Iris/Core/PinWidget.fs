@@ -2,6 +2,9 @@ namespace rec Iris.Core
 
 // * Imports
 
+open Aether
+open Aether.Operators
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -57,7 +60,21 @@ type PinWidget =
     Name: Name
     WidgetType: WidgetTypeId }
 
-  // ** ToYam
+  // ** optics
+
+  static member Id_ =
+    (fun (widget:PinWidget) -> widget.Id),
+    (fun id (widget:PinWidget) -> { widget with Id = id })
+
+  static member Name_ =
+    (fun (widget:PinWidget) -> widget.Name),
+    (fun name (widget:PinWidget) -> { widget with Name = name })
+
+  static member WidgetType_ =
+    (fun (widget:PinWidget) -> widget.WidgetType),
+    (fun widgetType (widget:PinWidget) -> { widget with WidgetType = widgetType })
+
+  // ** ToYaml
 
   // __   __              _
   // \ \ / /_ _ _ __ ___ | |
@@ -175,11 +192,23 @@ type PinWidget =
 
 module PinWidget =
 
+  // ** getters
+
+  let id = Optic.get PinWidget.Id_
+  let name = Optic.get PinWidget.Name_
+  let widgetType = Optic.get PinWidget.WidgetType_
+
+  // ** setters
+
+  let setId = Optic.set PinWidget.Id_
+  let setName = Optic.set PinWidget.Name_
+  let setWidgetType = Optic.set PinWidget.WidgetType_
+
   // ** create
 
-  let create (widget: WidgetTypeId) (widgetName: Name) =
+  let create (widgetName: string) (widget: WidgetTypeId) =
     { Id = IrisId.Create()
-      Name = widgetName
+      Name = Measure.name widgetName
       WidgetType = widget }
 
   // ** assetPath
