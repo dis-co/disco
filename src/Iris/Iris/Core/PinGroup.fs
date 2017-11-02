@@ -2,6 +2,9 @@ namespace rec Iris.Core
 
 // * Imports
 
+open Aether
+open Aether.Operators
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -664,103 +667,121 @@ module PinGroup =
 
 type GroupMap = Map<PinGroupId, PinGroup>
 
-type PinGroupMap = PinGroupMap of Map<ClientId,GroupMap>
-  with
-    // ** Count
+type PinGroupMap =
+  { Groups: Map<ClientId,GroupMap>
+    Players: GroupMap
+    Widgets: GroupMap }
 
-    member map.Count with get () = PinGroupMap.count map
+  // ** optics
 
-    // ** ContainsGroup
+  static member Groups_ =
+    (function { Groups = groups } -> groups),
+    (fun groups (pgm:PinGroupMap) -> { pgm with Groups = groups })
 
-    member map.ContainsGroup (client: ClientId) (group: PinGroupId) =
-      PinGroupMap.containsGroup client group map
+  static member Players_ =
+    (function { Players = players } -> players),
+    (fun players (pgm:PinGroupMap) -> { pgm with Players = players })
 
-    // ** Item
+  static member Widgets_ =
+    (function { Widgets = widgets } -> widgets),
+    (fun widgets (pgm:PinGroupMap) -> { pgm with Widgets = widgets })
 
-    member map.Item (client, group) =
-      PinGroupMap.findGroup client group map
+  static member ByClient_ (clientId:ClientId) =
+    PinGroupMap.Groups_ >-> Map.value_ clientId >-> Option.value_
 
-    // ** Groups
+  static member Player_ (playerId:PlayerId) =
+    PinGroupMap.Players_ >-> Map.value_ playerId >-> Option.value_
 
-    member map.Groups
-      with get () = match map with PinGroupMap groups -> groups
+  static member Widget_ (widgetId:WidgetId) =
+    PinGroupMap.Widgets_ >-> Map.value_ widgetId >-> Option.value_
 
-    // ** ToOffset
+  // ** Item
 
-    member map.ToOffset(builder: FlatBufferBuilder) =
-      let vector =
-        map.Groups
-        |> Map.toArray
-        |> Array.map (snd >> Map.toArray >> Array.map (snd >> Binary.toOffset builder))
-        |> Array.concat
-        |> fun arr -> PinGroupMapFB.CreateGroupsVector(builder, arr)
-      PinGroupMapFB.StartPinGroupMapFB(builder)
-      PinGroupMapFB.AddGroups(builder, vector)
-      PinGroupMapFB.EndPinGroupMapFB(builder)
+  member map.Item (clientId,groupId) =
+    map.Groups.[clientId].[groupId]
 
-    // ** FromFB
+  // ** ToOffset
 
-    static member FromFB(fb: PinGroupMapFB) =
-      [ 0 .. fb.GroupsLength - 1 ]
-      |> List.fold
-        (fun (m: Either<IrisError,Map<ClientId,GroupMap>>) idx -> either {
-            let! current = m
-            let! parsed =
-              #if FABLE_COMPILER
-              fb.Groups(idx)
-              |> PinGroup.FromFB
-              #else
-              let groupish = fb.Groups(idx)
-              if groupish.HasValue then
-                let value = groupish.Value
-                PinGroup.FromFB value
-              else
-                "Could not parse empty PinGroup value"
-                |> Error.asParseError "PinGroupMap.FromFB"
-                |> Either.fail
-              #endif
-            return
-              match Map.tryFind parsed.ClientId current with
-              | Some group -> Map.add parsed.ClientId (Map.add parsed.Id parsed group) current
-              | None -> Map.add parsed.ClientId (Map.ofList [(parsed.Id,parsed)]) current
-          })
-        (Right Map.empty)
-      |> Either.map PinGroupMap
+  member map.ToOffset(builder: FlatBufferBuilder) =
+    let regular =
+      map.Groups
+      |> Map.toArray
+      |> Array.map (snd >> Map.toArray >> Array.map snd)
+      |> Array.concat
 
-    // ** ToBytes
+    let players = map.Players |> Map.toArray |> Array.map snd
+    let widgets = map.Widgets |> Map.toArray |> Array.map snd
 
-    member self.ToBytes() : byte[] = Binary.buildBuffer self
+    let vector =
+      [ regular; players; widgets ]
+      |> Array.concat
+      |> Array.map (Binary.toOffset builder)
+      |> fun arr -> PinGroupMapFB.CreateGroupsVector(builder, arr)
 
-    // ** FromBytes
+    PinGroupMapFB.StartPinGroupMapFB(builder)
+    PinGroupMapFB.AddGroups(builder, vector)
+    PinGroupMapFB.EndPinGroupMapFB(builder)
 
-    static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroupMap> =
-      Binary.createBuffer bytes
-      |> PinGroupMapFB.GetRootAsPinGroupMapFB
-      |> PinGroupMap.FromFB
+  // ** FromFB
 
-    // ** Load
+  static member FromFB(fb: PinGroupMapFB) =
+    [ 0 .. fb.GroupsLength - 1 ]
+    |> List.fold
+      (fun (m: Either<IrisError,PinGroupMap>) idx -> either {
+          let! current = m
+          let! parsed =
+            #if FABLE_COMPILER
+            fb.Groups(idx)
+            |> PinGroup.FromFB
+            #else
+            let groupish = fb.Groups(idx)
+            if groupish.HasValue then
+              let value = groupish.Value
+              PinGroup.FromFB value
+            else
+              "Could not parse empty PinGroup value"
+              |> Error.asParseError "PinGroupMap.FromFB"
+              |> Either.fail
+            #endif
+          return PinGroupMap.add parsed current
 
-    #if !FABLE_COMPILER && !IRIS_NODES
+        })
+      (Right PinGroupMap.empty)
 
-    static member Load(path: FilePath) : Either<IrisError, PinGroupMap> =
-      either {
-        let! groups = Asset.loadAll path
-        return PinGroupMap.ofArray groups
-      }
+  // ** ToBytes
 
-    // ** Save
+  member self.ToBytes() : byte[] = Binary.buildBuffer self
 
-    member map.Save (basePath: FilePath) =
-      Map.fold
-        (fun (m: Either<IrisError,unit>) _ groups ->
-          either {
-            let! _ = m
-            return! Map.fold (Asset.saveMap basePath) Either.nothing groups
-          })
-        Either.nothing
-        map.Groups
+  // ** FromBytes
 
-    #endif
+  static member FromBytes (bytes: byte[]) : Either<IrisError,PinGroupMap> =
+    Binary.createBuffer bytes
+    |> PinGroupMapFB.GetRootAsPinGroupMapFB
+    |> PinGroupMap.FromFB
+
+  // ** Load
+
+  #if !FABLE_COMPILER && !IRIS_NODES
+
+  static member Load(path: FilePath) : Either<IrisError, PinGroupMap> =
+    either {
+      let! groups = Asset.loadAll path
+      return PinGroupMap.ofArray groups
+    }
+
+  // ** Save
+
+  member map.Save (basePath: FilePath) =
+    Map.fold
+      (fun (m: Either<IrisError,unit>) _ groups ->
+        either {
+          let! _ = m
+          return! Map.fold (Asset.saveMap basePath) Either.nothing groups
+        })
+      Either.nothing
+      map.Groups
+
+  #endif
 
 // * PinGroupMap module
 
@@ -768,25 +789,63 @@ module PinGroupMap =
 
   // ** empty
 
-  let empty = PinGroupMap Map.empty
+  let empty =
+    { Groups = Map.empty
+      Players = Map.empty
+      Widgets = Map.empty }
 
-  // ** groups
 
-  let groups (map: PinGroupMap) = map.Groups
+  // ** getters
+
+  let groups = Optic.get PinGroupMap.Groups_
+  let players = Optic.get PinGroupMap.Players_
+  let widgets = Optic.get PinGroupMap.Widgets_
+
+  let byClient id = Optic.get (PinGroupMap.ByClient_ id)
+
+  // ** setters
+
+  let setGroups = Optic.set PinGroupMap.Groups_
+  let setPlayers = Optic.set PinGroupMap.Players_
+  let setWidgets = Optic.set PinGroupMap.Widgets_
+
+  let setByClient (clientId:ClientId) gm map =
+    { map with Groups = Map.add clientId gm map.Groups }
+
+  // ** addGroup
+
+  let addGroup (group:PinGroup) (map:PinGroupMap) =
+    match byClient group.ClientId map with
+    | Some groupMap ->
+      groupMap
+      |> Map.add group.Id group
+      |> fun gm -> setByClient group.ClientId gm map
+    | None ->
+      Map.empty
+      |> Map.add group.Id group
+      |> fun gm -> setByClient group.ClientId gm map
+
+  // ** addPlayer
+
+  let addPlayer (group:PinGroup) (map:PinGroupMap) =
+    players map
+    |> Map.add group.Id group
+    |> fun players -> setPlayers players map
+
+  // ** addWidget
+
+  let addWidget (group:PinGroup) (map:PinGroupMap) =
+    widgets map
+    |> Map.add group.Id group
+    |> fun widgets -> setWidgets widgets map
 
   // ** add
 
   let add (group: PinGroup) (map: PinGroupMap) =
-    let current = map.Groups
-    match Map.tryFind group.ClientId current with
-    | Some groups ->
-      let groups = Map.add group.Id group groups
-      Map.add group.ClientId groups current
-      |> PinGroupMap
-    | None ->
-      Map.ofList [(group.Id,group)]
-      |> fun groups -> Map.add group.ClientId groups current
-      |> PinGroupMap
+    match group.RefersTo with
+    | Some (ReferencedValue.Player _) -> addPlayer group map
+    | Some (ReferencedValue.Widget _) -> addWidget group map
+    | None -> addGroup group map
 
   // ** update
 
@@ -802,10 +861,10 @@ module PinGroupMap =
       let groups = Map.remove group.Id groups
       if groups.IsEmpty then
         Map.remove group.ClientId current
-        |> PinGroupMap
+        |> fun groups -> setGroups groups map
       else
         Map.add group.ClientId groups current
-        |> PinGroupMap
+        |> fun groups -> setGroups groups map
 
   // ** containsGroup
 
@@ -851,35 +910,24 @@ module PinGroupMap =
   let removePin (pin: Pin) (map: PinGroupMap) =
     modifyGroup (PinGroup.removePin pin) pin.ClientId pin.PinGroupId map
 
-  // ** fold
-
-  let fold (f: 'a -> ClientId -> GroupMap -> 'a) (state: 'a) (map: PinGroupMap) =
-    Map.fold f state map.Groups
-
   // ** foldGroups
 
-  let foldGroups (f: 'a -> PinGroupId -> PinGroup -> 'a) (state: 'a) (map: PinGroupMap) =
-    fold (fun s _ groups -> Map.fold f s groups) state map
-
-  // ** iter
-
-  let iter (f: ClientId -> GroupMap -> unit) (map: PinGroupMap) =
-    Map.iter f map.Groups
+  let foldGroups (f: 'a -> PinGroupId -> PinGroup -> 'a) (state: 'a) map =
+    groups map
+    |> Map.fold (fun s _ groups -> Map.fold f s groups) state
 
   // ** iterGroups
 
   let iterGroups (f: PinGroup -> unit) (map: PinGroupMap) =
-    iter (fun _ map -> Map.iter (fun _ group -> f group) map) map
-
-  // ** map
-
-  let map (f: ClientId -> GroupMap -> GroupMap) (map: PinGroupMap) =
-    map.Groups |> Map.map f |> PinGroupMap
+    groups map
+    |> Map.iter (fun _ map -> Map.iter (fun _ group -> f group) map)
 
   // ** mapGroups
 
   let mapGroups (f: PinGroup -> PinGroup) (pgm: PinGroupMap) =
-    map (fun _ groups -> Map.map (fun _ group -> f group) groups) pgm
+    groups pgm
+    |> Map.map (fun _ groups -> Map.map (fun _ group -> f group) groups)
+    |> fun groups -> setGroups groups pgm
 
   // ** mapPins
 
@@ -890,6 +938,8 @@ module PinGroupMap =
 
   let count (map: PinGroupMap) =
     foldGroups (fun count _ _ -> count + 1) 0 map
+    + Map.count map.Players
+    + Map.count map.Widgets
 
   // ** updateSlices
 

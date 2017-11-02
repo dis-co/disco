@@ -43,9 +43,9 @@ module StoreTests =
   let test_should_add_a_group_to_the_store =
     testCase "should add a group to the store" <| fun _ ->
       withStore <| fun group store ->
-        expect "Should be zero" 0 id store.State.PinGroups.Count
+        expect "Should be zero" 0 id (PinGroupMap.count store.State.PinGroups)
         store.Dispatch <| AddPinGroup(group)
-        expect "Should be one" 1 id store.State.PinGroups.Count
+        expect "Should be one" 1 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_update_a_group_already_in_the_store =
     testCase "should update a group already in the store" <| fun _ ->
@@ -56,7 +56,7 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
         expect "Should be true" true id
           (store.State.PinGroups.[group.ClientId,group.Id].Name = name1)
@@ -74,12 +74,12 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
         store.Dispatch <| RemovePinGroup(group)
 
         expect "Should be false" false id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
   ///  ____  _
   /// |  _ \(_)_ __
@@ -128,7 +128,7 @@ module StoreTests =
             [| "ho" |]
 
         store.Dispatch <| AddPin(pin)
-        expect "Should be zero" 0 id store.State.PinGroups.Count
+        expect "Should be zero" 0 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_update_a_pin_in_the_store_if_it_already_exists =
     testCase "should update a pin in the store if it already exists" <| fun _ ->
@@ -595,9 +595,9 @@ module StoreTests =
       withStore <| fun group store ->
         store.Dispatch <| AddPinGroup(group)
         store.Undo()
-        expect "Should be 0" 0 id store.State.PinGroups.Count
+        expect "Should be 0" 0 id (PinGroupMap.count store.State.PinGroups)
         store.Redo()
-        expect "Should be 1" 1 id store.State.PinGroups.Count
+        expect "Should be 1" 1 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_redo_multiple_undone_changes =
     testCase "should redo multiple undone changes" <| fun _ ->
