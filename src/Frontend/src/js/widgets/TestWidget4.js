@@ -12,38 +12,16 @@ import Switch, { Case, Default } from 'react-switch-case';
 // helpers can also be requested.
 
 const Wat = (props) => {
-
   if(props.pinpin !== null){
     switch(props.pinpin){
       case 'Simple':
-        return <input type="text"
-        onChange={(event) => {
-          console.log('context: ' + this.props.context)
-            changeVal(this.props.context, 'pinVal', () => {
-                IrisLib.updatePinValueAt(pin, 0, this.props.pinVal)
-            })
-            }} />
-           
+        return <input type="text" onChange={props.setPinVal} />
       break;
       case 'MultiLine':
-        return <textarea
-        onChange={(event) => {
-            changeVal(props.context, 'pinVal', () => {
-                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
-            })
-            }} />
+        return <textarea onChange={props.setPinVal} />
       break;
-
       case 'IP':
-        return <input type="text"
-        onChange={(event) => {
-            if(valid(event.target.value)){
-            changeVal(props.context, 'pinVal', () => {
-                IrisLib.updatePinValueAt(pin, 0, props.pinVal)
-            })
-            }
-          }} />
-
+        return <input type="text" onChange={valid(event.target.value) ? props.setPinVal : } />
       default:
             return <h1> nene </h1>
             break;
@@ -64,19 +42,7 @@ const valid = function (str) {
     return bool
   }
   return false;
-  
 }
-
-//event handler for onChange methods, to set parents state
-//from child component
-//param: context (this), prop (property as string)
-const changeVal = (context, prop) => {
-    return (event) => {
-      var state = {}
-      state[prop] = event.target.value
-      context.setState(state)
-    }
-} 
 
 class TestWidget extends React.Component {
   constructor(props) {
@@ -87,18 +53,46 @@ class TestWidget extends React.Component {
       pinName: "",
       groupPin: "",
       pinVal: "",
+      pin: null
     };
-    //this.changeVal = this.changeVal.bind(this);
+  }
+
+  setPinVal(ev) {
+    console.log("setPinVal", ev.target.value)
+    this.state.pinVal = ev.target.value;
+    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
+    IrisLib.updatePinValueAt(pin, 0, ev.target.value)
+  }
+
+  //event handler for onChange methods, to set parents state
+  //from child component
+  //param: context (this), prop (property as string)
+  makeCallback(propName) {
+    return (ev) => {
+      var state = {}
+      state[propName] = ev.target.value
+      this.setState(state)
+    }
+  }
+
+  setPin() {
+    let groupPin = this.state.groupName + '/'+ this.state.pinName
+    //set pin to this states current pin by pinName
+    var pin = IrisLib.findPinByName(this.props.model, groupPin);
+    this.setState({ 
+      groupPin: groupPin,
+      pin: pin,
+      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+    }, () => {
+      console.log('pin has been changed: ', this.state.groupPin)
+      console.log(this.state.pinVal)
+      console.log("pin " + pin)
+      if(pin !== null)
+        console.log(pin.data.Behavior.ToString())
+    })
   }
 
   render() {
-    //initialize pinVal
-    var pinVal = '';
-    //set pin to this states current pin by pinName
-    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-    if (pin != null) {
-      pinVal = IrisLib.getPinValueAt(pin, 0);
-    }
     return (
       <div style={{
         display: "flex",
@@ -110,42 +104,27 @@ class TestWidget extends React.Component {
         {/*input to select a pins group*/}
         <label>
           group name
-           {/*onChange updates state with new groupName as read from input field*/}
-        <input type="text"
-        onChange={changeVal(this, "groupName")} />
+          {/*onChange updates state with new groupName as read from input field*/}
+          <input type="text" onChange={this.makeCallback("groupName")} />
         </label>
         {/*input to select a pins name*/}
         <label>
           pin name
           {/*onChange updates state with new pinName as read from input field*/}
-        <input type="text"
-        onChange={changeVal(this, "pinName")} />
+          <input type="text" onChange={this.makeCallback("pinName")} />
         </label>
           {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
-        <button type="submit" onClick={() => {
-          this.setState({groupPin: this.state.groupName + '/'+ this.state.pinName}, () => {
-            console.log('pin has been changed: ', this.state.groupPin)
-            console.log(pinVal)
-            console.log("pin " + pin)
-            if(pin !== null)
-              console.log(pin.data.Behavior.ToString())
-          })
-          
-          ;}}>submit</button>
+        <button type="submit" onClick={this.setPin.bind(this)}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
-        <label>
-            value
-            </label>
-            {
-              pin !== null ?
-              <Wat pinpin={pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} context={this} />
-              :
-              <h1>nene</h1>
-            }
-             
-            
+        <label>value</label>
+          {
+            this.state.pin !== null ?
+            <Wat pinpin={this.state.pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} setPinVal={this.setPinVal.bind(this)} />
+            :
+            <h1>nene</h1>
+          }           
         </div>
       </div>
     )
