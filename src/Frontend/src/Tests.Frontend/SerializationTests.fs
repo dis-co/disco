@@ -222,7 +222,7 @@ module SerializationTests =
 
     test "should serialize/deserialize StateMachineBatch correctly" <| fun finish ->
       let batch =
-        StateMachineBatch
+        Transaction
           [ AddCue                  <| mkCue ()
             UpdateCue               <| mkCue ()
             RemoveCue               <| mkCue ()

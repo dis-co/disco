@@ -1082,7 +1082,7 @@ module State =
 
   // ** processBatch
 
-  let processBatch (state: State) (batch: StateMachineBatch) =
+  let processBatch (state: State) (batch: Transaction) =
     List.fold update state batch.Commands
 
   // ** initialize
@@ -1385,14 +1385,14 @@ type Store(state : State)=
 /// Returns: Store -> StateMachine -> unit
 type Listener = Store -> StateMachine -> unit
 
-// * StateMachineBatch
+// * Transaction
 
-type StateMachineBatch = StateMachineBatch of StateMachine list
+type Transaction = Transaction of StateMachine list
   with
     // ** Commands
 
     member batch.Commands
-      with get () = match batch with | StateMachineBatch commands -> commands
+      with get () = match batch with | Transaction commands -> commands
 
     // ** ToOffset
 
@@ -1401,14 +1401,14 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
         batch.Commands
         |> List.map (Binary.toOffset builder)
         |> List.toArray
-        |> fun arr -> CommandBatchFB.CreateCommandsVector(builder, arr)
-      CommandBatchFB.StartCommandBatchFB(builder)
-      CommandBatchFB.AddCommands(builder, serialized)
-      CommandBatchFB.EndCommandBatchFB(builder)
+        |> fun arr -> TransactionFB.CreateCommandsVector(builder, arr)
+      TransactionFB.StartTransactionFB(builder)
+      TransactionFB.AddCommands(builder, serialized)
+      TransactionFB.EndTransactionFB(builder)
 
     // ** FromFB
 
-    static member FromFB(batch: CommandBatchFB) =
+    static member FromFB(batch: TransactionFB) =
       either {
         let input = Array.zeroCreate batch.CommandsLength
 
@@ -1442,7 +1442,7 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
             (Right (0, input))
             input
           #endif
-        return StateMachineBatch (List.ofArray commands)
+        return Transaction (List.ofArray commands)
       }
 
     // ** ToBytes
@@ -1455,8 +1455,8 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
     static member FromBytes(raw: byte array) =
       raw
       |> Binary.createBuffer
-      |> CommandBatchFB.GetRootAsCommandBatchFB
-      |> StateMachineBatch.FromFB
+      |> TransactionFB.GetRootAsTransactionFB
+      |> Transaction.FromFB
 
 // * SlicesMap
 
@@ -1628,7 +1628,7 @@ type StateMachine =
 
   | DataSnapshot            of State
 
-  | CommandBatch            of StateMachineBatch
+  | CommandBatch            of Transaction
 
   | SetLogLevel             of LogLevel
 
@@ -1863,7 +1863,7 @@ type StateMachine =
 
       | DataSnapshot            _  -> ParameterFB.StateFB
 
-      | CommandBatch            _  -> ParameterFB.CommandBatchFB
+      | CommandBatch            _  -> ParameterFB.TransactionFB
 
       | SetLogLevel             _  -> ParameterFB.StringFB
 
@@ -2266,10 +2266,10 @@ type StateMachine =
     // |  _ \ / _` | __/ __| '_ \
     // | |_) | (_| | || (__| | | |
     // |____/ \__,_|\__\___|_| |_|
-    | x when x = StateMachinePayloadFB.CommandBatchFB ->
+    | x when x = StateMachinePayloadFB.TransactionFB ->
       either {
-        let fb = fb.CommandBatchFB
-        let! batch = StateMachineBatch.FromFB fb
+        let fb = fb.TransactionFB
+        let! batch = Transaction.FromFB fb
         return CommandBatch batch
       }
 
@@ -2753,12 +2753,12 @@ type StateMachine =
     // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
-    | StateMachinePayloadFB.CommandBatchFB ->
+    | StateMachinePayloadFB.TransactionFB ->
       either {
-        let batchish = fb.Payload<CommandBatchFB> ()
+        let batchish = fb.Payload<TransactionFB> ()
         if batchish.HasValue then
           let batch = batchish.Value
-          let! commands = StateMachineBatch.FromFB batch
+          let! commands = Transaction.FromFB batch
           return CommandBatch commands
         else
           return!
@@ -3396,7 +3396,7 @@ type StateMachine =
       let offset = Binary.toOffset builder commands
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.BatchFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CommandBatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.TransactionFB)
 #if FABLE_COMPILER
       StateMachineFB.AddPayload(builder, offset)
 #else
@@ -3440,7 +3440,7 @@ type StateMachine =
 
 module CommandBatch =
 
-  let ofList = StateMachineBatch >> CommandBatch
+  let ofList = Transaction >> CommandBatch
 
 // * UpdateSlices module
 

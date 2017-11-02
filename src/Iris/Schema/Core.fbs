@@ -659,7 +659,7 @@ table CuePlayerFB {
 // | |_) | (_| | || (__| | | |
 // |____/ \__,_|\__\___|_| |_|
 
-table CommandBatchFB {
+table TransactionFB {
       Commands: [StateMachineFB];
 }
 
@@ -744,7 +744,7 @@ union StateMachinePayloadFB {
       CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB,
-      CommandBatchFB,
+      TransactionFB,
       PinMappingFB,
       PinWidgetFB
 }

@@ -779,7 +779,6 @@ module StoreTests =
         expect "Should have no widget" 0 Map.count (State.pinWidgets store.State)
         expect "Should have no group" 0 PinGroupMap.count (State.pinGroups store.State)
 
-
   let storeTests =
     testList "Store Tests" [
       test_should_add_a_group_to_the_store

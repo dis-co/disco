@@ -337,8 +337,7 @@ module IrisService =
         |> List.map (snd >> AddClient)
       let batch =
         List.append sessions clients
-        |> StateMachineBatch
-        |> CommandBatch
+        |> CommandBatch.ofList
 
       (clients.Length,sessions.Length)
       |> String.format "sending batch command with {0} (clients,session) "
