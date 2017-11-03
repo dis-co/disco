@@ -225,3 +225,17 @@ module PinWidget =
     IrisData.save basePath widget
 
   #endif
+
+  // ** updatePins
+
+  let updatePins (slices:Slices) (widget:PinWidget) =
+    widget
+
+  // ** processSlices
+
+  let processSlices (slices:Map<PinId,Slices>) (widget:PinWidget) =
+    Map.fold
+      (fun (widget:PinWidget) _ (slices:Slices) ->
+        updatePins slices widget)
+      widget
+      slices

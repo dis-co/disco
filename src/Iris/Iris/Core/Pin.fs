@@ -1263,27 +1263,15 @@ module Pin =
 
   module Player =
 
-    // *** nextId
-
-    let nextId _ = IrisId.Create() // (String.format "/{0}/next" id)
-
-    // *** previousId
-
-    let previousId _ = IrisId.Create() // (String.format "/{0}/next" id)
-
-    // *** previousId
-
-    let callId _ = IrisId.Create() // (String.format "/{0}/call" id)
-
     // *** next
 
-    let next id client =
+    let next (clientId:ClientId) (groupId:PinGroupId) (pinId:PinId) =
       BoolPin {
-        Id               = nextId id
+        Id               = pinId
         Name             = Measure.name "Next"
-        PinGroupId       = id
+        PinGroupId       = groupId
         Tags             = Array.empty
-        ClientId         = client
+        ClientId         = clientId
         Persisted        = true
         IsTrigger        = true
         Online           = true
@@ -1296,12 +1284,12 @@ module Pin =
 
     // *** previous
 
-    let previous id client =
+    let previous (clientId:ClientId) (groupId:PinGroupId) (pinId:PinId) =
       BoolPin {
-        Id               = previousId id
+        Id               = pinId
         Name             = Measure.name "Previous"
-        PinGroupId       = id
-        ClientId         = client
+        PinGroupId       = groupId
+        ClientId         = clientId
         Tags             = Array.empty
         Persisted        = true
         IsTrigger        = true
@@ -1315,12 +1303,12 @@ module Pin =
 
     // *** call
 
-    let call id client =
+    let call (clientId:ClientId) (groupId:PinGroupId) (pinId:PinId) =
       BoolPin {
-        Id         = callId id
+        Id         = pinId
         Name       = Measure.name "Call"
-        PinGroupId = id
-        ClientId   = client
+        PinGroupId = groupId
+        ClientId   = clientId
         Tags       = Array.empty
         Persisted  = true
         IsTrigger  = true

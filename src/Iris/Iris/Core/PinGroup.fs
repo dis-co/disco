@@ -269,6 +269,9 @@ type PinGroup =
     (fun (group:PinGroup) -> group.Pins),
     (fun pins (group:PinGroup) -> { group with Pins = pins })
 
+  static member Pin_ (id:PinId) =
+    PinGroup.Pins_ >-> Map.value_ id
+
   /// reach into the PinGroup to see if we can find a PlayerId
   static member Player_ =
         PinGroup.RefersTo_
@@ -476,6 +479,7 @@ module PinGroup =
   let refersTo = Optic.get PinGroup.RefersTo_
   let path = Optic.get PinGroup.Path_
   let pins = Optic.get PinGroup.Pins_
+  let pin id = Optic.get (PinGroup.Pin_ id)
 
   /// // ** setters
 
@@ -485,6 +489,7 @@ module PinGroup =
   let setRefersTo = Optic.set PinGroup.RefersTo_
   let setPath = Optic.set PinGroup.Path_
   let setPins = Optic.set PinGroup.Pins_
+  let setPin id pin = Optic.set (PinGroup.Pin_ id) (Some pin)
 
   // ** isEmpty
 
@@ -619,9 +624,9 @@ module PinGroup =
 
   let ofPlayer (player: CuePlayer) =
     let client = IrisId.Parse Constants.CUEPLAYER_GROUP_ID
-    let call = Pin.Player.call     player.Id client
-    let next = Pin.Player.next     player.Id client
-    let prev = Pin.Player.previous player.Id client
+    let call = Pin.Player.call     client player.Id player.CallId
+    let next = Pin.Player.next     client player.Id player.NextId
+    let prev = Pin.Player.previous client player.Id player.PreviousId
     { Id = player.Id
       Name = Measure.name (unwrap player.Name + " (Cue Player)")
       ClientId = client
@@ -762,6 +767,9 @@ type PinGroupMap =
 
   static member ByClient_ (clientId:ClientId) =
     PinGroupMap.Groups_ >-> Map.value_ clientId >-> Option.value_
+
+  static member Group_ (clientId:ClientId) (groupId:PinGroupId) =
+    PinGroupMap.ByClient_ clientId >?> Map.value_ groupId >?> Option.value_
 
   static member Player_ (playerId:PlayerId) =
     PinGroupMap.Players_ >-> Map.value_ playerId >-> Option.value_
@@ -1021,6 +1029,7 @@ module PinGroupMap =
     groups map
     |> Map.iter (fun _ map -> Map.iter (fun _ group -> f group) map)
 
+
   // ** mapGroups
 
   let mapGroups (f: PinGroup -> PinGroup) (pgm: PinGroupMap) =
@@ -1039,6 +1048,37 @@ module PinGroupMap =
     foldGroups (fun count _ _ -> count + 1) 0 map
     + Map.count map.Players
     + Map.count map.Widgets
+
+  // ** isSpecialUpdate
+
+  let private isSpecialUpdate
+    (getter: PinGroupMap -> GroupMap)
+    (slices: Map<PinId,Slices>)
+    (map: PinGroupMap) =
+    map
+    |> getter
+    |> Map.fold
+      (fun result _ group ->
+        if not result then
+          Map.fold
+            (fun any pid _ ->
+              if not any
+              then PinGroup.contains pid group
+              else any)
+            false
+            slices
+        else result)
+      false
+
+  // ** hasPlayerUpdate
+
+  let hasPlayerUpdate (slices: Map<PinId,Slices>) (map: PinGroupMap) =
+    isSpecialUpdate players slices map
+
+  // ** hasPlayerUpdate
+
+  let hasWidgetUpdate (slices: Map<PinId,Slices>) (map: PinGroupMap) =
+    isSpecialUpdate widgets slices map
 
   // ** updateSlices
 

@@ -720,7 +720,7 @@ module StoreTests =
         |> store.Dispatch
 
         expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
-        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
 
   let test_should_remove_player_and_corresponding_group =
     testCase "should remove player and corresponding group" <| fun _ ->
@@ -732,14 +732,53 @@ module StoreTests =
         |> store.Dispatch
 
         expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
-        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
 
         player
         |> RemoveCuePlayer
         |> store.Dispatch
 
         expect "Should have no player" 0 Map.count (State.cuePlayers store.State)
-        expect "Should have no group" 0 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroupMap store.State)
+
+  ///  ____  _             _   _                _
+  /// |  _ \| | __ _ _   _| | | | ___  __ _  __| |
+  /// | |_) | |/ _` | | | | |_| |/ _ \/ _` |/ _` |
+  /// |  __/| | (_| | |_| |  _  |  __/ (_| | (_| |
+  /// |_|   |_|\__,_|\__, |_| |_|\___|\__,_|\__,_|
+  ///                |___/
+
+  let test_should_update_player_position =
+    testCase "should update player position" <| fun _ ->
+      withStore <| fun _ store ->
+        let cueList =
+          CueList.create "My CueList" [|
+            for i in 0 .. 4 do
+              yield CueGroup.create [|
+                  for n in 0 .. 4 do
+                    let cue = Cue.create ("Cue-" + string (i + n)) Array.empty
+                    cue |> AddCue |> store.Dispatch
+                    yield CueReference.create cue
+                |]
+          |]
+        cueList |> AddCueList |> store.Dispatch
+
+        let player = CuePlayer.create "My Player" (Some cueList.Id)
+        player |> AddCuePlayer |> store.Dispatch
+
+        [ BoolSlices(player.NextId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
+        let updated = State.cuePlayer player.Id store.State |> Option.get
+        expect "Should have advanced one step" (player.Selected + 1<index>) id updated.Selected
+
+        [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
+        let updated = State.cuePlayer player.Id store.State |> Option.get
+        expect "Should have reversed one step" player.Selected id updated.Selected
 
   /// __        ___     _            _
   /// \ \      / (_) __| | __ _  ___| |_
@@ -758,7 +797,7 @@ module StoreTests =
         |> store.Dispatch
 
         expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
-        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
 
   let test_should_remove_widget_and_corresponding_group =
     testCase "should remove widget and corresponding group" <| fun _ ->
@@ -770,14 +809,14 @@ module StoreTests =
         |> store.Dispatch
 
         expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
-        expect "Should have one group" 1 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
 
         widget
         |> RemovePinWidget
         |> store.Dispatch
 
         expect "Should have no widget" 0 Map.count (State.pinWidgets store.State)
-        expect "Should have no group" 0 PinGroupMap.count (State.pinGroups store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroupMap store.State)
 
   let storeTests =
     testList "Store Tests" [
@@ -823,4 +862,5 @@ module StoreTests =
       test_should_remove_player_and_corresponding_group
       test_should_add_widget_and_corresponding_group
       test_should_remove_widget_and_corresponding_group
+      test_should_update_player_position
     ]

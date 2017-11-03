@@ -245,7 +245,7 @@ enter:
 # | .__/ \__,_|_|\_\___|\__|
 # |_|
 
-restore: paket.restore
+restore: paket.restore paket.generate
 	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) Bootstrap $(OPTS)"
 
 paket.generate:

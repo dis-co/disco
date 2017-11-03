@@ -303,7 +303,6 @@ type CuePlayer =
 module CuePlayer =
 
   open Aether
-  open NameUtils
 
   // ** getters
 
@@ -350,9 +349,9 @@ module CuePlayer =
       RemainingWait = -1
       Selected      = -1<index>
       CueListId     = cuelist
-      CallId        = Pin.Player.callId     id
-      NextId        = Pin.Player.nextId     id
-      PreviousId    = Pin.Player.previousId id
+      CallId        = IrisId.Create()
+      NextId        = IrisId.Create()
+      PreviousId    = IrisId.Create()
       LastCalledId  = None
       LastCallerId  = None }
 
@@ -375,3 +374,29 @@ module CuePlayer =
   // ** unsetCueList
 
   let unsetCueList player = Optic.set CuePlayer.CueListId_ None player
+
+  // ** increaseSelected
+
+  let increaseSelected player =
+    setSelected (player.Selected + 1<index>) player
+
+  let decreaseSelected player =
+    setSelected (player.Selected - 1<index>) player
+
+  // ** updatePins
+
+  let updatePins (slices:Slices) (player:CuePlayer) =
+    if slices.PinId = player.NextId
+    then increaseSelected player
+    elif slices.PinId = player.PreviousId
+    then decreaseSelected player
+    else player
+
+  // ** processSlices
+
+  let processSlices (slices:Map<PinId,Slices>) (player:CuePlayer) =
+    Map.fold
+      (fun (player:CuePlayer) _ (slices:Slices) ->
+        updatePins slices player)
+      player
+      slices

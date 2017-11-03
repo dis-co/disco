@@ -151,41 +151,71 @@ type State =
     (fun (state:State) -> state.PinGroups),
     (fun pinGroups (state:State) -> { state with PinGroups = pinGroups })
 
+  static member PinGroup_ clientId groupId =
+    State.PinGroups_ >-> PinGroupMap.Group_ clientId groupId
+
   static member PinMappings_ =
     (fun (state:State) -> state.PinMappings),
     (fun pinMappings (state:State) -> { state with PinMappings = pinMappings })
+
+  static member PinMapping_ (id:PinMappingId) =
+    State.PinMappings_ >-> Map.value_ id >-> Option.value_
 
   static member PinWidgets_ =
     (fun (state:State) -> state.PinWidgets),
     (fun pinWidgets (state:State) -> { state with PinWidgets = pinWidgets })
 
+  static member PinWidget_ (id:WidgetId) =
+    State.PinWidgets_ >-> Map.value_ id >-> Option.value_
+
   static member Cues_ =
     (fun (state:State) -> state.Cues),
     (fun cues (state:State) -> { state with Cues = cues })
+
+  static member Cue_ (id:CueId) =
+    State.Cues_ >-> Map.value_ id >-> Option.value_
 
   static member CueLists_ =
     (fun (state:State) -> state.CueLists),
     (fun cueLists (state:State) -> { state with CueLists = cueLists })
 
+  static member CueList_ (id:CueListId) =
+    State.CueLists_ >-> Map.value_ id >-> Option.value_
+
   static member Sessions_ =
     (fun (state:State) -> state.Sessions),
     (fun sessions (state:State) -> { state with Sessions = sessions })
+
+  static member Session_ (id:SessionId) =
+    State.Sessions_ >-> Map.value_ id >-> Option.value_
 
   static member Users_ =
     (fun (state:State) -> state.Users),
     (fun users (state:State) -> { state with Users = users })
 
+  static member User_ (id:UserId) =
+    State.Users_ >-> Map.value_ id >-> Option.value_
+
   static member Clients_ =
     (fun (state:State) -> state.Clients),
     (fun clients (state:State) -> { state with Clients = clients })
+
+  static member Client_ (id:ClientId) =
+    State.Clients_ >-> Map.value_ id >-> Option.value_
 
   static member CuePlayers_ =
     (fun (state:State) -> state.CuePlayers),
     (fun cuePlayers (state:State) -> { state with CuePlayers = cuePlayers })
 
+  static member CuePlayer_ (id:PlayerId) =
+    State.CuePlayers_ >-> Map.value_ id >-> Option.value_
+
   static member DiscoveredServices_ =
     (fun (state:State) -> state.DiscoveredServices),
     (fun discoveredServices (state:State) -> { state with DiscoveredServices = discoveredServices })
+
+  static member DiscoveredService_ (id:IrisId) =
+    State.DiscoveredServices_ >-> Map.value_ id >-> Option.value_
 
   // ** Empty
 
@@ -642,24 +672,49 @@ type State =
 
 module State =
 
+  // ** optics
+
+  let pinGroups_ = State.PinGroups_ >-> PinGroupMap.Groups_
+  let pinGroup_ clid gid = State.PinGroups_ >-> PinGroupMap.Group_ clid gid
+  let playerGroups_ = State.PinGroups_ >-> PinGroupMap.Players_
+  let playerGroup_ pid = State.PinGroups_ >-> PinGroupMap.Player_ pid
+  let widgetGroups_ = State.PinGroups_ >-> PinGroupMap.Widgets_
+  let widgetGroup_ wid = State.PinGroups_ >-> PinGroupMap.Widget_ wid
+
   // ** getters
 
   let project = Optic.get State.Project_
-  let pinGroups = Optic.get State.PinGroups_
+  let pinGroupMap = Optic.get State.PinGroups_
+  let pinGroups = Optic.get pinGroups_
+  let pinGroup clid gid = Optic.get (pinGroup_ clid gid)
+  let playerGroups = Optic.get playerGroups_
+  let playerGroup pid = Optic.get (playerGroup_ pid)
+  let widgetGroups = Optic.get widgetGroups_
+  let widgetGroup wid = Optic.get (widgetGroup_ wid)
   let pinMappings = Optic.get State.PinMappings_
+  let pinMapping mid = Optic.get (State.PinMapping_ mid)
   let pinWidgets = Optic.get State.PinWidgets_
+  let pinWidget wid = Optic.get (State.PinWidget_ wid)
   let cues = Optic.get State.Cues_
+  let cue id = Optic.get (State.Cue_ id)
   let cueLists = Optic.get State.CueLists_
+  let cueList id = Optic.get (State.CueList_ id)
   let sessions = Optic.get State.Sessions_
+  let session id = Optic.get (State.Session_ id)
   let users = Optic.get State.Users_
+  let user id = Optic.get (State.User_ id)
   let clients = Optic.get State.Clients_
+  let client id = Optic.get (State.Client_ id)
   let cuePlayers = Optic.get State.CuePlayers_
+  let cuePlayer id = Optic.get (State.CuePlayer_ id)
   let discoveredServices = Optic.get State.DiscoveredServices_
+  let discoveredService id = Optic.get (State.DiscoveredService_ id)
 
   // ** setters
 
   let setProject = Optic.set State.Project_
-  let setPinGroups = Optic.set State.PinGroups_
+  let setPinGroupMap = Optic.set State.PinGroups_
+  let setPinGroups = Optic.set pinGroups_
   let setPinMappings = Optic.set State.PinMappings_
   let setPinWidgets = Optic.set State.PinWidgets_
   let setCues = Optic.set State.Cues_
@@ -872,7 +927,20 @@ module State =
   // ** updateSlices
 
   let updateSlices (map: SlicesMap) (state: State) =
-    { state with PinGroups = PinGroupMap.updateSlices map.Slices state.PinGroups }
+    let players =
+      if PinGroupMap.hasPlayerUpdate map.Slices state.PinGroups
+      then Map.map (fun _ player -> CuePlayer.processSlices map.Slices player) state.CuePlayers
+      else state.CuePlayers
+
+    let widgets =
+      if PinGroupMap.hasWidgetUpdate map.Slices state.PinGroups
+      then Map.map (fun _ widget -> PinWidget.processSlices map.Slices widget) state.PinWidgets
+      else state.PinWidgets
+
+    { state with
+        CuePlayers = players
+        PinWidgets = widgets
+        PinGroups = PinGroupMap.updateSlices map.Slices state.PinGroups }
 
   // ** tryFindPin
 
