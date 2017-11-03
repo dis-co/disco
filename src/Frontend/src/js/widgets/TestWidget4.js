@@ -11,38 +11,77 @@ import Switch, { Case, Default } from 'react-switch-case';
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
-const Wat = (props) => {
-  if(props.pinpin !== null){
-    switch(props.pinpin){
-      case 'Simple':
-        return <input type="text" onChange={props.setPinVal} />
-      break;
-      case 'MultiLine':
-        return <textarea onChange={props.setPinVal} />
-      break;
-      case 'IP':
-        return <input type="text" onChange={valid(event.target.value) ? props.setPinVal : } />
-      default:
-            return <h1> nene </h1>
-            break;
-  
+class Wat extends React.Component  {
+  constructor(props){
+    super(props)
+    this.state={
+      ip: false,
+      pinpin : props.pinpin,
+      setPinVal : props.setPinVal,
+      isValid : true
     }
   }
+
+  ipValid  (ev) {
+    //console.log('1', valid(ev.target.value))
+    if(regValid(ev.target.value)){ 
+      this.setState({ isValid: true })      
+      this.state.setPinVal(ev.target.value);
+    } else {
+      this.setState({ isValid: false })      
+    }
+  }
+
+  getFiles(ev) {
+    var fileName = ev.target.files[0].name
+    this.state.setPinVal(fileName)
+  }
+
+  getString(ev) {
+    this.state.setPinVal(ev.target.value)
+  }
+  
+  render(){
+    var style = this.state.isValid ? {} : { border: "3px solid red" }
+    if(this.state.pinpin !== null){
+      switch(this.state.pinpin){
+        case 'Simple':
+          return <input type="text" onChange={this.getString} />
+        break;
+        case 'MultiLine':
+          return <textarea onChange={this.getString} />
+        break;
+        case 'IP':
+          return <input style={style} type="text" onChange={this.ipValid.bind(this)} />
+        case 'FileName':
+          return < input type='file' id='input' onChange={this.getFiles.bind(this)} />
+          //var selectedFile = document.getElementById('input').files[0]
+
+        default:
+              return <h1> nene </h1>
+              break;
+    
+      }
+    }
+  }
+
 }
 
-//check if ip address is valid (4*[0-255]) returns true if so
-const valid = function (str) {
-  var bool = true;
-  var arr = str.split('.');
-  if(arr.length === 3){
-    arr.forEach(function(elem){
-      if(elem < 0 || elem>255)
-        bool=false
-      })
-    return bool
+//validates ip addresses
+const regValid = function (str){
+  var regex = /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/
+  try {
+    var [m, b1, b2, b3, b4] = str.match(regex)
+    if(parseInt(b1,10) > 255) return false
+    if(parseInt(b2,10) > 255) return false
+    if(parseInt(b3,10) > 255) return false
+    if(parseInt(b4,10) > 255) return false
+  } catch(e) {
+    return false
   }
-  return false;
+  return true
 }
+
 
 class TestWidget extends React.Component {
   constructor(props) {
@@ -57,11 +96,11 @@ class TestWidget extends React.Component {
     };
   }
 
-  setPinVal(ev) {
-    console.log("setPinVal", ev.target.value)
-    this.state.pinVal = ev.target.value;
+  setPinVal(value) {
+    console.log("setPinVal", value)
+    this.state.pinVal = value;
     var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-    IrisLib.updatePinValueAt(pin, 0, ev.target.value)
+    IrisLib.updatePinValueAt(pin, 0, value)
   }
 
   //event handler for onChange methods, to set parents state
