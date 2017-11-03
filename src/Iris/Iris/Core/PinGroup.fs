@@ -76,7 +76,7 @@ type PinGroupYaml() =
 
       return {
         Id = id
-        Name = name yml.Name
+        Name = Measure.name yml.Name
         ClientId = client
         Path = path
         RefersTo = refersTo
@@ -245,29 +245,41 @@ type PinGroup =
 
   // ** optics
 
-  /// static member Id_ =
-  ///   (fun (group:PinGroup) -> group.Id),
-  ///   (fun id (group:PinGroup) -> { group with Id = id })
+  static member Id_ =
+    (fun (group:PinGroup) -> group.Id),
+    (fun id (group:PinGroup) -> { group with Id = id })
 
-  /// static member Name_ =
-  ///   (fun (group:PinGroup) -> group.Name),
-  ///   (fun name (group:PinGroup) -> { group with Name = name })
+  static member Name_ =
+    (fun (group:PinGroup) -> group.Name),
+    (fun name (group:PinGroup) -> { group with Name = name })
 
-  /// static member ClientId_ =
-  ///   (fun (group:PinGroup) -> group.ClientId),
-  ///   (fun clientId (group:PinGroup) -> { group with ClientId = clientId })
+  static member ClientId_ =
+    (fun (group:PinGroup) -> group.ClientId),
+    (fun clientId (group:PinGroup) -> { group with ClientId = clientId })
 
-  /// static member RefersTo_ =
-  ///   (fun (group:PinGroup) -> group.RefersTo),
-  ///   (fun refersTo (group:PinGroup) -> { group with RefersTo = refersTo })
+  static member RefersTo_ =
+    (fun (group:PinGroup) -> group.RefersTo),
+    (fun refersTo (group:PinGroup) -> { group with RefersTo = refersTo })
 
-  /// static member Path_ =
-  ///   (fun (group:PinGroup) -> group.Path),
-  ///   (fun path (group:PinGroup) -> { group with Path = path })
+  static member Path_ =
+    (fun (group:PinGroup) -> group.Path),
+    (fun path (group:PinGroup) -> { group with Path = path })
 
-  /// static member Pins_ =
-  ///   (fun (group:PinGroup) -> group.Pins),
-  ///   (fun pins (group:PinGroup) -> { group with Pins = pins })
+  static member Pins_ =
+    (fun (group:PinGroup) -> group.Pins),
+    (fun pins (group:PinGroup) -> { group with Pins = pins })
+
+  /// reach into the PinGroup to see if we can find a PlayerId
+  static member Player_ =
+        PinGroup.RefersTo_
+    >-> Option.value_
+    >?> ReferencedValue.Player_
+
+  /// reach into the PinGroup to see if we can find a WidgetId
+  static member Widget_ =
+        PinGroup.RefersTo_
+    >-> Option.value_
+    >?> ReferencedValue.Widget_
 
   // ** ToYaml
 
@@ -352,7 +364,7 @@ type PinGroup =
 
       return {
         Id = id
-        Name = name fb.Name
+        Name = Measure.name fb.Name
         Path = path
         ClientId = client
         RefersTo = refersTo
@@ -455,6 +467,24 @@ type PinGroup =
 // * PinGroup module
 
 module PinGroup =
+
+  /// // ** getters
+
+  let id = Optic.get PinGroup.Id_
+  let name = Optic.get PinGroup.Name_
+  let clientId = Optic.get PinGroup.ClientId_
+  let refersTo = Optic.get PinGroup.RefersTo_
+  let path = Optic.get PinGroup.Path_
+  let pins = Optic.get PinGroup.Pins_
+
+  /// // ** setters
+
+  let setId = Optic.set PinGroup.Id_
+  let setName = Optic.set PinGroup.Name_
+  let setClientId = Optic.set PinGroup.ClientId_
+  let setRefersTo = Optic.set PinGroup.RefersTo_
+  let setPath = Optic.set PinGroup.Path_
+  let setPins = Optic.set PinGroup.Pins_
 
   // ** isEmpty
 
@@ -585,20 +615,15 @@ module PinGroup =
   let setPinsOffline (group: PinGroup) =
     { group with Pins = Map.map (fun _ pin -> Pin.setOnline false pin) group.Pins }
 
-  // ** setPins
-
-  let setPins (pins: Map<PinId,Pin>) group =
-    { group with Pins = pins }
-
   // ** ofPlayer
 
   let ofPlayer (player: CuePlayer) =
-    let client = IrisId.Parse Constants.CUEPLAYER_GROUP_DIR
+    let client = IrisId.Parse Constants.CUEPLAYER_GROUP_ID
     let call = Pin.Player.call     player.Id client
     let next = Pin.Player.next     player.Id client
     let prev = Pin.Player.previous player.Id client
     { Id = player.Id
-      Name = name (unwrap player.Name + " (Cue Player)")
+      Name = Measure.name (unwrap player.Name + " (Cue Player)")
       ClientId = client
       Path = None
       RefersTo = Some (ReferencedValue.Player player.Id)
@@ -611,8 +636,8 @@ module PinGroup =
 
   let ofWidget (widget: PinWidget) =
     { Id = widget.Id
-      Name = name (unwrap widget.Name + " (Widget)")
-      ClientId = IrisId.Parse Constants.PINWIDGET_GROUP_DIR
+      Name = Measure.name (unwrap widget.Name + " (Widget)")
+      ClientId = IrisId.Parse Constants.PINWIDGET_GROUP_ID
       RefersTo = Some (ReferencedValue.Widget widget.Id)
       Path = None
       Pins = Map.empty }

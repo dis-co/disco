@@ -106,8 +106,12 @@ type CuePlayer =
 
   // ** optics
 
+  static member Id_ =
+   (fun (player:CuePlayer) -> player.Id),
+    (fun id (player:CuePlayer) -> { player with Id = id })
+
   static member Name_ =
-    (fun (player:CuePlayer) -> player.Name),
+   (fun (player:CuePlayer) -> player.Name),
     (fun name (player:CuePlayer) -> { player with Name = name })
 
   static member Locked_ =
@@ -118,9 +122,37 @@ type CuePlayer =
     (fun (player:CuePlayer) -> player.Active),
     (fun active (player:CuePlayer) -> { player with Active = active })
 
+  static member RemainingWait_ =
+    (fun (player:CuePlayer) -> player.RemainingWait),
+    (fun remainingWait (player:CuePlayer) -> { player with RemainingWait = remainingWait })
+
+  static member Selected_ =
+    (fun (player:CuePlayer) -> player.Selected),
+    (fun selected (player:CuePlayer) -> { player with Selected = selected })
+
   static member CueListId_ =
     (fun (player:CuePlayer) -> player.CueListId),
     (fun cueListId (player:CuePlayer) -> { player with CueListId = cueListId })
+
+  static member NextId_ =
+    (fun (player:CuePlayer) -> player.NextId),
+    (fun nextId (player:CuePlayer) -> { player with NextId = nextId })
+
+  static member PreviousId_ =
+    (fun (player:CuePlayer) -> player.PreviousId),
+    (fun previousId (player:CuePlayer) -> { player with PreviousId = previousId })
+
+  static member CallId_ =
+    (fun (player:CuePlayer) -> player.CallId),
+    (fun callId (player:CuePlayer) -> { player with CallId = callId })
+
+  static member LastCalledId_ =
+    (fun (player:CuePlayer) -> player.LastCalledId),
+    (fun lastCalledId (player:CuePlayer) -> { player with LastCalledId = lastCalledId })
+
+  static member LastCallerId_ =
+    (fun (player:CuePlayer) -> player.LastCallerId),
+    (fun lastCallerId (player:CuePlayer) -> { player with LastCallerId = lastCallerId })
 
   // ** ToOffset
 
@@ -273,12 +305,46 @@ module CuePlayer =
   open Aether
   open NameUtils
 
+  // ** getters
+
+  let id = Optic.get CuePlayer.Id_
+  let name = Optic.get CuePlayer.Name_
+  let active = Optic.get CuePlayer.Active_
+  let locked = Optic.get CuePlayer.Locked_
+  let remainingWait = Optic.get CuePlayer.RemainingWait_
+  let selected = Optic.get CuePlayer.Selected_
+  let cueListId = Optic.get CuePlayer.CueListId_
+  let callId = Optic.get CuePlayer.CallId_
+  let nextId = Optic.get CuePlayer.NextId_
+  let previousId = Optic.get CuePlayer.PreviousId_
+  let lastCalledId = Optic.get CuePlayer.LastCalledId_
+  let lastCallerId = Optic.get CuePlayer.LastCallerId_
+
+  // ** setters
+
+  let setId = Optic.set CuePlayer.Id_
+  let setName = Optic.set CuePlayer.Name_
+  let setActive = Optic.set CuePlayer.Active_
+  let setLocked = Optic.set CuePlayer.Locked_
+  let setRemainingWait = Optic.set CuePlayer.RemainingWait_
+  let setSelected = Optic.set CuePlayer.Selected_
+  let setCallId = Optic.set CuePlayer.CallId_
+  let setNextId = Optic.set CuePlayer.NextId_
+  let setPreviousId = Optic.set CuePlayer.PreviousId_
+
+  let setCueListId id = Optic.set CuePlayer.CueListId_ (Some id)
+  let setLastCalledId id = Optic.set CuePlayer.LastCalledId_ (Some id)
+  let setLastCallerId id = Optic.set CuePlayer.LastCallerId_ (Some id)
+  let unsetCueListId = Optic.set CuePlayer.CueListId_ None
+  let unsetLastCalledId = Optic.set CuePlayer.LastCalledId_ None
+  let unsetLastCallerId = Optic.set CuePlayer.LastCallerId_ None
+
   // ** create
 
   let create (playerName: string) (cuelist: CueListId option) =
     let id = IrisId.Create()
     { Id            = id
-      Name          = name playerName
+      Name          = Measure.name playerName
       Active        = false
       Locked        = false
       RemainingWait = -1
@@ -289,27 +355,6 @@ module CuePlayer =
       PreviousId    = Pin.Player.previousId id
       LastCalledId  = None
       LastCallerId  = None }
-
-  // ** locked
-
-  let locked = Optic.get CuePlayer.Locked_
-
-  // ** cueList
-
-  let cueListId = Optic.get CuePlayer.CueListId_
-  let setCueListId = Optic.set CuePlayer.CueListId_
-
-  // ** setName
-
-  let setName = Optic.set CuePlayer.Name_
-
-  // ** setLocked
-
-  let setLocked = Optic.set CuePlayer.Locked_
-
-  // ** setActive
-
-  let setActive = Optic.set CuePlayer.Active_
 
   // ** assetPath
 

@@ -192,10 +192,10 @@ module Constants =
   let PINWIDGET_DIR = "widgets"
 
   [<Literal>]
-  let CUEPLAYER_GROUP_DIR = "0f0f825d-ce36-41f1-8143-de40f7cf1144"
+  let CUEPLAYER_GROUP_ID = "0f0f825d-ce36-41f1-8143-de40f7cf1144"
 
   [<Literal>]
-  let PINWIDGET_GROUP_DIR = "86b15b97-6769-4462-a17c-8c2d1a5309b4"
+  let PINWIDGET_GROUP_ID = "86b15b97-6769-4462-a17c-8c2d1a5309b4"
 
   let GLOBAL_ASSET_DIRS =
     [ USER_DIR
