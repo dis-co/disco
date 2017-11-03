@@ -179,9 +179,10 @@ let project =
       Author    = None
       Config    = irisConfig  }
 
-let _1of3 (x,_,_) = x
-let _2of3 (_,x,_) = x
-let _3of3 (_,_,x) = x
+let _1of4 (x,_,_,_) = x
+let _2of4 (_,x,_,_) = x
+let _3of4 (_,_,x,_) = x
+let _4of4 (_,_,_,x) = x
 
 let cuesAndListsAndPlayers =
   let makeCue i =
@@ -203,9 +204,11 @@ let cuesAndListsAndPlayers =
       cueGroup
     |]
   let cuePlayer = CuePlayer.create "mockcueplayer" (Some cueList.Id)
+  let playerGroup = PinGroup.ofPlayer cuePlayer
   Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
   Map[cueList.Id, cueList],
-  Map[cuePlayer.Id, cuePlayer]
+  Map[cuePlayer.Id, cuePlayer],
+  playerGroup
 
 let getMockState() =
   let groups =
@@ -219,7 +222,7 @@ let getMockState() =
   { State.Empty with
       Project = project
       Clients = clients
-      PinGroups = groups
-      Cues = _1of3 cuesAndListsAndPlayers
-      CueLists = _2of3 cuesAndListsAndPlayers
-      CuePlayers = _3of3 cuesAndListsAndPlayers }
+      PinGroups = PinGroupMap.add (_4of4 cuesAndListsAndPlayers) groups
+      Cues = _1of4 cuesAndListsAndPlayers
+      CueLists = _2of4 cuesAndListsAndPlayers
+      CuePlayers = _3of4 cuesAndListsAndPlayers}

@@ -127,15 +127,6 @@
     <Compile Include="..\..\Iris\Core\Pin.fs">
       <Link>Pin.fs</Link>
     </Compile>
-    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
-      <Link>CuePlayer.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\PinWidget.fs">
-      <Link>PinWidget.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Iris\Core\PinGroup.fs">
-      <Link>PinGroup.fs</Link>
-    </Compile>
     <Compile Include="..\..\Iris\Core\Cue.fs">
       <Link>Cue.fs</Link>
     </Compile>
@@ -147,6 +138,15 @@
     </Compile>
     <Compile Include="..\..\Iris\Core\CueList.fs">
       <Link>CueList.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\CuePlayer.fs">
+      <Link>CuePlayer.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinWidget.fs">
+      <Link>PinWidget.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Core\PinGroup.fs">
+      <Link>PinGroup.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Raft\Validation.fs">
       <Link>Validation.fs</Link>

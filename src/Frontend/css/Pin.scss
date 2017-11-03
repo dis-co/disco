@@ -26,6 +26,10 @@ $even-row: #EBEBEB;
   }
 }
 
+.iris-current-cue {
+  border: 2px solid red;
+}
+
 .iris-cuegroup {
   & .iris-cuegroup-selected {
     background-color: $highlight-lightblue;

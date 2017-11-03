@@ -338,6 +338,19 @@ module CuePlayer =
   let unsetLastCalledId = Optic.set CuePlayer.LastCalledId_ None
   let unsetLastCallerId = Optic.set CuePlayer.LastCallerId_ None
 
+  // ** findSelected
+
+  let findSelected (items:CueGroup[]) (player:CuePlayer) =
+    if player.Selected < 0<index>
+    then None
+    else
+      let allItems =
+        items
+        |> Array.map (CueGroup.cueRefs >> Array.map CueReference.id)
+        |> Array.concat
+      try Some allItems.[int player.Selected]
+      with _ -> None
+
   // ** create
 
   let create (playerName: string) (cuelist: CueListId option) =

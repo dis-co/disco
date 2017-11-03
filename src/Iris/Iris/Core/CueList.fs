@@ -227,6 +227,11 @@ module CueList =
   let name = Optic.get CueList.Name_
   let setName = Optic.set CueList.Name_
 
+  // ** items
+
+  let items = Optic.get CueList.Items_
+  let setItems = Optic.set CueList.Items_
+
   // ** create
 
   let create (title:string) items =
@@ -287,3 +292,8 @@ module CueList =
         else result)
       true
       cuelist.Items
+
+  // ** cueCount
+
+  let cueCount (cueList: CueList) =
+    Array.fold (fun m (group:CueGroup) -> m + Array.length group.CueRefs) 0 cueList.Items

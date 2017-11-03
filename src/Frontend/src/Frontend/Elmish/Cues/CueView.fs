@@ -31,6 +31,7 @@ type [<Pojo>] Props =
     CueList: CueList
     CueIndex: int
     CueGroupIndex: int
+    CurrentCue: CueRefId option
     SelectedCueIndex: int
     SelectedCueGroupIndex: int
     SelectCue: int -> int -> unit
@@ -286,11 +287,18 @@ type Component(props) =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
     let isHighlit = this.state.IsHighlit
+    let isCurrent =
+      match this.props.CurrentCue with
+      | Some refId -> refId = this.props.CueRef.Id
+      | _ -> false
     div [
-      classList ["iris-cue", true
-                 "iris-cue-selected", isSelected
-                 "iris-highlight", isHighlit
-                 "iris-forbidden", isHighlit && locked ]
+      classList [
+        "iris-cue", true
+        "iris-current-cue", isCurrent
+        "iris-cue-selected", isSelected
+        "iris-highlight", isHighlit
+        "iris-forbidden", isHighlit && locked
+      ]
       Ref (fun el -> selfRef <- Option.ofObj el)
     ] rows
 

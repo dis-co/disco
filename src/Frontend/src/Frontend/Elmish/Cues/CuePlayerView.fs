@@ -23,7 +23,8 @@ type [<Pojo>] Props =
     Dispatch: Msg->unit
     Id: Guid
     Name: string
-    Player: CuePlayer option }
+    Player: CuePlayer option
+    CurrentCue: CueRefId option }
 
 type [<Pojo>] State =
   { SelectedCueGroupIndex: int
@@ -82,17 +83,21 @@ let private spacer space =
                 Display "inline-block" ] ]
       []
 
-let private nextItem (player:CuePlayer) =
-  UpdateSlices.ofList [
-    BoolSlices(player.NextId, None, [| true |])
-  ]
-  |> ClientContext.Singleton.Post
+let private nextItem (cueList: CueList option) (player:CuePlayer) =
+  match cueList with
+  | Some cueList when int (player.Selected + 1<index>) < CueList.cueCount cueList ->
+    UpdateSlices.ofList [
+      BoolSlices(player.NextId, None, [| true |])
+    ]
+    |> ClientContext.Singleton.Post
+  | _ -> ()
 
 let private previousItem (player:CuePlayer) =
-  UpdateSlices.ofList [
-    BoolSlices(player.PreviousId, None, [| true |])
-  ]
-  |> ClientContext.Singleton.Post
+  if player.Selected - 1<index> >= 0<index> then
+    UpdateSlices.ofList [
+      BoolSlices(player.PreviousId, None, [| true |])
+    ]
+    |> ClientContext.Singleton.Post
 
 // * React components
 // ** EmptyComponent
@@ -124,6 +129,7 @@ let private createEmpty dispatch model id name =
     Id = id
     Name = name
     Player = None
+    CurrentCue = None
   } []
 
 // ** Component
@@ -148,6 +154,7 @@ type Component(props) =
             CG.CueGroup = group
             CG.CueList = cueList
             CG.CueGroupIndex = i
+            CG.CurrentCue = this.props.CurrentCue
             CG.SelectedCueIndex = this.state.SelectedCueIndex
             CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
             CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
@@ -159,9 +166,10 @@ type Component(props) =
           useDragHandle = true
           onSortEnd = fun ev ->
             // Update the CueList with the new order
-            let newItems = Sortable.arrayMove(cueList.Items, ev.oldIndex, ev.newIndex)
-            { cueList with Items = newItems }
-            |> UpdateCueList |> ClientContext.Singleton.Post
+            Sortable.arrayMove(cueList.Items, ev.oldIndex, ev.newIndex)
+            |> flip CueList.setItems cueList
+            |> UpdateCueList
+            |> ClientContext.Singleton.Post
             // Select the dragged group
             { this.state with SelectedCueGroupIndex = ev.newIndex }
             |> this.setState
@@ -294,7 +302,7 @@ type Component(props) =
       button [
         Class "iris-button pull-right"
         Disabled (Option.isNone this.props.CueList)
-        OnClick (fun _ -> Option.iter nextItem this.props.Player)
+        OnClick (fun _ -> Option.iter (nextItem this.props.CueList) this.props.Player)
       ] [
         str "Next"
         spacer 5
@@ -371,13 +379,18 @@ let createWidget(id: System.Guid) =
         | Some player ->
           let cueList =
             Option.bind
-              (flip Map.tryFind state.CueLists)
+              (flip State.cueList state)
               player.CueListId
+          let currentCue =
+            Option.bind
+              (CueList.items >> flip CuePlayer.findSelected player)
+              cueList
           com<Component,_,_>
             { CueList = cueList
               Model = model
               Dispatch = dispatch
               Id = this.Id
               Name = this.Name
-              Player = Some player } []
+              Player = Some player
+              CurrentCue = currentCue } []
   }
