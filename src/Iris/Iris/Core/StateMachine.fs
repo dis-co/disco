@@ -3532,3 +3532,28 @@ module UpdateSlices =
     |> Map.ofList
     |> SlicesMap
     |> UpdateSlices
+
+// * CuePlayerExtensions module
+
+[<AutoOpen>]
+module CuePlayerExtensions =
+
+  type CuePlayer with
+
+    static member next (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.NextId, None, [| true |]) ]
+        CallCue cue
+      ]
+
+    static member previous (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        CallCue cue
+      ]
+
+    static member call (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.CallId, None, [| true |]) ]
+        CallCue cue
+      ]

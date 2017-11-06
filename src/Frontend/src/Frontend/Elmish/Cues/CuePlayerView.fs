@@ -83,21 +83,37 @@ let private spacer space =
                 Display "inline-block" ] ]
       []
 
-let private nextItem (cueList: CueList option) (player:CuePlayer) =
-  match cueList with
-  | Some cueList when int (player.Selected + 1<index>) < CueList.cueCount cueList ->
-    UpdateSlices.ofList [
-      BoolSlices(player.NextId, None, [| true |])
-    ]
-    |> ClientContext.Singleton.Post
+let private nextItem (props:Props) =
+  match props.Model.state, props.Player, props.CueList with
+  | Some state, Some player, Some cueList ->
+    let nextIdx = int (player.Selected + 1<index>)
+    if nextIdx < CueList.cueCount cueList then
+      try
+        cueList
+        |> CueList.cueRefs
+        |> Array.item nextIdx
+        |> CueReference.cueId
+        |> flip State.cue state
+        |> Option.map (flip CuePlayer.next player)
+        |> Option.iter (ClientContext.Singleton.Post)
+      with _ -> ()
   | _ -> ()
 
-let private previousItem (player:CuePlayer) =
-  if player.Selected - 1<index> >= 0<index> then
-    UpdateSlices.ofList [
-      BoolSlices(player.PreviousId, None, [| true |])
-    ]
-    |> ClientContext.Singleton.Post
+let private previousItem (props:Props) =
+  match props.Model.state, props.Player, props.CueList with
+  | Some state, Some player, Some cueList ->
+    let previousIdx = int (player.Selected - 1<index>)
+    if previousIdx >= 0 then
+      try
+        cueList
+        |> CueList.cueRefs
+        |> Array.item previousIdx
+        |> CueReference.cueId
+        |> flip State.cue state
+        |> Option.map (flip CuePlayer.previous player)
+        |> Option.iter (ClientContext.Singleton.Post)
+      with _ -> ()
+  | _ -> ()
 
 // * React components
 // ** EmptyComponent
@@ -302,7 +318,7 @@ type Component(props) =
       button [
         Class "iris-button pull-right"
         Disabled (Option.isNone this.props.CueList)
-        OnClick (fun _ -> Option.iter (nextItem this.props.CueList) this.props.Player)
+        OnClick (fun _ -> nextItem this.props)
       ] [
         str "Next"
         spacer 5
@@ -323,7 +339,7 @@ type Component(props) =
       button [
         Class "iris-button pull-right"
         Disabled (Option.isNone this.props.CueList)
-        OnClick (fun _ -> Option.iter previousItem this.props.Player)
+        OnClick (fun _ -> previousItem this.props)
       ] [
         i [
           Class "fa fa-lg fa-backward"
