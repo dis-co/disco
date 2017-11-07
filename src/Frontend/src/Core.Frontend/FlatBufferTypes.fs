@@ -1823,20 +1823,20 @@ let ByteFB: ByteFBConstructor = failwith "JS only"
 // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
 //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
 
-type CommandBatchFB =
+type TransactionFB =
   abstract Commands: int -> StateMachineFB
   abstract CommandsLength: int
 
-type CommandBatchFBConstructor =
-  abstract prototype: CommandBatchFB with get, set
-  abstract StartCommandBatchFB: builder:FlatBufferBuilder -> unit
+type TransactionFBConstructor =
+  abstract prototype: TransactionFB with get, set
+  abstract StartTransactionFB: builder:FlatBufferBuilder -> unit
   abstract AddCommands: builder:FlatBufferBuilder * commands:Offset<StateMachineFB> -> unit
-  abstract EndCommandBatchFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
-  abstract GetRootAsCommandBatchFB: bytes:ByteBuffer -> CommandBatchFB
+  abstract EndTransactionFB: builder:FlatBufferBuilder -> Offset<TransactionFB>
+  abstract GetRootAsTransactionFB: bytes:ByteBuffer -> TransactionFB
   abstract CreateCommandsVector: builder: FlatBufferBuilder * Offset<StateMachineFB> array -> Offset<'a>
-  abstract Create: unit -> CommandBatchFB
+  abstract Create: unit -> TransactionFB
 
-let CommandBatchFB: CommandBatchFBConstructor = failwith "JS only"
+let TransactionFB: TransactionFBConstructor = failwith "JS only"
 
 //  ____  _ _               __  __
 // / ___|| (_) ___ ___  ___|  \/  | __ _ _ __
@@ -1964,7 +1964,7 @@ type StateMachinePayloadFBConstructor =
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
-  abstract CommandBatchFB: StateMachinePayloadFB
+  abstract TransactionFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -1989,7 +1989,7 @@ type StateMachineFB =
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
   abstract SlicesMapFB: SlicesMapFB
-  abstract CommandBatchFB: CommandBatchFB
+  abstract TransactionFB: TransactionFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =

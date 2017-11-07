@@ -84,6 +84,11 @@ type CueList =
     (fun (cuelist:CueList) -> cuelist.Items),
     (fun items (cuelist:CueList) -> { cuelist with Items = items })
 
+  // ** Item
+
+  member cueList.Item(idx:int) =
+    cueList.Items.[idx]
+
   // ** ToOffset
 
   //  ____  _
@@ -217,7 +222,7 @@ module CueList =
 
   open Aether
 
-  // ** id =
+  // ** id
 
   let id = Optic.get CueList.Id_
   let setId = Optic.set CueList.Id_
@@ -226,6 +231,11 @@ module CueList =
 
   let name = Optic.get CueList.Name_
   let setName = Optic.set CueList.Name_
+
+  // ** items
+
+  let items = Optic.get CueList.Items_
+  let setItems = Optic.set CueList.Items_
 
   // ** create
 
@@ -287,3 +297,12 @@ module CueList =
         else result)
       true
       cuelist.Items
+
+  // ** cueRefs
+
+  let cueRefs = items >> Array.map CueGroup.cueRefs >> Array.concat
+
+  // ** cueCount
+
+  let cueCount (cueList: CueList) =
+    Array.fold (fun m (group:CueGroup) -> m + Array.length group.CueRefs) 0 cueList.Items

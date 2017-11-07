@@ -43,9 +43,9 @@ module StoreTests =
   let test_should_add_a_group_to_the_store =
     testCase "should add a group to the store" <| fun _ ->
       withStore <| fun group store ->
-        expect "Should be zero" 0 id store.State.PinGroups.Count
+        expect "Should be zero" 0 id (PinGroupMap.count store.State.PinGroups)
         store.Dispatch <| AddPinGroup(group)
-        expect "Should be one" 1 id store.State.PinGroups.Count
+        expect "Should be one" 1 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_update_a_group_already_in_the_store =
     testCase "should update a group already in the store" <| fun _ ->
@@ -56,7 +56,7 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
         expect "Should be true" true id
           (store.State.PinGroups.[group.ClientId,group.Id].Name = name1)
@@ -74,12 +74,12 @@ module StoreTests =
         store.Dispatch <| AddPinGroup(group)
 
         expect "Should be true" true id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
         store.Dispatch <| RemovePinGroup(group)
 
         expect "Should be false" false id
-          (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+          (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
   ///  ____  _
   /// |  _ \(_)_ __
@@ -128,7 +128,7 @@ module StoreTests =
             [| "ho" |]
 
         store.Dispatch <| AddPin(pin)
-        expect "Should be zero" 0 id store.State.PinGroups.Count
+        expect "Should be zero" 0 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_update_a_pin_in_the_store_if_it_already_exists =
     testCase "should update a pin in the store if it already exists" <| fun _ ->
@@ -595,9 +595,9 @@ module StoreTests =
       withStore <| fun group store ->
         store.Dispatch <| AddPinGroup(group)
         store.Undo()
-        expect "Should be 0" 0 id store.State.PinGroups.Count
+        expect "Should be 0" 0 id (PinGroupMap.count store.State.PinGroups)
         store.Redo()
-        expect "Should be 1" 1 id store.State.PinGroups.Count
+        expect "Should be 1" 1 id (PinGroupMap.count store.State.PinGroups)
 
   let test_should_redo_multiple_undone_changes =
     testCase "should redo multiple undone changes" <| fun _ ->
@@ -703,6 +703,125 @@ module StoreTests =
         store.Debug <- false
         expect "Should be 3" 3 id store.History.Length
 
+  ///  ____  _
+  /// |  _ \| | __ _ _   _  ___ _ __
+  /// | |_) | |/ _` | | | |/ _ \ '__|
+  /// |  __/| | (_| | |_| |  __/ |
+  /// |_|   |_|\__,_|\__, |\___|_|
+  ///                |___/
+
+  let test_should_add_player_and_corresponding_group =
+    testCase "should add player and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let player = CuePlayer.create "My Player" None
+
+        player
+        |> AddCuePlayer
+        |> store.Dispatch
+
+        expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
+
+  let test_should_remove_player_and_corresponding_group =
+    testCase "should remove player and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let player = CuePlayer.create "My Player" None
+
+        player
+        |> AddCuePlayer
+        |> store.Dispatch
+
+        expect "Should have one player" 1 Map.count (State.cuePlayers store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
+
+        player
+        |> RemoveCuePlayer
+        |> store.Dispatch
+
+        expect "Should have no player" 0 Map.count (State.cuePlayers store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroupMap store.State)
+
+  ///  ____  _             _   _                _
+  /// |  _ \| | __ _ _   _| | | | ___  __ _  __| |
+  /// | |_) | |/ _` | | | | |_| |/ _ \/ _` |/ _` |
+  /// |  __/| | (_| | |_| |  _  |  __/ (_| | (_| |
+  /// |_|   |_|\__,_|\__, |_| |_|\___|\__,_|\__,_|
+  ///                |___/
+
+  let test_should_update_player_position =
+    testCase "should update player position" <| fun _ ->
+      withStore <| fun _ store ->
+        let cueList =
+          CueList.create "My CueList" [|
+            for i in 0 .. 4 do
+              yield CueGroup.create [|
+                  for n in 0 .. 4 do
+                    let cue = Cue.create ("Cue-" + string (i + n)) Array.empty
+                    cue |> AddCue |> store.Dispatch
+                    yield CueReference.create cue
+                |]
+          |]
+        cueList |> AddCueList |> store.Dispatch
+
+        let player = CuePlayer.create "My Player" (Some cueList.Id)
+        player |> AddCuePlayer |> store.Dispatch
+
+        [ BoolSlices(player.NextId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
+        [ BoolSlices(player.NextId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
+        let updated = State.cuePlayer player.Id store.State |> Option.get
+        expect "Should have advanced one step" (player.Selected + 2<index>) id updated.Selected
+
+        [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
+        let updated = State.cuePlayer player.Id store.State |> Option.get
+        expect "Should have reversed one step" (player.Selected + 1<index>) id updated.Selected
+
+  /// __        ___     _            _
+  /// \ \      / (_) __| | __ _  ___| |_
+  ///  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  ///   \ V  V / | | (_| | (_| |  __/ |_
+  ///    \_/\_/  |_|\__,_|\__, |\___|\__|
+  ///                     |___/
+
+  let test_should_add_widget_and_corresponding_group =
+    testCase "should add widget and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let widget = PinWidget.create "My Widget" (IrisId.Create())
+
+        widget
+        |> AddPinWidget
+        |> store.Dispatch
+
+        expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
+
+  let test_should_remove_widget_and_corresponding_group =
+    testCase "should remove widget and corresponding group" <| fun _ ->
+      withStore <| fun _ store ->
+        let widget = PinWidget.create "My Widget" (IrisId.Create())
+
+        widget
+        |> AddPinWidget
+        |> store.Dispatch
+
+        expect "Should have one widget" 1 Map.count (State.pinWidgets store.State)
+        expect "Should have one group" 1 PinGroupMap.count (State.pinGroupMap store.State)
+
+        widget
+        |> RemovePinWidget
+        |> store.Dispatch
+
+        expect "Should have no widget" 0 Map.count (State.pinWidgets store.State)
+        expect "Should have no group" 0 PinGroupMap.count (State.pinGroupMap store.State)
+
   let storeTests =
     testList "Store Tests" [
       test_should_add_a_group_to_the_store
@@ -743,4 +862,9 @@ module StoreTests =
       test_should_only_keep_specified_number_of_undo_steps
       test_should_keep_all_state_in_history_in_debug_mode
       test_should_shrink_history_to_UndoSteps_after_leaving_debug_mode
+      test_should_add_player_and_corresponding_group
+      test_should_remove_player_and_corresponding_group
+      test_should_add_widget_and_corresponding_group
+      test_should_remove_widget_and_corresponding_group
+      test_should_update_player_position
     ]

@@ -1079,7 +1079,7 @@ module Generators =
       Gen.map LogMsg                  logeventGen ]
 
   let stateMachineBatchGen =
-    Gen.map StateMachineBatch (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
+    Gen.map Transaction (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
 
   let private commandBatchGen =
     Gen.map CommandBatch stateMachineBatchGen

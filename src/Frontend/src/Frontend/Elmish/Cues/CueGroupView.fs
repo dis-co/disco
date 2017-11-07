@@ -27,6 +27,7 @@ type [<Pojo>] Props =
     CueGroup: CueGroup
     CueList: CueList
     CueGroupIndex: int
+    CurrentCue: CueRefId option
     SelectedCueIndex: int
     SelectedCueGroupIndex: int
     SelectCueGroup: int -> unit
@@ -61,6 +62,7 @@ let private renderCues (state: State) (props: Props) =
           CueGroup = props.CueGroup
           CueList = props.CueList
           CueIndex = i
+          CurrentCue = props.CurrentCue
           CueGroupIndex = props.CueGroupIndex
           SelectedCueIndex = props.SelectedCueIndex
           SelectedCueGroupIndex = props.SelectedCueGroupIndex

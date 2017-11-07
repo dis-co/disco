@@ -90,8 +90,8 @@ module SerializationTests =
   //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
 
   let test_command_batch =
-    testCase "StateMachineBatch serialization should work" <| fun _ ->
-      binaryEncDec<StateMachineBatch>
+    testCase "Transaction serialization should work" <| fun _ ->
+      binaryEncDec<Transaction>
       |> Prop.forAll Generators.commandBatchArb
       |> Check.QuickThrowOnFailure
 
