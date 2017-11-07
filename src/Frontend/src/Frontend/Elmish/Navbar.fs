@@ -43,7 +43,7 @@ let dropdown dispatch (model: Model) =
     a [
       Class "navbar-link"
       Style [!!("fontSize", "14px")]
-    ] [str "Iris Menu"]
+    ] [str "Menu"]
     div [Class "navbar-dropdown"] [
       navbarItem Options.createProject
       navbarItem Options.loadProject
