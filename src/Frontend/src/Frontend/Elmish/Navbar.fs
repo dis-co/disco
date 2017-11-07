@@ -10,52 +10,102 @@ open Helpers
 open Types
 open State
 
-module Options =
-  let [<Literal>] createProject = "Create Project"
-  let [<Literal>] loadProject = "Load Project"
-  let [<Literal>] saveProject = "Save Project"
-  let [<Literal>] unloadProject = "Unload Project"
+module private ProjectMenu =
+  let [<Literal>] create = "Create"
+  let [<Literal>] load = "Load"
+  let [<Literal>] save = "Save"
+  let [<Literal>] unload = "Unload"
   let [<Literal>] shutdown = "Shutdown"
-
-let onClick dispatch id _ =
-  let start f msg =
-    f() |> Promise.iter (fun () -> printfn "%s" msg)
-  match id with
-  | Options.createProject ->
-    Modal.CreateProject() :> IModal |> OpenModal |> dispatch
-  | Options.loadProject ->
-    Modal.LoadProject() :> IModal |> OpenModal |> dispatch
-  | Options.saveProject ->
-    start Lib.saveProject "Project has been saved"
-  | Options.unloadProject ->
-    start Lib.unloadProject "Project has been unloaded"
-  | Options.shutdown ->
-    start Lib.shutdown "Iris has been shut down"
-  | other ->
-    failwithf "Unknow navbar option: %s" other
 
 open Fable.Helpers.React.Props
 
-let dropdown dispatch (model: Model) =
-  let navbarItem opt =
-    a [Class "navbar-item"; OnClick (onClick dispatch opt)] [str opt]
+let private navbarItem cb opt =
+  a [Class "navbar-item"; OnClick (cb opt)] [str opt]
+
+let private projectMenu dispatch (model: Model) =
+  let onClick dispatch id _ =
+    let start f msg =
+      f() |> Promise.iter (fun () -> printfn "%s" msg)
+    match id with
+    | ProjectMenu.create ->
+      Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+    | ProjectMenu.load ->
+      Modal.LoadProject() :> IModal |> OpenModal |> dispatch
+    | ProjectMenu.save ->
+      start Lib.saveProject "Project has been saved"
+    | ProjectMenu.unload ->
+      start Lib.unloadProject "Project has been unloaded"
+    | ProjectMenu.shutdown ->
+      start Lib.shutdown "Iris has been shut down"
+    | other ->
+      failwithf "Unknow navbar option: %s" other
   div [Class "navbar-item has-dropdown is-hoverable"] [
     a [
       Class "navbar-link"
       Style [!!("fontSize", "14px")]
-    ] [str "Menu"]
+    ] [str "Project"]
     div [Class "navbar-dropdown"] [
-      navbarItem Options.createProject
-      navbarItem Options.loadProject
-      navbarItem Options.saveProject
-      navbarItem Options.unloadProject
-      navbarItem Options.shutdown
-      a [
+      navbarItem (onClick dispatch) ProjectMenu.create
+      navbarItem (onClick dispatch) ProjectMenu.load
+      navbarItem (onClick dispatch) ProjectMenu.save
+      navbarItem (onClick dispatch) ProjectMenu.unload
+      navbarItem (onClick dispatch) ProjectMenu.shutdown
+    ]
+  ]
+
+module private ConfigMenu =
+  let [<Literal>] rightClick = "Use right click"
+
+let private configMenu dispatch (model:Model) =
+  div [Class "navbar-item has-dropdown is-hoverable"] [
+    a [
+      Class "navbar-link"
+      Style [!!("fontSize", "14px")]
+    ] [str "Config"]
+    div [Class "navbar-dropdown"] [
+      div [
+        Class "navbar-item field"
+      ] [
+        div [ Class "control"; Style [ MarginRight "5px" ] ] [
+          input [
+            Type "checkbox"
+            Checked model.userConfig.useRightClick
+            OnClick (fun _ ->
+              { model.userConfig with useRightClick = not model.userConfig.useRightClick }
+              |> UpdateUserConfig |> dispatch)
+          ]
+        ]
+        label [
+          Class "label"
+          Style [ FontSize "12px"; FontWeight "normal" ]
+        ] [
+          str ConfigMenu.rightClick
+        ]
+      ]
+    ]
+  ]
+
+module private EditMenu =
+  let [<Literal>] resetDirty = "Reset Dirty"
+
+let private editMenu dispatch (model:Model) =
+  let onClick dispatch id _ =
+    let start f msg =
+      f() |> Promise.iter (fun () -> printfn "%s" msg)
+    match id with
+    | EditMenu.resetDirty -> Option.iter Lib.resetDirty model.state
+    | _ -> ()
+  div [Class "navbar-item has-dropdown is-hoverable"] [
+    a [
+      Class "navbar-link"
+      Style [!!("fontSize", "14px")]
+    ] [str "Edit"]
+    div [Class "navbar-dropdown"] [
+      div [
         Class "navbar-item"
-        OnClick (fun _ ->
-          { model.userConfig with useRightClick = not model.userConfig.useRightClick }
-          |> UpdateUserConfig |> dispatch)
-      ] [str ("Use right click: " + (string model.userConfig.useRightClick))]
+      ] [
+        navbarItem (onClick dispatch) EditMenu.resetDirty
+      ]
     ]
   ]
 
@@ -95,7 +145,9 @@ type View(props) =
         ]
         div [classList ["navbar-menu", true; "is-active", this.state.IsMenuOpen]] [
           div [Class "navbar-start"] [
-            dropdown this.props.Dispatch this.props.Model
+            projectMenu this.props.Dispatch this.props.Model
+            editMenu this.props.Dispatch this.props.Model
+            configMenu this.props.Dispatch this.props.Model
           ]
           div [Class "navbar-end"] [
             div [Class "navbar-item"] [
