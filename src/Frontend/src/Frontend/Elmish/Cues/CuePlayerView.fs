@@ -95,7 +95,7 @@ let private nextItem (props:Props) =
         |> CueReference.cueId
         |> flip State.cue state
         |> Option.map (flip CuePlayer.next player)
-        |> Option.iter (ClientContext.Singleton.Post)
+        |> Option.iter (CommandBatch.toList >> List.iter ClientContext.Singleton.Post)
       with _ -> ()
   | _ -> ()
 
@@ -103,7 +103,7 @@ let private previousItem (props:Props) =
   match props.Model.state, props.Player, props.CueList with
   | Some state, Some player, Some cueList ->
     let previousIdx = int (player.Selected - 1<index>)
-    if previousIdx >= 0 then
+    if 0 <= previousIdx then
       try
         cueList
         |> CueList.cueRefs
@@ -111,7 +111,7 @@ let private previousItem (props:Props) =
         |> CueReference.cueId
         |> flip State.cue state
         |> Option.map (flip CuePlayer.previous player)
-        |> Option.iter (ClientContext.Singleton.Post)
+        |> Option.iter (CommandBatch.toList >> List.iter ClientContext.Singleton.Post)
       with _ -> ()
   | _ -> ()
 

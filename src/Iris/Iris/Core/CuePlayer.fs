@@ -388,28 +388,26 @@ module CuePlayer =
 
   let unsetCueList player = Optic.set CuePlayer.CueListId_ None player
 
-  // ** increaseSelected
-
-  let increaseSelected player =
-    setSelected (player.Selected + 1<index>) player
-
-  let decreaseSelected player =
-    setSelected (player.Selected - 1<index>) player
-
   // ** updatePins
 
-  let updatePins (slices:Slices) (player:CuePlayer) =
-    if slices.PinId = player.NextId
-    then increaseSelected player
-    elif slices.PinId = player.PreviousId
-    then decreaseSelected player
+  let updatePins (max:int) (slices:Slices) (player:CuePlayer) =
+    let max = max * 1<index>
+    if slices.PinId = player.NextId then
+      let nextIdx = player.Selected + 1<index>
+      if nextIdx < max
+      then setSelected nextIdx player
+      else setSelected (max - 1<index>) player
+    elif slices.PinId = player.PreviousId then
+      let previousIdx = player.Selected - 1<index>
+      if 0<index> <= previousIdx && previousIdx < max
+      then setSelected previousIdx player
+      else setSelected 0<index> player
     else player
 
   // ** processSlices
 
-  let processSlices (slices:Map<PinId,Slices>) (player:CuePlayer) =
+  let processSlices (max:int) (slices:Map<PinId,Slices>) (player:CuePlayer) =
     Map.fold
-      (fun (player:CuePlayer) _ (slices:Slices) ->
-        updatePins slices player)
+      (fun player _ slices -> updatePins max slices player)
       player
       slices

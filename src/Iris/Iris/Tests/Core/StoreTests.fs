@@ -770,15 +770,19 @@ module StoreTests =
         |> UpdateSlices.ofList
         |> store.Dispatch
 
+        [ BoolSlices(player.NextId, None, [| true |]) ]
+        |> UpdateSlices.ofList
+        |> store.Dispatch
+
         let updated = State.cuePlayer player.Id store.State |> Option.get
-        expect "Should have advanced one step" (player.Selected + 1<index>) id updated.Selected
+        expect "Should have advanced one step" (player.Selected + 2<index>) id updated.Selected
 
         [ BoolSlices(player.PreviousId, None, [| true |]) ]
         |> UpdateSlices.ofList
         |> store.Dispatch
 
         let updated = State.cuePlayer player.Id store.State |> Option.get
-        expect "Should have reversed one step" player.Selected id updated.Selected
+        expect "Should have reversed one step" (player.Selected + 1<index>) id updated.Selected
 
   /// __        ___     _            _
   /// \ \      / (_) __| | __ _  ___| |_

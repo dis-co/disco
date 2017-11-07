@@ -248,6 +248,13 @@ type State =
       let! cues     = Asset.loadAll project.Path |> toMap
       let! cuelists = Asset.loadAll project.Path |> toMap
       let! players  = Asset.loadAll project.Path |> toMap
+
+      /// player and wiget groups are ephemeral, hence we add them after load
+      let groups =
+        groups
+        |> flip (Map.fold (fun map _ player -> PinGroupMap.addPlayer player map)) players
+        |> flip (Map.fold (fun map _ widget -> PinGroupMap.addWidget widget map)) widgets
+
       return
         { Project            = project
           Users              = users
@@ -929,7 +936,17 @@ module State =
   let updateSlices (map: SlicesMap) (state: State) =
     let players =
       if PinGroupMap.hasPlayerUpdate map.Slices state.PinGroups
-      then Map.map (fun _ player -> CuePlayer.processSlices map.Slices player) state.CuePlayers
+      then
+        Map.map
+          (fun _ player ->
+            /// find out the maximum allowed number for Selected (i.e. # of CueRefs)
+            let max =
+              CuePlayer.cueListId player
+              |> Option.bind (flip cueList state)
+              |> Option.map CueList.cueCount
+              |> Option.defaultValue -1
+            CuePlayer.processSlices max map.Slices player)
+          state.CuePlayers
       else state.CuePlayers
 
     let widgets =
@@ -3509,6 +3526,10 @@ type StateMachine =
 module CommandBatch =
 
   let ofList = Transaction >> CommandBatch
+
+  let toList = function
+    | CommandBatch (Transaction list) -> list
+    | _ -> []
 
 // * UpdateSlices module
 
