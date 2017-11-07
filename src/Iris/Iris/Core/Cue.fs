@@ -261,6 +261,13 @@ module Cue =
 
   let map (f: Slices -> Slices) = Optic.map Cue.Slices_ (Array.map f)
 
+  // ** duplicate
+
+  let duplicate (cue:Cue) =
+    cue
+    |> setId (CueId.Create())
+    |> setName (Measure.name (unwrap cue.Name + " (Copy)"))
+
   // ** contains
 
   let contains pin (cue:Cue) =

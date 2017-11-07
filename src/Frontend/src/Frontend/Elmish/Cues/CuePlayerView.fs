@@ -27,8 +27,14 @@ type [<Pojo>] Props =
     CurrentCue: CueRefId option }
 
 type [<Pojo>] State =
-  { SelectedCueGroupIndex: int
+  { ContextMenuActive: bool
+    SelectedCueGroupIndex: int
     SelectedCueIndex: int }
+
+let private defaultState =
+  { ContextMenuActive = false
+    SelectedCueGroupIndex = -1
+    SelectedCueIndex = -1 }
 
 // * Sortable components
 
@@ -50,14 +56,11 @@ let private addGroup (cueList: CueList) (cueGroupIndex: int) =
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
-let private toggleLocked (player: CuePlayer option) =
-  match player with
-  | None -> ()
-  | Some player ->
-    player
-    |> CuePlayer.setLocked (not player.Locked)
-    |> UpdateCuePlayer
-    |> ClientContext.Singleton.Post
+let private toggleLocked (player: CuePlayer) =
+  player
+  |> CuePlayer.setLocked (not player.Locked)
+  |> UpdateCuePlayer
+  |> ClientContext.Singleton.Post
 
 let private updateCueList (player: CuePlayer option) (str:string) =
   match player with
@@ -115,12 +118,54 @@ let private previousItem (props:Props) =
       with _ -> ()
   | _ -> ()
 
+let private withGivenState (props:Props) f =
+  match props.Model.state, props.Player, props.CueList with
+  | Some state, Some player, Some cueList when not player.Locked ->
+    f state player cueList
+  | _ -> None
+
+let private createContextMenu active onOpen (state:State) (props:Props) =
+  let addGroup =
+    withGivenState props <| fun _ player cueList ->
+      Some("Add Group", fun () -> addGroup cueList state.SelectedCueGroupIndex)
+
+  let addCue =
+    withGivenState props <| fun _ player cueList ->
+      Some("Add Cue",
+           fun () -> Lib.addCue cueList state.SelectedCueGroupIndex state.SelectedCueIndex)
+
+  let duplicateCue =
+    withGivenState props <| fun globalState player cueList ->
+      Some("Duplicate Cue",
+           fun () ->
+            Lib.duplicateCue
+              globalState
+              cueList
+              state.SelectedCueGroupIndex
+              state.SelectedCueIndex)
+
+  let toggleLocked =
+    match props.Player with
+    | Some player when player.Locked ->
+      Some("Unlock Player", fun _ -> toggleLocked player)
+    | Some player ->
+      Some("Lock Player", fun _ -> toggleLocked player)
+    | None -> None
+
+  ContextMenu.create active onOpen
+    (List.choose id [
+      toggleLocked
+      addGroup
+      addCue
+      duplicateCue
+     ])
+
 // * React components
 // ** EmptyComponent
 
 type EmptyComponent(props) =
   inherit React.Component<Props, State>(props)
-  do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
+  do base.setInitState(defaultState)
 
   member this.render() =
     let sadString =
@@ -152,7 +197,7 @@ let private createEmpty dispatch model id name =
 
 type Component(props) =
   inherit React.Component<Props, State>(props)
-  do base.setInitState({ SelectedCueGroupIndex = -1; SelectedCueIndex = -1})
+  do base.setInitState(defaultState)
 
   // *** renderGroups
 
@@ -173,8 +218,8 @@ type Component(props) =
             CG.CurrentCue = this.props.CurrentCue
             CG.SelectedCueIndex = this.state.SelectedCueIndex
             CG.SelectedCueGroupIndex = this.state.SelectedCueGroupIndex
-            CG.SelectCueGroup = fun g -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
-            CG.SelectCue = fun g c -> this.setState({ SelectedCueGroupIndex = g; SelectedCueIndex = c })
+            CG.SelectCueGroup = fun g -> this.setState({ this.state with SelectedCueGroupIndex = g; SelectedCueIndex = -1 })
+            CG.SelectCue = fun g c -> this.setState({ this.state with SelectedCueGroupIndex = g; SelectedCueIndex = c })
           } |> Some)
         |> Array.choose id
       from CueGroupSortableContainer
@@ -242,36 +287,6 @@ type Component(props) =
     let locked = isLocked this.props.Player
 
     div [] [
-      ///     _       _     _    ____
-      ///    / \   __| | __| |  / ___|_ __ ___  _   _ _ __
-      ///   / _ \ / _` |/ _` | | |  _| '__/ _ \| | | | '_ \
-      ///  / ___ \ (_| | (_| | | |_| | | | (_) | |_| | |_) |
-      /// /_/   \_\__,_|\__,_|  \____|_|  \___/ \__,_| .__/
-      ///                                            |_|
-      button [
-        Class "iris-button"
-        Disabled (Option.isNone this.props.CueList || locked)
-        OnClick (fun _ ->
-          match this.props.CueList with
-          | Some cueList -> addGroup cueList this.state.SelectedCueGroupIndex
-          | None -> ())
-      ] [str "Add Group"]
-
-      ///     _       _     _    ____
-      ///    / \   __| | __| |  / ___|   _  ___
-      ///   / _ \ / _` |/ _` | | |  | | | |/ _ \
-      ///  / ___ \ (_| | (_| | | |__| |_| |  __/
-      /// /_/   \_\__,_|\__,_|  \____\__,_|\___|
-      button [
-        Class "iris-button"
-        Disabled (Option.isNone this.props.CueList || locked)
-        OnClick (fun _ ->
-          match this.props.CueList with
-          | Some cueList ->
-            // TODO: Open group automatically
-            Lib.addCue cueList this.state.SelectedCueGroupIndex this.state.SelectedCueIndex
-          | None -> ())
-      ] [str "Add Cue"]
 
       ///  _               _
       /// | |    ___   ___| | __
@@ -280,10 +295,10 @@ type Component(props) =
       /// |_____\___/ \___|_|\_\
       button [
         classList [
-          "iris-button",true
-          "warning", locked
+          "warning",locked
+          "iris-button", true
         ]
-        OnClick (fun _ -> toggleLocked this.props.Player)
+        Disabled true
       ] [
         i [
           classList [
@@ -309,6 +324,12 @@ type Component(props) =
         Disabled locked
         OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
       ] cueLists
+
+      createContextMenu
+        this.state.ContextMenuActive
+        this.toggleMenu
+        this.state
+        this.props
 
       ///  _   _           _
       /// | \ | | _____  _| |_
@@ -352,6 +373,11 @@ type Component(props) =
         str "Previous"
       ]
     ]
+
+  // *** toggleMenu
+
+  member this.toggleMenu() =
+    this.setState({ this.state with ContextMenuActive = not this.state.ContextMenuActive })
 
   // *** render
 
