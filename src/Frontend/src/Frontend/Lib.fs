@@ -324,6 +324,36 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   [AddCue newCue; UpdateCueList newCueList]
   |> postStateCommands
 
+let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+  try
+    let cueGroup =
+      let idx = max cueGroupIndex 0
+      cueList.Items.[idx]
+
+    let cueRef =  cueGroup.CueRefs.[cueIndex]
+
+    // Find selected Cue and duplicate it
+    match State.cue (CueReference.cueId cueRef) state with
+    | None -> ()
+    | Some cue ->
+      let newCue = Cue.duplicate cue
+
+      // create a reference to the constructed cue
+      let newCueRef = CueReference.create newCue
+
+      let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
+
+      /// Update CueGroup by adding the created CueReference to it
+      let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
+
+      // Update the CueList
+      let newCueList = CueList.replace newCueGroup cueList
+
+      // Send messages to backend
+      [AddCue newCue; UpdateCueList newCueList]
+      |> postStateCommands
+  with _ -> ()
+
 /// Returns the list of state machine commands to add the slices to the cue
 let addSlicesToCue (cue: Cue) (pins: Pin seq) =
   // Filter out output pins and pins already contained by the cue

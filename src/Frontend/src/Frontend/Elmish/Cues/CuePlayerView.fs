@@ -119,20 +119,30 @@ let private previousItem (props:Props) =
   | _ -> ()
 
 let private withGivenState (props:Props) f =
-  match props.Player, props.CueList with
-  | Some player, Some cueList when not player.Locked ->
-    f player cueList
+  match props.Model.state, props.Player, props.CueList with
+  | Some state, Some player, Some cueList when not player.Locked ->
+    f state player cueList
   | _ -> None
 
 let private createContextMenu active onOpen (state:State) (props:Props) =
   let addGroup =
-    withGivenState props <| fun player cueList ->
+    withGivenState props <| fun _ player cueList ->
       Some("Add Group", fun () -> addGroup cueList state.SelectedCueGroupIndex)
 
   let addCue =
-    withGivenState props <| fun player cueList ->
+    withGivenState props <| fun _ player cueList ->
       Some("Add Cue",
            fun () -> Lib.addCue cueList state.SelectedCueGroupIndex state.SelectedCueIndex)
+
+  let duplicateCue =
+    withGivenState props <| fun globalState player cueList ->
+      Some("Duplicate Cue",
+           fun () ->
+            Lib.duplicateCue
+              globalState
+              cueList
+              state.SelectedCueGroupIndex
+              state.SelectedCueIndex)
 
   let toggleLocked =
     match props.Player with
@@ -147,6 +157,7 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
       toggleLocked
       addGroup
       addCue
+      duplicateCue
      ])
 
 // * React components
