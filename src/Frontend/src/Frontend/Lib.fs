@@ -354,6 +354,15 @@ let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:i
       |> postStateCommands
   with _ -> ()
 
+let resetDirty (state:State) =
+  state
+  |> State.pinGroupMap
+  |> PinGroupMap.dirtyPins
+  |> PinGroupMap.toList
+  |> List.collect (PinGroup.pins >> Map.toList >> List.map (snd >> Pin.setDirty false >> UpdatePin))
+  |> CommandBatch.ofList
+  |> ClientContext.Singleton.Post
+
 /// Returns the list of state machine commands to add the slices to the cue
 let addSlicesToCue (cue: Cue) (pins: Pin seq) =
   // Filter out output pins and pins already contained by the cue
