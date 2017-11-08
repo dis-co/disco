@@ -34,10 +34,14 @@ type [<Pojo>] GraphViewProps =
 // * GraphViewState
 
 type [<Pojo>] GraphViewState =
-  { ContextMenuActive: bool }
+  { ContextMenuActive: bool
+    ShowPlayers: bool
+    ShowWidgets: bool }
 
 let private defaultGraphState =
-  { ContextMenuActive = false }
+  { ContextMenuActive = false
+    ShowPlayers = false
+    ShowWidgets = false }
 
 let onDragStart (model: Model) pin multiple =
   let newItems = DragItems.Pins [pin]
@@ -124,6 +128,25 @@ type GraphView(props) =
   inherit React.Component<GraphViewProps, GraphViewState>(props)
   do base.setInitState(defaultGraphState)
 
+  // *** toggleMenu
+
+  member this.toggleMenu() =
+    async {
+      do! Async.Sleep(20)
+      do this.setState({ this.state with ContextMenuActive = not this.state.ContextMenuActive })
+    }
+    |> Async.Start
+
+  // *** togglePlayers
+
+  member this.togglePlayers() =
+    this.setState({ this.state with ShowPlayers = not this.state.ShowPlayers })
+
+  // *** toggleWidgets
+
+  member this.toggleWidgets() =
+    this.setState({ this.state with ShowWidgets = not this.state.ShowWidgets })
+
   // *** menuOptions
 
   member this.menuOptions () =
@@ -156,14 +179,14 @@ type GraphView(props) =
         | _ -> None
 
       let showPlayers =
-        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
-        then Some("Show Player Groups", fun () -> printfn "persist all")
-        else None
+        if this.state.ShowPlayers
+        then Some("Hide Player Groups",  this.togglePlayers)
+        else Some("Show Player Groups",  this.togglePlayers)
 
       let showWidgets =
-        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
-        then Some("Show Widget Groups", fun () -> printfn "persist all")
-        else None
+        if this.state.ShowWidgets
+        then Some("Hide Widget Groups", this.toggleWidgets)
+        else Some("Show Widget Groups", this.toggleWidgets)
 
       List.choose id [
         resetDirty
@@ -176,33 +199,83 @@ type GraphView(props) =
   // *** renderTitleBar
 
   member this.renderTitleBar() =
-    let onOpen () = this.setState({ ContextMenuActive = not this.state.ContextMenuActive })
     div [] [
       /// TODO: replace this fake element so the titleBar isn't all jacked up
       button [ Class "iris-button"; Style [ Visibility "hidden" ] ] [
         i [ Class "fa fa-snowflake-o" ] []
       ]
-      ContextMenu.create this.state.ContextMenuActive onOpen (this.menuOptions())
+      ContextMenu.create
+        this.state.ContextMenuActive
+        this.toggleMenu
+        (this.menuOptions())
     ]
+
+  // *** renderUnified
+
+  member this.renderUnified(state:State) =
+    let pinGroups =
+      state.PinGroups
+      |> PinGroupMap.unifiedPins
+      |> PinGroupMap.byGroup
+    pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
+      com<PinGroupView,_,_>
+        { key = string gid
+          Group = group
+          Dispatch = this.props.Dispatch
+          Model = this.props.Model } [])
+    |> Seq.toList
+
+  // *** renderPlayers
+
+  member this.renderPlayers(state:State) =
+    let pinGroups =
+      state
+      |> State.pinGroupMap
+      |> PinGroupMap.players
+    pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
+      com<PinGroupView,_,_>
+        { key = string gid
+          Group = group
+          Dispatch = this.props.Dispatch
+          Model = this.props.Model } [])
+    |> Seq.toList
+
+  // *** renderWidgets
+
+  member this.renderWidgets(state:State) =
+    let pinGroups =
+      state
+      |> State.pinGroupMap
+      |> PinGroupMap.widgets
+    pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
+      com<PinGroupView,_,_>
+        { key = string gid
+          Group = group
+          Dispatch = this.props.Dispatch
+          Model = this.props.Model } [])
+    |> Seq.toList
 
   // *** renderBody
 
   member this.renderBody() =
-    let pinGroups =
+    let children =
       match this.props.Model.state with
+      | None -> []
       | Some state ->
-        state.PinGroups
-        |> PinGroupMap.unifiedPins
-        |> PinGroupMap.byGroup
-      | None -> Map.empty
-    ul [Class "iris-graphview"] (
-      pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
-        com<PinGroupView,_,_>
-          { key = string gid
-            Group = group
-            Dispatch = this.props.Dispatch
-            Model = this.props.Model } [])
-      |> Seq.toList)
+        let players =
+          if this.state.ShowPlayers
+          then Some(this.renderPlayers(state))
+          else None
+        let widgets =
+          if this.state.ShowWidgets
+          then Some(this.renderWidgets(state))
+          else None
+        [ Some(this.renderUnified(state))
+          players
+          widgets ]
+        |> List.choose id
+        |> List.concat
+    ul [Class "iris-graphview"] children
 
   // *** render
 
