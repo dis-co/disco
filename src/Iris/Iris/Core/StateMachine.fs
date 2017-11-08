@@ -732,6 +732,11 @@ module State =
   let setCuePlayers = Optic.set State.CuePlayers_
   let setDiscoveredServices = Optic.set State.DiscoveredServices_
 
+  // ** findPin
+
+  let findPin pid state =
+    pinGroupMap state |> PinGroupMap.findPin pid
+
   // ** addPinWidget
 
   let addPinWidget (widget: PinWidget) (state: State) =
@@ -928,8 +933,11 @@ module State =
 
   // ** removePin
 
+  /// remove the passed pin from the global state
   let removePin (pin : Pin) (state: State) =
-    { state with PinGroups = PinGroupMap.removePin pin state.PinGroups }
+    pinGroupMap state
+    |> PinGroupMap.removePin pin
+    |> flip setPinGroupMap state
 
   // ** updateSlices
 
@@ -1631,6 +1639,14 @@ module SlicesMap =
 
   let keys (map: SlicesMap) =
     fold (fun out id _ -> id :: out) List.empty map
+
+  // ** toList
+
+  let toList (map: SlicesMap) = map.Slices |> Map.toList |> List.map snd
+
+  // ** toArray
+
+  let toArray (map: SlicesMap) = map.Slices |> Map.toArray |> Array.map snd
 
 // * StateMachine
 

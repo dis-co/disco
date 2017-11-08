@@ -15,11 +15,18 @@ open Helpers
 
 type MenuCommand = unit -> unit
 
-let private toItem onOpen (name:string, command: MenuCommand) =
+let private withDelay (f) =
+  async {
+    do! Async.Sleep(20)
+    do f()
+  }
+  |> Async.StartImmediate
+
+let private toItem close (name:string, command: MenuCommand) =
   a [
     Href "#"
     Class "dropdown-item"
-    OnClick (fun _ -> command(); onOpen())
+    OnClick (fun _ -> command(); withDelay close)
   ] [ str name ]
 
 let private toItems onOpen options =

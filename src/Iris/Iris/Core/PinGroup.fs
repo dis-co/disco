@@ -446,7 +446,7 @@ type PinGroup =
   // ** Persisted
 
   member group.Persisted
-    with get () = PinGroup.persisted group
+    with get () = PinGroup.hasPersistedPins group
 
   // ** IsSaved
 
@@ -511,37 +511,14 @@ module PinGroup =
   let contains (pin: PinId) (group: PinGroup) =
     Map.containsKey pin group.Pins
 
-  // ** persisted
-
-  let persisted (group: PinGroup) =
-    group.Pins
-    |> Map.filter (fun _ (pin: Pin) -> pin.Persisted)
-    |> Map.isEmpty
-    |> not
-
-  // ** persistedPins
-
-  let persistedPins (group: PinGroup) =
-    Map.filter (fun _ (pin: Pin) -> pin.Persisted) group.Pins
-
-  // ** volatilePins
-
-  let volatilePins (group: PinGroup) =
-    Map.filter (fun _ (pin: Pin) -> not pin.Persisted) group.Pins
-
-  // ** removeVolatile
-
-  let removeVolatile (group: PinGroup) =
-    { group with Pins = persistedPins group }
-
   // ** save
 
   #if !FABLE_COMPILER && !IRIS_NODES
 
   let save basePath (group: PinGroup) =
-    if persisted group then
+    if hasPersistedPins group then
       group
-      |> removeVolatile
+      |> persistedPins
       |> IrisData.save basePath
     else Either.succeed ()
 
@@ -663,54 +640,62 @@ module PinGroup =
 
   // ** filter
 
-  let filter (pred: Pin -> bool) (group: PinGroup) =
-    group.Pins
+  let filter (pred: Pin -> bool) (group: PinGroup): PinGroup =
+    group
+    |> pins
     |> Map.filter (fun _ pin -> pred pin)
-    |> flip updatePins group
+    |> flip setPins group
+
+  // ** exists
+
+  let exists (f: Pin -> bool) (group:PinGroup) =
+    group
+    |> PinGroup.pins
+    |> Seq.exists (function KeyValue(_,pin) -> f pin)
 
   // ** hasPresetPins
 
-  let hasPresetPins (group: PinGroup) =
-    group.Pins
-    |> Map.filter (fun _ (pin: Pin) -> Pin.isPreset pin)
-    |> Map.isEmpty
-    |> not
+  let hasPresetPins = exists Pin.isPreset
 
   // ** hasUnifiedPins
 
-  let hasUnifiedPins (group: PinGroup) =
-    group.Pins
-    |> Map.filter (fun _ -> Pin.isPreset >> not)
-    |> Map.isEmpty
-    |> not
+  let hasUnifiedPins = exists (Pin.isPreset >> not)
 
   // ** hasDirtyPins
 
-  let hasDirtyPins (group: PinGroup) =
-    group.Pins
-    |> Map.filter (fun _ -> Pin.isDirty)
-    |> Map.isEmpty
-    |> not
+  let hasDirtyPins = exists Pin.isDirty
 
   // ** hasPersistedPins
 
-  let hasPersistedPins (group: PinGroup) =
-    Seq.exists (function KeyValue(_,pin) -> Pin.isPersisted pin) group.Pins
+  let hasPersistedPins = exists Pin.isPersisted
+
+  // ** hasUnpersistedPins
+
+  let hasUnpersistedPins =  exists (Pin.isPersisted >> not)
 
   // ** updatePins
 
-  let updatePins pins (group: PinGroup) =
-    { group with Pins = pins }
+  let updatePins pins (group: PinGroup) = setPins pins group
 
   // ** unifiedPins
 
-  let unifiedPins (group: PinGroup) =
-    filter (Pin.isPreset >> not) group
+  let unifiedPins = filter (Pin.isPreset >> not)
 
   // ** presetPins
 
-  let presetPins (group: PinGroup) =
-    filter Pin.isPreset group
+  let presetPins = filter Pin.isPreset
+
+  // ** persistedPins
+
+  let persistedPins = filter Pin.isPersisted
+
+  // ** unpersistedPins
+
+  let unpersistedPins = filter (Pin.isPersisted >> not)
+
+  // ** volatilePins
+
+  let volatilePins = unpersistedPins
 
   // ** sinks
 
@@ -875,7 +860,6 @@ module PinGroupMap =
     { Groups = Map.empty
       Players = Map.empty
       Widgets = Map.empty }
-
 
   // ** getters
 
@@ -1209,6 +1193,23 @@ module PinGroupMap =
     map
     |> filter PinGroup.hasDirtyPins
     |> mapGroups PinGroup.dirtyPins
+
+  // ** unpersistedPins
+
+  let unpersistedPins (map: PinGroupMap) =
+    map
+    |> filter PinGroup.hasUnpersistedPins
+    |> mapGroups PinGroup.unpersistedPins
+
+  // ** hasDirtyPins
+
+  let hasDirtyPins (map:PinGroupMap) =
+    dirtyPins map |> groups |> Map.isEmpty |> not
+
+  // ** hasUnpersistedPins
+
+  let hasUnpersistedPins (map:PinGroupMap) =
+    unpersistedPins map |> groups |> Map.isEmpty |> not
 
   // ** removeByClient
 

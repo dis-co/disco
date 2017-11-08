@@ -32,6 +32,7 @@ let render dispatch () =
     card dispatch Widgets.InspectorView "I" "Inspector"
     card dispatch Widgets.GraphView     "G" "Graph View"
     card dispatch Widgets.Players       "P" "Players"
+    card dispatch Widgets.Cues          "C" "Cues"
     card dispatch Widgets.CueLists      "C" "Cue Lists"
     card dispatch Widgets.PinMapping    "M" "Pin Mappings"
     card dispatch Widgets.ProjectView   "P" "Project Overview"

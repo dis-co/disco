@@ -171,12 +171,16 @@ module CueReference =
 
   // ** create
 
-  let create (cue: Cue) =
+  let create (cueId: CueId) =
     { Id = IrisId.Create()
-      CueId = cue.Id
+      CueId = cueId
       AutoFollow = false
       Duration = -1
       Prewait = -1 }
+
+  // ** ofCue
+
+  let ofCue (cue: Cue) = create cue.Id
 
   // ** getters
 

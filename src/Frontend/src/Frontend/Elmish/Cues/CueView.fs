@@ -44,7 +44,8 @@ let SortableHandle = Sortable.Handle(fun props ->
 
 // * Helpers
 
-let  private touchesElement(el: Browser.Element option, x: float, y: float): bool = importMember "../../../js/Util"
+let private touchesElement(el: Browser.Element option, x: float, y: float): bool =
+  importMember "../../../js/Util"
 
 let private castValue<'a> arr idx (value: obj) =
   Array.mapi (fun i el -> if i = idx then value :?> 'a else el) arr
