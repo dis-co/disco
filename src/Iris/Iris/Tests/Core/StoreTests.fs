@@ -758,7 +758,7 @@ module StoreTests =
                   for n in 0 .. 4 do
                     let cue = Cue.create ("Cue-" + string (i + n)) Array.empty
                     cue |> AddCue |> store.Dispatch
-                    yield CueReference.create cue
+                    yield CueReference.ofCue cue
                 |]
           |]
         cueList |> AddCueList |> store.Dispatch
