@@ -36,6 +36,9 @@ type [<Pojo>] GraphViewProps =
 type [<Pojo>] GraphViewState =
   { ContextMenuActive: bool }
 
+let private defaultGraphState =
+  { ContextMenuActive = false }
+
 let onDragStart (model: Model) pin multiple =
   let newItems = DragItems.Pins [pin]
   if multiple then model.selectedDragItems.Append(newItems) else newItems
@@ -106,11 +109,11 @@ type PinGroupView(props) =
       ]
       if this.state.IsOpen then
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if not(Lib.isOutputPin pin)
+          if not(Pin.isSource pin)
           then makeInputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
         yield div [] (group.Pins |> Seq.choose (fun (KeyValue(pid, pin)) ->
-          if Lib.isOutputPin pin
+          if Pin.isSource pin
           then makeOutputPin dispatch model pid pin |> Some
           else None) |> Seq.toList)
     ]
@@ -119,7 +122,7 @@ type PinGroupView(props) =
 
 type GraphView(props) =
   inherit React.Component<GraphViewProps, GraphViewState>(props)
-  do base.setInitState({ ContextMenuActive = false })
+  do base.setInitState(defaultGraphState)
 
   // *** menuOptions
 
@@ -129,12 +132,12 @@ type GraphView(props) =
     | Some state ->
       let resetDirty =
         if state |> State.pinGroupMap |> PinGroupMap.hasDirtyPins
-        then Some("Reset Dirty", fun () -> printfn "reset dirty")
+        then Some("Reset Dirty", fun () -> Lib.resetDirty state)
         else None
 
       let addAllUnpersisted =
         if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
-        then Some("Persist All", fun () -> printfn "persist all")
+        then Some("Persist All", fun () -> Lib.persistAll state)
         else None
 
       let persistSelected =
@@ -206,11 +209,7 @@ type GraphView(props) =
     this.state <> nextState
       || distinctRef this.props.Model.selectedDragItems nextProps.Model.selectedDragItems
       || match this.props.Model.state, nextProps.Model.state with
-         | Some s1, Some s2 ->
-           distinctRef s1.CueLists s2.CueLists
-             || distinctRef s1.CuePlayers s2.CuePlayers
-             || distinctRef s1.Cues s2.Cues
-             || distinctRef s1.PinGroups s2.PinGroups
+         | Some s1, Some s2 -> distinctRef s1.PinGroups s2.PinGroups
          | None, None -> false
          | _ -> true
 
