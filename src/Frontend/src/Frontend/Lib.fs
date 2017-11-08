@@ -343,16 +343,16 @@ let findCue (cueId: CueId) (state: State) =
   | Some cue -> cue
   | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
-// * addCue
+// * groupCreateCue
 
-let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+let groupCreateCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   if cueList.Items.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
   let newCue = Cue.create "Untitled" [| |]
 
   // create a reference to the constructed cue
-  let newCueRef = CueReference.create newCue
+  let newCueRef = CueReference.ofCue newCue
 
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup =
@@ -370,6 +370,28 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   // Send messages to backend
   [AddCue newCue; UpdateCueList newCueList]
   |> postStateCommands
+
+// * groupAddCue
+
+let groupAddCue (cue:CueId) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+  // create a reference to the constructed cue
+  let newCueRef = CueReference.create cue
+
+  // Insert new CueRef in the selected CueGroup after the selected cue
+  let cueGroup =
+    let idx = max cueGroupIndex 0
+    cueList.Items.[idx]
+
+  let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
+
+  /// Update CueGroup by adding the created CueReference to it
+  let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
+  let newCueList = CueList.replace newCueGroup cueList
+
+  // Send messages to backend
+  newCueList
+  |> UpdateCueList
+  |> ClientContext.Singleton.Post
 
 // * createCue
 
@@ -398,7 +420,7 @@ let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:i
       let newCue = Cue.duplicate cue
 
       // create a reference to the constructed cue
-      let newCueRef = CueReference.create newCue
+      let newCueRef = CueReference.ofCue newCue
 
       let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
 

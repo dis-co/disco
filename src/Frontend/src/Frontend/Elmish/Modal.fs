@@ -54,6 +54,16 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
+  type SelectCue(cues: NameAndId[], cueList: CueList, groupIdx:int, cueIdx: int) =
+    let mutable res:CueId option = None
+    member __.Cues = cues
+    member __.CueList = cueList
+    member __.SelectedCueGroupIndex = groupIdx
+    member __.SelectedCueIndex = cueIdx
+    member __.Result: CueId option = res
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
   type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
     let mutable res = None
     member __.Sites = sites
@@ -71,6 +81,7 @@ module Modal =
       | :? CreateProject          -> None,                 importDefault (mdir+"CreateProject")
       | :? LoadProject            -> None,                 importDefault (mdir+"LoadProject")
       | :? CreateCue as m         -> Some(box m.Pins),     importDefault (mdir+"CreateCue")
+      | :? SelectCue as m         -> Some(box m.Cues),     importDefault (mdir+"SelectCue")
       | :? Login as m             -> Some(box m.Project),  importDefault (mdir+"Login")
       | :? ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
       | :? AvailableProjects as m -> Some(box m.Projects), importDefault (mdir+"AvailableProjects")

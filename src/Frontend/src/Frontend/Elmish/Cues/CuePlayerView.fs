@@ -3,6 +3,7 @@ module Iris.Web.Cues.CuePlayerView
 
 open System
 open Iris.Core
+open Iris.Core.Commands
 open Iris.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
@@ -129,10 +130,25 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
     withGivenState props <| fun _ player cueList ->
       Some("Add Group", fun () -> addGroup cueList state.SelectedCueGroupIndex)
 
-  let addCue =
+  let createCue =
     withGivenState props <| fun _ player cueList ->
+      Some("Create Cue",
+           fun () -> Lib.groupCreateCue cueList state.SelectedCueGroupIndex state.SelectedCueIndex)
+
+  let addCue =
+    withGivenState props <| fun globalState player cueList ->
+      let cues =
+        globalState
+        |> State.cues
+        |> Map.toArray
+        |> Array.map (function (_,cue) -> { Name = cue.Name; Id = cue.Id })
+        |> Array.sortBy (fun { Name = name } -> name)
       Some("Add Cue",
-           fun () -> Lib.addCue cueList state.SelectedCueGroupIndex state.SelectedCueIndex)
+           fun () ->
+            Modal.SelectCue(cues, cueList, state.SelectedCueGroupIndex, state.SelectedCueIndex)
+            :> IModal
+            |> OpenModal
+            |> props.Dispatch)
 
   let duplicateCue =
     withGivenState props <| fun globalState player cueList ->
@@ -156,6 +172,7 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
     (List.choose id [
       toggleLocked
       addGroup
+      createCue
       addCue
       duplicateCue
      ])

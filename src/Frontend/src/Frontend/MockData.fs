@@ -188,7 +188,7 @@ let cuesAndListsAndPlayers =
   let makeCue i =
     // Create new Cue and CueReference
     let cue = Cue.create ("Cue " + string i) [| |]
-    let cueRef = CueReference.create cue
+    let cueRef = CueReference.ofCue cue
     cue, cueRef
   let cue1, cueRef1 = makeCue 1
   let cue2, cueRef2 = makeCue 2
