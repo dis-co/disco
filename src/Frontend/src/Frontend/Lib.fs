@@ -403,6 +403,11 @@ let createCue (title:string) (pins: Pin list) =
   |> AddCue
   |> ClientContext.Singleton.Post
 
+// * updateCues
+
+let updateCues (selected:CueId[]) (pins: Pin list) (cues:Cue[]) =
+  ()
+
 // * duplicateCue
 
 let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =

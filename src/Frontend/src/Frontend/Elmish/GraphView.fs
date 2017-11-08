@@ -7,6 +7,7 @@ open Fable.Helpers.React.Props
 open Fable.Core
 open Elmish.React
 open Iris.Core
+open Iris.Core.Commands
 open Helpers
 open Types
 
@@ -194,6 +195,31 @@ type GraphView(props) =
                   |> this.props.Dispatch)
         | _ -> None
 
+      let addToCue =
+        match this.props.Model.selectedDragItems with
+        | DragItems.Pins pinIds ->
+          let pins =
+            List.collect
+              (flip State.findPin state
+               >> Map.toList
+               >> List.map snd)
+              pinIds
+          let cues =
+            state
+            |> State.cues
+            |> Map.toArray
+            |> Array.map snd
+          if List.isEmpty pins
+          then None
+          else
+            Some("Add Selection To Cues",
+                 fun () ->
+                  Modal.UpdateCues(cues, pins)
+                  :> IModal
+                  |> OpenModal
+                  |> this.props.Dispatch)
+        | _ -> None
+
       let showPlayers =
         if this.state.ShowPlayers
         then Some("Hide Player Groups",  this.togglePlayers)
@@ -209,6 +235,7 @@ type GraphView(props) =
         addAllUnpersisted
         persistSelected
         createCue
+        addToCue
         showPlayers
         showWidgets
       ]
