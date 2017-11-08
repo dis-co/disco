@@ -34,58 +34,16 @@ type IProjectInfo =
   abstract username: UserName
   abstract password: Password
 
-type IModal =
-  abstract SetResult: obj -> unit
-
-/// Modal dialogs
-[<RequireQualifiedAccess>]
-module Modal =
-  type AddMember() =
-    let mutable res = None
-    member __.Result: string * uint16 = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type CreateProject() =
-    let mutable res = None
-    member __.Result: string = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type LoadProject() =
-    let mutable res = None
-    member __.Result: IProjectInfo = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type AvailableProjects(projects: Name[]) =
-    let mutable res = Unchecked.defaultof<_>
-    member __.Projects = projects
-    member __.Result: Name option = res
-    interface IModal with
-      member this.SetResult(v) = res <- unbox v
-
-  type Login(project: Name) =
-    let mutable res = Unchecked.defaultof<_>
-    member __.Project = project
-    member __.Result: IProjectInfo option = res
-    interface IModal with
-      member this.SetResult(v) = res <- unbox v
-
-  type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
-    let mutable res = None
-    member __.Sites = sites
-    member __.Info = info
-    member __.Result: NameAndId = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
 /// Interface that must be implemented by all widgets
 type IWidget =
   abstract Id: Guid
   abstract Name: string
   abstract InitialLayout: Layout
   abstract Render: Elmish.Dispatch<Msg> * Model -> React.ReactElement
+
+// Modal Dialog interfac
+and IModal =
+  abstract SetResult: obj -> unit
 
 /// Widget data that will be stored in Browser localStorage
 /// (layout is saved separately)
