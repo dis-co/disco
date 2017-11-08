@@ -185,7 +185,13 @@ type GraphView(props) =
               pinIds
           if List.isEmpty pins
           then None
-          else Some("Create Cue From Selection", fun () -> Lib.createCue "New Cue" pins)
+          else
+            Some("Create Cue From Selection",
+                 fun () ->
+                  Modal.CreateCue(pins)
+                  :> IModal
+                  |> OpenModal
+                  |> this.props.Dispatch)
         | _ -> None
 
       let showPlayers =

@@ -42,6 +42,10 @@ let handleModalResult (modal: IModal) dispatch =
     match m.Result with
     | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.CreateCue as m ->
+    match m.Result with
+    | null -> ()
+    | str -> Lib.createCue str m.Pins
   | :? Modal.Login as m ->
     match m.Result with
     | Some projInfo ->

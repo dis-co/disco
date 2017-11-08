@@ -47,6 +47,13 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
+  type CreateCue(pins: Pin list) =
+    let mutable res:string = null
+    member __.Pins = pins
+    member __.Result: string = res
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
   type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
     let mutable res = None
     member __.Sites = sites
@@ -63,6 +70,7 @@ module Modal =
       | :? AddMember              -> None,                 importDefault (mdir+"AddMember")
       | :? CreateProject          -> None,                 importDefault (mdir+"CreateProject")
       | :? LoadProject            -> None,                 importDefault (mdir+"LoadProject")
+      | :? CreateCue as m         -> Some(box m.Pins),     importDefault (mdir+"CreateCue")
       | :? Login as m             -> Some(box m.Project),  importDefault (mdir+"Login")
       | :? ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
       | :? AvailableProjects as m -> Some(box m.Projects), importDefault (mdir+"AvailableProjects")
