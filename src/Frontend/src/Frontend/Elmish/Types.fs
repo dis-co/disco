@@ -18,6 +18,7 @@ module Widgets =
   let [<Literal>] GraphView     = "Graph View"
   let [<Literal>] Players       = "Cue Players"
   let [<Literal>] CueLists      = "Cue Lists"
+  let [<Literal>] Cues          = "Cues"
   let [<Literal>] CuePlayer     = "Cue Player"
   let [<Literal>] ProjectView   = "Project View"
   let [<Literal>] Cluster       = "Cluster"

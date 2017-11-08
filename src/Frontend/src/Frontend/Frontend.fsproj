@@ -47,6 +47,7 @@
     <Compile Include="Elmish/SessionsView.fs" />
     <Compile Include="Elmish/PlayerListView.fs" />
     <Compile Include="Elmish/CueListView.fs" />
+    <Compile Include="Elmish/CuesView.fs" />
     <Compile Include="Elmish/PanelLeftView.fs" />
     <Compile Include="Elmish/App.fs" />
     <Compile Include="Main.fs" />
