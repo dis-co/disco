@@ -10,15 +10,31 @@ open Iris.Core
 open Helpers
 open Types
 
+// * PinGroupProps
+
 type [<Pojo>] PinGroupProps =
   { key: string
     Group: PinGroup
     Model: Model
-    Dispatch: Msg -> unit
-  }
+    Dispatch: Msg -> unit }
+
+// * PinGroupState
 
 type [<Pojo>] PinGroupState =
   { IsOpen: bool }
+
+// * GraphViewProps
+
+type [<Pojo>] GraphViewProps =
+  { Id: Guid
+    Name: string
+    Model: Model
+    Dispatch: Msg -> unit }
+
+// * GraphViewState
+
+type [<Pojo>] GraphViewState =
+  { ContextMenuActive: bool }
 
 let onDragStart (model: Model) pin multiple =
   let newItems = DragItems.Pins [pin]
@@ -63,9 +79,14 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
       onDragStart = Some(onDragStart model pin.Id)
     } []
 
+// * Components
+// ** PinGroupView
+
 type PinGroupView(props) =
   inherit React.Component<PinGroupProps, PinGroupState>(props)
   do base.setInitState({ IsOpen = false })
+
+  // *** render
 
   member this.render() =
     let { Group = group; Dispatch = dispatch; Model = model } = this.props
@@ -94,21 +115,106 @@ type PinGroupView(props) =
           else None) |> Seq.toList)
     ]
 
-let body dispatch (model: Model) =
-  let pinGroups =
-    match model.state with
+// ** GraphView
+
+type GraphView(props) =
+  inherit React.Component<GraphViewProps, GraphViewState>(props)
+  do base.setInitState({ ContextMenuActive = false })
+
+  // *** menuOptions
+
+  member this.menuOptions () =
+    match this.props.Model.state with
+    | None -> []
     | Some state ->
-      state.PinGroups
-      |> PinGroupMap.unifiedPins
-      |> PinGroupMap.byGroup
-    | None -> Map.empty
-  ul [Class "iris-graphview"] (
-    pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
-      com<PinGroupView,_,_> { key = string gid
-                              Group = group
-                              Dispatch = dispatch
-                              Model = model } [])
-    |> Seq.toList)
+      let resetDirty =
+        if state |> State.pinGroupMap |> PinGroupMap.hasDirtyPins
+        then Some("Reset Dirty", fun () -> printfn "reset dirty")
+        else None
+
+      let addAllUnpersisted =
+        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
+        then Some("Persist All", fun () -> printfn "persist all")
+        else None
+
+      let persistSelected =
+        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
+        then Some("Persist Selected", fun () -> printfn "persist all")
+        else None
+
+      let showPlayers =
+        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
+        then Some("Show Player Groups", fun () -> printfn "persist all")
+        else None
+
+      let showWidgets =
+        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
+        then Some("Show Widget Groups", fun () -> printfn "persist all")
+        else None
+
+      List.choose id [
+        resetDirty
+        addAllUnpersisted
+        persistSelected
+        showPlayers
+        showWidgets
+      ]
+
+  // *** renderTitleBar
+
+  member this.renderTitleBar() =
+    let onOpen () = this.setState({ ContextMenuActive = not this.state.ContextMenuActive })
+    div [] [
+      /// TODO: replace this fake element so the titleBar isn't all jacked up
+      button [ Class "iris-button"; Style [ Visibility "hidden" ] ] [
+        i [ Class "fa fa-snowflake-o" ] []
+      ]
+      ContextMenu.create this.state.ContextMenuActive onOpen (this.menuOptions())
+    ]
+
+  // *** renderBody
+
+  member this.renderBody() =
+    let pinGroups =
+      match this.props.Model.state with
+      | Some state ->
+        state.PinGroups
+        |> PinGroupMap.unifiedPins
+        |> PinGroupMap.byGroup
+      | None -> Map.empty
+    ul [Class "iris-graphview"] (
+      pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
+        com<PinGroupView,_,_>
+          { key = string gid
+            Group = group
+            Dispatch = this.props.Dispatch
+            Model = this.props.Model } [])
+      |> Seq.toList)
+
+  // *** render
+
+  member this.render() =
+    widget this.props.Id this.props.Name
+      (Some (fun _ _ -> this.renderTitleBar()))
+      (fun _ _ -> this.renderBody())
+      this.props.Dispatch
+      this.props.Model
+
+  // *** shouldComponentUpdate
+
+  member this.shouldComponentUpdate(nextProps: GraphViewProps, nextState: GraphViewState) =
+    this.state <> nextState
+      || distinctRef this.props.Model.selectedDragItems nextProps.Model.selectedDragItems
+      || match this.props.Model.state, nextProps.Model.state with
+         | Some s1, Some s2 ->
+           distinctRef s1.CueLists s2.CueLists
+             || distinctRef s1.CuePlayers s2.CuePlayers
+             || distinctRef s1.Cues s2.Cues
+             || distinctRef s1.PinGroups s2.PinGroups
+         | None, None -> false
+         | _ -> true
+
+// * createWidget
 
 let createWidget (id: System.Guid) =
   { new IWidget with
@@ -121,14 +227,8 @@ let createWidget (id: System.Guid) =
         minW = 2; maxW = 20
         minH = 2; maxH = 20 }
     member this.Render(dispatch, model) =
-      lazyViewWith
-        (fun m1 m2 ->
-          match m1.state, m2.state with
-          | Some s1, Some s2 ->
-            equalsRef s1.PinGroups s2.PinGroups
-              && equalsRef m1.selectedDragItems m2.selectedDragItems
-          | None, None -> true
-          | _ -> false)
-        (widget id this.Name None body dispatch)
-        model
-  }
+      com<GraphView,_,_>
+        { Model = model
+          Dispatch = dispatch
+          Id = this.Id
+          Name = this.Name } [] }
