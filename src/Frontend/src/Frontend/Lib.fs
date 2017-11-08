@@ -425,6 +425,14 @@ let persistAll (state: State) =
   |> CommandBatch.ofList
   |> ClientContext.Singleton.Post
 
+// * persistPins
+
+let persistPins (pins: Pin list) (state:State) =
+  pins
+  |> List.map (Pin.setPersisted true >> UpdatePin)
+  |> CommandBatch.ofList
+  |> ClientContext.Singleton.Post
+
 // * addSlicesToCue
 
 /// Returns the list of state machine commands to add the slices to the cue

@@ -141,9 +141,19 @@ type GraphView(props) =
         else None
 
       let persistSelected =
-        if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
-        then Some("Persist Selected", fun () -> printfn "persist all")
-        else None
+        match this.props.Model.selectedDragItems with
+        | DragItems.Pins pinIds ->
+          let pins =
+            List.collect
+              (flip State.findPin state
+               >> Map.toList
+               >> List.map snd
+               >> List.filter (Pin.isPersisted >> not))
+              pinIds
+          if List.isEmpty pins
+          then None
+          else Some("Persist Selected", fun () -> Lib.persistPins pins state)
+        | _ -> None
 
       let showPlayers =
         if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
