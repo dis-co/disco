@@ -41,6 +41,7 @@ let render dispatch () =
         card dispatch Widgets.Test2         "T" "Test Widget 2"
         card dispatch Widgets.Test3         "T" "Test Widget 3"
         card dispatch Widgets.Test4         "T" "Test Widget 4"
+        card dispatch Widgets.Test5         "T" "Test Widget 5"
         card dispatch "Library"             "L" "Graph View"
         card dispatch "Discovery"           "D" "Cluster Settings"
         card dispatch "Unassigned Hosts"    "H" "Cluster Settings"

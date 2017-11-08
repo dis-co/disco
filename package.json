@@ -44,6 +44,7 @@
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "react-grid-layout": "^0.15.2",
+    "react-input-slider": "^4.0.1",
     "react-notification-system": "^0.2.15",
     "react-rangeslider": "^2.2.0",
     "react-skylight": "^0.4.2",
