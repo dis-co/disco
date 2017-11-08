@@ -1640,6 +1640,14 @@ module SlicesMap =
   let keys (map: SlicesMap) =
     fold (fun out id _ -> id :: out) List.empty map
 
+  // ** toList
+
+  let toList (map: SlicesMap) = map.Slices |> Map.toList |> List.map snd
+
+  // ** toArray
+
+  let toArray (map: SlicesMap) = map.Slices |> Map.toArray |> Array.map snd
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _

@@ -131,11 +131,7 @@ type GraphView(props) =
   // *** toggleMenu
 
   member this.toggleMenu() =
-    async {
-      do! Async.Sleep(20)
-      do this.setState({ this.state with ContextMenuActive = not this.state.ContextMenuActive })
-    }
-    |> Async.Start
+    do this.setState({ this.state with ContextMenuActive = not this.state.ContextMenuActive })
 
   // *** togglePlayers
 
@@ -178,6 +174,20 @@ type GraphView(props) =
           else Some("Persist Selected", fun () -> Lib.persistPins pins state)
         | _ -> None
 
+      let createCue =
+        match this.props.Model.selectedDragItems with
+        | DragItems.Pins pinIds ->
+          let pins =
+            List.collect
+              (flip State.findPin state
+               >> Map.toList
+               >> List.map snd)
+              pinIds
+          if List.isEmpty pins
+          then None
+          else Some("Create Cue From Selection", fun () -> Lib.createCue "New Cue" pins)
+        | _ -> None
+
       let showPlayers =
         if this.state.ShowPlayers
         then Some("Hide Player Groups",  this.togglePlayers)
@@ -192,6 +202,7 @@ type GraphView(props) =
         resetDirty
         addAllUnpersisted
         persistSelected
+        createCue
         showPlayers
         showWidgets
       ]

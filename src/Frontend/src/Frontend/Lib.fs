@@ -371,6 +371,16 @@ let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   [AddCue newCue; UpdateCueList newCueList]
   |> postStateCommands
 
+// * createCue
+
+let createCue (title:string) (pins: Pin list) =
+  pins
+  |> List.fold (fun map pin -> pin |> Pin.slices |> SlicesMap.add map) SlicesMap.empty
+  |> SlicesMap.toArray
+  |> Cue.create title
+  |> AddCue
+  |> ClientContext.Singleton.Post
+
 // * duplicateCue
 
 let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
