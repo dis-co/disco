@@ -1,6 +1,8 @@
 [<AutoOpen>]
 module Iris.Web.Modal
 
+// * Imports
+
 open System
 open Fable.Core
 open Fable.Core.JsInterop
@@ -12,9 +14,14 @@ open Iris.Core
 open Iris.Core.Commands
 open Types
 
+// * Modal module
+
 /// Modal dialogs
 [<RequireQualifiedAccess>]
 module Modal =
+
+  // ** types
+
   type AddMember() =
     let mutable res = None
     member __.Result: string * uint16 = res.Value
@@ -54,13 +61,13 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
-  type InsertCue(cues: NameAndId[], cueList: CueList, groupIdx:int, cueIdx: int) =
-    let mutable res:CueId option = None
+  type InsertCues(cues: Cue[], cueList: CueList, groupIdx:int, cueIdx: int) =
+    let mutable res:CueId array = Array.empty
     member __.Cues = cues
     member __.CueList = cueList
     member __.SelectedCueGroupIndex = groupIdx
     member __.SelectedCueIndex = cueIdx
-    member __.Result: CueId option = res
+    member __.Result: CueId[] = res
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
@@ -80,7 +87,11 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- Some(unbox v)
 
+  // ** mdir
+
   let [<Literal>] private mdir = "../../js/modals/"
+
+  // ** show
 
   let show dispatch (modal: IModal): React.ReactElement =
     let data, com =
@@ -89,7 +100,7 @@ module Modal =
       | :? CreateProject          -> None,                 importDefault (mdir+"CreateProject")
       | :? LoadProject            -> None,                 importDefault (mdir+"LoadProject")
       | :? CreateCue as m         -> Some(box m.Pins),     importDefault (mdir+"CreateCue")
-      | :? InsertCue as m         -> Some(box m.Cues),     importDefault (mdir+"SelectCue")
+      | :? InsertCues as m        -> Some(box m.Cues),     importDefault (mdir+"SelectCues")
       | :? UpdateCues as m        -> Some(box m.Cues),     importDefault (mdir+"SelectCues")
       | :? Login as m             -> Some(box m.Project),  importDefault (mdir+"Login")
       | :? ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
