@@ -13,12 +13,12 @@ export default class SelectCue extends Component {
       <div>
         <p className="title has-text-centered">Select Cue</p>
         <table className="table is-striped is-bordered"
-          style={{width: "80%", margin: "0 auto"}}>
+          style={{width: "100%"}}>
           <tbody>
             {this.props.data.map(cue =>
               <tr key={cue.Id.ToString()}>
                 <td style={{cursor: "pointer"}}>
-                  <input type="checkbox" onClick={ev => {
+                  <input class="checkbox" type="checkbox" onClick={ev => {
                       if(ev.target.checked) {
                         let selected = this.state.selected
                         selected[cue.Id.ToString()] = cue.Id
