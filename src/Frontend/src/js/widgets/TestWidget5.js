@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 
 import InputSlider from 'react-input-slider'
+import 'react-input-slider/dist/input-slider.css';
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -82,10 +83,13 @@ class TestWidget extends React.Component {
   }
 
   sliderChange = pos => {
-    this.setState({
+   /* this.setState({
         pinValX: pos.x,
         pinValY: pos.y
     })
+    */
+    this.setPinValX(pos.x)
+    this.setPinValY(pos.y)
 }
 
   render() {
@@ -130,9 +134,10 @@ class TestWidget extends React.Component {
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
 
-        {(this.state.pinX && this.state.pinY) ?
+        {(this.state.pinX && this.state.pinY) !== null ?
           <InputSlider
-          className='slider slider-xxy'
+          style={{width:"112px", height:"112px", background:"grey"}}
+          className='slider slider-xy'
           axis='xy'
           
           x={parseInt(this.state.pinValX,10)}
