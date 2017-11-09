@@ -115,6 +115,7 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
   [| true,  false, Codes.z,         postCmd AppCommand.Undo
      true,  true,  Codes.z,         postCmd AppCommand.Redo
      true,  false, Codes.s,         postCmd AppCommand.Save
+     true,  false, Codes.i,         Lib.toggleInspector
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 

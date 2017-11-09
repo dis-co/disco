@@ -38,7 +38,6 @@ initWidgetFactory
         | Widgets.Clients -> ClientsView.createWidget(id)
         | Widgets.Sessions -> SessionsView.createWidget(id)
         | Widgets.PinMapping -> PinMappingView.createWidget(id)
-        | Widgets.InspectorView -> InspectorView.createWidget(id)
         | Widgets.Test1 -> createTestWidget1(id, name)
         | Widgets.Test2 -> createTestWidget2(id, name)
         | Widgets.Test3 -> createTestWidget3(id, name)
@@ -85,11 +84,11 @@ let view dispatch (model: Model) =
     com<Navbar.View,_,_> { Dispatch = dispatch; Model = model } []
     div [Id "app-content"] [
       div [Id "ui-layout-container"] [
-        div [Class "ui-layout-west"] [
-          PanelLeftView.root dispatch ()
-        ]
         div [Class "ui-layout-center"] [
           TabsView.root dispatch model
+        ]
+        div [Class "ui-layout-east"] [
+          PanelLeftView.root dispatch model
         ]
       ]
     ]

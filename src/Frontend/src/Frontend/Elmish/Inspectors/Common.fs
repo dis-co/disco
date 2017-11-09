@@ -66,35 +66,37 @@ module Common =
 
   let bar dispatch (model: Model) =
     let disabled = List.isEmpty model.history.previous
-    let history =
-      model.history.previous
-      |> List.rev
-      |> List.mapi (breadcrumb dispatch model.history)
     div [
       Style [
-        Display "flex"
-        BackgroundColor "lightgrey"
         Height "25px"
         PaddingLeft "6px"
+        BackgroundColor "lightgrey"
       ]
     ] [
-      button [
-        Style [
-          Height "100%"
-          Width "40px"
-        ]
-        Disabled disabled
-        OnClick (fun _ -> Navigate.back dispatch)
-      ] [ str "<"]
-      button [
-        Style [
-          Height "100%"
-          Width "40px"
-        ]
-        Disabled disabled
-        OnClick (fun _ -> Navigate.forward dispatch)
-      ] [ str ">"]
-      ul [] history
+      span [
+        Style [ FontSize "1.5em"; FontWeight "bold"; LineHeight "25px" ]
+      ] [ str "Inspector" ]
+      div [
+        Class "pull-right"
+        Style [ Height "25px" ]
+      ] [
+        button [
+          Style [
+            Height "100%"
+            Width "40px"
+          ]
+          Disabled disabled
+          OnClick (fun _ -> Navigate.back dispatch)
+        ] [ str "<"]
+        button [
+          Style [
+            Height "100%"
+            Width "40px"
+          ]
+          Disabled disabled
+          OnClick (fun _ -> Navigate.forward dispatch)
+        ] [ str ">"]
+      ]
     ]
 
   let inline padding5() =

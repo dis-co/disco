@@ -23,7 +23,7 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-let empty dispatch model =
+let private empty dispatch model =
   div [] [
     Common.bar dispatch model
     div [
@@ -36,7 +36,7 @@ let empty dispatch model =
     ]
   ]
 
-let private body dispatch (model: Model) =
+let render dispatch (model: Model) =
   match model.history.selected with
   | Pin      (_,client,pin)   -> PinInspector.render        dispatch model client pin
   | PinGroup (_,client,group) -> PinGroupInspector.render   dispatch model client group
@@ -49,23 +49,3 @@ let private body dispatch (model: Model) =
   | Session  session          -> SessionInspector.render    dispatch model session
   | User     (_,user)         -> UserInspector.render       dispatch model user
   | Nothing                   -> empty dispatch model
-
-///  ____        _     _ _
-/// |  _ \ _   _| |__ | (_) ___
-/// | |_) | | | | '_ \| | |/ __|
-/// |  __/| |_| | |_) | | | (__
-/// |_|    \__,_|_.__/|_|_|\___|
-
-let createWidget(id: System.Guid) =
-  { new IWidget with
-    member __.Id = id
-    member __.Name = Types.Widgets.InspectorView
-    member __.InitialLayout =
-      { i = id; ``static`` = false
-        x = 0; y = 0
-        w = 4; h = 12
-        minW = 4; maxW = 10
-        minH = 1; maxH = 20 }
-    member this.Render(dispatch, model: Model) =
-      widget id this.Name None body dispatch model
-  }
