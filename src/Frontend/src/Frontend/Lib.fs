@@ -406,7 +406,12 @@ let createCue (title:string) (pins: Pin list) =
 // * updateCues
 
 let updateCues (selected:CueId[]) (pins: Pin list) (cues:Cue[]) =
-  ()
+  let slices = List.map Pin.slices pins
+  cues
+  |> Array.filter (fun cue -> Array.contains (Cue.id cue) selected)
+  |> Array.map (fun cue -> List.fold (flip Cue.addSlices) cue slices |> UpdateCue)
+  |> Array.toList
+  |> postStateCommands
 
 // * duplicateCue
 
