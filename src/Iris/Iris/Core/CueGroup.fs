@@ -202,6 +202,13 @@ module CueGroup =
   let filter (f: CueGroup -> bool) (groups: CueGroup array) =
     Array.filter f groups
 
+  // ** filterRefs
+
+  let filterRefs (f: CueReference -> bool) (group: CueGroup) =
+    cueRefs group
+    |> Array.filter f
+    |> flip setCueRefs group
+
   // ** update
 
   let updateRef (ref:CueReference) group =

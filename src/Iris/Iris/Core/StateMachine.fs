@@ -1008,13 +1008,7 @@ module State =
   let removeCueList (cuelist : CueList) (state: State) =
     { state with CueLists = Map.remove cuelist.Id state.CueLists }
 
-  // ** AddCue
-
-  //   ____
-  //  / ___|   _  ___
-  // | |  | | | |/ _ \
-  // | |__| |_| |  __/
-  //  \____\__,_|\___|
+  // ** addCue
 
   let addCue (cue : Cue) (state: State) =
     if Map.containsKey cue.Id state.Cues then
@@ -1033,7 +1027,15 @@ module State =
   // ** removeCue
 
   let removeCue (cue : Cue) (state: State) =
-    { state with Cues = Map.remove cue.Id state.Cues }
+    let cueLists =
+      state
+      |> cueLists
+      |> Map.map
+        (fun _ cueList ->
+         CueList.map (CueGroup.filterRefs (fun ref -> CueReference.cueId ref <> cue.Id)) cueList)
+    { state with
+        Cues = Map.remove cue.Id state.Cues
+        CueLists = cueLists }
 
   //  __  __                _
   // |  \/  | ___ _ __ ___ | |__   ___ _ __
