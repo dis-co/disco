@@ -141,11 +141,11 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
         globalState
         |> State.cues
         |> Map.toArray
-        |> Array.map (function (_,cue) -> { Name = cue.Name; Id = cue.Id })
+        |> Array.map snd
         |> Array.sortBy (fun { Name = name } -> name)
-      Some("Add Cue",
+      Some("Add Cues",
            fun () ->
-            Modal.SelectCue(cues, cueList, state.SelectedCueGroupIndex, state.SelectedCueIndex)
+            Modal.InsertCues(cues, cueList, state.SelectedCueGroupIndex, state.SelectedCueIndex)
             :> IModal
             |> OpenModal
             |> props.Dispatch)

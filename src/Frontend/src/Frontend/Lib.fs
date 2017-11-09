@@ -371,11 +371,14 @@ let groupCreateCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   [AddCue newCue; UpdateCueList newCueList]
   |> postStateCommands
 
-// * groupAddCue
+// * groupAddCues
 
-let groupAddCue (cue:CueId) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
-  // create a reference to the constructed cue
-  let newCueRef = CueReference.create cue
+let groupAddCues
+  (selected:CueId[])
+  (cues:Cue[])
+  (cueList:CueList)
+  (cueGroupIndex:int)
+  (cueIndex:int) =
 
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup =
@@ -384,12 +387,12 @@ let groupAddCue (cue:CueId) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int)
 
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
 
-  /// Update CueGroup by adding the created CueReference to it
-  let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
-  let newCueList = CueList.replace newCueGroup cueList
-
-  // Send messages to backend
-  newCueList
+  cues
+  |> Array.filter (fun cue -> Array.contains (Cue.id cue) selected)
+  |> Array.map CueReference.ofCue
+  |> Array.rev
+  |> Array.fold (fun group cueRef -> CueGroup.insertAfter idx cueRef group) cueGroup
+  |> flip CueList.replace cueList
   |> UpdateCueList
   |> ClientContext.Singleton.Post
 
@@ -402,6 +405,16 @@ let createCue (title:string) (pins: Pin list) =
   |> Cue.create title
   |> AddCue
   |> ClientContext.Singleton.Post
+
+// * updateCues
+
+let updateCues (selected:CueId[]) (pins: Pin list) (cues:Cue[]) =
+  let slices = List.map Pin.slices pins
+  cues
+  |> Array.filter (fun cue -> Array.contains (Cue.id cue) selected)
+  |> Array.map (fun cue -> List.fold (flip Cue.addSlices) cue slices |> UpdateCue)
+  |> Array.toList
+  |> postStateCommands
 
 // * duplicateCue
 

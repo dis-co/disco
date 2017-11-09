@@ -46,10 +46,14 @@ let handleModalResult (modal: IModal) dispatch =
     match m.Result with
     | null -> ()
     | str -> Lib.createCue str m.Pins
-  | :? Modal.SelectCue as m ->
+  | :? Modal.InsertCues as m ->
     match m.Result with
-    | None -> ()
-    | Some id -> Lib.groupAddCue id m.CueList m.SelectedCueGroupIndex m.SelectedCueIndex
+    | [| |] -> ()
+    | ids -> Lib.groupAddCues ids m.Cues m.CueList m.SelectedCueGroupIndex m.SelectedCueIndex
+  | :? Modal.UpdateCues as m ->
+    match m.Result with
+    | [| |] -> ()
+    | selected -> Lib.updateCues selected m.Pins m.Cues
   | :? Modal.Login as m ->
     match m.Result with
     | Some projInfo ->
