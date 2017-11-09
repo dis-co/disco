@@ -536,8 +536,4 @@ let mayAlterCue (state:State) (cue:Cue) =
 // * toggleInspector
 
 let toggleInspector () =
-  let nodes = Browser.document.getElementsByClassName("ui-layout-toggler")
-  let ev = Browser.MouseEvent.Create("click")
-  for idx  in 0.0 .. nodes.length - 1.0 do
-    let node = nodes.[int idx]
-    node.dispatchEvent ev |> ignore
+  !!jQuery("#ui-layout-container")?layout()?toggle("east")

@@ -6,6 +6,7 @@ open Elmish.Browser.UrlParser
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
+open Iris.Web.Core
 open Iris.Web.State
 open Iris.Web.Notifications
 open System
@@ -48,7 +49,7 @@ module Values =
   let [<Literal>] gridLayoutColumns = 20
   let [<Literal>] gridLayoutWidth = 1600
   let [<Literal>] gridLayoutRowHeight = 30
-  let [<Literal>] jqueryLayoutWestSize = 200
+  let [<Literal>] jqueryLayoutEastSize = 350
 
 module TabsView =
   let root dispatch (model: Model) =
@@ -88,7 +89,7 @@ let view dispatch (model: Model) =
           TabsView.root dispatch model
         ]
         div [Class "ui-layout-east"] [
-          PanelLeftView.root dispatch model
+          InspectorView.render dispatch model
         ]
       ]
     ]
@@ -109,7 +110,9 @@ let root model dispatch =
     equalsRef
     (fun () ->
       !!jQuery("#ui-layout-container")
-        ?layout(%["west__size" ==> Values.jqueryLayoutWestSize]))
+        ?layout(
+          %[ "east__size" ==> Values.jqueryLayoutEastSize /// set default size of inspector pane
+             "east__initClosed" ==> true ])) /// don't show inspector by default
     (fun () -> printfn "App unmounted!")
     (view dispatch)
     model
