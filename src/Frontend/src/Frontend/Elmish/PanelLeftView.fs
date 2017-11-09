@@ -27,26 +27,24 @@ let card dispatch name letter text =
     ]
 
 let render dispatch () =
-    div [Class "iris-panel-left"] [
-        card dispatch Widgets.Log           "L" "Log View"
-        card dispatch Widgets.InspectorView "I" "Inspector"
-        card dispatch Widgets.GraphView     "G" "Graph View"
-        card dispatch Widgets.CuePlayer     "C" "Cue Player"
-        card dispatch Widgets.PinMapping    "M" "Pin Mappings"
-        card dispatch Widgets.ProjectView   "P" "Project Overview"
-        card dispatch Widgets.Cluster       "R" "Cluster Settings"
-        card dispatch Widgets.Clients       "A" "Clients"
-        card dispatch Widgets.Sessions      "S" "Sessions"
-        card dispatch Widgets.Test1         "T" "Test Widget 1"
-        card dispatch Widgets.Test2         "T" "Test Widget 2"
-        card dispatch Widgets.Test3         "T" "Test Widget 3"
-        card dispatch Widgets.Test4         "T" "Test Widget 4"
-        card dispatch Widgets.Test5         "T" "Test Widget 5"
-        card dispatch "Library"             "L" "Graph View"
-        card dispatch "Discovery"           "D" "Cluster Settings"
-        card dispatch "Unassigned Hosts"    "H" "Cluster Settings"
-        card dispatch "Project Settings"    "S" "Cluster Settings"
-    ]
+  div [Class "iris-panel-left"] [
+    card dispatch Widgets.Log           "L" "Log View"
+    card dispatch Widgets.InspectorView "I" "Inspector"
+    card dispatch Widgets.GraphView     "G" "Graph View"
+    card dispatch Widgets.Players       "P" "Players"
+    card dispatch Widgets.Cues          "C" "Cues"
+    card dispatch Widgets.CueLists      "C" "Cue Lists"
+    card dispatch Widgets.PinMapping    "M" "Pin Mappings"
+    card dispatch Widgets.ProjectView   "P" "Project Overview"
+    card dispatch Widgets.Cluster       "R" "Cluster Settings"
+    card dispatch Widgets.Clients       "A" "Clients"
+    card dispatch Widgets.Sessions      "S" "Sessions"
+    card dispatch Widgets.Test1         "T" "Test Widget 1"
+    card dispatch Widgets.Test2         "T" "Test Widget 2"
+    card dispatch Widgets.Test3         "T" "Test Widget 3"
+    card dispatch Widgets.Test4         "T" "Test Widget 4"
+    card dispatch Widgets.Test5         "T" "Test Widget 5"
+  ]
 
 let root dispatch () =
   lazyViewWith

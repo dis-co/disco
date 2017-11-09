@@ -1,5 +1,7 @@
 module rec Iris.Web.Lib
 
+// * Imports
+
 // Helper methods to be used from JS
 
 open System
@@ -15,37 +17,19 @@ open Fable.PowerPack.Fetch
 open Fable.Core.JsInterop
 open Fable.Import
 
-let inline replaceById< ^t when ^t : (member Id : IrisId)> (newItem : ^t) (ar: ^t[]) =
-  Array.map (fun (x: ^t) -> if (^t : (member Id : IrisId) newItem) = (^t : (member Id : IrisId) x) then newItem else x) ar
-
-let insertAfter (i: int) (x: 't) (xs: 't[]) =
-  let len = xs.Length
-  if len = 0 (* && i = 0 *) then
-    [|x|]
-  elif i >= len then
-    failwith "Index out of array bounds"
-  elif i < 0 then
-    Array.append [|x|] xs
-  elif i = (len - 1) then
-    Array.append xs [|x|]
-  else
-    let xs2 = Array.zeroCreate<'t> (len + 1)
-    for j = 0 to len do
-      if j <= i then
-        xs2.[j] <- xs.[j]
-      elif j = (i + 1) then
-        xs2.[j] <- x
-      else
-        xs2.[j] <- xs.[j - 1]
-    xs2
+// * alert
 
 let alert msg (_: Exception) =
   Browser.window.alert("ERROR: " + msg)
+
+// * (&>)
 
 /// Works like function composition but the second operand
 /// is a value, and the result of the first function is ignored
 let (&>) fst v =
   fun x -> fst x; v
+
+// * postCommandPrivate
 
 let private postCommandPrivate (ipAndPort: string option) (cmd: Command) =
   let url =
@@ -59,6 +43,8 @@ let private postCommandPrivate (ipAndPort: string option) (cmd: Command) =
         requestHeaders [ContentType "application/json"]
         RequestProperties.Body (toJson cmd |> U3.Case3) ])
 
+// * postCommand
+
 let postCommand onSuccess onFail (cmd: Command) =
   postCommandPrivate None cmd
   |> Promise.bind (fun res ->
@@ -66,12 +52,16 @@ let postCommand onSuccess onFail (cmd: Command) =
     then res.text() |> Promise.map onFail
     else res.text() |> Promise.map onSuccess)
 
+// * postCommandAndBind
+
 let postCommandAndBind onSuccess onFail (cmd: Command) =
   postCommandPrivate None cmd
   |> Promise.bind (fun res ->
     if not res.Ok
     then res.text() |> Promise.bind onFail
     else res.text() |> Promise.bind onSuccess)
+
+// * postCommandParseAndContinue<'T>
 
 /// Posts a command, parses the JSON response returns a promise (can fail)
 [<PassGenerics>]
@@ -82,15 +72,23 @@ let postCommandParseAndContinue<'T> (ipAndPort: string option) (cmd: Command) =
     then res.text() |> Promise.map ofJson<'T>
     else res.text() |> Promise.map (failwithf "%s"))
 
+// * postCommandWithErrorNotifier
+
 let postCommandWithErrorNotifier defValue onSuccess cmd =
   postCommand onSuccess (fun msg -> Notifications.error msg; defValue) cmd
+
+// * postCommandAndForget
 
 let postCommandAndForget cmd =
   postCommand ignore Notifications.error cmd
 
+// * listProjects
+
 let listProjects() =
   ListProjects
   |> postCommandWithErrorNotifier [||] (ofJson<NameAndId[]> >> Array.map (fun x -> x.Name))
+
+// * addMember
 
 let addMember(memberIpAddr: string, memberHttpPort: uint16) =
   Promise.start (promise {
@@ -175,15 +173,21 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
     |> Notifications.error
 })
 
+// * shutdown
+
 let shutdown() =
   Shutdown |> postCommand
     (fun _ -> Notifications.info "The service has been shut down")
     Notifications.error
 
+// * saveProject
+
 let saveProject() =
   SaveProject |> postCommand
     (fun _ -> Notifications.success "The project has been saved")
     Notifications.error
+
+// * unloadProject
 
 let unloadProject() =
   UnloadProject |> postCommand
@@ -192,10 +196,16 @@ let unloadProject() =
       Browser.location.reload())
     Notifications.error
 
+// * setLogLevel
+
 let setLogLevel(lv) =
   LogLevel.Parse(lv) |> SetLogLevel |> ClientContext.Singleton.Post
 
+// * nullify
+
 let nullify _: 'a = null
+
+// * loadProject
 
 let loadProject(project: Name, username: UserName, pass: Password, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
   LoadProject(project, username, pass, site)
@@ -222,10 +232,14 @@ let loadProject(project: Name, username: UserName, pass: Password, site: NameAnd
       )
   )
 
+// * getProjectSites
+
 let getProjectSites(project, username, password) =
   GetProjectSites(project, username, password) |> postCommand
     ofJson<NameAndId[]>
     (fun msg -> Notifications.error msg; [||])
+
+// * createProject
 
 let createProject(projectName: string): JS.Promise<Name option> = promise {
   let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
@@ -246,6 +260,16 @@ let createProject(projectName: string): JS.Promise<Name option> = promise {
         None)
   return result
 }
+
+// * postStateCommands
+
+let postStateCommands (cmds: StateMachine list) =
+  if not (List.isEmpty cmds) then
+    cmds
+    |> CommandBatch.ofList
+    |> ClientContext.Singleton.Post
+
+// * updatePinValue
 
 let updatePinValue(pin: Pin, index: int, value: obj) =
   let tryUpdateArray (i: int) (v: obj) (ar: 'T[]) =
@@ -278,6 +302,8 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
   |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 
+// * findPin
+
 let findPin (pinId: PinId) (state: State) : Pin =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
   match Map.tryFindPin pinId groups with
@@ -287,6 +313,8 @@ let findPin (pinId: PinId) (state: State) : Pin =
     // Placeholder pin
     let emptyId = IrisId.FromGuid(Guid.Empty)
     Pin.Sink.string pinId (name "MISSING") emptyId emptyId [|""|]
+
+// * findPinGroup
 
 let findPinGroup (pinGroupId: PinGroupId) (state: State) =
   let groups = state.PinGroups |> PinGroupMap.unifiedPins |> PinGroupMap.byGroup
@@ -303,51 +331,204 @@ let findPinGroup (pinGroupId: PinGroupId) (state: State) =
       Pins = Map.empty
       Path = None }
 
+// * isMissingPin
+
 let isMissingPin (pin: Pin) =
   pin.PinGroupId.Guid = Guid.Empty
+
+// * findCue
 
 let findCue (cueId: CueId) (state: State) =
   match Map.tryFind cueId state.Cues with
   | Some cue -> cue
   | None -> failwithf "Cannot find cue with Id %O in GlobalState" cueId
 
-let addCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
-  // TODO: Select the cue list from the widget
+// * groupCreateCue
+
+let groupCreateCue (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
   if cueList.Items.Length = 0 then
     failwith "A Cue Group must be added first"
   // Create new Cue and CueReference
-  let newCue = {
-    Id = IrisId.Create()
-    Name = name "Untitled"
-    Slices = [||]
-  }
+  let newCue = Cue.create "Untitled" [| |]
+
   // create a reference to the constructed cue
-  let newCueRef = {
-    Id = IrisId.Create()
-    CueId = newCue.Id
-    AutoFollow = -1
-    Duration = -1
-    Prewait = -1
-  }
+  let newCueRef = CueReference.ofCue newCue
+
   // Insert new CueRef in the selected CueGroup after the selected cue
   let cueGroup =
     let idx = max cueGroupIndex 0
-    match cueList.Items.[idx] with
-    | CueGroup group -> group
-    | _ -> failwithf "No group found at index: %d" idx
+    cueList.Items.[idx]
 
   let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
 
-  let newCueGroup = {
-    cueGroup with CueRefs = insertAfter idx newCueRef cueGroup.CueRefs
-  }
+  /// Update CueGroup by adding the created CueReference to it
+  let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
 
   // Update the CueList
-  let newCueList = CueList.replace (CueGroup newCueGroup) cueList
+  let newCueList = CueList.replace newCueGroup cueList
 
   // Send messages to backend
-  CommandBatch.ofList [
-    AddCue newCue
-    UpdateCueList newCueList
-  ]
+  [AddCue newCue; UpdateCueList newCueList]
+  |> postStateCommands
+
+// * groupAddCues
+
+let groupAddCues
+  (selected:CueId[])
+  (cues:Cue[])
+  (cueList:CueList)
+  (cueGroupIndex:int)
+  (cueIndex:int) =
+
+  // Insert new CueRef in the selected CueGroup after the selected cue
+  let cueGroup =
+    let idx = max cueGroupIndex 0
+    cueList.Items.[idx]
+
+  let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
+
+  cues
+  |> Array.filter (fun cue -> Array.contains (Cue.id cue) selected)
+  |> Array.map CueReference.ofCue
+  |> Array.rev
+  |> Array.fold (fun group cueRef -> CueGroup.insertAfter idx cueRef group) cueGroup
+  |> flip CueList.replace cueList
+  |> UpdateCueList
   |> ClientContext.Singleton.Post
+
+// * createCue
+
+let createCue (title:string) (pins: Pin list) =
+  pins
+  |> List.fold (fun map pin -> pin |> Pin.slices |> SlicesMap.add map) SlicesMap.empty
+  |> SlicesMap.toArray
+  |> Cue.create title
+  |> AddCue
+  |> ClientContext.Singleton.Post
+
+// * updateCues
+
+let updateCues (selected:CueId[]) (pins: Pin list) (cues:Cue[]) =
+  let slices = List.map Pin.slices pins
+  cues
+  |> Array.filter (fun cue -> Array.contains (Cue.id cue) selected)
+  |> Array.map (fun cue -> List.fold (flip Cue.addSlices) cue slices |> UpdateCue)
+  |> Array.toList
+  |> postStateCommands
+
+// * duplicateCue
+
+let duplicateCue (state:State) (cueList:CueList) (cueGroupIndex:int) (cueIndex:int) =
+  try
+    let cueGroup =
+      let idx = max cueGroupIndex 0
+      cueList.Items.[idx]
+
+    let cueRef =  cueGroup.CueRefs.[cueIndex]
+
+    // Find selected Cue and duplicate it
+    match State.cue (CueReference.cueId cueRef) state with
+    | None -> ()
+    | Some cue ->
+      let newCue = Cue.duplicate cue
+
+      // create a reference to the constructed cue
+      let newCueRef = CueReference.ofCue newCue
+
+      let idx = if cueIndex < 0 then cueGroup.CueRefs.Length - 1 else cueIndex
+
+      /// Update CueGroup by adding the created CueReference to it
+      let newCueGroup = CueGroup.insertAfter idx newCueRef cueGroup
+
+      // Update the CueList
+      let newCueList = CueList.replace newCueGroup cueList
+
+      // Send messages to backend
+      [AddCue newCue; UpdateCueList newCueList]
+      |> postStateCommands
+  with _ -> ()
+
+// * resetDirty
+
+let resetDirty (state:State) =
+  state
+  |> State.pinGroupMap
+  |> PinGroupMap.dirtyPins
+  |> PinGroupMap.toList
+  |> List.collect (PinGroup.pins >> Map.toList >> List.map (snd >> Pin.setDirty false >> UpdatePin))
+  |> CommandBatch.ofList
+  |> ClientContext.Singleton.Post
+
+// * persistAll
+
+let persistAll (state: State) =
+  state
+  |> State.pinGroupMap
+  |> PinGroupMap.unpersistedPins
+  |> PinGroupMap.toList
+  |> List.collect (PinGroup.pins >> Map.toList >> List.map (snd >> Pin.setPersisted true >> UpdatePin))
+  |> CommandBatch.ofList
+  |> ClientContext.Singleton.Post
+
+// * persistPins
+
+let persistPins (pins: Pin list) (state:State) =
+  pins
+  |> List.map (Pin.setPersisted true >> UpdatePin)
+  |> CommandBatch.ofList
+  |> ClientContext.Singleton.Post
+
+// * addSlicesToCue
+
+/// Returns the list of state machine commands to add the slices to the cue
+let addSlicesToCue (cue: Cue) (pins: Pin seq) =
+  // Filter out output pins and pins already contained by the cue
+  let persistPins, updatedCue =
+    Seq.fold
+      (fun (persistedPins, cue) pin ->
+        if Pin.isSource pin
+        then persistedPins, cue
+        else
+          let cue = Cue.addSlices pin.Slices cue
+          match pin.Persisted with
+          // the pin already is persisted, do nothing
+          | true  -> persistedPins, cue
+          | false -> pin :: persistedPins,cue)
+      (List.empty, cue)
+      pins
+  let cueUpdate = UpdateCue updatedCue
+  if List.isEmpty persistPins then
+    [cueUpdate]
+  else
+    let pinUpdates = List.map (Pin.setPersisted true >> UpdatePin) persistPins
+    cueUpdate :: pinUpdates
+
+// * removeSlicesFromCue
+
+/// Returns the state machine command to remove the slices from the cue
+let removeSlicesFromCue (cue: Cue) (pinIds: PinId seq) =
+  // Create a set for faster comparison
+  let pinIds = set pinIds
+  cue.Slices |> Array.filter (fun slices ->
+    Set.contains slices.PinId pinIds |> not)
+  |> flip Cue.setSlices cue
+  |> UpdateCue
+
+// * mayAlterCue
+
+let mayAlterCue (state:State) (cue:Cue) =
+  Map.fold
+    (fun forbidden _ player ->
+      if not forbidden
+      then
+        if CuePlayer.locked player then
+          player
+          |> CuePlayer.cueListId
+          |> Option.bind (flip Map.tryFind state.CueLists)
+          |> Option.map (CueList.contains cue.Id)
+          |> Option.defaultValue false
+        else false
+      else forbidden)
+    false
+    state.CuePlayers
+  |> not

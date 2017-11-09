@@ -51,7 +51,7 @@ union ParameterFB {
      SlicesFB,
      LogEventFB,
      StringFB,
-     CommandBatchFB,
+     TransactionFB,
      DiscoveredServiceFB,
 }
 

@@ -16,6 +16,9 @@ module StorageKeys =
 module Widgets =
   let [<Literal>] Log           = "LOG"
   let [<Literal>] GraphView     = "Graph View"
+  let [<Literal>] Players       = "Cue Players"
+  let [<Literal>] CueLists      = "Cue Lists"
+  let [<Literal>] Cues          = "Cues"
   let [<Literal>] CuePlayer     = "Cue Player"
   let [<Literal>] ProjectView   = "Project View"
   let [<Literal>] Cluster       = "Cluster"
@@ -34,58 +37,16 @@ type IProjectInfo =
   abstract username: UserName
   abstract password: Password
 
-type IModal =
-  abstract SetResult: obj -> unit
-
-/// Modal dialogs
-[<RequireQualifiedAccess>]
-module Modal =
-  type AddMember() =
-    let mutable res = None
-    member __.Result: string * uint16 = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type CreateProject() =
-    let mutable res = None
-    member __.Result: string = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type LoadProject() =
-    let mutable res = None
-    member __.Result: IProjectInfo = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
-  type AvailableProjects(projects: Name[]) =
-    let mutable res = Unchecked.defaultof<_>
-    member __.Projects = projects
-    member __.Result: Name option = res
-    interface IModal with
-      member this.SetResult(v) = res <- unbox v
-
-  type Login(project: Name) =
-    let mutable res = Unchecked.defaultof<_>
-    member __.Project = project
-    member __.Result: IProjectInfo option = res
-    interface IModal with
-      member this.SetResult(v) = res <- unbox v
-
-  type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
-    let mutable res = None
-    member __.Sites = sites
-    member __.Info = info
-    member __.Result: NameAndId = res.Value
-    interface IModal with
-      member this.SetResult(v) = res <- Some(unbox v)
-
 /// Interface that must be implemented by all widgets
 type IWidget =
   abstract Id: Guid
   abstract Name: string
   abstract InitialLayout: Layout
   abstract Render: Elmish.Dispatch<Msg> * Model -> React.ReactElement
+
+// Modal Dialog interfac
+and IModal =
+  abstract SetResult: obj -> unit
 
 /// Widget data that will be stored in Browser localStorage
 /// (layout is saved separately)
@@ -117,11 +78,13 @@ and Msg =
   | UpdateState of State option
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
+  | RemoveSelectedDragItems
+  | SelectDragItems of DragItems * multiple: bool
   | SelectElement of InspectorSelection
   | Navigate of InspectorNavigate
 
 and InspectorSelection =
-  | Pin      of Name * ClientId * PinId * multiple: bool
+  | Pin      of Name * ClientId * PinId
   | PinGroup of Name * ClientId * PinGroupId
   | Client   of Name * ClientId
   | Member   of Name * MemberId
@@ -143,6 +106,19 @@ and InspectorNavigate =
   | Next
   | Set of int
 
+and [<RequireQualifiedAccess>] DragItems =
+  | Pins of PinId list
+  | CueAtoms of (CueId * PinId) list
+  /// Merge selected items if they have the same case
+  /// Otherwise, it just returns the new items
+  member oldItems.Append(newItems: DragItems) =
+    let appendDistinct x y =
+      List.append x y |> List.distinct
+    match oldItems, newItems with
+    | Pins x, Pins y -> appendDistinct x y |> Pins
+    | CueAtoms x, CueAtoms y -> appendDistinct x y |> CueAtoms
+    | _ -> newItems
+
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
@@ -151,7 +127,7 @@ and Model =
     state: State option
     logs: LogEvent list
     history: InspectorHistory
-    selectedPins: Set<PinId>
+    selectedDragItems: DragItems
     userConfig: UserConfig
   }
 

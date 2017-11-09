@@ -42,6 +42,18 @@ let handleModalResult (modal: IModal) dispatch =
     match m.Result with
     | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.CreateCue as m ->
+    match m.Result with
+    | null -> ()
+    | str -> Lib.createCue str m.Pins
+  | :? Modal.InsertCues as m ->
+    match m.Result with
+    | [| |] -> ()
+    | ids -> Lib.groupAddCues ids m.Cues m.CueList m.SelectedCueGroupIndex m.SelectedCueIndex
+  | :? Modal.UpdateCues as m ->
+    match m.Result with
+    | [| |] -> ()
+    | selected -> Lib.updateCues selected m.Pins m.Cues
   | :? Modal.Login as m ->
     match m.Result with
     | Some projInfo ->
@@ -96,13 +108,24 @@ let delay ms (f:'T->unit) =
     Promise.sleep ms
     |> Promise.iter (fun () -> f x)
 
+let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
+  let postCmd cmd =
+    fun () -> StateMachine.Command cmd |> ClientContext.Singleton.Post
+  //  ctrl, shift, key, action
+  [| true,  false, Codes.z,         postCmd AppCommand.Undo
+     true,  true,  Codes.z,         postCmd AppCommand.Redo
+     true,  false, Codes.s,         postCmd AppCommand.Save
+     false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
+  |]
+
 /// Initialization function for Elmish state
 let init() =
   let startContext dispatch =
     let context = ClientContext.Singleton
     context.Start()
     |> Promise.iter (fun () ->
-      do Keyboard.registerKeyHandlers context
+      getKeyBindings dispatch
+      |> Keyboard.registerKeyHandlers
       context.OnMessage
       |> Observable.add (function
         | ClientMessage.Event(_, LogMsg log) ->
@@ -136,7 +159,7 @@ let init() =
       logs = []
       #endif
       history = { index = 0; selected = InspectorSelection.Nothing; previous = [] }
-      selectedPins = Set.empty
+      selectedDragItems = DragItems.Pins []
       userConfig = UserConfig.Create() }
   // Delay the display of the modal dialog to let
   // other plugins (like jQuery ui-layout) load
@@ -186,14 +209,30 @@ let update msg model: Model*Cmd<Msg> =
 
   | Navigate _ -> model, []
 
+  | RemoveSelectedDragItems ->
+    match model.state, model.selectedDragItems with
+    | Some state, DragItems.CueAtoms ids ->
+      // Group id tuples by CueId (first one)
+      ([], Seq.groupBy fst ids) ||> Seq.fold (fun cmds (cueId, ids) ->
+        let cue = Lib.findCue cueId state
+        if Lib.mayAlterCue state cue then
+          Lib.removeSlicesFromCue cue (Seq.map snd ids)
+          |> cons cmds
+        else cmds)
+      |> Lib.postStateCommands
+    | _ -> ()
+    model, []
+
+  | SelectDragItems(newItems, multi) ->
+    { model with selectedDragItems =
+                  if multi
+                  then model.selectedDragItems.Append(newItems)
+                  else newItems
+    }, []
+
   | SelectElement selected ->
     let history = selected :: model.history.previous |> chop
     { model with
-        selectedPins =
-          match selected with
-          | InspectorSelection.Pin(_,_,pinId,multi) ->
-            if multi then Set.add pinId model.selectedPins else set [pinId]
-          | _ -> model.selectedPins
         history = { model.history with
                      selected = selected
                      index = 0

@@ -337,8 +337,7 @@ module IrisService =
         |> List.map (snd >> AddClient)
       let batch =
         List.append sessions clients
-        |> StateMachineBatch
-        |> CommandBatch
+        |> CommandBatch.ofList
 
       (clients.Length,sessions.Length)
       |> String.format "sending batch command with {0} (clients,session) "
@@ -530,38 +529,6 @@ module IrisService =
     /// globally set the loglevel to the desired value
     | IrisEvent.Append(Origin.Raft, SetLogLevel level) as cmd ->
       do Logger.setLevel level
-      do Pipeline.push pipeline cmd
-    /// when a cue player is created, also add a special pingroup for that player
-    | IrisEvent.Append(Origin.Raft, AddCuePlayer player) as cmd ->
-      player
-      |> PinGroup.ofPlayer
-      |> AddPinGroup
-      |> IrisEvent.appendRaft
-      |> store.State.Dispatcher.Dispatch
-      do Pipeline.push pipeline cmd
-    /// when a cue player is deleted, also delete the special pingroup for that player
-    | IrisEvent.Append(Origin.Raft, RemoveCuePlayer player) as cmd ->
-      player
-      |> PinGroup.ofPlayer
-      |> RemovePinGroup
-      |> IrisEvent.appendRaft
-      |> store.State.Dispatcher.Dispatch
-      do Pipeline.push pipeline cmd
-    /// when a pin widget is created, also add a special pingroup for that widget
-    | IrisEvent.Append(Origin.Raft, AddPinWidget widget) as cmd->
-      widget
-      |> PinGroup.ofWidget
-      |> AddPinGroup
-      |> IrisEvent.appendRaft
-      |> store.State.Dispatcher.Dispatch
-      do Pipeline.push pipeline cmd
-    /// when a pin widget is deleted, also delete the special pingroup for that widget
-    | IrisEvent.Append(Origin.Raft, RemovePinWidget widget) as cmd ->
-      widget
-      |> PinGroup.ofWidget
-      |> RemovePinGroup
-      |> IrisEvent.appendRaft
-      |> store.State.Dispatcher.Dispatch
       do Pipeline.push pipeline cmd
     | cmd -> do Pipeline.push pipeline cmd
 

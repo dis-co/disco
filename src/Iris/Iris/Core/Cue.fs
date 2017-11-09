@@ -76,6 +76,20 @@ type Cue =
     Name:   Name
     Slices: Slices array }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (cue:Cue) -> cue.Id),
+    (fun id (cue:Cue) -> { cue with Id = id })
+
+  static member Name_ =
+    (fun (cue:Cue) -> cue.Name),
+    (fun name (cue:Cue) -> { cue with Name = name })
+
+  static member Slices_ =
+    (fun (cue:Cue) -> cue.Slices),
+    (fun slices (cue:Cue) -> { cue with Slices = slices })
+
   // ** FromFB
 
   //  ____  _
@@ -215,3 +229,70 @@ type Cue =
     IrisData.delete basePath cue
 
   #endif
+
+// * Cue module
+
+module Cue =
+  open Aether
+
+  // ** create
+
+  let create (title: string) slices =
+    { Id = IrisId.Create()
+      Name = Measure.name title
+      Slices = slices }
+
+  // ** id
+
+  let id = Optic.get Cue.Id_
+  let setId = Optic.set Cue.Id_
+
+  // ** slices
+
+  let slices = Optic.get Cue.Slices_
+  let setSlices = Optic.set Cue.Slices_
+
+  // ** name
+
+  let name (cue:Cue): Name = Optic.get Cue.Name_ cue
+  let setName = Optic.set Cue.Name_
+
+  // ** map
+
+  let map (f: Slices -> Slices) = Optic.map Cue.Slices_ (Array.map f)
+
+  // ** duplicate
+
+  let duplicate (cue:Cue) =
+    cue
+    |> setId (CueId.Create())
+    |> setName (Measure.name (unwrap cue.Name + " (Copy)"))
+
+  // ** contains
+
+  let contains pin (cue:Cue) =
+    Array.exists (fun (slices:Slices) -> slices.PinId = pin) cue.Slices
+
+  // ** updateSlices
+
+  let updateSlices (slices:Slices) cue =
+    map
+      (fun (existing:Slices) ->
+        if existing.PinId = slices.PinId
+        then slices
+        else existing)
+      cue
+
+  // ** addSlices
+
+  let addSlices (slices: Slices) cue  =
+    if contains slices.PinId cue
+    then updateSlices slices cue
+    else { cue with Slices = Array.append cue.Slices [| slices |] }
+
+  // ** removeSlices
+
+  let removeSlices (id: PinId) cue =
+    cue.Slices
+    |> Array.filter (fun (slices:Slices) -> slices.PinId <> id)
+    |> flip setSlices cue

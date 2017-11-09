@@ -26,6 +26,7 @@ type CuePlayerYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable Name: string
   [<DefaultValue>] val mutable Locked: bool
+  [<DefaultValue>] val mutable Active: bool
   [<DefaultValue>] val mutable CueListId: string
   [<DefaultValue>] val mutable Selected: int
   [<DefaultValue>] val mutable CallId: string
@@ -46,6 +47,7 @@ type CuePlayerYaml() =
     yaml.Id <- string player.Id
     yaml.Name <- unwrap player.Name
     yaml.Locked <- player.Locked
+    yaml.Active <- player.Active
     Option.iter (fun id -> yaml.CueListId <- string id) player.CueListId
     yaml.Selected <- int player.Selected
     yaml.CallId <- string player.CallId
@@ -72,6 +74,7 @@ type CuePlayerYaml() =
         Id = id
         Name = name yaml.Name
         Locked = yaml.Locked
+        Active = yaml.Active
         CueListId = str2opt yaml.CueListId
         Selected = index yaml.Selected
         CallId = call
@@ -92,6 +95,7 @@ type CuePlayer =
     Name: Name
     CueListId: CueListId option
     Locked: bool
+    Active: bool
     Selected: int<index>
     RemainingWait: int
     CallId: PinId                           // should be Bang pin type
@@ -99,6 +103,56 @@ type CuePlayer =
     PreviousId: PinId                       // should be Bang pin type
     LastCalledId: CueId option
     LastCallerId: IrisId option }
+
+  // ** optics
+
+  static member Id_ =
+   (fun (player:CuePlayer) -> player.Id),
+    (fun id (player:CuePlayer) -> { player with Id = id })
+
+  static member Name_ =
+   (fun (player:CuePlayer) -> player.Name),
+    (fun name (player:CuePlayer) -> { player with Name = name })
+
+  static member Locked_ =
+    (fun (player:CuePlayer) -> player.Locked),
+    (fun locked (player:CuePlayer) -> { player with Locked = locked })
+
+  static member Active_ =
+    (fun (player:CuePlayer) -> player.Active),
+    (fun active (player:CuePlayer) -> { player with Active = active })
+
+  static member RemainingWait_ =
+    (fun (player:CuePlayer) -> player.RemainingWait),
+    (fun remainingWait (player:CuePlayer) -> { player with RemainingWait = remainingWait })
+
+  static member Selected_ =
+    (fun (player:CuePlayer) -> player.Selected),
+    (fun selected (player:CuePlayer) -> { player with Selected = selected })
+
+  static member CueListId_ =
+    (fun (player:CuePlayer) -> player.CueListId),
+    (fun cueListId (player:CuePlayer) -> { player with CueListId = cueListId })
+
+  static member NextId_ =
+    (fun (player:CuePlayer) -> player.NextId),
+    (fun nextId (player:CuePlayer) -> { player with NextId = nextId })
+
+  static member PreviousId_ =
+    (fun (player:CuePlayer) -> player.PreviousId),
+    (fun previousId (player:CuePlayer) -> { player with PreviousId = previousId })
+
+  static member CallId_ =
+    (fun (player:CuePlayer) -> player.CallId),
+    (fun callId (player:CuePlayer) -> { player with CallId = callId })
+
+  static member LastCalledId_ =
+    (fun (player:CuePlayer) -> player.LastCalledId),
+    (fun lastCalledId (player:CuePlayer) -> { player with LastCalledId = lastCalledId })
+
+  static member LastCallerId_ =
+    (fun (player:CuePlayer) -> player.LastCallerId),
+    (fun lastCallerId (player:CuePlayer) -> { player with LastCallerId = lastCallerId })
 
   // ** ToOffset
 
@@ -126,6 +180,7 @@ type CuePlayer =
     Option.iter (fun value -> CuePlayerFB.AddName(builder,value)) name
     Option.iter (fun value -> CuePlayerFB.AddCueListId(builder,value)) cuelist
     CuePlayerFB.AddLocked(builder, player.Locked)
+    CuePlayerFB.AddActive(builder, player.Active)
     CuePlayerFB.AddSelected(builder, int player.Selected)
     CuePlayerFB.AddRemainingWait(builder, player.RemainingWait)
     CuePlayerFB.AddCallId(builder, call)
@@ -172,6 +227,7 @@ type CuePlayer =
         Id = id
         Name = name fb.Name
         Locked = fb.Locked
+        Active = fb.Active
         Selected = index fb.Selected
         RemainingWait = fb.RemainingWait
         CueListId = cuelist
@@ -246,21 +302,69 @@ type CuePlayer =
 
 module CuePlayer =
 
-  open NameUtils
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get CuePlayer.Id_
+  let name = Optic.get CuePlayer.Name_
+  let active = Optic.get CuePlayer.Active_
+  let locked = Optic.get CuePlayer.Locked_
+  let remainingWait = Optic.get CuePlayer.RemainingWait_
+  let selected = Optic.get CuePlayer.Selected_
+  let cueListId = Optic.get CuePlayer.CueListId_
+  let callId = Optic.get CuePlayer.CallId_
+  let nextId = Optic.get CuePlayer.NextId_
+  let previousId = Optic.get CuePlayer.PreviousId_
+  let lastCalledId = Optic.get CuePlayer.LastCalledId_
+  let lastCallerId = Optic.get CuePlayer.LastCallerId_
+
+  // ** setters
+
+  let setId = Optic.set CuePlayer.Id_
+  let setName = Optic.set CuePlayer.Name_
+  let setActive = Optic.set CuePlayer.Active_
+  let setLocked = Optic.set CuePlayer.Locked_
+  let setRemainingWait = Optic.set CuePlayer.RemainingWait_
+  let setSelected = Optic.set CuePlayer.Selected_
+  let setCallId = Optic.set CuePlayer.CallId_
+  let setNextId = Optic.set CuePlayer.NextId_
+  let setPreviousId = Optic.set CuePlayer.PreviousId_
+
+  let setCueListId id = Optic.set CuePlayer.CueListId_ (Some id)
+  let setLastCalledId id = Optic.set CuePlayer.LastCalledId_ (Some id)
+  let setLastCallerId id = Optic.set CuePlayer.LastCallerId_ (Some id)
+  let unsetCueListId = Optic.set CuePlayer.CueListId_ None
+  let unsetLastCalledId = Optic.set CuePlayer.LastCalledId_ None
+  let unsetLastCallerId = Optic.set CuePlayer.LastCallerId_ None
+
+  // ** findSelected
+
+  let findSelected (items:CueGroup[]) (player:CuePlayer) =
+    if player.Selected < 0<index>
+    then None
+    else
+      let allItems =
+        items
+        |> Array.map (CueGroup.cueRefs >> Array.map CueReference.id)
+        |> Array.concat
+      try Some allItems.[int player.Selected]
+      with _ -> None
 
   // ** create
 
-  let create (playerName: Name) (cuelist: CueListId option) =
+  let create (playerName: string) (cuelist: CueListId option) =
     let id = IrisId.Create()
     { Id            = id
-      Name          = playerName
+      Name          = Measure.name playerName
+      Active        = false
       Locked        = false
       RemainingWait = -1
       Selected      = -1<index>
       CueListId     = cuelist
-      CallId        = Pin.Player.callId     id
-      NextId        = Pin.Player.nextId     id
-      PreviousId    = Pin.Player.previousId id
+      CallId        = IrisId.Create()
+      NextId        = IrisId.Create()
+      PreviousId    = IrisId.Create()
       LastCalledId  = None
       LastCallerId  = None }
 
@@ -278,5 +382,32 @@ module CuePlayer =
 
   // ** setCueList
 
-  let setCueList id player =
-    { player with CueListId = Some id }
+  let setCueList id player = Optic.set CuePlayer.CueListId_ (Some id) player
+
+  // ** unsetCueList
+
+  let unsetCueList player = Optic.set CuePlayer.CueListId_ None player
+
+  // ** updatePins
+
+  let updatePins (max:int) (slices:Slices) (player:CuePlayer) =
+    let max = max * 1<index>
+    if slices.PinId = player.NextId then
+      let nextIdx = player.Selected + 1<index>
+      if nextIdx < max
+      then setSelected nextIdx player
+      else setSelected (max - 1<index>) player
+    elif slices.PinId = player.PreviousId then
+      let previousIdx = player.Selected - 1<index>
+      if 0<index> <= previousIdx && previousIdx < max
+      then setSelected previousIdx player
+      else setSelected 0<index> player
+    else player
+
+  // ** processSlices
+
+  let processSlices (max:int) (slices:Map<PinId,Slices>) (player:CuePlayer) =
+    Map.fold
+      (fun player _ slices -> updatePins max slices player)
+      player
+      slices

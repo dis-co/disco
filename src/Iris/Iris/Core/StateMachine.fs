@@ -9,6 +9,8 @@ namespace rec Iris.Core
 // |___|_| |_| |_| .__/ \___/|_|   \__|___/
 //               |_|
 
+open Aether
+open Aether.Operators
 open Iris.Raft
 
 #if FABLE_COMPILER
@@ -20,6 +22,7 @@ open Iris.Web.Core.FlatBufferTypes
 
 open FlatBuffers
 open Iris.Serialization
+
 #endif
 
 #if !FABLE_COMPILER && !IRIS_NODES
@@ -138,6 +141,82 @@ type State =
     CuePlayers:         Map<PlayerId,CuePlayer>
     DiscoveredServices: Map<ServiceId,DiscoveredService> }
 
+  // ** optics
+
+  static member Project_ =
+    (fun (state:State) -> state.Project),
+    (fun project (state:State) -> { state with Project = project })
+
+  static member PinGroups_ =
+    (fun (state:State) -> state.PinGroups),
+    (fun pinGroups (state:State) -> { state with PinGroups = pinGroups })
+
+  static member PinGroup_ clientId groupId =
+    State.PinGroups_ >-> PinGroupMap.Group_ clientId groupId
+
+  static member PinMappings_ =
+    (fun (state:State) -> state.PinMappings),
+    (fun pinMappings (state:State) -> { state with PinMappings = pinMappings })
+
+  static member PinMapping_ (id:PinMappingId) =
+    State.PinMappings_ >-> Map.value_ id >-> Option.value_
+
+  static member PinWidgets_ =
+    (fun (state:State) -> state.PinWidgets),
+    (fun pinWidgets (state:State) -> { state with PinWidgets = pinWidgets })
+
+  static member PinWidget_ (id:WidgetId) =
+    State.PinWidgets_ >-> Map.value_ id >-> Option.value_
+
+  static member Cues_ =
+    (fun (state:State) -> state.Cues),
+    (fun cues (state:State) -> { state with Cues = cues })
+
+  static member Cue_ (id:CueId) =
+    State.Cues_ >-> Map.value_ id >-> Option.value_
+
+  static member CueLists_ =
+    (fun (state:State) -> state.CueLists),
+    (fun cueLists (state:State) -> { state with CueLists = cueLists })
+
+  static member CueList_ (id:CueListId) =
+    State.CueLists_ >-> Map.value_ id >-> Option.value_
+
+  static member Sessions_ =
+    (fun (state:State) -> state.Sessions),
+    (fun sessions (state:State) -> { state with Sessions = sessions })
+
+  static member Session_ (id:SessionId) =
+    State.Sessions_ >-> Map.value_ id >-> Option.value_
+
+  static member Users_ =
+    (fun (state:State) -> state.Users),
+    (fun users (state:State) -> { state with Users = users })
+
+  static member User_ (id:UserId) =
+    State.Users_ >-> Map.value_ id >-> Option.value_
+
+  static member Clients_ =
+    (fun (state:State) -> state.Clients),
+    (fun clients (state:State) -> { state with Clients = clients })
+
+  static member Client_ (id:ClientId) =
+    State.Clients_ >-> Map.value_ id >-> Option.value_
+
+  static member CuePlayers_ =
+    (fun (state:State) -> state.CuePlayers),
+    (fun cuePlayers (state:State) -> { state with CuePlayers = cuePlayers })
+
+  static member CuePlayer_ (id:PlayerId) =
+    State.CuePlayers_ >-> Map.value_ id >-> Option.value_
+
+  static member DiscoveredServices_ =
+    (fun (state:State) -> state.DiscoveredServices),
+    (fun discoveredServices (state:State) -> { state with DiscoveredServices = discoveredServices })
+
+  static member DiscoveredService_ (id:IrisId) =
+    State.DiscoveredServices_ >-> Map.value_ id >-> Option.value_
+
   // ** Empty
 
   static member Empty
@@ -169,6 +248,13 @@ type State =
       let! cues     = Asset.loadAll project.Path |> toMap
       let! cuelists = Asset.loadAll project.Path |> toMap
       let! players  = Asset.loadAll project.Path |> toMap
+
+      /// player and wiget groups are ephemeral, hence we add them after load
+      let groups =
+        groups
+        |> flip (Map.fold (fun map _ player -> PinGroupMap.addPlayer player map)) players
+        |> flip (Map.fold (fun map _ widget -> PinGroupMap.addWidget widget map)) widgets
+
       return
         { Project            = project
           Users              = users
@@ -567,17 +653,19 @@ type State =
           arr
         |> Either.map snd
 
-      return { Project            = project
-               PinGroups          = groups
-               PinMappings        = mappings
-               PinWidgets         = widgets
-               Cues               = cues
-               CueLists           = cuelists
-               Users              = users
-               Sessions           = sessions
-               Clients            = clients
-               CuePlayers         = players
-               DiscoveredServices = discoveredServices }
+      return {
+        Project            = project
+        PinGroups          = groups
+        PinMappings        = mappings
+        PinWidgets         = widgets
+        Cues               = cues
+        CueLists           = cuelists
+        Users              = users
+        Sessions           = sessions
+        Clients            = clients
+        CuePlayers         = players
+        DiscoveredServices = discoveredServices
+      }
     }
 
   // ** FromBytes
@@ -591,28 +679,89 @@ type State =
 
 module State =
 
+  // ** optics
+
+  let pinGroups_ = State.PinGroups_ >-> PinGroupMap.Groups_
+  let pinGroup_ clid gid = State.PinGroups_ >-> PinGroupMap.Group_ clid gid
+  let playerGroups_ = State.PinGroups_ >-> PinGroupMap.Players_
+  let playerGroup_ pid = State.PinGroups_ >-> PinGroupMap.Player_ pid
+  let widgetGroups_ = State.PinGroups_ >-> PinGroupMap.Widgets_
+  let widgetGroup_ wid = State.PinGroups_ >-> PinGroupMap.Widget_ wid
+
+  // ** getters
+
+  let project = Optic.get State.Project_
+  let pinGroupMap = Optic.get State.PinGroups_
+  let pinGroups = Optic.get pinGroups_
+  let pinGroup clid gid = Optic.get (pinGroup_ clid gid)
+  let playerGroups = Optic.get playerGroups_
+  let playerGroup pid = Optic.get (playerGroup_ pid)
+  let widgetGroups = Optic.get widgetGroups_
+  let widgetGroup wid = Optic.get (widgetGroup_ wid)
+  let pinMappings = Optic.get State.PinMappings_
+  let pinMapping mid = Optic.get (State.PinMapping_ mid)
+  let pinWidgets = Optic.get State.PinWidgets_
+  let pinWidget wid = Optic.get (State.PinWidget_ wid)
+  let cues = Optic.get State.Cues_
+  let cue id = Optic.get (State.Cue_ id)
+  let cueLists = Optic.get State.CueLists_
+  let cueList id = Optic.get (State.CueList_ id)
+  let sessions = Optic.get State.Sessions_
+  let session id = Optic.get (State.Session_ id)
+  let users = Optic.get State.Users_
+  let user id = Optic.get (State.User_ id)
+  let clients = Optic.get State.Clients_
+  let client id = Optic.get (State.Client_ id)
+  let cuePlayers = Optic.get State.CuePlayers_
+  let cuePlayer id = Optic.get (State.CuePlayer_ id)
+  let discoveredServices = Optic.get State.DiscoveredServices_
+  let discoveredService id = Optic.get (State.DiscoveredService_ id)
+
+  // ** setters
+
+  let setProject = Optic.set State.Project_
+  let setPinGroupMap = Optic.set State.PinGroups_
+  let setPinGroups = Optic.set pinGroups_
+  let setPinMappings = Optic.set State.PinMappings_
+  let setPinWidgets = Optic.set State.PinWidgets_
+  let setCues = Optic.set State.Cues_
+  let setCueLists = Optic.set State.CueLists_
+  let setSessions = Optic.set State.Sessions_
+  let setUsers = Optic.set State.Users_
+  let setClients = Optic.set State.Clients_
+  let setCuePlayers = Optic.set State.CuePlayers_
+  let setDiscoveredServices = Optic.set State.DiscoveredServices_
+
+  // ** findPin
+
+  let findPin pid state =
+    pinGroupMap state |> PinGroupMap.findPin pid
+
   // ** addPinWidget
 
-  let addPinWidget (mappping: PinWidget) (state: State) =
-    if Map.containsKey mappping.Id state.PinWidgets then
+  let addPinWidget (widget: PinWidget) (state: State) =
+    if Map.containsKey widget.Id state.PinWidgets then
       state
     else
-      let mapppings = Map.add mappping.Id mappping state.PinWidgets
-      { state with PinWidgets = mapppings }
+      { state with
+          PinWidgets = Map.add widget.Id widget state.PinWidgets
+          PinGroups = PinGroupMap.addWidget widget state.PinGroups }
 
   // ** updatePinWidget
 
   let updatePinWidget (mappping: PinWidget) (state: State) =
     if Map.containsKey mappping.Id state.PinWidgets then
-      let mapppings = Map.add mappping.Id mappping state.PinWidgets
-      { state with PinWidgets = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinWidgets
+      { state with PinWidgets = mappings }
     else
       state
 
   // ** removePinWidget
 
-  let removePinWidget (mappping: PinWidget) (state: State) =
-    { state with PinWidgets = Map.remove mappping.Id state.PinWidgets }
+  let removePinWidget (widget: PinWidget) (state: State) =
+    { state with
+        PinGroups = PinGroupMap.removeWidget widget state.PinGroups
+        PinWidgets = Map.remove widget.Id state.PinWidgets }
 
   // ** addPinMapping
 
@@ -620,15 +769,15 @@ module State =
     if Map.containsKey mappping.Id state.PinMappings then
       state
     else
-      let mapppings = Map.add mappping.Id mappping state.PinMappings
-      { state with PinMappings = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mappings }
 
   // ** updatePinMapping
 
   let updatePinMapping (mappping: PinMapping) (state: State) =
     if Map.containsKey mappping.Id state.PinMappings then
-      let mapppings = Map.add mappping.Id mappping state.PinMappings
-      { state with PinMappings = mapppings }
+      let mappings = Map.add mappping.Id mappping state.PinMappings
+      { state with PinMappings = mappings }
     else
       state
 
@@ -643,8 +792,9 @@ module State =
     if Map.containsKey player.Id state.CuePlayers then
       state
     else
-      let players = Map.add player.Id player state.CuePlayers
-      { state with CuePlayers = players }
+      { state with
+          PinGroups = PinGroupMap.addPlayer player state.PinGroups
+          CuePlayers = Map.add player.Id player state.CuePlayers }
 
   // ** updateCuePlayer
 
@@ -658,7 +808,9 @@ module State =
   // ** removeCuePlayer
 
   let removeCuePlayer (player: CuePlayer) (state: State) =
-    { state with CuePlayers = Map.remove player.Id state.CuePlayers }
+    { state with
+        PinGroups = PinGroupMap.removePlayer player state.PinGroups
+        CuePlayers = Map.remove player.Id state.CuePlayers }
 
   // ** addUser
 
@@ -781,13 +933,39 @@ module State =
 
   // ** removePin
 
+  /// remove the passed pin from the global state
   let removePin (pin : Pin) (state: State) =
-    { state with PinGroups = PinGroupMap.removePin pin state.PinGroups }
+    pinGroupMap state
+    |> PinGroupMap.removePin pin
+    |> flip setPinGroupMap state
 
   // ** updateSlices
 
   let updateSlices (map: SlicesMap) (state: State) =
-    { state with PinGroups = PinGroupMap.updateSlices map.Slices state.PinGroups }
+    let players =
+      if PinGroupMap.hasPlayerUpdate map.Slices state.PinGroups
+      then
+        Map.map
+          (fun _ player ->
+            /// find out the maximum allowed number for Selected (i.e. # of CueRefs)
+            let max =
+              CuePlayer.cueListId player
+              |> Option.bind (flip cueList state)
+              |> Option.map CueList.cueCount
+              |> Option.defaultValue -1
+            CuePlayer.processSlices max map.Slices player)
+          state.CuePlayers
+      else state.CuePlayers
+
+    let widgets =
+      if PinGroupMap.hasWidgetUpdate map.Slices state.PinGroups
+      then Map.map (fun _ widget -> PinWidget.processSlices map.Slices widget) state.PinWidgets
+      else state.PinWidgets
+
+    { state with
+        CuePlayers = players
+        PinWidgets = widgets
+        PinGroups = PinGroupMap.updateSlices map.Slices state.PinGroups }
 
   // ** tryFindPin
 
@@ -813,10 +991,9 @@ module State =
   //  \____\__,_|\___|_____|_|___/\__|___/
 
   let addCueList (cuelist : CueList) (state: State) =
-    if Map.containsKey cuelist.Id state.CueLists then
-      state
-    else
-      { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
+    if Map.containsKey cuelist.Id state.CueLists
+    then state
+    else { state with CueLists = Map.add cuelist.Id cuelist state.CueLists }
 
   // ** updateCueList
 
@@ -955,6 +1132,10 @@ module State =
     | UpdatePinGroup  group           -> updatePinGroup group   state
     | RemovePinGroup  group           -> removePinGroup group   state
 
+    | AddPinWidget     widget         -> addPinWidget    widget   state
+    | UpdatePinWidget  widget         -> updatePinWidget widget   state
+    | RemovePinWidget  widget         -> removePinWidget widget   state
+
     | AddPinMapping     mapping       -> addPinMapping    mapping   state
     | UpdatePinMapping  mapping       -> updatePinMapping mapping   state
     | RemovePinMapping  mapping       -> removePinMapping mapping   state
@@ -994,7 +1175,7 @@ module State =
 
   // ** processBatch
 
-  let processBatch (state: State) (batch: StateMachineBatch) =
+  let processBatch (state: State) (batch: Transaction) =
     List.fold update state batch.Commands
 
   // ** initialize
@@ -1297,14 +1478,14 @@ type Store(state : State)=
 /// Returns: Store -> StateMachine -> unit
 type Listener = Store -> StateMachine -> unit
 
-// * StateMachineBatch
+// * Transaction
 
-type StateMachineBatch = StateMachineBatch of StateMachine list
+type Transaction = Transaction of StateMachine list
   with
     // ** Commands
 
     member batch.Commands
-      with get () = match batch with | StateMachineBatch commands -> commands
+      with get () = match batch with | Transaction commands -> commands
 
     // ** ToOffset
 
@@ -1313,14 +1494,14 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
         batch.Commands
         |> List.map (Binary.toOffset builder)
         |> List.toArray
-        |> fun arr -> CommandBatchFB.CreateCommandsVector(builder, arr)
-      CommandBatchFB.StartCommandBatchFB(builder)
-      CommandBatchFB.AddCommands(builder, serialized)
-      CommandBatchFB.EndCommandBatchFB(builder)
+        |> fun arr -> TransactionFB.CreateCommandsVector(builder, arr)
+      TransactionFB.StartTransactionFB(builder)
+      TransactionFB.AddCommands(builder, serialized)
+      TransactionFB.EndTransactionFB(builder)
 
     // ** FromFB
 
-    static member FromFB(batch: CommandBatchFB) =
+    static member FromFB(batch: TransactionFB) =
       either {
         let input = Array.zeroCreate batch.CommandsLength
 
@@ -1354,7 +1535,7 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
             (Right (0, input))
             input
           #endif
-        return StateMachineBatch (List.ofArray commands)
+        return Transaction (List.ofArray commands)
       }
 
     // ** ToBytes
@@ -1367,8 +1548,8 @@ type StateMachineBatch = StateMachineBatch of StateMachine list
     static member FromBytes(raw: byte array) =
       raw
       |> Binary.createBuffer
-      |> CommandBatchFB.GetRootAsCommandBatchFB
-      |> StateMachineBatch.FromFB
+      |> TransactionFB.GetRootAsTransactionFB
+      |> Transaction.FromFB
 
 // * SlicesMap
 
@@ -1459,6 +1640,14 @@ module SlicesMap =
   let keys (map: SlicesMap) =
     fold (fun out id _ -> id :: out) List.empty map
 
+  // ** toList
+
+  let toList (map: SlicesMap) = map.Slices |> Map.toList |> List.map snd
+
+  // ** toArray
+
+  let toArray (map: SlicesMap) = map.Slices |> Map.toArray |> Array.map snd
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -1540,7 +1729,7 @@ type StateMachine =
 
   | DataSnapshot            of State
 
-  | CommandBatch            of StateMachineBatch
+  | CommandBatch            of Transaction
 
   | SetLogLevel             of LogLevel
 
@@ -1775,7 +1964,7 @@ type StateMachine =
 
       | DataSnapshot            _  -> ParameterFB.StateFB
 
-      | CommandBatch            _  -> ParameterFB.CommandBatchFB
+      | CommandBatch            _  -> ParameterFB.TransactionFB
 
       | SetLogLevel             _  -> ParameterFB.StringFB
 
@@ -2178,10 +2367,10 @@ type StateMachine =
     // |  _ \ / _` | __/ __| '_ \
     // | |_) | (_| | || (__| | | |
     // |____/ \__,_|\__\___|_| |_|
-    | x when x = StateMachinePayloadFB.CommandBatchFB ->
+    | x when x = StateMachinePayloadFB.TransactionFB ->
       either {
-        let fb = fb.CommandBatchFB
-        let! batch = StateMachineBatch.FromFB fb
+        let fb = fb.TransactionFB
+        let! batch = Transaction.FromFB fb
         return CommandBatch batch
       }
 
@@ -2665,12 +2854,12 @@ type StateMachine =
     // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
-    | StateMachinePayloadFB.CommandBatchFB ->
+    | StateMachinePayloadFB.TransactionFB ->
       either {
-        let batchish = fb.Payload<CommandBatchFB> ()
+        let batchish = fb.Payload<TransactionFB> ()
         if batchish.HasValue then
           let batch = batchish.Value
-          let! commands = StateMachineBatch.FromFB batch
+          let! commands = Transaction.FromFB batch
           return CommandBatch commands
         else
           return!
@@ -3308,7 +3497,7 @@ type StateMachine =
       let offset = Binary.toOffset builder commands
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.BatchFB)
-      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.CommandBatchFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.TransactionFB)
 #if FABLE_COMPILER
       StateMachineFB.AddPayload(builder, offset)
 #else
@@ -3352,7 +3541,11 @@ type StateMachine =
 
 module CommandBatch =
 
-  let ofList = StateMachineBatch >> CommandBatch
+  let ofList = Transaction >> CommandBatch
+
+  let toList = function
+    | CommandBatch (Transaction list) -> list
+    | _ -> []
 
 // * UpdateSlices module
 
@@ -3376,3 +3569,28 @@ module UpdateSlices =
     |> Map.ofList
     |> SlicesMap
     |> UpdateSlices
+
+// * CuePlayerExtensions module
+
+[<AutoOpen>]
+module CuePlayerExtensions =
+
+  type CuePlayer with
+
+    static member next (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.NextId, None, [| true |]) ]
+        CallCue cue
+      ]
+
+    static member previous (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        CallCue cue
+      ]
+
+    static member call (cue:Cue) (player:CuePlayer) =
+      CommandBatch.ofList [
+        UpdateSlices.ofList [ BoolSlices(player.CallId, None, [| true |]) ]
+        CallCue cue
+      ]

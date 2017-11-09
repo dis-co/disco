@@ -202,25 +202,36 @@ let project =
       Author    = None
       Config    = irisConfig  }
 
-let _1of3 (x,_,_) = x
-let _2of3 (_,x,_) = x
-let _3of3 (_,_,x) = x
+let _1of4 (x,_,_,_) = x
+let _2of4 (_,x,_,_) = x
+let _3of4 (_,_,x,_) = x
+let _4of4 (_,_,_,x) = x
 
 let cuesAndListsAndPlayers =
-    let makeCue i =
-        // Create new Cue and CueReference
-        let cue = { Id = IrisId.Create(); Name = name ("Cue " + (string i)); Slices = [||] }
-        let cueRef = { Id = IrisId.Create(); CueId = cue.Id; AutoFollow = -1; Duration = -1; Prewait = -1 }
-        cue, cueRef
-    let cue1, cueRef1 = makeCue 1
-    let cue2, cueRef2 = makeCue 2
-    let cue3, cueRef3 = makeCue 3
-    let cueGroup = { Id = IrisId.Create(); Name = name "mockcuegroup"; CueRefs = [|cueRef1; cueRef2; cueRef3|] }
-    let cueList = { Id= IrisId.Create(); Name=name "mockcuelist"; Items=[| CueGroup cueGroup |]}
-    let cuePlayer = CuePlayer.create (name "mockcueplayer") (Some cueList.Id)
-    Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
-    Map[cueList.Id, cueList],
-    Map[cuePlayer.Id, cuePlayer]
+  let makeCue i =
+    // Create new Cue and CueReference
+    let cue = Cue.create ("Cue " + string i) [| |]
+    let cueRef = CueReference.ofCue cue
+    cue, cueRef
+  let cue1, cueRef1 = makeCue 1
+  let cue2, cueRef2 = makeCue 2
+  let cue3, cueRef3 = makeCue 3
+  let cueGroup =
+    CueGroup.create [|
+      cueRef1
+      cueRef2
+      cueRef3
+    |]
+  let cueList =
+    CueList.create "mockcuelist" [|
+      cueGroup
+    |]
+  let cuePlayer = CuePlayer.create "mockcueplayer" (Some cueList.Id)
+  let playerGroup = PinGroup.ofPlayer cuePlayer
+  Map[cue1.Id, cue1; cue2.Id, cue2; cue3.Id, cue3],
+  Map[cueList.Id, cueList],
+  Map[cuePlayer.Id, cuePlayer],
+  playerGroup
 
 let getMockState() =
   let groups =
@@ -234,7 +245,7 @@ let getMockState() =
   { State.Empty with
       Project = project
       Clients = clients
-      PinGroups = groups
-      Cues = _1of3 cuesAndListsAndPlayers
-      CueLists = _2of3 cuesAndListsAndPlayers
-      CuePlayers = _3of3 cuesAndListsAndPlayers }
+      PinGroups = PinGroupMap.add (_4of4 cuesAndListsAndPlayers) groups
+      Cues = _1of4 cuesAndListsAndPlayers
+      CueLists = _2of4 cuesAndListsAndPlayers
+      CuePlayers = _3of4 cuesAndListsAndPlayers}

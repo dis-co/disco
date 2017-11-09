@@ -29,6 +29,7 @@ group Main
   nuget Disruptor >= 3.3.6
   nuget Fable.JsonConverter
   nuget Raspberry.IO.GeneralPurpose
+  nuget Aether
 
 group Fable
   storage:none

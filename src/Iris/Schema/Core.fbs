@@ -469,7 +469,7 @@ table CueFB {
 table CueReferenceFB {
       Id: [ubyte];
       CueId: [ubyte];
-      AutoFollow: int;
+      AutoFollow: bool;
       Duration: int;
       Prewait: int;
 }
@@ -477,6 +477,7 @@ table CueReferenceFB {
 table CueGroupFB {
       Id: [ubyte];
       Name: string;
+      AutoFollow: bool;
       CueRefs: [CueReferenceFB];
 }
 
@@ -486,24 +487,10 @@ table CueGroupFB {
 // | |__| |_| |  __/ |___| \__ \ |_
 //  \____\__,_|\___|_____|_|___/\__|
 
-table HeadlineFB {
-      Id: [ubyte];
-      Content: string;
-}
-
-union CueListItemTypeFB {
-      HeadlineFB,
-      CueGroupFB
-}
-
-table CueListItemFB {
-      Item: CueListItemTypeFB;
-}
-
 table CueListFB {
       Id:   [ubyte];
       Name: string;
-      Items: [CueListItemFB];
+      Items: [CueGroupFB];
 }
 
 //  _   _
@@ -655,6 +642,7 @@ table CuePlayerFB {
       Id:            [ubyte];
       Name:          string;
       Locked:        bool;
+      Active:        bool;
       Selected:      int;
       RemainingWait: int;
       CueListId:     [ubyte];
@@ -671,7 +659,7 @@ table CuePlayerFB {
 // | |_) | (_| | || (__| | | |
 // |____/ \__,_|\__\___|_| |_|
 
-table CommandBatchFB {
+table TransactionFB {
       Commands: [StateMachineFB];
 }
 
@@ -756,7 +744,7 @@ union StateMachinePayloadFB {
       CuePlayerFB,
       DiscoveredServiceFB,
       ClockFB,
-      CommandBatchFB,
+      TransactionFB,
       PinMappingFB,
       PinWidgetFB
 }

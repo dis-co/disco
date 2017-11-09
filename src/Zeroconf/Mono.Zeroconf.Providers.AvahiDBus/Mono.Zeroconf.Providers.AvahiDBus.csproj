@@ -8,7 +8,7 @@
     <ProjectGuid>{EF6ED6D1-D201-42ED-B680-5A77641BEB77}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AssemblyName>Mono.Zeroconf.Providers.AvahiDBus</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <UseParentDirectoryAsNamespace>true</UseParentDirectoryAsNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
@@ -62,7 +62,7 @@
     <Compile Include="Mono.Zeroconf.Providers.AvahiDBus\ErrorCode.cs" />
   </ItemGroup>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v5.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
       <ItemGroup>
         <Reference Include="Mono.Posix">
           <HintPath>..\..\..\packages\Mono.Posix\lib\net40\Mono.Posix.dll</HintPath>

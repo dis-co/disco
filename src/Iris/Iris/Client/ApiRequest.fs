@@ -131,7 +131,7 @@ type ApiRequest =
     | Update (CommandBatch batch) ->
       batch
       |> Binary.toOffset builder
-      |> withPayload ParameterFB.CommandBatchFB ApiCommandFB.BatchFB
+      |> withPayload ParameterFB.TransactionFB ApiCommandFB.BatchFB
 
     | Update (AddCuePlayer    player as cmd)
     | Update (UpdateCuePlayer player as cmd)
@@ -359,13 +359,13 @@ type ApiRequest =
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
 
-    | ApiCommandFB.BatchFB, ParameterFB.CommandBatchFB ->
+    | ApiCommandFB.BatchFB, ParameterFB.TransactionFB ->
       either {
         let! commands =
-          let batchish = fb.Parameter<CommandBatchFB>()
+          let batchish = fb.Parameter<TransactionFB>()
           if batchish.HasValue then
             let batch = batchish.Value
-            StateMachineBatch.FromFB batch
+            Transaction.FromFB batch
           else
             "Empty CommandBatchFB payload"
             |> Error.asParseError "ApiRequest.FromFB"

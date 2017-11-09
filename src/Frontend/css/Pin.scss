@@ -1,3 +1,5 @@
+@import "values";
+
 $base-height: 25px;
 $row-height: 17px;
 $pin-width: 120px;
@@ -14,7 +16,24 @@ $even-row: #EBEBEB;
     // When hightlighted we want a stronger top border
     border-top-width: 2px;
   }
+  &.iris-forbidden {
+    // When hightlighted we want a stronger top border
+    cursor: not-allowed;
+    border-color: $pin-border-offline !important;
+    background-color: $warning !important;
+  }
   &.iris-cue-selected {
+    background-color: $highlight-lightblue;
+    border-color: $highlight-lightblue
+  }
+}
+
+.iris-current-cue {
+  border: 2px solid red !important;
+}
+
+.iris-cuegroup {
+  & .iris-cuegroup-selected {
     background-color: $highlight-lightblue;
     border-color: $highlight-lightblue
   }
@@ -186,4 +205,3 @@ $even-row: #EBEBEB;
     }
   }
 }
-

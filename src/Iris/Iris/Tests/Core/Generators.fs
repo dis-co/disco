@@ -55,6 +55,7 @@ module Generators =
     | null -> null
     | _ -> str |> Encoding.UTF8.GetBytes |> Convert.ToBase64String
 
+  let nonNullStringGen = Arb.generate<Guid> |> Gen.map string
   let stringGen = Arb.generate<string> |> Gen.map maybeEncode
   let stringsGen = Gen.arrayOfLength 2 stringGen
   let intGen = Arb.generate<int>
@@ -692,7 +693,7 @@ module Generators =
   let cueReferenceGen = gen {
       let! id = idGen
       let! cue = idGen
-      let! af = intGen
+      let! af = boolGen
       let! dur = intGen
       let! pw = intGen
       return
@@ -705,30 +706,20 @@ module Generators =
 
   let cueGroupGen = gen {
       let! id = idGen
-      let! nm = nameGen
+      let! nm = maybeGen (Gen.map Measure.name nonNullStringGen)
+      let! af = boolGen
       let! refs = Gen.arrayOf cueReferenceGen
       return
         { Id = id
           Name = nm
+          AutoFollow = af
           CueRefs = refs }
     }
-
-  let headlineGen = gen {
-      let! id = idGen
-      let! content = stringGen
-      return Headline (id, content)
-    }
-
-  let cuelistItemGen =
-    Gen.oneof [
-      headlineGen
-      Gen.map CueGroup cueGroupGen
-    ]
 
   let cuelistGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! items = Gen.arrayOf cuelistItemGen
+      let! items = Gen.arrayOf cueGroupGen
       return
         { Id = id
           Name = nm
@@ -785,6 +776,7 @@ module Generators =
       let! prev = idGen
       let! rmw = intGen
       let! locked = boolGen
+      let! active = boolGen
       let! lcd = maybeGen idGen
       let! lcr = maybeGen idGen
       let! cuelist = maybeGen idGen
@@ -792,6 +784,7 @@ module Generators =
         { Id = id
           Name = nm
           Locked = locked
+          Active = active
           CueListId = cuelist
           Selected = sel
           CallId = call
@@ -1086,7 +1079,7 @@ module Generators =
       Gen.map LogMsg                  logeventGen ]
 
   let stateMachineBatchGen =
-    Gen.map StateMachineBatch (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
+    Gen.map Transaction (simpleStateMachineGen |> Gen.oneof |> Gen.listOf)
 
   let private commandBatchGen =
     Gen.map CommandBatch stateMachineBatchGen

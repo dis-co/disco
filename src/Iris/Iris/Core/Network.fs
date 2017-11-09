@@ -152,12 +152,12 @@ module Network =
         socket.Bind(endpoint)
         socket.Listen(1)
         socket.Close()
-      with
-        | exn ->
-          return!
-            exn.Message
-            |> Error.asSocketError (tag "ensureAvailability")
-            |> Either.fail
+      with _ ->
+        return!
+          port
+          |> sprintf "Address %O:%O already in use" ip
+          |> Error.asSocketError (tag "ensureAvailability")
+          |> Either.fail
     }
 
   #endif

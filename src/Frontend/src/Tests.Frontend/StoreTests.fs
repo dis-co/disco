@@ -72,9 +72,9 @@ module Store =
 
     withStore <| fun group store ->
       test "should add a group to the store" <| fun finish ->
-        equals 0 store.State.PinGroups.Count
+        equals 0 (PinGroupMap.count store.State.PinGroups)
         store.Dispatch <| AddPinGroup(group)
-        equals 1 store.State.PinGroups.Count
+        equals 1 (PinGroupMap.count store.State.PinGroups)
         finish ()
 
     (* ---------------------------------------------------------------------- *)
@@ -85,7 +85,7 @@ module Store =
 
         store.Dispatch <| AddPinGroup(group)
 
-        equals true (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+        equals true (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
         equals true (store.State.PinGroups.[group.ClientId,group.Id].Name = name1)
 
         let updated = { group with Name = name2 }
@@ -112,9 +112,9 @@ module Store =
         |> AddPinGroup
         |> store.Dispatch
 
-        equals true  (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+        equals true  (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
         store.Dispatch <| RemovePinGroup(group)
-        equals false (store.State.PinGroups.ContainsGroup group.ClientId group.Id)
+        equals false (PinGroupMap.containsGroup group.ClientId group.Id store.State.PinGroups)
 
         finish()
 
@@ -160,7 +160,7 @@ module Store =
             group.ClientId
             [| "Ho" |]
         store.Dispatch <| AddPin(pin)
-        equals 0 store.State.PinGroups.Count
+        equals 0 (PinGroupMap.count store.State.PinGroups)
         finish ()
 
     (* ---------------------------------------------------------------------- *)
@@ -595,9 +595,9 @@ module Store =
       test "should redo an undone change" <| fun finish ->
         store.Dispatch <| AddPinGroup(group)
         store.Undo()
-        equals 0 store.State.PinGroups.Count
+        equals 0 (PinGroupMap.count store.State.PinGroups)
         store.Redo()
-        equals 1 store.State.PinGroups.Count
+        equals 1 (PinGroupMap.count store.State.PinGroups)
         finish()
 
     (* ---------------------------------------------------------------------- *)

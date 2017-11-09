@@ -114,6 +114,8 @@ module Id =
 
   let create() = IrisId.Create()
 
+  let prefix (id:IrisId) = id.Prefix()
+
   let decodeWith (t: int -> byte) =
     [| 0 .. 15 |]
     |> Array.map t

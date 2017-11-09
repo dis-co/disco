@@ -226,6 +226,7 @@ module TestData =
     { Id = IrisId.Create()
       Name = rndname ()
       Locked = rndbool ()
+      Active = rndbool ()
       CueListId = rndopt()
       Selected = index (rand.Next(0,1000))
       CallId = IrisId.Create()
@@ -248,7 +249,7 @@ module TestData =
   let mkCueRef () : CueReference =
     { Id = IrisId.Create()
       CueId = IrisId.Create()
-      AutoFollow = rndint()
+      AutoFollow = rndbool()
       Duration = rndint()
       Prewait = rndint() }
 
@@ -256,7 +257,10 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create()
+      Name = Some (rndname())
+      AutoFollow = false
+      CueRefs = mkCueRefs() }
 
   let mkCueGroups () : CueGroup array =
     [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]

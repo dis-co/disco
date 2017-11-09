@@ -30,7 +30,7 @@ open SharpYaml.Serialization
 type CueReferenceYaml() =
   [<DefaultValue>] val mutable Id: string
   [<DefaultValue>] val mutable CueId: string
-  [<DefaultValue>] val mutable AutoFollow: int
+  [<DefaultValue>] val mutable AutoFollow: bool
   [<DefaultValue>] val mutable Duration: int
   [<DefaultValue>] val mutable Prewait: int
 
@@ -68,11 +68,33 @@ type CueReferenceYaml() =
 type CueReference =
   { Id:         CueRefId
     CueId:      CueId
-    AutoFollow: int
+    AutoFollow: bool
     Duration:   int
     Prewait:    int
-    //Trigger:  Event option
+   //Trigger:  Event option
   }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (ref:CueReference) -> ref.Id),
+    (fun id (ref:CueReference) -> { ref with Id = id })
+
+  static member CueId_ =
+    (fun (ref:CueReference) -> ref.CueId),
+    (fun cueId (ref:CueReference) -> { ref with CueId = cueId })
+
+  static member AutoFollow_ =
+    (fun (ref:CueReference) -> ref.AutoFollow),
+    (fun autoFollow (ref:CueReference) -> { ref with AutoFollow = autoFollow })
+
+  static member Duration_ =
+    (fun (ref:CueReference) -> ref.Duration),
+    (fun duration (ref:CueReference) -> { ref with Duration = duration })
+
+  static member Prewait_ =
+    (fun (ref:CueReference) -> ref.Prewait),
+    (fun prewait (ref:CueReference) -> { ref with Prewait = prewait })
 
   // ** FromFB
 
@@ -139,3 +161,39 @@ type CueReference =
     yaml.ToCueReference()
 
   #endif
+
+// * CueReference module
+
+[<RequireQualifiedAccess>]
+module CueReference =
+
+  open Aether
+
+  // ** create
+
+  let create (cueId: CueId) =
+    { Id = IrisId.Create()
+      CueId = cueId
+      AutoFollow = false
+      Duration = -1
+      Prewait = -1 }
+
+  // ** ofCue
+
+  let ofCue (cue: Cue) = create cue.Id
+
+  // ** getters
+
+  let id = Optic.get CueReference.Id_
+  let cueId = Optic.get CueReference.CueId_
+  let autoFollow = Optic.get CueReference.AutoFollow_
+  let duration = Optic.get CueReference.Duration_
+  let prewait = Optic.get CueReference.Prewait_
+
+  // ** setters
+
+  let setId = Optic.set CueReference.Id_
+  let setCueId = Optic.set CueReference.CueId_
+  let setAutoFollow = Optic.set CueReference.AutoFollow_
+  let setDuration = Optic.set CueReference.Duration_
+  let setPrewait = Optic.set CueReference.Prewait_

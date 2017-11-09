@@ -24,6 +24,10 @@ module SerializationTests =
 
   let rndport() = rand.Next(0,65535) |> uint16 |> port
 
+  let rndbool() = rand.Next(0,2) |> function
+    | 0 -> false
+    | _ -> true
+
   let rndint() = rand.Next()
 
   let mkBytes _ =
@@ -87,7 +91,7 @@ module SerializationTests =
   let mkCueRef () : CueReference =
     { Id = IrisId.Create()
       CueId = IrisId.Create()
-      AutoFollow = rndint()
+      AutoFollow = rndbool()
       Duration = rndint()
       Prewait = rndint() }
 
@@ -95,14 +99,13 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = IrisId.Create(); Name = rndname(); CueRefs = mkCueRefs() }
+    { Id = IrisId.Create()
+      Name = Some (rndname())
+      AutoFollow = false
+      CueRefs = mkCueRefs() }
 
   let mkCueListItems () =
-    [| for n in 0 .. rand.Next(1,20) do
-        if n % 2 = 0 then
-          yield CueListItem.createHeadline (sprintf "Hello %d" n)
-        else
-          yield CueGroup (mkCueGroup()) |]
+    [| for n in 0 .. rand.Next(1,20) -> mkCueGroup() |]
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
@@ -185,6 +188,7 @@ module SerializationTests =
     { Id = IrisId.Create()
       Name = rndname ()
       Locked = false
+      Active = false
       Selected = index (rand.Next(0,1000))
       RemainingWait = rand.Next(0,1000)
       CueListId = rndopt ()
@@ -218,7 +222,7 @@ module SerializationTests =
 
     test "should serialize/deserialize StateMachineBatch correctly" <| fun finish ->
       let batch =
-        StateMachineBatch
+        Transaction
           [ AddCue                  <| mkCue ()
             UpdateCue               <| mkCue ()
             RemoveCue               <| mkCue ()

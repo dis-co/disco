@@ -1023,7 +1023,7 @@ type CueReferenceFB =
   abstract IdLength: int
   abstract CueId: int -> byte
   abstract CueIdLength: int -> byte
-  abstract AutoFollow: int
+  abstract AutoFollow: bool
   abstract Duration: int
   abstract Prewait: int
 
@@ -1032,7 +1032,7 @@ type CueReferenceFBConstructor =
   abstract StartCueReferenceFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddCueId: builder: FlatBufferBuilder * id: VectorOffset -> unit
-  abstract AddAutoFollow: builder: FlatBufferBuilder * value: int -> unit
+  abstract AddAutoFollow: builder: FlatBufferBuilder * value:bool -> unit
   abstract AddDuration: builder: FlatBufferBuilder * value: int -> unit
   abstract AddPrewait: builder: FlatBufferBuilder * value: int -> unit
   abstract EndCueReferenceFB: builder: FlatBufferBuilder -> Offset<'a>
@@ -1047,6 +1047,7 @@ type CueGroupFB =
   abstract Id: int -> byte
   abstract IdLength: int -> byte
   abstract Name: string
+  abstract AutoFollow: bool
   abstract CueRefs: int -> CueReferenceFB
   abstract CueRefsLength: int
 
@@ -1055,6 +1056,7 @@ type CueGroupFBConstructor =
   abstract StartCueGroupFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddAutoFollow: builder: FlatBufferBuilder * flag: bool -> unit
   abstract AddCueRefs: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
   abstract EndCueGroupFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueGroupFB: buffer: ByteBuffer -> CueGroupFB
@@ -1157,51 +1159,12 @@ let PinGroupMapFB : PinGroupMapFBConstructor = failwith "JS only"
 // | |__| |_| |  __/ |___| \__ \ |_|  _| | |_) |
 //  \____\__,_|\___|_____|_|___/\__|_|   |____/
 
-type HeadlineFB =
-  abstract Id: int -> byte
-  abstract IdLength: int
-  abstract Content: string
-
-type HeadlineFBConstructor =
-  abstract prototype: HeadlineFB with get, set
-  abstract StartHeadlineFB: builder:FlatBufferBuilder -> unit
-  abstract AddId: builder:FlatBufferBuilder * id:VectorOffset -> unit
-  abstract AddContent: builder:FlatBufferBuilder * content:Offset<'a> -> unit
-  abstract EndHeadlineFB: builder:FlatBufferBuilder -> Offset<HeadlineFB>
-  abstract GetRootAsHeadlineFB: buffer: ByteBuffer -> HeadlineFB
-  abstract CreateIdVector: builder: FlatBufferBuilder * byte array -> VectorOffset
-  abstract Create: unit -> HeadlineFB
-
-let HeadlineFB: HeadlineFBConstructor = failwith "JS onlye"
-
-type CueListItemTypeFB = int
-
-type CueListItemTypeFBConstructor =
-  abstract HeadlineFB: CueListItemTypeFB
-  abstract CueGroupFB: CueListItemTypeFB
-
-let CueListItemTypeFB: CueListItemTypeFBConstructor = failwith "JS only"
-
-type CueListItemFB =
-  abstract Item: 'a -> 'a
-  abstract ItemType: int
-
-type CueListItemFBConstructor =
-  abstract prototype: CueListItemFB with get, set
-  abstract StartCueListItemFB: builder:FlatBufferBuilder -> unit
-  abstract AddItemType: builder:FlatBufferBuilder * tipe:CueListItemTypeFB -> unit
-  abstract AddItem: builder:FlatBufferBuilder * offset:Offset<'a> -> unit
-  abstract GetRootAsCueListItemFB: buffer: ByteBuffer -> CueListItemFB
-  abstract EndCueListItemFB: builder:FlatBufferBuilder -> Offset<CueListItemFB>
-
-let CueListItemFB : CueListItemFBConstructor = failwith "JS only"
-
 type CueListFB =
   abstract Id: int -> byte
   abstract IdLength: int
   abstract Name: string
   abstract ItemsLength: int
-  abstract Items: int -> CueListItemFB
+  abstract Items: int -> CueGroupFB
 
 type CueListFBConstructor =
   abstract prototype: CueListFB with get, set
@@ -1212,7 +1175,7 @@ type CueListFBConstructor =
   abstract EndCueListFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsCueListFB: buffer: ByteBuffer -> CueListFB
   abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
-  abstract CreateItemsVector: builder: FlatBufferBuilder * Offset<CueListItemFB> array -> Offset<'a>
+  abstract CreateItemsVector: builder: FlatBufferBuilder * Offset<CueGroupFB> array -> Offset<'a>
 
 let CueListFB : CueListFBConstructor = failwith "JS only"
 
@@ -1625,6 +1588,7 @@ type CuePlayerFB =
   abstract IdLength: int
   abstract Name: string
   abstract Locked: bool
+  abstract Active: bool
   abstract Selected: int
   abstract RemainingWait: int
   abstract CueListId: int -> byte
@@ -1646,6 +1610,7 @@ type CuePlayerFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddLocked: builder: FlatBufferBuilder * locked:bool -> unit
+  abstract AddActive: builder: FlatBufferBuilder * active:bool -> unit
   abstract AddSelected: builder: FlatBufferBuilder * int -> unit
   abstract AddRemainingWait: builder: FlatBufferBuilder * int -> unit
   abstract AddCueListId: builder: FlatBufferBuilder * id: VectorOffset -> unit
@@ -1858,20 +1823,20 @@ let ByteFB: ByteFBConstructor = failwith "JS only"
 // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
 //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
 
-type CommandBatchFB =
+type TransactionFB =
   abstract Commands: int -> StateMachineFB
   abstract CommandsLength: int
 
-type CommandBatchFBConstructor =
-  abstract prototype: CommandBatchFB with get, set
-  abstract StartCommandBatchFB: builder:FlatBufferBuilder -> unit
+type TransactionFBConstructor =
+  abstract prototype: TransactionFB with get, set
+  abstract StartTransactionFB: builder:FlatBufferBuilder -> unit
   abstract AddCommands: builder:FlatBufferBuilder * commands:Offset<StateMachineFB> -> unit
-  abstract EndCommandBatchFB: builder:FlatBufferBuilder -> Offset<CommandBatchFB>
-  abstract GetRootAsCommandBatchFB: bytes:ByteBuffer -> CommandBatchFB
+  abstract EndTransactionFB: builder:FlatBufferBuilder -> Offset<TransactionFB>
+  abstract GetRootAsTransactionFB: bytes:ByteBuffer -> TransactionFB
   abstract CreateCommandsVector: builder: FlatBufferBuilder * Offset<StateMachineFB> array -> Offset<'a>
-  abstract Create: unit -> CommandBatchFB
+  abstract Create: unit -> TransactionFB
 
-let CommandBatchFB: CommandBatchFBConstructor = failwith "JS only"
+let TransactionFB: TransactionFBConstructor = failwith "JS only"
 
 //  ____  _ _               __  __
 // / ___|| (_) ___ ___  ___|  \/  | __ _ _ __
@@ -1999,7 +1964,7 @@ type StateMachinePayloadFBConstructor =
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
-  abstract CommandBatchFB: StateMachinePayloadFB
+  abstract TransactionFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -2024,7 +1989,7 @@ type StateMachineFB =
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
   abstract SlicesMapFB: SlicesMapFB
-  abstract CommandBatchFB: CommandBatchFB
+  abstract TransactionFB: TransactionFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =
