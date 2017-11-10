@@ -28,7 +28,7 @@ module CueListInspector =
           ul [] [
             li [] [ str (string ref.CueId + " (orphaned)") ]
             li [] [
-              table [ Class "iris-table" ] [
+              table [ ] [
                 tbody [] [
                   tr [] [
                     td [] [ str "Duration" ]
@@ -55,7 +55,7 @@ module CueListInspector =
               Common.link (string cue.Name) (fun () -> Select.cue dispatch cue)
             ]
             li [] [
-              table [ Class "iris-table" ] [
+              table [ ] [
                 tbody [] [
                   tr [] [
                     td [] [ str "Duration" ]

@@ -160,3 +160,31 @@ html, body {
 .warning {
   background-color: $warning;
 }
+
+.iris-inspector {
+  .bar {
+    height: 25px;
+    padding-left: 6px;
+    background-color: lightgrey;
+
+    span.headline {
+      font-size: 1.5em;
+      font-weight: "bold";
+      line-height: 25px;
+    }
+
+    .buttons {
+      height: 25px;
+    }
+
+    button {
+      height: 100%;
+      width: 40px;
+    }
+  }
+
+  .empty {
+    padding-top: 10px;
+    text-align: "center";
+  }
+}

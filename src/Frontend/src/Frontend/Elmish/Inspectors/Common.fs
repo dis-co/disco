@@ -66,75 +66,24 @@ module Common =
 
   let bar dispatch (model: Model) =
     let disabled = List.isEmpty model.history.previous
-    div [
-      Style [
-        Height "25px"
-        PaddingLeft "6px"
-        BackgroundColor "lightgrey"
-      ]
-    ] [
-      span [
-        Style [ FontSize "1.5em"; FontWeight "bold"; LineHeight "25px" ]
-      ] [ str "Inspector" ]
-      div [
-        Class "pull-right"
-        Style [ Height "25px" ]
-      ] [
+    div [ Class "bar" ] [
+      span [ Class "headline" ] [ str "Inspector" ]
+      div [ Class "buttons pull-right " ] [
         button [
-          Style [
-            Height "100%"
-            Width "40px"
-          ]
           Disabled disabled
           OnClick (fun _ -> Navigate.back dispatch)
         ] [ str "<"]
         button [
-          Style [
-            Height "100%"
-            Width "40px"
-          ]
           Disabled disabled
           OnClick (fun _ -> Navigate.forward dispatch)
         ] [ str ">"]
       ]
     ]
 
-  let inline padding5() =
-    Style [PaddingLeft "5px"]
-
-  let inline topBorder() =
-    Style [BorderTop "1px solid lightgray"]
-
-  let inline padding5AndTopBorder() =
-    Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
-
-  let leftColumn =
-    Style [
-      PaddingLeft  "10px"
-      BorderTop   "1px solid lightgray"
-      BorderRight "1px solid lightgray"
-    ]
-
-  let rightColumn =
-    Style [
-      PaddingLeft "10px"
-      BorderTop   "1px solid lightgray"
-    ]
-
-  let leftSub =
-    Style [
-      BorderRight  "1px solid lightgray"
-    ]
-
-  let rightSub =
-    Style [
-      PaddingLeft "10px"
-    ]
-
   let row (tag: string) children =
     tr [Key tag] [
-      td [Class "width-10";  leftColumn ] [str tag]
-      td [Class "width-30"; rightColumn ] children
+      td [] [str tag]
+      td [] children
     ]
 
   let stringRow (tag: string) (value: string) =
@@ -143,8 +92,8 @@ module Common =
 
   let toHeader (idx: int) (title: string) =
     match idx with
-    | 0 -> th [ leftSub  ] [ str title ]
-    | _ -> th [ rightSub ] [ str title ]
+    | 0 -> th [ ] [ str title ]
+    | _ -> th [ ] [ str title ]
 
   let tableRow (tag: string) headers children =
     row tag [
@@ -160,10 +109,6 @@ module Common =
     let active = if value then "pressed" else ""
     row tag [
       div [
-        Style [
-          Height "15px"
-          Width "15px"
-        ]
         Class ("iris-button " + active)
         OnClick (fun _ -> f (not value))
       ] []
@@ -172,12 +117,7 @@ module Common =
   let header (title: string) =
     thead [] [
       tr [] [
-        th [
-          Style [
-            Padding "5px 0 5px 10px"
-            FontSize "1.2em"
-          ]
-        ] [
+        th [] [
           str title
         ]
       ]
@@ -186,15 +126,15 @@ module Common =
   let footer =
     tfoot [] [
       tr [] [
-        td [ leftColumn  ] []
-        td [ rightColumn ] []
+        td [ ] []
+        td [ ] []
       ]
     ]
 
   let render dispatch model (title: string) children =
-    div [] [
+    div [ Class "iris-inspector" ] [
       bar dispatch model
-      table [Class "iris-table"] [
+      table [] [
         header title
         tbody [] children
         footer

@@ -24,14 +24,9 @@ open Types
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
 let private empty dispatch model =
-  div [] [
+  div [ Class "iris-inspector" ] [
     Common.bar dispatch model
-    div [
-      Style [
-        PaddingTop "10px"
-        TextAlign "center"
-      ]
-    ] [
+    div [ Class "empty" ] [
       str "Nothing selected."
     ]
   ]

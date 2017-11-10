@@ -26,8 +26,8 @@ module PinInspector =
 
   let private renderValue (tag: string) (value: string) =
     tr [Key tag] [
-      td [Class "width-5";  Common.leftSub  ] [str (tag + ":")]
-      td [Class "width-30"; Common.rightSub ] [str value]
+      td [] [str (tag + ":")]
+      td [] [str value]
     ]
 
   let private renderSlices (tag: string) (slices: Slices) =
@@ -54,24 +54,24 @@ module PinInspector =
             match Map.tryFind client state.Clients with
             | Some client ->
               tr [ Key (string pin.Id) ] [
-                td [ Common.leftSub ] [
+                td [ ] [
                   Common.link
                     (string client.Name)
                     (fun _ -> Select.client dispatch client)
                 ]
-                td [ Common.rightSub ] [ str (string client.Status) ]
+                td [ ] [ str (string client.Status) ]
               ]
             | None ->
               match ClientConfig.tryFind client state.Project.Config.Clients with
               | Some config ->
                 tr [ Key (string pin.Id) ] [
-                  td [ Common.leftSub  ] [ str (config.Id.Prefix())   ]
-                  td [ Common.rightSub ] [ str "Offline" ]
+                  td [ ] [ str (config.Id.Prefix())   ]
+                  td [ ] [ str "Offline" ]
                 ]
               | None ->
                 tr [ Key (string pin.Id) ] [
-                  td [ Common.leftSub  ] [ str ((client.Prefix()) + " (orphaned)") ]
-                  td [ Common.rightSub ] [ str "Offline" ]
+                  td [ ] [ str ((client.Prefix()) + " (orphaned)") ]
+                  td [ ] [ str "Offline" ]
                 ])
       Common.tableRow tag [ ""; "" ] clients
 
