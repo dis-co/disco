@@ -49,9 +49,17 @@ module Values =
   let [<Literal>] gridLayoutColumns = 20
   let [<Literal>] gridLayoutWidth = 1600
   let [<Literal>] gridLayoutRowHeight = 30
-  let [<Literal>] jqueryLayoutEastSize = 350
+
+  let inspectorPanelSize = 350
 
 module TabsView =
+  /// this callback receives the list of widgets (untyped) from the grid layout
+  /// and saves it back to local storage
+  let private updateLayout dispatch model widgets =
+    Layout.setWidgets widgets model.layout
+    |> UpdateLayout
+    |> dispatch
+
   let root dispatch (model: Model) =
     div [ Class "iris-tab-container" ] [
       div [Class "tabs is-boxed"] [
@@ -67,8 +75,8 @@ module TabsView =
           "width" => Values.gridLayoutWidth
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
-          "layout" => model.layout
-          "onLayoutChange" => (UpdateLayout >> dispatch)
+          "layout" => model.layout.Widgets
+          "onLayoutChange" => updateLayout dispatch model
         ] [
           for KeyValue(id, widget) in model.widgets do
             if id <> widget.Id then
@@ -101,18 +109,43 @@ let view dispatch (model: Model) =
         ]
       ]
     ]
-
     Notifications.root
   ]
+
+let initializeLayout model dispatch () =
+  let onOpen name =
+    if name = "east" then
+      InspectorAction.Open
+      |> UpdateInspector
+      |> dispatch
+
+  let onClose name =
+    if name = "east" then
+      InspectorAction.Close
+      |> UpdateInspector
+      |> dispatch
+
+  let onResize name _ state =
+    if name = "east" then
+      !!state?outerWidth
+      |> InspectorAction.Resize
+      |> UpdateInspector
+      |> dispatch
+
+  let options =
+    %[ "east__size"       ==> model.layout.Inspector.Size
+       "east__initClosed" ==> not model.layout.Inspector.IsOpen
+       "onopen"           ==> onOpen
+       "onclose"          ==> onClose
+       "onresize_end"     ==> onResize ]
+
+  /// initialize the north-east-south-west layout
+  !!jQuery("#ui-layout-container")?layout(options)
 
 let root model dispatch =
   hookViewWith
     equalsRef
-    (fun () ->
-      !!jQuery("#ui-layout-container")
-        ?layout(
-          %[ "east__size" ==> Values.jqueryLayoutEastSize /// set default size of inspector pane
-             "east__initClosed" ==> true ])) /// don't show inspector by default
+    (initializeLayout model dispatch)
     (fun () -> printfn "App unmounted!")
     (view dispatch)
     model

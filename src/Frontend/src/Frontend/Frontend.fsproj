@@ -7,6 +7,7 @@
   <ItemGroup>
     <Compile Include="Notifications.fs" />
     <Compile Include="Browser.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="Crypto.fs" />
     <Compile Include="Worker.fs" />
     <Compile Include="MockData.fs" />
