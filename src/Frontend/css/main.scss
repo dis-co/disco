@@ -52,6 +52,10 @@ html, body {
   padding: 10px 10px 28px 10px;
 }
 
+.navbar-dropdown {
+  min-width: 120px;
+}
+
 .navbar-item {
   &.columns {
     margin: 2px;

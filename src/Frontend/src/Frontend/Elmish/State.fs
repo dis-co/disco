@@ -13,18 +13,18 @@ open Types
 open Helpers
 
 let loadProject dispatch site (info: IProjectInfo) =
-    Lib.loadProject(info.name, info.username, info.password, site, None)
-    |> Promise.bind (function
-      | Some err ->
-        // Get project sites and machine config
-        Lib.getProjectSites(info.name, info.username, info.password)
-        |> Promise.map (fun sites ->
-          // Ask user to create or select a new config
-          Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
-      | None ->
-        dispatch
-        |> displayAvailableProjectsModal
-        |> Promise.lift)
+  Lib.loadProject(info.name, info.username, info.password, site, None)
+  |> Promise.bind (function
+    | Some err ->
+      // Get project sites and machine config
+      Lib.getProjectSites(info.name, info.username, info.password)
+      |> Promise.map (fun sites ->
+        // Ask user to create or select a new config
+        Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
+    | None ->
+      dispatch
+      |> displayAvailableProjectsModal
+      |> Promise.lift)
 
 let handleModalResult (modal: IModal) dispatch =
   match modal with
@@ -42,6 +42,10 @@ let handleModalResult (modal: IModal) dispatch =
     match m.Result with
     | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.EditSettings as m ->
+    { m.UserConfig with useRightClick = m.Result }
+    |> UpdateUserConfig
+    |> dispatch
   | :? Modal.CreateCue as m ->
     match m.Result with
     | null -> ()
@@ -101,9 +105,9 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
   let postCmd cmd =
     fun () -> StateMachine.Command cmd |> ClientContext.Singleton.Post
   //  ctrl, shift, key, action
-  [| true,  false, Codes.z,         postCmd AppCommand.Undo
-     true,  true,  Codes.z,         postCmd AppCommand.Redo
-     true,  false, Codes.s,         postCmd AppCommand.Save
+  [| true,  false, Codes.z,         Lib.undo
+     true,  true,  Codes.z,         Lib.redo
+     true,  false, Codes.s,         Lib.saveProject
      true,  false, Codes.i,         Lib.toggleInspector
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]

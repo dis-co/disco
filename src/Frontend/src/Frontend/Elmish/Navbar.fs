@@ -103,14 +103,12 @@ module private ProjectMenu =
 
 let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
   let onClick dispatch id _ =
-    let start f msg =
-      f() |> Promise.iter (fun () -> printfn "%s" msg)
     match id with
     | ProjectMenu.create   -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
     | ProjectMenu.load     -> Modal.LoadProject() :> IModal |> OpenModal |> dispatch
-    | ProjectMenu.save     -> start Lib.saveProject "Project has been saved"
-    | ProjectMenu.unload   -> start Lib.unloadProject "Project has been unloaded"
-    | ProjectMenu.shutdown -> start Lib.shutdown "Iris has been shut down"
+    | ProjectMenu.save     -> Lib.saveProject()
+    | ProjectMenu.unload   -> Lib.unloadProject()
+    | ProjectMenu.shutdown -> Lib.shutdown()
     | other                -> failwithf "Unknow navbar option: %s" other
     withDelay onOpen
   div [
@@ -127,7 +125,7 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
     div [Class "navbar-dropdown"] [
       navbarItem (onClick props.Dispatch) ProjectMenu.create   None
       navbarItem (onClick props.Dispatch) ProjectMenu.load     None
-      navbarItem (onClick props.Dispatch) ProjectMenu.save     None
+      navbarItem (onClick props.Dispatch) ProjectMenu.save     (Some "Ctrl-s")
       navbarItem (onClick props.Dispatch) ProjectMenu.unload   None
       navbarItem (onClick props.Dispatch) ProjectMenu.shutdown None
     ]
@@ -140,7 +138,10 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
 /// |_____\__,_|_|\__|_|  |_|\___|_| |_|\__,_|
 
 module private EditMenu =
+  let [<Literal>] undo = "Undo"
+  let [<Literal>] redo = "Redo"
   let [<Literal>] resetDirty = "Reset Dirty"
+  let [<Literal>] settings = "Settings"
 
 let private editMenu onOpen (state:ViewState) (props:ViewProps) =
   let onClick dispatch id _ =
@@ -148,6 +149,13 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
       f() |> Promise.iter (fun () -> printfn "%s" msg)
     match id with
     | EditMenu.resetDirty -> Option.iter Lib.resetDirty props.Model.state
+    | EditMenu.undo -> Lib.undo()
+    | EditMenu.redo -> Lib.redo()
+    | EditMenu.settings ->
+      props.Model.userConfig
+      |> Modal.EditSettings :> IModal
+      |> OpenModal
+      |> dispatch
     | _ -> ()
     withDelay onOpen
   div [
@@ -162,57 +170,11 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Edit"]
     div [Class "navbar-dropdown"] [
-      div [ Class "navbar-item"] [
-        navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
-      ]
-    ]
-  ]
-
-///   ____             __ _       __  __
-///  / ___|___  _ __  / _(_) __ _|  \/  | ___ _ __  _   _
-/// | |   / _ \| '_ \| |_| |/ _` | |\/| |/ _ \ '_ \| | | |
-/// | |__| (_) | | | |  _| | (_| | |  | |  __/ | | | |_| |
-///  \____\___/|_| |_|_| |_|\__, |_|  |_|\___|_| |_|\__,_|
-///                         |___/
-
-module private ConfigMenu =
-  let [<Literal>] rightClick = "Use right click"
-
-let private configMenu onOpen (state:ViewState) (props:ViewProps) =
-  div [
-    classList [
-      "navbar-item has-dropdown", true
-      "is-active", state.ConfigMenuOpen
-    ]
-  ] [
-    a [
-      Class "navbar-link"
-      Style [!!("fontSize", "14px")]
-      OnClick (fun _ -> onOpen())
-    ] [str "Config"]
-    div [Class "navbar-dropdown"] [
-      div [
-        Class "navbar-item field"
-      ] [
-        div [ Class "control"; Style [ MarginRight "5px" ] ] [
-          input [
-            Type "checkbox"
-            Checked props.Model.userConfig.useRightClick
-            OnClick (fun _ ->
-              { props.Model.userConfig
-                  with useRightClick = not props.Model.userConfig.useRightClick }
-              |> UpdateUserConfig
-              |> props.Dispatch
-              withDelay onOpen)
-          ]
-        ]
-        label [
-          Class "label"
-          Style [ FontSize "12px"; FontWeight "normal" ]
-        ] [
-          str ConfigMenu.rightClick
-        ]
-      ]
+      navbarItem (onClick props.Dispatch) EditMenu.undo (Some "Ctrl-z")
+      navbarItem (onClick props.Dispatch) EditMenu.redo (Some "Ctrl-Z")
+      navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
+      div [ Class "navbar-divider" ] []
+      navbarItem (onClick props.Dispatch) EditMenu.settings None
     ]
   ]
 
@@ -339,7 +301,6 @@ type View(props) =
           div [Class "navbar-start"] [
             projectMenu this.toggleProject this.state this.props
             editMenu    this.toggleEdit    this.state this.props
-            configMenu  this.toggleConfig  this.state this.props
             windowsMenu this.toggleWindows this.state this.props
           ]
           div [Class "navbar-end"] [
