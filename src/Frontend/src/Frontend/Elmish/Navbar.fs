@@ -18,8 +18,14 @@ let private withDelay f =
   }
   |> Async.StartImmediate
 
-let private navbarItem cb opt =
-  a [Class "navbar-item"; OnClick (cb opt)] [str opt]
+let private navbarItem cb opt key =
+  let elem payload = div [ Class "column" ] [ str payload ]
+  div [ Class "columns navbar-item"; OnClick (cb opt) ] [
+    div [ Class "column is-two-thirds" ] [ str opt ]
+    div [ Class "column shortcut" ] [
+      Option.map str key |> Option.defaultValue (str "")
+    ]
+  ]
 
 type [<Pojo>] ViewProps =
   { Dispatch: Msg->unit
@@ -119,11 +125,11 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Project"]
     div [Class "navbar-dropdown"] [
-      navbarItem (onClick props.Dispatch) ProjectMenu.create
-      navbarItem (onClick props.Dispatch) ProjectMenu.load
-      navbarItem (onClick props.Dispatch) ProjectMenu.save
-      navbarItem (onClick props.Dispatch) ProjectMenu.unload
-      navbarItem (onClick props.Dispatch) ProjectMenu.shutdown
+      navbarItem (onClick props.Dispatch) ProjectMenu.create   None
+      navbarItem (onClick props.Dispatch) ProjectMenu.load     None
+      navbarItem (onClick props.Dispatch) ProjectMenu.save     None
+      navbarItem (onClick props.Dispatch) ProjectMenu.unload   None
+      navbarItem (onClick props.Dispatch) ProjectMenu.shutdown None
     ]
   ]
 
@@ -157,7 +163,7 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
     ] [str "Edit"]
     div [Class "navbar-dropdown"] [
       div [ Class "navbar-item"] [
-        navbarItem (onClick props.Dispatch) EditMenu.resetDirty
+        navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
       ]
     ]
   ]
@@ -266,21 +272,21 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Windows"]
     div [Class "navbar-dropdown"]
-      ([ WindowsMenu.log
-         WindowsMenu.inspector
-         WindowsMenu.graph
-         WindowsMenu.players
-         WindowsMenu.cues
-         WindowsMenu.cueLists
-         WindowsMenu.pinMappings
-         WindowsMenu.project
-         WindowsMenu.clusterSettings
-         WindowsMenu.clients
-         WindowsMenu.sessions
-         WindowsMenu.testWidget1
-         WindowsMenu.testWidget2
-         WindowsMenu.testWidget3 ]
-       |> List.map (navbarItem onClick))
+      ([ WindowsMenu.log,             None
+         WindowsMenu.inspector,       Some ("Ctrl-i")
+         WindowsMenu.graph,           None
+         WindowsMenu.players,         None
+         WindowsMenu.cues,            None
+         WindowsMenu.cueLists,        None
+         WindowsMenu.pinMappings,     None
+         WindowsMenu.project,         Some ("Ctrl-p")
+         WindowsMenu.clusterSettings, None
+         WindowsMenu.clients,         None
+         WindowsMenu.sessions,        None
+         WindowsMenu.testWidget1,     None
+         WindowsMenu.testWidget2,     None
+         WindowsMenu.testWidget3,     None ]
+       |> List.map (fun (tipe, key) -> navbarItem onClick tipe key))
   ]
 
 type View(props) =
