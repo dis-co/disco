@@ -350,8 +350,8 @@ let createWidget (id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0
         w = 8; h = 5
-        minW = 2; maxW = 20
-        minH = 2; maxH = 20 }
+        minW = 2
+        minH = 2 }
     member this.Render(dispatch, model) =
       com<GraphView,_,_>
         { Model = model

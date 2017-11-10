@@ -165,8 +165,8 @@ and [<Pojo>] WidgetLayout =
   { i: Guid; ``static``: bool
     x: int; y: int
     w: int; h: int
-    minW: int; maxW: int
-    minH: int; maxH: int }
+    minW: int
+    minH: int }
 
 and [<Pojo>] InspectorLayout =
   { IsOpen: bool

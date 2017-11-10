@@ -98,8 +98,8 @@ let createWidget(id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0
         w = 8; h = 5
-        minW = 4; maxW = 10
-        minH = 1; maxH = 10 }
+        minW = 4
+        minH = 1 }
     member this.Render(dispatch, model) =
       lazyViewWith
         (fun m1 m2 ->
