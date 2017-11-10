@@ -13,7 +13,6 @@
     <Compile Include="Mocha.fs" />
     <Compile Include="TypeTests.fs" />
     <Compile Include="SerializationTests.fs" />
-    <Compile Include="StorageTests.fs" />
     <Compile Include="StoreTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
