@@ -173,12 +173,23 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
     |> Notifications.error
 })
 
+// * undo
+
+let undo () =
+  AppCommand.Undo |> Command |> ClientContext.Singleton.Post
+
+// * redo
+
+let redo () =
+  AppCommand.Redo |> Command |> ClientContext.Singleton.Post
+
 // * shutdown
 
 let shutdown() =
   Shutdown |> postCommand
     (fun _ -> Notifications.info "The service has been shut down")
     Notifications.error
+  |> Promise.start
 
 // * saveProject
 
@@ -186,6 +197,7 @@ let saveProject() =
   SaveProject |> postCommand
     (fun _ -> Notifications.success "The project has been saved")
     Notifications.error
+  |> Promise.start
 
 // * unloadProject
 
@@ -195,6 +207,7 @@ let unloadProject() =
       Notifications.success "The project has been unloaded"
       Browser.location.reload())
     Notifications.error
+  |> Promise.start
 
 // * setLogLevel
 
