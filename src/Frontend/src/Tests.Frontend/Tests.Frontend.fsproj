@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Frontend/Browser.fs" />
+    <Compile Include="../Frontend/Storage.fs" />
     <Compile Include="../Frontend/Crypto.fs" />
     <Compile Include="../Frontend/Worker.fs" />
     <Compile Include="../Frontend/Client.fs" />
