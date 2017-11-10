@@ -6,6 +6,7 @@ open Fable.Import
 open Iris.Raft
 open Iris.Core
 open Iris.Core.Commands
+open Iris.Web.Core
 
 /// Keys for Browser localStorage
 module StorageKeys =
@@ -25,7 +26,6 @@ module Widgets =
   let [<Literal>] Clients       = "Clients"
   let [<Literal>] Sessions      = "Sessions"
   let [<Literal>] PinMapping    = "Pin Mappings"
-  let [<Literal>] InspectorView = "Inspector View"
   let [<Literal>] Test1         = "Test 1"
   let [<Literal>] Test2         = "Test 2"
   let [<Literal>] Test3         = "Test 3"
@@ -39,7 +39,7 @@ type IProjectInfo =
 type IWidget =
   abstract Id: Guid
   abstract Name: string
-  abstract InitialLayout: Layout
+  abstract InitialLayout: WidgetLayout
   abstract Render: Elmish.Dispatch<Msg> * Model -> React.ReactElement
 
 // Modal Dialog interfac
@@ -65,15 +65,21 @@ and Sorting =
     direction: Direction
   }
 
+and [<RequireQualifiedAccess>] InspectorAction =
+  | Open
+  | Close
+  | Resize of int
+
 /// Messages that can be dispatched to Elmish
 and Msg =
   | AddWidget of Guid * IWidget
   | RemoveWidget of Guid
   // | AddTab | RemoveTab
   | AddLog of LogEvent
-  | UpdateLayout of Layout[]
+  | UpdateLayout of Layout
   | UpdateUserConfig of UserConfig
   | UpdateState of State option
+  | UpdateInspector of InspectorAction
   | OpenModal of IModal
   | CloseModal of IModal * result: Choice<obj,unit>
   | RemoveSelectedDragItems
@@ -120,7 +126,7 @@ and [<RequireQualifiedAccess>] DragItems =
 /// Elmish state model
 and Model =
   { widgets: Map<Guid,IWidget>
-    layout: Layout[]
+    layout: Layout
     modal: IModal option
     state: State option
     logs: LogEvent list
@@ -155,12 +161,20 @@ and IUpdater =
   abstract Update: dragging:bool * index:int * value:obj -> unit
 
 /// Widget layout as understood by react-grid-layout
-and [<Pojo>] Layout =
+and [<Pojo>] WidgetLayout =
   { i: Guid; ``static``: bool
     x: int; y: int
     w: int; h: int
     minW: int; maxW: int
     minH: int; maxH: int }
+
+and [<Pojo>] InspectorLayout =
+  { IsOpen: bool
+    Size: int }
+
+and [<Pojo>] Layout =
+  { Widgets: WidgetLayout[]
+    Inspector: InspectorLayout }
 
 and IWidgetFactory =
   abstract CreateWidget: id: Guid option * name: string -> IWidget
@@ -176,3 +190,58 @@ let getWidgetFactory() =
 /// at the start of the program
 let initWidgetFactory(factory: IWidgetFactory) =
   singletonWidgetFactory <- Some factory
+
+
+module InspectorLayout =
+
+  let defaultLayout =
+    { IsOpen = false
+      Size = 350 }                      /// in pixels
+
+  let isOpen { IsOpen = isOpen } = isOpen
+  let size { Size = size } = size
+
+  let toggle inspector = { inspector with IsOpen = not inspector.IsOpen }
+  let setSize size inspector = { inspector with Size = size }
+  let setOpen isOpen inspector = { inspector with IsOpen = isOpen }
+
+module Layout =
+
+  let defaultLayout =
+    { Widgets = Array.empty
+      Inspector = InspectorLayout.defaultLayout }
+
+  let widgets ({ Widgets = widgets }:Layout) = widgets
+  let inspector { Inspector = inspector} = inspector
+
+  let setWidgets widget (layout:Layout) =
+    { layout with Widgets = widget }
+
+  let setInspector inspector (layout:Layout) =
+    { layout with Inspector = inspector }
+
+  let setInspectorSize width (layout:Layout) =
+    layout |> inspector |> InspectorLayout.setSize width |> flip setInspector layout
+
+  let setInspectorOpen isOpen (layout:Layout) =
+    layout |> inspector |> InspectorLayout.setOpen isOpen |> flip setInspector layout
+
+  let addWidget widget (layout:Layout) =
+    layout
+    |> widgets
+    |> flip Array.append [| widget |]
+    |> flip setWidgets layout
+
+  let removeWidget id (layout:Layout) =
+    layout
+    |> widgets
+    |> Array.filter (fun x -> x.i <> id)
+    |> flip setWidgets layout
+
+  let save (layout:Layout) =
+    Storage.save StorageKeys.layout layout
+
+  let load () =
+    StorageKeys.layout
+    |> Storage.load<Layout>
+    |> Option.defaultValue defaultLayout

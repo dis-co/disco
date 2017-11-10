@@ -10,12 +10,10 @@ open Fable.Import
 open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Iris.Web.Core
 open Iris.Core
 open Iris.Raft
 open Types
-
-// jQuery
-let [<Global("$")>] jQuery(arg: obj): obj = jsNative
 
 // Syntactic sugar
 let inline Class x = ClassName x

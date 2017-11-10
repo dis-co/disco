@@ -21,6 +21,15 @@ let private NotificationSystem: React.ComponentClass<obj> =
   importDefault "react-notification-system"
 
 [<StringEnum>]
+type private Position =
+  | Tr
+  | Tl
+  | Tc
+  | Br
+  | Bl
+  | Bc
+
+[<StringEnum>]
 type private NotificationLevel =
   | Success
   | Info
@@ -30,6 +39,7 @@ type private NotificationLevel =
 [<Pojo>]
 type private Notification =
   { message: string
+    position: Position
     level: NotificationLevel }
 
 type private INotificationSystem =
@@ -43,6 +53,7 @@ let private notify level msg =
   | Some system ->
     system.addNotification {
       message = msg
+      position = Tc
       level = level
     }
 

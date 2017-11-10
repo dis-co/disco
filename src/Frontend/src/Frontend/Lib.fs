@@ -532,3 +532,8 @@ let mayAlterCue (state:State) (cue:Cue) =
     false
     state.CuePlayers
   |> not
+
+// * toggleInspector
+
+let toggleInspector () =
+  !!jQuery("#ui-layout-container")?layout()?toggle("east")

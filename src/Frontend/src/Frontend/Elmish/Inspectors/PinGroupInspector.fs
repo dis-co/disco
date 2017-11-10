@@ -60,19 +60,17 @@ module PinGroupInspector =
         (fun (clientId,group) ->
           match Map.tryFind clientId state.Clients with
           | Some client ->
-            li [] [
-              Common.link
-                (string client.Name)
-                (fun _ -> Select.client dispatch client)
-            ]
+            Common.link
+              (string client.Name)
+              (fun _ -> Select.client dispatch client)
           | None ->
             match ClientConfig.tryFind clientId state.Project.Config.Clients with
-            | Some exe -> li [] [ str (string exe.Id) ]
-            | None -> li [] [ str (string clientId + " (orphaned)") ])
-      |> fun clients -> Common.row tag [ ul [] clients ]
+            | Some exe -> str (string exe.Id)
+            | None -> str (string clientId + " (orphaned)"))
+      |> Common.row tag
 
   let private renderRefersTo tag dispatch (model: Model) (group: PinGroup) =
-    tr [] []
+    div [] []
 
   let render dispatch (model: Model) (client: ClientId) (group: PinGroupId) =
     match model.state with

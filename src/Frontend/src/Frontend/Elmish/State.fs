@@ -92,17 +92,6 @@ let private toggleUILayoutResizer (visible: bool) =
   setVisibility ".ui-layout-resizer" visibility
   setVisibility ".ui-layout-toggler" visibility
 
-[<PassGenerics>]
-let private loadFromLocalStorage<'T> (key: string) =
-  let g = Fable.Import.Browser.window
-  match g.localStorage.getItem(key) with
-  | null -> None
-  | value -> ofJson<'T> !!value |> Some
-
-let private saveToLocalStorage (key: string) (value: obj) =
-  let g = Fable.Import.Browser.window
-  g.localStorage.setItem(key, toJson value)
-
 let delay ms (f:'T->unit) =
   fun x ->
     Promise.sleep ms
@@ -115,6 +104,7 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
   [| true,  false, Codes.z,         postCmd AppCommand.Undo
      true,  true,  Codes.z,         postCmd AppCommand.Redo
      true,  false, Codes.s,         postCmd AppCommand.Save
+     true,  false, Codes.i,         Lib.toggleInspector
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 
@@ -139,15 +129,16 @@ let init() =
       )
   let widgets =
     let factory = Types.getWidgetFactory()
-    loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
+    StorageKeys.widgets
+    |> Storage.load<WidgetRef[]>
     |> Option.defaultValue [||]
     |> Array.map (fun (id, name) ->
       let widget = factory.CreateWidget(Some id, name)
       id, widget)
     |> Map
-  let layout =
-    loadFromLocalStorage<Layout[]> StorageKeys.layout
-    |> Option.defaultValue [||]
+
+  let layout = Layout.load ()
+
   let initModel =
     { widgets = widgets
       layout = layout
@@ -165,11 +156,12 @@ let init() =
   // other plugins (like jQuery ui-layout) load
   initModel, [startContext; delay 500 displayAvailableProjectsModal]
 
-let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
-    widgets
-    |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
-    |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
-    layout |> saveToLocalStorage StorageKeys.layout
+let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout) =
+  widgets
+  |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
+  |> Seq.toArray
+  |> Storage.save StorageKeys.widgets
+  Layout.save layout
 
 let [<Literal>] maxLength = 4
 let chop (list: 'a list) =
@@ -183,12 +175,12 @@ let update msg model: Model*Cmd<Msg> =
   match msg with
   | AddWidget(id, widget) ->
     let widgets = Map.add id widget model.widgets
-    let layout = Array.append model.layout [|widget.InitialLayout|]
+    let layout = Layout.addWidget widget.InitialLayout model.layout
     saveWidgetsAndLayout widgets layout
     { model with widgets = widgets; layout = layout }, []
   | RemoveWidget id ->
     let widgets = Map.remove id model.widgets
-    let layout = model.layout |> Array.filter (fun x -> x.i <> id)
+    let layout = Layout.removeWidget id model.layout
     saveWidgetsAndLayout widgets layout
     { model with widgets = widgets; layout = layout }, []
   // | AddTab -> // Add tab and remove widget
@@ -239,11 +231,29 @@ let update msg model: Model*Cmd<Msg> =
                      previous = history } }, []
   | AddLog log ->
     { model with logs = log::model.logs }, []
-  | UpdateLayout layout ->
-    saveToLocalStorage StorageKeys.layout layout
+
+  | UpdateInspector InspectorAction.Open ->
+    let layout = Layout.setInspectorOpen true model.layout
+    Layout.save layout
     { model with layout = layout }, []
+
+  | UpdateInspector InspectorAction.Close ->
+    let layout = Layout.setInspectorOpen false model.layout
+    Layout.save layout
+    { model with layout = layout }, []
+
+  | UpdateInspector (InspectorAction.Resize width) ->
+    let layout = Layout.setInspectorSize width model.layout
+    Layout.save layout
+    { model with layout = layout }, []
+
+  | UpdateLayout layout ->
+    Layout.save layout
+    { model with layout = layout }, []
+
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
+
   | UpdateState state ->
     let cmd =
       match model.state, state, model.modal with
