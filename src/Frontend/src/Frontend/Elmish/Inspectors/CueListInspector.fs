@@ -24,53 +24,40 @@ module CueListInspector =
     | Some state ->
       match Map.tryFind ref.CueId state.Cues with
       | None ->
-        li [] [
-          ul [] [
-            li [] [ str (string ref.CueId + " (orphaned)") ]
-            li [] [
-              table [ ] [
-                tbody [] [
-                  tr [] [
-                    td [] [ str "Duration" ]
-                    td [] [ str (string ref.Duration) ]
-                  ]
-                  tr [] [
-                    td [] [ str "AutoFollow" ]
-                    td [] [ str (string ref.AutoFollow) ]
-                  ]
-                  tr [] [
-                    td [] [ str "Prewait" ]
-                    td [] [ str (string ref.Prewait) ]
-                  ]
-                ]
-              ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-quarter" ] [ str (string ref.CueId + " (orphaned)") ]
+          div [ Class "column" ] [
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "Duration" ]
+              div [ Class "column" ] [ str (string ref.Duration) ]
+            ]
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "AutoFollow" ]
+              div [ Class "column" ] [ str (string ref.AutoFollow) ]
+            ]
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "Prewait" ]
+              div [ Class "column" ] [ str (string ref.Prewait) ]
             ]
           ]
         ]
       | Some cue ->
-        li [] [
-          ul [] [
-            li [] [
-              strong [] [ str "Cue:" ]
-              Common.link (string cue.Name) (fun () -> Select.cue dispatch cue)
+        div [ Class "columns" ] [
+          div [ Class "column is-one-quarter" ] [
+            Common.link (string cue.Name) (fun () -> Select.cue dispatch cue)
+          ]
+          div [ Class "column" ] [
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "Duration" ]
+              div [ Class "column" ] [ str (string ref.Duration) ]
             ]
-            li [] [
-              table [ ] [
-                tbody [] [
-                  tr [] [
-                    td [] [ str "Duration" ]
-                    td [] [ str (string ref.Duration) ]
-                  ]
-                  tr [] [
-                    td [] [ str "AutoFollow" ]
-                    td [] [ str (string ref.AutoFollow) ]
-                  ]
-                  tr [] [
-                    td [] [ str "Prewait" ]
-                    td [] [ str (string ref.Prewait) ]
-                  ]
-                ]
-              ]
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "AutoFollow" ]
+              div [ Class "column" ] [ str (string ref.AutoFollow) ]
+            ]
+            div [ Class "columns" ] [
+              div [ Class "column" ] [ str "Prewait" ]
+              div [ Class "column" ] [ str (string ref.Prewait) ]
             ]
           ]
         ]
@@ -79,13 +66,14 @@ module CueListInspector =
     cuegroup.CueRefs
     |> Array.map (renderCue dispatch model)
     |> List.ofArray
-    |> ul []
 
   let private renderGroup dispatch (model: Model) (cuegroup: CueGroup) =
-    ul [] [
-      li [] [ strong [] [ str (string cuegroup.Name) ] ]
-      li [] [ renderCues dispatch model cuegroup ]
-    ]
+    let headline =
+      div [ Class "headline" ] [
+        strong [] [ str ("Group: " + string cuegroup.Name) ]
+      ]
+    let cues = renderCues dispatch model cuegroup
+    div [] (headline :: cues)
 
   let private renderItems tag dispatch model (cuelist: CueList) =
     cuelist.Items
@@ -94,11 +82,9 @@ module CueListInspector =
     |> Common.row tag
 
   let private renderPlayer dispatch model (player: CuePlayer) =
-    li [] [
-      Common.link
-        (string player.Name)
-        (fun () -> Select.player dispatch player)
-    ]
+    Common.link
+      (string player.Name)
+      (fun () -> Select.player dispatch player)
 
   let private renderPlayers tag dispatch (model: Model) (cuelist: CueList) =
     match model.state with
@@ -108,7 +94,7 @@ module CueListInspector =
       |> Map.filter (fun _ -> CuePlayer.contains cuelist.Id)
       |> Map.toList
       |> List.map (snd >> renderPlayer dispatch model)
-      |> fun players -> Common.row tag [ ul [] players ]
+      |> Common.row tag
 
   let render dispatch (model: Model) (cuelist: CueListId) =
     match model.state with

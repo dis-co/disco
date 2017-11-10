@@ -169,7 +169,7 @@ html, body {
 
     span.headline {
       font-size: 1.5em;
-      font-weight: "bold";
+      font-weight: bold;
       line-height: 25px;
     }
 
@@ -183,8 +183,32 @@ html, body {
     }
   }
 
+  .headline {
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+
+  .sub-table-headers {
+    font-size: 1.2em;
+    font-weight: bold;
+    border-bottom: 1px solid lightgrey;
+  }
+
+  .iris-button {
+    width: 10px;
+    height: 10px;
+  }
+
+  .columns {
+    margin: 4px 0;
+  }
+
+  .column {
+    padding: 2px 5px 2px 5px !important;
+  }
+
   .empty {
     padding-top: 10px;
-    text-align: "center";
+    text-align: center;
   }
 }

@@ -81,62 +81,50 @@ module Common =
     ]
 
   let row (tag: string) children =
-    tr [Key tag] [
-      td [] [str tag]
-      td [] children
+    div [ Class "columns"; Key tag ] [
+      div [ Class "column is-one-fifth" ] [ str tag ]
+      div [ Class "column" ] children
     ]
 
   let stringRow (tag: string) (value: string) =
     row tag [ str value ]
 
-
   let toHeader (idx: int) (title: string) =
     match idx with
-    | 0 -> th [ ] [ str title ]
-    | _ -> th [ ] [ str title ]
+    | 0 -> div [ Class "column" ] [ str title ]
+    | _ -> div [ Class "column" ] [ str title ]
 
-  let tableRow (tag: string) headers children =
-    row tag [
-      table [Class "iris-table"] [
-        thead [] [
-          tr [] (List.mapi toHeader headers)
-        ]
-        tbody [] children
-      ]
-    ]
+  let tableRow (tag: string) headers (children: ReactElement list) =
+    let header = div [ Class "columns sub-table-headers" ] (List.mapi toHeader headers)
+    row tag (header :: children)
 
   let buttonRow (tag: string) (value: bool) (f: bool -> unit) =
-    let active = if value then "pressed" else ""
     row tag [
       div [
-        Class ("iris-button " + active)
+        classList [
+          "iris-button",true
+          "pressed", value
+        ]
         OnClick (fun _ -> f (not value))
       ] []
     ]
 
   let header (title: string) =
-    thead [] [
-      tr [] [
-        th [] [
-          str title
-        ]
+    div [ Class "columns headline" ] [
+      div [ Class "column" ] [
+        str title
       ]
     ]
 
   let footer =
-    tfoot [] [
-      tr [] [
-        td [ ] []
-        td [ ] []
-      ]
-    ]
+    div [] []
 
   let render dispatch model (title: string) children =
     div [ Class "iris-inspector" ] [
       bar dispatch model
-      table [] [
+      div [] [
         header title
-        tbody [] children
+        div [] children
         footer
       ]
     ]
