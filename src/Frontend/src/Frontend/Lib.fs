@@ -550,3 +550,9 @@ let mayAlterCue (state:State) (cue:Cue) =
 
 let toggleInspector () =
   !!jQuery("#ui-layout-container")?layout()?toggle("east")
+
+// * workspaceDimensions
+
+let workspaceDimensions (): int * int =
+  let state = !!jQuery("#ui-layout-container")?layout()?center?state
+  unbox state?innerWidth, unbox state?innerHeight

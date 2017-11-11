@@ -82,8 +82,7 @@ let widget (id: Guid) (name: string)
           Class "iris-button iris-icon icon-control icon-resize"
           OnClick(fun ev ->
             ev.stopPropagation()
-            failwith "TODO" // AddTab id |> dispatch
-          )
+            MaximiseWidget id |> dispatch)
         ] []
         button [
           Class "iris-button iris-icon icon-control icon-close"

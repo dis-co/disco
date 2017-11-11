@@ -172,7 +172,7 @@ let update msg model: Model*Cmd<Msg> =
   ///   |_|\__,_|_.__/
 
   | UpdateTabs TabAction.AddTab ->
-    let name = sprintf "Untitled %d" (model.layout |> Layout.tabs |> Array.length)
+    let name = sprintf "Workspace %d" (model.layout |> Layout.tabs |> Array.length |> ((+) 1))
     let tab = Tab.create name
     let layout = tab |> flip Layout.addTab model.layout |> Layout.setSelected tab.Id
     let widgets = Layout.createWidgets layout
@@ -206,6 +206,10 @@ let update msg model: Model*Cmd<Msg> =
     let layout = Layout.addWidget widget model.layout
     Layout.save layout
     { model with widgets = widgets; layout = layout }, []
+
+  | MaximiseWidget id ->
+    let layout = Layout.maximiseWidget id model.layout
+    { model with layout = layout }, []
 
   | RemoveWidget id ->
     let widgets = Map.remove id model.widgets

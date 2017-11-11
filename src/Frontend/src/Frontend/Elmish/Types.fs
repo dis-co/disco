@@ -78,6 +78,7 @@ and [<RequireQualifiedAccess>] TabAction =
 /// Messages that can be dispatched to Elmish
 and Msg =
   | AddWidget of Guid * IWidget
+  | MaximiseWidget of Guid
   | RemoveWidget of Guid
   | UpdateTabs of TabAction
   | AddLog of LogEvent
@@ -204,6 +205,17 @@ let getWidgetFactory() =
 let initWidgetFactory(factory: IWidgetFactory) =
   singletonWidgetFactory <- Some factory
 
+module WidgetLayout =
+
+  let id ({ i = id }:WidgetLayout) = id
+
+  let maximise width height widget =
+    { widget with
+        x = 0
+        y = 0
+        w = width
+        h = height }
+
 ///  ___                           _             _                            _
 /// |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __| |    __ _ _   _  ___  _   _| |_
 ///  | || '_ \/ __| '_ \ / _ \/ __| __/ _ \| '__| |   / _` | | | |/ _ \| | | | __|
@@ -320,6 +332,13 @@ module Layout =
   let setSelected id (layout:Layout) = { layout with Selected = id }
 
   let widgetLayouts = currentTab >> Tab.widgetLayouts
+
+  let setWidgetLayouts widgets layout =
+    layout
+    |> currentTab
+    |> Tab.setWidgetLayouts widgets
+    |> flip updateTab layout
+
   let widgetRefs = currentTab >> Tab.widgetRefs
 
   let inspector { Inspector = inspector } = inspector
@@ -332,11 +351,31 @@ module Layout =
   let setInspectorOpen isOpen (layout:Layout) =
     layout |> inspector |> InspectorLayout.setOpen isOpen |> flip setInspector layout
 
+  let widgetLayout id layout =
+    layout
+    |> widgetLayouts
+    |> Array.tryFind (fun widget -> WidgetLayout.id widget = id)
+
+  let setWidgetLayout (widget:WidgetLayout) layout =
+    layout
+    |> widgetLayouts
+    |> Array.map (fun orig -> if orig.i = widget.i then widget else orig)
+    |> flip setWidgetLayouts layout
+
   let addWidget widget (layout:Layout) =
     layout
     |> currentTab
     |> Tab.addWidget widget
     |> flip updateTab layout
+
+  let maximiseWidget id (layout:Layout) =
+    let width, height = Lib.workspaceDimensions()
+    match widgetLayout id layout with
+    | None -> layout
+    | Some widget ->
+      widget
+      |> WidgetLayout.maximise width height
+      |> flip setWidgetLayout layout
 
   let removeWidget id (layout:Layout) =
     layout
