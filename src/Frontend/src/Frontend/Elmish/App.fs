@@ -45,38 +45,79 @@ initWidgetFactory
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
-module Values =
-  let [<Literal>] gridLayoutColumns = 20
-  let [<Literal>] gridLayoutWidth = 1600
-  let [<Literal>] gridLayoutRowHeight = 30
-
-  let inspectorPanelSize = 350
-
 module TabsView =
   /// this callback receives the list of widgets (untyped) from the grid layout
   /// and saves it back to local storage
-  let private updateLayout dispatch model widgets =
-    Layout.setWidgets widgets model.layout
+  let private updateLayout dispatch widgets =
+    widgets
     |> UpdateLayout
     |> dispatch
+
+  let private contextMenu dispatch selected tab =
+    button [
+      classList [
+        "iris-button", true
+        "inactive", tab.Id <> selected
+      ]
+      Style [ Visibility (if tab.Removable then "visible" else "hidden") ]
+      OnClick
+        (fun e ->
+          e.stopPropagation()
+          tab.Id
+          |> TabAction.RemoveTab
+          |> UpdateTabs
+                |> dispatch)
+    ] [
+      i [ Class "fa fa-times" ] []
+    ]
+
+  let private addTab dispatch =
+    li [] [
+      button [
+        Class "button"
+        Title "Add new Tab"
+        OnClick (fun _ -> TabAction.AddTab |> UpdateTabs |> dispatch)
+      ] [
+        i [ Class "fa fa-plus" ] []
+      ]
+    ]
+
+  let private renderTab dispatch selected tab =
+    li [
+      classList [
+        "is-active", selected = tab.Id
+      ]
+      OnClick (fun _ -> tab.Id |> TabAction.SelectTab |> UpdateTabs |> dispatch)
+    ] [
+      a [] [
+        str tab.Name
+        contextMenu dispatch selected tab
+      ]
+    ]
+
+  let private renderTabs dispatch model =
+    let tabs =
+      model.layout
+      |> Layout.tabs
+      |> List.ofArray
+      |> List.map (renderTab dispatch model.layout.Selected)
+    ul [] (addTab dispatch :: tabs)
 
   let root dispatch (model: Model) =
     div [ Class "iris-tab-container" ] [
       div [Class "tabs is-boxed"] [
-        ul [] [
-          li [Class "is-active"] [a [] [str "Workspace"]]
-        ]
+        renderTabs dispatch model
       ]
       div [Class "iris-tab-body"] [
         fn ReactGridLayout %[
           "className" => "iris-workspace"
-          "cols" => Values.gridLayoutColumns
-          "rowHeight" => Values.gridLayoutRowHeight
-          "width" => Values.gridLayoutWidth
+          "cols" => Layout.gridColumns
+          "rowHeight" => Layout.gridRowHeight
+          "width" => Layout.gridWidth()
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
-          "layout" => model.layout.Widgets
-          "onLayoutChange" => updateLayout dispatch model
+          "layout" => Layout.widgetLayouts model.layout
+          "onLayoutChange" => updateLayout dispatch
         ] [
           for KeyValue(id, widget) in model.widgets do
             if id <> widget.Id then

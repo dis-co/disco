@@ -130,6 +130,18 @@ html, body {
   .tabs {
     background: $tab-background;
     margin-bottom: 0; // Override Bulma
+
+    .iris-button {
+      margin-left: 10px;
+    }
+
+    .inactive {
+      background: $tab-background;
+    }
+
+    .inactive:hover {
+      background: white;
+    }
   }
 
   .iris-tab-body {
