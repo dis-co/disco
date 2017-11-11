@@ -313,6 +313,9 @@ module Layout =
   let addTab tab layout =
     { layout with Tabs = Array.append layout.Tabs [| tab |]  }
 
+  let removeTab id layout =
+    { layout with Tabs = Array.filter (fun tab -> tab.Id <> id) layout.Tabs  }
+
   let selected ({ Selected = selected }:Layout) = selected
   let setSelected id (layout:Layout) = { layout with Selected = id }
 

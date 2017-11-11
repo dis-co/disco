@@ -184,8 +184,15 @@ let update msg model: Model*Cmd<Msg> =
     { model with widgets = widgets; layout = layout },[]
 
   | UpdateTabs (TabAction.RemoveTab id) ->
-    printfn "RemoveTab"
-    model,[]
+    let tabs =  Layout.tabs model.layout
+    let current = Array.findIndex (fun tab -> tab.Id = id) tabs
+    let previous =
+      if id = model.layout.Selected
+      then tabs.[current - 1].Id  /// this is safe, because we don't allow destroying Workspace
+      else model.layout.Selected
+    let layout = id |> flip Layout.removeTab model.layout |> Layout.setSelected previous
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
 
   /// __        ___     _            _
   /// \ \      / (_) __| | __ _  ___| |_

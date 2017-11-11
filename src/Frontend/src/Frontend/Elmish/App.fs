@@ -60,6 +60,24 @@ module TabsView =
     |> UpdateLayout
     |> dispatch
 
+  let private contextMenu dispatch selected tab =
+    button [
+      classList [
+        "iris-button", true
+        "inactive", tab.Id <> selected
+      ]
+      Style [ Visibility (if tab.Removable then "visible" else "hidden") ]
+      OnClick
+        (fun e ->
+          e.stopPropagation()
+          tab.Id
+          |> TabAction.RemoveTab
+          |> UpdateTabs
+                |> dispatch)
+    ] [
+      i [ Class "fa fa-times" ] []
+    ]
+
   let private addTab dispatch =
     li [] [
       button [
@@ -71,14 +89,17 @@ module TabsView =
       ]
     ]
 
-  let private renderTab selected dispatch tab =
+  let private renderTab dispatch selected tab =
     li [
       classList [
         "is-active", selected = tab.Id
       ]
       OnClick (fun _ -> tab.Id |> TabAction.SelectTab |> UpdateTabs |> dispatch)
     ] [
-      a [] [ str tab.Name ]
+      a [] [
+        str tab.Name
+        contextMenu dispatch selected tab
+      ]
     ]
 
   let private renderTabs dispatch model =
@@ -86,7 +107,7 @@ module TabsView =
       model.layout
       |> Layout.tabs
       |> List.ofArray
-      |> List.map (renderTab model.layout.Selected dispatch)
+      |> List.map (renderTab dispatch model.layout.Selected)
     ul [] (addTab dispatch :: tabs)
 
   let root dispatch (model: Model) =
