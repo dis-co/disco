@@ -427,8 +427,8 @@ let createWidget(id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0;
         w = 8; h = 5;
-        minW = 4; maxW = 20
-        minH = 4; maxH = 20 }
+        minW = 4
+        minH = 4 }
     member this.Render(dispatch, model) =
       match model.state with
       | None -> createEmpty dispatch model this.Id this.Name
