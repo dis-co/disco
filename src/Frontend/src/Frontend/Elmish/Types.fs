@@ -302,6 +302,16 @@ module Tab =
 
 module Layout =
 
+  let [<Literal>] gridColumns = 20
+  /// let [<Literal>] gridWidth = 1600
+  let [<Literal>] gridRowHeight = 30
+
+  let gridWidth () =
+    try Lib.workspaceDimensions() |> fst
+    with _ -> 1600
+
+  let inspectorPanelSize = 350
+
   let defaultLayout =
     { Tabs = [| Tab.workspace |]
       Selected = Tab.workspace.Id
@@ -369,10 +379,12 @@ module Layout =
     |> flip updateTab layout
 
   let maximiseWidget id (layout:Layout) =
-    let width, height = Lib.workspaceDimensions()
+    let workspaceWidth, workspaceHeight = Lib.workspaceDimensions()
     match widgetLayout id layout with
     | None -> layout
     | Some widget ->
+      let width = gridColumns
+      let height = workspaceHeight / gridRowHeight /// TODO: does not work as expected...
       widget
       |> WidgetLayout.maximise width height
       |> flip setWidgetLayout layout

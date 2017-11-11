@@ -45,13 +45,6 @@ initWidgetFactory
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 
-module Values =
-  let [<Literal>] gridLayoutColumns = 20
-  let [<Literal>] gridLayoutWidth = 1600
-  let [<Literal>] gridLayoutRowHeight = 30
-
-  let inspectorPanelSize = 350
-
 module TabsView =
   /// this callback receives the list of widgets (untyped) from the grid layout
   /// and saves it back to local storage
@@ -118,9 +111,9 @@ module TabsView =
       div [Class "iris-tab-body"] [
         fn ReactGridLayout %[
           "className" => "iris-workspace"
-          "cols" => Values.gridLayoutColumns
-          "rowHeight" => Values.gridLayoutRowHeight
-          "width" => Values.gridLayoutWidth
+          "cols" => Layout.gridColumns
+          "rowHeight" => Layout.gridRowHeight
+          "width" => Layout.gridWidth()
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
           "layout" => Layout.widgetLayouts model.layout

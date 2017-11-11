@@ -554,5 +554,9 @@ let toggleInspector () =
 // * workspaceDimensions
 
 let workspaceDimensions (): int * int =
-  let state = !!jQuery("#ui-layout-container")?layout()?center?state
-  unbox state?innerWidth, unbox state?innerHeight
+  let len:int = unbox (!!jQuery("#ui-layout-container")?length)
+  if len > 0                            /// check if the element exists
+  then
+    let state = !!jQuery("#ui-layout-container")?layout()?center?state
+    unbox state?innerWidth, unbox state?innerHeight
+  else 0, 0
