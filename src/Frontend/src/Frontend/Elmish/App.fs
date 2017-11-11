@@ -55,8 +55,8 @@ module Values =
 module TabsView =
   /// this callback receives the list of widgets (untyped) from the grid layout
   /// and saves it back to local storage
-  let private updateLayout dispatch model widgets =
-    Layout.setWidgets widgets model.layout
+  let private updateLayout dispatch widgets =
+    widgets
     |> UpdateLayout
     |> dispatch
 
@@ -64,7 +64,16 @@ module TabsView =
     div [ Class "iris-tab-container" ] [
       div [Class "tabs is-boxed"] [
         ul [] [
-          li [Class "is-active"] [a [] [str "Workspace"]]
+          li [] [
+            button [
+              Class "button"
+              Title "Add new Tab"
+              OnClick (fun _ -> TabAction.AddTab |> UpdateTabs |> dispatch)
+            ] [
+              i [ Class "fa fa-plus" ] []
+            ]
+          ]
+          li [Class "is-active"] [ a [] [str "Workspace"] ]
         ]
       ]
       div [Class "iris-tab-body"] [
@@ -75,8 +84,8 @@ module TabsView =
           "width" => Values.gridLayoutWidth
           "verticalCompact" => false
           "draggableHandle" => ".iris-draggable-handle"
-          "layout" => model.layout.Widgets
-          "onLayoutChange" => updateLayout dispatch model
+          "layout" => Layout.widgetLayouts model.layout
+          "onLayoutChange" => updateLayout dispatch
         ] [
           for KeyValue(id, widget) in model.widgets do
             if id <> widget.Id then

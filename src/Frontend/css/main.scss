@@ -130,6 +130,10 @@ html, body {
   .tabs {
     background: $tab-background;
     margin-bottom: 0; // Override Bulma
+
+    .button {
+      height: 27px;
+    }
   }
 
   .iris-tab-body {

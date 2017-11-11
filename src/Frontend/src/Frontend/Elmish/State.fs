@@ -131,17 +131,9 @@ let init() =
           let state = context.Store |> Option.map (fun s -> s.State)
           UpdateState state |> dispatch)
       )
-  let widgets =
-    let factory = Types.getWidgetFactory()
-    StorageKeys.widgets
-    |> Storage.load<WidgetRef[]>
-    |> Option.defaultValue [||]
-    |> Array.map (fun (id, name) ->
-      let widget = factory.CreateWidget(Some id, name)
-      id, widget)
-    |> Map
 
   let layout = Layout.load ()
+  let widgets = Layout.createWidgets layout
 
   let initModel =
     { widgets = widgets
@@ -161,10 +153,6 @@ let init() =
   initModel, [startContext; delay 500 displayAvailableProjectsModal]
 
 let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout) =
-  widgets
-  |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
-  |> Seq.toArray
-  |> Storage.save StorageKeys.widgets
   Layout.save layout
 
 let [<Literal>] maxLength = 4
@@ -177,33 +165,48 @@ let chop (list: 'a list) =
 /// Update function for Elmish state
 let update msg model: Model*Cmd<Msg> =
   match msg with
+  ///  _____     _
+  /// |_   _|_ _| |__
+  ///   | |/ _` | '_ \
+  ///   | | (_| | |_) |
+  ///   |_|\__,_|_.__/
+
+  | UpdateTabs TabAction.AddTab ->
+    { model with widgets = Map.empty; layout = Layout.defaultLayout },[]
+
+  | UpdateTabs (TabAction.UpdateTab _) ->
+    printfn "UpdateTab"
+    model,[]
+
+  | UpdateTabs (TabAction.RemoveTab id) ->
+    printfn "RemoveTab"
+    model,[]
+
+  /// __        ___     _            _
+  /// \ \      / (_) __| | __ _  ___| |_
+  ///  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  ///   \ V  V / | | (_| | (_| |  __/ |_
+  ///    \_/\_/  |_|\__,_|\__, |\___|\__|
+  ///                     |___/
+
   | AddWidget(id, widget) ->
-    let widgets = Map.add id widget model.widgets
-    let layout = Layout.addWidget widget.InitialLayout model.layout
-    saveWidgetsAndLayout widgets layout
+    let widgets = Map.add widget.Id widget model.widgets
+    let layout = Layout.addWidget widget model.layout
+    Layout.save layout
     { model with widgets = widgets; layout = layout }, []
+
   | RemoveWidget id ->
     let widgets = Map.remove id model.widgets
     let layout = Layout.removeWidget id model.layout
-    saveWidgetsAndLayout widgets layout
+    Layout.save layout
     { model with widgets = widgets; layout = layout }, []
-  // | AddTab -> // Add tab and remove widget
-  // | RemoveTab -> // Optional, add widget
 
-  | Navigate cmd when not (List.isEmpty model.history.previous) ->
-    let history =
-      try
-        let index = cmd |> function
-          | InspectorNavigate.Previous -> model.history.index + 1
-          | InspectorNavigate.Next     -> model.history.index - 1
-          | InspectorNavigate.Set idx  -> idx
-        { model.history with
-            index = index
-            selected = model.history.previous.[index] }
-      with _ -> model.history
-    { model with history = history }, []
-
-  | Navigate _ -> model, []
+  ///  ____                     _              _ ____
+  /// |  _ \ _ __ __ _  __ _   / \   _ __   __| |  _ \ _ __ ___  _ __
+  /// | | | | '__/ _` |/ _` | / _ \ | '_ \ / _` | | | | '__/ _ \| '_ \
+  /// | |_| | | | (_| | (_| |/ ___ \| | | | (_| | |_| | | | (_) | |_) |
+  /// |____/|_|  \__,_|\__, /_/   \_\_| |_|\__,_|____/|_|  \___/| .__/
+  ///                  |___/                                    |_|
 
   | RemoveSelectedDragItems ->
     match model.state, model.selectedDragItems with
@@ -233,8 +236,28 @@ let update msg model: Model*Cmd<Msg> =
                      selected = selected
                      index = 0
                      previous = history } }, []
-  | AddLog log ->
-    { model with logs = log::model.logs }, []
+
+  ///  ___                           _
+  /// |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __
+  ///  | || '_ \/ __| '_ \ / _ \/ __| __/ _ \| '__|
+  ///  | || | | \__ \ |_) |  __/ (__| || (_) | |
+  /// |___|_| |_|___/ .__/ \___|\___|\__\___/|_|
+  ///               |_|
+
+  | Navigate cmd when not (List.isEmpty model.history.previous) ->
+    let history =
+      try
+        let index = cmd |> function
+          | InspectorNavigate.Previous -> model.history.index + 1
+          | InspectorNavigate.Next     -> model.history.index - 1
+          | InspectorNavigate.Set idx  -> idx
+        { model.history with
+            index = index
+            selected = model.history.previous.[index] }
+      with _ -> model.history
+    { model with history = history }, []
+
+  | Navigate _ -> model, []
 
   | UpdateInspector InspectorAction.Open ->
     let layout = Layout.setInspectorOpen true model.layout
@@ -251,12 +274,33 @@ let update msg model: Model*Cmd<Msg> =
     Layout.save layout
     { model with layout = layout }, []
 
-  | UpdateLayout layout ->
+  ///  _                            _
+  /// | |    __ _ _   _  ___  _   _| |_
+  /// | |   / _` | | | |/ _ \| | | | __|
+  /// | |__| (_| | |_| | (_) | |_| | |_
+  /// |_____\__,_|\__, |\___/ \__,_|\__|
+  ///             |___/
+
+  | UpdateLayout widgets ->
+    let layout = Layout.setWidgets widgets model.layout
     Layout.save layout
     { model with layout = layout }, []
 
+  ///   ____             __ _
+  ///  / ___|___  _ __  / _(_) __ _
+  /// | |   / _ \| '_ \| |_| |/ _` |
+  /// | |__| (_) | | | |  _| | (_| |
+  ///  \____\___/|_| |_|_| |_|\__, |
+  ///                         |___/
+
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
+
+  ///  ____  _        _
+  /// / ___|| |_ __ _| |_ ___
+  /// \___ \| __/ _` | __/ _ \
+  ///  ___) | || (_| | ||  __/
+  /// |____/ \__\__,_|\__\___|
 
   | UpdateState state ->
     let cmd =
@@ -267,6 +311,13 @@ let update msg model: Model*Cmd<Msg> =
       | Some _, None, None -> [displayAvailableProjectsModal]
       | _ -> []
     { model with state = state }, cmd
+
+  ///  __  __           _       _
+  /// |  \/  | ___   __| | __ _| |
+  /// | |\/| |/ _ \ / _` |/ _` | |
+  /// | |  | | (_) | (_| | (_| | |
+  /// |_|  |_|\___/ \__,_|\__,_|_|
+
   | OpenModal modal ->
     toggleUILayoutResizer false
     match model.modal with
@@ -280,6 +331,7 @@ let update msg model: Model*Cmd<Msg> =
       { model with modal = None }, []
     | _ ->
       { model with modal = Some modal }, []
+
   | CloseModal(modal, result) ->
     toggleUILayoutResizer true
     let cmd =
@@ -299,3 +351,13 @@ let update msg model: Model*Cmd<Msg> =
             [handleModalResult modal]
           | Choice2Of2 () -> [] // For now, just ignore cancelled modals
     { model with modal = None }, cmd
+
+  ///  _
+  /// | |    ___   __ _
+  /// | |   / _ \ / _` |
+  /// | |__| (_) | (_| |
+  /// |_____\___/ \__, |
+  ///             |___/
+
+  | AddLog log ->
+    { model with logs = log::model.logs }, []

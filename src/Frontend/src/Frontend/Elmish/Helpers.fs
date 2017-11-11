@@ -77,7 +77,7 @@ let widget (id: Guid) (name: string)
         |> Option.map (fun titleBar -> titleBar dispatch model)
         |> opt
       ]
-      div [Class "iris-window-control"] [
+      div [ Class "iris-window-control" ] [
         button [
           Class "iris-button iris-icon icon-control icon-resize"
           OnClick(fun ev ->
@@ -103,7 +103,8 @@ module Promise =
   open Fable.PowerPack
 
   [<Emit("$2.then($0,$1)")>]
-  let iterOrError (resolve: 'T->unit) (reject: Exception->unit) (pr: JS.Promise<'T>): unit = jsNative
+  let iterOrError (resolve: 'T->unit) (reject: Exception->unit) (pr: JS.Promise<'T>): unit =
+    jsNative
 
   let race (p1: JS.Promise<'a>) (p2: JS.Promise<'b>) =
     let mutable fin = false
