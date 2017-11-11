@@ -72,7 +72,7 @@ and [<RequireQualifiedAccess>] InspectorAction =
 
 and [<RequireQualifiedAccess>] TabAction =
   | AddTab
-  | UpdateTab of id:Guid
+  | SelectTab of id:Guid
   | RemoveTab of id:Guid
 
 /// Messages that can be dispatched to Elmish
@@ -240,6 +240,13 @@ module Tab =
       WidgetRefs = Array.empty
       WidgetLayouts = Array.empty }
 
+  let create (name:string) =
+    { Id = Guid.NewGuid()
+      Name = name
+      Removable = true
+      WidgetRefs = Array.empty
+      WidgetLayouts = Array.empty }
+
   let id ({ Id = id }:Tab) = id
   let name ({ Name = name }:Tab) = name
   let setName name (tab:Tab) = { tab with Name = name }
@@ -302,6 +309,12 @@ module Layout =
   let updateTab tab layout =
     { layout with
         Tabs = Array.map (fun other -> if other.Id = tab.Id then tab else other) layout.Tabs }
+
+  let addTab tab layout =
+    { layout with Tabs = Array.append layout.Tabs [| tab |]  }
+
+  let selected ({ Selected = selected }:Layout) = selected
+  let setSelected id (layout:Layout) = { layout with Selected = id }
 
   let widgetLayouts = currentTab >> Tab.widgetLayouts
   let widgetRefs = currentTab >> Tab.widgetRefs

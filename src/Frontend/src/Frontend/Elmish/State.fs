@@ -172,11 +172,16 @@ let update msg model: Model*Cmd<Msg> =
   ///   |_|\__,_|_.__/
 
   | UpdateTabs TabAction.AddTab ->
-    { model with widgets = Map.empty; layout = Layout.defaultLayout },[]
+    let name = sprintf "Untitled %d" (model.layout |> Layout.tabs |> Array.length)
+    let tab = Tab.create name
+    let layout = tab |> flip Layout.addTab model.layout |> Layout.setSelected tab.Id
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
 
-  | UpdateTabs (TabAction.UpdateTab _) ->
-    printfn "UpdateTab"
-    model,[]
+  | UpdateTabs (TabAction.SelectTab id) ->
+    let layout = Layout.setSelected id model.layout
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
 
   | UpdateTabs (TabAction.RemoveTab id) ->
     printfn "RemoveTab"

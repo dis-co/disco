@@ -60,21 +60,39 @@ module TabsView =
     |> UpdateLayout
     |> dispatch
 
+  let private addTab dispatch =
+    li [] [
+      button [
+        Class "button"
+        Title "Add new Tab"
+        OnClick (fun _ -> TabAction.AddTab |> UpdateTabs |> dispatch)
+      ] [
+        i [ Class "fa fa-plus" ] []
+      ]
+    ]
+
+  let private renderTab selected dispatch tab =
+    li [
+      classList [
+        "is-active", selected = tab.Id
+      ]
+      OnClick (fun _ -> tab.Id |> TabAction.SelectTab |> UpdateTabs |> dispatch)
+    ] [
+      a [] [ str tab.Name ]
+    ]
+
+  let private renderTabs dispatch model =
+    let tabs =
+      model.layout
+      |> Layout.tabs
+      |> List.ofArray
+      |> List.map (renderTab model.layout.Selected dispatch)
+    ul [] (addTab dispatch :: tabs)
+
   let root dispatch (model: Model) =
     div [ Class "iris-tab-container" ] [
       div [Class "tabs is-boxed"] [
-        ul [] [
-          li [] [
-            button [
-              Class "button"
-              Title "Add new Tab"
-              OnClick (fun _ -> TabAction.AddTab |> UpdateTabs |> dispatch)
-            ] [
-              i [ Class "fa fa-plus" ] []
-            ]
-          ]
-          li [Class "is-active"] [ a [] [str "Workspace"] ]
-        ]
+        renderTabs dispatch model
       ]
       div [Class "iris-tab-body"] [
         fn ReactGridLayout %[
