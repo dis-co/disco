@@ -175,11 +175,13 @@ let update msg model: Model*Cmd<Msg> =
     let name = sprintf "Workspace %d" (model.layout |> Layout.tabs |> Array.length |> ((+) 1))
     let tab = Tab.create name
     let layout = tab |> flip Layout.addTab model.layout |> Layout.setSelected tab.Id
+    Layout.save layout
     let widgets = Layout.createWidgets layout
     { model with widgets = widgets; layout = layout },[]
 
   | UpdateTabs (TabAction.SelectTab id) ->
     let layout = Layout.setSelected id model.layout
+    Layout.save layout
     let widgets = Layout.createWidgets layout
     { model with widgets = widgets; layout = layout },[]
 
@@ -191,6 +193,7 @@ let update msg model: Model*Cmd<Msg> =
       then tabs.[current - 1].Id  /// this is safe, because we don't allow destroying Workspace
       else model.layout.Selected
     let layout = id |> flip Layout.removeTab model.layout |> Layout.setSelected previous
+    Layout.save layout
     let widgets = Layout.createWidgets layout
     { model with widgets = widgets; layout = layout },[]
 
