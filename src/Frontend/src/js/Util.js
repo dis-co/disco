@@ -3,6 +3,7 @@
 import * as $ from "jquery"
 import * as React from "react"
 import ContentEditable from "./widgets/ContentEditable"
+import DropdownEditable from "./widgets/DropdownEditable"
 
 export function jQueryEventAsPromise(selector, events) {
   return new Promise(resolve => {
@@ -127,7 +128,6 @@ function startDragging(posY, index, value, updater) {
 }
 
 function formatValue(value, typeofValue, precision) {
-  console.log (value.constructor.name)
   if ((typeofValue || typeof value) === "number") {
     return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
   }
@@ -191,7 +191,9 @@ export function createElement(tagName, options, value) {
             options.updater.Update(false, options.index, !value);
         }
       }
-
+      return React.createElement(tagName, props, formattedValue);
+    }
+    else if (typeofValue === "bytes") {
       return React.createElement(tagName, props, formattedValue);
     }
     else if (typeofValue === "number") { // Numeric values, draggable
@@ -204,6 +206,16 @@ export function createElement(tagName, options, value) {
           ev.preventDefault();
         }
       }
+    }
+    else if (typeofValue === "property") { // enum value, selectable
+      return React.createElement(DropdownEditable, Object.assign({
+        html: formattedValue,
+        "data-selected": formattedValue,
+        "data-options": options.properties,
+        onChange (key) {
+          options.updater.Update(false, options.index, key);
+        }
+      }, props));
     }
     return React.createElement(ContentEditable, Object.assign({
       tagName: tagName,

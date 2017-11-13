@@ -310,8 +310,17 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
       | v -> v
     tryUpdateArray index value pin.Values
     |> Option.map (fun values -> BoolSlices(pin.Id, client, values))
+  | EnumPin pin ->
+    let prop =
+      Array.tryPick
+        (fun prop -> if prop.Key = unbox value then Some prop else None)
+        pin.Properties
+    match prop with
+    | Some value ->
+      tryUpdateArray index value pin.Values
+      |> Option.map (fun values -> EnumSlices(pin.Id, client, values))
+    | _ -> None
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED: Update byte pins"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED: Update enum pins"
   | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
   |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 

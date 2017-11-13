@@ -15,6 +15,7 @@ type [<Pojo>] ElProps =
     precision: uint32 option
     useRightClick: bool
     updater: IUpdater option
+    properties: (string * string) array
     classes: string array
     suffix: string option
   }
@@ -65,11 +66,16 @@ type PinView(props) =
       match pin with
       | NumberPin pin -> Some pin.Precision
       | _ -> None
+    let properties =
+      match pin with
+      | EnumPin pin -> pin.Properties |> Array.map (fun prop -> prop.Value,prop.Key)
+      | _ -> Array.empty
     let firstRowValue =
       let options =
         { index = 0
           precision = precision
           useRightClick = useRightClick
+          properties = properties
           updater = if rowCount > 1 then None else updater
           classes = if rowCount > 1 then [|"iris-flex-1"|] else [||]
           suffix  = if rowCount > 1 then Some(" (" + string rowCount + ")") else None
@@ -108,6 +114,7 @@ type PinView(props) =
           let options =
             { index = i
               precision = precision
+              properties = properties
               useRightClick = useRightClick
               updater = updater
               classes = [||]
