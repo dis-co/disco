@@ -106,48 +106,74 @@ const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
 function startDragging(posY, index, value, updater) {
-    // console.log("Input drag start", index, posY)
-    $(document)
-        .on("contextmenu.drag", e => {
-            e.preventDefault();
-        })
-        .on("mousemove.drag", e => {
-            var diff = posY - e.clientY;
-            // console.log("Input drag mouse Y diff: ", diff);
-            value += diff;
-            posY = e.clientY;
-            if (diff !== 0)
-                updater.Update(true, index, value);
-        })
-        .on("mouseup.drag", e => {
-            updater.Update(false, index, value);
-            // console.log("Input drag stop", e.clientY)
-            $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
-        })
+  // console.log("Input drag start", index, posY)
+  $(document)
+    .on("contextmenu.drag", e => {
+      e.preventDefault();
+    })
+    .on("mousemove.drag", e => {
+      var diff = posY - e.clientY;
+      // console.log("Input drag mouse Y diff: ", diff);
+      value += diff;
+      posY = e.clientY;
+      if (diff !== 0)
+        updater.Update(true, index, value);
+    })
+    .on("mouseup.drag", e => {
+      updater.Update(false, index, value);
+      // console.log("Input drag stop", e.clientY)
+      $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
+    })
 }
 
 function formatValue(value, typeofValue, precision) {
-    if ((typeofValue || typeof value) === "number") {
-      return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
-    }
-    else {
-      return IrisLib.toString(value);
-    }
+  console.log (value.constructor.name)
+  if ((typeofValue || typeof value) === "number") {
+    return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
+  }
+  if (typeofValue === "bytes") {
+    return "Bytes(" + value.length + ")"
+  }
+  if (typeofValue === "property") {
+    return value.Value
+  }
+  else {
+    return IrisLib.toString(value);
+  }
 }
 
 function getTypeofAndClass(value) {
-  const typeofValue = typeof value;
-  return [
-    typeofValue,
-    "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
+  var typeofValue;
+  switch (value.constructor.name) {
+    case "Boolean":
+    typeofValue = "boolean"
+    break
+    case "Number":
+    typeofValue = "number"
+    break
+    case "Property":
+    typeofValue = "property"
+    break
+    case "Uint8Array":
+    typeofValue = "bytes"
+    break
+    case "ColorSpace":
+    typeofValue = "color"
+    break
+    default:
+    typeofValue = "string";
+    break
+  }
+  return [typeofValue, "iris-" + typeofValue];
 }
 
 export function createElement(tagName, options, value) {
-  console.log("createElement", tagName, options, value)
-
   const [typeofValue, classOfValue] = getTypeofAndClass(value)
+
   const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
+
   const props = {
+    style: typeofValue === "color" ? { background: formattedValue } : {},
     className: (options.classes || []).concat(classOfValue).join(" ")
   };
 
