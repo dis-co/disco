@@ -137,53 +137,57 @@ function formatValue(value, typeofValue, precision) {
 
 function getTypeofAndClass(value) {
   const typeofValue = typeof value;
-  return [typeofValue, "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
+  return [
+    typeofValue,
+    "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
 }
 
 export function createElement(tagName, options, value) {
-    const [typeofValue, classOfValue] = getTypeofAndClass(value)
-    const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
-    const props = {
-      className: (options.classes || []).concat(classOfValue).join(" ")
-    };
+  console.log("createElement", tagName, options, value)
 
-    if (options.updater != null) {
-      if (typeofValue === "boolean") {
-          if (options.useRightClick) {
-              props.onContextMenu = (ev) => {
-                  ev.preventDefault();
-                  options.updater.Update(false, options.index, !value);
-              }
-          }
-          else {
-              props.onClick = (ev) => {
-                  if (ev.button !== RIGHT_BUTTON)
-                      options.updater.Update(false, options.index, !value);
-              }
-          }
+  const [typeofValue, classOfValue] = getTypeofAndClass(value)
+  const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
+  const props = {
+    className: (options.classes || []).concat(classOfValue).join(" ")
+  };
 
-          return React.createElement(tagName, props, formattedValue);
-      }
-      else if (typeofValue === "number") { // Numeric values, draggable
-          props.onMouseDown = (ev) => {
-              if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
-                  startDragging(ev.clientY, options.index, value, options.updater);
-          }
-          if (options.useRightClick) {
-              props.onContextMenu = (ev) => {
-                  ev.preventDefault();
-              }
-          }
-      }
-      return React.createElement(ContentEditable, Object.assign({
-        tagName: tagName,
-        html: formattedValue,
-        onChange(html) {
-          options.updater.Update(false, options.index, html);
+  if (options.updater != null) {
+    if (typeofValue === "boolean") {
+      if (options.useRightClick) {
+        props.onContextMenu = (ev) => {
+          ev.preventDefault();
+          options.updater.Update(false, options.index, !value);
         }
-      }, props));
-    }
-    else {
+      }
+      else {
+        props.onClick = (ev) => {
+          if (ev.button !== RIGHT_BUTTON)
+            options.updater.Update(false, options.index, !value);
+        }
+      }
+
       return React.createElement(tagName, props, formattedValue);
     }
+    else if (typeofValue === "number") { // Numeric values, draggable
+      props.onMouseDown = (ev) => {
+        if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
+          startDragging(ev.clientY, options.index, value, options.updater);
+      }
+      if (options.useRightClick) {
+        props.onContextMenu = (ev) => {
+          ev.preventDefault();
+        }
+      }
+    }
+    return React.createElement(ContentEditable, Object.assign({
+      tagName: tagName,
+      html: formattedValue,
+      onChange(html) {
+        options.updater.Update(false, options.index, html);
+      }
+    }, props));
+  }
+  else {
+    return React.createElement(tagName, props, formattedValue);
+  }
 }

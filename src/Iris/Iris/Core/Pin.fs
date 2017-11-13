@@ -1340,6 +1340,26 @@ module Pin =
     | EnumPin     data -> EnumPin     { data with PinConfiguration = config }
     | ColorPin    data -> ColorPin    { data with PinConfiguration = config }
 
+  // ** setPinGroup
+
+  let setPinGroup groupId = function
+    | StringPin data -> StringPin { data with PinGroupId = groupId }
+    | NumberPin data -> NumberPin { data with PinGroupId = groupId }
+    | BoolPin   data -> BoolPin   { data with PinGroupId = groupId }
+    | BytePin   data -> BytePin   { data with PinGroupId = groupId }
+    | EnumPin   data -> EnumPin   { data with PinGroupId = groupId }
+    | ColorPin  data -> ColorPin  { data with PinGroupId = groupId }
+
+  // ** setClient
+
+  let setClient clientId = function
+    | StringPin data -> StringPin { data with ClientId = clientId }
+    | NumberPin data -> NumberPin { data with ClientId = clientId }
+    | BoolPin   data -> BoolPin   { data with ClientId = clientId }
+    | BytePin   data -> BytePin   { data with ClientId = clientId }
+    | EnumPin   data -> EnumPin   { data with ClientId = clientId }
+    | ColorPin  data -> ColorPin  { data with ClientId = clientId }
+
   // ** setName
 
   let setName name = function
