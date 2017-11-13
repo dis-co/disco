@@ -39,6 +39,23 @@ type ColorYaml(tipe, alpha, ch1, ch2, ch3) as self =
 
 #endif
 
+// * ColorUtils
+
+#if FABLE_COMPILER
+
+module ColorUtils =
+
+  [<Emit("$0.toString(16)")>]
+  let private toHexString (n:byte): string = jsNative
+
+  [<Emit("\"0\".repeat($0 - $1.length) + $1")>]
+  let private pad (n:int) (str:string): string = jsNative
+
+  let toPaddedHexString (n:byte) =
+    toHexString n |> pad 2
+
+#endif
+
 // * RGBAValue
 
 //   ____      _
@@ -52,6 +69,24 @@ type RGBAValue =
   ; Green : uint8
   ; Blue  : uint8
   ; Alpha : uint8 }
+
+  // ** ToString
+
+  override rgba.ToString() =
+    #if FABLE_COMPILER
+    sprintf "#%s%s%s%s"
+      (ColorUtils.toPaddedHexString rgba.Red)
+      (ColorUtils.toPaddedHexString rgba.Green)
+      (ColorUtils.toPaddedHexString rgba.Blue)
+      (ColorUtils.toPaddedHexString rgba.Alpha)
+    #else
+    System.String.Format(
+      "#{0:X2}{1:X2}{2:X2}{3:X2}",
+      rgba.Red,
+      rgba.Green,
+      rgba.Blue,
+      rgba.Alpha)
+    #endif
 
   // ** ToOffset
 
@@ -133,6 +168,24 @@ type HSLAValue =
       Blue = 0uy
       Alpha = self.Alpha }
 
+  // ** ToString
+
+  override hsla.ToString() =
+    #if FABLE_COMPILER
+    sprintf "#%s%s%s%s"
+      (ColorUtils.toPaddedHexString hsla.Hue)
+      (ColorUtils.toPaddedHexString hsla.Saturation)
+      (ColorUtils.toPaddedHexString hsla.Lightness)
+      (ColorUtils.toPaddedHexString hsla.Alpha)
+    #else
+    System.String.Format(
+      "#{0:X3}{1:X2}{2:X2}{3:X2}",
+      hsla.Hue,
+      hsla.Saturation,
+      hsla.Lightness,
+      hsla.Alpha)
+    #endif
+
   // ** ToOffset
 
   //  ____  _
@@ -181,6 +234,13 @@ type HSLAValue =
 type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
+
+  // ** ToString
+
+  override self.ToString() =
+    match self with
+    | RGBA value -> string value
+    | HSLA value -> string value
 
   // ** Black
 
