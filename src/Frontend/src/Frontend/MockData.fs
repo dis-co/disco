@@ -49,6 +49,13 @@ let props =
      { Key = "4"; Value = "Four" }
      { Key = "5"; Value = "Five" } |]
 
+let rndColor () =
+  { Red = byte <| rnd.Next(0,255)
+    Green = byte <| rnd.Next(0,255)
+    Blue = byte <| rnd.Next(0,255)
+    Alpha = byte <| rnd.Next(0,255) }
+  |> ColorSpace.RGBA
+
 let pins groupId =
   let clientId = ClientId.Create()
   [ Pin.Sink.bang      (PinId.Create()) (name "Bang")      groupId clientId [| false |]
@@ -61,7 +68,7 @@ let pins groupId =
     Pin.Sink.multiLine (PinId.Create()) (name "MultiLine") groupId clientId [| text |]
     Pin.Sink.number    (PinId.Create()) (name "Number")    groupId clientId [| 666. |]
     Pin.Sink.bytes     (PinId.Create()) (name "Bytes")     groupId clientId [| image |]
-    Pin.Sink.color     (PinId.Create()) (name "Color")     groupId clientId [| ColorSpace.Black |]
+    Pin.Sink.color     (PinId.Create()) (name "Color")     groupId clientId [| rndColor() |]
     Pin.Sink.enum      (PinId.Create()) (name "Enum")      groupId clientId props [| props.[0] |] ]
   |> List.map (fun pin -> pin.Id, pin)
   |> Map.ofList
