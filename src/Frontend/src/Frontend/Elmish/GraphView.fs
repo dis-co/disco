@@ -257,11 +257,11 @@ type GraphView(props) =
   // *** renderUnified
 
   member this.renderUnified(state:State) =
-    let pinGroups =
-      state.PinGroups
-      |> PinGroupMap.unifiedPins
-      |> PinGroupMap.byGroup
-    pinGroups |> Seq.map (fun (KeyValue(gid, group)) ->
+    state.PinGroups
+    |> PinGroupMap.unifiedPins
+    |> PinGroupMap.byGroup
+    |> Seq.sortBy (fun (KeyValue(_,group)) -> group.Name)
+    |> Seq.map (fun (KeyValue(gid, group)) ->
       com<PinGroupView,_,_>
         { key = string gid
           Group = group
