@@ -56,6 +56,36 @@ module ColorUtils =
 
 #endif
 
+// * Parsing
+
+module Parsing =
+
+  open System
+  open System.Text.RegularExpressions
+
+  let private parse (str:string): byte = Convert.ToByte(str,16)
+
+  let (|RGBA|_|) (str:string) =
+    let pattern = "^#([A-Fa-f0-9]{2})([A-Fa-f0-9]{2})([A-Fa-f0-9]{2})([A-Fa-f0-9]{2})$"
+    let matches = Regex.Match(str,pattern)
+    if matches.Success then
+      let red = parse matches.Groups.[1].Value
+      let green = parse matches.Groups.[2].Value
+      let blue = parse matches.Groups.[3].Value
+      let alpha = parse matches.Groups.[4].Value
+      Some(red, green, blue, alpha)
+    else None
+
+  let (|RGB|_|) (str:string) =
+    let pattern = "^#([A-Fa-f0-9]{2})([A-Fa-f0-9]{2})([A-Fa-f0-9]{2})$"
+    let matches = Regex.Match(str,pattern)
+    if matches.Success then
+      let red = parse matches.Groups.[1].Value
+      let green = parse matches.Groups.[2].Value
+      let blue = parse matches.Groups.[3].Value
+      Some(red, green, blue)
+    else None
+
 // * RGBAValue
 
 //   ____      _
@@ -70,23 +100,58 @@ type RGBAValue =
   ; Blue  : uint8
   ; Alpha : uint8 }
 
-  // ** ToString
+  // ** ToHex
 
-  override rgba.ToString() =
-    #if FABLE_COMPILER
-    sprintf "#%s%s%s%s"
-      (ColorUtils.toPaddedHexString rgba.Red)
-      (ColorUtils.toPaddedHexString rgba.Green)
-      (ColorUtils.toPaddedHexString rgba.Blue)
-      (ColorUtils.toPaddedHexString rgba.Alpha)
-    #else
-    System.String.Format(
-      "#{0:X2}{1:X2}{2:X2}{3:X2}",
-      rgba.Red,
-      rgba.Green,
-      rgba.Blue,
-      rgba.Alpha)
-    #endif
+  member rgba.ToHex(alpha:bool) =
+    if alpha then
+      #if FABLE_COMPILER
+      sprintf "#%s%s%s%s"
+        (ColorUtils.toPaddedHexString rgba.Red)
+        (ColorUtils.toPaddedHexString rgba.Green)
+        (ColorUtils.toPaddedHexString rgba.Blue)
+        (ColorUtils.toPaddedHexString rgba.Alpha)
+      #else
+      System.String.Format(
+        "#{0:X2}{1:X2}{2:X2}{3:X2}",
+        rgba.Red,
+        rgba.Green,
+        rgba.Blue,
+        rgba.Alpha)
+      #endif
+    else
+      #if FABLE_COMPILER
+      sprintf "#%s%s%s"
+        (ColorUtils.toPaddedHexString rgba.Red)
+        (ColorUtils.toPaddedHexString rgba.Green)
+        (ColorUtils.toPaddedHexString rgba.Blue)
+      #else
+      System.String.Format(
+        "#{0:X2}{1:X2}{2:X2}",
+        rgba.Red,
+        rgba.Green,
+        rgba.Blue)
+      #endif
+
+  // ** TryParse
+
+  static member TryParse(value:string) =
+    match value with
+    | Parsing.RGBA (red, green, blue, alpha) ->
+      { Red = red
+        Green = green
+        Blue = blue
+        Alpha = alpha }
+      |> Either.succeed
+    | Parsing.RGB (red, green, blue) ->
+      { Red = red
+        Green = green
+        Blue = blue
+        Alpha = 255uy }
+      |> Either.succeed
+    | _ ->
+      System.String.Format("Cannot parse {0} as RGB(A)", value)
+      |> Error.asParseError "RGBAValue.TryParse"
+      |> Either.fail
 
   // ** ToOffset
 
@@ -168,23 +233,37 @@ type HSLAValue =
       Blue = 0uy
       Alpha = self.Alpha }
 
-  // ** ToString
+  // ** ToHex
 
-  override hsla.ToString() =
-    #if FABLE_COMPILER
-    sprintf "#%s%s%s%s"
-      (ColorUtils.toPaddedHexString hsla.Hue)
-      (ColorUtils.toPaddedHexString hsla.Saturation)
-      (ColorUtils.toPaddedHexString hsla.Lightness)
-      (ColorUtils.toPaddedHexString hsla.Alpha)
-    #else
-    System.String.Format(
-      "#{0:X3}{1:X2}{2:X2}{3:X2}",
-      hsla.Hue,
-      hsla.Saturation,
-      hsla.Lightness,
-      hsla.Alpha)
-    #endif
+  member hsla.ToHex(alpha:bool) =
+    if alpha then
+      #if FABLE_COMPILER
+      sprintf "#%s%s%s%s"
+        (ColorUtils.toPaddedHexString hsla.Hue)
+        (ColorUtils.toPaddedHexString hsla.Saturation)
+        (ColorUtils.toPaddedHexString hsla.Lightness)
+        (ColorUtils.toPaddedHexString hsla.Alpha)
+      #else
+      System.String.Format(
+        "#{0:X3}{1:X2}{2:X2}{3:X2}",
+        hsla.Hue,
+        hsla.Saturation,
+        hsla.Lightness,
+        hsla.Alpha)
+      #endif
+    else
+      #if FABLE_COMPILER
+      sprintf "#%s%s%s"
+        (ColorUtils.toPaddedHexString hsla.Hue)
+        (ColorUtils.toPaddedHexString hsla.Saturation)
+        (ColorUtils.toPaddedHexString hsla.Lightness)
+      #else
+      System.String.Format(
+        "#{0:X3}{1:X2}{2:X2}",
+        hsla.Hue,
+        hsla.Saturation,
+        hsla.Lightness)
+      #endif
 
   // ** ToOffset
 
@@ -235,12 +314,19 @@ type ColorSpace =
   | RGBA of RGBAValue
   | HSLA of HSLAValue
 
-  // ** ToString
+  // ** ToHex
 
-  override self.ToString() =
+  member self.ToHex(alpha) =
     match self with
-    | RGBA value -> string value
-    | HSLA value -> string value
+    | RGBA value -> value.ToHex(alpha)
+    | HSLA value -> value.ToHex(alpha)
+
+  // ** TryParse
+
+  static member TryParse(value:string) =
+    value
+    |> RGBAValue.TryParse
+    |> Either.map ColorSpace.RGBA
 
   // ** Black
 

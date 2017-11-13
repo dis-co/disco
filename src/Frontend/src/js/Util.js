@@ -137,6 +137,9 @@ function formatValue(value, typeofValue, precision) {
   if (typeofValue === "property") {
     return value.Value
   }
+  if (typeofValue === "color") {
+    return value.ToHex(false)   //  for now we don't support alpha channel in the atoms
+  }
   else {
     return IrisLib.toString(value);
   }
@@ -173,7 +176,6 @@ export function createElement(tagName, options, value) {
   const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
 
   const props = {
-    style: typeofValue === "color" ? { background: formattedValue } : {},
     className: (options.classes || []).concat(classOfValue).join(" ")
   };
 
@@ -195,6 +197,22 @@ export function createElement(tagName, options, value) {
     }
     else if (typeofValue === "bytes") {
       return React.createElement(tagName, props, formattedValue);
+    }
+    else if (typeofValue === "color") {
+      let input = React.createElement("input", Object.assign({
+        type: "color",
+        key: options.index,
+        value: formattedValue,
+        onChange(ev) {
+          options.updater.Update(false, options.index, ev.target.value);
+        }
+      },props));
+      return React.createElement("div", {
+        className: "iris-color-wrapper",
+        style: {
+          background: formattedValue
+        }
+      }, [ input ])
     }
     else if (typeofValue === "number") { // Numeric values, draggable
       props.onMouseDown = (ev) => {

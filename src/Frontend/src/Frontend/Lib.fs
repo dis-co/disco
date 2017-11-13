@@ -320,8 +320,13 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
       tryUpdateArray index value pin.Values
       |> Option.map (fun values -> EnumSlices(pin.Id, client, values))
     | _ -> None
+  | ColorPin pin ->
+    match ColorSpace.TryParse(unbox value) with
+    | Right color ->
+      tryUpdateArray index color pin.Values
+      |> Option.map (fun values -> ColorSlices(pin.Id, client, values))
+    | _ -> None
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED: Update byte pins"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
   |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 
 // * findPin
