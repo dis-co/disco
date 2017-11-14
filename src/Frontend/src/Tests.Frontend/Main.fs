@@ -9,7 +9,6 @@ let apply f = failwith "ONLY IN JS"
 
 let main _ =
   [ Store.main
-  ; Storage.main
   ; SerializationTests.main
   ; TypeTests.main
   ] |> List.iter apply

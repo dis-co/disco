@@ -12,6 +12,9 @@ module Browser =
   open Fable.Core
   open Fable.Import
 
+  // jQuery
+  let [<Global("$")>] jQuery(arg: obj): obj = jsNative
+
   //  ____   ___  __  __
   // |  _ \ / _ \|  \/  |
   // | | | | | | | |\/| |

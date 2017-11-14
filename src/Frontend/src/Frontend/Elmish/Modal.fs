@@ -87,6 +87,13 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- Some(unbox v)
 
+  type EditSettings(config:UserConfig) =
+    let mutable res = config.useRightClick
+    member __.Result = res
+    member __.UserConfig = config
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
   // ** mdir
 
   let [<Literal>] private mdir = "../../js/modals/"
@@ -96,15 +103,16 @@ module Modal =
   let show dispatch (modal: IModal): React.ReactElement =
     let data, com =
       match modal with
-      | :? AddMember              -> None,                 importDefault (mdir+"AddMember")
-      | :? CreateProject          -> None,                 importDefault (mdir+"CreateProject")
-      | :? LoadProject            -> None,                 importDefault (mdir+"LoadProject")
-      | :? CreateCue as m         -> Some(box m.Pins),     importDefault (mdir+"CreateCue")
-      | :? InsertCues as m        -> Some(box m.Cues),     importDefault (mdir+"SelectCues")
-      | :? UpdateCues as m        -> Some(box m.Cues),     importDefault (mdir+"SelectCues")
-      | :? Login as m             -> Some(box m.Project),  importDefault (mdir+"Login")
-      | :? ProjectConfig as m     -> Some(box m.Sites),    importDefault (mdir+"ProjectConfig")
-      | :? AvailableProjects as m -> Some(box m.Projects), importDefault (mdir+"AvailableProjects")
+      | :? AddMember              -> None,                   importDefault (mdir+"AddMember")
+      | :? CreateProject          -> None,                   importDefault (mdir+"CreateProject")
+      | :? LoadProject            -> None,                   importDefault (mdir+"LoadProject")
+      | :? EditSettings as m      -> Some(box m.UserConfig), importDefault (mdir+"EditSettings")
+      | :? CreateCue as m         -> Some(box m.Pins),       importDefault (mdir+"CreateCue")
+      | :? InsertCues as m        -> Some(box m.Cues),       importDefault (mdir+"SelectCues")
+      | :? UpdateCues as m        -> Some(box m.Cues),       importDefault (mdir+"SelectCues")
+      | :? Login as m             -> Some(box m.Project),    importDefault (mdir+"Login")
+      | :? ProjectConfig as m     -> Some(box m.Sites),      importDefault (mdir+"ProjectConfig")
+      | :? AvailableProjects as m -> Some(box m.Projects),   importDefault (mdir+"AvailableProjects")
       | _ -> failwithf "Cannot render unknown modal %A" modal
     let props =
       createObj [

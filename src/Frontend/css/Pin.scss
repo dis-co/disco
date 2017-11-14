@@ -96,6 +96,18 @@ $even-row: #EBEBEB;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  input[type="color"] {
+    opacity: 0;
+    display: block;
+    width: 50px;
+    height: 14px;
+    border: none;
+  }
+
+  .iris-color-wrapper {
+    float: left;
+  }
 }
 
 .iris-pin-child {

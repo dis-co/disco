@@ -19,11 +19,9 @@ open State
 
 module MemberInspector =
   let private buildClient dispatch (client: IrisClient) =
-    li [] [
-      Common.link
-        (string client.Name)
-        (fun _ -> Select.client dispatch client)
-    ]
+    Common.link
+      (string client.Name)
+      (fun _ -> Select.client dispatch client)
 
   let private renderClients tag dispatch (model: Model) (mem: RaftMember) =
     match model.state with
@@ -33,8 +31,7 @@ module MemberInspector =
       |> Map.filter (fun _ client -> client.ServiceId = mem.Id)
       |> Map.toList
       |> List.map (snd >> buildClient dispatch)
-      |> ul []
-      |> fun list -> Common.row tag [ list ]
+      |> Common.row tag
 
   let render dispatch (model: Model) (mem: MemberId) =
     match model.state with

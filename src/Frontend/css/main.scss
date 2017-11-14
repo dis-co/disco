@@ -44,7 +44,38 @@ html, body {
 
 #app-header {
   background: $iris-grey;
-  // height: $header-height;
+  min-height: 2.20rem;
+  height: 25px;
+}
+
+#app-logo .navbar-item {
+  padding: 10px 10px 28px 10px;
+}
+
+.navbar-dropdown {
+  min-width: 120px;
+}
+
+.navbar-item {
+  &.columns {
+    margin: 2px;
+    padding: 2px;
+    .column {
+      margin: 2px;
+      padding: 2px;
+    }
+    .shortcut {
+      padding-left: 4px;
+      color: grey;
+    }
+  }
+  &.columns:hover {
+    background: $iris-grey;
+  }
+}
+
+#app-logo img {
+  height: 25px;
 }
 
 #app-footer {
@@ -72,6 +103,10 @@ html, body {
   .ui-layout-west {
     background: $iris-grey;
   }
+
+  .ui-layout-east {
+    background: $iris-grey;
+  }
 }
 
 #iris-drag-image {
@@ -95,6 +130,18 @@ html, body {
   .tabs {
     background: $tab-background;
     margin-bottom: 0; // Override Bulma
+
+    .iris-button {
+      margin-left: 10px;
+    }
+
+    .inactive {
+      background: $tab-background;
+    }
+
+    .inactive:hover {
+      background: white;
+    }
   }
 
   .iris-tab-body {
@@ -146,4 +193,56 @@ html, body {
 
 .warning {
   background-color: $warning;
+}
+
+.iris-inspector {
+  .bar {
+    height: 25px;
+    padding-left: 6px;
+    background-color: lightgrey;
+
+    span.headline {
+      font-size: 1.5em;
+      font-weight: bold;
+      line-height: 25px;
+    }
+
+    .buttons {
+      height: 25px;
+    }
+
+    button {
+      height: 100%;
+      width: 40px;
+    }
+  }
+
+  .headline {
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+
+  .sub-table-headers {
+    font-size: 1.2em;
+    font-weight: bold;
+    border-bottom: 1px solid lightgrey;
+  }
+
+  .iris-button {
+    width: 10px;
+    height: 10px;
+  }
+
+  .columns {
+    margin: 4px 0;
+  }
+
+  .column {
+    padding: 2px 5px 2px 5px !important;
+  }
+
+  .empty {
+    padding-top: 10px;
+    text-align: center;
+  }
 }

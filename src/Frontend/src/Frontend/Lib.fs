@@ -173,12 +173,23 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
     |> Notifications.error
 })
 
+// * undo
+
+let undo () =
+  AppCommand.Undo |> Command |> ClientContext.Singleton.Post
+
+// * redo
+
+let redo () =
+  AppCommand.Redo |> Command |> ClientContext.Singleton.Post
+
 // * shutdown
 
 let shutdown() =
   Shutdown |> postCommand
     (fun _ -> Notifications.info "The service has been shut down")
     Notifications.error
+  |> Promise.start
 
 // * saveProject
 
@@ -186,6 +197,7 @@ let saveProject() =
   SaveProject |> postCommand
     (fun _ -> Notifications.success "The project has been saved")
     Notifications.error
+  |> Promise.start
 
 // * unloadProject
 
@@ -195,6 +207,7 @@ let unloadProject() =
       Notifications.success "The project has been unloaded"
       Browser.location.reload())
     Notifications.error
+  |> Promise.start
 
 // * setLogLevel
 
@@ -297,9 +310,23 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
       | v -> v
     tryUpdateArray index value pin.Values
     |> Option.map (fun values -> BoolSlices(pin.Id, client, values))
+  | EnumPin pin ->
+    let prop =
+      Array.tryPick
+        (fun prop -> if prop.Key = unbox value then Some prop else None)
+        pin.Properties
+    match prop with
+    | Some value ->
+      tryUpdateArray index value pin.Values
+      |> Option.map (fun values -> EnumSlices(pin.Id, client, values))
+    | _ -> None
+  | ColorPin pin ->
+    match ColorSpace.TryParse(unbox value) with
+    | Right color ->
+      tryUpdateArray index color pin.Values
+      |> Option.map (fun values -> ColorSlices(pin.Id, client, values))
+    | _ -> None
   | BytePin   _pin -> failwith "TO BE IMPLEMENTED: Update byte pins"
-  | EnumPin   _pin -> failwith "TO BE IMPLEMENTED: Update enum pins"
-  | ColorPin  _pin -> failwith "TO BE IMPLEMENTED: Update color pins"
   |> Option.iter (UpdateSlices.ofSlices >> ClientContext.Singleton.Post)
 
 // * findPin
@@ -532,3 +559,18 @@ let mayAlterCue (state:State) (cue:Cue) =
     false
     state.CuePlayers
   |> not
+
+// * toggleInspector
+
+let toggleInspector () =
+  !!jQuery("#ui-layout-container")?layout()?toggle("east")
+
+// * workspaceDimensions
+
+let workspaceDimensions (): int * int =
+  let len:int = unbox (!!jQuery("#ui-layout-container")?length)
+  if len > 0                            /// check if the element exists
+  then
+    let state = !!jQuery("#ui-layout-container")?layout()?center?state
+    unbox state?innerWidth, unbox state?innerHeight
+  else 0, 0

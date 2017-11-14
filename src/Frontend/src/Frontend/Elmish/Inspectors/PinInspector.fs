@@ -25,19 +25,21 @@ open State
 module PinInspector =
 
   let private renderValue (tag: string) (value: string) =
-    tr [Key tag] [
-      td [Class "width-5";  Common.leftSub  ] [str (tag + ":")]
-      td [Class "width-30"; Common.rightSub ] [str value]
+    div [ Class "columns" ] [
+      div [ Class "column" ] [str tag ]
+      div [ Class "column" ] [str value]
     ]
 
   let private renderSlices (tag: string) (slices: Slices) =
-    slices.Map (function
-    | StringSlice(idx, value) -> renderValue (string idx) (string value)
-    | NumberSlice(idx, value) -> renderValue (string idx) (string value)
-    | BoolSlice(idx, value)   -> renderValue (string idx) (string value)
-    | ByteSlice(idx, value)   -> renderValue (string idx) (string value)
-    | EnumSlice(idx, value)   -> renderValue (string idx) (string value)
-    | ColorSlice(idx, value)  -> renderValue (string idx) (string value))
+    let slices: ReactElement array =
+      slices.Map (function
+      | StringSlice(idx, value) -> renderValue (string idx) (string value)
+      | NumberSlice(idx, value) -> renderValue (string idx) (string value)
+      | BoolSlice(idx, value)   -> renderValue (string idx) (string value)
+      | ByteSlice(idx, value)   -> renderValue (string idx) (string value)
+      | EnumSlice(idx, value)   -> renderValue (string idx) (string value)
+      | ColorSlice(idx, value)  -> renderValue (string idx) (string value))
+    slices
     |> List.ofArray
     |> Common.tableRow tag [ "Index"; "Value" ]
 
@@ -45,35 +47,21 @@ module PinInspector =
     match model.state with
     | None -> Common.row tag [ str (string pin.ClientId) ]
     | Some state ->
-      let clients =
-        state.PinGroups
-        |> PinGroupMap.findGroupBy (PinGroup.contains pin.Id)
-        |> Map.toList
-        |> List.map
-          (fun (client,_) ->
-            match Map.tryFind client state.Clients with
-            | Some client ->
-              tr [ Key (string pin.Id) ] [
-                td [ Common.leftSub ] [
-                  Common.link
-                    (string client.Name)
-                    (fun _ -> Select.client dispatch client)
-                ]
-                td [ Common.rightSub ] [ str (string client.Status) ]
-              ]
-            | None ->
-              match ClientConfig.tryFind client state.Project.Config.Clients with
-              | Some config ->
-                tr [ Key (string pin.Id) ] [
-                  td [ Common.leftSub  ] [ str (config.Id.Prefix())   ]
-                  td [ Common.rightSub ] [ str "Offline" ]
-                ]
-              | None ->
-                tr [ Key (string pin.Id) ] [
-                  td [ Common.leftSub  ] [ str ((client.Prefix()) + " (orphaned)") ]
-                  td [ Common.rightSub ] [ str "Offline" ]
-                ])
-      Common.tableRow tag [ ""; "" ] clients
+      state.PinGroups
+      |> PinGroupMap.findGroupBy (PinGroup.contains pin.Id)
+      |> Map.toList
+      |> List.map
+        (fun (client,_) ->
+          match Map.tryFind client state.Clients with
+          | Some client ->
+            Common.link
+              (string client.Name)
+              (fun _ -> Select.client dispatch client)
+          | None ->
+            match ClientConfig.tryFind client state.Project.Config.Clients with
+            | Some config -> str (config.Id.Prefix())
+            | None        -> str ((client.Prefix()) + " (orphaned)"))
+      |> Common.row tag
 
   let private renderGroup (tag: string) dispatch (model: Model) (pin: Pin) =
     match model.state with
@@ -84,14 +72,10 @@ module PinInspector =
       |> Map.toList
       |> List.map
         (fun (client, group) ->
-          tr [ Key (string client) ] [
-            td [] [
-              Common.link
-                (string group.Name)
-                (fun _ -> Select.group dispatch group)
-            ]
-          ])
-      |> Common.tableRow tag [ "" ]
+          Common.link
+            (string group.Name)
+            (fun _ -> Select.group dispatch group))
+      |> Common.row tag
 
   let private renderCues (tag: string) dispatch (model: Model) (pin: Pin) =
     match model.state with
@@ -106,12 +90,10 @@ module PinInspector =
         List.empty
       |> List.map
         (fun (cue: Cue) ->
-          li [] [
-            Common.link
-              (string cue.Name)
-              (fun _ -> Select.cue dispatch cue)
-          ])
-      |> fun list -> Common.row tag [ ul [] list ]
+          Common.link
+            (string cue.Name)
+            (fun _ -> Select.cue dispatch cue))
+      |> Common.row tag
 
   let private configurationRow tag dispatch (model: Model) (pin: Pin) =
     let selected config = pin.PinConfiguration = config

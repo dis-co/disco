@@ -3,6 +3,7 @@
 import * as $ from "jquery"
 import * as React from "react"
 import ContentEditable from "./widgets/ContentEditable"
+import DropdownEditable from "./widgets/DropdownEditable"
 
 export function jQueryEventAsPromise(selector, events) {
   return new Promise(resolve => {
@@ -106,84 +107,143 @@ const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
 function startDragging(posY, index, value, updater) {
-    // console.log("Input drag start", index, posY)
-    $(document)
-        .on("contextmenu.drag", e => {
-            e.preventDefault();
-        })
-        .on("mousemove.drag", e => {
-            var diff = posY - e.clientY;
-            // console.log("Input drag mouse Y diff: ", diff);
-            value += diff;
-            posY = e.clientY;
-            if (diff !== 0)
-                updater.Update(true, index, value);
-        })
-        .on("mouseup.drag", e => {
-            updater.Update(false, index, value);
-            // console.log("Input drag stop", e.clientY)
-            $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
-        })
+  // console.log("Input drag start", index, posY)
+  $(document)
+    .on("contextmenu.drag", e => {
+      e.preventDefault();
+    })
+    .on("mousemove.drag", e => {
+      var diff = posY - e.clientY;
+      // console.log("Input drag mouse Y diff: ", diff);
+      value += diff;
+      posY = e.clientY;
+      if (diff !== 0)
+        updater.Update(true, index, value);
+    })
+    .on("mouseup.drag", e => {
+      updater.Update(false, index, value);
+      // console.log("Input drag stop", e.clientY)
+      $(document).off("mousemove.drag mouseup.drag contextmenu.drag");
+    })
 }
 
 function formatValue(value, typeofValue, precision) {
-    if ((typeofValue || typeof value) === "number") {
-      return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
-    }
-    else {
-      return IrisLib.toString(value);
-    }
+  if ((typeofValue || typeof value) === "number") {
+    return value.toFixed(precision == null ? DECIMAL_DIGITS : precision);
+  }
+  if (typeofValue === "bytes") {
+    return "Bytes(" + value.length + ")"
+  }
+  if (typeofValue === "property") {
+    return value.Value
+  }
+  if (typeofValue === "color") {
+    return value.ToHex(false)   //  for now we don't support alpha channel in the atoms
+  }
+  else {
+    return IrisLib.toString(value);
+  }
 }
 
 function getTypeofAndClass(value) {
-  const typeofValue = typeof value;
-  return [typeofValue, "iris-" + (typeofValue === "boolean" || typeofValue === "number" ? typeofValue : "string")];
+  var typeofValue;
+  switch (value.constructor.name) {
+    case "Boolean":
+    typeofValue = "boolean"
+    break
+    case "Number":
+    typeofValue = "number"
+    break
+    case "Property":
+    typeofValue = "property"
+    break
+    case "Uint8Array":
+    typeofValue = "bytes"
+    break
+    case "ColorSpace":
+    typeofValue = "color"
+    break
+    default:
+    typeofValue = "string";
+    break
+  }
+  return [typeofValue, "iris-" + typeofValue];
 }
 
 export function createElement(tagName, options, value) {
-    const [typeofValue, classOfValue] = getTypeofAndClass(value)
-    const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
-    const props = {
-      className: (options.classes || []).concat(classOfValue).join(" ")
-    };
+  const [typeofValue, classOfValue] = getTypeofAndClass(value)
 
-    if (options.updater != null) {
-      if (typeofValue === "boolean") {
-          if (options.useRightClick) {
-              props.onContextMenu = (ev) => {
-                  ev.preventDefault();
-                  options.updater.Update(false, options.index, !value);
-              }
-          }
-          else {
-              props.onClick = (ev) => {
-                  if (ev.button !== RIGHT_BUTTON)
-                      options.updater.Update(false, options.index, !value);
-              }
-          }
+  const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
 
-          return React.createElement(tagName, props, formattedValue);
+  const props = {
+    className: (options.classes || []).concat(classOfValue).join(" ")
+  };
+
+  if (options.updater != null) {
+    if (typeofValue === "boolean") {
+      if (options.useRightClick) {
+        props.onContextMenu = (ev) => {
+          ev.preventDefault();
+          options.updater.Update(false, options.index, !value);
+        }
       }
-      else if (typeofValue === "number") { // Numeric values, draggable
-          props.onMouseDown = (ev) => {
-              if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
-                  startDragging(ev.clientY, options.index, value, options.updater);
-          }
-          if (options.useRightClick) {
-              props.onContextMenu = (ev) => {
-                  ev.preventDefault();
-              }
-          }
+      else {
+        props.onClick = (ev) => {
+          if (ev.button !== RIGHT_BUTTON)
+            options.updater.Update(false, options.index, !value);
+        }
       }
-      return React.createElement(ContentEditable, Object.assign({
-        tagName: tagName,
+      return React.createElement(tagName, props, formattedValue);
+    }
+    else if (typeofValue === "bytes") {
+      return React.createElement(tagName, props, formattedValue);
+    }
+    else if (typeofValue === "color") {
+      let input = React.createElement("input", Object.assign({
+        type: "color",
+        key: options.index,
+        value: formattedValue,
+        onChange(ev) {
+          options.updater.Update(false, options.index, ev.target.value);
+        }
+      },props));
+      return React.createElement("div", {
+        className: "iris-color-wrapper",
+        style: {
+          background: formattedValue
+        }
+      }, [ input ])
+    }
+    else if (typeofValue === "number") { // Numeric values, draggable
+      props.onMouseDown = (ev) => {
+        if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
+          startDragging(ev.clientY, options.index, value, options.updater);
+      }
+      if (options.useRightClick) {
+        props.onContextMenu = (ev) => {
+          ev.preventDefault();
+        }
+      }
+    }
+    else if (typeofValue === "property") { // enum value, selectable
+      return React.createElement(DropdownEditable, Object.assign({
         html: formattedValue,
-        onChange(html) {
-          options.updater.Update(false, options.index, html);
+        "data-selected": formattedValue,
+        "data-options": options.properties,
+        onChange (key) {
+          options.updater.Update(false, options.index, key);
         }
       }, props));
     }
-    else {
-      return React.createElement(tagName, props, formattedValue);
-    }
+    return React.createElement(ContentEditable, Object.assign({
+      tagName: tagName,
+      html: formattedValue,
+      onChange(html) {
+        options.updater.Update(false, options.index, html);
+      }
+    }, props));
+  }
+  else {
+    return React.createElement(tagName, props, formattedValue);
+  }
 }

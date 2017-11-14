@@ -15,6 +15,7 @@ type [<Pojo>] ElProps =
     precision: uint32 option
     useRightClick: bool
     updater: IUpdater option
+    properties: (string * string) array
     classes: string array
     suffix: string option
   }
@@ -40,16 +41,22 @@ type [<Pojo>] PinProps =
     onSelect: bool -> unit
   }
 
+// * PinView
+
 type PinView(props) =
   inherit React.Component<PinProps, PinState>(props)
   do base.setInitState({ isOpen = false })
 
-  member this.ValueAt(i) =
+  // ** valueAt
+
+  member this.valueAt(i) =
     match this.props.slices with
     | Some slices -> slices.[index i].Value
     | None -> this.props.pin.Slices.[index i].Value
 
-  member inline this.RenderRows(rowCount: int, useRightClick: bool, updater: IUpdater option) =
+  // ** renderRows
+
+  member inline this.renderRows(rowCount: int, useRightClick: bool, updater: IUpdater option) =
     let pin = this.props.pin
     let name =
       if pin.Name |> unwrap |> String.IsNullOrEmpty
@@ -59,22 +66,27 @@ type PinView(props) =
       match pin with
       | NumberPin pin -> Some pin.Precision
       | _ -> None
+    let properties =
+      match pin with
+      | EnumPin pin -> pin.Properties |> Array.map (fun prop -> prop.Value,prop.Key)
+      | _ -> Array.empty
     let firstRowValue =
       let options =
         { index = 0
           precision = precision
           useRightClick = useRightClick
+          properties = properties
           updater = if rowCount > 1 then None else updater
           classes = if rowCount > 1 then [|"iris-flex-1"|] else [||]
           suffix  = if rowCount > 1 then Some(" (" + string rowCount + ")") else None
         }
       if rowCount > 1 then
         td [ClassName "iris-flex-row"] [
-          createElement("div", options, this.ValueAt(0))
-          this.RenderArrow()
+          createElement("div", options, this.valueAt(0))
+          this.renderArrow()
         ]
       else
-        td [] [createElement("div", options, this.ValueAt(0))]
+        td [] [createElement("div", options, this.valueAt(0))]
     let head =
       tr [ClassName "iris-pin-child"] [
         td [
@@ -102,6 +114,7 @@ type PinView(props) =
           let options =
             { index = i
               precision = precision
+              properties = properties
               useRightClick = useRightClick
               updater = updater
               classes = [||]
@@ -109,18 +122,26 @@ type PinView(props) =
             }
           yield tr [Key (string i); ClassName "iris-pin-child"] [
             td [] [str label]
-            td [] [createElement("div", options, this.ValueAt(i))]
+            td [] [createElement("div", options, this.valueAt(i))]
           ]
       ]
     else tbody [] [head]
 
-  member this.RenderArrow() =
+  // ** renderArrow
+
+  member this.renderArrow() =
     span [
-      ClassName ("iris-icon icon-control " + (if this.state.isOpen then "icon-less" else "icon-more"))
+      classList [
+        "iris-icon icon-control",true
+        "icon-less", this.state.isOpen
+        "icon-more", not this.state.isOpen
+      ]
       OnClick (fun ev ->
         ev.stopPropagation()
         this.setState({ this.state with isOpen = not this.state.isOpen}))
     ] []
+
+  // ** render
 
   member this.render() =
     let pin = this.props.pin
@@ -135,13 +156,12 @@ type PinView(props) =
       // Make placeholder pins (with empty Ids) look as if they were offline
       || Lib.isMissingPin pin
     let classes =
-      ["iris-pin", true
-       "iris-pin-output",    this.props.output
-       "iris-dirty",         not this.props.output && pin.Dirty
-       "iris-non-persisted", not pin.Persisted
-       "iris-offline",       isOffline
-       "iris-pin-selected",  this.props.selected
-       ]
+      [ "iris-pin",           true
+        "iris-pin-output",    this.props.output
+        "iris-dirty",         not this.props.output && pin.Dirty
+        "iris-non-persisted", not pin.Persisted
+        "iris-offline",       isOffline
+        "iris-pin-selected",  this.props.selected ]
     div [classList classes] [
-      table [] [this.RenderRows(rowCount, useRightClick, props.updater)]
+      table [] [this.renderRows(rowCount, useRightClick, props.updater)]
     ]

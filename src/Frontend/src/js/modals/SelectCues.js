@@ -18,7 +18,7 @@ export default class SelectCue extends Component {
             {this.props.data.map(cue =>
               <tr key={cue.Id.ToString()}>
                 <td style={{cursor: "pointer"}}>
-                  <input class="checkbox" type="checkbox" onClick={ev => {
+                  <input className="checkbox" type="checkbox" onClick={ev => {
                       if(ev.target.checked) {
                         let selected = this.state.selected
                         selected[cue.Id.ToString()] = cue.Id

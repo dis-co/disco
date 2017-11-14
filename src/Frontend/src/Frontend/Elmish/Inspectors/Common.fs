@@ -66,135 +66,65 @@ module Common =
 
   let bar dispatch (model: Model) =
     let disabled = List.isEmpty model.history.previous
-    let history =
-      model.history.previous
-      |> List.rev
-      |> List.mapi (breadcrumb dispatch model.history)
-    div [
-      Style [
-        Display "flex"
-        BackgroundColor "lightgrey"
-        Height "25px"
-        PaddingLeft "6px"
+    div [ Class "bar" ] [
+      span [ Class "headline" ] [ str "Inspector" ]
+      div [ Class "buttons pull-right " ] [
+        button [
+          Disabled disabled
+          OnClick (fun _ -> Navigate.back dispatch)
+        ] [ str "<"]
+        button [
+          Disabled disabled
+          OnClick (fun _ -> Navigate.forward dispatch)
+        ] [ str ">"]
       ]
-    ] [
-      button [
-        Style [
-          Height "100%"
-          Width "40px"
-        ]
-        Disabled disabled
-        OnClick (fun _ -> Navigate.back dispatch)
-      ] [ str "<"]
-      button [
-        Style [
-          Height "100%"
-          Width "40px"
-        ]
-        Disabled disabled
-        OnClick (fun _ -> Navigate.forward dispatch)
-      ] [ str ">"]
-      ul [] history
-    ]
-
-  let inline padding5() =
-    Style [PaddingLeft "5px"]
-
-  let inline topBorder() =
-    Style [BorderTop "1px solid lightgray"]
-
-  let inline padding5AndTopBorder() =
-    Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
-
-  let leftColumn =
-    Style [
-      PaddingLeft  "10px"
-      BorderTop   "1px solid lightgray"
-      BorderRight "1px solid lightgray"
-    ]
-
-  let rightColumn =
-    Style [
-      PaddingLeft "10px"
-      BorderTop   "1px solid lightgray"
-    ]
-
-  let leftSub =
-    Style [
-      BorderRight  "1px solid lightgray"
-    ]
-
-  let rightSub =
-    Style [
-      PaddingLeft "10px"
     ]
 
   let row (tag: string) children =
-    tr [Key tag] [
-      td [Class "width-10";  leftColumn ] [str tag]
-      td [Class "width-30"; rightColumn ] children
+    div [ Class "columns"; Key tag ] [
+      div [ Class "column is-one-fifth" ] [ str tag ]
+      div [ Class "column" ] children
     ]
 
   let stringRow (tag: string) (value: string) =
     row tag [ str value ]
 
-
   let toHeader (idx: int) (title: string) =
     match idx with
-    | 0 -> th [ leftSub  ] [ str title ]
-    | _ -> th [ rightSub ] [ str title ]
+    | 0 -> div [ Class "column" ] [ str title ]
+    | _ -> div [ Class "column" ] [ str title ]
 
-  let tableRow (tag: string) headers children =
-    row tag [
-      table [Class "iris-table"] [
-        thead [] [
-          tr [] (List.mapi toHeader headers)
-        ]
-        tbody [] children
-      ]
-    ]
+  let tableRow (tag: string) headers (children: ReactElement list) =
+    let header = div [ Class "columns sub-table-headers" ] (List.mapi toHeader headers)
+    row tag (header :: children)
 
   let buttonRow (tag: string) (value: bool) (f: bool -> unit) =
-    let active = if value then "pressed" else ""
     row tag [
       div [
-        Style [
-          Height "15px"
-          Width "15px"
+        classList [
+          "iris-button",true
+          "pressed", value
         ]
-        Class ("iris-button " + active)
         OnClick (fun _ -> f (not value))
       ] []
     ]
 
   let header (title: string) =
-    thead [] [
-      tr [] [
-        th [
-          Style [
-            Padding "5px 0 5px 10px"
-            FontSize "1.2em"
-          ]
-        ] [
-          str title
-        ]
+    div [ Class "columns headline" ] [
+      div [ Class "column" ] [
+        str title
       ]
     ]
 
   let footer =
-    tfoot [] [
-      tr [] [
-        td [ leftColumn  ] []
-        td [ rightColumn ] []
-      ]
-    ]
+    div [] []
 
   let render dispatch model (title: string) children =
-    div [] [
+    div [ Class "iris-inspector" ] [
       bar dispatch model
-      table [Class "iris-table"] [
+      div [] [
         header title
-        tbody [] children
+        div [] children
         footer
       ]
     ]

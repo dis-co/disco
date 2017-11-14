@@ -3,6 +3,7 @@ module Iris.Web.Drag
 
 open System
 open System.Collections.Generic
+open Iris.Web.Core
 open Iris.Core
 open Fable.Core
 open Fable.Core.JsInterop

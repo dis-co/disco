@@ -13,18 +13,18 @@ open Types
 open Helpers
 
 let loadProject dispatch site (info: IProjectInfo) =
-    Lib.loadProject(info.name, info.username, info.password, site, None)
-    |> Promise.bind (function
-      | Some err ->
-        // Get project sites and machine config
-        Lib.getProjectSites(info.name, info.username, info.password)
-        |> Promise.map (fun sites ->
-          // Ask user to create or select a new config
-          Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
-      | None ->
-        dispatch
-        |> displayAvailableProjectsModal
-        |> Promise.lift)
+  Lib.loadProject(info.name, info.username, info.password, site, None)
+  |> Promise.bind (function
+    | Some err ->
+      // Get project sites and machine config
+      Lib.getProjectSites(info.name, info.username, info.password)
+      |> Promise.map (fun sites ->
+        // Ask user to create or select a new config
+        Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
+    | None ->
+      dispatch
+      |> displayAvailableProjectsModal
+      |> Promise.lift)
 
 let handleModalResult (modal: IModal) dispatch =
   match modal with
@@ -42,6 +42,10 @@ let handleModalResult (modal: IModal) dispatch =
     match m.Result with
     | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
+  | :? Modal.EditSettings as m ->
+    { m.UserConfig with useRightClick = m.Result }
+    |> UpdateUserConfig
+    |> dispatch
   | :? Modal.CreateCue as m ->
     match m.Result with
     | null -> ()
@@ -92,17 +96,6 @@ let private toggleUILayoutResizer (visible: bool) =
   setVisibility ".ui-layout-resizer" visibility
   setVisibility ".ui-layout-toggler" visibility
 
-[<PassGenerics>]
-let private loadFromLocalStorage<'T> (key: string) =
-  let g = Fable.Import.Browser.window
-  match g.localStorage.getItem(key) with
-  | null -> None
-  | value -> ofJson<'T> !!value |> Some
-
-let private saveToLocalStorage (key: string) (value: obj) =
-  let g = Fable.Import.Browser.window
-  g.localStorage.setItem(key, toJson value)
-
 let delay ms (f:'T->unit) =
   fun x ->
     Promise.sleep ms
@@ -112,9 +105,10 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
   let postCmd cmd =
     fun () -> StateMachine.Command cmd |> ClientContext.Singleton.Post
   //  ctrl, shift, key, action
-  [| true,  false, Codes.z,         postCmd AppCommand.Undo
-     true,  true,  Codes.z,         postCmd AppCommand.Redo
-     true,  false, Codes.s,         postCmd AppCommand.Save
+  [| true,  false, Codes.z,         Lib.undo
+     true,  true,  Codes.z,         Lib.redo
+     true,  false, Codes.s,         Lib.saveProject
+     true,  false, Codes.i,         Lib.toggleInspector
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 
@@ -137,17 +131,10 @@ let init() =
           let state = context.Store |> Option.map (fun s -> s.State)
           UpdateState state |> dispatch)
       )
-  let widgets =
-    let factory = Types.getWidgetFactory()
-    loadFromLocalStorage<WidgetRef[]> StorageKeys.widgets
-    |> Option.defaultValue [||]
-    |> Array.map (fun (id, name) ->
-      let widget = factory.CreateWidget(Some id, name)
-      id, widget)
-    |> Map
-  let layout =
-    loadFromLocalStorage<Layout[]> StorageKeys.layout
-    |> Option.defaultValue [||]
+
+  let layout = Layout.load ()
+  let widgets = Layout.createWidgets layout
+
   let initModel =
     { widgets = widgets
       layout = layout
@@ -165,11 +152,8 @@ let init() =
   // other plugins (like jQuery ui-layout) load
   initModel, [startContext; delay 500 displayAvailableProjectsModal]
 
-let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout[]) =
-    widgets
-    |> Seq.map (fun kv -> kv.Key, kv.Value.Name)
-    |> Seq.toArray |> saveToLocalStorage StorageKeys.widgets
-    layout |> saveToLocalStorage StorageKeys.layout
+let private saveWidgetsAndLayout (widgets: Map<Guid,IWidget>) (layout: Layout) =
+  Layout.save layout
 
 let [<Literal>] maxLength = 4
 let chop (list: 'a list) =
@@ -181,33 +165,67 @@ let chop (list: 'a list) =
 /// Update function for Elmish state
 let update msg model: Model*Cmd<Msg> =
   match msg with
+  ///  _____     _
+  /// |_   _|_ _| |__
+  ///   | |/ _` | '_ \
+  ///   | | (_| | |_) |
+  ///   |_|\__,_|_.__/
+
+  | UpdateTabs TabAction.AddTab ->
+    let name = sprintf "Workspace %d" (model.layout |> Layout.tabs |> Array.length |> ((+) 1))
+    let tab = Tab.create name
+    let layout = tab |> flip Layout.addTab model.layout |> Layout.setSelected tab.Id
+    Layout.save layout
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
+
+  | UpdateTabs (TabAction.SelectTab id) ->
+    let layout = Layout.setSelected id model.layout
+    Layout.save layout
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
+
+  | UpdateTabs (TabAction.RemoveTab id) ->
+    let tabs =  Layout.tabs model.layout
+    let current = Array.findIndex (fun tab -> tab.Id = id) tabs
+    let previous =
+      if id = model.layout.Selected
+      then tabs.[current - 1].Id  /// this is safe, because we don't allow destroying Workspace
+      else model.layout.Selected
+    let layout = id |> flip Layout.removeTab model.layout |> Layout.setSelected previous
+    Layout.save layout
+    let widgets = Layout.createWidgets layout
+    { model with widgets = widgets; layout = layout },[]
+
+  /// __        ___     _            _
+  /// \ \      / (_) __| | __ _  ___| |_
+  ///  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
+  ///   \ V  V / | | (_| | (_| |  __/ |_
+  ///    \_/\_/  |_|\__,_|\__, |\___|\__|
+  ///                     |___/
+
   | AddWidget(id, widget) ->
-    let widgets = Map.add id widget model.widgets
-    let layout = Array.append model.layout [|widget.InitialLayout|]
-    saveWidgetsAndLayout widgets layout
+    let widgets = Map.add widget.Id widget model.widgets
+    let layout = Layout.addWidget widget model.layout
+    Layout.save layout
     { model with widgets = widgets; layout = layout }, []
+
+  | MaximiseWidget id ->
+    let layout = Layout.maximiseWidget id model.layout
+    { model with layout = layout }, []
+
   | RemoveWidget id ->
     let widgets = Map.remove id model.widgets
-    let layout = model.layout |> Array.filter (fun x -> x.i <> id)
-    saveWidgetsAndLayout widgets layout
+    let layout = Layout.removeWidget id model.layout
+    Layout.save layout
     { model with widgets = widgets; layout = layout }, []
-  // | AddTab -> // Add tab and remove widget
-  // | RemoveTab -> // Optional, add widget
 
-  | Navigate cmd when not (List.isEmpty model.history.previous) ->
-    let history =
-      try
-        let index = cmd |> function
-          | InspectorNavigate.Previous -> model.history.index + 1
-          | InspectorNavigate.Next     -> model.history.index - 1
-          | InspectorNavigate.Set idx  -> idx
-        { model.history with
-            index = index
-            selected = model.history.previous.[index] }
-      with _ -> model.history
-    { model with history = history }, []
-
-  | Navigate _ -> model, []
+  ///  ____                     _              _ ____
+  /// |  _ \ _ __ __ _  __ _   / \   _ __   __| |  _ \ _ __ ___  _ __
+  /// | | | | '__/ _` |/ _` | / _ \ | '_ \ / _` | | | | '__/ _ \| '_ \
+  /// | |_| | | | (_| | (_| |/ ___ \| | | | (_| | |_| | | | (_) | |_) |
+  /// |____/|_|  \__,_|\__, /_/   \_\_| |_|\__,_|____/|_|  \___/| .__/
+  ///                  |___/                                    |_|
 
   | RemoveSelectedDragItems ->
     match model.state, model.selectedDragItems with
@@ -237,13 +255,72 @@ let update msg model: Model*Cmd<Msg> =
                      selected = selected
                      index = 0
                      previous = history } }, []
-  | AddLog log ->
-    { model with logs = log::model.logs }, []
-  | UpdateLayout layout ->
-    saveToLocalStorage StorageKeys.layout layout
+
+  ///  ___                           _
+  /// |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __
+  ///  | || '_ \/ __| '_ \ / _ \/ __| __/ _ \| '__|
+  ///  | || | | \__ \ |_) |  __/ (__| || (_) | |
+  /// |___|_| |_|___/ .__/ \___|\___|\__\___/|_|
+  ///               |_|
+
+  | Navigate cmd when not (List.isEmpty model.history.previous) ->
+    let history =
+      try
+        let index = cmd |> function
+          | InspectorNavigate.Previous -> model.history.index + 1
+          | InspectorNavigate.Next     -> model.history.index - 1
+          | InspectorNavigate.Set idx  -> idx
+        { model.history with
+            index = index
+            selected = model.history.previous.[index] }
+      with _ -> model.history
+    { model with history = history }, []
+
+  | Navigate _ -> model, []
+
+  | UpdateInspector InspectorAction.Open ->
+    let layout = Layout.setInspectorOpen true model.layout
+    Layout.save layout
     { model with layout = layout }, []
+
+  | UpdateInspector InspectorAction.Close ->
+    let layout = Layout.setInspectorOpen false model.layout
+    Layout.save layout
+    { model with layout = layout }, []
+
+  | UpdateInspector (InspectorAction.Resize width) ->
+    let layout = Layout.setInspectorSize width model.layout
+    Layout.save layout
+    { model with layout = layout }, []
+
+  ///  _                            _
+  /// | |    __ _ _   _  ___  _   _| |_
+  /// | |   / _` | | | |/ _ \| | | | __|
+  /// | |__| (_| | |_| | (_) | |_| | |_
+  /// |_____\__,_|\__, |\___/ \__,_|\__|
+  ///             |___/
+
+  | UpdateLayout widgets ->
+    let layout = Layout.setWidgets widgets model.layout
+    Layout.save layout
+    { model with layout = layout }, []
+
+  ///   ____             __ _
+  ///  / ___|___  _ __  / _(_) __ _
+  /// | |   / _ \| '_ \| |_| |/ _` |
+  /// | |__| (_) | | | |  _| | (_| |
+  ///  \____\___/|_| |_|_| |_|\__, |
+  ///                         |___/
+
   | UpdateUserConfig cfg ->
     { model with userConfig = cfg }, []
+
+  ///  ____  _        _
+  /// / ___|| |_ __ _| |_ ___
+  /// \___ \| __/ _` | __/ _ \
+  ///  ___) | || (_| | ||  __/
+  /// |____/ \__\__,_|\__\___|
+
   | UpdateState state ->
     let cmd =
       match model.state, state, model.modal with
@@ -253,6 +330,13 @@ let update msg model: Model*Cmd<Msg> =
       | Some _, None, None -> [displayAvailableProjectsModal]
       | _ -> []
     { model with state = state }, cmd
+
+  ///  __  __           _       _
+  /// |  \/  | ___   __| | __ _| |
+  /// | |\/| |/ _ \ / _` |/ _` | |
+  /// | |  | | (_) | (_| | (_| | |
+  /// |_|  |_|\___/ \__,_|\__,_|_|
+
   | OpenModal modal ->
     toggleUILayoutResizer false
     match model.modal with
@@ -266,6 +350,7 @@ let update msg model: Model*Cmd<Msg> =
       { model with modal = None }, []
     | _ ->
       { model with modal = Some modal }, []
+
   | CloseModal(modal, result) ->
     toggleUILayoutResizer true
     let cmd =
@@ -285,3 +370,13 @@ let update msg model: Model*Cmd<Msg> =
             [handleModalResult modal]
           | Choice2Of2 () -> [] // For now, just ignore cancelled modals
     { model with modal = None }, cmd
+
+  ///  _
+  /// | |    ___   __ _
+  /// | |   / _ \ / _` |
+  /// | |__| (_) | (_| |
+  /// |_____\___/ \__, |
+  ///             |___/
+
+  | AddLog log ->
+    { model with logs = log::model.logs }, []
