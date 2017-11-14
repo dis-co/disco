@@ -55,23 +55,6 @@ let rndColor () =
     Blue = byte <| rnd.Next(0,255)
     Alpha = byte <| rnd.Next(0,255) }
   |> ColorSpace.RGBA
-    then Some Behavior.FileName
-    elif str.Contains("Directory")
-    then Some Behavior.Directory
-    elif str.Contains("IP")
-    then Some Behavior.IP
-    elif str.Contains("Url")
-    then Some Behavior.Url
-    else None
-
-let parseBehavior (name:string) =
-    match name with 
-    | Behavior b -> b
-    | _ -> Behavior.Simple
-
-    let behavior = parseBehavior pk
-    |> Pin.setBehavior behavior 
-    |> Some
 
 let pins groupId =
   let clientId = ClientId.Create()
