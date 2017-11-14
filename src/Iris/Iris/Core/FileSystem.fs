@@ -15,12 +15,82 @@ open System.Linq
 
 #endif
 
+// * FsInfo
+
+type FsInfo =
+  { FullPath: FilePath
+    Name: Name
+    Size: uint64 }
+
+  static member FullPath_ =
+    (fun { FullPath = path } -> path),
+    (fun path fsinfo -> { fsinfo with FullPath = path })
+
+  static member Name_ =
+    (fun { Name = path } -> path),
+    (fun path fsinfo -> { fsinfo with Name = path })
+
+  static member Size_ =
+    (fun { Size = path } -> path),
+    (fun path fsinfo -> { fsinfo with Size = path })
+
+// * FsEntry
+
+[<RequireQualifiedAccess>]
+type FsEntry =
+  | File      of info:FsInfo
+  | Directory of info:FsInfo * children:FsEntry list
+
+  // ** optics
+
+  static member Info_ =
+    (function
+      | FsEntry.File info -> info
+      | FsEntry.Directory(info,_) -> info),
+    (fun info -> function
+      | FsEntry.File _ -> FsEntry.File info
+      | FsEntry.Directory(_,children) -> FsEntry.Directory(info,children))
+
+  static member File_ =
+    (function
+      | FsEntry.File info -> Some info
+      | _ -> None),
+    (fun info -> function
+      | FsEntry.File _ -> FsEntry.File info
+      | other -> other)
+
+  static member Directory_ =
+    (function
+      | FsEntry.Directory (info,_) -> Some info
+      | _ -> None),
+    (fun info -> function
+      | FsEntry.Directory (_, children) -> FsEntry.Directory (info, children)
+      | other -> other)
+
+  static member Children_ =
+    (function
+      | FsEntry.Directory (_, children) -> children
+      | _ -> []),
+    (fun children -> function
+      | FsEntry.Directory(info,_) -> FsEntry.Directory(info, children)
+      | other -> other)
+
+// * FsTree
+
+type FsTree =
+  { Root: FsEntry }
+
+  // ** optics
+
+  static member Root_ =
+    (fun { Root = root } -> root),
+    (fun root tree -> { tree with Root = root })
+
 // * Path
 
 
 [<AutoOpen>]
 module Path =
-
   // ** combine
 
   let combine (p1: string) (p2: string) : FilePath =
@@ -487,3 +557,100 @@ module FileSystem =
         |> Either.fail
 
   #endif
+
+// * FsEntry module
+
+module FsEntry =
+
+  open Aether
+  open Aether.Operators
+
+  // ** getters
+
+  let info = Optic.get FsEntry.Info_
+  let name = Optic.get (FsEntry.Info_ >-> FsInfo.Name_)
+  let fullPath = Optic.get (FsEntry.Info_ >-> FsInfo.FullPath_)
+  let size = Optic.get (FsEntry.Info_ >-> FsInfo.Size_)
+  let children = Optic.get FsEntry.Children_
+  let childCount = Optic.get FsEntry.Children_ >> List.length
+  let isFile = Optic.get FsEntry.File_ >> Option.isSome
+  let isDirectory = Optic.get FsEntry.Directory_ >> Option.isSome
+  let file = Optic.get FsEntry.File_
+  let directory = Optic.get FsEntry.Directory_
+
+  // ** setters
+
+  let setInfo = Optic.set FsEntry.Info_
+  let setName = Optic.set (FsEntry.Info_ >-> FsInfo.Name_)
+  let setFullPath = Optic.set (FsEntry.Info_ >-> FsInfo.FullPath_)
+  let setSize = Optic.set (FsEntry.Info_ >-> FsInfo.Size_)
+  let setChildren = Optic.set FsEntry.Children_
+
+  // ** add
+
+  let add (entry: FsEntry) = function
+    | FsEntry.Directory(info, children) ->
+      FsEntry.Directory(info, entry :: children)
+    | other -> other
+
+  // ** remove
+
+  let remove (entry: FsEntry) = function
+    | FsEntry.Directory(info, children) ->
+      FsEntry.Directory(info, List.filter ((=) entry) children)
+    | other -> other
+
+  // ** read
+
+  #if !FABLE_COMPILER
+
+  let rec read (path:FilePath): FsEntry option =
+    if File.exists path then
+      let info = FileInfo(unwrap path)
+      FsEntry.File {
+        FullPath = filepath info.FullName
+        Name = Measure.name info.Name
+        Size = uint64 info.Length
+      }
+      |> Some
+    elif Directory.exists path then
+      let di = DirectoryInfo (unwrap path)
+      let info = {
+        FullPath = filepath di.FullName
+        Name = Measure.name di.Name
+        Size = uint64 0
+      }
+      let children =
+        Array.fold
+          (fun lst path ->
+            match read path with
+            | Some entry -> entry :: lst
+            | None -> lst)
+          []
+          (Directory.fileSystemEntries path)
+      FsEntry.Directory (info, children)
+      |> Some
+    else None
+
+  #endif
+
+// * FsTree module
+
+module FsTree =
+
+  // ** read
+
+  #if !FABLE_COMPILER
+
+  let rec read (path:FilePath) =
+    path
+    |> FsEntry.read
+    |> Option.map (fun entry -> { Root = entry })
+
+  #endif
+
+#if INTERACTIVE
+
+let tree = FsTree.read (filepath "/home/k/iris/assets")
+
+#endif
