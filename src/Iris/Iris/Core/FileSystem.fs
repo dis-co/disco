@@ -704,7 +704,7 @@ module FsEntry =
           (fun existing ->
             if fullPath entry = fullPath existing then
               entry
-            else entry)
+            else existing)
           children
       setChildren children dir
     | FsEntry.Directory(info, children) as dir when Path.contains (fullPath entry) (fullPath dir) ->
