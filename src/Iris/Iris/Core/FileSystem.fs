@@ -77,6 +77,11 @@ type FsEntry =
       | FsEntry.Directory(info,_) -> FsEntry.Directory(info, children)
       | other -> other)
 
+  // ** Item
+
+  member self.Item(path:FilePath) =
+    FsEntry.item path self
+
 // * FsTree
 
 type FsTree =
@@ -88,11 +93,23 @@ type FsTree =
     (fun { Root = root } -> root),
     (fun root tree -> { tree with Root = root })
 
+  // ** Item
+
+  member self.Item(path:FilePath) =
+    self.Root.[path]
+
 // * Path
 
 
 [<AutoOpen>]
 module Path =
+  // ** sanitize
+
+  let sanitize (path:FilePath) =
+    if Path.endsWith "/" path
+    then Path.substring 0 (Path.length path - 1) path
+    else path
+
   // ** combine
 
   let combine (p1: string) (p2: string) : FilePath =
@@ -217,6 +234,12 @@ module Path =
     pmap Path.GetFileName path
 
   #endif
+
+  // ** isParentOf
+
+  let isParentOf (child:FilePath) (parent:FilePath) =
+    let path = child |> sanitize |> getDirectoryName
+    path = parent
 
 // * File
 
@@ -662,12 +685,13 @@ module FsEntry =
 
   // ** remove
 
-  let rec remove (entry: FsEntry) = function
-    | FsEntry.Directory(info, children) as dir when isParentOf entry dir ->
-      let children = List.filter (fun existing -> name existing = name entry) children
+  let rec remove (fp: FilePath) (tree:FsEntry) =
+    match tree with
+    | FsEntry.Directory(info, children) as dir when Path.isParentOf fp (fullPath dir) ->
+      let children = List.filter (fun existing -> fullPath existing <> fp) children
       FsEntry.Directory(info, children)
-    | FsEntry.Directory(info, children) when Path.contains (fullPath entry) info.Path ->
-      FsEntry.Directory(info, List.map (remove entry) children)
+    | FsEntry.Directory(info, children) when Path.beginsWith info.Path fp ->
+      FsEntry.Directory(info, List.map (remove fp) children)
     | other -> other
 
   // ** fileCount
@@ -687,10 +711,7 @@ module FsEntry =
   // ** tryFind
 
   let rec tryFind (path:FilePath) (tree:FsEntry) =
-    let path =
-      if Path.endsWith "/" path
-      then Path.substring 0 (Path.length path - 1) path
-      else path
+    let path = Path.sanitize path
     match tree with
     | FsEntry.File _ when fullPath tree = path -> Some tree
     | FsEntry.Directory _ as dir when fullPath dir = path -> Some dir
@@ -699,6 +720,21 @@ module FsEntry =
     | FsEntry.Directory(_, children) as dir when Path.beginsWith (fullPath dir) path ->
       List.tryPick (tryFind path) children
     | _ -> None
+
+  // ** item
+
+  let rec item (path:FilePath) (tree:FsEntry) =
+    let path = Path.sanitize path
+    match tree with
+    | FsEntry.File _ as file when fullPath file = path -> file
+    | FsEntry.Directory _ as dir when fullPath dir = path -> dir
+    | FsEntry.Directory (_,children) as dir when Path.beginsWith (fullPath dir) path ->
+      List.pick
+        (fun entry ->
+          try item path entry |> Some
+          with _ -> None)
+        children
+    | _ -> failwithf "item %A not found" path
 
 // * FsTree module
 
@@ -747,8 +783,8 @@ module FsTree =
   let rec add (path: FilePath) (tree: FsTree) =
     let path =
       if Path.isPathRooted path
-      then path
-      else Path.getFullPath path
+      then path |> Path.sanitize
+      else path |> Path.sanitize |> Path.getFullPath
     if Path.contains path (basePath tree) then
       path
       |> FsEntry.create
@@ -759,8 +795,16 @@ module FsTree =
 
   // ** remove
 
-  let remove (path:FilePath) (root: FsTree) =
-    failwith "soon"
+  let remove (path:FilePath) (tree: FsTree) =
+    let path =
+      if Path.isPathRooted path
+      then path |> Path.sanitize
+      else path |> Path.sanitize |> Path.getFullPath
+    if Path.contains path (basePath tree) then
+      tree.Root
+      |> FsEntry.remove path
+      |> fun root -> { Root = root }
+    else tree
 
   // ** update
 
