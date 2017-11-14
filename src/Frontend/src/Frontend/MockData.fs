@@ -97,6 +97,7 @@ let machines =
       HostName     = name ("mockmachine-" + string idx)
       WorkSpace    = filepath "/Iris"
       LogDirectory = filepath "/Iris"
+      AssetDirectory = filepath "/Iris"
       BindAddress  = IPv4Address "127.0.0.1"
       WebPort      = port Constants.DEFAULT_WEB_PORT
       RaftPort     = port Constants.DEFAULT_RAFT_PORT

@@ -64,6 +64,7 @@ table IrisMachineFB {
       MachineId: [ubyte];
       HostName: string;
       WorkSpace: string;
+      AssetDirectory: string;
       LogDirectory: string;
       BindAddress: string;
       WebPort: ushort;

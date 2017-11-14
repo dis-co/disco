@@ -28,17 +28,18 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId:    MachineId
-    HostName:     Name
-    WorkSpace:    FilePath
-    LogDirectory: FilePath
-    BindAddress:  IpAddress
-    WebPort:      Port
-    RaftPort:     Port
-    WsPort:       Port
-    GitPort:      Port
-    ApiPort:      Port
-    Version:      Iris.Core.Version }
+  { MachineId:      MachineId
+    HostName:       Name
+    WorkSpace:      FilePath
+    AssetDirectory: FilePath
+    LogDirectory:   FilePath
+    BindAddress:    IpAddress
+    WebPort:        Port
+    RaftPort:       Port
+    WsPort:         Port
+    GitPort:        Port
+    ApiPort:        Port
+    Version:        Iris.Core.Version }
 
   // ** ToString
 
@@ -54,6 +55,7 @@ type IrisMachine =
     let webip = machine.BindAddress |> string |> builder.CreateString
     let workspace = machine.WorkSpace |> unwrap |> mapNull
     let logdir = machine.LogDirectory |> unwrap |> mapNull
+    let assetdir = machine.AssetDirectory |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = IrisMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
@@ -62,6 +64,7 @@ type IrisMachine =
     Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
     Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
     Option.iter (fun value -> IrisMachineFB.AddLogDirectory(builder, value)) logdir
+    Option.iter (fun value -> IrisMachineFB.AddAssetDirectory(builder, value)) assetdir
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
@@ -80,6 +83,7 @@ type IrisMachine =
       return
         { MachineId    = machineId
           WorkSpace    = filepath fb.WorkSpace
+          AssetDirectory = filepath fb.AssetDirectory
           LogDirectory = filepath fb.LogDirectory
           HostName     = name fb.HostName
           BindAddress  = ip
@@ -100,8 +104,10 @@ type IrisMachine =
         #if FABLE_COMPILER
         WorkSpace    = filepath "/dev/null"
         LogDirectory = filepath "/dev/null"
+        AssetDirectory = filepath "/dev/null"
         #else
         WorkSpace    = filepath Environment.CurrentDirectory
+        AssetDirectory = filepath Environment.CurrentDirectory
         LogDirectory = filepath Environment.CurrentDirectory
         #endif
         BindAddress  = IPv4Address "127.0.0.1"
@@ -239,6 +245,7 @@ module MachineConfig =
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId:    string
     [<DefaultValue>] val mutable WorkSpace:    string
+    [<DefaultValue>] val mutable AssetDirectory: string
     [<DefaultValue>] val mutable LogDirectory: string
     [<DefaultValue>] val mutable BindAddress:  string
     [<DefaultValue>] val mutable WebPort:      uint16
@@ -252,6 +259,7 @@ module MachineConfig =
       let yml = MachineConfigYaml()
       yml.MachineId    <- string cfg.MachineId
       yml.WorkSpace    <- unwrap cfg.WorkSpace
+      yml.AssetDirectory <- unwrap cfg.AssetDirectory
       yml.LogDirectory <- unwrap cfg.LogDirectory
       yml.BindAddress  <- string cfg.BindAddress
       yml.WebPort      <- unwrap cfg.WebPort
@@ -273,6 +281,7 @@ module MachineConfig =
         { MachineId    = id
           HostName     = name hostname
           WorkSpace    = filepath yml.WorkSpace
+          AssetDirectory = filepath yml.AssetDirectory
           LogDirectory = filepath yml.LogDirectory
           BindAddress  = ip
           WebPort      = port yml.WebPort
@@ -304,12 +313,20 @@ module MachineConfig =
         | Some shift -> port (p + shift)
         | None -> port p
     let hostname = Network.getHostName()
+
     let workspace =
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
         home <.> (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_UNIX)
       else
         filepath (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS)
+
+    let assetDir =
+      if Platform.isUnix then
+        let home = Environment.GetEnvironmentVariable "HOME"
+        home <.> (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX)
+      else
+        filepath (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS)
 
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
@@ -319,6 +336,7 @@ module MachineConfig =
     { MachineId    = IrisId.Create()
       HostName     = name hostname
       WorkSpace    = workspace
+      AssetDirectory = assetDir
       LogDirectory = workspace </> filepath "log"
       BindAddress  = IpAddress.Parse bindIp
       WebPort      = shiftPort Constants.DEFAULT_WEB_PORT

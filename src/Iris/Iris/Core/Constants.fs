@@ -223,11 +223,18 @@ module Constants =
   let GITIGNORE = @"/.raft"
 
   [<Literal>]
-  /// Intended to be a subdirectory of HOME
+  /// Intended to be a subdirectory of $HOME
   let MACHINECONFIG_DEFAULT_WORKSPACE_UNIX = "iris"
 
   [<Literal>]
   let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Iris"
+
+  [<Literal>]
+  /// Intended to be a subdirectory of $HOME/iris
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX = "assets"
+
+  [<Literal>]
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS = "C:\Iris\assets"
 
   //  _____            _                                      _
   // | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_
