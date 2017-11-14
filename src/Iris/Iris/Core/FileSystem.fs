@@ -760,20 +760,26 @@ module FsTree =
   // ** create
 
   let create (basePath:FilePath) =
-    if not (Directory.exists basePath) then
-      failwithf "%A is not a directory" basePath
-    let basePath =
-      if Path.endsWith "/" basePath
-      then Path.substring 0 (Path.length basePath - 1) basePath
-      else basePath
-    let path = Path.getDirectoryName basePath
-    let name = Path.baseName basePath |> string |> name
-    let info = {
-      Path = path
-      Name = name
-      Size = uint64 0
-    }
-    { Root = FsEntry.Directory(info, List.empty) }
+    if Directory.exists basePath then
+      let basePath =
+        if Path.endsWith "/" basePath
+        then Path.substring 0 (Path.length basePath - 1) basePath
+        else basePath
+      let path = Path.getDirectoryName basePath
+      let name = Path.baseName basePath |> string |> name
+      let info = {
+        Path = path
+        Name = name
+        Size = uint64 0
+      }
+      Either.succeed {
+        Root = FsEntry.Directory(info, List.empty)
+      }
+    else
+      basePath
+      |> sprintf "%A was not found or is not a directory"
+      |> Error.asAssetError "FsTree"
+      |> Either.fail
 
   // ** basePath
 

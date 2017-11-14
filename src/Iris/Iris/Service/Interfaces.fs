@@ -139,6 +139,14 @@ type IWebSocketServer =
   abstract Subscribe    : (IrisEvent -> unit) -> System.IDisposable
   abstract Start        : unit -> Either<IrisError, unit>
 
+// * IAssetService
+
+type IAssetService =
+  inherit IDisposable
+  abstract State: FsTree
+  abstract Start: unit -> Either<IrisError, unit>
+  abstract Stop: unit -> Either<IrisError, unit>
+
 // * IApiServerCallbacks
 
 type IApiServerCallbacks =

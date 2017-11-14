@@ -18,19 +18,19 @@ module FsTests =
     FileSystem.rmDir (filepath path) |> ignore
 
   let withTree (f: FsTree -> unit) =
-    withTmpDir (filepath >> FsTree.create >> f)
+    withTmpDir (filepath >> FsTree.create >> Either.get >> f)
 
   let test_should_have_correct_base_path =
     testCase "should have correct base path" <| fun _ ->
       withTmpDir <| fun path ->
-        let tree = FsTree.create (filepath path)
+        let tree = FsTree.create (filepath path) |> Either.get
         Expect.equal (FsTree.basePath tree) (filepath path) "Should have correct base path"
 
   let test_should_handle_base_path_with_slash =
     testCase "should handle base path with slash" <| fun _ ->
       withTmpDir <| fun path ->
         let withSlash = path + "/"
-        let tree = FsTree.create (filepath withSlash)
+        let tree = FsTree.create (filepath withSlash) |> Either.get
         Expect.equal (FsTree.basePath tree) (filepath path) "Should have correct base path"
 
   let test_should_add_file_entry_at_correct_point =
