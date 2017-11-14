@@ -45,7 +45,6 @@ module AssetService =
       async {
         let! msg = inbox.Receive()
         let state = store.State
-        printfn "msg: %A" msg
         match msg with
         | IrisEvent.FileSystem (FileSystemEvent.Created(_,path)) ->
           state.Files
@@ -66,7 +65,6 @@ module AssetService =
           |> updateFiles state
         | _ -> state
         |> store.Update
-        printfn "newstate: %A" store.State.Files
         return! impl()
       }
     impl()
@@ -120,6 +118,33 @@ module AssetService =
     |> IrisEvent.FileSystem
     |> delayed agent
 
+
+  // ** crawlDirectory
+
+  let rec private crawlDirectory dir agent =
+    async {
+      if Directory.exists dir then
+        (dir |> Path.getFileName |> unwrap |> name, dir)
+        |> FileSystemEvent.Created
+        |> IrisEvent.FileSystem
+        |> post agent
+      for child in Directory.getFiles false "*" dir do
+        (child |> Path.getFileName |> unwrap |> name, child)
+        |> FileSystemEvent.Created
+        |> IrisEvent.FileSystem
+        |> post agent
+      for child in Directory.getDirectories dir do
+        do! crawlDirectory child agent
+    }
+
+  // ** startCrawler
+
+  let private startCrawler baseDir agent =
+    async {
+      do! crawlDirectory baseDir agent
+    }
+    |> Async.Start
+
   // ** createWatcher
 
   let createWatcher (basePath: FilePath) agent =
@@ -160,7 +185,10 @@ module AssetService =
       return {
         new IAssetService with
           member self.Start() =
-            agent.Start() |> Either.succeed
+            agent.Start()
+            agent
+            |> startCrawler assetDir
+            |> Either.succeed
 
           member self.Stop() = Either.nothing
 
@@ -182,7 +210,8 @@ let service = AssetService.create path |> Either.get
 
 service.Start()
 
-service.State
+FsTree.fileCount service.State
+FsTree.directoryCount service.State
 
 dispose service
 

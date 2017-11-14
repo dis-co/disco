@@ -413,8 +413,6 @@ module Directory =
 
   // ** getDirectories
 
-  // ** getDirectories
-
   let getDirectories (path: FilePath) =
     path
     |> unwrap
