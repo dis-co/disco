@@ -151,6 +151,9 @@
     <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs">
       <Link>StoreTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\FsTests.fs">
+      <Link>FsTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\GitTests.fs">
       <Link>GitTests.fs</Link>
     </Compile>
