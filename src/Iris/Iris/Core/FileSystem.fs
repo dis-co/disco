@@ -694,6 +694,23 @@ module FsEntry =
       FsEntry.Directory(info, List.map (remove fp) children)
     | other -> other
 
+  // ** update
+
+  let update (entry:FsEntry) (tree:FsEntry) =
+    match tree with
+    | FsEntry.Directory(info, children) as dir when isParentOf entry tree ->
+      let children =
+        List.map
+          (fun existing ->
+            if fullPath entry = fullPath existing then
+              entry
+            else entry)
+          children
+      setChildren children dir
+    | FsEntry.Directory(info, children) as dir when Path.contains (fullPath entry) (fullPath dir) ->
+      setChildren (List.map (update entry) children) dir
+    | other -> other
+
   // ** fileCount
 
   let rec fileCount = function
@@ -785,7 +802,7 @@ module FsTree =
       if Path.isPathRooted path
       then path |> Path.sanitize
       else path |> Path.sanitize |> Path.getFullPath
-    if Path.contains path (basePath tree) then
+    if Path.beginsWith (basePath tree) path then
       path
       |> FsEntry.create
       |> Option.map (fun entry -> FsEntry.add entry tree.Root)
@@ -800,16 +817,26 @@ module FsTree =
       if Path.isPathRooted path
       then path |> Path.sanitize
       else path |> Path.sanitize |> Path.getFullPath
-    if Path.contains path (basePath tree) then
+    if Path.beginsWith (basePath tree) path then
       tree.Root
       |> FsEntry.remove path
-      |> fun root -> { Root = root }
+      |> fun root -> { tree with Root = root }
     else tree
 
   // ** update
 
-  let update (entry:FsEntry) (root: FsTree) =
-    failwith "update"
+  let update (path:FilePath) (tree: FsTree) =
+    let path =
+      if Path.isPathRooted path
+      then path |> Path.sanitize
+      else path |> Path.sanitize |> Path.getFullPath
+    if Path.beginsWith (basePath tree) path then
+      path
+      |> FsEntry.create
+      |> Option.map (fun entry -> FsEntry.update entry tree.Root)
+      |> Option.map (fun root -> { tree with Root = root })
+      |> Option.defaultValue tree
+    else tree
 
   // ** read
 

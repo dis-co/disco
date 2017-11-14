@@ -133,12 +133,56 @@ module FsTests =
         Expect.equal (FsTree.directoryCount processed4) 1 "Should be 1 directory"
         Expect.equal (FsTree.fileCount processed4) 0 "Should have 0 files"
 
+  let test_should_update_file_entry_at_correct_point =
+    testCase "should update file entry at correct points" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path </> filepath "dir1"
+        let dir2 = path </> filepath "dir2"
+        let dir3 = dir2 </> filepath "dir3"
+
+        let file1 = dir1 </> filepath "file1.txt"
+        let file2 = dir3 </> filepath "file2.txt"
+
+        do Directory.createDirectory dir1 |> ignore
+        do Directory.createDirectory dir2 |> ignore
+        do Directory.createDirectory dir3 |> ignore
+
+        let content1 = "Hello!"
+        let content2 = "Bye!"
+
+        do File.writeText content1 None file1
+        do File.writeText content2 None file2
+
+        let tree =
+          tree
+          |> FsTree.add dir1
+          |> FsTree.add dir2
+          |> FsTree.add dir3
+          |> FsTree.add file1
+          |> FsTree.add file2
+
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
+
+        let fileEntry1 = FsTree.tryFind file1 tree |> Option.get
+        let fileEntry2 = FsTree.tryFind file2 tree |> Option.get
+
+        do File.writeText content1 None file2
+
+        let tree = FsTree.update file2 tree
+
+        let fileEntry3 = FsTree.tryFind file2 tree |> Option.get
+
+        Expect.equal (FsEntry.size fileEntry3) (FsEntry.size fileEntry1) "Should have same size now"
+
   let fsTests =
     ftestList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_should_add_file_entry_at_correct_point
       test_should_remove_file_entry_at_correct_point
+      test_should_update_file_entry_at_correct_point
     ]
 
 #if INTERACTIVE
