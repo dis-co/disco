@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+//import { Switch, Case } from "switch-case"
+import Switch, { Case, Default } from 'react-switch-case';
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -9,18 +11,111 @@ import React, { Component } from 'react'
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
+
+
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    //initialize 
+    this.state={
+      groupName: "",
+      pinName: "",
+      groupPin: "",
+      pinVal: "",
+      inputVal: "",
+      pin: null
+      
+    };
+  }
+
+  //check if property "inputVal" exists and set as new pinVal?
+  setPinVal() {
+    console.log("trying to set pinval");
+    
+    /*
+    var mapp = this.state.pin.data.Properties.reduce(function(map, obj) {
+      map[obj.Key] = obj.Value;
+      return map;
+    }, {});
+
+    for(var key in this.state.pin.data.Properties){
+      console.log("trying 2");
+      if(mapp.hasOwnProperty(key)){
+        console.log("trying 3");
+        if(mapp[key] == this.state.inputValue){
+          this.state.pinVal = key;
+          console.log("trying4");
+          console.log(key);
+        }
+      }
+    }
+    */
+
+    let current = this.state.inputVal
+    var prop = this.state.pin.data.Properties.reduce(function(result,kv) {
+      if(result === null && kv.Value === current)
+        return kv
+      else
+        return result
+    },null)
+
+    //this.state.pinVal = value;
+    //var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
+    if (prop) {
+      console.log("current", IrisLib.getPinValueAt(this.state.pin, 0), "updating with", prop)      
+      var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
+      IrisLib.updatePinValueAt(pin, 0, prop)    
+    }
+  }
+
+  //event handler for onChange methods, to set parents state
+  //from child component
+  //param: context (this), prop (property as string)
+  makeCallback(propName) {
+    return (ev) => {
+      var state = {}
+      state[propName] = ev.target.value
+      this.setState(state)
+    }
+  }
+
+  setPin() {
+    let groupPin = this.state.groupName + '/'+ this.state.pinName
+    //set pin to this states current pin by pinName
+    var pin = IrisLib.findPinByName(this.props.model, groupPin);
+    console.log("setPin test1");
+    this.setState({ 
+      groupPin: groupPin,
+      pin: pin,
+      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+    }, () => {
+      console.log('pin has been changed: ', this.state.groupPin)
+      console.log("pinVal", this.state.pinVal)
+      if(pin !== null)
+        console.log('hallo i bims 1 pin: '+ pin)
+       
+    })
+  }
+
+  changeEnum(){
+    console.log("pin properties: " + this.state.pin.data.Properties);
+    console.log("pin:  ", this.state.pin);
+    console.log("pin value ->  " , this.state.pinVal);
+    console.log("inPut: ", this.state.inputVal);
+  
+  }
+
+  //hadnles button click
+  click(event){
+    this.setPin();
+    if(this.state.pin){
+      this.changeEnum();
+      //set pinVal from here?
+      //this.setPinVal();
+    }
   }
 
   render() {
-    var active = false;
-    var pin = IrisLib.findPinByName(this.props.model, this.props.pinName);
-    if (pin != null) {
-      var pinValue = IrisLib.getPinValueAt(pin, 0);
-      active = typeof pinValue === "number" && pinValue > 10;
-    }
     return (
       <div style={{
         display: "flex",
@@ -28,17 +123,42 @@ class TestWidget extends React.Component {
         justifyContent: "center",
         height: "100%"
       }}>
-        <div style={{
-          width: "30px",
-          height: "30px",
-          margin: "0px auto",
-          border: "2px solid black",
-          backgroundColor: active ? "black" : "inherit"
-        }} />
+      <div>
+        {/*input to select a pins group*/}
+        <label>
+          group name
+          {/*onChange updates state with new groupName as read from input field*/}
+          <input type="text" onChange={this.makeCallback("groupName")} />
+        </label>
+        {/*input to select a pins name*/}
+        <label>
+          pin name
+          {/*onChange updates state with new pinName as read from input field*/}
+          <input type="text" onChange={this.makeCallback("pinName")} />
+        </label>
+        <label>
+          value
+          {/*onChange updates state with new pinName as read from input field*/}
+          <input type="text" disabled={this.state.pin == null} onChange={(event) => {
+            this.setState({
+              inputVal: event.target.value
+            }, this.setPinVal.bind(this));
+          }} />
+        </label>
+          {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
+        <button type="submit" onClick={this.click.bind(this)}>submit</button>
+      </div>
+        <div style={{margin: "0 10px"}}>
+        {/*onChhange updates the state with new slider maximum value*/}
+        <label></label>
+       
+        </div>
       </div>
     )
   }
 }
+
+
 
 // The widget scripts must export a function that receives an id
 // and returns an object with the following properties, this may
@@ -60,7 +180,7 @@ export default function createWidget (id, name) {
       // render the body and optionally another to render a header in
       // the title bar of the widget.
       var body = function (dispatch, model) {
-        return <TestWidget pinName="VVVV/design.4vp/Z" model={model} />
+        return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
       return IrisLib.renderWidget(id, name, null, body, dispatch, model);
     }
