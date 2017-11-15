@@ -1,6 +1,8 @@
 import React, { Component } from 'react'
-//import { Switch, Case } from "switch-case"
-import Switch, { Case, Default } from 'react-switch-case';
+
+import Select from 'react-select';
+// Be sure to include styles at some point, probably during your bootstrapping
+import 'react-select/dist/react-select.css';
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -23,10 +25,15 @@ class TestWidget extends React.Component {
       groupPin: "",
       pinVal: "",
       inputVal: "",
-      pin: null
-      
+      pin: null,
+      value: "",
+      options : [
+        { value: 'one', label: 'One' },
+        { value: 'two', label: 'Two' }
+        ]
     };
   }
+
 
   //check if property "inputVal" exists and set as new pinVal?
   setPinVal() {
@@ -115,6 +122,15 @@ class TestWidget extends React.Component {
     }
   }
 
+  
+    
+  logChange(val) {
+    console.log('Selected: ', val);
+    this.setState({
+      value : val
+    })
+    }
+
   render() {
     return (
       <div style={{
@@ -150,8 +166,13 @@ class TestWidget extends React.Component {
       </div>
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
-        <label></label>
-       
+        <label>select</label>
+          <Select
+          name="form-field-name"
+          value={this.state.value}
+          options={this.state.options}
+          onChange={this.logChange}
+          />
         </div>
       </div>
     )
