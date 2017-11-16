@@ -24,6 +24,7 @@ let createTestWidget2(id: Guid, name: string): IWidget = importDefault "../../js
 let createTestWidget3(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget3"
 let createTestWidget4(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget4"
 let createTestWidget5(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget5"
+let createTestWidget6(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget6"
 
 initWidgetFactory
   { new IWidgetFactory with
@@ -46,6 +47,7 @@ initWidgetFactory
         | Widgets.Test3 -> createTestWidget3(id, name)
         | Widgets.Test4 -> createTestWidget4(id, name)
         | Widgets.Test5 -> createTestWidget5(id, name)
+        | Widgets.Test6 -> createTestWidget6(id, name)
         | _ -> failwithf "Widget %s is not currently supported" name
   }
 

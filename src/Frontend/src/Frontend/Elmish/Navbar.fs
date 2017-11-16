@@ -199,6 +199,7 @@ module private WindowsMenu =
   let [<Literal>] testWidget1 = "Test Widget 1"
   let [<Literal>] testWidget2 = "Test Widget 2"
   let [<Literal>] testWidget3 = "Test Widget 3"
+  let [<Literal>] testWidget6 = "Test Widget 6"
 
 let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
   let show name =
@@ -220,6 +221,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     | WindowsMenu.testWidget1     -> show Widgets.Test1
     | WindowsMenu.testWidget2     -> show Widgets.Test2
     | WindowsMenu.testWidget3     -> show Widgets.Test3
+    | WindowsMenu.testWidget6     -> show Widgets.Test6
     | _ -> ()
     withDelay onOpen
   div [
@@ -247,7 +249,8 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
          WindowsMenu.sessions,        None
          WindowsMenu.testWidget1,     None
          WindowsMenu.testWidget2,     None
-         WindowsMenu.testWidget3,     None ]
+         WindowsMenu.testWidget3,     None
+         WindowsMenu.testWidget6,     None ]
        |> List.map (fun (tipe, key) -> navbarItem onClick tipe key))
   ]
 

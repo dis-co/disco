@@ -31,6 +31,7 @@ module Widgets =
   let [<Literal>] Test3         = "Test 3"
   let [<Literal>] Test4         = "Test 4"
   let [<Literal>] Test5         = "Test 5"
+  let [<Literal>] Test6         = "Test 6"
 
 type IProjectInfo =
   abstract name: Name
