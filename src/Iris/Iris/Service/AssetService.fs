@@ -146,13 +146,13 @@ module AssetService =
 
   // ** createWatcher
 
-  let createWatcher (basePath: FilePath) agent =
+  let createWatcher (baseDir:FilePath) agent =
     let watcher = new FileSystemWatcher()
     let filter =
       NotifyFilters.LastWrite  |||
       NotifyFilters.FileName   |||
       NotifyFilters.DirectoryName
-    watcher.Path <- unwrap basePath
+    watcher.Path <- unwrap baseDir
     watcher.NotifyFilter <- filter
     watcher.IncludeSubdirectories <- true
     watcher.EnableRaisingEvents   <- true
@@ -164,13 +164,16 @@ module AssetService =
 
   // ** create
 
-  let create (assetDir: FilePath) =
+  let create (machine: IrisMachine) =
     either {
       let cts = new CancellationTokenSource()
       let status = ref ServiceStatus.Stopped
       let subscriptions = Subscriptions()
 
-      let! tree = FsTree.create assetDir Array.empty
+      let! tree =
+        machine.AssetFilter.Split([| ' '; ';'; ',' |])
+        |> Array.filter (String.IsNullOrEmpty >> not)
+        |> FsTree.create machine.AssetDirectory
 
       let store = AgentStore.create()
       store.Update {
@@ -179,14 +182,14 @@ module AssetService =
       }
 
       let agent = new AssetEventProcessor(loop store, cts.Token)
-      let watcher = createWatcher assetDir agent
+      let watcher = createWatcher machine.AssetDirectory agent
 
       return {
         new IAssetService with
           member self.Start() =
             agent.Start()
             agent
-            |> startCrawler assetDir
+            |> startCrawler machine.AssetDirectory
             |> Either.succeed
 
           member self.Stop() = Either.nothing
