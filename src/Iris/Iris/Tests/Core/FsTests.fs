@@ -211,7 +211,7 @@ module FsTests =
       Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
 
   let fsTests =
-    ftestList "FileSystem Tests" [
+    testList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_should_add_file_entry_at_correct_point

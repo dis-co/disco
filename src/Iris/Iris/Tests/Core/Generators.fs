@@ -755,7 +755,7 @@ module Generators =
 
   let fsTreeGen = gen {
     let! dirs = Gen.choose (2,10)
-    let! files = Gen.choose (2,10)
+    let! files = Gen.choose (2,8000)
     let tree = FsTreeTesting.makeTree dirs files
     return tree
   }
