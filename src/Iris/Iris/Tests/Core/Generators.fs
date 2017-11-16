@@ -133,6 +133,7 @@ module Generators =
       let! wrksp = pathGen
       let! logpth = pathGen
       let! assetpth = pathGen
+      let! assetFilter = stringGen
       let! ba = ipGen
       let! wp = portGen
       let! rp = portGen
@@ -140,19 +141,21 @@ module Generators =
       let! gp = portGen
       let! ap = portGen
       let! vs = versionGen
-      return
-        { MachineId = id
-          HostName = hn
-          WorkSpace = wrksp
-          LogDirectory = logpth
-          AssetDirectory = assetpth
-          BindAddress = ba
-          WebPort = wp
-          RaftPort = rp
-          WsPort = wsp
-          GitPort = gp
-          ApiPort = ap
-          Version = vs }
+      return {
+        MachineId = id
+        HostName = hn
+        WorkSpace = wrksp
+        LogDirectory = logpth
+        AssetDirectory = assetpth
+        AssetFilter = assetFilter
+        BindAddress = ba
+        WebPort = wp
+        RaftPort = rp
+        WsPort = wsp
+        GitPort = gp
+        ApiPort = ap
+        Version = vs
+      }
     }
 
   //  ____        __ _   ____  _        _

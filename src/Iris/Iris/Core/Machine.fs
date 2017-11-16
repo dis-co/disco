@@ -32,6 +32,7 @@ type IrisMachine =
     HostName:       Name
     WorkSpace:      FilePath
     AssetDirectory: FilePath
+    AssetFilter:    string
     LogDirectory:   FilePath
     BindAddress:    IpAddress
     WebPort:        Port
@@ -56,6 +57,7 @@ type IrisMachine =
     let workspace = machine.WorkSpace |> unwrap |> mapNull
     let logdir = machine.LogDirectory |> unwrap |> mapNull
     let assetdir = machine.AssetDirectory |> unwrap |> mapNull
+    let assetFilter = machine.AssetFilter |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = IrisMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
@@ -65,6 +67,7 @@ type IrisMachine =
     Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
     Option.iter (fun value -> IrisMachineFB.AddLogDirectory(builder, value)) logdir
     Option.iter (fun value -> IrisMachineFB.AddAssetDirectory(builder, value)) assetdir
+    Option.iter (fun value -> IrisMachineFB.AddAssetFilter(builder, value)) assetFilter
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
@@ -80,19 +83,21 @@ type IrisMachine =
     either {
       let! machineId = Id.decodeMachineId fb
       let! ip = IpAddress.TryParse fb.BindAddress
-      return
-        { MachineId    = machineId
-          WorkSpace    = filepath fb.WorkSpace
-          AssetDirectory = filepath fb.AssetDirectory
-          LogDirectory = filepath fb.LogDirectory
-          HostName     = name fb.HostName
-          BindAddress  = ip
-          WebPort      = port fb.WebPort
-          RaftPort     = port fb.RaftPort
-          WsPort       = port fb.WsPort
-          GitPort      = port fb.GitPort
-          ApiPort      = port fb.ApiPort
-          Version      = version fb.Version }
+      return {
+        MachineId      = machineId
+        WorkSpace      = filepath fb.WorkSpace
+        AssetDirectory = filepath fb.AssetDirectory
+        AssetFilter    = fb.AssetFilter
+        LogDirectory   = filepath fb.LogDirectory
+        HostName       = name fb.HostName
+        BindAddress    = ip
+        WebPort        = port fb.WebPort
+        RaftPort       = port fb.RaftPort
+        WsPort         = port fb.WsPort
+        GitPort        = port fb.GitPort
+        ApiPort        = port fb.ApiPort
+        Version        = version fb.Version
+      }
     }
 
   // ** Default
@@ -110,6 +115,7 @@ type IrisMachine =
         AssetDirectory = filepath Environment.CurrentDirectory
         LogDirectory = filepath Environment.CurrentDirectory
         #endif
+        AssetFilter  = Constants.DEFAULT_ASSET_FILTER
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port Constants.DEFAULT_WEB_PORT
         RaftPort     = port Constants.DEFAULT_RAFT_PORT
@@ -245,7 +251,8 @@ module MachineConfig =
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId:    string
     [<DefaultValue>] val mutable WorkSpace:    string
-    [<DefaultValue>] val mutable AssetDirectory: string
+    [<DefaultValue>] val mutable AssetDirectory:  string
+    [<DefaultValue>] val mutable AssetFilter:  string
     [<DefaultValue>] val mutable LogDirectory: string
     [<DefaultValue>] val mutable BindAddress:  string
     [<DefaultValue>] val mutable WebPort:      uint16
@@ -260,6 +267,7 @@ module MachineConfig =
       yml.MachineId    <- string cfg.MachineId
       yml.WorkSpace    <- unwrap cfg.WorkSpace
       yml.AssetDirectory <- unwrap cfg.AssetDirectory
+      yml.AssetFilter  <- cfg.AssetFilter
       yml.LogDirectory <- unwrap cfg.LogDirectory
       yml.BindAddress  <- string cfg.BindAddress
       yml.WebPort      <- unwrap cfg.WebPort
@@ -277,19 +285,21 @@ module MachineConfig =
       let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
       let! id = IrisId.TryParse yml.MachineId
-      return
-        { MachineId    = id
-          HostName     = name hostname
-          WorkSpace    = filepath yml.WorkSpace
-          AssetDirectory = filepath yml.AssetDirectory
-          LogDirectory = filepath yml.LogDirectory
-          BindAddress  = ip
-          WebPort      = port yml.WebPort
-          RaftPort     = port yml.RaftPort
-          WsPort       = port yml.WsPort
-          GitPort      = port yml.GitPort
-          ApiPort      = port yml.ApiPort
-          Version      = version yml.Version }
+      return {
+        MachineId    = id
+        HostName     = name hostname
+        WorkSpace    = filepath yml.WorkSpace
+        AssetDirectory = filepath yml.AssetDirectory
+        AssetFilter  = yml.AssetFilter
+        LogDirectory = filepath yml.LogDirectory
+        BindAddress  = ip
+        WebPort      = port yml.WebPort
+        RaftPort     = port yml.RaftPort
+        WsPort       = port yml.WsPort
+        GitPort      = port yml.GitPort
+        ApiPort      = port yml.ApiPort
+        Version      = version yml.Version
+      }
     }
 
   // ** ensureExists (private)
@@ -337,6 +347,7 @@ module MachineConfig =
       HostName     = name hostname
       WorkSpace    = workspace
       AssetDirectory = assetDir
+      AssetFilter  = Constants.DEFAULT_ASSET_FILTER
       LogDirectory = workspace </> filepath "log"
       BindAddress  = IpAddress.Parse bindIp
       WebPort      = shiftPort Constants.DEFAULT_WEB_PORT

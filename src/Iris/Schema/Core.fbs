@@ -65,6 +65,7 @@ table IrisMachineFB {
       HostName: string;
       WorkSpace: string;
       AssetDirectory: string;
+      AssetFilter: string;
       LogDirectory: string;
       BindAddress: string;
       WebPort: ushort;

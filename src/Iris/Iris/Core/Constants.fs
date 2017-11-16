@@ -164,6 +164,9 @@ module Constants =
   [<Literal>]
   let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
 
+  [<Literal>]
+  let DEFAULT_ASSET_FILTER = ".tga,.png.jpg"
+
   //     _                 _
   //    / \   ___ ___  ___| |_ ___
   //   / _ \ / __/ __|/ _ \ __/ __|
