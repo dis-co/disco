@@ -356,13 +356,13 @@ module Path =
   let getFileName (path: FilePath) =
     pmap Path.GetFileName path
 
-  #endif
-
   // ** isParentOf
 
   let isParentOf (child:FilePath) (parent:FilePath) =
     let path = child |> sanitize |> getDirectoryName
     path = parent
+
+  #endif
 
 // * File
 
@@ -809,6 +809,8 @@ module FsEntry =
 
   // ** remove
 
+  #if !FABLE_COMPILER
+
   let rec remove (fp: FilePath) (tree:FsEntry) =
     match tree with
     | FsEntry.Directory(info, children) as dir when Path.isParentOf fp (fullPath dir) ->
@@ -817,6 +819,8 @@ module FsEntry =
     | FsEntry.Directory(info, children) when Path.beginsWith info.Path fp ->
       FsEntry.Directory(info, Map.map (fun _ -> remove fp) children)
     | other -> other
+
+  #endif
 
   // ** update
 
@@ -863,6 +867,8 @@ module FsEntry =
 
   // ** tryFind
 
+  #if !FABLE_COMPILER
+
   let rec tryFind (path:FilePath) (tree:FsEntry) =
     let path = Path.sanitize path
     match tree with
@@ -873,6 +879,8 @@ module FsEntry =
     | FsEntry.Directory(_, children) as dir when Path.beginsWith (fullPath dir) path ->
       Map.tryPick (fun _ -> tryFind path) children
     | _ -> None
+
+  #endif
 
   // ** item
 
@@ -971,8 +979,12 @@ module FsTree =
 
   // ** tryFind
 
+  #if !FABLE_COMPILER
+
   let tryFind (path:FilePath) (tree:FsTree) =
     FsEntry.tryFind path tree.Root
+
+  #endif
 
   // ** add
 

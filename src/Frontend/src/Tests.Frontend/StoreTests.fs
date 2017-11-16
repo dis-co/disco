@@ -26,6 +26,7 @@ module Store =
       { MachineId    = IrisId.Create ()
         HostName     = name "La la Land"
         WorkSpace    = filepath "C:\Program Files\Yo Mama"
+        AssetDirectory = filepath "C:\Iris\Assets"
         LogDirectory = filepath "C:\Program Files\Yo Mama\logs"
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port 80us
