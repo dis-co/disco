@@ -18,19 +18,19 @@ module FsTests =
     FileSystem.rmDir (filepath path) |> ignore
 
   let withTree (f: FsTree -> unit) =
-    withTmpDir (filepath >> FsTree.create >> Either.get >> f)
+    withTmpDir (filepath >> flip FsTree.create Array.empty >> Either.get >> f)
 
   let test_should_have_correct_base_path =
     testCase "should have correct base path" <| fun _ ->
       withTmpDir <| fun path ->
-        let tree = FsTree.create (filepath path) |> Either.get
+        let tree = FsTree.create (filepath path) Array.empty |> Either.get
         Expect.equal (FsTree.basePath tree) (filepath path) "Should have correct base path"
 
   let test_should_handle_base_path_with_slash =
     testCase "should handle base path with slash" <| fun _ ->
       withTmpDir <| fun path ->
         let withSlash = path + "/"
-        let tree = FsTree.create (filepath withSlash) |> Either.get
+        let tree = FsTree.create (filepath withSlash) Array.empty |> Either.get
         Expect.equal (FsTree.basePath tree) (filepath path) "Should have correct base path"
 
   let test_should_add_file_entry_at_correct_point =
@@ -198,7 +198,7 @@ module FsTests =
 
         let flattened = FsTree.flatten tree
         let root = FsEntry.setChildren Map.empty tree.Root
-        let inflated = FsTree.inflate root flattened
+        let inflated = FsTree.inflate root flattened Array.empty
         Expect.equal inflated tree "Inflated tree should be equal to original"
 
   let test_should_have_correct_counts =
@@ -210,8 +210,66 @@ module FsTests =
       Expect.equal (FsTree.fileCount tree) (fileCount * dirCount)  "Should have correct count"
       Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
 
+  let test_should_apply_filters_on_inflate =
+    testCase "should apply filters on inflate" <| fun _ ->
+      let rnd = System.Random()
+      let dirCount = 2 /// rnd.Next(2,10)
+      let fileCount = 4 /// rnd.Next(3,9000)
+      let tree = FsTreeTesting.makeTree dirCount fileCount
+      let flattened = FsTree.flatten tree
+
+      let filter =
+        flattened
+        |> List.filter FsEntry.isFile
+        |> List.map
+          (fun file ->
+            let name:string = FsEntry.name file |> unwrap
+            String.subString (name.Length - 4) 4 name)
+        |> Array.ofList
+        |> Array.take (fileCount / 2)
+        |> Array.distinct
+
+      let matches = List.filter (FsEntry.matches filter) flattened
+      let root = FsEntry.setChildren Map.empty tree.Root
+      let inflated = FsTree.inflate root flattened filter
+
+      Expect.equal
+        (FsTree.fileCount inflated)
+        ((dirCount * fileCount) - matches.Length)
+        "Should have correct number of files"
+
+  let test_should_apply_filters_on_add =
+    testCase "should apply filters on add" <| fun _ ->
+      withTree <| fun tree ->
+        let tree = FsTree.setFilters [| ".txt" |] tree
+        let path = FsTree.basePath tree
+        let dir1 = path </> filepath "dir1"
+        let dir2 = path </> filepath "dir2"
+        let dir3 = dir2 </> filepath "dir3"
+
+        let file1 = dir1 </> filepath "file1.txt"
+        let file2 = dir3 </> filepath "file2.txt"
+
+        do Directory.createDirectory dir1 |> ignore
+        do Directory.createDirectory dir2 |> ignore
+        do Directory.createDirectory dir3 |> ignore
+
+        do File.writeText "Hello!" None file1
+        do File.writeText "Bye!" None file2
+
+        let tree =
+          tree
+          |> FsTree.add dir1
+          |> FsTree.add dir2
+          |> FsTree.add dir3
+          |> FsTree.add file1
+          |> FsTree.add file2
+
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree) 0 "Should have no files"
+
   let fsTests =
-    testList "FileSystem Tests" [
+    ftestList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_should_add_file_entry_at_correct_point
@@ -219,4 +277,6 @@ module FsTests =
       test_should_update_file_entry_at_correct_point
       test_should_correctly_flatten_and_inflate_tree
       test_should_have_correct_counts
+      test_should_apply_filters_on_inflate
+      test_should_apply_filters_on_add
     ]

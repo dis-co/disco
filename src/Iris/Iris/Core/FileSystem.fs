@@ -90,13 +90,18 @@ type FsEntry =
 // * FsTree
 
 type FsTree =
-  { Root: FsEntry }
+  { Filters: string array
+    Root: FsEntry }
 
   // ** optics
 
   static member Root_ =
     (fun { Root = root } -> root),
     (fun root tree -> { tree with Root = root })
+
+  static member Filters_ =
+    (fun { Filters = filters } -> filters),
+    (fun filters tree -> { tree with Filters = filters })
 
   // ** Item
 
@@ -162,6 +167,9 @@ type FsTree =
 
   static member FromFB(fb:FsTreeFB) =
     either {
+      let filters =
+        fb.Filters.Split(' ')
+        |> Array.filter (String.IsNullOrEmpty >> not)
       let! root =
         #if FABLE_COMPILER
         FsTree.toEntry fb.Root
@@ -196,7 +204,7 @@ type FsTree =
             })
           (Right List.empty)
           [| 0 .. fb.ChildrenLength - 1 |]
-      return FsTree.inflate root children
+      return FsTree.inflate root children filters
     }
 
   // ** ToBytes
@@ -206,6 +214,7 @@ type FsTree =
   // ** ToOffset
 
   member tree.ToOffset(builder:FlatBufferBuilder) =
+    let filters = tree.Filters |> String.concat " " |> builder.CreateString
     let root = FsTree.entryOffset builder tree.Root
     let children =
       tree
@@ -214,6 +223,7 @@ type FsTree =
       |> fun children -> FsTreeFB.CreateChildrenVector(builder, Array.ofList children)
     FsTreeFB.StartFsTreeFB(builder)
     FsTreeFB.AddRoot(builder, root)
+    FsTreeFB.AddFilters(builder, filters)
     FsTreeFB.AddChildren(builder, children)
     FsTreeFB.EndFsTreeFB(builder)
 
@@ -859,11 +869,18 @@ module FsEntry =
 
   // ** filter
 
-  let rec filter (pred:FsEntry -> bool) tree =
-    failwith "filter"
-
-  let directories tree = failwith "directories"
-  let files tree = failwith "files"
+  let rec filter (pred:FsEntry -> bool) = function
+    | FsEntry.File _ as file -> file
+    | FsEntry.Directory (info,children) ->
+      let children =
+        Map.fold
+          (fun filtered path entry ->
+            if pred entry
+            then Map.add path (filter pred entry) filtered  /// keep when pred is true
+            else filtered)                                  /// leave out when pred is false
+          Map.empty
+          children
+      FsEntry.Directory (info, children)
 
   // ** tryFind
 
@@ -897,6 +914,15 @@ module FsEntry =
         children
     | _ -> failwithf "item %A not found" path
 
+  // ** matches
+
+  let matches (filters: string[]) (entry: FsEntry) =
+    let name:string = unwrap (name entry)
+    Array.fold
+      (fun result filter -> result || name.EndsWith(filter))
+      false
+      filters
+
   // ** flatten
 
   let rec flatten = function
@@ -909,24 +935,48 @@ module FsEntry =
 
   // ** inflate
 
-  let inflate (root:FsEntry) (entries:FsEntry list) =
+  let inflate (root:FsEntry) (entries:FsEntry list) filter =
     let directories = List.filter isDirectory entries
-    let files = List.filter isFile entries
+    let files =
+      List.filter
+        (fun entry -> isFile entry && not (matches filter entry))
+        entries
     directories
     |> List.sortBy (fullPath >> unwrap >> String.length) /// sort by length of path to start with the
     |> List.fold (fun root dir -> add dir root) root      /// bottom-most entries
     |> fun withDirs ->
       List.fold (fun root file -> add file root) withDirs files
 
+  // ** directories
+
+  let directories = filter isDirectory
+
+  // ** files
+
+  let files = flatten >> List.filter isFile
+
 // * FsTree module
 
 module FsTree =
+
+  open Aether
+  open Aether.Operators
+
+  // ** getters
+
+  let root = Optic.get FsTree.Root_
+  let filters = Optic.get FsTree.Filters_
+
+  // ** setters
+
+  let setRoot = Optic.set FsTree.Root_
+  let setFilters = Optic.set FsTree.Filters_
 
   // ** create
 
   #if !FABLE_COMPILER
 
-  let create (basePath:FilePath) =
+  let create (basePath:FilePath) filters =
     if Directory.exists basePath then
       let basePath =
         if Path.endsWith "/" basePath
@@ -940,6 +990,7 @@ module FsTree =
         Size = uint64 0
       }
       Either.succeed {
+        Filters = filters
         Root = FsEntry.Directory(info, Map.empty)
       }
     else
@@ -950,17 +1001,13 @@ module FsTree =
 
   #endif
 
-  // ** root
-
-  let root (tree:FsTree) = tree.Root
-
   // ** directories
 
-  let directories: FsTree -> FsEntry = root >> FsEntry.directories
+  let directories = root >> FsEntry.directories
 
   // ** files
 
-  let files: FsTree -> FsEntry = root >> FsEntry.files
+  let files = root >> FsEntry.files
 
   // ** basePath
 
@@ -998,8 +1045,9 @@ module FsTree =
     if Path.beginsWith (basePath tree) path then
       path
       |> FsEntry.create
+      |> Option.filter (FsEntry.matches tree.Filters >> not)
       |> Option.map (fun entry -> FsEntry.add entry tree.Root)
-      |> Option.map (fun root -> { Root = root })
+      |> Option.map (fun root -> { tree with Root = root })
       |> Option.defaultValue tree
     else tree
 
@@ -1034,6 +1082,7 @@ module FsTree =
     if Path.beginsWith (basePath tree) path then
       path
       |> FsEntry.create
+      |> Option.filter (FsEntry.matches tree.Filters >> not)
       |> Option.map (fun entry -> FsEntry.update entry tree.Root)
       |> Option.map (fun root -> { tree with Root = root })
       |> Option.defaultValue tree
@@ -1048,8 +1097,17 @@ module FsTree =
 
   // ** inflate
 
-  let inflate (root:FsEntry) (entries:FsEntry list) =
-    { Root = FsEntry.inflate root entries }
+  let inflate (root:FsEntry) (entries:FsEntry list) filters =
+    { Filters = filters
+      Root = FsEntry.inflate root entries filters }
+
+  // ** filter
+
+  let filter pred tree =
+    tree
+    |> root
+    |> FsEntry.filter pred
+    |> fun updated -> setRoot updated tree
 
   // ** read
 
@@ -1058,7 +1116,7 @@ module FsTree =
   let rec read (path:FilePath) =
     path
     |> FsEntry.create
-    |> Option.map (fun entry -> { Root = entry })
+    |> Option.map (fun entry -> { Filters = Array.empty; Root = entry })
 
   #endif
 
@@ -1097,7 +1155,7 @@ module FsTreeTesting =
             for f in 1 .. fileCount do
               yield makeFile dirPath (Path.GetRandomFileName() |> name) ]
       root, sub
-    FsTree.inflate root sub
+    FsTree.inflate root sub Array.empty
 
   let writeTree fp (tree:FsTree) =
     let bytes = Binary.encode tree

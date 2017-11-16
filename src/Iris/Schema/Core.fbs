@@ -127,6 +127,7 @@ table FsInfoFB {
 
 table FsTreeFB {
     Root: FsInfoFB;
+    Filters: string;
     Children: [FsInfoFB];
 }
 

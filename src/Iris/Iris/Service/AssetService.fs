@@ -118,7 +118,6 @@ module AssetService =
     |> IrisEvent.FileSystem
     |> delayed agent
 
-
   // ** crawlDirectory
 
   let rec private crawlDirectory dir agent =
@@ -171,7 +170,7 @@ module AssetService =
       let status = ref ServiceStatus.Stopped
       let subscriptions = Subscriptions()
 
-      let! tree = FsTree.create assetDir
+      let! tree = FsTree.create assetDir Array.empty
 
       let store = AgentStore.create()
       store.Update {
