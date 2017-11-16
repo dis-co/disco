@@ -21,7 +21,7 @@ module SerializationTests =
   /// |_|  |___/___|_| |_|_|  \___/
 
   let test_binary_fstree =
-    ftestCase "FsTree binary serialization should work" <| fun _ ->
+    testCase "FsTree binary serialization should work" <| fun _ ->
       let configuration = { FsCheck.Config.Default with MaxTest = 1 }
       binaryEncDec<FsTree>
       |> Prop.forAll Generators.fsTreeArb

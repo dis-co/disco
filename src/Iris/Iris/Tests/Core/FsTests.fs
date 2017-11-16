@@ -201,21 +201,22 @@ module FsTests =
         let inflated = FsTree.inflate root flattened
         Expect.equal inflated tree "Inflated tree should be equal to original"
 
+  let test_should_have_correct_counts =
+    testCase "should have correct counts" <| fun _ ->
+      let rnd = System.Random()
+      let dirCount = rnd.Next(2,10)
+      let fileCount = rnd.Next(3,9000)
+      let tree = FsTreeTesting.makeTree dirCount fileCount
+      Expect.equal (FsTree.fileCount tree) (fileCount * dirCount)  "Should have correct count"
+      Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
+
   let fsTests =
-    testList "FileSystem Tests" [
+    ftestList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_should_add_file_entry_at_correct_point
       test_should_remove_file_entry_at_correct_point
       test_should_update_file_entry_at_correct_point
       test_should_correctly_flatten_and_inflate_tree
+      test_should_have_correct_counts
     ]
-
-#if INTERACTIVE
-
-open System
-open System.IO
-
-
-
-#endif
