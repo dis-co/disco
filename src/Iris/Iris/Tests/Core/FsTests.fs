@@ -176,13 +176,39 @@ module FsTests =
 
         Expect.equal (FsEntry.size fileEntry3) (FsEntry.size fileEntry1) "Should have same size now"
 
+  let test_should_correctly_flatten_and_inflate_tree =
+    testCase "should correctly flatten and inflate tree" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path </> filepath "dir1"
+        let dir2 = path </> filepath "dir2"
+        let file1 = dir1 </> filepath "file1.txt"
+        let file2 = dir2 </> filepath "file2.txt"
+        do Directory.createDirectory dir1 |> ignore
+        do Directory.createDirectory dir2 |> ignore
+        do File.writeText "Hello!" None file1
+        do File.writeText "Bye!"   None file2
+
+        let tree =
+          tree
+          |> FsTree.add dir1
+          |> FsTree.add dir2
+          |> FsTree.add file1
+          |> FsTree.add file2
+
+        let flattened = FsTree.flatten tree
+        let root = FsEntry.setChildren Map.empty tree.Root
+        let inflated = FsTree.inflate root flattened
+        Expect.equal inflated tree "Inflated tree should be equal to original"
+
   let fsTests =
-    ftestList "FileSystem Tests" [
+    testList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_should_add_file_entry_at_correct_point
       test_should_remove_file_entry_at_correct_point
       test_should_update_file_entry_at_correct_point
+      test_should_correctly_flatten_and_inflate_tree
     ]
 
 #if INTERACTIVE

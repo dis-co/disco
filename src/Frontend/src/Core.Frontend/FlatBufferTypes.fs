@@ -188,6 +188,54 @@ type ServiceStatusFBConstructor =
 
 let ServiceStatusFB : ServiceStatusFBConstructor = failwith "JS only"
 
+///  _____   _____
+/// |  ___|_|_   _| __ ___  ___
+/// | |_ / __|| || '__/ _ \/ _ \
+/// |  _|\__ \| || | |  __/  __/
+/// |_|  |___/|_||_|  \___|\___|
+
+type FsEntryTypeFB = int
+
+type FsEntryTypeFBConstructor =
+  abstract FileFB: FsEntryTypeFB
+  abstract DirectoryFB: FsEntryTypeFB
+
+let FsEntryTypeFB: FsEntryTypeFBConstructor = failwith "JS only"
+
+type FsInfoFB =
+  abstract Type: FsEntryTypeFB
+  abstract Name: string
+  abstract Path: string
+  abstract Size: uint64
+
+type FsInfoFBConstructor =
+  abstract prototype: FsInfoFB with get, set
+  abstract StartFsInfoFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: FsEntryTypeFB -> unit
+  abstract AddPath: builder: FlatBufferBuilder * path: Offset<string> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddSize: builder: FlatBufferBuilder * size: uint64 -> unit
+  abstract EndFsInfoFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsInfoFB: buffer: ByteBuffer -> FsInfoFB
+
+let FsInfoFB : FsInfoFBConstructor = failwith "JS only"
+
+type FsTreeFB =
+  abstract Root: FsInfoFB
+  abstract Children: int -> FsInfoFB
+  abstract ChildrenLength: int
+
+type FsTreeFBConstructor =
+  abstract prototype: FsTreeFB with get, set
+  abstract StartFsTreeFB: builder: FlatBufferBuilder -> unit
+  abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
+  abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
+  abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
+  abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsTreeFB: buffer: ByteBuffer -> FsTreeFB
+
+let FsTreeFB : FsTreeFBConstructor = failwith "JS only"
+
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
 // | |   | | |/ _ \ '_ \| __|

@@ -106,6 +106,29 @@ table ServiceStatusFB {
     Error: ErrorFB;
 }
 
+//  _____   _____
+// |  ___|_|_   _| __ ___  ___
+// | |_ / __|| || '__/ _ \/ _ \
+// |  _|\__ \| || | |  __/  __/
+// |_|  |___/|_||_|  \___|\___|
+
+enum FsEntryTypeFB:ushort {
+    FileFB = 0,
+    DirectoryFB
+}
+
+table FsInfoFB {
+    Type: FsEntryTypeFB;
+    Path: string;
+    Name: string;
+    Size: ulong;
+}
+
+table FsTreeFB {
+    Root: FsInfoFB;
+    Children: [FsInfoFB];
+}
+
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
 // | |   | | |/ _ \ '_ \| __|

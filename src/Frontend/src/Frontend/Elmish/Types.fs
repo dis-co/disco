@@ -230,10 +230,10 @@ module InspectorLayout =
       Size = 350 }                      /// in pixels
 
   let isOpen { IsOpen = isOpen } = isOpen
-  let size { Size = size } = size
+  let size ({ Size = size }:InspectorLayout) = size
 
   let toggle inspector = { inspector with IsOpen = not inspector.IsOpen }
-  let setSize size inspector = { inspector with Size = size }
+  let setSize size (inspector:InspectorLayout) = { inspector with Size = size }
   let setOpen isOpen inspector = { inspector with IsOpen = isOpen }
 
 ///  _____     _

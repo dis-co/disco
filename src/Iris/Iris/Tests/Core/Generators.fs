@@ -11,6 +11,7 @@ open Iris.Raft
 open Iris.Client
 open Iris.Service
 open System
+open System.IO
 open System.Text
 
 module Generators =
@@ -69,6 +70,7 @@ module Generators =
   let uint8Gen = Arb.generate<uint8>
   let uint16Gen = Arb.generate<uint16>
   let uint32Gen = Arb.generate<uint32>
+  let uint64Gen = Arb.generate<uint64>
 
   let indexGen = Gen.map index intGen
   let termGen = Gen.map term intGen
@@ -745,6 +747,19 @@ module Generators =
           Sinks = sinks }
     }
 
+  ///  _____   _____
+  /// |  ___|_|_   _| __ ___  ___
+  /// | |_ / __|| || '__/ _ \/ _ \
+  /// |  _|\__ \| || | |  __/  __/
+  /// |_|  |___/|_||_|  \___|\___|
+
+  let fsTreeGen = gen {
+    let! dirs = Gen.choose (2,10)
+    let! files = Gen.choose (2,10)
+    let tree = FsTreeTesting.makeTree dirs files
+    return tree
+  }
+
   //  ____  _    __        ___     _            _
   // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
   // | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
@@ -1319,3 +1334,4 @@ module Generators =
   let pinWidgetArb = Arb.fromGen pinWidgetGen
   let referencedValueArb = Arb.fromGen referencedValueGen
   let pinGroupMapArb = Arb.fromGen pinGroupMapGen
+  let fsTreeArb = Arb.fromGen fsTreeGen
