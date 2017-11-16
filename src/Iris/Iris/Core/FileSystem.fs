@@ -219,7 +219,6 @@ type FsTree =
 
 // * Path
 
-
 [<AutoOpen>]
 module Path =
   // ** sanitize
@@ -840,7 +839,7 @@ module FsEntry =
 
   let fileCount tree =
     let rec count current = function
-      | FsEntry.File _ -> 1
+      | FsEntry.File _ -> current + 1
       | FsEntry.Directory(_, children) ->
         current + Map.fold (fun current _ entry -> count current entry) 0 children
     count 0 tree
@@ -849,7 +848,7 @@ module FsEntry =
 
   let directoryCount tree =
     let rec count current = function
-      | FsEntry.File _ -> 0
+      | FsEntry.File _ -> current
       | FsEntry.Directory(_, children) ->
         current + Map.fold (fun current _ entry -> count current entry) 1 children
     count 0 tree
@@ -1075,18 +1074,20 @@ module FsTreeTesting =
     }
 
   let makeTree dirCount fileCount =
-    let flat =
+    let root, sub =
       let root = makeDir (filepath "/") (Path.GetRandomFileName() |> name)
       let rootPath = FsEntry.fullPath root
-      [ for d in 1 .. dirCount do
-          let dir = makeDir rootPath (Path.GetRandomFileName() |> name)
-          let dirPath = FsEntry.fullPath dir
-          yield dir
-          for f in 1 .. fileCount do
-            yield makeFile dirPath (Path.GetRandomFileName() |> name) ]
-    FsTree.inflate (List.head flat) flat
+      let sub =
+        [ for d in 1 .. dirCount do
+            let dir = makeDir rootPath (Path.GetRandomFileName() |> name)
+            let dirPath = FsEntry.fullPath dir
+            yield dir
+            for f in 1 .. fileCount do
+              yield makeFile dirPath (Path.GetRandomFileName() |> name) ]
+      root, sub
+    FsTree.inflate root sub
 
-  let writeTree fp tree =
+  let writeTree fp (tree:FsTree) =
     let bytes = Binary.encode tree
     File.writeBytes bytes fp
 
@@ -1110,7 +1111,5 @@ module FsTreeTesting =
     printfn "   file count tree: %b" (FsTree.fileCount tree = fileCount * dirCount)
     printfn "   dir count loaded: %b" (FsTree.directoryCount loaded = dirCount + 1)
     printfn "   file count loaded: %b" (FsTree.fileCount loaded = fileCount * dirCount)
-
-  // roundTrip 10 10000
 
 #endif
