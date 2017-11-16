@@ -27,11 +27,8 @@ class TestWidget extends React.Component {
       inputVal: "",
       pin: null,
       value: "",
-      options : [
-        { value: 'one', label: 'One' },
-        { value: 'two', label: 'Two' }
-        ]
-    };
+      options : []
+      }
   }
 
 
@@ -57,21 +54,10 @@ class TestWidget extends React.Component {
       }
     }
     */
-
-    let current = this.state.inputVal
-    var prop = this.state.pin.data.Properties.reduce(function(result,kv) {
-      if(result === null && kv.Value === current)
-        return kv
-      else
-        return result
-    },null)
-
     //this.state.pinVal = value;
     //var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-    if (prop) {
-      console.log("current", IrisLib.getPinValueAt(this.state.pin, 0), "updating with", prop)      
-      var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-      IrisLib.updatePinValueAt(pin, 0, prop)    
+    if (this.state.pin && this.state.inputVal) {  
+      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.inputVal.Key)    
     }
   }
 
@@ -91,16 +77,18 @@ class TestWidget extends React.Component {
     //set pin to this states current pin by pinName
     var pin = IrisLib.findPinByName(this.props.model, groupPin);
     console.log("setPin test1");
+    let options = 
+      pin 
+        ? pin.data.Properties.map(prop => { return { label: prop.Value, value: prop.Key } }) 
+        : []
+
     this.setState({ 
       groupPin: groupPin,
       pin: pin,
+      options: options,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
     }, () => {
       console.log('pin has been changed: ', this.state.groupPin)
-      console.log("pinVal", this.state.pinVal)
-      if(pin !== null)
-        console.log('hallo i bims 1 pin: '+ pin)
-       
     })
   }
 
@@ -127,9 +115,12 @@ class TestWidget extends React.Component {
   logChange(val) {
     console.log('Selected: ', val);
     this.setState({
-      value : val
-    })
-    }
+      value : val,
+      inputVal:{
+        Key: val.value, Value: val.label
+      }
+    }, this.setPinVal);
+  }
 
   render() {
     return (
@@ -169,9 +160,10 @@ class TestWidget extends React.Component {
         <label>select</label>
           <Select
           name="form-field-name"
+          
           value={this.state.value}
           options={this.state.options}
-          onChange={this.logChange}
+          onChange={this.logChange.bind(this)}
           />
         </div>
       </div>
