@@ -899,7 +899,7 @@ module FsPath =
           |> Path.sanitize
           |> unwrap)
     let segments:string list =
-      Uri(unwrap path).Segments
+      Uri("file://" + unwrap path).Segments
       |> Array.collect
         (function
           | "/" -> Array.empty
