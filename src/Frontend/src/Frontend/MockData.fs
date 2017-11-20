@@ -98,6 +98,7 @@ let machines =
       WorkSpace    = filepath "/Iris"
       LogDirectory = filepath "/Iris"
       AssetDirectory = filepath "/Iris"
+      AssetFilter  = Constants.DEFAULT_ASSET_FILTER
       BindAddress  = IPv4Address "127.0.0.1"
       WebPort      = port Constants.DEFAULT_WEB_PORT
       RaftPort     = port Constants.DEFAULT_RAFT_PORT

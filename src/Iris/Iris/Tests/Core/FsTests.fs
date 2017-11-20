@@ -198,7 +198,7 @@ module FsTests =
 
         let flattened = FsTree.flatten tree
         let root = FsEntry.setChildren Map.empty tree.Root
-        let inflated = FsTree.inflate root flattened Array.empty
+        let inflated = FsTree.inflate root flattened
         Expect.equal inflated tree "Inflated tree should be equal to original"
 
   let test_should_have_correct_counts =
@@ -209,34 +209,6 @@ module FsTests =
       let tree = FsTreeTesting.makeTree dirCount fileCount
       Expect.equal (FsTree.fileCount tree) (fileCount * dirCount)  "Should have correct count"
       Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
-
-  let test_should_apply_filters_on_inflate =
-    testCase "should apply filters on inflate" <| fun _ ->
-      let rnd = System.Random()
-      let dirCount = 2 /// rnd.Next(2,10)
-      let fileCount = 4 /// rnd.Next(3,9000)
-      let tree = FsTreeTesting.makeTree dirCount fileCount
-      let flattened = FsTree.flatten tree
-
-      let filter =
-        flattened
-        |> List.filter FsEntry.isFile
-        |> List.map
-          (fun file ->
-            let name:string = FsEntry.name file |> unwrap
-            String.subString (name.Length - 4) 4 name)
-        |> Array.ofList
-        |> Array.take (fileCount / 2)
-        |> Array.distinct
-
-      let matches = List.filter (FsEntry.matches filter) flattened
-      let root = FsEntry.setChildren Map.empty tree.Root
-      let inflated = FsTree.inflate root flattened filter
-
-      Expect.equal
-        (FsTree.fileCount inflated)
-        ((dirCount * fileCount) - matches.Length)
-        "Should have correct number of files"
 
   let test_should_apply_filters_on_add =
     testCase "should apply filters on add" <| fun _ ->
@@ -277,6 +249,5 @@ module FsTests =
       test_should_update_file_entry_at_correct_point
       test_should_correctly_flatten_and_inflate_tree
       test_should_have_correct_counts
-      test_should_apply_filters_on_inflate
       test_should_apply_filters_on_add
     ]

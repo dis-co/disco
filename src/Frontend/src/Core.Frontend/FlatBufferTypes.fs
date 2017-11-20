@@ -190,11 +190,43 @@ type ServiceStatusFBConstructor =
 
 let ServiceStatusFB : ServiceStatusFBConstructor = failwith "JS only"
 
+///  ____  _       _    __
+/// |  _ \| | __ _| |_ / _| ___  _ __ _ __ ___
+/// | |_) | |/ _` | __| |_ / _ \| '__| '_ ` _ \
+/// |  __/| | (_| | |_|  _| (_) | |  | | | | | |
+/// |_|   |_|\__,_|\__|_|  \___/|_|  |_| |_| |_|
+
+type PlatformFB = int
+
+type PlatformFBConstructor =
+  abstract WindowsFB: PlatformFB
+  abstract UnixFB: PlatformFB
+
+let PlatformFB: PlatformFBConstructor = failwith "JS only"
+
 ///  _____   _____
 /// |  ___|_|_   _| __ ___  ___
 /// | |_ / __|| || '__/ _ \/ _ \
 /// |  _|\__ \| || | |  __/  __/
 /// |_|  |___/|_||_|  \___|\___|
+
+type FsPathFB =
+  abstract Drive: uint16
+  abstract Platform: PlatformFB
+  abstract ElementsLength: int
+  abstract Elements: int -> string
+
+type FsPathFBConstructor =
+  abstract prototype: FsPathFB with get, set
+  abstract StartFsPathFB: builder: FlatBufferBuilder -> unit
+  abstract AddDrive: builder: FlatBufferBuilder * drive: uint16 -> unit
+  abstract AddPlatform: builder: FlatBufferBuilder * platform: PlatformFB -> unit
+  abstract AddElements: builder: FlatBufferBuilder * VectorOffset -> unit
+  abstract CreateElementsVector: builder:FlatBufferBuilder * Offset<string>[] -> unit
+  abstract EndFsPathFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsPathFB: buffer: ByteBuffer -> FsPathFB
+
+let FsPathFB : FsPathFBConstructor = failwith "JS only"
 
 type FsEntryTypeFB = int
 
@@ -209,6 +241,7 @@ type FsInfoFB =
   abstract Name: string
   abstract Path: string
   abstract Size: uint64
+  abstract Filtered: uint64
 
 type FsInfoFBConstructor =
   abstract prototype: FsInfoFB with get, set
@@ -217,6 +250,7 @@ type FsInfoFBConstructor =
   abstract AddPath: builder: FlatBufferBuilder * path: Offset<string> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddSize: builder: FlatBufferBuilder * size: uint64 -> unit
+  abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint64 -> unit
   abstract EndFsInfoFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsFsInfoFB: buffer: ByteBuffer -> FsInfoFB
 
@@ -224,6 +258,7 @@ let FsInfoFB : FsInfoFBConstructor = failwith "JS only"
 
 type FsTreeFB =
   abstract Root: FsInfoFB
+  abstract Filters: string
   abstract Children: int -> FsInfoFB
   abstract ChildrenLength: int
 
@@ -231,6 +266,7 @@ type FsTreeFBConstructor =
   abstract prototype: FsTreeFB with get, set
   abstract StartFsTreeFB: builder: FlatBufferBuilder -> unit
   abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
+  abstract AddFilters: builder: FlatBufferBuilder * filters: Offset<string> -> unit
   abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
   abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
   abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<'a>

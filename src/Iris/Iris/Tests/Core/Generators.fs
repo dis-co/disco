@@ -757,9 +757,8 @@ module Generators =
   /// |_|  |___/|_||_|  \___|\___|
 
   let fsTreeGen = gen {
-    let! dirs = Gen.choose (2,10)
-    let! files = Gen.choose (2,8000)
-    let tree = FsTreeTesting.makeTree dirs files
+    let! depth = Gen.choose (2,4)
+    let tree = FsTreeTesting.deepTree depth
     return tree
   }
 

@@ -2,6 +2,9 @@ namespace rec Iris.Core
 
 // * Imports
 
+open System
+open System.Text.RegularExpressions
+
 #if FABLE_COMPILER
 
 open Fable.Core
@@ -11,7 +14,6 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open System
 open System.IO
 open System.Linq
 open FlatBuffers
@@ -19,11 +21,80 @@ open Iris.Serialization
 
 #endif
 
+// * FsPath
+
+type FsPath =
+  { Drive: char
+    Platform: Platform
+    Elements: string list }
+
+  override path.ToString() =
+    match path.Platform with
+    | Platform.Windows -> string path.Drive + @":\\" + (String.concat @"\" path.Elements)
+    | Platform.Unix -> "/" + (String.concat "/" path.Elements)
+
+  // ** optics
+
+  static member Drive_ =
+    (fun path -> path.Drive),
+    (fun drive path -> { path with Drive = drive })
+
+  static member Platform_ =
+    (fun path -> path.Platform),
+    (fun platform path -> { path with Platform = platform })
+
+  static member Elements_ =
+    (fun path -> path.Elements),
+    (fun elements path -> { path with Elements = elements })
+
+  // ** ToOffset
+
+  member path.ToOffset(builder:FlatBufferBuilder) =
+    let platform = path.Platform.ToOffset(builder)
+    let elements =
+      path.Elements
+      |> List.toArray
+      |> Array.map
+        (fun elm ->
+          if elm <> null
+          then builder.CreateString elm
+          else Unchecked.defaultof<StringOffset>)
+      |> fun arr -> FsPathFB.CreateElementsVector(builder, arr)
+
+    FsPathFB.StartFsPathFB(builder)
+    FsPathFB.AddDrive(builder, Convert.ToUInt16(path.Drive))
+    FsPathFB.AddPlatform(builder, platform)
+    FsPathFB.AddElements(builder, elements)
+    FsPathFB.EndFsPathFB(builder)
+
+  // ** FromFB
+
+  static member FromFB(fb: FsPathFB) =
+    either {
+      let! platform = Platform.FromFB fb.Platform
+      let drive = Convert.ToChar fb.Drive
+      let! elements =
+        Array.fold
+          (fun (lst:Either<IrisError,string list>) idx -> either {
+            let! elms = lst
+            let elm = fb.Elements idx
+            return elm :: elms
+          })
+          (Right List.empty)
+          [| 0 .. fb.ElementsLength - 1 |]
+      return {
+        Drive = drive
+        Platform = platform
+        Elements = List.rev elements
+      }
+    }
+
 // * FsInfo
 
 type FsInfo =
-  { Path: FilePath
+  { Path: FsPath
     Name: Name
+    Filtered: uint64
     Size: uint64 }
 
   // ** optics
@@ -33,19 +104,23 @@ type FsInfo =
     (fun path fsinfo -> { fsinfo with Path = path })
 
   static member Name_ =
-    (fun { Name = path } -> path),
-    (fun path fsinfo -> { fsinfo with Name = path })
+    (fun { Name = name } -> name),
+    (fun name fsinfo -> { fsinfo with Name = name })
 
   static member Size_ =
-    (fun { Size = path } -> path),
-    (fun path fsinfo -> { fsinfo with Size = path })
+    (fun { Size = size } -> size),
+    (fun size fsinfo -> { fsinfo with Size = size })
+
+  static member Filtered_ =
+    (fun { Filtered = filtered } -> filtered),
+    (fun filtered fsinfo -> { fsinfo with Filtered = filtered })
 
 // * FsEntry
 
 [<RequireQualifiedAccess>]
 type FsEntry =
   | File      of info:FsInfo
-  | Directory of info:FsInfo * children:Map<FilePath,FsEntry>
+  | Directory of info:FsInfo * children:Map<FsPath,FsEntry>
 
   // ** optics
 
@@ -83,9 +158,8 @@ type FsEntry =
 
   // ** Item
 
-  member self.Item(path:FilePath) =
+  member self.Item(path:FsPath) =
     FsEntry.item path self
-
 
 // * FsTree
 
@@ -105,7 +179,7 @@ type FsTree =
 
   // ** Item
 
-  member self.Item(path:FilePath) =
+  member self.Item(path:FsPath) =
     self.Root.[path]
 
   // ** entryOffset
@@ -119,41 +193,57 @@ type FsTree =
       | FsEntry.File _ -> FsEntryTypeFB.FileFB
     let info = FsEntry.info entry
     let name = info.Name |> unwrap |> mapNull
-    let path = info.Path |> unwrap |> mapNull
+    let path = Binary.toOffset builder info.Path
     FsInfoFB.StartFsInfoFB(builder)
     FsInfoFB.AddType(builder, tipe)
     FsInfoFB.AddSize(builder, info.Size)
+    FsInfoFB.AddFiltered(builder, info.Filtered)
     Option.iter (fun offset -> FsInfoFB.AddName(builder, offset)) name
-    Option.iter (fun offset -> FsInfoFB.AddPath(builder, offset)) path
+    FsInfoFB.AddPath(builder, path)
     FsInfoFB.EndFsInfoFB(builder)
 
   // ** toEntry
 
   static member toEntry(fb: FsInfoFB) =
-    let info =
-      { Path = filepath fb.Path
-        Name = name fb.Name
-        Size = fb.Size }
-    match fb.Type with
-    #if FABLE_COMPILER
-    | x when x = FsEntryTypeFB.DirectoryFB ->
-    #else
-    | FsEntryTypeFB.DirectoryFB ->
-    #endif
-      FsEntry.Directory(info, Map.empty)
-      |> Either.succeed
-    #if FABLE_COMPILER
-    | x when x = FsEntryTypeFB.FileFB ->
-    #else
-    | FsEntryTypeFB.FileFB ->
-    #endif
-      FsEntry.File(info)
-      |> Either.succeed
-    | other ->
-      other
-      |> sprintf "%A is not a known FsEntry type"
-      |> Error.asParseError "FsTree.toEntry"
-      |> Either.fail
+    either {
+      let! path =
+        #if FABLE_COMPILER
+        FsPath.FromFB fb.Path
+        #else
+        let pathish = fb.Path
+        if pathish.HasValue then
+          let path = pathish.Value
+          FsPath.FromFB path
+        else
+          "Cannot parse empty path value"
+          |> Error.asParseError "FsTree.toEntry"
+          |> Either.fail
+        #endif
+      let info =
+        { Path = path
+          Name = name fb.Name
+          Filtered = fb.Filtered
+          Size = fb.Size }
+      match fb.Type with
+      #if FABLE_COMPILER
+      | x when x = FsEntryTypeFB.DirectoryFB ->
+      #else
+      | FsEntryTypeFB.DirectoryFB ->
+      #endif
+        return FsEntry.Directory(info, Map.empty)
+      #if FABLE_COMPILER
+      | x when x = FsEntryTypeFB.FileFB ->
+      #else
+      | FsEntryTypeFB.FileFB ->
+      #endif
+        return FsEntry.File(info)
+      | other ->
+        return!
+          other
+          |> sprintf "%A is not a known FsEntry type"
+          |> Error.asParseError "FsTree.toEntry"
+          |> Either.fail
+    }
 
   // ** FromBytes
 
@@ -204,7 +294,7 @@ type FsTree =
             })
           (Right List.empty)
           [| 0 .. fb.ChildrenLength - 1 |]
-      return FsTree.inflate root children filters
+      return children |> FsTree.inflate root |> FsTree.setFilters filters
     }
 
   // ** ToBytes
@@ -234,7 +324,7 @@ module Path =
   // ** sanitize
 
   let sanitize (path:FilePath) =
-    if Path.endsWith "/" path
+    if Path.endsWith "/" path || Path.endsWith @"\" path
     then Path.substring 0 (Path.length path - 1) path
     else path
 
@@ -346,11 +436,6 @@ module Path =
   let getTempFile () =
     Path.GetTempFileName() |> filepath
 
-  // ** getDirectoryName
-
-  let getDirectoryName (path: FilePath) =
-    pmap Path.GetDirectoryName path
-
   // ** isPathRooted
 
   let isPathRooted (path: FilePath) =
@@ -366,13 +451,27 @@ module Path =
   let getFileName (path: FilePath) =
     pmap Path.GetFileName path
 
+  #endif
+
+  // ** getDirectoryName
+
+  let getDirectoryName (path: FilePath) =
+    #if FABLE_COMPILER
+    path
+    #else
+    pmap Path.GetDirectoryName path
+    #endif
+
   // ** isParentOf
 
   let isParentOf (child:FilePath) (parent:FilePath) =
     let path = child |> sanitize |> getDirectoryName
     path = parent
 
-  #endif
+  // ** isAncestorOf
+
+  let isAncestorOf (child:FilePath) (ancestor:FilePath) =
+    Path.beginsWith ancestor child
 
 // * File
 
@@ -739,6 +838,92 @@ module FileSystem =
 
   #endif
 
+// * FsPath module
+
+module FsPath =
+
+  open Aether
+  open Aether.Operators
+
+  // ** getters
+
+  let drive = Optic.get FsPath.Drive_
+  let platform = Optic.get FsPath.Platform_
+  let elements = Optic.get FsPath.Elements_
+
+  // ** setters
+
+  let setDrive = Optic.set FsPath.Drive_
+  let setPlatform = Optic.set FsPath.Platform_
+  let setElements = Optic.set FsPath.Elements_
+
+  // ** path
+
+  let path: FsPath -> FilePath = string >> filepath
+
+  // ** fileName
+
+  let fileName (path: FsPath): Name =
+    if path.Elements.IsEmpty
+    then name ""
+    else path.Elements |> List.last |> name
+
+  // ** parent
+
+  let parent path =
+    if path.Elements.Length > 0
+    then { path with Elements = List.take (path.Elements.Length - 1) path.Elements }
+    else path
+
+  // ** isParentOf
+
+  let isParentOf (child:FsPath) (ancestor:FsPath) =
+    parent child = ancestor
+
+  // ** isAncestorOf
+
+  let isAncestorOf (child:FsPath) (ancestor:FsPath) =
+    (string child).Contains(string ancestor)
+
+  // ** parse
+
+  #if !FABLE_COMPILER
+
+  let parse (path:FilePath) =
+    let drives: string [] =
+      DriveInfo.GetDrives()
+      |> Array.map
+        (fun (drive:DriveInfo) ->
+          string drive.RootDirectory
+          |> filepath
+          |> Path.sanitize
+          |> unwrap)
+    let segments:string list =
+      Uri(unwrap path).Segments
+      |> Array.collect
+        (function
+          | "/" -> Array.empty
+          | other -> [| other |> filepath |> Path.sanitize |> unwrap |])
+      |> Array.toList
+    let platform = Platform.get()
+    let drive, segments =
+      match platform with
+      | Windows ->
+        let drive =
+          if Array.contains segments.[0] drives
+          then (string segments.[0]).[0]
+          else 'C'
+        let segments =
+          try List.tail segments
+          with _ -> List.empty
+        drive, segments
+      | Unix -> '/', segments
+    { Drive = drive
+      Platform = platform
+      Elements = segments }
+
+  #endif
+
 // * FsEntry module
 
 module FsEntry =
@@ -752,6 +937,7 @@ module FsEntry =
   let name = Optic.get (FsEntry.Info_ >-> FsInfo.Name_)
   let path = Optic.get (FsEntry.Info_ >-> FsInfo.Path_)
   let size = Optic.get (FsEntry.Info_ >-> FsInfo.Size_)
+  let filtered = Optic.get (FsEntry.Info_ >-> FsInfo.Filtered_)
   let children = Optic.get FsEntry.Children_
   let childCount = Optic.get FsEntry.Children_ >> Map.count
   let isFile = Optic.get FsEntry.File_ >> Option.isSome
@@ -765,26 +951,32 @@ module FsEntry =
   let setName = Optic.set (FsEntry.Info_ >-> FsInfo.Name_)
   let setPath = Optic.set (FsEntry.Info_ >-> FsInfo.Path_)
   let setSize = Optic.set (FsEntry.Info_ >-> FsInfo.Size_)
+  let setFiltered = Optic.set (FsEntry.Info_ >-> FsInfo.Filtered_)
   let setChildren = Optic.set FsEntry.Children_
 
   // ** create
 
   #if !FABLE_COMPILER
 
-  let create (path:FilePath): FsEntry option =
-    if Directory.exists path then
-      let di = DirectoryInfo (unwrap path)
+  let create (fsPath:FsPath): FsEntry option =
+    let path = string fsPath
+    if Directory.Exists path then
+      let di = DirectoryInfo path
+      let subDirs = di.GetDirectories().Length
+      let files = di.GetFiles()
       let info = {
-        Path = filepath (Path.GetDirectoryName di.FullName)
+        Path = fsPath
         Name = Measure.name di.Name
-        Size = uint64 0
+        Filtered = uint64 0
+        Size = uint64 (files.Length + subDirs)
       }
       FsEntry.Directory (info, Map.empty) |> Some
-    elif File.exists path then
+    elif File.Exists path then
       let info = FileInfo(unwrap path)
       FsEntry.File {
-        Path = filepath (Path.GetDirectoryName info.FullName)
+        Path = fsPath
         Name = Measure.name info.Name
+        Filtered = uint64 0
         Size = uint64 info.Length
       }
       |> Some
@@ -794,39 +986,64 @@ module FsEntry =
 
   // ** isParentOf
 
-  let isParentOf (entry:FsEntry) (tree:FsEntry) =
-    fullPath tree = path entry
+  let isParentOf (child:FsEntry) (parent:FsEntry) =
+    path parent = (child |> path |> FsPath.parent)
 
-  // ** fullPath
+  // ** fold
 
-  let fullPath entry =
-    path entry </> filepath (entry |> name |> unwrap)
+  /// breadth-first fold on a tree
+  let rec fold (f: 's -> FsEntry -> 's) (state: 's) = function
+    | FsEntry.File _ as file -> f state file
+    | FsEntry.Directory(info, children) as dir ->
+      Map.fold (fun state _ entry -> f state entry) (f state dir) children
+
+  // ** matches
+
+  let matches (filters: string[]) (entry: FsEntry) =
+    let name:string = unwrap (name entry)
+    Array.fold
+      (fun result filter -> result || name.EndsWith(filter))
+      false
+      filters
+
+  // ** modify
+
+  let rec modify (entry:FsPath) (f: FsEntry -> FsEntry) = function
+    | FsEntry.File      _ as file when path file = entry -> f file
+    | FsEntry.Directory _ as dir  when path dir  = entry -> f dir
+    | FsEntry.Directory (_,children)
+      as dir
+      when FsPath.isParentOf entry (path dir) || FsPath.isAncestorOf entry (path dir) ->
+      FsEntry.setChildren (Map.map (fun _ -> modify entry f) children) dir
+    | other -> other
 
   // ** add
 
-  let rec add (entry: FsEntry) tree =
-    match tree with
-    | FsEntry.Directory(info, children) as dir when isParentOf entry tree ->
-      let full = fullPath entry
-      if Map.containsKey full children
-      then dir
-      else setChildren (Map.add full entry children) dir
-    | FsEntry.Directory(info, children) as dir ->
-      if Path.contains (fullPath entry) (fullPath dir) then
-        setChildren (Map.map (fun _ -> add entry) children) dir
-      else dir
-    | other -> other
+  let rec add (entry: FsEntry) filters =
+    let adder = function
+      | FsEntry.Directory(info, children) as dir ->
+        let full = path entry
+        if Map.containsKey full children
+        then dir
+        elif matches filters entry
+        then setSize (size dir + uint64 1) dir
+        else
+          dir
+          |> setChildren (Map.add full entry children)
+          |> setSize (size dir + uint64 1)
+      | other -> other
+    modify (path entry) adder
 
   // ** remove
 
   #if !FABLE_COMPILER
 
-  let rec remove (fp: FilePath) (tree:FsEntry) =
-    match tree with
-    | FsEntry.Directory(info, children) as dir when Path.isParentOf fp (fullPath dir) ->
-      let children = Map.filter (fun existing _ -> existing <> fp) children
-      FsEntry.Directory(info, children)
-    | FsEntry.Directory(info, children) when Path.beginsWith info.Path fp ->
+  let rec remove (fp: FsPath) = function
+    | FsEntry.Directory(info, children) as dir when FsPath.isParentOf fp (path dir) ->
+      dir
+      |> setChildren (Map.remove fp children)
+      |> setSize (size dir - uint64 1)
+    | FsEntry.Directory(info, children) when FsPath.isAncestorOf info.Path fp ->
       FsEntry.Directory(info, Map.map (fun _ -> remove fp) children)
     | other -> other
 
@@ -834,20 +1051,8 @@ module FsEntry =
 
   // ** update
 
-  let update (entry:FsEntry) (tree:FsEntry) =
-    match tree with
-    | FsEntry.Directory(info, children) as dir when isParentOf entry tree ->
-      let children =
-        Map.map
-          (fun path existing ->
-            if fullPath entry = path
-            then entry
-            else existing)
-          children
-      setChildren children dir
-    | FsEntry.Directory(info, children) as dir when Path.contains (fullPath entry) (fullPath dir) ->
-      setChildren (Map.map (fun _ -> update entry) children) dir
-    | other -> other
+  let update (entry:FsEntry) =
+    modify (path entry) (fun _ -> entry)
 
   // ** fileCount
 
@@ -886,42 +1091,30 @@ module FsEntry =
 
   #if !FABLE_COMPILER
 
-  let rec tryFind (path:FilePath) (tree:FsEntry) =
-    let path = Path.sanitize path
+  let rec tryFind (entry:FsPath) (tree:FsEntry) =
     match tree with
-    | FsEntry.File _ when fullPath tree = path -> Some tree
-    | FsEntry.Directory _ as dir when fullPath dir = path -> Some dir
-    | FsEntry.Directory(_, children) as dir when fullPath dir = Path.getDirectoryName path ->
-      Map.tryFind path children
-    | FsEntry.Directory(_, children) as dir when Path.beginsWith (fullPath dir) path ->
-      Map.tryPick (fun _ -> tryFind path) children
+    | FsEntry.File      _ as file when path file = entry -> Some tree
+    | FsEntry.Directory _ as dir  when path dir  = entry -> Some dir
+    | FsEntry.Directory(_, children) as dir when FsPath.isParentOf entry (path dir) ->
+      Map.tryFind entry children
+    | FsEntry.Directory(_, children) as dir when FsPath.isAncestorOf entry (path dir) ->
+      Map.tryPick (fun _ -> tryFind entry) children
     | _ -> None
 
   #endif
 
   // ** item
 
-  let rec item (path:FilePath) (tree:FsEntry) =
-    let path = Path.sanitize path
-    match tree with
-    | FsEntry.File _ as file when fullPath file = path -> file
-    | FsEntry.Directory _ as dir when fullPath dir = path -> dir
-    | FsEntry.Directory (_,children) as dir when Path.beginsWith (fullPath dir) path ->
+  let rec item (entry:FsPath) = function
+    | FsEntry.File      _ as file when path file = entry -> file
+    | FsEntry.Directory _ as dir  when path dir  = entry -> dir
+    | FsEntry.Directory (_,children) as dir when FsPath.isAncestorOf entry (path dir) ->
       Map.pick
-        (fun _ entry ->
-          try item path entry |> Some
+        (fun _ thing ->
+          try item entry thing |> Some
           with _ -> None)
         children
     | _ -> failwithf "item %A not found" path
-
-  // ** matches
-
-  let matches (filters: string[]) (entry: FsEntry) =
-    let name:string = unwrap (name entry)
-    Array.fold
-      (fun result filter -> result || name.EndsWith(filter))
-      false
-      filters
 
   // ** flatten
 
@@ -935,17 +1128,15 @@ module FsEntry =
 
   // ** inflate
 
-  let inflate (root:FsEntry) (entries:FsEntry list) filter =
+  let inflate (root:FsEntry) (entries:FsEntry list) =
     let directories = List.filter isDirectory entries
-    let files =
-      List.filter
-        (fun entry -> isFile entry && not (matches filter entry))
-        entries
+    let files = List.filter isFile entries
+    let filters = Array.empty
     directories
-    |> List.sortBy (fullPath >> unwrap >> String.length) /// sort by length of path to start with the
-    |> List.fold (fun root dir -> add dir root) root      /// bottom-most entries
+    |> List.sortBy (path >> string >> String.length)    /// sort by length of path to start with the
+    |> List.fold (fun root dir -> add dir filters root) root /// bottom-most entries
     |> fun withDirs ->
-      List.fold (fun root file -> add file root) withDirs files
+      List.fold (fun root file -> add file filters root) withDirs files
 
   // ** directories
 
@@ -977,28 +1168,24 @@ module FsTree =
   #if !FABLE_COMPILER
 
   let create (basePath:FilePath) filters =
-    if Directory.exists basePath then
-      let basePath =
-        if Path.endsWith "/" basePath
-        then Path.substring 0 (Path.length basePath - 1) basePath
-        else basePath
-      let path = Path.getDirectoryName basePath
-      let name = Path.baseName basePath |> string |> name
-      let info = {
-        Path = path
-        Name = name
-        Size = uint64 0
-      }
-      Either.succeed {
-        Filters = filters
-        Root = FsEntry.Directory(info, Map.empty)
-      }
-    else
+    let notFound () =
       basePath
       |> sprintf "%A was not found or is not a directory"
       |> Error.asAssetError "FsTree"
       |> Either.fail
-
+    either {
+      let! root =
+        if Directory.exists basePath then
+          let path = FsPath.parse basePath
+          match FsEntry.create path with
+          | Some root -> Right root
+          | None -> notFound()
+        else notFound()
+      return {
+        Filters = filters
+        Root = root
+      }
+    }
   #endif
 
   // ** directories
@@ -1011,8 +1198,7 @@ module FsTree =
 
   // ** basePath
 
-  let basePath (tree: FsTree) =
-    FsEntry.fullPath tree.Root
+  let basePath = root >> FsEntry.path
 
   // ** fileCount
 
@@ -1028,25 +1214,30 @@ module FsTree =
 
   #if !FABLE_COMPILER
 
-  let tryFind (path:FilePath) (tree:FsTree) =
+  let tryFind (path:FsPath) (tree:FsTree) =
     FsEntry.tryFind path tree.Root
 
   #endif
+
+  // ** modify
+
+  let modify (path: FsPath) (f: FsEntry -> FsEntry) tree =
+    tree |> root |> FsEntry.modify path f |> fun root -> setRoot root tree
 
   // ** add
 
   #if !FABLE_COMPILER
 
-  let rec add (path: FilePath) (tree: FsTree) =
-    let path =
-      if Path.isPathRooted path
-      then path |> Path.sanitize
-      else path |> Path.sanitize |> Path.getFullPath
-    if Path.beginsWith (basePath tree) path then
-      path
+  let rec add (fp: FilePath) (tree: FsTree) =
+    let fp =
+      if Path.isPathRooted fp
+      then fp |> Path.sanitize
+      else fp |> Path.sanitize |> Path.getFullPath
+    let fsPath = FsPath.parse fp
+    if FsPath.isAncestorOf fsPath (basePath tree) then
+      fsPath
       |> FsEntry.create
-      |> Option.filter (FsEntry.matches tree.Filters >> not)
-      |> Option.map (fun entry -> FsEntry.add entry tree.Root)
+      |> Option.map (fun entry -> FsEntry.add entry tree.Filters tree.Root)
       |> Option.map (fun root -> { tree with Root = root })
       |> Option.defaultValue tree
     else tree
@@ -1057,14 +1248,15 @@ module FsTree =
 
   #if !FABLE_COMPILER
 
-  let remove (path:FilePath) (tree: FsTree) =
-    let path =
-      if Path.isPathRooted path
-      then path |> Path.sanitize
-      else path |> Path.sanitize |> Path.getFullPath
-    if Path.beginsWith (basePath tree) path then
+  let remove (entry:FilePath) (tree: FsTree) =
+    let entry =
+      if Path.isPathRooted entry
+      then entry |> Path.sanitize
+      else entry |> Path.sanitize |> Path.getFullPath
+    let fsPath = FsPath.parse entry
+    if FsPath.isAncestorOf fsPath (basePath tree)  then
       tree.Root
-      |> FsEntry.remove path
+      |> FsEntry.remove fsPath
       |> fun root -> { tree with Root = root }
     else tree
 
@@ -1079,8 +1271,9 @@ module FsTree =
       if Path.isPathRooted path
       then path |> Path.sanitize
       else path |> Path.sanitize |> Path.getFullPath
-    if Path.beginsWith (basePath tree) path then
-      path
+    let fsPath = FsPath.parse path
+    if FsPath.isAncestorOf fsPath (basePath tree) then
+      fsPath
       |> FsEntry.create
       |> Option.filter (FsEntry.matches tree.Filters >> not)
       |> Option.map (fun entry -> FsEntry.update entry tree.Root)
@@ -1097,9 +1290,9 @@ module FsTree =
 
   // ** inflate
 
-  let inflate (root:FsEntry) (entries:FsEntry list) filters =
-    { Filters = filters
-      Root = FsEntry.inflate root entries filters }
+  let inflate (root:FsEntry) (entries:FsEntry list) =
+    { Filters = Array.empty
+      Root = FsEntry.inflate root entries }
 
   // ** filter
 
@@ -1108,17 +1301,6 @@ module FsTree =
     |> root
     |> FsEntry.filter pred
     |> fun updated -> setRoot updated tree
-
-  // ** read
-
-  #if !FABLE_COMPILER
-
-  let rec read (path:FilePath) =
-    path
-    |> FsEntry.create
-    |> Option.map (fun entry -> { Filters = Array.empty; Root = entry })
-
-  #endif
 
 // * FsTreeTesting
 
@@ -1132,6 +1314,7 @@ module FsTreeTesting =
     let info = {
       Path = path
       Name = name
+      Filtered = uint64 0
       Size = uint64 0
     }
     FsEntry.Directory(info,Map.empty)
@@ -1140,22 +1323,30 @@ module FsTreeTesting =
     FsEntry.File {
       Path = path
       Name = name
+      Filtered = uint64 0
       Size = uint64 0
     }
 
   let makeTree dirCount fileCount =
     let root, sub =
-      let root = makeDir (filepath "/") (Path.GetRandomFileName() |> name)
-      let rootPath = FsEntry.fullPath root
+      let root = makeDir (FsPath.parse (filepath "/")) (Path.GetRandomFileName() |> name)
+      let rootPath = FsEntry.path root
       let sub =
         [ for d in 1 .. dirCount do
             let dir = makeDir rootPath (Path.GetRandomFileName() |> name)
-            let dirPath = FsEntry.fullPath dir
+            let dirPath = FsEntry.path dir
             yield dir
             for f in 1 .. fileCount do
               yield makeFile dirPath (Path.GetRandomFileName() |> name) ]
       root, sub
-    FsTree.inflate root sub Array.empty
+    FsTree.inflate root sub
+
+  let makeSubTree rootPath fileCount =
+    let root = makeDir rootPath (Path.GetRandomFileName() |> name)
+    let rootPath = FsEntry.path root
+    [ yield root
+      for n in fileCount do
+        yield makeFile rootPath (Path.GetRandomFileName() |> name) ]
 
   let writeTree fp (tree:FsTree) =
     let bytes = Binary.encode tree
@@ -1181,5 +1372,49 @@ module FsTreeTesting =
     printfn "   file count tree: %b" (FsTree.fileCount tree = fileCount * dirCount)
     printfn "   dir count loaded: %b" (FsTree.directoryCount loaded = dirCount + 1)
     printfn "   file count loaded: %b" (FsTree.fileCount loaded = fileCount * dirCount)
+
+  let isAncestorOf (child:FilePath) (ancestor:FilePath) =
+    Path.beginsWith ancestor child
+
+  let fold p =
+    let folder (acc:string list) (level:string list) =
+      List.fold
+        (fun (out:string list) path ->
+          let perm = List.map (fun str -> Path.Combine(str,path)) acc
+          List.append out perm)
+        List.empty
+        level
+      |> List.append acc
+    p
+    |> List.fold folder (List.head p)
+    |> List.sort
+    |> List.map ((+) "/")
+
+  let deepTree depth =
+    let parsePath (str:string) =
+      let split = str.Split('/') |> Array.filter (String.IsNullOrEmpty >> not)
+      let name = split |> Array.last |> name
+      let path = split |> Array.take (split.Length - 1) |> String.concat "/" |> (+) "/"
+      name, filepath path
+    let paths =
+      fold [
+        for d in 1 .. depth -> [ for n in 1 .. d -> Path.GetRandomFileName() ]
+      ]
+    let root, sub =
+      let rootName, rootPath = List.head paths |> parsePath
+      let rootPath = List.head paths |> filepath
+      let root = makeDir (FsPath.parse (filepath "/")) rootName
+      let files =
+        [ for path in List.tail paths do
+            let name,parsed = parsePath path
+            let dir = makeDir (FsPath.parse parsed) name
+            let file =
+              makeFile
+                (FsPath.parse (filepath path))
+                (Path.GetRandomFileName() |> Measure.name)
+            yield dir
+            yield file ]
+      root, files
+    FsTree.inflate root sub
 
 #endif

@@ -86,6 +86,17 @@ enum RoleFB:ushort {
      RendererFB = 0
 }
 
+//  ____  _       _    __
+// |  _ \| | __ _| |_ / _| ___  _ __ _ __ ___
+// | |_) | |/ _` | __| |_ / _ \| '__| '_ ` _ \
+// |  __/| | (_| | |_|  _| (_) | |  | | | | | |
+// |_|   |_|\__,_|\__|_|  \___/|_|  |_| |_| |_|
+
+enum PlatformFB:ushort {
+     WindowsFB = 0,
+     UnixFB 
+}
+
 //  ____                  _          ____  _        _
 // / ___|  ___ _ ____   _(_) ___ ___/ ___|| |_ __ _| |_ _   _ ___
 // \___ \ / _ \ '__\ \ / / |/ __/ _ \___ \| __/ _` | __| | | / __|
@@ -113,6 +124,12 @@ table ServiceStatusFB {
 // |  _|\__ \| || | |  __/  __/
 // |_|  |___/|_||_|  \___|\___|
 
+table FsPathFB {
+    Drive: ushort;
+    Platform: PlatformFB;
+    Elements: [string];
+}
+
 enum FsEntryTypeFB:ushort {
     FileFB = 0,
     DirectoryFB
@@ -120,9 +137,10 @@ enum FsEntryTypeFB:ushort {
 
 table FsInfoFB {
     Type: FsEntryTypeFB;
-    Path: string;
+    Path: FsPathFB;
     Name: string;
     Size: ulong;
+    Filtered: ulong;
 }
 
 table FsTreeFB {
