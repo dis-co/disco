@@ -22,13 +22,13 @@ module Constants =
   let REQ_TIMEOUT = 500.0            // ms
 
   [<Literal>]
-  let MCAST_ADDRESS = "224.0.0.1"
+  let MCAST_ADDRESS = "224.0.0.6"
 
   [<Literal>]
   let MCAST_PORT = 5555us
 
   [<Literal>]
-  let CLOCK_MCAST_ADDRESS = "224.0.0.2"
+  let CLOCK_MCAST_ADDRESS = "224.0.0.7"
 
   [<Literal>]
   let CLOCK_MCAST_PORT = 6666us
