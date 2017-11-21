@@ -27,229 +27,314 @@ module FsTests =
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
   let test_should_handle_base_path_with_slash =
-    ftestCase "should handle base path with slash" <| fun _ ->
+    testCase "should handle base path with slash" <| fun _ ->
       withTmpDir <| fun path ->
         let withSlash = filepath (unwrap path + "/")
-        printfn "withSlash: %A" (FsPath.parse withSlash)
-        printfn "noSlash: %A" (FsPath.parse path)
         let tree = FsTree.create withSlash Array.empty |> Either.get
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
-  /// let test_should_add_file_entry_at_correct_point =
-  ///   testCase "should add file entry at correct points" <| fun _ ->
-  ///     withTree <| fun tree ->
-  ///       let path = FsTree.basePath tree
-  ///       let dir1 = path </> filepath "dir1"
-  ///       let dir2 = path </> filepath "dir2"
-  ///       let dir3 = dir2 </> filepath "dir3"
+  let test_fspath_is_sane =
+    testCase "fspath is sane" <| fun _ ->
+      let tmp = Path.getTempPath()
+      let dir = tmp </> Path.getRandomFileName()
+      let path = dir </> Path.getRandomFileName()
+      let other = Path.getTempFile()
 
-  ///       let file1 = dir1 </> filepath "file1.txt"
-  ///       let file2 = dir3 </> filepath "file2.txt"
+      let fsDir = FsPath.parse dir
+      let fsPath = FsPath.parse path
+      let fsTmp = FsPath.parse tmp
+      let fsOther = FsPath.parse other
 
-  ///       do Directory.createDirectory dir1 |> ignore
-  ///       do Directory.createDirectory dir2 |> ignore
-  ///       do Directory.createDirectory dir3 |> ignore
+      Expect.isTrue   (fsDir.isParentOf        fsTmp)  "should be the parent"
+      Expect.isTrue   (fsPath.isParentOf       fsDir)  "should be the parent"
+      Expect.isTrue   (fsPath.isAncestorOf     fsTmp)  "should be the ancestor"
+      Expect.isFalse  (fsPath.isAncestorOf     fsPath) "should not be the ancestor"
+      Expect.notEqual (FsPath.parent fsOther)  fsDir   "parent should work correctly"
+      Expect.equal    (FsPath.parent fsPath)   fsDir   "parent should work correctly"
+      Expect.equal    (FsPath.parent fsDir)    fsTmp   "parent should work correctly"
+      Expect.equal    (FsPath.filePath fsPath) path    "filePath should work correctly"
 
-  ///       do File.writeText "Hello!" None file1
-  ///       do File.writeText "Bye!" None file2
+  let test_modify_should_be_correct =
+    testCase "modify should be correct" <| fun _ ->
+      withTree <| fun tree ->
+        let basePath = FsTree.basePath tree
+        let dirPath = Path.getRandomFileName()
+        let file1Path = Path.getRandomFileName()
+        let file2Path = Path.getRandomFileName()
 
-  ///       let tree =
-  ///         tree
-  ///         |> FsTree.add dir1
-  ///         |> FsTree.add dir2
-  ///         |> FsTree.add dir3
-  ///         |> FsTree.add file1
-  ///         |> FsTree.add file2
+        let dir =
+          FsEntry.Directory(
+            { Path = basePath + dirPath
+              Name = name (unwrap dirPath)
+              Filtered = 0UL
+              Size = 0UL
+            }, Map.empty)
 
-  ///       Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
+        let tree1 = FsTree.modify basePath (FsEntry.addChild dir) tree
 
-  ///       let fileEntry1 = FsTree.tryFind file1 tree |> Option.get
-  ///       let fileEntry2 = FsTree.tryFind file2 tree |> Option.get
-  ///       let dirEntry1 = FsTree.tryFind dir1 tree |> Option.get
-  ///       let dirEntry2 = FsTree.tryFind dir2 tree |> Option.get
-  ///       let dirEntry3 = FsTree.tryFind dir3 tree |> Option.get
+        Expect.equal (tree1.[basePath + dirPath]) dir "it should contain dir"
 
-  ///       Expect.isTrue (FsEntry.isParentOf fileEntry1 dirEntry1) "Should be the parent"
-  ///       Expect.isTrue (FsEntry.isParentOf fileEntry2 dirEntry3) "Should be the parent"
-  ///       Expect.isTrue (FsEntry.isParentOf dirEntry1 tree.Root) "Should be the parent"
-  ///       Expect.isTrue (FsEntry.isParentOf dirEntry2 tree.Root) "Should be the parent"
-  ///       Expect.isTrue (FsEntry.isParentOf dirEntry3 dirEntry2) "Should be the parent"
+        let file1 =
+          FsEntry.File(
+            { Path = basePath + dirPath + file1Path
+              Name = name (unwrap file1Path)
+              Filtered = 0UL
+              Size = 0UL
+            })
 
-  ///       Expect.equal tree.[file1] fileEntry1 "Should be equal"
-  ///       Expect.equal tree.[file2] fileEntry2 "Should be equal"
-  ///       Expect.equal tree.[dir1] dirEntry1 "Should be equal"
-  ///       Expect.equal tree.[dir2] dirEntry2 "Should be equal"
-  ///       Expect.equal tree.[dir3] dirEntry3 "Should be equal"
+        let tree2 =
+          FsTree.modify
+            (file1 |> FsEntry.path |> FsPath.parent)
+            (FsEntry.addChild file1)
+            tree1
 
-  /// let test_should_remove_file_entry_at_correct_point =
-  ///   testCase "should remove file entry at correct points" <| fun _ ->
-  ///     withTree <| fun tree ->
-  ///       let path = FsTree.basePath tree
-  ///       let dir1 = path </> filepath "dir1"
-  ///       let dir2 = path </> filepath "dir2"
-  ///       let dir3 = dir2 </> filepath "dir3"
+        Expect.equal (tree2.[basePath + dirPath + file1Path]) file1 "it should contain file1"
 
-  ///       let file1 = dir1 </> filepath "file1.txt"
-  ///       let file2 = dir3 </> filepath "file2.txt"
+        let file2 =
+          FsEntry.File(
+            { Path = basePath + file2Path
+              Name = name (unwrap file2Path)
+              Filtered = 0UL
+              Size = 0UL
+            })
 
-  ///       do Directory.createDirectory dir1 |> ignore
-  ///       do Directory.createDirectory dir2 |> ignore
-  ///       do Directory.createDirectory dir3 |> ignore
+        let tree3 =
+          FsTree.modify
+            (file2 |> FsEntry.path |> FsPath.parent)
+            (FsEntry.addChild file2)
+            tree2
 
-  ///       do File.writeText "Hello!" None file1
-  ///       do File.writeText "Bye!" None file2
+        Expect.equal (tree3.[basePath + file2Path]) file2 "it should contain file2"
 
-  ///       let tree =
-  ///         tree
-  ///         |> FsTree.add dir1
-  ///         |> FsTree.add dir2
-  ///         |> FsTree.add dir3
-  ///         |> FsTree.add file1
-  ///         |> FsTree.add file2
+        let size = 666UL
 
-  ///       Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
+        let tree4 =
+          FsTree.modify
+            (FsEntry.path file2)
+            (FsEntry.setSize size)
+            tree3
 
-  ///       let processed1 = FsTree.remove file2 tree
+        Expect.equal (FsEntry.size tree4.[basePath + file2Path]) size "it should have correct size"
 
-  ///       Expect.isNone (FsTree.tryFind file2 processed1) "File should be gone"
-  ///       Expect.equal (FsTree.directoryCount processed1) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount processed1) 1 "Should have 1 file"
 
-  ///       let processed2 = FsTree.remove file1 processed1
+  let test_should_add_file_entry_at_correct_point =
+    testCase "should add file entry at correct points" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path + filepath "dir1"
+        let dir2 = path + filepath "dir2"
+        let dir3 = dir2 + filepath "dir3"
 
-  ///       Expect.isNone (FsTree.tryFind file1 processed2) "File should be gone"
-  ///       Expect.equal (FsTree.directoryCount processed2) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount processed2) 0 "Should have 0 files"
+        let file1 = dir1 + filepath "file1.txt"
+        let file2 = dir3 + filepath "file2.txt"
 
-  ///       let processed3 = FsTree.remove dir1 tree
+        do Directory.createDirectory (FsPath.filePath dir1) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir2) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir3) |> ignore
 
-  ///       Expect.isNone (FsTree.tryFind dir1 processed3) "Dir should be gone"
-  ///       Expect.equal (FsTree.directoryCount processed3) 3 "Should be 3 directories"
-  ///       Expect.equal (FsTree.fileCount processed3) 1 "Should have 1 file"
+        do File.writeText "Hello!" None (FsPath.filePath file1)
+        do File.writeText "Bye!"   None (FsPath.filePath file2)
 
-  ///       let processed4 = FsTree.remove dir2 processed3
+        let tree =
+          tree
+          |> FsTree.add (FsPath.filePath dir1)
+          |> FsTree.add (FsPath.filePath dir2)
+          |> FsTree.add (FsPath.filePath dir3)
+          |> FsTree.add (FsPath.filePath file1)
+          |> FsTree.add (FsPath.filePath file2)
 
-  ///       Expect.isNone (FsTree.tryFind dir2 processed4) "Dir should be gone"
-  ///       Expect.equal (FsTree.directoryCount processed4) 1 "Should be 1 directory"
-  ///       Expect.equal (FsTree.fileCount processed4) 0 "Should have 0 files"
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree)      2 "Should have 2 files"
 
-  /// let test_should_update_file_entry_at_correct_point =
-  ///   testCase "should update file entry at correct points" <| fun _ ->
-  ///     withTree <| fun tree ->
-  ///       let path = FsTree.basePath tree
-  ///       let dir1 = path </> filepath "dir1"
-  ///       let dir2 = path </> filepath "dir2"
-  ///       let dir3 = dir2 </> filepath "dir3"
+        let fileEntry1 = FsTree.tryFind file1 tree |> Option.get
+        let fileEntry2 = FsTree.tryFind file2 tree |> Option.get
+        let dirEntry1 = FsTree.tryFind dir1 tree |> Option.get
+        let dirEntry2 = FsTree.tryFind dir2 tree |> Option.get
+        let dirEntry3 = FsTree.tryFind dir3 tree |> Option.get
 
-  ///       let file1 = dir1 </> filepath "file1.txt"
-  ///       let file2 = dir3 </> filepath "file2.txt"
+        Expect.isTrue (dirEntry1.isParentOf   fileEntry1) "dirEntry1 should be the parent of fileEntry1"
+        Expect.isTrue (dirEntry2.isAncestorOf fileEntry2) "dirEntry2 should be the ancestor of fileEntry2"
+        Expect.isTrue (dirEntry3.isParentOf   fileEntry2) "dirEntry2 should be the parent of fileEntry2"
+        Expect.isTrue (tree.Root.isParentOf  dirEntry1) "root should be the parent dirEntry1"
+        Expect.isTrue (tree.Root.isParentOf  dirEntry2) "root should be the parent dirEntry2"
+        Expect.isTrue (dirEntry2.isParentOf  dirEntry3) "dirEntry2 should be the parent dirEntry3"
 
-  ///       do Directory.createDirectory dir1 |> ignore
-  ///       do Directory.createDirectory dir2 |> ignore
-  ///       do Directory.createDirectory dir3 |> ignore
+        Expect.equal tree.[file1] fileEntry1 "Should be equal"
+        Expect.equal tree.[file2] fileEntry2 "Should be equal"
+        Expect.equal tree.[dir1] dirEntry1 "Should be equal"
+        Expect.equal tree.[dir2] dirEntry2 "Should be equal"
+        Expect.equal tree.[dir3] dirEntry3 "Should be equal"
 
-  ///       let content1 = "Hello!"
-  ///       let content2 = "Bye!"
+  let test_should_remove_file_entry_at_correct_point =
+    testCase "should remove file entry at correct points" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path + filepath "dir1"
+        let dir2 = path + filepath "dir2"
+        let dir3 = dir2 + filepath "dir3"
 
-  ///       do File.writeText content1 None file1
-  ///       do File.writeText content2 None file2
+        let file1 = dir1 + filepath "file1.txt"
+        let file2 = dir3 + filepath "file2.txt"
 
-  ///       let tree =
-  ///         tree
-  ///         |> FsTree.add dir1
-  ///         |> FsTree.add dir2
-  ///         |> FsTree.add dir3
-  ///         |> FsTree.add file1
-  ///         |> FsTree.add file2
+        do Directory.createDirectory (FsPath.filePath dir1) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir2) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir3) |> ignore
 
-  ///       Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
+        do File.writeText "Hello!" None (FsPath.filePath file1)
+        do File.writeText "Bye!"   None (FsPath.filePath file2)
 
-  ///       let fileEntry1 = FsTree.tryFind file1 tree |> Option.get
-  ///       let fileEntry2 = FsTree.tryFind file2 tree |> Option.get
+        let tree =
+          tree
+          |> FsTree.add (FsPath.filePath dir1)
+          |> FsTree.add (FsPath.filePath dir2)
+          |> FsTree.add (FsPath.filePath dir3)
+          |> FsTree.add (FsPath.filePath file1)
+          |> FsTree.add (FsPath.filePath file2)
 
-  ///       do File.writeText content1 None file2
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
 
-  ///       let tree = FsTree.update file2 tree
+        let processed1 = FsTree.remove (FsPath.filePath file2) tree
 
-  ///       let fileEntry3 = FsTree.tryFind file2 tree |> Option.get
+        Expect.isNone (FsTree.tryFind file2 processed1) "File should be gone"
+        Expect.equal (FsTree.directoryCount processed1) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount processed1) 1 "Should have 1 file"
 
-  ///       Expect.equal (FsEntry.size fileEntry3) (FsEntry.size fileEntry1) "Should have same size now"
+        let processed2 = FsTree.remove (FsPath.filePath file1) processed1
 
-  /// let test_should_correctly_flatten_and_inflate_tree =
-  ///   testCase "should correctly flatten and inflate tree" <| fun _ ->
-  ///     withTree <| fun tree ->
-  ///       let path = FsTree.basePath tree
-  ///       let dir1 = path </> filepath "dir1"
-  ///       let dir2 = path </> filepath "dir2"
-  ///       let file1 = dir1 </> filepath "file1.txt"
-  ///       let file2 = dir2 </> filepath "file2.txt"
-  ///       do Directory.createDirectory dir1 |> ignore
-  ///       do Directory.createDirectory dir2 |> ignore
-  ///       do File.writeText "Hello!" None file1
-  ///       do File.writeText "Bye!"   None file2
+        Expect.isNone (FsTree.tryFind file1 processed2) "File should be gone"
+        Expect.equal (FsTree.directoryCount processed2) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount processed2) 0 "Should have 0 files"
 
-  ///       let tree =
-  ///         tree
-  ///         |> FsTree.add dir1
-  ///         |> FsTree.add dir2
-  ///         |> FsTree.add file1
-  ///         |> FsTree.add file2
+        let processed3 = FsTree.remove (FsPath.filePath dir1) tree
 
-  ///       let flattened = FsTree.flatten tree
-  ///       let root = FsEntry.setChildren Map.empty tree.Root
-  ///       let inflated = FsTree.inflate root flattened
-  ///       Expect.equal inflated tree "Inflated tree should be equal to original"
+        Expect.isNone (FsTree.tryFind dir1 processed3) "Dir should be gone"
+        Expect.equal (FsTree.directoryCount processed3) 3 "Should be 3 directories"
+        Expect.equal (FsTree.fileCount processed3) 1 "Should have 1 file"
 
-  /// let test_should_have_correct_counts =
-  ///   testCase "should have correct counts" <| fun _ ->
-  ///     let rnd = System.Random()
-  ///     let dirCount = rnd.Next(2,10)
-  ///     let fileCount = rnd.Next(3,9000)
-  ///     let tree = FsTreeTesting.makeTree dirCount fileCount
-  ///     Expect.equal (FsTree.fileCount tree) (fileCount * dirCount)  "Should have correct count"
-  ///     Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
+        let processed4 = FsTree.remove (FsPath.filePath dir2) processed3
 
-  /// let test_should_apply_filters_on_add =
-  ///   testCase "should apply filters on add" <| fun _ ->
-  ///     withTree <| fun tree ->
-  ///       let tree = FsTree.setFilters [| ".txt" |] tree
-  ///       let path = FsTree.basePath tree
-  ///       let dir1 = path </> filepath "dir1"
-  ///       let dir2 = path </> filepath "dir2"
-  ///       let dir3 = dir2 </> filepath "dir3"
+        Expect.isNone (FsTree.tryFind dir2 processed4) "Dir should be gone"
+        Expect.equal (FsTree.directoryCount processed4) 1 "Should be 1 directory"
+        Expect.equal (FsTree.fileCount processed4) 0 "Should have 0 files"
 
-  ///       let file1 = dir1 </> filepath "file1.txt"
-  ///       let file2 = dir3 </> filepath "file2.txt"
+  let test_should_update_file_entry_at_correct_point =
+    testCase "should update file entry at correct points" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path + filepath "dir1"
+        let dir2 = path + filepath "dir2"
+        let dir3 = dir2 + filepath "dir3"
 
-  ///       do Directory.createDirectory dir1 |> ignore
-  ///       do Directory.createDirectory dir2 |> ignore
-  ///       do Directory.createDirectory dir3 |> ignore
+        let file1 = dir1 + filepath "file1.txt"
+        let file2 = dir3 + filepath "file2.txt"
 
-  ///       do File.writeText "Hello!" None file1
-  ///       do File.writeText "Bye!" None file2
+        do Directory.createDirectory (FsPath.filePath dir1) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir2) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir3) |> ignore
 
-  ///       let tree =
-  ///         tree
-  ///         |> FsTree.add dir1
-  ///         |> FsTree.add dir2
-  ///         |> FsTree.add dir3
-  ///         |> FsTree.add file1
-  ///         |> FsTree.add file2
+        let content1 = "Hello!"
+        let content2 = "Bye!"
 
-  ///       Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
-  ///       Expect.equal (FsTree.fileCount tree) 0 "Should have no files"
+        do File.writeText content1 None (FsPath.filePath file1)
+        do File.writeText content2 None (FsPath.filePath file2)
+
+        let tree =
+          tree
+          |> FsTree.add (FsPath.filePath dir1)
+          |> FsTree.add (FsPath.filePath dir2)
+          |> FsTree.add (FsPath.filePath dir3)
+          |> FsTree.add (FsPath.filePath file1)
+          |> FsTree.add (FsPath.filePath file2)
+
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree) 2 "Should have 2 files"
+
+        let fileEntry1 = FsTree.tryFind file1 tree |> Option.get
+        let fileEntry2 = FsTree.tryFind file2 tree |> Option.get
+
+        do File.writeText content1 None (FsPath.filePath file2)
+
+        let tree = FsTree.update (FsPath.filePath file2) tree
+
+        let fileEntry3 = FsTree.tryFind file2 tree |> Option.get
+
+        Expect.equal (FsEntry.size fileEntry3) (FsEntry.size fileEntry1) "Should have same size now"
+
+  let test_should_correctly_flatten_and_inflate_tree =
+    testCase "should correctly flatten and inflate tree" <| fun _ ->
+      withTree <| fun tree ->
+        let path = FsTree.basePath tree
+        let dir1 = path + filepath "dir1"
+        let dir2 = path + filepath "dir2"
+        let file1 = dir1 + filepath "file1.txt"
+        let file2 = dir2 + filepath "file2.txt"
+        do Directory.createDirectory (FsPath.filePath dir1) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir2) |> ignore
+        do File.writeText "Hello!" None (FsPath.filePath file1)
+        do File.writeText "Bye!"   None (FsPath.filePath file2)
+
+        let tree =
+          tree
+          |> FsTree.add (FsPath.filePath dir1)
+          |> FsTree.add (FsPath.filePath dir2)
+          |> FsTree.add (FsPath.filePath file1)
+          |> FsTree.add (FsPath.filePath file2)
+
+        let flattened = FsTree.flatten tree
+        let root = FsEntry.setChildren Map.empty tree.Root
+        let inflated = FsTree.inflate root flattened
+        Expect.equal inflated tree "Inflated tree should be equal to original"
+
+  let test_should_have_correct_counts =
+    testCase "should have correct counts" <| fun _ ->
+      let rnd = System.Random()
+      let dirCount = rnd.Next(2,10)
+      let fileCount = rnd.Next(3,9000)
+      let tree = FsTreeTesting.makeTree dirCount fileCount
+      Expect.equal (FsTree.fileCount tree) (fileCount * dirCount)  "Should have correct count"
+      Expect.equal (FsTree.directoryCount tree) (dirCount + 1) "Should have correct count"
+
+  let test_should_apply_filters_on_add =
+    testCase "should apply filters on add" <| fun _ ->
+      withTree <| fun tree ->
+        let tree = FsTree.setFilters [| ".txt" |] tree
+        let path = FsTree.basePath tree
+        let dir1 = path + filepath "dir1"
+        let dir2 = path + filepath "dir2"
+        let dir3 = dir2 + filepath "dir3"
+
+        let file1 = dir1 + filepath "file1.txt"
+        let file2 = dir3 + filepath "file2.txt"
+
+        do Directory.createDirectory (FsPath.filePath dir1) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir2) |> ignore
+        do Directory.createDirectory (FsPath.filePath dir3) |> ignore
+
+        do File.writeText "Hello!" None (FsPath.filePath file1)
+        do File.writeText "Bye!"   None (FsPath.filePath file2)
+
+        let tree =
+          tree
+          |> FsTree.add (FsPath.filePath dir1)
+          |> FsTree.add (FsPath.filePath dir2)
+          |> FsTree.add (FsPath.filePath dir3)
+          |> FsTree.add (FsPath.filePath file1)
+          |> FsTree.add (FsPath.filePath file2)
+
+        Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
+        Expect.equal (FsTree.fileCount tree) 0 "Should have no files"
 
   let fsTests =
-    testList "FileSystem Tests" [
+    ftestList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
-      /// test_should_add_file_entry_at_correct_point
-      /// test_should_remove_file_entry_at_correct_point
-      /// test_should_update_file_entry_at_correct_point
-      /// test_should_correctly_flatten_and_inflate_tree
-      /// test_should_have_correct_counts
-      /// test_should_apply_filters_on_add
+      test_fspath_is_sane
+      test_modify_should_be_correct
+      test_should_add_file_entry_at_correct_point
+      test_should_remove_file_entry_at_correct_point
+      test_should_update_file_entry_at_correct_point
+      test_should_correctly_flatten_and_inflate_tree
+      test_should_have_correct_counts
+      test_should_apply_filters_on_add
     ]
