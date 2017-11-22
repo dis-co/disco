@@ -3,6 +3,7 @@ namespace rec Iris.Core
 // * Imports
 
 open System
+open System.IO
 open System.Text
 open System.Text.RegularExpressions
 
@@ -15,7 +16,6 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
-open System.IO
 open System.Linq
 open FlatBuffers
 open Iris.Serialization
@@ -155,10 +155,7 @@ type FsEntry =
 
   // ** ToString
 
-  override self.ToString() =
-    match self with
-    | FsEntry.File info -> string info.Name
-    | FsEntry.Directory(info,_) -> string info.Name
+  override self.ToString() = FsEntry.stringify self
 
   // ** optics
 
@@ -242,11 +239,10 @@ type FsTree =
 
   // ** ToString
 
-  #if !FABLE_COMPILER
-
-  override tree.ToString() = FsEntry.stringify tree.Root
-
-  #endif
+  override tree.ToString() =
+    "Filters: " + (string tree.Filters) + Environment.NewLine +
+    "Root: " + Environment.NewLine +
+    FsEntry.stringify tree.Root
 
   // ** Item
 
@@ -518,6 +514,11 @@ module Path =
 
   let getRandomFileName () =
     Path.GetRandomFileName() |> filepath
+
+  // ** getExtension
+
+  let getExtension (path:FilePath) =
+    Path.GetExtension(unwrap path)
 
   // ** getTempPath
 
@@ -1066,34 +1067,41 @@ module FsEntry =
 
   // ** stringify
 
-  #if !FABLE_COMPILER
-
   let stringify (tree:FsEntry) =
     let folder (lst: (int * string) list): FsEntry -> (int * string) list = function
       | FsEntry.File _ as file ->
-        let depth = FsEntry.path file |> FsPath.elements |> List.length
-        let str = sprintf "- %O" file
+        let depth = file |> FsEntry.path |> FsPath.elements |> List.length
+        let str = "- " + unwrap (FsEntry.name file)
         (depth, str) :: lst
       | FsEntry.Directory (info, children) as dir ->
-        let depth = FsEntry.path dir |> FsPath.elements |> List.length
-        let str = sprintf "+ /%O (Children: %d, Filtered: %d)" dir info.Size info.Filtered
+        let depth = dir |> FsEntry.path |> FsPath.elements |> List.length
+        let str =
+          sprintf "+ /%O (Children: %d, Filtered: %d)"
+            (FsEntry.name dir)
+             info.Size
+             info.Filtered
         (depth, str) :: lst
     tree
     |> FsEntry.fold folder List.empty
     |> List.rev
     |> List.fold
+        #if FABLE_COMPILER
+        (fun (out:string) (fac:int, str:string) ->
+          let spacing = String.replicate ((fac - 1) * 4) " "
+          out + spacing + str + Environment.NewLine)
+        String.Empty
+        #else
         (fun (builder:StringBuilder) (fac:int, str:string) ->
           let spacing = String.replicate ((fac - 1) * 4) " "
           builder.AppendLine(spacing + str))
         (StringBuilder())
+        #endif
     |> string
-
-  #endif
 
   // ** matches
 
-  let matches (filters: string[]) (entry: FsEntry) =
-    let name:string = unwrap (name entry)
+  let matches (filters: string[]) (name: Name) =
+    let name:string = unwrap name
     Array.fold
       (fun result filter -> result || name.EndsWith(filter))
       false
@@ -1118,12 +1126,15 @@ module FsEntry =
         let full = path entry
         if Map.containsKey full children
         then dir
-        elif matches filters entry
-        then setSize (size dir + uint64 1) dir
+        elif matches filters (name entry)
+        then
+          dir
+          |> setSize (size dir + 1UL)
+          |> setFiltered (filtered dir + 1UL)
         else
           dir
           |> setChildren (Map.add full entry children)
-          |> setSize (size dir + uint64 1)
+          |> setSize (size dir + 1UL)
       | other -> other
     /// modify the parent directory to add this child
     modify (entry |> path |> FsPath.parent) adder
@@ -1137,12 +1148,18 @@ module FsEntry =
 
   // ** remove
 
-  let rec remove (fp: FsPath) =
+  let rec remove (fp: FsPath) filters =
     let remover = function
       | FsEntry.Directory(_, children) as dir when dir.isParentOf fp ->
-        dir
-        |> setChildren (Map.remove fp children)
-        |> setSize (size dir - uint64 1)
+        if matches filters (FsPath.fileName fp) then
+          dir
+          |> setSize (size dir - 1UL)
+          |> setFiltered (filtered dir - 1UL)
+        elif Map.containsKey fp children then
+          dir
+          |> setChildren (Map.remove fp children)
+          |> setSize (size dir - uint64 1)
+        else dir
       | other -> other
     modify (FsPath.parent fp) remover
 
@@ -1186,8 +1203,6 @@ module FsEntry =
 
   // ** tryFind
 
-  #if !FABLE_COMPILER
-
   let rec tryFind (entry:FsPath) (tree:FsEntry) =
     match tree with
     | FsEntry.File      _ as file when path file = entry -> Some tree
@@ -1197,8 +1212,6 @@ module FsEntry =
     | FsEntry.Directory(_, children) as dir when dir.isAncestorOf entry ->
       Map.tryPick (fun _ -> tryFind entry) children
     | _ -> None
-
-  #endif
 
   // ** item
 
@@ -1256,12 +1269,6 @@ module FsEntry =
     | FsEntry.Directory(info, children) ->
       FsEntry.Directory(info, Map.remove child children)
     | other -> other
-
-  // ** prettyPrint
-
-  let prettyPrint (tree:FsEntry) =
-    failwith "soon"
-
 
 // * FsTree module
 
@@ -1329,23 +1336,29 @@ module FsTree =
 
   // ** tryFind
 
-  #if !FABLE_COMPILER
-
   let tryFind (path:FsPath) (tree:FsTree) =
     FsEntry.tryFind path tree.Root
-
-  #endif
 
   // ** modify
 
   let modify (path: FsPath) (f: FsEntry -> FsEntry) tree =
-    tree |> root |> FsEntry.modify path f |> fun root -> setRoot root tree
+    tree
+    |> root
+    |> FsEntry.modify path f
+    |> fun root -> setRoot root tree
 
   // ** add
 
-  #if !FABLE_COMPILER
+  #if FABLE_COMPILER
 
-  let rec add (fp: FilePath) (tree: FsTree) =
+  let add (entry:FsEntry) (tree:FsTree) =
+    tree.Root
+    |> FsEntry.add entry tree.Filters
+    |> fun entry -> setRoot entry tree
+
+  #else
+
+  let add (fp: FilePath) (tree: FsTree) =
     let fp =
       if Path.isPathRooted fp
       then fp |> Path.sanitize
@@ -1363,7 +1376,14 @@ module FsTree =
 
   // ** remove
 
-  #if !FABLE_COMPILER
+  #if FABLE_COMPILER
+
+  let remove (entry:FsPath) (tree:FsTree) =
+    tree.Root
+    |> FsEntry.remove entry
+    |> fun entry -> setRoot entry tree
+
+  #else
 
   let remove (entry:FilePath) (tree: FsTree) =
     let entry =
@@ -1373,7 +1393,7 @@ module FsTree =
     let fsPath = FsPath.parse entry
     if tree.isAncestorOf fsPath then
       tree.Root
-      |> FsEntry.remove fsPath
+      |> FsEntry.remove fsPath tree.Filters
       |> fun root -> { tree with Root = root }
     else tree
 
@@ -1381,7 +1401,14 @@ module FsTree =
 
   // ** update
 
-  #if !FABLE_COMPILER
+  #if FABLE_COMPILER
+
+  let update (entry:FsEntry) (tree: FsTree) =
+    tree.Root
+    |> FsEntry.update entry
+    |> fun entry -> setRoot entry tree
+
+  #else
 
   let update (path:FilePath) (tree: FsTree) =
     let path =
@@ -1392,7 +1419,7 @@ module FsTree =
     if tree.isAncestorOf fsPath then
       fsPath
       |> FsEntry.create
-      |> Option.filter (FsEntry.matches tree.Filters >> not)
+      |> Option.filter (FsEntry.name >> FsEntry.matches tree.Filters >> not)
       |> Option.map (fun entry -> FsEntry.update entry tree.Root)
       |> Option.map (fun root -> { tree with Root = root })
       |> Option.defaultValue tree

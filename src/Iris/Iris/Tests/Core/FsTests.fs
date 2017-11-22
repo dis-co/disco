@@ -326,8 +326,89 @@ module FsTests =
         Expect.equal (FsTree.directoryCount tree) 4 "Should be 4 directories"
         Expect.equal (FsTree.fileCount tree) 0 "Should have no files"
 
+  let test_should_track_size_filtered_correctly =
+    testCase "should track size/filtered correctly" <| fun _ ->
+      let rootPath = FsPath.parse (Path.getTempPath())
+      let dirPath1 = rootPath + Path.getRandomFileName()
+      let dirPath2 = rootPath + Path.getRandomFileName()
+      let dirPath3 = rootPath + Path.getRandomFileName()
+      let filePath1 = dirPath1 + Path.getRandomFileName()
+      let filePath2 = dirPath2 + Path.getRandomFileName()
+      let filePath3 = dirPath3 + (filepath "files.org")
+      let dir1 = FsTreeTesting.makeDir dirPath1
+      let dir2 = FsTreeTesting.makeDir dirPath2
+      let dir3 = FsTreeTesting.makeDir dirPath3
+      let file1 = FsTreeTesting.makeFile filePath1
+      let file2 = FsTreeTesting.makeFile filePath2
+      let file3 = FsTreeTesting.makeFile filePath3
+
+      let ext = Path.getExtension (FsPath.filePath filePath3)
+      let tree = FsTreeTesting.makeDir rootPath
+
+      Expect.equal (FsEntry.size tree)     0UL "tree should have size 0"
+      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+
+      ///     _       _     _   ____  _
+      ///    / \   __| | __| | |  _ \(_)_ __ ___
+      ///   / _ \ / _` |/ _` | | | | | | '__/ __|
+      ///  / ___ \ (_| | (_| | | |_| | | |  \__ \
+      /// /_/   \_\__,_|\__,_| |____/|_|_|  |___/
+
+      let tree = FsEntry.add dir1 Array.empty tree
+
+      Expect.equal (FsEntry.size tree)     1UL "tree should have size 1"
+      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+
+      let tree = FsEntry.add dir2 Array.empty tree
+
+      Expect.equal (FsEntry.size tree)     2UL "tree should have size 2"
+      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+
+      let tree = FsEntry.add dir3 Array.empty tree
+
+      Expect.equal (FsEntry.size tree)     3UL "tree should have size 3"
+      Expect.equal (FsEntry.size tree.[dirPath1]) 0UL "dir1 should have size 0"
+      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+
+      ///     _       _     _   _____ _ _
+      ///    / \   __| | __| | |  ___(_) | ___
+      ///   / _ \ / _` |/ _` | | |_  | | |/ _ \
+      ///  / ___ \ (_| | (_| | |  _| | | |  __/
+      /// /_/   \_\__,_|\__,_| |_|   |_|_|\___|
+
+      let tree = FsEntry.add file1 Array.empty tree
+
+      Expect.equal (FsEntry.size tree)     3UL "tree should have size 3"
+      Expect.equal (FsEntry.size tree.[dirPath1]) 1UL "dir1 should have size 1"
+      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+
+      ///     _       _     _   _____ _ _ _                    _
+      ///    / \   __| | __| | |  ___(_) | |_ ___ _ __ ___  __| |
+      ///   / _ \ / _` |/ _` | | |_  | | | __/ _ \ '__/ _ \/ _` |
+      ///  / ___ \ (_| | (_| | |  _| | | | ||  __/ | |  __/ (_| |
+      /// /_/   \_\__,_|\__,_| |_|   |_|_|\__\___|_|  \___|\__,_|
+
+      let tree = FsEntry.add file3 [| ext |] tree
+
+      Expect.equal (FsEntry.size tree.[dirPath3]) 1UL "dir3 should have size 1"
+      Expect.equal (FsEntry.filtered tree.[dirPath3]) 1UL "dir3 should have filtered 1"
+      Expect.throws (fun _ -> ignore tree.[filePath3]) "file3 should not be present"
+
+      ///  ____                                 _____ _ _ _                    _
+      /// |  _ \ ___ _ __ ___   _____   _____  |  ___(_) | |_ ___ _ __ ___  __| |
+      /// | |_) / _ \ '_ ` _ \ / _ \ \ / / _ \ | |_  | | | __/ _ \ '__/ _ \/ _` |
+      /// |  _ <  __/ | | | | | (_) \ V /  __/ |  _| | | | ||  __/ | |  __/ (_| |
+      /// |_| \_\___|_| |_| |_|\___/ \_/ \___| |_|   |_|_|\__\___|_|  \___|\__,_|
+
+      let tree = FsEntry.remove filePath3 [| ext |] tree
+
+      Expect.equal (FsEntry.size tree.[dirPath3]) 0UL "dir3 should have size 0"
+      Expect.equal (FsEntry.filtered tree.[dirPath3]) 0UL "dir3 should have filtered 0"
+
+      /// printfn "%O" tree1
+
   let fsTests =
-    ftestList "FileSystem Tests" [
+    testList "FileSystem Tests" [
       test_should_have_correct_base_path
       test_should_handle_base_path_with_slash
       test_fspath_is_sane
@@ -338,4 +419,5 @@ module FsTests =
       test_should_correctly_flatten_and_inflate_tree
       test_should_have_correct_counts
       test_should_apply_filters_on_add
+      test_should_track_size_filtered_correctly
     ]
