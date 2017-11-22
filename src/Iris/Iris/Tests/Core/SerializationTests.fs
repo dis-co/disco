@@ -22,13 +22,13 @@ module SerializationTests =
   /// |_|  |___/___|_| |_|_|  \___/
 
   let test_binary_fspath =
-    ftestCase "FsPath binary serialization should work" <| fun _ ->
+    testCase "FsPath binary serialization should work" <| fun _ ->
       binaryEncDec<FsPath>
       |> Prop.forAll Generators.fsPathArb
       |> Check.QuickThrowOnFailure
 
   let test_binary_fstree =
-    ftestCase "FsTree binary serialization should work" <| fun _ ->
+    testCase "FsTree binary serialization should work" <| fun _ ->
       binaryEncDec<FsTree>
       |> Prop.forAll Generators.fsTreeArb
       |> Check.QuickThrowOnFailure
