@@ -240,8 +240,8 @@ type FsInfoFB =
   abstract Type: FsEntryTypeFB
   abstract Name: string
   abstract Path: FsPathFB
-  abstract Size: uint64
-  abstract Filtered: uint64
+  abstract Size: uint32
+  abstract Filtered: uint32
 
 type FsInfoFBConstructor =
   abstract prototype: FsInfoFB with get, set
@@ -249,8 +249,8 @@ type FsInfoFBConstructor =
   abstract AddType: builder: FlatBufferBuilder * tipe: FsEntryTypeFB -> unit
   abstract AddPath: builder: FlatBufferBuilder * path: Offset<FsPathFB> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
-  abstract AddSize: builder: FlatBufferBuilder * size: uint64 -> unit
-  abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint64 -> unit
+  abstract AddSize: builder: FlatBufferBuilder * size: uint32 -> unit
+  abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint32 -> unit
   abstract EndFsInfoFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsFsInfoFB: buffer: ByteBuffer -> FsInfoFB
 

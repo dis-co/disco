@@ -67,8 +67,8 @@ module FsTests =
           FsEntry.Directory(
             { Path = basePath + dirPath
               Name = name (unwrap dirPath)
-              Filtered = 0UL
-              Size = 0UL
+              Filtered = 0u
+              Size = 0u
             }, Map.empty)
 
         let tree1 = FsTree.modify basePath (FsEntry.addChild dir) tree
@@ -79,8 +79,8 @@ module FsTests =
           FsEntry.File(
             { Path = basePath + dirPath + file1Path
               Name = name (unwrap file1Path)
-              Filtered = 0UL
-              Size = 0UL
+              Filtered = 0u
+              Size = 0u
             })
 
         let tree2 =
@@ -95,8 +95,8 @@ module FsTests =
           FsEntry.File(
             { Path = basePath + file2Path
               Name = name (unwrap file2Path)
-              Filtered = 0UL
-              Size = 0UL
+              Filtered = 0u
+              Size = 0u
             })
 
         let tree3 =
@@ -107,7 +107,7 @@ module FsTests =
 
         Expect.equal (tree3.[basePath + file2Path]) file2 "it should contain file2"
 
-        let size = 666UL
+        let size = 666u
 
         let tree4 =
           FsTree.modify
@@ -345,8 +345,8 @@ module FsTests =
       let ext = Path.getExtension (FsPath.filePath filePath3)
       let tree = FsTreeTesting.makeDir rootPath
 
-      Expect.equal (FsEntry.size tree)     0UL "tree should have size 0"
-      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+      Expect.equal (FsEntry.size tree)     0u "tree should have size 0"
+      Expect.equal (FsEntry.filtered tree) 0u "tree should have filtered 0"
 
       ///     _       _     _   ____  _
       ///    / \   __| | __| | |  _ \(_)_ __ ___
@@ -356,19 +356,19 @@ module FsTests =
 
       let tree = FsEntry.add dir1 Array.empty tree
 
-      Expect.equal (FsEntry.size tree)     1UL "tree should have size 1"
-      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+      Expect.equal (FsEntry.size tree)     1u "tree should have size 1"
+      Expect.equal (FsEntry.filtered tree) 0u "tree should have filtered 0"
 
       let tree = FsEntry.add dir2 Array.empty tree
 
-      Expect.equal (FsEntry.size tree)     2UL "tree should have size 2"
-      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+      Expect.equal (FsEntry.size tree)     2u "tree should have size 2"
+      Expect.equal (FsEntry.filtered tree) 0u "tree should have filtered 0"
 
       let tree = FsEntry.add dir3 Array.empty tree
 
-      Expect.equal (FsEntry.size tree)     3UL "tree should have size 3"
-      Expect.equal (FsEntry.size tree.[dirPath1]) 0UL "dir1 should have size 0"
-      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+      Expect.equal (FsEntry.size tree)     3u "tree should have size 3"
+      Expect.equal (FsEntry.size tree.[dirPath1]) 0u "dir1 should have size 0"
+      Expect.equal (FsEntry.filtered tree) 0u "tree should have filtered 0"
 
       ///     _       _     _   _____ _ _
       ///    / \   __| | __| | |  ___(_) | ___
@@ -378,9 +378,9 @@ module FsTests =
 
       let tree = FsEntry.add file1 Array.empty tree
 
-      Expect.equal (FsEntry.size tree)     3UL "tree should have size 3"
-      Expect.equal (FsEntry.size tree.[dirPath1]) 1UL "dir1 should have size 1"
-      Expect.equal (FsEntry.filtered tree) 0UL "tree should have filtered 0"
+      Expect.equal (FsEntry.size tree)     3u "tree should have size 3"
+      Expect.equal (FsEntry.size tree.[dirPath1]) 1u "dir1 should have size 1"
+      Expect.equal (FsEntry.filtered tree) 0u "tree should have filtered 0"
 
       ///     _       _     _   _____ _ _ _                    _
       ///    / \   __| | __| | |  ___(_) | |_ ___ _ __ ___  __| |
@@ -390,8 +390,8 @@ module FsTests =
 
       let tree = FsEntry.add file3 [| ext |] tree
 
-      Expect.equal (FsEntry.size tree.[dirPath3]) 1UL "dir3 should have size 1"
-      Expect.equal (FsEntry.filtered tree.[dirPath3]) 1UL "dir3 should have filtered 1"
+      Expect.equal (FsEntry.size tree.[dirPath3]) 1u "dir3 should have size 1"
+      Expect.equal (FsEntry.filtered tree.[dirPath3]) 1u "dir3 should have filtered 1"
       Expect.throws (fun _ -> ignore tree.[filePath3]) "file3 should not be present"
 
       ///  ____                                 _____ _ _ _                    _
@@ -402,8 +402,8 @@ module FsTests =
 
       let tree = FsEntry.remove filePath3 [| ext |] tree
 
-      Expect.equal (FsEntry.size tree.[dirPath3]) 0UL "dir3 should have size 0"
-      Expect.equal (FsEntry.filtered tree.[dirPath3]) 0UL "dir3 should have filtered 0"
+      Expect.equal (FsEntry.size tree.[dirPath3]) 0u "dir3 should have size 0"
+      Expect.equal (FsEntry.filtered tree.[dirPath3]) 0u "dir3 should have filtered 0"
 
       /// printfn "%O" tree1
 

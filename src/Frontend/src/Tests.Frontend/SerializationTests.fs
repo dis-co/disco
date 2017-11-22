@@ -30,6 +30,16 @@ module SerializationTests =
 
   let rndint() = rand.Next()
 
+  let rndchar() = Convert.ToChar(rand.Next() |> uint16)
+
+  let rndplatform() =
+    if rand.Next(0,2) > 0
+    then Platform.Windows
+    else Platform.Unix
+
+  let rndfilepath() =
+    rndstr() |> filepath
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = Array.zeroCreate<byte> num
@@ -210,6 +220,47 @@ module SerializationTests =
       Clients    = mkClient () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
       CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
       DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
+
+  let mkFsPath _ =
+    { Drive = rndchar()
+      Platform = rndplatform()
+      Elements = [ rndstr() ]}
+
+  let mkFsDir path children =
+    FsEntry.Directory(
+      { Path = path
+        Name = FsPath.fileName path
+        Size = uint32 (Map.count children)
+        Filtered = 0u
+      }, children)
+
+  let mkFsFile path =
+    FsEntry.File(
+      { Path = path
+        Name = FsPath.fileName path
+        Size = 0u
+        Filtered = 0u })
+
+  let mkFsTree _ =
+    let root =
+      let root = mkFsPath()
+      let dir1 = root + (rndfilepath())
+      let dir2 = root + (rndfilepath())
+      let dir3 = root + (rndfilepath())
+      let file1 = dir1 + (rndfilepath())
+      let file2 = dir2 + (rndfilepath())
+      let file3 = dir3 + (rndfilepath())
+      FsEntry.Directory(
+        { Path = root
+          Name = FsPath.fileName root
+          Size = 0u
+          Filtered = 0u
+        },Map [
+          dir1, mkFsDir dir1 (Map [ file1, mkFsFile file1 ])
+          dir2, mkFsDir dir2 (Map [ file2, mkFsFile file2 ])
+          dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
+        ])
+    { Root = root; Filters = Array.empty }
 
   let inline check thing =
     let thong = thing |> Binary.encode |> Binary.decode |> Either.get
@@ -457,4 +508,12 @@ module SerializationTests =
 
     test "Validate CuePlayer Binary Serialization" <| fun finish ->
       mkCuePlayer() |> check
+      finish()
+
+    test "Validate FsPath Binary Serialization" <| fun finish ->
+      mkFsPath() |> check
+      finish()
+
+    test "Validate FsTree Binary Serialization" <| fun finish ->
+      mkFsTree() |> check
       finish()

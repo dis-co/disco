@@ -119,8 +119,8 @@ type FsPath =
 type FsInfo =
   { Path: FsPath
     Name: Name
-    Filtered: uint64
-    Size: uint64 }
+    Filtered: uint32
+    Size: uint32 }
 
   // ** optics
 
@@ -1044,8 +1044,8 @@ module FsEntry =
       let info = {
         Path = fsPath
         Name = Measure.name di.Name
-        Filtered = uint64 0
-        Size = uint64 (files.Length + subDirs)
+        Filtered = 0u
+        Size = uint32 (files.Length + subDirs)
       }
       FsEntry.Directory (info, Map.empty) |> Some
     elif File.Exists path then
@@ -1053,8 +1053,8 @@ module FsEntry =
       FsEntry.File {
         Path = fsPath
         Name = Measure.name info.Name
-        Filtered = uint64 0
-        Size = uint64 info.Length
+        Filtered = 0u
+        Size = uint32 info.Length
       }
       |> Some
     else None
@@ -1133,12 +1133,12 @@ module FsEntry =
         elif matches filters (name entry)
         then
           dir
-          |> setSize (size dir + 1UL)
-          |> setFiltered (filtered dir + 1UL)
+          |> setSize (size dir + 1u)
+          |> setFiltered (filtered dir + 1u)
         else
           dir
           |> setChildren (Map.add full entry children)
-          |> setSize (size dir + 1UL)
+          |> setSize (size dir + 1u)
       | other -> other
     /// modify the parent directory to add this child
     modify (entry |> path |> FsPath.parent) adder
@@ -1157,12 +1157,12 @@ module FsEntry =
       | FsEntry.Directory(_, children) as dir when dir.isParentOf fp ->
         if matches filters (FsPath.fileName fp) then
           dir
-          |> setSize (size dir - 1UL)
-          |> setFiltered (filtered dir - 1UL)
+          |> setSize (size dir - 1u)
+          |> setFiltered (filtered dir - 1u)
         elif Map.containsKey fp children then
           dir
           |> setChildren (Map.remove fp children)
-          |> setSize (size dir - uint64 1)
+          |> setSize (size dir - 1u)
         else dir
       | other -> other
     modify (FsPath.parent fp) remover
@@ -1384,7 +1384,7 @@ module FsTree =
 
   let remove (entry:FsPath) (tree:FsTree) =
     tree.Root
-    |> FsEntry.remove entry
+    |> FsEntry.remove entry tree.Filters
     |> fun entry -> setRoot entry tree
 
   #else
@@ -1462,8 +1462,8 @@ module FsTreeTesting =
     let info = {
       Path = path
       Name = FsPath.fileName path
-      Filtered = uint64 0
-      Size = uint64 0
+      Filtered = 0u
+      Size = 0u
     }
     FsEntry.Directory(info,Map.empty)
 
@@ -1471,8 +1471,8 @@ module FsTreeTesting =
     FsEntry.File {
       Path = path
       Name = FsPath.fileName path
-      Filtered = uint64 0
-      Size = uint64 0
+      Filtered = 0u
+      Size = 0u
     }
 
   let makeTree dirCount fileCount =
@@ -1558,8 +1558,8 @@ module FsTreeTesting =
       FsEntry.Directory(
         { Path = path
           Name = FsPath.fileName path
-          Size = 0UL
-          Filtered = 0UL
+          Size = 0u
+          Filtered = 0u
         },Map [
           dir1, FsTreeTesting.makeDir dir1 |> FsEntry.modify dir1 (FsEntry.addChild (makeFile file1))
           dir2, FsTreeTesting.makeDir dir2 |> FsEntry.modify dir2 (FsEntry.addChild (makeFile file2))
