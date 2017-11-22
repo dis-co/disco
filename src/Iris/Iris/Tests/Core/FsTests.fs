@@ -45,10 +45,11 @@ module FsTests =
       let fsTmp = FsPath.parse tmp
       let fsOther = FsPath.parse other
 
-      Expect.isTrue   (fsDir.isParentOf        fsTmp)  "should be the parent"
-      Expect.isTrue   (fsPath.isParentOf       fsDir)  "should be the parent"
-      Expect.isTrue   (fsPath.isAncestorOf     fsTmp)  "should be the ancestor"
+      Expect.isTrue   (fsTmp.isParentOf        fsDir)  "fsTmp should be the parent of fsDir"
+      Expect.isTrue   (fsDir.isParentOf        fsPath) "fsDir should be the parent of fsPath"
+      Expect.isTrue   (fsTmp.isAncestorOf      fsPath) "fsTmp should be the ancestor of fsPath"
       Expect.isFalse  (fsPath.isAncestorOf     fsPath) "should not be the ancestor"
+      Expect.isFalse  (fsPath.isParentOf       fsPath) "should not be the parent"
       Expect.notEqual (FsPath.parent fsOther)  fsDir   "parent should work correctly"
       Expect.equal    (FsPath.parent fsPath)   fsDir   "parent should work correctly"
       Expect.equal    (FsPath.parent fsDir)    fsTmp   "parent should work correctly"

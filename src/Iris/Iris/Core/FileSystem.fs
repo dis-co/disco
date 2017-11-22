@@ -1115,6 +1115,13 @@ module FsEntry =
     /// modify the parent directory to add this child
     modify (entry |> path |> FsPath.parent) adder
 
+  // ** insert
+
+  let insert (entry:FsEntry) =
+    entry
+    |> FsEntry.addChild
+    |> modify (entry |> path |> FsPath.parent)
+
   // ** remove
 
   let rec remove (fp: FsPath) =
@@ -1211,9 +1218,9 @@ module FsEntry =
     let filters = Array.empty
     directories
     |> List.sortBy (path >> string >> String.length) /// sort by length of path to start with the
-    |> List.fold (fun root dir -> add dir filters root) root /// bottom-most entries
+    |> List.fold (fun root dir -> insert dir root) root /// bottom-most entries
     |> fun withDirs ->
-      List.fold (fun root file -> add file filters root) withDirs files
+      List.fold (fun root file -> insert file root) withDirs files
 
   // ** directories
 
