@@ -173,7 +173,7 @@ module AssetService =
       let! tree =
         machine.AssetFilter.Split([| ' '; ';'; ',' |])
         |> Array.filter (String.IsNullOrEmpty >> not)
-        |> FsTree.create machine.AssetDirectory
+        |> FsTree.create machine.MachineId machine.AssetDirectory
 
       let store = AgentStore.create()
       store.Update {

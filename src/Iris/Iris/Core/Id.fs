@@ -126,6 +126,10 @@ module Id =
     (fun idx -> (^t : (member Id: int -> byte) fb, idx))
     |> decodeWith
 
+  let inline decodeHostId (fb: ^t) =
+    (fun idx -> (^t : (member HostId: int -> byte) fb, idx))
+    |> decodeWith
+
   let inline decodeCueId (fb: ^t) =
     (fun idx -> (^t : (member CueId: int -> byte) fb, idx))
     |> decodeWith

@@ -257,6 +257,8 @@ type FsInfoFBConstructor =
 let FsInfoFB : FsInfoFBConstructor = failwith "JS only"
 
 type FsTreeFB =
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
   abstract Root: FsInfoFB
   abstract Filters: string
   abstract Children: int -> FsInfoFB
@@ -265,10 +267,12 @@ type FsTreeFB =
 type FsTreeFBConstructor =
   abstract prototype: FsTreeFB with get, set
   abstract StartFsTreeFB: builder: FlatBufferBuilder -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
   abstract AddFilters: builder: FlatBufferBuilder * filters: Offset<string> -> unit
   abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
   abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * bytes: byte array -> VectorOffset
   abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsFsTreeFB: buffer: ByteBuffer -> FsTreeFB
 

@@ -144,6 +144,7 @@ table FsInfoFB {
 }
 
 table FsTreeFB {
+    HostId: [ubyte];
     Root: FsInfoFB;
     Filters: string;
     Children: [FsInfoFB];

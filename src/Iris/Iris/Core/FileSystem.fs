@@ -228,10 +228,15 @@ type FsEntry =
 // * FsTree
 
 type FsTree =
-  { Filters: string array
-    Root: FsEntry }
+  { HostId:  HostId
+    Filters: string array
+    Root:    FsEntry }
 
   // ** optics
+
+  static member HostId_ =
+    (fun { HostId = hostId } -> hostId),
+    (fun hostId tree -> { tree with HostId = hostId })
 
   static member Root_ =
     (fun { Root = root } -> root),
@@ -244,9 +249,9 @@ type FsTree =
   // ** ToString
 
   override tree.ToString() =
+    "Host: "    + (string tree.HostId)  + Environment.NewLine +
     "Filters: " + (string tree.Filters) + Environment.NewLine +
-    "Root: " + Environment.NewLine +
-    FsEntry.stringify tree.Root
+    "Root: "    + Environment.NewLine   + FsEntry.stringify tree.Root
 
   // ** Item
 
@@ -328,6 +333,7 @@ type FsTree =
 
   static member FromFB(fb:FsTreeFB) =
     either {
+      let! hostId = Id.decodeHostId fb
       let filters =
         fb.Filters.Split(' ')
         |> Array.filter (String.IsNullOrEmpty >> not)
@@ -365,7 +371,10 @@ type FsTree =
             })
           (Right List.empty)
           [| 0 .. fb.ChildrenLength - 1 |]
-      return children |> FsTree.inflate root |> FsTree.setFilters filters
+      return
+        children
+        |> FsTree.inflate hostId root
+        |> FsTree.setFilters filters
     }
 
   // ** ToBytes
@@ -375,6 +384,7 @@ type FsTree =
   // ** ToOffset
 
   member tree.ToOffset(builder:FlatBufferBuilder) =
+    let hostId = FsTreeFB.CreateHostIdVector(builder, tree.HostId.ToByteArray())
     let filters = tree.Filters |> String.concat " " |> builder.CreateString
     let root = FsTree.entryOffset builder tree.Root
     let children =
@@ -383,6 +393,7 @@ type FsTree =
       |> List.map (FsTree.entryOffset builder)
       |> fun children -> FsTreeFB.CreateChildrenVector(builder, Array.ofList children)
     FsTreeFB.StartFsTreeFB(builder)
+    FsTreeFB.AddHostId(builder, hostId)
     FsTreeFB.AddRoot(builder, root)
     FsTreeFB.AddFilters(builder, filters)
     FsTreeFB.AddChildren(builder, children)
@@ -1295,7 +1306,7 @@ module FsTree =
 
   #if !FABLE_COMPILER
 
-  let create (basePath:FilePath) filters =
+  let create host (basePath:FilePath) filters =
     let notFound () =
       basePath
       |> sprintf "%A was not found or is not a directory"
@@ -1310,6 +1321,7 @@ module FsTree =
           | None -> notFound()
         else notFound()
       return {
+        HostId = host
         Filters = filters
         Root = root
       }
@@ -1438,8 +1450,9 @@ module FsTree =
 
   // ** inflate
 
-  let inflate (root:FsEntry) (entries:FsEntry list) =
-    { Filters = Array.empty
+  let inflate host (root:FsEntry) (entries:FsEntry list) =
+    { HostId = host
+      Filters = Array.empty
       Root = FsEntry.inflate root entries }
 
   // ** filter
@@ -1488,7 +1501,7 @@ module FsTreeTesting =
               let filePath = dirPath + Path.getRandomFileName()
               yield makeFile filePath ]
       root, sub
-    FsTree.inflate root sub
+    FsTree.inflate (IrisId.Create()) root sub
 
   let writeTree fp (tree:FsTree) =
     let bytes = Binary.encode tree
@@ -1544,7 +1557,7 @@ module FsTreeTesting =
             yield makeDir dirPath
             yield makeFile filePath ]
       root, files
-    FsTree.inflate root sub
+    FsTree.inflate (IrisId.Create()) root sub
 
   let tree =
     let root =
@@ -1565,6 +1578,6 @@ module FsTreeTesting =
           dir2, FsTreeTesting.makeDir dir2 |> FsEntry.modify dir2 (FsEntry.addChild (makeFile file2))
           dir3, FsTreeTesting.makeDir dir3 |> FsEntry.modify dir3 (FsEntry.addChild (makeFile file3))
         ])
-    { Root = root; Filters = Array.empty }
+    { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
 
 #endif

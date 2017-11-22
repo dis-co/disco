@@ -18,19 +18,19 @@ module FsTests =
     FileSystem.rmDir (filepath path) |> ignore
 
   let withTree (f: FsTree -> unit) =
-    withTmpDir (flip FsTree.create Array.empty >> Either.get >> f)
+    withTmpDir (fun path -> FsTree.create (IrisId.Create()) path Array.empty |> Either.get |> f)
 
   let test_should_have_correct_base_path =
     testCase "should have correct base path" <| fun _ ->
       withTmpDir <| fun path ->
-        let tree = FsTree.create path Array.empty |> Either.get
+        let tree = FsTree.create (IrisId.Create()) path Array.empty |> Either.get
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
   let test_should_handle_base_path_with_slash =
     testCase "should handle base path with slash" <| fun _ ->
       withTmpDir <| fun path ->
         let withSlash = filepath (unwrap path + "/")
-        let tree = FsTree.create withSlash Array.empty |> Either.get
+        let tree = FsTree.create (IrisId.Create()) withSlash Array.empty |> Either.get
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
   let test_fspath_is_sane =
@@ -284,7 +284,7 @@ module FsTests =
 
         let flattened = FsTree.flatten tree
         let root = FsEntry.setChildren Map.empty tree.Root
-        let inflated = FsTree.inflate root flattened
+        let inflated = FsTree.inflate tree.HostId root flattened
         Expect.equal inflated tree "Inflated tree should be equal to original"
 
   let test_should_have_correct_counts =

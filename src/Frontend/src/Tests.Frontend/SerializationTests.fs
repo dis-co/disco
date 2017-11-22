@@ -260,7 +260,7 @@ module SerializationTests =
           dir2, mkFsDir dir2 (Map [ file2, mkFsFile file2 ])
           dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
         ])
-    { Root = root; Filters = Array.empty }
+    { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
 
   let inline check thing =
     let thong = thing |> Binary.encode |> Binary.decode |> Either.get
