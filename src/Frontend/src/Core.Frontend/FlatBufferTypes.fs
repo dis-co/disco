@@ -222,7 +222,7 @@ type FsPathFBConstructor =
   abstract AddDrive: builder: FlatBufferBuilder * drive: uint16 -> unit
   abstract AddPlatform: builder: FlatBufferBuilder * platform: PlatformFB -> unit
   abstract AddElements: builder: FlatBufferBuilder * VectorOffset -> unit
-  abstract CreateElementsVector: builder:FlatBufferBuilder * Offset<string>[] -> unit
+  abstract CreateElementsVector: builder:FlatBufferBuilder * Offset<string>[] -> VectorOffset
   abstract EndFsPathFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract GetRootAsFsPathFB: buffer: ByteBuffer -> FsPathFB
 
@@ -239,7 +239,7 @@ let FsEntryTypeFB: FsEntryTypeFBConstructor = failwith "JS only"
 type FsInfoFB =
   abstract Type: FsEntryTypeFB
   abstract Name: string
-  abstract Path: string
+  abstract Path: FsPathFB
   abstract Size: uint64
   abstract Filtered: uint64
 
@@ -247,7 +247,7 @@ type FsInfoFBConstructor =
   abstract prototype: FsInfoFB with get, set
   abstract StartFsInfoFB: builder: FlatBufferBuilder -> unit
   abstract AddType: builder: FlatBufferBuilder * tipe: FsEntryTypeFB -> unit
-  abstract AddPath: builder: FlatBufferBuilder * path: Offset<string> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * path: Offset<FsPathFB> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
   abstract AddSize: builder: FlatBufferBuilder * size: uint64 -> unit
   abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint64 -> unit

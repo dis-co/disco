@@ -72,9 +72,14 @@ type FsPath =
       |> List.toArray
       |> Array.map
         (fun elm ->
-          if elm <> null
+          if isNull elm
           then builder.CreateString elm
-          else Unchecked.defaultof<StringOffset>)
+          #if FABLE_COMPILER
+          else Unchecked.defaultof<Offset<string>>
+          #else
+          else Unchecked.defaultof<StringOffset>
+          #endif
+          )
       |> fun arr -> FsPathFB.CreateElementsVector(builder, arr)
 
     FsPathFB.StartFsPathFB(builder)
@@ -237,7 +242,11 @@ type FsTree =
 
   // ** ToString
 
+  #if !FABLE_COMPILER
+
   override tree.ToString() = FsEntry.stringify tree.Root
+
+  #endif
 
   // ** Item
 
@@ -1057,6 +1066,8 @@ module FsEntry =
 
   // ** stringify
 
+  #if !FABLE_COMPILER
+
   let stringify (tree:FsEntry) =
     let folder (lst: (int * string) list): FsEntry -> (int * string) list = function
       | FsEntry.File _ as file ->
@@ -1076,6 +1087,8 @@ module FsEntry =
           builder.AppendLine(spacing + str))
         (StringBuilder())
     |> string
+
+  #endif
 
   // ** matches
 
