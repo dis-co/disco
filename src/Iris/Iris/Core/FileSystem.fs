@@ -70,18 +70,8 @@ type FsPath =
     let elements =
       path.Elements
       |> List.toArray
-      |> Array.map
-        (fun elm ->
-          if isNull elm
-          then builder.CreateString elm
-          #if FABLE_COMPILER
-          else Unchecked.defaultof<Offset<string>>
-          #else
-          else Unchecked.defaultof<StringOffset>
-          #endif
-          )
+      |> Array.map builder.CreateString
       |> fun arr -> FsPathFB.CreateElementsVector(builder, arr)
-
     FsPathFB.StartFsPathFB(builder)
     FsPathFB.AddDrive(builder, Convert.ToUInt16(path.Drive))
     FsPathFB.AddPlatform(builder, platform)
@@ -95,20 +85,34 @@ type FsPath =
       let! platform = Platform.FromFB fb.Platform
       let drive = Convert.ToChar fb.Drive
       let! elements =
-        Array.fold
-          (fun (lst:Either<IrisError,string list>) idx -> either {
-            let! elms = lst
-            let elm = fb.Elements idx
-            return elm :: elms
-          })
-          (Right List.empty)
-          [| 0 .. fb.ElementsLength - 1 |]
+        if fb.ElementsLength > 0 then
+          Array.fold
+            (fun (lst:Either<IrisError,string list>) idx -> either {
+              let! elms = lst
+              let elm = fb.Elements idx
+              return elm :: elms
+            })
+            (Right List.empty)
+            [| 0 .. fb.ElementsLength - 1 |]
+        else Either.succeed List.empty
       return {
         Drive = drive
         Platform = platform
         Elements = List.rev elements
       }
     }
+
+  // ** ToBytes
+
+  member self.ToBytes () : byte array = Binary.buildBuffer self
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte array) : Either<IrisError,FsPath> =
+    bytes
+    |> Binary.createBuffer
+    |> FsPathFB.GetRootAsFsPathFB
+    |> FsPath.FromFB
 
 // * FsInfo
 

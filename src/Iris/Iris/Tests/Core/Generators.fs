@@ -60,6 +60,7 @@ module Generators =
   let stringGen = Arb.generate<string> |> Gen.map maybeEncode
   let stringsGen = Gen.arrayOfLength 2 stringGen
   let intGen = Arb.generate<int>
+  let charGen = Arb.generate<char>
   let intsGen = Gen.arrayOfLength 4 intGen
   let boolGen = Arb.generate<bool>
   let boolsGen = Gen.arrayOfLength 4 boolGen
@@ -756,6 +757,23 @@ module Generators =
   /// |  _|\__ \| || | |  __/  __/
   /// |_|  |___/|_||_|  \___|\___|
 
+  let platformGen =
+    Gen.oneof [
+      Gen.constant Platform.Windows
+      Gen.constant Platform.Unix
+    ]
+
+  let fsPathGen = gen {
+    let! drive = charGen
+    let! platform = platformGen
+    let! elements = Gen.listOf nonNullStringGen
+    return {
+      Drive = drive
+      Platform = platform
+      Elements = elements
+    }
+  }
+
   let fsTreeGen = gen {
     let! depth = Gen.choose (2,4)
     let tree = FsTreeTesting.deepTree depth
@@ -1336,4 +1354,5 @@ module Generators =
   let pinWidgetArb = Arb.fromGen pinWidgetGen
   let referencedValueArb = Arb.fromGen referencedValueGen
   let pinGroupMapArb = Arb.fromGen pinGroupMapGen
+  let fsPathArb = Arb.fromGen fsPathGen
   let fsTreeArb = Arb.fromGen fsTreeGen
