@@ -762,6 +762,7 @@ table StateFB {
       Users:              [UserFB];
       Clients:            [IrisClientFB];
       CuePlayers:         [CuePlayerFB];
+      FsTrees:            [FsTreeFB]; 
       DiscoveredServices: [DiscoveredServiceFB];
 }
 

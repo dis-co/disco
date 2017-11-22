@@ -253,6 +253,10 @@ type FsTree =
     "Filters: " + (string tree.Filters) + Environment.NewLine +
     "Root: "    + Environment.NewLine   + FsEntry.stringify tree.Root
 
+  // ** Id
+
+  member tree.Id = tree.HostId
+
   // ** Item
 
   member self.Item(path:FsPath) =
@@ -1294,11 +1298,13 @@ module FsTree =
 
   // ** getters
 
+  let hostId = Optic.get FsTree.HostId_
   let root = Optic.get FsTree.Root_
   let filters = Optic.get FsTree.Filters_
 
   // ** setters
 
+  let setHostId = Optic.set FsTree.HostId_
   let setRoot = Optic.set FsTree.Root_
   let setFilters = Optic.set FsTree.Filters_
 

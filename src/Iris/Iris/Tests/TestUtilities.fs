@@ -353,6 +353,10 @@ module TestData =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkDiscoveredService() |]
 
+  let mkTrees() =
+    [| for n in 0 .. rand.Next(1,10) do
+        yield FsTreeTesting.makeTree (rand.Next(1,3)) (rand.Next(1,10)) |]
+
   let mkState path : Either<IrisError,State> =
     either {
       let! project = mkProject path
@@ -367,6 +371,7 @@ module TestData =
           Users              = mkUsers()              |> asMap
           Clients            = mkClients()            |> asMap
           CuePlayers         = mkPlayers()            |> asMap
+          FsTrees            = mkTrees()              |> asMap
           DiscoveredServices = mkDiscoveredServices() |> asMap }
     }
 

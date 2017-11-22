@@ -139,6 +139,7 @@ type State =
     Users:              Map<UserId,User>
     Clients:            Map<ClientId,IrisClient>
     CuePlayers:         Map<PlayerId,CuePlayer>
+    FsTrees:            Map<HostId,FsTree>
     DiscoveredServices: Map<ServiceId,DiscoveredService> }
 
   // ** optics
@@ -210,6 +211,13 @@ type State =
   static member CuePlayer_ (id:PlayerId) =
     State.CuePlayers_ >-> Map.value_ id >-> Option.value_
 
+  static member FsTrees_ =
+    (fun (state:State) -> state.FsTrees),
+    (fun fsTrees (state:State) -> { state with FsTrees = fsTrees })
+
+  static member FsTree_ (id:PlayerId) =
+    State.FsTrees_ >-> Map.value_ id >-> Option.value_
+
   static member DiscoveredServices_ =
     (fun (state:State) -> state.DiscoveredServices),
     (fun discoveredServices (state:State) -> { state with DiscoveredServices = discoveredServices })
@@ -231,6 +239,7 @@ type State =
         Users       = Map.empty
         Clients     = Map.empty
         CuePlayers  = Map.empty
+        FsTrees     = Map.empty
         DiscoveredServices = Map.empty }
 
   // ** Load
@@ -266,6 +275,7 @@ type State =
           CuePlayers         = players
           Sessions           = Map.empty
           Clients            = Map.empty
+          FsTrees            = Map.empty
           DiscoveredServices = Map.empty }
     }
 
@@ -337,6 +347,11 @@ type State =
       |> Array.map (snd >> Binary.toOffset builder)
       |> fun clients -> StateFB.CreateClientsVector(builder, clients)
 
+    let fsTrees =
+      Map.toArray self.FsTrees
+      |> Array.map (snd >> Binary.toOffset builder)
+      |> fun fsTrees -> StateFB.CreateFsTreesVector(builder, fsTrees)
+
     let players =
       Map.toArray self.CuePlayers
       |> Array.map (snd >> Binary.toOffset builder)
@@ -358,6 +373,7 @@ type State =
     StateFB.AddClients(builder, clients)
     StateFB.AddUsers(builder, users)
     StateFB.AddCuePlayers(builder, players)
+    StateFB.AddFsTrees(builder, fsTrees)
     StateFB.AddDiscoveredServices(builder, services)
     StateFB.EndStateFB(builder)
 
@@ -480,6 +496,34 @@ type State =
             #endif
 
             return (i + 1, Map.add cue.Id cue map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
+      // CUES
+
+      let! fsTrees =
+        let arr = Array.zeroCreate fb.FsTreesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<HostId, FsTree>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! fsTree = fb.FsTrees(i) |> FsTree.FromFB
+            #else
+            let! fsTree =
+              let value = fb.FsTrees(i)
+              if value.HasValue then
+                value.Value
+                |> FsTree.FromFB
+              else
+                "Could not parse empty FsTree payload"
+                |> Error.asParseError "State.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add fsTree.HostId fsTree map)
           })
           (Right (0, Map.empty))
           arr
@@ -664,6 +708,7 @@ type State =
         Sessions           = sessions
         Clients            = clients
         CuePlayers         = players
+        FsTrees            = fsTrees
         DiscoveredServices = discoveredServices
       }
     }
@@ -681,12 +726,12 @@ module State =
 
   // ** optics
 
-  let pinGroups_ = State.PinGroups_ >-> PinGroupMap.Groups_
+  let pinGroups_         = State.PinGroups_ >-> PinGroupMap.Groups_
   let pinGroup_ clid gid = State.PinGroups_ >-> PinGroupMap.Group_ clid gid
-  let playerGroups_ = State.PinGroups_ >-> PinGroupMap.Players_
-  let playerGroup_ pid = State.PinGroups_ >-> PinGroupMap.Player_ pid
-  let widgetGroups_ = State.PinGroups_ >-> PinGroupMap.Widgets_
-  let widgetGroup_ wid = State.PinGroups_ >-> PinGroupMap.Widget_ wid
+  let playerGroups_      = State.PinGroups_ >-> PinGroupMap.Players_
+  let playerGroup_ pid   = State.PinGroups_ >-> PinGroupMap.Player_ pid
+  let widgetGroups_      = State.PinGroups_ >-> PinGroupMap.Widgets_
+  let widgetGroup_ wid   = State.PinGroups_ >-> PinGroupMap.Widget_ wid
 
   // ** getters
 
@@ -702,6 +747,8 @@ module State =
   let pinMapping mid = Optic.get (State.PinMapping_ mid)
   let pinWidgets = Optic.get State.PinWidgets_
   let pinWidget wid = Optic.get (State.PinWidget_ wid)
+  let fsTrees = Optic.get State.FsTrees_
+  let fsTree id = Optic.get (State.FsTree_ id)
   let cues = Optic.get State.Cues_
   let cue id = Optic.get (State.Cue_ id)
   let cueLists = Optic.get State.CueLists_
@@ -724,6 +771,7 @@ module State =
   let setPinGroups = Optic.set pinGroups_
   let setPinMappings = Optic.set State.PinMappings_
   let setPinWidgets = Optic.set State.PinWidgets_
+  let setFsTrees = Optic.set State.FsTrees_
   let setCues = Optic.set State.Cues_
   let setCueLists = Optic.set State.CueLists_
   let setSessions = Optic.set State.Sessions_
@@ -1086,6 +1134,32 @@ module State =
     { state with
         Clients = Map.remove client.Id state.Clients
         PinGroups = PinGroupMap.removeByClient client.Id state.PinGroups }
+
+  //  ____            _           _
+  // |  _ \ _ __ ___ (_) ___  ___| |_
+  // | |_) | '__/ _ \| |/ _ \/ __| __|
+  // |  __/| | | (_) | |  __/ (__| |_
+  // |_|   |_|  \___// |\___|\___|\__|
+  //               |__/
+
+  // ** addFsTree
+
+  let addFsTree (fsTree: FsTree) (state: State) =
+    if Map.containsKey fsTree.HostId state.FsTrees
+    then state
+    else { state with FsTrees = Map.add fsTree.HostId fsTree state.FsTrees }
+
+  // ** updateFsTree
+
+  let updateFsTree (fsTree: FsTree) (state: State) =
+    if Map.containsKey fsTree.HostId state.FsTrees
+    then { state with FsTrees = Map.add fsTree.HostId fsTree state.FsTrees }
+    else state
+
+  // ** removeFsTree
+
+  let removeFsTree (fsTree: FsTree) (state: State) =
+    { state with FsTrees = Map.remove fsTree.HostId state.FsTrees }
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_

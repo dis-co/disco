@@ -96,10 +96,16 @@ module Generators =
       else return Some value
     }
 
-  let inline maybeGen g = Gen.oneof [ Gen.constant None
-                                      Gen.map Some g ]
+  let inline maybeGen g =
+    Gen.oneof [
+      Gen.constant None
+      Gen.map Some g
+    ]
 
-  let inline mapGen g = Gen.arrayOfLength 2 g |> Gen.map (Array.map toPair >> Map.ofArray)
+  let inline mapGen g =
+    g
+    |> Gen.arrayOfLength 2
+    |> Gen.map (Array.map toPair >> Map.ofArray)
 
   //  ___    _
   // |_ _|__| |
@@ -1047,6 +1053,7 @@ module Generators =
     let! users = mapGen userGen
     let! clients = mapGen clientGen
     let! players = mapGen cuePlayerGen
+    let! fsTrees = mapGen fsTreeGen
     let! discovered = mapGen discoveredGen
     return
       { Project            = project
@@ -1059,6 +1066,7 @@ module Generators =
         Users              = users
         Clients            = clients
         CuePlayers         = players
+        FsTrees            = fsTrees
         DiscoveredServices = discovered }
     }
 

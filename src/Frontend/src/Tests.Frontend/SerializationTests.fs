@@ -208,19 +208,6 @@ module SerializationTests =
       LastCallerId = rndopt()
       LastCalledId = rndopt() }
 
-  let mkState _ =
-    { Project    = mkProject ()
-      PinGroups  = mkPinGroupMap ()
-      PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
-      PinWidgets = mkPinWidget () |> fun (map: PinWidget) -> Map.ofArray [| (map.Id, map) |]
-      Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
-      CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
-      Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
-      Users      = mkUser () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
-      Clients    = mkClient () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
-      CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
-      DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
-
   let mkFsPath _ =
     { Drive = rndchar()
       Platform = rndplatform()
@@ -261,6 +248,20 @@ module SerializationTests =
           dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
         ])
     { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
+
+  let mkState _ =
+    { Project    = mkProject ()
+      PinGroups  = mkPinGroupMap ()
+      PinMappings = mkPinMapping () |> fun (map: PinMapping) -> Map.ofArray [| (map.Id, map) |]
+      PinWidgets = mkPinWidget () |> fun (map: PinWidget) -> Map.ofArray [| (map.Id, map) |]
+      Cues       = mkCue () |> fun (cue: Cue) -> Map.ofArray [| (cue.Id, cue) |]
+      CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
+      Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
+      Users      = mkUser () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
+      Clients    = mkClient () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+      CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
+      FsTrees    = mkFsTree() |> fun (tree: FsTree) -> Map.ofArray [| (tree.Id, tree) |]
+      DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
 
   let inline check thing =
     let thong = thing |> Binary.encode |> Binary.decode |> Either.get

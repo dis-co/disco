@@ -50,6 +50,7 @@ module Store =
         Sessions           = Map.empty
         Clients            = Map.empty
         CuePlayers         = Map.empty
+        FsTrees            = Map.empty
         DiscoveredServices = Map.empty }
 
     let store : Store = Store(state)

@@ -36,6 +36,7 @@ module ApiTests =
       Users              = Map.empty
       Clients            = Map.empty
       CuePlayers         = Map.empty
+      FsTrees            = Map.empty
       DiscoveredServices = Map.empty }
 
   //  ____

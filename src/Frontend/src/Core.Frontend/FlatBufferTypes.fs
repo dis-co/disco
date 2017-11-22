@@ -273,7 +273,7 @@ type FsTreeFBConstructor =
   abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
   abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
   abstract CreateHostIdVector: builder: FlatBufferBuilder * bytes: byte array -> VectorOffset
-  abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<FsTreeFB>
   abstract GetRootAsFsTreeFB: buffer: ByteBuffer -> FsTreeFB
 
 let FsTreeFB : FsTreeFBConstructor = failwith "JS only"
@@ -1736,6 +1736,8 @@ type StateFB =
   abstract PinMappingsLength: int
   abstract PinWidgets: int -> PinWidgetFB
   abstract PinWidgetsLength: int
+  abstract FsTrees: int -> FsTreeFB
+  abstract FsTreesLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
@@ -1756,24 +1758,26 @@ type StateFBConstructor =
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<PinGroupMapFB> -> unit
-  abstract AddPinMappings: builder: FlatBufferBuilder * mappings: Offset<'a> -> unit
-  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: Offset<'a> -> unit
-  abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
-  abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
-  abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
-  abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
-  abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
-  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: Offset<'a> -> unit
-  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
-  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
-  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
-  abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> Offset<'a>
-  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> Offset<'a>
-  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
-  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
-  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
-  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
-  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
+  abstract AddPinMappings: builder: FlatBufferBuilder * mappings: VectorOffset -> unit
+  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: VectorOffset -> unit
+  abstract AddFsTrees: builder: FlatBufferBuilder * fsTrees: VectorOffset -> unit
+  abstract AddCues: builder: FlatBufferBuilder * cues: VectorOffset -> unit
+  abstract AddCueLists: builder: FlatBufferBuilder * cuelists: VectorOffset -> unit
+  abstract AddSessions: builder: FlatBufferBuilder * sessions: VectorOffset -> unit
+  abstract AddUsers: builder: FlatBufferBuilder * users: VectorOffset -> unit
+  abstract AddClients: builder: FlatBufferBuilder * clients: VectorOffset -> unit
+  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: VectorOffset -> unit
+  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: VectorOffset -> unit
+  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> VectorOffset
+  abstract CreateFsTreesVector: builder: FlatBufferBuilder * fsTrees: Offset<FsTreeFB> array -> VectorOffset
+  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> VectorOffset
+  abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> VectorOffset
+  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> VectorOffset
+  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> VectorOffset
+  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> VectorOffset
+  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> VectorOffset
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> VectorOffset
+  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> VectorOffset
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
