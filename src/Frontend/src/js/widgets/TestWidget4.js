@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-//import { Switch, Case } from "switch-case"
 import Switch, { Case, Default } from 'react-switch-case';
 
 // This is a simple example to show how to create a custom widget for Iris
@@ -23,7 +22,6 @@ class Wat extends React.Component  {
   }
 
   ipValid  (ev) {
-    //console.log('1', valid(ev.target.value))
     if(regValid(ev.target.value)){ 
       this.setState({ isValid: true })      
       this.state.setPinVal(ev.target.value);
@@ -55,11 +53,9 @@ class Wat extends React.Component  {
           return <input style={style} type="text" onChange={this.ipValid.bind(this)} />
         case 'FileName':
           return < input type='file' id='input' onChange={this.getFiles.bind(this)} />
-          //var selectedFile = document.getElementById('input').files[0]
-
         default:
-              return <h1> nene </h1>
-              break;
+          return <h1> nene </h1>
+          break;
     
       }
     }
@@ -82,11 +78,9 @@ const regValid = function (str){
   return true
 }
 
-
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
     this.state={
       groupName: "",
       pinName: "",
@@ -97,7 +91,6 @@ class TestWidget extends React.Component {
   }
 
   setPinVal(value) {
-    console.log("setPinVal", value)
     this.state.pinVal = value;
     var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
     IrisLib.updatePinValueAt(pin, 0, value)
@@ -122,12 +115,6 @@ class TestWidget extends React.Component {
       groupPin: groupPin,
       pin: pin,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
-    }, () => {
-      console.log('pin has been changed: ', this.state.groupPin)
-      console.log(this.state.pinVal)
-      console.log("pin " + pin)
-      if(pin !== null)
-        console.log(pin.data.Behavior.ToString())
     })
   }
 
@@ -162,7 +149,7 @@ class TestWidget extends React.Component {
             this.state.pin !== null ?
             <Wat pinpin={this.state.pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} setPinVal={this.setPinVal.bind(this)} />
             :
-            <h1>nene</h1>
+            <h1>pin is null</h1>
           }           
         </div>
       </div>

@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-//import { Switch, Case } from "switch-case"
 import Switch, { Case, Default } from 'react-switch-case';
 
 // This is a simple example to show how to create a custom widget for Iris
@@ -28,7 +27,6 @@ class TestWidget extends React.Component {
   }
 
   setPinVal(value) {
-    console.log("setPinVal", value)
     this.state.pinVal = value;
     var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
     IrisLib.updatePinValueAt(pin, 0, value)
@@ -54,13 +52,8 @@ class TestWidget extends React.Component {
       pin: pin,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
     }, () => {
-      console.log('pin has been changed: ', this.state.groupPin)
-      console.log(this.state.pinVal)
-      console.log("pin " + pin)
       if(pin !== null)
-        console.log('hallo i bims 1 pin: '+ pin)
         this.convertBytes()
-        console.log('url: ' + this.state.picUrl)
     })
   }
 
@@ -70,7 +63,6 @@ class TestWidget extends React.Component {
     this.setState({
       picUrl : URL.createObjectURL(blob)
     })
-
   }
 
   cleanUp() {
@@ -105,10 +97,11 @@ class TestWidget extends React.Component {
         {/*onChhange updates the state with new slider maximum value*/}
         <label></label>
         {
-        this.state.pin?
+        this.state.pin
+        ?
         <img src={this.state.picUrl} style={{width: 100, height: 100}} onLoad={this.cleanUp.bind(this)} />
         : 
-        <h6>nothing</h6>          
+        <h6>pin is null</h6>          
         }
         </div>
       </div>

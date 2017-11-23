@@ -31,31 +31,7 @@ class TestWidget extends React.Component {
       }
   }
 
-
-  //check if property "inputVal" exists and set as new pinVal?
   setPinVal() {
-    console.log("trying to set pinval");
-    
-    /*
-    var mapp = this.state.pin.data.Properties.reduce(function(map, obj) {
-      map[obj.Key] = obj.Value;
-      return map;
-    }, {});
-
-    for(var key in this.state.pin.data.Properties){
-      console.log("trying 2");
-      if(mapp.hasOwnProperty(key)){
-        console.log("trying 3");
-        if(mapp[key] == this.state.inputValue){
-          this.state.pinVal = key;
-          console.log("trying4");
-          console.log(key);
-        }
-      }
-    }
-    */
-    //this.state.pinVal = value;
-    //var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
     if (this.state.pin && this.state.inputVal) {  
       IrisLib.updatePinValueAt(this.state.pin, 0, this.state.inputVal.Key)    
     }
@@ -76,7 +52,6 @@ class TestWidget extends React.Component {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
     //set pin to this states current pin by pinName
     var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    console.log("setPin test1");
     let options = 
       pin 
         ? pin.data.Properties.map(prop => { return { label: prop.Value, value: prop.Key } }) 
@@ -87,33 +62,15 @@ class TestWidget extends React.Component {
       pin: pin,
       options: options,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
-    }, () => {
-      console.log('pin has been changed: ', this.state.groupPin)
     })
-  }
-
-  changeEnum(){
-    console.log("pin properties: " + this.state.pin.data.Properties);
-    console.log("pin:  ", this.state.pin);
-    console.log("pin value ->  " , this.state.pinVal);
-    console.log("inPut: ", this.state.inputVal);
-  
   }
 
   //hadnles button click
   click(event){
     this.setPin();
-    if(this.state.pin){
-      this.changeEnum();
-      //set pinVal from here?
-      //this.setPinVal();
-    }
   }
 
-  
-    
   logChange(val) {
-    console.log('Selected: ', val);
     this.setState({
       value : val,
       inputVal:{
@@ -160,7 +117,6 @@ class TestWidget extends React.Component {
         <label>select</label>
           <Select
           name="form-field-name"
-          
           value={this.state.value}
           options={this.state.options}
           onChange={this.logChange.bind(this)}

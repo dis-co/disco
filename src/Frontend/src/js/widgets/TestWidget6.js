@@ -1,7 +1,5 @@
 import React, { Component } from 'react'
-
 import Select from 'react-select';
-// Be sure to include styles at some point, probably during your bootstrapping
 import 'react-select/dist/react-select.css';
 import { SketchPicker, TwitterPicker, AlphaPicker, BlockPicker,
 ChromePicker, CirclePicker, CompactPicker, GithubPicker, 
@@ -56,16 +54,11 @@ class TestWidget extends React.Component {
       }
   }
 
-
-  //check if property "inputVal" exists and set as new pinVal?
   setPinVal() {
-    console.log("trying to set pinval");
-    
     if (this.state.pin) {  
       IrisLib.updatePinValueAt(this.state.pin, 0, this.state.colorHex)    
     }
   }
-
 
   makeCallback(propName) {
     return (ev) => {
@@ -77,25 +70,20 @@ class TestWidget extends React.Component {
 
   setPin() {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
-    //set pin to this states current pin by pinName
     var pin = IrisLib.findPinByName(this.props.model, groupPin);
     this.setState({ 
       groupPin: groupPin,
       pin: pin,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
-    }, () => {
-      console.log('pin has been changed: ', this.state.groupPin)
     })
   }
 
-
-  //hadnles button click
+  //handels button click
   click(event){
     this.setPin();
   }
 
   logChange(val) {
-    console.log('Selected: ', val);
     this.setState({
       value : val,
     });
@@ -113,14 +101,10 @@ class TestWidget extends React.Component {
   }
 
   handleChangeComplete = (color) => {
- 
     let hex = '#' + this.toHex(this.state.color.r) + this.toHex(this.state.color.g) 
     + this.toHex(this.state.color.b) + this.toHex(Math.trunc(this.state.color.a * 255))
     this.setState({ colorHex: hex })
-    //console.log("die hex color sollte sein: ",this.state.colorHex)
     this.setPinVal();
-
-    
   };
 
   render() {

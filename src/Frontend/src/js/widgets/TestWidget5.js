@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-
 import InputSlider from 'react-input-slider'
 import 'react-input-slider/dist/input-slider.css';
 
@@ -31,13 +30,11 @@ class TestWidget extends React.Component {
   }
 
   setPinValX(value) {
-    console.log("setPinValX", value)
     this.state.pinValX = value;
     var pinX = IrisLib.findPinByName(this.props.model, this.state.groupPinX);
     IrisLib.updatePinValueAt(pinX, 0, value)
   }
   setPinValY(value) {
-    console.log("setPinValY", value)
     this.state.pinValY = value;
     var pinY = IrisLib.findPinByName(this.props.model, this.state.groupPinY);
     IrisLib.updatePinValueAt(pinY, 0, value)
@@ -57,7 +54,6 @@ class TestWidget extends React.Component {
   setPin() {
     let groupPinX = this.state.groupName + '/'+ this.state.pinNameX
     let groupPinY = this.state.groupName + '/'+ this.state.pinNameY
-    
     //set pin to this states current pin by pinName
     var pinX = IrisLib.findPinByName(this.props.model, groupPinX);
     var pinY = IrisLib.findPinByName(this.props.model, groupPinY);
@@ -69,25 +65,10 @@ class TestWidget extends React.Component {
       pinY: pinY,
       pinValX: pinX ? IrisLib.getPinValueAt(pinX, 0) : "",
       pinValY: pinY ? IrisLib.getPinValueAt(pinY, 0) : ""
-    }, () => {
-      console.log('pinX has been changed: ', this.state.groupPinX)
-      console.log(this.state.pinValX)
-      console.log("pinX " + pinX)
-    
-
-     console.log('pinY has been changed: ', this.state.groupPinY)
-     console.log(this.state.pinValY)
-     console.log("pinY " + pinY)
-    
     })
   }
 
   sliderChange = pos => {
-   /* this.setState({
-        pinValX: pos.x,
-        pinValY: pos.y
-    })
-    */
     this.setPinValX(pos.x)
     this.setPinValY(pos.y)
 }
@@ -134,19 +115,19 @@ class TestWidget extends React.Component {
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
 
-        {(this.state.pinX && this.state.pinY) !== null ?
-          <InputSlider
-          style={{width:"112px", height:"112px", background:"grey"}}
-          className='slider slider-xy'
-          axis='xy'
+        {(this.state.pinX && this.state.pinY) !== null 
+          ? <InputSlider
+            style={{width:"112px", height:"112px", background:"grey"}}
+            className='slider slider-xy'
+            axis='xy'
           
-          x={parseInt(this.state.pinValX,10)}
-          xmax={100}
-          y={parseInt(this.state.pinValY,10)}
-          ymax={100}
-          onChange={this.sliderChange}
-          />
-          : <h6>huhu</h6>
+            x={parseInt(this.state.pinValX,10)}
+            xmax={100}
+            y={parseInt(this.state.pinValY,10)}
+            ymax={100}
+            onChange={this.sliderChange}
+            />
+          : <h6>pin is null</h6>
         }
           
         </div>

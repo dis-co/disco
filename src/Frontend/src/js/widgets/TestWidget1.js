@@ -1,9 +1,7 @@
 import React, { Component } from 'react'
 import Slider from 'react-rangeslider';
 import './TestWidget1.css';
-// To include the default styles
 import 'react-rangeslider/lib/index.css';
-
 
 
 // This is a simple example to show how to create a custom widget for Iris
@@ -15,7 +13,6 @@ import 'react-rangeslider/lib/index.css';
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
-//var Slider = require('react-rangeslider');
 
 class TestWidget extends React.Component {
   constructor(props) {
@@ -29,7 +26,6 @@ class TestWidget extends React.Component {
       groupPin: ""
     };
   }
-
 
   render() {
     //initialize pinVal
@@ -77,11 +73,7 @@ class TestWidget extends React.Component {
           </label>
           {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
         <button type="submit" onClick={() => {
-          this.setState({groupPin: this.state.groupName + '/'+ this.state.pinName}, () => {
-            console.log('pin has been changed: ', this.state.groupPin)
-            console.log(pinVal)
-          })
-          
+          this.setState({groupPin: this.state.groupName + '/'+ this.state.pinName})
           ;}}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
