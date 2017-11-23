@@ -1374,6 +1374,27 @@ module FsEntry =
       FsEntry.Directory(info, Map.remove child children)
     | other -> other
 
+  // ** applyFilters
+
+  let applyFilters filters tree =
+    fold
+      (fun builder -> function
+        | FsEntry.Directory (_,children) as dir ->
+          let updated =
+            Map.filter
+              (fun path entry -> not (isFile entry && matches filters (FsPath.fileName path)))
+              children
+          let size = uint32 (Map.count children)
+          let filtered = uint32 (Map.count children - Map.count updated)
+          dir
+          |> setChildren updated
+          |> setSize size
+          |> setFiltered filtered
+          |> fun dir -> insert dir builder
+        | other -> builder)
+      (setChildren Map.empty tree)
+      tree
+
 // * FsTree module
 
 module FsTree =
@@ -1392,6 +1413,20 @@ module FsTree =
   let setHostId = Optic.set FsTree.HostId_
   let setRoot = Optic.set FsTree.Root_
   let setFilters = Optic.set FsTree.Filters_
+
+  // ** parseFilters
+
+  let parseFilters (str:string) =
+    str.Split([| ' '; ';'; ',' |])
+    |> Array.filter (String.IsNullOrEmpty >> not)
+
+  // ** applyFilters
+
+  let applyFilters tree =
+    tree
+    |> root
+    |> FsEntry.applyFilters tree.Filters
+    |> fun root -> setRoot root tree
 
   // ** create
 
@@ -1670,5 +1705,8 @@ module FsTreeTesting =
           dir3, FsTreeTesting.makeDir dir3 |> FsEntry.modify dir3 (FsEntry.addChild (makeFile file3))
         ])
     { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
+
+
+
 
 #endif

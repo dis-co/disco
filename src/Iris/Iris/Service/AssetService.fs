@@ -30,7 +30,7 @@ module AssetService =
 
   [<NoComparison;NoEquality>]
   type private AssetServiceState =
-    { Files: FsTree
+    { Files: FsTree option
       Subscriptions: Subscriptions }
 
   // ** updateFiles
@@ -46,22 +46,24 @@ module AssetService =
         let! msg = inbox.Receive()
         let state = store.State
         match msg with
+        | IrisEvent.Append (_, AddFsTree tree) as ev ->
+          Observable.onNext state.Subscriptions ev
+          updateFiles state (Some tree)
         | IrisEvent.FileSystem (FileSystemEvent.Created(_,path)) ->
           state.Files
-          |> FsTree.add path
+          |> Option.map (FsTree.add path)
           |> updateFiles state
         | IrisEvent.FileSystem (FileSystemEvent.Changed(_,path)) ->
           state.Files
-          |> FsTree.update path
+          |> Option.map (FsTree.update path)
           |> updateFiles state
         | IrisEvent.FileSystem (FileSystemEvent.Deleted(_,path)) ->
           state.Files
-          |> FsTree.remove path
+          |> Option.map (FsTree.remove path)
           |> updateFiles state
         | IrisEvent.FileSystem (FileSystemEvent.Renamed(_,oldpath,_,path)) ->
           state.Files
-          |> FsTree.remove oldpath
-          |> FsTree.add path
+          |> Option.map (FsTree.remove oldpath >> FsTree.add path)
           |> updateFiles state
         | _ -> state
         |> store.Update
@@ -120,27 +122,38 @@ module AssetService =
 
   // ** crawlDirectory
 
-  let rec private crawlDirectory dir agent =
+  let private crawlDirectory (machine:IrisMachine) =
     async {
-      if Directory.exists dir then
-        (dir |> Path.getFileName |> unwrap |> name, dir)
-        |> FileSystemEvent.Created
-        |> IrisEvent.FileSystem
-        |> post agent
-      for child in Directory.getFiles false "*" dir do
-        (child |> Path.getFileName |> unwrap |> name, child)
-        |> FileSystemEvent.Created
-        |> IrisEvent.FileSystem
-        |> post agent
-      for child in Directory.getDirectories dir do
-        do! crawlDirectory child agent
+      do machine.AssetDirectory
+         |> String.format "Crawling asset directory {0}"
+         |> Logger.info (tag "crawlDirectory")
+      let filters = FsTree.parseFilters machine.AssetFilter
+      let path = FsPath.parse machine.AssetDirectory
+      return
+        match FsEntry.create path with
+        | Some root ->
+          machine.AssetDirectory
+          |> FileSystem.lsDir
+          |> List.sort
+          |> List.choose (FsPath.parse >> FsEntry.create)
+          |> FsTree.inflate machine.MachineId root
+          |> FsTree.setFilters filters
+          |> FsTree.applyFilters
+          |> Some
+        | None ->
+          machine.AssetDirectory
+          |> String.format "Could not crawl {0}"
+          |> Logger.err (tag "crawlDirectory")
+          None
     }
 
   // ** startCrawler
 
-  let private startCrawler baseDir agent =
+  let private startCrawler machine agent =
     async {
-      do! crawlDirectory baseDir agent
+      let! tree = crawlDirectory machine
+      do Logger.info (tag "crawlDirectory") "Done."
+      do Option.iter (AddFsTree >> IrisEvent.appendService >> post agent) tree
     }
     |> Async.Start
 
@@ -170,14 +183,9 @@ module AssetService =
       let status = ref ServiceStatus.Stopped
       let subscriptions = Subscriptions()
 
-      let! tree =
-        machine.AssetFilter.Split([| ' '; ';'; ',' |])
-        |> Array.filter (String.IsNullOrEmpty >> not)
-        |> FsTree.create machine.MachineId machine.AssetDirectory
-
       let store = AgentStore.create()
       store.Update {
-        Files = tree
+        Files = None
         Subscriptions = subscriptions
       }
 
@@ -189,12 +197,15 @@ module AssetService =
           member self.Start() =
             agent.Start()
             agent
-            |> startCrawler machine.AssetDirectory
+            |> startCrawler machine
             |> Either.succeed
 
           member self.Stop() = Either.nothing
 
           member self.State = store.State.Files
+
+          member self.Subscribe(cb) =
+            Observable.subscribe cb subscriptions
 
           member self.Dispose() =
             try
@@ -207,13 +218,20 @@ module AssetService =
 
 #if INTERACTIVE
 
-let path = filepath "/home/k/iris/assets"
-let service = AssetService.create path |> Either.get
+Logger.subscribe Logger.stdout
+
+let machine =
+  { IrisMachine.Default with
+      AssetDirectory = filepath "/home/k/iris/assets"
+      AssetFilter = ".file"
+    }
+
+let service = AssetService.create machine |> Either.get
+service.Subscribe (printfn "%O")
 
 service.Start()
 
-FsTree.fileCount service.State
-FsTree.directoryCount service.State
+service.State |> Option.map FsTree.fileCount
 
 dispose service
 
