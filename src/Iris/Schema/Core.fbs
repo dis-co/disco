@@ -148,11 +148,22 @@ table FsEntryFB {
     Children: [FsInfoFB];
 }
 
+table FsEntryUpdateFB {
+    HostId: [ubyte];
+    Entry: FsEntryFB;
+    Path: FsPathFB;
+}
+
 table FsTreeFB {
     HostId: [ubyte];
     Root: FsInfoFB;
     Filters: string;
     Children: [FsInfoFB];
+}
+
+table FsTreeUpdateFB {
+    HostId: [ubyte];
+    Tree: FsTreeFB;
 }
 
 //   ____ _ _            _
@@ -797,7 +808,9 @@ union StateMachinePayloadFB {
       ClockFB,
       TransactionFB,
       PinMappingFB,
-      PinWidgetFB
+      PinWidgetFB,
+      FsEntryUpdateFB,
+      FsTreeUpdateFB,
 }
 
 enum StateMachineActionFB:ushort {

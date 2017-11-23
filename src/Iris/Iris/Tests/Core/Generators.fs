@@ -1082,6 +1082,18 @@ module Generators =
   //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
+  let fsEntryTuple = gen {
+    let! id = idGen
+    let! entry = fsEntryGen
+    return id, entry
+  }
+
+  let fsPathTuple = gen {
+    let! id = idGen
+    let! path = fsPathGen
+    return id, path
+  }
+
   let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
       Gen.constant UnloadProject
@@ -1117,6 +1129,11 @@ module Generators =
       Gen.map AddUser                 userGen
       Gen.map UpdateUser              userGen
       Gen.map RemoveUser              userGen
+      Gen.map AddFsEntry              fsEntryTuple
+      Gen.map UpdateFsEntry           fsEntryTuple
+      Gen.map RemoveFsEntry           fsPathTuple
+      Gen.map AddFsTree               fsTreeGen
+      Gen.map RemoveFsTree            idGen
       Gen.map AddSession              sessionGen
       Gen.map UpdateSession           sessionGen
       Gen.map RemoveSession           sessionGen

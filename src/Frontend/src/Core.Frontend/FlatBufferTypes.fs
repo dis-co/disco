@@ -294,6 +294,40 @@ type FsTreeFBConstructor =
 
 let FsTreeFB : FsTreeFBConstructor = failwith "JS only"
 
+type FsEntryUpdateFB =
+  abstract Entry: FsEntryFB
+  abstract Path: FsPathFB
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
+
+type FsEntryUpdateFBConstructor =
+  abstract prototype: FsEntryUpdateFB with get, set
+  abstract StartFsEntryUpdateFB: builder: FlatBufferBuilder -> unit
+  abstract AddEntry: builder: FlatBufferBuilder * info: Offset<FsEntryFB> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * info: Offset<FsPathFB> -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * children: byte array -> VectorOffset
+  abstract EndFsEntryUpdateFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsEntryUpdateFB: buffer: ByteBuffer -> FsEntryUpdateFB
+
+let FsEntryUpdateFB : FsEntryUpdateFBConstructor = failwith "JS only"
+
+type FsTreeUpdateFB =
+  abstract Tree: FsTreeFB
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
+
+type FsTreeUpdateFBConstructor =
+  abstract prototype: FsTreeUpdateFB with get, set
+  abstract StartFsTreeUpdateFB: builder: FlatBufferBuilder -> unit
+  abstract AddTree: builder: FlatBufferBuilder * info: Offset<FsTreeFB> -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * children: byte array -> VectorOffset
+  abstract EndFsTreeUpdateFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsTreeUpdateFB: buffer: ByteBuffer -> FsTreeUpdateFB
+
+let FsTreeUpdateFB : FsTreeUpdateFBConstructor = failwith "JS only"
+
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
 // | |   | | |/ _ \ '_ \| __|
@@ -2077,6 +2111,8 @@ type StateMachinePayloadFBConstructor =
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
   abstract TransactionFB: StateMachinePayloadFB
+  abstract FsEntryUpdateFB: StateMachinePayloadFB
+  abstract FsTreeUpdateFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -2102,6 +2138,8 @@ type StateMachineFB =
   abstract ClockFB: ClockFB
   abstract SlicesMapFB: SlicesMapFB
   abstract TransactionFB: TransactionFB
+  abstract FsEntryUpdateFB: FsEntryUpdateFB
+  abstract FsTreeUpdateFB: FsTreeUpdateFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =
