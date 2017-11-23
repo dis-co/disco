@@ -31,7 +31,7 @@ type FsPath =
 
   override path.ToString() =
     match path.Platform with
-    | Platform.Windows -> string path.Drive + @":\\" + (String.concat @"\" path.Elements)
+    | Platform.Windows -> string path.Drive + @":\" + (String.concat @"\" path.Elements)
     | Platform.Unix -> "/" + (String.concat "/" path.Elements)
 
   // ** optics
