@@ -31,7 +31,13 @@ class TestWidget extends React.Component {
       inputVal: "",
       pin: null,
       value: {value:HuePicker, label: "HuePicker"},
-      color:"#fff",
+      color:{
+        r:51,
+        g:51,
+        b:51,
+        a:1
+      },
+      colorHex:'#fff',
       options : [
           {value: HuePicker, label: "HuePicker"},
           {value:SketchPicker, label: "SketchPicker"},
@@ -56,7 +62,7 @@ class TestWidget extends React.Component {
     console.log("trying to set pinval");
     
     if (this.state.pin) {  
-      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.color)    
+      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.colorHex)    
     }
   }
 
@@ -95,12 +101,25 @@ class TestWidget extends React.Component {
     });
   }
 
+  toHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+  handleChange(color, event){
+    this.setState({
+     color : color.rgb
+    })
+  }
+
   handleChangeComplete = (color) => {
-    this.setState({ color: color.hex });
-    console.log(this.state.color)
+ 
+    let hex = '#' + this.toHex(this.state.color.r) + this.toHex(this.state.color.g) 
+    + this.toHex(this.state.color.b) + this.toHex(Math.trunc(this.state.color.a * 255))
+    this.setState({ colorHex: hex })
+    //console.log("die hex color sollte sein: ",this.state.colorHex)
     this.setPinVal();
-    console.log("this.state.value", this.state.value)
-    console.log("this.state.value.value",  + this.state.value.value)
+
     
   };
 
@@ -150,6 +169,7 @@ class TestWidget extends React.Component {
           <label>colorPicker</label>
           <this.state.value.value
           color={this.state.color}
+          onChange={this.handleChange.bind(this)}
           onChangeComplete={this.handleChangeComplete} />
         </div>
       </div>
