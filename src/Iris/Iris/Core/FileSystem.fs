@@ -157,10 +157,6 @@ type FsEntry =
   | File      of info:FsInfo
   | Directory of info:FsInfo * children:Map<FsPath,FsEntry>
 
-  // ** ToString
-
-  override self.ToString() = FsEntry.stringify self
-
   // ** optics
 
   static member Info_ =
@@ -194,6 +190,156 @@ type FsEntry =
     (fun children -> function
       | FsEntry.Directory(info,_) -> FsEntry.Directory(info, children)
       | other -> other)
+
+  // ** ToString
+
+  override self.ToString() = FsEntry.stringify self
+
+  // ** ToEntryOffset
+
+  member entry.ToEntryOffset(builder:FlatBufferBuilder) =
+    let mapNull = function
+      | null -> None
+      | str -> builder.CreateString str |> Some
+    let tipe = entry |> function
+      | FsEntry.Directory _ -> FsEntryTypeFB.DirectoryFB
+      | FsEntry.File _ -> FsEntryTypeFB.FileFB
+    let info = FsEntry.info entry
+    let name = info.Name |> unwrap |> mapNull
+    let path = Binary.toOffset builder info.Path
+    FsInfoFB.StartFsInfoFB(builder)
+    FsInfoFB.AddType(builder, tipe)
+    FsInfoFB.AddSize(builder, info.Size)
+    FsInfoFB.AddFiltered(builder, info.Filtered)
+    Option.iter (fun offset -> FsInfoFB.AddName(builder, offset)) name
+    FsInfoFB.AddPath(builder, path)
+    FsInfoFB.EndFsInfoFB(builder)
+
+  // ** FromEntryFB
+
+  static member FromEntryFB(fb: FsInfoFB) =
+    either {
+      let! path =
+        #if FABLE_COMPILER
+        FsPath.FromFB fb.Path
+        #else
+        let pathish = fb.Path
+        if pathish.HasValue then
+          let path = pathish.Value
+          FsPath.FromFB path
+        else
+          "Cannot parse empty path value"
+          |> Error.asParseError "FsTree.toEntry"
+          |> Either.fail
+        #endif
+      let info =
+        { Path = path
+          Name = name fb.Name
+          Filtered = fb.Filtered
+          Size = fb.Size }
+      match fb.Type with
+      #if FABLE_COMPILER
+      | x when x = FsEntryTypeFB.DirectoryFB ->
+      #else
+      | FsEntryTypeFB.DirectoryFB ->
+      #endif
+        return FsEntry.Directory(info, Map.empty)
+      #if FABLE_COMPILER
+      | x when x = FsEntryTypeFB.FileFB ->
+      #else
+      | FsEntryTypeFB.FileFB ->
+      #endif
+        return FsEntry.File(info)
+      | other ->
+        return!
+          other
+          |> sprintf "%A is not a known FsEntry type"
+          |> Error.asParseError "FsTree.toEntry"
+          |> Either.fail
+    }
+
+  // ** ToOffset
+
+  member entry.ToOffset(builder:FlatBufferBuilder) =
+    let root = entry.ToEntryOffset builder
+    match entry with
+    | FsEntry.File _ ->
+      let children = FsEntryFB.CreateChildrenVector(builder, Array.empty)
+      FsEntryFB.StartFsEntryFB(builder)
+      FsEntryFB.AddRoot(builder, root)
+      FsEntryFB.AddChildren(builder,children)
+      FsEntryFB.EndFsEntryFB(builder)
+    | FsEntry.Directory(_, children) as dir ->
+      let children =
+        dir
+        |> FsEntry.flatten
+        |> List.map (fun entry -> entry.ToEntryOffset builder)
+        |> Array.ofList
+        |> fun arr -> FsEntryFB.CreateChildrenVector(builder, arr)
+      FsEntryFB.StartFsEntryFB(builder)
+      FsEntryFB.AddRoot(builder, root)
+      FsEntryFB.AddChildren(builder,children)
+      FsEntryFB.EndFsEntryFB(builder)
+
+  // ** FromFB
+
+  static member FromFB(fb:FsEntryFB) =
+    either {
+      let! root =
+        #if FABLE_COMPILER
+        FsEntry.FromEntryFB fb.Root
+        #else
+        let rootish = fb.Root
+        if rootish.HasValue then
+          let value = rootish.Value
+          FsEntry.FromEntryFB value
+        else
+          "Could not parse empty FsEntry root value"
+          |> Error.asParseError "FsEntry.FromFB"
+          |> Either.fail
+        #endif
+
+      match root with
+      | FsEntry.File _ -> return root
+      | FsEntry.Directory _ when fb.ChildrenLength = 0 -> return root
+      | FsEntry.Directory(info,_) ->
+        return!
+          List.fold
+            (fun (m:Either<IrisError,FsEntry list>) idx -> either {
+                let! lst = m
+                let! child =
+                  #if FABLE_COMPILER
+                  idx
+                  |> fb.Children
+                  |> FsEntry.FromEntryFB
+                  #else
+                  let childish = fb.Children idx
+                  if childish.HasValue then
+                    let value = childish.Value
+                    FsEntry.FromEntryFB value
+                  else
+                    "Could not parse empty child value"
+                    |> Error.asParseError "FsEntry.FromFB"
+                    |> Either.fail
+                  #endif
+                return child :: lst
+              })
+            (Right List.empty)
+            [ 0 .. fb.ChildrenLength - 1 ]
+          |> Either.map (List.rev >> FsEntry.inflate root)
+    }
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte array) : Either<IrisError,FsEntry> =
+    bytes
+    |> Binary.createBuffer
+    |> FsEntryFB.GetRootAsFsEntryFB
+    |> FsEntry.FromFB
+
+  // ** ToBytes
+
+  member self.ToBytes () : byte array = Binary.buildBuffer self
 
   // ** Item
 
@@ -262,69 +408,6 @@ type FsTree =
   member self.Item(path:FsPath) =
     self.Root.[path]
 
-  // ** entryOffset
-
-  static member entryOffset (builder:FlatBufferBuilder) (entry: FsEntry) =
-    let mapNull = function
-      | null -> None
-      | str -> builder.CreateString str |> Some
-    let tipe = entry |> function
-      | FsEntry.Directory _ -> FsEntryTypeFB.DirectoryFB
-      | FsEntry.File _ -> FsEntryTypeFB.FileFB
-    let info = FsEntry.info entry
-    let name = info.Name |> unwrap |> mapNull
-    let path = Binary.toOffset builder info.Path
-    FsInfoFB.StartFsInfoFB(builder)
-    FsInfoFB.AddType(builder, tipe)
-    FsInfoFB.AddSize(builder, info.Size)
-    FsInfoFB.AddFiltered(builder, info.Filtered)
-    Option.iter (fun offset -> FsInfoFB.AddName(builder, offset)) name
-    FsInfoFB.AddPath(builder, path)
-    FsInfoFB.EndFsInfoFB(builder)
-
-  // ** toEntry
-
-  static member toEntry(fb: FsInfoFB) =
-    either {
-      let! path =
-        #if FABLE_COMPILER
-        FsPath.FromFB fb.Path
-        #else
-        let pathish = fb.Path
-        if pathish.HasValue then
-          let path = pathish.Value
-          FsPath.FromFB path
-        else
-          "Cannot parse empty path value"
-          |> Error.asParseError "FsTree.toEntry"
-          |> Either.fail
-        #endif
-      let info =
-        { Path = path
-          Name = name fb.Name
-          Filtered = fb.Filtered
-          Size = fb.Size }
-      match fb.Type with
-      #if FABLE_COMPILER
-      | x when x = FsEntryTypeFB.DirectoryFB ->
-      #else
-      | FsEntryTypeFB.DirectoryFB ->
-      #endif
-        return FsEntry.Directory(info, Map.empty)
-      #if FABLE_COMPILER
-      | x when x = FsEntryTypeFB.FileFB ->
-      #else
-      | FsEntryTypeFB.FileFB ->
-      #endif
-        return FsEntry.File(info)
-      | other ->
-        return!
-          other
-          |> sprintf "%A is not a known FsEntry type"
-          |> Error.asParseError "FsTree.toEntry"
-          |> Either.fail
-    }
-
   // ** FromBytes
 
   static member FromBytes (bytes: byte array) : Either<IrisError,FsTree> =
@@ -332,6 +415,10 @@ type FsTree =
     |> Binary.createBuffer
     |> FsTreeFB.GetRootAsFsTreeFB
     |> FsTree.FromFB
+
+  // ** ToBytes
+
+  member self.ToBytes () : byte array = Binary.buildBuffer self
 
   // ** FromFB
 
@@ -343,12 +430,12 @@ type FsTree =
         |> Array.filter (String.IsNullOrEmpty >> not)
       let! root =
         #if FABLE_COMPILER
-        FsTree.toEntry fb.Root
+        FsEntry.FromEntryFB fb.Root
         #else
         let rootish = fb.Root
         if rootish.HasValue then
           let rootFb = rootish.Value
-          FsTree.toEntry rootFb
+          FsEntry.FromEntryFB rootFb
         else
           "Could not parse empty root"
           |> Error.asParseError "FsTree.FromtFB"
@@ -360,12 +447,14 @@ type FsTree =
               let! list = m
               let! child =
                 #if FABLE_COMPILER
-                idx |> fb.Children |> FsTree.toEntry
+                idx
+                |> fb.Children
+                |> FsEntry.FromEntryFB
                 #else
                 let childish = fb.Children(idx)
                 if childish.HasValue then
                   let child = childish.Value
-                  FsTree.toEntry child
+                  FsEntry.FromEntryFB child
                 else
                   "Could not parse empty child"
                   |> Error.asParseError "FsTree.FromFB"
@@ -381,20 +470,16 @@ type FsTree =
         |> FsTree.setFilters filters
     }
 
-  // ** ToBytes
-
-  member self.ToBytes () : byte array = Binary.buildBuffer self
-
   // ** ToOffset
 
   member tree.ToOffset(builder:FlatBufferBuilder) =
     let hostId = FsTreeFB.CreateHostIdVector(builder, tree.HostId.ToByteArray())
     let filters = tree.Filters |> String.concat " " |> builder.CreateString
-    let root = FsTree.entryOffset builder tree.Root
+    let root = tree.Root.ToEntryOffset builder
     let children =
       tree
       |> FsTree.flatten
-      |> List.map (FsTree.entryOffset builder)
+      |> List.map (fun (entry:FsEntry) -> entry.ToEntryOffset builder)
       |> fun children -> FsTreeFB.CreateChildrenVector(builder, Array.ofList children)
     FsTreeFB.StartFsTreeFB(builder)
     FsTreeFB.AddHostId(builder, hostId)
@@ -1247,7 +1332,7 @@ module FsEntry =
 
   // ** flatten
 
-  let rec flatten = function
+  let rec flatten: FsEntry -> FsEntry list = function
     | FsEntry.File _ as file -> [ file ]
     | FsEntry.Directory (_,children) as dir ->
       Map.fold

@@ -228,26 +228,26 @@ module SerializationTests =
         Size = 0u
         Filtered = 0u })
 
-  let mkFsTree _ =
-    let root =
-      let root = mkFsPath()
-      let dir1 = root + (rndfilepath())
-      let dir2 = root + (rndfilepath())
-      let dir3 = root + (rndfilepath())
-      let file1 = dir1 + (rndfilepath())
-      let file2 = dir2 + (rndfilepath())
-      let file3 = dir3 + (rndfilepath())
-      FsEntry.Directory(
-        { Path = root
-          Name = FsPath.fileName root
-          Size = 0u
-          Filtered = 0u
-        },Map [
-          dir1, mkFsDir dir1 (Map [ file1, mkFsFile file1 ])
-          dir2, mkFsDir dir2 (Map [ file2, mkFsFile file2 ])
-          dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
-        ])
-    { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
+  let mkFsEntry _ =
+    let root = mkFsPath()
+    let dir1 = root + (rndfilepath())
+    let dir2 = root + (rndfilepath())
+    let dir3 = root + (rndfilepath())
+    let file1 = dir1 + (rndfilepath())
+    let file2 = dir2 + (rndfilepath())
+    let file3 = dir3 + (rndfilepath())
+    FsEntry.Directory(
+      { Path = root
+        Name = FsPath.fileName root
+        Size = 0u
+        Filtered = 0u
+      },Map [
+        dir1, mkFsDir dir1 (Map [ file1, mkFsFile file1 ])
+        dir2, mkFsDir dir2 (Map [ file2, mkFsFile file2 ])
+        dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
+      ])
+
+  let mkFsTree _ = { HostId = IrisId.Create(); Root = mkFsEntry(); Filters = Array.empty }
 
   let mkState _ =
     { Project    = mkProject ()
@@ -513,6 +513,10 @@ module SerializationTests =
 
     test "Validate FsPath Binary Serialization" <| fun finish ->
       mkFsPath() |> check
+      finish()
+
+    test "Validate FsEntry Binary Serialization" <| fun finish ->
+      mkFsEntry() |> check
       finish()
 
     test "Validate FsTree Binary Serialization" <| fun finish ->

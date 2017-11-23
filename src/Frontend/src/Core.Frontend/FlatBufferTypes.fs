@@ -256,6 +256,22 @@ type FsInfoFBConstructor =
 
 let FsInfoFB : FsInfoFBConstructor = failwith "JS only"
 
+type FsEntryFB =
+  abstract Root: FsInfoFB
+  abstract Children: int -> FsInfoFB
+  abstract ChildrenLength: int
+
+type FsEntryFBConstructor =
+  abstract prototype: FsEntryFB with get, set
+  abstract StartFsEntryFB: builder: FlatBufferBuilder -> unit
+  abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
+  abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
+  abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
+  abstract EndFsEntryFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsEntryFB: buffer: ByteBuffer -> FsEntryFB
+
+let FsEntryFB : FsEntryFBConstructor = failwith "JS only"
+
 type FsTreeFB =
   abstract HostId: int -> byte
   abstract HostIdLength: int

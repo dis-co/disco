@@ -143,6 +143,11 @@ table FsInfoFB {
     Filtered: uint;
 }
 
+table FsEntryFB {
+    Root: FsInfoFB;
+    Children: [FsInfoFB];
+}
+
 table FsTreeFB {
     HostId: [ubyte];
     Root: FsInfoFB;

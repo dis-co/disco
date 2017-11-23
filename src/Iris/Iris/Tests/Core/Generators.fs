@@ -780,6 +780,12 @@ module Generators =
     }
   }
 
+  let fsEntryGen = gen {
+    let! depth = Gen.choose (2,4)
+    let tree = FsTreeTesting.deepTree depth
+    return tree.Root
+  }
+
   let fsTreeGen = gen {
     let! depth = Gen.choose (2,4)
     let tree = FsTreeTesting.deepTree depth
@@ -1363,4 +1369,5 @@ module Generators =
   let referencedValueArb = Arb.fromGen referencedValueGen
   let pinGroupMapArb = Arb.fromGen pinGroupMapGen
   let fsPathArb = Arb.fromGen fsPathGen
+  let fsEntryArb = Arb.fromGen fsEntryGen
   let fsTreeArb = Arb.fromGen fsTreeGen
