@@ -20,13 +20,14 @@ module AssetService =
 
   // ** Subscriptions
 
-  type private Subscriptions = Observable.Subscriptions<IrisEvent>
+  type private Subscriptions = Observable.Subscriptions<StateMachine>
 
   // ** Msg
 
   [<RequireQualifiedAccess;NoComparison;NoEquality>]
   type private Msg =
-    | Fs of IrisEvent
+    | Fs of FileSystemEvent
+    | Command of StateMachine
     | Flush
 
   // ** AssetEventProcessor
@@ -97,7 +98,6 @@ module AssetService =
         |> Map.toList
         |> List.map snd
         |> CommandBatch.ofList
-        |> IrisEvent.appendService
         |> Observable.onNext state.Subscriptions
       { state with Updates = List.empty }
 
@@ -109,25 +109,25 @@ module AssetService =
         let! msg = inbox.Receive()
         let state = store.State
         match msg with
-        | Msg.Fs(IrisEvent.Append (_, AddFsTree tree) as ev) ->
+        | Msg.Command(AddFsTree tree as ev) ->
           Observable.onNext state.Subscriptions ev
           updateFiles state (Some tree)
-        | Msg.Fs(IrisEvent.FileSystem (FileSystemEvent.Created(_,path) as update)) ->
+        | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
           state.Files
           |> Option.map (FsTree.add path)
           |> updateFiles state
           |> addUpdate update
-        | Msg.Fs(IrisEvent.FileSystem (FileSystemEvent.Changed(_,path) as update)) ->
+        | Msg.Fs(FileSystemEvent.Changed(_,path) as update) ->
           state.Files
           |> Option.map (FsTree.update path)
           |> updateFiles state
           |> addUpdate update
-        | Msg.Fs(IrisEvent.FileSystem (FileSystemEvent.Deleted(_,path) as update)) ->
+        | Msg.Fs(FileSystemEvent.Deleted(_,path) as update) ->
           state.Files
           |> Option.map (FsTree.remove path)
           |> updateFiles state
           |> addUpdate update
-        | Msg.Fs(IrisEvent.FileSystem (FileSystemEvent.Renamed(_,oldpath,_,path) as update)) ->
+        | Msg.Fs(FileSystemEvent.Renamed(_,oldpath,_,path) as update) ->
           state.Files
           |> Option.map (FsTree.remove oldpath >> FsTree.add path)
           |> updateFiles state
@@ -158,7 +158,6 @@ module AssetService =
   let private onCreate agent (args: FileSystemEventArgs) =
     (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Created
-    |> IrisEvent.FileSystem
     |> Msg.Fs
     |> delayed agent
 
@@ -167,7 +166,6 @@ module AssetService =
   let private onChange agent (args: FileSystemEventArgs) =
     (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Changed
-    |> IrisEvent.FileSystem
     |> Msg.Fs
     |> delayed agent
 
@@ -179,7 +177,6 @@ module AssetService =
     , name (Path.GetFileName args.Name)
     , filepath args.FullPath)
     |> FileSystemEvent.Renamed
-    |> IrisEvent.FileSystem
     |> Msg.Fs
     |> delayed agent
 
@@ -188,7 +185,6 @@ module AssetService =
   let private onDelete agent (args: FileSystemEventArgs) =
     (name (Path.GetFileName args.Name), filepath args.FullPath)
     |> FileSystemEvent.Deleted
-    |> IrisEvent.FileSystem
     |> Msg.Fs
     |> delayed agent
 
@@ -225,7 +221,7 @@ module AssetService =
     async {
       let! tree = crawlDirectory machine
       do Logger.info (tag "crawlDirectory") "Done."
-      do Option.iter (AddFsTree >> IrisEvent.appendService >> Msg.Fs >> post agent) tree
+      do Option.iter (AddFsTree >> Msg.Command >> post agent) tree
     }
     |> Async.Start
 

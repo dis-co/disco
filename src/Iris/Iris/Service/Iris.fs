@@ -84,8 +84,11 @@ module Iris =
       let iris = ref None
       let registration = ref None
       let eventSubscription = ref None
+      let assetSubscription = ref None
 
       let! httpServer = HttpServer.create options.Machine options.FrontendPath post
+      let! assetService = AssetService.create options.Machine
+      do! assetService.Start()
 
       let! discovery =
         DiscoveryService.create options.Machine
@@ -101,6 +104,9 @@ module Iris =
             member self.Machine
               with get () = options.Machine
 
+            member self.AssetService
+              with get () = assetService
+
             member self.HttpServer
               with get () = httpServer
 
@@ -115,6 +121,7 @@ module Iris =
                 Option.iter dispose !iris              // in case there was already something loaded
                 Option.iter dispose !eventSubscription // and its subscription as well
                 Option.iter dispose !registration      // and any registered service
+                Option.iter dispose !assetSubscription // as well as subscription to asset service
                 let! irisService = IrisService.create {
                   Machine = options.Machine
                   ProjectName = name
@@ -124,7 +131,9 @@ module Iris =
                 }
                 match irisService.Start() with
                 | Right () ->
+                  do Option.iter (AddFsTree >> irisService.Append) assetService.State
                   eventSubscription := subscribeDiscovery irisService discovery
+                  assetSubscription := Some(assetService.Subscribe irisService.Append)
                   let mem = irisService.RaftServer.Raft.Member
                   let project = irisService.Project
                   registration := Option.bind (registerLoadedServices mem project) discovery
@@ -152,6 +161,7 @@ module Iris =
                 match !iris, !eventSubscription with
                 | Some irisService, subscription ->
                   Option.iter dispose !registration
+                  Option.iter dispose !assetSubscription
                   Option.iter dispose subscription
                   dispose irisService
                   iris := None
@@ -168,9 +178,11 @@ module Iris =
               if not (Service.isDisposed !status) then
                 status := ServiceStatus.Stopping
                 Option.iter dispose !registration
+                Option.iter dispose !assetSubscription
                 Option.iter dispose !eventSubscription
                 Option.iter dispose !iris
                 dispose httpServer
+                dispose assetService
                 Option.iter dispose discovery
                 status := ServiceStatus.Disposed
           }
