@@ -335,19 +335,26 @@ module IrisService =
         store.State.ApiServer.Clients
         |> Map.toList
         |> List.map (snd >> AddClient)
-      let batch =
-        List.append sessions clients
+      let tree =
+        store.State.Store.State.FsTrees
+        |> Map.tryFind store.State.Machine.MachineId
+        |> Option.map (fun tree -> [ AddFsTree tree ])
+        |> Option.defaultValue List.empty
+
+      let batch = List.concat [ sessions; clients; tree ]
+
+      /// send a batched state machine command to leader if non-empty
+      if not (List.isEmpty batch) then
+        (clients.Length,sessions.Length)
+        |> String.format "sending batch command with {0} (clients,session) "
+        |> Logger.debug (tag "sendLocalData")
+
+        batch
         |> CommandBatch.ofList
-
-      (clients.Length,sessions.Length)
-      |> String.format "sending batch command with {0} (clients,session) "
-      |> Logger.debug (tag "sendLocalData")
-
-      batch
-      |> RaftRequest.AppendEntry
-      |> Binary.encode
-      |> Request.create (Guid.ofId socket.ClientId)
-      |> socket.Request
+        |> RaftRequest.AppendEntry
+        |> Binary.encode
+        |> Request.create (Guid.ofId socket.ClientId)
+        |> socket.Request
     else
       store.State.RaftServer.RaftState
       |> String.format "Nothing to send ({0})"
