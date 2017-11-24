@@ -1386,26 +1386,34 @@ module FsEntry =
       FsEntry.Directory(info, Map.remove child children)
     | other -> other
 
+  // ** map
+
+  let rec map (f: FsEntry -> FsEntry) = function
+    | FsEntry.File _ as file -> f file
+    | FsEntry.Directory _ as dir ->
+      let mapped = f dir
+      mapped
+      |> children
+      |> Map.map (fun _ -> f)
+      |> fun children -> setChildren children mapped
+
   // ** applyFilters
 
   let applyFilters filters tree =
-    fold
-      (fun builder -> function
-        | FsEntry.Directory (_,children) as dir ->
-          let updated =
-            Map.filter
-              (fun path entry -> not (isFile entry && matches filters (FsPath.fileName path)))
-              children
-          let size = uint32 (Map.count children)
-          let filtered = uint32 (Map.count children - Map.count updated)
-          dir
-          |> setChildren updated
-          |> setSize size
-          |> setFiltered filtered
-          |> fun dir -> insert dir builder
-        | other -> builder)
-      (setChildren Map.empty tree)
-      tree
+    let mapper = function
+      | FsEntry.File _ as file -> file
+      | FsEntry.Directory (_, children) as dir ->
+        let updated =
+          Map.filter
+            (fun path entry -> not (isFile entry && matches filters (FsPath.fileName path)))
+            children
+        let size = uint32 (Map.count children)
+        let filtered = uint32 (Map.count children - Map.count updated)
+        dir
+        |> setChildren updated
+        |> setSize size
+        |> setFiltered filtered
+    map mapper tree
 
 // * FsTree module
 
@@ -1725,8 +1733,5 @@ module FsTreeTesting =
           dir3, FsTreeTesting.makeDir dir3 |> FsEntry.modify dir3 (FsEntry.addChild (makeFile file3))
         ])
     { HostId = IrisId.Create(); Root = root; Filters = Array.empty }
-
-
-
 
 #endif
