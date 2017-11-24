@@ -29,6 +29,8 @@ type FsPath =
     Platform: Platform
     Elements: string list }
 
+  // ** ToString
+
   override path.ToString() =
     match path.Platform with
     | Platform.Windows -> string path.Drive + @":\" + (String.concat @"\" path.Elements)
@@ -1067,6 +1069,7 @@ module FsPath =
   #if !FABLE_COMPILER
 
   let parse (path:FilePath) =
+    let path = Path.getFullPath path    /// normalizes the path to absolute form
     let drives: string [] =
       DriveInfo.GetDrives()
       |> Array.map
@@ -1079,7 +1082,7 @@ module FsPath =
       Uri("file://" + unwrap path).Segments
       |> Array.collect
         (function
-          | "/" -> Array.empty
+          | "/"   -> Array.empty
           | other -> [| other |> filepath |> Path.sanitize |> unwrap |])
       |> Array.toList
     let platform = Platform.get()
