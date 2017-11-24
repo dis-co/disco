@@ -764,6 +764,9 @@ module State =
   let discoveredServices = Optic.get State.DiscoveredServices_
   let discoveredService id = Optic.get (State.DiscoveredService_ id)
 
+  let sites = Optic.get (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.Sites_)
+  let activeSite = Optic.get (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.ActiveSite_)
+
   // ** setters
 
   let setProject = Optic.set State.Project_
@@ -779,6 +782,9 @@ module State =
   let setClients = Optic.set State.Clients_
   let setCuePlayers = Optic.set State.CuePlayers_
   let setDiscoveredServices = Optic.set State.DiscoveredServices_
+
+  let setSites = Optic.set (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.Sites_)
+  let setActiveSite = Optic.set (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.ActiveSite_)
 
   // ** findPin
 

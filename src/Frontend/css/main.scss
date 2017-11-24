@@ -250,6 +250,14 @@ html, body {
 .iris-file-browser {
   height: 100%;
 
+  .breadcrumb {
+    height: 20px;
+    background: #d0d0d0;
+    padding-left: 10px;
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+
   .fb-panel {
     padding: 4px;
   }
