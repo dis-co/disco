@@ -200,14 +200,21 @@ module AssetService =
       return
         match FsEntry.create path with
         | Some root ->
-          machine.AssetDirectory
-          |> FileSystem.lsDir
-          |> List.sort
-          |> List.choose (FsPath.parse >> FsEntry.create)
-          |> FsTree.inflate machine.MachineId root
-          |> FsTree.setFilters filters
-          |> FsTree.applyFilters
-          |> Some
+          let result =
+            machine.AssetDirectory
+            |> FileSystem.lsDir
+            |> List.sort
+            |> List.choose (FsPath.parse >> FsEntry.create)
+            |> FsTree.inflate machine.MachineId root
+            |> FsTree.setFilters filters
+            |> FsTree.applyFilters
+          let files = FsTree.fileCount result
+          let filtered = FsTree.filteredCount result
+          let directories = FsTree.directoryCount result
+          filtered
+          |> sprintf "Found %d directories, %d files (%d filtered)" files directories
+          |> Logger.info (tag "crawlDirectory")
+          Some result
         | None ->
           machine.AssetDirectory
           |> String.format "Could not crawl {0}"

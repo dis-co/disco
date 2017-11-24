@@ -1293,6 +1293,15 @@ module FsEntry =
         current + Map.fold (fun current _ entry -> count current entry) 1 children
     count 0 tree
 
+  // ** filteredCount
+
+  let filteredCount tree =
+    let rec count current = function
+      | FsEntry.File _ -> current
+      | FsEntry.Directory(info, children) ->
+        current + Map.fold (fun current _ entry -> count current entry) (int info.Filtered) children
+    count 0 tree
+
   // ** filter
 
   let rec filter (pred:FsEntry -> bool) = function
@@ -1481,6 +1490,11 @@ module FsTree =
 
   let directoryCount (tree: FsTree) =
     FsEntry.directoryCount tree.Root
+
+  // ** filteredCount
+
+  let filteredCount (tree: FsTree) =
+    FsEntry.filteredCount tree.Root
 
   // ** tryFind
 
