@@ -246,3 +246,17 @@ html, body {
     text-align: center;
   }
 }
+
+.iris-file-browser {
+  height: 100%;
+
+  .fb-panel {
+    padding: 4px;
+  }
+
+  .fb-main {
+    border-left: 1px solid $iris-grey;
+    border-right: 1px solid $iris-grey;
+    padding: 4px;
+  }
+}

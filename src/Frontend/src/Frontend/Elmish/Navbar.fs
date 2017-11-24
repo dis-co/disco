@@ -187,6 +187,7 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
 module private WindowsMenu =
   let [<Literal>] log = "Logs"
   let [<Literal>] inspector = "Inspector"
+  let [<Literal>] fileBrowser = "File Browser"
   let [<Literal>] graph = "Graph"
   let [<Literal>] players = "Players"
   let [<Literal>] cues = "Cues"
@@ -208,6 +209,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     match id with
     | WindowsMenu.log             -> show Widgets.Log
     | WindowsMenu.inspector       -> Lib.toggleInspector()
+    | WindowsMenu.fileBrowser     -> show Widgets.FileBrowser
     | WindowsMenu.graph           -> show Widgets.GraphView
     | WindowsMenu.players         -> show Widgets.Players
     | WindowsMenu.cues            -> show Widgets.Cues
@@ -236,6 +238,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     div [Class "navbar-dropdown"]
       ([ WindowsMenu.log,             None
          WindowsMenu.inspector,       Some ("Ctrl-i")
+         WindowsMenu.fileBrowser,     Some ("Ctrl-b")
          WindowsMenu.graph,           None
          WindowsMenu.players,         None
          WindowsMenu.cues,            None
