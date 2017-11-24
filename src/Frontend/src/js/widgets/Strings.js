@@ -1,8 +1,5 @@
 import React, { Component } from 'react'
-
-import Select from 'react-select';
-// Be sure to include styles at some point, probably during your bootstrapping
-import 'react-select/dist/react-select.css';
+import Switch, { Case, Default } from 'react-switch-case';
 
 // This is a simple example to show how to create a custom widget for Iris
 // in JS. We just define a simple React component that draws a square with
@@ -13,28 +10,90 @@ import 'react-select/dist/react-select.css';
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
+class Wat extends React.Component  {
+  constructor(props){
+    super(props)
+    this.state={
+      ip: false,
+      pinpin : props.pinpin,
+      setPinVal : props.setPinVal,
+      isValid : true
+    }
+  }
 
+  ipValid  (ev) {
+    if(regValid(ev.target.value)){ 
+      this.setState({ isValid: true })      
+      this.state.setPinVal(ev.target.value);
+    } else {
+      this.setState({ isValid: false })      
+    }
+  }
+
+  getFiles(ev) {
+    var fileName = ev.target.files[0].name
+    this.state.setPinVal(fileName)
+  }
+
+  getString(ev) {
+    this.state.setPinVal(ev.target.value)
+  }
+  
+  render(){
+    var style = this.state.isValid ? {} : { border: "3px solid red" }
+    if(this.state.pinpin !== null){
+      switch(this.state.pinpin){
+        case 'Simple':
+          return <input type="text" onChange={this.getString} />
+        break;
+        case 'MultiLine':
+          return <textarea onChange={this.getString} />
+        break;
+        case 'IP':
+          return <input style={style} type="text" onChange={this.ipValid.bind(this)} />
+        case 'FileName':
+          return < input type='file' id='input' onChange={this.getFiles.bind(this)} />
+        default:
+          return <h1> nene </h1>
+          break;
+    
+      }
+    }
+  }
+
+}
+
+//validates ip addresses
+const regValid = function (str){
+  var regex = /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/
+  try {
+    var [m, b1, b2, b3, b4] = str.match(regex)
+    if(parseInt(b1,10) > 255) return false
+    if(parseInt(b2,10) > 255) return false
+    if(parseInt(b3,10) > 255) return false
+    if(parseInt(b4,10) > 255) return false
+  } catch(e) {
+    return false
+  }
+  return true
+}
 
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
     this.state={
       groupName: "",
       pinName: "",
       groupPin: "",
       pinVal: "",
-      inputVal: "",
-      pin: null,
-      value: "",
-      options : []
-      }
+      pin: null
+    };
   }
 
-  setPinVal() {
-    if (this.state.pin && this.state.inputVal) {  
-      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.inputVal.Key)    
-    }
+  setPinVal(value) {
+    this.state.pinVal = value;
+    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
+    IrisLib.updatePinValueAt(pin, 0, value)
   }
 
   //event handler for onChange methods, to set parents state
@@ -52,31 +111,11 @@ class TestWidget extends React.Component {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
     //set pin to this states current pin by pinName
     var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    let options = 
-      pin 
-        ? pin.data.Properties.map(prop => { return { label: prop.Value, value: prop.Key } }) 
-        : []
-
     this.setState({ 
       groupPin: groupPin,
       pin: pin,
-      options: options,
       pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
     })
-  }
-
-  //hadnles button click
-  click(event){
-    this.setPin();
-  }
-
-  logChange(val) {
-    this.setState({
-      value : val,
-      inputVal:{
-        Key: val.value, Value: val.label
-      }
-    }, this.setPinVal);
   }
 
   render() {
@@ -100,27 +139,18 @@ class TestWidget extends React.Component {
           {/*onChange updates state with new pinName as read from input field*/}
           <input type="text" onChange={this.makeCallback("pinName")} />
         </label>
-        <label>
-          value
-          {/*onChange updates state with new pinName as read from input field*/}
-          <input type="text" disabled={this.state.pin == null} onChange={(event) => {
-            this.setState({
-              inputVal: event.target.value
-            }, this.setPinVal.bind(this));
-          }} />
-        </label>
           {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
-        <button type="submit" onClick={this.click.bind(this)}>submit</button>
+        <button type="submit" onClick={this.setPin.bind(this)}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
-        <label>select</label>
-          <Select
-          name="form-field-name"
-          value={this.state.value}
-          options={this.state.options}
-          onChange={this.logChange.bind(this)}
-          />
+        <label>value</label>
+          {
+            this.state.pin !== null ?
+            <Wat pinpin={this.state.pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} setPinVal={this.setPinVal.bind(this)} />
+            :
+            <h1>pin is null</h1>
+          }           
         </div>
       </div>
     )
@@ -139,7 +169,7 @@ export default function createWidget (id, name) {
     InitialLayout: {
       i: id, static: false,
       x: 0, y: 0, w: 3, h: 3,
-      minW: 2, maxW: 6, minH: 2, maxH: 6
+      minW: 2,  minH: 2,
     },
     // The Render method receives a dispatch function to send messages
     // to the global state and a model represing the current snapshot of

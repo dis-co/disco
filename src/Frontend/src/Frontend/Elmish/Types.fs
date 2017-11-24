@@ -26,12 +26,12 @@ module Widgets =
   let [<Literal>] Clients       = "Clients"
   let [<Literal>] Sessions      = "Sessions"
   let [<Literal>] PinMapping    = "Pin Mappings"
-  let [<Literal>] Test1         = "Test 1"
-  let [<Literal>] Test2         = "Test 2"
-  let [<Literal>] Test3         = "Test 3"
-  let [<Literal>] Test4         = "Test 4"
-  let [<Literal>] Test5         = "Test 5"
-  let [<Literal>] Test6         = "Test 6"
+  let [<Literal>] Test1         = "Simple Slider"
+  let [<Literal>] Test2         = "Byte Pin"
+  let [<Literal>] Test3         = "Enum Select"
+  let [<Literal>] Test4         = "Strings"
+  let [<Literal>] Test5         = "XY Slider"
+  let [<Literal>] Test6         = "Color Picker"
 
 type IProjectInfo =
   abstract name: Name

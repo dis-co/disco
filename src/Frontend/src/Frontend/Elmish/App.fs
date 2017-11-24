@@ -19,12 +19,12 @@ open Types
 importSideEffects "react-grid-layout/css/styles.css"
 
 let ReactGridLayout: obj -> ReactElement = importDefault "react-grid-layout"
-let createTestWidget1(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget1"
-let createTestWidget2(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget2"
-let createTestWidget3(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget3"
-let createTestWidget4(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget4"
-let createTestWidget5(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget5"
-let createTestWidget6(id: Guid, name: string): IWidget = importDefault "../../js/widgets/TestWidget6"
+let createTestWidget1(id: Guid, name: string): IWidget = importDefault "../../js/widgets/SimpleSlider"
+let createTestWidget2(id: Guid, name: string): IWidget = importDefault "../../js/widgets/BytePin"
+let createTestWidget3(id: Guid, name: string): IWidget = importDefault "../../js/widgets/EnumSelect"
+let createTestWidget4(id: Guid, name: string): IWidget = importDefault "../../js/widgets/Strings"
+let createTestWidget5(id: Guid, name: string): IWidget = importDefault "../../js/widgets/XySlider"
+let createTestWidget6(id: Guid, name: string): IWidget = importDefault "../../js/widgets/ColorPicker"
 
 initWidgetFactory
   { new IWidgetFactory with
