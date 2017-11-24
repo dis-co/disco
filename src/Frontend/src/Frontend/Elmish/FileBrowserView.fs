@@ -65,12 +65,7 @@ let private machine dispatch model trees node =
     ]
   ]
 
-let private machineBrowser dispatch model =
-  let trees =
-    model.state
-    |> Option.map State.fsTrees
-    |> Option.defaultValue Map.empty
-
+let private machineBrowser dispatch model trees =
   let sites =
     model.state
     |> Option.map (State.sites >> Array.toList)
@@ -96,7 +91,24 @@ let private machineBrowser dispatch model =
     div [ Class "machines" ] members
   ]
 
-let private assetList dispatch model =
+let private asset dispatch model entry =
+  div [ Class "file" ] [
+    span [ ] [
+      i [ Class "icon fa fa-file-o" ] [ str "" ]
+      str (FsEntry.name entry |> unwrap)
+    ]
+  ]
+
+let private assetList dispatch model (trees:Map<HostId,FsTree>) =
+  let files =
+    trees
+    |> Map.toList
+    |> List.head
+    |> snd
+    |> fun trees -> printfn "trees: %A" trees; trees
+    |> FsTree.files
+    |> List.map (asset dispatch model)
+
   div [ Class "fb-main column" ] [
     nav [ Class "breadcrumb is-large has-arrow-separator" ]  [
       ul [] [
@@ -107,9 +119,7 @@ let private assetList dispatch model =
         ]
       ]
     ]
-    div [ Class "columns is-gapless" ] [
-      str "file.txt"
-    ]
+    div [ Class "files" ] files
   ]
 
 let private fileInfo dispatch model =
@@ -124,9 +134,14 @@ let private fileInfo dispatch model =
   ]
 
 let private body dispatch (model: Model) =
+  let trees =
+    model.state
+    |> Option.map State.fsTrees
+    |> Option.defaultValue Map.empty
+
   div [ Class "columns is-gapless iris-file-browser" ] [
-    machineBrowser dispatch model
-    assetList dispatch model
+    machineBrowser dispatch model trees
+    assetList dispatch model trees
     fileInfo dispatch model
   ]
 
