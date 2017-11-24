@@ -405,7 +405,51 @@ module FsTests =
       Expect.equal (FsEntry.size tree.[dirPath3]) 0u "dir3 should have size 0"
       Expect.equal (FsEntry.filtered tree.[dirPath3]) 0u "dir3 should have filtered 0"
 
-      /// printfn "%O" tree1
+  let test_map_should_be_correct =
+    testCase "map should be correct" <| fun _ ->
+      let tree = FsTreeTesting.deepTree 2
+      let mapped = FsTree.map id tree
+      Expect.equal mapped tree "Mapped with id should be equal"
+
+      let mapped = FsTree.map (FsEntry.setSize 666u) tree
+      Expect.notEqual mapped tree "Mapped with size bump should not be equal"
+
+      /// all should have 666 as size
+      for entry in FsTree.flatten mapped do
+        Expect.equal (FsEntry.size entry) 666u "Should have correct size"
+
+  let test_apply_filters_should_be_correct =
+    testCase "map should be correct" <| fun _ ->
+      let rnd = Random()
+      let tree = FsTreeTesting.deepTree 2
+      let fileCount = FsTree.fileCount tree
+      let extensions =
+        tree
+        |> FsTree.files
+        |> List.fold
+          (fun state entry ->
+            let ext = entry |> FsEntry.name |> unwrap |> Path.GetExtension
+            match Map.tryFind ext state with
+            | Some count -> Map.add ext (count + 1) state
+            | None -> Map.add ext 1 state)
+          Map.empty
+      let keep, filters =
+        let arr = extensions |> Map.toArray
+        let size =
+          let len = Array.length arr
+          if len % 2 = 0
+          then len / 2
+          else (len / 2) + 1
+        let chunked = Array.chunkBySize size arr
+        Expect.equal chunked.Length 2 "Should have exactly two elements"
+        Array.head chunked, Array.last chunked
+      let filterSize = Array.fold (fun s (_, n) -> s + n) 0 filters
+      let filtered =
+        tree
+        |> FsTree.setFilters (Array.map fst filters)
+        |> FsTree.applyFilters
+      let filteredCount = FsTree.fileCount filtered
+      Expect.equal filteredCount (fileCount - filterSize) "Should have correct file count"
 
   let fsTests =
     testList "FileSystem Tests" [
@@ -420,4 +464,6 @@ module FsTests =
       test_should_have_correct_counts
       test_should_apply_filters_on_add
       test_should_track_size_filtered_correctly
+      test_map_should_be_correct
+      test_apply_filters_should_be_correct
     ]

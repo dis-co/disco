@@ -1394,7 +1394,7 @@ module FsEntry =
       let mapped = f dir
       mapped
       |> children
-      |> Map.map (fun _ -> f)
+      |> Map.map (fun _ -> map f)
       |> fun children -> setChildren children mapped
 
   // ** applyFilters
@@ -1442,6 +1442,14 @@ module FsTree =
     else
       str.Split([| ' '; ';'; ',' |])
       |> Array.filter (String.IsNullOrEmpty >> not)
+
+  // ** map
+
+  let map f tree =
+    tree
+    |> root
+    |> FsEntry.map f
+    |> fun root -> setRoot root tree
 
   // ** applyFilters
 
