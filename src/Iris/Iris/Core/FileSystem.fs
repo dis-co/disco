@@ -1420,8 +1420,11 @@ module FsTree =
   // ** parseFilters
 
   let parseFilters (str:string) =
-    str.Split([| ' '; ';'; ',' |])
-    |> Array.filter (String.IsNullOrEmpty >> not)
+    if isNull str then
+      Array.empty
+    else
+      str.Split([| ' '; ';'; ',' |])
+      |> Array.filter (String.IsNullOrEmpty >> not)
 
   // ** applyFilters
 

@@ -88,6 +88,7 @@ module Iris =
 
       let! httpServer = HttpServer.create options.Machine options.FrontendPath post
       let! assetService = AssetService.create options.Machine
+
       do! assetService.Start()
 
       let! discovery =
