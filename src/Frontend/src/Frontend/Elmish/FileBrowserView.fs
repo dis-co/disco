@@ -23,7 +23,28 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-let private machine dispatch model node =
+let rec private directoryTree dispatch model = function
+  | FsEntry.File(info) -> str (unwrap info.Name)
+  | FsEntry.Directory(info, children) ->
+    let children =
+      children
+      |> Map.toList
+      |> List.map (snd >> directoryTree dispatch model)
+    div [ Class "directory" ] [
+      span [ ] [
+        i [ Class "icon fa fa-folder-o" ] [ str "" ]
+        str (unwrap info.Name)
+      ]
+      div [ Class "children" ] children
+    ]
+
+let private machine dispatch model trees node =
+  let directories =
+    trees
+    |> Map.tryFind (Member.id node)
+    |> Option.map (FsTree.directories >> directoryTree dispatch model)
+    |> Option.defaultValue (str "<empty>")
+
   div [ Class "machine" ] [
     span [
       Class "iris-output iris-icon icon-host"
@@ -39,16 +60,16 @@ let private machine dispatch model node =
         ]
       ] []
     ]
-    div [ ] [
-      div [ Class "headline" ] [ str "Assets" ]
+    div [ Class "directories" ] [
+      directories
     ]
   ]
 
 let private machineBrowser dispatch model =
   let trees =
     model.state
-    |> Option.map (State.fsTrees >> Map.toList)
-    |> Option.defaultValue List.empty
+    |> Option.map State.fsTrees
+    |> Option.defaultValue Map.empty
 
   let sites =
     model.state
@@ -62,7 +83,7 @@ let private machineBrowser dispatch model =
     |> Option.map (ClusterConfig.members >> Map.toList)
     |> Option.defaultValue List.empty
     |> List.sortBy (snd >> Member.hostName)
-    |> List.map (snd >> machine dispatch model)
+    |> List.map (snd >> machine dispatch model trees)
 
   div [ Class "fb-panel column is-one-quarter" ] [
     nav [ Class "breadcrumb is-large" ]  [

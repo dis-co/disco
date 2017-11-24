@@ -131,29 +131,46 @@ let makeTree (machine:IrisMachine) =
         Size = 0u
         Filtered = 0u
       })
-  let depth = 2
-  let num = 3
+
+  let rootPath = {
+    Drive = 'C'
+    Platform = Windows
+    Elements = [ "Iris"; "Assets" ]
+  }
+
+  let addChild dir child =
+    FsEntry.modify (FsEntry.path dir) (FsEntry.addChild child) dir
+
   let root =
-    let path = {
-      Drive = 'C'
-      Platform = Windows
-      Elements = [ "Iris"; "Assets" ]
-    }
-    let dir1 = path + randomFileName()
-    let dir2 = path + randomFileName()
-    let dir3 = path + randomFileName()
-    let file1 = dir1 + randomFileName()
-    let file2 = dir2 + randomFileName()
-    let file3 = dir2 + randomFileName()
+    let dirPath1 = rootPath + randomFileName()
+    let dirPath2 = rootPath + randomFileName()
+    let dirPath3 = rootPath + randomFileName()
+    let subdirPath1 = dirPath1 + randomFileName()
+    let subdirPath2 = dirPath2 + randomFileName()
+    let subdirPath3 = dirPath3 + randomFileName()
+    let filePath1 = subdirPath1 + randomFileName()
+    let filePath2 = subdirPath2 + randomFileName()
+    let filePath3 = subdirPath2 + randomFileName()
+
+    let dir1 = makeDir dirPath1
+    let dir2 = makeDir dirPath2
+    let dir3 = makeDir dirPath3
+    let subdir1 = makeDir subdirPath1
+    let subdir2 = makeDir subdirPath2
+    let subdir3 = makeDir subdirPath3
+    let file1 = makeFile filePath1
+    let file2 = makeFile filePath2
+    let file3 = makeFile filePath3
+
     FsEntry.Directory(
-      { Path = path
-        Name = FsPath.fileName path
+      { Path = rootPath
+        Name = FsPath.fileName rootPath
         Size = 0u
         Filtered = 0u
       },Map [
-        dir1, makeDir dir1 |> FsEntry.modify dir1 (FsEntry.addChild (makeFile file1))
-        dir2, makeDir dir2 |> FsEntry.modify dir2 (FsEntry.addChild (makeFile file2))
-        dir3, makeDir dir3 |> FsEntry.modify dir3 (FsEntry.addChild (makeFile file3))
+        dirPath1, addChild dir1 (addChild subdir1 file1)
+        dirPath2, addChild dir2 (addChild subdir2 file2)
+        dirPath3, addChild dir3 (addChild subdir3 file3)
       ])
   { HostId = machine.MachineId; Root = root; Filters = Array.empty }
 

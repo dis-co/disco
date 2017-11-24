@@ -273,6 +273,21 @@ html, body {
         font-size: 1.2em;
         font-weight: bold;
       }
+
+      .directories {
+        padding-left: 10px;
+        margin: 1px 0 1px 0;
+        .directory {
+          cursor: pointer;
+          .icon {
+            height: 18px;
+            margin-right: 0;
+          }
+          .children {
+            padding-left: 15px;
+          }
+        }
+      }
     }
   }
 
