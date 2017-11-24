@@ -84,15 +84,15 @@ type RaftMemberState =
         |> Either.fail
     #endif
 
-// * RaftMembeYaml
+// * RaftMemberYaml
 
 #if !FABLE_COMPILER && !IRIS_NODES
 
 type RaftMemberYaml() =
   [<DefaultValue>] val mutable Id         : string
   [<DefaultValue>] val mutable HostName   : string
-  [<DefaultValue>] val mutable IpAddr     : string
-  [<DefaultValue>] val mutable Port       : uint16
+  [<DefaultValue>] val mutable IpAddress  : string
+  [<DefaultValue>] val mutable RaftPort   : uint16
   [<DefaultValue>] val mutable WebPort    : uint16
   [<DefaultValue>] val mutable WsPort     : uint16
   [<DefaultValue>] val mutable GitPort    : uint16
@@ -110,8 +110,8 @@ type RaftMemberYaml() =
 type RaftMember =
   { Id         : MemberId
     HostName   : Name
-    IpAddr     : IpAddress
-    Port       : Port
+    IpAddress  : IpAddress
+    RaftPort   : Port
     WsPort     : Port
     GitPort    : Port
     ApiPort    : Port
@@ -121,14 +121,64 @@ type RaftMember =
     NextIndex  : Index
     MatchIndex : Index }
 
+  // ** optics
+
+  static member Id_ =
+    (fun (mem:RaftMember) -> mem.Id),
+    (fun id (mem:RaftMember) -> { mem with Id = id })
+
+  static member HostName_ =
+    (fun (mem:RaftMember) -> mem.HostName),
+    (fun hostName (mem:RaftMember) -> { mem with HostName = hostName })
+
+  static member IpAddress_ =
+    (fun (mem:RaftMember) -> mem.IpAddress),
+    (fun ipAddress (mem:RaftMember) -> { mem with IpAddress = ipAddress })
+
+  static member RaftPort_ =
+    (fun (mem:RaftMember) -> mem.RaftPort),
+    (fun raftPort (mem:RaftMember) -> { mem with RaftPort = raftPort })
+
+  static member WsPort_ =
+    (fun (mem:RaftMember) -> mem.WsPort),
+    (fun wsPort (mem:RaftMember) -> { mem with WsPort = wsPort })
+
+  static member GitPort_ =
+    (fun (mem:RaftMember) -> mem.GitPort),
+    (fun gitPort (mem:RaftMember) -> { mem with GitPort = gitPort })
+
+  static member ApiPort_ =
+    (fun (mem:RaftMember) -> mem.ApiPort),
+    (fun apiPort (mem:RaftMember) -> { mem with ApiPort = apiPort })
+
+  static member Voting_ =
+    (fun (mem:RaftMember) -> mem.Voting),
+    (fun voting (mem:RaftMember) -> { mem with Voting = voting })
+
+  static member VotedForMe_ =
+    (fun (mem:RaftMember) -> mem.VotedForMe),
+    (fun votedForMe (mem:RaftMember) -> { mem with VotedForMe = votedForMe })
+
+  static member State_ =
+    (fun (mem:RaftMember) -> mem.State),
+    (fun state (mem:RaftMember) -> { mem with State = state })
+
+  static member NextIndex_ =
+    (fun (mem:RaftMember) -> mem.NextIndex),
+    (fun nextIndex (mem:RaftMember) -> { mem with NextIndex = nextIndex })
+
+  static member MatchIndex_ =
+    (fun (mem:RaftMember) -> mem.MatchIndex),
+    (fun matchIndex (mem:RaftMember) -> { mem with MatchIndex = matchIndex })
+
   // ** ToString
 
   override self.ToString() =
     sprintf "%s on %s (%s:%d) %s %s %s"
       (string self.Id)
       (string self.HostName)
-      (string self.IpAddr)
-      self.Port
+      (string self.IpAddress)
+      self.RaftPort
       (string self.State)
       (sprintf "(NxtIdx %A)" self.NextIndex)
       (sprintf "(MtchIdx %A)" self.MatchIndex)
@@ -147,8 +197,8 @@ type RaftMember =
     let yaml = RaftMemberYaml()
     yaml.Id         <- string self.Id
     yaml.HostName   <- unwrap self.HostName
-    yaml.IpAddr     <- string self.IpAddr
-    yaml.Port       <- unwrap self.Port
+    yaml.IpAddress  <- string self.IpAddress
+    yaml.RaftPort   <- unwrap self.RaftPort
     yaml.WsPort     <- unwrap self.WsPort
     yaml.GitPort    <- unwrap self.GitPort
     yaml.ApiPort    <- unwrap self.ApiPort
@@ -164,13 +214,13 @@ type RaftMember =
   static member FromYaml (yaml: RaftMemberYaml) : Either<IrisError, RaftMember> =
     either {
       let! id = IrisId.TryParse yaml.Id
-      let! ip = IpAddress.TryParse yaml.IpAddr
+      let! ip = IpAddress.TryParse yaml.IpAddress
       let! state = RaftMemberState.TryParse yaml.State
       return {
         Id         = id
         HostName   = name yaml.HostName
-        IpAddr     = ip
-        Port       = port yaml.Port
+        IpAddress  = ip
+        RaftPort   = port yaml.RaftPort
         WsPort     = port yaml.WsPort
         GitPort    = port yaml.GitPort
         ApiPort    = port yaml.ApiPort
@@ -188,7 +238,7 @@ type RaftMember =
 
   member mem.ToOffset (builder: FlatBufferBuilder) =
     let id = RaftMemberFB.CreateIdVector(builder,mem.Id.ToByteArray())
-    let ip = string mem.IpAddr |> builder.CreateString
+    let ip = string mem.IpAddress |> builder.CreateString
 
     let hostname =
       let unwrapped = unwrap mem.HostName
@@ -206,8 +256,8 @@ type RaftMember =
     | Some hostname -> RaftMemberFB.AddHostName(builder, hostname)
     | None -> ()
 
-    RaftMemberFB.AddIpAddr(builder, ip)
-    RaftMemberFB.AddPort(builder, unwrap mem.Port)
+    RaftMemberFB.AddIpAddress(builder, ip)
+    RaftMemberFB.AddRaftPort(builder, unwrap mem.RaftPort)
     RaftMemberFB.AddWsPort(builder, unwrap mem.WsPort)
     RaftMemberFB.AddGitPort(builder, unwrap mem.GitPort)
     RaftMemberFB.AddApiPort(builder, unwrap mem.ApiPort)
@@ -228,8 +278,8 @@ type RaftMember =
         Id         = id
         State      = state
         HostName   = name fb.HostName
-        IpAddr     = IpAddress.Parse fb.IpAddr
-        Port       = port fb.Port
+        IpAddress  = IpAddress.Parse fb.IpAddress
+        RaftPort   = port fb.RaftPort
         WsPort     = port fb.WsPort
         GitPort    = port fb.GitPort
         ApiPort    = port fb.ApiPort
@@ -385,6 +435,38 @@ type ConfigChange =
 [<RequireQualifiedAccess>]
 module Member =
 
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get RaftMember.Id_
+  let hostName = Optic.get RaftMember.HostName_
+  let ipAddress = Optic.get RaftMember.IpAddress_
+  let raftPort = Optic.get RaftMember.RaftPort_
+  let wsPort = Optic.get RaftMember.WsPort_
+  let gitPort = Optic.get RaftMember.GitPort_
+  let apiPort = Optic.get RaftMember.ApiPort_
+  let voting = Optic.get RaftMember.Voting_
+  let votedForMe = Optic.get RaftMember.VotedForMe_
+  let state = Optic.get RaftMember.State_
+  let nextIndex = Optic.get RaftMember.NextIndex_
+  let matchIndex = Optic.get RaftMember.MatchIndex_
+
+  // ** setters
+
+  let setId = Optic.set RaftMember.Id_
+  let setHostName = Optic.set RaftMember.HostName_
+  let setIpAddress = Optic.set RaftMember.IpAddress_
+  let setRaftPort = Optic.set RaftMember.RaftPort_
+  let setWsPort = Optic.set RaftMember.WsPort_
+  let setGitPort = Optic.set RaftMember.GitPort_
+  let setApiPort = Optic.set RaftMember.ApiPort_
+  let setVoting = Optic.set RaftMember.Voting_
+  let setVotedForMe = Optic.set RaftMember.VotedForMe_
+  let setState = Optic.set RaftMember.State_
+  let setNextIndex = Optic.set RaftMember.NextIndex_
+  let setMatchIndex = Optic.set RaftMember.MatchIndex_
+
   // ** create
 
   let create id =
@@ -395,11 +477,11 @@ module Member =
     #endif
     { Id         = id
       HostName   = name hostname
-      IpAddr     = IPv4Address "127.0.0.1"
-      Port       = port Constants.DEFAULT_RAFT_PORT
-      WsPort     = port Constants.DEFAULT_WEB_SOCKET_PORT
-      GitPort    = port Constants.DEFAULT_GIT_PORT
-      ApiPort    = port Constants.DEFAULT_API_PORT
+      IpAddress  = IPv4Address "127.0.0.1"
+      RaftPort   = Measure.port Constants.DEFAULT_RAFT_PORT
+      WsPort     = Measure.port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort    = Measure.port Constants.DEFAULT_GIT_PORT
+      ApiPort    = Measure.port Constants.DEFAULT_API_PORT
       State      = Running
       Voting     = true
       VotedForMe = false
@@ -412,16 +494,6 @@ module Member =
     match mem.State, mem.Voting with
     | Running, true -> true
     | _ -> false
-
-  // ** setVoting
-
-  let setVoting mem voting =
-    { mem with Voting = voting }
-
-  // ** voteForMe
-
-  let voteForMe mem vote =
-    { mem with VotedForMe = vote }
 
   // ** hasVotedForMe
 
@@ -439,36 +511,16 @@ module Member =
   let hasSufficientLogs mem =
     mem.State = Running
 
-  // ** hostName
-
-  let hostName mem = mem.HostName
-
   // ** canVote
 
   let canVote peer =
     isVoting peer && hasVoteForMe peer
 
-  // ** getId
-
-  let getId mem = mem.Id
-
-  // ** getState
-
-  let getState mem = mem.State
-
-  // ** getNextIndex
-
-  let getNextIndex  mem = mem.NextIndex
-
-  // ** getMatchIndex
-
-  let getMatchIndex mem = mem.MatchIndex
-
   // ** added
 
   let private added oldmems newmems =
     let folder changes (mem: RaftMember) =
-      match Array.tryFind (getId >> ((=) mem.Id)) oldmems with
+      match Array.tryFind (Member.id >> ((=) mem.Id)) oldmems with
         | Some _ -> changes
         | _ -> MemberAdded(mem) :: changes
     Array.fold folder [] newmems
@@ -477,7 +529,7 @@ module Member =
 
   let private removed oldmems newmems =
     let folder changes (mem: RaftMember) =
-      match Array.tryFind (getId >> ((=) mem.Id)) newmems with
+      match Array.tryFind (Member.id >> ((=) mem.Id)) newmems with
         | Some _ -> changes
         | _ -> MemberAdded(mem) :: changes
     Array.fold folder [] oldmems
@@ -489,26 +541,3 @@ module Member =
     |> List.append (added oldmems newmems)
     |> List.append (removed oldmems newmems)
     |> Array.ofList
-
-  // ** ipAddr
-
-  let ipAddr mem = mem.IpAddr
-
-  // ** raftPort
-
-  let raftPort (mem:RaftMember) = mem.Port
-
-  // ** setRaftPort
-
-  let setRaftPort (port: Port) (mem: RaftMember) =
-    { mem with Port = port }
-
-  // ** setGitPort
-
-  let setGitPort (port: Port) (mem: RaftMember) =
-    { mem with GitPort = port }
-
-  // ** setWsPort
-
-  let setWsPort (port: Port) (mem: RaftMember) =
-    { mem with WsPort = port }

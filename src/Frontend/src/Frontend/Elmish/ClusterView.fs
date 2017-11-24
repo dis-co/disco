@@ -68,8 +68,8 @@ let body dispatch (model: Model) =
                 span [Class "iris-icon icon-bull iris-status-off"] []
               ]
             ]
-            td [Class "width-15"; topBorder()] [str (string node.IpAddr)]
-            td [Class "width-25"; topBorder()] [str (string node.Port)]
+            td [Class "width-15"; topBorder()] [str (string node.IpAddress)]
+            td [Class "width-25"; topBorder()] [str (string node.RaftPort)]
             td [Class "width-15"; topBorder()] [str (string node.State)]
             td [Class "width-15"; topBorder()] [str "shortkey"]
             td [Class "width-5"; topBorder()] [

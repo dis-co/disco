@@ -92,7 +92,7 @@ module ApiTests =
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
-            IpAddress = mem.IpAddr }
+            IpAddress = mem.IpAddress }
 
         let clnt : IrisClient =
           { Id = IrisId.Create()
@@ -100,7 +100,7 @@ module ApiTests =
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
-            IpAddress = mem.IpAddr
+            IpAddress = mem.IpAddress
             Port = port (unwrap mem.ApiPort + 1us) }
 
         let client = ApiClient.create srvr clnt
@@ -160,7 +160,7 @@ module ApiTests =
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
-            IpAddress = mem.IpAddr }
+            IpAddress = mem.IpAddress }
 
         let clnt : IrisClient =
           { Id = IrisId.Create()
@@ -168,7 +168,7 @@ module ApiTests =
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
-            IpAddress = mem.IpAddr
+            IpAddress = mem.IpAddress
             Port = port (unwrap mem.ApiPort + 1us) }
 
         use client = ApiClient.create srvr clnt
@@ -235,7 +235,7 @@ module ApiTests =
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
-            IpAddress = mem.IpAddr }
+            IpAddress = mem.IpAddress }
 
         let clnt : IrisClient =
           { Id = IrisId.Create()
@@ -243,7 +243,7 @@ module ApiTests =
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
-            IpAddress = mem.IpAddr
+            IpAddress = mem.IpAddress
             Port = port (unwrap mem.ApiPort + 1us) }
 
         use! server = ApiServer.create mem store.State.Project.Id {
@@ -366,7 +366,7 @@ module ApiTests =
 
         let srvr : IrisServer =
           { Port = mem.ApiPort
-            IpAddress = mem.IpAddr }
+            IpAddress = mem.IpAddress }
 
         let clnt : IrisClient =
           { Id = IrisId.Create()
@@ -374,7 +374,7 @@ module ApiTests =
             Role = Role.Renderer
             ServiceId = mem.Id
             Status = ServiceStatus.Starting
-            IpAddress = mem.IpAddr
+            IpAddress = mem.IpAddress
             Port = port (unwrap mem.ApiPort + 1us) }
 
         use client = ApiClient.create srvr clnt

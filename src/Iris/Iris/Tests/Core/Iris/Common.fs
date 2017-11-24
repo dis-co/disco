@@ -54,7 +54,7 @@ module Common =
 
   let mkMember (machine: IrisMachine) =
     { Member.create machine.MachineId with
-        Port = machine.RaftPort
+        RaftPort = machine.RaftPort
         ApiPort = machine.ApiPort
         GitPort = machine.GitPort
         WsPort = machine.WsPort }

@@ -24,7 +24,7 @@ open Types
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
 let private machine dispatch model node =
-  div [ Class "column" ] [
+  div [ Class "machine" ] [
     span [
       Class "iris-output iris-icon icon-host"
       OnClick (fun _ -> Select.clusterMember dispatch node)
@@ -38,6 +38,9 @@ let private machine dispatch model node =
           "iris-status-on", node.State = RaftMemberState.Running
         ]
       ] []
+    ]
+    div [ ] [
+      div [ Class "headline" ] [ str "Assets" ]
     ]
   ]
 
@@ -58,6 +61,7 @@ let private machineBrowser dispatch model =
     |> Option.bind (fun id -> List.tryFind (fun site -> ClusterConfig.id site = id) sites)
     |> Option.map (ClusterConfig.members >> Map.toList)
     |> Option.defaultValue List.empty
+    |> List.sortBy (snd >> Member.hostName)
     |> List.map (snd >> machine dispatch model)
 
   div [ Class "fb-panel column is-one-quarter" ] [
@@ -68,7 +72,7 @@ let private machineBrowser dispatch model =
         ]
       ]
     ]
-    div [ Class "columns" ] members
+    div [ Class "machines" ] members
   ]
 
 let private assetList dispatch model =

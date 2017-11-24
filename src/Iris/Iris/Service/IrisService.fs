@@ -379,8 +379,8 @@ module IrisService =
   let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
-      PeerAddress = leader.IpAddr
-      PeerPort = leader.Port
+      PeerAddress = leader.IpAddress
+      PeerPort = leader.RaftPort
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
     handleLeaderEvents socket store
@@ -405,18 +405,18 @@ module IrisService =
         (function
           | ConfigChange.MemberAdded mem ->
             mem
-            |> Member.getId
+            |> Member.id
             |> String.format "added {0}"
           | ConfigChange.MemberRemoved mem ->
             mem
-            |> Member.getId
+            |> Member.id
             |> String.format "removed {0}")
       |> Array.fold (fun s id -> s + " " + id) "Joint consensus with: "
       |> Logger.debug (tag "processEvent")
 
     | IrisEvent.ConfigurationDone mems ->
       mems
-      |> Array.map (Member.getId >> string)
+      |> Array.map (Member.id >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
       |> Logger.debug (tag "processEvent")
 
@@ -670,11 +670,11 @@ module IrisService =
         else
           let selfMember =
             { Member.create(machineId) with
-                IpAddr  = serviceOptions.Machine.BindAddress
-                GitPort = serviceOptions.Machine.GitPort
-                WsPort  = serviceOptions.Machine.WsPort
-                ApiPort = serviceOptions.Machine.ApiPort
-                Port    = serviceOptions.Machine.RaftPort }
+                IpAddress = serviceOptions.Machine.BindAddress
+                GitPort   = serviceOptions.Machine.GitPort
+                WsPort    = serviceOptions.Machine.WsPort
+                ApiPort   = serviceOptions.Machine.ApiPort
+                RaftPort  = serviceOptions.Machine.RaftPort }
           { site with Members = Map.add machineId selfMember site.Members }
 
       let cfg = state.Project.Config |> Config.addSiteAndSetActive site

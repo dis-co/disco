@@ -271,7 +271,7 @@ type FsEntry =
       FsEntryFB.AddRoot(builder, root)
       FsEntryFB.AddChildren(builder,children)
       FsEntryFB.EndFsEntryFB(builder)
-    | FsEntry.Directory(_, children) as dir ->
+    | FsEntry.Directory _  as dir ->
       let children =
         dir
         |> FsEntry.flatten
@@ -304,7 +304,7 @@ type FsEntry =
       match root with
       | FsEntry.File _ -> return root
       | FsEntry.Directory _ when fb.ChildrenLength = 0 -> return root
-      | FsEntry.Directory(info,_) ->
+      | FsEntry.Directory _ ->
         return!
           List.fold
             (fun (m:Either<IrisError,FsEntry list>) idx -> either {
@@ -1169,7 +1169,7 @@ module FsEntry =
   /// breadth-first fold on a tree
   let rec fold (f: 's -> FsEntry -> 's) (state: 's) = function
     | FsEntry.File _ as file -> f state file
-    | FsEntry.Directory(info, children) as dir ->
+    | FsEntry.Directory(_, children) as dir ->
       Map.fold (fun state _ entry -> fold f state entry) (f state dir) children
 
   // ** stringify
@@ -1180,7 +1180,7 @@ module FsEntry =
         let depth = file |> FsEntry.path |> FsPath.elements |> List.length
         let str = "- " + unwrap (FsEntry.name file)
         (depth, str) :: lst
-      | FsEntry.Directory (info, children) as dir ->
+      | FsEntry.Directory (info, _) as dir ->
         let depth = dir |> FsEntry.path |> FsPath.elements |> List.length
         let str =
           sprintf "+ /%O (Children: %d, Filtered: %d)"
@@ -1229,7 +1229,7 @@ module FsEntry =
 
   let rec add (entry: FsEntry) filters =
     let adder = function
-      | FsEntry.Directory(info, children) as dir when dir.isParentOf entry ->
+      | FsEntry.Directory(_, children) as dir when dir.isParentOf entry ->
         let full = path entry
         if Map.containsKey full children
         then dir
@@ -1357,7 +1357,6 @@ module FsEntry =
   let inflate (root:FsEntry) (entries:FsEntry list) =
     let directories = List.filter isDirectory entries
     let files = List.filter isFile entries
-    let filters = Array.empty
     directories
     |> List.sortBy (path >> string >> String.length) /// sort by length of path to start with the
     |> List.fold (fun root dir -> insert dir root) root /// bottom-most entries
@@ -1655,11 +1654,11 @@ module FsTreeTesting =
       let rootPath = FsPath.parse (filepath ("/" + Path.GetRandomFileName()))
       let root = makeDir rootPath
       let sub =
-        [ for d in 1 .. dirCount do
+        [ for _ in 1 .. dirCount do
             let dirPath = rootPath + Path.getRandomFileName()
             let dir = makeDir dirPath
             yield dir
-            for f in 1 .. fileCount do
+            for _ in 1 .. fileCount do
               let filePath = dirPath + Path.getRandomFileName()
               yield makeFile filePath ]
       root, sub
@@ -1707,7 +1706,7 @@ module FsTreeTesting =
   let deepTree depth =
     let paths =
       fold [
-        for d in 1 .. depth -> [ for n in 1 .. d -> Path.GetRandomFileName() ]
+        for d in 1 .. depth -> [ for _ in 1 .. d -> Path.GetRandomFileName() ]
       ]
     let root, sub =
       let rootPath = paths |> List.head |> filepath |> FsPath.parse

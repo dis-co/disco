@@ -115,6 +115,53 @@ let clients =
     machines
   |> List.ofSeq
 
+let makeTree (machine:IrisMachine) =
+  let randomFileName () = IrisId.Create().Prefix() |> filepath
+  let makeDir (fsPath:FsPath) =
+    FsEntry.Directory(
+      { Path = fsPath
+        Name = FsPath.fileName fsPath
+        Size = 0u
+        Filtered = 0u
+      }, Map.empty)
+  let makeFile (fsPath:FsPath) =
+    FsEntry.File(
+      { Path = fsPath
+        Name = FsPath.fileName fsPath
+        Size = 0u
+        Filtered = 0u
+      })
+  let depth = 2
+  let num = 3
+  let root =
+    let path = {
+      Drive = 'C'
+      Platform = Windows
+      Elements = [ "Iris"; "Assets" ]
+    }
+    let dir1 = path + randomFileName()
+    let dir2 = path + randomFileName()
+    let dir3 = path + randomFileName()
+    let file1 = dir1 + randomFileName()
+    let file2 = dir2 + randomFileName()
+    let file3 = dir2 + randomFileName()
+    FsEntry.Directory(
+      { Path = path
+        Name = FsPath.fileName path
+        Size = 0u
+        Filtered = 0u
+      },Map [
+        dir1, makeDir dir1 |> FsEntry.modify dir1 (FsEntry.addChild (makeFile file1))
+        dir2, makeDir dir2 |> FsEntry.modify dir2 (FsEntry.addChild (makeFile file2))
+        dir3, makeDir dir3 |> FsEntry.modify dir3 (FsEntry.addChild (makeFile file3))
+      ])
+  { HostId = machine.MachineId; Root = root; Filters = Array.empty }
+
+let trees =
+  machines
+  |> Seq.map (fun machine -> machine.MachineId, makeTree machine)
+  |> Map.ofSeq
+
 let project =
     let members =
       List.map
@@ -196,6 +243,7 @@ let getMockState() =
     |> List.map (fun client -> client.Id, client)
     |> Map.ofList
   { State.Empty with
+      FsTrees = trees
       Project = project
       Clients = clients
       PinGroups = groups }

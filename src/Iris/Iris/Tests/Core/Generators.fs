@@ -197,8 +197,8 @@ module Generators =
       return
         { Id         = id
           HostName   = n
-          IpAddr     = ip
-          Port       = p
+          IpAddress  = ip
+          RaftPort   = p
           WsPort     = wp
           GitPort    = gp
           ApiPort    = ap

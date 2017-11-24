@@ -42,6 +42,60 @@ type IrisMachine =
     ApiPort:        Port
     Version:        Iris.Core.Version }
 
+  // ** optics
+
+  static member MachineId_ =
+    (fun (machine:IrisMachine) -> machine.MachineId),
+    (fun id (machine:IrisMachine) -> { machine with MachineId = id })
+
+  static member HostName_ =
+    (fun (machine:IrisMachine) -> machine.HostName),
+    (fun hostName (machine:IrisMachine) -> { machine with HostName = hostName })
+
+  static member WorkSpace_ =
+    (fun (machine:IrisMachine) -> machine.WorkSpace),
+    (fun workSpace (machine:IrisMachine) -> { machine with WorkSpace = workSpace })
+
+  static member AssetDirectory_ =
+    (fun (machine:IrisMachine) -> machine.AssetDirectory),
+    (fun assetDirectory (machine:IrisMachine) -> { machine with AssetDirectory = assetDirectory })
+
+  static member AssetFilter_ =
+    (fun (machine:IrisMachine) -> machine.AssetFilter),
+    (fun assetFilter (machine:IrisMachine) -> { machine with AssetFilter = assetFilter })
+
+  static member LogDirectory_ =
+    (fun (machine:IrisMachine) -> machine.LogDirectory),
+    (fun logDirectory (machine:IrisMachine) -> { machine with LogDirectory = logDirectory })
+
+  static member BindAddress_ =
+    (fun (machine:IrisMachine) -> machine.BindAddress),
+    (fun bindAddress (machine:IrisMachine) -> { machine with BindAddress = bindAddress })
+
+  static member WebPort_ =
+    (fun (machine:IrisMachine) -> machine.WebPort),
+    (fun webPort (machine:IrisMachine) -> { machine with WebPort = webPort })
+
+  static member RaftPort_ =
+    (fun (machine:IrisMachine) -> machine.RaftPort),
+    (fun raftPort (machine:IrisMachine) -> { machine with RaftPort = raftPort })
+
+  static member WsPort_ =
+    (fun (machine:IrisMachine) -> machine.WsPort),
+    (fun wsPort (machine:IrisMachine) -> { machine with WsPort = wsPort })
+
+  static member GitPort_ =
+    (fun (machine:IrisMachine) -> machine.GitPort),
+    (fun gitPort (machine:IrisMachine) -> { machine with GitPort = gitPort })
+
+  static member ApiPort_ =
+    (fun (machine:IrisMachine) -> machine.ApiPort),
+    (fun apiPort (machine:IrisMachine) -> { machine with ApiPort = apiPort })
+
+  static member Version_ =
+    (fun (machine:IrisMachine) -> machine.Version),
+    (fun version (machine:IrisMachine) -> { machine with Version = version })
+
   // ** ToString
 
   override self.ToString() =
@@ -214,10 +268,43 @@ module MachineStatus =
 [<RequireQualifiedAccess>]
 module MachineConfig =
   open Path
+  open Aether
 
   // ** tag
 
   let private tag (str: string) = sprintf "MachineConfig.%s" str
+
+  // ** getters
+
+  let machineId = Optic.get IrisMachine.MachineId_
+  let hostName = Optic.get IrisMachine.HostName_
+  let workSpace = Optic.get IrisMachine.WorkSpace_
+  let assetDirectory = Optic.get IrisMachine.AssetDirectory_
+  let assetFilter = Optic.get IrisMachine.AssetFilter_
+  let logDirectory = Optic.get IrisMachine.LogDirectory_
+  let bindAddress = Optic.get IrisMachine.BindAddress_
+  let webPort = Optic.get IrisMachine.WebPort_
+  let raftPort = Optic.get IrisMachine.RaftPort_
+  let wsPort = Optic.get IrisMachine.WsPort_
+  let gitPort = Optic.get IrisMachine.GitPort_
+  let apiPort = Optic.get IrisMachine.ApiPort_
+  let version = Optic.get IrisMachine.Version_
+
+  // ** setters
+
+  let setMachineId = Optic.set IrisMachine.MachineId_
+  let setHostName = Optic.set IrisMachine.HostName_
+  let setWorkSpace = Optic.set IrisMachine.WorkSpace_
+  let setAssetDirectory = Optic.set IrisMachine.AssetDirectory_
+  let setAssetFilter = Optic.set IrisMachine.AssetFilter_
+  let setLogDirectory = Optic.set IrisMachine.LogDirectory_
+  let setBindAddress = Optic.set IrisMachine.BindAddress_
+  let setWebPort = Optic.set IrisMachine.WebPort_
+  let setRaftPort = Optic.set IrisMachine.RaftPort_
+  let setWsPort = Optic.set IrisMachine.WsPort_
+  let setGitPort = Optic.set IrisMachine.GitPort_
+  let setApiPort = Optic.set IrisMachine.ApiPort_
+  let setVersion = Optic.set IrisMachine.Version_
 
   // ** singleton
 
@@ -298,7 +385,7 @@ module MachineConfig =
         WsPort       = port yml.WsPort
         GitPort      = port yml.GitPort
         ApiPort      = port yml.ApiPort
-        Version      = version yml.Version
+        Version      = Measure.version yml.Version
       }
     }
 
@@ -341,7 +428,7 @@ module MachineConfig =
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
 
-    let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
+    let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> Measure.version
 
     { MachineId    = IrisId.Create()
       HostName     = name hostname

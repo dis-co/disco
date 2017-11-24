@@ -599,8 +599,8 @@ enum RaftMemberStateFB:ubyte {
 table RaftMemberFB {
       Id         : [ubyte];
       HostName   : string;
-      IpAddr     : string;
-      Port       : ushort;
+      IpAddress  : string;
+      RaftPort   : ushort;
       WsPort     : ushort;
       GitPort    : ushort;
       ApiPort    : ushort;

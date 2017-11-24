@@ -1346,8 +1346,8 @@ type RaftMemberFB =
   abstract Id: int -> byte
   abstract IdLength: int
   abstract HostName: string
-  abstract IpAddr: string
-  abstract Port: uint16
+  abstract IpAddress: string
+  abstract RaftPort: uint16
   abstract WebPort: uint16
   abstract WsPort: uint16
   abstract GitPort: uint16
@@ -1363,8 +1363,8 @@ type RaftMemberFBConstructor =
   abstract StartRaftMemberFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
-  abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
-  abstract AddPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddRaftPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddGitPort: builder: FlatBufferBuilder * port: uint16 -> unit

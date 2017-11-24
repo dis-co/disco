@@ -86,9 +86,9 @@ type MemberNode() =
 
             self.OutId.[n] <- string mem.Id
             self.OutHostName.[n] <- unwrap mem.HostName
-            self.OutIpAddress.[n] <- string mem.IpAddr
+            self.OutIpAddress.[n] <- string mem.IpAddress
             self.OutStatus.[n] <- string mem.State
-            self.OutRaftPort.[n] <- int mem.Port
+            self.OutRaftPort.[n] <- int mem.RaftPort
             self.OutWsPort.[n] <- int mem.WsPort
             self.OutGitPort.[n] <- int mem.GitPort
             self.OutApiPort.[n] <- int mem.ApiPort

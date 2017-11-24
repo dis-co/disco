@@ -1291,16 +1291,16 @@ module ProjectYaml =
     either {
       try
         let! id = IrisId.TryParse mem.Id
-        let! ip = IpAddress.TryParse mem.IpAddr
+        let! ip = IpAddress.TryParse mem.IpAddress
         let! state = RaftMemberState.TryParse mem.State
         return {
           Id         = id
           HostName   = name mem.HostName
-          IpAddr     = ip
-          Port       = mem.Port    |> uint16 |> port
-          WsPort     = mem.WsPort  |> uint16 |> port
-          GitPort    = mem.GitPort |> uint16 |> port
-          ApiPort    = mem.ApiPort |> uint16 |> port
+          IpAddress  = ip
+          RaftPort   = mem.RaftPort |> uint16 |> port
+          WsPort     = mem.WsPort   |> uint16 |> port
+          GitPort    = mem.GitPort  |> uint16 |> port
+          ApiPort    = mem.ApiPort  |> uint16 |> port
           State      = state
           Voting     = true
           VotedForMe = false
@@ -1442,14 +1442,14 @@ module ProjectYaml =
 
       for KeyValue(memId,mem) in cluster.Members do
         let n = RaftMemberYaml()
-        n.Id       <- string memId
-        n.IpAddr   <- string mem.IpAddr
-        n.HostName <- unwrap mem.HostName
-        n.Port     <- unwrap mem.Port
-        n.WsPort   <- unwrap mem.WsPort
-        n.GitPort  <- unwrap mem.GitPort
-        n.ApiPort  <- unwrap mem.ApiPort
-        n.State    <- string mem.State
+        n.Id        <- string memId
+        n.IpAddress <- string mem.IpAddress
+        n.HostName  <- unwrap mem.HostName
+        n.RaftPort  <- unwrap mem.RaftPort
+        n.WsPort    <- unwrap mem.WsPort
+        n.GitPort   <- unwrap mem.GitPort
+        n.ApiPort   <- unwrap mem.ApiPort
+        n.State     <- string mem.State
         members.Add(n)
 
       for group in cluster.Groups do
@@ -1729,10 +1729,10 @@ module Config =
     let errorMsg tag a b =
       sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
-      if mem.IpAddr <> machine.BindAddress then
-        yield errorMsg "IP" mem.IpAddr machine.BindAddress
-      if mem.Port <> machine.RaftPort then
-        yield errorMsg "Raft Port" mem.Port machine.RaftPort
+      if mem.IpAddress <> machine.BindAddress then
+        yield errorMsg "IP" mem.IpAddress machine.BindAddress
+      if mem.RaftPort <> machine.RaftPort then
+        yield errorMsg "Raft Port" mem.RaftPort machine.RaftPort
       if mem.GitPort <> machine.GitPort then
         yield errorMsg "Git Port" mem.GitPort machine.GitPort
       if mem.ApiPort <> machine.ApiPort then

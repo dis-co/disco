@@ -502,7 +502,7 @@ module ApiServer =
 
       let server = TcpServer.create {
         ServerId = mem.Id
-        Listen = mem.IpAddr
+        Listen = mem.IpAddress
         Port = mem.ApiPort
       }
 
