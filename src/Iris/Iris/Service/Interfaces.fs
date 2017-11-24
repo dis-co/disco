@@ -145,7 +145,7 @@ type IAssetService =
   inherit IDisposable
   abstract State: FsTree option
   abstract Start: unit -> Either<IrisError, unit>
-  abstract Subscribe: (StateMachine -> unit) -> IDisposable
+  abstract Subscribe: (IrisEvent -> unit) -> IDisposable
   abstract Stop: unit -> Either<IrisError, unit>
 
 // * IApiServerCallbacks
@@ -194,6 +194,7 @@ type IIrisService =
   abstract Periodic:      unit       -> unit
   abstract Project:       IrisProject
   abstract RaftServer:    IRaftServer
+  abstract AssetService:  IAssetService
   abstract RemoveMember:  MemberId         -> unit
   abstract SocketServer:  IWebSocketServer
   abstract Start:         unit -> Either<IrisError,unit>
@@ -216,7 +217,6 @@ type IIris =
   inherit IDisposable
   abstract Machine: IrisMachine
   abstract HttpServer: IHttpServer
-  abstract AssetService: IAssetService
   abstract DiscoveryService: IDiscoveryService option
   abstract IrisService: IIrisService option
   abstract SaveProject: unit -> Either<IrisError,unit>

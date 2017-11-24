@@ -20,7 +20,7 @@ module AssetService =
 
   // ** Subscriptions
 
-  type private Subscriptions = Observable.Subscriptions<StateMachine>
+  type private Subscriptions = Observable.Subscriptions<IrisEvent>
 
   // ** Msg
 
@@ -101,6 +101,7 @@ module AssetService =
         |> Map.toList
         |> List.map snd
         |> CommandBatch.ofList
+        |> IrisEvent.appendService
         |> Observable.onNext state.Subscriptions
       { state with Updates = List.empty }
 
@@ -113,7 +114,9 @@ module AssetService =
         let state = store.State
         match msg with
         | Msg.Command(AddFsTree tree as ev) ->
-          Observable.onNext state.Subscriptions ev
+          ev
+          |> IrisEvent.appendService
+          |> Observable.onNext state.Subscriptions
           updateFiles state (Some tree)
         | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
           state.Files

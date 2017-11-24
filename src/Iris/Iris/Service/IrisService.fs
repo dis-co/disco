@@ -67,6 +67,7 @@ module IrisService =
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
+      AssetService  : IAssetService
       ClockService  : IClock
       FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
@@ -84,6 +85,7 @@ module IrisService =
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
+        dispose self.AssetService
         dispose self.ClockService
         dispose self.SocketServer
         dispose self.Dispatcher
@@ -691,6 +693,8 @@ module IrisService =
       let! mem = Config.selfMember state.Project.Config
       do! Config.validateSettings mem serviceOptions.Machine
 
+      let! assetService = AssetService.create serviceOptions.Machine
+
       // ensure that we have all other nodes set-up correctly
       do! Project.updateRemotes state.Project
 
@@ -720,6 +724,7 @@ module IrisService =
 
       // wiring up the sources
       let disposables = [|
+        assetService.Subscribe (forwardEvent id dispatcher)
         fsWatcher.Subscribe    (forwardEvent id dispatcher)
         gitServer.Subscribe    (forwardEvent id dispatcher)
         apiServer.Subscribe    (forwardEvent id dispatcher)
@@ -746,6 +751,7 @@ module IrisService =
           GitServer      = gitServer
           RaftServer     = raftServer
           SocketServer   = socketServer
+          AssetService   = assetService
           ClockService   = clockService
           FsWatcher      = fsWatcher
           BufferedCues   = ConcurrentDictionary()
@@ -797,6 +803,7 @@ module IrisService =
           do! store.State.SocketServer.Start()
           do! store.State.GitServer.Start()
           do! store.State.RaftServer.Start()
+          do! store.State.AssetService.Start()
         }
 
       match result with
@@ -883,6 +890,9 @@ module IrisService =
 
         member self.SocketServer
           with get () = store.State.SocketServer
+
+        member self.AssetService
+          with get () = store.State.AssetService
 
         member self.Subscribe(callback: IrisEvent -> unit) =
           Observable.subscribe callback store.State.Subscriptions
