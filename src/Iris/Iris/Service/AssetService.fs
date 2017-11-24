@@ -94,6 +94,9 @@ module AssetService =
           Map.empty
           (List.rev state.Updates)      /// oldes updates first
       if not (Map.isEmpty commands) then
+        Map.count commands
+        |> String.format "Processed {0} updates in asset directory"
+        |> Logger.info (tag "flushUpdates")
         commands
         |> Map.toList
         |> List.map snd

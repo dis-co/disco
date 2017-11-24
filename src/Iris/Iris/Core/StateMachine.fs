@@ -1135,12 +1135,29 @@ module State =
         Clients = Map.remove client.Id state.Clients
         PinGroups = PinGroupMap.removeByClient client.Id state.PinGroups }
 
-  //  ____            _           _
-  // |  _ \ _ __ ___ (_) ___  ___| |_
-  // | |_) | '__/ _ \| |/ _ \/ __| __|
-  // |  __/| | | (_) | |  __/ (__| |_
-  // |_|   |_|  \___// |\___|\___|\__|
-  //               |__/
+  // ** addFsEntry
+
+  let addFsEntry host (fsEntry: FsEntry) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.addEntry fsEntry tree) state.FsTrees }
+
+  // ** updateFsEntry
+
+  let updateFsEntry host (fsEntry: FsEntry) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.updateEntry fsEntry tree) state.FsTrees }
+
+  // ** removeFsEntry
+
+  let removeFsEntry host (fsPath: FsPath) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.removeEntry fsPath tree) state.FsTrees }
 
   // ** addFsTree
 
@@ -1149,17 +1166,10 @@ module State =
     then state
     else { state with FsTrees = Map.add fsTree.HostId fsTree state.FsTrees }
 
-  // ** updateFsTree
-
-  let updateFsTree (fsTree: FsTree) (state: State) =
-    if Map.containsKey fsTree.HostId state.FsTrees
-    then { state with FsTrees = Map.add fsTree.HostId fsTree state.FsTrees }
-    else state
-
   // ** removeFsTree
 
-  let removeFsTree (fsTree: FsTree) (state: State) =
-    { state with FsTrees = Map.remove fsTree.HostId state.FsTrees }
+  let removeFsTree (host: HostId) (state: State) =
+    { state with FsTrees = Map.remove host state.FsTrees }
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -1236,6 +1246,13 @@ module State =
     | AddUser          user           -> addUser        user    state
     | UpdateUser       user           -> updateUser     user    state
     | RemoveUser       user           -> removeUser     user    state
+
+    | AddFsEntry    (host,fsEntry)    -> addFsEntry     host fsEntry state
+    | UpdateFsEntry (host,fsEntry)    -> updateFsEntry  host fsEntry state
+    | RemoveFsEntry (host,fsPath)     -> removeFsEntry  host fsPath state
+
+    | AddFsTree           fsTree      -> addFsTree      fsTree  state
+    | RemoveFsTree        host        -> removeFsTree   host    state
 
     | UpdateProject project           -> updateProject  project state
 

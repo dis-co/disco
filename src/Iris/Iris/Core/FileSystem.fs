@@ -1509,16 +1509,16 @@ module FsTree =
     |> FsEntry.modify path f
     |> fun root -> setRoot root tree
 
-  // ** add
+  // ** addEntry
 
-  #if FABLE_COMPILER
-
-  let add (entry:FsEntry) (tree:FsTree) =
+  let addEntry (entry:FsEntry) (tree:FsTree) =
     tree.Root
     |> FsEntry.add entry tree.Filters
     |> fun entry -> setRoot entry tree
 
-  #else
+  // ** add
+
+  #if !FABLE_COMPILER
 
   let add (fp: FilePath) (tree: FsTree) =
     let fp =
@@ -1536,16 +1536,16 @@ module FsTree =
 
   #endif
 
-  // ** remove
+  // ** removeEntry
 
-  #if FABLE_COMPILER
-
-  let remove (entry:FsPath) (tree:FsTree) =
+  let removeEntry (entry:FsPath) (tree:FsTree) =
     tree.Root
     |> FsEntry.remove entry tree.Filters
     |> fun entry -> setRoot entry tree
 
-  #else
+  // ** remove
+
+  #if !FABLE_COMPILER
 
   let remove (entry:FilePath) (tree: FsTree) =
     let entry =
@@ -1561,16 +1561,16 @@ module FsTree =
 
   #endif
 
-  // ** update
+  // ** updateEntry
 
-  #if FABLE_COMPILER
-
-  let update (entry:FsEntry) (tree: FsTree) =
+  let updateEntry (entry:FsEntry) (tree: FsTree) =
     tree.Root
     |> FsEntry.update entry
     |> fun entry -> setRoot entry tree
 
-  #else
+  // ** update
+
+  #if !FABLE_COMPILER
 
   let update (path:FilePath) (tree: FsTree) =
     let path =
