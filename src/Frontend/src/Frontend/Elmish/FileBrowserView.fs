@@ -91,7 +91,7 @@ let private machineBrowser dispatch model trees =
     div [ Class "machines" ] members
   ]
 
-let private asset dispatch model entry =
+let private fileRow dispatch model (entry:FsEntry) =
   div [ Class "file" ] [
     span [ ] [
       i [ Class "icon fa fa-file-o" ] [ str "" ]
@@ -99,16 +99,16 @@ let private asset dispatch model entry =
     ]
   ]
 
-let private assetList dispatch model (trees:Map<HostId,FsTree>) =
-  let files =
-    trees
-    |> Map.toList
-    |> List.head
-    |> snd
-    |> fun trees -> printfn "trees: %A" trees; trees
-    |> FsTree.files
-    |> List.map (asset dispatch model)
-
+let private fileList dispatch model (trees:Map<HostId,FsTree>) =
+  let files: ReactElement list =
+    if not (Map.isEmpty trees) then
+      trees
+      |> Map.toList
+      |> List.head
+      |> snd
+      |> FsTree.files
+      |> List.map (fileRow dispatch model)
+    else List.empty
   div [ Class "fb-main column" ] [
     nav [ Class "breadcrumb is-large has-arrow-separator" ]  [
       ul [] [
@@ -122,12 +122,38 @@ let private assetList dispatch model (trees:Map<HostId,FsTree>) =
     div [ Class "files" ] files
   ]
 
-let private fileInfo dispatch model =
-  div [ Class "fb-panel column is-one-quarter" ] [
+let private fileInfo dispatch model (entry:FsEntry) =
+  div [ Class "fb-panel file-info column is-one-quarter" ] [
     nav [ Class "breadcrumb is-large" ]  [
       ul [] [
         li [ Class "is-active" ] [
           a [] [ str "Fileinfo" ]
+        ]
+      ]
+    ]
+    div [ Class "info" ] [
+      div [ Class "columns" ] [
+        div [ Class "column is-one-fifth" ] [
+          strong [] [ str "Path:" ]
+        ]
+        div [ Class "column" ] [
+          str (entry |> FsEntry.path |> string)
+        ]
+      ]
+      div [ Class "columns" ] [
+        div [ Class "column is-one-fifth" ] [
+          strong [] [ str "Name:" ]
+        ]
+        div [ Class "column" ] [
+          str (FsEntry.name entry |> string)
+        ]
+      ]
+      div [ Class "columns" ] [
+        div [ Class "column is-one-fifth" ] [
+          strong [] [ str "Size:" ]
+        ]
+        div [ Class "column" ] [
+          str (entry |> FsEntry.size |> FsEntry.formatBytes)
         ]
       ]
     ]
@@ -139,10 +165,17 @@ let private body dispatch (model: Model) =
     |> Option.map State.fsTrees
     |> Option.defaultValue Map.empty
 
+  let entry =
+    FsEntry.File(
+      { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
+        Name = name "bye.txt"
+        Size = 1173741825u
+        Filtered = 0u })
+
   div [ Class "columns is-gapless iris-file-browser" ] [
     machineBrowser dispatch model trees
-    assetList dispatch model trees
-    fileInfo dispatch model
+    fileList dispatch model trees
+    fileInfo dispatch model entry
   ]
 
 

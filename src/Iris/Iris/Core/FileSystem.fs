@@ -1369,7 +1369,7 @@ module FsEntry =
 
   // ** files
 
-  let files = flatten >> List.filter isFile
+  let files:FsEntry -> FsEntry list = flatten >> List.filter isFile
 
   // ** addChild
 
@@ -1413,6 +1413,14 @@ module FsEntry =
         |> setSize size
         |> setFiltered filtered
     map mapper tree
+
+  // ** formatBytes
+
+  let formatBytes:uint32 -> string = function
+    | bytes when bytes < 1024u    -> String.Format("{0} bytes", bytes)
+    | kb    when kb < 1048576u    -> String.Format("{0} kB", Math.Round(decimal kb / 1024M))
+    | mb    when mb < 1073741824u -> String.Format("{0} MB", Math.Round(decimal mb / 1048576M, 1))
+    | gb                          -> String.Format("{0} GB", Math.Round(decimal gb / 1073741824M, 2))
 
 // * FsTree module
 
@@ -1490,7 +1498,7 @@ module FsTree =
 
   // ** files
 
-  let files = root >> FsEntry.files
+  let files:FsTree -> FsEntry list = root >> FsEntry.files
 
   // ** basePath
 
