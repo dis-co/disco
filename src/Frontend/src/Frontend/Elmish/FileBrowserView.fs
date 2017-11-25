@@ -80,14 +80,7 @@ let private machineBrowser dispatch model trees =
     |> List.sortBy (snd >> Member.hostName)
     |> List.map (snd >> machine dispatch model trees)
 
-  div [ Class "fb-panel column is-one-quarter" ] [
-    nav [ Class "breadcrumb is-large" ]  [
-      ul [] [
-        li [ Class "is-active" ] [
-          a [] [ str "Machines" ]
-        ]
-      ]
-    ]
+  div [ Class "panel column is-one-quarter" ] [
     div [ Class "machines" ] members
   ]
 
@@ -109,28 +102,12 @@ let private fileList dispatch model (trees:Map<HostId,FsTree>) =
       |> FsTree.files
       |> List.map (fileRow dispatch model)
     else List.empty
-  div [ Class "fb-main column" ] [
-    nav [ Class "breadcrumb is-large has-arrow-separator" ]  [
-      ul [] [
-        li [] [ a [] [ str "assets" ] ]
-        li [] [ a [] [ str "stack_01" ] ]
-        li [ Class "is-active" ] [
-          a [] [ str "substack_04" ]
-        ]
-      ]
-    ]
+  div [ Class "panel main column" ] [
     div [ Class "files" ] files
   ]
 
 let private fileInfo dispatch model (entry:FsEntry) =
-  div [ Class "fb-panel file-info column is-one-quarter" ] [
-    nav [ Class "breadcrumb is-large" ]  [
-      ul [] [
-        li [ Class "is-active" ] [
-          a [] [ str "Fileinfo" ]
-        ]
-      ]
-    ]
+  div [ Class "panel file-info column is-one-quarter" ] [
     div [ Class "info" ] [
       div [ Class "columns" ] [
         div [ Class "column is-one-fifth" ] [
@@ -167,6 +144,39 @@ let private fileInfo dispatch model (entry:FsEntry) =
     ]
   ]
 
+let private bar dispatch model =
+  div [ Class "bar columns is-gapless" ] [
+    div [ Class "column is-one-quarter" ] [
+      nav [ Class "breadcrumb is-large" ]  [
+        ul [] [
+          li [ Class "is-active" ] [
+            a [] [ str "Machines" ]
+          ]
+        ]
+      ]
+    ]
+    div [ Class "column center" ] [
+      nav [ Class "breadcrumb is-large has-arrow-separator" ]  [
+        ul [] [
+          li [] [ a [] [ str "assets" ] ]
+          li [] [ a [] [ str "stack_01" ] ]
+          li [ Class "is-active" ] [
+            a [] [ str "substack_04" ]
+          ]
+        ]
+      ]
+    ]
+    div [ Class "column is-one-quarter" ] [
+      nav [ Class "breadcrumb is-large" ]  [
+        ul [] [
+          li [ Class "is-active" ] [
+            a [] [ str "Fileinfo" ]
+          ]
+        ]
+      ]
+    ]
+  ]
+
 let private body dispatch (model: Model) =
   let trees =
     model.state
@@ -181,10 +191,13 @@ let private body dispatch (model: Model) =
         Size = 1173741825u
         Filtered = 0u })
 
-  div [ Class "columns is-gapless iris-file-browser" ] [
-    machineBrowser dispatch model trees
-    fileList dispatch model trees
-    fileInfo dispatch model entry
+  div [ Class "iris-file-browser" ] [
+    bar dispatch model
+    div [ Class "body columns is-gapless" ] [
+      machineBrowser dispatch model trees
+      fileList dispatch model trees
+      fileInfo dispatch model entry
+    ]
   ]
 
 
