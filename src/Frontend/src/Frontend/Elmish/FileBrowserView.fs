@@ -102,9 +102,7 @@ let private fileList dispatch model (trees:Map<HostId,FsTree>) =
       |> FsTree.files
       |> List.map (fileRow dispatch model)
     else List.empty
-  div [ Class "panel main column" ] [
-    div [ Class "files" ] files
-  ]
+  div [ Class "panel main column" ] files
 
 let private fileInfo dispatch model (entry:FsEntry) =
   div [ Class "panel file-info column is-one-quarter" ] [
@@ -156,7 +154,7 @@ let private bar dispatch model =
       ]
     ]
     div [ Class "column center" ] [
-      nav [ Class "breadcrumb is-large has-arrow-separator" ]  [
+      nav [ Class "breadcrumb is-large" ]  [
         ul [] [
           li [] [ a [] [ str "assets" ] ]
           li [] [ a [] [ str "stack_01" ] ]

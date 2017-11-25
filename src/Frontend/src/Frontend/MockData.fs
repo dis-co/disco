@@ -153,6 +153,9 @@ let makeTree (machine:IrisMachine) =
     let filePath1 = subdirPath1 + randomFileName()
     let filePath2 = subdirPath2 + randomFileName()
     let filePath3 = subdirPath2 + randomFileName()
+    let filePath4 = subdirPath1 + randomFileName()
+    let filePath5 = subdirPath2 + randomFileName()
+    let filePath6 = subdirPath2 + randomFileName()
 
     let dir1 = makeDir dirPath1
     let dir2 = makeDir dirPath2
@@ -163,6 +166,9 @@ let makeTree (machine:IrisMachine) =
     let file1 = makeFile filePath1
     let file2 = makeFile filePath2
     let file3 = makeFile filePath3
+    let file4 = makeFile filePath4
+    let file5 = makeFile filePath5
+    let file6 = makeFile filePath6
 
     FsEntry.Directory(
       { Path = rootPath
@@ -171,9 +177,9 @@ let makeTree (machine:IrisMachine) =
         Size = 0u
         Filtered = 0u
       },Map [
-        dirPath1, addChild dir1 (addChild subdir1 file1)
-        dirPath2, addChild dir2 (addChild subdir2 file2)
-        dirPath3, addChild dir3 (addChild subdir3 file3)
+        dirPath1, addChild dir1 (addChild subdir1 file1 |> fun subdir -> addChild subdir file4)
+        dirPath2, addChild dir2 (addChild subdir2 file2 |> fun subdir -> addChild subdir file5)
+        dirPath3, addChild dir3 (addChild subdir3 file3 |> fun subdir -> addChild subdir file6)
       ])
   { HostId = machine.MachineId; Root = root; Filters = Array.empty }
 

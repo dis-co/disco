@@ -266,12 +266,10 @@ html, body {
     border-left: 1px solid $iris-grey;
     border-right: 1px solid $iris-grey;
     background: $iris-grey;
-    .files {
-      .file {
-        cursor: pointer;
-        background: white;
-        border-bottom: 1px solid $iris-grey;
-      }
+    .file {
+      cursor: pointer;
+      background: white;
+      border-bottom: 1px solid $iris-grey;
     }
   }
 
