@@ -239,6 +239,7 @@ let FsEntryTypeFB: FsEntryTypeFBConstructor = failwith "JS only"
 type FsInfoFB =
   abstract Type: FsEntryTypeFB
   abstract Name: string
+  abstract MimeType: string
   abstract Path: FsPathFB
   abstract Size: uint32
   abstract Filtered: uint32
@@ -249,6 +250,7 @@ type FsInfoFBConstructor =
   abstract AddType: builder: FlatBufferBuilder * tipe: FsEntryTypeFB -> unit
   abstract AddPath: builder: FlatBufferBuilder * path: Offset<FsPathFB> -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddMimeType: builder: FlatBufferBuilder * mime: Offset<string> -> unit
   abstract AddSize: builder: FlatBufferBuilder * size: uint32 -> unit
   abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint32 -> unit
   abstract EndFsInfoFB: builder: FlatBufferBuilder -> Offset<'a>

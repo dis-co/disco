@@ -121,6 +121,7 @@ let makeTree (machine:IrisMachine) =
     FsEntry.Directory(
       { Path = fsPath
         Name = FsPath.fileName fsPath
+        MimeType = "application/x-directory"
         Size = 0u
         Filtered = 0u
       }, Map.empty)
@@ -128,6 +129,7 @@ let makeTree (machine:IrisMachine) =
     FsEntry.File(
       { Path = fsPath
         Name = FsPath.fileName fsPath
+        MimeType = "text/plain"
         Size = 0u
         Filtered = 0u
       })
@@ -165,6 +167,7 @@ let makeTree (machine:IrisMachine) =
     FsEntry.Directory(
       { Path = rootPath
         Name = FsPath.fileName rootPath
+        MimeType = "application/x-directory"
         Size = 0u
         Filtered = 0u
       },Map [

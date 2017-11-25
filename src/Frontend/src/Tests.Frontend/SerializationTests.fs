@@ -218,6 +218,7 @@ module SerializationTests =
       { Path = path
         Name = FsPath.fileName path
         Size = uint32 (Map.count children)
+        MimeType = "application/x-directory"
         Filtered = 0u
       }, children)
 
@@ -225,6 +226,7 @@ module SerializationTests =
     FsEntry.File(
       { Path = path
         Name = FsPath.fileName path
+        MimeType = "image/png"
         Size = 0u
         Filtered = 0u })
 
@@ -239,6 +241,7 @@ module SerializationTests =
     FsEntry.Directory(
       { Path = root
         Name = FsPath.fileName root
+        MimeType = "application/x-directory"
         Size = 0u
         Filtered = 0u
       },Map [

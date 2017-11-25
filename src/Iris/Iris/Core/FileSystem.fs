@@ -2,6 +2,9 @@ namespace rec Iris.Core
 
 // * Imports
 
+open Aether
+open Aether.Operators
+
 open System
 open System.IO
 open System.Text
@@ -16,6 +19,7 @@ open Iris.Web.Core.FlatBufferTypes
 
 #else
 
+open System.Web
 open System.Linq
 open FlatBuffers
 open Iris.Serialization
@@ -122,6 +126,7 @@ type FsInfo =
   { Path: FsPath
     Name: Name
     Filtered: uint32
+    MimeType: string
     Size: uint32 }
 
   // ** optics
@@ -141,6 +146,10 @@ type FsInfo =
   static member Filtered_ =
     (fun { Filtered = filtered } -> filtered),
     (fun filtered fsinfo -> { fsinfo with Filtered = filtered })
+
+  static member MimeType_ =
+    (fun { MimeType = mimeType } -> mimeType),
+    (fun mimeType fsinfo -> { fsinfo with MimeType = mimeType })
 
   // ** isParentOf
 
@@ -193,6 +202,8 @@ type FsEntry =
       | FsEntry.Directory(info,_) -> FsEntry.Directory(info, children)
       | other -> other)
 
+  static member MimeType_ = FsEntry.Info_ >-> FsInfo.MimeType_
+
   // ** ToString
 
   override self.ToString() = FsEntry.stringify self
@@ -209,10 +220,12 @@ type FsEntry =
     let info = FsEntry.info entry
     let name = info.Name |> unwrap |> mapNull
     let path = Binary.toOffset builder info.Path
+    let mime = builder.CreateString info.MimeType
     FsInfoFB.StartFsInfoFB(builder)
     FsInfoFB.AddType(builder, tipe)
     FsInfoFB.AddSize(builder, info.Size)
     FsInfoFB.AddFiltered(builder, info.Filtered)
+    FsInfoFB.AddMimeType(builder, mime)
     Option.iter (fun offset -> FsInfoFB.AddName(builder, offset)) name
     FsInfoFB.AddPath(builder, path)
     FsInfoFB.EndFsInfoFB(builder)
@@ -238,6 +251,7 @@ type FsEntry =
         { Path = path
           Name = name fb.Name
           Filtered = fb.Filtered
+          MimeType = fb.MimeType
           Size = fb.Size }
       match fb.Type with
       #if FABLE_COMPILER
@@ -1117,6 +1131,7 @@ module FsEntry =
   let name = Optic.get (FsEntry.Info_ >-> FsInfo.Name_)
   let path = Optic.get (FsEntry.Info_ >-> FsInfo.Path_)
   let size = Optic.get (FsEntry.Info_ >-> FsInfo.Size_)
+  let mimeType = Optic.get (FsEntry.Info_ >-> FsInfo.MimeType_)
   let filtered = Optic.get (FsEntry.Info_ >-> FsInfo.Filtered_)
   let children = Optic.get FsEntry.Children_
   let childCount = Optic.get FsEntry.Children_ >> Map.count
@@ -1131,6 +1146,7 @@ module FsEntry =
   let setName = Optic.set (FsEntry.Info_ >-> FsInfo.Name_)
   let setPath = Optic.set (FsEntry.Info_ >-> FsInfo.Path_)
   let setSize = Optic.set (FsEntry.Info_ >-> FsInfo.Size_)
+  let setMimeType = Optic.set (FsEntry.Info_ >-> FsInfo.MimeType_)
   let setFiltered = Optic.set (FsEntry.Info_ >-> FsInfo.Filtered_)
   let setChildren = Optic.set FsEntry.Children_
 
@@ -1148,6 +1164,7 @@ module FsEntry =
         Path = fsPath
         Name = Measure.name di.Name
         Filtered = 0u
+        MimeType = "application/x-directory"
         Size = uint32 (files.Length + subDirs)
       }
       FsEntry.Directory (info, Map.empty) |> Some
@@ -1157,6 +1174,7 @@ module FsEntry =
         Path = fsPath
         Name = Measure.name info.Name
         Filtered = 0u
+        MimeType = MimeMapping.GetMimeMapping(info.Name)
         Size = uint32 info.Length
       }
       |> Some
@@ -1644,15 +1662,18 @@ module FsTreeTesting =
     let info = {
       Path = path
       Name = FsPath.fileName path
+      MimeType = "application/x-directory"
       Filtered = 0u
       Size = 0u
     }
     FsEntry.Directory(info,Map.empty)
 
   let makeFile path =
+    let name = FsPath.fileName path
     FsEntry.File {
       Path = path
-      Name = FsPath.fileName path
+      MimeType = MimeMapping.GetMimeMapping(unwrap name)
+      Name = name
       Filtered = 0u
       Size = 0u
     }
@@ -1740,6 +1761,7 @@ module FsTreeTesting =
       FsEntry.Directory(
         { Path = path
           Name = FsPath.fileName path
+          MimeType = "application/x-directory"
           Size = 0u
           Filtered = 0u
         },Map [

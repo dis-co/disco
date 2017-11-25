@@ -150,6 +150,14 @@ let private fileInfo dispatch model (entry:FsEntry) =
       ]
       div [ Class "columns" ] [
         div [ Class "column is-one-fifth" ] [
+          strong [] [ str "Type:" ]
+        ]
+        div [ Class "column" ] [
+          str (FsEntry.mimeType entry)
+        ]
+      ]
+      div [ Class "columns" ] [
+        div [ Class "column is-one-fifth" ] [
           strong [] [ str "Size:" ]
         ]
         div [ Class "column" ] [
@@ -169,6 +177,7 @@ let private body dispatch (model: Model) =
     FsEntry.File(
       { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
         Name = name "bye.txt"
+        MimeType = "text/plain"
         Size = 1173741825u
         Filtered = 0u })
 

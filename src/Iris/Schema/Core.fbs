@@ -139,6 +139,7 @@ table FsInfoFB {
     Type: FsEntryTypeFB;
     Path: FsPathFB;
     Name: string;
+    MimeType: string;
     Size: uint;
     Filtered: uint;
 }

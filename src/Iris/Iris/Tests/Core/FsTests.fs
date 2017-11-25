@@ -67,6 +67,7 @@ module FsTests =
           FsEntry.Directory(
             { Path = basePath + dirPath
               Name = name (unwrap dirPath)
+              MimeType = "application/x-directory"
               Filtered = 0u
               Size = 0u
             }, Map.empty)
@@ -79,6 +80,7 @@ module FsTests =
           FsEntry.File(
             { Path = basePath + dirPath + file1Path
               Name = name (unwrap file1Path)
+              MimeType = "application/bla"
               Filtered = 0u
               Size = 0u
             })
@@ -95,6 +97,7 @@ module FsTests =
           FsEntry.File(
             { Path = basePath + file2Path
               Name = name (unwrap file2Path)
+              MimeType = "application/bla"
               Filtered = 0u
               Size = 0u
             })
