@@ -304,9 +304,8 @@ html, body {
     height: 100%;
 
     .machine {
-      padding-left: 10px;
+      padding: 10px;
       min-height: 20px;
-      margin-bottom: 0.5em;
       border-bottom: 1px solid $iris-grey;
 
       .directories {
@@ -328,6 +327,7 @@ html, body {
 
   .file-info {
     .info {
+      margin-top: 10px;
       padding: 10px;
       .columns {
         margin-left: 0;

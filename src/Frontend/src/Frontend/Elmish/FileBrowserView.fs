@@ -38,32 +38,36 @@ let rec private directoryTree dispatch model = function
       div [ Class "children" ] children
     ]
 
-let private machine dispatch model trees node =
-  let directories =
-    trees
-    |> Map.tryFind (Member.id node)
-    |> Option.map (FsTree.directories >> directoryTree dispatch model)
-    |> Option.defaultValue (str "<empty>")
-
-  div [ Class "machine" ] [
+let private machineIcon dispatch node =
+  span [
+    Class "iris-output iris-icon icon-host"
+    OnClick (fun _ -> Select.clusterMember dispatch node)
+    Style [ Cursor "pointer" ]
+  ] [
+    str (unwrap node.HostName)
     span [
-      Class "iris-output iris-icon icon-host"
-      OnClick (fun _ -> Select.clusterMember dispatch node)
-      Style [ Cursor "pointer" ]
-    ] [
-      str (unwrap node.HostName)
-      span [
-        classList [
-          "iris-icon icon-bull",true
-          "iris-status-off", node.State <> RaftMemberState.Running
-          "iris-status-on", node.State = RaftMemberState.Running
-        ]
-      ] []
-    ]
-    div [ Class "directories" ] [
-      directories
-    ]
+      classList [
+        "iris-icon icon-bull",true
+        "iris-status-off", node.State <> RaftMemberState.Running
+        "iris-status-on", node.State = RaftMemberState.Running
+      ]
+    ] []
   ]
+
+let private machine dispatch model trees node =
+  let rnd = Random()
+  let isOpen = if (rnd.Next(0,2)) > 0 then true else false
+  let directories =
+    if isOpen then
+      trees
+      |> Map.tryFind (Member.id node)
+      |> Option.map (FsTree.directories >> directoryTree dispatch model)
+      |> Option.map (fun dirs -> div [ Class "directories" ] [ dirs ])
+    else None
+
+  [ Some (machineIcon dispatch node); directories ]
+  |> List.choose id
+  |> div [ Class "machine" ]
 
 let private machineBrowser dispatch model trees =
   let sites =
