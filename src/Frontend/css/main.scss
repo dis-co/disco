@@ -340,3 +340,75 @@ html, body {
     }
   }
 }
+
+.asset-browser {
+  display: flex;
+  flex-flow: row;
+  height: 100%;
+  width: 100%;
+
+  .panel {
+    height: 100%;
+    flex-grow: 1;
+    margin-bottom: 0;
+  }
+
+  .inlay {
+    height: 100%;
+    display: flex;
+    flex-flow: column;
+
+    .header {
+      line-height: 25px;
+      height: 25px;
+      background: #d0d0d0;
+      font-weight: bold;
+      padding-left: 10px;
+      font-size: 1.2em;
+
+      .bread {
+        line-height: 25px;
+        height: 25px;
+
+        .crumb:after {
+          padding: 0 5px 0 5px;
+          content: ">"
+        }
+
+        .crumb:last-child:after {
+          content: "";
+        }
+      }
+    }
+
+    .body {
+      flex: 3;
+    }
+  }
+
+  .center {
+    height: 100%;
+    flex-grow: 3;
+    border-left: 1px solid $iris-grey;
+    border-right: 1px solid $iris-grey;
+
+    .body {
+      background: #ddd;
+    }
+  }
+
+  .machines {
+    display: flex;
+    flex-flow: column;
+    height: 100%;
+    overflow: auto;
+    justify-content: flex-start;
+
+    .machine {
+      height: 30px;
+      width: 100%;
+      border-bottom: 1px solid $iris-grey;
+      padding: 8px 0 0 10px;
+    }
+  }
+}

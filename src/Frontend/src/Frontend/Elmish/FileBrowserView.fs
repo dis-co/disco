@@ -202,6 +202,69 @@ let private body dispatch (model: Model) =
     ]
   ]
 
+let private body3 dispatch model =
+  div [ Class "asset-browser" ] [
+    div [ Class "panel" ] [
+      div [ Class "inlay" ] [
+        header [ Class "header" ] [ str "Machines" ]
+        div [ Class "body" ] [
+          div [ Class "machines" ] [
+            div [ Class "machine" ] [
+              span [
+                Class "iris-output iris-icon icon-host"
+                Style [ Cursor "pointer" ]
+              ] [
+                str "ERIC"
+                span [
+                  classList [
+                    "iris-icon icon-bull",true
+                    "iris-status-on", true
+                  ]
+                ] []
+              ]
+            ]
+
+            div [ Class "machine" ] [
+              span [
+                Class "iris-output iris-icon icon-host"
+                Style [ Cursor "pointer" ]
+              ] [
+                str "SANDRA"
+                span [
+                  classList [
+                    "iris-icon icon-bull",true
+                    "iris-status-on", true
+                  ]
+                ] []
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+    div [ Class "center" ] [
+      div [ Class "inlay" ] [
+        header [ Class "header" ] [
+          div [ Class "bread" ] [
+            span [ Class "crumb" ] [ str "assets" ]
+            span [ Class "crumb" ] [ str "vm-2017" ]
+            span [ Class "crumb" ] [ str "stack-01" ]
+          ]
+        ]
+        div [ Class "body" ] [
+          str "Middle"
+        ]
+      ]
+    ]
+    div [ Class "panel" ] [
+      div [ Class "inlay" ] [
+        header [ Class "header" ] [ str "Fileinfo" ]
+        div [ Class "body" ] [
+          str "Middle"
+        ]
+      ]
+    ]
+  ]
 
 /// __        ___     _            _
 /// \ \      / (_) __| | __ _  ___| |_
@@ -227,6 +290,6 @@ let createWidget (id: System.Guid) =
           | Some s1, Some s2 -> equalsRef s1.FsTrees s2.FsTrees
           | None, None -> true
           | _ -> false)
-        (widget id this.Name None body dispatch)
+        (widget id this.Name None body3 dispatch)
         model
   }
