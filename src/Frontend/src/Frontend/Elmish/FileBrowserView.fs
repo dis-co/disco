@@ -77,11 +77,22 @@ type FileBrowserView(props) =
       this.state
       |> FileBrowserState.removeOpenDirectory entry
       |> FileBrowserState.selectDirectory entry
+      |> FileBrowserState.selectFile entry
       |> this.setState
     else
       this.state
       |> FileBrowserState.addOpenDirectory entry
       |> FileBrowserState.selectDirectory entry
+      |> FileBrowserState.selectFile entry
+      |> this.setState
+
+  // ** toggleFile
+
+  member this.toggleFile host fspath =
+    let entry = host, fspath
+    if this.state.SelectedFile <> Some entry then
+      this.state
+      |> FileBrowserState.selectFile entry
       |> this.setState
 
   // ** renderDirectoryTree
@@ -194,10 +205,28 @@ type FileBrowserView(props) =
 
   // ** renderFileRow
 
-  member this.renderFileRow (entry:FsEntry) =
-    div [ Class "file" ] [
+  member this.renderFileRow host (entry:FsEntry) =
+    let path = FsEntry.path entry
+    let isSelected =
+      match this.state.SelectedFile with
+      | Some entry -> entry = (host, path)
+      | _ -> false
+
+    div [
+      Class "file"
+      OnClick
+        (fun e ->
+          e.stopPropagation()
+          this.toggleFile host path)
+    ] [
       span [ ] [
-        i [ Class "icon fa fa-file-o" ] [ str "" ]
+        i [
+          classList [
+            "icon fa", true
+            "fa-file-o", not isSelected
+            "fa-file", isSelected
+          ]
+        ] [ str "" ]
         str (FsEntry.name entry |> unwrap)
       ]
     ]
@@ -217,57 +246,112 @@ type FileBrowserView(props) =
             children
             |> Map.filter (fun _ -> FsEntry.isFile)
             |> Map.toList
-            |> List.map (snd >> this.renderFileRow)
+            |> List.map (snd >> this.renderFileRow host)
           | _ -> List.empty
     div [ Class "files" ] children
 
   // ** renderFileInfo
 
-  member this.renderFileInfo() =
-    let entry =
-      FsEntry.File(
-        { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
-          Name = name "bye.txt"
-          MimeType = "text/plain"
-          Size = 1173741825u
-          Filtered = 0u })
+  member this.renderFileInfo trees =
+    match this.state.SelectedFile with
+    | None -> div [ Class "file-info" ] []
+    | Some (host, path) ->
+      match Map.tryFind host trees with
+      | None -> div [ Class "file-info" ] []
+      | Some tree ->
+        match FsTree.tryFind path tree with
+        | Some (FsEntry.Directory(info,_)) ->
+          div [ Class "file-info" ] [
+            div [ Class "info" ] [
+              div [ Class "columns" ] [
+                div [ Class "column" ] [ strong [] [ str "Directory" ] ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Path:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string path)
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Name:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string info.Name)
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Files:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string info.Size)
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Filtered:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string info.Filtered)
+                ]
+              ]
+            ]
+          ]
+        | Some (FsEntry.File info) ->
+          div [ Class "file-info" ] [
+            div [ Class "info" ] [
+              div [ Class "columns" ] [
+                div [ Class "column" ] [ strong [] [ str "File" ] ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Path:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string path)
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Name:" ]
+                ]
+                div [ Class "column" ] [
+                  str (string info.Name)
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Type:" ]
+                ]
+                div [ Class "column" ] [
+                  str info.MimeType
+                ]
+              ]
+              div [ Class "columns" ] [
+                div [ Class "column is-one-fifth" ] [
+                  strong [] [ str "Size:" ]
+                ]
+                div [ Class "column" ] [
+                  str (FsEntry.formatBytes info.Size)
+                ]
+              ]
+            ]
+          ]
+        | _ -> div [ Class "file-info" ] []
 
-    div [ Class "file-info" ] [
-      div [ Class "info" ] [
-        div [ Class "columns" ] [
-          div [ Class "column is-one-fifth" ] [
-            strong [] [ str "Path:" ]
-          ]
-          div [ Class "column" ] [
-            str (entry |> FsEntry.path |> string)
-          ]
-        ]
-        div [ Class "columns" ] [
-          div [ Class "column is-one-fifth" ] [
-            strong [] [ str "Name:" ]
-          ]
-          div [ Class "column" ] [
-            str (FsEntry.name entry |> string)
-          ]
-        ]
-        div [ Class "columns" ] [
-          div [ Class "column is-one-fifth" ] [
-            strong [] [ str "Type:" ]
-          ]
-          div [ Class "column" ] [
-            str (FsEntry.mimeType entry)
-          ]
-        ]
-        div [ Class "columns" ] [
-          div [ Class "column is-one-fifth" ] [
-            strong [] [ str "Size:" ]
-          ]
-          div [ Class "column" ] [
-            str (entry |> FsEntry.size |> FsEntry.formatBytes)
-          ]
-        ]
+  // ** renderBreadcrumbs
+
+  member this.renderBreadcrumbs () =
+    match this.state.SelectedDirectory with
+    | None -> header [ Class "header" ] []
+    | Some (_, path) ->
+      let crumbs = List.map (fun elm -> span [ Class "crumb" ] [ str elm ]) path.Elements
+      header [ Class "header" ] [
+        div [ Class "bread" ] crumbs
       ]
-    ]
 
   // ** renderBody
 
@@ -288,13 +372,7 @@ type FileBrowserView(props) =
       ]
       div [ Class "center" ] [
         div [ Class "inlay" ] [
-          header [ Class "header" ] [
-            div [ Class "bread" ] [
-              span [ Class "crumb" ] [ str "assets" ]
-              span [ Class "crumb" ] [ str "vm-2017" ]
-              span [ Class "crumb" ] [ str "stack-01" ]
-            ]
-          ]
+          this.renderBreadcrumbs()
           div [ Class "body" ] [
             this.renderFileList trees
           ]
@@ -304,7 +382,7 @@ type FileBrowserView(props) =
         div [ Class "inlay" ] [
           header [ Class "header" ] [ str "Fileinfo" ]
           div [ Class "body" ] [
-            this.renderFileInfo()
+            this.renderFileInfo trees
           ]
         ]
       ]
