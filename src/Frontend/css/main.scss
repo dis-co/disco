@@ -338,6 +338,7 @@ html, body {
       width: 100%;
       border-bottom: 1px solid $iris-grey;
       padding: 8px 0 0 10px;
+      transition: all 0.4s;
 
       &.is-open {
         flex-grow: 1;
