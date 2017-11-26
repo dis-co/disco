@@ -34,7 +34,7 @@ type [<Pojo>] FileBrowserProps =
 
 type [<Pojo>] FileBrowserState =
   { File: FsEntry option
-    OpenDirectories: Map<HostId,FsPath>
+    OpenDirectories: Set<HostId * FsPath>
     Machine: HostId option }
 
 // * FileBrowserState module
@@ -43,8 +43,19 @@ module FileBrowserState =
 
   let defaultState =
     { File = None
-      OpenDirectories = Map.empty
+      OpenDirectories = Set.ofList []
       Machine = None }
+
+  let openDirectories { OpenDirectories = dirs } = dirs
+  let setOpenDirectories (dirs: Set<HostId*FsPath>) s =
+    printfn "dirs: %A" dirs
+    { s with OpenDirectories = dirs }
+
+  let modifyOpenDirectories f s =
+    s |> openDirectories |> f |> flip setOpenDirectories s
+
+  let addOpenDirectory dir s = modifyOpenDirectories (Set.add dir) s
+  let removeOpenDirectory dir s = modifyOpenDirectories (Set.remove dir) s
 
 // * FileBrowserView
 
@@ -52,17 +63,40 @@ type FileBrowserView(props) =
   inherit React.Component<FileBrowserProps, FileBrowserState>(props)
   do base.setInitState(FileBrowserState.defaultState)
 
+  // ** toggleDirectory
+
+  member this.toggleDirectory host fspath =
+    let entry = host, fspath
+    if Set.contains entry this.state.OpenDirectories then
+      this.state
+      |> FileBrowserState.removeOpenDirectory entry
+      |> this.setState
+    else
+      this.state
+      |> FileBrowserState.addOpenDirectory entry
+      |> this.setState
+
   // ** renderDirectoryTree
 
-  member this.renderDirectoryTree = function
+  member this.renderDirectoryTree host = function
     | FsEntry.File(info) -> str (unwrap info.Name)
     | FsEntry.Directory(info, children) ->
+
       let children =
-        children
-        |> Map.toList
-        |> List.map (snd >> this.renderDirectoryTree)
-      div [ Class "directory" ] [
-        span [ ] [
+        if Set.contains (host, info.Path) this.state.OpenDirectories then
+          children
+          |> Map.toList
+          |> List.map (snd >> this.renderDirectoryTree host)
+        else List.empty
+
+      div [
+        Class "directory"
+        OnClick
+          (fun e ->
+            e.stopPropagation()         /// needed to stop all other toggles from firing
+            this.toggleDirectory host info.Path)
+      ] [
+        span [ classList [ "has-children", List.length children > 0 ] ] [
           i [ Class "icon fa fa-folder-o" ] [ str "" ]
           str (unwrap info.Name)
         ]
@@ -95,11 +129,13 @@ type FileBrowserView(props) =
       | Some id when id = node.Id -> true
       | _ -> false
 
+    let nodeId = Member.id node
+
     let directories =
       if isOpen then
         trees
-        |> Map.tryFind (Member.id node)
-        |> Option.map (FsTree.directories >> this.renderDirectoryTree)
+        |> Map.tryFind nodeId
+        |> Option.map (FsTree.directories >> this.renderDirectoryTree nodeId)
         |> Option.map (fun dirs -> div [ Class "directories" ] [ dirs ])
       else None
 

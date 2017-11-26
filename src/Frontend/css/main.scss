@@ -345,10 +345,16 @@ html, body {
       }
 
       .directories {
-        padding-left: 10px;
+        padding: 5px 0 0 10px;
         margin: 1px 0 1px 0;
         .directory {
           cursor: pointer;
+          .has-children:before {
+            content: ">";
+            &.is-open {
+              content: "heh";
+            }
+          }
           .icon {
             height: 18px;
             margin-right: 0;
