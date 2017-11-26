@@ -35,6 +35,8 @@ type [<Pojo>] FileBrowserProps =
 type [<Pojo>] FileBrowserState =
   { File: FsEntry option
     OpenDirectories: Set<HostId * FsPath>
+    SelectedDirectory: (HostId * FsPath) option
+    SelectedFile: (HostId * FsPath) option
     Machine: HostId option }
 
 // * FileBrowserState module
@@ -44,6 +46,8 @@ module FileBrowserState =
   let defaultState =
     { File = None
       OpenDirectories = Set.ofList []
+      SelectedDirectory = None
+      SelectedFile = None
       Machine = None }
 
   let openDirectories { OpenDirectories = dirs } = dirs
@@ -55,6 +59,9 @@ module FileBrowserState =
 
   let addOpenDirectory dir s = modifyOpenDirectories (Set.add dir) s
   let removeOpenDirectory dir s = modifyOpenDirectories (Set.remove dir) s
+
+  let selectDirectory dir s = { s with SelectedDirectory = Some dir }
+  let selectFile dir s = { s with SelectedFile = Some dir }
 
 // * FileBrowserView
 
@@ -69,10 +76,12 @@ type FileBrowserView(props) =
     if Set.contains entry this.state.OpenDirectories then
       this.state
       |> FileBrowserState.removeOpenDirectory entry
+      |> FileBrowserState.selectDirectory entry
       |> this.setState
     else
       this.state
       |> FileBrowserState.addOpenDirectory entry
+      |> FileBrowserState.selectDirectory entry
       |> this.setState
 
   // ** renderDirectoryTree
@@ -82,6 +91,10 @@ type FileBrowserView(props) =
     | FsEntry.Directory(info, children) ->
       let hasChildren = Map.count children > 0
       let isOpen = Set.contains (host, info.Path) this.state.OpenDirectories
+      let isSelected =
+        match this.state.SelectedDirectory with
+        | Some entry -> entry = (host, info.Path)
+        | _ -> false
 
       let directories =
         if isOpen then
@@ -101,7 +114,7 @@ type FileBrowserView(props) =
             e.stopPropagation()         /// needed to stop all other toggles from firing
             this.toggleDirectory host info.Path)
       ] [
-        span [  ] [
+        span [ classList [ "is-selected", isSelected ] ] [
           i [
             classList [
               "icon fa", true
@@ -192,16 +205,21 @@ type FileBrowserView(props) =
   // ** renderFileList
 
   member this.renderFileList (trees:Map<HostId,FsTree>) =
-    let files: ReactElement list =
-      if not (Map.isEmpty trees) then
-        trees
-        |> Map.toList
-        |> List.head
-        |> snd
-        |> FsTree.files
-        |> List.map this.renderFileRow
-      else List.empty
-    div [ Class "files" ] files
+    let children =
+      match this.state.SelectedDirectory with
+      | None -> List.empty
+      | Some (host, path) ->
+        match Map.tryFind host trees with
+        | None -> List.empty
+        | Some tree ->
+          match FsTree.tryFind path tree with
+          | Some (FsEntry.Directory(info, children)) ->
+            children
+            |> Map.filter (fun _ -> FsEntry.isFile)
+            |> Map.toList
+            |> List.map (snd >> this.renderFileRow)
+          | _ -> List.empty
+    div [ Class "files" ] children
 
   // ** renderFileInfo
 

@@ -358,7 +358,11 @@ html, body {
           }
 
           &.is-open:before {
-              content: "⏷" !important;
+            content: "⏷" !important;
+          }
+
+          .is-selected {
+            font-weight: bold;
           }
 
           .icon {
