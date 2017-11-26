@@ -48,7 +48,6 @@ module FileBrowserState =
 
   let openDirectories { OpenDirectories = dirs } = dirs
   let setOpenDirectories (dirs: Set<HostId*FsPath>) s =
-    printfn "dirs: %A" dirs
     { s with OpenDirectories = dirs }
 
   let modifyOpenDirectories f s =
@@ -81,26 +80,38 @@ type FileBrowserView(props) =
   member this.renderDirectoryTree host = function
     | FsEntry.File(info) -> str (unwrap info.Name)
     | FsEntry.Directory(info, children) ->
+      let hasChildren = Map.count children > 0
+      let isOpen = Set.contains (host, info.Path) this.state.OpenDirectories
 
-      let children =
-        if Set.contains (host, info.Path) this.state.OpenDirectories then
+      let directories =
+        if isOpen then
           children
           |> Map.toList
           |> List.map (snd >> this.renderDirectoryTree host)
         else List.empty
 
       div [
-        Class "directory"
+        classList [
+          "directory", true
+          "has-children", hasChildren
+          "is-open", isOpen && hasChildren
+        ]
         OnClick
           (fun e ->
             e.stopPropagation()         /// needed to stop all other toggles from firing
             this.toggleDirectory host info.Path)
       ] [
-        span [ classList [ "has-children", List.length children > 0 ] ] [
-          i [ Class "icon fa fa-folder-o" ] [ str "" ]
+        span [  ] [
+          i [
+            classList [
+              "icon fa", true
+              "fa-folder-o", (not isOpen && hasChildren) || not hasChildren
+              "fa-folder-open-o", isOpen && hasChildren
+            ]
+          ] [ str "" ]
           str (unwrap info.Name)
         ]
-        div [ Class "children" ] children
+        div [ Class "children" ] directories
       ]
 
   // ** renderMachineIcon

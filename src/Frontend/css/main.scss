@@ -345,16 +345,22 @@ html, body {
       }
 
       .directories {
-        padding: 5px 0 0 10px;
+        padding: 5px 0 0 0;
         margin: 1px 0 1px 0;
+        .directory:before {
+          content: "\00a0\00a0";
+        }
         .directory {
           cursor: pointer;
-          .has-children:before {
-            content: ">";
-            &.is-open {
-              content: "heh";
-            }
+
+          &.has-children:before {
+            content: "⏵";
           }
+
+          &.is-open:before {
+              content: "⏷" !important;
+          }
+
           .icon {
             height: 18px;
             margin-right: 0;
