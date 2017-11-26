@@ -253,9 +253,19 @@ html, body {
   height: 100%;
   width: 100%;
 
-  .panel {
+  .left-panel {
     height: 100%;
-    flex-grow: 1;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 170px;
+    margin-bottom: 0;
+  }
+
+  .right-panel {
+    height: 100%;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 300px;
     margin-bottom: 0;
   }
 
@@ -322,6 +332,12 @@ html, body {
       .column {
         padding-top: 2px;
         padding-bottom: 2px;
+        &:not(.is-one-fifth) {
+          width: 219px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
     }
   }

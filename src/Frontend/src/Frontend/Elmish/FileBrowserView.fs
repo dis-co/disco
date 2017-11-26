@@ -362,7 +362,7 @@ type FileBrowserView(props) =
       |> Option.defaultValue Map.empty
 
     div [ Class "asset-browser" ] [
-      div [ Class "panel" ] [
+      div [ Class "left-panel" ] [
         div [ Class "inlay" ] [
           header [ Class "header" ] [ str "Machines" ]
           div [ Class "body" ] [
@@ -378,7 +378,7 @@ type FileBrowserView(props) =
           ]
         ]
       ]
-      div [ Class "panel" ] [
+      div [ Class "right-panel" ] [
         div [ Class "inlay" ] [
           header [ Class "header" ] [ str "Fileinfo" ]
           div [ Class "body" ] [
