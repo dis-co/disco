@@ -23,127 +23,6 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-let rec private directoryTree dispatch model = function
-  | FsEntry.File(info) -> str (unwrap info.Name)
-  | FsEntry.Directory(info, children) ->
-    let children =
-      children
-      |> Map.toList
-      |> List.map (snd >> directoryTree dispatch model)
-    div [ Class "directory" ] [
-      span [ ] [
-        i [ Class "icon fa fa-folder-o" ] [ str "" ]
-        str (unwrap info.Name)
-      ]
-      div [ Class "children" ] children
-    ]
-
-let private machineIcon dispatch node =
-  span [
-    Class "iris-output iris-icon icon-host"
-    OnClick (fun _ -> Select.clusterMember dispatch node)
-    Style [ Cursor "pointer" ]
-  ] [
-    str (unwrap node.HostName)
-    span [
-      classList [
-        "iris-icon icon-bull",true
-        "iris-status-off", node.State <> RaftMemberState.Running
-        "iris-status-on", node.State = RaftMemberState.Running
-      ]
-    ] []
-  ]
-
-let private machine dispatch model trees node =
-  let rnd = Random()
-  let isOpen = if (rnd.Next(0,2)) > 0 then true else false
-  let directories =
-    if isOpen then
-      trees
-      |> Map.tryFind (Member.id node)
-      |> Option.map (FsTree.directories >> directoryTree dispatch model)
-      |> Option.map (fun dirs -> div [ Class "directories" ] [ dirs ])
-    else None
-
-  [ Some (machineIcon dispatch node); directories ]
-  |> List.choose id
-  |> div [ Class "machine" ]
-
-let private machineBrowser dispatch model trees =
-  let sites =
-    model.state
-    |> Option.map (State.sites >> Array.toList)
-    |> Option.defaultValue List.empty
-
-  let members =
-    model.state
-    |> Option.bind State.activeSite
-    |> Option.bind (fun id -> List.tryFind (fun site -> ClusterConfig.id site = id) sites)
-    |> Option.map (ClusterConfig.members >> Map.toList)
-    |> Option.defaultValue List.empty
-    |> List.sortBy (snd >> Member.hostName)
-    |> List.map (snd >> machine dispatch model trees)
-
-  div [ Class "machines" ] members
-
-let private fileRow dispatch model (entry:FsEntry) =
-  div [ Class "file" ] [
-    span [ ] [
-      i [ Class "icon fa fa-file-o" ] [ str "" ]
-      str (FsEntry.name entry |> unwrap)
-    ]
-  ]
-
-let private fileList dispatch model (trees:Map<HostId,FsTree>) =
-  let files: ReactElement list =
-    if not (Map.isEmpty trees) then
-      trees
-      |> Map.toList
-      |> List.head
-      |> snd
-      |> FsTree.files
-      |> List.map (fileRow dispatch model)
-    else List.empty
-  div [ Class "files" ] files
-
-let private fileInfo dispatch model (entry:FsEntry) =
-  div [ Class "file-info" ] [
-    div [ Class "info" ] [
-      div [ Class "columns" ] [
-        div [ Class "column is-one-fifth" ] [
-          strong [] [ str "Path:" ]
-        ]
-        div [ Class "column" ] [
-          str (entry |> FsEntry.path |> string)
-        ]
-      ]
-      div [ Class "columns" ] [
-        div [ Class "column is-one-fifth" ] [
-          strong [] [ str "Name:" ]
-        ]
-        div [ Class "column" ] [
-          str (FsEntry.name entry |> string)
-        ]
-      ]
-      div [ Class "columns" ] [
-        div [ Class "column is-one-fifth" ] [
-          strong [] [ str "Type:" ]
-        ]
-        div [ Class "column" ] [
-          str (FsEntry.mimeType entry)
-        ]
-      ]
-      div [ Class "columns" ] [
-        div [ Class "column is-one-fifth" ] [
-          strong [] [ str "Size:" ]
-        ]
-        div [ Class "column" ] [
-          str (entry |> FsEntry.size |> FsEntry.formatBytes)
-        ]
-      ]
-    ]
-  ]
-
 // * FileBrowserProps
 
 type [<Pojo>] FileBrowserProps =
@@ -171,14 +50,104 @@ type FileBrowserView(props) =
   inherit React.Component<FileBrowserProps, FileBrowserState>(props)
   do base.setInitState(FileBrowserState.defaultState)
 
-  // ** renderBody
+  // ** renderDirectoryTree
 
-  member this.renderBody() =
-    let trees =
+  member this.renderDirectoryTree = function
+    | FsEntry.File(info) -> str (unwrap info.Name)
+    | FsEntry.Directory(info, children) ->
+      let children =
+        children
+        |> Map.toList
+        |> List.map (snd >> this.renderDirectoryTree)
+      div [ Class "directory" ] [
+        span [ ] [
+          i [ Class "icon fa fa-folder-o" ] [ str "" ]
+          str (unwrap info.Name)
+        ]
+        div [ Class "children" ] children
+      ]
+
+  // ** renderMachineIcon
+
+  member this.renderMachineIcon(node) =
+    span [
+      Class "iris-output iris-icon icon-host"
+      OnClick (fun _ -> Select.clusterMember this.props.Dispatch node)
+      Style [ Cursor "pointer" ]
+    ] [
+      str (unwrap node.HostName)
+      span [
+        classList [
+          "iris-icon icon-bull",true
+          "iris-status-off", node.State <> RaftMemberState.Running
+          "iris-status-on", node.State = RaftMemberState.Running
+        ]
+      ] []
+    ]
+
+  // ** renderMachine
+
+  member this.renderMachine trees node =
+    let rnd = Random()
+    let isOpen = if (rnd.Next(0,2)) > 0 then true else false
+    let directories =
+      if isOpen then
+        trees
+        |> Map.tryFind (Member.id node)
+        |> Option.map (FsTree.directories >> this.renderDirectoryTree)
+        |> Option.map (fun dirs -> div [ Class "directories" ] [ dirs ])
+      else None
+
+    [ Some (this.renderMachineIcon node); directories ]
+    |> List.choose id
+    |> div [ Class "machine" ]
+
+  // ** renderMachineBrowser
+
+  member this.renderMachineBrowser trees =
+    let sites =
       this.props.Model.state
-      |> Option.map State.fsTrees
-      |> Option.defaultValue Map.empty
+      |> Option.map (State.sites >> Array.toList)
+      |> Option.defaultValue List.empty
 
+    let members =
+      this.props.Model.state
+      |> Option.bind State.activeSite
+      |> Option.bind (fun id -> List.tryFind (fun site -> ClusterConfig.id site = id) sites)
+      |> Option.map (ClusterConfig.members >> Map.toList)
+      |> Option.defaultValue List.empty
+      |> List.sortBy (snd >> Member.hostName)
+      |> List.map (snd >> this.renderMachine trees)
+
+    div [ Class "machines" ] members
+
+  // ** renderFileRow
+
+  member this.renderFileRow (entry:FsEntry) =
+    div [ Class "file" ] [
+      span [ ] [
+        i [ Class "icon fa fa-file-o" ] [ str "" ]
+        str (FsEntry.name entry |> unwrap)
+      ]
+    ]
+
+  // ** renderFileList
+
+  member this.renderFileList (trees:Map<HostId,FsTree>) =
+    let files: ReactElement list =
+      if not (Map.isEmpty trees) then
+        trees
+        |> Map.toList
+        |> List.head
+        |> snd
+        |> FsTree.files
+        |> List.map this.renderFileRow
+      else List.empty
+    div [ Class "files" ] files
+
+  // ** renderFileInfo
+
+  member this.renderFileInfo() =
     let entry =
       FsEntry.File(
         { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
@@ -187,12 +156,57 @@ type FileBrowserView(props) =
           Size = 1173741825u
           Filtered = 0u })
 
+    div [ Class "file-info" ] [
+      div [ Class "info" ] [
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Path:" ]
+          ]
+          div [ Class "column" ] [
+            str (entry |> FsEntry.path |> string)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Name:" ]
+          ]
+          div [ Class "column" ] [
+            str (FsEntry.name entry |> string)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Type:" ]
+          ]
+          div [ Class "column" ] [
+            str (FsEntry.mimeType entry)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Size:" ]
+          ]
+          div [ Class "column" ] [
+            str (entry |> FsEntry.size |> FsEntry.formatBytes)
+          ]
+        ]
+      ]
+    ]
+
+  // ** renderBody
+
+  member this.renderBody() =
+    let trees =
+      this.props.Model.state
+      |> Option.map State.fsTrees
+      |> Option.defaultValue Map.empty
+
     div [ Class "asset-browser" ] [
       div [ Class "panel" ] [
         div [ Class "inlay" ] [
           header [ Class "header" ] [ str "Machines" ]
           div [ Class "body" ] [
-            machineBrowser this.props.Dispatch this.props.Model trees
+            this.renderMachineBrowser trees
           ]
         ]
       ]
@@ -206,7 +220,7 @@ type FileBrowserView(props) =
             ]
           ]
           div [ Class "body" ] [
-            fileList this.props.Dispatch this.props.Model trees
+            this.renderFileList trees
           ]
         ]
       ]
@@ -214,7 +228,7 @@ type FileBrowserView(props) =
         div [ Class "inlay" ] [
           header [ Class "header" ] [ str "Fileinfo" ]
           div [ Class "body" ] [
-            fileInfo this.props.Dispatch this.props.Model entry
+            this.renderFileInfo()
           ]
         ]
       ]
