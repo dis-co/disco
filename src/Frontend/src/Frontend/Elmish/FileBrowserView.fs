@@ -84,9 +84,7 @@ let private machineBrowser dispatch model trees =
     |> List.sortBy (snd >> Member.hostName)
     |> List.map (snd >> machine dispatch model trees)
 
-  div [ Class "panel column is-one-quarter" ] [
-    div [ Class "machines" ] members
-  ]
+  div [ Class "machines" ] members
 
 let private fileRow dispatch model (entry:FsEntry) =
   div [ Class "file" ] [
@@ -106,10 +104,10 @@ let private fileList dispatch model (trees:Map<HostId,FsTree>) =
       |> FsTree.files
       |> List.map (fileRow dispatch model)
     else List.empty
-  div [ Class "panel main column" ] files
+  div [ Class "files" ] files
 
 let private fileInfo dispatch model (entry:FsEntry) =
-  div [ Class "panel file-info column is-one-quarter" ] [
+  div [ Class "file-info" ] [
     div [ Class "info" ] [
       div [ Class "columns" ] [
         div [ Class "column is-one-fifth" ] [
@@ -146,40 +144,7 @@ let private fileInfo dispatch model (entry:FsEntry) =
     ]
   ]
 
-let private bar dispatch model =
-  div [ Class "bar columns is-gapless" ] [
-    div [ Class "column is-one-quarter" ] [
-      nav [ Class "breadcrumb is-large" ]  [
-        ul [] [
-          li [ Class "is-active" ] [
-            a [] [ str "Machines" ]
-          ]
-        ]
-      ]
-    ]
-    div [ Class "column center" ] [
-      nav [ Class "breadcrumb is-large" ]  [
-        ul [] [
-          li [] [ a [] [ str "assets" ] ]
-          li [] [ a [] [ str "stack_01" ] ]
-          li [ Class "is-active" ] [
-            a [] [ str "substack_04" ]
-          ]
-        ]
-      ]
-    ]
-    div [ Class "column is-one-quarter" ] [
-      nav [ Class "breadcrumb is-large" ]  [
-        ul [] [
-          li [ Class "is-active" ] [
-            a [] [ str "Fileinfo" ]
-          ]
-        ]
-      ]
-    ]
-  ]
-
-let private body dispatch (model: Model) =
+let private body dispatch model =
   let trees =
     model.state
     |> Option.map State.fsTrees
@@ -193,52 +158,12 @@ let private body dispatch (model: Model) =
         Size = 1173741825u
         Filtered = 0u })
 
-  div [ Class "iris-file-browser" ] [
-    bar dispatch model
-    div [ Class "body columns is-gapless" ] [
-      machineBrowser dispatch model trees
-      fileList dispatch model trees
-      fileInfo dispatch model entry
-    ]
-  ]
-
-let private body3 dispatch model =
   div [ Class "asset-browser" ] [
     div [ Class "panel" ] [
       div [ Class "inlay" ] [
         header [ Class "header" ] [ str "Machines" ]
         div [ Class "body" ] [
-          div [ Class "machines" ] [
-            div [ Class "machine" ] [
-              span [
-                Class "iris-output iris-icon icon-host"
-                Style [ Cursor "pointer" ]
-              ] [
-                str "ERIC"
-                span [
-                  classList [
-                    "iris-icon icon-bull",true
-                    "iris-status-on", true
-                  ]
-                ] []
-              ]
-            ]
-
-            div [ Class "machine" ] [
-              span [
-                Class "iris-output iris-icon icon-host"
-                Style [ Cursor "pointer" ]
-              ] [
-                str "SANDRA"
-                span [
-                  classList [
-                    "iris-icon icon-bull",true
-                    "iris-status-on", true
-                  ]
-                ] []
-              ]
-            ]
-          ]
+          machineBrowser dispatch model trees
         ]
       ]
     ]
@@ -252,7 +177,7 @@ let private body3 dispatch model =
           ]
         ]
         div [ Class "body" ] [
-          str "Middle"
+          fileList dispatch model trees
         ]
       ]
     ]
@@ -260,7 +185,7 @@ let private body3 dispatch model =
       div [ Class "inlay" ] [
         header [ Class "header" ] [ str "Fileinfo" ]
         div [ Class "body" ] [
-          str "Middle"
+          fileInfo dispatch model entry
         ]
       ]
     ]
@@ -290,6 +215,6 @@ let createWidget (id: System.Guid) =
           | Some s1, Some s2 -> equalsRef s1.FsTrees s2.FsTrees
           | None, None -> true
           | _ -> false)
-        (widget id this.Name None body3 dispatch)
+        (widget id this.Name None body dispatch)
         model
   }

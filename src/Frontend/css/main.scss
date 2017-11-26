@@ -247,100 +247,6 @@ html, body {
   }
 }
 
-.iris-file-browser {
-  height: 100%;
-  flex: 1;
-  overflow: hidden;
-
-  .body {
-    height: 100%;
-  }
-
-  .panel {
-    padding: 4px;
-    height: 100%;
-    overflow: scroll;
-  }
-
-  .main {
-    border-left: 1px solid $iris-grey;
-    border-right: 1px solid $iris-grey;
-    background: $iris-grey;
-    .file {
-      cursor: pointer;
-      background: white;
-      border-bottom: 1px solid $iris-grey;
-    }
-  }
-
-  .bar {
-    .breadcrumb {
-      background: #d0d0d0;
-      padding-left: 10px;
-      font-size: 1.2em;
-      font-weight: bold;
-    }
-    .center {
-      border-left: 1px solid $iris-grey;
-      border-right: 1px solid $iris-grey;
-    }
-    &.columns {
-      &.is-gapless {
-        margin-bottom: 0 !important;
-      }
-    }
-    .columns {
-      margin-left: 0;
-      margin-right: 0;
-      margin-top: 0;
-    }
-    .column {
-      padding-top: 2px;
-      padding-bottom: 2px;
-    }
-  }
-
-  .machines {
-    height: 100%;
-
-    .machine {
-      padding: 10px;
-      min-height: 20px;
-      border-bottom: 1px solid $iris-grey;
-
-      .directories {
-        padding-left: 10px;
-        margin: 1px 0 1px 0;
-        .directory {
-          cursor: pointer;
-          .icon {
-            height: 18px;
-            margin-right: 0;
-          }
-          .children {
-            padding-left: 15px;
-          }
-        }
-      }
-    }
-  }
-
-  .file-info {
-    .info {
-      margin-top: 10px;
-      padding: 10px;
-      .columns {
-        margin-left: 0;
-        margin-right: 0;
-      }
-      .column {
-        padding-top: 2px;
-        padding-bottom: 2px;
-      }
-    }
-  }
-}
-
 .asset-browser {
   display: flex;
   flex-flow: row;
@@ -397,6 +303,29 @@ html, body {
     }
   }
 
+  .files {
+    .file {
+      cursor: pointer;
+      background: white;
+      border-bottom: 1px solid $iris-grey;
+    }
+  }
+
+  .file-info {
+    .info {
+      margin-top: 10px;
+      padding: 10px;
+      .columns {
+        margin-left: 0;
+        margin-right: 0;
+      }
+      .column {
+        padding-top: 2px;
+        padding-bottom: 2px;
+      }
+    }
+  }
+
   .machines {
     display: flex;
     flex-flow: column;
@@ -405,10 +334,25 @@ html, body {
     justify-content: flex-start;
 
     .machine {
-      height: 30px;
+      min-height: 30px;
       width: 100%;
       border-bottom: 1px solid $iris-grey;
       padding: 8px 0 0 10px;
+
+      .directories {
+        padding-left: 10px;
+        margin: 1px 0 1px 0;
+        .directory {
+          cursor: pointer;
+          .icon {
+            height: 18px;
+            margin-right: 0;
+          }
+          .children {
+            padding-left: 15px;
+          }
+        }
+      }
     }
   }
 }
