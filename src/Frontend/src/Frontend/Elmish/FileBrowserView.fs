@@ -144,52 +144,99 @@ let private fileInfo dispatch model (entry:FsEntry) =
     ]
   ]
 
-let private body dispatch model =
-  let trees =
-    model.state
-    |> Option.map State.fsTrees
-    |> Option.defaultValue Map.empty
+// * FileBrowserProps
 
-  let entry =
-    FsEntry.File(
-      { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
-        Name = name "bye.txt"
-        MimeType = "text/plain"
-        Size = 1173741825u
-        Filtered = 0u })
+type [<Pojo>] FileBrowserProps =
+  { Id: Guid
+    Model: Model
+    Dispatch: Msg -> unit }
 
-  div [ Class "asset-browser" ] [
-    div [ Class "panel" ] [
-      div [ Class "inlay" ] [
-        header [ Class "header" ] [ str "Machines" ]
-        div [ Class "body" ] [
-          machineBrowser dispatch model trees
-        ]
-      ]
-    ]
-    div [ Class "center" ] [
-      div [ Class "inlay" ] [
-        header [ Class "header" ] [
-          div [ Class "bread" ] [
-            span [ Class "crumb" ] [ str "assets" ]
-            span [ Class "crumb" ] [ str "vm-2017" ]
-            span [ Class "crumb" ] [ str "stack-01" ]
+// * FileBrowserState
+
+type [<Pojo>] FileBrowserState =
+  { File: FsEntry option
+    Machine: HostId option }
+
+// * FileBrowserState module
+
+module FileBrowserState =
+
+  let defaultState =
+    { File = None
+      Machine = None }
+
+// * FileBrowserView
+
+type FileBrowserView(props) =
+  inherit React.Component<FileBrowserProps, FileBrowserState>(props)
+  do base.setInitState(FileBrowserState.defaultState)
+
+  // ** renderBody
+
+  member this.renderBody() =
+    let trees =
+      this.props.Model.state
+      |> Option.map State.fsTrees
+      |> Option.defaultValue Map.empty
+
+    let entry =
+      FsEntry.File(
+        { Path = { Drive = 'C'; Platform = Windows; Elements = [ "tmp"; "hello"; "bye.txt" ] }
+          Name = name "bye.txt"
+          MimeType = "text/plain"
+          Size = 1173741825u
+          Filtered = 0u })
+
+    div [ Class "asset-browser" ] [
+      div [ Class "panel" ] [
+        div [ Class "inlay" ] [
+          header [ Class "header" ] [ str "Machines" ]
+          div [ Class "body" ] [
+            machineBrowser this.props.Dispatch this.props.Model trees
           ]
         ]
-        div [ Class "body" ] [
-          fileList dispatch model trees
+      ]
+      div [ Class "center" ] [
+        div [ Class "inlay" ] [
+          header [ Class "header" ] [
+            div [ Class "bread" ] [
+              span [ Class "crumb" ] [ str "assets" ]
+              span [ Class "crumb" ] [ str "vm-2017" ]
+              span [ Class "crumb" ] [ str "stack-01" ]
+            ]
+          ]
+          div [ Class "body" ] [
+            fileList this.props.Dispatch this.props.Model trees
+          ]
+        ]
+      ]
+      div [ Class "panel" ] [
+        div [ Class "inlay" ] [
+          header [ Class "header" ] [ str "Fileinfo" ]
+          div [ Class "body" ] [
+            fileInfo this.props.Dispatch this.props.Model entry
+          ]
         ]
       ]
     ]
-    div [ Class "panel" ] [
-      div [ Class "inlay" ] [
-        header [ Class "header" ] [ str "Fileinfo" ]
-        div [ Class "body" ] [
-          fileInfo dispatch model entry
-        ]
-      ]
-    ]
-  ]
+
+  // ** render
+
+  member this.render () =
+    widget this.props.Id "Asset Browser" None
+      (fun _ _ -> this.renderBody())
+      this.props.Dispatch
+      this.props.Model
+
+  // *** shouldComponentUpdate
+
+  member this.shouldComponentUpdate(nextProps: FileBrowserProps, nextState: FileBrowserState) =
+    this.state <> nextState
+      || match this.props.Model.state, nextProps.Model.state with
+         | Some s1, Some s2 -> distinctRef s1.FsTrees s2.FsTrees
+         | None, None -> false
+         | _ -> true
+
 
 /// __        ___     _            _
 /// \ \      / (_) __| | __ _  ___| |_
@@ -209,12 +256,7 @@ let createWidget (id: System.Guid) =
         minW = 6
         minH = 2 }
     member this.Render(dispatch, model) =
-      lazyViewWith
-        (fun m1 m2 ->
-          match m1.state, m2.state with
-          | Some s1, Some s2 -> equalsRef s1.FsTrees s2.FsTrees
-          | None, None -> true
-          | _ -> false)
-        (widget id this.Name None body dispatch)
-        model
-  }
+      com<FileBrowserView,_,_>
+        { Id = id
+          Model = model
+          Dispatch = dispatch } [] }
