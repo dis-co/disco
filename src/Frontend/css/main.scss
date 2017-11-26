@@ -339,6 +339,10 @@ html, body {
       border-bottom: 1px solid $iris-grey;
       padding: 8px 0 0 10px;
 
+      &.is-open {
+        flex-grow: 1;
+      }
+
       .directories {
         padding-left: 10px;
         margin: 1px 0 1px 0;

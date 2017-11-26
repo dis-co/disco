@@ -34,6 +34,7 @@ type [<Pojo>] FileBrowserProps =
 
 type [<Pojo>] FileBrowserState =
   { File: FsEntry option
+    OpenDirectories: Map<HostId,FsPath>
     Machine: HostId option }
 
 // * FileBrowserState module
@@ -42,6 +43,7 @@ module FileBrowserState =
 
   let defaultState =
     { File = None
+      OpenDirectories = Map.empty
       Machine = None }
 
 // * FileBrowserView
@@ -87,9 +89,12 @@ type FileBrowserView(props) =
 
   // ** renderMachine
 
-  member this.renderMachine trees node =
-    let rnd = Random()
-    let isOpen = if (rnd.Next(0,2)) > 0 then true else false
+  member this.renderMachine trees (node:RaftMember) =
+    let isOpen =
+      match this.state.Machine with
+      | Some id when id = node.Id -> true
+      | _ -> false
+
     let directories =
       if isOpen then
         trees
@@ -100,7 +105,13 @@ type FileBrowserView(props) =
 
     [ Some (this.renderMachineIcon node); directories ]
     |> List.choose id
-    |> div [ Class "machine" ]
+    |> div [
+      classList [
+        "machine",true
+        "is-open", isOpen
+      ]
+      OnClick (fun _ -> this.setState({ this.state with Machine = Some node.Id }))
+    ]
 
   // ** renderMachineBrowser
 
