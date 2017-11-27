@@ -206,7 +206,7 @@ let getWidgetFactory() =
 let initWidgetFactory(factory: IWidgetFactory) =
   singletonWidgetFactory <- Some factory
 
-// * Widget
+// * Widget module
 
 module Widget =
 
@@ -216,7 +216,7 @@ module Widget =
     let widget = getWidgetFactory().CreateWidget(None, Widgets.AssetBrowser)
     AddWidget(widget.Id, widget) |> dispatch
 
-// * WidgetLayout
+// * WidgetLayout module
 
 module WidgetLayout =
 
@@ -228,6 +228,8 @@ module WidgetLayout =
         y = 0
         w = width
         h = height }
+
+// * InspectorLayout module
 
 ///  ___                           _             _                            _
 /// |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __| |    __ _ _   _  ___  _   _| |_
@@ -248,6 +250,8 @@ module InspectorLayout =
   let toggle inspector = { inspector with IsOpen = not inspector.IsOpen }
   let setSize size (inspector:InspectorLayout) = { inspector with Size = size }
   let setOpen isOpen inspector = { inspector with IsOpen = isOpen }
+
+// * Tab module
 
 ///  _____     _
 /// |_   _|_ _| |__
@@ -305,6 +309,8 @@ module Tab =
     { tab with
         WidgetLayouts = Array.filter (fun { i = widget } -> widget <> id) tab.WidgetLayouts
         WidgetRefs = Array.filter (fun (wid,_) -> wid <> id) tab.WidgetRefs }
+
+// * Layout module
 
 ///  _                            _
 /// | |    __ _ _   _  ___  _   _| |_

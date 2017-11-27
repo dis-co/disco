@@ -48,44 +48,19 @@ module ViewState =
       BurgerMenuOpen = false }
 
   let toggleProject state =
-    { state with
-        ProjectMenuOpen = not state.ProjectMenuOpen
-        EditMenuOpen = false
-        ConfigMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with ProjectMenuOpen = not state.ProjectMenuOpen }
 
   let toggleEdit state =
-    { state with
-        EditMenuOpen = not state.EditMenuOpen
-        ProjectMenuOpen = false
-        ConfigMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with EditMenuOpen = not state.EditMenuOpen }
 
   let toggleConfig state =
-    { state with
-        ConfigMenuOpen = not state.ConfigMenuOpen
-        EditMenuOpen = false
-        ProjectMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with ConfigMenuOpen = not state.ConfigMenuOpen }
 
   let toggleWindows state =
-    { state with
-        WindowsMenuOpen = not state.WindowsMenuOpen
-        ConfigMenuOpen = false
-        EditMenuOpen = false
-        ProjectMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with WindowsMenuOpen = not state.WindowsMenuOpen }
 
   let toggleBurger state =
-    { state with
-        BurgerMenuOpen = not state.BurgerMenuOpen
-        WindowsMenuOpen = false
-        ConfigMenuOpen = false
-        EditMenuOpen = false
-        ProjectMenuOpen = false }
+    { defaultState with BurgerMenuOpen = not state.BurgerMenuOpen }
 
 ///  ____            _           _   __  __
 /// |  _ \ _ __ ___ (_) ___  ___| |_|  \/  | ___ _ __  _   _
@@ -141,6 +116,7 @@ module private EditMenu =
   let [<Literal>] undo = "Undo"
   let [<Literal>] redo = "Redo"
   let [<Literal>] resetDirty = "Reset Dirty"
+  let [<Literal>] filechooser = "Choose File"
   let [<Literal>] settings = "Settings"
 
 let private editMenu onOpen (state:ViewState) (props:ViewProps) =
@@ -151,11 +127,8 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
     | EditMenu.resetDirty -> Option.iter Lib.resetDirty props.Model.state
     | EditMenu.undo -> Lib.undo()
     | EditMenu.redo -> Lib.redo()
-    | EditMenu.settings ->
-      props.Model.userConfig
-      |> Modal.EditSettings :> IModal
-      |> OpenModal
-      |> dispatch
+    | EditMenu.filechooser -> Modal.showFileChooser props.Model props.Dispatch
+    | EditMenu.settings -> Modal.showSettings props.Model props.Dispatch
     | _ -> ()
     withDelay onOpen
   div [
@@ -174,6 +147,7 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
       navbarItem (onClick props.Dispatch) EditMenu.redo (Some "Ctrl-Z")
       navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
       div [ Class "navbar-divider" ] []
+      navbarItem (onClick props.Dispatch) EditMenu.filechooser None
       navbarItem (onClick props.Dispatch) EditMenu.settings None
     ]
   ]

@@ -126,7 +126,7 @@ module TabsView =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (Modal.show dispatch) |> opt
+      model.modal |> Option.map (Modal.show model dispatch) |> opt
     ]
 
 let view dispatch (model: Model) =

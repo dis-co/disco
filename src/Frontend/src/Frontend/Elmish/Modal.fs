@@ -94,31 +94,73 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
+  type FileChooser(state:State) =
+    let mutable res: string option = None
+    member __.Result = res
+    member __.State = state
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
   // ** mdir
 
   let [<Literal>] private mdir = "../../js/modals/"
 
-  // ** show
+  // ** importModal
 
-  let show dispatch (modal: IModal): React.ReactElement =
-    let data, com =
-      match modal with
-      | :? AddMember              -> None,                   importDefault (mdir+"AddMember")
-      | :? CreateProject          -> None,                   importDefault (mdir+"CreateProject")
-      | :? LoadProject            -> None,                   importDefault (mdir+"LoadProject")
-      | :? EditSettings as m      -> Some(box m.UserConfig), importDefault (mdir+"EditSettings")
-      | :? CreateCue as m         -> Some(box m.Pins),       importDefault (mdir+"CreateCue")
-      | :? InsertCues as m        -> Some(box m.Cues),       importDefault (mdir+"SelectCues")
-      | :? UpdateCues as m        -> Some(box m.Cues),       importDefault (mdir+"SelectCues")
-      | :? Login as m             -> Some(box m.Project),    importDefault (mdir+"Login")
-      | :? ProjectConfig as m     -> Some(box m.Sites),      importDefault (mdir+"ProjectConfig")
-      | :? AvailableProjects as m -> Some(box m.Projects),   importDefault (mdir+"AvailableProjects")
-      | _ -> failwithf "Cannot render unknown modal %A" modal
+  let private importModal (modal:IModal) =
+    match modal with
+    | :? AddMember         -> importDefault (mdir+"AddMember")
+    | :? CreateProject     -> importDefault (mdir+"CreateProject")
+    | :? LoadProject       -> importDefault (mdir+"LoadProject")
+    | :? EditSettings      -> importDefault (mdir+"EditSettings")
+    | :? CreateCue         -> importDefault (mdir+"CreateCue")
+    | :? InsertCues        -> importDefault (mdir+"SelectCues")
+    | :? UpdateCues        -> importDefault (mdir+"SelectCues")
+    | :? Login             -> importDefault (mdir+"Login")
+    | :? ProjectConfig     -> importDefault (mdir+"ProjectConfig")
+    | :? AvailableProjects -> importDefault (mdir+"AvailableProjects")
+    | _ -> failwithf "Cannot render unknown modal %A" modal
+
+  // ** renderJsModal
+
+  let private renderJsModal (modal: IModal) (data: obj option) dispatch =
     let props =
       createObj [
         "data" ==> data
         "onSubmit" ==> fun res -> CloseModal(modal, Choice1Of2 res) |> dispatch
       ]
+    let view = importModal modal
+    from view props []
+
+  // ** renderFileChooser
+
+  let private renderFileChooser model modal data dispatch =
+    com<AssetBrowserView.AssetBrowserView,_,_>
+      { Id = Guid.NewGuid()
+        Model = model
+        Dispatch = dispatch }
+      []
+
+  // ** renderModal
+
+  let private renderModal model (modal:IModal) dispatch =
+    match modal with
+    | :? AddMember              -> renderJsModal     modal None                     dispatch
+    | :? CreateProject          -> renderJsModal     modal None                     dispatch
+    | :? LoadProject            -> renderJsModal     modal None                     dispatch
+    | :? EditSettings      as m -> renderJsModal     modal (Some(box m.UserConfig)) dispatch
+    | :? CreateCue         as m -> renderJsModal     modal (Some(box m.Pins))       dispatch
+    | :? InsertCues        as m -> renderJsModal     modal (Some(box m.Cues))       dispatch
+    | :? UpdateCues        as m -> renderJsModal     modal (Some(box m.Cues))       dispatch
+    | :? Login             as m -> renderJsModal     modal (Some(box m.Project))    dispatch
+    | :? ProjectConfig     as m -> renderJsModal     modal (Some(box m.Sites))      dispatch
+    | :? AvailableProjects as m -> renderJsModal     modal (Some(box m.Projects))   dispatch
+    | :? FileChooser       as m -> renderFileChooser model modal (Some(box m))      dispatch
+    | _ -> failwithf "Unknown modal type: %A" modal
+
+  // ** show
+
+  let show model dispatch (modal: IModal): React.ReactElement =
     div [ClassName "modal is-active"] [
       div [
         ClassName "modal-background"
@@ -127,6 +169,22 @@ module Modal =
           CloseModal(modal, Choice2Of2 ()) |> dispatch )
       ] []
       div [ClassName "modal-content"] [
-        div [ClassName "box"] [from com props []]
+        div [ClassName "box"] [
+          renderModal model modal dispatch
+        ]
       ]
     ]
+
+  // ** asIModal
+
+  let private asIModal (t: 't when 't :> IModal) = t :> IModal
+
+  // ** showFileChooser
+
+  let showFileChooser (model:Model) dispatch =
+    Option.iter (FileChooser >> asIModal >> OpenModal >> dispatch) model.state
+
+  // ** showSettings
+
+  let showSettings (model:Model) dispatch =
+      model.userConfig |> EditSettings |> asIModal |> OpenModal |> dispatch
