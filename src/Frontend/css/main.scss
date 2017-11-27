@@ -187,7 +187,40 @@ html, body {
 
   .iris-widget-body {
     flex: 1;
+    overflow: hidden;
+  }
+
+  .scrollable-container {
     overflow: auto;
+    height: 100%;
+  }
+
+  .m-tree {
+    @extend .scrollable-container;
+  }
+
+  .iris-players {
+    @extend .scrollable-container;
+  }
+
+  .iris-cues {
+    @extend .scrollable-container;
+  }
+
+  .iris-cuelists {
+    @extend .scrollable-container;
+  }
+
+  .iris-cluster {
+    @extend .scrollable-container;
+  }
+
+  .iris-clients {
+    @extend .scrollable-container;
+  }
+
+  .iris-sessions {
+    @extend .scrollable-container;
   }
 }
 

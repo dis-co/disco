@@ -128,54 +128,56 @@ let body dispatch (model: Model) =
   match model.state with
   | None -> table [Class "iris-table"] []
   | Some state ->
-    /// all name * id pairs of existing Cue Lists for use in the dropdown menu
-    table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "Name"]
-          th [Class "width-20"; padding5()] [str "Cue List"]
-          th [Class "width-15"; padding5()] [str "Locked"]
-          th [Class "width-15"; padding5()] [str "Active"]
-          th [Class "width-25"] []
+    div [ Class "iris-players" ] [
+      /// all name * id pairs of existing Cue Lists for use in the dropdown menu
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [Class "width-20"; padding5()] [str "Name"]
+            th [Class "width-20"; padding5()] [str "Cue List"]
+            th [Class "width-15"; padding5()] [str "Locked"]
+            th [Class "width-15"; padding5()] [str "Active"]
+            th [Class "width-25"] []
+          ]
         ]
+        tbody [] (
+          state.CuePlayers
+          |> Seq.map (function
+            KeyValue(id,player) ->
+              tr [Key (string id)] [
+                td [
+                  Class "width-20"
+                  padding5AndTopBorder()
+                ] [
+                  /// provide inline editing capabilities for the CuePlayer Name field
+                  renderNameInput player
+                ]
+                td [Class "width-20"; padding5AndTopBorder()] [
+                  /// provies inline selection method for the Cue List used by the player
+                  renderCueListDropdown state player
+                ]
+                td [Class "width-15"; padding5AndTopBorder()] [
+                  boolButton
+                    player.Locked
+                    (flip CuePlayer.setLocked player
+                    >> UpdateCuePlayer
+                    >> ClientContext.Singleton.Post)
+                ]
+                td [Class "width-15"; padding5AndTopBorder()] [
+                  boolButton
+                    player.Active
+                    (flip CuePlayer.setActive player
+                    >> UpdateCuePlayer
+                    >> ClientContext.Singleton.Post)
+                ]
+                td [Class "width-25"; padding5() ] [
+                  viewButton dispatch player
+                  deleteButton dispatch player
+                ]
+              ])
+          |> Seq.toList
+        )
       ]
-      tbody [] (
-        state.CuePlayers
-        |> Seq.map (function
-          KeyValue(id,player) ->
-            tr [Key (string id)] [
-              td [
-                Class "width-20"
-                padding5AndTopBorder()
-              ] [
-                /// provide inline editing capabilities for the CuePlayer Name field
-                renderNameInput player
-              ]
-              td [Class "width-20"; padding5AndTopBorder()] [
-                /// provies inline selection method for the Cue List used by the player
-                renderCueListDropdown state player
-              ]
-              td [Class "width-15"; padding5AndTopBorder()] [
-                boolButton
-                  player.Locked
-                  (flip CuePlayer.setLocked player
-                   >> UpdateCuePlayer
-                   >> ClientContext.Singleton.Post)
-              ]
-              td [Class "width-15"; padding5AndTopBorder()] [
-                boolButton
-                  player.Active
-                  (flip CuePlayer.setActive player
-                   >> UpdateCuePlayer
-                   >> ClientContext.Singleton.Post)
-              ]
-              td [Class "width-25"; padding5() ] [
-                viewButton dispatch player
-                deleteButton dispatch player
-              ]
-            ])
-        |> Seq.toList
-      )
     ]
 
 let titleBar dispatch model =
