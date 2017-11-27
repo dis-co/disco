@@ -23,11 +23,21 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
+// * Selectable
+
+[<RequireQualifiedAccess>]
+type Selectable =
+  | Directories
+  | Files
+  | Nothing
+
 // * AssetBrowserProps
 
 type [<Pojo>] AssetBrowserProps =
   { Id: Guid
     Model: Model
+    Selectable: Selectable
+    OnSelect: (FsPath list -> unit) option
     Dispatch: Msg -> unit }
 
 // * AssetBrowserState
@@ -35,8 +45,9 @@ type [<Pojo>] AssetBrowserProps =
 type [<Pojo>] AssetBrowserState =
   { Asset: FsEntry option
     OpenDirectories: Set<HostId * FsPath>
-    SelectedDirectory: (HostId * FsPath) option
-    SelectedAsset: (HostId * FsPath) option
+    CurrentDirectory: (HostId * FsPath) option
+    CurrentAsset: (HostId * FsPath) option
+    SelectedFiles: FsPath list
     Machine: HostId option }
 
 // * AssetBrowserState module
@@ -46,8 +57,9 @@ module AssetBrowserState =
   let defaultState =
     { Asset = None
       OpenDirectories = Set.ofList []
-      SelectedDirectory = None
-      SelectedAsset = None
+      CurrentDirectory = None
+      CurrentAsset = None
+      SelectedFiles = List.empty
       Machine = None }
 
   let openDirectories { OpenDirectories = dirs } = dirs
@@ -60,8 +72,11 @@ module AssetBrowserState =
   let addOpenDirectory dir s = modifyOpenDirectories (Set.add dir) s
   let removeOpenDirectory dir s = modifyOpenDirectories (Set.remove dir) s
 
-  let selectDirectory dir s = { s with SelectedDirectory = Some dir }
-  let selectAsset dir s = { s with SelectedAsset = Some dir }
+  let selectDirectory dir s = { s with CurrentDirectory = Some dir }
+  let selectAsset dir s = { s with CurrentAsset = Some dir }
+
+  let addSelected path s = { s with SelectedFiles = path :: s.SelectedFiles }
+  let removeSelected path s = { s with SelectedFiles = List.filter ((<>) path) s.SelectedFiles }
 
 // * AssetBrowserView
 
@@ -90,9 +105,29 @@ type AssetBrowserView(props) =
 
   member this.toggleAsset host fspath =
     let entry = host, fspath
-    if this.state.SelectedAsset <> Some entry then
+    if this.state.CurrentAsset <> Some entry then
       this.state
       |> AssetBrowserState.selectAsset entry
+      |> this.setState
+
+  // ** callSelected
+
+  member this.callSelected state =
+    Option.iter (fun f -> f state.SelectedFiles) this.props.OnSelect
+    state
+
+  // ** toggleSelected
+
+  member this.toggleSelected fspath =
+    if List.contains fspath this.state.SelectedFiles then
+      this.state
+      |> AssetBrowserState.removeSelected fspath
+      |> this.callSelected
+      |> this.setState
+    else
+      this.state
+      |> AssetBrowserState.addSelected fspath
+      |> this.callSelected
       |> this.setState
 
   // ** renderDirectoryTree
@@ -102,8 +137,8 @@ type AssetBrowserView(props) =
     | FsEntry.Directory(info, children) ->
       let hasChildren = Map.count children > 0
       let isOpen = Set.contains (host, info.Path) this.state.OpenDirectories
-      let isSelected =
-        match this.state.SelectedDirectory with
+      let isCurrent =
+        match this.state.CurrentDirectory with
         | Some entry -> entry = (host, info.Path)
         | _ -> false
 
@@ -125,7 +160,7 @@ type AssetBrowserView(props) =
             e.stopPropagation()         /// needed to stop all other toggles from firing
             this.toggleDirectory host info.Path)
       ] [
-        span [ classList [ "is-selected", isSelected ] ] [
+        span [ classList [ "is-selected", isCurrent ] ] [
           i [
             classList [
               "icon fa", true
@@ -215,10 +250,36 @@ type AssetBrowserView(props) =
 
   member this.renderAssetRow host (entry:FsEntry) =
     let path = FsEntry.path entry
-    let isSelected =
-      match this.state.SelectedAsset with
+    let isCurrent =
+      match this.state.CurrentAsset with
       | Some entry -> entry = (host, path)
       | _ -> false
+
+    let selectable =
+      if this.props.Selectable = Selectable.Files
+      then
+        let isSelected = List.contains path this.state.SelectedFiles
+        div [
+          classList [
+            "pull-right", true
+            "is-selected", true
+          ]
+        ] [
+          div [ Class "controls" ] [
+            i [
+              classList [
+                "fa fa-lg", true
+                "fa-square-o", not isSelected
+                "fa-check-square-o", isSelected
+              ]
+              OnClick
+                (fun e ->
+                  e.stopPropagation()
+                  this.toggleSelected path)
+            ] []
+          ]
+        ]
+      else str ""
 
     div [
       Class "file"
@@ -227,23 +288,24 @@ type AssetBrowserView(props) =
           e.stopPropagation()
           this.toggleAsset host path)
     ] [
-      span [ ] [
+      span [ Class "file-details" ] [
         i [
           classList [
             "icon fa", true
-            "fa-file-o", not isSelected
-            "fa-file", isSelected
+            "fa-file-o", not isCurrent
+            "fa-file", isCurrent
           ]
         ] [ str "" ]
         str (FsEntry.name entry |> unwrap)
       ]
+      selectable
     ]
 
   // ** renderAssetList
 
   member this.renderAssetList (trees:Map<HostId,FsTree>) =
     let children =
-      match this.state.SelectedDirectory with
+      match this.state.CurrentDirectory with
       | None -> List.empty
       | Some (host, path) ->
         match Map.tryFind host trees with
@@ -261,7 +323,7 @@ type AssetBrowserView(props) =
   // ** renderAssetInfo
 
   member this.renderAssetInfo trees =
-    match this.state.SelectedAsset with
+    match this.state.CurrentAsset with
     | None -> div [ Class "file-info" ] []
     | Some (host, path) ->
       match Map.tryFind host trees with
@@ -353,7 +415,7 @@ type AssetBrowserView(props) =
   // ** renderBreadcrumbs
 
   member this.renderBreadcrumbs () =
-    match this.state.SelectedDirectory with
+    match this.state.CurrentDirectory with
     | None -> header [ Class "header" ] []
     | Some (_, path) ->
       let crumbs = List.map (fun elm -> span [ Class "crumb" ] [ str elm ]) path.Elements
@@ -361,14 +423,13 @@ type AssetBrowserView(props) =
         div [ Class "bread" ] crumbs
       ]
 
-  // ** renderBody
+  // ** render
 
-  member this.renderBody() =
+  member this.render () =
     let trees =
       this.props.Model.state
       |> Option.map State.fsTrees
       |> Option.defaultValue Map.empty
-
     div [ Class "asset-browser" ] [
       div [ Class "left-panel" ] [
         div [ Class "inlay" ] [
@@ -396,24 +457,6 @@ type AssetBrowserView(props) =
       ]
     ]
 
-  // ** render
-
-  member this.render () =
-    widget this.props.Id "Asset Browser" None
-      (fun _ _ -> this.renderBody())
-      this.props.Dispatch
-      this.props.Model
-
-  // *** shouldComponentUpdate
-
-  member this.shouldComponentUpdate(nextProps: AssetBrowserProps, nextState: AssetBrowserState) =
-    this.state <> nextState
-      || match this.props.Model.state, nextProps.Model.state with
-         | Some s1, Some s2 -> distinctRef s1.FsTrees s2.FsTrees
-         | None, None -> false
-         | _ -> true
-
-
 /// __        ___     _            _
 /// \ \      / (_) __| | __ _  ___| |_
 ///  \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
@@ -432,7 +475,19 @@ let createWidget (id: System.Guid) =
         minW = 6
         minH = 2 }
     member this.Render(dispatch, model) =
-      com<AssetBrowserView,_,_>
-        { Id = id
-          Model = model
-          Dispatch = dispatch } [] }
+      let view =
+        com<AssetBrowserView,_,_>
+          { Id = id
+            OnSelect = None
+            Selectable = Selectable.Nothing
+            Model = model
+            Dispatch = dispatch } []
+      lazyViewWith
+        (fun m1 m2 ->
+          match m1.state, m2.state with
+          | Some s1, Some s2 -> equalsRef s1.FsTrees s2.FsTrees
+          | None, None -> true
+          | _ -> false)
+        (widget id this.Name None (fun _ _ -> view) dispatch)
+        model
+    }

@@ -348,9 +348,23 @@ html, body {
 
   .files {
     .file {
+      display: flex;
+      flex-direction: row;
       cursor: pointer;
       background: white;
       border-bottom: 1px solid $iris-grey;
+      .file-details {
+        flex-grow: 1;
+      }
+      .controls {
+        height: 24px;
+        width: 24px;
+        line-height: 24px;
+        padding-right: 5px;
+        i {
+          height: 18px;
+        }
+      }
     }
   }
 

@@ -13,6 +13,7 @@ open Elmish.React
 open Iris.Core
 open Iris.Core.Commands
 open Types
+open Iris.Web.AssetBrowserView
 
 // * Modal module
 
@@ -95,7 +96,7 @@ module Modal =
       member this.SetResult(v) = res <- unbox v
 
   type FileChooser(state:State) =
-    let mutable res: string option = None
+    let mutable res: FsPath List = List.empty
     member __.Result = res
     member __.State = state
     interface IModal with
@@ -134,12 +135,28 @@ module Modal =
 
   // ** renderFileChooser
 
-  let private renderFileChooser model modal data dispatch =
-    com<AssetBrowserView.AssetBrowserView,_,_>
-      { Id = Guid.NewGuid()
-        Model = model
-        Dispatch = dispatch }
-      []
+  let private renderFileChooser model (modal:IModal) selectable data dispatch =
+    let closeModal _ =
+      let fileChooser = modal :?> FileChooser
+      CloseModal(modal, Choice1Of2 (unbox fileChooser.Result)) |> dispatch
+    div [] [
+      p [ ClassName "title has-text-centered" ] [ str "Choose File" ]
+      com<AssetBrowserView,_,_>
+        { Id = Guid.NewGuid()
+          Model = model
+          Selectable = selectable
+          OnSelect = Some modal.SetResult
+          Dispatch = dispatch }
+        []
+      div [ ClassName "field is-grouped" ] [
+        p [ ClassName "control" ] [
+          button [
+            ClassName "button is-primary"
+            OnClick closeModal
+          ] [ str "Submit" ]
+        ]
+      ]
+    ]
 
   // ** renderModal
 
@@ -155,7 +172,7 @@ module Modal =
     | :? Login             as m -> renderJsModal     modal (Some(box m.Project))    dispatch
     | :? ProjectConfig     as m -> renderJsModal     modal (Some(box m.Sites))      dispatch
     | :? AvailableProjects as m -> renderJsModal     modal (Some(box m.Projects))   dispatch
-    | :? FileChooser       as m -> renderFileChooser model modal (Some(box m))      dispatch
+    | :? FileChooser       as m -> renderFileChooser model modal Selectable.Files (Some(box m)) dispatch
     | _ -> failwithf "Unknown modal type: %A" modal
 
   // ** show
