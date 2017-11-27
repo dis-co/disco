@@ -209,7 +209,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     match id with
     | WindowsMenu.log             -> show Widgets.Log
     | WindowsMenu.inspector       -> Lib.toggleInspector()
-    | WindowsMenu.fileBrowser     -> show Widgets.FileBrowser
+    | WindowsMenu.fileBrowser     -> show Widgets.AssetBrowser
     | WindowsMenu.graph           -> show Widgets.GraphView
     | WindowsMenu.players         -> show Widgets.Players
     | WindowsMenu.cues            -> show Widgets.Cues

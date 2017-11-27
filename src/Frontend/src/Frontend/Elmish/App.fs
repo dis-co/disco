@@ -29,7 +29,7 @@ initWidgetFactory
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
         | Widgets.Log -> LogView.createWidget(id)
-        | Widgets.FileBrowser -> FileBrowserView.createWidget(id)
+        | Widgets.AssetBrowser -> AssetBrowserView.createWidget(id)
         | Widgets.GraphView -> GraphView.createWidget(id)
         | Widgets.Players -> PlayerListView.createWidget(id)
         | Widgets.CuePlayer -> Cues.CuePlayerView.createWidget(id)

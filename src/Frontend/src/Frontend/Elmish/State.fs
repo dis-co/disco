@@ -109,6 +109,7 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
      true,  true,  Codes.z,         Lib.redo
      true,  false, Codes.s,         Lib.saveProject
      true,  false, Codes.i,         Lib.toggleInspector
+     true,  false, Codes.b,         (fun _ -> Widget.showAssetBrowser dispatch)
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 

@@ -16,7 +16,7 @@ module StorageKeys =
 /// Widget names
 module Widgets =
   let [<Literal>] Log           = "LOG"
-  let [<Literal>] FileBrowser   = "File Browser"
+  let [<Literal>] AssetBrowser  = "Asset Browser"
   let [<Literal>] GraphView     = "Graph View"
   let [<Literal>] Players       = "Cue Players"
   let [<Literal>] CueLists      = "Cue Lists"
@@ -205,6 +205,18 @@ let getWidgetFactory() =
 /// at the start of the program
 let initWidgetFactory(factory: IWidgetFactory) =
   singletonWidgetFactory <- Some factory
+
+// * Widget
+
+module Widget =
+
+  // * showAssetBrowser
+
+  let showAssetBrowser dispatch =
+    let widget = getWidgetFactory().CreateWidget(None, Widgets.AssetBrowser)
+    AddWidget(widget.Id, widget) |> dispatch
+
+// * WidgetLayout
 
 module WidgetLayout =
 

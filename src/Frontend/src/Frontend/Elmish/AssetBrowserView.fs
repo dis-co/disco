@@ -1,4 +1,4 @@
-module Iris.Web.FileBrowserView
+module Iris.Web.AssetBrowserView
 
 open System
 open System.Collections.Generic
@@ -23,31 +23,31 @@ open Types
 /// |  __/| |  | |\ V / (_| | ||  __/
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
-// * FileBrowserProps
+// * AssetBrowserProps
 
-type [<Pojo>] FileBrowserProps =
+type [<Pojo>] AssetBrowserProps =
   { Id: Guid
     Model: Model
     Dispatch: Msg -> unit }
 
-// * FileBrowserState
+// * AssetBrowserState
 
-type [<Pojo>] FileBrowserState =
-  { File: FsEntry option
+type [<Pojo>] AssetBrowserState =
+  { Asset: FsEntry option
     OpenDirectories: Set<HostId * FsPath>
     SelectedDirectory: (HostId * FsPath) option
-    SelectedFile: (HostId * FsPath) option
+    SelectedAsset: (HostId * FsPath) option
     Machine: HostId option }
 
-// * FileBrowserState module
+// * AssetBrowserState module
 
-module FileBrowserState =
+module AssetBrowserState =
 
   let defaultState =
-    { File = None
+    { Asset = None
       OpenDirectories = Set.ofList []
       SelectedDirectory = None
-      SelectedFile = None
+      SelectedAsset = None
       Machine = None }
 
   let openDirectories { OpenDirectories = dirs } = dirs
@@ -61,13 +61,13 @@ module FileBrowserState =
   let removeOpenDirectory dir s = modifyOpenDirectories (Set.remove dir) s
 
   let selectDirectory dir s = { s with SelectedDirectory = Some dir }
-  let selectFile dir s = { s with SelectedFile = Some dir }
+  let selectAsset dir s = { s with SelectedAsset = Some dir }
 
-// * FileBrowserView
+// * AssetBrowserView
 
-type FileBrowserView(props) =
-  inherit React.Component<FileBrowserProps, FileBrowserState>(props)
-  do base.setInitState(FileBrowserState.defaultState)
+type AssetBrowserView(props) =
+  inherit React.Component<AssetBrowserProps, AssetBrowserState>(props)
+  do base.setInitState(AssetBrowserState.defaultState)
 
   // ** toggleDirectory
 
@@ -75,24 +75,24 @@ type FileBrowserView(props) =
     let entry = host, fspath
     if Set.contains entry this.state.OpenDirectories then
       this.state
-      |> FileBrowserState.removeOpenDirectory entry
-      |> FileBrowserState.selectDirectory entry
-      |> FileBrowserState.selectFile entry
+      |> AssetBrowserState.removeOpenDirectory entry
+      |> AssetBrowserState.selectDirectory entry
+      |> AssetBrowserState.selectAsset entry
       |> this.setState
     else
       this.state
-      |> FileBrowserState.addOpenDirectory entry
-      |> FileBrowserState.selectDirectory entry
-      |> FileBrowserState.selectFile entry
+      |> AssetBrowserState.addOpenDirectory entry
+      |> AssetBrowserState.selectDirectory entry
+      |> AssetBrowserState.selectAsset entry
       |> this.setState
 
-  // ** toggleFile
+  // ** toggleAsset
 
-  member this.toggleFile host fspath =
+  member this.toggleAsset host fspath =
     let entry = host, fspath
-    if this.state.SelectedFile <> Some entry then
+    if this.state.SelectedAsset <> Some entry then
       this.state
-      |> FileBrowserState.selectFile entry
+      |> AssetBrowserState.selectAsset entry
       |> this.setState
 
   // ** renderDirectoryTree
@@ -203,12 +203,12 @@ type FileBrowserView(props) =
 
     div [ Class "machines" ] members
 
-  // ** renderFileRow
+  // ** renderAssetRow
 
-  member this.renderFileRow host (entry:FsEntry) =
+  member this.renderAssetRow host (entry:FsEntry) =
     let path = FsEntry.path entry
     let isSelected =
-      match this.state.SelectedFile with
+      match this.state.SelectedAsset with
       | Some entry -> entry = (host, path)
       | _ -> false
 
@@ -217,7 +217,7 @@ type FileBrowserView(props) =
       OnClick
         (fun e ->
           e.stopPropagation()
-          this.toggleFile host path)
+          this.toggleAsset host path)
     ] [
       span [ ] [
         i [
@@ -231,9 +231,9 @@ type FileBrowserView(props) =
       ]
     ]
 
-  // ** renderFileList
+  // ** renderAssetList
 
-  member this.renderFileList (trees:Map<HostId,FsTree>) =
+  member this.renderAssetList (trees:Map<HostId,FsTree>) =
     let children =
       match this.state.SelectedDirectory with
       | None -> List.empty
@@ -246,14 +246,14 @@ type FileBrowserView(props) =
             children
             |> Map.filter (fun _ -> FsEntry.isFile)
             |> Map.toList
-            |> List.map (snd >> this.renderFileRow host)
+            |> List.map (snd >> this.renderAssetRow host)
           | _ -> List.empty
     div [ Class "files" ] children
 
-  // ** renderFileInfo
+  // ** renderAssetInfo
 
-  member this.renderFileInfo trees =
-    match this.state.SelectedFile with
+  member this.renderAssetInfo trees =
+    match this.state.SelectedAsset with
     | None -> div [ Class "file-info" ] []
     | Some (host, path) ->
       match Map.tryFind host trees with
@@ -284,7 +284,7 @@ type FileBrowserView(props) =
               ]
               div [ Class "columns" ] [
                 div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Files:" ]
+                  strong [] [ str "Assets:" ]
                 ]
                 div [ Class "column" ] [
                   str (string info.Size)
@@ -304,7 +304,7 @@ type FileBrowserView(props) =
           div [ Class "file-info" ] [
             div [ Class "info" ] [
               div [ Class "columns" ] [
-                div [ Class "column" ] [ strong [] [ str "File" ] ]
+                div [ Class "column" ] [ strong [] [ str "Asset" ] ]
               ]
               div [ Class "columns" ] [
                 div [ Class "column is-one-fifth" ] [
@@ -374,15 +374,15 @@ type FileBrowserView(props) =
         div [ Class "inlay" ] [
           this.renderBreadcrumbs()
           div [ Class "body" ] [
-            this.renderFileList trees
+            this.renderAssetList trees
           ]
         ]
       ]
       div [ Class "right-panel" ] [
         div [ Class "inlay" ] [
-          header [ Class "header" ] [ str "Fileinfo" ]
+          header [ Class "header" ] [ str "Assetinfo" ]
           div [ Class "body" ] [
-            this.renderFileInfo trees
+            this.renderAssetInfo trees
           ]
         ]
       ]
@@ -398,7 +398,7 @@ type FileBrowserView(props) =
 
   // *** shouldComponentUpdate
 
-  member this.shouldComponentUpdate(nextProps: FileBrowserProps, nextState: FileBrowserState) =
+  member this.shouldComponentUpdate(nextProps: AssetBrowserProps, nextState: AssetBrowserState) =
     this.state <> nextState
       || match this.props.Model.state, nextProps.Model.state with
          | Some s1, Some s2 -> distinctRef s1.FsTrees s2.FsTrees
@@ -416,7 +416,7 @@ type FileBrowserView(props) =
 let createWidget (id: System.Guid) =
   { new IWidget with
     member __.Id = id
-    member __.Name = Types.Widgets.FileBrowser
+    member __.Name = Types.Widgets.AssetBrowser
     member this.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
@@ -424,7 +424,7 @@ let createWidget (id: System.Guid) =
         minW = 6
         minH = 2 }
     member this.Render(dispatch, model) =
-      com<FileBrowserView,_,_>
+      com<AssetBrowserView,_,_>
         { Id = id
           Model = model
           Dispatch = dispatch } [] }
