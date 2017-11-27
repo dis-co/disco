@@ -391,35 +391,50 @@ html, body {
 
       &.is-open {
         flex-grow: 1;
+        height: 100%;
       }
 
-      .directories {
-        padding: 5px 0 0 0;
-        margin: 1px 0 1px 0;
-        .directory:before {
-          content: "\00a0\00a0";
+      .machine-details {
+        display: flex;
+        flex-flow: column;
+        height: 100%;
+
+        .machine-icon {
+          flex-basis: 20px;
+          flex-grow: 0;
+          flex-shrink: 0;
         }
-        .directory {
-          cursor: pointer;
 
-          &.has-children:before {
-            content: "⏵";
-          }
+        .directory-list {
+          flex-grow: 1;
 
-          &.is-open:before {
-            content: "⏷" !important;
-          }
+          .directories {
+            .directory:before {
+              content: "\00a0\00a0";
+            }
+            .directory {
+              cursor: pointer;
 
-          .is-selected {
-            font-weight: bold;
-          }
+              &.has-children:before {
+                content: "⏵";
+              }
 
-          .icon {
-            height: 18px;
-            margin-right: 0;
-          }
-          .children {
-            padding-left: 15px;
+              &.is-open:before {
+                content: "⏷" !important;
+              }
+
+              .is-selected {
+                font-weight: bold;
+              }
+
+              .icon {
+                height: 18px;
+                margin-right: 0;
+              }
+              .children {
+                padding-left: 15px;
+              }
+            }
           }
         }
       }

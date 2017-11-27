@@ -141,19 +141,21 @@ type AssetBrowserView(props) =
   // ** renderMachineIcon
 
   member this.renderMachineIcon(node) =
-    span [
-      Class "iris-output iris-icon icon-host"
-      OnClick (fun _ -> Select.clusterMember this.props.Dispatch node)
-      Style [ Cursor "pointer" ]
-    ] [
-      str (unwrap node.HostName)
+    header [ Class "machine-icon" ] [
       span [
-        classList [
-          "iris-icon icon-bull",true
-          "iris-status-off", node.State <> RaftMemberState.Running
-          "iris-status-on", node.State = RaftMemberState.Running
-        ]
-      ] []
+        Class "iris-output iris-icon icon-host"
+        OnClick (fun _ -> Select.clusterMember this.props.Dispatch node)
+        Style [ Cursor "pointer" ]
+      ] [
+        str (unwrap node.HostName)
+        span [
+          classList [
+            "iris-icon icon-bull",true
+            "iris-status-off", node.State <> RaftMemberState.Running
+            "iris-status-on", node.State = RaftMemberState.Running
+          ]
+        ] []
+      ]
     ]
 
   // ** renderMachine
@@ -172,16 +174,22 @@ type AssetBrowserView(props) =
         |> Map.tryFind nodeId
         |> Option.map (FsTree.directories >> this.renderDirectoryTree nodeId)
         |> Option.map (fun dirs -> div [ Class "directories" ] [ dirs ])
-      else None
+        |> Option.defaultValue (div [ Class "directories" ] [])
+      else div [ Class "directories" ] []
 
-    [ Some (this.renderMachineIcon node); directories ]
-    |> List.choose id
-    |> div [
+    div [
       classList [
         "machine",true
         "is-open", isOpen
       ]
       OnClick (fun _ -> this.setState({ this.state with Machine = Some node.Id }))
+    ] [
+      div [ Class "machine-details" ] [
+        this.renderMachineIcon node
+        div [ Class "directory-list" ] [
+          directories
+        ]
+      ]
     ]
 
   // ** renderMachineBrowser
