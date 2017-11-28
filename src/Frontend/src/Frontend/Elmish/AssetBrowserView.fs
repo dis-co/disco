@@ -76,7 +76,54 @@ module AssetBrowserState =
   let selectAsset dir s = { s with CurrentAsset = Some dir }
 
   let addSelected path s = { s with SelectedFiles = path :: s.SelectedFiles }
+  let setSelected files s = { s with SelectedFiles = files }
   let removeSelected path s = { s with SelectedFiles = List.filter ((<>) path) s.SelectedFiles }
+
+// * SelectedAssetProps
+
+type [<Pojo>] SelectedAssetProps =
+  { key: string
+    OnRemove: FsPath -> unit
+    FsPath: FsPath }
+
+// * SelectedAssetHandle
+
+let SelectedAssetHandle = Sortable.Handle(fun props ->
+  span [Style [Cursor "move"]] [str props.value])
+
+// * SelectedAssetElement
+
+type private SelectedAssetElement(props) =
+  inherit React.Component<SelectedAssetProps, obj>(props)
+
+  member this.render() =
+    div [ Class "asset-browser-selected-file" ] [
+      button [
+        Class "button"
+        OnClick
+          (fun e ->
+            e.stopPropagation()
+            this.props.OnRemove this.props.FsPath)
+      ] [
+        i [ Class "fa fa-close" ] []
+      ]
+      from SelectedAssetHandle { value = FsPath.fileName this.props.FsPath |> string } []
+    ]
+
+// * SelecteAssetSortable
+
+let private SelectedAssetSortable = Sortable.Element <| fun props ->
+  com<SelectedAssetElement,_,_> props.value []
+
+// * SelectedAssetContainer
+
+let private SelectedAssetContainer = Sortable.Container <| fun props ->
+  props.items
+  |> Array.mapi
+    (fun i (props: SelectedAssetProps) ->
+      from SelectedAssetSortable { key = props.key; index = i; value = props } [])
+  |> Array.toList
+  |> div [ Class "selected-files" ]
 
 // * AssetBrowserView
 
@@ -431,22 +478,6 @@ type AssetBrowserView(props) =
         div [ Class "bread" ] crumbs
       ]
 
-  // ** renderSelectedFileRow
-
-  member this.renderSelectedFileRow(fsPath:FsPath) =
-    div [ Class "selected-file" ] [
-      button [
-        Class "button"
-        OnClick
-          (fun e ->
-            e.stopPropagation()
-            this.toggleSelected fsPath)
-      ] [
-        i [ Class "fa fa-close" ] []
-      ]
-      str (FsPath.fileName fsPath |> string)
-    ]
-
   // ** render
 
   member this.render () =
@@ -462,9 +493,25 @@ type AssetBrowserView(props) =
         let header = header [ Class "header" ] [ str "Selected" ]
         let selected =
           this.state.SelectedFiles
-          |> List.map this.renderSelectedFileRow
-          |> div [ Class "selected-files" ]
-        Some header, Some selected
+          |> List.mapi
+            (fun i fspath ->
+              { key = string fspath
+                FsPath= fspath
+                OnRemove = this.toggleSelected })
+        let container =
+          from SelectedAssetContainer
+            { items = Array.ofList selected
+              useDragHandle = true
+              onSortEnd = fun ev ->
+                this.state.SelectedFiles
+                |> Array.ofList
+                |> fun selected -> Sortable.arrayMove(selected, ev.oldIndex, ev.newIndex)
+                |> List.ofArray
+                |> flip AssetBrowserState.setSelected this.state
+                |> this.callSelected
+                |> this.setState }
+            []
+        Some header, Some container
 
     let inspector =
       [ Some (header [ Class "header" ] [ str "Assetinfo" ])
