@@ -102,6 +102,13 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
+  type DirectoryChooser(state:State) =
+    let mutable res: FsPath List = List.empty
+    member __.Result = res
+    member __.State = state
+    interface IModal with
+      member this.SetResult(v) = res <- unbox v
+
   // ** mdir
 
   let [<Literal>] private mdir = "../../js/modals/"
@@ -172,7 +179,8 @@ module Modal =
     | :? Login             as m -> renderJsModal     modal (Some(box m.Project))    dispatch
     | :? ProjectConfig     as m -> renderJsModal     modal (Some(box m.Sites))      dispatch
     | :? AvailableProjects as m -> renderJsModal     modal (Some(box m.Projects))   dispatch
-    | :? FileChooser       as m -> renderFileChooser model modal Selectable.Files (Some(box m)) dispatch
+    | :? FileChooser       as m -> renderFileChooser model modal Selectable.Files       (Some(box m)) dispatch
+    | :? DirectoryChooser  as m -> renderFileChooser model modal Selectable.Directories (Some(box m)) dispatch
     | _ -> failwithf "Unknown modal type: %A" modal
 
   // ** show
