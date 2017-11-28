@@ -109,6 +109,12 @@ html, body {
   }
 }
 
+.modal-content {
+  width: unset;                 // should not have a fixed width
+  min-width: 640px;             // but a min-width of 640px so older dialogs look the same
+  overflow: unset;              // no scrollbars in modals please
+}
+
 #iris-drag-image {
   position: absolute;
   opacity: 0.8;
@@ -280,6 +286,13 @@ html, body {
   }
 }
 
+.modal-file-chooser {
+  min-width: 800px;
+  .field {
+    margin-top: 10px;
+  }
+}
+
 .asset-browser {
   display: flex;
   flex-flow: row;
@@ -287,7 +300,6 @@ html, body {
   width: 100%;
 
   .left-panel {
-    height: 100%;
     flex-grow: 0;
     flex-shrink: 0;
     flex-basis: 170px;
@@ -295,7 +307,6 @@ html, body {
   }
 
   .right-panel {
-    height: 100%;
     flex-grow: 0;
     flex-shrink: 0;
     flex-basis: 300px;
@@ -336,7 +347,6 @@ html, body {
   }
 
   .center {
-    height: 100%;
     flex-grow: 3;
     border-left: 1px solid $iris-grey;
     border-right: 1px solid $iris-grey;
@@ -369,6 +379,7 @@ html, body {
   }
 
   .file-info {
+    flex-grow: 1;
     .info {
       margin-top: 10px;
       padding: 10px;
@@ -385,6 +396,22 @@ html, body {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+      }
+    }
+  }
+
+  .selected-files {
+    flex-grow: 1;
+    .selected-file {
+      border: 1px solid $iris-grey;
+      border-radius: 4px;
+      margin: 2px;
+      line-height: 20px;
+      button {
+        height: 20px;
+        width: 20px;
+        padding: 0 2px 0 2px;
+        margin-right: 5px;
       }
     }
   }

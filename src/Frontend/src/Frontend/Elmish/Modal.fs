@@ -139,7 +139,7 @@ module Modal =
     let closeModal _ =
       let fileChooser = modal :?> FileChooser
       CloseModal(modal, Choice1Of2 (unbox fileChooser.Result)) |> dispatch
-    div [] [
+    div [ ClassName "modal-file-chooser" ] [
       p [ ClassName "title has-text-centered" ] [ str "Choose File" ]
       com<AssetBrowserView,_,_>
         { Id = Guid.NewGuid()

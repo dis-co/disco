@@ -322,7 +322,7 @@ type AssetBrowserView(props) =
 
   // ** renderDirectoryInfo
 
-  member this.renderDirectoryInfo (info:FsInfo) selected =
+  member this.renderDirectoryInfo (info:FsInfo) =
     div [ Class "file-info" ] [
       div [ Class "info" ] [
         div [ Class "columns" ] [
@@ -361,12 +361,11 @@ type AssetBrowserView(props) =
           ]
         ]
       ]
-      selected
     ]
 
   // ** renderFileInfo
 
-  member this.renderFileInfo (info:FsInfo) selected =
+  member this.renderFileInfo (info:FsInfo) =
     div [ Class "file-info" ] [
       div [ Class "info" ] [
         div [ Class "columns" ] [
@@ -405,20 +404,11 @@ type AssetBrowserView(props) =
           ]
         ]
       ]
-      selected
     ]
 
   // ** renderAssetInfo
 
   member this.renderAssetInfo trees =
-    let selectedList =
-      match this.props.Selectable with
-      | Selectable.Nothing -> str ""
-      | Selectable.Directories | Selectable.Files ->
-        this.state.SelectedFiles
-        |> List.map (string >> str)
-        |> div [ Class "selected-files" ]
-
     match this.state.CurrentAsset with
     | None -> div [ Class "file-info" ] []
     | Some (host, path) ->
@@ -426,8 +416,8 @@ type AssetBrowserView(props) =
       | None -> div [ Class "file-info" ] []
       | Some tree ->
         match FsTree.tryFind path tree with
-        | Some (FsEntry.Directory(info,_)) -> this.renderDirectoryInfo info selectedList
-        | Some (FsEntry.File info) -> this.renderFileInfo info selectedList
+        | Some (FsEntry.Directory(info,_)) -> this.renderDirectoryInfo info
+        | Some (FsEntry.File info) -> this.renderFileInfo info
         | _ -> div [ Class "file-info" ] []
 
   // ** renderBreadcrumbs
@@ -441,6 +431,22 @@ type AssetBrowserView(props) =
         div [ Class "bread" ] crumbs
       ]
 
+  // ** renderSelectedFileRow
+
+  member this.renderSelectedFileRow(fsPath:FsPath) =
+    div [ Class "selected-file" ] [
+      button [
+        Class "button"
+        OnClick
+          (fun e ->
+            e.stopPropagation()
+            this.toggleSelected fsPath)
+      ] [
+        i [ Class "fa fa-close" ] []
+      ]
+      str (FsPath.fileName fsPath |> string)
+    ]
+
   // ** render
 
   member this.render () =
@@ -448,6 +454,25 @@ type AssetBrowserView(props) =
       this.props.Model.state
       |> Option.map State.fsTrees
       |> Option.defaultValue Map.empty
+
+    let listHeader, selectedList =
+      match this.props.Selectable with
+      | Selectable.Nothing -> None, None
+      | Selectable.Directories | Selectable.Files ->
+        let header = header [ Class "header" ] [ str "Selected" ]
+        let selected =
+          this.state.SelectedFiles
+          |> List.map this.renderSelectedFileRow
+          |> div [ Class "selected-files" ]
+        Some header, Some selected
+
+    let inspector =
+      [ Some (header [ Class "header" ] [ str "Assetinfo" ])
+        Some (this.renderAssetInfo trees)
+        listHeader
+        selectedList ]
+      |> List.choose id
+
     div [ Class "asset-browser" ] [
       div [ Class "left-panel" ] [
         div [ Class "inlay" ] [
@@ -466,12 +491,7 @@ type AssetBrowserView(props) =
         ]
       ]
       div [ Class "right-panel" ] [
-        div [ Class "inlay" ] [
-          header [ Class "header" ] [ str "Assetinfo" ]
-          div [ Class "body" ] [
-            this.renderAssetInfo trees
-          ]
-        ]
+        div [ Class "inlay" ] inspector
       ]
     ]
 
