@@ -383,11 +383,13 @@ html, body {
       }
       .controls {
         height: 24px;
-        width: 24px;
         line-height: 24px;
         padding-right: 5px;
         i {
           height: 18px;
+        }
+        i:after {
+          margin-left: 5px;
         }
       }
     }

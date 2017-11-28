@@ -77,7 +77,18 @@ module AssetBrowserState =
 
   let addSelected path s = { s with SelectedFiles = path :: s.SelectedFiles }
   let setSelected files s = { s with SelectedFiles = files }
-  let removeSelected path s = { s with SelectedFiles = List.filter ((<>) path) s.SelectedFiles }
+  let removeSelected i delete s =
+    { s with
+        SelectedFiles =
+          List.fold
+            (fun (idx, lst) path ->
+              if idx = i && path = delete
+              then (idx + 1, lst)
+              else (idx + 1, path :: lst))
+            (0, List.empty)
+            s.SelectedFiles
+          |> snd
+          |> List.rev }
 
 // * SelectedAssetProps
 
@@ -163,19 +174,21 @@ type AssetBrowserView(props) =
     Option.iter (fun f -> f state.SelectedFiles) this.props.OnSelect
     state
 
-  // ** toggleSelected
+  // ** addSelected
 
-  member this.toggleSelected fspath =
-    if List.contains fspath this.state.SelectedFiles then
-      this.state
-      |> AssetBrowserState.removeSelected fspath
-      |> this.callSelected
-      |> this.setState
-    else
-      this.state
-      |> AssetBrowserState.addSelected fspath
-      |> this.callSelected
-      |> this.setState
+  member this.addSelected fspath =
+    this.state
+    |> AssetBrowserState.addSelected fspath
+    |> this.callSelected
+    |> this.setState
+
+  // ** removeSelected
+
+  member this.removeSelected i fspath =
+    this.state
+    |> AssetBrowserState.removeSelected i fspath
+    |> this.callSelected
+    |> this.setState
 
   // ** renderDirectoryTree
 
@@ -314,15 +327,11 @@ type AssetBrowserView(props) =
         ] [
           div [ Class "controls" ] [
             i [
-              classList [
-                "fa fa-lg", true
-                "fa-square-o", not isSelected
-                "fa-check-square-o", isSelected
-              ]
+              Class "fa fa-lg fa-plus-square-o"
               OnClick
                 (fun e ->
                   e.stopPropagation()
-                  this.toggleSelected path)
+                  this.addSelected path)
             ] []
           ]
         ]
@@ -360,8 +369,12 @@ type AssetBrowserView(props) =
         | Some tree ->
           match FsTree.tryFind path tree with
           | Some (FsEntry.Directory(info, children)) ->
+            let filter _ =
+              match this.props.Selectable with
+              | Selectable.Nothing | Selectable.Files -> FsEntry.isFile
+              | Selectable.Directories -> FsEntry.isDirectory
             children
-            |> Map.filter (fun _ -> FsEntry.isFile)
+            |> Map.filter filter
             |> Map.toList
             |> List.map (snd >> this.renderAssetRow host)
           | _ -> List.empty
@@ -495,9 +508,9 @@ type AssetBrowserView(props) =
           this.state.SelectedFiles
           |> List.mapi
             (fun i fspath ->
-              { key = string fspath
+              { key = string fspath + "-" + string i
                 FsPath= fspath
-                OnRemove = this.toggleSelected })
+                OnRemove = this.removeSelected i })
         let container =
           from SelectedAssetContainer
             { items = Array.ofList selected
