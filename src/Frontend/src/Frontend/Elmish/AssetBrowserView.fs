@@ -320,9 +320,105 @@ type AssetBrowserView(props) =
           | _ -> List.empty
     div [ Class "files" ] children
 
+  // ** renderDirectoryInfo
+
+  member this.renderDirectoryInfo (info:FsInfo) selected =
+    div [ Class "file-info" ] [
+      div [ Class "info" ] [
+        div [ Class "columns" ] [
+          div [ Class "column" ] [ strong [] [ str "Directory" ] ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Path:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Path)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Name:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Name)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Assets:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Size)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Filtered:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Filtered)
+          ]
+        ]
+      ]
+      selected
+    ]
+
+  // ** renderFileInfo
+
+  member this.renderFileInfo (info:FsInfo) selected =
+    div [ Class "file-info" ] [
+      div [ Class "info" ] [
+        div [ Class "columns" ] [
+          div [ Class "column" ] [ strong [] [ str "Asset" ] ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Path:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Path)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Name:" ]
+          ]
+          div [ Class "column" ] [
+            str (string info.Name)
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Type:" ]
+          ]
+          div [ Class "column" ] [
+            str info.MimeType
+          ]
+        ]
+        div [ Class "columns" ] [
+          div [ Class "column is-one-fifth" ] [
+            strong [] [ str "Size:" ]
+          ]
+          div [ Class "column" ] [
+            str (FsEntry.formatBytes info.Size)
+          ]
+        ]
+      ]
+      selected
+    ]
+
   // ** renderAssetInfo
 
   member this.renderAssetInfo trees =
+    let selectedList =
+      match this.props.Selectable with
+      | Selectable.Nothing -> str ""
+      | Selectable.Directories | Selectable.Files ->
+        this.state.SelectedFiles
+        |> List.map (string >> str)
+        |> div [ Class "selected-files" ]
+
     match this.state.CurrentAsset with
     | None -> div [ Class "file-info" ] []
     | Some (host, path) ->
@@ -330,86 +426,8 @@ type AssetBrowserView(props) =
       | None -> div [ Class "file-info" ] []
       | Some tree ->
         match FsTree.tryFind path tree with
-        | Some (FsEntry.Directory(info,_)) ->
-          div [ Class "file-info" ] [
-            div [ Class "info" ] [
-              div [ Class "columns" ] [
-                div [ Class "column" ] [ strong [] [ str "Directory" ] ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Path:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string path)
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Name:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string info.Name)
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Assets:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string info.Size)
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Filtered:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string info.Filtered)
-                ]
-              ]
-            ]
-          ]
-        | Some (FsEntry.File info) ->
-          div [ Class "file-info" ] [
-            div [ Class "info" ] [
-              div [ Class "columns" ] [
-                div [ Class "column" ] [ strong [] [ str "Asset" ] ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Path:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string path)
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Name:" ]
-                ]
-                div [ Class "column" ] [
-                  str (string info.Name)
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Type:" ]
-                ]
-                div [ Class "column" ] [
-                  str info.MimeType
-                ]
-              ]
-              div [ Class "columns" ] [
-                div [ Class "column is-one-fifth" ] [
-                  strong [] [ str "Size:" ]
-                ]
-                div [ Class "column" ] [
-                  str (FsEntry.formatBytes info.Size)
-                ]
-              ]
-            ]
-          ]
+        | Some (FsEntry.Directory(info,_)) -> this.renderDirectoryInfo info selectedList
+        | Some (FsEntry.File info) -> this.renderFileInfo info selectedList
         | _ -> div [ Class "file-info" ] []
 
   // ** renderBreadcrumbs
@@ -456,6 +474,8 @@ type AssetBrowserView(props) =
         ]
       ]
     ]
+
+// * createWidget
 
 /// __        ___     _            _
 /// \ \      / (_) __| | __ _  ___| |_
