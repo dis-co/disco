@@ -131,8 +131,18 @@ type PinView(props) =
               precision = precision
               properties = properties
               useRightClick = useRightClick
-              handleExternally = false
-              onDoubleClick = None
+              handleExternally =
+                match pin with
+                | StringPin { Behavior = behavior } ->
+                  behavior = Behavior.FileName || behavior = Behavior.Directory
+                | _ -> false
+              onDoubleClick =
+                match pin with
+                | StringPin data when data.Behavior = Behavior.FileName ->
+                  Some (fun _ -> Modal.showFileChooser pin this.props.model this.props.dispatch)
+                | StringPin data when data.Behavior = Behavior.Directory ->
+                  Some (fun _ -> Modal.showDirectoryChooser pin this.props.model this.props.dispatch)
+                | _ -> None
               updater = updater
               classes = [||]
               suffix  = None
