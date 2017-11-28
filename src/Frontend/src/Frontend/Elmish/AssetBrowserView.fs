@@ -118,7 +118,7 @@ type private SelectedAssetElement(props) =
       ] [
         i [ Class "fa fa-close" ] []
       ]
-      from SelectedAssetHandle { value = FsPath.fileName this.props.FsPath |> string } []
+      from SelectedAssetHandle { value = string this.props.FsPath } []
     ]
 
 // * SelecteAssetSortable
