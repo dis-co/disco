@@ -67,7 +67,9 @@ let handleModalResult (modal: IModal) dispatch =
     // Try loading the project again with the site config
     loadProject dispatch (Some m.Result) m.Info |> Promise.start
   | :? Modal.FileChooser as m ->
-    printfn "file choose: %A" m.Result
+    printfn "file choosen: %A" m.Result
+  | :? Modal.DirectoryChooser as m ->
+    printfn "directories choosen: %A" m.Result
   | _ -> failwithf "Cannot handle unknown modal %A" modal
 
 let private hideModal modal dispatch =
