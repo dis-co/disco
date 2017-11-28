@@ -67,9 +67,37 @@ let handleModalResult (modal: IModal) dispatch =
     // Try loading the project again with the site config
     loadProject dispatch (Some m.Result) m.Info |> Promise.start
   | :? Modal.FileChooser as m ->
-    printfn "file choosen: %A" m.Result
+    let client =
+      if m.Pin.PinConfiguration = PinConfiguration.Preset
+      then Some m.Pin.ClientId
+      else None
+    let slices =
+      let list = List.map string m.Result
+      match m.Pin.VecSize with
+      | VecSize.Dynamic _ ->
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+      | VecSize.Fixed d ->
+        let list = try List.take (int d) list with _ -> list
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+    slices
+    |> UpdateSlices.ofSlices
+    |> ClientContext.Singleton.Post
   | :? Modal.DirectoryChooser as m ->
-    printfn "directories choosen: %A" m.Result
+    let client =
+      if m.Pin.PinConfiguration = PinConfiguration.Preset
+      then Some m.Pin.ClientId
+      else None
+    let slices =
+      let list = List.map string m.Result
+      match m.Pin.VecSize with
+      | VecSize.Dynamic _ ->
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+      | VecSize.Fixed d ->
+        let list = try List.take (int d) list with _ -> list
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+    slices
+    |> UpdateSlices.ofSlices
+    |> ClientContext.Singleton.Post
   | _ -> failwithf "Cannot handle unknown modal %A" modal
 
 let private hideModal modal dispatch =

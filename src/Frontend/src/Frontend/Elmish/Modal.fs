@@ -95,16 +95,18 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
-  type FileChooser(state:State) =
+  type FileChooser(pin:Pin,state:State) =
     let mutable res: FsPath List = List.empty
     member __.Result = res
+    member __.Pin = pin
     member __.State = state
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
-  type DirectoryChooser(state:State) =
+  type DirectoryChooser(pin:Pin,state:State) =
     let mutable res: FsPath List = List.empty
     member __.Result = res
+    member __.Pin = pin
     member __.State = state
     interface IModal with
       member this.SetResult(v) = res <- unbox v
@@ -206,10 +208,29 @@ module Modal =
 
   // ** showFileChooser
 
-  let showFileChooser (model:Model) dispatch =
-    Option.iter (FileChooser >> asIModal >> OpenModal >> dispatch) model.state
+  let showFileChooser pin (model:Model) dispatch =
+    Option.iter
+      (fun state ->
+        (pin, state)
+        |> FileChooser
+        |> asIModal
+        |> OpenModal
+        |> dispatch)
+      model.state
+
+  // ** showFileChooser
+
+  let showDirectoryChooser pin (model:Model) dispatch =
+    Option.iter
+      (fun state ->
+        (pin, state)
+        |> DirectoryChooser
+        |> asIModal
+        |> OpenModal
+        |> dispatch)
+      model.state
 
   // ** showSettings
 
   let showSettings (model:Model) dispatch =
-      model.userConfig |> EditSettings |> asIModal |> OpenModal |> dispatch
+    model.userConfig |> EditSettings |> asIModal |> OpenModal |> dispatch

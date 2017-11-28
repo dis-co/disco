@@ -116,7 +116,6 @@ module private EditMenu =
   let [<Literal>] undo = "Undo"
   let [<Literal>] redo = "Redo"
   let [<Literal>] resetDirty = "Reset Dirty"
-  let [<Literal>] filechooser = "Choose File"
   let [<Literal>] settings = "Settings"
 
 let private editMenu onOpen (state:ViewState) (props:ViewProps) =
@@ -127,7 +126,6 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
     | EditMenu.resetDirty -> Option.iter Lib.resetDirty props.Model.state
     | EditMenu.undo -> Lib.undo()
     | EditMenu.redo -> Lib.redo()
-    | EditMenu.filechooser -> Modal.showFileChooser props.Model props.Dispatch
     | EditMenu.settings -> Modal.showSettings props.Model props.Dispatch
     | _ -> ()
     withDelay onOpen
@@ -147,7 +145,6 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
       navbarItem (onClick props.Dispatch) EditMenu.redo (Some "Ctrl-Z")
       navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
       div [ Class "navbar-divider" ] []
-      navbarItem (onClick props.Dispatch) EditMenu.filechooser None
       navbarItem (onClick props.Dispatch) EditMenu.settings None
     ]
   ]

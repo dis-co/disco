@@ -314,10 +314,10 @@ type AssetBrowserView(props) =
       match this.state.CurrentAsset with
       | Some entry -> entry = (host, path)
       | _ -> false
-
     let selectable =
-      if this.props.Selectable = Selectable.Files
-      then
+      if this.props.Selectable = Selectable.Nothing
+      then str ""
+      else
         let isSelected = List.contains path this.state.SelectedFiles
         div [
           classList [
@@ -335,8 +335,6 @@ type AssetBrowserView(props) =
             ] []
           ]
         ]
-      else str ""
-
     div [
       Class "file"
       OnClick
