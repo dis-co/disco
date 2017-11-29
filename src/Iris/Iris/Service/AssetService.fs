@@ -71,11 +71,23 @@ module AssetService =
               | None -> map
             | FileSystemEvent.Changed(_,path) ->
               let path = FsPath.parse path
-              match FsTree.tryFind path tree with
-              | Some entry ->
-                let cmd = UpdateFsEntry (state.Machine.MachineId, entry)
-                Map.add path cmd map
-              | None -> map
+              match Map.tryFind path map with
+              | Some (AddFsEntry _) ->
+                /// there is already an AddFsEntry for this path in the batch
+                /// so we don't want to overwrite it with an UpdateFsEntry, which
+                /// will get ignored
+                match FsTree.tryFind path tree with
+                | Some entry ->
+                  let cmd = AddFsEntry (state.Machine.MachineId, entry)
+                  Map.add path cmd map
+                | None -> map
+              | _ ->
+                /// no entry there for the path yet, so we just update
+                match FsTree.tryFind path tree with
+                | Some entry ->
+                  let cmd = UpdateFsEntry (state.Machine.MachineId, entry)
+                  Map.add path cmd map
+                | None -> map
             | FileSystemEvent.Deleted(_,path) ->
               let path = FsPath.parse path
               let cmd = RemoveFsEntry (state.Machine.MachineId, path)

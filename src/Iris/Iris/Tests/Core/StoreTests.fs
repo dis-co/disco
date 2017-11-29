@@ -961,7 +961,7 @@ module StoreTests =
           Expect.isNone actual "Should not be in tree anymore"
 
   let storeTests =
-    ftestList "Store Tests" [
+    testList "Store Tests" [
       test_should_add_a_group_to_the_store
       test_should_update_a_group_already_in_the_store
       test_should_remove_a_group_already_in_the_store
