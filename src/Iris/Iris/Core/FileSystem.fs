@@ -411,9 +411,9 @@ type FsTree =
   // ** ToString
 
   override tree.ToString() =
-    "Host: "    + (string tree.HostId)  + Environment.NewLine +
-    "Filters: " + (string tree.Filters) + Environment.NewLine +
-    "Root: "    + Environment.NewLine   + FsEntry.stringify tree.Root
+    "Host: "    + (string tree.HostId)        + Environment.NewLine +
+    "Filters: " + (sprintf "%A" tree.Filters) + Environment.NewLine +
+    "Root: "    + Environment.NewLine         + FsEntry.stringify tree.Root
 
   // ** Id
 
@@ -1508,6 +1508,7 @@ module FsTree =
         Root = root
       }
     }
+
   #endif
 
   // ** directories
@@ -1649,6 +1650,27 @@ module FsTree =
     |> root
     |> FsEntry.filter pred
     |> fun updated -> setRoot updated tree
+
+  // ** read
+
+  #if !FABLE_COMPILER
+
+  let read host (basePath: FilePath) filters =
+    match basePath |> FsPath.parse |> FsEntry.create with
+    | Some root ->
+      basePath
+      |> FileSystem.lsDir
+      |> List.map (FsPath.parse >> FsEntry.create)
+      |> List.choose id
+      |> inflate host root
+      |> setFilters filters
+      |> Either.succeed
+    | None ->
+      "Could not parse root entry: does the directory exist?"
+      |> Error.asIOError "FsTree.read"
+      |> Either.fail
+
+  #endif
 
 // * FsTreeTesting
 
