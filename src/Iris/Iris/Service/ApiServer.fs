@@ -494,11 +494,7 @@ module ApiServer =
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
     either {
-      let pubsub =
-        PubSub.create
-          mem.Id                        // to deduplicate messages sent from this process
-          PubSub.defaultAddress
-          (int Constants.MCAST_PORT)
+      let pubsub = PubSub.create mem
 
       let server = TcpServer.create {
         ServerId = mem.Id
