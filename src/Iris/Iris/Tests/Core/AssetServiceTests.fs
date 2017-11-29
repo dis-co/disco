@@ -25,14 +25,15 @@ module AssetServiceTests =
     |> String
 
   let createAssetDirectory() =
-    let basePath = Path.getTempPath()
+    let basePath = Path.getTempPath() </> Path.getRandomFileName()
+    do Directory.createDirectory basePath |> ignore
     for d in 0 .. rnd.Next(1,4) do
       let dirPath = basePath </> Path.getRandomFileName()
-      Directory.createDirectory dirPath |> ignore
+      do Directory.createDirectory dirPath |> ignore
       for f in 0 .. rnd.Next(1,4) do
         let filePath = dirPath </> Path.getRandomFileName()
         let contents = rndString()
-        File.writeText contents None filePath
+        do File.writeText contents None filePath
     let machine = { IrisMachine.Default with AssetDirectory = basePath }
     let filters = FsTree.parseFilters machine.AssetFilter
     let fsTree = FsTree.read machine.MachineId basePath filters |> Either.get
@@ -43,7 +44,7 @@ module AssetServiceTests =
       either {
         let machine, tree = createAssetDirectory()
         use crawlDone = new WaitEvent()
-        let! service = AssetService.create machine
+        use! service = AssetService.create machine
 
         let handler = function
           | IrisEvent.Append (_,AddFsTree _) -> crawlDone.Set()
@@ -65,7 +66,7 @@ module AssetServiceTests =
         use crawlDone = new WaitEvent()
         use addDone = new WaitEvent()
 
-        let! service = AssetService.create machine
+        use! service = AssetService.create machine
 
         let handler = function
           | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
@@ -101,7 +102,7 @@ module AssetServiceTests =
         use crawlDone = new WaitEvent()
         use changeDone = new WaitEvent()
 
-        let! service = AssetService.create machine
+        use! service = AssetService.create machine
 
         let handler = function
           | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
@@ -144,7 +145,7 @@ module AssetServiceTests =
         use crawlDone = new WaitEvent()
         use removeDone = new WaitEvent()
 
-        let! service = AssetService.create machine
+        use! service = AssetService.create machine
 
         let handler = function
           | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
@@ -162,14 +163,12 @@ module AssetServiceTests =
           tree
           |> FsTree.directories
           |> FsEntry.flatten
+          |> List.map (FsEntry.path >> string)
+          |> List.sortBy String.length
           |> List.last
-          |> FsEntry.path
-          |> string
           |> filepath
 
-        assert (dirPath <> machine.AssetDirectory)
-
-        do Directory.removeDirectory dirPath |> ignore
+        do! FileSystem.rmDir dirPath
 
         do! waitFor "remove be done" removeDone
 
