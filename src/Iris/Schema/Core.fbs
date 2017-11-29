@@ -600,18 +600,20 @@ enum RaftMemberStateFB:ubyte {
 }
 
 table RaftMemberFB {
-      Id         : [ubyte];
-      HostName   : string;
-      IpAddress  : string;
-      RaftPort   : ushort;
-      WsPort     : ushort;
-      GitPort    : ushort;
-      ApiPort    : ushort;
-      Voting     : bool;
-      VotedForMe : bool;
-      State      : RaftMemberStateFB;
-      NextIndex  : int;
-      MatchIndex : int;
+      Id:               [ubyte];             
+      HostName:         string;        
+      IpAddress:        string;       
+      MulticastAddress: string;
+      MulticastPort:    ushort;   
+      RaftPort:         ushort;        
+      WsPort:           ushort;          
+      GitPort:          ushort;         
+      ApiPort:          ushort;         
+      Voting:           bool;            
+      VotedForMe:       bool;        
+      State:            RaftMemberStateFB;
+      NextIndex:        int;          
+      MatchIndex:       int;         
 }
 
 //   ____             __ _

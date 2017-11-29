@@ -1292,20 +1292,23 @@ module ProjectYaml =
       try
         let! id = IrisId.TryParse mem.Id
         let! ip = IpAddress.TryParse mem.IpAddress
+        let! mcastip = IpAddress.TryParse mem.MulticastAddress
         let! state = RaftMemberState.TryParse mem.State
         return {
-          Id         = id
-          HostName   = name mem.HostName
-          IpAddress  = ip
-          RaftPort   = mem.RaftPort |> uint16 |> port
-          WsPort     = mem.WsPort   |> uint16 |> port
-          GitPort    = mem.GitPort  |> uint16 |> port
-          ApiPort    = mem.ApiPort  |> uint16 |> port
-          State      = state
-          Voting     = true
-          VotedForMe = false
-          NextIndex  = index 1
-          MatchIndex = index 0
+          Id               = id
+          HostName         = name mem.HostName
+          IpAddress        = ip
+          MulticastAddress = mcastip
+          MulticastPort    = port mem.MulticastPort
+          RaftPort         = mem.RaftPort |> uint16 |> port
+          WsPort           = mem.WsPort   |> uint16 |> port
+          GitPort          = mem.GitPort  |> uint16 |> port
+          ApiPort          = mem.ApiPort  |> uint16 |> port
+          State            = state
+          Voting           = true
+          VotedForMe       = false
+          NextIndex        = index 1
+          MatchIndex       = index 0
         }
       with exn ->
         return!

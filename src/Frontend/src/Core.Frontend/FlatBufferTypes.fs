@@ -113,6 +113,8 @@ type IrisMachineFB =
   abstract AssetDirectory: string
   abstract AssetFilter: string
   abstract BindAddress: string
+  abstract MulticastAddress: string
+  abstract MulticastPort: uint16
   abstract WebPort: uint16
   abstract RaftPort: uint16
   abstract WsPort: uint16
@@ -130,6 +132,8 @@ type IrisMachineFBConstructor =
   abstract AddAssetDirectory: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddAssetFilter: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddBindAddress: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
+  abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * key: uint16 -> unit
@@ -1349,6 +1353,8 @@ type RaftMemberFB =
   abstract IdLength: int
   abstract HostName: string
   abstract IpAddress: string
+  abstract MulticastAddress: string
+  abstract MulticastPort: uint16
   abstract RaftPort: uint16
   abstract WebPort: uint16
   abstract WsPort: uint16
@@ -1366,6 +1372,8 @@ type RaftMemberFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
   abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
+  abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
