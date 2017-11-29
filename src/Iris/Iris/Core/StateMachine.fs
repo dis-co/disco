@@ -139,6 +139,7 @@ type State =
     Users:              Map<UserId,User>
     Clients:            Map<ClientId,IrisClient>
     CuePlayers:         Map<PlayerId,CuePlayer>
+    FsTrees:            Map<HostId,FsTree>
     DiscoveredServices: Map<ServiceId,DiscoveredService> }
 
   // ** optics
@@ -210,6 +211,13 @@ type State =
   static member CuePlayer_ (id:PlayerId) =
     State.CuePlayers_ >-> Map.value_ id >-> Option.value_
 
+  static member FsTrees_ =
+    (fun (state:State) -> state.FsTrees),
+    (fun fsTrees (state:State) -> { state with FsTrees = fsTrees })
+
+  static member FsTree_ (id:PlayerId) =
+    State.FsTrees_ >-> Map.value_ id >-> Option.value_
+
   static member DiscoveredServices_ =
     (fun (state:State) -> state.DiscoveredServices),
     (fun discoveredServices (state:State) -> { state with DiscoveredServices = discoveredServices })
@@ -231,6 +239,7 @@ type State =
         Users       = Map.empty
         Clients     = Map.empty
         CuePlayers  = Map.empty
+        FsTrees     = Map.empty
         DiscoveredServices = Map.empty }
 
   // ** Load
@@ -266,6 +275,7 @@ type State =
           CuePlayers         = players
           Sessions           = Map.empty
           Clients            = Map.empty
+          FsTrees            = Map.empty
           DiscoveredServices = Map.empty }
     }
 
@@ -337,6 +347,11 @@ type State =
       |> Array.map (snd >> Binary.toOffset builder)
       |> fun clients -> StateFB.CreateClientsVector(builder, clients)
 
+    let fsTrees =
+      Map.toArray self.FsTrees
+      |> Array.map (snd >> Binary.toOffset builder)
+      |> fun fsTrees -> StateFB.CreateFsTreesVector(builder, fsTrees)
+
     let players =
       Map.toArray self.CuePlayers
       |> Array.map (snd >> Binary.toOffset builder)
@@ -358,6 +373,7 @@ type State =
     StateFB.AddClients(builder, clients)
     StateFB.AddUsers(builder, users)
     StateFB.AddCuePlayers(builder, players)
+    StateFB.AddFsTrees(builder, fsTrees)
     StateFB.AddDiscoveredServices(builder, services)
     StateFB.EndStateFB(builder)
 
@@ -480,6 +496,34 @@ type State =
             #endif
 
             return (i + 1, Map.add cue.Id cue map)
+          })
+          (Right (0, Map.empty))
+          arr
+        |> Either.map snd
+
+      // CUES
+
+      let! fsTrees =
+        let arr = Array.zeroCreate fb.FsTreesLength
+        Array.fold
+          (fun (m: Either<IrisError,int * Map<HostId, FsTree>>) _ -> either {
+            let! (i, map) = m
+
+            #if FABLE_COMPILER
+            let! fsTree = fb.FsTrees(i) |> FsTree.FromFB
+            #else
+            let! fsTree =
+              let value = fb.FsTrees(i)
+              if value.HasValue then
+                value.Value
+                |> FsTree.FromFB
+              else
+                "Could not parse empty FsTree payload"
+                |> Error.asParseError "State.FromFB"
+                |> Either.fail
+            #endif
+
+            return (i + 1, Map.add fsTree.HostId fsTree map)
           })
           (Right (0, Map.empty))
           arr
@@ -664,6 +708,7 @@ type State =
         Sessions           = sessions
         Clients            = clients
         CuePlayers         = players
+        FsTrees            = fsTrees
         DiscoveredServices = discoveredServices
       }
     }
@@ -681,12 +726,12 @@ module State =
 
   // ** optics
 
-  let pinGroups_ = State.PinGroups_ >-> PinGroupMap.Groups_
+  let pinGroups_         = State.PinGroups_ >-> PinGroupMap.Groups_
   let pinGroup_ clid gid = State.PinGroups_ >-> PinGroupMap.Group_ clid gid
-  let playerGroups_ = State.PinGroups_ >-> PinGroupMap.Players_
-  let playerGroup_ pid = State.PinGroups_ >-> PinGroupMap.Player_ pid
-  let widgetGroups_ = State.PinGroups_ >-> PinGroupMap.Widgets_
-  let widgetGroup_ wid = State.PinGroups_ >-> PinGroupMap.Widget_ wid
+  let playerGroups_      = State.PinGroups_ >-> PinGroupMap.Players_
+  let playerGroup_ pid   = State.PinGroups_ >-> PinGroupMap.Player_ pid
+  let widgetGroups_      = State.PinGroups_ >-> PinGroupMap.Widgets_
+  let widgetGroup_ wid   = State.PinGroups_ >-> PinGroupMap.Widget_ wid
 
   // ** getters
 
@@ -702,6 +747,8 @@ module State =
   let pinMapping mid = Optic.get (State.PinMapping_ mid)
   let pinWidgets = Optic.get State.PinWidgets_
   let pinWidget wid = Optic.get (State.PinWidget_ wid)
+  let fsTrees = Optic.get State.FsTrees_
+  let fsTree id = Optic.get (State.FsTree_ id)
   let cues = Optic.get State.Cues_
   let cue id = Optic.get (State.Cue_ id)
   let cueLists = Optic.get State.CueLists_
@@ -717,6 +764,9 @@ module State =
   let discoveredServices = Optic.get State.DiscoveredServices_
   let discoveredService id = Optic.get (State.DiscoveredService_ id)
 
+  let sites = Optic.get (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.Sites_)
+  let activeSite = Optic.get (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.ActiveSite_)
+
   // ** setters
 
   let setProject = Optic.set State.Project_
@@ -724,6 +774,7 @@ module State =
   let setPinGroups = Optic.set pinGroups_
   let setPinMappings = Optic.set State.PinMappings_
   let setPinWidgets = Optic.set State.PinWidgets_
+  let setFsTrees = Optic.set State.FsTrees_
   let setCues = Optic.set State.Cues_
   let setCueLists = Optic.set State.CueLists_
   let setSessions = Optic.set State.Sessions_
@@ -731,6 +782,9 @@ module State =
   let setClients = Optic.set State.Clients_
   let setCuePlayers = Optic.set State.CuePlayers_
   let setDiscoveredServices = Optic.set State.DiscoveredServices_
+
+  let setSites = Optic.set (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.Sites_)
+  let setActiveSite = Optic.set (State.Project_ >-> IrisProject.Config_ >-> IrisConfig.ActiveSite_)
 
   // ** findPin
 
@@ -1087,6 +1141,42 @@ module State =
         Clients = Map.remove client.Id state.Clients
         PinGroups = PinGroupMap.removeByClient client.Id state.PinGroups }
 
+  // ** addFsEntry
+
+  let addFsEntry host (fsEntry: FsEntry) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.addEntry fsEntry tree) state.FsTrees }
+
+  // ** updateFsEntry
+
+  let updateFsEntry host (fsEntry: FsEntry) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.updateEntry fsEntry tree) state.FsTrees }
+
+  // ** removeFsEntry
+
+  let removeFsEntry host (fsPath: FsPath) (state: State) =
+    match Map.tryFind host state.FsTrees with
+    | None -> state
+    | Some tree ->
+      { state with FsTrees = Map.add host (FsTree.removeEntry fsPath tree) state.FsTrees }
+
+  // ** addFsTree
+
+  let addFsTree (fsTree: FsTree) (state: State) =
+    if Map.containsKey fsTree.HostId state.FsTrees
+    then state
+    else { state with FsTrees = Map.add fsTree.HostId fsTree state.FsTrees }
+
+  // ** removeFsTree
+
+  let removeFsTree (host: HostId) (state: State) =
+    { state with FsTrees = Map.remove host state.FsTrees }
+
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
   // | |_) | '__/ _ \| |/ _ \/ __| __|
@@ -1162,6 +1252,13 @@ module State =
     | AddUser          user           -> addUser        user    state
     | UpdateUser       user           -> updateUser     user    state
     | RemoveUser       user           -> removeUser     user    state
+
+    | AddFsEntry    (host,fsEntry)    -> addFsEntry     host fsEntry state
+    | UpdateFsEntry (host,fsEntry)    -> updateFsEntry  host fsEntry state
+    | RemoveFsEntry (host,fsPath)     -> removeFsEntry  host fsPath state
+
+    | AddFsTree           fsTree      -> addFsTree      fsTree  state
+    | RemoveFsTree        host        -> removeFsTree   host    state
 
     | UpdateProject project           -> updateProject  project state
 
@@ -1710,6 +1807,15 @@ type StateMachine =
   | UpdateCuePlayer         of CuePlayer
   | RemoveCuePlayer         of CuePlayer
 
+  // FSTREE
+  | AddFsTree               of FsTree
+  | RemoveFsTree            of HostId
+
+  // FSENTRY
+  | AddFsEntry              of HostId * FsEntry
+  | UpdateFsEntry           of HostId * FsEntry
+  | RemoveFsEntry           of HostId * FsPath
+
   // User
   | AddUser                 of User
   | UpdateUser              of User
@@ -1792,6 +1898,15 @@ type StateMachine =
     | UpdateCuePlayer         _ -> "UpdateCuePlayer"
     | RemoveCuePlayer         _ -> "RemoveCuePlayer"
 
+    // FSTREE
+    | AddFsTree               _ -> "AddFsTree"
+    | RemoveFsTree            _ -> "RemoveFsTree"
+
+    // FSENTRY
+    | AddFsEntry              _ -> "AddFsEntry"
+    | UpdateFsEntry           _ -> "UpdateFsEntry"
+    | RemoveFsEntry           _ -> "RemoveFsEntry"
+
     // User
     | AddUser                 _ -> "AddUser"
     | UpdateUser              _ -> "UpdateUser"
@@ -1871,6 +1986,13 @@ type StateMachine =
       | UpdateCuePlayer         _
       | RemoveCuePlayer         _      -> Save
 
+      // FSENTRY
+      | AddFsTree               _
+      | RemoveFsTree            _
+      | AddFsEntry              _
+      | UpdateFsEntry           _
+      | RemoveFsEntry           _      -> Ignore
+
       // User
       | AddUser                 _
       | UpdateUser              _
@@ -1948,6 +2070,13 @@ type StateMachine =
       | UpdateCuePlayer         _
       | RemoveCuePlayer         _  -> ParameterFB.CuePlayerFB
 
+      | AddFsTree               _
+      | RemoveFsTree            _  -> ParameterFB.FsTreeUpdateFB
+
+      | AddFsEntry              _
+      | UpdateFsEntry           _
+      | RemoveFsEntry           _  -> ParameterFB.FsEntryUpdateFB
+
       | AddUser                 _
       | UpdateUser              _
       | RemoveUser              _  -> ParameterFB.UserFB
@@ -1990,6 +2119,8 @@ type StateMachine =
       | AddPinMapping           _
       | AddPinWidget            _
       | AddClient               _
+      | AddFsEntry              _
+      | AddFsTree               _
       | AddMember               _ -> ApiCommandFB.AddFB
 
       | UpdateClock             _
@@ -2006,6 +2137,7 @@ type StateMachine =
       | UpdatePinWidget         _
       | UpdateClient            _
       | UpdateMember            _
+      | UpdateFsEntry           _
       | UpdateProject           _  -> ApiCommandFB.UpdateFB
 
       | RemoveDiscoveredService _
@@ -2019,6 +2151,8 @@ type StateMachine =
       | RemovePinMapping        _
       | RemovePinWidget         _
       | RemoveClient            _
+      | RemoveFsEntry           _
+      | RemoveFsTree            _
       | RemoveMember            _ -> ApiCommandFB.RemoveFB
 
       | CallCue                 _ -> ApiCommandFB.CallCueFB
@@ -2292,6 +2426,61 @@ type StateMachine =
         Either.map UpdateSession session
       | x when x = StateMachineActionFB.RemoveFB ->
         Either.map RemoveSession session
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    ///  _____    _____       _
+    /// |  ___|__| ____|_ __ | |_ _ __ _   _
+    /// | |_ / __|  _| | '_ \| __| '__| | | |
+    /// |  _|\__ \ |___| | | | |_| |  | |_| |
+    /// |_|  |___/_____|_| |_|\__|_|   \__, |
+    ///                                |___/
+    | x when x = StateMachinePayloadFB.FsEntryUpdateFB ->
+      let fsEntryUpdate = fb.FsEntryUpdateFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        either {
+          let! id = Id.decodeHostId fsEntryUpdate
+          let! entry = FsEntry.FromFB fsEntryUpdate.Entry
+          return AddFsEntry (id,entry)
+        }
+      | x when x = StateMachineActionFB.UpdateFB ->
+        either {
+          let! id = Id.decodeHostId fsEntryUpdate
+          let! entry = FsEntry.FromFB fsEntryUpdate.Entry
+          return UpdateFsEntry (id,entry)
+        }
+      | x when x = StateMachineActionFB.RemoveFB ->
+        either {
+          let! id = Id.decodeHostId fsEntryUpdate
+          let! path = FsPath.FromFB fsEntryUpdate.Path
+          return RemoveFsEntry (id,path)
+        }
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    ///  _____   _____
+    /// |  ___|_|_   _| __ ___  ___
+    /// | |_ / __|| || '__/ _ \/ _ \
+    /// |  _|\__ \| || | |  __/  __/
+    /// |_|  |___/|_||_|  \___|\___|
+    | x when x = StateMachinePayloadFB.FsTreeUpdateFB ->
+      let fsTreeUpdate = fb.FsTreeUpdateFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        either {
+          let! tree = FsTree.FromFB fsTreeUpdate.Tree
+          return AddFsTree tree
+        }
+      | x when x = StateMachineActionFB.RemoveFB ->
+        either {
+          let! hostId = Id.decodeHostId fsTreeUpdate
+          return RemoveFsTree hostId
+        }
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
@@ -2687,6 +2876,101 @@ type StateMachine =
         | StateMachineActionFB.AddFB    -> return (AddMember    mem)
         | StateMachineActionFB.UpdateFB -> return (UpdateMember mem)
         | StateMachineActionFB.RemoveFB -> return (RemoveMember mem)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    ///  _____    _____       _
+    /// |  ___|__| ____|_ __ | |_ _ __ _   _
+    /// | |_ / __|  _| | '_ \| __| '__| | | |
+    /// |  _|\__ \ |___| | | | |_| |  | |_| |
+    /// |_|  |___/_____|_| |_|\__|_|   \__, |
+    ///                                |___/
+    | StateMachinePayloadFB.FsEntryUpdateFB ->
+      either {
+        let! fsEntryUpdate =
+          let fsEntryish = fb.Payload<FsEntryUpdateFB>()
+          if fsEntryish.HasValue then
+            Either.succeed fsEntryish.Value
+          else
+            "Could not parse empty FsEntryUpdateFB payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+        let! hostId = Id.decodeHostId fsEntryUpdate
+        match fb.Action with
+        | StateMachineActionFB.AddFB    ->
+          let! entry =
+            let entry = fsEntryUpdate.Entry
+            if entry.HasValue then
+              let value = entry.Value
+              FsEntry.FromFB value
+            else
+              "Could not parse empty FsEntryFB payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
+          return AddFsEntry (hostId, entry)
+        | StateMachineActionFB.UpdateFB ->
+          let! entry =
+            let entry = fsEntryUpdate.Entry
+            if entry.HasValue then
+              let value = entry.Value
+              FsEntry.FromFB value
+            else
+              "Could not parse empty FsEntryFB payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
+          return UpdateFsEntry(hostId, entry)
+        | StateMachineActionFB.RemoveFB ->
+          let! path =
+            let path = fsEntryUpdate.Path
+            if path.HasValue then
+              let pathish = path.Value
+              FsPath.FromFB pathish
+            else
+              "Could not parse empty FsPathFB payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
+          return RemoveFsEntry (hostId, path)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    ///  _____   _____
+    /// |  ___|_|_   _| __ ___  ___
+    /// | |_ / __|| || '__/ _ \/ _ \
+    /// |  _|\__ \| || | |  __/  __/
+    /// |_|  |___/|_||_|  \___|\___|
+    | StateMachinePayloadFB.FsTreeUpdateFB ->
+      either {
+        let! fsTreeUpdate =
+          let updateish = fb.Payload<FsTreeUpdateFB>()
+          if updateish.HasValue then
+            Either.succeed updateish.Value
+          else
+            "Could not parse empty FsTreeUpdateFB payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+        match fb.Action with
+        | StateMachineActionFB.AddFB ->
+          let! tree =
+            let tree = fsTreeUpdate.Tree
+            if tree.HasValue then
+              let value = tree.Value
+              FsTree.FromFB value
+            else
+              "Could not parse empty FsTreeFB payload"
+              |> Error.asParseError "StateMachine.FromFB"
+              |> Either.fail
+          return AddFsTree tree
+        | StateMachineActionFB.RemoveFB ->
+          let! fsTreeId = Id.decodeHostId fsTreeUpdate
+          return RemoveFsTree fsTreeId
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
@@ -3405,6 +3689,98 @@ type StateMachine =
       StateMachineFB.AddPayload(builder, session)
 #else
       StateMachineFB.AddPayload(builder, session.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    ///  _____    _____       _
+    /// |  ___|__| ____|_ __ | |_ _ __ _   _
+    /// | |_ / __|  _| | '_ \| __| '__| | | |
+    /// |  _|\__ \ |___| | | | |_| |  | |_| |
+    /// |_|  |___/_____|_| |_|\__|_|   \__, |
+    ///                                |___/
+    | AddFsEntry (hostId, entry) ->
+      let id = FsEntryUpdateFB.CreateHostIdVector(builder, hostId.ToByteArray())
+      let entry = Binary.toOffset builder entry
+      FsEntryUpdateFB.StartFsEntryUpdateFB(builder)
+      FsEntryUpdateFB.AddHostId(builder, id)
+      FsEntryUpdateFB.AddEntry(builder, entry)
+      let entry = FsEntryUpdateFB.EndFsEntryUpdateFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.FsEntryUpdateFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, entry)
+#else
+      StateMachineFB.AddPayload(builder, entry.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdateFsEntry (hostId, entry) ->
+      let id = FsEntryUpdateFB.CreateHostIdVector(builder, hostId.ToByteArray())
+      let entry = Binary.toOffset builder entry
+      FsEntryUpdateFB.StartFsEntryUpdateFB(builder)
+      FsEntryUpdateFB.AddHostId(builder, id)
+      FsEntryUpdateFB.AddEntry(builder, entry)
+      let entry = FsEntryUpdateFB.EndFsEntryUpdateFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.FsEntryUpdateFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, entry)
+#else
+      StateMachineFB.AddPayload(builder, entry.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemoveFsEntry (hostId, path) ->
+      let id = FsEntryUpdateFB.CreateHostIdVector(builder, hostId.ToByteArray())
+      let path = Binary.toOffset builder path
+      FsEntryUpdateFB.StartFsEntryUpdateFB(builder)
+      FsEntryUpdateFB.AddHostId(builder, id)
+      FsEntryUpdateFB.AddPath(builder, path)
+      let entry = FsEntryUpdateFB.EndFsEntryUpdateFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.FsEntryUpdateFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, entry)
+#else
+      StateMachineFB.AddPayload(builder, entry.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    ///  _____   _____
+    /// |  ___|_|_   _| __ ___  ___
+    /// | |_ / __|| || '__/ _ \/ _ \
+    /// |  _|\__ \| || | |  __/  __/
+    /// |_|  |___/|_||_|  \___|\___|
+    | AddFsTree tree ->
+      let tree = Binary.toOffset builder tree
+      FsTreeUpdateFB.StartFsTreeUpdateFB(builder)
+      FsTreeUpdateFB.AddTree(builder, tree)
+      let tree = FsTreeUpdateFB.EndFsTreeUpdateFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.FsTreeUpdateFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, tree)
+#else
+      StateMachineFB.AddPayload(builder, tree.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemoveFsTree id ->
+      let vector = FsTreeUpdateFB.CreateHostIdVector(builder, id.ToByteArray())
+      FsTreeUpdateFB.StartFsTreeUpdateFB(builder)
+      FsTreeUpdateFB.AddHostId(builder, vector)
+      let tree = FsTreeUpdateFB.EndFsTreeUpdateFB(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.FsTreeUpdateFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, tree)
+#else
+      StateMachineFB.AddPayload(builder, tree.Value)
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 

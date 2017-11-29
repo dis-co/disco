@@ -971,13 +971,13 @@ module LogEntry =
       let additions =
         Array.fold
           (fun lst (newmem: RaftMember) ->
-            match Array.tryFind (Member.getId >> (=) newmem.Id) oldmems with
+            match Array.tryFind (Member.id >> (=) newmem.Id) oldmems with
             | Some _ -> lst
             |      _ -> MemberAdded(newmem) :: lst) [] newmems
 
       Array.fold
         (fun lst (oldmem: RaftMember) ->
-          match Array.tryFind (Member.getId >> (=) oldmem.Id) newmems with
+          match Array.tryFind (Member.id >> (=) oldmem.Id) newmems with
           | Some _ -> lst
           | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
       |> List.toArray

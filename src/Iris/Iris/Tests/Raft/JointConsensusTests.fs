@@ -30,7 +30,7 @@ module JointConsensus =
 
       let getstuff r =
         Map.toList r.Peers
-        |> List.map (snd >> Member.getId)
+        |> List.map (snd >> Member.id)
         |> List.sort
 
       raft {
@@ -118,7 +118,7 @@ module JointConsensus =
         do! expectM "Should be in joint-consensus now" true Raft.inJointConsensus
 
         do! expectM "Should be non-voting mem for start" false (Raft.getMember nid2 >> Option.get >> Member.isVoting)
-        do! expectM "Should be in joining state for start" Joining (Raft.getMember nid2 >> Option.get >> Member.getState)
+        do! expectM "Should be in joining state for start" Joining (Raft.getMember nid2 >> Option.get >> Member.state)
 
         // add another regular entry
         let! idx = Raft.currentIndexM ()

@@ -164,6 +164,9 @@ module Constants =
   [<Literal>]
   let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
 
+  [<Literal>]
+  let DEFAULT_ASSET_FILTER = ".tga .png .jpg"
+
   //     _                 _
   //    / \   ___ ___  ___| |_ ___
   //   / _ \ / __/ __|/ _ \ __/ __|
@@ -223,11 +226,18 @@ module Constants =
   let GITIGNORE = @"/.raft"
 
   [<Literal>]
-  /// Intended to be a subdirectory of HOME
+  /// Intended to be a subdirectory of $HOME
   let MACHINECONFIG_DEFAULT_WORKSPACE_UNIX = "iris"
 
   [<Literal>]
   let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Iris"
+
+  [<Literal>]
+  /// Intended to be a subdirectory of $HOME/iris
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX = "assets"
+
+  [<Literal>]
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS = "C:\Iris\assets"
 
   //  _____            _                                      _
   // | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_

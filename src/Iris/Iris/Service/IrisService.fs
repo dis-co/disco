@@ -67,6 +67,7 @@ module IrisService =
       GitServer     : IGitServer
       RaftServer    : IRaftServer
       SocketServer  : IWebSocketServer
+      AssetService  : IAssetService
       ClockService  : IClock
       FsWatcher     : IFsWatcher
       Subscriptions : Subscriptions
@@ -84,6 +85,7 @@ module IrisService =
         dispose self.ApiServer
         dispose self.GitServer
         dispose self.RaftServer
+        dispose self.AssetService
         dispose self.ClockService
         dispose self.SocketServer
         dispose self.Dispatcher
@@ -335,19 +337,26 @@ module IrisService =
         store.State.ApiServer.Clients
         |> Map.toList
         |> List.map (snd >> AddClient)
-      let batch =
-        List.append sessions clients
+      let tree =
+        store.State.Store.State.FsTrees
+        |> Map.tryFind store.State.Machine.MachineId
+        |> Option.map (fun tree -> [ AddFsTree tree ])
+        |> Option.defaultValue List.empty
+
+      let batch = List.concat [ sessions; clients; tree ]
+
+      /// send a batched state machine command to leader if non-empty
+      if not (List.isEmpty batch) then
+        (clients.Length,sessions.Length)
+        |> String.format "sending batch command with {0} (clients,session) "
+        |> Logger.debug (tag "sendLocalData")
+
+        batch
         |> CommandBatch.ofList
-
-      (clients.Length,sessions.Length)
-      |> String.format "sending batch command with {0} (clients,session) "
-      |> Logger.debug (tag "sendLocalData")
-
-      batch
-      |> RaftRequest.AppendEntry
-      |> Binary.encode
-      |> Request.create (Guid.ofId socket.ClientId)
-      |> socket.Request
+        |> RaftRequest.AppendEntry
+        |> Binary.encode
+        |> Request.create (Guid.ofId socket.ClientId)
+        |> socket.Request
     else
       store.State.RaftServer.RaftState
       |> String.format "Nothing to send ({0})"
@@ -370,8 +379,8 @@ module IrisService =
   let private makeLeader (leader: RaftMember) (store: IAgentStore<IrisState>) =
     let socket = TcpClient.create {
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
-      PeerAddress = leader.IpAddr
-      PeerPort = leader.Port
+      PeerAddress = leader.IpAddress
+      PeerPort = leader.RaftPort
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
     handleLeaderEvents socket store
@@ -396,18 +405,18 @@ module IrisService =
         (function
           | ConfigChange.MemberAdded mem ->
             mem
-            |> Member.getId
+            |> Member.id
             |> String.format "added {0}"
           | ConfigChange.MemberRemoved mem ->
             mem
-            |> Member.getId
+            |> Member.id
             |> String.format "removed {0}")
       |> Array.fold (fun s id -> s + " " + id) "Joint consensus with: "
       |> Logger.debug (tag "processEvent")
 
     | IrisEvent.ConfigurationDone mems ->
       mems
-      |> Array.map (Member.getId >> string)
+      |> Array.map (Member.id >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
       |> Logger.debug (tag "processEvent")
 
@@ -661,11 +670,11 @@ module IrisService =
         else
           let selfMember =
             { Member.create(machineId) with
-                IpAddr  = serviceOptions.Machine.BindAddress
-                GitPort = serviceOptions.Machine.GitPort
-                WsPort  = serviceOptions.Machine.WsPort
-                ApiPort = serviceOptions.Machine.ApiPort
-                Port    = serviceOptions.Machine.RaftPort }
+                IpAddress = serviceOptions.Machine.BindAddress
+                GitPort   = serviceOptions.Machine.GitPort
+                WsPort    = serviceOptions.Machine.WsPort
+                ApiPort   = serviceOptions.Machine.ApiPort
+                RaftPort  = serviceOptions.Machine.RaftPort }
           { site with Members = Map.add machineId selfMember site.Members }
 
       let cfg = state.Project.Config |> Config.addSiteAndSetActive site
@@ -683,6 +692,8 @@ module IrisService =
       // The frontend needs to handle that case
       let! mem = Config.selfMember state.Project.Config
       do! Config.validateSettings mem serviceOptions.Machine
+
+      let! assetService = AssetService.create serviceOptions.Machine
 
       // ensure that we have all other nodes set-up correctly
       do! Project.updateRemotes state.Project
@@ -713,6 +724,7 @@ module IrisService =
 
       // wiring up the sources
       let disposables = [|
+        assetService.Subscribe (forwardEvent id dispatcher)
         fsWatcher.Subscribe    (forwardEvent id dispatcher)
         gitServer.Subscribe    (forwardEvent id dispatcher)
         apiServer.Subscribe    (forwardEvent id dispatcher)
@@ -739,6 +751,7 @@ module IrisService =
           GitServer      = gitServer
           RaftServer     = raftServer
           SocketServer   = socketServer
+          AssetService   = assetService
           ClockService   = clockService
           FsWatcher      = fsWatcher
           BufferedCues   = ConcurrentDictionary()
@@ -790,6 +803,7 @@ module IrisService =
           do! store.State.SocketServer.Start()
           do! store.State.GitServer.Start()
           do! store.State.RaftServer.Start()
+          do! store.State.AssetService.Start()
         }
 
       match result with
@@ -876,6 +890,9 @@ module IrisService =
 
         member self.SocketServer
           with get () = store.State.SocketServer
+
+        member self.AssetService
+          with get () = store.State.AssetService
 
         member self.Subscribe(callback: IrisEvent -> unit) =
           Observable.subscribe callback store.State.Subscriptions

@@ -15,6 +15,8 @@ type [<Pojo>] ElProps =
     precision: uint32 option
     useRightClick: bool
     updater: IUpdater option
+    handleExternally: bool
+    onDoubleClick: (unit -> unit) option
     properties: (string * string) array
     classes: string array
     suffix: string option
@@ -39,6 +41,7 @@ type [<Pojo>] PinProps =
     updater: IUpdater option
     onDragStart: (bool -> unit) option
     onSelect: bool -> unit
+    dispatch: Msg -> unit
   }
 
 // * PinView
@@ -76,6 +79,18 @@ type PinView(props) =
           precision = precision
           useRightClick = useRightClick
           properties = properties
+          handleExternally =
+            match pin with
+            | StringPin { Behavior = behavior } ->
+              behavior = Behavior.FileName || behavior = Behavior.Directory
+            | _ -> false
+          onDoubleClick =
+            match pin with
+            | StringPin data when data.Behavior = Behavior.FileName ->
+              Some (fun _ -> Modal.showFileChooser pin this.props.model this.props.dispatch)
+            | StringPin data when data.Behavior = Behavior.Directory ->
+              Some (fun _ -> Modal.showDirectoryChooser pin this.props.model this.props.dispatch)
+            | _ -> None
           updater = if rowCount > 1 then None else updater
           classes = if rowCount > 1 then [|"iris-flex-1"|] else [||]
           suffix  = if rowCount > 1 then Some(" (" + string rowCount + ")") else None
@@ -116,6 +131,18 @@ type PinView(props) =
               precision = precision
               properties = properties
               useRightClick = useRightClick
+              handleExternally =
+                match pin with
+                | StringPin { Behavior = behavior } ->
+                  behavior = Behavior.FileName || behavior = Behavior.Directory
+                | _ -> false
+              onDoubleClick =
+                match pin with
+                | StringPin data when data.Behavior = Behavior.FileName ->
+                  Some (fun _ -> Modal.showFileChooser pin this.props.model this.props.dispatch)
+                | StringPin data when data.Behavior = Behavior.Directory ->
+                  Some (fun _ -> Modal.showDirectoryChooser pin this.props.model this.props.dispatch)
+                | _ -> None
               updater = updater
               classes = [||]
               suffix  = None

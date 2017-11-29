@@ -783,7 +783,7 @@ module rec Raft =
   // ** resetVotes
 
   let resetVotes (state: RaftValue) =
-    let resetter _ peer = Member.voteForMe peer false
+    let resetter _ peer = Member.setVotedForMe false peer
     { state with
         Peers = Map.map resetter state.Peers
         OldPeers =
@@ -820,7 +820,7 @@ module rec Raft =
   // ** setVoting
 
   let setVoting (mem : RaftMember) (vote : bool) (state: RaftValue) =
-    let updated = Member.voteForMe mem vote
+    let updated = Member.setVotedForMe vote mem
     if inJointConsensus state then
       { state with
           Peers =
@@ -1606,7 +1606,7 @@ module rec Raft =
       let! peer = getMemberM peerid
       match peer with
       | Some mem ->
-        let! entry = getEntryAtM (Member.getNextIndex mem)
+        let! entry = getEntryAtM (Member.nextIndex mem)
         if Option.isSome entry then
           do! sendAppendEntry mem
       | _ -> return ()
@@ -1716,7 +1716,7 @@ module rec Raft =
         for peer in peers do
           let mem = peer.Value
           if mem.Id <> state.Member.Id then
-            let nxtidx = Member.getNextIndex mem
+            let nxtidx = Member.nextIndex mem
             let! cidx = currentIndexM ()
 
             // calculate whether we need to send a snapshot or not
@@ -1819,13 +1819,13 @@ module rec Raft =
     let additions =
       Array.fold
         (fun lst (newmem: RaftMember) ->
-          match Array.tryFind (Member.getId >> (=) newmem.Id) oldmems with
+          match Array.tryFind (Member.id >> (=) newmem.Id) oldmems with
             | Some _ -> lst
             |      _ -> MemberAdded(newmem) :: lst) [] newmems
 
     Array.fold
       (fun lst (oldmem: RaftMember) ->
-        match Array.tryFind (Member.getId >> (=) oldmem.Id) newmems with
+        match Array.tryFind (Member.id >> (=) oldmem.Id) newmems with
           | Some _ -> lst
           | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
     |> List.toArray

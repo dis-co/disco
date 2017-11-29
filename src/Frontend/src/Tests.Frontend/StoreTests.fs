@@ -26,6 +26,8 @@ module Store =
       { MachineId    = IrisId.Create ()
         HostName     = name "La la Land"
         WorkSpace    = filepath "C:\Program Files\Yo Mama"
+        AssetDirectory = filepath "C:\Iris\Assets"
+        AssetFilter  = Constants.DEFAULT_ASSET_FILTER
         LogDirectory = filepath "C:\Program Files\Yo Mama\logs"
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port 80us
@@ -48,6 +50,7 @@ module Store =
         Sessions           = Map.empty
         Clients            = Map.empty
         CuePlayers         = Map.empty
+        FsTrees            = Map.empty
         DiscoveredServices = Map.empty }
 
     let store : Store = Store(state)

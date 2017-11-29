@@ -142,6 +142,9 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\IrisServiceTests.fs">
       <Link>IrisServiceTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\AssetServiceTests.fs">
+      <Link>AssetServiceTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\NetTests.fs">
       <Link>NetTests.fs</Link>
     </Compile>
@@ -150,6 +153,9 @@
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\StoreTests.fs">
       <Link>StoreTests.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\FsTests.fs">
+      <Link>FsTests.fs</Link>
     </Compile>
     <Compile Include="..\..\Iris\Tests\Core\GitTests.fs">
       <Link>GitTests.fs</Link>

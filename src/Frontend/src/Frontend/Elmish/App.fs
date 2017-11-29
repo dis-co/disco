@@ -29,6 +29,7 @@ initWidgetFactory
         let id = Option.defaultWith (fun () -> Guid.NewGuid()) id
         match name with
         | Widgets.Log -> LogView.createWidget(id)
+        | Widgets.AssetBrowser -> AssetBrowserView.createWidget(id)
         | Widgets.GraphView -> GraphView.createWidget(id)
         | Widgets.Players -> PlayerListView.createWidget(id)
         | Widgets.CuePlayer -> Cues.CuePlayerView.createWidget(id)
@@ -125,7 +126,7 @@ module TabsView =
             yield div [Key (string widget.Id)] [widget.Render(dispatch, model)]
         ]
       ]
-      model.modal |> Option.map (Modal.show dispatch) |> opt
+      model.modal |> Option.map (Modal.show model dispatch) |> opt
     ]
 
 let view dispatch (model: Model) =

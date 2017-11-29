@@ -97,6 +97,8 @@ let machines =
       HostName     = name ("mockmachine-" + string idx)
       WorkSpace    = filepath "/Iris"
       LogDirectory = filepath "/Iris"
+      AssetDirectory = filepath "/Iris"
+      AssetFilter  = Constants.DEFAULT_ASSET_FILTER
       BindAddress  = IPv4Address "127.0.0.1"
       WebPort      = port Constants.DEFAULT_WEB_PORT
       RaftPort     = port Constants.DEFAULT_RAFT_PORT
@@ -112,6 +114,79 @@ let clients =
       makeClient service.MachineId (sprintf "%A Client" service.HostName |> name))
     machines
   |> List.ofSeq
+
+let makeTree (machine:IrisMachine) =
+  let randomFileName () = IrisId.Create().Prefix() |> filepath
+  let makeDir (fsPath:FsPath) =
+    FsEntry.Directory(
+      { Path = fsPath
+        Name = FsPath.fileName fsPath
+        MimeType = "application/x-directory"
+        Size = 0u
+        Filtered = 0u
+      }, Map.empty)
+  let makeFile (fsPath:FsPath) =
+    FsEntry.File(
+      { Path = fsPath
+        Name = FsPath.fileName fsPath
+        MimeType = "text/plain"
+        Size = 0u
+        Filtered = 0u
+      })
+
+  let rootPath = {
+    Drive = 'C'
+    Platform = Windows
+    Elements = [ "Iris"; "Assets" ]
+  }
+
+  let addChild dir child =
+    FsEntry.modify (FsEntry.path dir) (FsEntry.addChild child) dir
+
+  let root =
+    let dirPath1 = rootPath + randomFileName()
+    let dirPath2 = rootPath + randomFileName()
+    let dirPath3 = rootPath + randomFileName()
+    let subdirPath1 = dirPath1 + randomFileName()
+    let subdirPath2 = dirPath2 + randomFileName()
+    let subdirPath3 = dirPath3 + randomFileName()
+    let filePath1 = subdirPath1 + randomFileName()
+    let filePath2 = subdirPath2 + randomFileName()
+    let filePath3 = subdirPath2 + randomFileName()
+    let filePath4 = subdirPath1 + randomFileName()
+    let filePath5 = subdirPath2 + randomFileName()
+    let filePath6 = subdirPath2 + randomFileName()
+
+    let dir1 = makeDir dirPath1
+    let dir2 = makeDir dirPath2
+    let dir3 = makeDir dirPath3
+    let subdir1 = makeDir subdirPath1
+    let subdir2 = makeDir subdirPath2
+    let subdir3 = makeDir subdirPath3
+    let file1 = makeFile filePath1
+    let file2 = makeFile filePath2
+    let file3 = makeFile filePath3
+    let file4 = makeFile filePath4
+    let file5 = makeFile filePath5
+    let file6 = makeFile filePath6
+
+    FsEntry.Directory(
+      { Path = rootPath
+        Name = FsPath.fileName rootPath
+        MimeType = "application/x-directory"
+        Size = 0u
+        Filtered = 0u
+      },Map [
+        dirPath1, addChild dir1 (addChild subdir1 file1 |> fun subdir -> addChild subdir file4)
+        dirPath2, addChild dir2 (addChild subdir2 file2 |> fun subdir -> addChild subdir file5)
+        dirPath3, addChild dir3 (addChild subdir3 file3 |> fun subdir -> addChild subdir file6)
+      ])
+  { HostId = machine.MachineId; Root = root; Filters = Array.empty }
+
+let trees =
+  machines
+  |> Seq.map (fun machine -> machine.MachineId, makeTree machine)
+  |> Map.ofSeq
 
 let project =
     let members =
@@ -194,6 +269,7 @@ let getMockState() =
     |> List.map (fun client -> client.Id, client)
     |> Map.ofList
   { State.Empty with
+      FsTrees = trees
       Project = project
       Clients = clients
       PinGroups = groups }

@@ -48,44 +48,19 @@ module ViewState =
       BurgerMenuOpen = false }
 
   let toggleProject state =
-    { state with
-        ProjectMenuOpen = not state.ProjectMenuOpen
-        EditMenuOpen = false
-        ConfigMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with ProjectMenuOpen = not state.ProjectMenuOpen }
 
   let toggleEdit state =
-    { state with
-        EditMenuOpen = not state.EditMenuOpen
-        ProjectMenuOpen = false
-        ConfigMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with EditMenuOpen = not state.EditMenuOpen }
 
   let toggleConfig state =
-    { state with
-        ConfigMenuOpen = not state.ConfigMenuOpen
-        EditMenuOpen = false
-        ProjectMenuOpen = false
-        WindowsMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with ConfigMenuOpen = not state.ConfigMenuOpen }
 
   let toggleWindows state =
-    { state with
-        WindowsMenuOpen = not state.WindowsMenuOpen
-        ConfigMenuOpen = false
-        EditMenuOpen = false
-        ProjectMenuOpen = false
-        BurgerMenuOpen = false }
+    { defaultState with WindowsMenuOpen = not state.WindowsMenuOpen }
 
   let toggleBurger state =
-    { state with
-        BurgerMenuOpen = not state.BurgerMenuOpen
-        WindowsMenuOpen = false
-        ConfigMenuOpen = false
-        EditMenuOpen = false
-        ProjectMenuOpen = false }
+    { defaultState with BurgerMenuOpen = not state.BurgerMenuOpen }
 
 ///  ____            _           _   __  __
 /// |  _ \ _ __ ___ (_) ___  ___| |_|  \/  | ___ _ __  _   _
@@ -151,11 +126,7 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
     | EditMenu.resetDirty -> Option.iter Lib.resetDirty props.Model.state
     | EditMenu.undo -> Lib.undo()
     | EditMenu.redo -> Lib.redo()
-    | EditMenu.settings ->
-      props.Model.userConfig
-      |> Modal.EditSettings :> IModal
-      |> OpenModal
-      |> dispatch
+    | EditMenu.settings -> Modal.showSettings props.Model props.Dispatch
     | _ -> ()
     withDelay onOpen
   div [
@@ -187,6 +158,7 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
 module private WindowsMenu =
   let [<Literal>] log = "Logs"
   let [<Literal>] inspector = "Inspector"
+  let [<Literal>] fileBrowser = "File Browser"
   let [<Literal>] graph = "Graph"
   let [<Literal>] players = "Players"
   let [<Literal>] cues = "Cues"
@@ -208,6 +180,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     match id with
     | WindowsMenu.log             -> show Widgets.Log
     | WindowsMenu.inspector       -> Lib.toggleInspector()
+    | WindowsMenu.fileBrowser     -> show Widgets.AssetBrowser
     | WindowsMenu.graph           -> show Widgets.GraphView
     | WindowsMenu.players         -> show Widgets.Players
     | WindowsMenu.cues            -> show Widgets.Cues
@@ -236,6 +209,7 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
     div [Class "navbar-dropdown"]
       ([ WindowsMenu.log,             None
          WindowsMenu.inspector,       Some ("Ctrl-i")
+         WindowsMenu.fileBrowser,     Some ("Ctrl-b")
          WindowsMenu.graph,           None
          WindowsMenu.players,         None
          WindowsMenu.cues,            None

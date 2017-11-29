@@ -66,6 +66,38 @@ let handleModalResult (modal: IModal) dispatch =
   | :? Modal.ProjectConfig as m ->
     // Try loading the project again with the site config
     loadProject dispatch (Some m.Result) m.Info |> Promise.start
+  | :? Modal.FileChooser as m ->
+    let client =
+      if m.Pin.PinConfiguration = PinConfiguration.Preset
+      then Some m.Pin.ClientId
+      else None
+    let slices =
+      let list = List.map string m.Result
+      match m.Pin.VecSize with
+      | VecSize.Dynamic _ ->
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+      | VecSize.Fixed d ->
+        let list = try List.take (int d) list with _ -> list
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+    slices
+    |> UpdateSlices.ofSlices
+    |> ClientContext.Singleton.Post
+  | :? Modal.DirectoryChooser as m ->
+    let client =
+      if m.Pin.PinConfiguration = PinConfiguration.Preset
+      then Some m.Pin.ClientId
+      else None
+    let slices =
+      let list = List.map string m.Result
+      match m.Pin.VecSize with
+      | VecSize.Dynamic _ ->
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+      | VecSize.Fixed d ->
+        let list = try List.take (int d) list with _ -> list
+        StringSlices(m.Pin.Id, client, Array.ofList list)
+    slices
+    |> UpdateSlices.ofSlices
+    |> ClientContext.Singleton.Post
   | _ -> failwithf "Cannot handle unknown modal %A" modal
 
 let private hideModal modal dispatch =
@@ -109,6 +141,7 @@ let getKeyBindings (dispatch: Dispatch<Msg>): KeyBinding array =
      true,  true,  Codes.z,         Lib.redo
      true,  false, Codes.s,         Lib.saveProject
      true,  false, Codes.i,         Lib.toggleInspector
+     true,  false, Codes.b,         (fun _ -> Widget.showAssetBrowser dispatch)
      false, false, Codes.delete, fun () -> dispatch RemoveSelectedDragItems
   |]
 

@@ -51,6 +51,36 @@ type RaftConfig =
     MaxRetries:       int
     PeriodicInterval: Timeout }
 
+  // ** optics
+
+  static member RequestTimeout_ =
+    (fun config -> config.RequestTimeout),
+    (fun requestTimeout config -> { config with RequestTimeout = requestTimeout })
+
+  static member ElectionTimeout_ =
+    (fun config -> config.ElectionTimeout),
+    (fun electionTimeout config -> { config with ElectionTimeout = electionTimeout })
+
+  static member MaxLogDepth_ =
+    (fun config -> config.MaxLogDepth),
+    (fun maxLogDepth config -> { config with MaxLogDepth = maxLogDepth })
+
+  static member LogLevel_ =
+    (fun config -> config.LogLevel),
+    (fun logLevel (config:RaftConfig) -> { config with LogLevel = logLevel })
+
+  static member DataDir_ =
+    (fun config -> config.DataDir),
+    (fun dataDir config -> { config with DataDir = dataDir })
+
+  static member MaxRetries_ =
+    (fun config -> config.MaxRetries),
+    (fun maxRetries config -> { config with MaxRetries = maxRetries })
+
+  static member PeriodicInterval_ =
+    (fun config -> config.PeriodicInterval),
+    (fun periodicInterval config -> { config with PeriodicInterval = periodicInterval })
+
   // ** Default
 
   static member Default =
@@ -92,6 +122,31 @@ type RaftConfig =
           PeriodicInterval = fb.PeriodicInterval * 1<ms> }
     }
 
+// * RaftConfig module
+
+module RaftConfig =
+  open Aether
+
+  // ** getters
+
+  let requestTimeout = Optic.get RaftConfig.RequestTimeout_
+  let electionTimeout = Optic.get RaftConfig.ElectionTimeout_
+  let maxLogDepth = Optic.get RaftConfig.MaxLogDepth_
+  let logLevel = Optic.get RaftConfig.LogLevel_
+  let dataDir = Optic.get RaftConfig.DataDir_
+  let maxRetries = Optic.get RaftConfig.MaxRetries_
+  let periodicInterval = Optic.get RaftConfig.PeriodicInterval_
+
+  // ** getters
+
+  let setRequestTimeout = Optic.set RaftConfig.RequestTimeout_
+  let setElectionTimeout = Optic.set RaftConfig.ElectionTimeout_
+  let setMaxLogDepth = Optic.set RaftConfig.MaxLogDepth_
+  let setLogLevel = Optic.set RaftConfig.LogLevel_
+  let setDataDir = Optic.set RaftConfig.DataDir_
+  let setMaxRetries = Optic.set RaftConfig.MaxRetries_
+  let setPeriodicInterval = Optic.set RaftConfig.PeriodicInterval_
+
 // * ClientExecutable
 
 ///   ____ _ _            _   _____                     _        _     _
@@ -105,6 +160,24 @@ type ClientExecutable =
     Executable : FilePath
     Version    : Iris.Core.Version
     Required   : bool }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (exe:ClientExecutable) -> exe.Id),
+    (fun id (exe:ClientExecutable) -> { exe with Id = id })
+
+  static member Executable_ =
+    (fun (exe:ClientExecutable) -> exe.Executable),
+    (fun executable (exe:ClientExecutable) -> { exe with Executable = executable })
+
+  static member Version_ =
+    (fun (exe:ClientExecutable) -> exe.Version),
+    (fun version (exe:ClientExecutable) -> { exe with Version = version })
+
+  static member Required_ =
+    (fun (exe:ClientExecutable) -> exe.Required),
+    (fun required (exe:ClientExecutable) -> { exe with Required = required })
 
   // ** ToOffset
 
@@ -132,6 +205,25 @@ type ClientExecutable =
       }
     }
 
+// * ClientExecutable module
+
+module ClientExecutable =
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get ClientExecutable.Id_
+  let executable = Optic.get ClientExecutable.Executable_
+  let version = Optic.get ClientExecutable.Version_
+  let required = Optic.get ClientExecutable.Required_
+
+  // ** setters
+
+  let setId = Optic.set ClientExecutable.Id_
+  let setExecutable = Optic.set ClientExecutable.Executable_
+  let setVersion = Optic.set ClientExecutable.Version_
+  let setRequired = Optic.set ClientExecutable.Required_
+
 // * ClientConfig
 
 ///   ____ _ _            _    ____             __ _
@@ -143,6 +235,12 @@ type ClientExecutable =
 
 type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
   with
+    // ** optics
+
+    static member Map_ =
+      (function ClientConfig map -> map),
+      (fun map _ -> ClientConfig map)
+
     // ** Default
 
     static member Default with get() = ClientConfig Map.empty
@@ -232,6 +330,28 @@ type TimingConfig =
     UDPPort   : uint32
     TCPPort   : uint32 }
 
+  // ** optics
+
+  static member Framebase_ =
+    (fun (config:TimingConfig) -> config.Framebase),
+    (fun framebase (config:TimingConfig) -> { config with Framebase = framebase })
+
+  static member Input_ =
+    (fun (config:TimingConfig) -> config.Input),
+    (fun input (config:TimingConfig) -> { config with Input = input })
+
+  static member Servers_ =
+    (fun (config:TimingConfig) -> config.Servers),
+    (fun servers (config:TimingConfig) -> { config with Servers = servers })
+
+  static member UdpPort_ =
+    (fun (config:TimingConfig) -> config.UDPPort),
+    (fun udpPort (config:TimingConfig) -> { config with UDPPort = udpPort })
+
+  static member TcpPort_ =
+    (fun (config:TimingConfig) -> config.TCPPort),
+    (fun tcpPort (config:TimingConfig) -> { config with TCPPort = tcpPort })
+
   // ** Default
 
   static member Default =
@@ -286,6 +406,27 @@ type TimingConfig =
           TCPPort   = fb.TCPPort }
     }
 
+// * TimingConfig module
+
+module TimingConfig =
+  open Aether
+
+  // ** getters
+
+  let framebase = Optic.get TimingConfig.Framebase_
+  let input = Optic.get TimingConfig.Input_
+  let servers = Optic.get TimingConfig.Servers_
+  let udpPort = Optic.get TimingConfig.UdpPort_
+  let tcpPort = Optic.get TimingConfig.TcpPort_
+
+  // ** setters
+
+  let setFramebase = Optic.set TimingConfig.Framebase_
+  let setInput = Optic.set TimingConfig.Input_
+  let setServers = Optic.set TimingConfig.Servers_
+  let setUdpPort = Optic.set TimingConfig.UdpPort_
+  let setTcpPort = Optic.set TimingConfig.TcpPort_
+
 // * AudioConfig
 
 //     _             _ _        ____             __ _
@@ -297,6 +438,12 @@ type TimingConfig =
 
 type AudioConfig =
   { SampleRate : uint32 }
+
+  // ** optics
+
+  static member SampleRate_ =
+    (fun config -> config.SampleRate),
+    (fun sr config -> { config with SampleRate = sr })
 
   // ** Default
 
@@ -317,6 +464,15 @@ type AudioConfig =
       return { SampleRate = fb.SampleRate }
     }
 
+// * AudioConfig module
+
+module AudioConfig =
+
+  open Aether
+
+  let sampleRate = Optic.get AudioConfig.SampleRate_
+  let setSampleRate = Optic.set AudioConfig.SampleRate_
+
 // * HostGroup
 
 //  _   _           _    ____
@@ -329,6 +485,16 @@ type AudioConfig =
 type HostGroup =
   { Name    : Name
     Members : MemberId array }
+
+  // ** optics
+
+  static member Name_ =
+    (fun (hostgroup:HostGroup) -> hostgroup.Name),
+    (fun name (hostgroup:HostGroup) -> { hostgroup with Name = name })
+
+  static member Members_ =
+    (fun (hostgroup:HostGroup) -> hostgroup.Members),
+    (fun members (hostgroup:HostGroup) -> { hostgroup with Members = members })
 
   // ** ToString
 
@@ -377,7 +543,22 @@ type HostGroup =
           Members = members }
     }
 
-// * Cluster
+// * HostGroup module
+
+module HostGroup =
+  open Aether
+
+  // ** getters
+
+  let name = Optic.get HostGroup.Name_
+  let members = Optic.get HostGroup.Members_
+
+  // ** setters
+
+  let setName = Optic.set HostGroup.Name_
+  let setMembers = Optic.set HostGroup.Members_
+
+// * ClusterConfig
 
 //   ____ _           _
 //  / ___| |_   _ ___| |_ ___ _ __
@@ -390,6 +571,24 @@ type ClusterConfig =
     Name: Name
     Members: Map<MemberId,RaftMember>
     Groups: HostGroup array }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (config:ClusterConfig) -> config.Id),
+    (fun id (config:ClusterConfig) -> { config with Id = id })
+
+  static member Name_ =
+    (fun (config:ClusterConfig) -> config.Name),
+    (fun name (config:ClusterConfig) -> { config with Name = name })
+
+  static member Members_ =
+    (fun (config:ClusterConfig) -> config.Members),
+    (fun members (config:ClusterConfig) -> { config with Members = members })
+
+  static member Groups_ =
+    (fun (config:ClusterConfig) -> config.Groups),
+    (fun groups (config:ClusterConfig) -> { config with Groups = groups })
 
   // ** Default
 
@@ -505,6 +704,25 @@ type ClusterConfig =
       }
     }
 
+// * ClusterConfig module
+
+module ClusterConfig =
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get ClusterConfig.Id_
+  let name = Optic.get ClusterConfig.Name_
+  let members = Optic.get ClusterConfig.Members_
+  let groups = Optic.get ClusterConfig.Groups_
+
+  // ** setters
+
+  let setId = Optic.set ClusterConfig.Id_
+  let setName = Optic.set ClusterConfig.Name_
+  let setMembers = Optic.set ClusterConfig.Members_
+  let setGroups = Optic.set ClusterConfig.Groups_
+
 // * IrisConfig
 
 //  ___      _      ____             __ _
@@ -523,6 +741,40 @@ type IrisConfig =
     Raft:       RaftConfig
     Timing:     TimingConfig
     Sites:      ClusterConfig array }
+
+  // ** optics
+
+  static member Machine_ =
+    (fun (config:IrisConfig) -> config.Machine),
+    (fun machine (config:IrisConfig) -> { config with Machine = machine })
+
+  static member ActiveSite_ =
+    (fun (config:IrisConfig) -> config.ActiveSite),
+    (fun activeSite (config:IrisConfig) -> { config with ActiveSite = activeSite })
+
+  static member Version_ =
+    (fun (config:IrisConfig) -> config.Version),
+    (fun version (config:IrisConfig) -> { config with Version = version })
+
+  static member Audio_ =
+    (fun (config:IrisConfig) -> config.Audio),
+    (fun audio (config:IrisConfig) -> { config with Audio = audio })
+
+  static member Clients_ =
+    (fun (config:IrisConfig) -> config.Clients),
+    (fun clients (config:IrisConfig) -> { config with Clients = clients })
+
+  static member Raft_ =
+    (fun (config:IrisConfig) -> config.Raft),
+    (fun raft (config:IrisConfig) -> { config with Raft = raft })
+
+  static member Timing_ =
+    (fun (config:IrisConfig) -> config.Timing),
+    (fun timing (config:IrisConfig) -> { config with Timing = timing })
+
+  static member Sites_ =
+    (fun (config:IrisConfig) -> config.Sites),
+    (fun sites (config:IrisConfig) -> { config with Sites = sites })
 
   // ** Default
 
@@ -701,6 +953,33 @@ type IrisConfig =
         Sites      = sites
       }
     }
+
+// * IrisConfig module
+
+module IrisConfig =
+  open Aether
+
+  // ** getters
+
+  let machine = Optic.get IrisConfig.Machine_
+  let activeSite = Optic.get IrisConfig.ActiveSite_
+  let version = Optic.get IrisConfig.Version_
+  let audio = Optic.get IrisConfig.Audio_
+  let clients = Optic.get IrisConfig.Clients_
+  let raft = Optic.get IrisConfig.Raft_
+  let timing = Optic.get IrisConfig.Timing_
+  let sites = Optic.get IrisConfig.Sites_
+
+  // ** setters
+
+  let setMachine = Optic.set IrisConfig.Machine_
+  let setActiveSite = Optic.set IrisConfig.ActiveSite_
+  let setVersion = Optic.set IrisConfig.Version_
+  let setAudio = Optic.set IrisConfig.Audio_
+  let setClients = Optic.set IrisConfig.Clients_
+  let setRaft = Optic.set IrisConfig.Raft_
+  let setTiming = Optic.set IrisConfig.Timing_
+  let setSites = Optic.set IrisConfig.Sites_
 
 // * ProjectYaml
 
@@ -1012,16 +1291,16 @@ module ProjectYaml =
     either {
       try
         let! id = IrisId.TryParse mem.Id
-        let! ip = IpAddress.TryParse mem.IpAddr
+        let! ip = IpAddress.TryParse mem.IpAddress
         let! state = RaftMemberState.TryParse mem.State
         return {
           Id         = id
           HostName   = name mem.HostName
-          IpAddr     = ip
-          Port       = mem.Port    |> uint16 |> port
-          WsPort     = mem.WsPort  |> uint16 |> port
-          GitPort    = mem.GitPort |> uint16 |> port
-          ApiPort    = mem.ApiPort |> uint16 |> port
+          IpAddress  = ip
+          RaftPort   = mem.RaftPort |> uint16 |> port
+          WsPort     = mem.WsPort   |> uint16 |> port
+          GitPort    = mem.GitPort  |> uint16 |> port
+          ApiPort    = mem.ApiPort  |> uint16 |> port
           State      = state
           Voting     = true
           VotedForMe = false
@@ -1163,14 +1442,14 @@ module ProjectYaml =
 
       for KeyValue(memId,mem) in cluster.Members do
         let n = RaftMemberYaml()
-        n.Id       <- string memId
-        n.IpAddr   <- string mem.IpAddr
-        n.HostName <- unwrap mem.HostName
-        n.Port     <- unwrap mem.Port
-        n.WsPort   <- unwrap mem.WsPort
-        n.GitPort  <- unwrap mem.GitPort
-        n.ApiPort  <- unwrap mem.ApiPort
-        n.State    <- string mem.State
+        n.Id        <- string memId
+        n.IpAddress <- string mem.IpAddress
+        n.HostName  <- unwrap mem.HostName
+        n.RaftPort  <- unwrap mem.RaftPort
+        n.WsPort    <- unwrap mem.WsPort
+        n.GitPort   <- unwrap mem.GitPort
+        n.ApiPort   <- unwrap mem.ApiPort
+        n.State     <- string mem.State
         members.Add(n)
 
       for group in cluster.Groups do
@@ -1450,10 +1729,10 @@ module Config =
     let errorMsg tag a b =
       sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
-      if mem.IpAddr <> machine.BindAddress then
-        yield errorMsg "IP" mem.IpAddr machine.BindAddress
-      if mem.Port <> machine.RaftPort then
-        yield errorMsg "Raft Port" mem.Port machine.RaftPort
+      if mem.IpAddress <> machine.BindAddress then
+        yield errorMsg "IP" mem.IpAddress machine.BindAddress
+      if mem.RaftPort <> machine.RaftPort then
+        yield errorMsg "Raft Port" mem.RaftPort machine.RaftPort
       if mem.GitPort <> machine.GitPort then
         yield errorMsg "Git Port" mem.GitPort machine.GitPort
       if mem.ApiPort <> machine.ApiPort then
@@ -1579,6 +1858,40 @@ type IrisProject =
     Copyright : string    option
     Author    : string    option
     Config    : IrisConfig }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (project:IrisProject) -> project.Id),
+    (fun id (project:IrisProject) -> { project with Id = id })
+
+  static member Name_ =
+    (fun (project:IrisProject) -> project.Name),
+    (fun name (project:IrisProject) -> { project with Name = name })
+
+  static member Path_ =
+    (fun (project:IrisProject) -> project.Path),
+    (fun path (project:IrisProject) -> { project with Path = path })
+
+  static member CreatedOn_ =
+    (fun (project:IrisProject) -> project.CreatedOn),
+    (fun createdOn (project:IrisProject) -> { project with CreatedOn = createdOn })
+
+  static member LastSaved_ =
+    (fun (project:IrisProject) -> project.LastSaved),
+    (fun lastSaved (project:IrisProject) -> { project with LastSaved = lastSaved })
+
+  static member Copyright_ =
+    (fun (project:IrisProject) -> project.Copyright),
+    (fun copyright (project:IrisProject) -> { project with Copyright = copyright })
+
+  static member Author_ =
+    (fun (project:IrisProject) -> project.Author),
+    (fun author (project:IrisProject) -> { project with Author = author })
+
+  static member Config_ =
+    (fun (project:IrisProject) -> project.Config),
+    (fun config (project:IrisProject) -> { project with Config = config })
 
   // ** ToString
 
@@ -1858,7 +2171,6 @@ Config: %A
 
 [<RequireQualifiedAccess>]
 module Project =
-
   // ** tag
 
   let private tag (str: string) = String.format "Project.{0}" str

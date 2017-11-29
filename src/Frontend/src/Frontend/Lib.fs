@@ -158,12 +158,12 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
-        HostName = machine.HostName
-        IpAddr   = machine.BindAddress
-        Port     = machine.RaftPort
-        WsPort   = machine.WsPort
-        GitPort  = machine.GitPort
-        ApiPort  = machine.ApiPort }
+        HostName  = machine.HostName
+        IpAddress = machine.BindAddress
+        RaftPort  = machine.RaftPort
+        WsPort    = machine.WsPort
+        GitPort   = machine.GitPort
+        ApiPort   = machine.ApiPort }
     |> AddMember
     |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
   with

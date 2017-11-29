@@ -28,17 +28,73 @@ open System.Runtime.CompilerServices
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type IrisMachine =
-  { MachineId:    MachineId
-    HostName:     Name
-    WorkSpace:    FilePath
-    LogDirectory: FilePath
-    BindAddress:  IpAddress
-    WebPort:      Port
-    RaftPort:     Port
-    WsPort:       Port
-    GitPort:      Port
-    ApiPort:      Port
-    Version:      Iris.Core.Version }
+  { MachineId:      MachineId
+    HostName:       Name
+    WorkSpace:      FilePath
+    AssetDirectory: FilePath
+    AssetFilter:    string
+    LogDirectory:   FilePath
+    BindAddress:    IpAddress
+    WebPort:        Port
+    RaftPort:       Port
+    WsPort:         Port
+    GitPort:        Port
+    ApiPort:        Port
+    Version:        Iris.Core.Version }
+
+  // ** optics
+
+  static member MachineId_ =
+    (fun (machine:IrisMachine) -> machine.MachineId),
+    (fun id (machine:IrisMachine) -> { machine with MachineId = id })
+
+  static member HostName_ =
+    (fun (machine:IrisMachine) -> machine.HostName),
+    (fun hostName (machine:IrisMachine) -> { machine with HostName = hostName })
+
+  static member WorkSpace_ =
+    (fun (machine:IrisMachine) -> machine.WorkSpace),
+    (fun workSpace (machine:IrisMachine) -> { machine with WorkSpace = workSpace })
+
+  static member AssetDirectory_ =
+    (fun (machine:IrisMachine) -> machine.AssetDirectory),
+    (fun assetDirectory (machine:IrisMachine) -> { machine with AssetDirectory = assetDirectory })
+
+  static member AssetFilter_ =
+    (fun (machine:IrisMachine) -> machine.AssetFilter),
+    (fun assetFilter (machine:IrisMachine) -> { machine with AssetFilter = assetFilter })
+
+  static member LogDirectory_ =
+    (fun (machine:IrisMachine) -> machine.LogDirectory),
+    (fun logDirectory (machine:IrisMachine) -> { machine with LogDirectory = logDirectory })
+
+  static member BindAddress_ =
+    (fun (machine:IrisMachine) -> machine.BindAddress),
+    (fun bindAddress (machine:IrisMachine) -> { machine with BindAddress = bindAddress })
+
+  static member WebPort_ =
+    (fun (machine:IrisMachine) -> machine.WebPort),
+    (fun webPort (machine:IrisMachine) -> { machine with WebPort = webPort })
+
+  static member RaftPort_ =
+    (fun (machine:IrisMachine) -> machine.RaftPort),
+    (fun raftPort (machine:IrisMachine) -> { machine with RaftPort = raftPort })
+
+  static member WsPort_ =
+    (fun (machine:IrisMachine) -> machine.WsPort),
+    (fun wsPort (machine:IrisMachine) -> { machine with WsPort = wsPort })
+
+  static member GitPort_ =
+    (fun (machine:IrisMachine) -> machine.GitPort),
+    (fun gitPort (machine:IrisMachine) -> { machine with GitPort = gitPort })
+
+  static member ApiPort_ =
+    (fun (machine:IrisMachine) -> machine.ApiPort),
+    (fun apiPort (machine:IrisMachine) -> { machine with ApiPort = apiPort })
+
+  static member Version_ =
+    (fun (machine:IrisMachine) -> machine.Version),
+    (fun version (machine:IrisMachine) -> { machine with Version = version })
 
   // ** ToString
 
@@ -54,6 +110,8 @@ type IrisMachine =
     let webip = machine.BindAddress |> string |> builder.CreateString
     let workspace = machine.WorkSpace |> unwrap |> mapNull
     let logdir = machine.LogDirectory |> unwrap |> mapNull
+    let assetdir = machine.AssetDirectory |> unwrap |> mapNull
+    let assetFilter = machine.AssetFilter |> unwrap |> mapNull
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = IrisMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
@@ -62,6 +120,8 @@ type IrisMachine =
     Option.iter (fun value -> IrisMachineFB.AddHostName(builder, value)) hostname
     Option.iter (fun value -> IrisMachineFB.AddWorkSpace(builder, value)) workspace
     Option.iter (fun value -> IrisMachineFB.AddLogDirectory(builder, value)) logdir
+    Option.iter (fun value -> IrisMachineFB.AddAssetDirectory(builder, value)) assetdir
+    Option.iter (fun value -> IrisMachineFB.AddAssetFilter(builder, value)) assetFilter
     IrisMachineFB.AddBindAddress(builder, webip)
     IrisMachineFB.AddWebPort(builder, unwrap machine.WebPort)
     IrisMachineFB.AddRaftPort(builder, unwrap machine.RaftPort)
@@ -77,18 +137,21 @@ type IrisMachine =
     either {
       let! machineId = Id.decodeMachineId fb
       let! ip = IpAddress.TryParse fb.BindAddress
-      return
-        { MachineId    = machineId
-          WorkSpace    = filepath fb.WorkSpace
-          LogDirectory = filepath fb.LogDirectory
-          HostName     = name fb.HostName
-          BindAddress  = ip
-          WebPort      = port fb.WebPort
-          RaftPort     = port fb.RaftPort
-          WsPort       = port fb.WsPort
-          GitPort      = port fb.GitPort
-          ApiPort      = port fb.ApiPort
-          Version      = version fb.Version }
+      return {
+        MachineId      = machineId
+        WorkSpace      = filepath fb.WorkSpace
+        AssetDirectory = filepath fb.AssetDirectory
+        AssetFilter    = fb.AssetFilter
+        LogDirectory   = filepath fb.LogDirectory
+        HostName       = name fb.HostName
+        BindAddress    = ip
+        WebPort        = port fb.WebPort
+        RaftPort       = port fb.RaftPort
+        WsPort         = port fb.WsPort
+        GitPort        = port fb.GitPort
+        ApiPort        = port fb.ApiPort
+        Version        = version fb.Version
+      }
     }
 
   // ** Default
@@ -100,10 +163,13 @@ type IrisMachine =
         #if FABLE_COMPILER
         WorkSpace    = filepath "/dev/null"
         LogDirectory = filepath "/dev/null"
+        AssetDirectory = filepath "/dev/null"
         #else
         WorkSpace    = filepath Environment.CurrentDirectory
+        AssetDirectory = filepath Environment.CurrentDirectory
         LogDirectory = filepath Environment.CurrentDirectory
         #endif
+        AssetFilter  = Constants.DEFAULT_ASSET_FILTER
         BindAddress  = IPv4Address "127.0.0.1"
         WebPort      = port Constants.DEFAULT_WEB_PORT
         RaftPort     = port Constants.DEFAULT_RAFT_PORT
@@ -202,10 +268,43 @@ module MachineStatus =
 [<RequireQualifiedAccess>]
 module MachineConfig =
   open Path
+  open Aether
 
   // ** tag
 
   let private tag (str: string) = sprintf "MachineConfig.%s" str
+
+  // ** getters
+
+  let machineId = Optic.get IrisMachine.MachineId_
+  let hostName = Optic.get IrisMachine.HostName_
+  let workSpace = Optic.get IrisMachine.WorkSpace_
+  let assetDirectory = Optic.get IrisMachine.AssetDirectory_
+  let assetFilter = Optic.get IrisMachine.AssetFilter_
+  let logDirectory = Optic.get IrisMachine.LogDirectory_
+  let bindAddress = Optic.get IrisMachine.BindAddress_
+  let webPort = Optic.get IrisMachine.WebPort_
+  let raftPort = Optic.get IrisMachine.RaftPort_
+  let wsPort = Optic.get IrisMachine.WsPort_
+  let gitPort = Optic.get IrisMachine.GitPort_
+  let apiPort = Optic.get IrisMachine.ApiPort_
+  let version = Optic.get IrisMachine.Version_
+
+  // ** setters
+
+  let setMachineId = Optic.set IrisMachine.MachineId_
+  let setHostName = Optic.set IrisMachine.HostName_
+  let setWorkSpace = Optic.set IrisMachine.WorkSpace_
+  let setAssetDirectory = Optic.set IrisMachine.AssetDirectory_
+  let setAssetFilter = Optic.set IrisMachine.AssetFilter_
+  let setLogDirectory = Optic.set IrisMachine.LogDirectory_
+  let setBindAddress = Optic.set IrisMachine.BindAddress_
+  let setWebPort = Optic.set IrisMachine.WebPort_
+  let setRaftPort = Optic.set IrisMachine.RaftPort_
+  let setWsPort = Optic.set IrisMachine.WsPort_
+  let setGitPort = Optic.set IrisMachine.GitPort_
+  let setApiPort = Optic.set IrisMachine.ApiPort_
+  let setVersion = Optic.set IrisMachine.Version_
 
   // ** singleton
 
@@ -239,6 +338,8 @@ module MachineConfig =
   type MachineConfigYaml () =
     [<DefaultValue>] val mutable MachineId:    string
     [<DefaultValue>] val mutable WorkSpace:    string
+    [<DefaultValue>] val mutable AssetDirectory:  string
+    [<DefaultValue>] val mutable AssetFilter:  string
     [<DefaultValue>] val mutable LogDirectory: string
     [<DefaultValue>] val mutable BindAddress:  string
     [<DefaultValue>] val mutable WebPort:      uint16
@@ -252,6 +353,8 @@ module MachineConfig =
       let yml = MachineConfigYaml()
       yml.MachineId    <- string cfg.MachineId
       yml.WorkSpace    <- unwrap cfg.WorkSpace
+      yml.AssetDirectory <- unwrap cfg.AssetDirectory
+      yml.AssetFilter  <- cfg.AssetFilter
       yml.LogDirectory <- unwrap cfg.LogDirectory
       yml.BindAddress  <- string cfg.BindAddress
       yml.WebPort      <- unwrap cfg.WebPort
@@ -269,18 +372,21 @@ module MachineConfig =
       let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
       let! id = IrisId.TryParse yml.MachineId
-      return
-        { MachineId    = id
-          HostName     = name hostname
-          WorkSpace    = filepath yml.WorkSpace
-          LogDirectory = filepath yml.LogDirectory
-          BindAddress  = ip
-          WebPort      = port yml.WebPort
-          RaftPort     = port yml.RaftPort
-          WsPort       = port yml.WsPort
-          GitPort      = port yml.GitPort
-          ApiPort      = port yml.ApiPort
-          Version      = version yml.Version }
+      return {
+        MachineId    = id
+        HostName     = name hostname
+        WorkSpace    = filepath yml.WorkSpace
+        AssetDirectory = filepath yml.AssetDirectory
+        AssetFilter  = yml.AssetFilter
+        LogDirectory = filepath yml.LogDirectory
+        BindAddress  = ip
+        WebPort      = port yml.WebPort
+        RaftPort     = port yml.RaftPort
+        WsPort       = port yml.WsPort
+        GitPort      = port yml.GitPort
+        ApiPort      = port yml.ApiPort
+        Version      = Measure.version yml.Version
+      }
     }
 
   // ** ensureExists (private)
@@ -304,6 +410,7 @@ module MachineConfig =
         | Some shift -> port (p + shift)
         | None -> port p
     let hostname = Network.getHostName()
+
     let workspace =
       if Platform.isUnix then
         let home = Environment.GetEnvironmentVariable "HOME"
@@ -311,14 +418,23 @@ module MachineConfig =
       else
         filepath (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS)
 
+    let assetDir =
+      if Platform.isUnix then
+        let home = Environment.GetEnvironmentVariable "HOME"
+        home <.> (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX)
+      else
+        filepath (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS)
+
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
 
-    let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> version
+    let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> Measure.version
 
     { MachineId    = IrisId.Create()
       HostName     = name hostname
       WorkSpace    = workspace
+      AssetDirectory = assetDir
+      AssetFilter  = Constants.DEFAULT_ASSET_FILTER
       LogDirectory = workspace </> filepath "log"
       BindAddress  = IpAddress.Parse bindIp
       WebPort      = shiftPort Constants.DEFAULT_WEB_PORT

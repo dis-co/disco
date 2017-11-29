@@ -120,7 +120,7 @@ module StateShouldBeCleanedOnClientRemove =
 
         let serverOptions:IrisServer = {
           Port = mem1.ApiPort
-          IpAddress = mem1.IpAddr
+          IpAddress = mem1.IpAddress
         }
 
         let client = ApiClient.create serverOptions {

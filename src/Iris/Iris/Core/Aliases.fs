@@ -44,6 +44,7 @@ type PlayerId     = IrisId
 type WidgetId     = IrisId
 type WidgetTypeId = IrisId
 type MachineId    = IrisId
+type HostId       = IrisId
 type UserId       = IrisId
 type ServiceId    = IrisId
 type CueListId    = IrisId

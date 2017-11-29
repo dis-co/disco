@@ -11,6 +11,7 @@ open Iris.Raft
 open Iris.Client
 open Iris.Service
 open System
+open System.IO
 open System.Text
 
 module Generators =
@@ -59,6 +60,7 @@ module Generators =
   let stringGen = Arb.generate<string> |> Gen.map maybeEncode
   let stringsGen = Gen.arrayOfLength 2 stringGen
   let intGen = Arb.generate<int>
+  let charGen = Arb.generate<char>
   let intsGen = Gen.arrayOfLength 4 intGen
   let boolGen = Arb.generate<bool>
   let boolsGen = Gen.arrayOfLength 4 boolGen
@@ -69,6 +71,7 @@ module Generators =
   let uint8Gen = Arb.generate<uint8>
   let uint16Gen = Arb.generate<uint16>
   let uint32Gen = Arb.generate<uint32>
+  let uint64Gen = Arb.generate<uint64>
 
   let indexGen = Gen.map index intGen
   let termGen = Gen.map term intGen
@@ -93,10 +96,16 @@ module Generators =
       else return Some value
     }
 
-  let inline maybeGen g = Gen.oneof [ Gen.constant None
-                                      Gen.map Some g ]
+  let inline maybeGen g =
+    Gen.oneof [
+      Gen.constant None
+      Gen.map Some g
+    ]
 
-  let inline mapGen g = Gen.arrayOfLength 2 g |> Gen.map (Array.map toPair >> Map.ofArray)
+  let inline mapGen g =
+    g
+    |> Gen.arrayOfLength 2
+    |> Gen.map (Array.map toPair >> Map.ofArray)
 
   //  ___    _
   // |_ _|__| |
@@ -130,6 +139,8 @@ module Generators =
       let! hn = nameGen
       let! wrksp = pathGen
       let! logpth = pathGen
+      let! assetpth = pathGen
+      let! assetFilter = stringGen
       let! ba = ipGen
       let! wp = portGen
       let! rp = portGen
@@ -137,18 +148,21 @@ module Generators =
       let! gp = portGen
       let! ap = portGen
       let! vs = versionGen
-      return
-        { MachineId = id
-          HostName = hn
-          WorkSpace = wrksp
-          LogDirectory = logpth
-          BindAddress = ba
-          WebPort = wp
-          RaftPort = rp
-          WsPort = wsp
-          GitPort = gp
-          ApiPort = ap
-          Version = vs }
+      return {
+        MachineId = id
+        HostName = hn
+        WorkSpace = wrksp
+        LogDirectory = logpth
+        AssetDirectory = assetpth
+        AssetFilter = assetFilter
+        BindAddress = ba
+        WebPort = wp
+        RaftPort = rp
+        WsPort = wsp
+        GitPort = gp
+        ApiPort = ap
+        Version = vs
+      }
     }
 
   //  ____        __ _   ____  _        _
@@ -183,8 +197,8 @@ module Generators =
       return
         { Id         = id
           HostName   = n
-          IpAddr     = ip
-          Port       = p
+          IpAddress  = ip
+          RaftPort   = p
           WsPort     = wp
           GitPort    = gp
           ApiPort    = ap
@@ -743,6 +757,41 @@ module Generators =
           Sinks = sinks }
     }
 
+  ///  _____   _____
+  /// |  ___|_|_   _| __ ___  ___
+  /// | |_ / __|| || '__/ _ \/ _ \
+  /// |  _|\__ \| || | |  __/  __/
+  /// |_|  |___/|_||_|  \___|\___|
+
+  let platformGen =
+    Gen.oneof [
+      Gen.constant Platform.Windows
+      Gen.constant Platform.Unix
+    ]
+
+  let fsPathGen = gen {
+    let! drive = charGen
+    let! platform = platformGen
+    let! elements = Gen.listOf nonNullStringGen
+    return {
+      Drive = drive
+      Platform = platform
+      Elements = elements
+    }
+  }
+
+  let fsEntryGen = gen {
+    let! depth = Gen.choose (2,4)
+    let tree = FsTreeTesting.deepTree depth
+    return tree.Root
+  }
+
+  let fsTreeGen = gen {
+    let! depth = Gen.choose (2,4)
+    let tree = FsTreeTesting.deepTree depth
+    return tree
+  }
+
   //  ____  _    __        ___     _            _
   // |  _ \(_)_ _\ \      / (_) __| | __ _  ___| |_
   // | |_) | | '_ \ \ /\ / /| |/ _` |/ _` |/ _ \ __|
@@ -1010,6 +1059,7 @@ module Generators =
     let! users = mapGen userGen
     let! clients = mapGen clientGen
     let! players = mapGen cuePlayerGen
+    let! fsTrees = mapGen fsTreeGen
     let! discovered = mapGen discoveredGen
     return
       { Project            = project
@@ -1022,6 +1072,7 @@ module Generators =
         Users              = users
         Clients            = clients
         CuePlayers         = players
+        FsTrees            = fsTrees
         DiscoveredServices = discovered }
     }
 
@@ -1030,6 +1081,18 @@ module Generators =
   // \___ \| __/ _` | __/ _ \ |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
   //  ___) | || (_| | ||  __/ |  | | (_| | (__| | | | | | | |  __/
   // |____/ \__\__,_|\__\___|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+
+  let fsEntryTuple = gen {
+    let! id = idGen
+    let! entry = fsEntryGen
+    return id, entry
+  }
+
+  let fsPathTuple = gen {
+    let! id = idGen
+    let! path = fsPathGen
+    return id, path
+  }
 
   let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
@@ -1066,6 +1129,11 @@ module Generators =
       Gen.map AddUser                 userGen
       Gen.map UpdateUser              userGen
       Gen.map RemoveUser              userGen
+      Gen.map AddFsEntry              fsEntryTuple
+      Gen.map UpdateFsEntry           fsEntryTuple
+      Gen.map RemoveFsEntry           fsPathTuple
+      Gen.map AddFsTree               fsTreeGen
+      Gen.map RemoveFsTree            idGen
       Gen.map AddSession              sessionGen
       Gen.map UpdateSession           sessionGen
       Gen.map RemoveSession           sessionGen
@@ -1317,3 +1385,6 @@ module Generators =
   let pinWidgetArb = Arb.fromGen pinWidgetGen
   let referencedValueArb = Arb.fromGen referencedValueGen
   let pinGroupMapArb = Arb.fromGen pinGroupMapGen
+  let fsPathArb = Arb.fromGen fsPathGen
+  let fsEntryArb = Arb.fromGen fsEntryGen
+  let fsTreeArb = Arb.fromGen fsTreeGen

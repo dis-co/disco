@@ -88,4 +88,4 @@ module Uri =
       |> unwrap
       |> System.Web.HttpUtility.UrlEncode
       #endif
-    toUri HTTP None (Some path) (string mem.IpAddr) (mem.GitPort |> Some)
+    toUri HTTP None (Some path) (string mem.IpAddress) (mem.GitPort |> Some)
