@@ -7,26 +7,60 @@ open Iris.Raft
 [<AutoOpen>]
 module StateTests =
 
-  let test_load_state_correctly =
-    testCase "should load state correctly" <| fun _ ->
-      ()
-//      either {
-//        let! state = mkTmpDir() |> mkState
-//        do! Asset.save state.Project.Path state
-//        let! loaded = Asset.loadWithMachine state.Project.Path state.Project.Config.Machine
-//
-//        expect "Cues should be equal" state.Cues id loaded.Cues
-//        expect "CueLists should be equal" state.CueLists id loaded.CueLists
-//        expect "Patches should be equal" state.Patches id loaded.Patches
-//
-//        let config =
-//          { loaded.Project.Config with
-//              Machine = state.Project.Config.Machine }
-//        expect "Config should be equal" state.Project.Config id config
-//      }
-//      |> noError
+  let test_apply_fstree_add_correctly =
+    testCase "should apply fstree add correctly" <| fun _ ->
+      either {
+        let initial = State.Empty
+        let tree = FsTreeTesting.deepTree 2
+        let state = State.addFsTree tree initial
+        Expect.equal state.FsTrees.[tree.HostId] tree "Should have tree"
+      }
+      |> noError
+
+  let test_apply_fsentry_add_correctly =
+    testCase "should apply fsentry add correctly" <| fun _ ->
+      either {
+        let tree = FsTreeTesting.deepTree 2
+        let initial = State.addFsTree tree State.Empty
+        let directory =
+          tree
+          |> FsTree.directories
+          |> FsEntry.flatten
+          |> List.last
+          |> FsEntry.path
+        let entry =
+          let path = directory + Path.getRandomFileName()
+          FsEntry.File(
+            { Path = path
+              Name = FsPath.fileName path
+              Size = 234u
+              Filtered = 0u
+              MimeType = "text/plain" })
+        let state = State.addFsEntry tree.HostId entry initial
+        let actual = FsTree.tryFind (FsEntry.path entry) state.FsTrees.[tree.HostId]
+        Expect.equal actual (Some entry) "Should have entry"
+      }
+      |> noError
+
+  let test_apply_fsentry_remove_correctly =
+    testCase "should apply fsentry remove correctly" <| fun _ ->
+      either {
+        let tree = FsTreeTesting.deepTree 2
+        let initial = State.addFsTree tree State.Empty
+        let entry =
+          tree
+          |> FsTree.files
+          |> List.last
+          |> FsEntry.path
+        let state = State.removeFsEntry tree.HostId entry initial
+        let actual = FsTree.tryFind entry state.FsTrees.[tree.HostId]
+        Expect.equal actual None "Should not have entry"
+      }
+      |> noError
 
   let stateTests =
     testList "State Tests" [
-      test_load_state_correctly
+      test_apply_fstree_add_correctly
+      test_apply_fsentry_add_correctly
+      test_apply_fsentry_remove_correctly
     ]

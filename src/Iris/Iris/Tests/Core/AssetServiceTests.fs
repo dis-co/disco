@@ -26,10 +26,10 @@ module AssetServiceTests =
 
   let createAssetDirectory() =
     let basePath = Path.getTempPath()
-    for d in 0 .. rnd.Next(1,1) do
+    for d in 0 .. rnd.Next(1,4) do
       let dirPath = basePath </> Path.getRandomFileName()
       Directory.createDirectory dirPath |> ignore
-      for f in 0 .. rnd.Next(1,1) do
+      for f in 0 .. rnd.Next(1,4) do
         let filePath = dirPath </> Path.getRandomFileName()
         let contents = rndString()
         File.writeText contents None filePath
