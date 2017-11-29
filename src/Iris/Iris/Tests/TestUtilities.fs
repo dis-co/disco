@@ -26,7 +26,8 @@ module TestUtilities =
       queue.TryTake(&result, tmo)
 
     interface IDisposable with
-      member self.Dispose() = queue.Dispose()
+      member self.Dispose() =
+        try queue.Dispose() with _ -> ()
 
   let waitFor (tag: string) (we: WaitEvent) =
     if we.WaitOne(TimeSpan.FromMilliseconds IRIS_EVENT_TIMEOUT)
