@@ -27,7 +27,6 @@ module AssetServiceTests =
   let createAssetDirectory() =
     let basePath = Path.getFullPath(Path.getRandomFileName())
     do Directory.createDirectory basePath |> ignore
-    printfn "--------------->> PATH: %A EXISTS: %b" basePath (Directory.exists basePath)
     for d in 0 .. rnd.Next(1,4) do
       let dirPath = basePath </> Path.getRandomFileName()
       do Directory.createDirectory dirPath |> ignore
@@ -183,9 +182,17 @@ module AssetServiceTests =
       |> noError
 
   let assetServiceTests =
-    testList "AssetService Tests" [
-      testInitialCrawl
-      testAddEntry
-      testChangeEntry
-      testRemoveEntres
-    ]
+    /// apparently, these tests only work on "real" file systems and always fail on networked ones,
+    /// hence we disable them there for CI builds
+    let tests =
+      if isNull (Environment.GetEnvironmentVariable "APPVEYOR_CI_BUILD") &&
+         isNull (Environment.GetEnvironmentVariable "IN_VBOX")
+      then
+        [ testInitialCrawl
+          testAddEntry
+          testChangeEntry
+          testRemoveEntres ]
+      else List.empty
+    tests
+    |> testList "AssetService Tests"
+    |> testSequenced
