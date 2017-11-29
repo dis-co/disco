@@ -6,6 +6,7 @@ open System.Collections.Concurrent
 open Expecto
 open FsCheck
 open Iris.Core
+open Iris.Raft
 open Iris.Service
 open Iris.Net
 open Microsoft.FSharp.Control
@@ -217,8 +218,8 @@ module NetIntegrationTests =
   let test_pub_socket_disposes_properly =
     testCase "pub socket disposes properly" <| fun _ ->
       either {
-        let id = IrisId.Create()
-        use pub = PubSub.create id PubSub.defaultAddress (int Constants.MCAST_PORT)
+        let mem = IrisId.Create() |> Member.create
+        use pub = PubSub.create mem
         do! pub.Start()
       }
       |> noError
