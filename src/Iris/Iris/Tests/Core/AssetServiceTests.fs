@@ -58,7 +58,134 @@ module AssetServiceTests =
       }
       |> noError
 
+  let testAddEntry =
+    testCase "add entry should work" <| fun _ ->
+      either {
+        let machine, tree = createAssetDirectory()
+        use crawlDone = new WaitEvent()
+        use addDone = new WaitEvent()
+
+        let! service = AssetService.create machine
+
+        let handler = function
+          | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
+          | IrisEvent.Append (_,CommandBatch _) -> addDone.Set()
+          | _ -> ()
+
+        use subscription = service.Subscribe handler
+
+        do! service.Start()
+        do! waitFor "crawl to be done" crawlDone
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+
+        let filePath = machine.AssetDirectory </> Path.getRandomFileName()
+        let payload = rndString()
+        do File.writeText payload None filePath
+
+        do! waitFor "add be done" addDone
+
+        let! tree =
+          machine.AssetFilter
+          |> FsTree.parseFilters
+          |> FsTree.read machine.MachineId machine.AssetDirectory
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+      }
+      |> noError
+
+  let testChangeEntry =
+    testCase "change entry should work" <| fun _ ->
+      either {
+        let machine, tree = createAssetDirectory()
+        use crawlDone = new WaitEvent()
+        use changeDone = new WaitEvent()
+
+        let! service = AssetService.create machine
+
+        let handler = function
+          | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
+          | IrisEvent.Append (_,CommandBatch _) -> changeDone.Set()
+          | _ -> ()
+
+        use subscription = service.Subscribe handler
+
+        do! service.Start()
+        do! waitFor "crawl to be done" crawlDone
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+
+        let filePath =
+          tree
+          |> FsTree.files
+          |> List.head
+          |> FsEntry.path
+          |> string
+          |> filepath
+
+        let payload = rndString()
+        do File.writeText payload None filePath
+
+        do! waitFor "change be done" changeDone
+
+        let! tree =
+          machine.AssetFilter
+          |> FsTree.parseFilters
+          |> FsTree.read machine.MachineId machine.AssetDirectory
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+      }
+      |> noError
+
+  let testRemoveEntres =
+    testCase "remove entries should work" <| fun _ ->
+      either {
+        let machine, tree = createAssetDirectory()
+        use crawlDone = new WaitEvent()
+        use removeDone = new WaitEvent()
+
+        let! service = AssetService.create machine
+
+        let handler = function
+          | IrisEvent.Append (_,AddFsTree _)    -> crawlDone.Set()
+          | IrisEvent.Append (_,CommandBatch _) -> removeDone.Set()
+          | _ -> ()
+
+        use subscription = service.Subscribe handler
+
+        do! service.Start()
+        do! waitFor "crawl to be done" crawlDone
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+
+        let dirPath =
+          tree
+          |> FsTree.directories
+          |> FsEntry.flatten
+          |> List.last
+          |> FsEntry.path
+          |> string
+          |> filepath
+
+        assert (dirPath <> machine.AssetDirectory)
+
+        do Directory.removeDirectory dirPath |> ignore
+
+        do! waitFor "remove be done" removeDone
+
+        let! tree =
+          machine.AssetFilter
+          |> FsTree.parseFilters
+          |> FsTree.read machine.MachineId machine.AssetDirectory
+
+        Expect.equal service.State (Some tree) "Trees should be equal"
+      }
+      |> noError
+
   let assetServiceTests =
-    ftestList "AssetService Tests" [
+    testList "AssetService Tests" [
       testInitialCrawl
+      testAddEntry
+      testChangeEntry
+      testRemoveEntres
     ]
