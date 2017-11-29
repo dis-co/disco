@@ -25,7 +25,7 @@ module AssetServiceTests =
     |> String
 
   let createAssetDirectory() =
-    let basePath = Path.getTempPath() </> Path.getRandomFileName()
+    let basePath = Path.getFullPath(Path.getRandomFileName())
     do Directory.createDirectory basePath |> ignore
     for d in 0 .. rnd.Next(1,4) do
       let dirPath = basePath </> Path.getRandomFileName()
