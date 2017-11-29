@@ -67,6 +67,8 @@ table IrisMachineFB {
       AssetDirectory: string;
       AssetFilter: string;
       LogDirectory: string;
+      MulticastAddress: string;
+      MulticastPort: ushort;
       BindAddress: string;
       WebPort: ushort;
       RaftPort: ushort;
