@@ -27,6 +27,7 @@ module AssetServiceTests =
   let createAssetDirectory() =
     let basePath = Path.getFullPath(Path.getRandomFileName())
     do Directory.createDirectory basePath |> ignore
+    printfn "--------------->> PATH: %A EXISTS: %b" basePath (Directory.exists basePath)
     for d in 0 .. rnd.Next(1,4) do
       let dirPath = basePath </> Path.getRandomFileName()
       do Directory.createDirectory dirPath |> ignore
