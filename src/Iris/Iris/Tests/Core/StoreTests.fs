@@ -823,8 +823,145 @@ module StoreTests =
         expect "Should have no widget" 0 Map.count (State.pinWidgets store.State)
         expect "Should have no group" 0 PinGroupMap.count (State.pinGroupMap store.State)
 
+  ///  _____   _____
+  /// |  ___|_|_   _| __ ___  ___
+  /// | |_ / __|| || '__/ _ \/ _ \
+  /// |  _|\__ \| || | |  __/  __/
+  /// |_|  |___/|_||_|  \___|\___|
+
+  let test_should_add_fstree =
+    testCase "should add fstree to store" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+        Expect.equal store.State.FsTrees.[tree.HostId] tree "Should contain tree"
+
+  let test_should_remove_fstree =
+    testCase "should remove fstree to store" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+        Expect.equal store.State.FsTrees.[tree.HostId] tree "Should contain tree"
+        tree.HostId
+        |> RemoveFsTree
+        |> store.Dispatch
+        Expect.isNone (Map.tryFind tree.HostId store.State.FsTrees) "Should not contain tree"
+
+  let test_should_add_entry_to_fstree =
+    testCase "should add entry to fstree" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+
+        let directory =
+          tree
+          |> FsTree.directories
+          |> FsEntry.flatten
+          |> List.last
+          |> FsEntry.path
+
+        let entry =
+          let path = directory + Path.getRandomFileName()
+          FsEntry.File(
+            { Path = path
+              Name = FsPath.fileName path
+              Size = 43u
+              Filtered = 0u
+              MimeType = "text/plain" })
+
+        (tree.HostId, entry)
+        |> AddFsEntry
+        |> store.Dispatch
+
+        let actual = FsTree.tryFind (FsEntry.path entry) store.State.FsTrees.[tree.HostId]
+        Expect.equal actual (Some entry) "Should contain entry now"
+
+  let test_should_remove_entry_to_fstree =
+    testCase "should remove entry to fstree" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+
+        let entry =
+          tree
+          |> FsTree.files
+          |> List.last
+          |> FsEntry.path
+
+        (tree.HostId, entry)
+        |> RemoveFsEntry
+        |> store.Dispatch
+
+        let actual = FsTree.tryFind entry store.State.FsTrees.[tree.HostId]
+        Expect.isNone actual "Should not contain entry anymore"
+
+  let test_should_process_batched_add_fsentry_updates =
+    testCase "should process batched add fsentry updates" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+
+        let directory =
+          tree
+          |> FsTree.directories
+          |> FsEntry.flatten
+          |> List.last
+          |> FsEntry.path
+
+        let addedFiles =
+          [ for n in 0 .. rnd.Next(1,5) do
+              let filePath = directory + Path.getRandomFileName()
+              yield FsEntry.File(
+                { Path = filePath
+                  Name = FsPath.fileName filePath
+                  Size = 9u
+                  Filtered = 0u
+                  MimeType = "text/plain" }) ]
+
+        addedFiles
+        |> List.map (fun entry -> AddFsEntry(tree.HostId, entry))
+        |> CommandBatch.ofList
+        |> store.Dispatch
+
+        for file in addedFiles do
+          let actual = FsTree.tryFind (FsEntry.path file) store.State.FsTrees.[tree.HostId]
+          Expect.equal actual (Some file) "Should now be in tree"
+
+  let test_should_process_batched_remove_fsentry_updates =
+    testCase "should process batched remove fsentry updates" <| fun _ ->
+      withStore <| fun _ store ->
+        let tree = FsTreeTesting.deepTree 2
+        tree
+        |> AddFsTree
+        |> store.Dispatch
+
+        let removedFiles =
+          let files = FsTree.files tree
+          files
+          |> List.take (List.length files / 2)
+          |> List.map FsEntry.path
+
+        removedFiles
+        |> List.map (fun path -> RemoveFsEntry(tree.HostId, path))
+        |> CommandBatch.ofList
+        |> store.Dispatch
+
+        for file in removedFiles do
+          let actual = FsTree.tryFind file store.State.FsTrees.[tree.HostId]
+          Expect.isNone actual "Should not be in tree anymore"
+
   let storeTests =
-    testList "Store Tests" [
+    ftestList "Store Tests" [
       test_should_add_a_group_to_the_store
       test_should_update_a_group_already_in_the_store
       test_should_remove_a_group_already_in_the_store
@@ -868,4 +1005,10 @@ module StoreTests =
       test_should_add_widget_and_corresponding_group
       test_should_remove_widget_and_corresponding_group
       test_should_update_player_position
+      test_should_add_fstree
+      test_should_remove_fstree
+      test_should_add_entry_to_fstree
+      test_should_remove_entry_to_fstree
+      test_should_process_batched_add_fsentry_updates
+      test_should_process_batched_remove_fsentry_updates
     ]
