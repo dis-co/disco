@@ -1276,14 +1276,16 @@ module FsEntry =
   let rec remove (fp: FsPath) filters =
     let remover = function
       | FsEntry.Directory(_, children) as dir when dir.isParentOf fp ->
+        let size = if size dir = 0u then 0u else size dir - 1u
         if matches filters (FsPath.fileName fp) then
+          let filtered = if filtered dir = 0u then 0u else filtered dir - 1u
           dir
-          |> setSize (size dir - 1u)
-          |> setFiltered (filtered dir - 1u)
+          |> setSize size
+          |> setFiltered filtered
         elif Map.containsKey fp children then
           dir
           |> setChildren (Map.remove fp children)
-          |> setSize (size dir - 1u)
+          |> setSize size
         else dir
       | other -> other
     modify (FsPath.parent fp) remover

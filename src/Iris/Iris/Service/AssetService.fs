@@ -64,11 +64,20 @@ module AssetService =
           (fun map -> function
             | FileSystemEvent.Created(_,path) ->
               let path = FsPath.parse path
-              match FsTree.tryFind path tree with
-              | Some entry ->
-                let cmd = AddFsEntry (state.Machine.MachineId, entry)
-                Map.add path cmd map
-              | None -> map
+              if FsEntry.matches tree.Filters (FsPath.fileName path) then
+                /// this entry was filtered, so we just update the parent to get the right counts
+                let parent = FsPath.parent path
+                match FsTree.tryFind parent tree with
+                | Some entry ->
+                  let cmd = UpdateFsEntry (state.Machine.MachineId, entry)
+                  Map.add parent cmd map
+                | None -> map
+              else
+                match FsTree.tryFind path tree with
+                | Some entry ->
+                  let cmd = AddFsEntry (state.Machine.MachineId, entry)
+                  Map.add path cmd map
+                | None -> map
             | FileSystemEvent.Changed(_,path) ->
               let path = FsPath.parse path
               match Map.tryFind path map with
@@ -96,13 +105,23 @@ module AssetService =
               let oldpath = FsPath.parse oldpath
               let path = FsPath.parse path
               let remove = RemoveFsEntry (state.Machine.MachineId, oldpath)
-              match FsTree.tryFind path tree with
-              | None -> Map.add oldpath remove map
-              | Some entry ->
-                let add = AddFsEntry (state.Machine.MachineId, entry)
-                map
-                |> Map.add oldpath remove
-                |> Map.add path add)
+              if FsEntry.matches tree.Filters (FsPath.fileName path) then
+                let parent = FsPath.parent path
+                match FsTree.tryFind parent tree with
+                | None -> Map.add oldpath remove map
+                | Some entry ->
+                  let add = UpdateFsEntry (state.Machine.MachineId, entry)
+                  map
+                  |> Map.add oldpath remove
+                  |> Map.add parent add
+              else
+                match FsTree.tryFind path tree with
+                | None -> Map.add oldpath remove map
+                | Some entry ->
+                  let add = AddFsEntry (state.Machine.MachineId, entry)
+                  map
+                  |> Map.add oldpath remove
+                  |> Map.add path add)
           Map.empty
           (List.rev state.Updates)      /// oldes updates first
       if not (Map.isEmpty commands) then
