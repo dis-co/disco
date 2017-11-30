@@ -338,8 +338,7 @@ module IrisService =
         |> Map.toList
         |> List.map (snd >> AddClient)
       let tree =
-        store.State.Store.State.FsTrees
-        |> Map.tryFind store.State.Machine.MachineId
+        store.State.AssetService.State
         |> Option.map (fun tree -> [ AddFsTree tree ])
         |> Option.defaultValue List.empty
 
@@ -367,9 +366,7 @@ module IrisService =
   /// Handle events happening on the socket connection to the current leader. When connected, send a
   /// command to append the locally connected clients and browser sessions to the leader.
   let private handleLeaderEvents socket store = function
-    | TcpClientEvent.Connected _ ->
-      do sendLocalData socket store
-    // | TcpClientEvent. -> ()
+    | TcpClientEvent.Connected _ -> sendLocalData socket store
     | _ -> ()
 
   // ** makeLeader
@@ -396,7 +393,7 @@ module IrisService =
   /// Events that need to be treated differently than normal state machine comand events come from
   /// RaftServer and are used to e.g. wire up communication with the leader for forwarding state
   /// machine commands to the leader.
-  let private processEvent (store: IAgentStore<IrisState>) ev =
+  let private processEvent (store: IAgentStore<IrisState>) pipeline ev =
     Observable.onNext store.State.Subscriptions ev
     match ev with
     | IrisEvent.EnterJointConsensus changes ->
@@ -434,16 +431,22 @@ module IrisService =
       Option.iter dispose store.State.Leader
 
       let newLeader =
-        // create redirect socket if we have new leader other than this current node
-        if Option.isSome leader && leader <> (Some store.State.Member.Id) then
+        match leader with
+        | Some leaderId when leaderId <> store.State.Member.Id ->
+          // create redirect socket if we have new leader other than this current node
           match store.State.RaftServer.Leader with
-          | Some leader ->
-            makeLeader leader store
+          | Some leader -> makeLeader leader store
           | None ->
             "Could not start re-direct socket: no leader"
             |> Logger.debug (tag "leaderChanged")
             None
-        else None
+        | Some _ ->
+          /// this service is currently leader, so append the local fstree
+          Option.iter
+            (AddFsTree >> IrisEvent.appendService >> Pipeline.push pipeline)
+            store.State.AssetService.State
+          None
+        | None -> None
 
       store.Update { store.State with Leader = newLeader }
 
@@ -545,7 +548,7 @@ module IrisService =
 
   let private dispatchEvent store pipeline cmd =
     cmd |> dispatchStrategy |> function
-    | Process   -> processEvent store cmd
+    | Process   -> processEvent store pipeline cmd
     | Replicate -> replicateEvent store cmd
     | Ignore    -> Observable.onNext store.State.Subscriptions cmd
     | Publish   -> publishEvent pipeline cmd
