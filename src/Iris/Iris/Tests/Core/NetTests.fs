@@ -195,18 +195,18 @@ module NetIntegrationTests =
         let prt = port 5555us
 
         use server1 = TcpServer.create {
-            ServerId = IrisId.Create()
-            Listen = ip
-            Port = prt
-          }
+          ServerId = IrisId.Create()
+          Listen = ip
+          Port = prt
+        }
 
         do! server1.Start()
 
         let server2 = TcpServer.create {
-            ServerId = IrisId.Create()
-            Listen = ip
-            Port = prt
-          }
+          ServerId = IrisId.Create()
+          Listen = ip
+          Port = prt
+        }
 
         return!
           match server2.Start() with

@@ -1270,54 +1270,7 @@ module ProjectYaml =
 
     (file, config)
 
-  // ** parseMember
-
-  //    ____ _           _
-  //   / ___| |_   _ ___| |_ ___ _ __
-  //  | |   | | | | / __| __/ _ \ '__|
-  //  | |___| | |_| \__ \ ||  __/ |
-  //   \____|_|\__,_|___/\__\___|_|
-  //
-
-  /// ## Parse a single Member definition
-  ///
-  /// Parse a single Member definition. Returns a ParseError on failiure.
-  ///
-  /// ### Signature:
-  /// - mem: MemberYaml
-  ///
-  /// Returns: Either<IrisError, RaftMember>
-  let internal parseMember (mem: RaftMemberYaml) : Either<IrisError, RaftMember> =
-    either {
-      try
-        let! id = IrisId.TryParse mem.Id
-        let! ip = IpAddress.TryParse mem.IpAddress
-        let! mcastip = IpAddress.TryParse mem.MulticastAddress
-        let! state = RaftMemberState.TryParse mem.State
-        return {
-          Id               = id
-          HostName         = name mem.HostName
-          IpAddress        = ip
-          MulticastAddress = mcastip
-          MulticastPort    = port mem.MulticastPort
-          RaftPort         = mem.RaftPort |> uint16 |> port
-          WsPort           = mem.WsPort   |> uint16 |> port
-          GitPort          = mem.GitPort  |> uint16 |> port
-          ApiPort          = mem.ApiPort  |> uint16 |> port
-          State            = state
-          Voting           = true
-          VotedForMe       = false
-          NextIndex        = index 1
-          MatchIndex       = index 0
-        }
-      with exn ->
-        return!
-          sprintf "Could not parse Member definition: %s" exn.Message
-          |> Error.asParseError "Config.parseMember"
-          |> Either.fail
-    }
-
-  // ** parseMember
+  // ** parseMembers
 
   /// ## Parse a collectio of Member definitions
   ///
@@ -1333,7 +1286,7 @@ module ProjectYaml =
         Seq.fold
           (fun (m: Either<IrisError, int * Map<MemberId,RaftMember>>) mem -> either {
             let! (idx, mems) = m
-            let! mem = parseMember mem
+            let! mem = RaftMember.FromYaml mem
             return (idx + 1, Map.add mem.Id mem mems)
           })
           (Right(0, Map.empty))
@@ -1443,17 +1396,9 @@ module ProjectYaml =
       cfg.Id <- string cluster.Id
       cfg.Name <- unwrap cluster.Name
 
-      for KeyValue(memId,mem) in cluster.Members do
-        let n = RaftMemberYaml()
-        n.Id        <- string memId
-        n.IpAddress <- string mem.IpAddress
-        n.HostName  <- unwrap mem.HostName
-        n.RaftPort  <- unwrap mem.RaftPort
-        n.WsPort    <- unwrap mem.WsPort
-        n.GitPort   <- unwrap mem.GitPort
-        n.ApiPort   <- unwrap mem.ApiPort
-        n.State     <- string mem.State
-        members.Add(n)
+      for KeyValue(_,mem) in cluster.Members do
+        let mem = mem.ToYaml()
+        members.Add(mem)
 
       for group in cluster.Groups do
         let g = GroupYaml()
