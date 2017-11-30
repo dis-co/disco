@@ -52,14 +52,14 @@ module ApiTests =
 
         let mem = Member.create (IrisId.Create())
 
-        use! server1 = ApiServer.create mem store.State.Project.Id {
+        use! server1 = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }
 
         do! server1.Start()
 
-        use! server2 = ApiServer.create mem store.State.Project.Id {
+        use! server2 = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }
@@ -77,7 +77,7 @@ module ApiTests =
 
         let mem = Member.create (IrisId.Create())
 
-        use! server = ApiServer.create mem store.State.Project.Id {
+        use! server = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }
@@ -145,7 +145,7 @@ module ApiTests =
 
         let mem = Member.create (IrisId.Create())
 
-        use! server = ApiServer.create mem store.State.Project.Id {
+        use! server = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot () = store.State
         }
@@ -246,7 +246,7 @@ module ApiTests =
             IpAddress = mem.IpAddress
             Port = port (unwrap mem.ApiPort + 1us) }
 
-        use! server = ApiServer.create mem store.State.Project.Id {
+        use! server = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot () = store.State
         }
@@ -351,7 +351,7 @@ module ApiTests =
         let store = Store(mkState ())
         let mem = Member.create (IrisId.Create())
 
-        use! server = ApiServer.create mem store.State.Project.Id {
+        use! server = ApiServer.create mem {
           new IApiServerCallbacks with
             member self.PrepareSnapshot() = store.State
         }

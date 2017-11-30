@@ -534,7 +534,7 @@ module IrisService =
 
   // ** publishEvent
 
-  let private publishEvent (store: IAgentStore<IrisState>) pipeline = function
+  let private publishEvent pipeline = function
     /// globally set the loglevel to the desired value
     | IrisEvent.Append(Origin.Raft, SetLogLevel level) as cmd ->
       do Logger.setLevel level
@@ -548,7 +548,7 @@ module IrisService =
     | Process   -> processEvent store cmd
     | Replicate -> replicateEvent store cmd
     | Ignore    -> Observable.onNext store.State.Subscriptions cmd
-    | Publish   -> publishEvent store pipeline cmd
+    | Publish   -> publishEvent pipeline cmd
 
   // ** createDispatcher
 
@@ -683,7 +683,7 @@ module IrisService =
 
   // ** makeState
 
-  let private makeState store state serviceOptions (user: User) =
+  let private makeState store state serviceOptions _ =
     either {
       let subscriptions = Subscriptions()
       let state = updateSite state serviceOptions
@@ -710,7 +710,7 @@ module IrisService =
       let! apiServer =
         store
         |> makeApiCallbacks
-        |> ApiServer.create mem state.Project.Id
+        |> ApiServer.create mem
 
       let fsWatcher = FsWatcher.create state.Project
 

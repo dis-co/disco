@@ -309,7 +309,6 @@ module AssetService =
           |> Either.fail
       else
         let cts = new CancellationTokenSource()
-        let status = ref ServiceStatus.Stopped
         let subscriptions = Subscriptions()
 
         let store = AgentStore.create()

@@ -93,19 +93,21 @@ let makeClient service (name: Name) : IrisClient =
 
 let machines =
   List.map (fun idx ->
-    { MachineId    = IrisId.Create()
-      HostName     = name ("mockmachine-" + string idx)
-      WorkSpace    = filepath "/Iris"
-      LogDirectory = filepath "/Iris"
-      AssetDirectory = filepath "/Iris"
-      AssetFilter  = Constants.DEFAULT_ASSET_FILTER
-      BindAddress  = IPv4Address "127.0.0.1"
-      WebPort      = port Constants.DEFAULT_WEB_PORT
-      RaftPort     = port Constants.DEFAULT_RAFT_PORT
-      WsPort       = port Constants.DEFAULT_WEB_SOCKET_PORT
-      GitPort      = port Constants.DEFAULT_GIT_PORT
-      ApiPort      = port Constants.DEFAULT_API_PORT
-      Version      = version "0.0.0" })
+    { MachineId        = IrisId.Create()
+      HostName         = name ("mockmachine-" + string idx)
+      WorkSpace        = filepath "/Iris"
+      LogDirectory     = filepath "/Iris"
+      AssetDirectory   = filepath "/Iris"
+      AssetFilter      = Constants.DEFAULT_ASSET_FILTER
+      BindAddress      = IPv4Address "127.0.0.1"
+      MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
+      MulticastPort    = port Constants.DEFAULT_MCAST_PORT
+      WebPort          = port Constants.DEFAULT_WEB_PORT
+      RaftPort         = port Constants.DEFAULT_RAFT_PORT
+      WsPort           = port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort          = port Constants.DEFAULT_GIT_PORT
+      ApiPort          = port Constants.DEFAULT_API_PORT
+      Version          = version "0.0.0" })
     [ 0 .. 3 ]
 
 let clients =

@@ -377,15 +377,6 @@ module Discovery =
   let private tag (str: string) =
     String.Format("Discovery.{0}", str)
 
-  // ** createId
-
-  let private createId (id: IrisId) (port: Port) (tipe: ServiceType) (ip: IpAddress) =
-    /// sprintf "%s%s%s%d" (string id) (string tipe) (string ip) port
-    /// |> Encoding.ASCII.GetBytes
-    /// |> Crypto.sha1sum
-    /// |> unwrap
-    IrisId.Create()
-
   // ** serviceName
 
   let private serviceName (id: IrisId) =
