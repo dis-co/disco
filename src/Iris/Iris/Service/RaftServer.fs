@@ -1255,7 +1255,7 @@ module rec RaftServer =
     | TcpServerEvent.Request request ->
       handleServerRequest state request agent
 
-    | TcpServerEvent.Response response -> state
+    | TcpServerEvent.Response _ -> state
 
   // ** handleReqCommitted
 

@@ -187,7 +187,7 @@ module ApiServer =
   let private handleRemoveClient (state: ServerState) (peer: IrisClient) =
     Tracing.trace (tag "handleRemoveClient") <| fun () ->
       match Map.tryFind peer.Id state.Clients with
-      | Some client ->
+      | Some _ ->
         RemoveClient peer
         |> IrisEvent.appendService
         |> Observable.onNext state.Subscriptions
@@ -225,8 +225,7 @@ module ApiServer =
   // ** publish
 
   let private publish (state: ServerState) (sm: StateMachine) (_: ApiAgent) =
-    // sm |> Binary.encode |> state.PubSub.Send
-    ()
+    sm |> Binary.encode |> state.PubSub.Send
 
   // ** handleSetStatus
 
@@ -355,7 +354,7 @@ module ApiServer =
         |> Msg.Update
         |> agent.Post
 
-      | Right other -> ()                // ignore Ping et al
+      | Right _ -> ()                // ignore Ping et al
 
       | Left error ->
         error
@@ -490,7 +489,6 @@ module ApiServer =
   // ** start
 
   let private start (mem: RaftMember)
-                    (projectId: ProjectId)
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
     either {
@@ -531,7 +529,7 @@ module ApiServer =
 
   // ** create
 
-  let create (mem: RaftMember) (projectId: ProjectId) callbacks =
+  let create (mem: RaftMember) callbacks =
     either {
       let cts = new CancellationTokenSource()
 
@@ -568,7 +566,7 @@ module ApiServer =
 
             // *** Start
 
-            member self.Start () = start mem projectId store agent
+            member self.Start () = start mem store agent
 
             // *** Clients
 
