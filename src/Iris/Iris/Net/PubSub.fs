@@ -147,10 +147,13 @@ module rec PubSub =
               |> Either.fail
 
         member pubsub.Send(bytes: byte array) =
-          beginSend state bytes
+          try
+            beginSend state bytes
+          with exn ->
+            Logger.err (tag "Send") exn.Message
 
         member pubsub.Subscribe (callback: PubSubEvent -> unit) =
           Observable.subscribe callback subscriptions
 
         member pubsub.Dispose () =
-          client.Dispose() }
+          try client.Dispose() with _ -> () }

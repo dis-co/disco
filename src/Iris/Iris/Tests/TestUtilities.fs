@@ -19,11 +19,15 @@ module TestUtilities =
     let queue = new BlockingCollection<unit>()
 
     member ev.Set() =
-      () |> queue.Add
+      try queue.Add <| () with exn -> Logger.info "WaitEvent.Set" exn.Message
 
     member ev.WaitOne(tmo: TimeSpan) =
-      let mutable result = ()
-      queue.TryTake(&result, tmo)
+      try
+        let mutable result = ()
+        queue.TryTake(&result, tmo)
+      with exn ->
+        Logger.info "WaitEvent.WaitOne" exn.Message
+        false
 
     interface IDisposable with
       member self.Dispose() =
