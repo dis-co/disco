@@ -1579,6 +1579,18 @@ module Config =
         config.Sites
     { config with Sites = sites }
 
+  // ** updateSite
+
+  let updateSite (site: ClusterConfig) (config: IrisConfig) =
+    let sites =
+      Array.map
+        (fun existing ->
+          if ClusterConfig.id existing = ClusterConfig.id site
+          then site
+          else existing)
+        config.Sites
+    { config with Sites = sites }
+
   // ** updateSites
 
   let updateSites (sites: ClusterConfig array) (config: IrisConfig) =

@@ -412,6 +412,21 @@ module IrisService =
       |> Logger.debug (tag "processEvent")
 
     | IrisEvent.ConfigurationDone mems ->
+      let ids = Array.map Member.id mems
+      let project = State.project store.State.Store.State
+      let config = Project.config project
+      match Config.getActiveSite config with
+      | None -> ()                       /// this should ever happen
+      | Some activeSite ->
+        activeSite
+        |> ClusterConfig.members
+        |> Map.filter (fun id _ -> Array.contains id ids)
+        |> flip ClusterConfig.setMembers activeSite
+        |> flip Config.updateSite config
+        |> flip Project.updateConfig project
+        |> UpdateProject
+        |> IrisEvent.appendService
+        |> Pipeline.push pipeline
       mems
       |> Array.map (Member.id >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
@@ -423,7 +438,6 @@ module IrisService =
       |> Logger.debug (tag "processEvent")
 
     | IrisEvent.LeaderChanged leader ->
-
       leader
       |> String.format "Leader changed to {0}"
       |> Logger.debug (tag "leaderChanged")
@@ -455,7 +469,8 @@ module IrisService =
       | Left error -> Logger.err (tag "persistSnapshot") (string error)
       | _ -> ()
 
-    | IrisEvent.RaftError _ | _ -> ()
+    | IrisEvent.RaftError error -> Logger.err (tag "processEvents") error.Message
+    | _ -> ()
 
   // ** forwardCommand
 
@@ -475,8 +490,8 @@ module IrisService =
 
   let private handleAppend (store: IAgentStore<IrisState>) cmd =
     if isLeader store
-    then do store.State.RaftServer.Append cmd
-    else do forwardCommand store cmd
+    then store.State.RaftServer.Append cmd
+    else forwardCommand store cmd
 
   // ** replicateEvent
 
@@ -723,7 +738,7 @@ module IrisService =
       let dispatcher = createDispatcher store
 
       let logForwarder =
-        Logger.subscribe (forwardEvent (LogMsg >> IrisEvent.appendService) dispatcher)
+        Logger.subscribe (forwardEvent (LogMsg >> IrisEvent.appendRaft) dispatcher)
 
       // wiring up the sources
       let disposables = [|

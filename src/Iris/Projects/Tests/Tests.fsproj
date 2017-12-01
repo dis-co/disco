@@ -112,6 +112,9 @@
     <Compile Include="..\..\Iris\Tests\Core\Iris\ClonesFromLeader.fs">
       <Link>ClonesFromLeader.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Tests\Core\Iris\RemoveMemberShouldSplitCluster.fs">
+      <Link>RemoveMemberShouldSplitCluster.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Tests\Core\Iris\EnsureClientsReplicated.fs">
       <Link>EnsureClientsReplicated.fs</Link>
     </Compile>
