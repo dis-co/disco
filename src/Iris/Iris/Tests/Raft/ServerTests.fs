@@ -1471,9 +1471,9 @@ module ServerTests =
         do! Raft.sendAllAppendEntriesM ()
         do! Raft.receiveAppendEntriesResponse peer1.Id response
         do! Raft.receiveAppendEntriesResponse peer2.Id response
-        do! expectM "Should have matchIdx 1" (index 1) (Raft.getMember peer1.Id >> Option.get >> Member.getMatchIndex)
+        do! expectM "Should have matchIdx 1" (index 1) (Raft.getMember peer1.Id >> Option.get >> Member.matchIndex)
         do! Raft.receiveAppendEntriesResponse peer1.Id response
-        do! expectM "Should still have matchIdx 1" (index 1) (Raft.getMember peer1.Id >> Option.get >> Member.getMatchIndex)
+        do! expectM "Should still have matchIdx 1" (index 1) (Raft.getMember peer1.Id >> Option.get >> Member.matchIndex)
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -1598,7 +1598,7 @@ module ServerTests =
         do! Raft.appendEntryM log4 >>= ignoreM
         do! Raft.becomeLeader ()
 
-        do! expectM "Should have nextIdx 5" (index 5) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx 5" (index 5) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
         do! expectM "Should have a msg 1" 1 (konst !count)
 
         // need to get an up-to-date version of the peer, because its nextIdx
@@ -1613,8 +1613,8 @@ module ServerTests =
         let! trm = Raft.currentTermM ()
         do! Raft.receiveAppendEntriesResponse peer.Id { response with Term = trm; Success = false; CurrentIndex = index 1 }
 
-        do! expectM "Should have NextIdx 2" (index 2) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
-        do! expectM "Should have MatchIdx 2" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getMatchIndex)
+        do! expectM "Should have NextIdx 2" (index 2) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
+        do! expectM "Should have MatchIdx 2" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.matchIndex)
         do! expectM "Should have 2 msgs"    2   (konst !count)
 
         do! Raft.sendAllAppendEntriesM ()
@@ -1663,8 +1663,8 @@ module ServerTests =
 
         do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should have correct NextIndex"  (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
-        do! expectM "Should have correct MatchIndex" (index 0) (Raft.getMember peer.Id >> Option.get >> Member.getMatchIndex)
+        do! expectM "Should have correct NextIndex"  (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
+        do! expectM "Should have correct MatchIndex" (index 0) (Raft.getMember peer.Id >> Option.get >> Member.matchIndex)
         do! expectM "Should have been called once" 1  (konst !count)
 
         // need to get updated peer, because nextIdx will be bumped when
@@ -1681,8 +1681,8 @@ module ServerTests =
         do! Raft.sendAllAppendEntriesM ()
         do! makeResponse() |> Raft.receiveAppendEntriesResponse peer.Id
 
-        do! expectM "Should finally have NextIndex 5"  (index 5) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
-        do! expectM "Should finally have MatchIndex 4" (index 4) (Raft.getMember peer.Id >> Option.get >> Member.getMatchIndex)
+        do! expectM "Should finally have NextIndex 5"  (index 5) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
+        do! expectM "Should finally have MatchIndex 4" (index 4) (Raft.getMember peer.Id >> Option.get >> Member.matchIndex)
         do! expectM "Should have been called twice" 2 (konst !count)
       }
       |> runWithCBS cbs
@@ -1879,9 +1879,9 @@ module ServerTests =
         let! request = Raft.sendAppendEntry peer
 
         do! Raft.receiveAppendEntriesResponse peer.Id resp
-        do! expectM "Should have nextIdx Works 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx Works 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
         do! Raft.receiveAppendEntriesResponse peer.Id resp
-        do! expectM "Should have nextIdx Dont work 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx Dont work 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -1907,9 +1907,9 @@ module ServerTests =
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         do! Raft.setTermM (term 1)
-        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
         do! Raft.receiveAppendEntriesResponse peer.Id resp
-        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -1935,9 +1935,9 @@ module ServerTests =
         do! Raft.addPeerM peer
         do! Raft.setStateM Leader
         do! Raft.setTermM (term 2)
-        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
         do! Raft.receiveAppendEntriesResponse peer.Id resp
-        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.getNextIndex)
+        do! expectM "Should have nextIdx 1" (index 1) (Raft.getMember peer.Id >> Option.get >> Member.nextIndex)
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -2030,7 +2030,7 @@ module ServerTests =
         let! mem1 = Raft.getMemberM peer1.Id
 
         response := { !response with
-                        CurrentIndex = Option.get mem1 |> Member.getNextIndex |> ((+) (index 1)) }
+                        CurrentIndex = Option.get mem1 |> Member.nextIndex |> ((+) (index 1)) }
 
         do! Raft.periodic 501<ms>
 

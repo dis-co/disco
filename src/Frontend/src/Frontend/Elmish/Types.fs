@@ -16,6 +16,7 @@ module StorageKeys =
 /// Widget names
 module Widgets =
   let [<Literal>] Log           = "LOG"
+  let [<Literal>] AssetBrowser  = "Asset Browser"
   let [<Literal>] GraphView     = "Graph View"
   let [<Literal>] Players       = "Cue Players"
   let [<Literal>] CueLists      = "Cue Lists"
@@ -208,6 +209,18 @@ let getWidgetFactory() =
 let initWidgetFactory(factory: IWidgetFactory) =
   singletonWidgetFactory <- Some factory
 
+// * Widget module
+
+module Widget =
+
+  // * showAssetBrowser
+
+  let showAssetBrowser dispatch =
+    let widget = getWidgetFactory().CreateWidget(None, Widgets.AssetBrowser)
+    AddWidget(widget.Id, widget) |> dispatch
+
+// * WidgetLayout module
+
 module WidgetLayout =
 
   let id ({ i = id }:WidgetLayout) = id
@@ -218,6 +231,8 @@ module WidgetLayout =
         y = 0
         w = width
         h = height }
+
+// * InspectorLayout module
 
 ///  ___                           _             _                            _
 /// |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __| |    __ _ _   _  ___  _   _| |_
@@ -233,11 +248,13 @@ module InspectorLayout =
       Size = 350 }                      /// in pixels
 
   let isOpen { IsOpen = isOpen } = isOpen
-  let size { Size = size } = size
+  let size ({ Size = size }:InspectorLayout) = size
 
   let toggle inspector = { inspector with IsOpen = not inspector.IsOpen }
-  let setSize size inspector = { inspector with Size = size }
+  let setSize size (inspector:InspectorLayout) = { inspector with Size = size }
   let setOpen isOpen inspector = { inspector with IsOpen = isOpen }
+
+// * Tab module
 
 ///  _____     _
 /// |_   _|_ _| |__
@@ -295,6 +312,8 @@ module Tab =
     { tab with
         WidgetLayouts = Array.filter (fun { i = widget } -> widget <> id) tab.WidgetLayouts
         WidgetRefs = Array.filter (fun (wid,_) -> wid <> id) tab.WidgetRefs }
+
+// * Layout module
 
 ///  _                            _
 /// | |    __ _ _   _  ___  _   _| |_

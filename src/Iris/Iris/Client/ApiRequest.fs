@@ -154,6 +154,39 @@ type ApiRequest =
       |> Binary.toOffset builder
       |> withPayload ParameterFB.RaftMemberFB cmd.ApiCommand
 
+    | Update (AddFsEntry    (id, entry) as cmd)
+    | Update (UpdateFsEntry (id, entry) as cmd) ->
+      let vector = FsEntryUpdateFB.CreateHostIdVector(builder, id.ToByteArray())
+      let entry = Binary.toOffset builder entry
+      FsEntryUpdateFB.StartFsEntryUpdateFB(builder)
+      FsEntryUpdateFB.AddHostId(builder, vector)
+      FsEntryUpdateFB.AddEntry(builder, entry)
+      FsEntryUpdateFB.EndFsEntryUpdateFB(builder)
+      |> withPayload ParameterFB.FsEntryUpdateFB cmd.ApiCommand
+
+    | Update (RemoveFsEntry (id, path) as cmd) ->
+      let vector = FsEntryUpdateFB.CreateHostIdVector(builder, id.ToByteArray())
+      let path = Binary.toOffset builder path
+      FsEntryUpdateFB.StartFsEntryUpdateFB(builder)
+      FsEntryUpdateFB.AddHostId(builder, vector)
+      FsEntryUpdateFB.AddPath(builder, path)
+      FsEntryUpdateFB.EndFsEntryUpdateFB(builder)
+      |> withPayload ParameterFB.FsEntryUpdateFB cmd.ApiCommand
+
+    | Update (AddFsTree tree as cmd) ->
+      let tree = Binary.toOffset builder tree
+      FsTreeUpdateFB.StartFsTreeUpdateFB(builder)
+      FsTreeUpdateFB.AddTree(builder, tree)
+      FsTreeUpdateFB.EndFsTreeUpdateFB(builder)
+      |> withPayload ParameterFB.FsTreeUpdateFB cmd.ApiCommand
+
+    | Update (RemoveFsTree id as cmd) ->
+      let vector = FsTreeUpdateFB.CreateHostIdVector(builder, id.ToByteArray())
+      FsTreeUpdateFB.StartFsTreeUpdateFB(builder)
+      FsTreeUpdateFB.AddHostId(builder, vector)
+      FsTreeUpdateFB.EndFsTreeUpdateFB(builder)
+      |> withPayload ParameterFB.FsTreeUpdateFB cmd.ApiCommand
+
     | Update (AddPinGroup    group as cmd)
     | Update (UpdatePinGroup group as cmd)
     | Update (RemovePinGroup group as cmd) ->
@@ -300,7 +333,6 @@ type ApiRequest =
     // | |   | | |/ _ \ '_ \| __|
     // | |___| | |  __/ | | | |_
     //  \____|_|_|\___|_| |_|\__|
-
     | ApiCommandFB.RegisterFB, ParameterFB.IrisClientFB ->
       let clientish = fb.Parameter<IrisClientFB>()
       if clientish.HasValue then
@@ -333,12 +365,10 @@ type ApiRequest =
     // |  __/| | | (_) | |  __/ (__| |_
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
-
     | ApiCommandFB.UnloadFB, _ ->
       UnloadProject
       |> ApiRequest.Update
       |> Either.succeed
-
     | ApiCommandFB.UpdateFB, ParameterFB.ProjectFB ->
       either {
         let! project =
@@ -358,7 +388,6 @@ type ApiRequest =
     // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |  _ \ / _` | __/ __| '_ \
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
-
     | ApiCommandFB.BatchFB, ParameterFB.TransactionFB ->
       either {
         let! commands =
@@ -370,7 +399,6 @@ type ApiRequest =
             "Empty CommandBatchFB payload"
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
-
         return ApiRequest.Update (CommandBatch commands)
       }
 
@@ -380,7 +408,6 @@ type ApiRequest =
     // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
     //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
     //                                |___/
-
     | ApiCommandFB.AddFB, ParameterFB.CuePlayerFB ->
       either {
         let! player =
@@ -426,7 +453,6 @@ type ApiRequest =
     // | |   | | |/ _ \ '_ \| __|
     // | |___| | |  __/ | | | |_
     //  \____|_|_|\___|_| |_|\__|
-
     | ApiCommandFB.AddFB, ParameterFB.IrisClientFB ->
       either {
         let! client =
@@ -472,7 +498,6 @@ type ApiRequest =
     // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
     // | |  | |  __/ | | | | | |_) |  __/ |
     // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
-
     | ApiCommandFB.AddFB, ParameterFB.RaftMemberFB ->
       either {
         let! mem =
@@ -513,13 +538,126 @@ type ApiRequest =
         return ApiRequest.Update (RemoveMember mem)
       }
 
+    ///  _____    _____       _
+    /// |  ___|__| ____|_ __ | |_ _ __ _   _
+    /// | |_ / __|  _| | '_ \| __| '__| | | |
+    /// |  _|\__ \ |___| | | | |_| |  | |_| |
+    /// |_|  |___/_____|_| |_|\__|_|   \__, |
+    ///                                |___/
+    | ApiCommandFB.AddFB, ParameterFB.FsEntryUpdateFB ->
+      either {
+        let! entryUpdate =
+          let update = fb.Parameter<FsEntryUpdateFB>()
+          if update.HasValue then
+            Either.succeed update.Value
+          else
+            "Empty FsEntryUpdateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        let! id = Id.decodeHostId entryUpdate
+        let! entry =
+          let entryish = entryUpdate.Entry
+          if entryish.HasValue then
+            let value = entryish.Value
+            FsEntry.FromFB value
+          else
+            "Empty FsEntryFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (AddFsEntry (id, entry))
+      }
+    | ApiCommandFB.UpdateFB, ParameterFB.FsEntryUpdateFB ->
+      either {
+        let! entryUpdate =
+          let update = fb.Parameter<FsEntryUpdateFB>()
+          if update.HasValue then
+            Either.succeed update.Value
+          else
+            "Empty FsEntryUpdateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        let! id = Id.decodeHostId entryUpdate
+        let! entry =
+          let entryish = entryUpdate.Entry
+          if entryish.HasValue then
+            let value = entryish.Value
+            FsEntry.FromFB value
+          else
+            "Empty FsEntryFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (UpdateFsEntry (id, entry))
+      }
+    | ApiCommandFB.RemoveFB, ParameterFB.FsEntryUpdateFB ->
+      either {
+        let! entryUpdate =
+          let update = fb.Parameter<FsEntryUpdateFB>()
+          if update.HasValue then
+            Either.succeed update.Value
+          else
+            "Empty FsEntryUpdateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        let! id = Id.decodeHostId entryUpdate
+        let! path =
+          let entryish = entryUpdate.Path
+          if entryish.HasValue then
+            let value = entryish.Value
+            FsPath.FromFB value
+          else
+            "Empty FsPathFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (RemoveFsEntry (id, path))
+      }
+
+    ///  _____   _____
+    /// |  ___|_|_   _| __ ___  ___
+    /// | |_ / __|| || '__/ _ \/ _ \
+    /// |  _|\__ \| || | |  __/  __/
+    /// |_|  |___/|_||_|  \___|\___|
+    | ApiCommandFB.AddFB, ParameterFB.FsTreeUpdateFB ->
+      either {
+        let! treeUpdate =
+          let update = fb.Parameter<FsTreeUpdateFB>()
+          if update.HasValue then
+            Either.succeed update.Value
+          else
+            "Empty FsTreeUpdateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+
+        let! tree =
+          let treeish = treeUpdate.Tree
+          if treeish.HasValue then
+            let value = treeish.Value
+            FsTree.FromFB value
+          else
+            "Empty FsTreeFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (AddFsTree tree)
+      }
+    | ApiCommandFB.RemoveFB, ParameterFB.FsTreeUpdateFB ->
+      either {
+        let! treeUpdate =
+          let update = fb.Parameter<FsTreeUpdateFB>()
+          if update.HasValue then
+            Either.succeed update.Value
+          else
+            "Empty FsTreeUpdateFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        let! id = Id.decodeHostId treeUpdate
+        return ApiRequest.Update (RemoveFsTree id)
+      }
+
     //   ____
     //  / ___|_ __ ___  _   _ _ __
     // | |  _| '__/ _ \| | | | '_ \
     // | |_| | | | (_) | |_| | |_) |
     //  \____|_|  \___/ \__,_| .__/
     //                       |_|
-
     | ApiCommandFB.AddFB, ParameterFB.PinGroupFB ->
       either {
         let! group =
@@ -566,7 +704,6 @@ type ApiRequest =
     // | |  | | (_| | |_) | |_) | | | | | (_| |
     // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
     //              |_|   |_|            |___/
-
     | ApiCommandFB.AddFB, ParameterFB.PinMappingFB ->
       either {
         let! mapping =
@@ -613,7 +750,6 @@ type ApiRequest =
     //   \ V  V / | | (_| | (_| |  __/ |_
     //    \_/\_/  |_|\__,_|\__, |\___|\__|
     //                     |___/
-
     | ApiCommandFB.AddFB, ParameterFB.PinWidgetFB ->
       either {
         let! widget =
@@ -659,7 +795,6 @@ type ApiRequest =
     // | |_) | | '_ \
     // |  __/| | | | |
     // |_|   |_|_| |_|
-
     | ApiCommandFB.AddFB, ParameterFB.PinFB ->
       either {
         let! pin =
@@ -718,7 +853,6 @@ type ApiRequest =
     // | |  | | | |/ _ \
     // | |__| |_| |  __/
     //  \____\__,_|\___|
-
     | ApiCommandFB.AddFB, ParameterFB.CueFB ->
       either {
         let! cue =
@@ -777,7 +911,6 @@ type ApiRequest =
     // | |  | | | |/ _ \ |   | / __| __|
     // | |__| |_| |  __/ |___| \__ \ |_
     //  \____\__,_|\___|_____|_|___/\__|
-
     | ApiCommandFB.AddFB, ParameterFB.CueListFB ->
       either {
         let! cueList =
@@ -823,7 +956,6 @@ type ApiRequest =
     // | | | / __|/ _ \ '__|
     // | |_| \__ \  __/ |
     //  \___/|___/\___|_|
-
     | ApiCommandFB.AddFB, ParameterFB.UserFB ->
       either {
         let! user =
@@ -869,7 +1001,6 @@ type ApiRequest =
     // \___ \ / _ \/ __/ __| |/ _ \| '_ \
     //  ___) |  __/\__ \__ \ | (_) | | | |
     // |____/ \___||___/___/_|\___/|_| |_|
-
     | ApiCommandFB.AddFB, ParameterFB.SessionFB ->
       either {
         let! session =
@@ -915,7 +1046,6 @@ type ApiRequest =
     // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
     // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
     // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
-
     | ApiCommandFB.AddFB, ParameterFB.DiscoveredServiceFB ->
       either {
         let! service =
@@ -929,7 +1059,6 @@ type ApiRequest =
             |> Either.fail
         return ApiRequest.Update (AddDiscoveredService service)
       }
-
     | ApiCommandFB.UpdateFB, ParameterFB.DiscoveredServiceFB ->
       either {
         let! service =
@@ -943,7 +1072,6 @@ type ApiRequest =
             |> Either.fail
         return ApiRequest.Update (UpdateDiscoveredService service)
       }
-
     | ApiCommandFB.RemoveFB, ParameterFB.DiscoveredServiceFB ->
       either {
         let! service =
@@ -964,7 +1092,6 @@ type ApiRequest =
     // | |__| (_) | (_| |
     // |_____\___/ \__, |
     //             |___/
-
     | ApiCommandFB.LogEventFB, ParameterFB.LogEventFB ->
       either {
         let! log =
@@ -978,7 +1105,6 @@ type ApiRequest =
             |> Either.fail
         return ApiRequest.Update (LogMsg log)
       }
-
     | ApiCommandFB.SetLogLevelFB, _ ->
       either {
         let! level =
@@ -998,7 +1124,6 @@ type ApiRequest =
     // | |   | |/ _ \ / __| |/ /
     // | |___| | (_) | (__|   <
     //  \____|_|\___/ \___|_|\_\
-
     | ApiCommandFB.UpdateFB, ParameterFB.ClockFB ->
       either {
         let! clock =
@@ -1018,7 +1143,6 @@ type ApiRequest =
     // | |   | '_ ` _ \ / _` |
     // | |___| | | | | | (_| |
     //  \____|_| |_| |_|\__,_|
-
     | ApiCommandFB.UndoFB, _ ->
       AppCommand.Undo
       |> Command

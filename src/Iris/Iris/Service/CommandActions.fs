@@ -42,7 +42,7 @@ let getServiceInfo (iris: IIris): Either<IrisError,string> =
   | Some service ->
     match Config.findMember service.Config iris.Machine.MachineId with
     | Right mem ->
-      { webSocket = sprintf "ws://%O:%i" mem.IpAddr mem.WsPort
+      { webSocket = sprintf "ws://%O:%i" mem.IpAddress mem.WsPort
         version = Build.VERSION
         buildNumber = Build.BUILD_NUMBER }
       |> serializeJson
@@ -134,11 +134,11 @@ let createProject (machine: IrisMachine) (opts: CreateProjectOptions) = either {
 
     let mem =
       { Member.create(machine.MachineId) with
-          IpAddr  = IpAddress.Parse opts.ipAddr
-          GitPort = port opts.gitPort
-          WsPort  = port opts.wsPort
-          ApiPort = port opts.apiPort
-          Port    = port opts.port }
+          IpAddress = IpAddress.Parse opts.ipAddr
+          GitPort   = port opts.gitPort
+          WsPort    = port opts.wsPort
+          ApiPort   = port opts.apiPort
+          RaftPort  = port opts.port }
 
     let! project = buildProject machine opts.name dir raftDir mem
     do! initializeRaft project

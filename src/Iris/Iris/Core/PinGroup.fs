@@ -908,7 +908,7 @@ module PinGroupMap =
     map.Players
     |> Map.filter
       (fun _ -> function
-        | { RefersTo = Some reference } as group when reference.Id = player.Id -> false
+        | { RefersTo = Some reference } when reference.Id = player.Id -> false
         | _ -> true)
     |> fun players -> setPlayers players map
 
@@ -926,7 +926,7 @@ module PinGroupMap =
     map.Widgets
     |> Map.filter
       (fun _ -> function
-        | { RefersTo = Some reference } as group when reference.Id = widget.Id -> false
+        | { RefersTo = Some reference } when reference.Id = widget.Id -> false
         | _ -> true)
     |> fun widgets -> setWidgets widgets map
 

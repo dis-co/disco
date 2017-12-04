@@ -92,7 +92,7 @@ module EnsureClientsReplicated =
 
         let serverAddress1:IrisServer = {
           Port = mem1.ApiPort
-          IpAddress = mem1.IpAddr
+          IpAddress = mem1.IpAddress
         }
 
         use client1 = ApiClient.create serverAddress1 {
@@ -119,7 +119,7 @@ module EnsureClientsReplicated =
 
         let serverAddress2:IrisServer = {
           Port = mem2.ApiPort
-          IpAddress = mem2.IpAddr
+          IpAddress = mem2.IpAddress
         }
 
         use client2 = ApiClient.create serverAddress2 {

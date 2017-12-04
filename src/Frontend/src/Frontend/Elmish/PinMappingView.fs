@@ -37,6 +37,7 @@ let renderPin model dispatch (pin: Pin) =
       slices = None
       model = model
       updater = None
+      dispatch = dispatch
       onSelect = fun _ -> Select.pin dispatch pin
       onDragStart = None } []
 

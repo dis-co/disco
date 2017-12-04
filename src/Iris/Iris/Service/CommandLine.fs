@@ -244,11 +244,11 @@ module CommandLine =
 
       let mem =
         { Member.create(machine.MachineId) with
-            IpAddr  = bind
-            GitPort = port git
-            WsPort  = port ws
-            Port    = port raft
-            ApiPort = port api }
+            IpAddress = bind
+            GitPort   = port git
+            WsPort    = port ws
+            RaftPort  = port raft
+            ApiPort   = port api }
 
       let! project = buildProject machine name dir raftDir mem
 
@@ -537,11 +537,11 @@ module CommandLine =
 
       let mem =
         { Member.create id with
-            HostName = name hn
-            IpAddr   = ip
-            Port     = port raft
-            WsPort   = port ws
-            GitPort  = port git }
+            HostName  = name hn
+            IpAddress = ip
+            RaftPort  = port raft
+            WsPort    = port ws
+            GitPort   = port git }
 
       let! _ =
         IrisData.saveWithCommit

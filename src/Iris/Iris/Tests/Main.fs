@@ -56,6 +56,8 @@ let parallelTests =
       serializationTests
       storeTests
       persistenceTests
+      fsTests
+      assetServiceTests
     ]
 
 let serialTests =

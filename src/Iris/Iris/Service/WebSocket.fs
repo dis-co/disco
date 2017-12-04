@@ -267,7 +267,7 @@ module WebSocketServer =
 
       let agent = new SocketEventProcessor(loop subscriptions)
 
-      let uri = sprintf "ws://%s:%d" (string mem.IpAddr) mem.WsPort
+      let uri = sprintf "ws://%s:%d" (string mem.IpAddress) mem.WsPort
 
       FleckLog.LogAction <- Action<Fleck.LogLevel,string,exn>(fun level msg ex ->
         match level with

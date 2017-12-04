@@ -33,4 +33,5 @@ module IrisServiceTests =
       PinBecomesOnlineOnClientConnect.test
       PinBecomesDirty.test
       StateShouldBeCleanedOnClientRemove.test
+      RemoveMemberShouldSplitCluster.test
     ] |> testSequenced

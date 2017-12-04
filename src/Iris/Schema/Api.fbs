@@ -53,6 +53,8 @@ union ParameterFB {
      StringFB,
      TransactionFB,
      DiscoveredServiceFB,
+     FsEntryUpdateFB,
+     FsTreeUpdateFB,
 }
 
 table ApiRequestFB {

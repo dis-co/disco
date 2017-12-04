@@ -110,7 +110,11 @@ type IrisMachineFB =
   abstract HostName: string
   abstract WorkSpace: string
   abstract LogDirectory: string
+  abstract AssetDirectory: string
+  abstract AssetFilter: string
   abstract BindAddress: string
+  abstract MulticastAddress: string
+  abstract MulticastPort: uint16
   abstract WebPort: uint16
   abstract RaftPort: uint16
   abstract WsPort: uint16
@@ -125,7 +129,11 @@ type IrisMachineFBConstructor =
   abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddLogDirectory: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddAssetDirectory: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddAssetFilter: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddBindAddress: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
+  abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * key: uint16 -> unit
@@ -185,6 +193,146 @@ type ServiceStatusFBConstructor =
   abstract GetRootAsServiceStatusFB: buffer: ByteBuffer -> ServiceStatusFB
 
 let ServiceStatusFB : ServiceStatusFBConstructor = failwith "JS only"
+
+///  ____  _       _    __
+/// |  _ \| | __ _| |_ / _| ___  _ __ _ __ ___
+/// | |_) | |/ _` | __| |_ / _ \| '__| '_ ` _ \
+/// |  __/| | (_| | |_|  _| (_) | |  | | | | | |
+/// |_|   |_|\__,_|\__|_|  \___/|_|  |_| |_| |_|
+
+type PlatformFB = int
+
+type PlatformFBConstructor =
+  abstract WindowsFB: PlatformFB
+  abstract UnixFB: PlatformFB
+
+let PlatformFB: PlatformFBConstructor = failwith "JS only"
+
+///  _____   _____
+/// |  ___|_|_   _| __ ___  ___
+/// | |_ / __|| || '__/ _ \/ _ \
+/// |  _|\__ \| || | |  __/  __/
+/// |_|  |___/|_||_|  \___|\___|
+
+type FsPathFB =
+  abstract Drive: uint16
+  abstract Platform: PlatformFB
+  abstract ElementsLength: int
+  abstract Elements: int -> string
+
+type FsPathFBConstructor =
+  abstract prototype: FsPathFB with get, set
+  abstract StartFsPathFB: builder: FlatBufferBuilder -> unit
+  abstract AddDrive: builder: FlatBufferBuilder * drive: uint16 -> unit
+  abstract AddPlatform: builder: FlatBufferBuilder * platform: PlatformFB -> unit
+  abstract AddElements: builder: FlatBufferBuilder * VectorOffset -> unit
+  abstract CreateElementsVector: builder:FlatBufferBuilder * Offset<string>[] -> VectorOffset
+  abstract EndFsPathFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsPathFB: buffer: ByteBuffer -> FsPathFB
+
+let FsPathFB : FsPathFBConstructor = failwith "JS only"
+
+type FsEntryTypeFB = int
+
+type FsEntryTypeFBConstructor =
+  abstract FileFB: FsEntryTypeFB
+  abstract DirectoryFB: FsEntryTypeFB
+
+let FsEntryTypeFB: FsEntryTypeFBConstructor = failwith "JS only"
+
+type FsInfoFB =
+  abstract Type: FsEntryTypeFB
+  abstract Name: string
+  abstract MimeType: string
+  abstract Path: FsPathFB
+  abstract Size: uint32
+  abstract Filtered: uint32
+
+type FsInfoFBConstructor =
+  abstract prototype: FsInfoFB with get, set
+  abstract StartFsInfoFB: builder: FlatBufferBuilder -> unit
+  abstract AddType: builder: FlatBufferBuilder * tipe: FsEntryTypeFB -> unit
+  abstract AddPath: builder: FlatBufferBuilder * path: Offset<FsPathFB> -> unit
+  abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
+  abstract AddMimeType: builder: FlatBufferBuilder * mime: Offset<string> -> unit
+  abstract AddSize: builder: FlatBufferBuilder * size: uint32 -> unit
+  abstract AddFiltered: builder: FlatBufferBuilder * filtered: uint32 -> unit
+  abstract EndFsInfoFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsInfoFB: buffer: ByteBuffer -> FsInfoFB
+
+let FsInfoFB : FsInfoFBConstructor = failwith "JS only"
+
+type FsEntryFB =
+  abstract Root: FsInfoFB
+  abstract Children: int -> FsInfoFB
+  abstract ChildrenLength: int
+
+type FsEntryFBConstructor =
+  abstract prototype: FsEntryFB with get, set
+  abstract StartFsEntryFB: builder: FlatBufferBuilder -> unit
+  abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
+  abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
+  abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
+  abstract EndFsEntryFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsEntryFB: buffer: ByteBuffer -> FsEntryFB
+
+let FsEntryFB : FsEntryFBConstructor = failwith "JS only"
+
+type FsTreeFB =
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
+  abstract Root: FsInfoFB
+  abstract Filters: string
+  abstract Children: int -> FsInfoFB
+  abstract ChildrenLength: int
+
+type FsTreeFBConstructor =
+  abstract prototype: FsTreeFB with get, set
+  abstract StartFsTreeFB: builder: FlatBufferBuilder -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract AddRoot: builder: FlatBufferBuilder * info: Offset<FsInfoFB> -> unit
+  abstract AddFilters: builder: FlatBufferBuilder * filters: Offset<string> -> unit
+  abstract AddChildren: builder: FlatBufferBuilder * children: VectorOffset -> unit
+  abstract CreateChildrenVector: builder: FlatBufferBuilder * children: Offset<FsInfoFB> array -> VectorOffset
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * bytes: byte array -> VectorOffset
+  abstract EndFsTreeFB: builder: FlatBufferBuilder -> Offset<FsTreeFB>
+  abstract GetRootAsFsTreeFB: buffer: ByteBuffer -> FsTreeFB
+
+let FsTreeFB : FsTreeFBConstructor = failwith "JS only"
+
+type FsEntryUpdateFB =
+  abstract Entry: FsEntryFB
+  abstract Path: FsPathFB
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
+
+type FsEntryUpdateFBConstructor =
+  abstract prototype: FsEntryUpdateFB with get, set
+  abstract StartFsEntryUpdateFB: builder: FlatBufferBuilder -> unit
+  abstract AddEntry: builder: FlatBufferBuilder * info: Offset<FsEntryFB> -> unit
+  abstract AddPath: builder: FlatBufferBuilder * info: Offset<FsPathFB> -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * children: byte array -> VectorOffset
+  abstract EndFsEntryUpdateFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsEntryUpdateFB: buffer: ByteBuffer -> FsEntryUpdateFB
+
+let FsEntryUpdateFB : FsEntryUpdateFBConstructor = failwith "JS only"
+
+type FsTreeUpdateFB =
+  abstract Tree: FsTreeFB
+  abstract HostId: int -> byte
+  abstract HostIdLength: int
+
+type FsTreeUpdateFBConstructor =
+  abstract prototype: FsTreeUpdateFB with get, set
+  abstract StartFsTreeUpdateFB: builder: FlatBufferBuilder -> unit
+  abstract AddTree: builder: FlatBufferBuilder * info: Offset<FsTreeFB> -> unit
+  abstract AddHostId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract CreateHostIdVector: builder: FlatBufferBuilder * children: byte array -> VectorOffset
+  abstract EndFsTreeUpdateFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract GetRootAsFsTreeUpdateFB: buffer: ByteBuffer -> FsTreeUpdateFB
+
+let FsTreeUpdateFB : FsTreeUpdateFBConstructor = failwith "JS only"
 
 //   ____ _ _            _
 //  / ___| (_) ___ _ __ | |_
@@ -1204,8 +1352,10 @@ type RaftMemberFB =
   abstract Id: int -> byte
   abstract IdLength: int
   abstract HostName: string
-  abstract IpAddr: string
-  abstract Port: uint16
+  abstract IpAddress: string
+  abstract MulticastAddress: string
+  abstract MulticastPort: uint16
+  abstract RaftPort: uint16
   abstract WebPort: uint16
   abstract WsPort: uint16
   abstract GitPort: uint16
@@ -1221,8 +1371,10 @@ type RaftMemberFBConstructor =
   abstract StartRaftMemberFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
-  abstract AddIpAddr: builder: FlatBufferBuilder * ip: Offset<string> -> unit
-  abstract AddPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
+  abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddRaftPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWebPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddGitPort: builder: FlatBufferBuilder * port: uint16 -> unit
@@ -1644,6 +1796,8 @@ type StateFB =
   abstract PinMappingsLength: int
   abstract PinWidgets: int -> PinWidgetFB
   abstract PinWidgetsLength: int
+  abstract FsTrees: int -> FsTreeFB
+  abstract FsTreesLength: int
   abstract Cues: int -> CueFB
   abstract CuesLength: int
   abstract CueLists: int -> CueListFB
@@ -1664,24 +1818,26 @@ type StateFBConstructor =
   abstract StartStateFB: builder: FlatBufferBuilder -> unit
   abstract AddProject: builder: FlatBufferBuilder * project: Offset<ProjectFB> -> unit
   abstract AddPinGroups: builder: FlatBufferBuilder * groups: Offset<PinGroupMapFB> -> unit
-  abstract AddPinMappings: builder: FlatBufferBuilder * mappings: Offset<'a> -> unit
-  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: Offset<'a> -> unit
-  abstract AddCues: builder: FlatBufferBuilder * cues: Offset<'a> -> unit
-  abstract AddCueLists: builder: FlatBufferBuilder * cuelists: Offset<'a> -> unit
-  abstract AddSessions: builder: FlatBufferBuilder * sessions: Offset<'a> -> unit
-  abstract AddUsers: builder: FlatBufferBuilder * users: Offset<'a> -> unit
-  abstract AddClients: builder: FlatBufferBuilder * clients: Offset<'a> -> unit
-  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: Offset<'a> -> unit
-  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: Offset<'a> -> unit
-  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> Offset<'a>
-  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> Offset<'a>
-  abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> Offset<'a>
-  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> Offset<'a>
-  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> Offset<'a>
-  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> Offset<'a>
-  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> Offset<'a>
-  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> Offset<'a>
-  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> Offset<'a>
+  abstract AddPinMappings: builder: FlatBufferBuilder * mappings: VectorOffset -> unit
+  abstract AddPinWidgets: builder: FlatBufferBuilder * widgets: VectorOffset -> unit
+  abstract AddFsTrees: builder: FlatBufferBuilder * fsTrees: VectorOffset -> unit
+  abstract AddCues: builder: FlatBufferBuilder * cues: VectorOffset -> unit
+  abstract AddCueLists: builder: FlatBufferBuilder * cuelists: VectorOffset -> unit
+  abstract AddSessions: builder: FlatBufferBuilder * sessions: VectorOffset -> unit
+  abstract AddUsers: builder: FlatBufferBuilder * users: VectorOffset -> unit
+  abstract AddClients: builder: FlatBufferBuilder * clients: VectorOffset -> unit
+  abstract AddCuePlayers: builder: FlatBufferBuilder * cueplayers: VectorOffset -> unit
+  abstract AddDiscoveredServices: builder: FlatBufferBuilder * services: VectorOffset -> unit
+  abstract CreateCuesVector: builder: FlatBufferBuilder * cues: Offset<CueFB> array -> VectorOffset
+  abstract CreateFsTreesVector: builder: FlatBufferBuilder * fsTrees: Offset<FsTreeFB> array -> VectorOffset
+  abstract CreateSessionsVector: builder: FlatBufferBuilder * groups: Offset<SessionFB> array -> VectorOffset
+  abstract CreatePinMappingsVector: builder: FlatBufferBuilder * mappings: Offset<PinMappingFB> array -> VectorOffset
+  abstract CreatePinWidgetsVector: builder: FlatBufferBuilder * widgets: Offset<PinWidgetFB> array -> VectorOffset
+  abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> VectorOffset
+  abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> VectorOffset
+  abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> VectorOffset
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> VectorOffset
+  abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> VectorOffset
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
 
@@ -1965,6 +2121,8 @@ type StateMachinePayloadFBConstructor =
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
   abstract TransactionFB: StateMachinePayloadFB
+  abstract FsEntryUpdateFB: StateMachinePayloadFB
+  abstract FsTreeUpdateFB: StateMachinePayloadFB
 
 let StateMachinePayloadFB: StateMachinePayloadFBConstructor = failwith "JS only"
 
@@ -1990,6 +2148,8 @@ type StateMachineFB =
   abstract ClockFB: ClockFB
   abstract SlicesMapFB: SlicesMapFB
   abstract TransactionFB: TransactionFB
+  abstract FsEntryUpdateFB: FsEntryUpdateFB
+  abstract FsTreeUpdateFB: FsTreeUpdateFB
   abstract Payload: 'a -> 'a
 
 type StateMachineFBConstructor =

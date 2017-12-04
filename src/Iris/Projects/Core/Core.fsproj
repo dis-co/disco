@@ -235,6 +235,9 @@
     <Compile Include="..\..\Iris\Service\HttpServer.fs">
       <Link>HttpServer.fs</Link>
     </Compile>
+    <Compile Include="..\..\Iris\Service\AssetService.fs">
+      <Link>AssetService.fs</Link>
+    </Compile>
     <Compile Include="..\..\Iris\Service\WebSocket.fs">
       <Link>WebSocket.fs</Link>
     </Compile>

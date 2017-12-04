@@ -30,39 +30,41 @@ let body dispatch (model: Model) =
   | None -> table [Class "iris-table"] []
   | Some state ->
     let config = state.Project.Config
-    table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "Name"]
-          th [Class "width-15"] [str "IP"]
-          th [Class "width-25"] [str "Port"]
-          th [Class "width-15"] [str "Role"]
-          th [Class "width-15"] [str "Status"]
+    div [ Class "iris-clients" ] [
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [Class "width-20"; padding5()] [str "Name"]
+            th [Class "width-15"] [str "IP"]
+            th [Class "width-25"] [str "Port"]
+            th [Class "width-15"] [str "Role"]
+            th [Class "width-15"] [str "Status"]
+          ]
         ]
-      ]
-      tbody [] (
-        state.Clients
-        |> Seq.map (function
-          KeyValue(id,client) ->
-            tr [Key (string id)] [
-              td [
-                Class "width-20"
-                padding5AndTopBorder()
-                OnClick (fun _ -> Select.client dispatch client)
-                Style [ Cursor "pointer" ]
-              ] [
-                span [Class "iris-output iris-icon icon-host"] [
-                  str (unwrap client.Name)
-                  span [Class "iris-icon icon-bull iris-status-on"] []
+        tbody [] (
+          state.Clients
+          |> Seq.map (function
+            KeyValue(id,client) ->
+              tr [Key (string id)] [
+                td [
+                  Class "width-20"
+                  padding5AndTopBorder()
+                  OnClick (fun _ -> Select.client dispatch client)
+                  Style [ Cursor "pointer" ]
+                ] [
+                  span [Class "iris-output iris-icon icon-host"] [
+                    str (unwrap client.Name)
+                    span [Class "iris-icon icon-bull iris-status-on"] []
+                  ]
                 ]
-              ]
-              td [Class "width-15"; topBorder()] [str (string client.IpAddress)]
-              td [Class "width-25"; topBorder()] [str (string client.Port)]
-              td [Class "width-15"; topBorder()] [str (string client.Role)]
-              td [Class "width-15"; topBorder()] [str (string client.Status)]
-            ])
-        |> Seq.toList
-      )
+                td [Class "width-15"; topBorder()] [str (string client.IpAddress)]
+                td [Class "width-25"; topBorder()] [str (string client.Port)]
+                td [Class "width-15"; topBorder()] [str (string client.Role)]
+                td [Class "width-15"; topBorder()] [str (string client.Status)]
+              ])
+          |> Seq.toList
+        )
+      ]
     ]
 
 let createWidget(id: System.Guid) =

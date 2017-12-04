@@ -30,6 +30,16 @@ module SerializationTests =
 
   let rndint() = rand.Next()
 
+  let rndchar() = Convert.ToChar(rand.Next() |> uint16)
+
+  let rndplatform() =
+    if rand.Next(0,2) > 0
+    then Platform.Windows
+    else Platform.Unix
+
+  let rndfilepath() =
+    rndstr() |> filepath
+
   let mkBytes _ =
     let num = rand.Next(3, 10)
     let bytes = Array.zeroCreate<byte> num
@@ -198,6 +208,50 @@ module SerializationTests =
       LastCallerId = rndopt()
       LastCalledId = rndopt() }
 
+  let mkFsPath _ =
+    { Drive = rndchar()
+      Platform = rndplatform()
+      Elements = [ rndstr() ]}
+
+  let mkFsDir path children =
+    FsEntry.Directory(
+      { Path = path
+        Name = FsPath.fileName path
+        Size = uint32 (Map.count children)
+        MimeType = "application/x-directory"
+        Filtered = 0u
+      }, children)
+
+  let mkFsFile path =
+    FsEntry.File(
+      { Path = path
+        Name = FsPath.fileName path
+        MimeType = "image/png"
+        Size = 0u
+        Filtered = 0u })
+
+  let mkFsEntry _ =
+    let root = mkFsPath()
+    let dir1 = root + (rndfilepath())
+    let dir2 = root + (rndfilepath())
+    let dir3 = root + (rndfilepath())
+    let file1 = dir1 + (rndfilepath())
+    let file2 = dir2 + (rndfilepath())
+    let file3 = dir3 + (rndfilepath())
+    FsEntry.Directory(
+      { Path = root
+        Name = FsPath.fileName root
+        MimeType = "application/x-directory"
+        Size = 0u
+        Filtered = 0u
+      },Map [
+        dir1, mkFsDir dir1 (Map [ file1, mkFsFile file1 ])
+        dir2, mkFsDir dir2 (Map [ file2, mkFsFile file2 ])
+        dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
+      ])
+
+  let mkFsTree _ = { HostId = IrisId.Create(); Root = mkFsEntry(); Filters = Array.empty }
+
   let mkState _ =
     { Project    = mkProject ()
       PinGroups  = mkPinGroupMap ()
@@ -209,6 +263,7 @@ module SerializationTests =
       Users      = mkUser () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
       Clients    = mkClient () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
       CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
+      FsTrees    = mkFsTree() |> fun (tree: FsTree) -> Map.ofArray [| (tree.Id, tree) |]
       DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
 
   let inline check thing =
@@ -254,6 +309,11 @@ module SerializationTests =
             AddPin                  <| mkPin ()
             UpdatePin               <| mkPin ()
             RemovePin               <| mkPin ()
+            AddFsEntry              (IrisId.Create(), mkFsEntry ())
+            UpdateFsEntry           (IrisId.Create(), mkFsEntry ())
+            RemoveFsEntry           (IrisId.Create(), mkFsPath ())
+            AddFsTree               <| mkFsTree()
+            RemoveFsTree            <| IrisId.Create()
             AddMember               <| Member.create (IrisId.Create())
             UpdateMember            <| Member.create (IrisId.Create())
             RemoveMember            <| Member.create (IrisId.Create())
@@ -457,4 +517,16 @@ module SerializationTests =
 
     test "Validate CuePlayer Binary Serialization" <| fun finish ->
       mkCuePlayer() |> check
+      finish()
+
+    test "Validate FsPath Binary Serialization" <| fun finish ->
+      mkFsPath() |> check
+      finish()
+
+    test "Validate FsEntry Binary Serialization" <| fun finish ->
+      mkFsEntry() |> check
+      finish()
+
+    test "Validate FsTree Binary Serialization" <| fun finish ->
+      mkFsTree() |> check
       finish()

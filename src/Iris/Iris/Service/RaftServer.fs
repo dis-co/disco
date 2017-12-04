@@ -143,7 +143,7 @@ module rec RaftServer =
     context
     |> getRaft
     |> Raft.getSelf
-    |> Member.getId
+    |> Member.id
 
   // ** updateRaft
 
@@ -164,8 +164,8 @@ module rec RaftServer =
   let private makePeerSocket (peer: RaftMember) =
     let socket = TcpClient.create {
       ClientId = peer.Id
-      PeerAddress = peer.IpAddr
-      PeerPort = peer.Port
+      PeerAddress = peer.IpAddress
+      PeerPort = peer.RaftPort
       Timeout = (int Constants.REQ_TIMEOUT) * 1<ms>
     }
     socket.Connect()
@@ -1255,7 +1255,7 @@ module rec RaftServer =
     | TcpServerEvent.Request request ->
       handleServerRequest state request agent
 
-    | TcpServerEvent.Response response -> state
+    | TcpServerEvent.Response _ -> state
 
   // ** handleReqCommitted
 
@@ -1522,8 +1522,8 @@ module rec RaftServer =
                 if store.State.Status = ServiceStatus.Stopped then
                   let server = TcpServer.create {
                       ServerId = raftState.Member.Id
-                      Listen = raftState.Member.IpAddr
-                      Port = raftState.Member.Port
+                      Listen = raftState.Member.IpAddress
+                      Port = raftState.Member.RaftPort
                     }
 
                   agent.Start()       // we must start the agent, so the dispose logic will work

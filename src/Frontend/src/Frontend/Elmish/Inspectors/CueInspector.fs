@@ -48,6 +48,7 @@ module CueInspector =
         updater = None
         onSelect = fun _ -> Select.pin dispatch pin
         onDragStart = None
+        dispatch = dispatch
       } []
     ]
 

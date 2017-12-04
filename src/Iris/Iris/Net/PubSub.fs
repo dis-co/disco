@@ -8,6 +8,7 @@ open System.Net.Sockets
 open System.Collections.Concurrent
 
 open Iris.Core
+open Iris.Raft
 
 // * PubSub
 
@@ -16,11 +17,6 @@ module rec PubSub =
   // ** tag
 
   let private tag (str: string) = String.format "PubSub.{0}" str
-
-  // ** defaultAddress
-
-  let defaultAddress =
-    IPAddress.Parse Constants.MCAST_ADDRESS
 
   // ** IState
 
@@ -99,19 +95,30 @@ module rec PubSub =
 
   // ** create
 
-  let create (id: PeerId) (multicastAddress: IPAddress) (port: int) =
+  let create mem =
     let subscriptions = ConcurrentDictionary<Guid,IObserver<PubSubEvent>>()
 
     let client = new UdpClient()
     client.ExclusiveAddressUse <- false
 
-    let remoteEp = IPEndPoint(multicastAddress, port)
-    let localEp = IPEndPoint(IPAddress.Any, port)
+    let remoteAddress =
+      mem
+      |> Member.multicastAddress
+      |> string
+      |> IPAddress.Parse
+
+    let remotePort =
+      mem
+      |> Member.multicastPort
+      |> int
+
+    let remoteEp = IPEndPoint(remoteAddress, remotePort)
+    let localEp = IPEndPoint(IPAddress.Any, remotePort)
 
     let state =
       { new IState with
           member state.Id
-            with get () = id
+            with get () = Member.id mem
 
           member state.LocalEndPoint
             with get () = localEp
@@ -130,7 +137,7 @@ module rec PubSub =
           try
             client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true)
             client.Client.Bind(localEp)
-            client.JoinMulticastGroup(multicastAddress)
+            client.JoinMulticastGroup(remoteAddress)
             beginReceive state
             Either.nothing
           with
@@ -140,10 +147,13 @@ module rec PubSub =
               |> Either.fail
 
         member pubsub.Send(bytes: byte array) =
-          beginSend state bytes
+          try
+            beginSend state bytes
+          with exn ->
+            Logger.err (tag "Send") exn.Message
 
         member pubsub.Subscribe (callback: PubSubEvent -> unit) =
           Observable.subscribe callback subscriptions
 
         member pubsub.Dispose () =
-          client.Dispose() }
+          try client.Dispose() with _ -> () }

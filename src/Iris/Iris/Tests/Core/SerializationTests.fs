@@ -14,6 +14,31 @@ open System.Threading
 
 [<AutoOpen>]
 module SerializationTests =
+
+  ///  _____    ___        __
+  /// |  ___|__|_ _|_ __  / _| ___
+  /// | |_ / __|| || '_ \| |_ / _ \
+  /// |  _|\__ \| || | | |  _| (_) |
+  /// |_|  |___/___|_| |_|_|  \___/
+
+  let test_binary_fspath =
+    testCase "FsPath binary serialization should work" <| fun _ ->
+      binaryEncDec<FsPath>
+      |> Prop.forAll Generators.fsPathArb
+      |> Check.QuickThrowOnFailure
+
+  let test_binary_fsentry =
+    testCase "FsEntry binary serialization should work" <| fun _ ->
+      binaryEncDec<FsEntry>
+      |> Prop.forAll Generators.fsEntryArb
+      |> Check.QuickThrowOnFailure
+
+  let test_binary_fstree =
+    testCase "FsTree binary serialization should work" <| fun _ ->
+      binaryEncDec<FsTree>
+      |> Prop.forAll Generators.fsTreeArb
+      |> Check.QuickThrowOnFailure
+
   ///  ____  _        ____                       __  __
   /// |  _ \(_)_ __  / ___|_ __ ___  _   _ _ __ |  \/  | __ _ _ __
   /// | |_) | | '_ \| |  _| '__/ _ \| | | | '_ \| |\/| |/ _` | '_ \
@@ -603,5 +628,8 @@ module SerializationTests =
       test_validate_raftresponse_serialization
       test_validate_state_machine_binary_serialization
       test_validate_api_request_binary_serialization
+      test_binary_fstree
+      test_binary_fsentry
+      test_binary_fspath
       // test_validate_project_yaml_serialization // FIXME: project yamls are different :/
     ]

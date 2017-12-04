@@ -103,7 +103,7 @@ module PinBecomesDirty =
 
         let server:IrisServer = {
           Port = mem1.ApiPort
-          IpAddress = mem1.IpAddr
+          IpAddress = mem1.IpAddress
         }
 
         use client = ApiClient.create server {
