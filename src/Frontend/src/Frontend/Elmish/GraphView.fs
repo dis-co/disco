@@ -70,6 +70,7 @@ let makeInputPin dispatch model (pid: PinId) (pin: Pin) =
         Select.pin dispatch pin
         Drag.selectPin dispatch multi pin.Id
       onDragStart = Some(onDragStart model pin.Id)
+      dispatch = dispatch
     } []
 
 let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
@@ -85,6 +86,7 @@ let makeOutputPin dispatch model (pid: PinId) (pin: Pin) =
         Select.pin dispatch pin
         Drag.selectPin dispatch multi pin.Id
       onDragStart = Some(onDragStart model pin.Id)
+      dispatch = dispatch
     } []
 
 // * Components

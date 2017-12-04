@@ -42,6 +42,7 @@ $even-row: #EBEBEB;
 .iris-graphview {
   background: $odd-row;
   height: 100%;
+  overflow: auto;
   > li {
     padding: 4px 5px;
     background: $odd-row;

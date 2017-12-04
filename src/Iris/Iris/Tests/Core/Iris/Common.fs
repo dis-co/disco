@@ -16,11 +16,14 @@ open Iris.Net
 module Common =
 
   let mkMachine basePort =
+    let assetDir = tmpPath() </> Path.getRandomFileName()
+    Directory.CreateDirectory(unwrap assetDir) |> ignore
     { MachineConfig.create "127.0.0.1" None with
         RaftPort = port (basePort + 1us)
         ApiPort = port (basePort + 2us)
         GitPort = port (basePort + 3us)
         WsPort = port (basePort + 4us)
+        AssetDirectory = assetDir
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let mkProject (machine: IrisMachine) (site: ClusterConfig) =
@@ -51,7 +54,7 @@ module Common =
 
   let mkMember (machine: IrisMachine) =
     { Member.create machine.MachineId with
-        Port = machine.RaftPort
+        RaftPort = machine.RaftPort
         ApiPort = machine.ApiPort
         GitPort = machine.GitPort
         WsPort = machine.WsPort }

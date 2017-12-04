@@ -195,6 +195,10 @@ export function createElement(tagName, options, value) {
       }
       return React.createElement(tagName, props, formattedValue);
     }
+    else if (options.handleExternally) {
+      props.onDoubleClick = options.onDoubleClick;
+      return React.createElement(tagName, props, formattedValue);
+    }
     else if (typeofValue === "bytes") {
       return React.createElement(tagName, props, formattedValue);
     }

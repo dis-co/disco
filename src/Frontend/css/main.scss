@@ -109,6 +109,12 @@ html, body {
   }
 }
 
+.modal-content {
+  width: unset;                 // should not have a fixed width
+  min-width: 640px;             // but a min-width of 640px so older dialogs look the same
+  overflow: unset;              // no scrollbars in modals please
+}
+
 #iris-drag-image {
   position: absolute;
   opacity: 0.8;
@@ -187,7 +193,40 @@ html, body {
 
   .iris-widget-body {
     flex: 1;
-    overflow: scroll;
+    overflow: hidden;
+  }
+
+  .scrollable-container {
+    overflow: auto;
+    height: 100%;
+  }
+
+  .m-tree {
+    @extend .scrollable-container;
+  }
+
+  .iris-players {
+    @extend .scrollable-container;
+  }
+
+  .iris-cues {
+    @extend .scrollable-container;
+  }
+
+  .iris-cuelists {
+    @extend .scrollable-container;
+  }
+
+  .iris-cluster {
+    @extend .scrollable-container;
+  }
+
+  .iris-clients {
+    @extend .scrollable-container;
+  }
+
+  .iris-sessions {
+    @extend .scrollable-container;
   }
 }
 
@@ -244,5 +283,207 @@ html, body {
   .empty {
     padding-top: 10px;
     text-align: center;
+  }
+}
+
+.modal-file-chooser {
+  min-width: 800px;
+  .field {
+    margin-top: 10px;
+  }
+}
+
+//  must be top-level so styles also apply when sorting
+.asset-browser-selected-file {
+  border: 1px solid #d0d0d0;
+  background: $iris-grey;
+  border-radius: 4px;
+  margin: 2px;
+  line-height: 20px;
+  button {
+    height: 20px;
+    width: 20px;
+    padding: 0 2px 0 2px;
+    margin-right: 5px;
+  }
+}
+
+.asset-browser {
+  display: flex;
+  flex-flow: row;
+  height: 100%;
+  width: 100%;
+
+  .left-panel {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 170px;
+    margin-bottom: 0;
+  }
+
+  .right-panel {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 300px;
+    margin-bottom: 0;
+  }
+
+  .inlay {
+    height: 100%;
+    display: flex;
+    flex-flow: column;
+
+    .header {
+      line-height: 25px;
+      height: 25px;
+      background: #d0d0d0;
+      font-weight: bold;
+      padding-left: 10px;
+      font-size: 1.2em;
+
+      .bread {
+        line-height: 25px;
+        height: 25px;
+
+        .crumb:after {
+          padding: 0 5px 0 5px;
+          content: ">"
+        }
+
+        .crumb:last-child:after {
+          content: "";
+        }
+      }
+    }
+
+    .body {
+      flex: 3;
+    }
+  }
+
+  .center {
+    flex-grow: 3;
+    border-left: 1px solid $iris-grey;
+    border-right: 1px solid $iris-grey;
+
+    .body {
+      background: #ddd;
+    }
+  }
+
+  .files {
+    .file {
+      display: flex;
+      flex-direction: row;
+      cursor: pointer;
+      background: white;
+      border-bottom: 1px solid $iris-grey;
+      .file-details {
+        flex-grow: 1;
+      }
+      .controls {
+        height: 24px;
+        line-height: 24px;
+        padding-right: 5px;
+        i {
+          height: 18px;
+        }
+        i:after {
+          margin-left: 5px;
+        }
+      }
+    }
+  }
+
+  .file-info {
+    flex-grow: 1;
+    .info {
+      margin-top: 10px;
+      padding: 10px;
+      .columns {
+        margin-left: 0;
+        margin-right: 0;
+      }
+      .column {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        &:not(.is-one-fifth) {
+          width: 219px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+    }
+  }
+
+  .selected-files {
+    flex-grow: 1;
+  }
+
+  .machines {
+    display: flex;
+    flex-flow: column;
+    height: 100%;
+    overflow: auto;
+    justify-content: flex-start;
+
+    .machine {
+      min-height: 30px;
+      width: 100%;
+      border-bottom: 1px solid $iris-grey;
+      padding: 8px 0 0 10px;
+      transition: all 0.4s;
+
+      &.is-open {
+        flex-grow: 1;
+        height: 100%;
+      }
+
+      .machine-details {
+        display: flex;
+        flex-flow: column;
+        height: 100%;
+
+        .machine-icon {
+          flex-basis: 20px;
+          flex-grow: 0;
+          flex-shrink: 0;
+        }
+
+        .directory-list {
+          flex-grow: 1;
+
+          .directories {
+            .directory:before {
+              content: "\00a0\00a0";
+            }
+            .directory {
+              cursor: pointer;
+
+              &.has-children:before {
+                content: "⏵";
+              }
+
+              &.is-open:before {
+                content: "⏷" !important;
+              }
+
+              .is-selected {
+                font-weight: bold;
+              }
+
+              .icon {
+                height: 18px;
+                margin-right: 0;
+              }
+              .children {
+                padding-left: 15px;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

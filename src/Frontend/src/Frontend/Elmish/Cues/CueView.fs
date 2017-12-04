@@ -280,6 +280,7 @@ type Component(props) =
                       if locked
                       then None
                       else Some(onDragStart model cue.Id pin.Id)
+                    dispatch = dispatch
                   } []) |> Seq.toList)
             ])
           |> Array.toList

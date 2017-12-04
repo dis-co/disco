@@ -343,6 +343,34 @@ type IrisEvent =
       | Append (Origin.Service _, UpdateCue _)
       | Append (Origin.Service _, RemoveCue _)               -> Replicate
 
+      ///  _____    _____       _
+      /// |  ___|__| ____|_ __ | |_ _ __ _   _
+      /// | |_ / __|  _| | '_ \| __| '__| | | |
+      /// |  _|\__ \ |___| | | | |_| |  | |_| |
+      /// |_|  |___/_____|_| |_|\__|_|   \__, |
+      ///                                |___/
+      | Append (Origin.Web     _, AddFsEntry    _)
+      | Append (Origin.Web     _, UpdateFsEntry _)
+      | Append (Origin.Web     _, RemoveFsEntry _)           -> Ignore
+      | Append (Origin.Client  _, AddFsEntry    _)
+      | Append (Origin.Client  _, UpdateFsEntry _)
+      | Append (Origin.Client  _, RemoveFsEntry _)
+      | Append (Origin.Service _, AddFsEntry    _)
+      | Append (Origin.Service _, UpdateFsEntry _)
+      | Append (Origin.Service _, RemoveFsEntry _)           -> Replicate
+
+      ///  _____   _____
+      /// |  ___|_|_   _| __ ___  ___
+      /// | |_ / __|| || '__/ _ \/ _ \
+      /// |  _|\__ \| || | |  __/  __/
+      /// |_|  |___/|_||_|  \___|\___|
+      | Append (Origin.Web     _, AddFsTree    _)
+      | Append (Origin.Web     _, RemoveFsTree _)            -> Ignore
+      | Append (Origin.Client  _, AddFsTree    _)
+      | Append (Origin.Client  _, RemoveFsTree _)
+      | Append (Origin.Service _, AddFsTree    _)
+      | Append (Origin.Service _, RemoveFsTree _)            -> Replicate
+
       //   ____           _     _     _
       //  / ___|   _  ___| |   (_)___| |_
       // | |  | | | |/ _ \ |   | / __| __|

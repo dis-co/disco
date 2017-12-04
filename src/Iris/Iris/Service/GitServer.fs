@@ -124,11 +124,11 @@ module GitServer =
           Observable.subscribe<IrisEvent> callback subscriptions
 
         member self.Start () = either {
-            do! Network.ensureIpAddress mem.IpAddr
-            do! Network.ensureAvailability mem.IpAddr mem.GitPort
+            do! Network.ensureIpAddress mem.IpAddress
+            do! Network.ensureAvailability mem.IpAddress mem.GitPort
 
             status <- ServiceStatus.Starting
-            let config = makeConfig mem.IpAddr (unwrap mem.GitPort) cts
+            let config = makeConfig mem.IpAddress (unwrap mem.GitPort) cts
 
             routes project subscriptions
             |> startWebServerAsync config

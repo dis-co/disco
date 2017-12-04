@@ -21,6 +21,9 @@ module Mocha =
   [<Emit "window.test($0,$1)">]
   let test (str : string) (t : (unit -> unit) -> unit) : unit = failwith "JS only"
 
+  [<Emit "window.test.only($0,$1)">]
+  let ftest (str : string) (t : (unit -> unit) -> unit) : unit = failwith "JS only"
+
   [<Emit "window.test($0,$1)">]
   let testSync (str : string) (t : unit -> unit) : unit = failwith "JS only"
 

@@ -58,9 +58,7 @@ module FsWatcher =
   // ** create
 
   let create (project: IrisProject) =
-    let status = ref ServiceStatus.Stopped
     let subscriptions = Subscriptions()
-
     let watcher = new FileSystemWatcher()
 
     let filter =

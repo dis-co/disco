@@ -119,6 +119,11 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
         memberIpAndPort
         MachineConfig
 
+    let current = latestState.Project.Config.Machine
+    if machine.MulticastAddress <> current.MulticastAddress
+       || machine.MulticastPort <> current.MulticastPort
+    then failwith "Host cannot be added: Multicast group mismatch"
+
     // List projects of member candidate (B)
     let! projects =
       postCommandParseAndContinue<NameAndId[]>
@@ -158,12 +163,14 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
-        HostName = machine.HostName
-        IpAddr   = machine.BindAddress
-        Port     = machine.RaftPort
-        WsPort   = machine.WsPort
-        GitPort  = machine.GitPort
-        ApiPort  = machine.ApiPort }
+        HostName         = machine.HostName
+        MulticastAddress = machine.MulticastAddress
+        MulticastPort    = machine.MulticastPort
+        IpAddress        = machine.BindAddress
+        RaftPort         = machine.RaftPort
+        WsPort           = machine.WsPort
+        GitPort          = machine.GitPort
+        ApiPort          = machine.ApiPort }
     |> AddMember
     |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
   with

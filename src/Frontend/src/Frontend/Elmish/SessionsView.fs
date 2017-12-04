@@ -30,34 +30,36 @@ let body dispatch (model: Model) =
   | None -> table [Class "iris-table"] []
   | Some state ->
     let config = state.Project.Config
-    table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "User"]
-          th [Class "width-20"; padding5()] [str "Id"]
-          th [Class "width-15"] [str "IP"]
-          th [Class "width-25"] [str "User Agent"]
+    div [ Class "iris-sessions" ] [
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [Class "width-20"; padding5()] [str "User"]
+            th [Class "width-20"; padding5()] [str "Id"]
+            th [Class "width-15"] [str "IP"]
+            th [Class "width-25"] [str "User Agent"]
+          ]
         ]
-      ]
-      tbody [] (
-        state.Sessions
-        |> Seq.map (function
-          KeyValue(id,session) ->
-            tr [Key (string id)] [
-              td [Class "width-20"; padding5AndTopBorder()] [
-                span [Class "iris-output iris-icon icon-host"] [
-                  str "Admin"
-                  span [Class "iris-icon icon-bull iris-status-on"] []
+        tbody [] (
+          state.Sessions
+          |> Seq.map (function
+            KeyValue(id,session) ->
+              tr [Key (string id)] [
+                td [Class "width-20"; padding5AndTopBorder()] [
+                  span [Class "iris-output iris-icon icon-host"] [
+                    str "Admin"
+                    span [Class "iris-icon icon-bull iris-status-on"] []
+                  ]
                 ]
-              ]
-              td [Class "width-20"; topBorder()] [
-                str (session.Id.Prefix())
-              ]
-              td [Class "width-15"; topBorder()] [str (string session.IpAddress)]
-              td [Class "width-25"; topBorder()] [str (string session.UserAgent)]
-            ])
-        |> Seq.toList
-      )
+                td [Class "width-20"; topBorder()] [
+                  str (session.Id.Prefix())
+                ]
+                td [Class "width-15"; topBorder()] [str (string session.IpAddress)]
+                td [Class "width-25"; topBorder()] [str (string session.UserAgent)]
+              ])
+          |> Seq.toList
+        )
+      ]
     ]
 
 let createWidget(id: System.Guid) =

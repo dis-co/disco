@@ -41,53 +41,55 @@ let body dispatch (model: Model) =
         config.Sites |> Seq.tryFind (fun site -> site.Id = activeSite))
       |> Option.map (fun site -> site.Members)
       |> Option.defaultValue Map.empty
-    table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "Host"]
-          th [Class "width-15"] [str "IP"]
-          th [Class "width-25"] []
-          th [Class "width-15"] []
-          th [Class "width-15"] []
-          th [Class "width-5"] []
-          th [Class "width-5"] []
+    div [ Class "iris-cluster" ] [
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [Class "width-20"; padding5()] [str "Host"]
+            th [Class "width-15"] [str "IP"]
+            th [Class "width-25"] []
+            th [Class "width-15"] []
+            th [Class "width-15"] []
+            th [Class "width-5"] []
+            th [Class "width-5"] []
+          ]
         ]
-      ]
-      tbody [] (
-        members |> Seq.map (fun kv ->
-          let node = kv.Value
-          tr [Key (string kv.Key)] [
-            td [Class "width-20";padding5AndTopBorder()] [
+        tbody [] (
+          members |> Seq.map (fun kv ->
+            let node = kv.Value
+            tr [Key (string kv.Key)] [
+              td [Class "width-20";padding5AndTopBorder()] [
 
-              span [
-                Class "iris-output iris-icon icon-host"
-                OnClick (fun _ -> Select.clusterMember dispatch node)
-                Style [ Cursor "pointer" ]
-              ] [
-                str (unwrap node.HostName)
-                span [Class "iris-icon icon-bull iris-status-off"] []
+                span [
+                  Class "iris-output iris-icon icon-host"
+                  OnClick (fun _ -> Select.clusterMember dispatch node)
+                  Style [ Cursor "pointer" ]
+                ] [
+                  str (unwrap node.HostName)
+                  span [Class "iris-icon icon-bull iris-status-off"] []
+                ]
+              ]
+              td [Class "width-15"; topBorder()] [str (string node.IpAddress)]
+              td [Class "width-25"; topBorder()] [str (string node.RaftPort)]
+              td [Class "width-15"; topBorder()] [str (string node.State)]
+              td [Class "width-15"; topBorder()] [str "shortkey"]
+              td [Class "width-5"; topBorder()] [
+                button [Class "iris-button iris-icon icon-autocall"] []
+              ]
+              td [Class "width-5"; topBorder()] [
+                button [
+                  Class "iris-button iris-icon icon-close"
+                  OnClick (fun ev ->
+                    ev.stopPropagation()
+                    match Config.findMember config kv.Key with
+                    | Right mem -> RemoveMember mem |> ClientContext.Singleton.Post
+                    | Left error -> printfn "Cannot find member in config: %O" error)
+                ] []
               ]
             ]
-            td [Class "width-15"; topBorder()] [str (string node.IpAddr)]
-            td [Class "width-25"; topBorder()] [str (string node.Port)]
-            td [Class "width-15"; topBorder()] [str (string node.State)]
-            td [Class "width-15"; topBorder()] [str "shortkey"]
-            td [Class "width-5"; topBorder()] [
-              button [Class "iris-button iris-icon icon-autocall"] []
-            ]
-            td [Class "width-5"; topBorder()] [
-              button [
-                Class "iris-button iris-icon icon-close"
-                OnClick (fun ev ->
-                  ev.stopPropagation()
-                  match Config.findMember config kv.Key with
-                  | Right mem -> RemoveMember mem |> ClientContext.Singleton.Post
-                  | Left error -> printfn "Cannot find member in config: %O" error)
-              ] []
-            ]
-          ]
-        ) |> Seq.toList
-      )
+          ) |> Seq.toList
+        )
+      ]
     ]
 
 let createWidget(id: System.Guid) =

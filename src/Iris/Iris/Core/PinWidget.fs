@@ -228,7 +228,7 @@ module PinWidget =
 
   // ** updatePins
 
-  let updatePins (slices:Slices) (widget:PinWidget) =
+  let updatePins (_:Slices) (widget:PinWidget) =
     widget
 
   // ** processSlices

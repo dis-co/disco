@@ -70,9 +70,9 @@ module Iris =
   let private registerLoadedServices (mem: RaftMember) (project: IrisProject) service =
     let status = MachineStatus.Busy (project.Id, project.Name)
     let services =
-      [| { ServiceType = ServiceType.Api;       Port = mem.ApiPort }
-         { ServiceType = ServiceType.Git;       Port = mem.GitPort }
-         { ServiceType = ServiceType.Raft;      Port = mem.Port    }
+      [| { ServiceType = ServiceType.Api;       Port = mem.ApiPort  }
+         { ServiceType = ServiceType.Git;       Port = mem.GitPort  }
+         { ServiceType = ServiceType.Raft;      Port = mem.RaftPort }
          { ServiceType = ServiceType.Http;      Port = project.Config.Machine.WebPort }
          { ServiceType = ServiceType.WebSocket; Port = mem.WsPort  } |]
     registerService service project.Config.Machine status services [| |]

@@ -22,21 +22,6 @@ module Constants =
   let REQ_TIMEOUT = 500.0            // ms
 
   [<Literal>]
-  let MCAST_ADDRESS = "224.0.0.6"
-
-  [<Literal>]
-  let MCAST_PORT = 5555us
-
-  [<Literal>]
-  let CLOCK_MCAST_ADDRESS = "224.0.0.7"
-
-  [<Literal>]
-  let CLOCK_MCAST_PORT = 6666us
-
-  [<Literal>]
-  let CLOCK_MCAST_PREFIX = "clock"
-
-  [<Literal>]
   let API_BACKEND_PREFIX = "apibackend"
 
   [<Literal>]
@@ -142,6 +127,12 @@ module Constants =
   let DEFAULT_GIT_PORT = 9000us
 
   [<Literal>]
+  let DEFAULT_MCAST_ADDRESS = "224.0.0.2"
+
+  [<Literal>]
+  let DEFAULT_MCAST_PORT = 5555us
+
+  [<Literal>]
   let ADMIN_USER_NAME = "admin"
 
   [<Literal>]
@@ -163,6 +154,9 @@ module Constants =
 
   [<Literal>]
   let ADMIN_DEFAULT_SALT = "8d406594282be466e048de02505ebaec97943096"
+
+  [<Literal>]
+  let DEFAULT_ASSET_FILTER = ".tga .png .jpg"
 
   //     _                 _
   //    / \   ___ ___  ___| |_ ___
@@ -223,11 +217,18 @@ module Constants =
   let GITIGNORE = @"/.raft"
 
   [<Literal>]
-  /// Intended to be a subdirectory of HOME
+  /// Intended to be a subdirectory of $HOME
   let MACHINECONFIG_DEFAULT_WORKSPACE_UNIX = "iris"
 
   [<Literal>]
   let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Iris"
+
+  [<Literal>]
+  /// Intended to be a subdirectory of $HOME/iris
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX = "assets"
+
+  [<Literal>]
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS = "C:\Iris\assets"
 
   //  _____            _                                      _
   // | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_

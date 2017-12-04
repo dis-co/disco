@@ -55,30 +55,32 @@ let body dispatch (model: Model) =
   | None -> table [Class "iris-table"] []
   | Some state ->
     let cueLists = state.CueLists |> Map.toList |> List.map snd
-    table [Class "iris-table"] [
-      thead [] [
-        tr [] [
-          th [Class "width-20"; padding5()] [str "Id"]
-          th [Class "width-15"] [str "Name"]
-          th [Class "width-5"] []
-        ]
-      ]
-      tbody [] (
-        cueLists |> Seq.map (fun cueList ->
-          tr [Key (string cueList.Id)] [
-            td [Class "width-20";padding5AndTopBorder()] [
-              str (Id.prefix cueList.Id)
-            ]
-            td [Class "width-15"; topBorder()] [
-                /// provide inline editing capabilities for the CuePlayer Name field
-                Editable.string (string cueList.Name) (updateName cueList)
-            ]
-            td [Class "width-5"; padding5()] [
-              deleteButton dispatch cueList
-            ]
+    div [ Class "iris-cuelists" ] [
+      table [Class "iris-table"] [
+        thead [] [
+          tr [] [
+            th [Class "width-20"; padding5()] [str "Id"]
+            th [Class "width-15"] [str "Name"]
+            th [Class "width-5"] []
           ]
-        ) |> Seq.toList
-      )
+        ]
+        tbody [] (
+          cueLists |> Seq.map (fun cueList ->
+            tr [Key (string cueList.Id)] [
+              td [Class "width-20";padding5AndTopBorder()] [
+                str (Id.prefix cueList.Id)
+              ]
+              td [Class "width-15"; topBorder()] [
+                  /// provide inline editing capabilities for the CuePlayer Name field
+                  Editable.string (string cueList.Name) (updateName cueList)
+              ]
+              td [Class "width-5"; padding5()] [
+                deleteButton dispatch cueList
+              ]
+            ]
+          ) |> Seq.toList
+        )
+      ]
     ]
 
 let createWidget(id: System.Guid) =
