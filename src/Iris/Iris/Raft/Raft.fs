@@ -1874,24 +1874,24 @@ module rec Raft =
             LogEntry.foldr
               (fun (state, current) lg ->
                 match lg with
-                  | Configuration _ as config ->
-                    // set the peers map
-                    let newstate = handleConfigChange config state
-                    // when a new configuration is added, under certain circumstances a mem change
-                    // might not have been applied yet, so calculate those dangling changes
-                    let changes = calculateChanges state.Peers newstate.Peers
-                    // apply dangling changes
-                    Array.iter (notifyChange cbs) changes
-                    // apply the entry by calling the callback
-                    applyEntry cbs config
-                    (newstate, None)
-                  | JointConsensus _ as config ->
-                    let state = handleConfigChange config state
-                    applyEntry cbs config
-                    (state, Some (LogEntry.head config))
-                  | entry ->
-                    applyEntry cbs entry
-                    (state, current))
+                | Configuration _ as config ->
+                  // set the peers map
+                  let newstate = handleConfigChange config state
+                  // when a new configuration is added, under certain circumstances a mem change
+                  // might not have been applied yet, so calculate those dangling changes
+                  let changes = calculateChanges state.Peers newstate.Peers
+                  // apply dangling changes
+                  Array.iter (notifyChange cbs) changes
+                  // apply the entry by calling the callback
+                  applyEntry cbs config
+                  (newstate, None)
+                | JointConsensus _ as config ->
+                  let state = handleConfigChange config state
+                  applyEntry cbs config
+                  (state, Some (LogEntry.head config))
+                | entry ->
+                  applyEntry cbs entry
+                  (state, current))
               (state, state.ConfigChangeEntry)
               entries
 
@@ -1913,6 +1913,13 @@ module rec Raft =
               do! debug "applyEntries" str
               do! setLeaderM None
               do! becomeFollower ()
+            /// snapshot now:
+            ///
+            /// the cluster was just re-configured, and if any of (possibly) just removed members were
+            /// to be added again, the replay log they would receive when joining would cause them to
+            /// be automatically being removed again. this is why, after the configuration changes are
+            /// done we need to create a snapshot of the raft log, which won't contain those commands.
+            do! doSnapshot()
 
           let! state = get
           if not (isLeader state) && LogEntry.contains LogEntry.isConfiguration entries then
@@ -2030,21 +2037,28 @@ module rec Raft =
           |> failM
     }
 
+  // ** doSnapshot
+
+  let doSnapshot () =
+    raft {
+      let! cbs = read
+      let! state = get
+      match cbs.PrepareSnapshot state with
+      | Some snapshot ->
+        do! updateLog snapshot |> modify
+        match snapshot.Data with
+        | Some snapshot -> cbs.PersistSnapshot snapshot
+        | _ -> ()
+      | _ -> ()
+    }
+
   // ** maybeSnapshot
 
   let maybeSnapshot () =
     raft {
       let! state = get
       if Log.length state.Log >= int state.MaxLogDepth then
-        let! cbs = read
-        let! state = get
-        match cbs.PrepareSnapshot state with
-        | Some snapshot ->
-          do! updateLog snapshot |> modify
-          match snapshot.Data with
-          | Some snapshot -> cbs.PersistSnapshot snapshot
-          | _ -> ()
-        | _ -> ()
+        do! doSnapshot ()
     }
 
   // ** majority
