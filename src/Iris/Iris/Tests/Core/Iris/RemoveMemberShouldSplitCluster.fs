@@ -17,7 +17,7 @@ open Common
 module RemoveMemberShouldSplitCluster =
 
   let test =
-    ftestCase "ensure follower forwards fstree to leader" <| fun _ ->
+    testCase "ensure follower forwards fstree to leader" <| fun _ ->
       either {
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()
