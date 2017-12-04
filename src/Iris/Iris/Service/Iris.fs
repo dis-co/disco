@@ -42,6 +42,17 @@ module Iris =
       |> Some
     | None -> None
 
+  // ** onShutdown
+
+  let private onShutdown (iris: IIris) = function
+    | IrisEvent.ConfigurationDone mems ->
+      let ids = Array.map Member.id mems
+      if not (Array.contains iris.Machine.MachineId ids) then
+        match iris.UnloadProject() with
+        | Right ()   -> Logger.info "onShutdown" "Unloaded project"
+        | Left error -> Logger.err "onShutdown" error.Message
+    | _ -> ()
+
   // ** registerService
 
   let private registerService (service: IDiscoveryService)
@@ -84,6 +95,7 @@ module Iris =
       let iris = ref None
       let registration = ref None
       let eventSubscription = ref None
+      let shutdownSubscription = ref None
 
       let! httpServer = HttpServer.create options.Machine options.FrontendPath post
 
@@ -114,7 +126,8 @@ module Iris =
                 status := ServiceStatus.Starting
                 Option.iter dispose !iris              // in case there was already something loaded
                 Option.iter dispose !eventSubscription // and its subscription as well
-                Option.iter dispose !registration      // and any registered service
+                Option.iter dispose !shutdownSubscription // and its subscription as well
+                Option.iter dispose !registration         // and any registered service
                 let! irisService = IrisService.create {
                   Machine = options.Machine
                   ProjectName = name
@@ -125,6 +138,7 @@ module Iris =
                 match irisService.Start() with
                 | Right () ->
                   eventSubscription := subscribeDiscovery irisService discovery
+                  shutdownSubscription := self |> onShutdown |> irisService.Subscribe |> Some
                   let mem = irisService.RaftServer.Raft.Member
                   let project = irisService.Project
                   registration := Option.bind (registerLoadedServices mem project) discovery
@@ -151,6 +165,8 @@ module Iris =
             member self.UnloadProject() = either {
                 match !iris, !eventSubscription with
                 | Some irisService, subscription ->
+                  Option.iter dispose !shutdownSubscription
+                  Option.iter dispose !eventSubscription
                   Option.iter dispose !registration
                   Option.iter dispose subscription
                   dispose irisService
@@ -169,6 +185,7 @@ module Iris =
                 status := ServiceStatus.Stopping
                 Option.iter dispose !registration
                 Option.iter dispose !eventSubscription
+                Option.iter dispose !shutdownSubscription
                 Option.iter dispose !iris
                 dispose httpServer
                 Option.iter dispose discovery
