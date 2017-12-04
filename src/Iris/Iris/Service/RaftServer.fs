@@ -298,6 +298,12 @@ module rec RaftServer =
 
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
+            let ids = Array.map Member.id mems
+            let keys = connections.Keys
+            for id in keys do
+              if not (Array.contains id ids) then
+                let result, connection = connections.TryRemove id
+                if result then dispose connection
             mems
             |> IrisEvent.ConfigurationDone
             |> Msg.Notify
