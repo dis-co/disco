@@ -11,6 +11,7 @@ open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
 open Iris.Core
+open Iris.Raft
 open Iris.Web.Core
 open Helpers
 open State
@@ -66,7 +67,14 @@ let body dispatch (model: Model) =
                   Style [ Cursor "pointer" ]
                 ] [
                   str (unwrap node.HostName)
-                  span [Class "iris-icon icon-bull iris-status-off"] []
+                  span [
+                    classList [
+                      "iris-icon icon-bull", true
+                      "iris-status-off", node.State = RaftMemberState.Failed
+                      "iris-status-on", node.State = RaftMemberState.Running
+                      "iris-status-warning", node.State = RaftMemberState.Joining
+                    ]
+                  ] []
                 ]
               ]
               td [Class "width-15"; topBorder()] [str (string node.IpAddress)]
