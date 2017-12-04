@@ -63,7 +63,7 @@ class TestWidget extends React.Component {
     })
   }
 
-  //hadnles button click
+  //handels button click
   click(event){
     this.setPin();
   }
