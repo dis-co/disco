@@ -1,9 +1,7 @@
 import React, { Component } from 'react'
 import Slider from 'react-rangeslider';
 import './TestWidget1.css';
-// To include the default styles
 import 'react-rangeslider/lib/index.css';
-
 
 
 // This is a simple example to show how to create a custom widget for Iris
@@ -15,23 +13,25 @@ import 'react-rangeslider/lib/index.css';
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
-//var Slider = require('react-rangeslider');
 
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
+    //initialize 
     this.state={
-      pinName:"VVVV/design.4vp/C",
+      groupName: "",
+      pinName: "",
       sliderMin: -100,
-      sliderMax: 100
+      sliderMax: 100,
+      groupPin: ""
     };
   }
 
-
   render() {
-
+    //initialize pinVal
     var pinVal = 0;
-    var pin = IrisLib.findPinByName(this.props.model, this.state.pinName);
+    //set pin to this states current pin by pinName
+    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
     if (pin != null) {
       pinVal = IrisLib.getPinValueAt(pin, 0);
     }
@@ -43,34 +43,47 @@ class TestWidget extends React.Component {
         height: "100%"
       }}>
       <div>
-        {/*input to select a pin*/}
+        {/*input to select a pins group*/}
+        <label>
+          group name
+           {/*onChange updates state with new groupName as read from input field*/}
+        <input type="text"
+        onChange={(event) => this.setState({groupName : event.target.value})} />
+        </label>
+        {/*input to select a pins name*/}
         <label>
           pin name
+          {/*onChange updates state with new pinName as read from input field*/}
         <input type="text"
-        onChange={(event) => this.setState({pinName: "VVVV/design.4vp/" + event.target.value})} />
+        onChange={(event) => this.setState({pinName: event.target.value})} />
         </label>
         {/*input to set minimum value*/}
         <label>
           minimum value
+          {/*onChange updates the state with new slider minimum value*/}
           <input type="text" 
-          onChange={(event) => this.setState({sliderMin: event.target.value})}/>
+          onChange={(event) => this.setState({sliderMin: event.target.value})} />
         </label>
         {/*input to set maximum value*/}
         <label>
           maximum value
+          {/*onChhange updates the state with new slider maximum value*/}
           <input type="text"
           onChange={(event) => this.setState({sliderMax: event.target.value})}/>
           </label>
-          {/*button atm useless*/}
+          {/*after pressing submit button this.state.groupName is updated to hold the full pin name*/}
         <button type="submit" onClick={() => {
-          console.log('pin has been changed: ', this.state.pinName)
-          console.log(pinVal);}}>submit</button>
+          this.setState({groupPin: this.state.groupName + '/'+ this.state.pinName})
+          ;}}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
+        {/*slider has an onChange function that updates the selected pins value to sliders 
+        current value pinVal. gets its min and max values from state*/}
           <Slider
             value={parseInt(pinVal, 10)}
             onChange={(value) => {
-              IrisLib.updatePinValueAt(pin, 0, value)
+              if(pin != null)
+                IrisLib.updatePinValueAt(pin, 0, value)
             }}
             min={parseInt(this.state.sliderMin, 10)}
             max={parseInt(this.state.sliderMax, 10)}
@@ -101,7 +114,7 @@ export default function createWidget (id, name) {
       // render the body and optionally another to render a header in
       // the title bar of the widget.
       var body = function (dispatch, model) {
-        return <TestWidget pinName="VVVV/design.4vp/Z" model={model} />
+        return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z"  model={model} />
       }
       return IrisLib.renderWidget(id, name, null, body, dispatch, model);
     }
