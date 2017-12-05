@@ -156,7 +156,7 @@
     </Compile>
     <Compile Include="..\..\Iris\Raft\Member.fs">
       <Link>Member.fs</Link>
-    </Compile>>
+    </Compile>
     <Compile Include="..\..\Iris\Core\Uri.fs">
       <Link>Uri.fs</Link>
     </Compile>
