@@ -1761,7 +1761,7 @@ module Config =
   let addMember (mem: RaftMember) (config: IrisConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Array.tryFind (fun clst -> ClusterConfig.id clst = active) config.Sites with
       | Some site ->
         let mems = Map.add mem.Id mem site.Members
         updateCluster { site with Members = mems } config

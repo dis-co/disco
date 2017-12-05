@@ -118,7 +118,7 @@ module Constants =
   let DEFAULT_LOGFILE_NAME = "iris-log.txt"
 
   [<Literal>]
-  let DEFAULT_WEB_PORT = 7000us
+  let DEFAULT_HTTP_PORT = 7000us
 
   [<Literal>]
   let DEFAULT_WEB_SOCKET_PORT = 8000us

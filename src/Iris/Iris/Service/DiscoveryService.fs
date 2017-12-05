@@ -279,6 +279,15 @@ module DiscoveryService =
       }
     act ()
 
+  // ** periodically
+
+  let rec private periodically (store:IAgentStore<DiscoveryState>) =
+    async {
+      do! Async.Sleep 5000
+      store.State.Browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
+      return! periodically store
+    }
+
   // ** create
 
   let create (config: IrisMachine) =
@@ -296,6 +305,8 @@ module DiscoveryService =
     let store = AgentStore.create()
 
     let agent = DiscoveryAgent.Start(loop store, source.Token)
+
+    Async.Start(periodically store, source.Token)
 
     { new IDiscoveryService with
         member self.Start() = either {

@@ -1195,7 +1195,7 @@ module ServerTests =
   let leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx =
     testCase "leader sends appendentries with NextIdx when PrevIdx gt NextIdx" <| fun _ ->
       let peer = { Member.create (IrisId.Create()) with NextIndex = index 4 }
-      let raft' : RaftValue = defaultServer ()
+      let raft' : RaftState = defaultServer ()
       let sender = Sender.create
       let log = LogEntry(IrisId.Create(),index 0, term 1, DataSnapshot (State.Empty), None)
       let cbs =
@@ -1607,7 +1607,7 @@ module ServerTests =
 
         do! Raft.sendAllAppendEntriesM ()
 
-        expect "Should have prevLogIdx 4" (index 4) AppendRequest.prevLogIndex (!appendReq |> Option.get)
+        expect "Should have prevLogIdx 4" (index 4) AppendRequest.prevLogIdx (!appendReq |> Option.get)
         expect "Should have prevLogTerm 4" (term 4) AppendRequest.prevLogTerm (!appendReq |> Option.get)
 
         let! trm = Raft.currentTermM ()
@@ -1619,7 +1619,7 @@ module ServerTests =
 
         do! Raft.sendAllAppendEntriesM ()
 
-        expect "Should have prevLogIdx 1" (index 1) AppendRequest.prevLogIndex (!appendReq |> Option.get)
+        expect "Should have prevLogIdx 1" (index 1) AppendRequest.prevLogIdx (!appendReq |> Option.get)
         expect "Should have prevLogTerm 1" (term 1) AppendRequest.prevLogTerm  (!appendReq |> Option.get)
       }
       |> runWithCBS cbs
@@ -1810,7 +1810,7 @@ module ServerTests =
 
         let! resp = Raft.receiveAppendEntries (Some peer.Id) ae
 
-        expect "Should have succeeded" true AppendRequest.succeeded resp
+        expect "Should have succeeded" true AppendResponse.succeeded resp
 
         do! expectM "(2) Should have current idx 1" (index 1) Raft.currentIndex
         do! expectM "Should have commit idx 1" (index 1) Raft.commitIndex
@@ -2112,7 +2112,7 @@ module ServerTests =
       let mem1 =   Member.create (IrisId.Create())
       let mem2 =   Member.create (IrisId.Create())
       let mem3 =   Member.create (IrisId.Create())
-      let mem4 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
+      let mem4 = { Member.create (IrisId.Create())  with Status = MemberStatus.Failed }
 
       let mutable i = 0
 
@@ -2140,8 +2140,8 @@ module ServerTests =
     testCase "should not consider failed mems when deciding vote outcome" <| fun _ ->
       let mem1 =   Member.create (IrisId.Create())
       let mem2 =   Member.create (IrisId.Create())
-      let mem3 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
-      let mem4 = { Member.create (IrisId.Create())  with State = RaftMemberState.Failed }
+      let mem3 = { Member.create (IrisId.Create())  with Status = MemberStatus.Failed }
+      let mem4 = { Member.create (IrisId.Create())  with Status = MemberStatus.Failed }
 
       let resp = { Term = term 1; Granted = true; Reason = None }
 
@@ -2375,9 +2375,9 @@ module ServerTests =
       raft {
         let mem = Member.create (IrisId.Create())
         do! Raft.addMemberM mem
-        do! Raft.updateMemberM { mem with State = RaftMemberState.Joining }
-        do! Raft.updateMemberM { mem with State = RaftMemberState.Running }
-        do! Raft.updateMemberM { mem with State = RaftMemberState.Failed }
+        do! Raft.updateMemberM { mem with Status = MemberStatus.Joining }
+        do! Raft.updateMemberM { mem with Status = MemberStatus.Running }
+        do! Raft.updateMemberM { mem with Status = MemberStatus.Failed }
 
         expect "Should have called once" 3 id !count
       }

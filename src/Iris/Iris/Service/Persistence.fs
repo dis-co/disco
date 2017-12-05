@@ -56,7 +56,7 @@ module Persistence =
   /// - options: Project Config
   ///
   /// Returns: Either<IrisError,Raft>
-  let loadRaft (options: IrisConfig) : Either<IrisError,RaftValue> =
+  let loadRaft (options: IrisConfig) : Either<IrisError,RaftState> =
     either {
       let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
@@ -104,7 +104,7 @@ module Persistence =
   /// - raft: Raft state value
   ///
   /// Returns: Either<IrisError,FileInfo>
-  let saveRaft (config: IrisConfig) (raft: RaftValue) =
+  let saveRaft (config: IrisConfig) (raft: RaftState) =
     try
       raft
       |> Yaml.encode

@@ -49,7 +49,7 @@ module MemberInspector =
         Common.render dispatch model "Cluster Member" [
           Common.stringRow "Id"             (string mem.Id)
           Common.stringRow "Host Name"      (string mem.HostName)
-          Common.stringRow "Raft State"     (string mem.State)
+          Common.stringRow "Node Status"    (string mem.Status)
           Common.stringRow "IP Address"     (string mem.IpAddress)
           Common.stringRow "Raft Port"      (string mem.RaftPort)
           Common.stringRow "API Port"       (string mem.ApiPort)

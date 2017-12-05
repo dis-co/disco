@@ -167,12 +167,13 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
         MulticastAddress = machine.MulticastAddress
         MulticastPort    = machine.MulticastPort
         IpAddress        = machine.BindAddress
+        HttpPort         = machine.WebPort
         RaftPort         = machine.RaftPort
         WsPort           = machine.WsPort
         GitPort          = machine.GitPort
         ApiPort          = machine.ApiPort }
     |> AddMember
-    |> ClientContext.Singleton.Post // TODO: Check the state machine post has been successful
+    |> ClientContext.Singleton.Post
   with
   | exn ->
     exn.Message

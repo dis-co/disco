@@ -118,7 +118,7 @@ module JointConsensus =
         do! expectM "Should be in joint-consensus now" true Raft.inJointConsensus
 
         do! expectM "Should be non-voting mem for start" false (Raft.getMember nid2 >> Option.get >> Member.isVoting)
-        do! expectM "Should be in joining state for start" Joining (Raft.getMember nid2 >> Option.get >> Member.state)
+        do! expectM "Should be in joining state for start" Joining (Raft.getMember nid2 >> Option.get >> Member.status)
 
         // add another regular entry
         let! idx = Raft.currentIndexM ()
@@ -464,7 +464,7 @@ module JointConsensus =
             | Some mem ->
               // the mems are not able to vote at first, because they will need
               // to be up to date to do that
-              do! Raft.updateMemberM { mem with State = Running; Voting = true }
+              do! Raft.updateMemberM { mem with Status = Running; Voting = true }
               do! Raft.receiveVoteResponse nid { vote with Term = !trm }
             | _ -> failwith "Member not found. :("
 
@@ -768,7 +768,7 @@ module JointConsensus =
         let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
 
         for peer in peers do
-          do! Raft.updateMemberM { peer with State = Running; Voting = true }
+          do! Raft.updateMemberM { peer with Status = Running; Voting = true }
 
         do! Raft.startElection ()
 

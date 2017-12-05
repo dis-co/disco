@@ -246,8 +246,8 @@ type AssetBrowserView(props) =
         span [
           classList [
             "iris-icon icon-bull",true
-            "iris-status-off", node.State <> RaftMemberState.Running
-            "iris-status-on", node.State = RaftMemberState.Running
+            "iris-status-off", node.Status <> MemberStatus.Running
+            "iris-status-on", node.Status = MemberStatus.Running
           ]
         ] []
       ]
