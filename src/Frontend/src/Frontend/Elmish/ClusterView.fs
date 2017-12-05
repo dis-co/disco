@@ -109,19 +109,15 @@ let discoveredServices dispatch (state:State) =
           match service.Status with
           | Busy _ -> []
           | Idle ->
-            [
-              button [
+            [ button [
                 Class "button iris-button"
-              ] [
-                i [ Class "fa fa-plus" ] []
-              ]
-            ]
+              ] [ i [ Class "fa fa-plus" ] [] ] ]
         tr [] [
-          th [Class "width-20"] [str (service.Id.Prefix())]
-          th [Class "width-20"] [str service.HostName]
-          th [Class "width-20"] addresses
-          th [Class "width-20"] [str status]
-          th [Class "width-20"] actions
+          td [Class "width-20"] [str (service.Id.Prefix())]
+          td [Class "width-20"] [str service.HostName]
+          td [Class "width-20"] addresses
+          td [Class "width-20"] [str status]
+          td [Class "width-20"] actions
         ])
   table [Class "iris-table"] [
     thead [] [
