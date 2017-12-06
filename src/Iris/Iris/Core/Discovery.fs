@@ -118,25 +118,49 @@ type ExposedService =
   { ServiceType: ServiceType
     Port: Port }
 
-  with
+  // ** optics
 
-    // ** ToOffset
+  static member ServiceType_ =
+    (fun (es:ExposedService) -> es.ServiceType),
+    (fun st (es:ExposedService) -> { es with ServiceType = st })
 
-    member service.ToOffset(builder: FlatBufferBuilder) =
-      let tipe = service.ServiceType.ToOffset builder
-      let port = service.Port |> unwrap
-      ExposedServiceFB.StartExposedServiceFB(builder)
-      ExposedServiceFB.AddType(builder,tipe)
-      ExposedServiceFB.AddPort(builder,port)
-      ExposedServiceFB.EndExposedServiceFB(builder)
+  static member Port_ =
+    (fun (es:ExposedService) -> es.Port),
+    (fun port (es:ExposedService) -> { es with Port = port })
 
-    // ** FromFB
+  // ** ToOffset
 
-    static member FromFB (fb: ExposedServiceFB) =
-      either {
-        let! tipe = ServiceType.FromFB fb.Type
-        return { ServiceType = tipe; Port = port fb.Port }
-      }
+  member service.ToOffset(builder: FlatBufferBuilder) =
+    let tipe = service.ServiceType.ToOffset builder
+    let port = service.Port |> unwrap
+    ExposedServiceFB.StartExposedServiceFB(builder)
+    ExposedServiceFB.AddType(builder,tipe)
+    ExposedServiceFB.AddPort(builder,port)
+    ExposedServiceFB.EndExposedServiceFB(builder)
+
+  // ** FromFB
+
+  static member FromFB (fb: ExposedServiceFB) =
+    either {
+      let! tipe = ServiceType.FromFB fb.Type
+      return { ServiceType = tipe; Port = port fb.Port }
+    }
+
+// * ExposeedService module
+
+module ExposedService =
+
+  open Aether
+
+  // ** getters
+
+  let serviceType = Optic.get ExposedService.ServiceType_
+  let port = Optic.get ExposedService.Port_
+
+  // ** setters
+
+  let setServiceType = Optic.set ExposedService.ServiceType_
+  let setPort = Optic.set ExposedService.Port_
 
 // * DiscoverableService
 
@@ -146,6 +170,50 @@ type DiscoverableService =
     Status: MachineStatus
     Services: ExposedService array
     ExtraMetadata: Property array }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (ds:DiscoverableService) -> ds.Id),
+    (fun id (ds:DiscoverableService) -> { ds with Id = id })
+
+  static member WebPort_ =
+    (fun (ds:DiscoverableService) -> ds.WebPort),
+    (fun webPort (ds:DiscoverableService) -> { ds with WebPort = webPort })
+
+  static member Status_ =
+    (fun (ds:DiscoverableService) -> ds.Status),
+    (fun status (ds:DiscoverableService) -> { ds with Status = status })
+
+  static member Services_ =
+    (fun (ds:DiscoverableService) -> ds.Services),
+    (fun services (ds:DiscoverableService) -> { ds with Services = services })
+
+  static member ExtraMetadata_ =
+    (fun (ds:DiscoverableService) -> ds.ExtraMetadata),
+    (fun extraMetadata (ds:DiscoverableService) -> { ds with ExtraMetadata = extraMetadata })
+
+// * DiscoverableService module
+
+module DiscoverableService =
+
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get DiscoverableService.Id_
+  let webPort = Optic.get DiscoverableService.WebPort_
+  let status = Optic.get DiscoverableService.Status_
+  let services = Optic.get DiscoverableService.Services_
+  let extraMetadata = Optic.get DiscoverableService.ExtraMetadata_
+
+  // ** setters
+
+  let setId = Optic.set DiscoverableService.Id_
+  let setWebPort = Optic.set DiscoverableService.WebPort_
+  let setStatus = Optic.set DiscoverableService.Status_
+  let setServices = Optic.set DiscoverableService.Services_
+  let setExtraMetadata = Optic.set DiscoverableService.ExtraMetadata_
 
 // * DiscoveredService
 
@@ -161,6 +229,52 @@ type DiscoveredService =
     AddressList: IpAddress array
     Services: ExposedService array
     ExtraMetadata: Property array }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (ds:DiscoveredService) -> ds.Id),
+    (fun id (ds:DiscoveredService) -> { ds with Id = id })
+
+  static member Name_ =
+    (fun (ds:DiscoveredService) -> ds.Name),
+    (fun name (ds:DiscoveredService) -> { ds with Name = name })
+
+  static member FullName_ =
+    (fun (ds:DiscoveredService) -> ds.FullName),
+    (fun fullName (ds:DiscoveredService) -> { ds with FullName = fullName })
+
+  static member HostName_ =
+    (fun (ds:DiscoveredService) -> ds.HostName),
+    (fun hostName (ds:DiscoveredService) -> { ds with HostName = hostName })
+
+  static member HostTarget_ =
+    (fun (ds:DiscoveredService) -> ds.HostTarget),
+    (fun hostTarget (ds:DiscoveredService) -> { ds with HostTarget = hostTarget })
+
+  static member Status_ =
+    (fun (ds:DiscoveredService) -> ds.Status),
+    (fun status (ds:DiscoveredService) -> { ds with Status = status })
+
+  static member Aliases_ =
+    (fun (ds:DiscoveredService) -> ds.Aliases),
+    (fun aliases (ds:DiscoveredService) -> { ds with Aliases = aliases })
+
+  static member Protocol_ =
+    (fun (ds:DiscoveredService) -> ds.Protocol),
+    (fun protocol (ds:DiscoveredService) -> { ds with Protocol = protocol })
+
+  static member AddressList_ =
+    (fun (ds:DiscoveredService) -> ds.AddressList),
+    (fun addressList (ds:DiscoveredService) -> { ds with AddressList = addressList })
+
+  static member Services_ =
+    (fun (ds:DiscoveredService) -> ds.Services),
+    (fun services (ds:DiscoveredService) -> { ds with Services = services })
+
+  static member ExtraMetadata_ =
+    (fun (ds:DiscoveredService) -> ds.ExtraMetadata),
+    (fun extraMetadata (ds:DiscoveredService) -> { ds with ExtraMetadata = extraMetadata })
 
   // ** ToOffset
 
@@ -345,6 +459,49 @@ type DiscoveredService =
     |> Binary.createBuffer
     |> DiscoveredServiceFB.GetRootAsDiscoveredServiceFB
     |> DiscoveredService.FromFB
+
+// * DiscoveredService module
+
+module DiscoveredService =
+
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get DiscoveredService.Id_
+  let name = Optic.get DiscoveredService.Name_
+  let fullName = Optic.get DiscoveredService.FullName_
+  let hostName = Optic.get DiscoveredService.HostName_
+  let hostTarget = Optic.get DiscoveredService.HostTarget_
+  let status = Optic.get DiscoveredService.Status_
+  let aliases = Optic.get DiscoveredService.Aliases_
+  let protocol = Optic.get DiscoveredService.Protocol_
+  let addressList = Optic.get DiscoveredService.AddressList_
+  let services = Optic.get DiscoveredService.Services_
+  let extraMetadata = Optic.get DiscoveredService.ExtraMetadata_
+
+  // ** setters
+
+  let setId = Optic.set DiscoveredService.Id_
+  let setName = Optic.set DiscoveredService.Name_
+  let setFullName = Optic.set DiscoveredService.FullName_
+  let setHostName = Optic.set DiscoveredService.HostName_
+  let setHostTarget = Optic.set DiscoveredService.HostTarget_
+  let setStatus = Optic.set DiscoveredService.Status_
+  let setAliases = Optic.set DiscoveredService.Aliases_
+  let setProtocol = Optic.set DiscoveredService.Protocol_
+  let setAddressList = Optic.set DiscoveredService.AddressList_
+  let setServices = Optic.set DiscoveredService.Services_
+  let setExtraMetadata = Optic.set DiscoveredService.ExtraMetadata_
+
+  // ** tryFindPort
+
+  let tryFindPort serviceType service =
+    service
+    |> services
+    |> Array.tryPick (function
+      | { ServiceType = tipe; Port = port } when tipe = serviceType -> Some port
+      | _ -> None)
 
 // * Discovery module
 

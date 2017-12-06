@@ -33,8 +33,8 @@ let activeConfig dispatch state =
   table [Class "iris-table"] [
     thead [] [
       tr [] [
-        th [Class "width-30"] [str "Host"]
-        th [Class "width-10"] [str "IP"]
+        th [Class "width-25"] [str "Host"]
+        th [Class "width-15"] [str "IP"]
         th [Class "width-5"] [str "Http"]
         th [Class "width-5"] [str "Raft"]
         th [Class "width-5"] [str "Api"]
@@ -49,8 +49,7 @@ let activeConfig dispatch state =
       members |> Seq.map (fun kv ->
         let node = kv.Value
         tr [Key (string kv.Key)] [
-          td [Class "width-30"] [
-
+          td [Class "width-25"] [
             span [
               Class "iris-output iris-icon icon-host"
               OnClick (fun _ -> Select.clusterMember dispatch node)
@@ -67,7 +66,7 @@ let activeConfig dispatch state =
               ] []
             ]
           ]
-          td [Class "width-10"] [str (string node.IpAddress)]
+          td [Class "width-15"] [str (string node.IpAddress)]
           td [Class "width-5"] [str (string node.HttpPort)]
           td [Class "width-5"] [str (string node.RaftPort)]
           td [Class "width-5"] [str (string node.ApiPort)]
@@ -90,19 +89,15 @@ let activeConfig dispatch state =
     )
   ]
 
-let private addMember (service: DiscoveredService) =
-  let webPort =
-    Array.tryPick
-      (function
-        | { ServiceType = ServiceType.Http; Port = port } -> Some port
-        | _ -> None)
-      service.Services
-  match webPort with
+let private addMember service =
+  service
+  |> DiscoveredService.tryFindPort ServiceType.Http
+  |> function
   | None -> ()
   | Some port ->
     Array.iter
       (fun ip -> Lib.addMember (string ip, unwrap port))
-      service.AddressList
+      (DiscoveredService.addressList service)
 
 let private discoveredServices dispatch (state:State) =
   let services =
@@ -132,21 +127,54 @@ let private discoveredServices dispatch (state:State) =
                     addMember service)
               ] [ i [ Class "fa fa-plus" ] [] ]
             ]
+        let http =
+          service
+          |> DiscoveredService.tryFindPort ServiceType.Http
+          |> Option.map string
+          |> Option.defaultValue ""
+        let raft =
+          service
+          |> DiscoveredService.tryFindPort ServiceType.Raft
+          |> Option.map string
+          |> Option.defaultValue ""
+        let git =
+          service
+          |> DiscoveredService.tryFindPort ServiceType.Git
+          |> Option.map string
+          |> Option.defaultValue ""
+        let api =
+          service
+          |> DiscoveredService.tryFindPort ServiceType.Api
+          |> Option.map string
+          |> Option.defaultValue ""
+        let websocket =
+          service
+          |> DiscoveredService.tryFindPort ServiceType.WebSocket
+          |> Option.map string
+          |> Option.defaultValue ""
         tr [] [
-          td [Class "width-20"] [str (service.Id.Prefix())]
-          td [Class "width-20"] [str service.HostName]
-          td [Class "width-20"] addresses
+          td [Class "width-25"] [str service.HostName]
+          td [Class "width-15"] addresses
+          td [Class "width-5"]  [str http]
+          td [Class "width-5"]  [str raft]
+          td [Class "width-5"]  [str api]
+          td [Class "width-5"]  [str git]
+          td [Class "width-10"] [str websocket]
           td [Class "width-20"] [str status]
-          td [Class "width-20"] actions
+          td [Class "width-10"] actions
         ])
   table [Class "iris-table"] [
     thead [] [
       tr [] [
-        th [Class "width-20"] [str "Id"]
-        th [Class "width-20"] [str "Host"]
-        th [Class "width-20"] [str "Addresses"]
+        th [Class "width-25"] [str "Host"]
+        th [Class "width-15"] [str "Addresses"]
+        th [Class "width-5"] [str "Http"]
+        th [Class "width-5"] [str "Raft"]
+        th [Class "width-5"] [str "Api"]
+        th [Class "width-5"] [str "Git"]
+        th [Class "width-10"] [str "WebSocket"]
         th [Class "width-20"] [str "Status"]
-        th [Class "width-20"] [str "Actions"]
+        th [Class "width-10"] [str "Actions"]
       ]
     ]
     tbody [] services
@@ -170,7 +198,7 @@ let createWidget(id: System.Guid) =
     member __.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
-        w = 8; h = 10
+        w = 10; h = 10
         minW = 5
         minH = 5 }
     member this.Render(dispatch, model) =
