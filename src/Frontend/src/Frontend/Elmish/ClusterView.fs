@@ -33,13 +33,13 @@ let activeConfig dispatch state =
   table [Class "iris-table"] [
     thead [] [
       tr [] [
-        th [Class "width-10"] [str "Host"]
+        th [Class "width-30"] [str "Host"]
         th [Class "width-10"] [str "IP"]
-        th [Class "width-10"] [str "Http"]
-        th [Class "width-10"] [str "Raft"]
-        th [Class "width-10"] [str "Api"]
+        th [Class "width-5"] [str "Http"]
+        th [Class "width-5"] [str "Raft"]
+        th [Class "width-5"] [str "Api"]
+        th [Class "width-5"] [str "Git"]
         th [Class "width-10"] [str "WebSocket"]
-        th [Class "width-10"] [str "Git"]
         th [Class "width-10"] [str "State"]
         th [Class "width-10"] [str "Status"]
         th [Class "width-10"] [str "Remove"]
@@ -49,7 +49,7 @@ let activeConfig dispatch state =
       members |> Seq.map (fun kv ->
         let node = kv.Value
         tr [Key (string kv.Key)] [
-          td [Class "width-10"] [
+          td [Class "width-30"] [
 
             span [
               Class "iris-output iris-icon icon-host"
@@ -68,10 +68,10 @@ let activeConfig dispatch state =
             ]
           ]
           td [Class "width-10"] [str (string node.IpAddress)]
-          td [Class "width-10"] [str (string node.HttpPort)]
-          td [Class "width-10"] [str (string node.RaftPort)]
-          td [Class "width-10"] [str (string node.ApiPort)]
-          td [Class "width-10"] [str (string node.WsPort)]
+          td [Class "width-5"] [str (string node.HttpPort)]
+          td [Class "width-5"] [str (string node.RaftPort)]
+          td [Class "width-5"] [str (string node.ApiPort)]
+          td [Class "width-5"] [str (string node.WsPort)]
           td [Class "width-10"] [str (string node.GitPort)]
           td [Class "width-10"] [str (string node.State)]
           td [Class "width-10"] [str (string node.Status)]
@@ -90,7 +90,21 @@ let activeConfig dispatch state =
     )
   ]
 
-let discoveredServices dispatch (state:State) =
+let private addMember (service: DiscoveredService) =
+  let webPort =
+    Array.tryPick
+      (function
+        | { ServiceType = ServiceType.Http; Port = port } -> Some port
+        | _ -> None)
+      service.Services
+  match webPort with
+  | None -> ()
+  | Some port ->
+    Array.iter
+      (fun ip -> Lib.addMember (string ip, unwrap port))
+      service.AddressList
+
+let private discoveredServices dispatch (state:State) =
   let services =
     state.DiscoveredServices
     |> Map.toList
@@ -109,9 +123,15 @@ let discoveredServices dispatch (state:State) =
           match service.Status with
           | Busy _ -> []
           | Idle ->
-            [ button [
+            [
+              button [
                 Class "button iris-button"
-              ] [ i [ Class "fa fa-plus" ] [] ] ]
+                OnClick
+                  (fun e ->
+                    e.stopPropagation()
+                    addMember service)
+              ] [ i [ Class "fa fa-plus" ] [] ]
+            ]
         tr [] [
           td [Class "width-20"] [str (service.Id.Prefix())]
           td [Class "width-20"] [str service.HostName]
@@ -150,9 +170,9 @@ let createWidget(id: System.Guid) =
     member __.InitialLayout =
       { i = id; ``static`` = false
         x = 0; y = 0
-        w = 8; h = 5
-        minW = 4
-        minH = 1 }
+        w = 8; h = 10
+        minW = 5
+        minH = 5 }
     member this.Render(dispatch, model) =
       lazyViewWith
         (fun m1 m2 ->
