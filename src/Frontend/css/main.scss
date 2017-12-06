@@ -501,6 +501,13 @@ html, body {
     height: 24px;
     width: 24px;
   }
+  .is-current {
+    background: #FAFAD2;
+  }
+  .is-leader {
+    border: 1px solid #d0d0d0;
+    background: $iris-grey;
+  }
   table {
     thead {
       border-bottom: 1px solid #d0d0d0;

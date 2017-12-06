@@ -25,6 +25,7 @@ let titleBar dispatch (model: Model) =
 
 let activeConfig dispatch state =
   let config = state.Project.Config
+  let current = state.Project.Config.Machine
   let members =
     config.ActiveSite |> Option.bind (fun activeSite ->
       config.Sites |> Seq.tryFind (fun site -> site.Id = activeSite))
@@ -35,10 +36,10 @@ let activeConfig dispatch state =
       tr [] [
         th [Class "width-25"] [str "Host"]
         th [Class "width-15"] [str "IP"]
-        th [Class "width-5"] [str "Http"]
-        th [Class "width-5"] [str "Raft"]
-        th [Class "width-5"] [str "Api"]
-        th [Class "width-5"] [str "Git"]
+        th [Class "width-5"]  [str "Http"]
+        th [Class "width-5"]  [str "Raft"]
+        th [Class "width-5"]  [str "Api"]
+        th [Class "width-5"]  [str "Git"]
         th [Class "width-10"] [str "WebSocket"]
         th [Class "width-10"] [str "State"]
         th [Class "width-10"] [str "Status"]
@@ -48,7 +49,12 @@ let activeConfig dispatch state =
     tbody [] (
       members |> Seq.map (fun kv ->
         let node = kv.Value
-        tr [Key (string kv.Key)] [
+        tr [
+          Key (string kv.Key)
+          classList [
+            "is-current", node.Id = current.MachineId
+          ]
+        ] [
           td [Class "width-25"] [
             span [
               Class "iris-output iris-icon icon-host"
@@ -67,12 +73,17 @@ let activeConfig dispatch state =
             ]
           ]
           td [Class "width-15"] [str (string node.IpAddress)]
-          td [Class "width-5"] [str (string node.HttpPort)]
-          td [Class "width-5"] [str (string node.RaftPort)]
-          td [Class "width-5"] [str (string node.ApiPort)]
-          td [Class "width-5"] [str (string node.WsPort)]
+          td [Class "width-5"]  [str (string node.HttpPort)]
+          td [Class "width-5"]  [str (string node.RaftPort)]
+          td [Class "width-5"]  [str (string node.ApiPort)]
+          td [Class "width-5"]  [str (string node.WsPort)]
           td [Class "width-10"] [str (string node.GitPort)]
-          td [Class "width-10"] [str (string node.State)]
+          td [
+            classList [
+              "width-10",true
+              "is-leader", node.State = MemberState.Leader
+            ]
+          ] [str (string node.State)]
           td [Class "width-10"] [str (string node.Status)]
           td [Class "width-10"] [
             button [
