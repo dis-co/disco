@@ -55,26 +55,20 @@ module DispatchStrategy =
 // * DiscoveryEvent
 
 type DiscoveryEvent =
-  | Status       of ServiceStatus
-  | Registering  of DiscoverableService
-  | UnRegistered of DiscoverableService
-  | Registered   of DiscoverableService
-  | Appeared     of DiscoveredService
-  | Updated      of DiscoveredService
-  | Vanished     of DiscoveredService
+  | Status   of ServiceStatus
+  | Appeared of DiscoveredService
+  | Updated  of DiscoveredService
+  | Vanished of DiscoveredService
 
   // ** DispatchStrategy
 
   member ev.DispatchStrategy
     with get () =
       match ev with
-      | Status       _ -> Process
-      | Registering  _
-      | Registered   _
-      | UnRegistered _ -> Ignore
-      | Appeared     _
-      | Updated      _
-      | Vanished     _ -> Replicate
+      | Status   _ -> Process
+      | Appeared _
+      | Updated  _
+      | Vanished _ -> Replicate
 
 // * ClockEvent
 

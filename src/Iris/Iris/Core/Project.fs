@@ -2131,9 +2131,22 @@ Config: %A
 
 [<RequireQualifiedAccess>]
 module Project =
+
+  open Aether
+
   // ** tag
 
   let private tag (str: string) = String.format "Project.{0}" str
+
+  // ** getters
+
+  let id = Optic.get IrisProject.Id_
+  let name = Optic.get IrisProject.Name_
+
+  // ** setters
+
+  let setId = Optic.set IrisProject.Id_
+  let setName = Optic.set IrisProject.Name_
 
   // ** toFilePath
 
@@ -2454,7 +2467,7 @@ module Project =
     either {
       let project =
         { Id        = IrisId.Create()
-          Name      = name projectName
+          Name      = Measure.name projectName
           Path      = path
           CreatedOn = Time.createTimestamp()
           LastSaved = Some (Time.createTimestamp ())
