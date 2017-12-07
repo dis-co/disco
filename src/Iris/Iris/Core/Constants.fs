@@ -214,7 +214,10 @@ module Constants =
   let MACHINECONFIG_NAME = "machinecfg"
 
   [<Literal>]
-  let GITIGNORE = @"/.raft"
+  let GITIGNORE = @"
+.raft/snapshot.yaml
+.raft/metadata.yaml
+"
 
   [<Literal>]
   /// Intended to be a subdirectory of $HOME

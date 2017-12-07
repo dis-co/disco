@@ -140,7 +140,10 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
         | Some uri -> uri
         | None -> failwith "Cannot get URI of project git repository"
       match projects |> Array.tryFind (fun p -> p.Id = latestState.Project.Id) with
-      | Some p -> PullProject(p.Id, latestState.Project.Name, projectGitUri)
+      | Some p ->
+        PullProject(string latestState.Project.Config.Machine.MachineId,
+                    latestState.Project.Name,
+                    projectGitUri)
       | None   -> CloneProject(latestState.Project.Name, projectGitUri)
       |> postCommandParseAndContinue<string> memberIpAndPort
 
