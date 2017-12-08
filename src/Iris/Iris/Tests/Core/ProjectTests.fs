@@ -114,14 +114,14 @@ module ProjectTests =
           { Member.create (IrisId.Create()) with
               HostName  = name "moomoo"
               IpAddress = IpAddress.Parse "182.123.18.2"
-              State     = Running
+              Status    = Running
               RaftPort  = port 1234us }
 
         let memB =
           { Member.create (IrisId.Create()) with
               HostName  = name "taataaa"
               IpAddress = IpAddress.Parse "118.223.8.12"
-              State     = Joining
+              Status    = Joining
               RaftPort  = port 1234us }
 
         let groupA: HostGroup =

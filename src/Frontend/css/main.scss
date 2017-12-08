@@ -487,3 +487,42 @@ html, body {
     }
   }
 }
+
+.iris-cluster {
+  .headline {
+    padding: 5px;
+    margin: 5px 0 5px;
+    h2 {
+      font-size: 1.4em;
+      font-weight: bold;
+    }
+  }
+  .button {
+    height: 24px;
+    width: 24px;
+  }
+  .is-current {
+    background: #FAFAD2;
+  }
+  .is-leader {
+    border: 1px solid #d0d0d0;
+    background: $iris-grey;
+  }
+  table {
+    thead {
+      border-bottom: 1px solid #d0d0d0;
+      th {
+        padding: 5px;
+      }
+    }
+    tbody > tr {
+      border-bottom: 1px solid $iris-grey;
+      td {
+        padding: 5px;
+      }
+      &:hover {
+        background: #fafafa;
+      }
+    }
+  }
+}

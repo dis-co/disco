@@ -35,7 +35,7 @@ module rec RaftServer =
   [<NoComparison;NoEquality>]
   type private RaftServerState =
     { Status:         ServiceStatus
-      Raft:           RaftValue
+      Raft:           RaftState
       Options:        IrisConfig
       Callbacks:      IRaftCallbacks
       Server:         ITcpServer
@@ -156,7 +156,7 @@ module rec RaftServer =
   /// - state: RaftServerState to update
   ///
   /// Returns: RaftServerState
-  let private updateRaft (context: RaftServerState) (raft: RaftValue) : RaftServerState =
+  let private updateRaft (context: RaftServerState) (raft: RaftState) : RaftServerState =
     { context with Raft = raft }
 
   // ** makePeerSocket
@@ -298,6 +298,12 @@ module rec RaftServer =
 
         member self.Configured mems =
           Tracing.trace (tag "configured") <| fun () ->
+            let ids = Array.map Member.id mems
+            let keys = connections.Keys
+            for id in keys do
+              if not (Array.contains id ids) then
+                let result, connection = connections.TryRemove id
+                if result then dispose connection
             mems
             |> IrisEvent.ConfigurationDone
             |> Msg.Notify
@@ -1335,7 +1341,7 @@ module rec RaftServer =
     raft {
       let! peer = Raft.getMemberM id
       match peer with
-      | Some mem -> do! Raft.updateMemberM { mem with State = raftState }
+      | Some mem -> do! Raft.updateMemberM { mem with Status = raftState }
       | None -> ()
     }
     |> runRaft state.Raft state.Callbacks
@@ -1371,10 +1377,10 @@ module rec RaftServer =
   // ** handleClientEvent
 
   let private handleClientEvent state agent = function
-    | TcpClientEvent.Response response -> handleClientResponse state response agent
-    | TcpClientEvent.Request  _        -> state // in raft we do only unidirection com
-    | TcpClientEvent.Connected peer        -> handleClientState state peer RaftMemberState.Running
-    | TcpClientEvent.Disconnected(peer, _) -> handleClientState state peer RaftMemberState.Failed
+    | TcpClientEvent.Response response     -> handleClientResponse state response agent
+    | TcpClientEvent.Request  _            -> state // in raft we do only unidirection com
+    | TcpClientEvent.Connected peer        -> handleClientState state peer MemberStatus.Running
+    | TcpClientEvent.Disconnected(peer, _) -> handleClientState state peer MemberStatus.Failed
 
   // ** handleStop
 
@@ -1390,7 +1396,7 @@ module rec RaftServer =
 
   // ** initializeRaft
 
-  let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftValue)  =
+  let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftState)  =
     Tracing.trace (tag "initializeRaft") <| fun () ->
       let rand = System.Random()
       raft {

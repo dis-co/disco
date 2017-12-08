@@ -70,7 +70,6 @@ type MemberNode() =
   interface IPluginEvaluate with
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
-
         self.OutId.SliceCount        <- self.InMember.SliceCount
         self.OutHostName.SliceCount  <- self.InMember.SliceCount
         self.OutIpAddress.SliceCount <- self.InMember.SliceCount
@@ -83,15 +82,14 @@ type MemberNode() =
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InMember.[n]) then
             let mem = self.InMember.[n]
-
-            self.OutId.[n] <- string mem.Id
-            self.OutHostName.[n] <- unwrap mem.HostName
+            self.OutId.[n]        <- string mem.Id
+            self.OutHostName.[n]  <- unwrap mem.HostName
             self.OutIpAddress.[n] <- string mem.IpAddress
-            self.OutStatus.[n] <- string mem.State
-            self.OutRaftPort.[n] <- int mem.RaftPort
-            self.OutWsPort.[n] <- int mem.WsPort
-            self.OutGitPort.[n] <- int mem.GitPort
-            self.OutApiPort.[n] <- int mem.ApiPort
+            self.OutStatus.[n]    <- string mem.Status
+            self.OutRaftPort.[n]  <- int mem.RaftPort
+            self.OutWsPort.[n]    <- int mem.WsPort
+            self.OutGitPort.[n]   <- int mem.GitPort
+            self.OutApiPort.[n]   <- int mem.ApiPort
 
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

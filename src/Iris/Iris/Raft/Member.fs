@@ -18,9 +18,9 @@ open Iris.Serialization
 
 #endif
 
-// * RaftMemberState
+// * MemberStatus
 
-type RaftMemberState =
+type MemberStatus =
   | Joining                             // excludes mem from voting
   | Running                             // normal execution state
   | Failed                              // mem has failed for some reason
@@ -46,41 +46,41 @@ type RaftMemberState =
 
   static member TryParse (str: string) =
     try
-      str |> RaftMemberState.Parse |> Either.succeed
+      str |> MemberStatus.Parse |> Either.succeed
     with
       | exn ->
-        sprintf "Could not parse RaftMemberState: %s" exn.Message
-        |> Error.asParseError "RaftMemberState.TryParse"
+        sprintf "Could not parse MemberStatus: %s" exn.Message
+        |> Error.asParseError "MemberStatus.TryParse"
         |> Either.fail
 
   // ** ToOffset
 
   member self.ToOffset () =
     match self with
-      | Running -> RaftMemberStateFB.RunningFB
-      | Joining -> RaftMemberStateFB.JoiningFB
-      | Failed  -> RaftMemberStateFB.FailedFB
+      | Running -> MemberStatusFB.RunningFB
+      | Joining -> MemberStatusFB.JoiningFB
+      | Failed  -> MemberStatusFB.FailedFB
 
   // ** FromFB
 
-  static member FromFB (fb: RaftMemberStateFB) =
+  static member FromFB (fb: MemberStatusFB) =
     #if FABLE_COMPILER
     match fb with
-      | x when x = RaftMemberStateFB.JoiningFB -> Right Joining
-      | x when x = RaftMemberStateFB.RunningFB -> Right Running
-      | x when x = RaftMemberStateFB.FailedFB  -> Right Failed
+      | x when x = MemberStatusFB.JoiningFB -> Right Joining
+      | x when x = MemberStatusFB.RunningFB -> Right Running
+      | x when x = MemberStatusFB.FailedFB  -> Right Failed
       | x ->
-        sprintf "Could not parse RaftMemberState: %A" x
-        |> Error.asParseError "RaftMemberState.FromFB"
+        sprintf "Could not parse MemberStatus: %A" x
+        |> Error.asParseError "MemberStatus.FromFB"
         |> Either.fail
     #else
     match fb with
-      | RaftMemberStateFB.JoiningFB -> Right Joining
-      | RaftMemberStateFB.RunningFB -> Right Running
-      | RaftMemberStateFB.FailedFB  -> Right Failed
+      | MemberStatusFB.JoiningFB -> Right Joining
+      | MemberStatusFB.RunningFB -> Right Running
+      | MemberStatusFB.FailedFB  -> Right Failed
       | x ->
-        sprintf "Could not parse RaftMemberState: %A" x
-        |> Error.asParseError "RaftMemberState.FromFB"
+        sprintf "Could not parse MemberStatus: %A" x
+        |> Error.asParseError "MemberStatus.FromFB"
         |> Either.fail
     #endif
 
@@ -94,18 +94,87 @@ type RaftMemberYaml() =
   [<DefaultValue>] val mutable IpAddress:        string
   [<DefaultValue>] val mutable MulticastAddress: string
   [<DefaultValue>] val mutable MulticastPort:    uint16
+  [<DefaultValue>] val mutable HttpPort:         uint16
   [<DefaultValue>] val mutable RaftPort:         uint16
-  [<DefaultValue>] val mutable WebPort:          uint16
   [<DefaultValue>] val mutable WsPort:           uint16
   [<DefaultValue>] val mutable GitPort:          uint16
   [<DefaultValue>] val mutable ApiPort:          uint16
   [<DefaultValue>] val mutable State:            string
+  [<DefaultValue>] val mutable Status:           string
   [<DefaultValue>] val mutable NextIndex:        Index
   [<DefaultValue>] val mutable MatchIndex:       Index
   [<DefaultValue>] val mutable Voting:           bool
   [<DefaultValue>] val mutable VotedForMe:       bool
 
 #endif
+
+// * MemberSate
+
+/// Raft Member State
+///
+/// ## States
+///  - `Follower` - this Member is currently following a different Leader
+///  - `Candiate` - this Member currently seeks to become Leader
+///  - `Leader`   - this Member currently is Leader of the cluster
+type MemberState =
+  | Follower
+  | Candidate
+  | Leader
+
+  // ** ToString
+
+  override self.ToString() =
+    match self with
+    | Follower -> "Follower"
+    | Candidate -> "Candiate"
+    | Leader -> "Leader"
+
+  // ** Parse
+
+  static member Parse str =
+    match str with
+    | "Follower"  -> Follower
+    | "Candidate" -> Candidate
+    | "Leader"    -> Leader
+    | _           -> failwithf "unable to parse %A as RaftState" str
+
+  // ** TryParse
+
+  static member TryParse str =
+    try
+      MemberState.Parse str
+      |> Either.succeed
+    with exn ->
+      exn.Message
+      |> Error.asParseError "RaftState.TryParse"
+      |> Either.fail
+
+  // ** ToOffset
+
+  member self.ToOffset(_:FlatBufferBuilder) =
+    match self with
+    | Follower  -> MemberStateFB.FollowerFB
+    | Leader    -> MemberStateFB.LeaderFB
+    | Candidate -> MemberStateFB.CandidateFB
+
+  // ** FromFB
+
+  static member FromFB(fb: MemberStateFB) =
+    match fb with
+    #if FABLE_COMPILER
+    | x when x = MemberStateFB.FollowerFB  -> Right Follower
+    | x when x = MemberStateFB.LeaderFB    -> Right Leader
+    | x when x = MemberStateFB.CandidateFB -> Right Candidate
+    #else
+    | MemberStateFB.FollowerFB  -> Right Follower
+    | MemberStateFB.LeaderFB    -> Right Leader
+    | MemberStateFB.CandidateFB -> Right Candidate
+    #endif
+    | other ->
+      other
+      |> String.format "unknown raft state: {0}"
+      |> Error.asParseError "RaftState.FromFB"
+      |> Either.fail
 
 // * RaftMember
 
@@ -115,13 +184,15 @@ type RaftMember =
     IpAddress:        IpAddress
     MulticastAddress: IpAddress
     MulticastPort:    Port
+    HttpPort:         Port
     RaftPort:         Port
     WsPort:           Port
     GitPort:          Port
     ApiPort:          Port
     Voting:           bool
     VotedForMe:       bool
-    State:            RaftMemberState
+    State:            MemberState
+    Status:           MemberStatus
     NextIndex:        Index
     MatchIndex:       Index }
 
@@ -151,6 +222,10 @@ type RaftMember =
     (fun (mem:RaftMember) -> mem.RaftPort),
     (fun raftPort (mem:RaftMember) -> { mem with RaftPort = raftPort })
 
+  static member HttpPort_ =
+    (fun (mem:RaftMember) -> mem.HttpPort),
+    (fun httpPort (mem:RaftMember) -> { mem with HttpPort = httpPort })
+
   static member WsPort_ =
     (fun (mem:RaftMember) -> mem.WsPort),
     (fun wsPort (mem:RaftMember) -> { mem with WsPort = wsPort })
@@ -175,6 +250,10 @@ type RaftMember =
     (fun (mem:RaftMember) -> mem.State),
     (fun state (mem:RaftMember) -> { mem with State = state })
 
+  static member Status_ =
+    (fun (mem:RaftMember) -> mem.Status),
+    (fun status (mem:RaftMember) -> { mem with Status = status })
+
   static member NextIndex_ =
     (fun (mem:RaftMember) -> mem.NextIndex),
     (fun nextIndex (mem:RaftMember) -> { mem with NextIndex = nextIndex })
@@ -186,16 +265,17 @@ type RaftMember =
   // ** ToString
 
   override self.ToString() =
-    sprintf "%s on %s (%s:%d) (group:%s:%d) %s %s %s"
-      (string self.Id)
-      (string self.HostName)
-      (string self.IpAddress)
+    sprintf "%O (%O, %O) on %A (%O:%d) (group:%O:%d) (NextIdx: %A) (MatchId: %d)"
+      self.Id
+      self.HostName
+      self.State
+      self.Status
+      self.IpAddress
       self.RaftPort
-      (string self.MulticastAddress)
+      self.MulticastAddress
       self.MulticastPort
-      (string self.State)
-      (sprintf "(NxtIdx %A)" self.NextIndex)
-      (sprintf "(MtchIdx %A)" self.MatchIndex)
+      self.NextIndex
+      self.MatchIndex
 
   // ** ToYaml
 
@@ -214,11 +294,13 @@ type RaftMember =
     yaml.IpAddress        <- string self.IpAddress
     yaml.MulticastAddress <- string self.MulticastAddress
     yaml.MulticastPort    <- unwrap self.MulticastPort
+    yaml.HttpPort         <- unwrap self.HttpPort
     yaml.RaftPort         <- unwrap self.RaftPort
     yaml.WsPort           <- unwrap self.WsPort
     yaml.GitPort          <- unwrap self.GitPort
     yaml.ApiPort          <- unwrap self.ApiPort
     yaml.State            <- string self.State
+    yaml.Status           <- string self.Status
     yaml.NextIndex        <- self.NextIndex
     yaml.MatchIndex       <- self.MatchIndex
     yaml.Voting           <- self.Voting
@@ -232,13 +314,15 @@ type RaftMember =
       let! id = IrisId.TryParse yaml.Id
       let! ip = IpAddress.TryParse yaml.IpAddress
       let! mcastip = IpAddress.TryParse yaml.MulticastAddress
-      let! state = RaftMemberState.TryParse yaml.State
+      let! state = MemberState.TryParse yaml.State
+      let! status = MemberStatus.TryParse yaml.Status
       return {
         Id               = id
         HostName         = name yaml.HostName
         MulticastAddress = mcastip
         MulticastPort    = port yaml.MulticastPort
         IpAddress        = ip
+        HttpPort         = port yaml.HttpPort
         RaftPort         = port yaml.RaftPort
         WsPort           = port yaml.WsPort
         GitPort          = port yaml.GitPort
@@ -248,6 +332,7 @@ type RaftMember =
         NextIndex        = yaml.NextIndex
         MatchIndex       = yaml.MatchIndex
         State            = state
+        Status           = status
       }
     }
 
@@ -267,7 +352,8 @@ type RaftMember =
       else
         unwrapped |> builder.CreateString |> Some
 
-    let state = mem.State.ToOffset()
+    let state = mem.State.ToOffset(builder)
+    let status = mem.Status.ToOffset()
 
     RaftMemberFB.StartRaftMemberFB(builder)
     RaftMemberFB.AddId(builder, id)
@@ -280,12 +366,14 @@ type RaftMember =
     RaftMemberFB.AddMulticastPort(builder, unwrap mem.MulticastPort)
     RaftMemberFB.AddIpAddress(builder, ip)
     RaftMemberFB.AddRaftPort(builder, unwrap mem.RaftPort)
+    RaftMemberFB.AddHttpPort(builder, unwrap mem.HttpPort)
     RaftMemberFB.AddWsPort(builder, unwrap mem.WsPort)
     RaftMemberFB.AddGitPort(builder, unwrap mem.GitPort)
     RaftMemberFB.AddApiPort(builder, unwrap mem.ApiPort)
     RaftMemberFB.AddVoting(builder, mem.Voting)
     RaftMemberFB.AddVotedForMe(builder, mem.VotedForMe)
     RaftMemberFB.AddState(builder, state)
+    RaftMemberFB.AddStatus(builder, status)
     RaftMemberFB.AddNextIndex(builder, int mem.NextIndex)
     RaftMemberFB.AddMatchIndex(builder, int mem.MatchIndex)
     RaftMemberFB.EndRaftMemberFB(builder)
@@ -295,16 +383,19 @@ type RaftMember =
   static member FromFB (fb: RaftMemberFB) : Either<IrisError, RaftMember> =
     either {
       let! id = Id.decodeId fb
-      let! state = RaftMemberState.FromFB fb.State
+      let! state = MemberState.FromFB fb.State
+      let! status = MemberStatus.FromFB fb.Status
       let! ip = IpAddress.TryParse fb.IpAddress
       let! mcastip = IpAddress.TryParse fb.MulticastAddress
       return {
         Id               = id
         State            = state
+        Status           = status
         HostName         = name fb.HostName
         IpAddress        = ip
         MulticastAddress = mcastip
         MulticastPort    = port fb.MulticastPort
+        HttpPort         = port fb.HttpPort
         RaftPort         = port fb.RaftPort
         WsPort           = port fb.WsPort
         GitPort          = port fb.GitPort
@@ -471,11 +562,13 @@ module Member =
   let multicastAddress = Optic.get RaftMember.MulticastAddress_
   let multicastPort = Optic.get RaftMember.MulticastPort_
   let raftPort = Optic.get RaftMember.RaftPort_
+  let httpPort = Optic.get RaftMember.HttpPort_
   let wsPort = Optic.get RaftMember.WsPort_
   let gitPort = Optic.get RaftMember.GitPort_
   let apiPort = Optic.get RaftMember.ApiPort_
   let voting = Optic.get RaftMember.Voting_
   let votedForMe = Optic.get RaftMember.VotedForMe_
+  let status = Optic.get RaftMember.Status_
   let state = Optic.get RaftMember.State_
   let nextIndex = Optic.get RaftMember.NextIndex_
   let matchIndex = Optic.get RaftMember.MatchIndex_
@@ -488,11 +581,13 @@ module Member =
   let setMulticastAddress = Optic.set RaftMember.MulticastAddress_
   let setMulticastPort = Optic.set RaftMember.MulticastPort_
   let setRaftPort = Optic.set RaftMember.RaftPort_
+  let setHttpPort = Optic.set RaftMember.HttpPort_
   let setWsPort = Optic.set RaftMember.WsPort_
   let setGitPort = Optic.set RaftMember.GitPort_
   let setApiPort = Optic.set RaftMember.ApiPort_
   let setVoting = Optic.set RaftMember.Voting_
   let setVotedForMe = Optic.set RaftMember.VotedForMe_
+  let setStatus = Optic.set RaftMember.Status_
   let setState = Optic.set RaftMember.State_
   let setNextIndex = Optic.set RaftMember.NextIndex_
   let setMatchIndex = Optic.set RaftMember.MatchIndex_
@@ -510,11 +605,13 @@ module Member =
       IpAddress        = IPv4Address "127.0.0.1"
       MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
       MulticastPort    = Measure.port Constants.DEFAULT_MCAST_PORT
+      HttpPort         = Measure.port Constants.DEFAULT_HTTP_PORT
       RaftPort         = Measure.port Constants.DEFAULT_RAFT_PORT
       WsPort           = Measure.port Constants.DEFAULT_WEB_SOCKET_PORT
       GitPort          = Measure.port Constants.DEFAULT_GIT_PORT
       ApiPort          = Measure.port Constants.DEFAULT_API_PORT
-      State            = Running
+      Status           = Running
+      State            = Follower
       Voting           = true
       VotedForMe       = false
       NextIndex        = index 1
@@ -523,7 +620,7 @@ module Member =
   // ** isVoting
 
   let isVoting (mem : RaftMember) : bool =
-    match mem.State, mem.Voting with
+    match mem.Status, mem.Voting with
     | Running, true -> true
     | _ -> false
 
@@ -535,13 +632,13 @@ module Member =
 
   let setHasSufficientLogs mem =
     { mem with
-        State = Running
+        Status = Running
         Voting = true }
 
   // ** hasSufficientLogs
 
   let hasSufficientLogs mem =
-    mem.State = Running
+    mem.Status = Running
 
   // ** canVote
 

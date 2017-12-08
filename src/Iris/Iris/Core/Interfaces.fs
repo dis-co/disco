@@ -55,26 +55,20 @@ module DispatchStrategy =
 // * DiscoveryEvent
 
 type DiscoveryEvent =
-  | Status       of ServiceStatus
-  | Registering  of DiscoverableService
-  | UnRegistered of DiscoverableService
-  | Registered   of DiscoverableService
-  | Appeared     of DiscoveredService
-  | Updated      of DiscoveredService
-  | Vanished     of DiscoveredService
+  | Status   of ServiceStatus
+  | Appeared of DiscoveredService
+  | Updated  of DiscoveredService
+  | Vanished of DiscoveredService
 
   // ** DispatchStrategy
 
   member ev.DispatchStrategy
     with get () =
       match ev with
-      | Status       _ -> Process
-      | Registering  _
-      | Registered   _
-      | UnRegistered _ -> Ignore
-      | Appeared     _
-      | Updated      _
-      | Vanished     _ -> Replicate
+      | Status   _ -> Process
+      | Appeared _
+      | Updated  _
+      | Vanished _ -> Replicate
 
 // * ClockEvent
 
@@ -101,7 +95,7 @@ type IrisEvent =
   | ConfigurationDone   of members:RaftMember array
   | EnterJointConsensus of changes:ConfigChange array
   | LeaderChanged       of leader:MemberId option
-  | StateChanged        of oldstate:RaftState * newstate:RaftState
+  | StateChanged        of oldstate:MemberState * newstate:MemberState
   | PersistSnapshot     of log:RaftLogEntry
   | RaftError           of error:IrisError
   | Status              of ServiceStatus
@@ -450,7 +444,7 @@ type IrisEvent =
       | Append (Origin.Client  _, RemoveDiscoveredService _) -> Ignore
       | Append (Origin.Service _, AddDiscoveredService    _)
       | Append (Origin.Service _, UpdateDiscoveredService _)
-      | Append (Origin.Service _, RemoveDiscoveredService _) -> Publish
+      | Append (Origin.Service _, RemoveDiscoveredService _) -> Replicate
 
       //   ____ _            _
       //  / ___| | ___   ___| | __

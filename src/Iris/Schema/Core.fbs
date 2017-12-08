@@ -593,10 +593,16 @@ table SessionFB {
 // |  _ < (_| |  _| |_| |  | |  __/ | | | | | |_) |  __/ |
 // |_| \_\__,_|_|  \__|_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
-enum RaftMemberStateFB:ubyte {
+enum MemberStatusFB:ubyte {
      JoiningFB = 0,
      RunningFB = 1,
      FailedFB  = 2
+}
+
+enum MemberStateFB:ubyte {
+     LeaderFB = 0,
+     CandidateFB = 1,
+     FollowerFB = 2
 }
 
 table RaftMemberFB {
@@ -605,13 +611,15 @@ table RaftMemberFB {
       IpAddress:        string;       
       MulticastAddress: string;
       MulticastPort:    ushort;   
+      HttpPort:         ushort;        
       RaftPort:         ushort;        
       WsPort:           ushort;          
       GitPort:          ushort;         
       ApiPort:          ushort;         
       Voting:           bool;            
       VotedForMe:       bool;        
-      State:            RaftMemberStateFB;
+      State:            MemberStateFB;
+      Status:           MemberStatusFB;
       NextIndex:        int;          
       MatchIndex:       int;         
 }

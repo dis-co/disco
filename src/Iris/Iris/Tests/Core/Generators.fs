@@ -175,9 +175,19 @@ module Generators =
   // |  _ < (_| |  _| |_ ___) | || (_| | ||  __/
   // |_| \_\__,_|_|  \__|____/ \__\__,_|\__\___|
 
-  let raftStateGen = Gen.oneof [ Gen.constant Joining
-                                 Gen.constant Running
-                                 Gen.constant Failed ]
+  let memberStatusGen =
+    Gen.oneof [
+      Gen.constant Joining
+      Gen.constant Running
+      Gen.constant Failed
+    ]
+
+  let raftStateGen =
+    Gen.oneof [
+      Gen.constant Leader
+      Gen.constant Follower
+      Gen.constant Candidate
+    ]
 
   //  ____        __ _   __  __                _
   // |  _ \ __ _ / _| |_|  \/  | ___ _ __ ___ | |__   ___ _ __
@@ -192,29 +202,34 @@ module Generators =
       let! p = portGen
       let! wp = portGen
       let! ap = portGen
+      let! hp = portGen
       let! gp = portGen
       let! mcst = ipGen
       let! mp = portGen
       let! voting = boolGen
       let! vfm = boolGen
       let! state = raftStateGen
+      let! status = memberStatusGen
       let! nidx = indexGen
       let! midx = indexGen
-      return
-        { Id         = id
-          HostName   = n
-          IpAddress  = ip
-          MulticastAddress = mcst
-          MulticastPort = mp
-          RaftPort   = p
-          WsPort     = wp
-          GitPort    = gp
-          ApiPort    = ap
-          Voting     = voting
-          VotedForMe = vfm
-          State      = state
-          NextIndex  = nidx
-          MatchIndex = midx }
+      return {
+        Id               = id
+        HostName         = n
+        IpAddress        = ip
+        MulticastAddress = mcst
+        MulticastPort    = mp
+        RaftPort         = p
+        HttpPort         = hp
+        WsPort           = wp
+        GitPort          = gp
+        ApiPort          = ap
+        Voting           = voting
+        VotedForMe       = vfm
+        State            = state
+        Status           = status
+        NextIndex        = nidx
+        MatchIndex       = midx
+      }
     }
 
   let raftMemArr = Gen.arrayOfLength 2 raftMemberGen

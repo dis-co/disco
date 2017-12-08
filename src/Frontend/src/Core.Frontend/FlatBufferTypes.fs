@@ -1327,26 +1327,41 @@ type CueListFBConstructor =
 
 let CueListFB : CueListFBConstructor = failwith "JS only"
 
-//  _   _           _      ____  _        _       _____ ____
-// | \ | | ___   __| | ___/ ___|| |_ __ _| |_ ___|  ___| __ )
-// |  \| |/ _ \ / _` |/ _ \___ \| __/ _` | __/ _ \ |_  |  _ \
-// | |\  | (_) | (_| |  __/___) | || (_| | ||  __/  _| | |_) |
-// |_| \_|\___/ \__,_|\___|____/ \__\__,_|\__\___|_|   |____/
+///  __  __                _               ____  _        _
+/// |  \/  | ___ _ __ ___ | |__   ___ _ __/ ___|| |_ __ _| |_ _   _ ___
+/// | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__\___ \| __/ _` | __| | | / __|
+/// | |  | |  __/ | | | | | |_) |  __/ |   ___) | || (_| | |_| |_| \__ \
+/// |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |____/ \__\__,_|\__|\__,_|___/
 
-type RaftMemberStateFB = int
+type MemberStatusFB = int
 
-type RaftMemberStateFBConstructor =
-  abstract JoiningFB: RaftMemberStateFB
-  abstract RunningFB: RaftMemberStateFB
-  abstract FailedFB: RaftMemberStateFB
+type MemberStatusFBConstructor =
+  abstract JoiningFB: MemberStatusFB
+  abstract RunningFB: MemberStatusFB
+  abstract FailedFB: MemberStatusFB
 
-let RaftMemberStateFB: RaftMemberStateFBConstructor = failwith "JS only"
+let MemberStatusFB: MemberStatusFBConstructor = failwith "JS only"
 
-//  _   _           _
-// | \ | | ___   __| | ___
-// |  \| |/ _ \ / _` |/ _ \
-// | |\  | (_) | (_| |  __/
-// |_| \_|\___/ \__,_|\___|
+///  __  __                _               ____  _        _       _____ ____
+/// |  \/  | ___ _ __ ___ | |__   ___ _ __/ ___|| |_ __ _| |_ ___|  ___| __ )
+/// | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__\___ \| __/ _` | __/ _ \ |_  |  _ \
+/// | |  | |  __/ | | | | | |_) |  __/ |   ___) | || (_| | ||  __/  _| | |_) |
+/// |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |____/ \__\__,_|\__\___|_|   |____/
+
+type MemberStateFB = int
+
+type MemberStateFBConstructor =
+  abstract FollowerFB: MemberStateFB
+  abstract LeaderFB: MemberStateFB
+  abstract CandidateFB: MemberStateFB
+
+let MemberStateFB: MemberStateFBConstructor = failwith "JS only"
+
+///  ____        __ _   __  __                _
+/// |  _ \ __ _ / _| |_|  \/  | ___ _ __ ___ | |__   ___ _ __
+/// | |_) / _` | |_| __| |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+/// |  _ < (_| |  _| |_| |  | |  __/ | | | | | |_) |  __/ |
+/// |_| \_\__,_|_|  \__|_|  |_|\___|_| |_| |_|_.__/ \___|_|
 
 type RaftMemberFB =
   abstract Id: int -> byte
@@ -1356,13 +1371,14 @@ type RaftMemberFB =
   abstract MulticastAddress: string
   abstract MulticastPort: uint16
   abstract RaftPort: uint16
-  abstract WebPort: uint16
+  abstract HttpPort: uint16
   abstract WsPort: uint16
   abstract GitPort: uint16
   abstract ApiPort: uint16
   abstract Voting: bool
   abstract VotedForMe: bool
-  abstract State: RaftMemberStateFB
+  abstract State: MemberStateFB
+  abstract Status: MemberStatusFB
   abstract NextIndex: int
   abstract MatchIndex: int
 
@@ -1375,13 +1391,14 @@ type RaftMemberFBConstructor =
   abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
   abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddRaftPort: builder: FlatBufferBuilder * port: uint16 -> unit
-  abstract AddWebPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddHttpPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddGitPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddApiPort: builder: FlatBufferBuilder * port: uint16 -> unit
   abstract AddVoting: builder: FlatBufferBuilder * voting: bool -> unit
   abstract AddVotedForMe: builder: FlatBufferBuilder * votedforme: bool -> unit
-  abstract AddState: builder: FlatBufferBuilder * state: RaftMemberStateFB -> unit
+  abstract AddState: builder: FlatBufferBuilder * state: MemberStateFB -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * state: MemberStatusFB -> unit
   abstract AddNextIndex: builder: FlatBufferBuilder * idx: int -> unit
   abstract AddMatchIndex: builder: FlatBufferBuilder * idx: int -> unit
   abstract EndRaftMemberFB: builder: FlatBufferBuilder -> Offset<RaftMemberFB>

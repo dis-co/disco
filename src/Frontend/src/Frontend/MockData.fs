@@ -7,6 +7,7 @@ open Fable.Import
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Iris.Core
+open Iris.Raft
 
 let loremIpsum =
   [|"Lorem ipsum dolor sit amet"
@@ -102,7 +103,7 @@ let machines =
       BindAddress      = IPv4Address "127.0.0.1"
       MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
       MulticastPort    = port Constants.DEFAULT_MCAST_PORT
-      WebPort          = port Constants.DEFAULT_WEB_PORT
+      WebPort          = port Constants.DEFAULT_HTTP_PORT
       RaftPort         = port Constants.DEFAULT_RAFT_PORT
       WsPort           = port Constants.DEFAULT_WEB_SOCKET_PORT
       GitPort          = port Constants.DEFAULT_GIT_PORT
@@ -190,11 +191,20 @@ let trees =
   |> Seq.map (fun machine -> machine.MachineId, makeTree machine)
   |> Map.ofSeq
 
+let rndState() =
+  match rnd.Next(0,3) with
+  | 0 -> MemberStatus.Running
+  | 1 -> MemberStatus.Failed
+  | _ -> MemberStatus.Joining
+
 let project =
     let members =
       List.map
         (fun (machine: IrisMachine) ->
-          let mem = { Iris.Raft.Member.create machine.MachineId with HostName = machine.HostName }
+          let mem =
+            { Iris.Raft.Member.create machine.MachineId with
+                HostName = machine.HostName
+                Status = rndState() }
           (mem.Id, mem))
         machines
       |> Map.ofList

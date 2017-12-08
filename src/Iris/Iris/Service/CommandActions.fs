@@ -9,6 +9,7 @@ open Iris.Core.Commands
 open Iris.Core.FileSystem
 open Iris.Service.Interfaces
 open Iris.Service.Persistence
+open LibGit2Sharp
 open System.Collections.Concurrent
 
 // * Channel
@@ -217,15 +218,19 @@ let cloneProject (name: Name) (uri: Url) =
 ///      -XPOST \
 ///      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
 ///      http://localhost:7000/api/command
-let pullProject (id: ProjectId) (name: Name) (uri: Url) = either {
+let pullProject (id: string) (name: Name) (uri: Url) = either {
     let machine = MachineConfig.get()
     let target = machine.WorkSpace </> filepath (unwrap name)
-    let! repo = Git.Repo.repository target
+    use! repo = Git.Repo.repository target
+    let branch = Git.Branch.current repo
 
-    let! _ =
-      match Git.Config.tryFindRemote repo (string id) with
+    let! remote =
+      match Git.Config.tryFindRemote repo id with
       | Some remote -> Git.Config.updateRemote repo remote uri
-      | None -> Git.Config.addRemote repo (string id) uri
+      | None -> Git.Config.addRemote repo id uri
+
+    do! Git.Branch.setTracked repo branch remote
+    do! Git.Repo.reset ResetMode.Hard repo
 
     let! result = Git.Repo.pull repo User.Admin.Signature
 

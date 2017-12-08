@@ -700,7 +700,7 @@ module Git =
 
     let stage (repo: Repository) (path: FilePath) =
       try
-        if Path.isPathRooted path then
+        if Path.isPathRooted path && not (repo.Ignore.IsPathIgnored (unwrap path))then
           runGit repo.Info.WorkingDirectory "stage" "." ""
           |> Either.ignore
         else
@@ -718,8 +718,9 @@ module Git =
 
     let stageAll (repo: Repository)  =
       let _stage (ety: StatusEntry) =
-        parentPath repo </> filepath ety.FilePath
-        |> Path.map (fun path -> Commands.Stage(repo, path))
+        if not (repo.Ignore.IsPathIgnored ety.FilePath) then
+          parentPath repo </> filepath ety.FilePath
+          |> Path.map (fun path -> Commands.Stage(repo, path))
       try
         repo.RetrieveStatus()
         |> Seq.iter _stage
@@ -877,11 +878,11 @@ module Git =
             let fopts = FetchOptions()
             let popts = PullOptions()
             let mopts = MergeOptions()
+            mopts.MergeFileFavor <- MergeFileFavor.Theirs
             mopts.FastForwardStrategy <- FastForwardStrategy()
             popts.FetchOptions <- fopts
             popts.MergeOptions <- mopts
             popts
-
           return Commands.Pull(repo, signature, options)
         }
       with

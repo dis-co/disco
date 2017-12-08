@@ -7,7 +7,7 @@ export default class AddMember extends React.Component {
         ipAddr: "",
         ipAddrError: "Required",
         httpPort: 0,
-        httpPortError: "Required",
+        httpPortError: "Required"
       };
   }
 

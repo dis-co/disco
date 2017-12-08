@@ -41,12 +41,12 @@ module DiscoveryService =
       Machine: IrisMachine
       Browser: ServiceBrowser
       Subscriptions: Subscriptions
-      RegisteredServices: Map<ServiceId,RegisterService>
+      RegisterService: RegisterService option
       ResolvedServices: Map<ServiceId,DiscoveredService> }
 
     interface IDisposable with
       member self.Dispose() =
-        Map.iter (fun _ service -> dispose service) self.RegisteredServices
+        Option.iter dispose self.RegisterService
         dispose self.Browser
         self.Subscriptions.Clear()
 
@@ -57,8 +57,8 @@ module DiscoveryService =
     | Start
     | Stop        of AutoResetEvent
     | Notify      of DiscoveryEvent
-    | Register    of srvc:DiscoverableService
-    | UnRegister  of srvc:DiscoverableService
+    | Register    of project:IrisProject
+    | UnRegister
     | RegisterErr of err:string * srvc:DiscoverableService
     | Discovered  of srvc:DiscoveredService
     | Vanished    of id:ServiceId
@@ -113,24 +113,27 @@ module DiscoveryService =
   // ** serviceRegistered
 
   let private serviceRegistered (agent: DiscoveryAgent)
-                                (disco: DiscoverableService)
+                                discoverable
                                 (args: RegisterServiceEventArgs) =
     match args.ServiceError with
-    | ServiceErrorCode.None ->
-      disco |> DiscoveryEvent.Registered |> Msg.Notify |> agent.Post
+    | ServiceErrorCode.None -> ()
     | ServiceErrorCode.NameConflict ->
-      let err = sprintf "Error: Name-Collision! '%s' is already registered" args.Service.Name
-      agent.Post(Msg.RegisterErr(err,disco))
+      args.Service.Name
+      |> sprintf "name collision: '%s' is already registered"
+      |> fun err -> Msg.RegisterErr(err,discoverable)
+      |> agent.Post
     | x ->
-      let err = sprintf "Error (%A) registering name = '%s'" x args.Service.Name
-      agent.Post(Msg.RegisterErr(err,disco))
+      args.Service.Name
+      |> sprintf "Error (%A) registering name = '%s'" x
+      |> fun err -> Msg.RegisterErr(err,discoverable)
+      |> agent.Post
 
   // ** registerService
 
-  let private registerService (agent: DiscoveryAgent) (disco: DiscoverableService) =
+  let private registerService (agent: DiscoveryAgent) discoverable =
     try
-      let service = Discovery.toDiscoverableService disco
-      service.Response.Add(serviceRegistered agent disco)
+      let service = Discovery.toDiscoverableService discoverable
+      service.Response.Add(serviceRegistered agent discoverable)
       service.Register()
       Either.succeed service
     with | exn ->
@@ -175,61 +178,66 @@ module DiscoveryService =
   let private handleStart (state: DiscoveryState) (agent: DiscoveryAgent) =
     let status = ServiceStatus.Running
     status |> DiscoveryEvent.Status |> Msg.Notify |> agent.Post
+    agent.Post Msg.UnRegister
     { state with Status = status }
 
   // ** handleRegister
 
-  let private handleRegister (state: DiscoveryState)
-                             (agent: DiscoveryAgent)
-                             (srvc: DiscoverableService) =
-    match Map.tryFind srvc.Id state.RegisteredServices with
-    | Some registered ->
-      dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
-      match registerService agent srvc with
-      | Right service ->
-        srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
-        { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }
-      | Left error ->
-        error
-        |> sprintf "error registering new service: %O"
-        |> Logger.err (tag "handleRegister")
-        state
-    | None ->
-      match registerService agent srvc with
-      | Right service ->
-        srvc |> DiscoveryEvent.Registering |> Msg.Notify |> agent.Post
-        { state with RegisteredServices = Map.add srvc.Id service state.RegisteredServices }
-      | Left error ->
-        error
-        |> sprintf "error registering new service: %O"
-        |> Logger.err (tag "handleRegister")
-        state
+  let private handleRegister state agent project =
+    Option.iter dispose state.RegisterService
+    let machine = state.Machine
+    let discoverable =
+      { Id = state.Machine.MachineId
+        WebPort = state.Machine.WebPort
+        Status = Busy(Project.id project, Project.name project)
+        Services =
+          [| { ServiceType = ServiceType.Api;       Port = machine.ApiPort  }
+             { ServiceType = ServiceType.Git;       Port = machine.GitPort  }
+             { ServiceType = ServiceType.Raft;      Port = machine.RaftPort }
+             { ServiceType = ServiceType.Http;      Port = machine.WebPort  }
+             { ServiceType = ServiceType.WebSocket; Port = machine.WsPort   } |]
+        ExtraMetadata = Array.empty }
+    match registerService agent discoverable with
+    | Right service -> { state with RegisterService = Some service }
+    | Left error ->
+      error
+      |> sprintf "error registering busy service: %O"
+      |> Logger.err (tag "handleRegister")
+      state
 
   // ** handleUnRegister
 
-  let private handleUnRegister (state: DiscoveryState)
-                               (agent: DiscoveryAgent)
-                               (srvc: DiscoverableService) =
-    match Map.tryFind srvc.Id state.RegisteredServices with
-    | None -> state
-    | Some registered ->
-      dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
-      { state with RegisteredServices = Map.remove srvc.Id state.RegisteredServices }
+  let private handleUnRegister (state: DiscoveryState) (agent: DiscoveryAgent) =
+    Option.iter dispose state.RegisterService
+    let machine = state.Machine
+    let discoverable =
+      { Id = state.Machine.MachineId
+        WebPort = state.Machine.WebPort
+        Status = Idle
+        Services =
+          [| { ServiceType = ServiceType.Api;       Port = machine.ApiPort  }
+             { ServiceType = ServiceType.Git;       Port = machine.GitPort  }
+             { ServiceType = ServiceType.Raft;      Port = machine.RaftPort }
+             { ServiceType = ServiceType.Http;      Port = machine.WebPort  }
+             { ServiceType = ServiceType.WebSocket; Port = machine.WsPort   } |]
+        ExtraMetadata = Array.empty }
+    match registerService agent discoverable with
+    | Right service -> { state with RegisterService = Some service }
+    | Left error ->
+      error
+      |> sprintf "error registering idle service: %O"
+      |> Logger.err (tag "handleUnRegister")
+      state
 
   // ** handleRegisterErr
 
-  let private handleRegisterErr (state: DiscoveryState)
-                                (agent: DiscoveryAgent)
-                                (_: string)
-                                (srvc: DiscoverableService) =
-    match Map.tryFind srvc.Id state.RegisteredServices with
+  let private handleRegisterErr state (error: string) =
+    Logger.err (tag "handleRegisterErr") error
+    match state.RegisterService with
     | None -> state
     | Some registered ->
       dispose registered
-      srvc |> DiscoveryEvent.UnRegistered |> Msg.Notify |> agent.Post
-      { state with RegisteredServices = Map.remove srvc.Id state.RegisteredServices }
+      { state with RegisterService = None }
 
   // ** handleDiscovery
 
@@ -263,11 +271,11 @@ module DiscoveryService =
         let state = store.State
         let newstate =
           match msg with
-          | Msg.Stop            are    -> handleStop        state inbox are
+          | Msg.Stop              are  -> handleStop        state inbox are
           | Msg.Start                  -> handleStart       state inbox
-          | Msg.Register       srvc    -> handleRegister    state inbox srvc
-          | Msg.UnRegister       srvc  -> handleUnRegister  state inbox srvc
-          | Msg.RegisterErr (err,srvc) -> handleRegisterErr state inbox err  srvc
+          | Msg.Register      project  -> handleRegister    state inbox project
+          | Msg.UnRegister             -> handleUnRegister  state inbox
+          | Msg.RegisterErr (error,_)  -> handleRegisterErr state error
           | Msg.Discovered srvc        -> handleDiscovery   state inbox srvc
           | Msg.Vanished id            -> handleVanishing   state inbox id
           | Msg.Notify ev              -> handleNotify      state       ev
@@ -279,6 +287,20 @@ module DiscoveryService =
       }
     act ()
 
+  // ** startBrowser
+
+  let private startBrowser (browser:ServiceBrowser) =
+    browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
+
+  // ** periodically
+
+  let rec private periodically (store:IAgentStore<DiscoveryState>) =
+    async {
+      do! Async.Sleep 5000
+      do startBrowser store.State.Browser
+      return! periodically store
+    }
+
   // ** create
 
   let create (config: IrisMachine) =
@@ -289,7 +311,7 @@ module DiscoveryService =
       Machine = config
       Browser = Unchecked.defaultof<ServiceBrowser>
       Subscriptions = Subscriptions()
-      RegisteredServices = Map.empty
+      RegisterService = None
       ResolvedServices = Map.empty
     }
 
@@ -297,13 +319,16 @@ module DiscoveryService =
 
     let agent = DiscoveryAgent.Start(loop store, source.Token)
 
+    Async.Start(periodically store, source.Token)
+
     { new IDiscoveryService with
         member self.Start() = either {
             let! browser = makeBrowser agent
             store.Update { state with Browser = browser }
 
             do! try
-                  browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
+                  browser
+                  |> startBrowser
                   |> Either.succeed
                 with
                   | exn ->
@@ -322,16 +347,16 @@ module DiscoveryService =
           }
 
         member self.Services
-          with get () = store.State.RegisteredServices, store.State.ResolvedServices
+          with get () = store.State.ResolvedServices
 
         member self.Subscribe (callback: DiscoveryEvent -> unit) =
           Observable.subscribe callback store.State.Subscriptions
 
-        member self.Register (service: DiscoverableService) =
-          service |> Msg.Register |> agent.Post
-          { new IDisposable with
-              member self.Dispose () =
-                service |> Msg.UnRegister |> agent.Post }
+        member self.Register (project:IrisProject) =
+          project |> Msg.Register |> agent.Post
+
+        member self.UnRegister () =
+          Msg.UnRegister |> agent.Post
 
         member self.Dispose() =
           if not (Service.isDisposed store.State.Status) then

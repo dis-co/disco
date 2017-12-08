@@ -1,4 +1,4 @@
-namespace Iris.Raft
+namespace rec Iris.Raft
 
 // * Imports
 open System
@@ -12,31 +12,6 @@ open FlatBuffers
 open SharpYaml.Serialization
 
 #endif
-
-// * RaftSate
-
-/// The Raft state machine
-///
-/// ## States
-///  - `Follower` - this Member is currently following a different Leader
-///  - `Candiate` - this Member currently seeks to become Leader
-///  - `Leader`   - this Member currently is Leader of the cluster
-type RaftState =
-  | Follower
-  | Candidate
-  | Leader
-
-  // ** ToString
-  override self.ToString() =
-    sprintf "%A" self
-
-  // ** Parse
-  static member Parse str =
-    match str with
-    | "Follower"  -> Follower
-    | "Candidate" -> Candidate
-    | "Leader"    -> Leader
-    | _           -> failwithf "unable to parse %A as RaftState" str
 
 // * EntryResponse
 
@@ -235,6 +210,28 @@ type AppendEntries =
     LeaderCommit : Index
     Entries      : RaftLogEntry option }
 
+  // ** optics
+
+  static member Term_ =
+    (fun (ae:AppendEntries) -> ae.Term),
+    (fun term (ae:AppendEntries) -> { ae with Term = term })
+
+  static member PrevLogIdx_ =
+    (fun (ae:AppendEntries) -> ae.PrevLogIdx),
+    (fun prevLogIdx (ae:AppendEntries) -> { ae with PrevLogIdx = prevLogIdx })
+
+  static member PrevLogTerm_ =
+    (fun (ae:AppendEntries) -> ae.PrevLogTerm),
+    (fun prevLogTerm (ae:AppendEntries) -> { ae with PrevLogTerm = prevLogTerm })
+
+  static member LeaderCommit_ =
+    (fun (ae:AppendEntries) -> ae.LeaderCommit),
+    (fun leaderCommit (ae:AppendEntries) -> { ae with LeaderCommit = leaderCommit })
+
+  static member Entries_ =
+    (fun (ae:AppendEntries) -> ae.Entries),
+    (fun entries (ae:AppendEntries) -> { ae with Entries = entries })
+
   // ** FromFB
   static member FromFB (fb: AppendEntriesFB) : Either<IrisError,AppendEntries> =
     either {
@@ -301,6 +298,24 @@ type AppendResponse =
     CurrentIndex : Index
     FirstIndex   : Index }
 
+  // ** optics
+
+  static member Term_ =
+    (fun (ar:AppendResponse) -> ar.Term),
+    (fun term (ar:AppendResponse) -> { ar with Term = term })
+
+  static member Success_ =
+    (fun (ar:AppendResponse) -> ar.Success),
+    (fun success (ar:AppendResponse) -> { ar with Success = success })
+
+  static member CurrentIndex_ =
+    (fun (ar:AppendResponse) -> ar.CurrentIndex),
+    (fun currentIndex (ar:AppendResponse) -> { ar with CurrentIndex = currentIndex })
+
+  static member FirstIndex_ =
+    (fun (ar:AppendResponse) -> ar.FirstIndex),
+    (fun firstIndex (ar:AppendResponse) -> { ar with FirstIndex = firstIndex })
+
   // ** FromFB
   static member FromFB (fb: AppendResponseFB) : Either<IrisError,AppendResponse> =
     Right { Term         = term fb.Term
@@ -322,32 +337,58 @@ type AppendResponse =
 [<RequireQualifiedAccess>]
 module AppendRequest =
 
-  // ** term
-  let inline term ar = ar.Term
+  open Aether
 
-  // ** succeeded
-  let inline succeeded ar = ar.Success
+  // ** getters
 
-  // ** failed
-  let inline failed ar = not ar.Success
+  let term         = Optic.get AppendEntries.Term_
+  let prevLogIdx   = Optic.get AppendEntries.PrevLogIdx_
+  let prevLogTerm  = Optic.get AppendEntries.PrevLogTerm_
+  let leaderCommit = Optic.get AppendEntries.LeaderCommit_
+  let entries      = Optic.get AppendEntries.Entries_
 
-  // ** firstIndex
-  let inline firstIndex ar = ar.FirstIndex
+  // ** setters
 
-  // ** currentIndex
-  let inline currentIndex ar = ar.CurrentIndex
+  let setTerm         = Optic.set AppendEntries.Term_
+  let setPrevLogIdx   = Optic.set AppendEntries.PrevLogIdx_
+  let setPrevLogTerm  = Optic.set AppendEntries.PrevLogTerm_
+  let setLeaderCommit = Optic.set AppendEntries.LeaderCommit_
+  let setEntries      = Optic.set AppendEntries.Entries_
 
   // ** numEntries
+
   let inline numEntries ar =
     match ar.Entries with
       | Some entries -> LogEntry.depth entries
       | _            -> 0
 
-  // ** prevLogIndex
-  let inline prevLogIndex ae = ae.PrevLogIdx
+// * AppendResponse
 
-  // ** prevLogTerm
-  let inline prevLogTerm ae = ae.PrevLogTerm
+module AppendResponse =
+
+  open Aether
+
+  // ** getters
+
+  let term  = Optic.get AppendResponse.Term_
+  let success  = Optic.get AppendResponse.Success_
+  let currentIndex  = Optic.get AppendResponse.CurrentIndex_
+  let firstIndex  = Optic.get AppendResponse.FirstIndex_
+
+  // ** setters
+
+  let setTerm  = Optic.set AppendResponse.Term_
+  let setSuccess  = Optic.set AppendResponse.Success_
+  let setCurrentIndex  = Optic.set AppendResponse.CurrentIndex_
+  let setFirstIndex  = Optic.set AppendResponse.FirstIndex_
+
+  // ** succeeded
+
+  let succeeded = success
+
+  // ** failed
+
+  let failed = success >> not
 
 // * InstallSnapshot
 
@@ -359,13 +400,14 @@ module AppendRequest =
 //                                              |_|
 
 type InstallSnapshot =
-  { Term      : Term
-    LeaderId  : MemberId
-    LastIndex : Index
-    LastTerm  : Term
-    Data      : RaftLogEntry }
+  { Term:      Term
+    LeaderId:  MemberId
+    LastIndex: Index
+    LastTerm:  Term
+    Data:      RaftLogEntry }
 
   // ** ToOffset
+
   member self.ToOffset (builder: FlatBufferBuilder) =
     let data = InstallSnapshotFB.CreateDataVector(builder, self.Data.ToOffset(builder))
     let leaderid = InstallSnapshotFB.CreateLeaderIdVector(builder,self.LeaderId.ToByteArray())
@@ -378,6 +420,7 @@ type InstallSnapshot =
     InstallSnapshotFB.EndInstallSnapshotFB(builder)
 
   // ** FromFB
+
   static member FromFB (fb: InstallSnapshotFB) =
     either  {
       let! decoded =
@@ -439,7 +482,7 @@ type IRaftCallbacks =
 
   /// given the current state of Raft, prepare and return a snapshot value of
   /// current application state
-  abstract member PrepareSnapshot: current:RaftValue -> RaftLog option
+  abstract member PrepareSnapshot: current:RaftState -> RaftLog option
 
   /// perist the given Snapshot value to disk. For safety reasons this MUST
   /// flush all changes to disk.
@@ -467,7 +510,7 @@ type IRaftCallbacks =
   abstract member JointConsensus: changes:ConfigChange array  -> unit
 
   /// the state of Raft itself has changed from old state to new given state
-  abstract member StateChanged: oldstate:RaftState -> newstate:RaftState -> unit
+  abstract member StateChanged: oldstate:MemberState -> newstate:MemberState -> unit
 
   /// the leader node changed
   abstract member LeaderChanged: leader:MemberId option -> unit
@@ -488,9 +531,9 @@ type IRaftCallbacks =
   /// reasons this callback MUST flush the change to disk.
   abstract member DeleteLog: log:RaftLogEntry -> unit
 
-// * RaftValueYaml
+// * RaftStateYaml
 
-and RaftValueYaml() =
+type RaftStateYaml() =
   [<DefaultValue>] val mutable Member          : string
   [<DefaultValue>] val mutable Term            : Term
   [<DefaultValue>] val mutable Leader          : string
@@ -499,13 +542,13 @@ and RaftValueYaml() =
   [<DefaultValue>] val mutable RequestTimeout  : int
   [<DefaultValue>] val mutable MaxLogDepth     : int
 
-// * RaftValue
+// * RaftState
 
-and RaftValue =
+type RaftState =
   { /// this server's own RaftMember information
     Member            : RaftMember
     /// this server's current Raft state, i.e. follower, leader or candidate
-    State             : RaftState
+    State             : MemberState
     /// the server's current term, a monotonic counter for election cycles
     CurrentTerm       : Term
     /// tracks the current Leader Id, or None if there isn't currently a leader
@@ -537,6 +580,7 @@ and RaftValue =
     ConfigChangeEntry : RaftLogEntry option }
 
   // ** ToString
+
   override self.ToString() =
     sprintf "Member              = %s
 State             = %A
@@ -569,6 +613,7 @@ ConfigChangeEntry = %s
        else Constants.EMPTY)
 
   // ** IsLeader
+
   member self.IsLeader
     with get () =
       match self.CurrentLeader with
@@ -580,7 +625,7 @@ ConfigChangeEntry = %s
   #if !FABLE_COMPILER && !IRIS_NODES
 
   member self.ToYaml() =
-    let yaml = RaftValueYaml()
+    let yaml = RaftStateYaml()
     yaml.Member <- string self.Member.Id
     yaml.Term <- self.CurrentTerm
 
@@ -601,7 +646,7 @@ ConfigChangeEntry = %s
 
   // ** FromYaml
 
-  static member FromYaml (yaml: RaftValueYaml) : Either<IrisError, RaftValue> =
+  static member FromYaml (yaml: RaftStateYaml) : Either<IrisError, RaftState> =
     either {
       let! id = IrisId.TryParse yaml.Member
 
@@ -637,19 +682,13 @@ ConfigChangeEntry = %s
 
   #endif
 
-// * State Monad
-
-////////////////////////////////////////
-//  __  __                       _    //
-// |  \/  | ___  _ __   __ _  __| |   //
-// | |\/| |/ _ \| '_ \ / _` |/ _` |   //
-// | |  | | (_) | | | | (_| | (_| |   //
-// |_|  |_|\___/|_| |_|\__,_|\__,_|   //
-////////////////////////////////////////
+// * RaftMonad
 
 [<NoComparison;NoEquality>]
 type RaftMonad<'Env,'State,'T,'Error> =
   MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
 
+// * RaftM
+
 type RaftM<'t,'err> =
-  RaftMonad<IRaftCallbacks, RaftValue, 't, 'err>
+  RaftMonad<IRaftCallbacks, RaftState, 't, 'err>

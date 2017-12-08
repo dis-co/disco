@@ -40,7 +40,7 @@ module RaftTestUtils =
       SendAppendEntries   : RaftMember         -> AppendEntries   -> unit
       SendInstallSnapshot : RaftMember         -> InstallSnapshot -> unit
       PersistSnapshot     : RaftLogEntry       -> unit
-      PrepareSnapshot     : RaftValue          -> RaftLog option
+      PrepareSnapshot     : RaftState          -> RaftLog option
       RetrieveSnapshot    : unit               -> RaftLogEntry option
       ApplyLog            : StateMachine       -> unit
       MemberAdded         : RaftMember         -> unit
@@ -48,7 +48,7 @@ module RaftTestUtils =
       MemberRemoved       : RaftMember         -> unit
       Configured          : RaftMember array   -> unit
       JointConsensus      : ConfigChange array -> unit
-      StateChanged        : RaftState          -> RaftState -> unit
+      StateChanged        : MemberState        -> MemberState -> unit
       LeaderChanged       : MemberId option    -> unit
       PersistVote         : RaftMember option  -> unit
       PersistTerm         : Term               -> unit

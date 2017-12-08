@@ -59,10 +59,11 @@ type IDispatcher<'t> =
 
 type IDiscoveryService =
   inherit IDisposable
-  abstract Services: Map<ServiceId,RegisterService> * Map<ServiceId,DiscoveredService>
+  abstract Services: Map<ServiceId,DiscoveredService>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
   abstract Start: unit -> Either<IrisError,unit>
-  abstract Register: service:DiscoverableService -> IDisposable
+  abstract Register: project:IrisProject -> unit
+  abstract UnRegister: unit -> unit
 
 // * IResolver
 
@@ -121,8 +122,8 @@ type IRaftServer =
   abstract Connections   : ConcurrentDictionary<PeerId,ITcpClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
-  abstract RaftState     : RaftState
-  abstract Raft          : RaftValue
+  abstract RaftState     : MemberState
+  abstract Raft          : RaftState
   // abstract JoinCluster   : IpAddress -> uint16 -> unit
   // abstract LeaveCluster  : unit -> unit
 
