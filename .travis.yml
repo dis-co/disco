@@ -6,7 +6,8 @@ script:
   - cd flatbuffers 
   - cmake -G "Unix Makefiles"
   - make
-  - ls -lah
+  - export PATH=$PWD:$PATH
+  - flatc --version
   - cd ..
   - ./build.sh BootStrap
   - ./build.sh Release
