@@ -50,7 +50,7 @@ let npmPath =
   then "/usr/bin/npm"
   elif File.Exists "/usr/local/bin/npm"
   then "/usr/local/bin/npm"
-  elif Environment.GetEnvironmentVariable("APPVEYOR_CI_BUILD") = "true"
+  elif Environment.GetEnvironmentVariable("APPVEYOR") = "True"
   then @"C:\Users\appveyor\AppData\Roamiug\npm\node_modules\npm\bin\npm.cmd"
   else "npm"
 

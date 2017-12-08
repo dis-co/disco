@@ -4,7 +4,6 @@ clone_script:
 - cmd: git clone --recursive -q --branch=%APPVEYOR_REPO_BRANCH% https://github.com/dis-co/disco.git C:\projects\disco
 environment:
   NODE_PATH: C:\Users\appveyor\AppData\Roaming\npm\node_modules
-  APPVEYOR_CI_BUILD: true
   DISCO_TRACING: false
 install:
 - ps: >-

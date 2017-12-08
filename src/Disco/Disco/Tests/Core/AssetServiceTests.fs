@@ -185,7 +185,7 @@ module AssetServiceTests =
     /// apparently, these tests only work on "real" file systems and always fail on networked ones,
     /// hence we disable them there for CI builds
     let tests =
-      if isNull (Environment.GetEnvironmentVariable "APPVEYOR_CI_BUILD") &&
+      if isNull (Environment.GetEnvironmentVariable "CI") &&
          isNull (Environment.GetEnvironmentVariable "IN_VBOX")
       then
         [ testInitialCrawl
