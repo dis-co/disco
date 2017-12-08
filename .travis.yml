@@ -1,0 +1,7 @@
+language: csharp
+install:
+  - sudo apt-get install fsharp
+script:
+  - ./build.sh BootStrap
+  - ./build.sh Release
+  - ./build.sh AllTests
