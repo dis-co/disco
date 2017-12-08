@@ -292,15 +292,6 @@ module DiscoveryService =
   let private startBrowser (browser:ServiceBrowser) =
     browser.Browse(0u, AddressProtocol.IPv4, ZEROCONF_TCP_SERVICE, "local")
 
-  // ** periodically
-
-  let rec private periodically (store:IAgentStore<DiscoveryState>) =
-    async {
-      do! Async.Sleep 5000
-      do startBrowser store.State.Browser
-      return! periodically store
-    }
-
   // ** create
 
   let create (config: DiscoMachine) =
@@ -319,10 +310,9 @@ module DiscoveryService =
 
     let agent = DiscoveryAgent.Start(loop store, source.Token)
 
-    Async.Start(periodically store, source.Token)
-
     { new IDiscoveryService with
-        member self.Start() = either {
+        member self.Start() =
+          either {
             let! browser = makeBrowser agent
             store.Update { state with Browser = browser }
 
