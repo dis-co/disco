@@ -7,17 +7,17 @@ module SerializationTests =
   open Fable.Core
   open Fable.Import
 
-  open Iris.Raft
-  open Iris.Core
-  open Iris.Web.Core
-  open Iris.Web.Tests
+  open Disco.Raft
+  open Disco.Core
+  open Disco.Web.Core
+  open Disco.Web.Tests
 
-  open Iris.Core.FlatBuffers
-  open Iris.Web.Core.FlatBufferTypes
+  open Disco.Core.FlatBuffers
+  open Disco.Web.Core.FlatBufferTypes
 
   let rand = new System.Random()
 
-  let mk() = IrisId.Create()
+  let mk() = DiscoId.Create()
 
   let rndstr() = mk() |> string
   let rndname() = mk() |> string |> name
@@ -49,7 +49,7 @@ module SerializationTests =
 
   let mktags _ =
     [| for n in 0 .. rand.Next(2,8) do
-        yield IrisId.Create() |> string |> astag |]
+        yield DiscoId.Create() |> string |> astag |]
 
   let mkProp () =
     { Key = rndstr(); Value = rndstr() }
@@ -58,7 +58,7 @@ module SerializationTests =
     [| for n = 0 to rand.Next(2,8) do yield mkProp() |]
 
   let mkProject _ =
-    IrisProject.Empty
+    DiscoProject.Empty
 
   let pins _ =
     [| Pin.Sink.bang      (mk()) (name "Bang")      (mk()) (mk()) [| true  |]
@@ -78,14 +78,14 @@ module SerializationTests =
 
   let mkPin _ =
     Pin.Sink.string
-      (IrisId.Create())
+      (DiscoId.Create())
       (name "url input")
-      (IrisId.Create())
-      (IrisId.Create())
+      (DiscoId.Create())
+      (DiscoId.Create())
       [| "hello" |]
 
   let mkSlices() =
-    BoolSlices(IrisId.Create(), None, [| true; false; true; true; false |])
+    BoolSlices(DiscoId.Create(), None, [| true; false; true; true; false |])
 
   let mkSlicesMap() =
     let slices = mkSlices ()
@@ -94,13 +94,13 @@ module SerializationTests =
     |> SlicesMap
 
   let mkCue _ : Cue =
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
       Name = name "Cue 1"
       Slices = [| mkSlices() |] }
 
   let mkCueRef () : CueReference =
-    { Id = IrisId.Create()
-      CueId = IrisId.Create()
+    { Id = DiscoId.Create()
+      CueId = DiscoId.Create()
       AutoFollow = rndbool()
       Duration = rndint()
       Prewait = rndint() }
@@ -109,7 +109,7 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) -> mkCueRef() |]
 
   let mkCueGroup () : CueGroup =
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
       Name = Some (rndname())
       AutoFollow = false
       CueRefs = mkCueRefs() }
@@ -119,9 +119,9 @@ module SerializationTests =
 
   let mkPinGroup _ : PinGroup =
     let pins = pins () |> Array.map toPair |> Map.ofArray
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
       Name = name "PinGroup"
-      ClientId = IrisId.Create()
+      ClientId = DiscoId.Create()
       Path = None
       RefersTo = None
       Pins = pins }
@@ -131,10 +131,10 @@ module SerializationTests =
     |> PinGroupMap.ofList
 
   let mkCueList _ : CueList =
-    { Id = IrisId.Create(); Name = name "PinGroup 3"; Items = mkCueListItems() }
+    { Id = DiscoId.Create(); Name = name "PinGroup 3"; Items = mkCueListItems() }
 
   let mkUser _ =
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
     ; UserName = name "krgn"
     ; FirstName = name "Karsten"
     ; LastName = name "Gebbert"
@@ -145,17 +145,17 @@ module SerializationTests =
     ; Created = DateTime.UtcNow
     }
 
-  let mkClient () : IrisClient =
-    { Id = IrisId.Create ()
+  let mkClient () : DiscoClient =
+    { Id = DiscoId.Create ()
       Name = name "Nice client"
       Role = Role.Renderer
       Status = ServiceStatus.Running
-      ServiceId = IrisId.Create()
+      ServiceId = DiscoId.Create()
       IpAddress = IPv4Address "127.0.0.1"
       Port = port 8921us }
 
   let mkDiscoveredService(): DiscoveredService =
-    { Id = IrisId.Create ()
+    { Id = DiscoId.Create ()
       Name = "Nice service"
       FullName = "Really nice service"
       HostName = "remotehost"
@@ -171,40 +171,40 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
-  let mkMember _ = IrisId.Create() |> Member.create
+  let mkMember _ = DiscoId.Create() |> Member.create
 
   let mkSession _ =
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
     ; IpAddress = IPv4Address "127.0.0.1"
     ; UserAgent = "Oh my goodness" }
 
   let mkPinMapping _ =
-    { Id = IrisId.Create()
-      Source = IrisId.Create()
-      Sinks = Set [| IrisId.Create(); IrisId.Create() |] }
+    { Id = DiscoId.Create()
+      Source = DiscoId.Create()
+      Sinks = Set [| DiscoId.Create(); DiscoId.Create() |] }
 
   let mkPinWidget _ =
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
       Name = rndname()
-      WidgetType = IrisId.Create() }
+      WidgetType = DiscoId.Create() }
 
   let mkCuePlayer() =
     let rndopt () =
       if rand.Next(0,2) > 0 then
-        Some (IrisId.Create())
+        Some (DiscoId.Create())
       else
         None
 
-    { Id = IrisId.Create()
+    { Id = DiscoId.Create()
       Name = rndname ()
       Locked = false
       Active = false
       Selected = index (rand.Next(0,1000))
       RemainingWait = rand.Next(0,1000)
       CueListId = rndopt ()
-      CallId = IrisId.Create()
-      NextId = IrisId.Create()
-      PreviousId = IrisId.Create()
+      CallId = DiscoId.Create()
+      NextId = DiscoId.Create()
+      PreviousId = DiscoId.Create()
       LastCallerId = rndopt()
       LastCalledId = rndopt() }
 
@@ -250,7 +250,7 @@ module SerializationTests =
         dir3, mkFsDir dir3 (Map [ file3, mkFsFile file3 ])
       ])
 
-  let mkFsTree _ = { HostId = IrisId.Create(); Root = mkFsEntry(); Filters = Array.empty }
+  let mkFsTree _ = { HostId = DiscoId.Create(); Root = mkFsEntry(); Filters = Array.empty }
 
   let mkState _ =
     { Project    = mkProject ()
@@ -261,7 +261,7 @@ module SerializationTests =
       CueLists   = mkCueList () |> fun (cuelist: CueList) -> Map.ofArray [| (cuelist.Id, cuelist) |]
       Sessions   = mkSession () |> fun (session: Session) -> Map.ofArray [| (session.Id, session) |]
       Users      = mkUser () |> fun (user: User) -> Map.ofArray [| (user.Id, user) |]
-      Clients    = mkClient () |> fun (client: IrisClient) -> Map.ofArray [| (client.Id, client) |]
+      Clients    = mkClient () |> fun (client: DiscoClient) -> Map.ofArray [| (client.Id, client) |]
       CuePlayers = mkCuePlayer() |> fun (player: CuePlayer) -> Map.ofArray [| (player.Id, player) |]
       FsTrees    = mkFsTree() |> fun (tree: FsTree) -> Map.ofArray [| (tree.Id, tree) |]
       DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
@@ -309,14 +309,14 @@ module SerializationTests =
             AddPin                  <| mkPin ()
             UpdatePin               <| mkPin ()
             RemovePin               <| mkPin ()
-            AddFsEntry              (IrisId.Create(), mkFsEntry ())
-            UpdateFsEntry           (IrisId.Create(), mkFsEntry ())
-            RemoveFsEntry           (IrisId.Create(), mkFsPath ())
+            AddFsEntry              (DiscoId.Create(), mkFsEntry ())
+            UpdateFsEntry           (DiscoId.Create(), mkFsEntry ())
+            RemoveFsEntry           (DiscoId.Create(), mkFsPath ())
             AddFsTree               <| mkFsTree()
-            RemoveFsTree            <| IrisId.Create()
-            AddMember               <| Member.create (IrisId.Create())
-            UpdateMember            <| Member.create (IrisId.Create())
-            RemoveMember            <| Member.create (IrisId.Create())
+            RemoveFsTree            <| DiscoId.Create()
+            AddMember               <| Member.create (DiscoId.Create())
+            UpdateMember            <| Member.create (DiscoId.Create())
+            RemoveMember            <| Member.create (DiscoId.Create())
             AddDiscoveredService    <| mkDiscoveredService ()
             UpdateDiscoveredService <| mkDiscoveredService ()
             RemoveDiscoveredService <| mkDiscoveredService ()
@@ -383,7 +383,7 @@ module SerializationTests =
       finish()
 
     test "Validate Member Serialization" <| fun finish ->
-      let mem = IrisId.Create() |> Member.create
+      let mem = DiscoId.Create() |> Member.create
       check mem
       finish ()
 
@@ -419,7 +419,7 @@ module SerializationTests =
       mkState () |> check
       finish ()
 
-    test "Validate IrisProject Binary Serializaton" <| fun finish ->
+    test "Validate DiscoProject Binary Serializaton" <| fun finish ->
       mkProject()
       |> (fun project ->
           let reproject = project |> Binary.encode |> Binary.decode |> Either.get
@@ -461,9 +461,9 @@ module SerializationTests =
       ; AddPin                  <| mkPin ()
       ; UpdatePin               <| mkPin ()
       ; RemovePin               <| mkPin ()
-      ; AddMember               <| Member.create (IrisId.Create())
-      ; UpdateMember            <| Member.create (IrisId.Create())
-      ; RemoveMember            <| Member.create (IrisId.Create())
+      ; AddMember               <| Member.create (DiscoId.Create())
+      ; UpdateMember            <| Member.create (DiscoId.Create())
+      ; RemoveMember            <| Member.create (DiscoId.Create())
       ; AddDiscoveredService    <| mkDiscoveredService ()
       ; UpdateDiscoveredService <| mkDiscoveredService ()
       ; RemoveDiscoveredService <| mkDiscoveredService ()
@@ -500,14 +500,14 @@ module SerializationTests =
             |> Binary.buildBuffer
             |> Binary.createBuffer
             |> ErrorFB.GetRootAsErrorFB
-            |> IrisError.FromFB
+            |> DiscoError.FromFB
             |> Either.get
           equals error reerror)
 
       finish()
 
     test "Validate MachineStatus Binary Serialization" <| fun finish ->
-      MachineStatus.Busy (IrisId.Create(), name (rndstr()))
+      MachineStatus.Busy (DiscoId.Create(), name (rndstr()))
       |> check
       finish()
 

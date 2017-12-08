@@ -1,4 +1,4 @@
-module Iris.Web.Tests.Main
+module Disco.Web.Tests.Main
 
 open Fable.Core
 open Fable.Import

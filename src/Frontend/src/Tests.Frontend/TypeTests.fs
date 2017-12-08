@@ -4,8 +4,8 @@ namespace Test.Units
 module TypeTests =
 
   open Fable.Core.JsInterop
-  open Iris.Core
-  open Iris.Web.Tests
+  open Disco.Core
+  open Disco.Web.Tests
 
   let main () =
     (* -------------------------------------------------------------------------- *)
@@ -13,8 +13,8 @@ module TypeTests =
     (* -------------------------------------------------------------------------- *)
 
     test "Validate Id Equality" <| fun finish ->
-      let id1 = IrisId.Create()
-      let id2 = IrisId.Parse (string id1)
+      let id1 = DiscoId.Create()
+      let id2 = DiscoId.Parse (string id1)
 
       equals id1 id2
 
@@ -24,12 +24,12 @@ module TypeTests =
       let num = 10
       let map =
         [| for n in 1 .. 10 do
-            yield (IrisId.Create(), n) |]
+            yield (DiscoId.Create(), n) |]
         |> Map.ofArray
 
       equals num (Map.fold (fun m _ _ -> m + 1) 0 map)
 
-      // test querying by IrisId
+      // test querying by DiscoId
       equals true <|
         Map.fold
           (fun m id value -> if m then map.[id] = value else m)
@@ -39,6 +39,6 @@ module TypeTests =
       finish ()
 
     test "Validate Id toString is valid json" <| fun finish ->
-      let id = IrisId.Create()
-      equals id (toJson id |> ofJson<IrisId>)
+      let id = DiscoId.Create()
+      equals id (toJson id |> ofJson<DiscoId>)
       finish ()

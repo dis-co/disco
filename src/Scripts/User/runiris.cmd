@@ -1,1 +1,1 @@
-Iris\iris.exe start --machine=\Iris\etc --bind=%FRONTEND_IP% %*
+Disco\disco.exe start --machine=\Disco\etc --bind=%FRONTEND_IP% %*

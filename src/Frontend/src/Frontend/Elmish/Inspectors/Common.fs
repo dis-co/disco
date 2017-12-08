@@ -1,4 +1,4 @@
-namespace Iris.Web.Inspectors
+namespace Disco.Web.Inspectors
 
 open System
 open System.Collections.Generic
@@ -10,23 +10,23 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
-open Iris.Web.Helpers
-open Iris.Web.Types
+open Disco.Core
+open Disco.Web.Core
+open Disco.Web.Helpers
+open Disco.Web.Types
 open State
 
 module Common =
 
   let link (content: string) f =
     div [
-      Class "iris-link"
+      Class "disco-link"
       OnClick (fun _ -> f())
     ] [ str content ]
 
   let activeLink (content: string) f =
     div [
-      Class "iris-link iris-link-active"
+      Class "disco-link disco-link-active"
       OnClick (fun _ -> f())
     ] [ str content ]
 
@@ -102,7 +102,7 @@ module Common =
     row tag [
       div [
         classList [
-          "iris-button",true
+          "disco-button",true
           "pressed", value
         ]
         OnClick (fun _ -> f (not value))
@@ -120,7 +120,7 @@ module Common =
     div [] []
 
   let render dispatch model (title: string) children =
-    div [ Class "iris-inspector" ] [
+    div [ Class "disco-inspector" ] [
       bar dispatch model
       div [] [
         header title

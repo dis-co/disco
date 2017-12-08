@@ -1,14 +1,14 @@
-module Iris.Web.PinView
+module Disco.Web.PinView
 
 open System
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web.Types
+open Disco.Web.Types
 
 type [<Pojo>] ElProps =
   { index: int
@@ -92,18 +92,18 @@ type PinView(props) =
               Some (fun _ -> Modal.showDirectoryChooser pin this.props.model this.props.dispatch)
             | _ -> None
           updater = if rowCount > 1 then None else updater
-          classes = if rowCount > 1 then [|"iris-flex-1"|] else [||]
+          classes = if rowCount > 1 then [|"disco-flex-1"|] else [||]
           suffix  = if rowCount > 1 then Some(" (" + string rowCount + ")") else None
         }
       if rowCount > 1 then
-        td [ClassName "iris-flex-row"] [
+        td [ClassName "disco-flex-row"] [
           createElement("div", options, this.valueAt(0))
           this.renderArrow()
         ]
       else
         td [] [createElement("div", options, this.valueAt(0))]
     let head =
-      tr [ClassName "iris-pin-child"] [
+      tr [ClassName "disco-pin-child"] [
         td [
           OnMouseDown (fun ev ->
             ev.stopPropagation()
@@ -147,7 +147,7 @@ type PinView(props) =
               classes = [||]
               suffix  = None
             }
-          yield tr [Key (string i); ClassName "iris-pin-child"] [
+          yield tr [Key (string i); ClassName "disco-pin-child"] [
             td [] [str label]
             td [] [createElement("div", options, this.valueAt(i))]
           ]
@@ -159,7 +159,7 @@ type PinView(props) =
   member this.renderArrow() =
     span [
       classList [
-        "iris-icon icon-control",true
+        "disco-icon icon-control",true
         "icon-less", this.state.isOpen
         "icon-more", not this.state.isOpen
       ]
@@ -183,12 +183,12 @@ type PinView(props) =
       // Make placeholder pins (with empty Ids) look as if they were offline
       || Lib.isMissingPin pin
     let classes =
-      [ "iris-pin",           true
-        "iris-pin-output",    this.props.output
-        "iris-dirty",         not this.props.output && pin.Dirty
-        "iris-non-persisted", not pin.Persisted
-        "iris-offline",       isOffline
-        "iris-pin-selected",  this.props.selected ]
+      [ "disco-pin",           true
+        "disco-pin-output",    this.props.output
+        "disco-dirty",         not this.props.output && pin.Dirty
+        "disco-non-persisted", not pin.Persisted
+        "disco-offline",       isOffline
+        "disco-pin-selected",  this.props.selected ]
     div [classList classes] [
       table [] [this.renderRows(rowCount, useRightClick, props.updater)]
     ]

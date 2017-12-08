@@ -1,17 +1,17 @@
-module Iris.Web.Types
+module Disco.Web.Types
 
 open System
 open Fable.Core
 open Fable.Import
-open Iris.Raft
-open Iris.Core
-open Iris.Core.Commands
-open Iris.Web.Core
+open Disco.Raft
+open Disco.Core
+open Disco.Core.Commands
+open Disco.Web.Core
 
 /// Keys for Browser localStorage
 module StorageKeys =
-  let [<Literal>] layout = "iris-layout"
-  let [<Literal>] widgets = "iris-widgets"
+  let [<Literal>] layout = "disco-layout"
+  let [<Literal>] widgets = "disco-widgets"
 
 /// Widget names
 module Widgets =

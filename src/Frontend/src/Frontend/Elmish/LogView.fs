@@ -1,4 +1,4 @@
-module Iris.Web.LogView
+module Disco.Web.LogView
 
 open System.Text.RegularExpressions
 open Fable.Import
@@ -7,8 +7,8 @@ open Fable.Helpers.React.Props
 open Fable.Core
 open Fable.Core.JsInterop
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -128,9 +128,9 @@ let body dispatch model =
     ]
 
 let dropdown title values generator =
-  div [Class "iris-dropdown"] [
-    div [Class "iris-dropdown-button"] [str title]
-    div [Class "iris-dropdown-content"]
+  div [Class "disco-dropdown"] [
+    div [Class "disco-dropdown-button"] [str title]
+    div [Class "disco-dropdown-content"]
       (values |> List.map (fun x -> div [Key x] [generator x]))
   ]
 
@@ -165,7 +165,7 @@ let titleBar dispatch (model: Model) =
         let lv =
           match strLv with
           | "none" -> None
-          | lv -> Some(Iris.Core.LogLevel.Parse(lv))
+          | lv -> Some(Disco.Core.LogLevel.Parse(lv))
         label [] [
           input [
             Type "radio"
@@ -186,7 +186,7 @@ let titleBar dispatch (model: Model) =
               |> ClientContext.Singleton.Post)
           ] [str "SET"]
         else
-          let lv = Iris.Core.LogLevel.Parse(strLv)
+          let lv = Disco.Core.LogLevel.Parse(strLv)
           label [] [
             input [
               Type "radio"

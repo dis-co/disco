@@ -2,4 +2,4 @@
 subcommand=$1
 shift
 rest=$*
-mono Iris/iris.exe $subcommand --http=Iris/assets $rest
+mono Disco/disco.exe $subcommand --http=Disco/assets $rest

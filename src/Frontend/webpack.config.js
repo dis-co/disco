@@ -13,21 +13,21 @@ var isDevServer = process.argv.find(v => v.includes('webpack-dev-server'));
 var isProduction = process.argv.indexOf("-p") >= 0;
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
-var irisHost = process.env.FRONTEND_IP;
-var irisPort = process.env.FRONTEND_PORT;
+var discoHost = process.env.FRONTEND_IP;
+var discoPort = process.env.FRONTEND_PORT;
 if (isDevServer) {
-  if (irisHost === "localhost") {
+  if (discoHost === "localhost") {
     isDesignMode = true;
-    console.log("Iris will run in DESIGN MODE (no backend)");
+    console.log("Disco will run in DESIGN MODE (no backend)");
   }
   else {
-    if (!irisHost) {
-      throw new Error("Please specify the Iris service IP with the FRONTEND_IP env var");
+    if (!discoHost) {
+      throw new Error("Please specify the Disco service IP with the FRONTEND_IP env var");
     }
-    if (!irisPort) {
-      throw new Error("Please specify the Iris service HTTP port with the FRONTEND_PORT env var");
+    if (!discoPort) {
+      throw new Error("Please specify the Disco service HTTP port with the FRONTEND_PORT env var");
     }
-    console.log("Iris will connect to " + irisHost + ":" + irisPort);
+    console.log("Disco will connect to " + discoHost + ":" + discoPort);
   }
 }
 
@@ -57,13 +57,13 @@ function createWebpackConfig(fsProj, outputFile, libName) {
     },
     devServer: {
       contentBase: resolve("."),
-      host: irisHost,
+      host: discoHost,
       port: 3000,
       historyApiFallback: true, // respond to 404s with index.html
       // hot: true, // enable HMR on the server
       proxy: {
         '/api/*': {
-          target: 'http://' + irisHost + ':' + (irisPort || '7000')
+          target: 'http://' + discoHost + ':' + (discoPort || '7000')
         }
       },
       headers: {
@@ -102,6 +102,6 @@ function createWebpackConfig(fsProj, outputFile, libName) {
 }
 
 module.exports = [
-  createWebpackConfig(resolve("src/Frontend/Frontend.fsproj"), "iris.js", "IrisLib"),
-  createWebpackConfig(resolve("src/Worker/Worker.fsproj"), "iris.worker.js", "IrisWorker"),
+  createWebpackConfig(resolve("src/Frontend/Frontend.fsproj"), "disco.js", "DiscoLib"),
+  createWebpackConfig(resolve("src/Worker/Worker.fsproj"), "disco.worker.js", "DiscoWorker"),
 ]

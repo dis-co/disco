@@ -1,4 +1,4 @@
-namespace Iris.Web.Inspectors
+namespace Disco.Web.Inspectors
 
 open System
 open System.Collections.Generic
@@ -10,10 +10,10 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
-open Iris.Web.Helpers
-open Iris.Web.Types
+open Disco.Core
+open Disco.Web.Core
+open Disco.Web.Helpers
+open Disco.Web.Types
 open State
 
 ///  ____        _     _ _
@@ -123,12 +123,12 @@ module PinInspector =
   let private onlineRow tag (pin: Pin) =
     let icon =
       if pin.Online
-      then "iris-status-on"
-      else "iris-status-off"
+      then "disco-status-on"
+      else "disco-status-off"
 
     Common.row tag [
       span [] [
-        span [Class ("iris-icon icon-bull " + icon)] []
+        span [Class ("disco-icon icon-bull " + icon)] []
       ]
     ]
 

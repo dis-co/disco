@@ -1,4 +1,4 @@
-module Iris.Web.Navbar
+module Disco.Web.Navbar
 
 open Fable.Helpers.React
 open Fable.Import
@@ -6,7 +6,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Fable.Helpers.React.Props
-open Iris.Core
+open Disco.Core
 open Helpers
 open Types
 open State
@@ -263,7 +263,7 @@ type View(props) =
       match this.props.Model.state with
       | Some state ->
         try
-          let info = Iris.Web.Core.Client.ClientContext.Singleton.ServiceInfo
+          let info = Disco.Web.Core.Client.ClientContext.Singleton.ServiceInfo
           info.version, info.buildNumber
         with ex -> "0.0.0", "123"
       | None -> "0.0.0", "123"
@@ -288,7 +288,7 @@ type View(props) =
           ]
           div [Class "navbar-end"] [
             div [Class "navbar-item"] [
-              str(sprintf "Iris v%s - build %s" version buildNumber)
+              str(sprintf "Disco v%s - build %s" version buildNumber)
             ]
           ]
         ]

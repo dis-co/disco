@@ -1,4 +1,4 @@
-module Iris.Web.InspectorView
+module Disco.Web.InspectorView
 
 open System
 open System.Collections.Generic
@@ -10,9 +10,9 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
-open Iris.Web.Inspectors
+open Disco.Core
+open Disco.Web.Core
+open Disco.Web.Inspectors
 open Helpers
 open State
 open Types
@@ -24,7 +24,7 @@ open Types
 /// |_|   |_|  |_| \_/ \__,_|\__\___|
 
 let private empty dispatch model =
-  div [ Class "iris-inspector" ] [
+  div [ Class "disco-inspector" ] [
     Common.bar dispatch model
     div [ Class "empty" ] [
       str "Nothing selected."

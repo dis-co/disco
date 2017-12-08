@@ -1,4 +1,4 @@
-namespace Iris.Web.Tests
+namespace Disco.Web.Tests
 
 open System
 

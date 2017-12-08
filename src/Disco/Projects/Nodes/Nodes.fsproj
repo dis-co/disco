@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{FBFFB969-00ED-4568-8FD0-65A699AACA18}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Disco</RootNamespace>
+    <AssemblyName>Disco.Nodes</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <Name>Disco.Nodes</Name>
+    <TargetFrameworkProfile />
+    <ResolveNuGetPackages>false</ResolveNuGetPackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>..\..\bin\Debug\Nodes</OutputPath>
+    <DefineConstants>DEBUG;TRACE;DISCO_NODES</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <OtherFlags>--warnon:1182</OtherFlags>
+    <DocumentationFile>..\..\bin\$(Configuration)\Sdk\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>..\..\bin\Release\Nodes</OutputPath>
+    <DefineConstants>TRACE;DISCO_NODES</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>.\bin\Release\Disco.Nodes.xml</DocumentationFile>
+    <OtherFlags>--warnon:1182</OtherFlags>
+    <DocumentationFile>..\..\bin\$(Configuration)\Sdk\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.ComponentModel.Composition" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../AssemblyInfo/NodesInfo.fs">
+      <Link>NodesInfo.fs</Link>
+    </Compile>
+    <!-- NODES -->
+    <Compile Include="../../Disco/Nodes/NodeUtils.fs">
+      <Link>NodeUtils.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/AudioConfigNode.fs">
+      <Link>AudioConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/RaftConfigNode.fs">
+      <Link>RaftConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/TimingConfigNode.fs">
+      <Link>TimingConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ClusterConfigNode.fs">
+      <Link>ClusterConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ClientConfigNode.fs">
+      <Link>ClientConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ConfigNode.fs">
+      <Link>ConfigNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/HostGroupNode.fs">
+      <Link>HostGroupNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ApiClientNode.fs">
+      <Link>ApiClientNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/MemberNode.fs">
+      <Link>MemberNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ProjectNode.fs">
+      <Link>ProjectNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/StateNode.fs">
+      <Link>StateNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/CueNode.fs">
+      <Link>CueNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/CueListNode.fs">
+      <Link>CueListNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/SessionNode.fs">
+      <Link>SessionNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/UserNode.fs">
+      <Link>UserNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ClientNode.fs">
+      <Link>ClientNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/PinGroupNode.fs">
+      <Link>PinGroupNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/PinMappingNode.fs">
+      <Link>PinMappingNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/PinNode.fs">
+      <Link>PinNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/PinWriteNode.fs">
+      <Link>PinWriteNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/GraphNode.fs">
+      <Link>GraphNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/LoggingNode.fs">
+      <Link>LoggingNode.fs</Link>
+    </Compile>
+    <Compile Include="../../Disco/Nodes/Nodes/ClientIdNode.fs">
+      <Link>ClientIdNode.fs</Link>
+    </Compile>
+    <!-- END NODES -->
+  </ItemGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Disco.Serialization">
+      <HintPath>..\..\bin\$(Configuration)\Serialization\Disco.Serialization.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Zeroconf">
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Zeroconf.Providers.AvahiDBus">
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.AvahiDBus.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Zeroconf.Providers.Bonjour">
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition.CodePlex">
+      <HintPath>../../../../packages/VVVV.System.ComponentModel.Composition.Codeplex/lib/net40/System.ComponentModel.Composition.CodePlex.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sdk\Sdk.fsproj">
+      <Name>Sdk</Name>
+      <Project>{845e1258-3d82-441f-a360-a3140873b9b4}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <PropertyGroup>
+        <__paket__VVVV_Utils3rdParty_targets>net46\VVVV.Utils3rdParty</__paket__VVVV_Utils3rdParty_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <PropertyGroup>
+        <__paket__VVVV_SlimDX_props>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_props>
+        <__paket__VVVV_SlimDX_targets>net40\VVVV.SlimDX</__paket__VVVV_SlimDX_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_props).props')" Label="Paket" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <PropertyGroup>
+        <__paket__VVVV_PluginInterfaces_targets>net46\VVVV.PluginInterfaces</__paket__VVVV_PluginInterfaces_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <PropertyGroup>
+        <__paket__VVVV_Hosting_targets>net46\VVVV.Hosting</__paket__VVVV_Hosting_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="Aether">
+          <HintPath>..\..\..\..\packages\Aether\lib\net45\Aether.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="FSharp.Core">
+          <HintPath>..\..\..\..\packages\FSharp.Core\lib\net45\FSharp.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Console">
+          <HintPath>..\..\..\..\packages\System.Console\lib\net46\System.Console.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.IO">
+          <HintPath>..\..\..\..\packages\System.IO\lib\net462\System.IO.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Linq">
+          <HintPath>..\..\..\..\packages\System.Linq\lib\net463\System.Linq.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Linq.Expressions">
+          <HintPath>..\..\..\..\packages\System.Linq.Expressions\lib\net463\System.Linq.Expressions.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Reflection">
+          <HintPath>..\..\..\..\packages\System.Reflection\lib\net462\System.Reflection.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Runtime">
+          <HintPath>..\..\..\..\packages\System.Runtime\lib\net462\System.Runtime.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Runtime.Extensions">
+          <HintPath>..\..\..\..\packages\System.Runtime.Extensions\lib\net462\System.Runtime.Extensions.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Text.RegularExpressions">
+          <HintPath>..\..\..\..\packages\System.Text.RegularExpressions\lib\net463\System.Text.RegularExpressions.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Threading.Thread">
+          <HintPath>..\..\..\..\packages\System.Threading.Thread\lib\net46\System.Threading.Thread.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.7.1'">
+      <ItemGroup>
+        <Reference Include="System.Threading.ThreadPool">
+          <HintPath>..\..\..\..\packages\System.Threading.ThreadPool\lib\net46\System.Threading.ThreadPool.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
+      <ItemGroup>
+        <Reference Include="System.ValueTuple">
+          <HintPath>..\..\..\..\packages\System.ValueTuple\lib\net461\System.ValueTuple.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="System.ValueTuple">
+          <HintPath>..\..\..\..\packages\System.ValueTuple\lib\net47\System.ValueTuple.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="VVVV.Core">
+          <HintPath>..\..\..\..\packages\VVVV.Core\lib\net46\VVVV.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="VVVV.Utils">
+          <HintPath>..\..\..\..\packages\VVVV.Utils\lib\net46\VVVV.Utils.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
+      <ItemGroup>
+        <Reference Include="VVVV.UtilsIL">
+          <HintPath>..\..\..\..\packages\VVVV.UtilsIL\lib\net46\VVVV.UtilsIL.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Import Project="..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Hosting\build\$(__paket__VVVV_Hosting_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.PluginInterfaces\build\$(__paket__VVVV_PluginInterfaces_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.SlimDX\build\$(__paket__VVVV_SlimDX_targets).targets')" Label="Paket" />
+  <Import Project="..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets" Condition="Exists('..\..\..\..\packages\VVVV.Utils3rdParty\build\$(__paket__VVVV_Utils3rdParty_targets).targets')" Label="Paket" />
+</Project>

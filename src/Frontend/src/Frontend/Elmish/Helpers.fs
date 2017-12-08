@@ -1,4 +1,4 @@
-module Iris.Web.Helpers
+module Disco.Web.Helpers
 
 open System
 open Elmish
@@ -10,9 +10,9 @@ open Fable.Import
 open Fable.Import.React
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web.Core
-open Iris.Core
-open Iris.Raft
+open Disco.Web.Core
+open Disco.Core
+open Disco.Raft
 open Types
 
 // Syntactic sugar
@@ -69,23 +69,23 @@ type ElmishView = (Msg->unit)->Model->React.ReactElement
 let widget (id: Guid) (name: string)
            (titleBar: ElmishView option) (body: ElmishView)
            (dispatch: Msg->unit) (model: Model) =
-  div [Class "iris-widget"; Key (string id)] [
-    div [Class "iris-draggable-handle"] [
+  div [Class "disco-widget"; Key (string id)] [
+    div [Class "disco-draggable-handle"] [
       span [] [str name]
-      div [Class "iris-title-bar"] [
+      div [Class "disco-title-bar"] [
         titleBar
         |> Option.map (fun titleBar -> titleBar dispatch model)
         |> opt
       ]
-      div [ Class "iris-window-control" ] [
+      div [ Class "disco-window-control" ] [
         button [
-          Class "iris-button iris-icon icon-control icon-resize"
+          Class "disco-button disco-icon icon-control icon-resize"
           OnClick(fun ev ->
             ev.stopPropagation()
             MaximiseWidget id |> dispatch)
         ] []
         button [
-          Class "iris-button iris-icon icon-control icon-close"
+          Class "disco-button disco-icon icon-control icon-close"
           OnClick(fun ev ->
             ev.stopPropagation()
             RemoveWidget id |> dispatch
@@ -93,7 +93,7 @@ let widget (id: Guid) (name: string)
         ] []
       ]
     ]
-    div [Class "iris-widget-body"] [
+    div [Class "disco-widget-body"] [
       body dispatch model
     ]
   ]
@@ -134,7 +134,7 @@ module Select =
     |> Msg.SelectElement
     |> dispatch
 
-  let client dispatch (client: IrisClient) =
+  let client dispatch (client: DiscoClient) =
     (client.Name, client.Id)
     |> InspectorSelection.Client
     |> Msg.SelectElement

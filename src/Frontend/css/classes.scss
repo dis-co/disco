@@ -4,7 +4,7 @@
   cursor: pointer;
 }
 
-@mixin iris-pin-container {
+@mixin disco-pin-container {
   width: 100%;
   display: flex;
   flex-wrap: wrap;
@@ -16,21 +16,21 @@
   }
 }
 
-.iris-pinmapping {
-  .iris-pinmapping-row {
-    .iris-pinmapping-source, .iris-pinmapping-sinks {
-      @include iris-pin-container;
+.disco-pinmapping {
+  .disco-pinmapping-row {
+    .disco-pinmapping-source, .disco-pinmapping-sinks {
+      @include disco-pin-container;
     }
   }
-  .iris-pinmapping-add {
+  .disco-pinmapping-add {
     background-color: lighten(gray, 40%);
-    .iris-pin-hole {
-      @include iris-pin-container;
+    .disco-pin-hole {
+      @include disco-pin-container;
     }
   }
 }
 
-.iris-link {
+.disco-link {
   border: 1px solid lighten(gray,10%);
   background: lighten(gray, 40%);
   border-radius: 5px;
@@ -42,37 +42,37 @@
   text-align: center;
 }
 
-.iris-link::after {
+.disco-link::after {
   clear: both;
 }
 
-.iris-link:active {
+.disco-link:active {
   background: lighten(gray, 30%);
 }
 
-.iris-link-active {
+.disco-link-active {
   border: 1px solid black;
   background: lighten(gray, 90%);
 }
 
-.iris-status-on {
+.disco-status-on {
   color: $status-on;
 }
 
-.iris-status-off {
+.disco-status-off {
   color: $status-off;
 }
 
-.iris-status-warning {
+.disco-status-warning {
   color: $status-warning;
 }
 
-.iris-highlight {
+.disco-highlight {
   // border: 2px solid $highlight-blue !important;
   border-color: $highlight-blue !important;
 }
 
-.iris-button {
+.disco-button {
   cursor: pointer;
   margin: 2px 5px 1px 0px;
   padding: 2px 4px;
@@ -98,18 +98,18 @@
   }
 }
 
-.iris-contenteditable {
+.disco-contenteditable {
   line-height: 14px;
   min-width: 10px;
   height: 14px;
   cursor: pointer;
 }
 
-.iris-contenteditable:hover {
+.disco-contenteditable:hover {
   background: #eee;
 }
 
-.iris-cuegroup-headline {
+.disco-cuegroup-headline {
   height: 30px;
   background: #ddd;
   padding-left: 10px;
@@ -119,7 +119,7 @@
   }
 }
 
-.iris-table {
+.disco-table {
   border-spacing: 0px;
   width: 100%;
   // Don't remember exactly why these lines are here. For now,
@@ -140,7 +140,7 @@
   tr { width: 100% }
 }
 
-.iris-wrap {
+.disco-wrap {
   white-space: normal;
 }
 
@@ -153,29 +153,29 @@
 
 // FLEX --------------------
 
-.iris-flex-row {
+.disco-flex-row {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-.iris-flex-1 {
+.disco-flex-1 {
   flex: 1
 }
 
-.iris-flex-2 {
+.disco-flex-2 {
   flex: 2
 }
 
-.iris-flex-3 {
+.disco-flex-3 {
   flex: 3
 }
 
-.iris-flex-4 {
+.disco-flex-4 {
   flex: 4
 }
 
-.iris-dropdown {
+.disco-dropdown {
   /* The container <div> - needed to position the dropdown content */
   // box-shadow: 0 0 8px #777;
   position: relative;
@@ -184,7 +184,7 @@
   margin: 0 10px;
 
   /* Dropdown Button */
-  .iris-dropdown-button {
+  .disco-dropdown-button {
     // border: none;
     margin: 0 5px;
     cursor: pointer;
@@ -207,7 +207,7 @@
   }
 
   /* Dropdown Content (Hidden by Default) */
-  .iris-dropdown-content {
+  .disco-dropdown-content {
     display: none;
     position: absolute;
     background-color: #f9f9f9;
@@ -224,12 +224,12 @@
   }
 
   /* Show the dropdown menu on hover */
-  &:hover .iris-dropdown-content {
+  &:hover .disco-dropdown-content {
     display: block;
   }
 
   /* Change the background color of the dropdown button when the dropdown content is shown */
-  &:hover .iris-dropdown-button {
+  &:hover .disco-dropdown-button {
     background-color: rgb(220,220,220);
   }
 }
@@ -237,16 +237,16 @@
 
 // -------------------------
 
-// .iris-discovery {
+// .disco-discovery {
 //   display: flex;
 //   flex-wrap: wrap;
 // }
 
-// .iris-discovered-service {
+// .disco-discovered-service {
 //   margin: 5px;
 //   text-align: center;
 //   padding: 0 auto;
-//   background: $iris-grey;
+//   background: $disco-grey;
 //   width: 150px;
 //   height: 50px;
 //   line-height: 50px;
@@ -278,13 +278,13 @@
 //   }
 // }
 
-// .iris-dropdown {
+// .disco-dropdown {
 //   display: inline-block;
 //   font-size: 1.3em;
 //   user-select: none;
 //   cursor: pointer;
 
-//   .iris-dropdown-options {
+//   .disco-dropdown-options {
 //     position: absolute;
 //     z-index: 100;
 //     background: white;
@@ -307,7 +307,7 @@
 //   }
 // }
 
-// .iris-tooltip {
+// .disco-tooltip {
 //   // height: 100px;
 //   background-color: lightyellow; // #EBEBEB;
 //   position: absolute;

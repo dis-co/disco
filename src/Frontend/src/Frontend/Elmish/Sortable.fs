@@ -1,5 +1,5 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Sortable
+module Disco.Web.Sortable
 
 open Fable.Core
 open Fable.Core.JsInterop

@@ -1,4 +1,4 @@
-namespace Iris.Core
+namespace Disco.Core
 
 open Fable.Core
 open Fable.Core.JsInterop

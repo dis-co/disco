@@ -9,24 +9,24 @@ module Store =
   open System
   open System.Collections.Generic
 
-  open Iris.Core
-  open Iris.Web.Core
-  open Iris.Web.Tests
+  open Disco.Core
+  open Disco.Web.Core
+  open Disco.Web.Tests
 
   let withStore (wrap : PinGroup -> Store -> unit) =
     let group : PinGroup =
-      { Id = IrisId.Create()
+      { Id = DiscoId.Create()
         Name = name "group-1"
-        ClientId = IrisId.Create()
+        ClientId = DiscoId.Create()
         Path = None
         RefersTo = None
         Pins = Map.empty }
 
     let machine =
-      { MachineId        = IrisId.Create ()
+      { MachineId        = DiscoId.Create ()
         HostName         = name "La la Land"
         WorkSpace        = filepath "C:\Program Files\Yo Mama"
-        AssetDirectory   = filepath "C:\Iris\Assets"
+        AssetDirectory   = filepath "C:\Disco\Assets"
         AssetFilter      = Constants.DEFAULT_ASSET_FILTER
         LogDirectory     = filepath "C:\Program Files\Yo Mama\logs"
         BindAddress      = IPv4Address "127.0.0.1"
@@ -39,7 +39,7 @@ module Store =
         ApiPort          = port 40us
         Version          = version "1.0.0" }
 
-    let project = IrisProject.Empty
+    let project = DiscoProject.Empty
 
     let state =
       { Project            = project
@@ -105,7 +105,7 @@ module Store =
       test "should remove a group already in the store" <| fun finish ->
         let pin =
           Pin.Sink.string
-            (IrisId.Create())
+            (DiscoId.Create())
             (name "url input")
             group.Id
             group.ClientId
@@ -130,7 +130,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a pin to the store if group exists" <| fun finish ->
         Pin.Sink.string
-          (IrisId.Create())
+          (DiscoId.Create())
           (name "url input")
           group.Id
           group.ClientId
@@ -144,7 +144,7 @@ module Store =
 
         let pin =
           Pin.Sink.string
-            (IrisId.Create())
+            (DiscoId.Create())
             (name "url input")
             group.Id
             group.ClientId
@@ -159,7 +159,7 @@ module Store =
       test "should not add a pin to the store if group does not exists" <| fun finish ->
         let pin =
           Pin.Sink.string
-            (IrisId.Create())
+            (DiscoId.Create())
             (name "url input")
             group.Id
             group.ClientId
@@ -175,7 +175,7 @@ module Store =
         let name2 = name "yes, cats are re-entrant."
         let pin =
           Pin.Sink.string
-            (IrisId.Create())
+            (DiscoId.Create())
             name1
             group.Id
             group.ClientId
@@ -205,7 +205,7 @@ module Store =
       test "should remove a pin from the store if it exists" <| fun finish ->
         let pin =
           Pin.Sink.string
-            (IrisId.Create())
+            (DiscoId.Create())
             (name "hi")
             group.Id
             group.ClientId
@@ -237,7 +237,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cue to the store" <| fun finish ->
         let cue = {
-          Id = IrisId.Create()
+          Id = DiscoId.Create()
           Name = name "My Cue"
           Slices = [| |] }
 
@@ -253,7 +253,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cue already in the store" <| fun finish ->
         let cue =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My Cue"
             Slices = [| |] }
 
@@ -272,7 +272,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cue to the store on update when missing" <| fun finish ->
         let cue =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My Cue"
             Slices = [| |] }
 
@@ -286,7 +286,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cue from the store" <| fun finish ->
         let cue =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My Cue"
             Slices = [| |] }
 
@@ -305,7 +305,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a cuelist to the store" <| fun finish ->
         let cuelist =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My CueList"
             Items = [| |] }
 
@@ -321,7 +321,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a cuelist already in the store" <| fun finish ->
         let cuelist =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My CueList"
             Items = [| |] }
 
@@ -341,7 +341,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add cuelist to the store on update when missing" <| fun finish ->
         let cuelist =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My CueList"
             Items = [| |] }
 
@@ -355,7 +355,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove cuelist from the store" <| fun finish ->
         let cuelist =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             Name = name "My CueList"
             Items = [| |] }
 
@@ -374,7 +374,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a user to the store" <| fun finish ->
         let user =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -396,7 +396,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a user already in the store" <| fun finish ->
         let user =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -422,7 +422,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add user to the store on update when missing" <| fun finish ->
         let user =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -442,7 +442,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove user from the store" <| fun finish ->
         let user =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             UserName = name "krgn"
             FirstName = name "Karsten"
             LastName = name "Gebbert"
@@ -467,7 +467,7 @@ module Store =
     withStore <| fun group store ->
       test "should add a session to the store" <| fun finish ->
         let session =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -483,7 +483,7 @@ module Store =
     withStore <| fun group store ->
       test "should update a Session already in the store" <| fun finish ->
         let session =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -503,7 +503,7 @@ module Store =
     withStore <| fun group store ->
       test "should not add Session to the store on update when missing" <| fun finish ->
         let session =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 
@@ -517,7 +517,7 @@ module Store =
     withStore <| fun group store ->
       test "should remove Session from the store" <| fun finish ->
         let session =
-          { Id = IrisId.Create()
+          { Id = DiscoId.Create()
             IpAddress = IPv4Address "126.0.0.1"
             UserAgent = "Firefuckingfox" }
 

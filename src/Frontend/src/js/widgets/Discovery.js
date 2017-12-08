@@ -1,7 +1,7 @@
 // UNUSED AT THE MOMENT
 
 import * as React from "react"
-import { IDisposable, ILayout, IIris } from "../Interfaces"
+import { IDisposable, ILayout, IDisco } from "../Interfaces"
 import { GlobalModel } from "../../fable/Frontend/GlobalModel.fs"
 import domtoimage from "dom-to-image"
 import { touchesElement, map } from "../Util"
@@ -21,7 +21,7 @@ class DiscoveryView extends React.Component {
     domtoimage.toPng(node)
       .then(dataUrl => {
         // console.log("drag start")
-        const img = $("#iris-drag-image").attr("src", dataUrl).css({display: "block"});
+        const img = $("#disco-drag-image").attr("src", dataUrl).css({display: "block"});
         $(document)
           .on("mousemove.drag", e => {
             // console.log("drag move", {x: e.clientX, y: e.clientY})
@@ -84,14 +84,14 @@ class DiscoveryView extends React.Component {
   }
 
   renderService(service) {
-    var id = IrisLib.toString(service.Id);
+    var id = DiscoLib.toString(service.Id);
     var ipAddr = "0.0.0.0", port = 0, wsPort = 0, httpPort = 0, gitPort = 0, apiPort = 0;
     if (service.AddressList.length > 0) {
-        ipAddr = IrisLib.toString(service.AddressList[0]);
+        ipAddr = DiscoLib.toString(service.AddressList[0]);
     }
     for (let i = 0; i < service.Services.length; i++) {
       let exposed = service.Services[i];
-      switch (IrisLib.toString(exposed.ServiceType)) {
+      switch (DiscoLib.toString(exposed.ServiceType)) {
         case "git":
           gitPort = exposed.Port;
           break;
@@ -119,18 +119,18 @@ class DiscoveryView extends React.Component {
       httpPort: httpPort,
       gitPort: gitPort,
       apiPort: apiPort,
-      enabled: IrisLib.toString(service.Status) === "idle"
+      enabled: DiscoLib.toString(service.Status) === "idle"
     }
     var props = {
       key: id,
-      className: "iris-discovered-service",
+      className: "disco-discovered-service",
       ref: el => { if (el != null) this.childNodes.set(id, el) },
       onMouseEnter: ev => this.displayTooltip(ev, info),
       onMouseLeave: () => this.hideTooltip(),
     };
     if (info.enabled) {
       Object.assign(props, {
-        className: "iris-discovered-service enabled",
+        className: "disco-discovered-service enabled",
         onMouseDown: () => this.startDragging(id, info)
       });
     }
@@ -141,8 +141,8 @@ class DiscoveryView extends React.Component {
     const tooltip = this.state.tooltip;
     const services = this.props.global.state.services;
     return (
-      <div className="iris-discovery">
-        <div className="iris-tooltip" style={{
+      <div className="disco-discovery">
+        <div className="disco-tooltip" style={{
           display: tooltip.visible ? "block" : "none",
           left: tooltip.left,
           top: tooltip.right

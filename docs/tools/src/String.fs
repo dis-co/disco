@@ -1,5 +1,5 @@
 #if !INTERACTIVE
-module Iris.DocGenerator.String
+module Disco.DocGenerator.String
 #endif
 
 open System
@@ -70,4 +70,4 @@ let processName(name: string) =
         | _ -> failwith "unexpected")
     |> processArgs
 
-// processName "M:Iris.Web.Lib.op_AmpGreater``2(Microsoft.FSharp.Core.FSharpFunc{``0,Microsoft.FSharp.Core.Unit},``1,``0)"
+// processName "M:Disco.Web.Lib.op_AmpGreater``2(Microsoft.FSharp.Core.FSharpFunc{``0,Microsoft.FSharp.Core.Unit},``1,``0)"

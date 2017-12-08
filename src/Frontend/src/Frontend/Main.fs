@@ -1,11 +1,11 @@
-module Iris.Web.Main
+module Disco.Web.Main
 
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
-open Iris.Web.State
-open Iris.Core
-open Iris.Core.Commands
+open Disco.Web.State
+open Disco.Core
+open Disco.Core.Commands
 open System
 open Helpers
 open Types
@@ -15,7 +15,7 @@ open Types
 App.init()
 
 // Public methods in this file will be exposed to JS
-// through the IrisLib global variable (see Webpack config)
+// through the DiscoLib global variable (see Webpack config)
 
 let findPinByName(model: Model, name: string) =
   model.state |> Option.bind (fun state ->
@@ -39,9 +39,9 @@ let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement 
   widget id name headFn bodyFn dispatch model
 
 let toString x = string x
-let createId () = IrisId.Create()
+let createId () = DiscoId.Create()
 let createNameAndId (name: Name) =
-  { Id = IrisId.Create(); Name = name }
+  { Id = DiscoId.Create(); Name = name }
 
 let updatePinValueAt(pin: Pin, idx: int, value: obj): unit =
   Lib.updatePinValue(pin, idx, value)

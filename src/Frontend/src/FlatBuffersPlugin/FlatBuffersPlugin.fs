@@ -9,13 +9,13 @@ type FlatBuffersPlugin() =
     let get prop expr =
         Fable.Apply(expr, [Fable.Value(Fable.StringConst prop)], Fable.ApplyGet, Fable.Any, None)
     let staticField name =
-        Fable.Value(Fable.IdentValue(Fable.Ident("Iris")))
+        Fable.Value(Fable.IdentValue(Fable.Ident("Disco")))
         |> get "Serialization"
         |> get name
     interface IReplacePlugin with
         member x.TryReplace (com: Fable.ICompiler) (i: Fable.ApplyInfo) =
             match i.ownerFullName with
-            | Naming.StartsWith "Iris.Web.Core.FlatBufferTypes" _ ->
+            | Naming.StartsWith "Disco.Web.Core.FlatBufferTypes" _ ->
                 match i.callee with
                 | None ->
                     staticField i.methodName

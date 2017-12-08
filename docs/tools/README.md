@@ -1,6 +1,6 @@
-# Iris documentation Generator
+# Disco documentation Generator
 
-Fable Node.js app to generate Iris documentation as static web pages.
+Fable Node.js app to generate Disco documentation as static web pages.
 
 ## Installing dependencies
 

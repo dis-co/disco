@@ -1,8 +1,8 @@
-# IRIS Frontend Development
+# DISCO Frontend Development
 
 ## Architecture
 
-IRIS Frontend uses [Elmish]() architecture, meaning...
+DISCO Frontend uses [Elmish]() architecture, meaning...
 
 ## Implementing a widget
 

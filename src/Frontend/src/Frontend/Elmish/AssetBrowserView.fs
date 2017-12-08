@@ -1,4 +1,4 @@
-module Iris.Web.AssetBrowserView
+module Disco.Web.AssetBrowserView
 
 open System
 open System.Collections.Generic
@@ -10,9 +10,9 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Raft
-open Iris.Web.Core
+open Disco.Core
+open Disco.Raft
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -238,16 +238,16 @@ type AssetBrowserView(props) =
   member this.renderMachineIcon(node) =
     header [ Class "machine-icon" ] [
       span [
-        Class "iris-output iris-icon icon-host"
+        Class "disco-output disco-icon icon-host"
         OnClick (fun _ -> Select.clusterMember this.props.Dispatch node)
         Style [ Cursor "pointer" ]
       ] [
         str (unwrap node.HostName)
         span [
           classList [
-            "iris-icon icon-bull",true
-            "iris-status-off", node.Status <> MemberStatus.Running
-            "iris-status-on", node.Status = MemberStatus.Running
+            "disco-icon icon-bull",true
+            "disco-status-off", node.Status <> MemberStatus.Running
+            "disco-status-on", node.Status = MemberStatus.Running
           ]
         ] []
       ]

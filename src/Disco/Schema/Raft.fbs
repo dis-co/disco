@@ -1,0 +1,237 @@
+include "Core.fbs";
+
+namespace Disco.Serialization;
+
+//   ____             __ _        ____ _
+//  / ___|___  _ __  / _(_) __ _ / ___| |__   __ _ _ __   __ _  ___
+// | |   / _ \| '_ \| |_| |/ _` | |   | '_ \ / _` | '_ \ / _` |/ _ \
+// | |__| (_) | | | |  _| | (_| | |___| | | | (_| | | | | (_| |  __/
+//  \____\___/|_| |_|_| |_|\__, |\____|_| |_|\__,_|_| |_|\__, |\___|
+//                         |___/                         |___/
+
+enum ConfigChangeTypeFB: ushort {
+     MemberAdded = 0,
+     MemberRemoved = 1
+}
+
+table ConfigChangeFB {
+      Type: ConfigChangeTypeFB;
+      Member: RaftMemberFB;
+}
+
+//  _
+// | |    ___   __ _
+// | |   / _ \ / _` |
+// | |__| (_) | (_| |
+// |_____\___/ \__, |
+//             |___/
+
+table ConfigurationFB {
+      Id:    [ubyte];
+      Index: int;
+      Term : int;
+      Members: [ RaftMemberFB ];
+}
+
+table JointConsensusFB {
+      Id:      [ubyte];
+      Index:   int;
+      Term:    int;
+      Changes: [ ConfigChangeFB ];
+}
+
+table LogEntryFB {
+      Id:    [ubyte];
+      Index: int;
+      Term:  int;
+      Data:  StateMachineFB;
+}
+
+table SnapshotFB {
+      Id:         [ubyte];
+      Index:      int;
+      Term:       int;
+      LastIndex:  int;
+      LastTerm:   int;
+      Members:    [ RaftMemberFB ];
+      Data:       StateMachineFB;
+}
+
+union LogTypeFB {
+      ConfigurationFB,
+      JointConsensusFB,
+      LogEntryFB,
+      SnapshotFB
+}
+
+table LogFB {
+      Entry: LogTypeFB;
+}
+
+// __     __    _   _
+// \ \   / /__ | |_(_)_ __   __ _
+//  \ \ / / _ \| __| | '_ \ / _` |
+//   \ V / (_) | |_| | | | | (_| |
+//    \_/ \___/ \__|_|_| |_|\__, |
+//                          |___/
+
+table VoteRequestFB {
+      Term         : int;
+      Candidate    : RaftMemberFB;
+      LastLogIndex : int;
+      LastLogTerm  : int;
+}
+
+table VoteResponseFB {
+      Term    : int;
+      Granted : bool;
+      Reason  : ErrorFB;
+}
+
+//     _                               _ _____       _        _
+//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
+//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
+//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
+// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
+//         |_|   |_|
+
+table AppendEntriesFB {
+      Term         : int;
+      PrevLogIdx   : int;
+      PrevLogTerm  : int;
+      LeaderCommit : int;
+      Entries      : [ LogFB ];
+}
+
+table AppendResponseFB {
+      Term         : int;
+      Success      : bool;
+      CurrentIndex : int;
+      FirstIndex   : int;
+}
+
+//  ____                        _           _
+// / ___| _ __   __ _ _ __  ___| |__   ___ | |_
+// \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
+//  ___) | | | | (_| | |_) \__ \ | | | (_) | |_
+// |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
+//                   |_|
+
+
+table InstallSnapshotFB {
+      Term      : int;
+      LeaderId  : [ubyte];
+      LastIndex : int;
+      LastTerm  : int;
+      Data      : [ LogFB ];
+}
+
+//  _____       _              ____
+// | ____|_ __ | |_ _ __ _   _|  _ \ ___  ___ _ __   ___  _ __  ___  ___
+// |  _| | '_ \| __| '__| | | | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
+// | |___| | | | |_| |  | |_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
+// |_____|_| |_|\__|_|   \__, |_| \_\___||___/ .__/ \___/|_| |_|___/\___|
+//                       |___/               |_|
+
+table EntryResponseFB {
+      Id: [ubyte];
+      Term: int;
+      Index: int;
+}
+
+//  ____        __ _   __  __
+// |  _ \ __ _ / _| |_|  \/  |___  __ _
+// | |_) / _` | |_| __| |\/| / __|/ _` |
+// |  _ < (_| |  _| |_| |  | \__ \ (_| |
+// |_| \_\__,_|_|  \__|_|  |_|___/\__, |
+//                                |___/
+
+table RequestVoteFB {
+      MemberId: [ubyte];
+      Request: VoteRequestFB;
+}
+
+table RespondVoteFB {
+      MemberId: [ubyte];
+      Response: VoteResponseFB;
+}
+
+table RequestAppendEntriesFB {
+      MemberId: [ubyte];
+      Request: AppendEntriesFB;
+}
+
+table RespondAppendEntriesFB {
+      MemberId: [ubyte];
+      Response: AppendResponseFB;
+}
+
+table RequestInstallSnapshotFB {
+      MemberId: [ubyte];
+      Request: InstallSnapshotFB;
+}
+
+table RespondInstallSnapshotFB {
+      MemberId: [ubyte];
+      Response: AppendResponseFB;
+}
+
+table RequestAppendEntryFB {
+      Request: StateMachineFB;
+}
+
+table RespondAppendEntryFB {
+      Response: EntryResponseFB;
+}
+
+table HandShakeFB {
+      Member: RaftMemberFB;
+}
+
+table HandWaiveFB {
+      Member: RaftMemberFB;
+}
+
+table RedirectFB {
+      Member: RaftMemberFB;
+}
+
+table WelcomeFB {
+      Member: RaftMemberFB;
+}
+
+table ArrivederciFB {
+}
+
+table ErrorResponseFB {
+      MemberId: [ubyte];
+      Error: ErrorFB;
+}
+
+table EmptyResponseFB {
+}
+
+union RaftMsgTypeFB {
+      RequestVoteFB,
+      RespondVoteFB,
+      RequestAppendEntriesFB,
+      RespondAppendEntriesFB,
+      RequestInstallSnapshotFB,
+      RespondInstallSnapshotFB,
+      RequestAppendEntryFB,
+      RespondAppendEntryFB,
+      HandShakeFB,
+      HandWaiveFB,
+      RedirectFB,
+      WelcomeFB,
+      ArrivederciFB,
+      ErrorResponseFB,
+      EmptyResponseFB
+}
+
+table RaftMsgFB {
+      Msg: RaftMsgTypeFB;
+}
+
+root_type RaftMsgFB;
+root_type CueFB;

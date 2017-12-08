@@ -1,4 +1,4 @@
-module Iris.Web.SessionsView
+module Disco.Web.SessionsView
 
 open System
 open System.Collections.Generic
@@ -10,8 +10,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -27,11 +27,11 @@ let inline padding5AndTopBorder() =
 
 let body dispatch (model: Model) =
   match model.state with
-  | None -> table [Class "iris-table"] []
+  | None -> table [Class "disco-table"] []
   | Some state ->
     let config = state.Project.Config
-    div [ Class "iris-sessions" ] [
-      table [Class "iris-table"] [
+    div [ Class "disco-sessions" ] [
+      table [Class "disco-table"] [
         thead [] [
           tr [] [
             th [Class "width-20"; padding5()] [str "User"]
@@ -46,9 +46,9 @@ let body dispatch (model: Model) =
             KeyValue(id,session) ->
               tr [Key (string id)] [
                 td [Class "width-20"; padding5AndTopBorder()] [
-                  span [Class "iris-output iris-icon icon-host"] [
+                  span [Class "disco-output disco-icon icon-host"] [
                     str "Admin"
-                    span [Class "iris-icon icon-bull iris-status-on"] []
+                    span [Class "disco-icon icon-bull disco-status-on"] []
                   ]
                 ]
                 td [Class "width-20"; topBorder()] [

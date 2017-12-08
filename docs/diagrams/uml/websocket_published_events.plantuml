@@ -6,7 +6,7 @@ box "User"
     actor "Eve" as A
 end box
 
-box "Iris (Leader)" #LightBlue
+box "Disco (Leader)" #LightBlue
     participant "Dispatcher"      as B
     participant "State Mutator"   as C
     participant "State Persistor" as D

@@ -7,39 +7,39 @@ $arrow-size: 14px;
 $odd-row: #F3F3F3;
 $even-row: #EBEBEB;
 
-.iris-cue {
+.disco-cue {
   border-left: 3px solid transparent;
   border-right: 2px solid transparent;
   border-bottom: 2px solid transparent;
   border-top: 1px solid lightgray;
-  &.iris-highlight {
+  &.disco-highlight {
     // When hightlighted we want a stronger top border
     border-top-width: 2px;
   }
-  &.iris-forbidden {
+  &.disco-forbidden {
     // When hightlighted we want a stronger top border
     cursor: not-allowed;
     border-color: $pin-border-offline !important;
     background-color: $warning !important;
   }
-  &.iris-cue-selected {
+  &.disco-cue-selected {
     background-color: $highlight-lightblue;
     border-color: $highlight-lightblue
   }
 }
 
-.iris-current-cue {
+.disco-current-cue {
   border: 2px solid red !important;
 }
 
-.iris-cuegroup {
-  & .iris-cuegroup-selected {
+.disco-cuegroup {
+  & .disco-cuegroup-selected {
     background-color: $highlight-lightblue;
     border-color: $highlight-lightblue
   }
 }
 
-.iris-graphview {
+.disco-graphview {
   background: $odd-row;
   height: 100%;
   overflow: auto;
@@ -52,29 +52,29 @@ $even-row: #EBEBEB;
   }
 }
 
-.iris-pingroup {
+.disco-pingroup {
   margin: 5px;
   padding: 5px;
   border: 1px solid black;
   display: flex;
   flex-wrap: wrap;
-  .iris-pingroup-name {
+  .disco-pingroup-name {
     margin: 5px;
   }
 }
 
-.iris-pin {
+.disco-pin {
   display: inline-block;
   // margin: 1px 3px 3px 0px;
   table {
     border-spacing: 1px;
     border-collapse: separate;
   }
-  &.iris-pin-output {
+  &.disco-pin-output {
     th, td {
       border: 1px solid black;
     }
-    .iris-pin-child {
+    .disco-pin-child {
       td {
         color: black;
         background-color: $pin-output-bg-color;
@@ -85,13 +85,13 @@ $even-row: #EBEBEB;
     }
   }
   // Default sizes of IOBoxes according to data type
-  .iris-boolean {
+  .disco-boolean {
     width: 50px;
   }
-  .iris-number {
+  .disco-number {
     width: 100px;
   }
-  .iris-string {
+  .disco-string {
     width: 200px;
     white-space: nowrap;
     overflow: hidden;
@@ -106,12 +106,12 @@ $even-row: #EBEBEB;
     border: none;
   }
 
-  .iris-color-wrapper {
+  .disco-color-wrapper {
     float: left;
   }
 }
 
-.iris-pin-child {
+.disco-pin-child {
   td {
     cursor: default;
     vertical-align: middle;
@@ -156,7 +156,7 @@ $even-row: #EBEBEB;
   }
 }
 
-.iris-pin-end {
+.disco-pin-end {
   padding: 0px;
   background: none;
   border: 1px $pin-bg-color solid;
@@ -183,8 +183,8 @@ $even-row: #EBEBEB;
 }
 
 // Special colors: selected, dirty, persisted, offline
-.iris-pin-selected {
-  .iris-pin-child {
+.disco-pin-selected {
+  .disco-pin-child {
     td {
       background-color: $highlight-lightblue !important;
     }
@@ -192,8 +192,8 @@ $even-row: #EBEBEB;
 }
 
 
-.iris-dirty {
-  .iris-pin-child {
+.disco-dirty {
+  .disco-pin-child {
     td {
       background-color: $pin-bg-color-dirty;
       &:hover {
@@ -203,16 +203,16 @@ $even-row: #EBEBEB;
   }
 }
 
-.iris-non-persisted {
-  .iris-pin-child {
+.disco-non-persisted {
+  .disco-pin-child {
     td {
       border: 2px $pin-border-persisted solid;
     }
   }
 }
 
-.iris-offline {
-  .iris-pin-child {
+.disco-offline {
+  .disco-pin-child {
     td {
       border: 2px $pin-border-offline solid;
     }

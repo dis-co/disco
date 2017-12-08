@@ -1,4 +1,4 @@
-module Iris.Web.App
+module Disco.Web.App
 
 open Elmish
 open Elmish.Browser.Navigation
@@ -6,9 +6,9 @@ open Elmish.Browser.UrlParser
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
-open Iris.Web.Core
-open Iris.Web.State
-open Iris.Web.Notifications
+open Disco.Web.Core
+open Disco.Web.State
+open Disco.Web.Notifications
 open System
 open Fable.Import.React
 open Fable.Helpers.React
@@ -63,7 +63,7 @@ module TabsView =
   let private contextMenu dispatch selected tab =
     button [
       classList [
-        "iris-button", true
+        "disco-button", true
         "inactive", tab.Id <> selected
       ]
       Style [ Visibility (if tab.Removable then "visible" else "hidden") ]
@@ -111,18 +111,18 @@ module TabsView =
     ul [] (addTab dispatch :: tabs)
 
   let root dispatch (model: Model) =
-    div [ Class "iris-tab-container" ] [
+    div [ Class "disco-tab-container" ] [
       div [Class "tabs is-boxed"] [
         renderTabs dispatch model
       ]
-      div [Class "iris-tab-body"] [
+      div [Class "disco-tab-body"] [
         fn ReactGridLayout %[
-          "className" => "iris-workspace"
+          "className" => "disco-workspace"
           "cols" => Layout.gridColumns
           "rowHeight" => Layout.gridRowHeight
           "width" => Layout.gridWidth()
           "verticalCompact" => false
-          "draggableHandle" => ".iris-draggable-handle"
+          "draggableHandle" => ".disco-draggable-handle"
           "layout" => Layout.widgetLayouts model.layout
           "onLayoutChange" => updateLayout dispatch
         ] [

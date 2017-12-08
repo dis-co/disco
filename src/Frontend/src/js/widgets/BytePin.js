@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import Switch, { Case, Default } from 'react-switch-case';
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -15,7 +15,7 @@ import Switch, { Case, Default } from 'react-switch-case';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
+    //initialize
     this.state={
       groupName: "",
       pinName: "",
@@ -28,8 +28,8 @@ class TestWidget extends React.Component {
 
   setPinVal(value) {
     this.state.pinVal = value;
-    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-    IrisLib.updatePinValueAt(pin, 0, value)
+    var pin = DiscoLib.findPinByName(this.props.model, this.state.groupPin);
+    DiscoLib.updatePinValueAt(pin, 0, value)
   }
 
   //event handler for onChange methods, to set parents state
@@ -46,18 +46,18 @@ class TestWidget extends React.Component {
   setPin() {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
     //set pin to this states current pin by pinName
-    var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    this.setState({ 
+    var pin = DiscoLib.findPinByName(this.props.model, groupPin);
+    this.setState({
       groupPin: groupPin,
       pin: pin,
-      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+      pinVal: pin ? DiscoLib.getPinValueAt(pin, 0) : ""
     }, () => {
       if(pin !== null)
         this.convertBytes()
     })
   }
 
-  //converts Uint8Array to blob and creates an url 
+  //converts Uint8Array to blob and creates an url
   convertBytes() {
     var blob = new Blob( [this.state.pinVal]);
     this.setState({
@@ -100,8 +100,8 @@ class TestWidget extends React.Component {
         this.state.pin
         ?
         <img src={this.state.picUrl} style={{width: 100, height: 100}} onLoad={this.cleanUp.bind(this)} />
-        : 
-        <h6>pin is null</h6>          
+        :
+        <h6>pin is null</h6>
         }
         </div>
       </div>
@@ -133,7 +133,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

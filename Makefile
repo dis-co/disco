@@ -20,7 +20,7 @@ export FRONTEND_PORT
 # |_| |_|\__,_|\__|_| \_/ \___|
 
 run.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunTestsFast $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) RunTestsFast $(OPTS)"
 
 tests:
 	${BUILD} BuildTests ${OPTS}
@@ -70,37 +70,37 @@ raspi:
 # |_|   \__,_|_| |_|
 
 run.client:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/Debug/MockClient/client.exe -n MOCK-$(hostname) -h ${HOST} -p ${PORT} -b ${BIND}"
 
 run.frontend:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "npm start"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "npm start"
 
 run.service:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --bind=${FRONTEND_IP}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --bind=${FRONTEND_IP}"
 
 run.service.1:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/one"
 
 run.service.2:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/two"
 
 run.service.3:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/three"
 
 run.service.1.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/one --project=${PROJECT}"
 
 run.service.2.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/two --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/two --project=${PROJECT}"
 
 run.service.3.project:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/three --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/three --project=${PROJECT}"
 
 run.web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) RunWebTestsFast $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) RunWebTestsFast $(OPTS)"
 
 run.service.1.project.profile:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "mono --profile=log:sample,noalloc src/Iris/bin/${TARGET}/Iris/iris.exe start --machine=${HOME}/iris/machines/one --project=${PROJECT}"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "mono --profile=log:sample,noalloc src/Disco/bin/${TARGET}/Disco/disco.exe start --machine=${HOME}/disco/machines/one --project=${PROJECT}"
 
 #   __                 _                 _
 #  / _|_ __ ___  _ __ | |_ ___ _ __   __| |
@@ -109,19 +109,19 @@ run.service.1.project.profile:
 # |_| |_|  \___/|_| |_|\__\___|_| |_|\__,_|
 
 css:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildCss $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) BuildCss $(OPTS)"
 
 frontend:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) BuildFrontendFast $(OPTS)"
 
 frontend.plugins:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontendPlugins $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) BuildFrontendPlugins $(OPTS)"
 
 frontend.full:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildFrontend $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) BuildFrontend $(OPTS)"
 
 web.tests:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) BuildWebTestsFast $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) BuildWebTestsFast $(OPTS)"
 
 #      _
 #   __| | ___   ___ ___
@@ -139,7 +139,7 @@ docs:
 #  \__,_|_|_|
 
 tests.all:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) AllTests $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) AllTests $(OPTS)"
 
 debug.all:
 	${BUILD} DebugAll ${OPTS}
@@ -163,10 +163,10 @@ release: restore
 # |___/_| |_|\___|_|_|
 
 shell:
-	@nix-shell $(SHELL_NIX) -A irisEnv
+	@nix-shell $(SHELL_NIX) -A discoEnv
 
 nixfsi:
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "fsi --use:.paket/load/main.group.fsx --use:$(SCRIPT_DIR)/Fsx/Iris.Core.fsx"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "fsi --use:.paket/load/main.group.fsx --use:$(SCRIPT_DIR)/Fsx/Disco.Core.fsx"
 
 #  ____             _
 # |  _ \  ___   ___| | _____ _ __
@@ -179,62 +179,62 @@ docker:
 
 image_base:
 	@docker build \
-		--label iris \
-		--tag iris:base \
-		${CURRENT_DIR}/src/Iris/Dockerbase/
+		--label disco \
+		--tag disco:base \
+		${CURRENT_DIR}/src/Disco/Dockerbase/
 
 image: docker
 	@docker build \
-		--label iris \
-		--tag iris:$(shell git log -n1 --oneline | cut -d\  -f1) \
-		${CURRENT_DIR}/src/Iris/bin/Debug/Iris/
+		--label disco \
+		--tag disco:$(shell git log -n1 --oneline | cut -d\  -f1) \
+		${CURRENT_DIR}/src/Disco/bin/Debug/Disco/
 
 create:
 	@mkdir -p ${PROJECT}
 	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
-		-e IRIS_BIND=127.0.0.1 \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
-		-e IRIS_GIT_PORT=${IRIS_GIT} \
-		-e IRIS_WEB_PORT=${IRIS_WEB} \
-		-e IRIS_WS_PORT=${IRIS_WS} \
-		-e IRIS_RAFT_PORT=${IRIS_RAFT} \
-		-e IRIS_NAME=${IRIS_NAME} \
+		-e DISCO_BIND=127.0.0.1 \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
+		-e DISCO_GIT_PORT=${DISCO_GIT} \
+		-e DISCO_WEB_PORT=${DISCO_WEB} \
+		-e DISCO_WS_PORT=${DISCO_WS} \
+		-e DISCO_RAFT_PORT=${DISCO_RAFT} \
+		-e DISCO_NAME=${DISCO_NAME} \
 		-e COMMAND=create \
 		${IMAGE}
 
 docker.shell:
 	@docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
 		-e COMMAND=shell \
 		${IMAGE}
 start:
 	@docker run -p 7000:7000 -i --rm \
 		-v ${PROJECT}:/project \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
 		-e COMMAND=start \
 		${IMAGE}
 
 start.interactive:
 	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
 		-e COMMAND=interactive \
 		${IMAGE}
 
 start.noweb:
 	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
-		-e IRIS_NOWEB=true \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e DISCO_NOWEB=true \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
 		-e COMMAND=start \
 		${IMAGE}
 
 enter:
 	@docker run -i --rm --net=host \
 		-v ${PROJECT}:/project \
-		-e IRIS_NODE_ID=${IRIS_NODE_ID} \
+		-e DISCO_NODE_ID=${DISCO_NODE_ID} \
 		-e COMMAND=shell \
 		${IMAGE}
 
@@ -246,7 +246,7 @@ enter:
 # |_|
 
 restore: paket.restore paket.generate
-	@nix-shell $(SHELL_NIX) -A irisEnv --run "$(BUILD) Bootstrap $(OPTS)"
+	@nix-shell $(SHELL_NIX) -A discoEnv --run "$(BUILD) Bootstrap $(OPTS)"
 
 paket.generate:
 	@mono .paket/paket.exe generate-load-scripts --type fsx

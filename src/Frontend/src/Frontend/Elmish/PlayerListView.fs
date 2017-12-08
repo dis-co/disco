@@ -1,4 +1,4 @@
-module Iris.Web.PlayerListView
+module Disco.Web.PlayerListView
 
 open System
 open System.Collections.Generic
@@ -10,8 +10,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -27,7 +27,7 @@ let inline padding5AndTopBorder() =
 
 let private viewButton dispatch (player:CuePlayer) =
   button [
-    Class "iris-button iris-icon"
+    Class "disco-button disco-icon"
     OnClick (fun ev ->
       // Don't stop propagation to allow the item to be selected
       let guid = player.Id.Guid
@@ -46,7 +46,7 @@ let private viewButton dispatch (player:CuePlayer) =
 
 let private deleteButton dispatch (player:CuePlayer) =
   button [
-    Class "iris-button iris-icon icon-close"
+    Class "disco-button disco-icon icon-close"
     OnClick (fun ev ->
       // Don't stop propagation to allow the item to be selected
       /// let guid = player.Id.Guid
@@ -69,7 +69,7 @@ let private updateName (player:CuePlayer) (value:string) =
 
 let private updateCueList (player:CuePlayer) = function
   | Some id ->
-    match IrisId.TryParse id with
+    match DiscoId.TryParse id with
     | Left _ ->
       CuePlayer.unsetCueList player
       |> UpdateCuePlayer
@@ -90,7 +90,7 @@ let private boolButton value f =
       Height "15px"
       Width "15px"
     ]
-    Class ("iris-button " + active)
+    Class ("disco-button " + active)
     OnClick (fun _ -> f (not value))
   ] []
 
@@ -126,11 +126,11 @@ let private renderCueListDropdown (state:State) (player:CuePlayer) =
 
 let body dispatch (model: Model) =
   match model.state with
-  | None -> table [Class "iris-table"] []
+  | None -> table [Class "disco-table"] []
   | Some state ->
-    div [ Class "iris-players" ] [
+    div [ Class "disco-players" ] [
       /// all name * id pairs of existing Cue Lists for use in the dropdown menu
-      table [Class "iris-table"] [
+      table [Class "disco-table"] [
         thead [] [
           tr [] [
             th [Class "width-20"; padding5()] [str "Name"]
@@ -183,7 +183,7 @@ let body dispatch (model: Model) =
 let titleBar dispatch model =
   div [] [
     button [
-      Class "iris-button"
+      Class "disco-button"
       OnClick (fun _ ->
         None
         |> CuePlayer.create "Player"

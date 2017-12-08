@@ -23,7 +23,7 @@ export default class ProjectConfig extends Component {
           <p className="control">
             <span className="select">
               <select onChange={ev => this.setState({ selected: this.props.data[ev.target.selectedIndex] })}>
-                {this.props.data.map((site,i) => 
+                {this.props.data.map((site,i) =>
                     <option key={i} value={site.Id}>{site.Name}</option>
                 )}
               </select>
@@ -33,7 +33,7 @@ export default class ProjectConfig extends Component {
         <div className="field">
           <label className="label">Create Project Site</label>
           <p className="control">
-            <input className="input" type="text" value={this.state.name} onChange={ev => this.setState({ name: ev.target.value, selected: IrisLib.createNameAndId(ev.target.value) }) }/>
+            <input className="input" type="text" value={this.state.name} onChange={ev => this.setState({ name: ev.target.value, selected: DiscoLib.createNameAndId(ev.target.value) }) }/>
           </p>
         </div>
         <div className="field">

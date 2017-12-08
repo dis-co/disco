@@ -1,10 +1,10 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Drag
+module Disco.Web.Drag
 
 open System
 open System.Collections.Generic
-open Iris.Web.Core
-open Iris.Core
+open Disco.Web.Core
+open Disco.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
@@ -42,7 +42,7 @@ let length (items: DragItems) =
 
 let start (data: DragItems) =
   let mutable prev: Point option = None
-  let img = jQuery("#iris-drag-image")
+  let img = jQuery("#disco-drag-image")
   !!jQuery(Browser.window.document)
     ?on("mousemove.drag", fun e ->
       let cur = { Point.x = !!e?clientX; y = !!e?clientY }

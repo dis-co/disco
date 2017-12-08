@@ -1,4 +1,4 @@
-module Iris.Web.Notifications
+module Disco.Web.Notifications
 
 open Elmish
 open Elmish.Browser.Navigation
