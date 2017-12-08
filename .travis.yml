@@ -1,7 +1,13 @@
 language: csharp
 install:
-  - sudo apt-get install fsharp
+  - sudo apt-get install fsharp git cmake build-essential
 script:
+  - git clone https://github.com/google/flatbuffers.git 
+  - cd flatbuffers 
+  - cmake -G "Unix Makefiles"
+  - make
+  - ls -lah
+  - cd ..
   - ./build.sh BootStrap
   - ./build.sh Release
   - ./build.sh AllTests
