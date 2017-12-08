@@ -26,7 +26,7 @@ open System.Text
 let project = "Disco"
 let summary = "VVVV Automation Infrastructure"
 let description = "Lorem Ipsum Dolor Sit Amet"
-let authors = [ "Karsten Gebbert <karsten@nsynk.de>" ]
+let authors = []
 let tags = "cool funky special shiny"
 
 // Paths
@@ -107,13 +107,18 @@ Commit: {5}
 Branch: {6}
 "
 
+
+
+
+
+
+
 let comment = @"
-##  ___      _
-## |_ _|_ __(_)___
-##  | || '__| / __|
-##  | || |  | \__ \
-## |___|_|  |_|___/ Automation Toolkit
-## NsynK GmbH, 2016
+##  ____  _
+## |  _ \(_)___  ___ ___
+## | | | | / __|/ __/ _ \
+## | |_| | \__ \ (_| (_) |
+## |____/|_|___/\___\___/  Automation Toolkit
 
 Let us do something, while we have the chance! It is not every day that we are
 needed. Not indeed that we personally are needed. Others would meet the case
@@ -501,7 +506,7 @@ let uploadArtifact () =
     let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
     let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
     let url = "https://api.bitbucket.org/2.0/repositories/nsynk/disco/downloads"
-    let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
+    letlet tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
     let args = String.Format(tpl, user, pw, url, fn)
     runExec "curl" args __SOURCE_DIRECTORY__ false
 

@@ -9,7 +9,7 @@
 - [VVVV](https://vvvv.org/)
 - Disco build
 
-If you don't have an disco build you can create it from source if you have access to the [repository](https://bitbucket.org/nsynk/disco).
+If you don't have an disco build you can create it from source if you have access to the [repository](https://github.com/dis-co/disco).
 
 - Clone the repository (check Bitbucket website for instructions)
 - Go to the cloned repository directory (e.g. `cd disco`)
