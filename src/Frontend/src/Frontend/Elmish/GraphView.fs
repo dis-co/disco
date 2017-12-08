@@ -1,4 +1,4 @@
-module Iris.Web.GraphView
+module Disco.Web.GraphView
 
 open System
 open Fable.Import
@@ -6,8 +6,8 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Fable.Core
 open Elmish.React
-open Iris.Core
-open Iris.Core.Commands
+open Disco.Core
+open Disco.Core.Commands
 open Helpers
 open Types
 
@@ -103,7 +103,7 @@ type PinGroupView(props) =
     li [] [
       yield div [] [
         button [
-          ClassName ("iris-button iris-icon icon-control " +
+          ClassName ("disco-button disco-icon icon-control " +
             (if this.state.IsOpen then "icon-less" else "icon-more"))
           OnClick (fun ev ->
             ev.stopPropagation()
@@ -247,7 +247,7 @@ type GraphView(props) =
   member this.renderTitleBar() =
     div [] [
       /// TODO: replace this fake element so the titleBar isn't all jacked up
-      button [ Class "iris-button"; Style [ Visibility "hidden" ] ] [
+      button [ Class "disco-button"; Style [ Visibility "hidden" ] ] [
         i [ Class "fa fa-snowflake-o" ] []
       ]
       ContextMenu.create
@@ -321,7 +321,7 @@ type GraphView(props) =
           widgets ]
         |> List.choose id
         |> List.concat
-    ul [Class "iris-graphview"] children
+    ul [Class "disco-graphview"] children
 
   // *** render
 

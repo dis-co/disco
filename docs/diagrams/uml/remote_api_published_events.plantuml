@@ -6,7 +6,7 @@ box "Remote API Clients"
     participant "VVVV"  as A
 end box
 
-box "Iris" #LightBlue
+box "Disco" #LightBlue
     participant "API Server"          as B
     participant "Dispatcher"          as C
     participant "State Mutator"       as D
@@ -14,7 +14,7 @@ box "Iris" #LightBlue
 end box
 
 box "Local API Clients"
-    participant "Other IrisService" as F
+    participant "Other DiscoService" as F
 end box
 
 A -> B: UpdateSlice Command

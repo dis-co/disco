@@ -1,4 +1,4 @@
-module Iris.DocGenerator.Helpers
+module Disco.DocGenerator.Helpers
 
 open System
 open System.Collections.Generic

@@ -23,14 +23,14 @@ open System.Text
 // ---------------------------------------------------------------------
 
 // Project Info
-let project = "Iris"
+let project = "Disco"
 let summary = "VVVV Automation Infrastructure"
 let description = "Lorem Ipsum Dolor Sit Amet"
 let authors = [ "Karsten Gebbert <karsten@nsynk.de>" ]
 let tags = "cool funky special shiny"
 
 // Paths
-let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Iris"
+let baseDir =  __SOURCE_DIRECTORY__ @@ "src" @@ "Disco"
 let scriptsDir = __SOURCE_DIRECTORY__ @@ "src" @@ "Scripts"
 let userScripts = scriptsDir @@ "User"
 let devScripts = scriptsDir @@ "Dev"
@@ -68,9 +68,9 @@ let release = LoadReleaseNotes "CHANGELOG.md"
 // | |  | | (_| | | | | |  _|  __/\__ \ |_
 // |_|  |_|\__,_|_| |_|_|_|  \___||___/\__|
 
-let buildFile = baseDir @@ "Iris/Core/Build.fs"
+let buildFile = baseDir @@ "Disco/Core/Build.fs"
 let buildFileTmpl = @"
-namespace Iris.Core
+namespace Disco.Core
 
 module Build =
 
@@ -98,7 +98,7 @@ module Build =
 
 let manifestFile = __SOURCE_DIRECTORY__ @@ "bin/MANIFEST"
 let manifestTmpl = @"
-Iris Version: {0}
+Disco Version: {0}
 Build Id: {1}
 Build Number: {2}
 Build Version: {3}
@@ -325,16 +325,16 @@ let generateManifest () =
   | _ -> ()
 
 let copyBinaries () =
-  SilentCopyDir "bin/Iris"       (baseDir @@ "bin/Release/Iris")       withoutNodeModules
+  SilentCopyDir "bin/Disco"       (baseDir @@ "bin/Release/Disco")       withoutNodeModules
   SilentCopyDir "bin/Nodes"      (baseDir @@ "bin/Release/Nodes")      withoutNodeModules
   SilentCopyDir "bin/Sdk"        (baseDir @@ "bin/Release/Sdk")        withoutNodeModules
   SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules
 
 let copyAssets () =
   [ "CHANGELOG.md"
-  // userScripts @@ "runiris.sh"
+  // userScripts @@ "rundisco.sh"
     userScripts @@ "createproject.cmd"
-    userScripts @@ "runiris.cmd"
+    userScripts @@ "rundisco.cmd"
     userScripts @@ "mockclient.cmd"
   ] |> List.iter (CopyFile "bin/")
   FileUtils.cp (__SOURCE_DIRECTORY__ @@ "docs/files/test_package.md") "bin/README.md"
@@ -347,8 +347,8 @@ let copyAssets () =
 
 let createArchive () =
    let ext = ".zip"
-   let nameWithVersion = "Iris-" + release.NugetVersion
-   let genericName = "Iris-latest.zip"
+   let nameWithVersion = "Disco-" + release.NugetVersion
+   let genericName = "Disco-latest.zip"
    let filename = nameWithVersion + ext
    let folder = "temp" @@ nameWithVersion
 
@@ -362,7 +362,7 @@ let createArchive () =
    CopyFile genericName filename
    let checksum = Checksum.CalculateFileHash(filename).ToLowerInvariant()
    let contents = sprintf "%s  %s\n%s  %s" checksum filename checksum genericName
-   File.WriteAllText("Iris.sha256sum",contents)
+   File.WriteAllText("Disco.sha256sum",contents)
 
 // TODO: Add another target to run `git clean -xfd`?
 let clean () =
@@ -382,7 +382,7 @@ let generateSerialization () =
   printfn "Cleaning up previous"
 
   DeleteFile (baseDir @@ "Serialization.csproj")
-  CleanDirs [ baseDir @@ "Iris/Serialization" ]
+  CleanDirs [ baseDir @@ "Disco/Serialization" ]
 
   let fbs =
     !! (baseDir @@ "Schema/**/*.fbs")
@@ -398,7 +398,7 @@ let generateSerialization () =
   runExec flatcPath args baseDir false
 
   let files =
-    !! (baseDir @@ "Iris/Serialization/**/*.cs")
+    !! (baseDir @@ "Disco/Serialization/**/*.cs")
     |> Seq.map (fun p -> "    <Compile Include=\"" + p + "\" />" + Environment.NewLine)
     |> Seq.fold ((+)) ""
 
@@ -419,7 +419,7 @@ let buildFrontendPlugins () =
   runExec dotnetExePath "build -c Release" (frontendDir @@ "src" @@ "FlatBuffersPlugin") false
 
 let restoreFrontend () =
-  runExec dotnetExePath "restore Iris.Frontend.sln" (frontendDir @@ "src") false
+  runExec dotnetExePath "restore Disco.Frontend.sln" (frontendDir @@ "src") false
 
 let bootStrap () =
   installDotnetSdk ()
@@ -472,8 +472,8 @@ let runTests config () =
   let config = match config with Debug -> "Debug" | Release -> "Release"
   let testsDir = baseDir @@ "bin" @@ config @@ "Tests"
   if isUnix
-  then runMono "Iris.Tests.exe" testsDir
-  else runTestsOnWindows "Iris.Tests.exe" testsDir
+  then runMono "Disco.Tests.exe" testsDir
+  else runTestsOnWindows "Disco.Tests.exe" testsDir
 
 // TODO: Watch only handles Fable project but it should watch also markdown files
 let generateDocs (watch: bool) () =
@@ -494,13 +494,13 @@ let uploadArtifact () =
   if AppVeyorEnvironment.RepoBranch = "master" || AppVeyorEnvironment.RepoTag then
     let fn =
       if AppVeyorEnvironment.RepoTag then
-        let fn' = sprintf "Iris-%s.zip" AppVeyorEnvironment.RepoTagName
-        Rename fn' "Iris-latest.zip"
+        let fn' = sprintf "Disco-%s.zip" AppVeyorEnvironment.RepoTagName
+        Rename fn' "Disco-latest.zip"
         fn'
-      else "Iris-latest.zip"
+      else "Disco-latest.zip"
     let user = Environment.GetEnvironmentVariable "BITBUCKET_USER"
     let pw = Environment.GetEnvironmentVariable "BITBUCKET_PW"
-    let url = "https://api.bitbucket.org/2.0/repositories/nsynk/iris/downloads"
+    let url = "https://api.bitbucket.org/2.0/repositories/nsynk/disco/downloads"
     let tpl = @"-s -X POST -u {0}:{1} {2} -F files=@{3}"
     let args = String.Format(tpl, user, pw, url, fn)
     runExec "curl" args __SOURCE_DIRECTORY__ false

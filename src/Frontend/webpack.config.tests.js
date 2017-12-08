@@ -18,7 +18,7 @@ module.exports = {
   devtool: 'source-map',
   entry: resolve('src/Tests.Frontend/Tests.Frontend.fsproj'),
   output: {
-    filename: 'iris.tests.js',
+    filename: 'disco.tests.js',
     path: resolve('js'),
   },
   resolve: {

@@ -1,4 +1,4 @@
-module Iris.Web.ProjectView
+module Disco.Web.ProjectView
 
 open System
 open System.Collections.Generic
@@ -10,8 +10,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -22,7 +22,7 @@ let Tree: ComponentClass<obj> = importDefault "../../../lib/react-ui-tree/react-
 type [<Pojo>] TreeNode =
   { ``module``: string; children: TreeNode[] option }
 
-let project2tree (p: IrisProject) =
+let project2tree (p: DiscoProject) =
   let leaf m = { ``module``=m; children=None }
   let node m c = { ``module``=m; children=Some c }
   let rec obj2tree k (o: obj) =
@@ -40,7 +40,7 @@ let project2tree (p: IrisProject) =
   and arr2tree k (arr: obj[]) =
     Array.mapi (fun i v -> obj2tree (string i) v) arr
     |> node k
-  let cfg2tree (c: IrisConfig) =
+  let cfg2tree (c: DiscoConfig) =
     [| leaf ("MachineId: " + string c.Machine.MachineId)
     ;  obj2tree "Audio" c.Audio
     ;  obj2tree "Clients" c.Clients

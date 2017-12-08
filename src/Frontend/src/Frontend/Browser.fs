@@ -1,4 +1,4 @@
-namespace Iris.Web.Core
+namespace Disco.Web.Core
 
 //  _   _ _   _ _ _ _   _
 // | | | | |_(_) (_) |_(_) ___  ___

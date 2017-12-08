@@ -1,4 +1,4 @@
-namespace Iris.Web.Inspectors
+namespace Disco.Web.Inspectors
 
 open System
 open System.Collections.Generic
@@ -10,10 +10,10 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
-open Iris.Web.Helpers
-open Iris.Web.Types
+open Disco.Core
+open Disco.Web.Core
+open Disco.Web.Helpers
+open Disco.Web.Types
 open State
 
 ///  ____        _     _ _
@@ -24,7 +24,7 @@ open State
 
 module ClientInspector =
 
-  let private renderMachine tag dispatch (model: Model) (client: IrisClient) =
+  let private renderMachine tag dispatch (model: Model) (client: DiscoClient) =
     match model.state with
     | None -> Common.stringRow tag (string client.ServiceId)
     | Some state ->
@@ -44,7 +44,7 @@ module ClientInspector =
         (fun _ -> Select.group dispatch group)
     ]
 
-  let private renderGroups tag dispatch (model: Model) (client: IrisClient) =
+  let private renderGroups tag dispatch (model: Model) (client: DiscoClient) =
     match model.state with
     | None -> Common.row tag []
     | Some state ->

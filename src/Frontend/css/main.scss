@@ -25,7 +25,7 @@ html, body {
   background: #aaa;
 }
 
-.iris-output {
+.disco-output {
   background: #fff;
   border: #D5D3D3 1px solid;
   border-radius: 100px;
@@ -43,7 +43,7 @@ html, body {
 }
 
 #app-header {
-  background: $iris-grey;
+  background: $disco-grey;
   min-height: 2.20rem;
   height: 25px;
 }
@@ -70,7 +70,7 @@ html, body {
     }
   }
   &.columns:hover {
-    background: $iris-grey;
+    background: $disco-grey;
   }
 }
 
@@ -79,7 +79,7 @@ html, body {
 }
 
 #app-footer {
-  background: $iris-grey;
+  background: $disco-grey;
   height: $footer-height;
   padding-top: $footer-padding-top;
 }
@@ -101,11 +101,11 @@ html, body {
   }
 
   .ui-layout-west {
-    background: $iris-grey;
+    background: $disco-grey;
   }
 
   .ui-layout-east {
-    background: $iris-grey;
+    background: $disco-grey;
   }
 }
 
@@ -115,7 +115,7 @@ html, body {
   overflow: unset;              // no scrollbars in modals please
 }
 
-#iris-drag-image {
+#disco-drag-image {
   position: absolute;
   opacity: 0.8;
   display: none;
@@ -128,7 +128,7 @@ html, body {
   height: 80px;
 }
 
-.iris-tab-container {
+.disco-tab-container {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -137,7 +137,7 @@ html, body {
     background: $tab-background;
     margin-bottom: 0; // Override Bulma
 
-    .iris-button {
+    .disco-button {
       margin-left: 10px;
     }
 
@@ -150,29 +150,29 @@ html, body {
     }
   }
 
-  .iris-tab-body {
+  .disco-tab-body {
     flex: 1;
     display: flex;
     flex-direction: column;
   }
 }
 
-// .iris-workspace {
+// .disco-workspace {
 //   flex: 1;
 // }
 
-.iris-widget {
+.disco-widget {
   height: 100%;
   background: white;
   display: flex;
   flex-direction: column;
 
-  .iris-draggable-handle {
+  .disco-draggable-handle {
     cursor: move;
     margin: 0;
     height: 35px;
     padding: 7px;
-    background: $iris-grey;
+    background: $disco-grey;
     display: flex;
     align-items: baseline;
 
@@ -181,17 +181,17 @@ html, body {
     }
 
     // Push other elements to the sides
-    .iris-title-bar {
+    .disco-title-bar {
         flex: 1;
     }
 
     //Icon Sizes
-    .iris-window-control .iris-icon {
+    .disco-window-control .disco-icon {
       vertical-align: 0px;
     }
   }
 
-  .iris-widget-body {
+  .disco-widget-body {
     flex: 1;
     overflow: hidden;
   }
@@ -205,27 +205,27 @@ html, body {
     @extend .scrollable-container;
   }
 
-  .iris-players {
+  .disco-players {
     @extend .scrollable-container;
   }
 
-  .iris-cues {
+  .disco-cues {
     @extend .scrollable-container;
   }
 
-  .iris-cuelists {
+  .disco-cuelists {
     @extend .scrollable-container;
   }
 
-  .iris-cluster {
+  .disco-cluster {
     @extend .scrollable-container;
   }
 
-  .iris-clients {
+  .disco-clients {
     @extend .scrollable-container;
   }
 
-  .iris-sessions {
+  .disco-sessions {
     @extend .scrollable-container;
   }
 }
@@ -234,7 +234,7 @@ html, body {
   background-color: $warning;
 }
 
-.iris-inspector {
+.disco-inspector {
   .bar {
     height: 25px;
     padding-left: 6px;
@@ -267,7 +267,7 @@ html, body {
     border-bottom: 1px solid lightgrey;
   }
 
-  .iris-button {
+  .disco-button {
     width: 10px;
     height: 10px;
   }
@@ -296,7 +296,7 @@ html, body {
 //  must be top-level so styles also apply when sorting
 .asset-browser-selected-file {
   border: 1px solid #d0d0d0;
-  background: $iris-grey;
+  background: $disco-grey;
   border-radius: 4px;
   margin: 2px;
   line-height: 20px;
@@ -363,8 +363,8 @@ html, body {
 
   .center {
     flex-grow: 3;
-    border-left: 1px solid $iris-grey;
-    border-right: 1px solid $iris-grey;
+    border-left: 1px solid $disco-grey;
+    border-right: 1px solid $disco-grey;
 
     .body {
       background: #ddd;
@@ -377,7 +377,7 @@ html, body {
       flex-direction: row;
       cursor: pointer;
       background: white;
-      border-bottom: 1px solid $iris-grey;
+      border-bottom: 1px solid $disco-grey;
       .file-details {
         flex-grow: 1;
       }
@@ -431,7 +431,7 @@ html, body {
     .machine {
       min-height: 30px;
       width: 100%;
-      border-bottom: 1px solid $iris-grey;
+      border-bottom: 1px solid $disco-grey;
       padding: 8px 0 0 10px;
       transition: all 0.4s;
 
@@ -488,7 +488,7 @@ html, body {
   }
 }
 
-.iris-cluster {
+.disco-cluster {
   .headline {
     padding: 5px;
     margin: 5px 0 5px;
@@ -506,7 +506,7 @@ html, body {
   }
   .is-leader {
     border: 1px solid #d0d0d0;
-    background: $iris-grey;
+    background: $disco-grey;
   }
   table {
     thead {
@@ -516,7 +516,7 @@ html, body {
       }
     }
     tbody > tr {
-      border-bottom: 1px solid $iris-grey;
+      border-bottom: 1px solid $disco-grey;
       td {
         padding: 5px;
       }

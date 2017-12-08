@@ -1,6 +1,6 @@
-# IRIS Framework
+# DISCO Framework
 
-IRIS is a software product developed by [Nsynk](http://nsynk.de/) to aid in the design of media workflows through the use of **Cues** and in interaction with other software like [VVVV](https://vvvv.org/) or [Unity](https://unity3d.com/unity).
+DISCO is a software product developed by [Nsynk](http://nsynk.de/) to aid in the design of media workflows through the use of **Cues** and in interaction with other software like [VVVV](https://vvvv.org/) or [Unity](https://unity3d.com/unity).
 
 ## Backend
 

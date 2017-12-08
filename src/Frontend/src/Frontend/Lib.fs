@@ -1,4 +1,4 @@
-module rec Iris.Web.Lib
+module rec Disco.Web.Lib
 
 // * Imports
 
@@ -6,11 +6,11 @@ module rec Iris.Web.Lib
 
 open System
 open System.Collections.Generic
-open Iris.Raft
-open Iris.Core
-open Iris.Web.Notifications
-open Iris.Web.Core
-open Iris.Core.Commands
+open Disco.Raft
+open Disco.Core
+open Disco.Web.Notifications
+open Disco.Web.Core
+open Disco.Core.Commands
 open Fable.Core
 open Fable.PowerPack
 open Fable.PowerPack.Fetch
@@ -92,7 +92,7 @@ let listProjects() =
 
 let addMember(memberIpAddr: string, memberHttpPort: uint16) =
   Promise.start (promise {
-  // See workflow: https://bitbucket.org/nsynk/iris/wiki/md/workflows.md
+  // See workflow: https://bitbucket.org/nsynk/disco/wiki/md/workflows.md
   try
     let latestState =
       match ClientContext.Singleton.Store with
@@ -115,7 +115,7 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     // Get the added machines configuration
     let! machine =
-      postCommandParseAndContinue<IrisMachine>
+      postCommandParseAndContinue<DiscoMachine>
         memberIpAndPort
         MachineConfig
 
@@ -266,7 +266,7 @@ let getProjectSites(project, username, password) =
 // * createProject
 
 let createProject(projectName: string): JS.Promise<Name option> = promise {
-  let! (machine: IrisMachine) = postCommandParseAndContinue None MachineConfig
+  let! (machine: DiscoMachine) = postCommandParseAndContinue None MachineConfig
   let! result =
     { name     = projectName
       ipAddr   = string machine.BindAddress
@@ -349,7 +349,7 @@ let findPin (pinId: PinId) (state: State) : Pin =
   | None ->
     // failwithf "Cannot find pin with Id %O in GlobalState" pinId
     // Placeholder pin
-    let emptyId = IrisId.FromGuid(Guid.Empty)
+    let emptyId = DiscoId.FromGuid(Guid.Empty)
     Pin.Sink.string pinId (name "MISSING") emptyId emptyId [|""|]
 
 // * findPinGroup
@@ -361,7 +361,7 @@ let findPinGroup (pinGroupId: PinGroupId) (state: State) =
   | None ->
     // failwithf "Cannot find pin group with Id %O in GlobalState" pinGroupId
     // Placeholder pin group
-    let emptyId = IrisId.FromGuid(Guid.Empty)
+    let emptyId = DiscoId.FromGuid(Guid.Empty)
     { Id = emptyId
       Name = name "MISSING"
       ClientId = emptyId

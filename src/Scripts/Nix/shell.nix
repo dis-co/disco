@@ -27,7 +27,7 @@ let
   '';
 
   service = stdenv.mkDerivation {
-    name = "Iris";
+    name = "Disco";
     version = "1.0";
     phases = [ "unpackPhase" "buildPhase" "installPhase" ];
 
@@ -49,12 +49,12 @@ let
 
     installPhase = ''
       mkdir -p $out/bin
-      cp src/Iris/bin/Debug/Iris/* $out/bin
+      cp src/Disco/bin/Debug/Disco/* $out/bin
     '';
   };
 
   image = mono: dockerTools.buildImage {
-    name = "iris-image";
+    name = "disco-image";
     tag = "0.1";
 
     runAsRoot = ''
@@ -79,14 +79,14 @@ let
   };
 
   env = stdenv.mkDerivation {
-    name = "irisEnv";
+    name = "discoEnv";
     buildInputs = inputs;
     libpath = libpath;
     shellHook = hook;
   };
 
 in rec {
-  irisService = service;
+  discoService = service;
   dockerImage = image;
-  irisEnv = env;
+  discoEnv = env;
 }

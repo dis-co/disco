@@ -1,10 +1,10 @@
-[![Build status](https://ci.appveyor.com/api/projects/status/1ouixkub5yqwb1b5/branch/master?svg=true)](https://ci.appveyor.com/project/NSYNK/iris/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/1ouixkub5yqwb1b5/branch/master?svg=true)](https://ci.appveyor.com/project/NSYNK/disco/branch/master)
 
-[Download Latest Release](https://ci.appveyor.com/api/projects/nsynk/iris/artifacts/Iris-latest.zip)
+[Download Latest Release](https://ci.appveyor.com/api/projects/nsynk/disco/artifacts/Disco-latest.zip)
 
-[Download Release Checksums](https://ci.appveyor.com/api/projects/nsynk/iris/artifacts/Iris.sha256sum)
+[Download Release Checksums](https://ci.appveyor.com/api/projects/nsynk/disco/artifacts/Disco.sha256sum)
 
-# Iris
+# Disco
 
 ## Data Definition
 
@@ -157,13 +157,13 @@ Fields:
     |_| \_\__,_|_|  \__| 
 
 
-### IRIS Service
+### DISCO Service
 
 ### Client-API
-The Iris Client-API ensures the communication between the Iris-Service and a Iris-Client.
+The Disco Client-API ensures the communication between the Disco-Service and a Disco-Client.
 
 
-### IRIS Project
+### DISCO Project
 
 | Name | Type  | mandatory | description
 | :------- | :------: |  :------: | -------: |
@@ -224,7 +224,7 @@ A parameter defines a single exposed value of a client
 
 ## Windows
 
-A setup without `VisualStudio` is best bootstrapped with [chocolatey](https://chocolatey.org). The following packages are required to build Iris:
+A setup without `VisualStudio` is best bootstrapped with [chocolatey](https://chocolatey.org). The following packages are required to build Disco:
 
 ```
 7zip.commandline

@@ -1,16 +1,16 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Cues.CueView
+module Disco.Web.Cues.CueView
 
 open System
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web
-open Iris.Web.Notifications
+open Disco.Web
+open Disco.Web.Notifications
 open Types
 open Helpers
 
@@ -23,7 +23,7 @@ type [<Pojo>] State =
 type [<Pojo>] Props =
   { key: string
     Model: Model
-    State: Iris.Core.State
+    State: Disco.Core.State
     Locked: bool
     Cue: Cue
     CueRef: CueReference
@@ -87,7 +87,7 @@ let private renderRemoveButton (props:Props) =
   then str ""
   else
     button [
-      Class "iris-button iris-icon icon-control icon-close"
+      Class "disco-button disco-icon icon-control icon-close"
       OnClick (fun ev ->
         ev.stopPropagation()
         let id = props.CueRef.Id
@@ -181,8 +181,8 @@ type Component(props) =
     let arrowButton =
       button [
         classList [
-          "iris-button", true
-          "iris-icon", true
+          "disco-button", true
+          "disco-icon", true
           "icon-control", true
           "icon-less", this.state.IsOpen
           "icon-more", not this.state.IsOpen
@@ -194,7 +194,7 @@ type Component(props) =
       ] []
     let playButton =
       button [
-        Class "iris-button iris-icon icon-play"
+        Class "disco-button disco-icon icon-play"
         OnClick (fun _ ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -204,7 +204,7 @@ type Component(props) =
     let autocallButton (props:Props) =
       button [
         classList [
-          "iris-button iris-icon icon-autocall", true
+          "disco-button disco-icon icon-autocall", true
           "warning", props.CueRef.AutoFollow
         ]
         Disabled locked
@@ -255,8 +255,8 @@ type Component(props) =
             let pinGroup = Lib.findPinGroup pinGroupId state
             li [Key (string pinGroupId)] [
               div [] [str (unwrap pinGroup.Name)]
-              // Use iris-wrap class to cancel the effects of iris-table wrapping CSS rules
-              div [Class "iris-wrap"] (pinAndSlices |> Seq.map (fun (i, pin, slices) ->
+              // Use disco-wrap class to cancel the effects of disco-table wrapping CSS rules
+              div [Class "disco-wrap"] (pinAndSlices |> Seq.map (fun (i, pin, slices) ->
                 com<PinView.PinView,_,_>
                   { key = string pin.Id
                     pin = pin
@@ -284,7 +284,7 @@ type Component(props) =
                   } []) |> Seq.toList)
             ])
           |> Array.toList
-        [cueHeader; div [] [ul [Class "iris-graphview"] pinGroups]]
+        [cueHeader; div [] [ul [Class "disco-graphview"] pinGroups]]
     let isSelected =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
         && this.props.CueIndex = this.props.SelectedCueIndex
@@ -295,11 +295,11 @@ type Component(props) =
       | _ -> false
     div [
       classList [
-        "iris-cue", true
-        "iris-current-cue", isCurrent
-        "iris-cue-selected", isSelected
-        "iris-highlight", isHighlit
-        "iris-forbidden", isHighlit && locked
+        "disco-cue", true
+        "disco-current-cue", isCurrent
+        "disco-cue-selected", isSelected
+        "disco-highlight", isHighlit
+        "disco-forbidden", isHighlit && locked
       ]
       Ref (fun el -> selfRef <- Option.ofObj el)
     ] rows

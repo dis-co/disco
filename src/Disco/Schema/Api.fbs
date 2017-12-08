@@ -1,0 +1,74 @@
+include "Core.fbs";
+include "Raft.fbs";
+
+namespace Disco.Serialization;
+
+enum ApiErrorTypeFB:ushort {
+     InternalFB = 0,
+     UnknownCommandFB = 1,
+     MalformedRequestFB = 2
+}
+
+table ApiErrorFB {
+     Type: ApiErrorTypeFB;
+     Data: string;
+}
+
+enum ApiCommandFB:ushort {
+     RegisterFB = 0,
+     UnRegisterFB,
+     SnapshotFB,
+     UnloadFB,
+     AddFB,
+     UpdateFB,
+     RemoveFB,
+     LogEventFB,
+     BatchFB,
+     UndoFB,
+     RedoFB,
+     ResetFB,
+     SaveFB,
+     DataSnapshotFB,
+     SetLogLevelFB,
+     CallCueFB,
+}
+
+union ParameterFB {
+     DiscoClientFB,
+     StateFB,     
+     ProjectFB,
+     RaftMemberFB,
+     PinGroupFB,
+     PinMappingFB,
+     PinWidgetFB,
+     PinFB,
+     CueFB,
+     CueListFB,
+     CuePlayerFB,
+     UserFB,
+     ClockFB,
+     SessionFB,
+     SlicesFB,
+     LogEventFB,
+     StringFB,
+     TransactionFB,
+     DiscoveredServiceFB,
+     FsEntryUpdateFB,
+     FsTreeUpdateFB,
+}
+
+table ApiRequestFB {
+     Command: ApiCommandFB;
+     Parameter: ParameterFB;      
+}
+
+enum StatusFB:ushort {
+     NOKFB,
+     RegisteredFB,
+     UnregisteredFB
+}
+
+table ApiResponseFB {
+     Status: StatusFB;
+     Error: ApiErrorFB;      
+}

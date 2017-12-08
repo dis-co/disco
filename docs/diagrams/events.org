@@ -22,7 +22,7 @@ box "User"
     actor "Alice" as C
 end box
 
-box "Iris (Leader)" #Lightblue
+box "Disco (Leader)" #Lightblue
     participant "Dispatcher" as A
     participant "Raft" as B
 end box
@@ -70,7 +70,7 @@ box "User"
     actor "Bob" as A
 end box
 
-box "Iris (Leader)" #LightBlue
+box "Disco (Leader)" #LightBlue
     participant "Dispatcher" as B
 end box
 
@@ -95,7 +95,7 @@ box "User"
     actor "Eve" as A
 end box
 
-box "Iris (Leader)" #LightBlue
+box "Disco (Leader)" #LightBlue
     participant "Dispatcher"      as B
     participant "State Mutator"   as C
     participant "State Persistor" as D
@@ -129,7 +129,7 @@ box "Local API Clients"
     participant "Unity" as B
 end box
 
-box "Iris (Leader)" #LightBlue
+box "Disco (Leader)" #LightBlue
     participant "API Server"          as C
     participant "Dispatcher"          as D
     participant "State Mutator"       as E
@@ -137,7 +137,7 @@ box "Iris (Leader)" #LightBlue
 end box
 
 box "Remote API Listeners"
-    participant "Other IrisService" as G
+    participant "Other DiscoService" as G
 end box
 
 A -> C: UpdateSlice Command
@@ -162,7 +162,7 @@ box "Remote API Clients"
     participant "VVVV"  as A
 end box
 
-box "Iris" #LightBlue
+box "Disco" #LightBlue
     participant "API Server"          as B
     participant "Dispatcher"          as C
     participant "State Mutator"       as D
@@ -171,7 +171,7 @@ end box
 
 
 box "Local API Clients"
-    participant "Other IrisService" as F
+    participant "Other DiscoService" as F
 end box
 
 A -> B: UpdateSlice Command

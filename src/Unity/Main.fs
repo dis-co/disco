@@ -1,10 +1,10 @@
 ﻿[<RequireQualifiedAccess>]
-module Iris.Unity
+module Disco.Unity
 
 open System
 open System.Collections.Generic
-open Iris.Core
-open Iris.Client
+open Disco.Core
+open Disco.Client
 open System.Threading
 
 type OptionBuilder() =
@@ -21,28 +21,28 @@ type State =
     Callbacks: Map<string, Action<double[]>> }
 
 type Msg =
-  | IrisEvent of ClientEvent
+  | DiscoEvent of ClientEvent
   | RegisterObject of groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]>
   | Dispose
 
 type Actor = MailboxProcessor<Msg>
 
-type IIrisClient =
+type IDiscoClient =
   inherit IDisposable
   abstract member Guid: Guid
   abstract member RegisterGameObject: groupName: string * pinName: string * values: IDictionary<string,double> * callback: Action<double[]> -> unit
 
 let startApiClient(clientGuid: Guid, serverIp, serverPort: uint16, clientIp, clientPort: uint16, print: string->unit) =
-    let myself: IrisClient =
+    let myself: DiscoClient =
       { Id = string clientGuid |> Id
         Name = string clientGuid
         Role = Role.Renderer
         Status = ServiceStatus.Starting
         IpAddress = IPv4Address clientIp
         Port = port clientPort }
-    let server: IrisServer =
+    let server: DiscoServer =
       { Port = port serverPort; IpAddress = IPv4Address serverIp }
-    sprintf "Unity client at %O:%O connecting to Iris at %O:%O..."
+    sprintf "Unity client at %O:%O connecting to Disco at %O:%O..."
       myself.IpAddress myself.Port server.IpAddress server.Port |> print
     let client = ApiClient.create server myself
     myself.Id, client
@@ -71,9 +71,9 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
               for KeyValue(_,group) in state.PinGroups do
                   client.RemovePinGroup(group)
               client.Dispose()
-              print("Iris client disposed")
+              print("Disco client disposed")
               None
-            | IrisEvent ev ->
+            | DiscoEvent ev ->
               match ev with
               | ClientEvent.Update(UpdateSlices(Slices.NumberSlices(id, slices))) ->
                 match Map.tryFind (string id) state.Callbacks with
@@ -81,7 +81,7 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
                 | None -> ()
                 Some state
               | ClientEvent.Status status ->
-                print(sprintf "IrisClient status: %A" status)
+                print(sprintf "DiscoClient status: %A" status)
                 if status = ServiceStatus.Running then
                   //for KeyValue(_,pinGroup) in state.PinGroups do
                   //  addPinGroup(pinGroup, client, true)
@@ -106,8 +106,8 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
               Some { state with PinGroups = Map.add groupName pinGroup state.PinGroups; Callbacks = Map.add (string pinId) callback state.Callbacks }
           with
           | ex ->
-            Logger.err "Iris.Unity.actorLoop" ex.Message
-            print("Iris client error: " + ex.Message)
+            Logger.err "Disco.Unity.actorLoop" ex.Message
+            print("Disco client error: " + ex.Message)
             Some state
         match newState with
         | Some newState -> return! loop newState
@@ -116,16 +116,16 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
       return! loop state
     })
   // Subscribe to API client events
-  apiobs <- client.Subscribe(IrisEvent >> actor.Post) |> Some
+  apiobs <- client.Subscribe(DiscoEvent >> actor.Post) |> Some
   match client.Start() with
   | Right () ->
     Logger.info "startClient" "Successfully started Unity ApiClient"
-    print(sprintf "Successfully started Iris Client (status %A)" client.Status)
+    print(sprintf "Successfully started Disco Client (status %A)" client.Status)
     actor
   | Left error ->
     let msg = string error
     Logger.err "startClient" msg
-    print ("Couldn't start Iris Client: " + msg)
+    print ("Couldn't start Disco Client: " + msg)
     exn msg |> raise
 
 let startApiClientAndActor(clientGuid, serverIp, serverPort: uint16, clientIp, clientPort, print) =
@@ -135,21 +135,21 @@ let startApiClientAndActor(clientGuid, serverIp, serverPort: uint16, clientIp, c
   client, actor
 
 let private myLock = obj()
-let mutable private client: IIrisClient option = None
+let mutable private client: IDiscoClient option = None
 
-[<CompiledName("GetIrisClient")>]
-let getIrisClient(clientGuid, serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
+[<CompiledName("GetDiscoClient")>]
+let getDiscoClient(clientGuid, serverIp, serverPort, clientIp, clientPort, print: Action<string>) =
     lock myLock (fun () ->
       match client with
       | Some client ->
         if client.Guid <> clientGuid then
-          failwithf "An Iris Client with guid %O has already been started" client.Guid
+          failwithf "An Disco Client with guid %O has already been started" client.Guid
         client
       | None ->
         let apiClient, actor = startApiClientAndActor(clientGuid, serverIp, serverPort, clientIp, clientPort, print.Invoke)
-        let client2: IIrisClient =
+        let client2: IDiscoClient =
           let mutable disposed = false
-          { new IIrisClient with
+          { new IDiscoClient with
               member this.Dispose() =
                 if not disposed then
                   disposed <- true

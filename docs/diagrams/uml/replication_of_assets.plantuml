@@ -6,7 +6,7 @@ box "User"
     actor "Alice" as C
 end box
 
-box "Iris (Leader)" #Lightblue
+box "Disco (Leader)" #Lightblue
     participant "Dispatcher" as A
     participant "Raft" as B
 end box

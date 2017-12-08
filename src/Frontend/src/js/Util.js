@@ -141,7 +141,7 @@ function formatValue(value, typeofValue, precision) {
     return value.ToHex(false)   //  for now we don't support alpha channel in the atoms
   }
   else {
-    return IrisLib.toString(value);
+    return DiscoLib.toString(value);
   }
 }
 
@@ -167,7 +167,7 @@ function getTypeofAndClass(value) {
     typeofValue = "string";
     break
   }
-  return [typeofValue, "iris-" + typeofValue];
+  return [typeofValue, "disco-" + typeofValue];
 }
 
 export function createElement(tagName, options, value) {
@@ -212,7 +212,7 @@ export function createElement(tagName, options, value) {
         }
       },props));
       return React.createElement("div", {
-        className: "iris-color-wrapper",
+        className: "disco-color-wrapper",
         style: {
           background: formattedValue
         }

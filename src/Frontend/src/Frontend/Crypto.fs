@@ -1,4 +1,4 @@
-namespace Iris.Web.Core
+namespace Disco.Web.Core
 
 open Fable.Core
 open Fable.Import

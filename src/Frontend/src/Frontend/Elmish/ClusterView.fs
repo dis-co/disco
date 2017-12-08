@@ -1,4 +1,4 @@
-module Iris.Web.ClusterView
+module Disco.Web.ClusterView
 
 open System
 open System.Collections.Generic
@@ -10,16 +10,16 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Raft
-open Iris.Web.Core
+open Disco.Core
+open Disco.Raft
+open Disco.Web.Core
 open Helpers
 open State
 open Types
 
 let titleBar dispatch (model: Model) =
   button [
-    Class "iris-button"
+    Class "disco-button"
     OnClick(fun _ -> Modal.AddMember() :> IModal |> OpenModal |> dispatch)
     ] [str "Add member"]
 
@@ -31,7 +31,7 @@ let activeConfig dispatch state =
       config.Sites |> Seq.tryFind (fun site -> site.Id = activeSite))
     |> Option.map (fun site -> site.Members)
     |> Option.defaultValue Map.empty
-  table [Class "iris-table"] [
+  table [Class "disco-table"] [
     thead [] [
       tr [] [
         th [Class "width-25"] [str "Host"]
@@ -57,17 +57,17 @@ let activeConfig dispatch state =
         ] [
           td [Class "width-25"] [
             span [
-              Class "iris-output iris-icon icon-host"
+              Class "disco-output disco-icon icon-host"
               OnClick (fun _ -> Select.clusterMember dispatch node)
               Style [ Cursor "pointer" ]
             ] [
               str (unwrap node.HostName)
               span [
                 classList [
-                  "iris-icon icon-bull", true
-                  "iris-status-off", node.Status = MemberStatus.Failed
-                  "iris-status-on", node.Status = MemberStatus.Running
-                  "iris-status-warning", node.Status = MemberStatus.Joining
+                  "disco-icon icon-bull", true
+                  "disco-status-off", node.Status = MemberStatus.Failed
+                  "disco-status-on", node.Status = MemberStatus.Running
+                  "disco-status-warning", node.Status = MemberStatus.Joining
                 ]
               ] []
             ]
@@ -87,7 +87,7 @@ let activeConfig dispatch state =
           td [Class "width-10"] [str (string node.Status)]
           td [Class "width-10"] [
             button [
-              Class "iris-button iris-icon icon-close"
+              Class "disco-button disco-icon icon-close"
               OnClick (fun ev ->
                 ev.stopPropagation()
                 match Config.findMember config kv.Key with
@@ -131,7 +131,7 @@ let private discoveredServices dispatch (state:State) =
           | Idle ->
             [
               button [
-                Class "button iris-button"
+                Class "button disco-button"
                 OnClick
                   (fun e ->
                     e.stopPropagation()
@@ -174,7 +174,7 @@ let private discoveredServices dispatch (state:State) =
           td [Class "width-20"] [str status]
           td [Class "width-10"] actions
         ])
-  table [Class "iris-table"] [
+  table [Class "disco-table"] [
     thead [] [
       tr [] [
         th [Class "width-25"] [str "Host"]
@@ -193,9 +193,9 @@ let private discoveredServices dispatch (state:State) =
 
 let body dispatch (model: Model) =
   match model.state with
-  | None -> div [ Class "iris-cluster" ] []
+  | None -> div [ Class "disco-cluster" ] []
   | Some state ->
-    div [ Class "iris-cluster" ] [
+    div [ Class "disco-cluster" ] [
       div [ Class "headline" ] [ h2 [] [ str "Active Configuration" ] ]
       activeConfig dispatch state
       div [ Class "headline" ] [ h2 [] [ str "Discovered Services" ] ]

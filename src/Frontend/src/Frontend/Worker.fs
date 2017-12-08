@@ -1,7 +1,7 @@
-namespace Iris.Web.Core
+namespace Disco.Web.Core
 
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 
 open Fable.Core
 open Fable.Core.JsInterop
@@ -107,7 +107,7 @@ type WebSocket(_url: string)  =
                                                     |     BROWSER     |
     +---------------+      +-----------------+      |     WINDOW      |
     |               |      |                 |<---->|                 |
-    |     IRIS      |----->|     SHARED      |      +-----------------+
+    |     DISCO      |----->|     SHARED      |      +-----------------+
     |    SERVICE    +<-----+     WORKER      |      +-----------------+
     |               |      |                 |<---->|                 |
     +---------------+      +-----------------+      |     BROWSER     |
@@ -117,7 +117,7 @@ type WebSocket(_url: string)  =
 
 
     +--------------+               +---------------+              +----------------+
-    | IRIS SERVICE | StateMachine  | SHARED WORKER | ClientAction | BROWSER WINDOW |
+    | DISCO SERVICE | StateMachine  | SHARED WORKER | ClientAction | BROWSER WINDOW |
     |              |               |               |              |                |
     |              |   AddPatch    |               |    Render    |                |
     |              | ------------> | update Store  | -----------> | re-render DOM  |
@@ -151,7 +151,7 @@ type ClientMessagePort = MessagePort<string>
 type PortMap = Dictionary<SessionId,ClientMessagePort>
 
 type WorkerContext() =
-  let id = IrisId.Create()
+  let id = DiscoId.Create()
   let mutable count = 0
   let mutable socket : WebSocket option = None
 
@@ -235,7 +235,7 @@ type WorkerContext() =
 
   member self.Register (port : MessagePort<string>) =
     count <- count + 1                     // increase the connection count
-    let session = IrisId.Create()         // create a session id
+    let session = DiscoId.Create()         // create a session id
     port.OnMessage <- self.OnClientMessage   // register handler for client messages
     ports.Add(session, port)              // remember the port in our map
     |> ignore
@@ -243,7 +243,7 @@ type WorkerContext() =
     ClientMessage.Initialized(session)    // tell client all is good
     |> self.SendClient port
 
-  member self.UnRegister (session: IrisId) =
+  member self.UnRegister (session: DiscoId) =
     count <- count - 1
     if ports.Remove(session) then
       self.Broadcast(ClientMessage.Closed(session))
@@ -274,7 +274,7 @@ type WorkerContext() =
     for KeyValue(_, port) in ports do
       self.SendClient port msg
 
-  member self.Multicast (session: IrisId, msg: ClientMessage<State>) : unit =
+  member self.Multicast (session: DiscoId, msg: ClientMessage<State>) : unit =
     for KeyValue(token, port) in ports do
       if session <> token then
         self.SendClient port msg

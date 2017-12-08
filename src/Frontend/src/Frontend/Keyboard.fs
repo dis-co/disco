@@ -1,7 +1,7 @@
 [<AutoOpen>]
-module Iris.Web.Core.Keyboard
+module Disco.Web.Core.Keyboard
 
-open Iris.Web.Core
+open Disco.Web.Core
 open Fable.Import
 open Fable.Import.Browser
 

@@ -2,12 +2,12 @@ import React, { Component } from 'react'
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -16,7 +16,7 @@ import 'react-select/dist/react-select.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
+    //initialize
     this.state={
       groupName: "",
       pinName: "",
@@ -30,8 +30,8 @@ class TestWidget extends React.Component {
   }
 
   setPinVal() {
-    if (this.state.pin && this.state.inputVal) {  
-      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.inputVal.Key)    
+    if (this.state.pin && this.state.inputVal) {
+      DiscoLib.updatePinValueAt(this.state.pin, 0, this.state.inputVal.Key)
     }
   }
 
@@ -49,17 +49,17 @@ class TestWidget extends React.Component {
   setPin() {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
     //set pin to this states current pin by pinName
-    var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    let options = 
-      pin 
-        ? pin.data.Properties.map(prop => { return { label: prop.Value, value: prop.Key } }) 
+    var pin = DiscoLib.findPinByName(this.props.model, groupPin);
+    let options =
+      pin
+        ? pin.data.Properties.map(prop => { return { label: prop.Value, value: prop.Key } })
         : []
 
-    this.setState({ 
+    this.setState({
       groupPin: groupPin,
       pin: pin,
       options: options,
-      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+      pinVal: pin ? DiscoLib.getPinValueAt(pin, 0) : ""
     })
   }
 
@@ -149,7 +149,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

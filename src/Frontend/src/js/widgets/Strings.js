@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import Switch, { Case, Default } from 'react-switch-case';
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -22,11 +22,11 @@ class Wat extends React.Component  {
   }
 
   ipValid  (ev) {
-    if(regValid(ev.target.value)){ 
-      this.setState({ isValid: true })      
+    if(regValid(ev.target.value)){
+      this.setState({ isValid: true })
       this.state.setPinVal(ev.target.value);
     } else {
-      this.setState({ isValid: false })      
+      this.setState({ isValid: false })
     }
   }
 
@@ -38,7 +38,7 @@ class Wat extends React.Component  {
   getString(ev) {
     this.state.setPinVal(ev.target.value)
   }
-  
+
   render(){
     var style = this.state.isValid ? {} : { border: "3px solid red" }
     if(this.state.pinpin !== null){
@@ -56,7 +56,7 @@ class Wat extends React.Component  {
         default:
           return <h1> nene </h1>
           break;
-    
+
       }
     }
   }
@@ -92,8 +92,8 @@ class TestWidget extends React.Component {
 
   setPinVal(value) {
     this.state.pinVal = value;
-    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
-    IrisLib.updatePinValueAt(pin, 0, value)
+    var pin = DiscoLib.findPinByName(this.props.model, this.state.groupPin);
+    DiscoLib.updatePinValueAt(pin, 0, value)
   }
 
   //event handler for onChange methods, to set parents state
@@ -110,11 +110,11 @@ class TestWidget extends React.Component {
   setPin() {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
     //set pin to this states current pin by pinName
-    var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    this.setState({ 
+    var pin = DiscoLib.findPinByName(this.props.model, groupPin);
+    this.setState({
       groupPin: groupPin,
       pin: pin,
-      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+      pinVal: pin ? DiscoLib.getPinValueAt(pin, 0) : ""
     })
   }
 
@@ -150,7 +150,7 @@ class TestWidget extends React.Component {
             <Wat pinpin={this.state.pin.data.Behavior.ToString()}  pinVal={this.state.pinVal} setPinVal={this.setPinVal.bind(this)} />
             :
             <h1>pin is null</h1>
-          }           
+          }
         </div>
       </div>
     )
@@ -181,7 +181,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

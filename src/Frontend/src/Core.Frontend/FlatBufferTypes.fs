@@ -1,8 +1,8 @@
-module rec Iris.Web.Core.FlatBufferTypes
+module rec Disco.Web.Core.FlatBufferTypes
 
 open Fable.Core
 open Fable.Import
-open Iris.Core.FlatBuffers
+open Disco.Core.FlatBuffers
 
 //  _____                     _____ ____
 // | ____|_ __ _ __ ___  _ __|  ___| __ )
@@ -104,7 +104,7 @@ let MachineStatusFB: MachineStatusFBConstructor = failwith "JS only"
 //  | || |  | \__ \ |  | | (_| | (__| | | | | | | |  __/
 // |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
-type IrisMachineFB =
+type DiscoMachineFB =
   abstract MachineId: int -> byte
   abstract MachineIdLength: int -> byte
   abstract HostName: string
@@ -122,9 +122,9 @@ type IrisMachineFB =
   abstract ApiPort: uint16
   abstract Version: string
 
-type IrisMachineFBConstructor =
-  abstract prototype: IrisMachineFB with get, set
-  abstract StartIrisMachineFB: builder: FlatBufferBuilder -> unit
+type DiscoMachineFBConstructor =
+  abstract prototype: DiscoMachineFB with get, set
+  abstract StartDiscoMachineFB: builder: FlatBufferBuilder -> unit
   abstract AddMachineId: builder: FlatBufferBuilder * key: VectorOffset -> unit
   abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
@@ -140,12 +140,12 @@ type IrisMachineFBConstructor =
   abstract AddGitPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddApiPort: builder: FlatBufferBuilder * key: uint16 -> unit
   abstract AddVersion: builder: FlatBufferBuilder * key: Offset<string> -> unit
-  abstract EndIrisMachineFB: builder: FlatBufferBuilder -> Offset<IrisMachineFB>
-  abstract GetRootAsIrisMachineFB: buffer: ByteBuffer -> IrisMachineFB
+  abstract EndDiscoMachineFB: builder: FlatBufferBuilder -> Offset<DiscoMachineFB>
+  abstract GetRootAsDiscoMachineFB: buffer: ByteBuffer -> DiscoMachineFB
   abstract CreateMachineIdVector: builder: FlatBufferBuilder * key:byte[] -> VectorOffset
-  abstract Create: unit -> IrisMachineFB
+  abstract Create: unit -> DiscoMachineFB
 
-let IrisMachineFB: IrisMachineFBConstructor = failwith "JS only"
+let DiscoMachineFB: DiscoMachineFBConstructor = failwith "JS only"
 
 //  ____       _
 // |  _ \ ___ | | ___
@@ -340,7 +340,7 @@ let FsTreeUpdateFB : FsTreeUpdateFBConstructor = failwith "JS only"
 // | |___| | |  __/ | | | |_
 //  \____|_|_|\___|_| |_|\__|
 
-type IrisClientFB =
+type DiscoClientFB =
   abstract Id: int -> byte
   abstract IdLength: int
   abstract Name: string
@@ -351,9 +351,9 @@ type IrisClientFB =
   abstract IpAddress: string
   abstract Port: uint16
 
-type IrisClientFBConstructor =
-  abstract prototype: IrisClientFB with get, set
-  abstract StartIrisClientFB: builder: FlatBufferBuilder -> unit
+type DiscoClientFBConstructor =
+  abstract prototype: DiscoClientFB with get, set
+  abstract StartDiscoClientFB: builder: FlatBufferBuilder -> unit
   abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddServiceId: builder: FlatBufferBuilder * id: VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name: Offset<string> -> unit
@@ -361,12 +361,12 @@ type IrisClientFBConstructor =
   abstract AddStatus: builder: FlatBufferBuilder * status: Offset<ServiceStatusFB> -> unit
   abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
   abstract AddPort: builder: FlatBufferBuilder * port:uint16 -> unit
-  abstract EndIrisClientFB: builder: FlatBufferBuilder -> Offset<'a>
+  abstract EndDiscoClientFB: builder: FlatBufferBuilder -> Offset<'a>
   abstract CreateIdVector: FlatBufferBuilder * byte[] -> VectorOffset
   abstract CreateServiceIdVector: builder: FlatBufferBuilder * id:byte[] -> VectorOffset
-  abstract GetRootAsIrisClientFB: buffer: ByteBuffer -> IrisClientFB
+  abstract GetRootAsDiscoClientFB: buffer: ByteBuffer -> DiscoClientFB
 
-let IrisClientFB : IrisClientFBConstructor = failwith "JS only"
+let DiscoClientFB : DiscoClientFBConstructor = failwith "JS only"
 
 //  _   _               _____ ____
 // | | | |___  ___ _ __|  ___| __ )
@@ -1609,7 +1609,7 @@ let ClusterConfigFB: ClusterConfigFBConstructor = failwith "JS only"
 
 type ConfigFB =
   abstract Version: string
-  abstract Machine: IrisMachineFB
+  abstract Machine: DiscoMachineFB
   abstract ActiveSite: int -> byte
   abstract ActiveSiteLength: int
   abstract AudioConfig: AudioConfigFB
@@ -1623,7 +1623,7 @@ type ConfigFBConstructor =
   abstract prototype: ConfigFB with get, set
   abstract StartConfigFB: builder: FlatBufferBuilder -> unit
   abstract AddVersion: builder: FlatBufferBuilder * v:Offset<string> -> unit
-  abstract AddMachine: builder: FlatBufferBuilder * v:Offset<IrisMachineFB> -> unit
+  abstract AddMachine: builder: FlatBufferBuilder * v:Offset<DiscoMachineFB> -> unit
   abstract AddActiveSite: builder: FlatBufferBuilder * v:VectorOffset -> unit
   abstract AddAudioConfig: builder: FlatBufferBuilder * v:Offset<AudioConfigFB> -> unit
   abstract AddClientConfig: builder: FlatBufferBuilder * v:Offset<ClientConfigFB> -> unit
@@ -1823,7 +1823,7 @@ type StateFB =
   abstract SessionsLength: int
   abstract Users: int -> UserFB
   abstract UsersLength: int
-  abstract Clients: int -> IrisClientFB
+  abstract Clients: int -> DiscoClientFB
   abstract ClientsLength: int
   abstract CuePlayers: int -> CuePlayerFB
   abstract CuePlayersLength: int
@@ -1853,7 +1853,7 @@ type StateFBConstructor =
   abstract CreateCueListsVector: builder: FlatBufferBuilder * groups: Offset<CueListFB> array -> VectorOffset
   abstract CreateCuePlayersVector: builder: FlatBufferBuilder * groups: Offset<CuePlayerFB> array -> VectorOffset
   abstract CreateUsersVector: builder: FlatBufferBuilder * groups: Offset<UserFB> array -> VectorOffset
-  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<IrisClientFB> array -> VectorOffset
+  abstract CreateClientsVector: builder: FlatBufferBuilder * groups: Offset<DiscoClientFB> array -> VectorOffset
   abstract CreateDiscoveredServicesVector: builder: FlatBufferBuilder * groups: Offset<DiscoveredServiceFB> array -> VectorOffset
   abstract EndStateFB: builder: FlatBufferBuilder -> Offset<StateFB>
   abstract GetRootAsStateFB: bytes: ByteBuffer -> StateFB
@@ -2133,7 +2133,7 @@ type StateMachinePayloadFBConstructor =
   abstract StringFB: StateMachinePayloadFB
   abstract ProjectFB: StateMachinePayloadFB
   abstract SlicesMapFB: StateMachinePayloadFB
-  abstract IrisClientFB: StateMachinePayloadFB
+  abstract DiscoClientFB: StateMachinePayloadFB
   abstract CuePlayerFB: StateMachinePayloadFB
   abstract DiscoveredServiceFB: StateMachinePayloadFB
   abstract ClockFB: StateMachinePayloadFB
@@ -2160,7 +2160,7 @@ type StateMachineFB =
   abstract StateFB: StateFB
   abstract StringFB: StringFB
   abstract ProjectFB: ProjectFB
-  abstract IrisClientFB: IrisClientFB
+  abstract DiscoClientFB: DiscoClientFB
   abstract CuePlayerFB: CuePlayerFB
   abstract ClockFB: ClockFB
   abstract SlicesMapFB: SlicesMapFB

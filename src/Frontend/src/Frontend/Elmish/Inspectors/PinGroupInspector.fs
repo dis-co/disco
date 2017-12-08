@@ -1,4 +1,4 @@
-namespace Iris.Web.Inspectors
+namespace Disco.Web.Inspectors
 
 open System
 open System.Collections.Generic
@@ -10,11 +10,11 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.PinView
-open Iris.Web.Core
-open Iris.Web.Helpers
-open Iris.Web.Types
+open Disco.Core
+open Disco.Web.PinView
+open Disco.Web.Core
+open Disco.Web.Helpers
+open Disco.Web.Types
 open State
 
 ///  ____        _     _ _
@@ -47,7 +47,7 @@ module PinGroupInspector =
       |> List.map (buildPin dispatch model)
 
     Common.row tag [
-      ul [ Class "iris-graphview" ] pins
+      ul [ Class "disco-graphview" ] pins
     ]
 
   let private renderClients tag dispatch model (group: PinGroup) =

@@ -1,15 +1,15 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Editable
+module Disco.Web.Editable
 
 open System
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web
+open Disco.Web
 open Types
 open Helpers
 
@@ -21,7 +21,7 @@ let string content (update: string -> unit) =
   from ContentEditable
     %["tagName" ==> "div"
       "html" ==> content
-      "className" ==> "iris-contenteditable"
+      "className" ==> "disco-contenteditable"
       "onChange" ==> update] []
 
 let dropdown

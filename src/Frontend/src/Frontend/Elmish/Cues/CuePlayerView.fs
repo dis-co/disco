@@ -1,16 +1,16 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.Cues.CuePlayerView
+module Disco.Web.Cues.CuePlayerView
 
 open System
-open Iris.Core
-open Iris.Core.Commands
-open Iris.Web.Core
+open Disco.Core
+open Disco.Core.Commands
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web
+open Disco.Web
 open Types
 open Helpers
 
@@ -67,7 +67,7 @@ let private updateCueList (player: CuePlayer option) (str:string) =
   match player with
   | None -> ()
   | Some player ->
-    str |> IrisId.TryParse |> function
+    str |> DiscoId.TryParse |> function
       | Either.Left _ ->
         CuePlayer.unsetCueList player
         |> UpdateCuePlayer
@@ -313,7 +313,7 @@ type Component(props) =
       button [
         classList [
           "warning",locked
-          "iris-button", true
+          "disco-button", true
         ]
         Disabled true
       ] [
@@ -336,7 +336,7 @@ type Component(props) =
       /// | |__| |_| |  __/ |___| \__ \ |_
       ///  \____\__,_|\___|_____|_|___/\__|
       select [
-        Class "iris-control iris-select"
+        Class "disco-control disco-select"
         Value current
         Disabled locked
         OnChange (fun ev -> updateCueList this.props.Player !!ev.target?value)
@@ -354,7 +354,7 @@ type Component(props) =
       /// | |\  |  __/>  <| |_
       /// |_| \_|\___/_/\_\\__|
       button [
-        Class "iris-button pull-right"
+        Class "disco-button pull-right"
         Disabled (Option.isNone this.props.CueList)
         OnClick (fun _ -> nextItem this.props)
       ] [
@@ -375,7 +375,7 @@ type Component(props) =
       /// |  __/| | |  __/\ V /| | (_) | |_| \__ \
       /// |_|   |_|  \___| \_/ |_|\___/ \__,_|___/
       button [
-        Class "iris-button pull-right"
+        Class "disco-button pull-right"
         Disabled (Option.isNone this.props.CueList)
         OnClick (fun _ -> previousItem this.props)
       ] [
@@ -433,7 +433,7 @@ let createWidget(id: System.Guid) =
       match model.state with
       | None -> createEmpty dispatch model this.Id this.Name
       | Some state ->
-        match Map.tryFind (IrisId.FromGuid id) state.CuePlayers with
+        match Map.tryFind (DiscoId.FromGuid id) state.CuePlayers with
         | None -> createEmpty dispatch model this.Id this.Name
         | Some player ->
           let cueList =

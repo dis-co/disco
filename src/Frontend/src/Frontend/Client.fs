@@ -1,5 +1,5 @@
 [<AutoOpen>]
-module Iris.Web.Core.Client
+module Disco.Web.Core.Client
 
 open System
 open System.Collections.Generic
@@ -7,9 +7,9 @@ open Fable.Core
 open Fable.Import
 open Fable.Core.JsInterop
 open Fable.PowerPack
-open Iris.Web.Notifications
-open Iris.Core
-open Iris.Core.Commands
+open Disco.Web.Notifications
+open Disco.Core
+open Disco.Core.Commands
 
 //  ____  _                        ___        __         _
 // / ___|| |__   __ _ _ __ ___  __| \ \      / /__  _ __| | _____ _ __
@@ -41,7 +41,7 @@ type SharedWorker<'data>(url: string) =
 type ClientContext private () =
   let mutable store: Store option =
     #if DESIGN // Mockup data
-    Iris.Web.Core.MockData.getMockState() |> Store |> Some
+    Disco.Web.Core.MockData.getMockState() |> Store |> Some
     #else
     None
     #endif

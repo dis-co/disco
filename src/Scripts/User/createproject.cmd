@@ -1,1 +1,1 @@
-Iris\iris.exe create --machine=\Iris\etc --bind=%FRONTEND_IP% --project=%1 --api=5000 --raft=6000 --ws=8000 --git=9000
+Disco\disco.exe create --machine=\Disco\etc --bind=%FRONTEND_IP% --project=%1 --api=5000 --raft=6000 --ws=8000 --git=9000

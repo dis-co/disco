@@ -2,12 +2,12 @@ import React, { Component } from 'react'
 import InputSlider from 'react-input-slider'
 import 'react-input-slider/dist/input-slider.css';
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -15,7 +15,7 @@ import 'react-input-slider/dist/input-slider.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
+    //initialize
     this.state={
       groupName: "",
       pinNameX: "",
@@ -31,13 +31,13 @@ class TestWidget extends React.Component {
 
   setPinValX(value) {
     this.state.pinValX = value;
-    var pinX = IrisLib.findPinByName(this.props.model, this.state.groupPinX);
-    IrisLib.updatePinValueAt(pinX, 0, value)
+    var pinX = DiscoLib.findPinByName(this.props.model, this.state.groupPinX);
+    DiscoLib.updatePinValueAt(pinX, 0, value)
   }
   setPinValY(value) {
     this.state.pinValY = value;
-    var pinY = IrisLib.findPinByName(this.props.model, this.state.groupPinY);
-    IrisLib.updatePinValueAt(pinY, 0, value)
+    var pinY = DiscoLib.findPinByName(this.props.model, this.state.groupPinY);
+    DiscoLib.updatePinValueAt(pinY, 0, value)
   }
 
   //event handler for onChange methods, to set parents state
@@ -55,16 +55,16 @@ class TestWidget extends React.Component {
     let groupPinX = this.state.groupName + '/'+ this.state.pinNameX
     let groupPinY = this.state.groupName + '/'+ this.state.pinNameY
     //set pin to this states current pin by pinName
-    var pinX = IrisLib.findPinByName(this.props.model, groupPinX);
-    var pinY = IrisLib.findPinByName(this.props.model, groupPinY);
-    
-    this.setState({ 
+    var pinX = DiscoLib.findPinByName(this.props.model, groupPinX);
+    var pinY = DiscoLib.findPinByName(this.props.model, groupPinY);
+
+    this.setState({
       groupPinX: groupPinX,
       groupPinY: groupPinY,
       pinX: pinX,
       pinY: pinY,
-      pinValX: pinX ? IrisLib.getPinValueAt(pinX, 0) : "",
-      pinValY: pinY ? IrisLib.getPinValueAt(pinY, 0) : ""
+      pinValX: pinX ? DiscoLib.getPinValueAt(pinX, 0) : "",
+      pinValY: pinY ? DiscoLib.getPinValueAt(pinY, 0) : ""
     })
   }
 
@@ -115,12 +115,12 @@ class TestWidget extends React.Component {
         <div style={{margin: "0 10px"}}>
         {/*onChhange updates the state with new slider maximum value*/}
 
-        {(this.state.pinX && this.state.pinY) !== null 
+        {(this.state.pinX && this.state.pinY) !== null
           ? <InputSlider
             style={{width:"112px", height:"112px", background:"grey"}}
             className='slider slider-xy'
             axis='xy'
-          
+
             x={parseInt(this.state.pinValX,10)}
             xmax={100}
             y={parseInt(this.state.pinValY,10)}
@@ -129,7 +129,7 @@ class TestWidget extends React.Component {
             />
           : <h6>pin is null</h6>
         }
-          
+
         </div>
       </div>
     )
@@ -160,7 +160,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinNameX="VVVV/design.4vp/Z" pinNameY="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

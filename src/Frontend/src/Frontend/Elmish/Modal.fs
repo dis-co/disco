@@ -1,5 +1,5 @@
 [<AutoOpen>]
-module Iris.Web.Modal
+module Disco.Web.Modal
 
 // * Imports
 
@@ -10,10 +10,10 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Elmish.React
-open Iris.Core
-open Iris.Core.Commands
+open Disco.Core
+open Disco.Core.Commands
 open Types
-open Iris.Web.AssetBrowserView
+open Disco.Web.AssetBrowserView
 
 // * Modal module
 

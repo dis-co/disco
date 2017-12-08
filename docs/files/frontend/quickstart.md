@@ -1,4 +1,4 @@
-# IRIS Frontend Quickstart
+# DISCO Frontend Quickstart
 
 ## Requirements
 
@@ -14,7 +14,7 @@ All of these will be executed if you run a full build. All commands must be run 
 
 ```shell
 npm install
-dotnet restore src/Frontend/src/Iris.Frontend.sln
+dotnet restore src/Frontend/src/Disco.Frontend.sln
 ```
 
 - Build Fable plugin:
@@ -31,7 +31,7 @@ npm run build
 
 ## Watching
 
-Make sure you have installed dependencies and built the plugin (see Building above). Also you must set the `FRONTEND_IP` and `FRONTEND_PORT` environment variables with the IP and HTTP port exposed by Iris server. Then run:
+Make sure you have installed dependencies and built the plugin (see Building above). Also you must set the `FRONTEND_IP` and `FRONTEND_PORT` environment variables with the IP and HTTP port exposed by Disco server. Then run:
 
 ```shell
 npm start
@@ -39,4 +39,4 @@ npm start
 
 When the webpack-dev-server has finished compiling the code, you can open `[FRONTEND_IP]:3000` in your browser.
 
-> To run Iris Frontend in **Design Mode** (using mock data instead of connecting with Iris server), set the environmental variable `FRONTEND_IP` to `localhost` (e.g. `export FRONTEND_IP=localhost`), and open `localhost:3000` in your browser.
+> To run Disco Frontend in **Design Mode** (using mock data instead of connecting with Disco server), set the environmental variable `FRONTEND_IP` to `localhost` (e.g. `export FRONTEND_IP=localhost`), and open `localhost:3000` in your browser.

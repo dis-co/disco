@@ -2,16 +2,16 @@ import React, { Component } from 'react'
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
 import { SketchPicker, TwitterPicker, AlphaPicker, BlockPicker,
-ChromePicker, CirclePicker, CompactPicker, GithubPicker, 
+ChromePicker, CirclePicker, CompactPicker, GithubPicker,
 HuePicker, MaterialPicker, PhotoshopPicker, SliderPicker,
 SwatchesPicker } from 'react-color';
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -20,7 +20,7 @@ SwatchesPicker } from 'react-color';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
+    //initialize
     this.state={
       groupName: "",
       pinName: "",
@@ -55,8 +55,8 @@ class TestWidget extends React.Component {
   }
 
   setPinVal() {
-    if (this.state.pin) {  
-      IrisLib.updatePinValueAt(this.state.pin, 0, this.state.colorHex)    
+    if (this.state.pin) {
+      DiscoLib.updatePinValueAt(this.state.pin, 0, this.state.colorHex)
     }
   }
 
@@ -70,11 +70,11 @@ class TestWidget extends React.Component {
 
   setPin() {
     let groupPin = this.state.groupName + '/'+ this.state.pinName
-    var pin = IrisLib.findPinByName(this.props.model, groupPin);
-    this.setState({ 
+    var pin = DiscoLib.findPinByName(this.props.model, groupPin);
+    this.setState({
       groupPin: groupPin,
       pin: pin,
-      pinVal: pin ? IrisLib.getPinValueAt(pin, 0) : ""
+      pinVal: pin ? DiscoLib.getPinValueAt(pin, 0) : ""
     })
   }
 
@@ -101,7 +101,7 @@ class TestWidget extends React.Component {
   }
 
   handleChangeComplete = (color) => {
-    let hex = '#' + this.toHex(this.state.color.r) + this.toHex(this.state.color.g) 
+    let hex = '#' + this.toHex(this.state.color.r) + this.toHex(this.state.color.g)
     + this.toHex(this.state.color.b) + this.toHex(Math.trunc(this.state.color.a * 255))
     this.setState({ colorHex: hex })
     this.setPinVal();
@@ -185,7 +185,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z" pinVal="ho"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

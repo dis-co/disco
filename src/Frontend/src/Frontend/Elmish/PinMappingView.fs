@@ -1,4 +1,4 @@
-module Iris.Web.PinMappingView
+module Disco.Web.PinMappingView
 
 open System
 open System.Collections.Generic
@@ -10,8 +10,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -89,12 +89,12 @@ type PinHole(props) =
     let classes =
       [ for c in this.props.Classes do
           yield c, true
-        yield "iris-highlight", isHighlit]
+        yield "disco-highlight", isHighlit]
     td [classList classes
         Style [PaddingLeft (if this.props.Padding then "5px" else "0")
                Border "2px solid transparent"]
         Ref (fun el -> selfRef <- Option.ofObj el)] [
-          div [Class "iris-pin-hole"] (this.props.Render())
+          div [Class "disco-pin-hole"] (this.props.Render())
         ]
 
 type [<Pojo>] PinMappingProps =
@@ -125,7 +125,7 @@ type PinMappingView(props) =
     let disabled =
       Option.isNone this.state.SourceCandidate
         || Set.isEmpty this.state.SinkCandidates
-    tr [Class "iris-pinmapping-add"] [
+    tr [Class "disco-pinmapping-add"] [
       com<PinHole,_,_>
         { Classes = ["width-20"]
           Padding = true
@@ -153,7 +153,7 @@ type PinMappingView(props) =
          } []
       td [Class "width-5"] [
         button [
-          Class "iris-button iris-icon icon-more"
+          Class "disco-button disco-icon icon-more"
           Disabled disabled
           OnClick (fun ev ->
             ev.stopPropagation()
@@ -161,7 +161,7 @@ type PinMappingView(props) =
             match source with
             | Some source when not(Set.isEmpty sinks) ->
                 this.setState({SourceCandidate = None; SinkCandidates = Set.empty})
-                { Id = IrisId.Create()
+                { Id = DiscoId.Create()
                   Source = source.Id
                   Sinks = sinks |> Set.map (fun s -> s.Id) }
                 |> AddPinMapping |> ClientContext.Singleton.Post
@@ -174,7 +174,7 @@ type PinMappingView(props) =
 
   member this.renderBody() =
     let model = this.props.Model
-    table [Class "iris-pinmapping iris-table"] [
+    table [Class "disco-pinmapping disco-table"] [
       thead [] [
         tr [] [
           th [Class "width-20"; padding5()] [str "Source"]
@@ -196,16 +196,16 @@ type PinMappingView(props) =
                 Lib.findPin id state
                 |> renderPin this.props.Model this.props.Dispatch)
               |> Seq.toList
-            yield tr [Key (string kv.Key); Class "iris-pinmapping-row"] [
+            yield tr [Key (string kv.Key); Class "disco-pinmapping-row"] [
               td [Class "width-20"; padding5AndTopBorder()] [
-                div [Class "iris-pinmapping-source"] [source]
+                div [Class "disco-pinmapping-source"] [source]
               ]
               td [Class "width-75"; topBorder()] [
-                div [Class "iris-pinmapping-sinks"] sinks
+                div [Class "disco-pinmapping-sinks"] sinks
               ]
               td [Class "width-5"; topBorder()] [
                 button [
-                  Class "iris-button iris-icon icon-close"
+                  Class "disco-button disco-icon icon-close"
                   OnClick (fun ev ->
                     ev.stopPropagation()
                     RemovePinMapping pinMapping |> ClientContext.Singleton.Post)

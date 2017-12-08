@@ -1,9 +1,9 @@
-module rec Iris.Web.State
+module rec Disco.Web.State
 
 open System
-open Iris.Core
-open Iris.Core.Commands
-open Iris.Web.Core
+open Disco.Core
+open Disco.Core.Commands
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack

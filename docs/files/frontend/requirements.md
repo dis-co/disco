@@ -113,7 +113,7 @@ brew install flatbuffers
 
 ## Setting up the Git repository
 
-- Got to [Bitbucket](https://bitbucket.org/nsynk/iris/src/d3a8c95ab2762f9eb8b74da12d5e11ee7ac16cbe/dotnet/docs/files/frontend/quickstart.md?at=master&fileviewer=file-view-default)
+- Got to [Bitbucket](https://bitbucket.org/nsynk/disco/src/d3a8c95ab2762f9eb8b74da12d5e11ee7ac16cbe/dotnet/docs/files/frontend/quickstart.md?at=master&fileviewer=file-view-default)
 - Select "Clone this repository" and copy the clone command
 - Open a Terminal window and change to the local directory you want to clone to
 - Paste the command you copied from Bitbucket
@@ -126,7 +126,7 @@ brew install flatbuffers
   git checkout master
 ```
 
-- Make sure you don't have any unsaved changes since you will loose them otherwise. Switch to root folder (Iris) and run:
+- Make sure you don't have any unsaved changes since you will loose them otherwise. Switch to root folder (Disco) and run:
 
 ```shell
   git clean -xfd
@@ -147,6 +147,6 @@ brew install flatbuffers
 
 When the webpack-dev-server has finished compiling the code, you can open `[FRONTEND_IP]:3000` in your browser.
 
-> To run Iris Frontend in **Design Mode** (using mock data instead of connecting with Iris server), set the environmental variable `FRONTEND_IP` to `localhost` (e.g. `export FRONTEND_IP=localhost`), and open `localhost:3000` in your browser.
+> To run Disco Frontend in **Design Mode** (using mock data instead of connecting with Disco server), set the environmental variable `FRONTEND_IP` to `localhost` (e.g. `export FRONTEND_IP=localhost`), and open `localhost:3000` in your browser.
 
 

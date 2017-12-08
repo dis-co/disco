@@ -1,4 +1,4 @@
-namespace Iris.Web.Core
+namespace Disco.Web.Core
 
 module Storage =
 

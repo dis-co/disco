@@ -4,12 +4,12 @@ import './TestWidget1.css';
 import 'react-rangeslider/lib/index.css';
 
 
-// This is a simple example to show how to create a custom widget for Iris
+// This is a simple example to show how to create a custom widget for Disco
 // in JS. We just define a simple React component that draws a square with
 // black or transparent background depending on the value of a pin.
 
 // Note the code uses several helpers, like `findPinByName`. These are
-// available to JS in the `IrisLib` global variable. The available methods
+// available to JS in the `DiscoLib` global variable. The available methods
 // can be seen in the Main.fs file of the Frontend.fsproj project. Other
 // helpers can also be requested.
 
@@ -17,7 +17,7 @@ import 'react-rangeslider/lib/index.css';
 class TestWidget extends React.Component {
   constructor(props) {
     super(props);
-    //initialize 
+    //initialize
     this.state={
       groupName: "",
       pinName: "",
@@ -31,9 +31,9 @@ class TestWidget extends React.Component {
     //initialize pinVal
     var pinVal = 0;
     //set pin to this states current pin by pinName
-    var pin = IrisLib.findPinByName(this.props.model, this.state.groupPin);
+    var pin = DiscoLib.findPinByName(this.props.model, this.state.groupPin);
     if (pin != null) {
-      pinVal = IrisLib.getPinValueAt(pin, 0);
+      pinVal = DiscoLib.getPinValueAt(pin, 0);
     }
     return (
       <div style={{
@@ -61,7 +61,7 @@ class TestWidget extends React.Component {
         <label>
           minimum value
           {/*onChange updates the state with new slider minimum value*/}
-          <input type="text" 
+          <input type="text"
           onChange={(event) => this.setState({sliderMin: event.target.value})} />
         </label>
         {/*input to set maximum value*/}
@@ -77,13 +77,13 @@ class TestWidget extends React.Component {
           ;}}>submit</button>
       </div>
         <div style={{margin: "0 10px"}}>
-        {/*slider has an onChange function that updates the selected pins value to sliders 
+        {/*slider has an onChange function that updates the selected pins value to sliders
         current value pinVal. gets its min and max values from state*/}
           <Slider
             value={parseInt(pinVal, 10)}
             onChange={(value) => {
               if(pin != null)
-                IrisLib.updatePinValueAt(pin, 0, value)
+                DiscoLib.updatePinValueAt(pin, 0, value)
             }}
             min={parseInt(this.state.sliderMin, 10)}
             max={parseInt(this.state.sliderMax, 10)}
@@ -116,7 +116,7 @@ export default function createWidget (id, name) {
       var body = function (dispatch, model) {
         return <TestWidget groupName="foo" pinName="VVVV/design.4vp/Z"  model={model} />
       }
-      return IrisLib.renderWidget(id, name, null, body, dispatch, model);
+      return DiscoLib.renderWidget(id, name, null, body, dispatch, model);
     }
   }
 }

@@ -1,4 +1,4 @@
-module Iris.DocGenerator.Main
+module Disco.DocGenerator.Main
 
 open Fable.Core
 open Fable.Core.JsInterop
@@ -182,7 +182,7 @@ let init() =
         let body =
             reg.Replace(parseMarkdown filePath, ".html")
             |> sprintf """<div class="content">%s</div>"""
-        [ "title" ==> "Iris Documentation"
+        [ "title" ==> "Disco Documentation"
           "fontawesome" ==> Path.relative(targetFile, fontawesomePath)
           "styles" ==> Path.relative(targetFile, stylesPath)
           "body" ==> body ]

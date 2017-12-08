@@ -1,4 +1,4 @@
-module Iris.Web.CueListView
+module Disco.Web.CueListView
 
 open System
 open System.Collections.Generic
@@ -10,8 +10,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack
 open Elmish.React
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Helpers
 open State
 open Types
@@ -33,7 +33,7 @@ let private updateName (cueList:CueList) (value:string) =
 
 let private deleteButton dispatch (cueList:CueList) =
   button [
-    Class "iris-button iris-icon icon-close"
+    Class "disco-button disco-icon icon-close"
     OnClick (fun ev ->
       // Don't stop propagation to allow the item to be selected
       cueList
@@ -43,7 +43,7 @@ let private deleteButton dispatch (cueList:CueList) =
 
 let titleBar _ _ =
   button [
-    Class "iris-button"
+    Class "disco-button"
     OnClick(fun _ ->
       CueList.create "Untitled" Array.empty
       |> AddCueList
@@ -52,11 +52,11 @@ let titleBar _ _ =
 
 let body dispatch (model: Model) =
   match model.state with
-  | None -> table [Class "iris-table"] []
+  | None -> table [Class "disco-table"] []
   | Some state ->
     let cueLists = state.CueLists |> Map.toList |> List.map snd
-    div [ Class "iris-cuelists" ] [
-      table [Class "iris-table"] [
+    div [ Class "disco-cuelists" ] [
+      table [Class "disco-table"] [
         thead [] [
           tr [] [
             th [Class "width-20"; padding5()] [str "Id"]

@@ -1,15 +1,15 @@
-module Iris.Web.Cues.CueGroupView
+module Disco.Web.Cues.CueGroupView
 
 open System
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web
-open Iris.Web.Notifications
+open Disco.Web
+open Disco.Web.Notifications
 open Types
 open Helpers
 
@@ -22,7 +22,7 @@ type [<Pojo>] Props =
   { key: string
     Dispatch: Elmish.Dispatch<Msg>
     Model: Model
-    State: Iris.Core.State
+    State: Disco.Core.State
     Locked: bool
     CueGroup: CueGroup
     CueList: CueList
@@ -106,7 +106,7 @@ let private renderRemoveButton (props:Props) =
   then str ""
   else
     button [
-      Class "iris-button iris-icon icon-control icon-close"
+      Class "disco-button disco-icon icon-control icon-close"
       OnClick (fun ev ->
         ev.stopPropagation()
         // Change selection if this item was selected
@@ -128,7 +128,7 @@ let private updateAutoFollow (props:Props) =
 let private autocallButton (props:Props) =
   button [
     classList [
-      "iris-button iris-icon icon-autocall", true
+      "disco-button disco-icon icon-autocall", true
       "warning", props.CueGroup.AutoFollow
     ]
     Disabled props.Locked
@@ -148,8 +148,8 @@ type Component(props) =
     let arrowButton =
       button [
         classList [
-          "iris-button",  true
-          "iris-icon",    true
+          "disco-button",  true
+          "disco-icon",    true
           "icon-control", true
           "icon-less",    this.state.IsOpen
           "icon-more",    not this.state.IsOpen
@@ -161,7 +161,7 @@ type Component(props) =
       ] []
     let playButton =
       button [
-        Class "iris-button iris-icon icon-play"
+        Class "disco-button disco-icon icon-play"
         OnClick (fun ev ->
           // Don't stop propagation to allow the item to be selected
           // ev.stopPropagation()
@@ -171,13 +171,13 @@ type Component(props) =
       this.props.CueGroupIndex = this.props.SelectedCueGroupIndex
     let groupHeadline name =
       div [
-        classList ["iris-cuegroup-headline",true]
+        classList ["disco-cuegroup-headline",true]
       ] [
         strong [] [ str (string name)]
       ]
     let groupHeader =
       div [
-        classList ["iris-cuegroup-selected", isSelected]
+        classList ["disco-cuegroup-selected", isSelected]
         OnClick (fun _ ->
           if this.props.CueGroupIndex <> this.props.SelectedCueGroupIndex then
             this.props.SelectCueGroup this.props.CueGroupIndex  )
@@ -200,7 +200,7 @@ type Component(props) =
           renderRemoveButton this.props
         ]
       ]
-    div [Class "iris-cuegroup"]
+    div [Class "disco-cuegroup"]
       (match this.state.IsOpen, this.props.CueGroup.Name with
         | false, None -> [groupHeader]
         | false, Some name -> [groupHeadline name; groupHeader]

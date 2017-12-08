@@ -7,7 +7,7 @@ box "Local API Clients"
     participant "Unity" as B
 end box
 
-box "Iris (Leader)" #LightBlue
+box "Disco (Leader)" #LightBlue
     participant "API Server"          as C
     participant "Dispatcher"          as D
     participant "State Mutator"       as E
@@ -15,7 +15,7 @@ box "Iris (Leader)" #LightBlue
 end box
 
 box "Remote API Listeners"
-    participant "Other IrisService" as G
+    participant "Other DiscoService" as G
 end box
 
 A -> C: UpdateSlice Command

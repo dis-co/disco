@@ -1,15 +1,15 @@
 [<RequireQualifiedAccess>]
-module Iris.Web.ContextMenu
+module Disco.Web.ContextMenu
 
 open System
-open Iris.Core
-open Iris.Web.Core
+open Disco.Core
+open Disco.Web.Core
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Iris.Web
+open Disco.Web
 open Types
 open Helpers
 
@@ -41,7 +41,7 @@ let create active (onOpen:MenuCommand) (options: (string * MenuCommand) list) =
     ]
   ] [
     div [ Class "dropdown-trigger" ] [
-      button [ Class "iris-button"; OnClick (fun _ -> onOpen()) ] [
+      button [ Class "disco-button"; OnClick (fun _ -> onOpen()) ] [
         span [ Class "icon is-small" ] [
           i [ Class "fa fa-cog" ] []
         ]
