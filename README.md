@@ -5,3 +5,7 @@
 
 # Distributed Control
 
+
+# Download
+
+You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) current builds from AppVeyor. Note: these builds are from HEAD of master branch.
