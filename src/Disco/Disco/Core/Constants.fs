@@ -224,14 +224,14 @@ module Constants =
   let MACHINECONFIG_DEFAULT_WORKSPACE_UNIX = "disco"
 
   [<Literal>]
-  let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\Disco"
+  let MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS = "C:\\Disco"
 
   [<Literal>]
   /// Intended to be a subdirectory of $HOME/disco
   let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX = "assets"
 
   [<Literal>]
-  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS = "C:\Disco\assets"
+  let MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS = "C:\\Disco\\Assets"
 
   //  _____            _                                      _
   // | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_
