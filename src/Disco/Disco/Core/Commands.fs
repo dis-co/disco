@@ -30,10 +30,10 @@ type Command =
   | GetServiceInfo
   | MachineStatus
   | MachineConfig
-  | CreateProject of CreateProjectOptions
-  | CloneProject of projectName:Name * uri:Url
-  | PullProject of machineId:string * projectName:Name * uri:Url
-  | LoadProject of projectName:Name * username:UserName * password:Password * site:NameAndId option
-  | GetProjectSites of projectName:Name * username:UserName * password:Password
+  | CreateProject   of CreateProjectOptions
+  | PullProject     of machineId:string * projectName:Name * uri:Url
+  | CloneProject    of projectName:Name * uri:Url
+  | LoadProject     of projectName:Name * site:NameAndId option
+  | GetProjectSites of projectName:Name
 
 type CommandAgent = Command -> Async<Either<DiscoError,string>>

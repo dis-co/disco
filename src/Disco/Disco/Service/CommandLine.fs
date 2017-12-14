@@ -322,12 +322,10 @@ module CommandLine =
       do!
         match projectDir with
         | Some projectDir ->
-          let name, user, password, site =
+          let name, site =
             name (unwrap projectDir),
-            name "admin",
-            password "Nsynk",
             None
-          Commands.Command.LoadProject(name, user, password, site)
+          Commands.Command.LoadProject(name, site)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
           |> Either.map ignore

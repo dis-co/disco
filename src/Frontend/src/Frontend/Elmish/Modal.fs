@@ -80,10 +80,10 @@ module Modal =
     interface IModal with
       member this.SetResult(v) = res <- unbox v
 
-  type ProjectConfig(sites: NameAndId[], info: IProjectInfo) =
+  type ProjectConfig(sites: NameAndId[], name: Name) =
     let mutable res = None
     member __.Sites = sites
-    member __.Info = info
+    member __.Name = name
     member __.Result: NameAndId = res.Value
     interface IModal with
       member this.SetResult(v) = res <- Some(unbox v)

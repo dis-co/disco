@@ -159,7 +159,7 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     // TODO: Using the admin user for now, should it be the same user as leader A?
     let! loadResult =
-      LoadProject(latestState.Project.Name, name "admin", password "Nsynk", active)
+      LoadProject(latestState.Project.Name, active)
       |> postCommandPrivate memberIpAndPort
 
     printfn "response: %A" loadResult
@@ -231,8 +231,8 @@ let nullify _: 'a = null
 
 // * loadProject
 
-let loadProject(project: Name, username: UserName, pass: Password, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
-  LoadProject(project, username, pass, site)
+let loadProject(project: Name, site: NameAndId option, ipAndPort: string option): JS.Promise<string option> =
+  LoadProject(project, site)
   |> postCommandPrivate ipAndPort
   |> Promise.bind (fun res ->
     if res.Ok
@@ -258,8 +258,8 @@ let loadProject(project: Name, username: UserName, pass: Password, site: NameAnd
 
 // * getProjectSites
 
-let getProjectSites(project, username, password) =
-  GetProjectSites(project, username, password) |> postCommand
+let getProjectSites(project) =
+  GetProjectSites(project) |> postCommand
     ofJson<NameAndId[]>
     (fun msg -> Notifications.error msg; [||])
 

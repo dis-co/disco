@@ -277,13 +277,21 @@ let startAgent (cfg: DiscoMachine) (disco: IDisco) =
           |> Either.map (fun _ -> "Successfully saved project")
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
-        | LoadProject(projectName, username, password, Some { Id = siteId; Name = name }) ->
-          disco.LoadProject(projectName, username, password, Some (name, siteId))
+        | LoadProject(projectName, Some { Id = siteId; Name = name }) ->
+          disco.LoadProject(
+            projectName,
+            Measure.name Constants.ADMIN_USER_NAME,
+            Measure.password Constants.ADMIN_DEFAULT_PASSWORD,
+            Some (name, siteId))
           |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
-        | LoadProject(projectName, username, password, _) ->
-          disco.LoadProject(projectName, username, password, None)
+        | LoadProject(projectName, _) ->
+          disco.LoadProject(
+            projectName,
+            Measure.name Constants.ADMIN_USER_NAME,
+            Measure.password Constants.ADMIN_DEFAULT_PASSWORD,
+            None)
           |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
-        | GetProjectSites(projectName, _, _) -> getProjectSites cfg projectName
+        | GetProjectSites projectName -> getProjectSites cfg projectName
 
       replyChannel.Reply res
       do! loop()
