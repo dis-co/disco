@@ -12,15 +12,18 @@ open Elmish
 open Types
 open Helpers
 
-let loadProject dispatch site (info: IProjectInfo) =
-  Lib.loadProject(info.name, info.username, info.password, site, None)
+let loadProject dispatch site (name: Name) =
+  Lib.loadProject(name, site, None)
   |> Promise.bind (function
     | Some err ->
       // Get project sites and machine config
-      Lib.getProjectSites(info.name, info.username, info.password)
+      name
+      |> Lib.getProjectSites
       |> Promise.map (fun sites ->
         // Ask user to create or select a new config
-        Modal.ProjectConfig(sites, info) :> IModal |> OpenModal |> dispatch)
+        Modal.ProjectConfig(sites, name) :> IModal
+        |> OpenModal
+        |> dispatch)
     | None ->
       dispatch
       |> displayAvailableProjectsModal
@@ -34,13 +37,13 @@ let handleModalResult (modal: IModal) dispatch =
     m.Result
     |> Lib.createProject
     |> Promise.iter (function
-      | Some name -> Modal.Login(name) :> IModal |> OpenModal |> dispatch
+      | Some name -> loadProject dispatch None name |> Promise.start
       | None -> ())
   | :? Modal.LoadProject as m ->
-    m.Result |> loadProject dispatch None |> Promise.start
+    m.Result.name |> loadProject dispatch None |> Promise.start
   | :? Modal.AvailableProjects as m ->
     match m.Result with
-    | Some n -> Modal.Login(n) :> IModal |> OpenModal |> dispatch
+    | Some name -> loadProject dispatch None name |> Promise.start
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
   | :? Modal.EditSettings as m ->
     { m.UserConfig with useRightClick = m.Result }
@@ -61,11 +64,11 @@ let handleModalResult (modal: IModal) dispatch =
   | :? Modal.Login as m ->
     match m.Result with
     | Some projInfo ->
-      loadProject dispatch None projInfo |> Promise.start
+      loadProject dispatch None projInfo.name |> Promise.start
     | None -> Modal.CreateProject() :> IModal |> OpenModal |> dispatch
   | :? Modal.ProjectConfig as m ->
     // Try loading the project again with the site config
-    loadProject dispatch (Some m.Result) m.Info |> Promise.start
+    loadProject dispatch (Some m.Result) m.Name |> Promise.start
   | :? Modal.FileChooser as m ->
     let client =
       if m.Pin.PinConfiguration = PinConfiguration.Preset
