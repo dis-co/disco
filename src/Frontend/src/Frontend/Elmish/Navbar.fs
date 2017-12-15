@@ -27,6 +27,10 @@ let private navbarItem cb opt key =
     ]
   ]
 
+let private showWidget dispatch name =
+  let widget = getWidgetFactory().CreateWidget(None, name)
+  AddWidget(widget.Id, widget) |> dispatch
+
 type [<Pojo>] ViewProps =
   { Dispatch: Msg->unit
     Model: Model }
@@ -84,8 +88,12 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
     | ProjectMenu.save     -> Lib.saveProject()
     | ProjectMenu.unload   -> Lib.unloadProject()
     | ProjectMenu.shutdown -> Lib.shutdown()
-    | other                -> failwithf "Unknow navbar option: %s" other
+    | other -> showWidget props.Dispatch Widgets.ProjectView
     withDelay onOpen
+  let project =
+    match props.Model.state with
+    | Some state -> sprintf "Loaded: %A" state.Project.Name
+    | None -> "No Project Loaded"
   div [
     classList [
       "navbar-item has-dropdown", true
@@ -103,6 +111,8 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
       navbarItem (onClick props.Dispatch) ProjectMenu.save     (Some "Ctrl-s")
       navbarItem (onClick props.Dispatch) ProjectMenu.unload   None
       navbarItem (onClick props.Dispatch) ProjectMenu.shutdown None
+      div [ Class "navbar-divider" ] []
+      navbarItem (onClick props.Dispatch) project None
     ]
   ]
 
@@ -176,29 +186,26 @@ module private WindowsMenu =
   let [<Literal>] testWidget6 = "Color Picker"
 
 let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
-  let show name =
-    let widget = getWidgetFactory().CreateWidget(None, name)
-    AddWidget(widget.Id, widget) |> props.Dispatch
   let onClick id _ =
     match id with
-    | WindowsMenu.log             -> show Widgets.Log
+    | WindowsMenu.log             -> showWidget props.Dispatch Widgets.Log
     | WindowsMenu.inspector       -> Lib.toggleInspector()
-    | WindowsMenu.fileBrowser     -> show Widgets.AssetBrowser
-    | WindowsMenu.graph           -> show Widgets.GraphView
-    | WindowsMenu.players         -> show Widgets.Players
-    | WindowsMenu.cues            -> show Widgets.Cues
-    | WindowsMenu.cueLists        -> show Widgets.CueLists
-    | WindowsMenu.pinMappings     -> show Widgets.PinMapping
-    | WindowsMenu.project         -> show Widgets.ProjectView
-    | WindowsMenu.clusterSettings -> show Widgets.Cluster
-    | WindowsMenu.clients         -> show Widgets.Clients
-    | WindowsMenu.sessions        -> show Widgets.Sessions
-    | WindowsMenu.testWidget1     -> show Widgets.Test1
-    | WindowsMenu.testWidget2     -> show Widgets.Test2
-    | WindowsMenu.testWidget3     -> show Widgets.Test3
-    | WindowsMenu.testWidget4     -> show Widgets.Test4
-    | WindowsMenu.testWidget5     -> show Widgets.Test5
-    | WindowsMenu.testWidget6     -> show Widgets.Test6
+    | WindowsMenu.fileBrowser     -> showWidget props.Dispatch Widgets.AssetBrowser
+    | WindowsMenu.graph           -> showWidget props.Dispatch Widgets.GraphView
+    | WindowsMenu.players         -> showWidget props.Dispatch Widgets.Players
+    | WindowsMenu.cues            -> showWidget props.Dispatch Widgets.Cues
+    | WindowsMenu.cueLists        -> showWidget props.Dispatch Widgets.CueLists
+    | WindowsMenu.pinMappings     -> showWidget props.Dispatch Widgets.PinMapping
+    | WindowsMenu.project         -> showWidget props.Dispatch Widgets.ProjectView
+    | WindowsMenu.clusterSettings -> showWidget props.Dispatch Widgets.Cluster
+    | WindowsMenu.clients         -> showWidget props.Dispatch Widgets.Clients
+    | WindowsMenu.sessions        -> showWidget props.Dispatch Widgets.Sessions
+    | WindowsMenu.testWidget1     -> showWidget props.Dispatch Widgets.Test1
+    | WindowsMenu.testWidget2     -> showWidget props.Dispatch Widgets.Test2
+    | WindowsMenu.testWidget3     -> showWidget props.Dispatch Widgets.Test3
+    | WindowsMenu.testWidget4     -> showWidget props.Dispatch Widgets.Test4
+    | WindowsMenu.testWidget5     -> showWidget props.Dispatch Widgets.Test5
+    | WindowsMenu.testWidget6     -> showWidget props.Dispatch Widgets.Test6
     | _ -> ()
     withDelay onOpen
   div [
