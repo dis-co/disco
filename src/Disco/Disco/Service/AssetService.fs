@@ -300,52 +300,46 @@ module AssetService =
 
   let create (machine: DiscoMachine) =
     either {
-      if not (Directory.exists machine.AssetDirectory)
-      then
-        return!
-          unwrap machine.AssetDirectory
-          |> sprintf "AssetDirectory not found: %A"
-          |> Error.asIOError "AssetService"
-          |> Either.fail
-      else
-        let cts = new CancellationTokenSource()
-        let subscriptions = Subscriptions()
+      do! Directory.createDirectory machine.AssetDirectory |> Either.map ignore
 
-        let store = AgentStore.create()
+      let cts = new CancellationTokenSource()
+      let subscriptions = Subscriptions()
 
-        store.Update {
-          Machine = machine
-          Files = None
-          Updates = List.empty
-          Subscriptions = subscriptions
-        }
+      let store = AgentStore.create()
 
-        let agent = new AssetEventProcessor(loop store, cts.Token)
-        let watcher = createWatcher machine.AssetDirectory agent
+      store.Update {
+        Machine = machine
+        Files = None
+        Updates = List.empty
+        Subscriptions = subscriptions
+      }
 
-        return {
-          new IAssetService with
-            member self.Start() =
-              agent.Start()
-              Async.Start(flushClock agent, cts.Token)
-              agent
-              |> startCrawler machine
-              |> Either.succeed
+      let agent = new AssetEventProcessor(loop store, cts.Token)
+      let watcher = createWatcher machine.AssetDirectory agent
 
-            member self.Stop() = Either.nothing
+      return {
+        new IAssetService with
+          member self.Start() =
+            agent.Start()
+            Async.Start(flushClock agent, cts.Token)
+            agent
+            |> startCrawler machine
+            |> Either.succeed
 
-            member self.State = store.State.Files
+          member self.Stop() = Either.nothing
 
-            member self.Subscribe(cb) =
-              Observable.subscribe cb subscriptions
+          member self.State = store.State.Files
 
-            member self.Dispose() =
-              try
-                dispose watcher
-                cts.Cancel()
-                dispose agent
-              with exn -> printfn "exn: %A" exn
-        }
+          member self.Subscribe(cb) =
+            Observable.subscribe cb subscriptions
+
+          member self.Dispose() =
+            try
+              dispose watcher
+              cts.Cancel()
+              dispose agent
+            with exn -> printfn "exn: %A" exn
+      }
     }
 
 // * Playground
