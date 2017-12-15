@@ -21,11 +21,11 @@ open System.Runtime.CompilerServices
 
 // * DiscoMachine
 
-//  ___      _     __  __            _     _
-// |_ _|_ __(_)___|  \/  | __ _  ___| |__ (_)_ __   ___
-//  | || '__| / __| |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
-//  | || |  | \__ \ |  | | (_| | (__| | | | | | | |  __/
-// |___|_|  |_|___/_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+///  ____  _               __  __            _     _
+/// |  _ \(_)___  ___ ___ |  \/  | __ _  ___| |__ (_)_ __   ___
+/// | | | | / __|/ __/ _ \| |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+/// | |_| | \__ \ (_| (_) | |  | | (_| | (__| | | | | | | |  __/
+/// |____/|_|___/\___\___/|_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
 
 type DiscoMachine =
   { MachineId:        MachineId
@@ -340,13 +340,11 @@ module MachineConfig =
 
   // ** getLocation
 
-  let getLocation (path: FilePath option) =
-    match path with
+  let getLocation = function
     | Some location ->
-      if Path.endsWith ASSET_EXTENSION location then
-        location
-      else
-        location </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
+      if Path.endsWith ASSET_EXTENSION location
+      then location
+      else location </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
     | None ->
       Assembly.GetExecutingAssembly().Location
       |> Path.GetDirectoryName
@@ -482,7 +480,6 @@ module MachineConfig =
 
     try
       let location = getLocation path
-
       let payload =
         cfg
         |> MachineConfigYaml.Create
@@ -501,6 +498,26 @@ module MachineConfig =
         exn.Message
         |> Error.asIOError (tag "save")
         |> Either.fail
+
+  // ** load
+
+  let load path =
+    try
+      let location = getLocation path
+      if File.exists location then
+        printfn "loading configuration from: %A" location
+        let raw = File.ReadAllText(unwrap location)
+        let serializer = Serializer()
+        serializer.Deserialize<MachineConfigYaml>(raw)
+        |> parse
+      else
+        "could not find machine configuration"
+        |> Error.asIOError (tag "load")
+        |> Either.fail
+    with exn ->
+      exn.Message
+      |> Error.asIOError (tag "load")
+      |> Either.fail
 
   // ** init
 
@@ -542,15 +559,16 @@ module MachineConfig =
 
   #endif
 
-
   // ** validate
 
   let validate (config: DiscoMachine) =
     let inline check (o: obj) = o |> isNull |> not
-    [ ("LogDirectory", check config.LogDirectory)
-      ("WorkSpace",    check config.WorkSpace)
-      ("MachineId",    check config.MachineId)
-      ("BindAddress",  check config.BindAddress) ]
+    [ ("LogDirectory",     check config.LogDirectory)
+      ("WorkSpace",        check config.WorkSpace)
+      ("AssetDirectory",   check config.AssetDirectory)
+      ("MachineId",        check config.MachineId)
+      ("MulticastAddress", check config.MulticastAddress)
+      ("BindAddress",      check config.BindAddress) ]
     |> List.fold
         (fun m (name,result) ->
           if not result then

@@ -12,45 +12,24 @@ open Disco.Service.CommandLine
 
 [<AutoOpen>]
 module Main =
-  ////////////////////////////////////////
-  //  __  __       _                    //
-  // |  \/  | __ _(_)_ __               //
-  // | |\/| |/ _` | | '_ \              //
-  // | |  | | (_| | | | | |             //
-  // |_|  |_|\__,_|_|_| |_|             //
-  ////////////////////////////////////////
 
-  [<EntryPoint>]
-  let main args =
-    // Tracing.enable()
+  let private setup (parsed:ParseResults<CLIArguments>) =
+    /// // Init machine config
+    /// parsed.TryGetResult <@ Machine @>
+    /// |> Option.map (filepath >> Path.getFullPath)
+    /// |> MachineConfig.init getBindIp (parsed.TryGetResult <@ Shift_Defaults @>)
+    /// |> Error.orExit ignore
+    Either.nothing
 
-    let parsed =
-      try
-        parser.ParseCommandLine args
-      with
-        | exn ->
-          exn.Message
-          |> Error.asOther "Main"
-          |> Error.exitWith
-
-    validateOptions parsed
-
-    let getBindIp() =
-        match parsed.TryGetResult <@ Bind @> with
-        | Some bindIp -> bindIp
-        | None ->
-          failwith "Please specify a valid IP address to bind Disco services with --bind argument"
-
-    // Init machine config
-    parsed.TryGetResult <@ Machine @>
-    |> Option.map (filepath >> Path.getFullPath)
-    |> MachineConfig.init getBindIp (parsed.TryGetResult <@ Shift_Defaults @>)
-    |> Error.orExit ignore
-
-    let result =
-      let machine = MachineConfig.get()
+  let private start (parsed:ParseResults<CLIArguments>) =
+    let machine =
+      parsed.TryGetResult <@ Machine @>
+      |> Option.map filepath
+      |> MachineConfig.load
+    match machine with
+    | Left error -> Error.exitWith error
+    | Right machine ->
       let validation = MachineConfig.validate machine
-
       if not validation.IsEmpty then
         printfn "Machine configuration file is invalid, please check the following settings:"
         printfn ""
@@ -68,17 +47,30 @@ module Main =
         parsed.TryGetResult <@ Frontend @>
         |> Option.map filepath
 
-      match parsed.GetResult <@ Cmd @>, dir with
-      | Create,            _ -> createProject parsed
-      | Start,           dir -> startService dir frontend
-      | Reset,      Some dir -> resetProject dir
-      | Add_User,   Some dir -> addUser dir
-      | Add_Member, Some dir -> addMember dir
-      | Help,              _ -> help ()
-      |  _ ->
-        sprintf "Unexpected command line failure: %A" args
-        |> Error.asParseError "Main"
-        |> Either.fail
+      startService machine dir frontend
+
+  ////////////////////////////////////////
+  //  __  __       _                    //
+  // |  \/  | __ _(_)_ __               //
+  // | |\/| |/ _` | | '_ \              //
+  // | |  | | (_| | | | | |             //
+  // |_|  |_|\__,_|_|_| |_|             //
+  ////////////////////////////////////////
+
+  [<EntryPoint>]
+  let main args =
+    let parsed =
+      try parser.ParseCommandLine args
+      with exn ->
+        exn.Message
+        |> Error.asOther "Main"
+        |> Error.exitWith
+
+    let result =
+      match parsed.GetResult <@ Cmd @> with
+      | Start   -> start parsed
+      | Setup   -> setup parsed
+      | Help  _ -> help ()
 
     result |> Error.orExit ignore
 
