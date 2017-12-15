@@ -18,24 +18,23 @@ let templatePath = resolve "${entryDir}/../templates/template.hbs"
 let docsPath = resolve "${entryDir}/../../files"
 let publicPath = resolve "${entryDir}/../public"
 let xmlDocs =
-    ["Frontend", resolve "${entryDir}/../../../src/Frontend/src/Frontend/bin/Debug/netstandard1.6/Frontend.xml"
-    ]
+  [ "Frontend", resolve "${entryDir}/../../../src/Frontend/src/Frontend/bin/Debug/netstandard2.0/Frontend.xml" ]
 
 let parseXmlDocAndGetMembers(path: string): JS.Promise<IDictionary<string, string[]> array> =
-    importMember "./util.js"
+  importMember "./util.js"
 
 type MemberInfo =
-    { Name: string
-      Summary: string option }
+  { Name: string
+    Summary: string option }
 
 type TypeInfo =
-    { Summary: string option
-      Members: MemberInfo list
-      NestedTypes: Map<string, TypeInfo> }
-    member this.IsEmpty =
-        Option.isNone this.Summary
-        && List.isEmpty this.Members
-        && Map.isEmpty this.NestedTypes
+  { Summary: string option
+    Members: MemberInfo list
+    NestedTypes: Map<string, TypeInfo> }
+  member this.IsEmpty =
+    Option.isNone this.Summary
+    && List.isEmpty this.Members
+    && Map.isEmpty this.NestedTypes
 
 let makeType summary members nestedTypes =
     { Summary = summary
