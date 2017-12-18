@@ -196,6 +196,44 @@ type DiscoMachine =
         ApiPort          = port Constants.DEFAULT_API_PORT
         Version          = version Build.VERSION }
 
+// * DiscoMachineYaml
+
+type DiscoMachineYaml () =
+  [<DefaultValue>] val mutable MachineId:        string
+  [<DefaultValue>] val mutable HostName:         string
+  [<DefaultValue>] val mutable WorkSpace:        string
+  [<DefaultValue>] val mutable AssetDirectory:   string
+  [<DefaultValue>] val mutable AssetFilter:      string
+  [<DefaultValue>] val mutable LogDirectory:     string
+  [<DefaultValue>] val mutable BindAddress:      string
+  [<DefaultValue>] val mutable MulticastAddress: string
+  [<DefaultValue>] val mutable MulticastPort:    uint16
+  [<DefaultValue>] val mutable WebPort:          uint16
+  [<DefaultValue>] val mutable RaftPort:         uint16
+  [<DefaultValue>] val mutable WsPort:           uint16
+  [<DefaultValue>] val mutable GitPort:          uint16
+  [<DefaultValue>] val mutable ApiPort:          uint16
+  [<DefaultValue>] val mutable Version:          string
+
+  static member Create (cfg: DiscoMachine) =
+    let yml = DiscoMachineYaml()
+    yml.MachineId        <- string cfg.MachineId
+    yml.HostName         <- string cfg.HostName
+    yml.WorkSpace        <- unwrap cfg.WorkSpace
+    yml.AssetDirectory   <- unwrap cfg.AssetDirectory
+    yml.AssetFilter      <- cfg.AssetFilter
+    yml.LogDirectory     <- unwrap cfg.LogDirectory
+    yml.BindAddress      <- string cfg.BindAddress
+    yml.MulticastAddress <- string cfg.MulticastAddress
+    yml.MulticastPort    <- unwrap cfg.MulticastPort
+    yml.WebPort          <- unwrap cfg.WebPort
+    yml.RaftPort         <- unwrap cfg.RaftPort
+    yml.WsPort           <- unwrap cfg.WsPort
+    yml.GitPort          <- unwrap cfg.GitPort
+    yml.ApiPort          <- unwrap cfg.ApiPort
+    yml.Version          <- cfg.Version.ToString()
+    yml
+
 // * MachineStatus
 
 [<AutoOpen>]
@@ -287,6 +325,7 @@ module MachineStatus =
 module MachineConfig =
   open Path
   open Aether
+  open SharpYaml.Serialization
 
   // ** tag
 
@@ -351,55 +390,16 @@ module MachineConfig =
       <.> MACHINECONFIG_DEFAULT_PATH
       </> filepath (MACHINECONFIG_NAME + ASSET_EXTENSION)
 
-  open SharpYaml.Serialization
+  // ** parse
 
-  // ** MachineConfigYaml (private)
-
-  type MachineConfigYaml () =
-    [<DefaultValue>] val mutable MachineId:        string
-    [<DefaultValue>] val mutable WorkSpace:        string
-    [<DefaultValue>] val mutable AssetDirectory:   string
-    [<DefaultValue>] val mutable AssetFilter:      string
-    [<DefaultValue>] val mutable LogDirectory:     string
-    [<DefaultValue>] val mutable BindAddress:      string
-    [<DefaultValue>] val mutable MulticastAddress: string
-    [<DefaultValue>] val mutable MulticastPort:    uint16
-    [<DefaultValue>] val mutable WebPort:          uint16
-    [<DefaultValue>] val mutable RaftPort:         uint16
-    [<DefaultValue>] val mutable WsPort:           uint16
-    [<DefaultValue>] val mutable GitPort:          uint16
-    [<DefaultValue>] val mutable ApiPort:          uint16
-    [<DefaultValue>] val mutable Version:          string
-
-    static member Create (cfg: DiscoMachine) =
-      let yml = MachineConfigYaml()
-      yml.MachineId        <- string cfg.MachineId
-      yml.WorkSpace        <- unwrap cfg.WorkSpace
-      yml.AssetDirectory   <- unwrap cfg.AssetDirectory
-      yml.AssetFilter      <- cfg.AssetFilter
-      yml.LogDirectory     <- unwrap cfg.LogDirectory
-      yml.BindAddress      <- string cfg.BindAddress
-      yml.MulticastAddress <- string cfg.MulticastAddress
-      yml.MulticastPort    <- unwrap cfg.MulticastPort
-      yml.WebPort          <- unwrap cfg.WebPort
-      yml.RaftPort         <- unwrap cfg.RaftPort
-      yml.WsPort           <- unwrap cfg.WsPort
-      yml.GitPort          <- unwrap cfg.GitPort
-      yml.ApiPort          <- unwrap cfg.ApiPort
-      yml.Version          <- cfg.Version.ToString()
-      yml
-
-  // ** parse (private)
-
-  let private parse (yml: MachineConfigYaml) : Either<DiscoError,DiscoMachine> =
+  let private parse (yml: DiscoMachineYaml) : Either<DiscoError,DiscoMachine> =
     either {
-      let hostname = Network.getHostName ()
       let! ip = IpAddress.TryParse yml.BindAddress
       let! id = DiscoId.TryParse yml.MachineId
       let! mcastip = IpAddress.TryParse yml.MulticastAddress
       return {
         MachineId        = id
-        HostName         = name hostname
+        HostName         = name yml.HostName
         WorkSpace        = filepath yml.WorkSpace
         AssetDirectory   = filepath yml.AssetDirectory
         AssetFilter      = yml.AssetFilter
@@ -425,35 +425,47 @@ module MachineConfig =
     with
       | _ -> ()
 
+
+  // ** defaultWorkspace
+
+  let defaultWorkspace () =
+    if Platform.isUnix then
+      let home = Environment.GetEnvironmentVariable "HOME"
+      home <.> MACHINECONFIG_DEFAULT_WORKSPACE_UNIX
+    else filepath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS
+
+  // ** defaultAssetDirectory
+
+  let defaultAssetDirectory () =
+    if Platform.isUnix then
+      let home = Environment.GetEnvironmentVariable "HOME"
+      home <.> MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX
+    else filepath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS
+
+  // ** logDir
+
+  let defaultLogDirectory () =
+    let workspace = defaultWorkspace()
+    workspace </> filepath "log"
+
   // ** create
 
   let create (bindIp: string) (shiftDefaults: uint16 option) : DiscoMachine =
-    let shiftPath path =
-        match shiftDefaults with
-        | Some shift -> path + (string shift)
-        | None -> path
     let shiftPort p =
         match shiftDefaults with
         | Some shift -> port (p + shift)
         | None -> port p
+
     let hostname = Network.getHostName()
-
-    let workspace =
-      if Platform.isUnix then
-        let home = Environment.GetEnvironmentVariable "HOME"
-        home <.> (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_UNIX)
-      else
-        filepath (shiftPath MACHINECONFIG_DEFAULT_WORKSPACE_WINDOWS)
-
-    let assetDir =
-      if Platform.isUnix then
-        let home = Environment.GetEnvironmentVariable "HOME"
-        home <.> (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX)
-      else
-        filepath (shiftPath MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_WINDOWS)
+    let workspace = defaultWorkspace()
+    let assetDir = defaultAssetDirectory()
+    let logDir = defaultLogDirectory()
 
     if Directory.exists workspace |> not then
       Directory.createDirectory workspace |> ignore
+
+    if Directory.exists assetDir |> not then
+      Directory.createDirectory assetDir |> ignore
 
     let version = Assembly.GetExecutingAssembly().GetName().Version |> string |> Measure.version
 
@@ -462,7 +474,7 @@ module MachineConfig =
       WorkSpace        = workspace
       AssetDirectory   = assetDir
       AssetFilter      = Constants.DEFAULT_ASSET_FILTER
-      LogDirectory     = workspace </> filepath "log"
+      LogDirectory     = logDir
       BindAddress      = IpAddress.Parse bindIp
       MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
       MulticastPort    = port Constants.DEFAULT_MCAST_PORT
@@ -482,7 +494,7 @@ module MachineConfig =
       let location = getLocation path
       let payload =
         cfg
-        |> MachineConfigYaml.Create
+        |> DiscoMachineYaml.Create
         |> serializer.Serialize
 
       location
@@ -508,7 +520,7 @@ module MachineConfig =
         printfn "loading configuration from: %A" location
         let raw = File.ReadAllText(unwrap location)
         let serializer = Serializer()
-        serializer.Deserialize<MachineConfigYaml>(raw)
+        serializer.Deserialize<DiscoMachineYaml>(raw)
         |> parse
       else
         "could not find machine configuration"
@@ -530,7 +542,7 @@ module MachineConfig =
         if File.exists location
         then
           let raw = File.ReadAllText(unwrap location)
-          serializer.Deserialize<MachineConfigYaml>(raw)
+          serializer.Deserialize<DiscoMachineYaml>(raw)
           |> parse
         else
           let bindIp = getBindIp()

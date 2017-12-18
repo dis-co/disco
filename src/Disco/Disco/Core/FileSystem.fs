@@ -813,6 +813,13 @@ module Directory =
     |> Directory.GetFileSystemEntries
     |> Array.map filepath
 
+  // ** contains
+
+  let contains (path: FilePath) dir =
+    dir
+    |> fileSystemEntries
+    |> Array.contains path
+
   // ** exists
 
   let exists (path: FilePath) =

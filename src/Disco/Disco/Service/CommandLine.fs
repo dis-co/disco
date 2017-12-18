@@ -1,8 +1,8 @@
 namespace Disco.Service
 
-#if !DISCO_NODES
-
 // * CommandLine
+
+#if !DISCO_NODES
 
 module CommandLine =
 
@@ -54,19 +54,26 @@ module CommandLine =
   machine's global identifier and also specifies the workspace
   directory used by Disco to scan for projects.
 
-  You can specify the parent directory to create configuration in by
-  using the machine parameter:
+  You can specify the parent directory to create or update
+  configuration in by using the --machine parameter:
 
-  --machine=/path/to/machine/config : Path to the machine config file
+  --machine=/path/to/directory
 
 ----------------------------------------------------------------------
 | start                                                              |
 ----------------------------------------------------------------------
 
-  Start the Disco daemon with the project specified. You can specify
-  the project to start with using
+  Start the Disco daemon with the project specified. This flag is
+  optional. When started without, the service will be in idle mode.
+
+  You can specify the project to start with using:
 
   --project=project-name : Name of project directory in the workspace
+
+  You can also optionally specify the directory in which machinecfg.yaml
+  is located:
+
+  --machine=/path/to/directory
 
 ----------------------------------------------------------------------
 | help                                                               |
