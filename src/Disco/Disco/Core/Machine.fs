@@ -325,7 +325,12 @@ module MachineStatus =
 module MachineConfig =
   open Path
   open Aether
+
+  #if !FABLE_COMPILER && !DISCO_NODES
+
   open SharpYaml.Serialization
+
+  #endif
 
   // ** tag
 
