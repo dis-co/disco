@@ -11,8 +11,13 @@ possible, including stack traces, versions/commit/tag used etc.
 
 Please provide the expected and actual results.
 
-### Related information
+### Environment information
 
 * Disco Version:
+* Member Count:
+* Type of Client:
+
+### Related information
+
 * RunTime Version:
 * Operating system:
