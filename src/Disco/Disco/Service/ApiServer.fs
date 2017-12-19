@@ -156,8 +156,9 @@ module ApiServer =
         // Append logs to the current Logger singleton, to be forwarded to the frontend.
         | LogMsg log -> Logger.append log
 
-        | CallCue _ | UpdateSlices _ ->
-          Msg.Update(Origin.Api, command) |> agent.Post
+        /// publish commands to pipeline
+        | CallCue _ | UpdateSlices _ -> Msg.Update(Origin.Api, command) |> agent.Post
+
         | _ -> ()
       | Left _ -> () // not sure if I should log here..
 
@@ -532,7 +533,6 @@ module ApiServer =
   let create (mem: RaftMember) callbacks =
     either {
       let cts = new CancellationTokenSource()
-
       let store = AgentStore.create ()
 
       store.Update {
@@ -556,9 +556,13 @@ module ApiServer =
             // *** Publish
 
             member self.Publish (ev: DiscoEvent) =
+              printfn "API Publish: %O" ev
               if Service.isRunning store.State.Status then
                 match ev with
+                /// don't re-publish log messages that have been received via API
                 | DiscoEvent.Append (_, LogMsg log) when log.MachineId <> mem.Id -> ()
+                /// publish comands that have been received via API only to connected clients
+                | DiscoEvent.Append (Origin.Api, cmd) -> updateAllClients store.State cmd
                 | DiscoEvent.Append (_, cmd) ->
                   updateAllClients store.State cmd
                   publish store.State cmd agent
