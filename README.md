@@ -19,7 +19,7 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 * Bonjour \(optional\)
 * Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
-** initial installation**
+**initial installation**
 you only need to do this once! 
 
 * create empty workspace folder at c:\disco
