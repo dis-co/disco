@@ -2,8 +2,11 @@
 [![Travis](https://travis-ci.org/dis-co/disco.svg?branch=master)](https://travis-ci.org/dis-co/disco)
 
 
+# DISCO
 
-# Distributed Control
+**Distributed Show Control**  
+DISCO - Distributed Show Control is a next generation live performance framework to interconnect and control software systems. DISCO is designed to meet the rapidly evolving needs of live media productions with a focus on realtime content creation. With its roots as a vj-software it is designed to provide the most versatile way to control and operate even complex techincal setups.
+
 
 
 # Download
