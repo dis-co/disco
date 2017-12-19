@@ -101,6 +101,12 @@ module rec PubSub =
     let client = new UdpClient()
     client.ExclusiveAddressUse <- false
 
+    let externalAddress =
+      mem
+      |> Member.ipAddress
+      |> string
+      |> IPAddress.Parse
+
     let remoteAddress =
       mem
       |> Member.multicastAddress
@@ -135,10 +141,11 @@ module rec PubSub =
     { new IPubSub with
         member pubsub.Start() =
           try
+            client.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 1)
             client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true)
-            client.Client.Bind(localEp)
-            client.JoinMulticastGroup(remoteAddress)
-            beginReceive state
+            do client.Client.Bind(localEp)
+            do client.JoinMulticastGroup(remoteAddress, externalAddress)
+            do beginReceive state
             Either.nothing
           with
             | exn ->
