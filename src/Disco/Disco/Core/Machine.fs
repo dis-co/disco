@@ -380,6 +380,10 @@ module MachineConfig =
 
   let get() = singleton
 
+  // ** set
+
+  let set config = singleton <- config
+
   #if !FABLE_COMPILER && !DISCO_NODES
 
   // ** getLocation

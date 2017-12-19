@@ -155,6 +155,7 @@ module Main =
     match machine with
     | Left error -> Error.exitWith error
     | Right machine ->
+      do MachineConfig.set machine
       let validation = MachineConfig.validate machine
       if not validation.IsEmpty then
         printfn "Machine configuration file is invalid, please check the following settings:"

@@ -55,24 +55,24 @@ module DiscoService =
 
   [<NoComparison;NoEquality>]
   type private DiscoState =
-    { Member        : RaftMember
-      Machine       : DiscoMachine
-      Status        : ServiceStatus
-      Store         : Store
-      Leader        : Leader option
-      Dispatcher    : IDispatcher<DiscoEvent>
-      LogForwarder  : IDisposable
-      LogFile       : LogFile
-      ApiServer     : IApiServer
-      GitServer     : IGitServer
-      RaftServer    : IRaftServer
-      SocketServer  : IWebSocketServer
-      AssetService  : IAssetService
-      ClockService  : IClock
-      FsWatcher     : IFsWatcher
-      Subscriptions : Subscriptions
-      BufferedCues  : ConcurrentDictionary<(Frame * CueId),Cue>
-      Disposables   : IDisposable array }
+    { Member:        RaftMember
+      Machine:       DiscoMachine
+      Status:        ServiceStatus
+      Store:         Store
+      Leader:        Leader option
+      Dispatcher:    IDispatcher<DiscoEvent>
+      LogForwarder:  IDisposable
+      LogFile:       LogFile
+      ApiServer:     IApiServer
+      GitServer:     IGitServer
+      RaftServer:    IRaftServer
+      SocketServer:  IWebSocketServer
+      AssetService:  IAssetService
+      ClockService:  IClock
+      FsWatcher:     IFsWatcher
+      Subscriptions: Subscriptions
+      BufferedCues:  ConcurrentDictionary<(Frame * CueId),Cue>
+      Disposables:   IDisposable array }
 
     // *** Dispose
 
