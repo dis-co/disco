@@ -19,10 +19,11 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 * Bonjour \(optional\)
 * Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
-**initial installation**
+**initial installation sequence**
+
 you only need to do this once! 
 
-* create empty workspace folder at c:\disco
+* create empty workspace folder at "c:\disco"
 * run disco\disco.exe setup
 * select network adapter (make sure that it is set to fixed ip adress)
 * enter multicast group (press *enter* for default)
@@ -32,15 +33,10 @@ you only need to do this once!
 * enter path to DISCO workspace folder (the fault location is "c:\disco" press *enter* for default)
 * check setting and confirm settings
 
-First you have to make sure that at least one DISCO DSM Service is . To do so you could either start DISCO using the scripts
+** start DISCO**
 
-**Start DISCO using scripts**
-
-
-
-you could also start DSM Service manually using:  
-`..\disco\disco.exe start --bind=[IP ADDRESS]`  
-keep in mind that LOCALHOST will not work here
+First we have to make sure that at an instance of the DISCO DSM Service is running.
+* run disco\disco.exe start
 
 
 ## Documentation
