@@ -19,9 +19,7 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 * Download and install [Bonjour](http://support.apple.com/downloads/DL999/de_DE/BonjourPSSetup.exe) (optional)
 * Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
-**initial installation sequence**
-
-you only need to do this once on intitial installation or if your ip has changed! 
+**initial installation sequence** you only need to do this once on intitial installation or if your ip has changed! 
 
 * create empty workspace folder at "c:\disco"
 * run disco\disco.exe setup
