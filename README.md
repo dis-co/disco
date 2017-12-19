@@ -7,25 +7,32 @@
 
 DISCO is a next generation live performance framework to interconnect and control software systems. DISCO is designed to meet the rapidly evolving needs of live media productions with a focus on realtime content creation. With its roots as a vj-software it is designed to provide the most versatile way to control and operate even complex techincal setups.
 
-# Download
+## Download
 
 You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) current builds from AppVeyor. Note: these builds are from HEAD of master branch.
 
-# Installation
+## Installation Windows
 
-## Prerequisites
+**Prerequisites**
 
 * GIT
 * Bonjour \(optional\)
+* Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
-**Windows**
+** initial installation**
+you only need to do this once! 
 
-* Download the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
-* extract archive
+* create empty workspace folder at c:\disco
+* run disco\disco.exe setup
+* select network adapter (make sure that it is set to fixed ip adress)
+* enter multicast group (press *enter* for default)
+* enter machine name (press *enter* for default)
+* enter path to DISCO Asset folder (if your workspace is located at "c:\disco" you could just press *enter* for default)
+* enter path to DISCO log folder (if your workspace is located at "c:\disco" you could just press *enter* for default)
+* enter path to DISCO workspace folder (the fault location is "c:\disco" press *enter* for default)
+* check setting and confirm settings
 
-### First Steps
-
-First you have to make sure that at least one DISCO DSM Service is running. To do so you could either start DISCO using the scripts
+First you have to make sure that at least one DISCO DSM Service is . To do so you could either start DISCO using the scripts
 
 **Start DISCO using scripts**
 
@@ -36,6 +43,6 @@ you could also start DSM Service manually using:
 keep in mind that LOCALHOST will not work here
 
 
-# Documentation
+## Documentation
 
 Please find the ongoing Documentation [here](https://www.gitbook.com/book/dis-co/disco/details)
