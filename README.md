@@ -9,7 +9,7 @@ DISCO is a next generation live performance framework to interconnect and contro
 
 # Documentation
 
-Please find the Documentation [here](https://www.gitbook.com/book/dis-co/disco/details).
+Please find the ongoing Documentation [here](https://www.gitbook.com/book/dis-co/disco/details)
 
 # Download
 
