@@ -36,8 +36,9 @@ you only need to do this once!
 **start DISCO**
 
 First we have to make sure that at an instance of the DISCO DSM Service is running.
-* run disco\disco.exe start
 
+* run disco\disco.exe start
+* open a browser and point to YOUR-IP:7000 (localhost wont work here!)
 
 ## Documentation
 
