@@ -10,6 +10,8 @@ open Disco.Core
 open Helpers
 open Types
 open State
+open Disco.Web.Tooltips
+open Disco.Web
 
 let private withDelay f =
   async {
@@ -18,9 +20,12 @@ let private withDelay f =
   }
   |> Async.StartImmediate
 
-let private navbarItem cb opt key =
+let private navbarItem cb opt key title =
   let elem payload = div [ Class "column" ] [ str payload ]
-  div [ Class "columns navbar-item"; OnClick (cb opt) ] [
+  div [ 
+    Class "columns navbar-item"; OnClick (cb opt) 
+    Title title
+  ] [
     div [ Class "column is-two-thirds" ] [ str opt ]
     div [ Class "column shortcut" ] [
       Option.map str key |> Option.defaultValue (str "")
@@ -106,13 +111,13 @@ let private projectMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Project"]
     div [Class "navbar-dropdown"] [
-      navbarItem (onClick props.Dispatch) ProjectMenu.create   None
-      navbarItem (onClick props.Dispatch) ProjectMenu.load     None
-      navbarItem (onClick props.Dispatch) ProjectMenu.save     (Some "Ctrl-s")
-      navbarItem (onClick props.Dispatch) ProjectMenu.unload   None
-      navbarItem (onClick props.Dispatch) ProjectMenu.shutdown None
+      navbarItem (onClick props.Dispatch) ProjectMenu.create   None Navbar.Project.create
+      navbarItem (onClick props.Dispatch) ProjectMenu.load     None Navbar.Project.load
+      navbarItem (onClick props.Dispatch) ProjectMenu.save     (Some "Ctrl-s") Navbar.Project.save
+      navbarItem (onClick props.Dispatch) ProjectMenu.unload   None Navbar.Project.unload
+      navbarItem (onClick props.Dispatch) ProjectMenu.shutdown None Navbar.Project.shutDown
       div [ Class "navbar-divider" ] []
-      navbarItem (onClick props.Dispatch) project None
+      navbarItem (onClick props.Dispatch) project None ""
     ]
   ]
 
@@ -151,11 +156,11 @@ let private editMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Edit"]
     div [Class "navbar-dropdown"] [
-      navbarItem (onClick props.Dispatch) EditMenu.undo (Some "Ctrl-z")
-      navbarItem (onClick props.Dispatch) EditMenu.redo (Some "Ctrl-Z")
-      navbarItem (onClick props.Dispatch) EditMenu.resetDirty None
+      navbarItem (onClick props.Dispatch) EditMenu.undo (Some "Ctrl-z")   Navbar.Edit.undo
+      navbarItem (onClick props.Dispatch) EditMenu.redo (Some "Ctrl-Z")   Navbar.Edit.redo
+      navbarItem (onClick props.Dispatch) EditMenu.resetDirty None        Navbar.Edit.resetDirty
       div [ Class "navbar-divider" ] []
-      navbarItem (onClick props.Dispatch) EditMenu.settings None
+      navbarItem (onClick props.Dispatch) EditMenu.settings None          Navbar.Edit.settings
     ]
   ]
 
@@ -220,25 +225,25 @@ let private windowsMenu onOpen (state:ViewState) (props:ViewProps) =
       OnClick (fun _ -> onOpen())
     ] [str "Windows"]
     div [Class "navbar-dropdown"]
-      ([ WindowsMenu.log,             None
-         WindowsMenu.inspector,       Some ("Ctrl-i")
-         WindowsMenu.fileBrowser,     Some ("Ctrl-b")
-         WindowsMenu.graph,           None
-         WindowsMenu.players,         None
-         WindowsMenu.cues,            None
-         WindowsMenu.cueLists,        None
-         WindowsMenu.pinMappings,     None
-         WindowsMenu.project,         Some ("Ctrl-p")
-         WindowsMenu.clusterSettings, None
-         WindowsMenu.clients,         None
-         WindowsMenu.sessions,        None
-         WindowsMenu.testWidget1,     None
-         WindowsMenu.testWidget2,     None
-         WindowsMenu.testWidget3,     None
-         WindowsMenu.testWidget4,     None
-         WindowsMenu.testWidget5,     None
-         WindowsMenu.testWidget6,     None ]
-       |> List.map (fun (tipe, key) -> navbarItem onClick tipe key))
+      ([ WindowsMenu.log,             None,             Navbar.Window.log
+         WindowsMenu.inspector,       Some ("Ctrl-i"),  Navbar.Window.inspector
+         WindowsMenu.fileBrowser,     Some ("Ctrl-b"),  Navbar.Window.fileBrowser
+         WindowsMenu.graph,           None,             Navbar.Window.graph
+         WindowsMenu.players,         None,             Navbar.Window.players
+         WindowsMenu.cues,            None,             Navbar.Window.cues
+         WindowsMenu.cueLists,        None,             Navbar.Window.cueLists
+         WindowsMenu.pinMappings,     None,             Navbar.Window.pinMappings
+         WindowsMenu.project,         Some ("Ctrl-p"),  Navbar.Window.project
+         WindowsMenu.clusterSettings, None,             Navbar.Window.clusterSettings
+         WindowsMenu.clients,         None,             Navbar.Window.clients 
+         WindowsMenu.sessions,        None,             Navbar.Window.sessions
+         WindowsMenu.testWidget1,     None,             Navbar.Window.testWidget1
+         WindowsMenu.testWidget2,     None,             Navbar.Window.testWidget2
+         WindowsMenu.testWidget3,     None,             Navbar.Window.testWidget3
+         WindowsMenu.testWidget4,     None,             Navbar.Window.testWidget4
+         WindowsMenu.testWidget5,     None,             Navbar.Window.testWidget5
+         WindowsMenu.testWidget6,     None,             Navbar.Window.testWidget6 ]
+       |> List.map (fun (tipe, key, title) -> navbarItem onClick tipe key title))
   ]
 
 type View(props) =

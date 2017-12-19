@@ -15,6 +15,8 @@ open Disco.Web.Core
 open Helpers
 open State
 open Types
+open Disco.Web.Tooltips
+open Disco.Web
 
 let inline padding5() =
   Style [PaddingLeft "5px"]
@@ -72,7 +74,7 @@ let body dispatch (model: Model) =
               ]
               td [Class "width-15"; topBorder()] [
                   /// provide inline editing capabilities for the CuePlayer Name field
-                  Editable.string (string cueList.Name) (updateName cueList)
+                  Editable.string (string cueList.Name) (string CueListView.listName) (updateName cueList)
               ]
               td [Class "width-5"; padding5()] [
                 deleteButton dispatch cueList

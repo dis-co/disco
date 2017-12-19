@@ -12,6 +12,7 @@ open Disco.Web
 open Disco.Web.Notifications
 open Types
 open Helpers
+open Disco.Web.Tooltips
 
 // * Types
 
@@ -87,6 +88,7 @@ let private renderNameInput (props:Props) =
   else
     Editable.string
       (props.CueGroup.Name |> Option.map unwrap |> Option.defaultValue "&nbsp;")
+      (string CueGroupView.updateCueGroupName)
       (fun txt ->
         let name =
           if String.IsNullOrWhiteSpace txt

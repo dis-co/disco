@@ -15,6 +15,9 @@ open Disco.Web.Core
 open Helpers
 open State
 open Types
+open Disco.Web.Tooltips
+open Disco.Web
+open Disco.Web
 
 let inline padding5() =
   Style [PaddingLeft "5px"]
@@ -25,7 +28,7 @@ let inline topBorder() =
 let inline padding5AndTopBorder() =
   Style [PaddingLeft "5px"; BorderTop "1px solid lightgray"]
 
-let private viewButton dispatch (player:CuePlayer) =
+let private viewButton dispatch (player:CuePlayer, title: string) =
   button [
     Class "disco-button disco-icon"
     OnClick (fun ev ->
@@ -41,10 +44,11 @@ let private viewButton dispatch (player:CuePlayer) =
         LineHeight "14px"
         FontSize "1.11111111em"
       ]
+      Title title
     ] []
   ]
 
-let private deleteButton dispatch (player:CuePlayer) =
+let private deleteButton dispatch (player:CuePlayer, title: string) =
   button [
     Class "disco-button disco-icon icon-close"
     OnClick (fun ev ->
@@ -59,6 +63,7 @@ let private deleteButton dispatch (player:CuePlayer) =
       |> RemoveWidget
       |> dispatch
     )
+    Title title
   ] []
 
 let private updateName (player:CuePlayer) (value:string) =
@@ -98,7 +103,7 @@ let private renderNameInput (player:CuePlayer) =
   if player.Locked then
     str (string player.Name)
   else
-    Editable.string (string player.Name) (updateName player)
+    Editable.string (string player.Name) (string PlayerListView.updatePlayerName) (updateName player)
 
 let private renderCueListDropdown (state:State) (player:CuePlayer) =
   let cueList =
@@ -171,8 +176,8 @@ let body dispatch (model: Model) =
                     >> ClientContext.Singleton.Post)
                 ]
                 td [Class "width-25"; padding5() ] [
-                  viewButton dispatch player
-                  deleteButton dispatch player
+                  viewButton dispatch (player, PlayerListView.createCuePlayer)
+                  deleteButton dispatch (player, PlayerListView.removeCuePlayer)
                 ]
               ])
           |> Seq.toList

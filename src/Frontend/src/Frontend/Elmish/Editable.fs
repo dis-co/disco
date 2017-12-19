@@ -17,10 +17,11 @@ type private RCom = React.ComponentClass<obj>
 let private ContentEditable: RCom = importDefault "../../js/widgets/ContentEditable"
 let private DropdownEditable: RCom = importDefault "../../js/widgets/DropdownEditable"
 
-let string content (update: string -> unit) =
+let string content tooltip (update: string -> unit) =
   from ContentEditable
     %["tagName" ==> "div"
       "html" ==> content
+      "title" ==> tooltip
       "className" ==> "disco-contenteditable"
       "onChange" ==> update] []
 
