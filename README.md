@@ -33,7 +33,7 @@ you only need to do this once!
 * enter path to DISCO workspace folder (the fault location is "c:\disco" press *enter* for default)
 * check setting and confirm settings
 
-** start DISCO**
+**start DISCO**
 
 First we have to make sure that at an instance of the DISCO DSM Service is running.
 * run disco\disco.exe start
