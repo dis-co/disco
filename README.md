@@ -11,15 +11,15 @@ DISCO is a next generation live performance framework to interconnect and contro
 
 You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) current builds from AppVeyor. Note: these builds are from HEAD of master branch.
 
-## Installation Windows
+## Installation (Windows)
 
-**Prerequisites**
+### Prerequisites
 
 * GIT
 * Download and install [Bonjour](http://support.apple.com/downloads/DL999/de_DE/BonjourPSSetup.exe) (optional)
 * Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
-**initial installation sequence** 
+### initial installation sequence 
 
 * create empty workspace folder at "c:\disco"
 * run disco\disco.exe setup
@@ -33,7 +33,7 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 
 you only need to do this once on intitial installation or if your ip has changed! 
 
-**start DISCO**
+### start DISCO
 
 First we have to make sure that at an instance of the DISCO DSM Service is running.
 
