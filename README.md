@@ -21,7 +21,7 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 
 **initial installation sequence**
 
-you only need to do this once! 
+you only need to do this once on intitial installation or if your ip has changed! 
 
 * create empty workspace folder at "c:\disco"
 * run disco\disco.exe setup
