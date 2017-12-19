@@ -16,7 +16,7 @@ You can [download](https://ci.appveyor.com/project/disco/disco/build/artifacts) 
 **Prerequisites**
 
 * GIT
-* [Bonjour](http://support.apple.com/downloads/DL999/de_DE/BonjourPSSetup.exe) (optional)
+* Download and install [Bonjour](http://support.apple.com/downloads/DL999/de_DE/BonjourPSSetup.exe) (optional)
 * Download and extract the latest build from the Github Repository [https://github.com/dis-co/disco](https://github.com/dis-co/disco)
 
 **initial installation sequence**
