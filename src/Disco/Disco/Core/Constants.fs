@@ -250,7 +250,7 @@ module Constants =
     let PROJECT_MISSING_CLUSTER = "Missing active cluster configuration"
 
     [<Literal>]
-    let PROJECT_MISSING_MEMBER = "Missing member"
+    let PROJECT_MISSING_MEMBER = "Missing member active cluster configuration"
 
     [<Literal>]
     let PROJECT_MEMBER_MISMATCH = "is different from Machine"

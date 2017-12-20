@@ -178,7 +178,7 @@ module Error =
   /// - error: `DiscoError` - error to convert into a human understable message
   ///
   /// Returns: string
-  let inline toMessage (error: DiscoError) = error.ToString()
+  let inline toMessage (error: DiscoError) = error.Message
 
   // ** toExitCode
 
