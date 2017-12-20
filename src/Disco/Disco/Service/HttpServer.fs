@@ -84,12 +84,8 @@ module HttpServer =
   // ** getDefaultBasePath
 
   let private getDefaultBasePath() =
-    #if INTERACTIVE
-    Path.Combine(__SOURCE_DIRECTORY__, "../../../Frontend")
-    #else
     let asm = System.Reflection.Assembly.GetExecutingAssembly()
-    Path.Combine(Path.GetDirectoryName(asm.Location), "../Frontend")
-    #endif
+    Path.Combine(Path.GetDirectoryName(asm.Location), "www")
 
   // ** pathWithArgs
 
