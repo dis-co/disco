@@ -1,5 +1,6 @@
-## New in 0.5.0 (Released 2016/12/20)
+## New in 0.1.1 (20/12/2017)
 
-* create and manage projects from the command line
-* build clusters to replicate state machine commands
-* display the current project and cluster in the web browser
+* properly package vvvv client nodes (PR #40)
+* improve daemon error message formatting on command line (PR #41)
+* prevent message loops when publishing on pub/sub API (PR #42)
+* add tooltips to frontend (PR #36)

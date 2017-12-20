@@ -556,7 +556,6 @@ module ApiServer =
             // *** Publish
 
             member self.Publish (ev: DiscoEvent) =
-              printfn "API Publish: %O" ev
               if Service.isRunning store.State.Status then
                 match ev with
                 /// don't re-publish log messages that have been received via API
