@@ -262,8 +262,9 @@ let build config fsproj _ =
   let config = match config with Debug -> "Debug" | Release -> "Release"
   build (setParams config) (baseDir @@ fsproj)
 
-let withoutNodeModules (path: string) =
-  path.Contains("node_modules") |> not
+let withoutBuildData (path: string) =
+  not (path.Contains("node_modules")) &&
+  not (path.Contains("_temporary_compressed_files"))
 
 // ---------------------------------------------------------------------
 // ACTIONS
@@ -330,25 +331,22 @@ let generateManifest () =
   | _ -> ()
 
 let copyBinaries () =
-  SilentCopyDir "bin/Disco"       (baseDir @@ "bin/Release/Disco")       withoutNodeModules
-  SilentCopyDir "bin/Nodes"      (baseDir @@ "bin/Release/Nodes")      withoutNodeModules
-  SilentCopyDir "bin/Sdk"        (baseDir @@ "bin/Release/Sdk")        withoutNodeModules
-  SilentCopyDir "bin/MockClient" (baseDir @@ "bin/Release/MockClient") withoutNodeModules
+  Directory.CreateDirectory "bin/Clients" |> ignore
+  SilentCopyDir "bin/Disco"                      (baseDir @@ "bin/Release/Disco")      withoutBuildData
+  SilentCopyDir "bin/Clients/vvvv"               (baseDir @@ "../../vvvv")              withoutBuildData
+  SilentCopyDir "bin/Clients/vvvv/plugins/nodes" (baseDir @@ "bin/Release/Nodes")      withoutBuildData
+  SilentCopyDir "bin/Clients/cli-client"         (baseDir @@ "bin/Release/MockClient") withoutBuildData
+  SilentCopyDir "bin/Sdk"                        (baseDir @@ "bin/Release/Sdk")        withoutBuildData
 
 let copyAssets () =
-  [ "CHANGELOG.md"
-  // userScripts @@ "rundisco.sh"
-    userScripts @@ "createproject.cmd"
-    userScripts @@ "rundisco.cmd"
-    userScripts @@ "mockclient.cmd"
-  ] |> List.iter (CopyFile "bin/")
+  [ "CHANGELOG.md"] |> List.iter (CopyFile "bin/")
   FileUtils.cp (__SOURCE_DIRECTORY__ @@ "docs/files/test_package.md") "bin/README.md"
   // Frontend
-  SilentCopyDir "bin/Frontend/css" (baseDir @@ "../Frontend/css") withoutNodeModules
-  SilentCopyDir "bin/Frontend/js"  (baseDir @@ "../Frontend/js") withoutNodeModules
-  SilentCopyDir "bin/Frontend/lib" (baseDir @@ "../Frontend/lib") withoutNodeModules
-  FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Frontend/"
-  FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Frontend/"
+  SilentCopyDir "bin/Disco/www/css" (baseDir @@ "../Frontend/css") withoutBuildData
+  SilentCopyDir "bin/Disco/www/js"  (baseDir @@ "../Frontend/js") withoutBuildData
+  SilentCopyDir "bin/Disco/www/lib" (baseDir @@ "../Frontend/lib") withoutBuildData
+  FileUtils.cp (baseDir @@ "../Frontend/index.html") "bin/Disco/www/"
+  FileUtils.cp (baseDir @@ "../Frontend/favicon.ico") "bin/Disco/www/"
 
 let createArchive () =
    let ext = ".zip"
