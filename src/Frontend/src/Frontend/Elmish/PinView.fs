@@ -9,6 +9,7 @@ open Fable.Import
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Disco.Web.Types
+open Disco.Web.Tooltips
 
 type [<Pojo>] ElProps =
   { index: int
@@ -20,6 +21,7 @@ type [<Pojo>] ElProps =
     properties: (string * string) array
     classes: string array
     suffix: string option
+    title: string
   }
 
 let createElement(tagName: string, opts: ElProps, value: obj): React.ReactElement =
@@ -94,6 +96,7 @@ type PinView(props) =
           updater = if rowCount > 1 then None else updater
           classes = if rowCount > 1 then [|"disco-flex-1"|] else [||]
           suffix  = if rowCount > 1 then Some(" (" + string rowCount + ")") else None
+          title = Pin.tooltip this.props.pin
         }
       if rowCount > 1 then
         td [ClassName "disco-flex-row"] [
@@ -146,6 +149,7 @@ type PinView(props) =
               updater = updater
               classes = [||]
               suffix  = None
+              title = Pin.tooltip this.props.pin
             }
           yield tr [Key (string i); ClassName "disco-pin-child"] [
             td [] [str label]

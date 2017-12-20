@@ -13,6 +13,8 @@ open Fable.Helpers.React.Props
 open Disco.Web
 open Types
 open Helpers
+open Disco.Web.Tooltips
+open Disco.Web.Cues
 
 // * Types
 
@@ -128,11 +130,12 @@ let private withGivenState (props:Props) f =
 let private createContextMenu active onOpen (state:State) (props:Props) =
   let addGroup =
     withGivenState props <| fun _ player cueList ->
-      Some("Add Group", fun () -> addGroup cueList state.SelectedCueGroupIndex)
+      Some("Add Group", CuePlayerView.addGroup, fun () -> addGroup cueList state.SelectedCueGroupIndex)
 
   let createCue =
     withGivenState props <| fun _ player cueList ->
       Some("Create Cue",
+           CuePlayerView.createCue,
            fun () -> Lib.groupCreateCue cueList state.SelectedCueGroupIndex state.SelectedCueIndex)
 
   let addCue =
@@ -144,6 +147,7 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
         |> Array.map snd
         |> Array.sortBy (fun { Name = name } -> name)
       Some("Add Cues",
+           CuePlayerView.addCue,
            fun () ->
             Modal.InsertCues(cues, cueList, state.SelectedCueGroupIndex, state.SelectedCueIndex)
             :> IModal
@@ -153,6 +157,7 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
   let duplicateCue =
     withGivenState props <| fun globalState player cueList ->
       Some("Duplicate Cue",
+           CuePlayerView.duplicateCue,
            fun () ->
             Lib.duplicateCue
               globalState
@@ -163,9 +168,9 @@ let private createContextMenu active onOpen (state:State) (props:Props) =
   let toggleLocked =
     match props.Player with
     | Some player when player.Locked ->
-      Some("Unlock Player", fun _ -> toggleLocked player)
+      Some("Unlock Player", CuePlayerView.unlock, fun _ -> toggleLocked player)
     | Some player ->
-      Some("Lock Player", fun _ -> toggleLocked player)
+      Some("Lock Player", CuePlayerView.lock, fun _ -> toggleLocked player)
     | None -> None
 
   ContextMenu.create active onOpen

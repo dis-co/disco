@@ -20,6 +20,7 @@
     <Compile Include="Elmish/AssetBrowserView.fs" />
     <Compile Include="Elmish/Modal.fs" />
     <Compile Include="Elmish/Editable.fs" />
+    <Compile Include="Elmish/Tooltips.fs" />
     <Compile Include="Elmish/ContextMenu.fs" />
     <Compile Include="Elmish/State.fs" />
     <Compile Include="Elmish/Drag.fs" />

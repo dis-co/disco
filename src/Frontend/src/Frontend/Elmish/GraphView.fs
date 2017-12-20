@@ -10,6 +10,7 @@ open Disco.Core
 open Disco.Core.Commands
 open Helpers
 open Types
+open Disco.Web.Tooltips
 
 // * PinGroupProps
 
@@ -154,12 +155,12 @@ type GraphView(props) =
     | Some state ->
       let resetDirty =
         if state |> State.pinGroupMap |> PinGroupMap.hasDirtyPins
-        then Some("Reset Dirty", fun () -> Lib.resetDirty state)
+        then Some("Reset Dirty", GraphView.resetDirty, fun () -> Lib.resetDirty state)
         else None
 
       let addAllUnpersisted =
         if state |> State.pinGroupMap |> PinGroupMap.hasUnpersistedPins
-        then Some("Persist All", fun () -> Lib.persistAll state)
+        then Some("Persist All", GraphView.persistAll, fun () -> Lib.persistAll state)
         else None
 
       let persistSelected =
@@ -174,7 +175,7 @@ type GraphView(props) =
               pinIds
           if List.isEmpty pins
           then None
-          else Some("Persist Selected", fun () -> Lib.persistPins pins state)
+          else Some("Persist Selected", GraphView.persistSelected, fun () -> Lib.persistPins pins state)
         | _ -> None
 
       let createCue =
@@ -190,6 +191,7 @@ type GraphView(props) =
           then None
           else
             Some("Create Cue From Selection",
+                 GraphView.createCue,
                  fun () ->
                   Modal.CreateCue(pins)
                   :> IModal
@@ -215,6 +217,7 @@ type GraphView(props) =
           then None
           else
             Some("Add Selection To Cues",
+                 GraphView.addToCue,
                  fun () ->
                   Modal.UpdateCues(cues, pins)
                   :> IModal
@@ -224,13 +227,13 @@ type GraphView(props) =
 
       let showPlayers =
         if this.state.ShowPlayers
-        then Some("Hide Player Groups",  this.togglePlayers)
-        else Some("Show Player Groups",  this.togglePlayers)
+        then Some("Hide Player Groups", GraphView.hidePlayers,  this.togglePlayers)
+        else Some("Show Player Groups", GraphView.showPlayers,  this.togglePlayers)
 
       let showWidgets =
         if this.state.ShowWidgets
-        then Some("Hide Widget Groups", this.toggleWidgets)
-        else Some("Show Widget Groups", this.toggleWidgets)
+        then Some("Hide Widget Groups", GraphView.hideWidgets, this.toggleWidgets)
+        else Some("Show Widget Groups", GraphView.showWidgets, this.toggleWidgets)
 
       List.choose id [
         resetDirty

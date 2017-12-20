@@ -22,18 +22,19 @@ let private withDelay (f) =
   }
   |> Async.StartImmediate
 
-let private toItem close (name:string, command: MenuCommand) =
+let private toItem close (name:string,title: string, command: MenuCommand) =
   a [
     Href "#"
     Class "dropdown-item"
     OnClick (fun _ -> command(); withDelay close)
+    Title title
   ] [ str name ]
 
 let private toItems onOpen options =
   div [ Class "dropdown-content" ]
     (List.map (toItem onOpen) options)
 
-let create active (onOpen:MenuCommand) (options: (string * MenuCommand) list) =
+let create active (onOpen:MenuCommand) (options: (string * string * MenuCommand) list) =
   div [
     classList [
       "pull-right dropdown", true

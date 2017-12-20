@@ -176,7 +176,8 @@ export function createElement(tagName, options, value) {
   const formattedValue = formatValue(value, typeofValue, options.precision) + (options.suffix || "");
 
   const props = {
-    className: (options.classes || []).concat(classOfValue).join(" ")
+    className: (options.classes || []).concat(classOfValue).join(" "),
+    title: options.title
   };
 
   if (options.updater != null) {

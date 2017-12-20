@@ -13,6 +13,7 @@ open Disco.Web
 open Disco.Web.Notifications
 open Types
 open Helpers
+open Disco.Web.Tooltips
 
 // * Types
 
@@ -75,7 +76,7 @@ let renderInput (props:Props) =
   let content = unwrap props.Cue.Name
   if props.Locked
   then str content
-  else Editable.string content (updateCueName props)
+  else Editable.string content (string CueView.updateCueName) (updateCueName props)
 
 let updateCueGroup cueList cueGroup =
   CueList.replace cueGroup cueList
