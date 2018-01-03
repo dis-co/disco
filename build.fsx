@@ -264,9 +264,12 @@ let build config fsproj _ =
 
 let withoutBuildData (path: string) =
   not (path.Contains("node_modules")) &&
+  not (path.Contains("VVVV.Core.dll")) &&
+  not (path.Contains("VVVV.Utils.dll")) &&
+  not (path.Contains("VVVV.UtilsIL.dll")) &&
+  not (path.Contains("System.ComponentModel.Composition.CodePlex.dll")) &&
   not (path.Contains("_temporary_compressed_files"))
 
-// ---------------------------------------------------------------------
 // ACTIONS
 // ---------------------------------------------------------------------
 
