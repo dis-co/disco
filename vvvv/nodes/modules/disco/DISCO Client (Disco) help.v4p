@@ -1,0 +1,145 @@
+<!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv50alpha35.11.dtd" >
+   <PATCH nodename="D:\tmp\disco\vvvv\nodes\modules\disco\DISCO Client (Disco) help.v4p" systemname="DISCO Client (Disco) help" filename="D:\tmp\disco\vvvv\nodes\modules\disco\DISCO Client (Disco) help.v4p" id="74">
+   <BOUNDS type="Window" left="12900" top="8220" width="12870" height="8715">
+   </BOUNDS>
+   <NODE systemname="Client (Disco)" filename="DISCO Client (Disco).v4p" nodename="Client (Disco)" componentmode="Hidden" id="0">
+   <BOUNDS type="Node" left="7335" top="1815" width="3000" height="270">
+   </BOUNDS>
+   <PIN pinname="Client-ID (GUID)" visible="1">
+   </PIN>
+   <PIN pinname="Server IP" visible="1">
+   </PIN>
+   <PIN pinname="Reconnect" visible="1">
+   </PIN>
+   <PIN pinname="Connected" visible="1">
+   </PIN>
+   </NODE>
+   <PACK Name="addonpack" Version="35.9.0">
+   </PACK>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="1">
+   <BOUNDS type="Box" left="7320" top="660" width="3195" height="300">
+   </BOUNDS>
+   <BOUNDS type="Node" left="7320" top="660" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="1" values="54a2f239-ad1f-4fe7-b47a-40160dabb581">
+   </PIN>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Client-ID (GUID)|">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="1" srcpinname="Output String" dstnodeid="0" dstpinname="Client-ID (GUID)">
+   </LINK>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="2">
+   <BOUNDS type="Box" left="8505" top="1305" width="1395" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="8505" top="1305" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="1" values="192.168.2.200">
+   </PIN>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Server IP|">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="2" srcpinname="Output String" dstnodeid="0" dstpinname="Server IP">
+   </LINK>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="3">
+   <BOUNDS type="Box" left="10275" top="1155" width="480" height="480">
+   </BOUNDS>
+   <BOUNDS type="Node" left="10275" top="1155" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Y Input Value" slicecount="1" visible="1" values="0">
+   </PIN>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Bang">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Reconnect">
+   </PIN>
+   <PIN pinname="X Input Value" slicecount="1" values="0">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="3" srcpinname="Y Output Value" dstnodeid="0" dstpinname="Reconnect">
+   </LINK>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="4">
+   <BOUNDS type="Box" left="9300" top="2340" width="480" height="480">
+   </BOUNDS>
+   <BOUNDS type="Node" left="9300" top="2340" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Toggle">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Connected">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="0" srcpinname="Connected" dstnodeid="4" dstpinname="Y Input Value">
+   </LINK>
+   <NODE systemname="IOBox (Value Advanced)" nodename="IOBox (Value Advanced)" componentmode="InABox" id="5" exposed="1">
+   <BOUNDS type="Node" left="930" top="2745" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="930" top="2745" width="480" height="480">
+   </BOUNDS>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Toggle">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Toggle">
+   </PIN>
+   <PIN pinname="Tag" slicecount="1" values="9cf1dc28-ab3d-4947-8c72-cbd2b9d129cc">
+   </PIN>
+   </NODE>
+   <NODE systemname="IOBox (Value Advanced)" nodename="IOBox (Value Advanced)" componentmode="InABox" id="6" exposed="1">
+   <BOUNDS type="Node" left="1800" top="2745" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1800" top="2745" width="525" height="510">
+   </BOUNDS>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Bang">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Bang">
+   </PIN>
+   <PIN pinname="Tag" slicecount="1" values="194c8cca-eb4b-4448-888b-97a50f77d9f6">
+   </PIN>
+   </NODE>
+   <NODE systemname="IOBox (Value Advanced)" nodename="IOBox (Value Advanced)" componentmode="InABox" id="7" exposed="1">
+   <BOUNDS type="Node" left="2745" top="2745" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="2745" top="2745" width="870" height="2595">
+   </BOUNDS>
+   <PIN pinname="Minimum" slicecount="1" values="0">
+   </PIN>
+   <PIN pinname="Maximum" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="Show Grid" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="Slider Behavior" slicecount="1" values="Slider">
+   </PIN>
+   <PIN pinname="Y Input Value" slicecount="1" values="0.467836257309941">
+   </PIN>
+   <PIN pinname="Show Connections" slicecount="1" values="0">
+   </PIN>
+   <PIN pinname="Show Slider" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="Tag" slicecount="1" values="8fc66fe9-7b9b-4be6-9430-593a569a9b72">
+   </PIN>
+   </NODE>
+   </PATCH>

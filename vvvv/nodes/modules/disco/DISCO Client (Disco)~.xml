@@ -1,0 +1,285 @@
+<!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv50alpha35.11.dtd" >
+   <PATCH nodename="D:\tmp\disco\vvvv\nodes\modules\disco\Client-API (Disco).v4p" systemname="Client-API (Disco)" filename="D:\tmp\disco\vvvv\nodes\modules\disco\Client-API (Disco).v4p">
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="0" systemname="IOBox (String)">
+   <BOUNDS type="Box" left="4030" top="4515" width="800" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="4030" top="4515" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Status">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="1" systemname="IOBox (String)">
+   <BOUNDS type="Box" left="2920" top="2600" width="1110" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="2920" top="2600" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="1" values="192.168.2.106">
+   </PIN>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Server IP|">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="2" systemname="IOBox (Value Advanced)">
+   <BOUNDS type="Box" left="4190" top="2600" width="470" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="4190" top="2600" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Y Input Value" slicecount="1" visible="1" values="5000">
+   </PIN>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Integer">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Server Port|">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="3" systemname="IOBox (String)">
+   <BOUNDS type="Box" left="1540" top="1500" width="4340" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="1540" top="1500" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="1" values="54a2f239-ad1f-4fe7-b47a-40160dabb581">
+   </PIN>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Client-ID (GUID)|">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="4" systemname="IOBox (String)">
+   <BOUNDS type="Box" left="5090" top="2600" width="795" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="5090" top="2600" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="1" values="vvvv-1">
+   </PIN>
+   <PIN pinname="Default" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="File Mask" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Maximum Characters" slicecount="1" values="-1">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Client Name|">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="5" systemname="IOBox (Value Advanced)">
+   <BOUNDS type="Box" left="6880" top="2600" width="300" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="6880" top="2600" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Y Input Value" slicecount="1" visible="1" values="0">
+   </PIN>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Bang">
+   </PIN>
+   <PIN pinname="Y Output Value" visible="1">
+   </PIN>
+   <PIN pinname="X Input Value" slicecount="1" values="0">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Reconnect">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="6" systemname="IOBox (Value Advanced)">
+   <BOUNDS type="Box" left="5280" top="4515" width="300" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="5280" top="4515" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Toggle">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Connected">
+   </PIN>
+   </NODE>
+   <NODE systemname="ClientId (Disco)" filename="C:\Disco-0.1.1\Clients\vvvv\plugins\nodes\Disco.Nodes.dll" nodename="ClientId (Disco)" componentmode="Hidden" id="7">
+   <BOUNDS type="Node" left="1530" top="2955" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1530" top="2955" width="3000" height="3000">
+   </BOUNDS>
+   <PIN pinname="Id" visible="1">
+   </PIN>
+   <PIN pinname="Guid" visible="1">
+   </PIN>
+   <PIN pinname="Update" slicecount="1" visible="1" values="0">
+   </PIN>
+   </NODE>
+   <NODE systemname="Graph (Disco)" filename="C:\Disco-0.1.1\Clients\vvvv\plugins\nodes\Disco.Nodes.dll" nodename="Graph (Disco)" componentmode="Hidden" id="8">
+   <BOUNDS type="Node" left="1515" top="3470" width="6330" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1515" top="3470" width="3000" height="3000">
+   </BOUNDS>
+   <PIN pinname="Client ID" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Update" visible="1">
+   </PIN>
+   <PIN pinname="Commands" visible="1">
+   </PIN>
+   <PIN pinname="Local PinGroups" visible="1">
+   </PIN>
+   <PIN pinname="NodeMappings" visible="1">
+   </PIN>
+   </NODE>
+   <NODE systemname="Api Client (Disco)" filename="C:\Disco-0.1.1\Clients\vvvv\plugins\nodes\Disco.Nodes.dll" nodename="Api Client (Disco)" componentmode="Hidden" id="9">
+   <BOUNDS type="Node" left="1505" top="4145" width="6350" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1505" top="4145" width="3000" height="3000">
+   </BOUNDS>
+   <PIN pinname="Status" visible="1">
+   </PIN>
+   <PIN pinname="Server IP" visible="1">
+   </PIN>
+   <PIN pinname="Server Port" visible="1">
+   </PIN>
+   <PIN pinname="Client ID" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Update" visible="1" slicecount="1" values="0">
+   </PIN>
+   <PIN pinname="Commands" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Local PinGroups" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Client Name" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Reconnect" slicecount="1" visible="1" values="0">
+   </PIN>
+   <PIN pinname="Connected" visible="1">
+   </PIN>
+   <PIN pinname="State" visible="1">
+   </PIN>
+   <PIN pinname="Count" visible="1">
+   </PIN>
+   </NODE>
+   <NODE systemname="PinWrite (Disco)" filename="C:\Disco-0.1.1\Clients\vvvv\plugins\nodes\Disco.Nodes.dll" nodename="PinWrite (Disco)" componentmode="Hidden" id="10">
+   <BOUNDS type="Node" left="1500" top="5070" width="6370" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1500" top="5070" width="3000" height="3000">
+   </BOUNDS>
+   <PIN pinname="Commands" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="NodeMappings" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Update" visible="1" slicecount="1" values="0">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Node)" componentmode="InABox" id="11" systemname="IOBox (Node)">
+   <BOUNDS type="Box" left="2750" top="4510" width="990" height="300">
+   </BOUNDS>
+   <BOUNDS type="Node" left="2750" top="4510" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Descriptive Name" slicecount="1" values="State">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="12" systemname="IOBox (Value Advanced)">
+   <BOUNDS type="Box" left="6530" top="4520" width="300" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="6530" top="4520" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Integer">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Count">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (Value Advanced)" componentmode="InABox" id="13" systemname="IOBox (Value Advanced)">
+   <BOUNDS type="Box" left="2085" top="2250" width="340" height="240">
+   </BOUNDS>
+   <BOUNDS type="Node" left="2085" top="2250" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Y Input Value" slicecount="1" visible="1" values="0">
+   </PIN>
+   <PIN pinname="Units" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Precision" slicecount="1" values="4">
+   </PIN>
+   <PIN pinname="Value Type" slicecount="1" values="Boolean">
+   </PIN>
+   <PIN pinname="Behavior" slicecount="1" values="Bang">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="|Update Client ID|">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="9" srcpinname="Commands" dstnodeid="10" dstpinname="Commands">
+   </LINK>
+   <LINK srcnodeid="8" srcpinname="NodeMappings" dstnodeid="10" dstpinname="NodeMappings" linkstyle="VHV">
+   <LINKPOINT x="5690" y="4400">
+   </LINKPOINT>
+   <LINKPOINT x="4720" y="4400">
+   </LINKPOINT>
+   </LINK>
+   <LINK srcnodeid="9" srcpinname="Update" dstnodeid="10" dstpinname="Update">
+   </LINK>
+   <LINK srcnodeid="8" srcpinname="Commands" dstnodeid="9" dstpinname="Commands">
+   </LINK>
+   <LINK srcnodeid="8" srcpinname="Local PinGroups" dstnodeid="9" dstpinname="Local PinGroups" linkstyle="VHV">
+   <LINKPOINT x="3610" y="3929">
+   </LINKPOINT>
+   <LINKPOINT x="2470" y="3951">
+   </LINKPOINT>
+   </LINK>
+   <LINK srcnodeid="1" srcpinname="Output String" dstnodeid="9" dstpinname="Server IP" linkstyle="VHV">
+   <LINKPOINT x="2960" y="3483">
+   </LINKPOINT>
+   <LINKPOINT x="3310" y="3517">
+   </LINKPOINT>
+   </LINK>
+   <LINK srcnodeid="2" srcpinname="Y Output Value" dstnodeid="9" dstpinname="Server Port">
+   </LINK>
+   <LINK srcnodeid="4" srcpinname="Output String" dstnodeid="9" dstpinname="Client Name">
+   </LINK>
+   <LINK srcnodeid="7" srcpinname="Id" dstnodeid="9" dstpinname="Client ID" linkstyle="VHV">
+   <LINKPOINT x="1590" y="3674">
+   </LINKPOINT>
+   <LINKPOINT x="6000" y="3696">
+   </LINKPOINT>
+   </LINK>
+   <LINK srcnodeid="5" srcpinname="Y Output Value" dstnodeid="9" dstpinname="Reconnect">
+   </LINK>
+   <LINK srcnodeid="8" srcpinname="Update" dstnodeid="9" dstpinname="Update">
+   </LINK>
+   <LINK srcnodeid="7" srcpinname="Id" dstnodeid="8" dstpinname="Client ID">
+   </LINK>
+   <LINK srcnodeid="3" srcpinname="Output String" dstnodeid="7" dstpinname="Guid">
+   </LINK>
+   <LINK srcnodeid="13" srcpinname="Y Output Value" dstnodeid="7" dstpinname="Update">
+   </LINK>
+   <LINK srcnodeid="9" srcpinname="State" dstnodeid="11" dstpinname="Input Node">
+   </LINK>
+   <LINK srcnodeid="9" srcpinname="Status" dstnodeid="0" dstpinname="Input String">
+   </LINK>
+   <LINK srcnodeid="9" srcpinname="Connected" dstnodeid="6" dstpinname="Y Input Value">
+   </LINK>
+   <LINK srcnodeid="9" srcpinname="Count" dstnodeid="12" dstpinname="Y Input Value">
+   </LINK>
+   <BOUNDS type="Window" left="17970" top="7440" width="9370" height="6840">
+   </BOUNDS>
+   <PACK Name="addonpack" Version="35.9.0">
+   </PACK>
+   </PATCH>
