@@ -334,7 +334,7 @@ let copyBinaries () =
   Directory.CreateDirectory "bin/Clients" |> ignore
   SilentCopyDir "bin/Disco"                      (baseDir @@ "bin/Release/Disco")      withoutBuildData
   SilentCopyDir "bin/Clients/vvvv"               (baseDir @@ "../../vvvv")              withoutBuildData
-  SilentCopyDir "bin/Clients/vvvv/plugins/nodes" (baseDir @@ "bin/Release/Nodes")      withoutBuildData
+  SilentCopyDir "bin/Clients/vvvv/nodes/plugins" (baseDir @@ "bin/Release/Nodes")      withoutBuildData
   SilentCopyDir "bin/Clients/cli-client"         (baseDir @@ "bin/Release/MockClient") withoutBuildData
   SilentCopyDir "bin/Sdk"                        (baseDir @@ "bin/Release/Sdk")        withoutBuildData
 
