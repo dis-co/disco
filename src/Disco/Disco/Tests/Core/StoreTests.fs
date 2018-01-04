@@ -767,18 +767,18 @@ module StoreTests =
         let player = CuePlayer.create "My Player" (Some cueList.Id)
         player |> AddCuePlayer |> store.Dispatch
 
-        [ BoolSlices(player.NextId, None, [| true |]) ]
+        [ BoolSlices(player.NextId, None, false, [| true |]) ]
         |> UpdateSlices.ofList
         |> store.Dispatch
 
-        [ BoolSlices(player.NextId, None, [| true |]) ]
+        [ BoolSlices(player.NextId, None, false, [| true |]) ]
         |> UpdateSlices.ofList
         |> store.Dispatch
 
         let updated = State.cuePlayer player.Id store.State |> Option.get
         expect "Should have advanced one step" (player.Selected + 2<index>) id updated.Selected
 
-        [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        [ BoolSlices(player.PreviousId, None, false, [| true |]) ]
         |> UpdateSlices.ofList
         |> store.Dispatch
 

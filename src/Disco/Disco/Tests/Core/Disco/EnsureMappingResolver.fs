@@ -96,7 +96,7 @@ module EnsureMappingResolver =
         ///   | |  __/\__ \ |_
         ///   |_|\___||___/\__|
 
-        let slices = BoolSlices(source.Id, None, [| true |])
+        let slices = BoolSlices(source.Id, None, false, [| true |])
 
         [ slices ]
         |> UpdateSlices.ofList

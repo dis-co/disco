@@ -574,9 +574,9 @@ module rec Graph =
 
   // ** parsePinValueWith
 
-  let private parsePinValueWith (pid: PinId) (tipe: PinType) (props: Property array) (pin: IPin2) =
+  let private parsePinValueWith (pid: PinId) (tipe: PinType) trig (props: Property array) (pin: IPin2) =
     match tipe with
-    | PinType.Boolean -> BoolSlices(pid, None, parseBoolValues pin)
+    | PinType.Boolean -> BoolSlices(pid, None, trig, parseBoolValues pin)
     | PinType.Number  -> NumberSlices(pid, None, parseDoubleValues pin)
     | PinType.String  -> StringSlices(pid, None, parseStringValues pin)
     | PinType.Color   -> ColorSlices(pid, None, parseColorValues pin)
@@ -647,7 +647,7 @@ module rec Graph =
     let rp    = node.FindPin Settings.ROWS_PIN
     let pp    = node.FindPin Settings.PAGES_PIN
     let tp    = node.FindPin Settings.TAG_PIN
-
+    let trig  = isTrigger node
     let tipe  = parsePinType node |> Either.defaultValue PinType.Number
     let props = parseEnumProperties node
 
@@ -672,7 +672,7 @@ module rec Graph =
       |> state.Events.Enqueue)
 
     let changedHandler = new EventHandler(fun _ _ ->
-      let slices = parsePinValueWith parsed.Id tipe props pin
+      let slices = parsePinValueWith parsed.Id tipe trig props pin
       (parsed.PinGroupId, parsed.Id, slices)
       |> Msg.PinValueChange
       |> state.Events.Enqueue)
@@ -1492,8 +1492,8 @@ module rec Graph =
         then
           let slices =
             match nm.Properties with
-            | Some props -> parsePinValueWith id nm.Type props nm.Pin
-            | _ ->  parsePinValueWith id nm.Type [| |] nm.Pin
+            | Some props -> parsePinValueWith id nm.Type nm.Trigger props nm.Pin
+            | _ ->  parsePinValueWith id nm.Type nm.Trigger Array.empty nm.Pin
           let cmd =
             [ (id, slices) ]
             |> Map.ofList

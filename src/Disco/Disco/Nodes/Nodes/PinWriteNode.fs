@@ -79,9 +79,14 @@ type PinWriteNode() =
 
             /// process updates to pin slices
             | UpdateSlices map when Map.containsKey mapping.PinId map.Slices ->
-              mapping.Pin.Spread <- map.Slices.[mapping.PinId].ToSpread()
-              if mapping.Trigger then
-                resetEvents.Enqueue(frame, mapping)
+              match map.Slices.[mapping.PinId] with
+              // ignore resets
+              | BoolSlices (_,_,trig,values) when trig && not (Array.contains true values) -> ()
+              | slices ->
+                mapping.Pin.Spread <- map.Slices.[mapping.PinId].ToSpread()
+                if mapping.Trigger then
+                  // schedule frame accurate reset
+                  resetEvents.Enqueue(frame, mapping)
             | _ -> ()
       do processResets()
       do bumpFrame()

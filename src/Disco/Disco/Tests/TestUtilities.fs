@@ -127,6 +127,8 @@ module TestData =
     rand.NextBytes(arr)
     arr
 
+  let mkBool() = rand.Next(0,2) > 0
+
   let mkBytes() =
     [| for n in 0 .. rand.Next(2,12) -> mkByte() |]
 
@@ -195,7 +197,7 @@ module TestData =
 
   let mkSlice() =
     match rand.Next(0,6) with
-    | 0 -> BoolSlices(mk(), maybe_mk(), mkBools())
+    | 0 -> BoolSlices(mk(), maybe_mk(), mkBool(), mkBools())
     | 1 -> StringSlices(mk(), maybe_mk(), mkStrings())
     | 2 -> NumberSlices(mk(), maybe_mk(), mkNumbers())
     | 3 -> ByteSlices(mk(), maybe_mk(), mkBytes())

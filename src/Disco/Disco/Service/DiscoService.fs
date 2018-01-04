@@ -295,10 +295,26 @@ module DiscoService =
   let private subscriptionNotifier (store: IAgentStore<DiscoState>) =
     fun _ _ -> Observable.onNext store.State.Subscriptions
 
+  // ** pinResetHandler
+
+  let private pinResetHandler (store: IAgentStore<DiscoState>) _ _ = function
+    | DiscoEvent.Append(Origin.Web _, UpdateSlices slices) when SlicesMap.hasTriggers slices ->
+      let map = SlicesMap.generateResets slices
+      if not (SlicesMap.isEmpty map) then
+        Async.Start(async {
+          do! Async.Sleep 10
+          map
+          |> UpdateSlices
+          |> DiscoEvent.appendService
+          |> store.State.Dispatcher.Dispatch
+        })
+    | _ -> ()
+
   // ** preActions
 
   let private preActions (store: IAgentStore<DiscoState>) =
-    [| Pipeline.createHandler (stateMutator store) |]
+    [| Pipeline.createHandler (stateMutator store)
+       Pipeline.createHandler (pinResetHandler store) |]
 
   // ** processors
 

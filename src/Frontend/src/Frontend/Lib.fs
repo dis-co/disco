@@ -320,7 +320,7 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
       | :? string as v -> box(v.ToLower() = "true")
       | v -> v
     tryUpdateArray index value pin.Values
-    |> Option.map (fun values -> BoolSlices(pin.Id, client, values))
+    |> Option.map (fun values -> BoolSlices(pin.Id, client, pin.IsTrigger, values))
   | EnumPin pin ->
     let prop =
       Array.tryPick
