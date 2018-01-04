@@ -14,6 +14,8 @@ open Disco.Web.Tooltips
 type [<Pojo>] ElProps =
   { index: int
     precision: uint32 option
+    min: int32
+    max: int32
     useRightClick: bool
     updater: IUpdater option
     handleExternally: bool
@@ -75,9 +77,19 @@ type PinView(props) =
       match pin with
       | EnumPin pin -> pin.Properties |> Array.map (fun prop -> prop.Value,prop.Key)
       | _ -> Array.empty
+    let min =
+      match pin with
+      | NumberPin data -> data.Min
+      | _ -> 0
+    let max =
+      match pin with
+      | NumberPin data -> data.Max
+      | _ -> 0
     let firstRowValue =
       let options =
         { index = 0
+          min = min
+          max = max
           precision = precision
           useRightClick = useRightClick
           properties = properties
@@ -129,9 +141,19 @@ type PinView(props) =
             match Array.tryItem i pin.Labels with
             | None | Some(NullOrEmpty) -> sprintf "Slice%i" i
             | Some label -> label
+          let min =
+            match pin with
+            | NumberPin data -> data.Min
+            | _ -> 0
+          let max =
+            match pin with
+            | NumberPin data -> data.Max
+            | _ -> 0
           let options =
             { index = i
               precision = precision
+              min = min
+              max = max
               properties = properties
               useRightClick = useRightClick
               handleExternally =
