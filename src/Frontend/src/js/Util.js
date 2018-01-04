@@ -106,19 +106,34 @@ const ENTER_KEY = 13;
 const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
-function startDragging(posY, index, value, updater) {
+function startDragging(posY, index, min, max, precision, value, updater) {
   // console.log("Input drag start", index, posY)
   $(document)
     .on("contextmenu.drag", e => {
       e.preventDefault();
     })
     .on("mousemove.drag", e => {
-      var diff = posY - e.clientY;
-      // console.log("Input drag mouse Y diff: ", diff);
-      value += diff;
-      posY = e.clientY;
-      if (diff !== 0)
-        updater.Update(true, index, value);
+      var diff = posY - e.clientY
+      let updated = value + diff
+      if((min == 0 && max == 0) || (min < max && updated >= min && updated <= max)) {
+        // console.log("Input drag mouse Y diff: ", diff);
+        value = updated
+        posY = e.clientY
+        if (diff !== 0)
+          updater.Update(true, index, value)
+      } else {
+        if(updated >= max) {
+          value = max
+          posY = e.clientY
+          if (diff !== 0)
+            updater.Update(true, index, value)
+        } else {
+          value = min
+          posY = e.clientY
+          if (diff !== 0)
+            updater.Update(true, index, value)
+        }
+      }
     })
     .on("mouseup.drag", e => {
       updater.Update(false, index, value);
@@ -222,7 +237,14 @@ export function createElement(tagName, options, value) {
     else if (typeofValue === "number") { // Numeric values, draggable
       props.onMouseDown = (ev) => {
         if (xand(ev.button === RIGHT_BUTTON, options.useRightClick))
-          startDragging(ev.clientY, options.index, value, options.updater);
+          startDragging(
+            ev.clientY,
+            options.index,
+            options.min,
+            options.max,
+            options.precision,
+            value,
+            options.updater);
       }
       if (options.useRightClick) {
         props.onContextMenu = (ev) => {
