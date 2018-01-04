@@ -85,7 +85,7 @@ module SerializationTests =
       [| "hello" |]
 
   let mkSlices() =
-    BoolSlices(DiscoId.Create(), None, [| true; false; true; true; false |])
+    BoolSlices(DiscoId.Create(), None, false, [| true; false; true; true; false |])
 
   let mkSlicesMap() =
     let slices = mkSlices ()
@@ -388,10 +388,10 @@ module SerializationTests =
       finish ()
 
     test "Validate Slice Serialization" <| fun finish ->
-      [| BoolSlice  (0<index>, true    )
-      ; StringSlice (0<index>, "hello" )
-      ; NumberSlice (0<index>, 1234.0  )
-      ; ByteSlice   (0<index>, mkBytes ())
+      [| BoolSlice  (0<index>, false, true)
+      ; StringSlice (0<index>, "hello")
+      ; NumberSlice (0<index>, 1234.0)
+      ; ByteSlice   (0<index>, mkBytes())
       ; EnumSlice   (0<index>, { Key = "one"; Value = "two" })
       ; ColorSlice  (0<index>, RGBA { Red = 255uy; Blue = 255uy; Green = 255uy; Alpha = 255uy })
       ; ColorSlice  (0<index>, HSLA { Hue = 255uy; Saturation = 255uy; Lightness = 255uy; Alpha = 255uy })
@@ -400,7 +400,7 @@ module SerializationTests =
       finish()
 
     test "Validate Slices Serialization" <| fun finish ->
-      [| BoolSlices    (mk(), None, [| true    |])
+      [| BoolSlices    (mk(), None, true, [| true    |])
       ; StringSlices   (mk(), None, [| "hello" |])
       ; NumberSlices   (mk(), None, [| 1234.0  |])
       ; ByteSlices     (mk(), None, [| mkBytes () |])

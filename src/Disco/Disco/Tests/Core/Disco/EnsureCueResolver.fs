@@ -134,7 +134,7 @@ module EnsureCueResolver =
         let cue = {
           Id = DiscoId.Create()
           Name = name "hi"
-          Slices = [| BoolSlices(pin.Id, None, [| false |]) |]
+          Slices = [| BoolSlices(pin.Id, None, false, [| false |]) |]
         }
 
         cue

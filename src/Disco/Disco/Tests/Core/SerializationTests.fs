@@ -589,7 +589,7 @@ module SerializationTests =
   // /_/   \_\_|_|   |_|\___||___/\__|___/
 
   let serializationTests =
-    testList "Serialization Tests" [
+    ftestList "Serialization Tests" [
       test_binary_pingroup_map
       test_binary_referenced_value
       test_yaml_referenced_value

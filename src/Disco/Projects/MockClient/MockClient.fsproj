@@ -65,7 +65,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Zeroconf.Providers.Bonjour">
-      <HintPath>..\..\..\Zeroconf\bin\M$(Configuration)\ono.Zeroconf.Providers.Bonjour.dll</HintPath>
+      <HintPath>..\..\..\Zeroconf\bin\$(Configuration)\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

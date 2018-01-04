@@ -126,7 +126,7 @@ module EnsureClientUpdateNoLoop =
         do! waitFor "appendDone" appendDone
         do! waitFor "clientAppendDone" clientAppendDone
 
-        let update = BoolSlices(pin.Id, None, [| false |])
+        let update = BoolSlices(pin.Id, None, false, [| false |])
 
         client.UpdateSlices [
           update

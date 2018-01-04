@@ -418,7 +418,7 @@ type Pin =
       match pin with
       | StringPin   data -> StringSlices (pin.Id, client, data.Values)
       | NumberPin   data -> NumberSlices (pin.Id, client, data.Values)
-      | BoolPin     data -> BoolSlices   (pin.Id, client, data.Values)
+      | BoolPin     data -> BoolSlices   (pin.Id, client, data.IsTrigger, data.Values)
       | BytePin     data -> ByteSlices   (pin.Id, client, data.Values)
       | EnumPin     data -> EnumSlices   (pin.Id, client, data.Values)
       | ColorPin    data -> ColorSlices  (pin.Id, client, data.Values)
@@ -1443,7 +1443,7 @@ module Pin =
 
     | BoolPin data as current   ->
       match value with
-        | BoolSlice (i,slice)   -> BoolPin { data with Values = update data.Values i slice }
+        | BoolSlice (i,_,slice) -> BoolPin { data with Values = update data.Values i slice }
         | _                     -> current
 
     | BytePin data as current   ->
@@ -1489,9 +1489,9 @@ module Pin =
 
     | BoolPin data as value ->
       match slices with
-      | BoolSlices (id,None,arr) when id = data.Id ->
+      | BoolSlices (id,None,_,arr) when id = data.Id ->
         BoolPin { data with Values = arr } |> maybeSetDirty
-      | BoolSlices (id,Some client,arr) when id = data.Id && client = data.ClientId ->
+      | BoolSlices (id,Some client,_,arr) when id = data.Id && client = data.ClientId ->
         BoolPin { data with Values = arr } |> maybeSetDirty
       | _ -> value
 
@@ -2580,24 +2580,24 @@ type ColorPinD =
 
 [<CustomEquality;CustomComparison>]
 type Slice =
-  | StringSlice   of Index * string
-  | NumberSlice   of Index * double
-  | BoolSlice     of Index * bool
-  | ByteSlice     of Index * byte[]
-  | EnumSlice     of Index * Property
-  | ColorSlice    of Index * ColorSpace
+  | StringSlice   of index:Index * value:string
+  | NumberSlice   of index:Index * value:double
+  | BoolSlice     of index:Index * trigger:bool * value:bool
+  | ByteSlice     of index:Index * value:byte[]
+  | EnumSlice     of index:Index * value:Property
+  | ColorSlice    of index:Index * value:ColorSpace
 
   // ** Index
 
   member self.Index
     with get () =
       match self with
-      | StringSlice (idx, _) -> idx
-      | NumberSlice (idx, _) -> idx
-      | BoolSlice   (idx, _) -> idx
-      | ByteSlice   (idx, _) -> idx
-      | EnumSlice   (idx, _) -> idx
-      | ColorSlice  (idx, _) -> idx
+      | StringSlice (idx, _)    -> idx
+      | NumberSlice (idx, _)    -> idx
+      | BoolSlice   (idx, _, _) -> idx
+      | ByteSlice   (idx, _)    -> idx
+      | EnumSlice   (idx, _)    -> idx
+      | ColorSlice  (idx, _)    -> idx
 
   // ** Value
 
@@ -2606,7 +2606,7 @@ type Slice =
       match self with
       | StringSlice  (_, data) -> data :> obj
       | NumberSlice  (_, data) -> data :> obj
-      | BoolSlice    (_, data) -> data :> obj
+      | BoolSlice (_, _, data) -> data :> obj
       | ByteSlice    (_, data) -> data :> obj
       | EnumSlice    (_, data) -> data :> obj
       | ColorSlice   (_, data) -> data :> obj
@@ -2652,9 +2652,9 @@ type Slice =
         match self with
         | NumberSlice (sidx, svalue) -> idx = sidx && value = svalue
         | _ -> false
-      | BoolSlice   (idx, value) ->
+      | BoolSlice   (idx, ot, value) ->
         match self with
-        | BoolSlice (sidx, svalue) -> idx = sidx && value = svalue
+        | BoolSlice (sidx, st, svalue) -> idx = sidx && value = svalue && ot = st
         | _ -> false
       | ByteSlice   (idx, value) ->
         match self with
@@ -2690,8 +2690,8 @@ type Slice =
   member self.BoolValue
     with get () =
       match self with
-      | BoolSlice (_,data) -> Some data
-      | _                  -> None
+      | BoolSlice (_,_,data) -> Some data
+      | _ -> None
 
   // ** ByteValue
 
@@ -2757,8 +2757,9 @@ type Slice =
       #endif
       SliceFB.EndSliceFB(builder)
 
-    | BoolSlice (idx, data) ->
+    | BoolSlice (idx, trigger, data) ->
       BoolFB.StartBoolFB(builder)
+      BoolFB.AddTrigger(builder,trigger)
       BoolFB.AddValue(builder,data)
       let offset = BoolFB.EndBoolFB(builder)
       SliceFB.StartSliceFB(builder)
@@ -2827,7 +2828,7 @@ type Slice =
 
     | x when x = SliceTypeFB.BoolFB ->
       let slice = BoolFB.Create() |> fb.Slice
-      BoolSlice(index fb.Index,slice.Value)
+      BoolSlice(index fb.Index, slice.Trigger, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.ByteFB ->
@@ -2882,7 +2883,7 @@ type Slice =
       let slice = fb.Slice<BoolFB>()
       if slice.HasValue then
         let value = slice.Value
-        BoolSlice(index fb.Index, value.Value)
+        BoolSlice(index fb.Index, value.Trigger, value.Value)
         |> Either.succeed
       else
         "Could not parse BoolSlice"
@@ -2966,36 +2967,36 @@ type Slice =
 
 [<CustomEquality; CustomComparison>]
 type Slices =
-  | StringSlices of PinId * ClientId option * string array
-  | NumberSlices of PinId * ClientId option * double array
-  | BoolSlices   of PinId * ClientId option * bool array
-  | ByteSlices   of PinId * ClientId option * byte[] array
-  | EnumSlices   of PinId * ClientId option * Property array
-  | ColorSlices  of PinId * ClientId option * ColorSpace array
+  | StringSlices of pin:PinId * client:ClientId option * values:string array
+  | NumberSlices of pin:PinId * client:ClientId option * values:double array
+  | BoolSlices   of pin:PinId * client:ClientId option * trigger:bool * values:bool array
+  | ByteSlices   of pin:PinId * client:ClientId option * values:byte[] array
+  | EnumSlices   of pin:PinId * client:ClientId option * values:Property array
+  | ColorSlices  of pin:PinId * client:ClientId option * values:ColorSpace array
 
   // ** PinId
 
   member self.PinId
     with get () =
       match self with
-      | StringSlices   (id,_,_) -> id
-      | NumberSlices   (id,_,_) -> id
-      | BoolSlices     (id,_,_) -> id
-      | ByteSlices     (id,_,_) -> id
-      | EnumSlices     (id,_,_) -> id
-      | ColorSlices    (id,_,_) -> id
+      | StringSlices   (id,_,_)   -> id
+      | NumberSlices   (id,_,_)   -> id
+      | BoolSlices     (id,_,_,_) -> id
+      | ByteSlices     (id,_,_)   -> id
+      | EnumSlices     (id,_,_)   -> id
+      | ColorSlices    (id,_,_)   -> id
 
   // ** ClientId
 
   member self.ClientId
     with get () =
       match self with
-      | StringSlices   (_,id,_) -> id
-      | NumberSlices   (_,id,_) -> id
-      | BoolSlices     (_,id,_) -> id
-      | ByteSlices     (_,id,_) -> id
-      | EnumSlices     (_,id,_) -> id
-      | ColorSlices    (_,id,_) -> id
+      | StringSlices   (_,id,_)   -> id
+      | NumberSlices   (_,id,_)   -> id
+      | BoolSlices     (_,id,_,_) -> id
+      | ByteSlices     (_,id,_)   -> id
+      | EnumSlices     (_,id,_)   -> id
+      | ColorSlices    (_,id,_)   -> id
 
   // ** IsString
 
@@ -3020,6 +3021,14 @@ type Slices =
       match self with
       | BoolSlices _ -> true
       |            _ -> false
+
+  // ** IsTrigger
+
+  member self.IsTrigger
+    with get () =
+      match self with
+      | BoolSlices (_,_,trigger,_) -> trigger
+      | _ -> false
 
   // ** IsByte
 
@@ -3055,12 +3064,12 @@ type Slices =
 
   member self.Item (idx: Index) =
     match self with
-    | StringSlices (_,_,arr) -> StringSlice (idx, arr.[int idx])
-    | NumberSlices (_,_,arr) -> NumberSlice (idx, arr.[int idx])
-    | BoolSlices   (_,_,arr) -> BoolSlice   (idx, arr.[int idx])
-    | ByteSlices   (_,_,arr) -> ByteSlice   (idx, arr.[int idx])
-    | EnumSlices   (_,_,arr) -> EnumSlice   (idx, arr.[int idx])
-    | ColorSlices  (_,_,arr) -> ColorSlice  (idx, arr.[int idx])
+    | StringSlices (_,_,arr)      -> StringSlice (idx, arr.[int idx])
+    | NumberSlices (_,_,arr)      -> NumberSlice (idx, arr.[int idx])
+    | BoolSlices   (_,_,trig,arr) -> BoolSlice   (idx, trig, arr.[int idx])
+    | ByteSlices   (_,_,arr)      -> ByteSlice   (idx, arr.[int idx])
+    | EnumSlices   (_,_,arr)      -> EnumSlice   (idx, arr.[int idx])
+    | ColorSlices  (_,_,arr)      -> ColorSlice  (idx, arr.[int idx])
 
   // ** At
 
@@ -3070,7 +3079,7 @@ type Slices =
     match self with
     | StringSlices (_,_,arr) -> arr.Length
     | NumberSlices (_,_,arr) -> arr.Length
-    | BoolSlices   (_,_,arr) -> arr.Length
+    | BoolSlices (_,_,_,arr) -> arr.Length
     | ByteSlices   (_,_,arr) -> arr.Length
     | EnumSlices   (_,_,arr) -> arr.Length
     | ColorSlices  (_,_,arr) -> arr.Length
@@ -3088,7 +3097,7 @@ type Slices =
     match self with
     | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (index i, el) |> f) arr
     | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (index i, el) |> f) arr
-    | BoolSlices   (_,_,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, el) |> f) arr
+    | BoolSlices (_,_,t,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, t, el) |> f) arr
     | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (index i, el) |> f) arr
     | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (index i, el) |> f) arr
     | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (index i, el) |> f) arr
@@ -3122,7 +3131,7 @@ type Slices =
           if i > 0 then sb.Append ',' |> ignore
           num |> string |> sb.Append |> ignore)
         arr
-    | BoolSlices(_,_,arr) ->
+    | BoolSlices(_,_,_,arr) ->
       Array.iteri
         (fun i (value: bool) ->
           if i > 0 then sb.Append ',' |> ignore
@@ -3236,9 +3245,10 @@ type Slices =
       #endif
       SlicesFB.EndSlicesFB(builder)
 
-    | BoolSlices (_,_,arr) ->
+    | BoolSlices (_,_,t,arr) ->
       let vector = BoolsFB.CreateValuesVector(builder, arr)
       BoolsFB.StartBoolsFB(builder)
+      BoolsFB.AddTrigger(builder, t)
       BoolsFB.AddValues(builder, vector)
       let offset = BoolsFB.EndBoolsFB(builder)
 
@@ -3365,7 +3375,7 @@ type Slices =
                 return parsed, idx + 1 })
             (Right (arr, 0))
             arr
-          |> Either.map (fun (bools,_) -> BoolSlices(id,client,bools))
+          |> Either.map (fun (bools,_) -> BoolSlices(id,client,slices.Trigger,bools))
         | x when x = SlicesTypeFB.BytesFB ->
           let slices = BytesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
@@ -3469,7 +3479,7 @@ type Slices =
                   return parsed, idx + 1 })
               (Right (arr, 0))
               arr
-            |> Either.map (fun (bools,_) -> BoolSlices(id, client, bools))
+            |> Either.map (fun (bools,_) -> BoolSlices(id, client, slices.Trigger, bools))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
@@ -3607,9 +3617,10 @@ type Slices =
               (Array.zip values svalues)
           else false
         | _ -> false
-      | BoolSlices  (id, client, values) ->
+      | BoolSlices  (id, client, otrig, values) ->
         match self with
-        | BoolSlices (sid, sclient, svalues) when id = sid && client = sclient -> values = svalues
+        | BoolSlices (sid, sclient, strig, svalues) ->
+          id = sid && client = sclient && otrig = strig && values = svalues
         | _ -> false
       | ByteSlices  (id, client, values) ->
         match self with
@@ -3634,7 +3645,7 @@ module Slices =
   let setId id = function
     | StringSlices (_,c,values) -> StringSlices (id,c,values)
     | NumberSlices (_,c,values) -> NumberSlices (id,c,values)
-    | BoolSlices   (_,c,values) -> BoolSlices   (id,c,values)
+    | BoolSlices (_,c,t,values) -> BoolSlices   (id,c,t,values)
     | ByteSlices   (_,c,values) -> ByteSlices   (id,c,values)
     | EnumSlices   (_,c,values) -> EnumSlices   (id,c,values)
     | ColorSlices  (_,c,values) -> ColorSlices  (id,c,values)
@@ -3644,7 +3655,7 @@ module Slices =
   let setClient id = function
     | StringSlices (i,_,values) -> StringSlices (i,id,values)
     | NumberSlices (i,_,values) -> NumberSlices (i,id,values)
-    | BoolSlices   (i,_,values) -> BoolSlices   (i,id,values)
+    | BoolSlices (i,_,t,values) -> BoolSlices   (i,id,t,values)
     | ByteSlices   (i,_,values) -> ByteSlices   (i,id,values)
     | EnumSlices   (i,_,values) -> EnumSlices   (i,id,values)
     | ColorSlices  (i,_,values) -> ColorSlices  (i,id,values)
@@ -3659,35 +3670,37 @@ module Slices =
 //  ___) | | | (_|  __/| | (_| | | | | | | |
 // |____/|_|_|\___\___||_|\__,_|_| |_| |_|_|
 
-type SliceYaml(tipe, idx, value: obj) as self =
+type SliceYaml(tipe, idx, trig, value: obj) as self =
   [<DefaultValue>] val mutable SliceType : string
   [<DefaultValue>] val mutable Index     : int
+  [<DefaultValue>] val mutable Trigger   : bool
   [<DefaultValue>] val mutable Value     : obj
 
-  new () = SliceYaml(null,0,null)
+  new () = SliceYaml(null,0, false, null)
 
   do
     self.SliceType <- tipe
     self.Index     <- idx
+    self.Trigger   <- trig
     self.Value     <- value
 
   static member StringSlice (idx: int) (value: string) =
-    SliceYaml("StringSlice", idx, value)
+    SliceYaml("StringSlice", idx, false, value)
 
   static member NumberSlice (idx: int) (value: double) =
-    SliceYaml("NumberSlice", idx, value)
+    SliceYaml("NumberSlice", idx, false, value)
 
-  static member BoolSlice idx (value: bool) =
-    SliceYaml("BoolSlice", idx, value)
+  static member BoolSlice idx trig (value: bool) =
+    SliceYaml("BoolSlice", idx, trig, value)
 
   static member ByteSlice idx (value: byte array) =
-    SliceYaml("ByteSlice", idx, Convert.ToBase64String(value))
+    SliceYaml("ByteSlice", idx, false, Convert.ToBase64String(value))
 
   static member EnumSlice idx (value: Property) =
-    SliceYaml("EnumSlice", idx, Yaml.toYaml value)
+    SliceYaml("EnumSlice", idx, false, Yaml.toYaml value)
 
   static member ColorSlice idx (value: ColorSpace) =
-    SliceYaml("ColorSlice", idx, Yaml.toYaml value)
+    SliceYaml("ColorSlice", idx, false, Yaml.toYaml value)
 
 // * SliceYaml module
 
@@ -3696,12 +3709,12 @@ module SliceYaml =
   // ** ofSlice
 
   let ofSlice = function
-      | StringSlice (idx, slice) -> SliceYaml.StringSlice (int idx) slice
-      | NumberSlice (idx, slice) -> SliceYaml.NumberSlice (int idx) slice
-      | BoolSlice (idx, slice)   -> SliceYaml.BoolSlice (int idx) slice
-      | ByteSlice (idx, slice)   -> SliceYaml.ByteSlice (int idx) slice
-      | EnumSlice (idx, slice)   -> SliceYaml.EnumSlice (int idx) slice
-      | ColorSlice (idx, slice)  -> SliceYaml.ColorSlice (int idx) slice
+      | StringSlice (idx, slice)  -> SliceYaml.StringSlice (int idx) slice
+      | NumberSlice (idx, slice)  -> SliceYaml.NumberSlice (int idx) slice
+      | BoolSlice (idx, t, slice) -> SliceYaml.BoolSlice (int idx) t slice
+      | ByteSlice (idx, slice)    -> SliceYaml.ByteSlice (int idx) slice
+      | EnumSlice (idx, slice)    -> SliceYaml.EnumSlice (int idx) slice
+      | ColorSlice (idx, slice)   -> SliceYaml.ColorSlice (int idx) slice
 
   // ** toSlice
 
@@ -3733,7 +3746,7 @@ module SliceYaml =
         NumberSlice(index yml.Index, parse yml.Value)
     | "BoolSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlice(index yml.Index, yml.Value :?> bool)
+        BoolSlice(index yml.Index, yml.Trigger, yml.Value :?> bool)
     | "ByteSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
         ByteSlice(index yml.Index, yml.Value |> string |> Convert.FromBase64String)
@@ -3759,37 +3772,39 @@ module SliceYaml =
 //  ___) | | | (_|  __/\__ \| | (_| | | | | | | |
 // |____/|_|_|\___\___||___/|_|\__,_|_| |_| |_|_|
 
-type SlicesYaml(tipe, pinid, clientid, values: obj array) as self =
+type SlicesYaml(tipe, pinid, clientid, trig, values: obj array) as self =
   [<DefaultValue>] val mutable PinId: string
   [<DefaultValue>] val mutable ClientId: string
+  [<DefaultValue>] val mutable Trigger: bool
   [<DefaultValue>] val mutable SliceType: string
   [<DefaultValue>] val mutable Values: obj array
 
-  new () = SlicesYaml(null,null,null,null)
+  new () = SlicesYaml(null,null,null,false,null)
 
   do
     self.PinId     <- pinid
     self.ClientId  <- clientid
     self.SliceType <- tipe
+    self.Trigger   <- trig
     self.Values    <- values
 
   static member StringSlices id client (values: string array) =
-    SlicesYaml("StringSlices", id, client, Array.map box values)
+    SlicesYaml("StringSlices", id, client, false, Array.map box values)
 
   static member NumberSlices id client (values: double array) =
-    SlicesYaml("NumberSlices", id, client, Array.map box values)
+    SlicesYaml("NumberSlices", id, client, false, Array.map box values)
 
-  static member BoolSlices id client (values: bool array) =
-    SlicesYaml("BoolSlices", id, client, Array.map box values)
+  static member BoolSlices id client trig (values: bool array) =
+    SlicesYaml("BoolSlices", id, client, trig, Array.map box values)
 
   static member ByteSlices id client (values: byte array array) =
-    SlicesYaml("ByteSlices", id, client, Array.map (Convert.ToBase64String >> box) values)
+    SlicesYaml("ByteSlices", id, client, false, Array.map (Convert.ToBase64String >> box) values)
 
   static member EnumSlices id client (values: Property array) =
-    SlicesYaml("EnumSlices", id, client, Array.map (Yaml.toYaml >> box) values)
+    SlicesYaml("EnumSlices", id, client, false, Array.map (Yaml.toYaml >> box) values)
 
   static member ColorSlices id client (values: ColorSpace array) =
-    SlicesYaml("ColorSlices", id, client, Array.map (Yaml.toYaml >> box) values)
+    SlicesYaml("ColorSlices", id, client, false, Array.map (Yaml.toYaml >> box) values)
 
 // * SlicesYaml module
 
@@ -3804,12 +3819,12 @@ module SlicesYaml =
       | None -> null
     in
     match slices with
-    | StringSlices (id, _, slices) -> SlicesYaml.StringSlices (string id) client slices
-    | NumberSlices (id, _, slices) -> SlicesYaml.NumberSlices (string id) client slices
-    | BoolSlices   (id, _, slices) -> SlicesYaml.BoolSlices   (string id) client slices
-    | ByteSlices   (id, _, slices) -> SlicesYaml.ByteSlices   (string id) client slices
-    | EnumSlices   (id, _, slices) -> SlicesYaml.EnumSlices   (string id) client slices
-    | ColorSlices  (id, _, slices) -> SlicesYaml.ColorSlices  (string id) client slices
+    | StringSlices (id, _, slices) -> SlicesYaml.StringSlices (string id) client   slices
+    | NumberSlices (id, _, slices) -> SlicesYaml.NumberSlices (string id) client   slices
+    | BoolSlices(id, _, t, slices) -> SlicesYaml.BoolSlices   (string id) client t slices
+    | ByteSlices   (id, _, slices) -> SlicesYaml.ByteSlices   (string id) client   slices
+    | EnumSlices   (id, _, slices) -> SlicesYaml.EnumSlices   (string id) client   slices
+    | ColorSlices  (id, _, slices) -> SlicesYaml.ColorSlices  (string id) client   slices
 
   // ** toSlices
 
@@ -3844,7 +3859,7 @@ module SlicesYaml =
     | "BoolSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
-        BoolSlices(DiscoId.Parse yml.PinId, client, Array.map unbox<bool> yml.Values)
+        BoolSlices(DiscoId.Parse yml.PinId, client, yml.Trigger, Array.map unbox<bool> yml.Values)
     | "ByteSlices" ->
       Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
         let parse (value: obj) =
@@ -3971,7 +3986,7 @@ module PinYaml =
       yaml.VecSize          <- string data.VecSize
       yaml.PinConfiguration <- string data.PinConfiguration
       yaml.Labels           <- data.Labels
-      yaml.Values           <- Array.mapi SliceYaml.BoolSlice data.Values
+      yaml.Values           <- Array.mapi (fun i v -> SliceYaml.BoolSlice i data.IsTrigger v) data.Values
       yaml
 
     | BytePin data ->

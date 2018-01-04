@@ -533,7 +533,7 @@ Usage:
               updateSlices client slices
 
             | BoolPin data ->
-              let slices = BoolSlices(data.Id, None, parseBoolValues rest)
+              let slices = BoolSlices(data.Id, None, false, parseBoolValues rest)
               updateSlices client slices
 
             | BytePin data ->

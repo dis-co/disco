@@ -33,12 +33,12 @@ module PinInspector =
   let private renderSlices (tag: string) (slices: Slices) =
     let slices: ReactElement array =
       slices.Map (function
-      | StringSlice(idx, value) -> renderValue (string idx) (string value)
-      | NumberSlice(idx, value) -> renderValue (string idx) (string value)
-      | BoolSlice(idx, value)   -> renderValue (string idx) (string value)
-      | ByteSlice(idx, value)   -> renderValue (string idx) (string value)
-      | EnumSlice(idx, value)   -> renderValue (string idx) (string value)
-      | ColorSlice(idx, value)  -> renderValue (string idx) (string value))
+      | StringSlice(idx, value)  -> renderValue (string idx) (string value)
+      | NumberSlice(idx, value)  -> renderValue (string idx) (string value)
+      | BoolSlice(idx, _, value) -> renderValue (string idx) (string value)
+      | ByteSlice(idx, value)    -> renderValue (string idx) (string value)
+      | EnumSlice(idx, value)    -> renderValue (string idx) (string value)
+      | ColorSlice(idx, value)   -> renderValue (string idx) (string value))
     slices
     |> List.ofArray
     |> Common.tableRow tag [ "Index"; "Value" ]

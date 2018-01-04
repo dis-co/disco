@@ -1747,6 +1747,28 @@ module SlicesMap =
 
   let toArray (map: SlicesMap) = map.Slices |> Map.toArray |> Array.map snd
 
+  // ** hasTriggers
+
+  let hasTriggers (map: SlicesMap) =
+    if not (isEmpty map)
+    then fold (fun result _ slices -> result || slices.IsTrigger) false map
+    else false
+
+  // ** generateResets
+
+  let generateResets (map: SlicesMap) =
+    fold
+      (fun map _ -> function
+        | BoolSlices (pid, clid, trig, values) ->
+          if Array.contains true values
+          then // generate a slice update with only false values
+            BoolSlices(pid, clid, trig, Array.zeroCreate values.Length)
+            |> add map
+          else map
+        | _ -> map)
+      empty
+      map
+
 // * StateMachine
 
 //  ____  _        _       __  __            _     _
@@ -3929,10 +3951,14 @@ module CommandBatch =
 
 module UpdateSlices =
 
+  // ** ofSlices
+
   let ofSlices (slices: Slices) =
     Map.ofList [(slices.PinId, slices)]
     |> SlicesMap
     |> UpdateSlices
+
+  // ** ofArray
 
   let ofArray (slices: Slices array) =
     slices
@@ -3940,6 +3966,8 @@ module UpdateSlices =
     |> Map.ofArray
     |> SlicesMap
     |> UpdateSlices
+
+  // ** ofList
 
   let ofList (slices: Slices list) =
     slices
@@ -3957,18 +3985,18 @@ module CuePlayerExtensions =
 
     static member next (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.NextId, None, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.NextId, None, true, [| true |]) ]
         CallCue cue
       ]
 
     static member previous (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, true, [| true |]) ]
         CallCue cue
       ]
 
     static member call (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.CallId, None, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.CallId, None, true, [| true |]) ]
         CallCue cue
       ]

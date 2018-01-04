@@ -682,18 +682,25 @@ module Generators =
     |> Gen.oneof
 
   let sliceGen =
-    [ Gen.map StringSlice (Gen.zip indexGen stringGen)
-      Gen.map NumberSlice (Gen.zip indexGen doubleGen)
-      Gen.map BoolSlice   (Gen.zip indexGen boolGen)
-      Gen.map ByteSlice   (Gen.zip indexGen bytesGen)
-      Gen.map EnumSlice   (Gen.zip indexGen propertyGen)
-      Gen.map ColorSlice  (Gen.zip indexGen colorGen) ]
+    [ Gen.map StringSlice (Gen.zip  indexGen stringGen)
+      Gen.map NumberSlice (Gen.zip  indexGen doubleGen)
+      Gen.map BoolSlice   (Gen.zip3 indexGen boolGen boolGen)
+      Gen.map ByteSlice   (Gen.zip  indexGen bytesGen)
+      Gen.map EnumSlice   (Gen.zip  indexGen propertyGen)
+      Gen.map ColorSlice  (Gen.zip  indexGen colorGen) ]
     |> Gen.oneof
 
   let slicesGen =
+    let boolSlicesGen = gen {
+      let! id = idGen
+      let! mid = maybeGen idGen
+      let! trig = boolGen
+      let! value = boolsGen
+      return id, mid, trig, value
+    }
     [ Gen.map StringSlices (Gen.zip3 idGen (maybeGen idGen) stringsGen)
       Gen.map NumberSlices (Gen.zip3 idGen (maybeGen idGen) doublesGen)
-      Gen.map BoolSlices   (Gen.zip3 idGen (maybeGen idGen) boolsGen)
+      Gen.map BoolSlices   boolSlicesGen
       Gen.map ByteSlices   (Gen.zip3 idGen (maybeGen idGen) (Gen.arrayOfLength 2 bytesGen))
       Gen.map EnumSlices   (Gen.zip3 idGen (maybeGen idGen) (Gen.arrayOfLength 2 propertyGen))
       Gen.map ColorSlices  (Gen.zip3 idGen (maybeGen idGen) (Gen.arrayOfLength 2 colorGen)) ]

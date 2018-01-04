@@ -1047,12 +1047,14 @@ type DoublesFBConstructor =
 let DoublesFB: DoublesFBConstructor = failwith "JS only"
 
 type BoolsFB =
+  abstract Trigger: bool
   abstract ValuesLength: int
   abstract Values: int -> bool
 
 type BoolsFBConstructor =
   abstract StartBoolsFB: builder: FlatBufferBuilder -> unit
   abstract CreateValuesVector: builder: FlatBufferBuilder * bool array -> VectorOffset
+  abstract AddTrigger: builder: FlatBufferBuilder * trig:bool -> unit
   abstract AddValues: builder: FlatBufferBuilder * VectorOffset -> unit
   abstract EndBoolsFB: builder: FlatBufferBuilder -> Offset<BoolsFB>
   abstract GetRootAsBoolsFB: bytes: ByteBuffer -> BoolsFB
@@ -1956,11 +1958,13 @@ let ClockFB: ClockFBConstructor = failwith "JS only"
 // |____/ \___/ \___/|_|_|   |____/
 
 type BoolFB =
+  abstract Trigger: bool
   abstract Value: bool
 
 type BoolFBConstructor =
   abstract prototype: BoolFB with get, set
   abstract StartBoolFB: builder: FlatBufferBuilder -> unit
+  abstract AddTrigger: builder: FlatBufferBuilder * trigger:bool -> unit
   abstract AddValue: builder: FlatBufferBuilder * value: bool -> unit
   abstract EndBoolFB: builder: FlatBufferBuilder -> Offset<BoolFB>
   abstract GetRootAsBoolFB: bytes: ByteBuffer -> BoolFB

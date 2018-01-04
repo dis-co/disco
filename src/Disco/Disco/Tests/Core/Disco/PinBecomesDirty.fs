@@ -132,7 +132,7 @@ module PinBecomesDirty =
         //    |_| append group and check its marked 'online'
 
         client.UpdateSlices [
-          BoolSlices(toggle.Id, None, [| false |])
+          BoolSlices(toggle.Id, None, false, [| false |])
         ]
 
         do! waitFor "updateDone" updateDone

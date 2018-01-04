@@ -57,8 +57,8 @@ let private updateSlicesValue (index: int) (value: obj) slices: Slices =
     StringSlices(id, client, castValue<string> arr index value)
   | NumberSlices(id, client, arr) ->
     NumberSlices(id, client, castValue<double> arr index value)
-  | BoolSlices  (id, client, arr) ->
-    BoolSlices  (id, client, castValue<bool> arr index value)
+  | BoolSlices  (id, client, trig, arr) ->
+    BoolSlices  (id, client, trig, castValue<bool> arr index value)
   | ByteSlices  (id, client, arr) ->
     ByteSlices  (id, client, castValue<byte[]> arr index value)
   | EnumSlices  (id, client, arr) ->

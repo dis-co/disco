@@ -235,6 +235,7 @@ table DoubleFB {
 }
 
 table BoolFB {
+     Trigger: bool;
      Value: bool;
 }
 
@@ -325,6 +326,7 @@ table DoublesFB {
 }
 
 table BoolsFB {
+     Trigger: bool;
      Values: [bool];
 }
 
