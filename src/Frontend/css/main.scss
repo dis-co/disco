@@ -46,14 +46,35 @@ html, body {
   background: $disco-grey;
   min-height: 2.20rem;
   height: 25px;
-}
 
-#app-logo .navbar-item {
-  padding: 10px 10px 28px 10px;
+  #app-logo {
+    height: 35px;
+    min-height: unset;
+  
+    .navbar-item {
+      padding: 10px;
+      height: 35px;
+    }
+
+   .navbar-burger{
+      height:35px;
+    }
+  } 
 }
 
 .navbar-dropdown {
   min-width: 120px;
+}
+
+.navbar-menu {
+  @media screen and (max-width: 1023px ) {
+    z-index: 99;
+    // height: 200px;
+    overflow: scroll;
+    position: relative;
+    min-height: 200px;
+    height: 200px;
+  }
 }
 
 .navbar-item {
@@ -148,6 +169,7 @@ html, body {
     .inactive:hover {
       background: white;
     }
+
   }
 
   .disco-tab-body {
