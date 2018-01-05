@@ -16,7 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "handlebars": "^4.0.10",
-    "marked": "^0.3.6",
+    "marked": "^0.3.9",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "xml2js": "^0.4.19"
