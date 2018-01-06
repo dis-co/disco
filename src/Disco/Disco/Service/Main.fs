@@ -78,8 +78,9 @@ module Main =
     then defaultWorkspace
     else filepath result
 
-  let private assetDirectory () =
-    let defaultAssetDirectory = MachineConfig.defaultAssetDirectory()
+  let private assetDirectory (basepath: FilePath) =
+    let defaultAssetDirectory =
+      basepath </> filepath Constants.MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX
     printfn "Enter the path to the asset directory directory:"
     printfn "(Enter) %A" defaultAssetDirectory
     let result = promptLine()
@@ -87,8 +88,8 @@ module Main =
     then defaultAssetDirectory
     else filepath result
 
-  let private logDirectory () =
-    let defaultLogDirectory = MachineConfig.defaultLogDirectory()
+  let private logDirectory (basepath: FilePath) =
+    let defaultLogDirectory = basepath </> filepath "log"
     printfn "Enter the path to the log directory directory:"
     printfn "(Enter) %A" defaultLogDirectory
     let result = promptLine()
@@ -103,7 +104,7 @@ module Main =
   /// |____/ \___|\__|\__,_| .__/
   ///                      |_|
 
-  let private setup (parsed:ParseResults<CLIArguments>) =
+  let private setupPrompt (parsed:ParseResults<CLIArguments>) =
     let target =
       parsed.TryGetResult <@ Machine @>
       |> Option.map (filepath >> Path.getFullPath)
@@ -111,9 +112,9 @@ module Main =
     let address = readBindAddress()
     let mcast = readMulticastAddress()
     let host = hostName()
-    let assetDir = assetDirectory()
-    let logDir = logDirectory()
     let workspace = workspace()
+    let assetDir = assetDirectory workspace
+    let logDir = logDirectory workspace
 
     let machine =
       let fileName = filepath (Constants.MACHINECONFIG_NAME + Constants.ASSET_EXTENSION)
@@ -133,13 +134,67 @@ module Main =
       |> MachineConfig.setLogDirectory logDir
 
     printfn "%A" result
-    printfn "Looks good?"
 
+    printf "Looks good? "
     let yes = promptYesNo()
 
+    printfn ""
+
     if yes
-    then MachineConfig.save target result
-    else Either.nothing
+    then
+      MachineConfig.save target result
+      |> Either.map
+        (fun _ ->
+          match target with
+          | Some path -> printfn "Wrote machine configuration to: %A" path
+          | None -> printfn "Wrote machine configuration to: ./etc/machinecfg.yaml")
+    else
+      printfn "Aborted."
+      Either.nothing
+
+  // ** setupDefaults
+
+  let private setupDefaults (parsed:ParseResults<CLIArguments>) =
+    let target =
+      parsed.TryGetResult <@ Machine @>
+      |> Option.map (filepath >> Path.getFullPath)
+
+    let addrs =
+      Network.getInterfaces ()
+      |> List.filter Network.isOnline
+
+    if List.length addrs = 0 then
+      printfn "error: no public network interfaces found"
+      exit 1
+
+    let address =
+      let iface = List.head addrs
+      let ip = List.head iface.IpAddresses
+      string ip
+
+    let machine =
+      let fileName = filepath (Constants.MACHINECONFIG_NAME + Constants.ASSET_EXTENSION)
+      match target with
+      | Some path when Directory.exists path && Directory.contains (path </> fileName) path ->
+        match MachineConfig.load target with
+        | Right config -> config
+        | _ -> MachineConfig.create address None
+      | _ -> MachineConfig.create address None
+
+    machine
+    |> MachineConfig.save target
+    |> Either.map
+      (fun _ ->
+        match target with
+        | Some path -> printfn "Wrote machine configuration to: %A" path
+        | None -> printfn "Wrote machine configuration to: ./etc/machinecfg.yaml")
+
+  // ** setup
+
+  let private setup (parsed:ParseResults<CLIArguments>) =
+    match parsed.TryGetResult <@ Yes @> with
+    | Some _ -> setupDefaults parsed
+    | None -> setupPrompt parsed
 
   ///  ____  _             _
   /// / ___|| |_ __ _ _ __| |_
