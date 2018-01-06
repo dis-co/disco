@@ -511,6 +511,16 @@ let uploadArtifact () =
     let args = String.Format(tpl, user, pw, url, fn)
     runExec "curl" args __SOURCE_DIRECTORY__ false
 
+let buildImage () =
+  let tpl = @"build -t disco:v{0} --rm -f src/Docker/Dockerfile ."
+  let args = String.Format(tpl, release.NugetVersion)
+  runExec "docker" args __SOURCE_DIRECTORY__ false
+
+let exportImage () =
+  let tpl = @"save disco:v{0} -o disco-v{0}.img"
+  let args = String.Format(tpl, release.NugetVersion)
+  runExec "docker" args __SOURCE_DIRECTORY__ false
+
 // --------------------------------------------------------------------------------------
 // TARGETS
 // --------------------------------------------------------------------------------------
@@ -522,6 +532,10 @@ Target "AssemblyInfo" assemblyInfo
 Target "GenerateBuildFile" generateBuildFile
 Target "GenerateManifest" generateManifest
 Target "GenerateSerialization" generateSerialization
+
+// Docker
+Target "BuildImage" buildImage
+Target "ExportImage" exportImage
 
 // Frontend
 Target "BuildFrontendPlugins" buildFrontendPlugins
