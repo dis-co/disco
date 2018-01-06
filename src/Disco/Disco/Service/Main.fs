@@ -78,8 +78,9 @@ module Main =
     then defaultWorkspace
     else filepath result
 
-  let private assetDirectory () =
-    let defaultAssetDirectory = MachineConfig.defaultAssetDirectory()
+  let private assetDirectory (basepath: FilePath) =
+    let defaultAssetDirectory =
+      basepath </> filepath Constants.MACHINECONFIG_DEFAULT_ASSET_DIRECTORY_UNIX
     printfn "Enter the path to the asset directory directory:"
     printfn "(Enter) %A" defaultAssetDirectory
     let result = promptLine()
@@ -87,8 +88,8 @@ module Main =
     then defaultAssetDirectory
     else filepath result
 
-  let private logDirectory () =
-    let defaultLogDirectory = MachineConfig.defaultLogDirectory()
+  let private logDirectory (basepath: FilePath) =
+    let defaultLogDirectory = basepath </> filepath "log"
     printfn "Enter the path to the log directory directory:"
     printfn "(Enter) %A" defaultLogDirectory
     let result = promptLine()
@@ -111,9 +112,9 @@ module Main =
     let address = readBindAddress()
     let mcast = readMulticastAddress()
     let host = hostName()
-    let assetDir = assetDirectory()
-    let logDir = logDirectory()
     let workspace = workspace()
+    let assetDir = assetDirectory workspace
+    let logDir = logDirectory workspace
 
     let machine =
       let fileName = filepath (Constants.MACHINECONFIG_NAME + Constants.ASSET_EXTENSION)
@@ -133,13 +134,23 @@ module Main =
       |> MachineConfig.setLogDirectory logDir
 
     printfn "%A" result
-    printfn "Looks good?"
 
+    printf "Looks good? "
     let yes = promptYesNo()
 
+    printfn ""
+
     if yes
-    then MachineConfig.save target result
-    else Either.nothing
+    then
+      MachineConfig.save target result
+      |> Either.map
+        (fun _ ->
+          match target with
+          | Some path -> printfn "Wrote machine configuration to: %A" path
+          | None -> printfn "Wrote machine configuration to: ./etc/machinecfg.yaml")
+    else
+      printfn "Aborted."
+      Either.nothing
 
   // ** setupDefaults
 
@@ -170,7 +181,13 @@ module Main =
         | _ -> MachineConfig.create address None
       | _ -> MachineConfig.create address None
 
-    MachineConfig.save target machine
+    machine
+    |> MachineConfig.save target
+    |> Either.map
+      (fun _ ->
+        match target with
+        | Some path -> printfn "Wrote machine configuration to: %A" path
+        | None -> printfn "Wrote machine configuration to: ./etc/machinecfg.yaml")
 
   // ** setup
 
