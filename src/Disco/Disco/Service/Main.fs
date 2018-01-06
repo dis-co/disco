@@ -103,7 +103,7 @@ module Main =
   /// |____/ \___|\__|\__,_| .__/
   ///                      |_|
 
-  let private setup (parsed:ParseResults<CLIArguments>) =
+  let private setupPrompt (parsed:ParseResults<CLIArguments>) =
     let target =
       parsed.TryGetResult <@ Machine @>
       |> Option.map (filepath >> Path.getFullPath)
@@ -140,6 +140,44 @@ module Main =
     if yes
     then MachineConfig.save target result
     else Either.nothing
+
+  // ** setupDefaults
+
+  let private setupDefaults (parsed:ParseResults<CLIArguments>) =
+    let target =
+      parsed.TryGetResult <@ Machine @>
+      |> Option.map (filepath >> Path.getFullPath)
+
+    let addrs =
+      Network.getInterfaces ()
+      |> List.filter Network.isOnline
+
+    if List.length addrs = 0 then
+      printfn "error: no public network interfaces found"
+      exit 1
+
+    let address =
+      let iface = List.head addrs
+      let ip = List.head iface.IpAddresses
+      string ip
+
+    let machine =
+      let fileName = filepath (Constants.MACHINECONFIG_NAME + Constants.ASSET_EXTENSION)
+      match target with
+      | Some path when Directory.exists path && Directory.contains (path </> fileName) path ->
+        match MachineConfig.load target with
+        | Right config -> config
+        | _ -> MachineConfig.create address None
+      | _ -> MachineConfig.create address None
+
+    MachineConfig.save target machine
+
+  // ** setup
+
+  let private setup (parsed:ParseResults<CLIArguments>) =
+    match parsed.TryGetResult <@ Yes @> with
+    | Some _ -> setupDefaults parsed
+    | None -> setupPrompt parsed
 
   ///  ____  _             _
   /// / ___|| |_ __ _ _ __| |_

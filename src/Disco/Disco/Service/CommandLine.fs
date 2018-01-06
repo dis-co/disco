@@ -84,9 +84,10 @@ module CommandLine =
 
   type CLIArguments =
     | [<Mandatory;MainCommand;CliPosition(CliPosition.First)>] Cmd of SubCommand
-    | [<EqualsAssignment>] Project        of string
-    | [<EqualsAssignment>] Machine        of string
-    | [<EqualsAssignment>] Frontend       of string
+    | [<EqualsAssignment>]     Project  of string
+    | [<EqualsAssignment>]     Machine  of string
+    | [<EqualsAssignment>]     Frontend of string
+    | [<AltCommandLine("-y")>] Yes
 
     interface IArgParserTemplate with
       member self.Usage =
@@ -94,6 +95,7 @@ module CommandLine =
           | Project _   -> "Name of project directory in the workspace"
           | Machine _   -> "Path to the machine config file"
           | Frontend _  -> "Path to the frontend files"
+          | Yes         -> "Don't prompt and choose defaults during setup command"
           | Cmd     _   -> "Main Command: either one of setup, start, or help."
 
   let parser = ArgumentParser.Create<CLIArguments>()

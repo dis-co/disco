@@ -106,6 +106,16 @@ module Network =
         else lst)
       []
 
+  // ** isOnline
+
+  let isOnline (iface: NetworkInterface) =
+    match iface.Type, iface.Status with
+    | NetworkInterfaceType.Loopback,  _
+    | NetworkInterfaceType.Unknown _, _
+    | _, NetworkInterfaceStatus.Down
+    | _, NetworkInterfaceStatus.Unknown _ -> false
+    | _ -> true
+
   // ** checkIpAddress
 
   let private checkIpAddress (ip: IpAddress) (ifaces: NetworkInterface list) =
